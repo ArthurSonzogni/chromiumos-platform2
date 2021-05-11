@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "federated/federated_metadata.h"
 #include "federated/mojom/example.mojom.h"
 #include "federated/utils.h"
 
@@ -17,6 +18,7 @@ FederatedServiceImpl::FederatedServiceImpl(mojo::ScopedMessagePipeHandle pipe,
                                            base::Closure disconnect_handler,
                                            StorageManager* storage_manager)
     : storage_manager_(storage_manager),
+      registered_clients_(GetClientNames()),
       receiver_(
           this,
           mojo::InterfaceRequest<chromeos::federated::mojom::FederatedService>(
@@ -34,7 +36,10 @@ void FederatedServiceImpl::ReportExample(
     const std::string& client_name,
     chromeos::federated::mojom::ExamplePtr example) {
   DCHECK(storage_manager_) << "storage_manager_ is not ready!";
-  // TODO(alanlxl): check if the client_name is registered.
+  if (registered_clients_.find(client_name) == registered_clients_.end()) {
+    VLOG(1) << "Unknown client_name: " << client_name;
+    return;
+  }
 
   if (!example || !example->features || !example->features->feature.size()) {
     VLOG(1) << "Invalid/empty example received from client " << client_name;

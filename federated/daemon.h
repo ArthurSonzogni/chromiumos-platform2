@@ -14,6 +14,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "federated/mojom/federated_service.mojom.h"
+#include "federated/scheduler.h"
 
 namespace dbus {
 class MethodCall;
@@ -48,6 +49,8 @@ class Daemon : public brillo::DBusDaemon {
   // BootstrapMojoConnection.
   std::unique_ptr<chromeos::federated::mojom::FederatedService>
       federated_service_;
+
+  std::unique_ptr<Scheduler> scheduler_;
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;

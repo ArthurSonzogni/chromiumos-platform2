@@ -35,6 +35,11 @@ int Daemon::OnInit() {
   // Initializes storage_manager_.
   StorageManager::GetInstance()->InitializeSessionManagerProxy(bus_.get());
 
+  // Creates the scheduler and schedules the tasks.
+  scheduler_ =
+      std::make_unique<Scheduler>(StorageManager::GetInstance(), bus_.get());
+  scheduler_->Schedule();
+
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::ThreadTaskRunnerHandle::Get(),

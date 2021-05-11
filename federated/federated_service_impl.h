@@ -6,6 +6,7 @@
 #define FEDERATED_FEDERATED_SERVICE_IMPL_H_
 
 #include <string>
+#include <unordered_set>
 
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -35,6 +36,10 @@ class FederatedServiceImpl
                      chromeos::federated::mojom::ExamplePtr example) override;
 
   StorageManager* const storage_manager_;
+
+  // All known clients, examples reported by unregistered clients will be
+  // ignored.
+  const std::unordered_set<std::string> registered_clients_;
 
   // Primordial receiver bootstrapped over D-Bus. Once opened, is never closed.
   mojo::Receiver<chromeos::federated::mojom::FederatedService> receiver_;

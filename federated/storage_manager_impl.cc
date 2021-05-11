@@ -13,6 +13,7 @@
 #include <base/no_destructor.h>
 #include <base/strings/stringprintf.h>
 
+#include "federated/federated_metadata.h"
 #include "federated/session_manager_proxy.h"
 #include "federated/utils.h"
 
@@ -125,9 +126,7 @@ void StorageManagerImpl::ConnectToDatabaseIfNecessary() {
 
   sanitized_username_ = new_sanitized_username;
   auto db_path = GetDatabasePath(sanitized_username_);
-  // TODO(alanlxl): temp clients for test.
-  example_database_.reset(
-      new ExampleDatabase(db_path, {"analytics_test_population"}));
+  example_database_.reset(new ExampleDatabase(db_path, GetClientNames()));
 
   if (!example_database_->Init()) {
     LOG(ERROR) << "Failed to connect to database for user "

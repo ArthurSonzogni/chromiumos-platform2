@@ -20,6 +20,7 @@ pkg_config("federated_common_pkg_deps") {
     "libmojo",
     "libsession_manager-client",
     "sqlite3",
+    "system_api",
   ]
 }
 
@@ -43,8 +44,11 @@ proto_library("tf_example_proto") {
 static_library("federated_common") {
   sources = [
     "daemon.cc",
+    "device_status_monitor.cc",
     "example_database.cc",
+    "federated_metadata.cc",
     "federated_service_impl.cc",
+    "scheduler.cc",
     "session_manager_proxy.cc",
     "storage_manager_impl.cc",
     "utils.cc",
@@ -64,10 +68,14 @@ executable("federated_service") {
 
 if (use.test) {
   pkg_config("libchrome_test_config") {
-    pkg_deps = [ "libsession_manager-client-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libsession_manager-client-test",
+    ]
   }
   executable("federated_service_test") {
     sources = [
+      "device_status_monitor_test.cc",
       "example_database_test.cc",
       "example_database_test_utils.cc",
       "federated_service_impl_test.cc",
