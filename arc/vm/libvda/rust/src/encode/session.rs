@@ -23,7 +23,7 @@ pub struct Session<'a> {
     // Pipe file to be notified encode session events.
     pipe: File,
     vea_ptr: *mut c_void,
-    raw_ptr: *mut bindings::vea_session_info_t,
+    session_ptr: *mut bindings::vea_session_info_t,
     // `phantom` guarantees that `Session` will not outlive the lifetime of
     // `VeaInstance` that owns `vea_ptr`.
     phantom: PhantomData<&'a VeaInstance>,
@@ -45,22 +45,22 @@ impl<'a> Session<'a> {
     pub(crate) unsafe fn new(vea_ptr: *mut c_void, config: Config) -> Option<Self> {
         // `init_encode_session` is safe if `vea_ptr` is a non-NULL pointer from
         // `bindings::initialize`.
-        let raw_ptr: *mut bindings::vea_session_info_t =
+        let session_ptr: *mut bindings::vea_session_info_t =
             bindings::init_encode_session(vea_ptr, &mut config.to_raw_config());
 
-        if raw_ptr.is_null() {
+        if session_ptr.is_null() {
             return None;
         }
 
-        // Dereferencing `raw_ptr` is safe because it is a valid pointer to a FD provided by libvda.
-        // We need to dup() the `event_pipe_fd` because File object close() the FD while libvda also
-        // close() it when `close_encode_session` is called.
-        let pipe = File::from_raw_fd(libc::dup((*raw_ptr).event_pipe_fd));
+        // Dereferencing `session_ptr` is safe because it is a valid pointer to a FD provided by
+        // libvda. We need to dup() the `event_pipe_fd` because File object close() the FD while
+        // libvda also close() it when `close_encode_session` is called.
+        let pipe = File::from_raw_fd(libc::dup((*session_ptr).event_pipe_fd));
 
         Some(Session {
             pipe,
             vea_ptr,
-            raw_ptr,
+            session_ptr,
             phantom: PhantomData,
         })
     }
@@ -108,10 +108,10 @@ impl<'a> Session<'a> {
     ) -> Result<()> {
         let mut planes: Vec<_> = planes.iter().map(FramePlane::to_raw_frame_plane).collect();
 
-        // Safe because `raw_ptr` is valid and libvda's encode API is called properly.
+        // Safe because `session_ptr` is valid and libvda's encode API is called properly.
         let r = unsafe {
             bindings::vea_encode(
-                (*self.raw_ptr).ctx,
+                (*self.session_ptr).ctx,
                 input_buffer_id,
                 fd,
                 planes.len(),
@@ -139,9 +139,15 @@ impl<'a> Session<'a> {
         offset: u32,
         size: u32,
     ) -> Result<()> {
-        // Safe because `raw_ptr` is valid and libvda's encode API is called properly.
+        // Safe because `session_ptr` is valid and libvda's encode API is called properly.
         let r = unsafe {
-            bindings::vea_use_output_buffer((*self.raw_ptr).ctx, output_buffer_id, fd, offset, size)
+            bindings::vea_use_output_buffer(
+                (*self.session_ptr).ctx,
+                output_buffer_id,
+                fd,
+                offset,
+                size,
+            )
         };
         convert_error_code(r)
     }
@@ -151,9 +157,13 @@ impl<'a> Session<'a> {
     /// The request is not guaranteed to be honored by libvda and could be ignored
     /// by the backing encoder implementation.
     pub fn request_encoding_params_change(&self, bitrate: u32, framerate: u32) -> Result<()> {
-        // Safe because `raw_ptr` is valid and libvda's encode API is called properly.
+        // Safe because `session_ptr` is valid and libvda's encode API is called properly.
         let r = unsafe {
-            bindings::vea_request_encoding_params_change((*self.raw_ptr).ctx, bitrate, framerate)
+            bindings::vea_request_encoding_params_change(
+                (*self.session_ptr).ctx,
+                bitrate,
+                framerate,
+            )
         };
         convert_error_code(r)
     }
@@ -163,19 +173,19 @@ impl<'a> Session<'a> {
     /// When this operation has completed, Event::FlushResponse can be read from
     /// the event pipe.
     pub fn flush(&self) -> Result<()> {
-        // Safe because `raw_ptr` is valid and libvda's encode API is called properly.
-        let r = unsafe { bindings::vea_flush((*self.raw_ptr).ctx) };
+        // Safe because `session_ptr` is valid and libvda's encode API is called properly.
+        let r = unsafe { bindings::vea_flush((*self.session_ptr).ctx) };
         convert_error_code(r)
     }
 }
 
 impl<'a> Drop for Session<'a> {
     fn drop(&mut self) {
-        // Safe because `vea_ptr` and `raw_ptr` are unchanged from the time `new` was called.
+        // Safe because `vea_ptr` and `session_ptr` are unchanged from the time `new` was called.
         // Also, `vea_ptr` is valid because `phantom` guarantees that `VeaInstance` owning `vea_ptr`
         // has not dropped yet.
         unsafe {
-            bindings::close_encode_session(self.vea_ptr, self.raw_ptr);
+            bindings::close_encode_session(self.vea_ptr, self.session_ptr);
         }
     }
 }
