@@ -202,6 +202,16 @@
     </signal>
 
     <!--
+        LoadShillProfile:
+        @account_id: Account ID of the user to load a shill profile for.
+
+        Emits "load-shill-profile" upstart signal (asynchronously).
+    -->
+    <method name="LoadShillProfile">
+      <arg type="s" name="account_id" direction="in" />
+    </method>
+
+    <!--
         StorePolicyEx:
         @descriptor_blob: Serialized PolicyDescriptor protobuf containing
             metadata about the policy (e.g. user policy, account id).

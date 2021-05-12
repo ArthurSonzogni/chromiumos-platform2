@@ -99,6 +99,9 @@ constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
 
+constexpr char SessionManagerImpl::kLoadShillProfileImpulse[] =
+    "load-shill-profile";
+
 // ARC related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kStartArcInstanceImpulse[] =
     "start-arc-instance";
@@ -808,6 +811,20 @@ void SessionManagerImpl::StopSessionWithReason(uint32_t reason) {
   // session_started_ = false;
 
   password_provider_->DiscardPassword();
+}
+
+bool SessionManagerImpl::LoadShillProfile(brillo::ErrorPtr* error,
+                                          const std::string& in_account_id) {
+  LOG(INFO) << "LoadShillProfile() method called.";
+  std::string actual_account_id;
+  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
+    DCHECK(*error);
+    return false;
+  }
+  init_controller_->TriggerImpulse(kLoadShillProfileImpulse,
+                                   {"CHROMEOS_USER=" + actual_account_id},
+                                   InitDaemonController::TriggerMode::ASYNC);
+  return true;
 }
 
 void SessionManagerImpl::StorePolicyEx(

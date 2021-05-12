@@ -1337,6 +1337,19 @@ TEST_F(SessionManagerImplTest, StopSession) {
       static_cast<uint32_t>(SessionStopReason::RESTORE_ACTIVE_SESSIONS));
 }
 
+TEST_F(SessionManagerImplTest, LoadShillProfile) {
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kLoadShillProfileImpulse,
+                             ElementsAre(StartsWith("CHROMEOS_USER=")),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(nullptr)));
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->LoadShillProfile(&error, kSaneEmail));
+    EXPECT_FALSE(error.get());
+  }
+}
+
 TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreEphemeral) {
   const string kTestKey("testkey");
   const string kTestValue("testvalue");

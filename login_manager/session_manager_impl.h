@@ -106,6 +106,10 @@ class SessionManagerImpl
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
 
+  // Name of the impulse emitted when the shill profile should be loaded for a
+  // user session.
+  static const char kLoadShillProfileImpulse[];
+
   // Android container messages.
   static const char kStartArcInstanceImpulse[];
   static const char kStopArcInstanceImpulse[];
@@ -231,6 +235,9 @@ class SessionManagerImpl
                     const std::string& in_unique_identifier) override;
   void StopSession(const std::string& in_unique_identifier) override;
   void StopSessionWithReason(uint32_t reason) override;
+
+  bool LoadShillProfile(brillo::ErrorPtr* error,
+                        const std::string& in_account_id) override;
 
   // Interface for storing and retrieving policy.
   // TODO(crbug.com/765644): Remove 'Ex', see bug description.
