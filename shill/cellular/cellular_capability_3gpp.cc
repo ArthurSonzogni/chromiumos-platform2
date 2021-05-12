@@ -755,6 +755,11 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
       properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
   }
+  if (base::Contains(*apn_info, kApnIpTypeProperty)) {
+    properties->Set<uint32_t>(
+        kConnectIpType,
+        IpTypeToMMBearerIpFamily((*apn_info)[kApnIpTypeProperty]));
+  }
 }
 
 void CellularCapability3gpp::GetProperties() {
