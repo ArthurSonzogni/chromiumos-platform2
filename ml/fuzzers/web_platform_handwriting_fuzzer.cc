@@ -24,6 +24,7 @@
 #include "ml/machine_learning_service_impl.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
 #include "ml/mojom/web_platform_handwriting.mojom.h"
+#include "ml/process.h"
 #include "mojo/core/embedder/embedder.h"
 #include "mojo/core/embedder/scoped_ipc_support.h"
 
@@ -56,6 +57,9 @@ class WebPlatformHandwritingFuzzer {
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
         base::ThreadTaskRunnerHandle::Get(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+
+    Process::GetInstance()->SetTypeForTesting(
+        Process::Type::kSingleProcessForTest);
 
     ml_service_impl_ = std::make_unique<MachineLearningServiceImpl>(
         ml_service_.BindNewPipeAndPassReceiver(), base::Closure());
