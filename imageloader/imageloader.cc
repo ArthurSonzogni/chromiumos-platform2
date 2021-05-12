@@ -64,8 +64,8 @@ int ImageLoader::OnInit() {
   process_reaper_.Register(this);
   process_reaper_.WatchForChild(
       FROM_HERE, helper_process_proxy_->pid(),
-      base::Bind(&ImageLoader::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                 helper_process_proxy_->pid()));
+      base::BindOnce(&ImageLoader::OnSubprocessExited,
+                     weak_factory_.GetWeakPtr(), helper_process_proxy_->pid()));
 
   PostponeShutdown();
 
@@ -92,7 +92,7 @@ void ImageLoader::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
 
 void ImageLoader::PostponeShutdown() {
   shutdown_callback_.Reset(
-      base::Bind(&brillo::Daemon::Quit, base::Unretained(this)));
+      base::BindRepeating(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), kShutdownTimeout);
 }
