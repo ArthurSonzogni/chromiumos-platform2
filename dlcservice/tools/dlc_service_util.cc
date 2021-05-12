@@ -138,10 +138,10 @@ class DlcServiceUtil : public brillo::Daemon {
     if (FLAGS_install) {
       // Set up callbacks
       dlc_service_proxy_->RegisterDlcStateChangedSignalHandler(
-          base::Bind(&DlcServiceUtil::OnDlcStateChanged,
-                     weak_ptr_factory_.GetWeakPtr()),
-          base::Bind(&DlcServiceUtil::OnDlcStateChangedConnect,
-                     weak_ptr_factory_.GetWeakPtr()));
+          base::BindRepeating(&DlcServiceUtil::OnDlcStateChanged,
+                              weak_ptr_factory_.GetWeakPtr()),
+          base::BindOnce(&DlcServiceUtil::OnDlcStateChangedConnect,
+                         weak_ptr_factory_.GetWeakPtr()));
       if (Install()) {
         // Don't |Quit()| as we will need to wait for signal of install.
         return EX_OK;

@@ -164,8 +164,9 @@ void UserRefCount::SessionChanged(const string& state) {
   if (state == kSessionStarted) {
     device_users_ = ScanDirectory(SystemState::Get()->users_dir());
     SystemState::Get()->session_manager()->RetrievePrimarySessionAsync(
-        base::Bind(&UserRefCount::OnSuccessRetrievePrimarySessionAsync),
-        base::Bind(&UserRefCount::OnErrorRetrievePrimarySessionAsync));
+        base::BindRepeating(
+            &UserRefCount::OnSuccessRetrievePrimarySessionAsync),
+        base::BindRepeating(&UserRefCount::OnErrorRetrievePrimarySessionAsync));
   }
 }
 

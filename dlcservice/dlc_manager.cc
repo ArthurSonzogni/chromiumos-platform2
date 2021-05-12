@@ -120,7 +120,7 @@ void DlcManager::CleanupDanglingDlcs() {
 void DlcManager::PostCleanupDanglingDlcs(const base::TimeDelta& timeout) {
   cleanup_dangling_task_id_ = MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&DlcManager::CleanupDanglingDlcs, base::Unretained(this)),
+      base::BindOnce(&DlcManager::CleanupDanglingDlcs, base::Unretained(this)),
       timeout);
 }
 

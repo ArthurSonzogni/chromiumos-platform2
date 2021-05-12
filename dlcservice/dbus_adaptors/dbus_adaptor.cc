@@ -102,8 +102,8 @@ DBusAdaptor::DBusAdaptor(unique_ptr<DBusService> dbus_service)
 
 void DBusAdaptor::DlcStateChanged(const DlcState& dlc_state) {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&DBusAdaptor::SendDlcStateChangedSignal,
-                            base::Unretained(this), dlc_state));
+      FROM_HERE, base::BindOnce(&DBusAdaptor::SendDlcStateChangedSignal,
+                                base::Unretained(this), dlc_state));
 }
 
 }  // namespace dlcservice

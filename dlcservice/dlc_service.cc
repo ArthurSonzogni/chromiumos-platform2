@@ -55,16 +55,16 @@ void DlcService::Initialize() {
 
   // Register D-Bus signal callbacks.
   system_state->update_engine()->RegisterStatusUpdateAdvancedSignalHandler(
-      base::Bind(&DlcService::OnStatusUpdateAdvancedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&DlcService::OnStatusUpdateAdvancedSignalConnected,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&DlcService::OnStatusUpdateAdvancedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&DlcService::OnStatusUpdateAdvancedSignalConnected,
+                     weak_ptr_factory_.GetWeakPtr()));
 
   system_state->session_manager()->RegisterSessionStateChangedSignalHandler(
-      base::Bind(&DlcService::OnSessionStateChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&DlcService::OnSessionStateChangedSignalConnected,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&DlcService::OnSessionStateChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&DlcService::OnSessionStateChangedSignalConnected,
+                     weak_ptr_factory_.GetWeakPtr()));
 
   dlc_manager_->Initialize();
 }
@@ -246,8 +246,8 @@ void DlcService::SchedulePeriodicInstallCheck() {
 
   periodic_install_check_id_ = brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&DlcService::PeriodicInstallCheck,
-                 weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&DlcService::PeriodicInstallCheck,
+                     weak_ptr_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kUECheckTimeout));
 }
 
