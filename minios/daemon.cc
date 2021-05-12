@@ -29,7 +29,7 @@ int Daemon::OnEventLoopStarted() {
     return return_code;
 
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&Daemon::Start, base::Unretained(this)));
+      FROM_HERE, base::BindOnce(&Daemon::Start, base::Unretained(this)));
   return EX_OK;
 }
 

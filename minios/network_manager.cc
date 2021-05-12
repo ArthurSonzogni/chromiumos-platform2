@@ -39,10 +39,10 @@ void NetworkManager::Connect(const std::string& ssid,
 
   shill_proxy_->ManagerRequestScan(
       WifiTechnologyType::WIFI,
-      base::Bind(static_cast<void (NetworkManager::*)(ConnectMapIter)>(
-                     &NetworkManager::RequestScanSuccess),
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(
+      base::BindRepeating(static_cast<void (NetworkManager::*)(ConnectMapIter)>(
+                              &NetworkManager::RequestScanSuccess),
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(
           static_cast<void (NetworkManager::*)(ConnectMapIter, brillo::Error*)>(
               &NetworkManager::RequestScanError),
           weak_ptr_factory_.GetWeakPtr(), iter));
@@ -65,10 +65,10 @@ void NetworkManager::RequestScanSuccess(ConnectMapIter iter) {
   };
   shill_proxy_->ManagerFindMatchingService(
       properties,
-      base::Bind(&NetworkManager::FindServiceSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(&NetworkManager::FindServiceError,
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(&NetworkManager::FindServiceSuccess,
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(&NetworkManager::FindServiceError,
+                          weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::RequestScanError(ConnectMapIter iter,
@@ -85,10 +85,10 @@ void NetworkManager::FindServiceSuccess(ConnectMapIter iter,
   iter->second.service_path = service_path;
   shill_proxy_->ServiceGetProperties(
       service_path,
-      base::Bind(&NetworkManager::GetServiceSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(&NetworkManager::GetServiceError,
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(&NetworkManager::GetServiceSuccess,
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(&NetworkManager::GetServiceError,
+                          weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::FindServiceError(ConnectMapIter iter,
@@ -115,10 +115,10 @@ void NetworkManager::GetServiceSuccess(ConnectMapIter iter,
         // Set the SSID passphrase and proceed with connecting.
         shill_proxy_->ServiceSetProperties(
             iter->second.service_path, properties,
-            base::Bind(&NetworkManager::ConfigureNetworkSuccess,
-                       weak_ptr_factory_.GetWeakPtr(), iter),
-            base::Bind(&NetworkManager::ConfigureNetworkError,
-                       weak_ptr_factory_.GetWeakPtr(), iter));
+            base::BindRepeating(&NetworkManager::ConfigureNetworkSuccess,
+                                weak_ptr_factory_.GetWeakPtr(), iter),
+            base::BindRepeating(&NetworkManager::ConfigureNetworkError,
+                                weak_ptr_factory_.GetWeakPtr(), iter));
       } else {
         Return(iter,
                brillo::Error::Create(
@@ -157,10 +157,10 @@ void NetworkManager::ConfigureNetworkError(ConnectMapIter iter,
 void NetworkManager::ServiceConnect(ConnectMapIter iter) {
   shill_proxy_->ServiceConnect(
       iter->second.service_path,
-      base::Bind(&NetworkManager::ConnectToNetworkSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(&NetworkManager::ConnectToNetworkError,
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(&NetworkManager::ConnectToNetworkSuccess,
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(&NetworkManager::ConnectToNetworkError,
+                          weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::ConnectToNetworkSuccess(ConnectMapIter iter) {
@@ -168,10 +168,10 @@ void NetworkManager::ConnectToNetworkSuccess(ConnectMapIter iter) {
             << " proceeding to verify connection.";
   shill_proxy_->ServiceGetProperties(
       iter->second.service_path,
-      base::Bind(&NetworkManager::GetServiceCheckConnectionSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(&NetworkManager::GetServiceCheckConnectionError,
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(&NetworkManager::GetServiceCheckConnectionSuccess,
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(&NetworkManager::GetServiceCheckConnectionError,
+                          weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::ConnectToNetworkError(ConnectMapIter iter,
@@ -184,8 +184,8 @@ void NetworkManager::ConnectToNetworkError(ConnectMapIter iter,
     // connected.
     brillo::MessageLoop::current()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&NetworkManager::ServiceConnect,
-                   weak_ptr_factory_.GetWeakPtr(), iter),
+        base::BindOnce(&NetworkManager::ServiceConnect,
+                       weak_ptr_factory_.GetWeakPtr(), iter),
         base::TimeDelta::FromMilliseconds(kConnectionRetryMsDelay));
   } else if (error_code == shill::kErrorResultAlreadyConnected) {
     LOG(INFO) << "ConnectToNetwork failed, but already connected for SSID="
@@ -211,8 +211,8 @@ void NetworkManager::GetServiceCheckConnectionSuccess(
                  state == shill::kStateReady) {
         brillo::MessageLoop::current()->PostDelayedTask(
             FROM_HERE,
-            base::Bind(&NetworkManager::ConnectToNetworkSuccess,
-                       weak_ptr_factory_.GetWeakPtr(), iter),
+            base::BindOnce(&NetworkManager::ConnectToNetworkSuccess,
+                           weak_ptr_factory_.GetWeakPtr(), iter),
             base::TimeDelta::FromMilliseconds(kCheckConnectionRetryMsDelay));
       } else {
         Return(iter,
@@ -254,21 +254,21 @@ void NetworkManager::GetNetworks() {
 
   shill_proxy_->ManagerRequestScan(
       WifiTechnologyType::WIFI,
-      base::Bind(static_cast<GetNetworksRequestScanSuccessType>(
-                     &NetworkManager::RequestScanSuccess),
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(static_cast<GetNetworksRequestScanErrorType>(
-                     &NetworkManager::RequestScanError),
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(static_cast<GetNetworksRequestScanSuccessType>(
+                              &NetworkManager::RequestScanSuccess),
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(static_cast<GetNetworksRequestScanErrorType>(
+                              &NetworkManager::RequestScanError),
+                          weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::RequestScanSuccess(GetNetworksListIter iter) {
   LOG(INFO) << "RequestScan success.";
   shill_proxy_->ManagerGetProperties(
-      base::Bind(&NetworkManager::GetGlobalPropertiesSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(&NetworkManager::GetGlobalPropertiesError,
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(&NetworkManager::GetGlobalPropertiesSuccess,
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(&NetworkManager::GetGlobalPropertiesError,
+                          weak_ptr_factory_.GetWeakPtr(), iter));
 }
 
 void NetworkManager::RequestScanError(GetNetworksListIter iter,
@@ -294,10 +294,12 @@ void NetworkManager::GetGlobalPropertiesSuccess(
       // Start the iterations over each service asynchronously.
       shill_proxy_->ServiceGetProperties(
           iter->service_paths.back(),
-          base::Bind(&NetworkManager::IterateOverServicePropertiesSuccess,
-                     weak_ptr_factory_.GetWeakPtr(), iter),
-          base::Bind(&NetworkManager::IterateOverServicePropertiesError,
-                     weak_ptr_factory_.GetWeakPtr(), iter));
+          base::BindRepeating(
+              &NetworkManager::IterateOverServicePropertiesSuccess,
+              weak_ptr_factory_.GetWeakPtr(), iter),
+          base::BindRepeating(
+              &NetworkManager::IterateOverServicePropertiesError,
+              weak_ptr_factory_.GetWeakPtr(), iter));
       iter->service_paths.pop_back();
       return;
     }
@@ -330,10 +332,10 @@ void NetworkManager::IterateOverServicePropertiesSuccess(
   // Iterate over the next service.
   shill_proxy_->ServiceGetProperties(
       iter->service_paths.back(),
-      base::Bind(&NetworkManager::IterateOverServicePropertiesSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), iter),
-      base::Bind(&NetworkManager::IterateOverServicePropertiesError,
-                 weak_ptr_factory_.GetWeakPtr(), iter));
+      base::BindRepeating(&NetworkManager::IterateOverServicePropertiesSuccess,
+                          weak_ptr_factory_.GetWeakPtr(), iter),
+      base::BindRepeating(&NetworkManager::IterateOverServicePropertiesError,
+                          weak_ptr_factory_.GetWeakPtr(), iter));
   iter->service_paths.pop_back();
 }
 
@@ -343,10 +345,11 @@ void NetworkManager::IterateOverServicePropertiesError(GetNetworksListIter iter,
   if (!iter->service_paths.empty()) {
     shill_proxy_->ServiceGetProperties(
         iter->service_paths.back(),
-        base::Bind(&NetworkManager::IterateOverServicePropertiesSuccess,
-                   weak_ptr_factory_.GetWeakPtr(), iter),
-        base::Bind(&NetworkManager::IterateOverServicePropertiesError,
-                   weak_ptr_factory_.GetWeakPtr(), iter));
+        base::BindRepeating(
+            &NetworkManager::IterateOverServicePropertiesSuccess,
+            weak_ptr_factory_.GetWeakPtr(), iter),
+        base::BindRepeating(&NetworkManager::IterateOverServicePropertiesError,
+                            weak_ptr_factory_.GetWeakPtr(), iter));
     iter->service_paths.pop_back();
     return;
   }

@@ -15,10 +15,11 @@ constexpr int kTimeTillReboot = 10;
 
 void UpdateEngineProxy::Init() {
   update_engine_proxy_.get()->RegisterStatusUpdateAdvancedSignalHandler(
-      base::Bind(&UpdateEngineProxy::OnStatusUpdateAdvancedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&UpdateEngineProxy::OnStatusUpdateAdvancedSignalConnected,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&UpdateEngineProxy::OnStatusUpdateAdvancedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(
+          &UpdateEngineProxy::OnStatusUpdateAdvancedSignalConnected,
+          weak_ptr_factory_.GetWeakPtr()));
   return;
 }
 
@@ -43,7 +44,8 @@ void UpdateEngineProxy::OnStatusUpdateAdvancedSignalConnected(
 void UpdateEngineProxy::TriggerReboot() {
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&UpdateEngineProxy::Reboot, weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&UpdateEngineProxy::Reboot,
+                     weak_ptr_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kTimeTillReboot));
 }
 
