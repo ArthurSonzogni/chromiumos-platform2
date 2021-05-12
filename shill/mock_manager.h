@@ -86,6 +86,7 @@ class MockManager : public Manager {
               (const ProfileRefPtr&, const std::string&, Error*),
               (override));
   MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, IsOnline, (), (const, override));
   MOCK_METHOD(void, UpdateEnabledTechnologies, (), (override));
   MOCK_METHOD(bool, IsPortalDetectionEnabled, (Technology), (override));
   MOCK_METHOD(bool,

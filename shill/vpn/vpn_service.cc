@@ -41,7 +41,7 @@ const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
 VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
     : Service(manager, Technology::kVPN),
       driver_(std::move(driver)),
-      last_default_physical_service_online_(true) {
+      last_default_physical_service_online_(manager->IsOnline()) {
   if (driver_) {
     log_name_ = "vpn_" + driver_->GetProviderType() + "_" +
                 base::NumberToString(serial_number());

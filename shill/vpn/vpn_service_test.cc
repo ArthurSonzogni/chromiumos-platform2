@@ -56,6 +56,8 @@ class VPNServiceTest : public testing::Test {
     EXPECT_CALL(*driver_, GetProviderType())
         .WillRepeatedly(Return(kProviderL2tpIpsec));
     connection_ = new NiceMock<MockConnection>(&device_info_);
+    // There is at least one online service when the test service is created.
+    EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
     service_ = new VPNService(&manager_, base::WrapUnique(driver_));
   }
 
