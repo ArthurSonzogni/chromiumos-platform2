@@ -11,12 +11,14 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
 #include "arc/data-snapshotd/block_ui_controller.h"
 #include "arc/data-snapshotd/esc_key_watcher.h"
+#include "arc/data-snapshotd/worker_bridge.h"
 #include "dbus_adaptors/org.chromium.ArcDataSnapshotd.h"
 
 namespace crypto {
@@ -54,9 +56,7 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
 
   static std::unique_ptr<DBusAdaptor> CreateForTesting(
       const base::FilePath& snapshot_directory,
-      const base::FilePath& home_root_directory,
       std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-      const std::string& system_salt,
       std::unique_ptr<BlockUiController> block_ui_controller);
 
   // Registers the D-Bus object that the arc-data-snapshotd daemon exposes and
@@ -68,10 +68,13 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   // interface:
   bool GenerateKeyPair() override;
   bool ClearSnapshot(bool last) override;
-  bool TakeSnapshot(const std::string& account_id) override;
-  void LoadSnapshot(const std::string& account_id,
-                    bool* last,
-                    bool* success) override;
+  void TakeSnapshot(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+      const std::string& account_id) override;
+  void LoadSnapshot(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
+          response,
+      const std::string& account_id) override;
   bool Update(int percent) override;
 
   // Implementation of EscKeyWatcher::Delegate:
@@ -98,20 +101,23 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   }
 
  private:
-  // Tries to load a snapshot stored in |snapshot_dir| to |android_data_dir|
-  // and verify the snapshot by the public key digest stored in BootLockbox by
-  // |boot_lockbox_key|.
-  // Returns false in case of any error.
-  bool TryToLoadSnapshot(const std::string& userhash,
-                         const base::FilePath& snapshot_dir,
-                         const base::FilePath& android_data_dir,
-                         const std::string& boot_lockbox_key);
   DBusAdaptor(
       const base::FilePath& snapshot_directory,
-      const base::FilePath& home_root_directory,
       std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-      const std::string& system_salt,
       std::unique_ptr<BlockUiController> block_ui_controller);
+
+  void DelegateTakingSnapshot(
+      const std::string& account_id,
+      const std::string& encoded_private_key,
+      const std::string& encoded_public_key,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+      bool is_initialized);
+
+  void DelegateLoadingSnapshot(
+      const std::string& account_id,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
+          response,
+      bool is_initialized);
 
   // Manages the D-Bus interfaces exposed by the arc-data-snapshotd daemon.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
@@ -119,13 +125,12 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   // Snapshot directory paths:
   const base::FilePath last_snapshot_directory_;
   const base::FilePath previous_snapshot_directory_;
-  // Home root directory.
-  const base::FilePath home_root_directory_;
 
   // Manages the communication with BootLockbox.
   std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client_;
-  // System salt to get a cryptohome id for user name.
-  std::string system_salt_;
+
+  // Initialized in RegisterAsync.
+  scoped_refptr<dbus::Bus> bus_;
 
   // This private key is generated once GenerateKeyPair is called and used once
   // per snapshot in TakeSnapshot.
@@ -139,6 +144,9 @@ class DBusAdaptor final : public org::chromium::ArcDataSnapshotdAdaptor,
   bool inode_verification_enabled_ = true;
 
   std::unique_ptr<BlockUiController> block_ui_controller_;
+  std::unique_ptr<WorkerBridge> worker_dbus_bridge_;
+
+  base::WeakPtrFactory<DBusAdaptor> weak_ptr_factory_{this};
 };
 
 }  // namespace data_snapshotd

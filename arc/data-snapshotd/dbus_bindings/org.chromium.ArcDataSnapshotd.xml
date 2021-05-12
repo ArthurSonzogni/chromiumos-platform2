@@ -41,7 +41,7 @@
       <tp:docstring>
         Saves and signs a snapshot.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="s" name="account_id" direction="in">
         <tp:docstring>
           Specifies an account ID of a user, that a snapshot is taken for.
@@ -62,7 +62,7 @@
         during the snapshot loading operation, the previous snapshot is
         attempted to be loaded instead.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="s" name="account_id" direction="in">
         <tp:docstring>
           Specifies an account ID of a user, that a snapshot is loaded for.

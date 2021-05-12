@@ -157,21 +157,6 @@ bool StorePublicKey(const base::FilePath& dir,
   return true;
 }
 
-bool StorePublicKey(const base::FilePath& dir,
-                    const std::vector<uint8_t>& public_key_info) {
-  if (public_key_info.empty()) {
-    LOG(ERROR) << "Empty public key info";
-    return false;
-  }
-  if (!base::DirectoryExists(dir)) {
-    LOG(ERROR) << "Directory " << dir.value() << " does not exist.";
-    return false;
-  }
-  std::string encoded_public_key = brillo::data_encoding::Base64Encode(
-      public_key_info.data(), public_key_info.size());
-  return StorePublicKey(dir, encoded_public_key);
-}
-
 bool StoreUserhash(const base::FilePath& dir, const std::string& userhash) {
   if (userhash.empty()) {
     LOG(ERROR) << "Empty user hash";

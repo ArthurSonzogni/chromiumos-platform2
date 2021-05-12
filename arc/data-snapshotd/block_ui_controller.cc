@@ -27,6 +27,8 @@ constexpr char kDisplayBinary[] = "chromeos-boot-alert";
 // Environment variables and values:
 constexpr char kMessageOptions[] = "MESSAGE_OPTIONS";
 constexpr char kMarkup[] = "--markup";
+constexpr char kTmpDir[] = "TMPDIR";
+constexpr char kTmpDirValue[] = "/var/cache/arc-data-snapshot/tmp/";
 constexpr char kImageBackgroundRgb[] = "IMAGE_BACKGROUND_RGB";
 constexpr char kImageBackgroundRgbValue[] = "fefefe";
 constexpr char kImageTextColor[] = "IMAGE_TEXT_COLOR";
@@ -67,6 +69,7 @@ base::CommandLine GetUpdateProgressCommandLine(int percent) {
 base::LaunchOptions GetShowScreenOptions(const base::FilePath& snapshot_dir) {
   base::EnvironmentMap env;
   env[kMessageOptions] = kMarkup;
+  env[kTmpDir] = kTmpDirValue;
   env[kAssetsImagePath] = snapshot_dir.Append(kAssetsImagePathValue).value();
   env[kImageBackgroundRgb] = kImageBackgroundRgbValue;
   env[kImageTextColor] = kImageTextColorValue;

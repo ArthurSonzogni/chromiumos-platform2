@@ -6,12 +6,17 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/run_loop.h>
+#include <base/test/task_environment.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
+#include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -21,6 +26,7 @@
 #include "arc/data-snapshotd/fake_process_launcher.h"
 #include "arc/data-snapshotd/file_utils.h"
 #include "arc/data-snapshotd/mock_esc_key_watcher.h"
+#include "arc/data-snapshotd/worker_bridge.h"
 #include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
 // Note that boot_lockbox_rpc.pb.h have to be included before
 // dbus_adaptors/org.chromium.BootLockboxInterface.h because it is used in
@@ -44,7 +50,6 @@ constexpr char kRandomFile[] = "random file";
 constexpr char kContent[] = "content";
 constexpr char kFakeLastSnapshotPublicKey[] = "fake_public_key";
 constexpr char kFakeAccountID[] = "fake_account_id";
-constexpr char kFakeAccountID2[] = "fake_aacount_id_2";
 
 MATCHER_P(nEq, expected, "") {
   return expected != arg;
@@ -68,24 +73,70 @@ class MockBootLockboxClient : public cryptohome::BootLockboxClient {
   MOCK_METHOD(bool, Finalize, (), (override));
 };
 
+class FakeWorkerBridge : public WorkerBridge {
+ public:
+  FakeWorkerBridge() = default;
+
+  // WorkerBridge overrides:
+  void Init(const std::string& account_id,
+            base::OnceCallback<void(bool)> on_initialized) override {
+    EXPECT_EQ(account_id, account_id_);
+    base::SequencedTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(on_initialized), init_result_));
+  }
+
+  void TakeSnapshot(
+      const std::string& account_id,
+      const std::string& private_key,
+      const std::string& public_key,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override {
+    EXPECT_EQ(account_id, account_id);
+    EXPECT_FALSE(private_key.empty());
+    EXPECT_FALSE(public_key.empty());
+    response->Return(result_);
+  }
+
+  void LoadSnapshot(
+      const std::string& account_id,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
+          response) override {
+    EXPECT_EQ(account_id, account_id);
+    response->Return(result_, last_);
+  }
+
+  bool is_available_for_testing() const override { return init_result_; }
+
+  void set_init_result(bool init_result) { init_result_ = init_result; }
+
+  void set_result(bool result) { result_ = result; }
+
+  void set_account_id(const std::string& account_id) {
+    account_id_ = account_id;
+  }
+
+  void set_last(bool last) { last_ = last; }
+
+ private:
+  bool init_result_ = false;
+  bool result_ = false;
+  bool last_ = false;
+  std::string account_id_;
+};
+
 class DBusAdaptorTest : public testing::Test {
  public:
-  DBusAdaptorTest() : bus_(new dbus::Bus{dbus::Bus::Options{}}) {
-    brillo::cryptohome::home::SetSystemSalt(&salt_);
-  }
+  DBusAdaptorTest() : bus_(new dbus::Bus{dbus::Bus::Options{}}) {}
 
   void SetUp() override {
     EXPECT_TRUE(root_tempdir_.CreateUniqueTempDir());
-    user_directory_ = root_tempdir_.GetPath().Append(hash(kFakeAccountID));
-    EXPECT_TRUE(base::CreateDirectory(user_directory_));
     auto boot_lockbox_client =
         std::make_unique<testing::StrictMock<MockBootLockboxClient>>(bus_);
     boot_lockbox_client_ = boot_lockbox_client.get();
 
     process_launcher_ = std::make_unique<FakeProcessLauncher>();
     dbus_adaptor_ = DBusAdaptor::CreateForTesting(
-        root_tempdir_.GetPath(), root_tempdir_.GetPath(),
-        std::move(boot_lockbox_client), salt_,
+        root_tempdir_.GetPath(), std::move(boot_lockbox_client),
         BlockUiController::CreateForTesting(
             std::make_unique<FakeEscKeyWatcher>(&delegate_),
             root_tempdir_.GetPath(),
@@ -98,6 +149,13 @@ class DBusAdaptorTest : public testing::Test {
     process_launcher_.reset();
   }
 
+  FakeWorkerBridge* CreateWorkerBridge() {
+    auto worker_bridge = std::make_unique<FakeWorkerBridge>();
+    auto* worker_bridge_ptr = worker_bridge.get();
+    WorkerBridge::SetFakeInstanceForTesting(std::move(worker_bridge));
+    return worker_bridge_ptr;
+  }
+
   DBusAdaptor* dbus_adaptor() { return dbus_adaptor_.get(); }
   const base::FilePath& last_snapshot_dir() const {
     return dbus_adaptor_->get_last_snapshot_directory();
@@ -105,17 +163,9 @@ class DBusAdaptorTest : public testing::Test {
   const base::FilePath& previous_snapshot_dir() const {
     return dbus_adaptor_->get_previous_snapshot_directory();
   }
-  base::FilePath android_data_dir() const {
-    return user_directory_.Append(kAndroidDataDirectory);
-  }
   base::FilePath random_dir() const {
     return root_tempdir_.GetPath().Append(kRandomDir);
   }
-  std::string hash(const std::string& account_id) const {
-    return brillo::cryptohome::home::SanitizeUserNameWithSalt(
-        account_id, brillo::SecureBlob(salt_));
-  }
-  base::FilePath user_directory() const { return user_directory_; }
 
   // Creates |dir| and fills in with random content.
   void CreateDir(const base::FilePath& dir) {
@@ -133,17 +183,57 @@ class DBusAdaptorTest : public testing::Test {
     process_launcher_->ExpectProgressUpdated(percent, result);
   }
 
+  void GenerateKeyPairBasic() {
+    EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
+        .WillOnce(Return(true));
+    ExpectUiScreenShown();
+    EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+  }
+
+  void TakeSnapshotBasic(bool init_result, bool result, bool expected_result) {
+    auto* worker_bridge = CreateWorkerBridge();
+    std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<bool>> response(
+        new brillo::dbus_utils::MockDBusMethodResponse<bool>(nullptr));
+    response->set_return_callback(base::Bind(
+        [](bool expected_result, const bool& success) {
+          EXPECT_EQ(expected_result, success);
+        },
+        expected_result));
+    worker_bridge->set_init_result(init_result);
+    worker_bridge->set_result(result);
+    worker_bridge->set_account_id(kFakeAccountID);
+    dbus_adaptor()->TakeSnapshot(std::move(response), kFakeAccountID);
+  }
+
+  void LoadSnapshotBasic(bool init_result, bool result, bool last) {
+    auto* worker_bridge = CreateWorkerBridge();
+    std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<bool, bool>>
+        response(new brillo::dbus_utils::MockDBusMethodResponse<bool, bool>(
+            nullptr));
+    response->set_return_callback(base::Bind(
+        [](bool expected_result, bool expected_last, const bool& success,
+           const bool& last) {
+          EXPECT_EQ(expected_result, success);
+          EXPECT_EQ(expected_last, last);
+        },
+        result, last));
+    worker_bridge->set_init_result(init_result);
+    worker_bridge->set_result(result);
+    worker_bridge->set_last(last);
+    worker_bridge->set_account_id(kFakeAccountID);
+    dbus_adaptor()->LoadSnapshot(std::move(response), kFakeAccountID);
+  }
+
   MockBootLockboxClient* boot_lockbox_client() { return boot_lockbox_client_; }
 
  private:
-  std::string salt_ = "salt";
+  base::test::TaskEnvironment task_environment_;
   MockEscKeyWatcherDelegate delegate_;
   scoped_refptr<dbus::Bus> bus_;
   MockBootLockboxClient* boot_lockbox_client_;
   std::unique_ptr<FakeProcessLauncher> process_launcher_;
   std::unique_ptr<DBusAdaptor> dbus_adaptor_;
   base::ScopedTempDir root_tempdir_;
-  base::FilePath user_directory_;
 };
 
 TEST_F(DBusAdaptorTest, ClearSnapshotBasic) {
@@ -166,10 +256,7 @@ TEST_F(DBusAdaptorTest, ClearSnapshotBasic) {
 
 // Test successful basic flow with no pre-existing snapshots.
 TEST_F(DBusAdaptorTest, GenerateKeyPairBasic) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+  GenerateKeyPairBasic();
 }
 
 // Test successful basic flow with pre-existing snapshots.
@@ -302,388 +389,60 @@ TEST_F(DBusAdaptorTest, GenerateKeyPairStoreFailure) {
 
 // Test failure flow when the keys were not generated.
 TEST_F(DBusAdaptorTest, TakeSnapshotNoPrivateKeyFailure) {
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
+  TakeSnapshotBasic(true /* init_result */, true /* result */,
+                    false /* expected_result */);
 }
 
-// Test failure flow when the last snapshot directory already exists.
-TEST_F(DBusAdaptorTest, TakeSnapshotLastSnapshotExistFailure) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+// Test failure flow when worker's initialization failed.
+TEST_F(DBusAdaptorTest, TakeSnapshotInitializationFailed) {
+  GenerateKeyPairBasic();
 
-  CreateDir(last_snapshot_dir());
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
+  TakeSnapshotBasic(false /* init_result */, false /* result */,
+                    false /* expected_result */);
 }
 
-// Test failure flow when android-data directory does not exist.
-TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataDirNotExist) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-  EXPECT_FALSE(base::DirectoryExists(android_data_dir()));
+// Test failure flow when snapshot taking failed.
+TEST_F(DBusAdaptorTest, TakeSnapshotFailure) {
+  GenerateKeyPairBasic();
 
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
+  TakeSnapshotBasic(true /* init_result */, false /* result */,
+                    false /* expected_result */);
 }
 
-// Test failure flow when android-data is file.
-TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataNotDirFile) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-  // Create a file instead of android-data directory.
-  EXPECT_TRUE(base::WriteFile(android_data_dir(), kContent, strlen(kContent)));
-  EXPECT_TRUE(base::PathExists(android_data_dir()));
-  EXPECT_FALSE(base::DirectoryExists(android_data_dir()));
-
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-}
-
-// Test success flow when android-data is a sym link.
-TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataSymLink) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-  // Create a symlink.
-  CreateDir(random_dir());
-  EXPECT_TRUE(base::CreateSymbolicLink(random_dir(), android_data_dir()));
-  EXPECT_TRUE(base::IsLink(android_data_dir()));
-  EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
-
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-}
-
-// Test failure flow when android-data is a fifo.
-TEST_F(DBusAdaptorTest, TakeSnapshotAndroidDataFiFo) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-  // Create a fifo android-data.
-  mkfifo(android_data_dir().value().c_str(), 0666);
-  EXPECT_TRUE(base::PathExists(android_data_dir()));
-  EXPECT_FALSE(base::DirectoryExists(android_data_dir()));
-
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-}
-
-// TODO(crbug.com/1149744) Enable test once bug is fixed.
 // Test basic TakeSnapshot success flow.
-TEST_F(DBusAdaptorTest, DISABLED_TakeSnapshotSuccess) {
-  // In this test the copied snapshot directory is verified against the origin
-  // android data directory. Inodes verification must be disabled, because the
-  // inode values are changed after copying.
-  // In production, it is not the case, because the directorys' integrity is
-  // verified against itself and inode values should persist.
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      false /* enabled */);
-  std::string expected_public_key_digest;
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([&expected_public_key_digest](
-                           const std::string& key, const std::string& digest) {
-        expected_public_key_digest = digest;
-        return true;
-      }));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+TEST_F(DBusAdaptorTest, TakeSnapshotSuccess) {
+  GenerateKeyPairBasic();
 
-  CreateDir(android_data_dir());
-  EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
-  // Store userhash to ensure that userhash stays the same.
-  EXPECT_TRUE(StoreUserhash(android_data_dir(), hash(kFakeAccountID)));
-  SnapshotDirectory android_dir;
-  EXPECT_TRUE(ReadSnapshotDirectory(android_data_dir(), &android_dir,
-                                    false /* inode_verification_enabled */));
-  std::vector<uint8_t> android_data_hash =
-      CalculateDirectoryCryptographicHash(android_dir);
-  EXPECT_FALSE(android_data_hash.empty());
-
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  SnapshotDirectory last_dir;
-  EXPECT_TRUE(ReadSnapshotDirectory(last_snapshot_dir(), &last_dir,
-                                    false /* inode_verification_enabled */));
-  std::vector<uint8_t> last_snapshot_hash =
-      CalculateDirectoryCryptographicHash(last_dir);
-  EXPECT_FALSE(last_snapshot_hash.empty());
-  EXPECT_EQ(android_data_hash, last_snapshot_hash);
-
-  // Verification for another account ID should fail.
-  EXPECT_FALSE(VerifyHash(last_snapshot_dir(), hash(kFakeAccountID2),
-                          expected_public_key_digest,
-                          false /* inode_verification_enabled */));
-  EXPECT_TRUE(VerifyHash(last_snapshot_dir(), hash(kFakeAccountID),
-                         expected_public_key_digest,
-                         false /* inode_verification_enabled */));
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      true /* enabled */);
+  TakeSnapshotBasic(true /* init_result */, true /* result */,
+                    false /* expected_result */);
 }
 
 // Test failure flow if TakeSnapshot is invoked twice.
 TEST_F(DBusAdaptorTest, TakeSnapshotDouble) {
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  ExpectUiScreenShown();
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
+  GenerateKeyPairBasic();
 
-  CreateDir(android_data_dir());
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
+  TakeSnapshotBasic(true /* init_result */, true /* result */,
+                    true /* expected_result */);
 
-  CreateDir(android_data_dir());
-  EXPECT_FALSE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
+  TakeSnapshotBasic(true /* init_result */, true /* result */,
+                    false /* expected_result */);
 }
 
-// Test failure flow when user directory does not exist.
-TEST_F(DBusAdaptorTest, LoadSnapshotNoAndroidDataDir) {
-  CreateDir(last_snapshot_dir());
-  CreateDir(previous_snapshot_dir());
-  EXPECT_TRUE(base::DeletePathRecursively(user_directory()));
-  EXPECT_FALSE(base::DirectoryExists(user_directory()));
-
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_FALSE(success);
+// Test failure flow when worker's initialization failed..
+TEST_F(DBusAdaptorTest, LoadSnapshotInitializationFailed) {
+  LoadSnapshotBasic(false /* init_result */, false /* result */,
+                    false /* last */);
 }
 
-// Test failure when snapshot directory does not exist.
-TEST_F(DBusAdaptorTest, LoadSnapshotNoSnapshot) {
-  CreateDir(user_directory());
-  EXPECT_TRUE(base::DirectoryExists(user_directory()));
-  EXPECT_FALSE(base::DirectoryExists(last_snapshot_dir()));
-  EXPECT_FALSE(base::DirectoryExists(previous_snapshot_dir()));
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_FALSE(success);
-}
-
-// Test failure when public key is not stored in BootLockbox.
-TEST_F(DBusAdaptorTest, LoadSnapshotNoPublicKey) {
-  CreateDir(user_directory());
-  EXPECT_TRUE(base::DirectoryExists(user_directory()));
-
-  CreateDir(last_snapshot_dir());
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  EXPECT_FALSE(base::DirectoryExists(previous_snapshot_dir()));
-
-  EXPECT_CALL(*boot_lockbox_client(), Read(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Return(false));
-
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_FALSE(success);
-}
-
-// Test failure when empty public key is stored in BootLockbox.
-TEST_F(DBusAdaptorTest, LoadSnapshotEmptyPublicKey) {
-  CreateDir(user_directory());
-  EXPECT_TRUE(base::DirectoryExists(user_directory()));
-
-  CreateDir(last_snapshot_dir());
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  EXPECT_FALSE(base::DirectoryExists(previous_snapshot_dir()));
-
-  EXPECT_CALL(*boot_lockbox_client(), Read(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([](const std::string& key, std::string* value) {
-        *value = "";
-        return true;
-      }));
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_FALSE(success);
-}
-
-// Test failure when snapshot verification fails.
-TEST_F(DBusAdaptorTest, LoadSnapshotVerificationFailure) {
-  CreateDir(user_directory());
-  EXPECT_TRUE(base::DirectoryExists(user_directory()));
-
-  CreateDir(last_snapshot_dir());
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  EXPECT_FALSE(base::DirectoryExists(previous_snapshot_dir()));
-
-  EXPECT_CALL(*boot_lockbox_client(), Read(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([](const std::string& key, std::string* value) {
-        *value = kFakeLastSnapshotPublicKey;
-        return true;
-      }));
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_FALSE(success);
-}
-
-// Test failure when snapshot is loaded for unknown user.
-TEST_F(DBusAdaptorTest, LoadSnapshotUnknownUser) {
-  // In this test the copied snapshot directory is verified against the origin
-  // snapshot directory. Inodes verification must be disabled, because the
-  // inode values are changed after copying.
-  // In production, it is not the case, because the directorys' integrity is
-  // verified against itself and inode values should persist.
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      false /* enabled */);
-  std::string expected_public_key_digest;
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([&expected_public_key_digest](
-                           const std::string& key, const std::string& digest) {
-        expected_public_key_digest = digest;
-        return true;
-      }));
-  ExpectUiScreenShown();
-  // Generate key pair.
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-
-  // Create android-data directory.
-  CreateDir(android_data_dir());
-  EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
-
-  // Take a snapshot.
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  // Verify taken snapshot with disabled inode verification.
-  EXPECT_TRUE(VerifyHash(last_snapshot_dir(), hash(kFakeAccountID),
-                         expected_public_key_digest,
-                         false /* inode_verification_enabled */));
-
-  // Load a snapshot directory to android-data for unknown user.
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID2, &last, &success);
-  EXPECT_FALSE(success);
-
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      true /* enabled */);
+// Test failure when snapshot loading failed.
+TEST_F(DBusAdaptorTest, LoadSnapshotFailure) {
+  LoadSnapshotBasic(true /* init_result */, false /* result */,
+                    false /* last */);
 }
 
 // Test basic success flow.
 TEST_F(DBusAdaptorTest, LoadSnapshotSuccess) {
-  // In this test the copied snapshot directory is verified against the origin
-  // snapshot directory. Inodes verification must be disabled, because the
-  // inode values are changed after copying.
-  // In production, it is not the case, because the directorys' integrity is
-  // verified against itself and inode values should persist.
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      false /* enabled */);
-  std::string expected_public_key_digest;
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([&expected_public_key_digest](
-                           const std::string& key, const std::string& digest) {
-        expected_public_key_digest = digest;
-        return true;
-      }));
-  ExpectUiScreenShown();
-  // Generate key pair.
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-
-  // Create android-data directory.
-  CreateDir(android_data_dir());
-  EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
-
-  // Take a snapshot.
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  // Verify taken snapshot with disabled inode verification.
-  EXPECT_TRUE(VerifyHash(last_snapshot_dir(), hash(kFakeAccountID),
-                         expected_public_key_digest,
-                         false /* inode_verification_enabled */));
-
-  // Remove android-data directory to be able to load a snapshot.
-  EXPECT_TRUE(base::DeletePathRecursively(android_data_dir()));
-  EXPECT_FALSE(base::DirectoryExists(android_data_dir()));
-
-  EXPECT_CALL(*boot_lockbox_client(), Read(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([expected_public_key_digest](const std::string& key,
-                                                    std::string* value) {
-        *value = expected_public_key_digest;
-        return true;
-      }));
-  // Load a snapshot directory to android-data.
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_TRUE(success);
-
-  // Verify the integrity of the last snapshot with disabld inode verification.
-  EXPECT_TRUE(last);
-
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      true /* enabled */);
-}
-
-// Test success flow when loading of last snapshot fails, but loading of
-// previous snapshot succeeds.
-TEST_F(DBusAdaptorTest, LoadSnapshotPreviousSuccess) {
-  // In this test the copied snapshot directory is verified against the origin
-  // snapshot directory. Inodes verification must be disabled, because the
-  // inode values are changed after copying.
-  // In production, it is not the case, because the directorys' integrity is
-  // verified against itself and inode values should persist.
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      false /* enabled */);
-  std::string expected_public_key_digest = "";
-  EXPECT_CALL(*boot_lockbox_client(),
-              Store(Eq(kLastSnapshotPublicKey), nEq("")))
-      .Times(2)
-      .WillRepeatedly(
-          Invoke([&expected_public_key_digest](const std::string& key,
-                                               const std::string& digest) {
-            if (expected_public_key_digest.empty()) {
-              expected_public_key_digest = digest;
-            }
-            return true;
-          }));
-  ExpectUiScreenShown();
-  // First time snapshot generating flow.
-  // Generate a key pair.
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-
-  CreateDir(android_data_dir());
-  EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
-
-  // Take android-data snapshot and name it as a last snapshot.
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-  EXPECT_TRUE(base::DirectoryExists(last_snapshot_dir()));
-  EXPECT_TRUE(VerifyHash(last_snapshot_dir(), hash(kFakeAccountID),
-                         expected_public_key_digest,
-                         false /* inode_verification_enabled */));
-
-  EXPECT_CALL(*boot_lockbox_client(), Read(Eq(kLastSnapshotPublicKey), _))
-      .WillOnce(Invoke([expected_public_key_digest](const std::string& key,
-                                                    std::string* value) {
-        *value = expected_public_key_digest;
-        return true;
-      }));
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kPreviousSnapshotPublicKey), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*boot_lockbox_client(), Store(Eq(kLastSnapshotPublicKey), Eq("")))
-      .WillOnce(Return(true));
-  // Second time snapshot generating flow.
-  // Previous snapshot has been generated during the first flow.
-  EXPECT_TRUE(dbus_adaptor()->GenerateKeyPair());
-  EXPECT_TRUE(base::DirectoryExists(previous_snapshot_dir()));
-
-  // Take a snapshot.
-  EXPECT_TRUE(base::DirectoryExists(android_data_dir()));
-  EXPECT_TRUE(dbus_adaptor()->TakeSnapshot(kFakeAccountID));
-
-  EXPECT_CALL(*boot_lockbox_client(), Read(Eq(kPreviousSnapshotPublicKey), _))
-      .WillOnce(Invoke([expected_public_key_digest](const std::string& key,
-                                                    std::string* value) {
-        *value = expected_public_key_digest;
-        return true;
-      }));
-  // Invalidate the last snapshot.
-  EXPECT_TRUE(base::DeletePathRecursively(last_snapshot_dir()));
-  // Remove android-data directory to be able to load a snapshot.
-  EXPECT_TRUE(base::DeletePathRecursively(android_data_dir()));
-  // Load the previous snapshot, because the last one is invalid.
-  bool last, success;
-  dbus_adaptor()->LoadSnapshot(kFakeAccountID, &last, &success);
-  EXPECT_TRUE(success);
-  EXPECT_FALSE(last);
-
-  dbus_adaptor()->set_inode_verification_enabled_for_testing(
-      true /* enabled */);
+  LoadSnapshotBasic(true /* init_result */, true /* result */, true /* last */);
 }
 
 // Test failure flow when UI screen is not shown.

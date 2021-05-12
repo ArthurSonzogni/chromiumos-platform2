@@ -30,29 +30,19 @@ namespace data_snapshotd {
 namespace {
 
 // Snapshot paths:
-constexpr char kCommonSnapshotPath[] =
-    "/mnt/stateful_partition/encrypted/var/cache/arc-data-snapshot";
+constexpr char kCommonSnapshotPath[] = "/var/cache/arc-data-snapshot";
 constexpr char kLastSnapshotPath[] = "last";
 constexpr char kPreviousSnapshotPath[] = "previous";
-constexpr char kHomeRootDirectory[] = "/home/root";
-
-// System salt local path should match the one in init/arc-data-snapshotd.conf.
-constexpr char kSystemSaltPath[] = "/run/arc-data-snapshotd/salt";
 
 }  // namespace
 
 // BootLockbox snapshot keys:
 const char kLastSnapshotPublicKey[] = "snapshot_public_key_last";
 const char kPreviousSnapshotPublicKey[] = "snapshot_public_key_previous";
-// Android data directory name:
-const char kAndroidDataDirectory[] = "android-data";
-const char kDataDirectory[] = "data";
 
 DBusAdaptor::DBusAdaptor()
     : DBusAdaptor(base::FilePath(kCommonSnapshotPath),
-                  base::FilePath(kHomeRootDirectory),
                   cryptohome::BootLockboxClient::CreateBootLockboxClient(),
-                  "" /* system_salt */,
                   nullptr) {}
 
 DBusAdaptor::~DBusAdaptor() = default;
@@ -60,18 +50,17 @@ DBusAdaptor::~DBusAdaptor() = default;
 // static
 std::unique_ptr<DBusAdaptor> DBusAdaptor::CreateForTesting(
     const base::FilePath& snapshot_directory,
-    const base::FilePath& home_root_directory,
     std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-    const std::string& system_salt,
     std::unique_ptr<BlockUiController> block_ui_controller) {
-  return base::WrapUnique(new DBusAdaptor(
-      snapshot_directory, home_root_directory, std::move(boot_lockbox_client),
-      system_salt, std::move(block_ui_controller)));
+  return base::WrapUnique(new DBusAdaptor(snapshot_directory,
+                                          std::move(boot_lockbox_client),
+                                          std::move(block_ui_controller)));
 }
 
 void DBusAdaptor::RegisterAsync(
     const scoped_refptr<dbus::Bus>& bus,
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  bus_ = bus;
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr /* object_manager */, bus, GetObjectPath());
   RegisterWithDBusObject(dbus_object_.get());
@@ -137,67 +126,31 @@ bool DBusAdaptor::GenerateKeyPair() {
   return true;
 }
 
-bool DBusAdaptor::TakeSnapshot(const std::string& account_id) {
-  if (!private_key_ || public_key_info_.empty()) {
-    LOG(ERROR) << "Private or public key does not exist.";
-    return false;
-  }
-  if (base::DirectoryExists(last_snapshot_directory_)) {
-    LOG(ERROR) << "Snapshot directory already exists. Should be cleared first.";
-    return false;
-  }
-
-  std::string userhash = brillo::cryptohome::home::SanitizeUserNameWithSalt(
-      account_id, brillo::SecureBlob(system_salt_));
-  base::FilePath android_data_dir = home_root_directory_.Append(userhash);
-  if (!base::DirectoryExists(android_data_dir)) {
-    LOG(ERROR) << "The snapshotting directory does not exist. "
-               << android_data_dir.value();
-    return false;
-  }
-  android_data_dir = android_data_dir.Append(kAndroidDataDirectory);
-
-  if (!base::DirectoryExists(android_data_dir)) {
-    LOG(ERROR) << "The snapshotting directory does not exist. "
-               << android_data_dir.value();
-    return false;
+void DBusAdaptor::TakeSnapshot(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    const std::string& account_id) {
+  std::vector<uint8_t> private_key_info;
+  if (!private_key_ || !private_key_->ExportPrivateKey(&private_key_info)) {
+    LOG(ERROR) << "Failed to export private key info.";
+    response->Return(false);
+    return;
   }
 
-  if (!CopySnapshotDirectory(android_data_dir, last_snapshot_directory_)) {
-    LOG(ERROR) << "Failed to copy snapshot directory from "
-               << android_data_dir.value() << " to "
-               << last_snapshot_directory_.value();
-    return false;
-  }
+  worker_dbus_bridge_ = WorkerBridge::Create(bus_);
+  std::string encoded_private_key = brillo::data_encoding::Base64Encode(
+      private_key_info.data(), private_key_info.size());
 
-  if (!base::DirectoryExists(last_snapshot_directory_)) {
-    LOG(ERROR) << "The snapshot directory was not copied";
-    return false;
-  }
+  std::string encoded_public_key = brillo::data_encoding::Base64Encode(
+      public_key_info_.data(), public_key_info_.size());
 
-  // This callback will be executed or released before the end of this function.
-  base::ScopedClosureRunner snapshot_clearer(
-      base::BindOnce(base::IgnoreResult(&DBusAdaptor::ClearSnapshot),
-                     base::Unretained(this), true /* last */));
-  if (!StorePublicKey(last_snapshot_directory_, public_key_info_))
-    return false;
-  if (!StoreUserhash(last_snapshot_directory_, userhash))
-    return false;
-  std::vector<uint8_t> key_info;
-  private_key_->ExportPrivateKey(&key_info);
-  std::unique_ptr<crypto::RSAPrivateKey> key(
-      crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(key_info));
-  if (!SignAndStoreHash(last_snapshot_directory_, key.get(),
-                        inode_verification_enabled_)) {
-    return false;
-  }
-  // Snapshot saved correctly, release closure without running it.
-  ignore_result(snapshot_clearer.Release());
-
+  worker_dbus_bridge_->Init(
+      account_id, base::BindOnce(&DBusAdaptor::DelegateTakingSnapshot,
+                                 weak_ptr_factory_.GetWeakPtr(), account_id,
+                                 encoded_private_key, encoded_public_key,
+                                 std::move(response)));
   // Dispose keys.
   private_key_.reset();
   public_key_info_.clear();
-  return true;
 }
 
 bool DBusAdaptor::ClearSnapshot(bool last) {
@@ -214,31 +167,15 @@ bool DBusAdaptor::ClearSnapshot(bool last) {
   return true;
 }
 
-void DBusAdaptor::LoadSnapshot(const std::string& account_id,
-                               bool* last,
-                               bool* success) {
-  std::string userhash = brillo::cryptohome::home::SanitizeUserNameWithSalt(
-      account_id, brillo::SecureBlob(system_salt_));
-  if (!base::DirectoryExists(home_root_directory_.Append(userhash))) {
-    LOG(ERROR) << "User directory does not exist for user " << account_id;
-    *success = false;
-    return;
-  }
-  base::FilePath android_data_dir =
-      home_root_directory_.Append(userhash).Append(kAndroidDataDirectory);
-  if (TryToLoadSnapshot(userhash, last_snapshot_directory_, android_data_dir,
-                        kLastSnapshotPublicKey)) {
-    *last = true;
-    *success = true;
-    return;
-  }
-  if (TryToLoadSnapshot(userhash, previous_snapshot_directory_,
-                        android_data_dir, kPreviousSnapshotPublicKey)) {
-    *last = false;
-    *success = true;
-    return;
-  }
-  *success = false;
+void DBusAdaptor::LoadSnapshot(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
+        response,
+    const std::string& account_id) {
+  worker_dbus_bridge_ = WorkerBridge::Create(bus_);
+  worker_dbus_bridge_->Init(
+      account_id, base::BindOnce(&DBusAdaptor::DelegateLoadingSnapshot,
+                                 weak_ptr_factory_.GetWeakPtr(), account_id,
+                                 std::move(response)));
 }
 
 bool DBusAdaptor::Update(int percent) {
@@ -254,66 +191,51 @@ bool DBusAdaptor::Update(int percent) {
   return block_ui_controller_->UpdateProgress(percent);
 }
 
-bool DBusAdaptor::TryToLoadSnapshot(const std::string& userhash,
-                                    const base::FilePath& snapshot_dir,
-                                    const base::FilePath& android_data_dir,
-                                    const std::string& boot_lockbox_key) {
-  if (!base::DirectoryExists(snapshot_dir)) {
-    LOG(ERROR) << "Snapshot directory " << snapshot_dir.value()
-               << " does not exist.";
-    return false;
-  }
-
-  std::string expected_public_key_digest;
-  if (!boot_lockbox_client_->Read(boot_lockbox_key,
-                                  &expected_public_key_digest) ||
-      expected_public_key_digest.empty()) {
-    LOG(ERROR) << "Failed to read a public key digest " << boot_lockbox_key
-               << " from BootLockbox.";
-    return false;
-  }
-
-  if (!VerifyHash(snapshot_dir, userhash, expected_public_key_digest,
-                  inode_verification_enabled_)) {
-    LOG(ERROR) << "Hash verification failed.";
-    return false;
-  }
-
-  if (!base::DeletePathRecursively(android_data_dir.Append(kDataDirectory))) {
-    LOG(ERROR) << "Failed to remove android-data directory.";
-    return false;
-  }
-  if (!CopySnapshotDirectory(snapshot_dir.Append(kDataDirectory),
-                             android_data_dir)) {
-    LOG(ERROR) << "Failed to copy a snapshot directory.";
-    return false;
-  }
-  return true;
-}
-
 void DBusAdaptor::SendCancelSignal() {
   SendUiCancelledSignal();
 }
 
 DBusAdaptor::DBusAdaptor(
     const base::FilePath& snapshot_directory,
-    const base::FilePath& home_root_directory,
     std::unique_ptr<cryptohome::BootLockboxClient> boot_lockbox_client,
-    const std::string& system_salt,
     std::unique_ptr<BlockUiController> block_ui_controller)
     : org::chromium::ArcDataSnapshotdAdaptor(this),
       last_snapshot_directory_(snapshot_directory.Append(kLastSnapshotPath)),
       previous_snapshot_directory_(
           snapshot_directory.Append(kPreviousSnapshotPath)),
-      home_root_directory_(home_root_directory),
       boot_lockbox_client_(std::move(boot_lockbox_client)),
-      system_salt_(system_salt),
       block_ui_controller_(std::move(block_ui_controller)) {
   DCHECK(boot_lockbox_client_);
-  if (system_salt_.empty() &&
-      !base::ReadFileToString(base::FilePath(kSystemSaltPath), &system_salt_)) {
-    LOG(ERROR) << "No available system salt.";
+}
+
+void DBusAdaptor::DelegateTakingSnapshot(
+    const std::string& account_id,
+    const std::string& encoded_private_key,
+    const std::string& encoded_public_key,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    bool is_initialized) {
+  DCHECK(worker_dbus_bridge_);
+  if (!is_initialized) {
+    LOG(ERROR) << "Failed to initialize arc-data-snapshotd-worker DBus daemon.";
+    response->Return(false);
+    return;
   }
+  worker_dbus_bridge_->TakeSnapshot(account_id, encoded_private_key,
+                                    encoded_public_key, std::move(response));
+}
+
+void DBusAdaptor::DelegateLoadingSnapshot(
+    const std::string& account_id,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
+        response,
+    bool is_initialized) {
+  DCHECK(worker_dbus_bridge_);
+  if (!is_initialized) {
+    LOG(ERROR) << "Failed to initialize arc-data-snapshotd-worker DBus daemon.";
+    response->Return(false, false);
+    return;
+  }
+  worker_dbus_bridge_->LoadSnapshot(account_id, std::move(response));
 }
 
 }  // namespace data_snapshotd

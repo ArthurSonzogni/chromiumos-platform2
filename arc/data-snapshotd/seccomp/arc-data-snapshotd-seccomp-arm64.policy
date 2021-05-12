@@ -40,9 +40,12 @@ execve: 1
 arch_prctl: 1
 set_tid_address: 1
 set_robust_list: 1
+# MTIOCGET: 0x80306d02
+# EVIOCGBIT: 0x80604521
+# FS_IOC_FIEMAP: 0xc020660b
 ioctl: arg1 == SIOCGIFFLAGS || arg1 == TIOCLINUX || arg1 == TIOCGWINSZ || \
        arg1 == 0x80306d02 || arg1 == FIONREAD || arg1 == TCGETS || \
-       arg1 == SIOCSIFFLAGS
+       arg1 == SIOCSIFFLAGS || arg1 == 0x80604521 || arg1 == 0xc020660b
 epoll_create1: 1
 clock_getres: 1
 getresuid: 1
@@ -82,6 +85,17 @@ fchmod: 1
 chmod: 1
 lsetxattr: 1
 creat: 1
+mknod: 1
+ftruncate: 1
+fchown: 1
+symlinkat: 1
+fgetxattr: 1
+fsetxattr: 1
+setgroups: 1
+setresgid: 1
+setresuid: 1
+capget: 1
+capset: 1
 # Frecon
 getpgid: 1
 getppid: 1
