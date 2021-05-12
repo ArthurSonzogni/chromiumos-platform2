@@ -5,6 +5,7 @@
 #include "debugd/src/packet_capture_tool.h"
 
 #include <base/strings/string_util.h>
+#include <string>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/helper_utils.h"
@@ -77,9 +78,128 @@ bool DevicePacketCaptureAllowedByPolicy(brillo::ErrorPtr* error) {
   return packet_capture_allowed;
 }
 
+bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
+                                 brillo::ErrorPtr* error) {
+  std::string device_value;
+  // Check if the "device" option exists in options dictionary. It must be
+  // present in device based capture mode.
+  if (debugd::GetOption(options, "device", &device_value, error) !=
+      debugd::ParseResult::PARSED) {
+    return false;
+  }
+  int freq_value;
+  // Check if the "frequency" option exists in options dictionary. It can't be
+  // present in device based capture mode.
+  if (debugd::GetOption(options, "frequency", &freq_value, error) ==
+      debugd::ParseResult::PARSED) {
+    return false;
+  }
+  std::string frequency_based_options[] = {"ht_location", "vht_width",
+                                           "monitor_connection_on"};
+  // If any of the frequency-based options is present in the arguments, it means
+  // the capture will be frequency based.
+  for (const std::string& option : frequency_based_options) {
+    std::string val;
+    debugd::ParseResult result =
+        debugd::GetOption(options, option, &val, error);
+    if (result == debugd::ParseResult::PARSED) {
+      return false;
+    }
+  }
+  // If device option is parsed and none of the frequency based option is
+  // present, it means the capture is on device based mode.
+  return true;
+}
+
 }  // namespace
 
 namespace debugd {
+
+// Creates helper process for frequency-based (Layer-2) capture and return the
+// process. Returns nullptr if process can't be created.
+debugd::ProcessWithId*
+PacketCaptureTool::CreateCaptureProcessForFrequencyBasedCapture(
+    const brillo::VariantDictionary& options,
+    int output_fd,
+    brillo::ErrorPtr* error) {
+  std::string exec_path;
+  if (!GetHelperPath("capture_utility.sh", &exec_path)) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Unable to get helper path for frequency-based capture.");
+    return nullptr;
+  }
+
+  debugd::ProcessWithId* p =
+      CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
+  if (!p) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Failed to create process for device-based capture.");
+    return nullptr;
+  }
+  p->AddArg(exec_path);
+  if (!AddValidatedStringOption(p, options, "device", "--device", error))
+    return nullptr;
+  if (!AddIntOption(p, options, "max_size", "--max-size", error))
+    return nullptr;
+  if (!AddIntOption(p, options, "frequency", "--frequency", error))
+    return nullptr;
+  if (!AddValidatedStringOption(p, options, "ht_location", "--ht-location",
+                                error))
+    return nullptr;
+  if (!AddValidatedStringOption(p, options, "vht_width", "--vht-width", error))
+    return nullptr;
+  if (!AddValidatedStringOption(p, options, "monitor_connection_on",
+                                "--monitor-connection-on", error))
+    return nullptr;
+  // Pass the output fd of the pcap as a command line option to the child
+  // process.
+  p->AddIntOption("--output-file", output_fd);
+
+  return p;
+}
+
+// Creates helper process for device-based (Layer-3) capture and return the
+// process. Returns nullptr if process can't be created.
+debugd::ProcessWithId*
+PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
+    const brillo::VariantDictionary& options,
+    int output_fd,
+    brillo::ErrorPtr* error) {
+  std::string exec_path;
+  if (!GetHelperPath("capture_packets", &exec_path)) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Unable to get helper path for device-based capture.");
+    return nullptr;
+  }
+
+  ProcessWithId* p =
+      CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
+  if (!p) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Failed to create process for device-based capture.");
+    return nullptr;
+  }
+  p->AddArg(exec_path);
+  // capture_packets executable takes three arguments as <device> <output_file>
+  // <max_size>
+  std::string device;
+  // device option must be present and successfully parsed in order to create
+  // process.
+  if (debugd::GetOption(options, "device", &device, error) !=
+      debugd::ParseResult::PARSED) {
+    DEBUGD_ADD_ERROR(
+        error, kPacketCaptureToolErrorString,
+        "Failed to parse required --device option from arguments.");
+    return nullptr;
+  }
+  p->AddArg(device);
+  p->AddArg(std::to_string(output_fd));
+  int max_size = 0;
+  debugd::GetOption(options, ",max_size", &max_size, error);
+  p->AddArg(std::to_string(max_size));
+
+  return p;
+}
 
 bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
                               const base::ScopedFD& output_fd,
@@ -91,42 +211,28 @@ bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
                      "Packet capture is not allowed by device policy.");
     return false;
   }
-  std::string exec_path;
-  if (!GetHelperPath("capture_utility.sh", &exec_path)) {
-    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
-                     "Helper path is too long");
-    return false;
-  }
 
-  ProcessWithId* p =
-      CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
+  ProcessWithId* p;
+  // The fd in the child that we bind output_fd to. Since all other fd's are
+  // cleared automatically, picking a hardcoded value should be safe.
+  int child_output_fd = STDERR_FILENO + 1;
+  // Check if the capture will be device-based or frequency-based and create
+  // helper process accordingly using different executables.
+  // TODO(b/188391723): Merge capture_utility.sh and capture_packets executables
+  // into one.
+  if (CheckDeviceBasedCaptureMode(options, error)) {
+    p = CreateCaptureProcessForDeviceBasedCapture(options, child_output_fd,
+                                                  error);
+  } else {
+    p = CreateCaptureProcessForFrequencyBasedCapture(options, child_output_fd,
+                                                     error);
+  }
   if (!p) {
     DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
-                     "Failed to create helper process");
+                     "Failed to create helper process.");
     return false;
   }
-  p->AddArg(exec_path);
-  if (!AddValidatedStringOption(p, options, "device", "--device", error))
-    return false;
-  if (!AddIntOption(p, options, "max_size", "--max-size", error))
-    return false;
-  if (!AddIntOption(p, options, "frequency", "--frequency", error))
-    return false;
-  if (!AddValidatedStringOption(p, options, "ht_location", "--ht-location",
-                                error))
-    return false;
-  if (!AddValidatedStringOption(p, options, "vht_width", "--vht-width", error))
-    return false;
-  if (!AddValidatedStringOption(p, options, "monitor_connection_on",
-                                "--monitor-connection-on", error))
-    return false;
-
-  // Pass the output fd of the pcap as a command line option to the child
-  // process.
-  int child_output_fd = STDERR_FILENO + 1;
   p->BindFd(output_fd.get(), child_output_fd);
-  p->AddIntOption("--output-file", child_output_fd);
-
   p->BindFd(status_fd.get(), STDOUT_FILENO);
   p->BindFd(status_fd.get(), STDERR_FILENO);
   LOG(INFO) << "packet_capture: running process id: " << p->id();

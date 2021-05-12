@@ -28,6 +28,16 @@ class PacketCaptureTool : public SubprocessTool {
              const brillo::VariantDictionary& options,
              std::string* out_id,
              brillo::ErrorPtr* error);
+
+ private:
+  debugd::ProcessWithId* CreateCaptureProcessForFrequencyBasedCapture(
+      const brillo::VariantDictionary& options,
+      int output_fd,
+      brillo::ErrorPtr* error);
+  debugd::ProcessWithId* CreateCaptureProcessForDeviceBasedCapture(
+      const brillo::VariantDictionary& options,
+      int output_fd,
+      brillo::ErrorPtr* error);
 };
 
 }  // namespace debugd
