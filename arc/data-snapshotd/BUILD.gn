@@ -7,9 +7,15 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [ ":arc-data-snapshotd" ]
+  deps = [
+    ":arc-data-snapshotd",
+    ":arc-data-snapshotd-worker",
+  ]
   if (use.test) {
-    deps += [ ":arc-data-snapshotd_test" ]
+    deps += [
+      ":arc-data-snapshotd-worker_test",
+      ":arc-data-snapshotd_test",
+    ]
   }
 }
 
@@ -60,6 +66,12 @@ generate_dbus_adaptors("data_snapshotd_adaptors") {
   dbus_adaptors_out_dir = "include/dbus_adaptors"
 }
 
+generate_dbus_adaptors("data_snapshotd_worker_adaptors") {
+  sources = [ "worker/dbus_bindings/org.chromium.ArcDataSnapshotdWorker.xml" ]
+  dbus_service_config = "worker/dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+}
+
 executable("arc-data-snapshotd") {
   sources = [
     "daemon.cc",
@@ -69,6 +81,30 @@ executable("arc-data-snapshotd") {
   deps = [
     ":data_snapshotd_adaptors",
     ":libarc-data-snapshotd",
+  ]
+}
+
+source_set("libarc-data-snapshotd-worker") {
+  sources = [
+    "file_utils.cc",
+    "worker/dbus_adaptor.cc",
+  ]
+  configs += [ ":common_pkg_deps" ]
+  deps = [
+    ":arc-data-snapshotd-protos",
+    ":data_snapshotd_worker_adaptors",
+  ]
+}
+
+executable("arc-data-snapshotd-worker") {
+  sources = [
+    "worker/daemon.cc",
+    "worker/main.cc",
+  ]
+  configs += [ ":common_pkg_deps" ]
+  deps = [
+    ":data_snapshotd_worker_adaptors",
+    ":libarc-data-snapshotd-worker",
   ]
 }
 
@@ -102,6 +138,18 @@ if (use.test) {
     deps = [
       ":data_snapshotd_adaptors",
       ":libarc-data-snapshotd",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+  executable("arc-data-snapshotd-worker_test") {
+    sources = [ "worker/dbus_adaptor_test.cc" ]
+    configs += [
+      ":test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":data_snapshotd_worker_adaptors",
+      ":libarc-data-snapshotd-worker",
       "//common-mk/testrunner:testrunner",
     ]
   }

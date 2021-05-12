@@ -35,6 +35,14 @@ bool ReadSnapshotDirectory(const base::FilePath& dir,
 std::vector<uint8_t> CalculateDirectoryCryptographicHash(
     const SnapshotDirectory& dir);
 
+// Stores base64-encoded |encoded_public_key| on disk in |dir|/public_key_info
+// file.
+// |dir| is an existing directory, where a prospective snapshot signed with
+// a corresponding private key will be stored.
+// Returns false in case of any error.
+bool StorePublicKey(const base::FilePath& dir,
+                    const std::string& encoded_public_key);
+
 // Encodes and stores |public_key_info| on disk in |dir|/public_key_info file.
 // |dir| is an existing directory, where a prospective snapshot signed with
 // a corresponding private key will be stored.

@@ -138,6 +138,26 @@ std::vector<uint8_t> CalculateDirectoryCryptographicHash(
 }
 
 bool StorePublicKey(const base::FilePath& dir,
+                    const std::string& encoded_public_key) {
+  if (encoded_public_key.empty()) {
+    LOG(ERROR) << "Empty public key info";
+    return false;
+  }
+  if (!base::DirectoryExists(dir)) {
+    LOG(ERROR) << "Directory " << dir.value() << " does not exist.";
+    return false;
+  }
+  auto public_key_file = dir.Append(kPublicKeyFile);
+  if (!base::WriteFile(public_key_file, encoded_public_key.data(),
+                       encoded_public_key.length())) {
+    LOG(ERROR) << "Failed to write public key info to file "
+               << public_key_file.value();
+    return false;
+  }
+  return true;
+}
+
+bool StorePublicKey(const base::FilePath& dir,
                     const std::vector<uint8_t>& public_key_info) {
   if (public_key_info.empty()) {
     LOG(ERROR) << "Empty public key info";
@@ -149,13 +169,7 @@ bool StorePublicKey(const base::FilePath& dir,
   }
   std::string encoded_public_key = brillo::data_encoding::Base64Encode(
       public_key_info.data(), public_key_info.size());
-  if (!base::WriteFile(dir.Append(kPublicKeyFile), encoded_public_key.data(),
-                       encoded_public_key.length())) {
-    LOG(ERROR) << "Failed to write public key info to file "
-               << dir.Append(kPublicKeyFile);
-    return false;
-  }
-  return true;
+  return StorePublicKey(dir, encoded_public_key);
 }
 
 bool StoreUserhash(const base::FilePath& dir, const std::string& userhash) {
