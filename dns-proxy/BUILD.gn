@@ -24,6 +24,7 @@ pkg_config("target_defaults") {
     "libminijail",
     "libpatchpanel-client",
     "libpatchpanel-util",
+    "libsession_manager-client",
     "libshill-client",
     "libshill-dbus-client",
 
@@ -43,6 +44,7 @@ static_library("libdnsproxy") {
     "doh_curl_client.cc",
     "proxy.cc",
     "resolver.cc",
+    "session_monitor.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = []
