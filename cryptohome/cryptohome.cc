@@ -2456,39 +2456,24 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_TPM_ATTESTATION_GET_EK],
                  action.c_str())) {
-    if (cl->HasSwitch(switches::kProtobufSwitch)) {
-      // Get the EK info as a protobuf.
-      cryptohome::GetEndorsementInfoRequest request;
-      cryptohome::BaseReply reply;
-      if (!MakeProtoDBusCall("GetEndorsementInfo",
-                             DBUS_METHOD(get_endorsement_info),
-                             DBUS_METHOD(get_endorsement_info_async), cl,
-                             &proxy, request, &reply, true /* print_reply */)) {
-        return 1;
-      }
-      if (!reply.HasExtension(cryptohome::GetEndorsementInfoReply::reply)) {
-        printf("GetEndorsementInfoReply missing.\n");
-        return 1;
-      }
-      printf("GetEndorsementInfo (protobuf) success.\n");
-    } else {
-      brillo::glib::ScopedError error;
-      gboolean success = FALSE;
-      gchar* ek_info = NULL;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_get_ek(
-              proxy.gproxy(), &ek_info, &success,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationGetEK call failed: %s.\n", error->message);
-        return 1;
-      }
-      if (!success) {
-        printf("Failed to get EK.\n");
-        g_free(ek_info);
-        return 1;
-      }
-      printf("%s\n", ek_info);
-      g_free(ek_info);
+    attestation::GetEndorsementInfoRequest req;
+    attestation::GetEndorsementInfoReply reply;
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.GetEndorsementInfo(req, &reply, &error,
+                                              timeout_ms) ||
+        error) {
+      printf("GetEndorsementInfo call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
     }
+    if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("GetEndorsementInfo call failed: status %d\n",
+             static_cast<int>(reply.status()));
+      return 1;
+    }
+
+    printf("%s\n", reply.ek_info().c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
                      action.c_str())) {
