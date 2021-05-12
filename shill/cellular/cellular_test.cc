@@ -99,7 +99,7 @@ class CellularPropertyTest : public PropertyStoreTest {
     device_->CreateCapability(&modem_info_);
   }
 
-  ~CellularPropertyTest() { device_->DestroyCapability(); }
+  ~CellularPropertyTest() { device_ = nullptr; }
 
  protected:
   MockModemInfo modem_info_;
@@ -159,7 +159,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
   }
 
-  ~CellularTest() { device_->DestroyCapability(); }
+  ~CellularTest() { device_ = nullptr; }
 
   void SetUp() override {
     static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;

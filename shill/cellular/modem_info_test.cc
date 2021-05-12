@@ -49,7 +49,7 @@ class ModemInfoForTest : public ModemInfo {
       const RpcIdentifier& path,
       const InterfaceToProperties& properties) override {
     return std::make_unique<Modem>(modemmanager::kModemManager1ServiceName,
-                                   path, this);
+                                   path, manager()->device_info());
   }
 
   MockDBusObjectManagerProxy* GetMockProxy() {

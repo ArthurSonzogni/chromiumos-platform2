@@ -83,12 +83,13 @@ std::unique_ptr<Modem> ModemInfo::CreateModem(
     const RpcIdentifier& path, const InterfaceToProperties& properties) {
   SLOG(this, 1) << __func__ << ": " << path.value();
   auto modem = std::make_unique<Modem>(modemmanager::kModemManager1ServiceName,
-                                       path, this);
-  modem->CreateDeviceMM1(properties);
+                                       path, manager_->device_info());
+  modem->CreateDevice(properties);
   return modem;
 }
 
 void ModemInfo::Connect() {
+  SLOG(this, 1) << __func__;
   service_connected_ = true;
   Error error;
   CHECK(proxy_);
@@ -162,6 +163,7 @@ void ModemInfo::OnGetManagedObjectsReply(const ObjectsWithProperties& objects,
                                          const Error& error) {
   if (!error.IsSuccess())
     return;
+  SLOG(this, 2) << __func__;
   for (const auto& object_properties_pair : objects) {
     OnInterfacesAddedSignal(object_properties_pair.first,
                             object_properties_pair.second);

@@ -172,9 +172,12 @@ class Cellular : public Device,
   // Called once the associated Modem instance is available.
   void CreateCapability(ModemInfo* modem_info);
 
-  // Destroys |capability_|. Called when the associated Modem instance is
-  // destroyed.
+  // Called from OnModemDestroyed. Public for testing.
+  // TODO(b/187879859): Make private.
   void DestroyCapability();
+
+  // Called when the associated Modem object is destroyed.
+  void OnModemDestroyed();
 
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.

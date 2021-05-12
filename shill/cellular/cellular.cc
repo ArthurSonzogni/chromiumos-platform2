@@ -280,6 +280,8 @@ Cellular::Cellular(ModemInfo* modem_info,
 
 Cellular::~Cellular() {
   SLOG(this, 1) << "~Cellular() " << this->link_name();
+  if (capability_)
+    DestroyCapability();
 }
 
 std::string Cellular::GetLegacyEquipmentIdentifier() const {
@@ -1025,6 +1027,19 @@ void Cellular::UpdateSecondaryServices() {
 
   // Remove any Services no longer associated with a SIM slot.
   manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
+}
+
+void Cellular::OnModemDestroyed() {
+  StopLocationPolling();
+  DestroyCapability();
+
+  // Under certain conditions, Cellular::StopModem may not be called before
+  // the Modem object is destroyed. This happens if the dbus modem exported
+  // by the modem-manager daemon disappears soon after the modem is disabled,
+  // not giving Shill enough time to complete the disable operation.
+  // In that case, the termination action associated with this cellular object
+  // may not have been removed.
+  manager()->RemoveTerminationAction(link_name());
 }
 
 void Cellular::CreateCapability(ModemInfo* modem_info) {

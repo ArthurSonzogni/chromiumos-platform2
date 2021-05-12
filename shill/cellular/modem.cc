@@ -37,10 +37,10 @@ size_t Modem::fake_dev_serial_ = 0;
 
 Modem::Modem(const std::string& service,
              const RpcIdentifier& path,
-             ModemInfo* modem_info)
+             DeviceInfo* device_info)
     : service_(service),
       path_(path),
-      modem_info_(modem_info),
+      device_info_(device_info),
       type_(Cellular::kTypeInvalid),
       has_pending_device_info_(false),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -53,31 +53,20 @@ Modem::~Modem() {
     return;
   }
 
-  device_->StopLocationPolling();
-  device_->DestroyCapability();
-
-  // Under certain conditions, Cellular::StopModem may not be called before
-  // the Cellular device is destroyed. This happens if the dbus modem exported
-  // by the modem-manager daemon disappears soon after the modem is disabled,
-  // not giving shill enough time to complete the disable operation.
-  //
-  // In that case, the termination action associated with this cellular object
-  // may not have been removed.
-  modem_info_->manager()->RemoveTerminationAction(device_->link_name());
-
   // Note: The Cellular Device |device_| is owned by DeviceInfo. It will not
   // be destroyed here, instead it will be kept around until/unless an RTNL
   // link delete message is received. If/when a new Modem instance is
   // constructed (e.g. after modemmanager restarts), the call to
   // DeviceInfo::GetCellularDevice will return the existing device for the
   // interface.
+  device_->OnModemDestroyed();
 }
 
-void Modem::CreateDeviceMM1(const InterfaceToProperties& properties) {
+void Modem::CreateDevice(const InterfaceToProperties& properties) {
   SLOG(this, 1) << __func__;
   dbus_properties_proxy_ =
-      modem_info_->control_interface()->CreateDBusPropertiesProxy(path(),
-                                                                  service());
+      device_info_->manager()->control_interface()->CreateDBusPropertiesProxy(
+          path(), service());
   dbus_properties_proxy_->SetModemManagerPropertiesChangedCallback(base::Bind(
       &Modem::OnModemManagerPropertiesChanged, base::Unretained(this)));
   dbus_properties_proxy_->SetPropertiesChangedCallback(
@@ -193,14 +182,13 @@ void Modem::CreateDeviceFromModemProperties(
     interface_index = kFakeDevInterfaceIndex;
   }
 
-  DeviceInfo* device_info = modem_info_->manager()->device_info();
-  if (device_info->IsDeviceBlocked(link_name_)) {
+  if (device_info_->IsDeviceBlocked(link_name_)) {
     LOG(INFO) << "Not creating cellular device for blocked interface "
               << link_name_ << ".";
     return;
   }
 
-  device_ = device_info->GetCellularDevice(interface_index, mac_address, this);
+  device_ = device_info_->GetCellularDevice(interface_index, mac_address, this);
 
   // Give the device a chance to extract any capability-specific properties.
   for (properties_it = properties.begin(); properties_it != properties.end();
@@ -221,8 +209,7 @@ bool Modem::GetDeviceParams(std::string* mac_address, int* interface_index) {
   }
 
   ByteString address_bytes;
-  if (!modem_info_->manager()->device_info()->GetMacAddress(*interface_index,
-                                                            &address_bytes)) {
+  if (!device_info_->GetMacAddress(*interface_index, &address_bytes)) {
     return false;
   }
 

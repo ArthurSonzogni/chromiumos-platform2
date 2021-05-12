@@ -89,7 +89,7 @@ class ModemTest : public Test {
       : manager_(&control_, &dispatcher_, &metrics_),
         modem_info_(&control_, &manager_),
         device_info_(&manager_),
-        modem_(new Modem(kService, kPath, &modem_info_)) {
+        modem_(new Modem(kService, kPath, &device_info_)) {
     modem_->set_rtnl_handler_for_testing(&rtnl_handler_);
   }
 
@@ -116,7 +116,7 @@ class ModemTest : public Test {
     EXPECT_CALL(device_info_, RegisterDevice(_)).Times(AnyNumber());
   }
 
-  InterfaceToProperties GeInterfaceProperties() {
+  InterfaceToProperties GetInterfaceProperties() {
     InterfaceToProperties properties;
     KeyValueStore modem_properties;
     modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_UNLOCKREQUIRED,
@@ -163,7 +163,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   // GetMacAddress to fail.
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(Return(false));
-  CreateDeviceFromModemProperties(GeInterfaceProperties());
+  CreateDeviceFromModemProperties(GetInterfaceProperties());
   EXPECT_FALSE(modem_->device_for_testing());
   EXPECT_TRUE(modem_->has_pending_device_info_for_testing());
 
@@ -192,7 +192,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_for_testing());
 
-  properties = GeInterfaceProperties();
+  properties = GetInterfaceProperties();
 
   // Link name, but no ifindex: no device created
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
@@ -260,13 +260,13 @@ TEST_F(ModemTest, GetDeviceParams) {
   EXPECT_EQ(kAddressAsString, mac_address);
 }
 
-TEST_F(ModemTest, CreateDeviceMM1) {
+TEST_F(ModemTest, CreateDevice) {
   SetUseRealCellular();
   SetDeviceInfoExpectations();
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
 
-  InterfaceToProperties properties = GeInterfaceProperties();
+  InterfaceToProperties properties = GetInterfaceProperties();
 
   KeyValueStore modem3gpp_properties;
   modem3gpp_properties.Set<uint32_t>(
@@ -279,7 +279,7 @@ TEST_F(ModemTest, CreateDeviceMM1) {
   EXPECT_CALL(control_, CreateDBusPropertiesProxy(kPath, kService))
       .WillOnce(Return(ByMove(std::move(dbus_properties_proxy))));
 
-  modem_->CreateDeviceMM1(properties);
+  modem_->CreateDevice(properties);
   Cellular* device = modem_->device_for_testing();
   ASSERT_TRUE(device);
   CellularCapability* capability = device->capability_for_testing();

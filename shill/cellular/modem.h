@@ -15,12 +15,12 @@
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
-#include "shill/cellular/modem_info.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
 
 class DBusPropertiesProxy;
+class DeviceInfo;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
@@ -30,14 +30,14 @@ class Modem {
   // "/org/freedesktop/ModemManager1/Modem/0").
   Modem(const std::string& service,
         const RpcIdentifier& path,
-        ModemInfo* modem_info);
+        DeviceInfo* device_info);
   Modem(const Modem&) = delete;
   Modem& operator=(const Modem&) = delete;
 
   ~Modem();
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
-  void CreateDeviceMM1(const InterfaceToProperties& properties);
+  void CreateDevice(const InterfaceToProperties& properties);
 
   void OnDeviceInfoAvailable(const std::string& link_name);
 
@@ -58,7 +58,6 @@ class Modem {
   static const int kFakeDevInterfaceIndex;
 
  protected:
-  ModemInfo* modem_info_for_testing() { return modem_info_; }
   void set_rtnl_handler_for_testing(RTNLHandler* rtnl_handler) {
     rtnl_handler_ = rtnl_handler;
   }
@@ -98,7 +97,7 @@ class Modem {
 
   CellularRefPtr device_;
 
-  ModemInfo* modem_info_;
+  DeviceInfo* device_info_;
   std::string link_name_;
   Cellular::Type type_;
   bool has_pending_device_info_;

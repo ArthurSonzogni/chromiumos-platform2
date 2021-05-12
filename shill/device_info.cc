@@ -821,18 +821,19 @@ CellularRefPtr DeviceInfo::GetCellularDevice(int interface_index,
       cellular = nullptr;
     }
   }
-  if (!cellular) {
-    cellular = new Cellular(manager_->modem_info(), modem->link_name(),
-                            mac_address, interface_index, modem->type(),
-                            modem->service(), modem->path());
-    cellular->CreateCapability(manager_->modem_info());
-    RegisterDevice(cellular);
-  } else {
+  if (cellular) {
     LOG(INFO) << "Using existing Cellular Device: " << cellular->enabled();
     // Update the Cellular dbus path and mac address to match the new Modem.
     cellular->UpdateModemProperties(modem->path(), mac_address);
     cellular->CreateCapability(manager_->modem_info());
+    return cellular;
   }
+
+  cellular = new Cellular(manager_->modem_info(), modem->link_name(),
+                          mac_address, interface_index, modem->type(),
+                          modem->service(), modem->path());
+  cellular->CreateCapability(manager_->modem_info());
+  RegisterDevice(cellular);
   return cellular;
 }
 #endif
