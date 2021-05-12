@@ -32,6 +32,24 @@ const char kSetGameModeMethod[] = "SetGameMode";
 //   memory pressure level (to moderate pressure level).
 const char kMemoryPressureChrome[] = "MemoryPressureChrome";
 
+// Values.
+enum GameMode {
+  // Game mode is off.
+  OFF = 0,
+  // Game mode is on, borealis is the foreground subsystem.
+  BOREALIS = 1,
+};
+
+enum PressureLevelChrome {
+  // There is enough memory to use.
+  NONE = 0,
+  // Chrome is advised to free buffers that are cheap to re-allocate and not
+  // immediately needed.
+  MODERATE = 1,
+  // Chrome is advised to free all possible memory.
+  CRITICAL = 2,
+};
+
 }  // namespace resource_manager
 
 #endif  // SYSTEM_API_DBUS_RESOURCE_MANAGER_DBUS_CONSTANTS_H_
