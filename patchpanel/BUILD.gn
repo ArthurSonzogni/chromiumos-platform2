@@ -56,6 +56,11 @@ proto_library("protos") {
 
 util_sources = [
   "address_manager.cc",
+  "dns/big_endian.cc",
+  "dns/dns_query.cc",
+  "dns/dns_response.cc",
+  "dns/dns_util.cc",
+  "dns/io_buffer.cc",
   "mac_address_generator.cc",
   "net_util.cc",
   "socket.cc",
@@ -72,11 +77,6 @@ libpatchpanel_sources = [
   "crostini_service.cc",
   "datapath.cc",
   "device.cc",
-  "dns/big_endian.cc",
-  "dns/dns_query.cc",
-  "dns/dns_response.cc",
-  "dns/dns_util.cc",
-  "dns/io_buffer.cc",
   "firewall.cc",
   "helper_process.cc",
   "manager.cc",
