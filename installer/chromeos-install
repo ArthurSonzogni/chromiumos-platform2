@@ -845,10 +845,6 @@ copy_partition() {
   echo "Installing partition ${part_num} to ${dst}${chunk_status}"
 
   case "${part_num}" in
-  "")
-    echo "Error: Empty part_num is passed. Skip copying."
-    return
-    ;;
   "${PARTITION_NUM_STATE}")
     install_stateful
     ;;
@@ -864,14 +860,6 @@ copy_partition() {
     # Use kernel B from the source into both kernel A and B in the destination.
     part_size="$(partsize "${src}" "${PARTITION_NUM_KERN_B}")"
     src_offset="$(partoffset "${src}" "${PARTITION_NUM_KERN_B}")"
-    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
-      "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
-      "${cache_input}"
-    ;;
-  "${PARTITION_NUM_MINIOS_A}"|"${PARTITION_NUM_MINIOS_B}")
-    # Always copy from MINIOS_A for MiniOS partitions.
-    part_size=$(partsize "${src}" "${PARTITION_NUM_MINIOS_A}")
-    src_offset=$(partoffset "${src}" "${PARTITION_NUM_MINIOS_A}")
     write_partition "${part_num}" "${part_size}" "${dst_offset}" \
       "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
       "${cache_input}"
@@ -1154,10 +1142,9 @@ main() {
   # get installed last. The order shouldn't matter but legacy behavior has
   # us go in reverse order.
   copy_partition "${PARTITION_NUM_EFI_SYSTEM}" "${SRC}" "${DST}" 1 1 false # 12
-  # Version 3 layout doesn't have RWFW partition anymore.
-  if [ "${PARTITION_NUM_RWFW+set}" = "set" ]; then
-    copy_partition "${PARTITION_NUM_RWFW}" "${SRC}" "${DST}" 1 1 false     # 11
-  fi
+  copy_partition "${PARTITION_NUM_RWFW}" "${SRC}" "${DST}" 1 1 false       # 11
+  copy_partition 10 "${SRC}" "${DST}" 1 1 false                            # 10
+  copy_partition 9 "${SRC}" "${DST}" 1 1 false                             # 9
   copy_partition "${PARTITION_NUM_OEM}" "${SRC}" "${DST}" 1 1 false        # 8
   copy_partition "${PARTITION_NUM_ROOT_C}" "${SRC}" "${DST}" 1 1 false     # 7
   copy_partition "${PARTITION_NUM_KERN_C}" "${SRC}" "${DST}" 1 1 false     # 6
@@ -1178,17 +1165,8 @@ main() {
        "${chunk_num}" "${NUM_ROOTFS_CHUNKS}" false                         # 3
   done
 
-  # Next to last is stateful.
+  # Last is stateful.
   copy_partition "${PARTITION_NUM_STATE}" "${SRC}" "${DST}" 1 1 false      # 1
-
-  # We want the MINIOS partitions be last just in case writing to other
-  # partitions fail at some point, we don't lose the ability to do recovery.
-  if [ "${PARTITION_NUM_MINIOS_A+set}" = "set" ]; then
-    copy_partition "${PARTITION_NUM_MINIOS_A}" "${SRC}" "${DST}" 1 1 false # 9
-  fi
-  if [ "${PARTITION_NUM_MINIOS_B+set}" = "set" ]; then
-    copy_partition "${PARTITION_NUM_MINIOS_B}" "${SRC}" "${DST}" 1 1 false # 10
-  fi
 
   do_post_install
 
