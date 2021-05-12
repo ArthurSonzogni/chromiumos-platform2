@@ -75,6 +75,41 @@ class DBusServiceTest : public testing::Test {
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
   }
 
+  void ExecuteMethod(const std::string& method_name, std::string* reply) {
+    std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
+    auto response = brillo::dbus_utils::testing::CallMethod(
+        *dbus_service_->dbus_object_, call.get());
+    dbus::MessageReader reader(response.get());
+    EXPECT_TRUE(reader.PopString(reply));
+  }
+
+  bool SignalError(RmadErrorCode error) {
+    return dbus_service_->SendErrorSignal(error);
+  }
+
+  bool SignalCalibration(
+      CalibrateComponentsState::CalibrationComponent component,
+      double progress) {
+    return dbus_service_->SendCalibrationProgressSignal(component, progress);
+  }
+
+  bool SignalProvisioning(ProvisionDeviceState::ProvisioningStep step,
+                          double progress) {
+    return dbus_service_->SendProvisioningProgressSignal(step, progress);
+  }
+
+  bool SignalHardwareWriteProtection(bool enabled) {
+    return dbus_service_->SendHardwareWriteProtectionStateSignal(enabled);
+  }
+
+  bool SignalPowerCable(bool plugged_in) {
+    return dbus_service_->SendPowerCableStateSignal(plugged_in);
+  }
+
+  dbus::MockExportedObject* GetMockExportedObject() {
+    return mock_exported_object_.get();
+  }
+
  protected:
   std::unique_ptr<dbus::MethodCall> CreateMethodCall(
       const std::string& method_name) {
@@ -149,6 +184,100 @@ TEST_F(DBusServiceTest, AbortRma) {
   AbortRmaReply reply;
   ExecuteMethod(kAbortRmaMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
+}
+
+TEST_F(DBusServiceTest, GetLogPath) {
+  RegisterDBusObjectAsync();
+
+  EXPECT_CALL(mock_rmad_service_, GetLogPath(_))
+      .WillOnce(Invoke([](const RmadInterface::GetLogPathCallback& callback) {
+        callback.Run("/some/path/to/rma/log.file");
+      }));
+
+  std::string reply;
+  ExecuteMethod(kGetLogPathMethod, &reply);
+  EXPECT_EQ("/some/path/to/rma/log.file", reply);
+}
+
+TEST_F(DBusServiceTest, SignalError) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "Error");
+        dbus::MessageReader reader(signal);
+        uint32_t error;
+        EXPECT_TRUE(reader.PopUint32(&error));
+        EXPECT_EQ(error, RMAD_ERROR_RMA_NOT_REQUIRED);
+      }));
+  EXPECT_TRUE(SignalError(RMAD_ERROR_RMA_NOT_REQUIRED));
+}
+
+TEST_F(DBusServiceTest, SignalCalibration) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "CalibrationProgress");
+        dbus::MessageReader reader(signal);
+        uint32_t component;
+        double progress;
+        EXPECT_TRUE(reader.PopUint32(&component));
+        EXPECT_TRUE(reader.PopDouble(&progress));
+        EXPECT_EQ(
+            component,
+            CalibrateComponentsState::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER);
+        EXPECT_EQ(progress, 0.3);
+      }));
+  EXPECT_TRUE(SignalCalibration(
+      CalibrateComponentsState::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER, 0.3));
+}
+
+TEST_F(DBusServiceTest, SignalProvisioning) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "ProvisioningProgress");
+        dbus::MessageReader reader(signal);
+        uint32_t step;
+        double progress;
+        EXPECT_TRUE(reader.PopUint32(&step));
+        EXPECT_TRUE(reader.PopDouble(&progress));
+        EXPECT_EQ(step,
+                  ProvisionDeviceState::RMAD_PROVISIONING_STEP_IN_PROGRESS);
+        EXPECT_EQ(progress, 0.63);
+      }));
+  EXPECT_TRUE(SignalProvisioning(
+      ProvisionDeviceState::RMAD_PROVISIONING_STEP_IN_PROGRESS, 0.63));
+}
+
+TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "HardwareWriteProtectionState");
+        dbus::MessageReader reader(signal);
+        bool enabled;
+        EXPECT_TRUE(reader.PopBool(&enabled));
+        EXPECT_TRUE(enabled);
+      }));
+  EXPECT_TRUE(SignalHardwareWriteProtection(true));
+}
+
+TEST_F(DBusServiceTest, SignalPowerCable) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "PowerCableState");
+        dbus::MessageReader reader(signal);
+        bool plugged_in;
+        EXPECT_TRUE(reader.PopBool(&plugged_in));
+        EXPECT_TRUE(plugged_in);
+      }));
+  EXPECT_TRUE(SignalPowerCable(true));
 }
 
 }  // namespace rmad

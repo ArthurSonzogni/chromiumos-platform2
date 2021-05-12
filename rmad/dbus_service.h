@@ -11,6 +11,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
 
 #include "rmad/rmad_interface.h"
@@ -28,6 +29,15 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   ~DBusService() override = default;
 
+  bool SendErrorSignal(RmadErrorCode error);
+  bool SendCalibrationProgressSignal(
+      CalibrateComponentsState::CalibrationComponent component,
+      double progress);
+  bool SendProvisioningProgressSignal(
+      ProvisionDeviceState::ProvisioningStep step, double progress);
+  bool SendHardwareWriteProtectionStateSignal(bool enabled);
+  bool SendPowerCableStateSignal(bool plugged_in);
+
  protected:
   // brillo::DBusServiceDaemon overrides.
   int OnInit() override;
@@ -41,49 +51,45 @@ class DBusService : public brillo::DBusServiceDaemon {
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
   // Template for handling D-Bus methods.
-  template <typename RequestProtobufType, typename ReplyProtobufType>
-  using HandlerFunction = void (RmadInterface::*)(
-      const RequestProtobufType&,
-      const base::Callback<void(const ReplyProtobufType&)>&);
+  template <typename RequestProtobufType, typename ReplyType>
+  using HandlerFunction =
+      void (RmadInterface::*)(const RequestProtobufType&,
+                              const base::Callback<void(const ReplyType&)>&);
 
-  template <
-      typename RequestProtobufType,
-      typename ReplyProtobufType,
-      DBusService::HandlerFunction<RequestProtobufType, ReplyProtobufType> func>
-  void HandleMethod(
-      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response,
-      const RequestProtobufType& request) {
+  template <typename RequestProtobufType,
+            typename ReplyType,
+            DBusService::HandlerFunction<RequestProtobufType, ReplyType> func>
+  void HandleMethod(std::unique_ptr<DBusMethodResponse<ReplyType>> response,
+                    const RequestProtobufType& request) {
     // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
     using SharedResponsePointer =
-        std::shared_ptr<DBusMethodResponse<ReplyProtobufType>>;
+        std::shared_ptr<DBusMethodResponse<ReplyType>>;
     (rmad_interface_->*func)(
-        request, base::Bind(&DBusService::SendReply<ReplyProtobufType>,
-                            base::Unretained(this),
-                            SharedResponsePointer(std::move(response))));
+        request,
+        base::Bind(&DBusService::SendReply<ReplyType>, base::Unretained(this),
+                   SharedResponsePointer(std::move(response))));
   }
 
   // Template for handling D-Bus methods without request protobuf.
-  template <typename ReplyProtobufType>
-  using HandlerFunctionEmptyRequest = void (RmadInterface::*)(
-      const base::Callback<void(const ReplyProtobufType&)>&);
+  template <typename ReplyType>
+  using HandlerFunctionEmptyRequest =
+      void (RmadInterface::*)(const base::Callback<void(const ReplyType&)>&);
 
-  template <typename ReplyProtobufType,
-            DBusService::HandlerFunctionEmptyRequest<ReplyProtobufType> func>
-  void HandleMethod(
-      std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response) {
+  template <typename ReplyType,
+            DBusService::HandlerFunctionEmptyRequest<ReplyType> func>
+  void HandleMethod(std::unique_ptr<DBusMethodResponse<ReplyType>> response) {
     // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
     using SharedResponsePointer =
-        std::shared_ptr<DBusMethodResponse<ReplyProtobufType>>;
-    (rmad_interface_->*func)(base::Bind(
-        &DBusService::SendReply<ReplyProtobufType>, base::Unretained(this),
-        SharedResponsePointer(std::move(response))));
+        std::shared_ptr<DBusMethodResponse<ReplyType>>;
+    (rmad_interface_->*func)(
+        base::Bind(&DBusService::SendReply<ReplyType>, base::Unretained(this),
+                   SharedResponsePointer(std::move(response))));
   }
 
   // Template for sending out the reply.
-  template <typename ReplyProtobufType>
-  void SendReply(
-      std::shared_ptr<DBusMethodResponse<ReplyProtobufType>> response,
-      const ReplyProtobufType& reply) {
+  template <typename ReplyType>
+  void SendReply(std::shared_ptr<DBusMethodResponse<ReplyType>> response,
+                 const ReplyType& reply) {
     response->Return(reply);
 
     // Quit the daemon after sending the reply if RMA is not required.
@@ -98,6 +104,16 @@ class DBusService : public brillo::DBusServiceDaemon {
   void PostQuitTask();
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<RmadErrorCode>> error_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<
+      CalibrateComponentsState::CalibrationComponent,
+      double>>
+      calibration_signal_;
+  std::weak_ptr<brillo::dbus_utils::
+                    DBusSignal<ProvisionDeviceState::ProvisioningStep, double>>
+      provisioning_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
   RmadInterface* rmad_interface_;
 };
 

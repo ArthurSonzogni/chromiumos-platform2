@@ -5,6 +5,8 @@
 #ifndef RMAD_RMAD_INTERFACE_H_
 #define RMAD_RMAD_INTERFACE_H_
 
+#include <string>
+
 #include <base/callback.h>
 #include <rmad/proto_bindings/rmad.pb.h>
 
@@ -31,6 +33,10 @@ class RmadInterface {
   using AbortRmaCallback = base::Callback<void(const AbortRmaReply&)>;
   // Cancel the RMA process if possible and reboot.
   virtual void AbortRma(const AbortRmaCallback& callback) = 0;
+
+  using GetLogPathCallback = base::Callback<void(const std::string&)>;
+  // Get the path to the RMA log file.
+  virtual void GetLogPath(const GetLogPathCallback& callback) = 0;
 };
 
 }  // namespace rmad

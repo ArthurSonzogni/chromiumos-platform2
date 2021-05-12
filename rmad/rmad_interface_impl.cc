@@ -190,6 +190,8 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
 
   if (allow_abort_) {
     DLOG(INFO) << "AbortRma: Abort allowed.";
+    // TODO(gavindodd): The json store file should be deleted and a reboot
+    // triggered.
     json_store_->Clear();
     current_state_ = RmadState::STATE_NOT_SET;
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
@@ -199,6 +201,12 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
   }
 
   callback.Run(reply);
+}
+
+void RmadInterfaceImpl::GetLogPath(const GetLogPathCallback& callback) {
+  // TODO(gavindodd): Return a valid log file path and add tests.
+  std::string path = "";
+  callback.Run(path);
 }
 
 }  // namespace rmad
