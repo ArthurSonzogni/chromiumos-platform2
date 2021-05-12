@@ -26,6 +26,7 @@
 #include "drivefs/dbus-constants.h"
 #include "hammerd/dbus-constants.h"
 #include "hermes/dbus-constants.h"
+#include "hps/dbus-constants.h"
 #include "ip_peripheral/dbus-constants.h"
 #include "login_manager/dbus-constants.h"
 #include "lorgnette/dbus-constants.h"
