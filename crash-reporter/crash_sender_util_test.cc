@@ -365,8 +365,8 @@ class CrashSenderUtilTest : public testing::Test {
     if (!CreateFile(good_log_, "", now))
       return false;
 
-    // These should be kept, the payload path is absolute but should be handled
-    // properly.
+    // These should be removed, as we shouldn't accept files outside of the
+    // crash log directory.
     absolute_meta_ = crash_directory.Append("absolute.meta");
     absolute_log_ = crash_directory.Append("absolute.log");
     if (!CreateFile(absolute_meta_,
@@ -832,8 +832,15 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
   EXPECT_EQ(Sender::kSend,
             sender.ChooseAction(recent_os_meta_, &reason, &info));
-  EXPECT_EQ(Sender::kSend, sender.ChooseAction(absolute_meta_, &reason, &info));
   // Verify that RemoveReason wasn't sent
+  testing::Mock::VerifyAndClearExpectations(raw_metrics_lib);
+
+  // The following file should not be sent.
+  EXPECT_CALL(*raw_metrics_lib,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason", _, _))
+      .Times(1);
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(absolute_meta_, &reason, &info));
   testing::Mock::VerifyAndClearExpectations(raw_metrics_lib);
 
   // Basic check that the valid crash info is returned.
@@ -1139,8 +1146,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   // Check what files were removed.
   EXPECT_TRUE(base::PathExists(good_meta_));
   EXPECT_TRUE(base::PathExists(good_log_));
-  EXPECT_TRUE(base::PathExists(absolute_meta_));
-  EXPECT_TRUE(base::PathExists(absolute_log_));
+  EXPECT_FALSE(base::PathExists(absolute_meta_));
+  EXPECT_FALSE(base::PathExists(absolute_log_));
   EXPECT_FALSE(base::PathExists(uploaded_meta_));
   EXPECT_FALSE(base::PathExists(uploaded_log_));
   EXPECT_TRUE(base::PathExists(new_incomplete_meta_));
@@ -1157,10 +1164,9 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_FALSE(base::PathExists(old_os_meta_));
   EXPECT_FALSE(base::PathExists(root_payload_meta_));
   // Check what files were picked for sending.
-  EXPECT_EQ(3, to_send.size());
+  EXPECT_EQ(2, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
-  EXPECT_EQ(absolute_meta_.value(), to_send[1].first.value());
-  EXPECT_EQ(recent_os_meta_.value(), to_send[2].first.value());
+  EXPECT_EQ(recent_os_meta_.value(), to_send[1].first.value());
 
   // Basic check that the valid crash info is returned.
   std::string value;
@@ -1204,8 +1210,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   CreateDeviceCoredumpUploadAllowedFile();
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
-  EXPECT_EQ(4, to_send.size());
-  EXPECT_EQ(devcore_meta_.value(), to_send[3].first.value());
+  EXPECT_EQ(3, to_send.size());
+  EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {

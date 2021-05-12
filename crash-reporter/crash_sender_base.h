@@ -85,9 +85,9 @@ extern bool g_force_is_mock;
 // Easier than creating the mock file in internal tests (such as fuzz tests).
 extern bool g_force_is_mock_successful;
 
-// Gets the base name of the path pointed by |key| in the given metadata.
+// Gets the full path pointed by |key| in the given metadata.
 // Returns an empty path if the key is not found.
-base::FilePath GetBaseNameFromMetadata(const brillo::KeyValueStore& metadata,
+base::FilePath GetFilePathFromMetadata(const brillo::KeyValueStore& metadata,
                                        const std::string& key);
 
 // Returns which kind of report from the given payload path. Returns an empty

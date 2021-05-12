@@ -62,7 +62,7 @@ bool IsValidKey(const std::string& key) {
 // Converts metadata into CrashInfo.
 void MetadataToCrashInfo(const brillo::KeyValueStore& metadata,
                          util::CrashInfo* info) {
-  info->payload_file = util::GetBaseNameFromMetadata(metadata, "payload");
+  info->payload_file = util::GetFilePathFromMetadata(metadata, "payload");
   info->payload_kind = util::GetKindFromPayloadPath(info->payload_file);
 }
 
@@ -84,13 +84,13 @@ std::string GetImageType() {
     return "";
 }
 
-base::FilePath GetBaseNameFromMetadata(const brillo::KeyValueStore& metadata,
+base::FilePath GetFilePathFromMetadata(const brillo::KeyValueStore& metadata,
                                        const std::string& key) {
   std::string value;
   if (!metadata.GetString(key, &value))
     return base::FilePath();
 
-  return base::FilePath(value).BaseName();
+  return base::FilePath(value);
 }
 
 std::string GetKindFromPayloadPath(const base::FilePath& payload_path) {

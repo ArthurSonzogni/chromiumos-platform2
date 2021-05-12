@@ -69,16 +69,17 @@ class CrashSenderBaseTest : public testing::Test {
   base::FilePath test_dir_;
 };
 
-TEST_F(CrashSenderBaseTest, GetBaseNameFromMetadata) {
+TEST_F(CrashSenderBaseTest, GetFilePathFromMetadata) {
   brillo::KeyValueStore metadata;
   metadata.LoadFromString("");
-  EXPECT_EQ("", GetBaseNameFromMetadata(metadata, "payload").value());
+  EXPECT_EQ("", GetFilePathFromMetadata(metadata, "payload").value());
 
   metadata.LoadFromString("payload=test.log\n");
-  EXPECT_EQ("test.log", GetBaseNameFromMetadata(metadata, "payload").value());
+  EXPECT_EQ("test.log", GetFilePathFromMetadata(metadata, "payload").value());
 
   metadata.LoadFromString("payload=/foo/test.log\n");
-  EXPECT_EQ("test.log", GetBaseNameFromMetadata(metadata, "payload").value());
+  EXPECT_EQ("/foo/test.log",
+            GetFilePathFromMetadata(metadata, "payload").value());
 }
 
 TEST_F(CrashSenderBaseTest, GetKindFromPayloadPath) {

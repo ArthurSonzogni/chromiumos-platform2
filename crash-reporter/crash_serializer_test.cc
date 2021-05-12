@@ -273,15 +273,15 @@ TEST_F(CrashSerializerTest, PickCrashFiles) {
   EXPECT_TRUE(base::PathExists(old_os_meta_));
   EXPECT_TRUE(base::PathExists(large_meta_));
 
-  ASSERT_EQ(6, to_serialize.size());
+  // All but the "absolute path" meta should be accepted
+  ASSERT_EQ(5, to_serialize.size());
   // Sort the reports to allow for deterministic testing
   util::SortReports(&to_serialize);
   EXPECT_EQ(old_os_meta_.value(), to_serialize[0].first.value());
   EXPECT_EQ(good_meta_.value(), to_serialize[1].first.value());
-  EXPECT_EQ(absolute_meta_.value(), to_serialize[2].first.value());
-  EXPECT_EQ(uploaded_meta_.value(), to_serialize[3].first.value());
-  EXPECT_EQ(recent_os_meta_.value(), to_serialize[4].first.value());
-  EXPECT_EQ(devcore_meta_.value(), to_serialize[5].first.value());
+  EXPECT_EQ(uploaded_meta_.value(), to_serialize[2].first.value());
+  EXPECT_EQ(recent_os_meta_.value(), to_serialize[3].first.value());
+  EXPECT_EQ(devcore_meta_.value(), to_serialize[4].first.value());
 }
 
 TEST_F(CrashSerializerTest, SerializeCrashes) {
