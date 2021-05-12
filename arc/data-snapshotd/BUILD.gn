@@ -55,6 +55,9 @@ source_set("libarc-data-snapshotd") {
     "dbus_adaptor.cc",
     "esc_key_watcher.cc",
     "file_utils.cc",
+    "upstart_client.cc",
+    "worker_bridge.cc",
+    "worker_client.cc",
   ]
   configs += [ ":common_pkg_deps" ]
   deps = [ ":arc-data-snapshotd-protos" ]
@@ -130,6 +133,9 @@ if (use.test) {
       "dbus_adaptor_test.cc",
       "esc_key_watcher_test.cc",
       "fake_process_launcher.cc",
+      "upstart_client_test.cc",
+      "worker_bridge_test.cc",
+      "worker_client_test.cc",
     ]
     configs += [
       ":test_pkg_deps",
