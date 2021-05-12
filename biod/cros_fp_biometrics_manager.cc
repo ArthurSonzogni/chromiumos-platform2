@@ -343,10 +343,16 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
 
   use_positive_match_secret_ = cros_dev_->SupportsPositiveMatchSecret();
 
+// TODO(b/187951992): The following automatic maintenance routine needs to
+// be re-enabled in such a way that it will not interfere with the
+// auth/unlock or enroll session. This maintenance timer was disabled due
+// to b/184783529.
+#if 0
   maintenance_timer_->Start(
       FROM_HERE, base::TimeDelta::FromDays(1),
       base::Bind(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
                  base::Unretained(this)));
+#endif
 }
 
 CrosFpBiometricsManager::~CrosFpBiometricsManager() {}

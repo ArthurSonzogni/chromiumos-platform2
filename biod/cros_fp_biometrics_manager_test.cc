@@ -303,19 +303,33 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   storage::MockBiodStorage* mock_biod_storage_;
 };
 
-TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_TooShort) {
+// TODO(b/187951992): The following tests for the automatic maintenance timer
+// need to be re-enabled when the maintenace-auth interference is fixed.
+// The tests were disabled due to b/184783529.
+TEST_F(CrosFpBiometricsManagerMockTest,
+       DISABLED_TestMaintenanceTimer_TooShort) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
   task_environment_.FastForwardBy(base::TimeDelta::FromHours(12));
 }
 
-TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Once) {
+TEST_F(CrosFpBiometricsManagerMockTest, DISABLED_TestMaintenanceTimer_Once) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(1);
   task_environment_.FastForwardBy(base::TimeDelta::FromDays(1));
 }
 
-TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Multiple) {
+TEST_F(CrosFpBiometricsManagerMockTest,
+       DISABLED_TestMaintenanceTimer_Multiple) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(2);
   task_environment_.FastForwardBy(base::TimeDelta::FromDays(2));
+}
+
+// TODO(b/187951992): The following test must be removed when the
+// maintenace-auth interference is fixed.
+// This test was added when the maintenance timer was disabled due to
+// b/184783529.
+TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Disabled) {
+  EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
+  task_environment_.FastForwardBy(base::TimeDelta::FromDays(1));
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerFired) {
