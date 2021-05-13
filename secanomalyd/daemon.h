@@ -22,8 +22,8 @@ class Daemon : public brillo::Daemon {
   int OnEventLoopStarted() override;
 
  private:
-  void CheckRwMounts();
-  void DoRwMountCheck();
+  void CheckWXMounts();
+  void DoWXMountCheck();
 
   bool generate_reports_ = false;
   bool dev_ = false;

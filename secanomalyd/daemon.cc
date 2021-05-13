@@ -69,22 +69,22 @@ bool ReportMount(const MountEntry& e, bool report_in_dev_mode) {
 }  // namespace
 
 int Daemon::OnEventLoopStarted() {
-  CheckRwMounts();
+  CheckWXMounts();
 
   return 0;
 }
 
-void Daemon::CheckRwMounts() {
-  VLOG(1) << "Checking for R/W mounts";
+void Daemon::CheckWXMounts() {
+  VLOG(1) << "Checking for W+X mounts";
 
-  DoRwMountCheck();
+  DoWXMountCheck();
 
   brillo::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&Daemon::CheckRwMounts, base::Unretained(this)),
+      FROM_HERE, base::Bind(&Daemon::CheckWXMounts, base::Unretained(this)),
       kCheckInterval);
 }
 
-void Daemon::DoRwMountCheck() {
+void Daemon::DoWXMountCheck() {
   std::string proc_mounts;
   if (!base::ReadFileToStringNonBlocking(base::FilePath(kProcSelfMountsPath),
                                          &proc_mounts)) {
