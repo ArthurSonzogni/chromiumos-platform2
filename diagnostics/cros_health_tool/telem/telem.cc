@@ -39,6 +39,7 @@ using chromeos::cros_healthd::mojom::AudioResultPtr;
 using chromeos::cros_healthd::mojom::BacklightResultPtr;
 using chromeos::cros_healthd::mojom::BatteryResultPtr;
 using chromeos::cros_healthd::mojom::BluetoothResultPtr;
+using chromeos::cros_healthd::mojom::BootPerformanceResultPtr;
 using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
 using chromeos::cros_healthd::mojom::CpuResultPtr;
 using chromeos::cros_healthd::mojom::ErrorType;
@@ -74,6 +75,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"system", ProbeCategoryEnum::kSystem},
     {"network", ProbeCategoryEnum::kNetwork},
     {"audio", ProbeCategoryEnum::kAudio},
+    {"boot_performance", ProbeCategoryEnum::kBootPerformance},
 };
 
 std::string ProcessStateToString(ProcessState state) {
@@ -355,6 +357,30 @@ void DisplayAudioInfo(const AudioResultPtr& audio_result, const bool beauty) {
        audio->output_device_name, std::to_string(audio->output_volume),
        std::to_string(audio->underruns),
        std::to_string(audio->severe_underruns)}};
+
+  OutputData(headers, values, beauty);
+}
+
+void DisplayBootPerformanceInfo(
+    const BootPerformanceResultPtr& boot_performance_result,
+    const bool beauty) {
+  if (boot_performance_result->is_error()) {
+    DisplayError(boot_performance_result->get_error());
+    return;
+  }
+
+  const auto& boot_performance =
+      boot_performance_result->get_boot_performance_info();
+  if (boot_performance.is_null()) {
+    std::cout << "Device does not have boot_performance info" << std::endl;
+    return;
+  }
+
+  const std::vector<std::string> headers = {"boot_up_seconds",
+                                            "boot_up_timestamp"};
+  const std::vector<std::vector<std::string>> values = {
+      {std::to_string(boot_performance->boot_up_seconds),
+       std::to_string(boot_performance->boot_up_timestamp)}};
 
   OutputData(headers, values, beauty);
 }
@@ -732,6 +758,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
   const auto& audio_result = info->audio_result;
   if (audio_result)
     DisplayAudioInfo(audio_result, beauty);
+
+  const auto& boot_performance_result = info->boot_performance_result;
+  if (boot_performance_result)
+    DisplayBootPerformanceInfo(boot_performance_result, beauty);
 }
 
 // Create a stringified list of the category names for use in help.

@@ -54,6 +54,8 @@ class MockContext final : public Context {
   MockExecutorAdapter* mock_executor() const;
   base::SimpleTestTickClock* mock_tick_clock() const;
 
+  MOCK_METHOD(const base::Time, time, (), (const, override));
+
  private:
   // Used to create a temporary root directory.
   base::ScopedTempDir temp_dir_;

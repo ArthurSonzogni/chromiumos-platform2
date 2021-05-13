@@ -111,6 +111,10 @@ const base::FilePath& Context::root_dir() const {
   return root_dir_;
 }
 
+const base::Time Context::time() const {
+  return base::Time().Now();
+}
+
 SystemConfigInterface* Context::system_config() const {
   return system_config_.get();
 }

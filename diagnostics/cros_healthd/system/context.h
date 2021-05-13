@@ -97,6 +97,8 @@ class Context {
   SystemUtilities* system_utils() const;
   // Use the object returned by tick_clock() to track the passage of time.
   base::TickClock* tick_clock() const;
+  // Return current time.
+  virtual const base::Time time() const;
 
  private:
   // Allows MockContext to override the default helper objects.

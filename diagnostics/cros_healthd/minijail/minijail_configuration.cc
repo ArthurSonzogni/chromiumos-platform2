@@ -49,7 +49,6 @@ void ConfigureAndEnterMinijail() {
   minijail_namespace_net(jail.get());          // New network namespace.
   minijail_namespace_uts(jail.get());          // New UTS namespace.
   minijail_namespace_vfs(jail.get());          // New VFS namespace.
-  minijail_mount_tmp(jail.get());              // Mount new tmpfs.
   minijail_enter_pivot_root(jail.get(),
                             "/mnt/empty");  // Set /mnt/empty as rootfs.
 
@@ -115,6 +114,16 @@ void ConfigureAndEnterMinijail() {
                 0);  // Symlink for reading the timezone file.
   minijail_bind(jail.get(), "/var/cache/diagnostics", "/var/cache/diagnostics",
                 1);  // Diagnostics can create test files in this directory.
+  // Symlink for reading the boot up info.
+  BindMountIfPathExists(jail.get(), base::FilePath("/var/log/bios_times.txt"));
+
+  // Create a new tmpfs filesystem for /tmp and mount necessary files.
+  // We should not use minijail_mount_tmp() to create /tmp when we have file to
+  // bind mount. See minijail_enter() for more details.
+  minijail_mount_with_data(jail.get(), "tmpfs", "/tmp", "tmpfs", 0, "");
+  // Symlink for reading the boot up info.
+  BindMountIfPathExists(jail.get(),
+                        base::FilePath("/tmp/uptime-login-prompt-visible"));
 
   // Bind-mount other necessary files.
   minijail_bind(

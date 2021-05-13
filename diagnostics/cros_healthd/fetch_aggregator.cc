@@ -34,7 +34,9 @@ FetchAggregator::FetchAggregator(Context* context)
       fan_fetcher_(std::make_unique<FanFetcher>(context)),
       system_fetcher_(std::make_unique<SystemFetcher>(context)),
       network_fetcher_(std::make_unique<NetworkFetcher>(context)),
-      audio_fetcher_(std::make_unique<AudioFetcher>(context)) {
+      audio_fetcher_(std::make_unique<AudioFetcher>(context)),
+      boot_performance_fetcher_(
+          std::make_unique<BootPerformanceFetcher>(context)) {
   DCHECK(backlight_fetcher_);
   DCHECK(battery_fetcher_);
   DCHECK(bluetooth_fetcher_);
@@ -44,6 +46,7 @@ FetchAggregator::FetchAggregator(Context* context)
   DCHECK(system_fetcher_);
   DCHECK(network_fetcher_);
   DCHECK(audio_fetcher_);
+  DCHECK(boot_performance_fetcher_);
 }
 
 FetchAggregator::~FetchAggregator() = default;
@@ -127,6 +130,12 @@ void FetchAggregator::Run(
       case mojo_ipc::ProbeCategoryEnum::kAudio: {
         WrapFetchProbeData(category, itr, &info->audio_result,
                            audio_fetcher_->FetchAudioInfo());
+        break;
+      }
+      case mojo_ipc::ProbeCategoryEnum::kBootPerformance: {
+        WrapFetchProbeData(
+            category, itr, &info->boot_performance_result,
+            boot_performance_fetcher_->FetchBootPerformanceInfo());
         break;
       }
     }
