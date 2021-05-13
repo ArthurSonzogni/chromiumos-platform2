@@ -461,6 +461,33 @@ int RTNLHandler::GetInterfaceIndex(const std::string& interface_name) {
   return ifr.ifr_ifindex;
 }
 
+bool RTNLHandler::AddInterface(const std::string& interface_name,
+                               const std::string& link_kind,
+                               ResponseCallback response_callback) {
+  if (interface_name.length() >= IFNAMSIZ) {
+    LOG(DFATAL) << "Interface name is too long: " << interface_name;
+    return false;
+  }
+
+  auto msg = std::make_unique<RTNLMessage>(
+      shill::RTNLMessage::kTypeLink, shill::RTNLMessage::kModeAdd,
+      NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, 0 /* seq */,
+      0 /* pid */, 0 /* if_index */, IPAddress::kFamilyUnknown);
+  msg->SetAttribute(IFLA_IFNAME, {interface_name, true});
+  msg->SetIflaInfoKind(link_kind);
+
+  uint32_t seq;
+  if (!SendMessage(std::move(msg), &seq)) {
+    LOG(WARNING) << "Failed to send add link message for " << interface_name;
+    return false;
+  }
+
+  if (!response_callback.is_null()) {
+    response_callbacks_[seq] = std::move(response_callback);
+  }
+  return true;
+}
+
 bool RTNLHandler::SendMessage(std::unique_ptr<RTNLMessage> message,
                               uint32_t* msg_seq) {
   ErrorMask error_mask;

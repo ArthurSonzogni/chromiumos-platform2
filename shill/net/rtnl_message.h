@@ -262,6 +262,12 @@ class SHILL_EXPORT RTNLMessage {
   // type kTypeRule.
   IPAddress GetFraDst() const;
 
+  // Sets the IFLA_INFO_KIND attribute which is nested in IFLA_LINKINFO (and
+  // thus it is hard to be set via SetAttribute() directly). This attribute will
+  // be used as the type string of a link when creating a new link. This
+  // function should be used only for RTNLMessages of type kTypeLink.
+  void SetIflaInfoKind(const std::string& link_kind);
+
  private:
   SHILL_PRIVATE bool DecodeInternal(const ByteString& msg);
   SHILL_PRIVATE bool DecodeLink(const RTNLHeader* hdr,

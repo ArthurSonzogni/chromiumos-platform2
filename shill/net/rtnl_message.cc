@@ -874,6 +874,23 @@ uint32_t RTNLMessage::GetFraPriority() const {
   return GetUint32Attribute(FRA_PRIORITY);
 }
 
+void RTNLMessage::SetIflaInfoKind(const std::string& link_kind) {
+  // The maximum length of IFLA_INFO_KIND attribute is MODULE_NAME_LEN, defined
+  // in /include/linux/module.h, as (64 - sizeof(unsigned long)). Set it to a
+  // fixed value here.
+  constexpr uint32_t kMaxModuleNameLen = 56;
+  if (link_kind.length() >= kMaxModuleNameLen) {
+    LOG(DFATAL) << "link_kind is too long: " << link_kind;
+  }
+  link_status_.kind = link_kind;
+  RTNLAttrMap link_info_map;
+  link_info_map[IFLA_INFO_KIND] = ByteString{link_kind, true};
+  if (HasAttribute(IFLA_LINKINFO)) {
+    LOG(DFATAL) << "IFLA_LINKINFO has already been set.";
+  }
+  SetAttribute(IFLA_LINKINFO, PackAttrs(link_info_map));
+}
+
 // static
 std::string RTNLMessage::ModeToString(RTNLMessage::Mode mode) {
   switch (mode) {

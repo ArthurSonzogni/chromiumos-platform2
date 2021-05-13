@@ -554,4 +554,45 @@ TEST_F(RTNLHandlerTest, SetInterfaceMac) {
   StopRTNLHandler();
 }
 
+TEST_F(RTNLHandlerTest, AddInterfaceTest) {
+  StartRTNLHandler();
+  constexpr uint32_t kSequenceNumber = 123456;
+  constexpr int32_t kErrorNumber = 115;
+  const std::string kIfName = "wg0";
+  const std::string kIfType = "wireguard";
+  SetRequestSequence(kSequenceNumber);
+
+  ByteString msg_bytes;
+  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0))
+      .WillOnce([&](int, const void* buf, size_t len, int flags) {
+        msg_bytes = ByteString{reinterpret_cast<const char*>(buf), len};
+        return len;
+      });
+
+  base::RunLoop run_loop;
+
+  RTNLHandler::GetInstance()->AddInterface(
+      kIfName, kIfType,
+      base::BindOnce(
+          [](base::Closure callback, int32_t expected_error, int32_t error) {
+            EXPECT_EQ(expected_error, error);
+            callback.Run();
+          },
+          run_loop.QuitClosure(), kErrorNumber));
+
+  RTNLMessage sent_msg;
+  sent_msg.Decode(msg_bytes);
+  EXPECT_EQ(sent_msg.flags(),
+            NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK);
+  EXPECT_EQ(sent_msg.GetIflaIfname(), kIfName);
+  ASSERT_TRUE(sent_msg.link_status().kind.has_value());
+  EXPECT_EQ(sent_msg.link_status().kind.value(), kIfType);
+
+  ReturnError(kSequenceNumber, kErrorNumber);
+
+  run_loop.Run();
+
+  StopRTNLHandler();
+}
+
 }  // namespace shill
