@@ -309,7 +309,7 @@ bool JpegCompressorImpl::GenerateThumbnail(const void* image,
   // better than HW.
   return CompressImage(scaled_buffer.data(), thumbnail_width, thumbnail_height,
                        quality, nullptr, 0, out_buffer_size, out_buffer,
-                       out_data_size, true);
+                       out_data_size, false);
 }
 
 void JpegCompressorImpl::InitDestination(j_compress_ptr cinfo) {
