@@ -19,17 +19,18 @@ class SessionMonitor {
   explicit SessionMonitor(scoped_refptr<dbus::Bus> bus);
   SessionMonitor(const SessionMonitor&) = delete;
   SessionMonitor& operator=(const SessionMonitor&) = delete;
-  ~SessionMonitor() = default;
+  virtual ~SessionMonitor() = default;
 
   // Attaches a handler to be called whenever the session state changes.
   // A parameter value of |true| indicates a user is logging in, and |false|
   // indicates a user is logging out.
   void RegisterSessionStateHandler(base::RepeatingCallback<void(bool)> handler);
 
- private:
+ protected:
   // Handles the SessionStateChanged DBus signal.
   void OnSessionStateChanged(const std::string& state);
 
+ private:
   org::chromium::SessionManagerInterfaceProxy proxy_;
   base::RepeatingCallback<void(bool)> handler_;
   base::WeakPtrFactory<SessionMonitor> weak_ptr_factory_;

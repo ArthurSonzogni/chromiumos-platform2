@@ -14,6 +14,7 @@
 #include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <shill/dbus/client/fake_client.h>
@@ -90,6 +91,32 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
   patchpanel::TrafficCounter::Source ns_ts_;
   int ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_resp_;
+};
+
+class FakeFeaturesClient : public ChromeFeaturesServiceClient {
+ public:
+  explicit FakeFeaturesClient(bool enabled)
+      : ChromeFeaturesServiceClient(nullptr), enabled_(enabled) {}
+  void IsDNSProxyEnabled(
+      ChromeFeaturesServiceClient::IsFeatureEnabledCallback callback) override {
+    is_dnsproxy_enabled_called = true;
+    std::move(callback).Run(enabled_);
+  }
+
+  bool is_dnsproxy_enabled_called{false};
+
+ private:
+  bool enabled_;
+};
+
+class FakeSessionMonitor : public SessionMonitor {
+ public:
+  explicit FakeSessionMonitor(scoped_refptr<dbus::Bus> bus)
+      : SessionMonitor(bus) {}
+
+  void Login() { OnSessionStateChanged("started"); }
+
+  void Logout() { OnSessionStateChanged("stopping"); }
 };
 
 class MockResolver : public Resolver {
@@ -838,6 +865,130 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
   ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
   ipconfig.ipv6_dns_addresses = {"2620:fe::9", "2620:119:53::53"};
   proxy.UpdateNameServers(ipconfig);
+}
+
+TEST_F(ProxyTest, FeatureEnablementCheckedOnSetup) {
+  scoped_refptr<dbus::MockObjectProxy> mock = new dbus::MockObjectProxy(
+      mock_bus_.get(), shill::kFlimflamServiceName, dbus::ObjectPath("/"));
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
+      .WillRepeatedly(Return(mock.get()));
+
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.session_.reset(new FakeSessionMonitor(mock_bus_));
+  auto features = std::make_unique<FakeFeaturesClient>(true);
+  auto* features_ptr = features.get();
+  proxy.features_ = std::move(features);
+  ASSERT_FALSE(features_ptr->is_dnsproxy_enabled_called);
+  proxy.Setup();
+  EXPECT_TRUE(features_ptr->is_dnsproxy_enabled_called);
+}
+
+TEST_F(ProxyTest, LoginEventTriggersFeatureCheck) {
+  scoped_refptr<dbus::MockObjectProxy> mock = new dbus::MockObjectProxy(
+      mock_bus_.get(), shill::kFlimflamServiceName, dbus::ObjectPath("/"));
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
+      .WillRepeatedly(Return(mock.get()));
+
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  auto session = std::make_unique<FakeSessionMonitor>(mock_bus_);
+  auto* session_ptr = session.get();
+  proxy.session_ = std::move(session);
+  auto features = std::make_unique<FakeFeaturesClient>(true);
+  auto* features_ptr = features.get();
+  proxy.features_ = std::move(features);
+  proxy.Setup();
+  features_ptr->is_dnsproxy_enabled_called = false;
+  session_ptr->Login();
+  EXPECT_TRUE(features_ptr->is_dnsproxy_enabled_called);
+}
+
+TEST_F(ProxyTest, LogoutEventTriggersDisable) {
+  scoped_refptr<dbus::MockObjectProxy> mock = new dbus::MockObjectProxy(
+      mock_bus_.get(), shill::kFlimflamServiceName, dbus::ObjectPath("/"));
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
+      .WillRepeatedly(Return(mock.get()));
+
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  auto session = std::make_unique<FakeSessionMonitor>(mock_bus_);
+  auto* session_ptr = session.get();
+  proxy.session_ = std::move(session);
+  proxy.features_.reset(new FakeFeaturesClient(true));
+  proxy.Setup();
+  ASSERT_TRUE(proxy.feature_enabled_);
+  session_ptr->Logout();
+  EXPECT_FALSE(proxy.feature_enabled_);
+}
+
+TEST_F(ProxyTest, FeatureEnabled_LoginAfterLogout) {
+  scoped_refptr<dbus::MockObjectProxy> mock = new dbus::MockObjectProxy(
+      mock_bus_.get(), shill::kFlimflamServiceName, dbus::ObjectPath("/"));
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
+      .WillRepeatedly(Return(mock.get()));
+
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  auto session = std::make_unique<FakeSessionMonitor>(mock_bus_);
+  auto* session_ptr = session.get();
+  proxy.session_ = std::move(session);
+  proxy.features_.reset(new FakeFeaturesClient(true));
+  proxy.Setup();
+  session_ptr->Login();
+  EXPECT_TRUE(proxy.feature_enabled_);
+  session_ptr->Logout();
+  EXPECT_FALSE(proxy.feature_enabled_);
+  session_ptr->Login();
+  EXPECT_TRUE(proxy.feature_enabled_);
+}
+
+TEST_F(ProxyTest, FeatureDisabled_LoginAfterLogout) {
+  scoped_refptr<dbus::MockObjectProxy> mock = new dbus::MockObjectProxy(
+      mock_bus_.get(), shill::kFlimflamServiceName, dbus::ObjectPath("/"));
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
+      .WillRepeatedly(Return(mock.get()));
+
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  auto session = std::make_unique<FakeSessionMonitor>(mock_bus_);
+  auto* session_ptr = session.get();
+  proxy.session_ = std::move(session);
+  proxy.features_.reset(new FakeFeaturesClient(false));
+  proxy.Setup();
+  session_ptr->Login();
+  EXPECT_FALSE(proxy.feature_enabled_);
+  session_ptr->Logout();
+  EXPECT_FALSE(proxy.feature_enabled_);
+  session_ptr->Login();
+  EXPECT_FALSE(proxy.feature_enabled_);
+}
+
+TEST_F(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled) {
+  scoped_refptr<dbus::MockObjectProxy> mock = new dbus::MockObjectProxy(
+      mock_bus_.get(), shill::kFlimflamServiceName, dbus::ObjectPath("/"));
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
+      .WillRepeatedly(Return(mock.get()));
+
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.session_.reset(new FakeSessionMonitor(mock_bus_));
+  proxy.features_.reset(new FakeFeaturesClient(false));
+  proxy.Setup();
+
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  shill::Client::Device dev;
+  dev.state = shill::Client::Device::ConnectionState::kOnline;
+  EXPECT_CALL(*mock_resolver, SetNameServers(_));
+  EXPECT_CALL(mock_manager_,
+              SetProperty(shill::kDNSProxyIPv4AddressProperty, _, _, _))
+      .Times(0);
+  proxy.OnDefaultDeviceChanged(&dev);
 }
 
 }  // namespace dns_proxy

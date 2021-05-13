@@ -20,7 +20,9 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/dbus/client/client.h>
 
+#include "dns-proxy/chrome_features_service_client.h"
 #include "dns-proxy/resolver.h"
+#include "dns-proxy/session_monitor.h"
 
 namespace dns_proxy {
 
@@ -100,6 +102,15 @@ class Proxy : public brillo::DBusDaemon {
   void OnShillReady(bool success);
   void OnShillReset(bool reset);
 
+  // Triggered by the session monitor whenever the user logs in or out.
+  void OnSessionStateChanged(bool login);
+
+  // Triggered by the Chrome features client in response to checking the status
+  // of the DNSProxyEnabled feature value.
+  void OnFeatureEnabled(base::Optional<bool> enabled);
+  void Enable();
+  void Disable();
+
   // Triggered whenever the device attached to the default network changes.
   // |device| can be null and indicates the default service is disconnected.
   void OnDefaultDeviceChanged(const shill::Client::Device* const device);
@@ -155,11 +166,19 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAlwaysOnMode);
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAutomaticMode);
   FRIEND_TEST(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode);
+  FRIEND_TEST(ProxyTest, FeatureEnablementCheckedOnSetup);
+  FRIEND_TEST(ProxyTest, LoginEventTriggersFeatureCheck);
+  FRIEND_TEST(ProxyTest, LogoutEventTriggersDisable);
+  FRIEND_TEST(ProxyTest, FeatureEnabled_LoginAfterLogout);
+  FRIEND_TEST(ProxyTest, FeatureDisabled_LoginAfterLogout);
+  FRIEND_TEST(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<shill::Client::ManagerPropertyAccessor> shill_props_;
+  std::unique_ptr<ChromeFeaturesServiceClient> features_;
+  std::unique_ptr<SessionMonitor> session_;
 
   base::ScopedFD ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_;
@@ -167,6 +186,7 @@ class Proxy : public brillo::DBusDaemon {
   DoHConfig doh_config_;
   std::unique_ptr<shill::Client::Device> device_;
 
+  bool feature_enabled_{false};
   base::WeakPtrFactory<Proxy> weak_factory_{this};
 };
 

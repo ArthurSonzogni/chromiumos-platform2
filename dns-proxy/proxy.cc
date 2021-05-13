@@ -87,12 +87,14 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
 
 Proxy::Proxy(const Proxy::Options& opts) : opts_(opts) {}
 
+// This ctor is only used for testing.
 Proxy::Proxy(const Options& opts,
              std::unique_ptr<patchpanel::Client> patchpanel,
              std::unique_ptr<shill::Client> shill)
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
-      shill_(std::move(shill)) {}
+      shill_(std::move(shill)),
+      feature_enabled_(true) {}
 
 Proxy::~Proxy() {
   if (bus_)
@@ -115,13 +117,28 @@ void Proxy::OnShutdown(int*) {
 }
 
 void Proxy::Setup() {
-  // This is only to account for the injected client for testing.
+  if (!session_) {
+    session_ = std::make_unique<SessionMonitor>(bus_);
+  }
+  session_->RegisterSessionStateHandler(base::BindRepeating(
+      &Proxy::OnSessionStateChanged, weak_factory_.GetWeakPtr()));
+
+  if (!features_) {
+    features_ = ChromeFeaturesServiceClient::New(bus_);
+
+    if (!features_) {
+      LOG(DFATAL) << "Failed to initialize Chrome features client";
+      return;
+    }
+  }
+  features_->IsDNSProxyEnabled(
+      base::BindOnce(&Proxy::OnFeatureEnabled, weak_factory_.GetWeakPtr()));
+
   if (!patchpanel_)
     patchpanel_ = patchpanel::Client::New();
 
   CHECK(patchpanel_) << "Failed to initialize patchpanel client";
 
-  // This is only to account for the injected client for testing.
   if (!shill_)
     shill_.reset(new shill::Client(bus_));
 
@@ -207,7 +224,52 @@ void Proxy::OnShillReset(bool reset) {
   // rediscovering the default device.
   // TODO(garrick): Remove this if so.
   LOG(WARNING) << "Shill has been reset";
+  if (ns_fd_.is_valid())
+    SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+}
+
+void Proxy::OnSessionStateChanged(bool login) {
+  if (login) {
+    features_->IsDNSProxyEnabled(
+        base::BindOnce(&Proxy::OnFeatureEnabled, weak_factory_.GetWeakPtr()));
+    return;
+  }
+
+  LOG(INFO) << "Service disabled by user logout";
+  Disable();
+}
+
+void Proxy::OnFeatureEnabled(base::Optional<bool> enabled) {
+  if (!enabled.has_value()) {
+    LOG(ERROR) << "Failed to read feature flag - service will be disabled.";
+    Disable();
+    return;
+  }
+
+  if (enabled.value()) {
+    LOG(INFO) << "Service enabled by feature flag";
+    Enable();
+  } else {
+    LOG(INFO) << "Service disabled by feature flag";
+    Disable();
+  }
+}
+
+void Proxy::Enable() {
+  feature_enabled_ = true;
+  if (!ns_fd_.is_valid())
+    return;
+
   SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+  // TODO(garrick, jasongustaman): Setup routing redirection.
+}
+
+void Proxy::Disable() {
+  if (feature_enabled_ && opts_.type == Type::kSystem && ns_fd_.is_valid()) {
+    SetShillProperty("");
+  }
+  // TODO(garrick, jasongustaman): Teardown routing redirection.
+  feature_enabled_ = false;
 }
 
 std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
@@ -402,6 +464,11 @@ void Proxy::SetShillProperty(const std::string& addr,
     LOG(DFATAL) << "Must be called from system proxy only";
     return;
   }
+
+  // When disabled, block any attempt to set this property in shill which will
+  // cause system DNS to start to flow in.
+  if (!feature_enabled_)
+    return;
 
   if (num_retries == 0) {
     LOG(ERROR) << "Maximum number of retries exceeding attempt to"

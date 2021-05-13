@@ -27,6 +27,7 @@ class ChromeFeaturesServiceClient {
   ChromeFeaturesServiceClient(const ChromeFeaturesServiceClient&) = delete;
   ChromeFeaturesServiceClient& operator=(const ChromeFeaturesServiceClient&) =
       delete;
+  virtual ~ChromeFeaturesServiceClient() = default;
 
   // Async call to check whether given feature is enabled. |enabled| is
   // base::nullopt if there is error calling the service. Otherwise,
@@ -36,7 +37,7 @@ class ChromeFeaturesServiceClient {
 
   // Checks the Chrome Features service to determine whether or not the
   // dns-proxy service is enabled.
-  void IsDNSProxyEnabled(IsFeatureEnabledCallback callback);
+  virtual void IsDNSProxyEnabled(IsFeatureEnabledCallback callback);
 
  private:
   void OnWaitForServiceAndCallMethod(const std::string& method_name,
