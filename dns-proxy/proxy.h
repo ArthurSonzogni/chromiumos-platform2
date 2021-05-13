@@ -131,6 +131,9 @@ class Proxy : public brillo::DBusDaemon {
 
   void MaybeCreateResolver();
   void UpdateNameServers(const shill::Client::IPConfig& ipconfig);
+
+  // Update DoH providers. If proxy is the default proxy and VPN is connected,
+  // DoH is disabled. Force the provider to always be empty.
   void OnDoHProvidersChanged(const brillo::Any& value);
 
   // Notified by patchpanel whenever a change occurs in one of its virtual
@@ -192,6 +195,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, FeatureEnabled_LoginAfterLogout);
   FRIEND_TEST(ProxyTest, FeatureDisabled_LoginAfterLogout);
   FRIEND_TEST(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled);
+  FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule);
   FRIEND_TEST(ProxyTest,
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);

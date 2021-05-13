@@ -1075,6 +1075,23 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled) {
   proxy.OnDefaultDeviceChanged(&dev);
 }
 
+TEST_F(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, PatchpanelClient(),
+              ShillClient());
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
+  proxy.device_->type = shill::Client::Device::Type::kVPN;
+  auto resolver = std::make_unique<MockResolver>();
+  MockResolver* mock_resolver = resolver.get();
+  proxy.resolver_ = std::move(resolver);
+  proxy.doh_config_.set_resolver(mock_resolver);
+  EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
+  brillo::VariantDictionary props;
+  props["https://dns.google.com"] = std::string("");
+  props["https://doh.opendns.com"] = std::string("");
+  proxy.OnDoHProvidersChanged(props);
+}
+
 TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
