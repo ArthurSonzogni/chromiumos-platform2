@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MINIOS_SCREEN_BASE_H_
-#define MINIOS_SCREEN_BASE_H_
+#ifndef MINIOS_DRAW_UTILS_H_
+#define MINIOS_DRAW_UTILS_H_
 
 #include <string>
 #include <vector>
@@ -155,4 +155,4 @@ class ScreenBase {
 
 }  // namespace minios
 
-#endif  // MINIOS_SCREEN_BASE_H_
+#endif  // MINIOS_DRAW_UTILS_H_

@@ -13,11 +13,11 @@
 
 #include <gtest/gtest_prod.h>
 
+#include "minios/draw_utils.h"
 #include "minios/key_reader.h"
 #include "minios/network_manager_interface.h"
 #include "minios/process_manager.h"
 #include "minios/recovery_installer.h"
-#include "minios/screen_base.h"
 #include "minios/update_engine_proxy.h"
 
 namespace minios {
