@@ -1427,8 +1427,11 @@ void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
   LOG(INFO) << "SetPrimarySimSlot: " << slot_id << " (index=" << slot << ")";
   modem_proxy_->SetPrimarySimSlot(
       slot_id, base::Bind([](const Error& error) {
-        if (error.IsFailure())
+        if (error.IsFailure()) {
           LOG(ERROR) << "Error Setting Primary SIM slot: " << error;
+        } else {
+          LOG(INFO) << "SetPrimarySimSlot Completed.";
+        }
       }),
       kTimeoutDefault);
 }

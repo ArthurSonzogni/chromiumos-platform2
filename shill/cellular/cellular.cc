@@ -683,7 +683,8 @@ void Cellular::SetServiceState(Service::ConnectState state) {
 }
 
 void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
-  ConnectToPendingFailed(Service::kFailureUnknown);
+  LOG(WARNING) << __func__ << ": "
+               << Service::ConnectFailureToString(failure_state);
   if (ppp_device_) {
     ppp_device_->SetServiceFailure(failure_state);
   } else if (selected_service()) {
@@ -696,7 +697,8 @@ void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
 }
 
 void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
-  ConnectToPendingFailed(Service::kFailureUnknown);
+  SLOG(this, 2) << __func__ << ": "
+                << Service::ConnectFailureToString(failure_state);
   if (ppp_device_) {
     ppp_device_->SetServiceFailureSilent(failure_state);
   } else if (selected_service()) {
@@ -1711,11 +1713,20 @@ void Cellular::SetPendingConnect(const std::string& iccid) {
       service_->SetFailure(Service::kFailureDisconnect);
   }
 
-  if (!iccid.empty())
-    SLOG(this, 1) << "Set Pending connect: " << iccid;
-  connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
   connect_pending_iccid_ = iccid;
+
+  if (iccid.empty())
+    return;
+
+  SLOG(this, 1) << "Set Pending connect: " << iccid;
+  // Pending connect requests may fail, e.g. a SIM slot change may fail or
+  // registration may fail for an inactive eSIM profile. Set a timeout to
+  // cancel the pending connect and inform the UI.
+  connect_cancel_callback_.Reset(base::Bind(&Cellular::ConnectToPendingCancel,
+                                            weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(FROM_HERE, connect_cancel_callback_.callback(),
+                                kPendingConnectCancelMilliseconds);
 }
 
 void Cellular::ConnectToPending() {
@@ -1745,18 +1756,10 @@ void Cellular::ConnectToPending() {
   }
   // Normally the Modem becomes Registered immediately after becoming enabled.
   // For eSIM this is not always true so we need to wait for the Modem to
-  // become registered. However, Registration may fail (e.g. for an inactive
-  // eSIM profile), so we also need to set a timeout.
+  // become registered.
   // TODO(b/186482862): Fix this behavior in ModemManager.
   if (state_ == kStateEnabled && modem_state_ == kModemStateEnabled) {
-    if (!connect_cancel_callback_.IsCancelled())
-      return;
     LOG(WARNING) << __func__ << ": Waiting for Modem registration.";
-    connect_cancel_callback_.Reset(base::Bind(&Cellular::ConnectToPendingCancel,
-                                              weak_ptr_factory_.GetWeakPtr()));
-    dispatcher()->PostDelayedTask(FROM_HERE,
-                                  connect_cancel_callback_.callback(),
-                                  kPendingConnectCancelMilliseconds);
     return;
   }
   if (!StateIsRegistered()) {
@@ -1766,7 +1769,8 @@ void Cellular::ConnectToPending() {
     return;
   }
   if (modem_state_ != kModemStateRegistered) {
-    LOG(WARNING) << __func__ << ": Modem not registered";
+    LOG(WARNING) << __func__ << ": Modem not registered, State: "
+                 << GetModemStateString(modem_state_);
     ConnectToPendingFailed(Service::kFailureNotRegistered);
     return;
   }
@@ -1811,9 +1815,12 @@ void Cellular::ConnectToPendingAfterDelay() {
 }
 
 void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
-  if (!connect_pending_iccid_.empty() && service_ &&
-      service_->iccid() == connect_pending_iccid_) {
-    service_->SetFailure(failure);
+  if (!connect_pending_iccid_.empty()) {
+    CellularServiceRefPtr service =
+        manager()->cellular_service_provider()->FindService(
+            connect_pending_iccid_);
+    if (service)
+      service->SetFailure(failure);
   }
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();

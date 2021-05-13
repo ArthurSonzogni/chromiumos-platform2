@@ -150,11 +150,13 @@ void ModemProxy::SetPrimarySimSlot(uint32_t slot,
                                    const ResultCallback& callback,
                                    int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << slot;
-  brillo::ErrorPtr dbus_error;
-  proxy_->SetPrimarySimSlot(slot, &dbus_error, timeout);
-  Error error;
-  CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &error);
-  callback.Run(error);
+  proxy_->SetPrimarySimSlotAsync(
+      slot,
+      base::Bind(&ModemProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
+                 callback, __func__),
+      base::Bind(&ModemProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
+                 callback, __func__),
+      timeout);
 }
 
 void ModemProxy::Command(const std::string& cmd,
