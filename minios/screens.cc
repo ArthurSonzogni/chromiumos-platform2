@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/draw_utils.h"
 #include "minios/screens.h"
 
 #include <algorithm>
@@ -18,12 +19,6 @@
 
 namespace minios {
 
-const char kScreens[] = "etc/screens";
-
-// Colors.
-const char kMenuDropdownFrameNavy[] = "0x435066";
-const char kMenuDropdownBackgroundBlack[] = "0x2D2E30";
-
 // Key values.
 const int kKeyUp = 103;
 const int kKeyDown = 108;
@@ -31,10 +26,6 @@ const int kKeyEnter = 28;
 const int kKeyVolUp = 115;
 const int kKeyVolDown = 114;
 const int kKeyPower = 116;
-
-// Key state parameters.
-const int kFdsMax = 10;
-const int kKeyMax = 200;
 
 namespace {
 // Buttons Spacing
@@ -48,7 +39,7 @@ constexpr char kLogPath[] = "/var/log/messages";
 }  // namespace
 
 bool Screens::Init() {
-  CheckDetachable();
+  IsDetachable();
   CheckRightToLeft();
   GetVpdRegion();
   ReadHardwareId();
@@ -59,6 +50,9 @@ bool Screens::Init() {
   if (!ReadLangConstants()) {
     return false;
   }
+
+  // Add size of language dropdown menu using the number of locales.
+  menu_count_[ScreenType::kLanguageDropDownScreen] = GetSupportedLocalesSize();
 
   std::vector<int> wait_keys;
   if (!is_detachable_)
@@ -83,14 +77,14 @@ void Screens::StartMiniOsFlow() {
   return ShowMiniOsWelcomeScreen();
 }
 
-void Screens::ShowLanguageDropdown() {
+void DrawUtils::ShowLanguageDropdown(int current_index) {
   constexpr int kItemHeight = 40;
   const int kItemPerPage = (frecon_canvas_size_ - 260) / kItemHeight;
 
   // Pick begin index such that the selected index is centered on the screen if
   // possible.
   int begin_index =
-      std::clamp(index_ - kItemPerPage / 2, 0,
+      std::clamp(current_index - kItemPerPage / 2, 0,
                  static_cast<int>(supported_locales_.size()) - kItemPerPage);
 
   int offset_y = -frecon_canvas_size_ / 2 + 88;
@@ -107,7 +101,7 @@ void Screens::ShowLanguageDropdown() {
     int lang_x = -frecon_canvas_size_ / 2 + language_width / 2 + 40;
 
     // This is the currently selected language. Show in blue.
-    if (index_ == i) {
+    if (current_index == i) {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
       ShowImage(screens_path_.Append(supported_locales_[i])
                     .Append("language_focused.png"),
@@ -125,23 +119,11 @@ void Screens::ShowLanguageDropdown() {
 
 void Screens::LanguageMenuOnSelect() {
   ShowLanguageMenu(false);
-
-  // Find index of current locale to show in the dropdown.
-  index_ = std::distance(
-      supported_locales_.begin(),
-      std::find(supported_locales_.begin(), supported_locales_.end(), locale_));
-  if (index_ == supported_locales_.size()) {
-    // Default to en-US.
-    index_ = 9;
-    LOG(WARNING) << " Could not find an index to match current locale "
-                 << locale_ << ". Defaulting to index " << index_ << " for  "
-                 << supported_locales_[index_];
-  }
-
-  ShowLanguageDropdown();
+  int start_index = FindLocaleIndex(index_);
+  ShowLanguageDropdown(start_index);
 }
 
-void Screens::ShowLanguageMenu(bool is_selected) {
+void DrawUtils::ShowLanguageMenu(bool is_selected) {
   const int kOffsetY = -frecon_canvas_size_ / 2 + 40;
   const int kBgX = -frecon_canvas_size_ / 2 + 145;
   const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
@@ -165,7 +147,7 @@ void Screens::ShowLanguageMenu(bool is_selected) {
   ShowMessage("language_folded", kTextX, kOffsetY);
 }
 
-void Screens::ShowFooter() {
+void DrawUtils::ShowFooter() {
   constexpr int kQrCodeSize = 86;
   const int kQrCodeX = (-frecon_canvas_size_ / 2) + (kQrCodeSize / 2);
   const int kQrCodeY = (frecon_canvas_size_ / 2) - (kQrCodeSize / 2) - 56;
@@ -228,7 +210,7 @@ void Screens::ShowFooter() {
   ShowBox(kSeparatorX, kSeparatorY, 1, kQrCodeSize, kMenuGrey);
 }
 
-void Screens::MessageBaseScreen() {
+void DrawUtils::MessageBaseScreen() {
   ClearMainArea();
   ShowLanguageMenu(false);
   ShowFooter();
@@ -406,7 +388,7 @@ void Screens::UpdateButtons(int menu_count, int key, bool* enter) {
   index_ = starting_index;
 }
 
-bool Screens::ReadLangConstants() {
+bool DrawUtils::ReadLangConstants() {
   lang_constants_.clear();
   supported_locales_.clear();
   // Read language widths from lang_constants.sh into memory.
@@ -439,9 +421,6 @@ bool Screens::ReadLangConstants() {
     }
   }
 
-  // Add size of language dropdown menu using the number of locales.
-  menu_count_[ScreenType::kLanguageDropDownScreen] = supported_locales_.size();
-
   if (supported_locales_.empty()) {
     LOG(ERROR) << "Unable to get supported locales. Will not be able to "
                   "change locale.";
@@ -450,7 +429,7 @@ bool Screens::ReadLangConstants() {
   return true;
 }
 
-bool Screens::GetLangConstants(const std::string& locale, int* lang_width) {
+bool DrawUtils::GetLangConstants(const std::string& locale, int* lang_width) {
   if (lang_constants_.empty()) {
     LOG(ERROR) << "No language widths available.";
     return false;
@@ -475,18 +454,16 @@ bool Screens::GetLangConstants(const std::string& locale, int* lang_width) {
   return false;
 }
 
-void Screens::OnLocaleChange() {
+void DrawUtils::LocaleChange(int selected_locale) {
   // Change locale and update constants.
-  locale_ = supported_locales_[index_];
+  locale_ = supported_locales_[selected_locale];
   CheckRightToLeft();
   ReadDimensionConstants();
   ClearScreen();
   ShowFooter();
-  // Reset index state to go back to the MiniOs flow.
-  index_ = 1;
 }
 
-void Screens::ShowCollapsedNetworkDropDown(bool is_selected) {
+void DrawUtils::ShowCollapsedNetworkDropDown(bool is_selected) {
   const int kOffsetY = -frecon_canvas_size_ / 2 + 350;
   const int kBgX = -frecon_canvas_size_ / 2 + 145;
   const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
@@ -542,17 +519,18 @@ void Screens::ShowNetworkDropdown() {
   }
 }
 
-void Screens::CheckRightToLeft() {
+void DrawUtils::CheckRightToLeft() {
   // TODO(vyshu): Create an unblocked_terms.txt to allow "he" for Hebrew.
   right_to_left_ = (locale_ == "ar" || locale_ == "fa" || locale_ == "he");
 }
 
-void Screens::CheckDetachable() {
+bool DrawUtils::IsDetachable() {
   is_detachable_ =
       base::PathExists(root_.Append("etc/cros-initramfs/is_detachable"));
+  return is_detachable_;
 }
 
-void Screens::GetVpdRegion() {
+void DrawUtils::GetVpdRegion() {
   if (ReadFileToString(root_.Append("sys/firmware/vpd/ro/region"),
                        &vpd_region_)) {
     return;
@@ -571,7 +549,7 @@ void Screens::GetVpdRegion() {
   return;
 }
 
-void Screens::ReadHardwareId() {
+void DrawUtils::ReadHardwareId() {
   int exit_code = 0;
   std::string output, error;
   if (!process_manager_->RunCommandWithOutput({"/bin/crossystem", "hwid"},
@@ -730,7 +708,8 @@ void Screens::SwitchScreen(bool enter) {
     case ScreenType::kLanguageDropDownScreen:
       if (enter) {
         current_screen_ = previous_screen_;
-        OnLocaleChange();
+        LocaleChange(index_);
+        index_ = 1;
         SwitchScreen(false);
         return;
       }
@@ -825,7 +804,7 @@ void Screens::ShowNewScreen() {
       ShowMiniOsGetPasswordScreen();
       break;
     case ScreenType::kLanguageDropDownScreen:
-      ShowLanguageDropdown();
+      ShowLanguageDropdown(index_);
       break;
     case ScreenType::kWaitForConnection:
       ShowWaitingForConnectionScreen();

@@ -334,14 +334,12 @@ TEST_F(ScreensTest, CheckRightToLeft) {
 }
 
 TEST_F(ScreensTest, CheckDetachable) {
-  screens_.CheckDetachable();
-
-  EXPECT_FALSE(screens_.is_detachable_);
+  EXPECT_FALSE(screens_.IsDetachable());
 
   brillo::TouchFile(
       base::FilePath(test_root_).Append("etc/cros-initramfs/is_detachable"));
-  screens_.CheckDetachable();
-  EXPECT_TRUE(screens_.is_detachable_);
+
+  EXPECT_TRUE(screens_.IsDetachable());
 }
 
 TEST_F(ScreensTest, GetVpdFromFile) {
@@ -529,7 +527,7 @@ class MockScreens : public Screens {
   MOCK_METHOD(void, ShowNewScreen, ());
   MOCK_METHOD(void, LanguageMenuOnSelect, ());
   MOCK_METHOD(void, GetPassword, ());
-  MOCK_METHOD(void, OnLocaleChange, ());
+  MOCK_METHOD(void, LocaleChange, (int LocaleChange));
   MOCK_METHOD(void, ShowMiniOsCompleteScreen, ());
   MOCK_METHOD(void, UpdateNetworkList, ());
 };
@@ -779,7 +777,7 @@ TEST_F(ScreensTestMocks, ScreenFlowLanguage) {
             mock_screens_.GetScreenForTest());
 
   // Select language from menu, make changes, and return to previous screen.
-  EXPECT_CALL(mock_screens_, OnLocaleChange());
+  EXPECT_CALL(mock_screens_, LocaleChange(_));
   EXPECT_CALL(mock_screens_, ShowNewScreen());
   mock_screens_.SwitchScreen(true);
   EXPECT_EQ(ScreenType::kWelcomeScreen, mock_screens_.GetScreenForTest());

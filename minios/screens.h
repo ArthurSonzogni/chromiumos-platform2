@@ -17,17 +17,10 @@
 #include "minios/draw_utils.h"
 #include "minios/key_reader.h"
 #include "minios/network_manager_interface.h"
-#include "minios/process_manager.h"
 #include "minios/recovery_installer.h"
 #include "minios/update_engine_proxy.h"
 
 namespace minios {
-
-extern const char kScreens[];
-
-// Dropdown Menu Colors.
-extern const char kMenuDropdownFrameNavy[];
-extern const char kMenuDropdownBackgroundBlack[];
 
 // Key values.
 extern const int kKeyUp;
@@ -37,37 +30,10 @@ extern const int kKeyVolUp;
 extern const int kKeyVolDown;
 extern const int kKeyPower;
 
-// Key state parameters.
-extern const int kFdsMax;
-extern const int kKeyMax;
-
-// All the different screens in the MiniOs Flow. `kDownloadError` is shown when
-// there is an Update Engine failure, `kNetworkError` is shown when there is an
-// issue getting the networks. `kPasswordError` and `kConnectionError` are shown
-// upon failures connecting to a chosen network.
-enum class ScreenType {
-  kWelcomeScreen = 0,
-  kNetworkDropDownScreen = 1,
-  kExpandedNetworkDropDownScreen = 2,
-  kPasswordScreen = 3,
-  kLanguageDropDownScreen = 4,
-  kWaitForConnection = 5,
-  kUserPermissionScreen = 6,
-  kStartDownload = 7,
-  kDownloadError = 8,
-  kNetworkError = 9,
-  kPasswordError = 10,
-  kConnectionError = 11,
-  kGeneralError = 12,
-  kDebugOptionsScreen = 13,
-  kLogScreen = 14,
-};
-
 // Screens contains the different MiniOs Screens as well as specific components
-// such as dropdowns and footers which are built using the pieces of
-// ScreenBase.
+// which are built using the pieces of `DrawUtils`.
 
-class Screens : public ScreenBase,
+class Screens : public DrawUtils,
                 public KeyReader::Delegate,
                 public UpdateEngineProxy::UpdaterDelegate,
                 public NetworkManagerInterface::Observer {
@@ -77,7 +43,7 @@ class Screens : public ScreenBase,
       std::unique_ptr<RecoveryInstallerInterface> recovery_installer,
       std::shared_ptr<NetworkManagerInterface> network_manager,
       std::shared_ptr<UpdateEngineProxy> update_engine_proxy)
-      : process_manager_(process_manager),
+      : DrawUtils(process_manager),
         recovery_installer_(std::move(recovery_installer)),
         network_manager_(network_manager),
         update_engine_proxy_(update_engine_proxy),
@@ -102,32 +68,13 @@ class Screens : public ScreenBase,
   // arrow keys.
   void StartMiniOsFlow();
 
-  // Shows the list of all supported locales with the currently selected index
-  // highlighted blue. Users can 'scroll' using the up and down arrow keys.
-  void ShowLanguageDropdown();
-
   // Waits for key input and repaints the screen with a changed language
   // selection, clears the whole screen including the footer and updates the
   // language dependent constants. Returns to original screen after selection,
   virtual void LanguageMenuOnSelect();
 
-  // Shows language menu drop down button on base screen. Button is highlighted
-  // if it is currently selected.
-  void ShowLanguageMenu(bool is_selected);
-
-  // Shows footer with basic instructions and chromebook model.
-  void ShowFooter();
-
-  // Clears screen and shows footer and language drop down menu.
-  void MessageBaseScreen();
-
   // Shows a list of all available networks.
   void ShowNetworkDropdown();
-
-  // Shows network menu drop down button on the screen. Button is
-  // highlighted if it is currently selected. Selecting this button directs to
-  // the expanded network dropdown.
-  void ShowCollapsedNetworkDropDown(bool is_selected);
 
   // Queries list of available networks and shows them as a drop down. On
   // selection sets the 'chosen_network' and redirects to the password
@@ -178,6 +125,7 @@ class Screens : public ScreenBase,
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardBadKeyboardFormat);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboard);
+  FRIEND_TEST(ScreensTestMocks, ShowFooter);
   FRIEND_TEST(ScreensTestMocks, OnKeyPress);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineError);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineProgressComplete);
@@ -200,14 +148,6 @@ class Screens : public ScreenBase,
   // ignored and index is kept within the range of menu items.
   void UpdateButtons(int menu_count, int key, bool* enter);
 
-  // Read the language constants into memory. Does not change
-  // based on the current locale. Returns false on failure.
-  bool ReadLangConstants();
-
-  // Sets the width of language token for a given locale. Returns false on
-  // error.
-  bool GetLangConstants(const std::string& locale, int* lang_width);
-
   // This function overloads Delegate. It is only called when the key is valid
   // and updates the key state for the given fd and key. Calls `SwitchState` to
   // update the flow once key is recorded as being pressed and released.
@@ -227,10 +167,6 @@ class Screens : public ScreenBase,
   // Calls `GetNetworks` to update the the list of networks.
   virtual void UpdateNetworkList();
 
-  // Does all the reloading needed when the locale is changed, including
-  // repainting the screen. Called after `LanguageDropdown` is done.
-  virtual void OnLocaleChange();
-
   // Calls the show screen function of `current_screen`.
   virtual void ShowNewScreen();
 
@@ -245,19 +181,6 @@ class Screens : public ScreenBase,
   virtual void ShowMiniOsCompleteScreen();
   void ShowMiniOsDebugOptionsScreen();
   void ShowMiniOsLogScreen();
-
-  // Checks whether the current language is read from right to left. Must be
-  // updated every time the language changes.
-  void CheckRightToLeft();
-
-  // Checks whether device has a detachable keyboard and sets `is_detachable`.
-  void CheckDetachable();
-
-  // Get region from VPD. Set vpd_region_ to US as default.
-  void GetVpdRegion();
-
-  // Get hardware Id from crossystem. Set hwid to `CHROMEBOOK` as default.
-  void ReadHardwareId();
 
   // Get XKB keyboard layout based on the VPD region. Return false on error.
   bool MapRegionToKeyboard(std::string* xkb_keyboard_layout);
@@ -276,8 +199,6 @@ class Screens : public ScreenBase,
   void UpdateLogScreenButtons();
   void UpdateLogArea();
 
-  ProcessManagerInterface* process_manager_;
-
   std::unique_ptr<RecoveryInstallerInterface> recovery_installer_;
 
   KeyReader key_reader_ = KeyReader(/*include_usb=*/true);
@@ -286,27 +207,11 @@ class Screens : public ScreenBase,
 
   std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
 
-  // Whether the device has a detachable keyboard.
-  bool is_detachable_{false};
-
-  // Key value pairs that store language widths.
-  base::StringPairs lang_constants_;
-
-  // List of all supported locales.
-  std::vector<std::string> supported_locales_;
-
   // List of currently available networks.
   std::vector<std::string> network_list_;
 
   // The networks the user has picked from the menu.
   std::string chosen_network_;
-
-  // Hardware Id read from crossystem.
-  std::string hwid_;
-
-  // Region code read from VPD. Used to determine keyboard layout. Does not
-  // change based on selected locale.
-  std::string vpd_region_;
 
   // Records the key press for each fd and key, where the index of the fd is the
   // row and the key code the column. Resets to false after key is released.

@@ -13,10 +13,12 @@
 
 namespace minios {
 
-// Colors
+// Dropdown Menu Colors.
 const char kMenuBlack[] = "0x202124";
 const char kMenuBlue[] = "0x8AB4F8";
 const char kMenuGrey[] = "0x3F4042";
+const char kMenuDropdownFrameNavy[] = "0x435066";
+const char kMenuDropdownBackgroundBlack[] = "0x2D2E30";
 const char kMenuButtonFrameGrey[] = "0x9AA0A6";
 
 // Dimension Constants
@@ -35,8 +37,13 @@ const int kLogCharPerLine = 111;
 const int kLogLinesPerPage = 20;
 
 // Frecon constants
+constexpr char kScreens[] = "etc/screens";
 constexpr int kFreconScalingFactor = 1;
 constexpr int kCanvasSize = 1080;
+
+// Key state parameters.
+const int kFdsMax = 10;
+const int kKeyMax = 200;
 
 namespace {
 constexpr char kConsole0[] = "dev/pts/0";
@@ -46,12 +53,15 @@ constexpr int kDefaultButtonWidth = 80;
 constexpr int kNewLineChar = 10;
 
 constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
+
+// The index for en-US in `supported_locales`.
+constexpr int kEnglishIndex = 9;
 }  // namespace
 
-bool ScreenBase::ShowText(const std::string& text,
-                          int glyph_offset_h,
-                          int glyph_offset_v,
-                          const std::string& color) {
+bool DrawUtils::ShowText(const std::string& text,
+                         int glyph_offset_h,
+                         int glyph_offset_v,
+                         const std::string& color) {
   base::FilePath glyph_dir = screens_path_.Append("glyphs").Append(color);
   const int kTextStart = glyph_offset_h;
 
@@ -75,9 +85,9 @@ bool ScreenBase::ShowText(const std::string& text,
   return true;
 }
 
-bool ScreenBase::ShowImage(const base::FilePath& image_name,
-                           int offset_x,
-                           int offset_y) {
+bool DrawUtils::ShowImage(const base::FilePath& image_name,
+                          int offset_x,
+                          int offset_y) {
   if (right_to_left_)
     offset_x = -offset_x;
   std::string command = base::StringPrintf(
@@ -92,11 +102,11 @@ bool ScreenBase::ShowImage(const base::FilePath& image_name,
   return true;
 }
 
-bool ScreenBase::ShowBox(int offset_x,
-                         int offset_y,
-                         int size_x,
-                         int size_y,
-                         const std::string& color) {
+bool DrawUtils::ShowBox(int offset_x,
+                        int offset_y,
+                        int size_x,
+                        int size_y,
+                        const std::string& color) {
   size_x = std::max(size_x, 1);
   size_y = std::max(size_y, 1);
   if (right_to_left_)
@@ -115,9 +125,9 @@ bool ScreenBase::ShowBox(int offset_x,
   return true;
 }
 
-bool ScreenBase::ShowMessage(const std::string& message_token,
-                             int offset_x,
-                             int offset_y) {
+bool DrawUtils::ShowMessage(const std::string& message_token,
+                            int offset_x,
+                            int offset_y) {
   // Determine the filename of the message resource. Fall back to en-US if
   // the localized version of the message is not available.
   base::FilePath message_file_path =
@@ -141,14 +151,14 @@ bool ScreenBase::ShowMessage(const std::string& message_token,
   return ShowImage(message_file_path, offset_x, offset_y);
 }
 
-void ScreenBase::ShowInstructions(const std::string& message_token) {
+void DrawUtils::ShowInstructions(const std::string& message_token) {
   const int kXOffset = (-frecon_canvas_size_ / 2) + (kDefaultMessageWidth / 2);
   const int kYOffset = (-frecon_canvas_size_ / 2) + 283;
   if (!ShowMessage(message_token, kXOffset, kYOffset))
     LOG(WARNING) << "Unable to show " << message_token;
 }
 
-void ScreenBase::ShowInstructionsWithTitle(const std::string& message_token) {
+void DrawUtils::ShowInstructionsWithTitle(const std::string& message_token) {
   const int kXOffset = (-frecon_canvas_size_ / 2) + (kDefaultMessageWidth / 2);
 
   int title_height;
@@ -172,7 +182,20 @@ void ScreenBase::ShowInstructionsWithTitle(const std::string& message_token) {
     LOG(WARNING) << "Unable to show description " << message_token;
 }
 
-void ScreenBase::ShowProgressPercentage(double progress) {
+int DrawUtils::FindLocaleIndex(int current_index) {
+  auto locale =
+      std::find(supported_locales_.begin(), supported_locales_.end(), locale_);
+  if (locale == supported_locales_.end()) {
+    // Default to en-US.
+    LOG(WARNING) << " Could not find an index to match current locale "
+                 << locale_ << ". Defaulting to index " << kEnglishIndex
+                 << " for " << supported_locales_[kEnglishIndex];
+    return kEnglishIndex;
+  }
+  return std::distance(supported_locales_.begin(), locale);
+}
+
+void DrawUtils::ShowProgressPercentage(double progress) {
   if (progress < 0 || progress > 1) {
     LOG(WARNING) << "Invalid value of progress: " << progress;
     return;
@@ -185,24 +208,24 @@ void ScreenBase::ShowProgressPercentage(double progress) {
           kProgressHeight, kMenuBlue);
 }
 
-void ScreenBase::ClearMainArea() {
+void DrawUtils::ClearMainArea() {
   constexpr int kFooterHeight = 142;
   if (!ShowBox(0, -kFooterHeight / 2, frecon_canvas_size_ + 200,
                (frecon_canvas_size_ - kFooterHeight), kMenuBlack))
     LOG(WARNING) << "Could not clear main area.";
 }
 
-void ScreenBase::ClearScreen() {
+void DrawUtils::ClearScreen() {
   if (!ShowBox(0, 0, frecon_canvas_size_ + 100, frecon_canvas_size_,
                kMenuBlack))
     LOG(WARNING) << "Could not clear screen.";
 }
 
-void ScreenBase::ShowButton(const std::string& message_token,
-                            int offset_y,
-                            bool is_selected,
-                            int inner_width,
-                            bool is_text) {
+void DrawUtils::ShowButton(const std::string& message_token,
+                           int offset_y,
+                           bool is_selected,
+                           int inner_width,
+                           bool is_text) {
   const int kBtnPadding = 32;  // Left and right padding.
   int left_padding_x = (-frecon_canvas_size_ / 2) + (kBtnPadding / 2);
   const int kOffsetX = left_padding_x + (kBtnPadding / 2) + (inner_width / 2);
@@ -246,7 +269,7 @@ void ScreenBase::ShowButton(const std::string& message_token,
   }
 }
 
-void ScreenBase::ShowStepper(const std::vector<std::string>& steps) {
+void DrawUtils::ShowStepper(const std::vector<std::string>& steps) {
   // The icon real size is 24x24, but it occupies a 36x36 block. Use 36 here for
   // simplicity.
   constexpr int kIconSize = 36;
@@ -281,7 +304,7 @@ void ScreenBase::ShowStepper(const std::vector<std::string>& steps) {
   }
 }
 
-void ScreenBase::ReadDimensionConstants() {
+void DrawUtils::ReadDimensionConstants() {
   image_dimensions_.clear();
   base::FilePath path = screens_path_.Append(locale_).Append("constants.sh");
   std::string dimension_consts;
@@ -303,7 +326,7 @@ void ScreenBase::ReadDimensionConstants() {
   }
 }
 
-bool ScreenBase::GetDimension(const std::string& token, int* token_dimension) {
+bool DrawUtils::GetDimension(const std::string& token, int* token_dimension) {
   if (image_dimensions_.empty()) {
     LOG(ERROR) << "No dimensions available.";
     return false;
@@ -323,7 +346,7 @@ bool ScreenBase::GetDimension(const std::string& token, int* token_dimension) {
   return false;
 }
 
-void ScreenBase::GetFreconConstants() {
+void DrawUtils::GetFreconConstants() {
   base::FilePath scale_factor_path =
       root_.Append("etc").Append("frecon").Append("scale");
   std::string frecon_scale_factor;
