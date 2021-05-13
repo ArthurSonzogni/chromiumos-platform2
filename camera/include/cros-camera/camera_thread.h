@@ -111,6 +111,10 @@ class CROS_CAMERA_EXPORT CameraThread {
     return 0;
   }
 
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner() const {
+    return thread_.task_runner();
+  }
+
  private:
   template <typename T>
   void ProcessSyncTaskOnThread(const base::Callback<T()>& task,
