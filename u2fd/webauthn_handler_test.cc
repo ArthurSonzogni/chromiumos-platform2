@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <chromeos/cbor/values.h>
@@ -44,10 +45,11 @@ using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using ::testing::Unused;
 
-constexpr int kVerificationTimeoutMs = 10000;
-constexpr int kVerificationRetryDelayUs = 500 * 1000;
-constexpr int kMaxRetries =
-    kVerificationTimeoutMs * 1000 / kVerificationRetryDelayUs;
+constexpr base::TimeDelta kVerificationTimeout =
+    base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kRequestPresenceDelay =
+    base::TimeDelta::FromMilliseconds(500);
+constexpr int kMaxRetries = kVerificationTimeout / kRequestPresenceDelay;
 constexpr uint32_t kCr50StatusSuccess = 0;
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
@@ -209,14 +211,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (presence_requested_expected_ == kMaxRetries) {
-      // Due to clock and scheduling variances, the actual retries before
-      // timeout could be one less.
-      EXPECT_TRUE(presence_requested_count_ == kMaxRetries ||
-                  presence_requested_count_ == kMaxRetries - 1);
-    } else {
-      EXPECT_EQ(presence_requested_expected_, presence_requested_count_);
-    }
+    EXPECT_EQ(presence_requested_expected_, presence_requested_count_);
   }
 
  protected:
@@ -243,8 +238,11 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
     PrepareMockCryptohome();
     handler_->Initialize(
         mock_bus_.get(), &mock_tpm_proxy_, &mock_user_state_, u2f_mode,
-        [this]() { presence_requested_count_++; }, std::move(allowlisting_util),
-        &mock_metrics_);
+        [this]() {
+          presence_requested_count_++;
+          task_environment_.FastForwardBy(kRequestPresenceDelay);
+        },
+        std::move(allowlisting_util), &mock_metrics_);
   }
 
   void PrepareMockCryptohome() {
@@ -372,6 +370,8 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
   MockWebAuthnStorage* mock_webauthn_storage_;
 
   int presence_requested_expected_ = 0;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
  private:
   scoped_refptr<dbus::MockBus> mock_bus_;
@@ -409,8 +409,7 @@ TEST_F(WebAuthnHandlerTestBase, CallAndWaitForPresenceTimeout) {
   uint32_t status = kCr50StatusSuccess;
   base::TimeTicks verification_start = base::TimeTicks::Now();
   CallAndWaitForPresence([]() { return kCr50StatusNotAllowed; }, &status);
-  EXPECT_GE(base::TimeTicks::Now() - verification_start,
-            base::TimeDelta::FromMilliseconds(kVerificationTimeoutMs));
+  EXPECT_GE(base::TimeTicks::Now() - verification_start, kVerificationTimeout);
   EXPECT_EQ(status, kCr50StatusNotAllowed);
   presence_requested_expected_ = kMaxRetries;
 }

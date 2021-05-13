@@ -28,8 +28,8 @@ namespace {
 
 // User a big timeout for cryptohome. See b/172945202.
 constexpr base::TimeDelta kCryptohomeTimeout = base::TimeDelta::FromMinutes(2);
-constexpr int kVerificationTimeoutMs = 10000;
-constexpr int kVerificationRetryDelayUs = 500 * 1000;
+constexpr base::TimeDelta kVerificationTimeout =
+    base::TimeDelta::FromSeconds(10);
 constexpr int kCancelUVFlowTimeoutMs = 5000;
 
 // Cr50 Response codes.
@@ -710,11 +710,10 @@ void WebAuthnHandler::CallAndWaitForPresence(std::function<uint32_t()> fn,
   *status = fn();
   base::TimeTicks verification_start = base::TimeTicks::Now();
   while (*status == kCr50StatusNotAllowed &&
-         base::TimeTicks::Now() - verification_start <
-             base::TimeDelta::FromMilliseconds(kVerificationTimeoutMs)) {
+         base::TimeTicks::Now() - verification_start < kVerificationTimeout) {
     // We need user presence. Show a notification requesting it, and try again.
+    // We have a delay in request_presence_, so we didn't need to sleep again.
     request_presence_();
-    usleep(kVerificationRetryDelayUs);
     *status = fn();
   }
 }

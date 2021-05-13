@@ -29,6 +29,8 @@ namespace {
 
 constexpr char kDeviceName[] = "Integrated U2F";
 constexpr int kWinkSignalMinIntervalMs = 1000;
+constexpr base::TimeDelta kRequestPresenceDelay =
+    base::TimeDelta::FromMilliseconds(500);
 
 // The U2F counter stored in cr50 is stored in a format resistant to rollbacks,
 // and that guarantees monotonicity even in the presence of partial writes.
@@ -325,6 +327,7 @@ void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
   std::function<void()> request_presence = [this]() {
     IgnorePowerButtonPress();
     SendWinkSignal();
+    base::PlatformThread::Sleep(kRequestPresenceDelay);
   };
 
   std::unique_ptr<u2f::AllowlistingUtil> allowlisting_util;
