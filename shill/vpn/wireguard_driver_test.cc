@@ -147,8 +147,29 @@ class WireguardDriverTest : public testing::Test {
         });
   }
 
-  void InvokeConnectAsync() {
+  void InvokeConnectAsyncKernel() {
     driver_->ConnectAsync(&driver_event_handler_);
+    EXPECT_CALL(device_info_, CreateWireguardInterface(kIfName, _, _))
+        .WillOnce([this](const std::string&,
+                         DeviceInfo::LinkReadyCallback link_ready_cb,
+                         base::OnceClosure failure_cb) {
+          this->link_ready_callback_ = std::move(link_ready_cb);
+          this->create_kernel_link_failed_callback_ = std::move(failure_cb);
+          return true;
+        });
+    dispatcher_.DispatchPendingEvents();
+  }
+
+  void InvokeConnectAsyncUserspace() {
+    driver_->ConnectAsync(&driver_event_handler_);
+    EXPECT_CALL(device_info_, CreateWireguardInterface(kIfName, _, _))
+        .WillOnce([this](const std::string&,
+                         DeviceInfo::LinkReadyCallback link_ready_cb,
+                         base::OnceClosure failure_cb) {
+          this->link_ready_callback_ = std::move(link_ready_cb);
+          this->create_kernel_link_failed_callback_ = std::move(failure_cb);
+          return true;
+        });
     EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kIfName, _))
         .WillOnce([this](const std::string&, DeviceInfo::LinkReadyCallback cb) {
           this->link_ready_callback_ = std::move(cb);
@@ -160,6 +181,7 @@ class WireguardDriverTest : public testing::Test {
         .WillOnce(DoAll(SaveArg<9>(&wireguard_exit_callback_),
                         Return(kWireguardPid)));
     dispatcher_.DispatchPendingEvents();
+    std::move(create_kernel_link_failed_callback_).Run();
   }
 
   void InvokeLinkReady() {
@@ -167,7 +189,8 @@ class WireguardDriverTest : public testing::Test {
     std::vector<std::string> args;
     EXPECT_CALL(process_manager_,
                 StartProcessInMinijail(_, base::FilePath("/usr/sbin/wg"), _, _,
-                                       "vpn", "vpn", 0, true, true, _))
+                                       "vpn", "vpn", CAP_TO_MASK(CAP_NET_ADMIN),
+                                       true, true, _))
         .WillOnce(DoAll(SaveArg<2>(&args),
                         SaveArg<9>(&wireguard_tools_exit_callback_),
                         Return(kWireguardToolsPid)));
@@ -194,12 +217,13 @@ class WireguardDriverTest : public testing::Test {
   base::RepeatingCallback<void(int)> wireguard_exit_callback_;
   base::RepeatingCallback<void(int)> wireguard_tools_exit_callback_;
   DeviceInfo::LinkReadyCallback link_ready_callback_;
+  base::OnceClosure create_kernel_link_failed_callback_;
   base::FilePath config_file_path_;
 };
 
-TEST_F(WireguardDriverTest, ConnectFlow) {
+TEST_F(WireguardDriverTest, ConnectFlowKernel) {
   InitializePropertyStore();
-  InvokeConnectAsync();
+  InvokeConnectAsyncKernel();
   InvokeLinkReady();
 
   // Configuration done.
@@ -224,6 +248,30 @@ TEST_F(WireguardDriverTest, ConnectFlow) {
                   IPConfig::Route("192.168.3.0", 24, "0.0.0.0")));
 
   // Disconnect.
+  EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
+  driver_->Disconnect();
+
+  // Checks that the config file has been deleted.
+  EXPECT_FALSE(base::PathExists(config_file_path_));
+}
+
+TEST_F(WireguardDriverTest, ConnectFlowUserspace) {
+  InitializePropertyStore();
+  InvokeConnectAsyncUserspace();
+  InvokeLinkReady();
+
+  // Configuration done.
+  EXPECT_CALL(driver_event_handler_, OnDriverConnected(kIfName, kIfIndex));
+  wireguard_tools_exit_callback_.Run(0);
+
+  // Checks config file content.
+  std::string contents;
+  CHECK(base::ReadFileToString(config_file_path_, &contents));
+  EXPECT_EQ(contents, kExpectedConfigFileContents);
+
+  // Skips checks for IPProperties. See ConnectFlowKernel.
+
+  // Disconnect.
   EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
   driver_->Disconnect();
 
@@ -233,7 +281,7 @@ TEST_F(WireguardDriverTest, ConnectFlow) {
 
 TEST_F(WireguardDriverTest, WireguardToolsFailed) {
   InitializePropertyStore();
-  InvokeConnectAsync();
+  InvokeConnectAsyncKernel();
   InvokeLinkReady();
 
   // Configuration failed.
@@ -254,7 +302,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
   ResetDriver();
   driver_->Load(&fake_store_, kStorageId);
-  InvokeConnectAsync();
+  InvokeConnectAsyncKernel();
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_EQ(contents, kExpectedConfigFileContents);
@@ -294,7 +342,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
            {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
       },
       &err);
-  InvokeConnectAsync();
+  InvokeConnectAsyncKernel();
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_EQ(contents, kExpectedConfigFileContents);
@@ -315,7 +363,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
            {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
       },
       &err);
-  InvokeConnectAsync();
+  InvokeConnectAsyncKernel();
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_THAT(contents, Not(HasSubstr("PresharedKey=")));
@@ -358,14 +406,10 @@ TEST_F(WireguardDriverTest, KeyPairGeneration) {
   assert_pubkey_is(kPrivateKey2);
 }
 
-TEST_F(WireguardDriverTest, DisconnectBeforeConnected) {
-  InvokeConnectAsync();
-  EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
-  driver_->Disconnect();
-}
-
 TEST_F(WireguardDriverTest, SpawnWireguardProcessFailed) {
   driver_->ConnectAsync(&driver_event_handler_);
+  EXPECT_CALL(device_info_, CreateWireguardInterface(kIfName, _, _))
+      .WillOnce(Return(false));
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(-1));
@@ -374,14 +418,54 @@ TEST_F(WireguardDriverTest, SpawnWireguardProcessFailed) {
 }
 
 TEST_F(WireguardDriverTest, WireguardProcessExitedUnexpectedly) {
-  InvokeConnectAsync();
+  InvokeConnectAsyncUserspace();
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
   wireguard_exit_callback_.Run(1);
 }
 
+// Checks interface cleanup on timeout.
 TEST_F(WireguardDriverTest, OnConnectTimeout) {
-  InvokeConnectAsync();
+  InitializePropertyStore();
+
+  // Link is not created.
+  InvokeConnectAsyncKernel();
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
+  driver_->OnConnectTimeout();
+
+  // Link is created by kernel.
+  InvokeConnectAsyncKernel();
+  InvokeLinkReady();
+  EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
+  EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
+  driver_->OnConnectTimeout();
+
+  // Link is created by userspace process.
+  InvokeConnectAsyncUserspace();
+  InvokeLinkReady();
+  EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
+  EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
+  driver_->OnConnectTimeout();
+}
+
+// Checks interface cleanup on disconnect before connected. Different with
+// OnConnectTimeout, disconnect will not trigger an OnDriverFailure callback.
+TEST_F(WireguardDriverTest, DisconnectBeforeConnected) {
+  InitializePropertyStore();
+
+  // Link is not created.
+  InvokeConnectAsyncKernel();
+  driver_->Disconnect();
+
+  // Link is created by kernel.
+  InvokeConnectAsyncKernel();
+  InvokeLinkReady();
+  EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
+  driver_->Disconnect();
+
+  // Link is created by userspace process.
+  InvokeConnectAsyncUserspace();
+  InvokeLinkReady();
+  EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
   driver_->OnConnectTimeout();
 }
 

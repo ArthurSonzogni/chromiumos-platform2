@@ -47,6 +47,12 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD(void, RequestDump, (uint32_t), (override));
   MOCK_METHOD(int, GetInterfaceIndex, (const std::string&), (override));
   MOCK_METHOD(bool, DoSendMessage, (RTNLMessage*, uint32_t*));
+  MOCK_METHOD(bool,
+              AddInterface,
+              (const std::string& interface_name,
+               const std::string& link_kind,
+               ResponseCallback response_callback),
+              (override));
   bool SendMessage(std::unique_ptr<RTNLMessage> message,
                    uint32_t* seq) override {
     return DoSendMessage(message.get(), seq);

@@ -148,6 +148,9 @@ const char* const kIgnoredDeviceKinds[] = {
 constexpr char kKindVeth[] = "veth";
 // v5.4, drivers/net/ethernet/qualcomm/rmnet/rmnet_config.c:369
 constexpr char kKindRmnet[] = "rmnet";
+// v5.10, drivers/net/wireguard/device.c:254, |device_type.name| is set to
+// KBUILD_MODNAME, which is "wireguard".
+constexpr char kKindWireguard[] = "wireguard";
 
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
@@ -347,6 +350,12 @@ Technology DeviceInfo::GetDeviceTechnology(
                     << " should be ignored";
       return Technology::kUnknown;
     }
+  }
+
+  if (kind.has_value() && kind.value() == kKindWireguard) {
+    SLOG(this, 2) << __func__ << ": device " << iface_name
+                  << " is a wireguard device. Treat it as a tunnel.";
+    return Technology::kTunnel;
   }
 
   // Special case for pseudo modem veth pairs which are used for testing.
@@ -1135,6 +1144,41 @@ int DeviceInfo::OpenTunnelInterface(const std::string& interface_name) const {
   }
 
   return fd;
+}
+
+bool DeviceInfo::CreateWireguardInterface(const std::string& interface_name,
+                                          LinkReadyCallback link_ready_callback,
+                                          base::OnceClosure failure_callback) {
+  if (!rtnl_handler_->AddInterface(
+          interface_name, kKindWireguard,
+          base::BindOnce(&DeviceInfo::OnCreateWireguardInterfaceResponse,
+                         weak_factory_.GetWeakPtr(), interface_name,
+                         std::move(failure_callback)))) {
+    return false;
+  }
+  AddVirtualInterfaceReadyCallback(interface_name,
+                                   std::move(link_ready_callback));
+  return true;
+}
+
+void DeviceInfo::OnCreateWireguardInterfaceResponse(
+    const std::string& interface_name,
+    base::OnceClosure failure_callback,
+    int32_t error) {
+  if (error == 0) {
+    // |error| == 0 means ACK. Needs to do nothing here. We expect getting the
+    // new interface message latter.
+    return;
+  }
+
+  LOG(ERROR) << "Failed to create wireguard interface " << interface_name
+             << ", error code=" << error;
+  if (pending_links_.erase(interface_name) != 1) {
+    LOG(WARNING)
+        << "Failed to remove link ready callback from |pending_links_| for "
+        << interface_name;
+  }
+  std::move(failure_callback).Run();
 }
 
 bool DeviceInfo::DeleteInterface(int interface_index) const {

@@ -24,6 +24,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/bind.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -1283,6 +1284,55 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
                             NeighborSignal::GATEWAY_AND_DNS_SERVER,
                             NeighborSignal::REACHABLE));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal2);
+}
+
+TEST_F(DeviceInfoTest, CreateWireguardInterface) {
+  const std::string kIfName = "wg0";
+  const std::string kLinkKind = "wireguard";
+  int link_ready_calls_num = 0;
+  int on_failure_calls_num = 0;
+  auto link_ready_cb = [&](const std::string&, int) { link_ready_calls_num++; };
+  auto on_failure_cb = [&]() { on_failure_calls_num++; };
+
+  RTNLHandler::ResponseCallback registered_response_cb;
+
+  auto call_create_wireguard_interface = [&]() {
+    return device_info_.CreateWireguardInterface(
+        kIfName, base::BindLambdaForTesting(link_ready_cb),
+        base::BindLambdaForTesting(on_failure_cb));
+  };
+
+  // RTNLHandler::AddInterface() returns false directly.
+  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(call_create_wireguard_interface());
+  EXPECT_EQ(link_ready_calls_num, 0);
+  EXPECT_EQ(on_failure_calls_num, 0);
+
+  // RTNLHandler::AddInterface() returns true, but the kernel returns false.
+  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _))
+      .WillRepeatedly([&](const std::string& interface_name,
+                          const std::string& link_kind,
+                          RTNLHandler::ResponseCallback response_callback) {
+        registered_response_cb = std::move(response_callback);
+        return true;
+      });
+  EXPECT_TRUE(call_create_wireguard_interface());
+  std::move(registered_response_cb).Run(100);
+  EXPECT_EQ(link_ready_calls_num, 0);
+  EXPECT_EQ(on_failure_calls_num, 1);
+
+  // RTNLHandler::AddInterface() returns true, and the kernel returns ack. No
+  // callback to the client should be invoked now.
+  EXPECT_TRUE(call_create_wireguard_interface());
+  std::move(registered_response_cb).Run(0);
+  EXPECT_EQ(link_ready_calls_num, 0);
+  EXPECT_EQ(on_failure_calls_num, 1);
+
+  // Link is ready.
+  CreateDevice(kIfName, "192.168.1.1", 123, Technology::kTunnel);
+  EXPECT_EQ(link_ready_calls_num, 1);
+  EXPECT_EQ(on_failure_calls_num, 1);
 }
 
 class DeviceInfoTechnologyTest : public DeviceInfoTest {

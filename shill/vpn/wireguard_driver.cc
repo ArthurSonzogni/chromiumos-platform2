@@ -6,6 +6,7 @@
 
 #include <poll.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/base64.h>
@@ -180,9 +181,11 @@ WireguardDriver::~WireguardDriver() {
 base::TimeDelta WireguardDriver::ConnectAsync(EventHandler* event_handler) {
   SLOG(this, 2) << __func__;
   event_handler_ = event_handler;
-  dispatcher()->PostTask(FROM_HERE,
-                         base::BindRepeating(&WireguardDriver::ConnectInternal,
-                                             weak_factory_.GetWeakPtr()));
+  // To make sure the connect procedure is executed asynchronously.
+  dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WireguardDriver::CreateKernelWireguardInterface,
+                     weak_factory_.GetWeakPtr()));
   return kConnectTimeout;
 }
 
@@ -308,7 +311,24 @@ bool WireguardDriver::Save(StoreInterface* storage,
   return VPNDriver::Save(storage, storage_id, save_credentials);
 }
 
-void WireguardDriver::ConnectInternal() {
+void WireguardDriver::CreateKernelWireguardInterface() {
+  auto link_ready_callback = base::BindOnce(
+      &WireguardDriver::ConfigureInterface, weak_factory_.GetWeakPtr(),
+      /*created_in_kernel=*/true);
+  auto failure_callback =
+      base::BindOnce(&WireguardDriver::StartUserspaceWireguardTunnel,
+                     weak_factory_.GetWeakPtr());
+  if (!manager()->device_info()->CreateWireguardInterface(
+          kDefaultInterfaceName, std::move(link_ready_callback),
+          std::move(failure_callback))) {
+    StartUserspaceWireguardTunnel();
+  }
+}
+
+void WireguardDriver::StartUserspaceWireguardTunnel() {
+  LOG(INFO) << "Failed to create a wireguard interface in the kernel. Fallback "
+               "to userspace tunnel.";
+
   // Claims the interface before the wireguard process creates it.
   // TODO(b/177876632): Actually when the tunnel interface is ready, it cannot
   // guarantee that the wireguard-tools can talk with the userspace wireguard
@@ -318,7 +338,8 @@ void WireguardDriver::ConnectInternal() {
   manager()->device_info()->AddVirtualInterfaceReadyCallback(
       kDefaultInterfaceName,
       base::BindOnce(&WireguardDriver::ConfigureInterface,
-                     weak_factory_.GetWeakPtr()));
+                     weak_factory_.GetWeakPtr(),
+                     /*created_in_kernel=*/false));
 
   if (!SpawnWireguard()) {
     FailService(Service::kFailureInternal, "Failed to spawn wireguard process");
@@ -336,10 +357,10 @@ bool WireguardDriver::SpawnWireguard() {
       "--foreground",
       kDefaultInterfaceName,
   };
-  uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN);
+  constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   wireguard_pid_ = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireguardPath), args,
-      /*environment=*/{}, kVpnUser, kVpnGroup, capmask,
+      /*environment=*/{}, kVpnUser, kVpnGroup, kCapMask,
       /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
       base::BindRepeating(&WireguardDriver::WireguardProcessExited,
                           weak_factory_.GetWeakPtr()));
@@ -415,9 +436,13 @@ bool WireguardDriver::GenerateConfigFile() {
   return true;
 }
 
-void WireguardDriver::ConfigureInterface(const std::string& /*interface_name*/,
+void WireguardDriver::ConfigureInterface(bool created_in_kernel,
+                                         const std::string& interface_name,
                                          int interface_index) {
-  SLOG(this, 2) << __func__;
+  LOG(INFO) << "WireGuard interface " << interface_name << " was created "
+            << (created_in_kernel ? "in kernel" : "by userspace program")
+            << ". Start configuration";
+  kernel_interface_open_ = created_in_kernel;
 
   if (!event_handler_) {
     LOG(ERROR) << "Missing event_handler_";
@@ -434,9 +459,10 @@ void WireguardDriver::ConfigureInterface(const std::string& /*interface_name*/,
 
   std::vector<std::string> args = {"setconf", kDefaultInterfaceName,
                                    config_file_.value()};
+  constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   pid_t pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireguardToolsPath), args,
-      /*environment=*/{}, kVpnUser, kVpnGroup, /*caps=*/0, true, true,
+      /*environment=*/{}, kVpnUser, kVpnGroup, kCapMask, true, true,
       base::BindRepeating(&WireguardDriver::OnConfigurationDone,
                           weak_factory_.GetWeakPtr()));
   if (pid == -1) {
@@ -516,6 +542,10 @@ void WireguardDriver::Cleanup() {
   if (wireguard_pid_ != -1) {
     process_manager()->StopProcess(wireguard_pid_);
     wireguard_pid_ = -1;
+  }
+  if (kernel_interface_open_) {
+    manager()->device_info()->DeleteInterface(interface_index_);
+    kernel_interface_open_ = false;
   }
   interface_index_ = -1;
   ip_properties_ = {};

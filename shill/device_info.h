@@ -138,6 +138,16 @@ class DeviceInfo {
 
   virtual bool CreateTunnelInterface(LinkReadyCallback callback);
   virtual int OpenTunnelInterface(const std::string& interface_name) const;
+
+  // Creates a wireguard interface in the kernel with name |interface_name|.
+  // Returns true if we send the message to the kernel successfully.
+  // |link_ready_callback| will be invoked when the created link is ready,
+  // otherwise |failure_callback| will be invoked if the kernel rejects our
+  // request.
+  virtual bool CreateWireguardInterface(const std::string& interface_name,
+                                        LinkReadyCallback link_ready_callback,
+                                        base::OnceClosure failure_callback);
+
   virtual bool DeleteInterface(int interface_index) const;
   virtual void AddVirtualInterfaceReadyCallback(
       const std::string& interface_name, LinkReadyCallback callback);
@@ -285,6 +295,13 @@ class DeviceInfo {
 
   void OnNeighborReachabilityEvent(
       const patchpanel::NeighborReachabilityEventSignal& signal);
+
+  // Callback registered in CreateWireguardInterface() and invoked by
+  // RTNLHandler, to notify the acknowledgement from the kernel for the adding
+  // link request.
+  void OnCreateWireguardInterfaceResponse(const std::string& interface_name,
+                                          base::OnceClosure failure_callback,
+                                          int32_t error);
 
   void set_sockets_for_test(std::unique_ptr<Sockets> sockets) {
     sockets_ = std::move(sockets);

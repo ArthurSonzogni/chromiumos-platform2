@@ -24,7 +24,9 @@ class WireguardDriver : public VPNDriver {
 
   ~WireguardDriver();
 
-  // Inherited from VPNDriver.
+  // Inherited from VPNDriver. During ConnectAsync(), we will try to create the
+  // tunnel in the kernel at first. If that fails, then we will try to let the
+  // userspace program open the tunnel.
   base::TimeDelta ConnectAsync(EventHandler* event_handler) override;
   void Disconnect() override;
   void OnConnectTimeout() override;
@@ -62,9 +64,9 @@ class WireguardDriver : public VPNDriver {
 
   static const VPNDriver::Property kProperties[];
 
-  // Called in ConnectAsync() by PostTask(), to make sure the connect procedure
-  // is executed asynchronously.
-  void ConnectInternal();
+  void CreateKernelWireguardInterface();
+
+  void StartUserspaceWireguardTunnel();
 
   // Spawns the userspace wireguard process, which will setup the tunnel
   // interface and do the data tunneling. WireguardProcessExited() will be
@@ -78,7 +80,8 @@ class WireguardDriver : public VPNDriver {
   bool GenerateConfigFile();
 
   // Configures the interface via wireguard-tools when the interface is ready.
-  void ConfigureInterface(const std::string& interface_name,
+  void ConfigureInterface(bool created_in_kernel,
+                          const std::string& interface_name,
                           int interface_index);
   void OnConfigurationDone(int exit_code);
 
@@ -103,6 +106,10 @@ class WireguardDriver : public VPNDriver {
   int interface_index_ = -1;
   IPConfig::Properties ip_properties_;
   base::FilePath config_file_;
+
+  // Indicates that whether we have an open wg interface in the kernel which is
+  // created via DeviceInfo now.
+  bool kernel_interface_open_ = false;
 
   // This variable is set in Load() and Save(), and only used to check whether
   // we need to re-calculate the public key in Save().
