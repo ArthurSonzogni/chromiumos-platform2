@@ -20,8 +20,7 @@ class DevImpl;
 
 class FakeDev : public DevInterface {
  public:
-  FakeDev();
-  ~FakeDev();
+  virtual ~FakeDev();
   // Device interface
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
@@ -37,9 +36,12 @@ class FakeDev : public DevInterface {
     kSkipBoot = 1u << 5,
   };
   void Start(enum Flags flags);
+  static std::unique_ptr<DevInterface> Create(enum Flags flags);
   // TODO(amcrae): Add an interface to retrieve memory data written
   // to the device.
+
  private:
+  FakeDev();
   std::unique_ptr<DevImpl> device_;
 };
 

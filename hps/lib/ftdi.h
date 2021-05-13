@@ -8,6 +8,7 @@
 #ifndef HPS_LIB_FTDI_H_
 #define HPS_LIB_FTDI_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,13 +20,14 @@ namespace hps {
 
 class Ftdi : public DevInterface {
  public:
-  explicit Ftdi(uint8_t addr) : address_(addr << 1) {}
-  bool Init();
   void Close();
   bool Read(uint8_t cmd, uint8_t* data, size_t lem) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t lem) override;
+  static std::unique_ptr<DevInterface> Create(uint8_t address);
 
  private:
+  explicit Ftdi(uint8_t addr) : address_(addr << 1) {}
+  bool Init();
   bool Check(bool cond, const char* tag);
   void Reset();
   // bool I2CRead(std::vector<uint8_t>* data);

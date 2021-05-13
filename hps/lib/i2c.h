@@ -8,7 +8,7 @@
 #ifndef HPS_LIB_I2C_H_
 #define HPS_LIB_I2C_H_
 
-#include <vector>
+#include <memory>
 
 #include <stdint.h>
 #include <string>
@@ -21,18 +21,18 @@ namespace hps {
 
 class I2CDev : public DevInterface {
  public:
-  I2CDev(int bus, int address);
   ~I2CDev() {}
   int Open();
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
+  static std::unique_ptr<DevInterface> Create(const char* dev, uint8_t address);
 
  private:
+  I2CDev(const char* bus, uint8_t address);
   bool Ioc(struct i2c_msg* msg, size_t count);
-  int bus_;
+  const char* bus_;
   int address_;
   int fd_;
-  std::string name_;
 };
 
 }  // namespace hps

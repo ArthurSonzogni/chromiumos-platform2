@@ -11,16 +11,29 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome",
+    "libftdi1",
     "libusb-1.0",
   ]
 }
 
 static_library("hpslib") {
   sources = [
-    "ftdi.cc",
-    "ftdi.h",
     "hps.cc",
     "hps.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  deps = [ ":dev" ]
+}
+
+# DevInterface providers.
+static_library("devlib") {
+  sources = [
+    "fake_dev.cc",
+    "fake_dev.h",
+    "ftdi.cc",
+    "ftdi.h",
     "i2c.cc",
     "i2c.h",
     "retry.cc",
@@ -34,21 +47,12 @@ static_library("hpslib") {
   deps = [ ":dev" ]
 }
 
-static_library("fakedev") {
-  sources = [
-    "fake_dev.cc",
-    "fake_dev.h",
-  ]
-
-  configs += [ ":target_defaults" ]
-
-  deps = [ ":dev" ]
-}
-
 static_library("dev") {
   sources = [
     "dev.cc",
     "dev.h",
     "hps_reg.h",
   ]
+
+  configs += [ ":target_defaults" ]
 }

@@ -33,7 +33,7 @@ executable("hps") {
   libs = [ "ftdi1" ]
 
   deps = [
-    "//hps/lib:fakedev",
+    "//hps/lib:devlib",
     "//hps/lib:hpslib",
   ]
 }

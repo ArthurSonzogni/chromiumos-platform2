@@ -5,26 +5,28 @@
 /*
  * I2C device handler.
  */
+#include "hps/lib/i2c.h"
 
-#include <vector>
+#include <utility>
 
 #include <fcntl.h>
+#include <stdint.h>
+
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 
-#include "hps/lib/i2c.h"
+#include <base/check.h>
 
 namespace hps {
 
-I2CDev::I2CDev(int i2c_bus, int addr) : bus_(i2c_bus), address_(addr), fd_(-1) {
-  this->name_ = "/dev/i2c-" + std::to_string(bus_);
-}
+I2CDev::I2CDev(const char* bus, uint8_t addr)
+    : bus_(bus), address_(addr), fd_(-1) {}
 
 int I2CDev::Open() {
-  this->fd_ = open(this->name_.c_str(), O_RDWR);
+  this->fd_ = open(this->bus_, O_RDWR);
   if (this->fd_ < 0) {
-    perror(this->name_.c_str());
+    perror(this->bus_);
   }
   return this->fd_;
 }
@@ -64,9 +66,17 @@ bool I2CDev::Ioc(struct i2c_msg* msg, size_t count) {
   ioblk.nmsgs = count;
   int ret = ioctl(this->fd_, I2C_RDWR, &ioblk);
   if (ret < 0) {
-    perror(this->name_.c_str());
+    perror(this->bus_);
   }
   return ret != -1;
+}
+
+// Static factory method.
+std::unique_ptr<DevInterface> I2CDev::Create(const char* dev, uint8_t addr) {
+  // Use new so that private constructor can be accessed.
+  auto i2c_dev = std::unique_ptr<I2CDev>(new I2CDev(dev, addr));
+  CHECK_GE(i2c_dev->Open(), 0);
+  return std::unique_ptr<DevInterface>(std::move(i2c_dev));
 }
 
 }  // namespace hps

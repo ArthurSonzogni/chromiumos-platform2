@@ -5,13 +5,17 @@
 /*
  * UART interconnection device handler.
  */
+#include "hps/lib/uart.h"
+
+#include <utility>
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include "hps/lib/uart.h"
+#include <base/check.h>
 
 namespace hps {
 
@@ -103,6 +107,14 @@ bool Uart::Write(uint8_t cmd, const uint8_t* data, size_t len) {
     return false;
   }
   return true;
+}
+
+// Static factory method.
+std::unique_ptr<DevInterface> Uart::Create(const char* device) {
+  // Use new so that private constructor can be accessed.
+  auto dev = std::unique_ptr<Uart>(new Uart(device));
+  CHECK_GE(dev->Open(), 0);
+  return std::unique_ptr<DevInterface>(std::move(dev));
 }
 
 }  // namespace hps

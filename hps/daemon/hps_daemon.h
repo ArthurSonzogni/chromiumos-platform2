@@ -22,7 +22,7 @@ class HpsDaemon : public brillo::DBusServiceDaemon,
                   public org::chromium::HpsAdaptor,
                   public org::chromium::HpsInterface {
  public:
-  HpsDaemon();
+  explicit HpsDaemon(std::unique_ptr<HPS>);
   HpsDaemon(const HpsDaemon&) = delete;
   HpsDaemon& operator=(const HpsDaemon&) = delete;
   virtual ~HpsDaemon();
@@ -41,6 +41,7 @@ class HpsDaemon : public brillo::DBusServiceDaemon,
                         uint16_t* result) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<HPS> hps_;
 
   std::atomic<bool> daemon_is_ready_{false};
 };

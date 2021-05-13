@@ -35,5 +35,8 @@ static_library("hps-core") {
 executable("hpsd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":hps-core" ]
+  deps = [
+    ":hps-core",
+    "//hps/lib:devlib",
+  ]
 }

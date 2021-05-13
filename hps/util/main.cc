@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <base/check.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -32,7 +33,7 @@
 Command* Command::list_;
 
 int main(int argc, char* argv[]) {
-  DEFINE_uint32(bus, 2, "I2C bus");
+  DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
   DEFINE_uint32(retries, 0, "Max I2C retries");
   DEFINE_uint32(retry_delay, 10, "Delay in ms between retries");
@@ -51,29 +52,13 @@ int main(int argc, char* argv[]) {
   }
   std::unique_ptr<hps::DevInterface> dev;
   if (FLAGS_ftdi) {
-    auto ftdi = std::make_unique<hps::Ftdi>(FLAGS_addr);
-    if (!ftdi->Init()) {
-      return 1;
-    }
-    dev = std::move(ftdi);
+    dev = hps::Ftdi::Create(FLAGS_addr);
   } else if (FLAGS_test) {
-    // The fake has to be started.
-    auto fd = std::make_unique<hps::FakeDev>();
-    // TODO(amcrae): Allow passing error flags.
-    fd->Start(hps::FakeDev::Flags::kSkipBoot);
-    dev = std::move(fd);
+    dev = hps::FakeDev::Create(hps::FakeDev::Flags::kNone);
   } else if (!FLAGS_uart.empty()) {
-    auto uart = std::make_unique<hps::Uart>(FLAGS_uart.c_str());
-    if (!uart->Open()) {
-      return 1;
-    }
-    dev = std::move(uart);
+    dev = hps::Uart::Create(FLAGS_uart.c_str());
   } else {
-    auto i2c = std::make_unique<hps::I2CDev>(FLAGS_bus, FLAGS_addr);
-    if (i2c->Open() < 0) {
-      return 1;
-    }
-    dev = std::move(i2c);
+    dev = hps::I2CDev::Create(FLAGS_bus.c_str(), FLAGS_addr);
   }
   if (FLAGS_retries > 0) {
     // If retries are required, add a retry device.

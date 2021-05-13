@@ -6,16 +6,21 @@
  * FTDI device interface layer.
  * FTDI APP note AN_255 used as reference.
  */
+#include "hps/lib/ftdi.h"
+
 #include <iomanip>
 #include <iostream>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include <libusb-1.0/libusb.h>
+#include <stdlib.h>
 
+#include <base/check.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
-
-#include "hps/lib/ftdi.h"
 
 namespace {
 
@@ -385,6 +390,14 @@ void Ftdi::Dump() {
             << " Serial: " << this->serial_ << std::endl;
   struct ftdi_version_info v = ftdi_get_library_version();
   std::cerr << "Lib version: " << v.version_str << std::endl;
+}
+
+// Static factory method.
+std::unique_ptr<DevInterface> Ftdi::Create(uint8_t address) {
+  // Use new so that private constructor can be accessed.
+  auto dev = std::unique_ptr<Ftdi>(new Ftdi(address));
+  CHECK(dev->Init());
+  return std::unique_ptr<DevInterface>(std::move(dev));
 }
 
 }  // namespace hps

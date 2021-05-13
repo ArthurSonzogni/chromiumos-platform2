@@ -4,13 +4,21 @@
 
 #include "hps/daemon/hps_daemon.h"
 
+#include <utility>
+
+#include <base/location.h>
+#include <brillo/errors/error.h>
+#include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace hps {
 
-HpsDaemon::HpsDaemon()
+constexpr char kErrorPath[] = "org.chromium.Hps.GetFeatureResultError";
+
+HpsDaemon::HpsDaemon(std::unique_ptr<HPS> hps)
     : brillo::DBusServiceDaemon(::hps::kHpsServiceName),
-      org::chromium::HpsAdaptor(this) {}
+      org::chromium::HpsAdaptor(this),
+      hps_(std::move(hps)) {}
 
 HpsDaemon::~HpsDaemon() = default;
 
@@ -52,8 +60,16 @@ bool HpsDaemon::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 bool HpsDaemon::GetFeatureResult(brillo::ErrorPtr* error,
                                  uint8_t feature,
                                  uint16_t* result) {
-  *result = 0;
-  return true;
+  int res = this->hps_->Result(feature);
+  if (res < 0) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         kErrorPath, "hpsd: Feature result not available");
+
+    return false;
+  } else {
+    *result = res;
+    return true;
+  }
 }
 
 }  // namespace hps

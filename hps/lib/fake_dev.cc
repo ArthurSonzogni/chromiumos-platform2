@@ -419,4 +419,12 @@ void FakeDev::Start(enum Flags flags) {
   this->device_->Start(flags);
 }
 
+// Static factory method.
+std::unique_ptr<DevInterface> FakeDev::Create(enum Flags flags) {
+  // Use new so that private constructor can be accessed.
+  auto dev = std::unique_ptr<FakeDev>(new FakeDev);
+  dev->Start(flags);
+  return dev;
+}
+
 }  // namespace hps

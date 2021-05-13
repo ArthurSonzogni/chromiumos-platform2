@@ -8,7 +8,7 @@
 #ifndef HPS_LIB_UART_H_
 #define HPS_LIB_UART_H_
 
-#include <vector>
+#include <memory>
 
 #include <stdint.h>
 
@@ -18,13 +18,14 @@ namespace hps {
 
 class Uart : public DevInterface {
  public:
-  explicit Uart(const char* device);
   virtual ~Uart();
   int Open();
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
+  static std::unique_ptr<DevInterface> Create(const char* device);
 
  private:
+  explicit Uart(const char* device);
   const char* device_;
   int fd_;
 };
