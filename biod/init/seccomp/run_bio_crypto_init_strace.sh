@@ -26,5 +26,31 @@ SEED="/run/bio_crypto_init/seed"
 dd if=/dev/urandom of="${SEED}" bs=32 count=1
 chown biod:biod "${SEED}"
 
+if [ "$1" == "--minijail" ]; then
+  strace -ff -o "${OUTPUT_DIR}/strace.log"                               \
+  minijail0                                                              \
+    --uts                                                                \
+    -e                                                                   \
+    -l                                                                   \
+    -N                                                                   \
+    -p                                                                   \
+    -v -P /mnt/empty -b / -b /proc -t -r --mount-dev                     \
+    -k 'tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M' \
+    -b /run/bio_crypto_init,,1                                           \
+    -k 'tmpfs,/var,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M' \
+    -b /var/log/bio_crypto_init,,1                                       \
+    -b /dev/cros_fp                                                      \
+    -u biod -g biod                                                      \
+    -G                                                                   \
+    -c 0                                                                 \
+    -n                                                                   \
+    -S /usr/share/policy/bio-crypto-init-seccomp.policy                  \
+    -- /usr/bin/bio_crypto_init                                          \
+    --log_dir=/var/log/bio_crypto_init                                   \
+    --seccomp
+
+  exit 0
+fi
+
 strace -ff -o "${OUTPUT_DIR}/strace.log" -u biod \
     /usr/bin/bio_crypto_init --log_dir=/var/log/bio_crypto_init --seccomp
