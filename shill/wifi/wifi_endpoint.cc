@@ -105,7 +105,7 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
   if (!ParseIEs(properties, &phy_mode, &vendor_information_, &country_code_,
-                &krv_support_, &hs20_information_)) {
+                &supported_features_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
@@ -308,11 +308,15 @@ bool WiFiEndpoint::has_tethering_signature() const {
 }
 
 const WiFiEndpoint::Ap80211krvSupport& WiFiEndpoint::krv_support() const {
-  return krv_support_;
+  return supported_features_.krv_support;
 }
 
 const WiFiEndpoint::HS20Information& WiFiEndpoint::hs20_information() const {
-  return hs20_information_;
+  return supported_features_.hs20_information;
+}
+
+bool WiFiEndpoint::mbo_support() const {
+  return supported_features_.mbo_support;
 }
 
 // static
@@ -478,8 +482,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
                             Metrics::WiFiNetworkPhyMode* phy_mode,
                             VendorInformation* vendor_information,
                             std::string* country_code,
-                            Ap80211krvSupport* krv_support,
-                            HS20Information* hs20_information) {
+                            SupportedFeatures* supported_features) {
   if (!properties.Contains<std::vector<uint8_t>>(
           WPASupplicant::kBSSPropertyIEs)) {
     SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
@@ -521,9 +524,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
     }
     switch (*it) {
       case IEEE_80211::kElemIdBSSMaxIdlePeriod:
-        if (krv_support) {
-          krv_support->bss_max_idle_period_supported = true;
-        }
+        supported_features->krv_support.bss_max_idle_period_supported = true;
         break;
       case IEEE_80211::kElemIdCountry:
         // Retrieve 2-character country code from the beginning of the element.
@@ -542,9 +543,8 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         found_erp = true;
         break;
       case IEEE_80211::kElemIdExtendedCap:
-        if (krv_support) {
-          ParseExtendedCapabilities(it + 2, it + ie_len, krv_support);
-        }
+        ParseExtendedCapabilities(it + 2, it + ie_len,
+                                  &supported_features->krv_support);
         break;
       case IEEE_80211::kElemIdHTCap:
       case IEEE_80211::kElemIdHTInfo:
@@ -552,9 +552,8 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         break;
       case IEEE_80211::kElemIdMDE:
         found_mde = true;
-        if (krv_support) {
-          ParseMobilityDomainElement(it + 2, it + ie_len, krv_support);
-        }
+        ParseMobilityDomainElement(it + 2, it + ie_len,
+                                   &supported_features->krv_support);
         break;
       case IEEE_80211::kElemIdPowerConstraint:
         found_power_constraint = true;
@@ -567,7 +566,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         break;
       case IEEE_80211::kElemIdVendor:
         ParseVendorIE(it + 2, it + ie_len, vendor_information,
-                      hs20_information);
+                      supported_features);
         break;
       case IEEE_80211::kElemIdVHTCap:
       case IEEE_80211::kElemIdVHTOperation:
@@ -593,13 +592,13 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
                          << " type IE not supported.";
     }
   }
-  if (krv_support) {
-    krv_support->neighbor_list_supported =
-        found_country && found_power_constraint && found_rm_enabled_cap;
-    krv_support->ota_ft_supported = found_mde && found_ft_cipher;
-    krv_support->otds_ft_supported =
-        krv_support->otds_ft_supported && krv_support->ota_ft_supported;
-  }
+  supported_features->krv_support.neighbor_list_supported =
+      found_country && found_power_constraint && found_rm_enabled_cap;
+  supported_features->krv_support.ota_ft_supported =
+      found_mde && found_ft_cipher;
+  supported_features->krv_support.otds_ft_supported =
+      supported_features->krv_support.otds_ft_supported &&
+      supported_features->krv_support.ota_ft_supported;
   if (found_he) {
     *phy_mode = Metrics::kWiFiNetworkPhyMode11ax;
   } else if (found_vht) {
@@ -735,7 +734,7 @@ void WiFiEndpoint::ParseWPACapabilities(
 void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
                                  std::vector<uint8_t>::const_iterator end,
                                  VendorInformation* vendor_information,
-                                 HS20Information* hs20_information) {
+                                 SupportedFeatures* supported_features) {
   // Format of an vendor-specific information element (with type
   // and length field for the IE removed by the caller):
   //        3           1       1 - 248
@@ -807,11 +806,12 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
                  << " for Hotspot Configuration field.";
       return;
     }
-    if (hs20_information) {
-      hs20_information->supported = true;
-      // Parse out the version number from the Hotspot Configuration field.
-      hs20_information->version = (*ie & 0xf0) >> 4;
-    }
+    supported_features->hs20_information.supported = true;
+    // Parse out the version number from the Hotspot Configuration field.
+    supported_features->hs20_information.version = (*ie & 0xf0) >> 4;
+  } else if (oui == IEEE_80211::kOUIVendorWiFiAlliance &&
+             oui_type == IEEE_80211::kOUITypeWiFiAllianceMBO) {
+    supported_features->mbo_support = true;
   } else if (oui != IEEE_80211::kOUIVendorEpigram &&
              oui != IEEE_80211::kOUIVendorMicrosoft) {
     vendor_information->oui_set.insert(oui);

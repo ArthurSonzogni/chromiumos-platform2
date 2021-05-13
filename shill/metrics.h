@@ -591,6 +591,8 @@ class Metrics : public DefaultServiceObserver {
     kHS20SupportMax
   };
 
+  enum MBOSupport { kMBOUnsupported = 0, kMBOSupported = 1, kMBOSupportMax };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -907,6 +909,9 @@ class Metrics : public DefaultServiceObserver {
 
   // Hotspot 2.0 version number metric.
   static const char kMetricHS20Support[];
+
+  // MBO support metric.
+  static const char kMetricMBOSupport[];
 
   Metrics();
   Metrics(const Metrics&) = delete;
@@ -1274,6 +1279,10 @@ class Metrics : public DefaultServiceObserver {
   // buckets. The full enum can be found in
   // /chromium/src/tools/metrics/histograms/enums.xml.
   static int GetRegulatoryDomainValue(std::string country_code);
+
+  // Notifies this object of the MBO support of the access point that has been
+  // connected to.
+  void NotifyMBOSupport(bool mbo_support);
 
  private:
   friend class MetricsTest;

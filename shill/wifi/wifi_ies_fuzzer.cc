@@ -24,11 +24,10 @@ class WiFiIEsFuzz {
     Metrics::WiFiNetworkPhyMode phy_mode;
     WiFiEndpoint::VendorInformation vendor_information;
     std::string country_code;
-    WiFiEndpoint::Ap80211krvSupport krv_support;
-    WiFiEndpoint::HS20Information hs20_information;
+    WiFiEndpoint::SupportedFeatures supported_features;
 
     WiFiEndpoint::ParseIEs(properties, &phy_mode, &vendor_information,
-                           &country_code, &krv_support, &hs20_information);
+                           &country_code, &supported_features);
 
     // D-Bus wants our strings UTF-8, and ISO 3166 says they should be ASCII.
     CHECK(base::IsStringASCII(country_code));

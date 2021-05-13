@@ -487,6 +487,9 @@ const int Metrics::kMetricServiceSignalStrengthMin = 1;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
 
+// static
+const char Metrics::kMetricMBOSupport[] = "Network.Shill.WiFi.MBOSupport";
+
 Metrics::Metrics()
     : library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
@@ -1904,6 +1907,14 @@ void Metrics::NotifyHS20Support(bool hs20_supported, int hs20_version_number) {
       break;
   }
   SendEnumToUMA(kMetricHS20Support, hotspot_version, kHS20SupportMax);
+}
+
+void Metrics::NotifyMBOSupport(bool mbo_support) {
+  if (mbo_support) {
+    SendEnumToUMA(kMetricMBOSupport, kMBOSupported, kMBOSupportMax);
+  } else {
+    SendEnumToUMA(kMetricMBOSupport, kMBOUnsupported, kMBOSupportMax);
+  }
 }
 
 // static

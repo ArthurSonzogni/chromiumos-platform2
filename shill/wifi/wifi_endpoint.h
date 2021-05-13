@@ -43,23 +43,21 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     std::set<uint32_t> oui_set;
   };
   struct Ap80211krvSupport {
-    Ap80211krvSupport()
-        : neighbor_list_supported(false),
-          ota_ft_supported(false),
-          otds_ft_supported(false),
-          dms_supported(false),
-          bss_max_idle_period_supported(false),
-          bss_transition_supported(false) {}
-    bool neighbor_list_supported;
-    bool ota_ft_supported;
-    bool otds_ft_supported;
-    bool dms_supported;
-    bool bss_max_idle_period_supported;
-    bool bss_transition_supported;
+    bool neighbor_list_supported = false;
+    bool ota_ft_supported = false;
+    bool otds_ft_supported = false;
+    bool dms_supported = false;
+    bool bss_max_idle_period_supported = false;
+    bool bss_transition_supported = false;
   };
   struct HS20Information {
     bool supported = false;
     int version = 0;
+  };
+  struct SupportedFeatures {
+    Ap80211krvSupport krv_support;
+    HS20Information hs20_information;
+    bool mbo_support = false;
   };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
@@ -110,6 +108,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_tethering_signature() const;
   const Ap80211krvSupport& krv_support() const;
   const HS20Information& hs20_information() const;
+  bool mbo_support() const;
 
  private:
   friend class WiFiEndpointTest;
@@ -129,7 +128,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
   // for physical_mode_
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, PhysicalMode);
-  // for 802.11k/r/v features
+  // for supported_features_
   FRIEND_TEST(WiFiEndpointTest, Ap80211krvSupported);
 
   enum KeyManagement {
@@ -183,8 +182,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
                        Metrics::WiFiNetworkPhyMode* phy_mode,
                        VendorInformation* vendor_information,
                        std::string* country_code,
-                       Ap80211krvSupport* krv_support,
-                       HS20Information* hs20_information);
+                       SupportedFeatures* supported_features);
   // Parse MDE information element and set *|otds_ft_supported| to true if
   // Over-the-DS Fast BSS Transition is supported by this AP.
   static void ParseMobilityDomainElement(
@@ -207,7 +205,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   static void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
                             std::vector<uint8_t>::const_iterator end,
                             VendorInformation* vendor_information,
-                            HS20Information* hs20_information);
+                            SupportedFeatures* supported_features);
 
   // Assigns a value to |has_tethering_signature_|.
   void CheckForTetheringSignature();
@@ -237,8 +235,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   SecurityFlags security_flags_;
   Metrics* metrics_;
 
-  HS20Information hs20_information_;
-  Ap80211krvSupport krv_support_;
+  SupportedFeatures supported_features_;
 
   ControlInterface* control_interface_;
   WiFiRefPtr device_;
