@@ -31,6 +31,8 @@ class EventHandler {
 
   void OnNewThunderboltDev(base::FilePath path);
 
+  void OnNewPciDev(base::FilePath path);
+
  private:
   enum {
     NO_USER_LOGGED_IN,

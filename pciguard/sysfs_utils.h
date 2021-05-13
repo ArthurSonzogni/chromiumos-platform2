@@ -23,6 +23,7 @@ class SysfsUtils {
   virtual int AuthorizeAllDevices(void);
   virtual int DeauthorizeAllDevices(void);
   virtual int DenyNewDevices(void);
+  virtual int EnsurePciDevIsExternal(base::FilePath devpath);
 
  private:
   explicit SysfsUtils(FilePath root);

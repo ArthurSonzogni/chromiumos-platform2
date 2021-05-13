@@ -94,18 +94,22 @@ void UdevMonitor::OnUdevEvent() {
     if (action == "add")
       event_handler_->OnNewThunderboltDev(path);
 
-  } else if (subsystem == "pci" && action == "change") {
-    auto property = device->GetPropertyValue("EVENT");
-    auto event = std::string(property ? property : "");
+  } else if (subsystem == "pci") {
+    if (action == "change") {
+      auto property = device->GetPropertyValue("EVENT");
+      auto event = std::string(property ? property : "");
+      property = device->GetPropertyValue("DRVR");
+      auto drvr = std::string(property ? property : "");
 
-    property = device->GetPropertyValue("DRVR");
-    auto drvr = std::string(property ? property : "");
+      LOG(INFO) << "UdevEvent: " << subsystem << " " << action << " " << event
+                << " " << drvr << " " << path;
 
-    LOG(INFO) << "UdevEvent: " << subsystem << " " << action << " " << event
-              << " " << drvr << " " << path;
+      if (event == "BLOCKED")
+        pcidev_blocked_callback_(drvr);
 
-    if (event == "BLOCKED")
-      pcidev_blocked_callback_(drvr);
+    } else if (action == "add") {
+      event_handler_->OnNewPciDev(path);
+    }
   }
 }
 

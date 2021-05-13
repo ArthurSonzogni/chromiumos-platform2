@@ -21,7 +21,6 @@ namespace {
 
 // Actual driver allowlist.
 const char* kAllowlist[] = {
-    // TODO(b/163121310): Finalize allowlist
     "pcieport",  // PCI Core services - AER, Hotplug etc.
     "xhci_hcd",  // XHCI host controller driver.
     "nvme",      // PCI Express NVME host controller driver.
@@ -214,6 +213,40 @@ int SysfsUtils::DeauthorizeAllDevices(void) {
       ret = EXIT_FAILURE;
   }
   return ret;
+}
+
+// The goal of this function is to ensure that a new PCI device that showed up,
+// was indeed marked as untrusted. Otherwise remove the device.
+int SysfsUtils::EnsurePciDevIsExternal(FilePath devpath) {
+  if (!PathExists(devpath))
+    return EXIT_SUCCESS;
+
+  std::string untrusted;
+  if (base::ReadFileToString(devpath.Append("untrusted"), &untrusted) &&
+      !untrusted.empty() && untrusted == "1") {
+    // This is a device plugged on an external-facing port. So all is well.
+    return EXIT_SUCCESS;
+  }
+
+  std::string vendorid;
+  base::ReadFileToString(devpath.Append("vendor"), &vendorid);
+  std::string deviceid;
+  base::ReadFileToString(devpath.Append("device"), &deviceid);
+
+  // Scream out loud!
+  LOG(ERROR) << "PLATFORM BUG! New trusted PCI device [" << vendorid << ":"
+             << deviceid << "] at " << devpath;
+  LOG(ERROR) << "New trusted PCI devices aren't expected to show up at runtime";
+  LOG(ERROR)
+      << "Did the platform forgot to mark an external port as external-facing?";
+  LOG(ERROR) << "Removing the PCI device [" << vendorid << ":" << deviceid
+             << "] " << devpath;
+
+  if (base::WriteFile(devpath.Append("remove"), "1", 1) != 1) {
+    PLOG(ERROR) << "Couldn't remove trusted device " << devpath;
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 }  // namespace pciguard

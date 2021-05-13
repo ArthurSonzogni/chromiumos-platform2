@@ -16,6 +16,7 @@ constexpr char kMockTestDevice1[] =
     "/sys/devices/pci0000:00/0000:00:0d.2/domain0/0-0/0-1";
 constexpr char kMockTestDevice2[] =
     "/sys/devices/pci0000:00/0000:00:0d.2/domain0/0-0/0-2";
+constexpr char kMockTestPciDevice[] = "/sys/devices/pci0000:00/0000:00:0d.2";
 
 class MockSysfsUtils : public SysfsUtils {
  public:
@@ -23,6 +24,7 @@ class MockSysfsUtils : public SysfsUtils {
   MOCK_METHOD(int, AuthorizeAllDevices, (), ());
   MOCK_METHOD(int, DeauthorizeAllDevices, (), ());
   MOCK_METHOD(int, DenyNewDevices, (), ());
+  MOCK_METHOD(int, EnsurePciDevIsExternal, (base::FilePath devpath), ());
 };
 
 }  // namespace
@@ -300,6 +302,18 @@ TEST_F(EventHandlerTest, CheckScreenUnlockIgnoredIfNoUserLogin) {
   ASSERT_TRUE(WaitForAuthorizerToFinish(event_handler.get()));
   event_handler->OnScreenUnlocked();
   ASSERT_TRUE(WaitForAuthorizerToFinish(event_handler.get()));
+}
+
+// Check that EventHandler class ensures any new PCI device is external
+TEST_F(EventHandlerTest, CheckPcieDevIsExternalValidated) {
+  auto mock_utils = std::make_unique<MockSysfsUtils>();
+
+  EXPECT_CALL(*mock_utils,
+              EnsurePciDevIsExternal(base::FilePath(kMockTestPciDevice)))
+      .Times(1);
+
+  auto event_handler = std::make_unique<EventHandler>(mock_utils.get());
+  event_handler->OnNewPciDev(base::FilePath(kMockTestPciDevice));
 }
 
 }  // namespace pciguard
