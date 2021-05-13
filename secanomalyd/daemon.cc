@@ -126,7 +126,7 @@ void Daemon::DoRwMountCheck() {
 
         // Report metrics on it, if not running in dev mode.
         if (ShouldReport(dev_)) {
-          if (!SendSecurityAnomalyToUMA("Mount.InitNS.WX")) {
+          if (!SendSecurityAnomalyToUMA(SecurityAnomaly::kMountInitNsWx)) {
             LOG(WARNING) << "Could not upload metrics";
           }
         }

@@ -7,6 +7,13 @@
 
 #include <string>
 
-bool SendSecurityAnomalyToUMA(const std::string& anomaly);
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class SecurityAnomaly {
+  kMountInitNsWx = 0,
+  kMaxValue = kMountInitNsWx,
+};
+
+bool SendSecurityAnomalyToUMA(SecurityAnomaly secanomaly);
 
 #endif  // SECANOMALYD_METRICS_H_
