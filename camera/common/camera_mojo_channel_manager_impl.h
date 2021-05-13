@@ -59,6 +59,13 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
       const std::string& socket_path, const std::string& pipe_name);
 
+  SensorHalClient* GetSensorHalClient() { return nullptr; }
+  void RegisterSensorHalClient(
+      mojo::PendingRemote<mojom::SensorHalClient> client,
+      mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
+          on_construct_callback,
+      Callback on_error_callback) {}
+
  protected:
   friend class CameraMojoChannelManager;
 

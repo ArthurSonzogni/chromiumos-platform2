@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/callback_forward.h>
 #include <base/memory/ref_counted.h>
+#include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -22,6 +23,7 @@
 #include "camera/mojo/gpu/jpeg_encode_accelerator.mojom.h"
 #include "camera/mojo/gpu/mjpeg_decode_accelerator.mojom.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/sensor_hal_client.h"
 
 namespace base {
 class SingleThreadTaskRunner;
@@ -84,6 +86,13 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
   virtual mojo::Remote<mojom::CameraAlgorithmOps>
   CreateCameraAlgorithmOpsRemote(const std::string& socket_path,
                                  const std::string& pipe_name) = 0;
+
+  virtual SensorHalClient* GetSensorHalClient() = 0;
+  virtual void RegisterSensorHalClient(
+      mojo::PendingRemote<mojom::SensorHalClient> client,
+      mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
+          on_construct_callback,
+      Callback on_error_callback) = 0;
 };
 
 }  // namespace cros
