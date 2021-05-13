@@ -15,6 +15,7 @@
 #include <base/no_destructor.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
+#include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -22,6 +23,7 @@
 
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "camera/mojo/unguessable_token.mojom.h"
+#include "common/sensor_hal_client_impl.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 
@@ -59,12 +61,13 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
       const std::string& socket_path, const std::string& pipe_name);
 
-  SensorHalClient* GetSensorHalClient() { return nullptr; }
+  SensorHalClient* GetSensorHalClient();
+
   void RegisterSensorHalClient(
       mojo::PendingRemote<mojom::SensorHalClient> client,
       mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
           on_construct_callback,
-      Callback on_error_callback) {}
+      Callback on_error_callback);
 
  protected:
   friend class CameraMojoChannelManager;
@@ -83,6 +86,10 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   using ServerPendingMojoTask = PendingMojoTask<
       mojo::PendingRemote<mojom::CameraHalServer>,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback>;
+
+  using SensorClientPendingMojoTask = PendingMojoTask<
+      mojo::PendingRemote<mojom::SensorHalClient>,
+      mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback>;
 
   template <typename T>
   using JpegPendingMojoTask = PendingMojoTask<T, Callback>;
@@ -119,6 +126,7 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   // Pending Mojo tasks information which should be consumed when the
   // |dispatcher_| is connected.
   ServerPendingMojoTask camera_hal_server_task_;
+  SensorClientPendingMojoTask sensor_hal_client_task_;
   std::vector<
       JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>>
       jea_tasks_;
@@ -129,6 +137,9 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   // TODO(b/151270948): Remove this static variable once we implemnet CrOS
   // specific interface on all camera HALs.
   static CameraMojoChannelManagerImpl* instance_;
+
+  // The SensorHalClient instance that connects to iioservice for sensors data.
+  std::unique_ptr<SensorHalClientImpl> sensor_hal_client_;
 };
 
 }  // namespace cros
