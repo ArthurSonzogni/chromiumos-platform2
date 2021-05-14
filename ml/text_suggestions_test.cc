@@ -27,7 +27,7 @@ TEST(TextSuggestionsTest, CanLoadLibrary) {
   }
 }
 
-TEST(TextSuggestionsText, ExampleRequest) {
+TEST(TextSuggestionsText, ExampleCompletionRequest) {
   auto* const instance = ml::TextSuggestions::GetInstance();
   if (instance->GetStatus() == ml::TextSuggestions::Status::kNotSupported) {
     return;
@@ -38,7 +38,6 @@ TEST(TextSuggestionsText, ExampleRequest) {
   TextSuggester const suggester = instance->CreateTextSuggester();
   instance->LoadTextSuggester(suggester);
 
-  // TODO(crbug/1146266): Add prediction test case after next sharedlib uprev
   chrome_knowledge::TextSuggesterRequest request;
   request.set_text("How are y");
   request.set_suggestion_mode(
@@ -57,6 +56,34 @@ TEST(TextSuggestionsText, ExampleRequest) {
   EXPECT_EQ(result.candidates(0).multi_word().text(), "you doing");
   EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
                   -0.680989f);
+
+  instance->DestroyTextSuggester(suggester);
+}
+
+TEST(TextSuggestionsText, ExamplePredictionRequest) {
+  auto* const instance = ml::TextSuggestions::GetInstance();
+  if (instance->GetStatus() == ml::TextSuggestions::Status::kNotSupported) {
+    return;
+  }
+
+  ASSERT_EQ(instance->GetStatus(), TextSuggestions::Status::kOk);
+
+  TextSuggester const suggester = instance->CreateTextSuggester();
+  instance->LoadTextSuggester(suggester);
+
+  chrome_knowledge::TextSuggesterRequest request;
+  request.set_text("How are");
+  request.set_suggestion_mode(
+      chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_PREDICTION);
+
+  chrome_knowledge::TextSuggesterResult result;
+  instance->GenerateSuggestions(suggester, request, &result);
+
+  ASSERT_GT(result.candidates_size(), 0);
+  ASSERT_EQ(result.candidates(0).has_multi_word(), true);
+  EXPECT_EQ(result.candidates(0).multi_word().text(), "you doing");
+  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
+                  -0.8141749f);
 
   instance->DestroyTextSuggester(suggester);
 }

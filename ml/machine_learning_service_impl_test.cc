@@ -1554,33 +1554,47 @@ TEST(GrammarCheckerTest, LoadModelAndInference) {
   ASSERT_TRUE(infer_callback_done);
 }
 
-TEST(TextSuggesterTest, LoadModelAndInference) {
-  if (ml::TextSuggestions::GetInstance()->GetStatus() ==
-      ml::TextSuggestions::Status::kNotSupported) {
+bool TextSuggesterNotSupportedOnDevice() {
+  return ml::TextSuggestions::GetInstance()->GetStatus() ==
+         ml::TextSuggestions::Status::kNotSupported;
+}
+
+class TextSuggesterTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    if (TextSuggesterNotSupportedOnDevice()) {
+      return;
+    }
+
+    mojo::Remote<MachineLearningService> ml_service;
+    const MachineLearningServiceImplForTesting ml_service_impl(
+        ml_service.BindNewPipeAndPassReceiver());
+
+    // Load TextSuggester.
+    bool model_callback_done = false;
+    ml_service->LoadTextSuggester(
+        suggester_.BindNewPipeAndPassReceiver(),
+        base::Bind(
+            [](bool* model_callback_done, const LoadModelResult result) {
+              ASSERT_EQ(result, LoadModelResult::OK);
+              *model_callback_done = true;
+            },
+            &model_callback_done));
+
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(model_callback_done);
+    ASSERT_TRUE(suggester_.is_bound());
+  }
+
+ protected:
+  mojo::Remote<TextSuggester> suggester_;
+};
+
+TEST_F(TextSuggesterTest, LoadModelAndGenerateCompletionCandidate) {
+  if (TextSuggesterNotSupportedOnDevice()) {
     return;
   }
 
-  mojo::Remote<MachineLearningService> ml_service;
-  const MachineLearningServiceImplForTesting ml_service_impl(
-      ml_service.BindNewPipeAndPassReceiver());
-
-  // Load TextSuggester.
-  mojo::Remote<TextSuggester> suggester;
-  bool model_callback_done = false;
-  ml_service->LoadTextSuggester(
-      suggester.BindNewPipeAndPassReceiver(),
-      base::Bind(
-          [](bool* model_callback_done, const LoadModelResult result) {
-            ASSERT_EQ(result, LoadModelResult::OK);
-            *model_callback_done = true;
-          },
-          &model_callback_done));
-
-  base::RunLoop().RunUntilIdle();
-  ASSERT_TRUE(model_callback_done);
-  ASSERT_TRUE(suggester.is_bound());
-
-  // TODO(crbug/1146266): Add prediction test case after next sharedlib uprev
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
   query->suggestion_mode = TextSuggestionMode::kCompletion;
@@ -1592,7 +1606,7 @@ TEST(TextSuggesterTest, LoadModelAndInference) {
   query->next_word_candidates.push_back(std::move(candidate_one));
 
   bool infer_callback_done = false;
-  suggester->Suggest(
+  suggester_->Suggest(
       std::move(query),
       base::Bind(
           [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
@@ -1604,6 +1618,35 @@ TEST(TextSuggesterTest, LoadModelAndInference) {
             EXPECT_EQ(
                 result->candidates.at(0)->get_multi_word()->normalized_score,
                 -0.680989f);
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+TEST_F(TextSuggesterTest, LoadModelAndGeneratePredictionCandidate) {
+  if (TextSuggesterNotSupportedOnDevice()) {
+    return;
+  }
+
+  TextSuggesterQueryPtr query = TextSuggesterQuery::New();
+  query->text = "how are";
+  query->suggestion_mode = TextSuggestionMode::kPrediction;
+
+  bool infer_callback_done = false;
+  suggester_->Suggest(
+      std::move(query),
+      base::Bind(
+          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+            EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
+            ASSERT_EQ(result->candidates.size(), 1);
+            ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
+            EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
+                      "you doing");
+            EXPECT_EQ(
+                result->candidates.at(0)->get_multi_word()->normalized_score,
+                -0.8141749f);
             *infer_callback_done = true;
           },
           &infer_callback_done));
