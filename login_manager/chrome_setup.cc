@@ -86,6 +86,9 @@ constexpr char kEnableBreakpadFlag[] = "--no-enable-crashpad";
 const char kSchedulerTunePath[] = "/scheduler-tune";
 const char kBoostUrgentProperty[] = "boost-urgent";
 
+constexpr char kModemPath[] = "/modem";
+constexpr char kModemAttachApnProperty[] = "attach-apn-required";
+
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
 // TODO(rkc, pbos): Remove these and related code once crbug.com/706523 is
@@ -148,6 +151,18 @@ void SetUpHandwritingRecognitionWebPlatformApiFlag(
   }
 
   builder->AddFeatureEnableOverride("HandwritingRecognitionWebPlatformApi");
+}
+
+// Enables the "CellularUseAttachApn" Chrome feature flag if the
+// "modem/attach-apn-required" property is set to "true" in cros_config.
+void SetUpModemFlag(ChromiumCommandBuilder* builder,
+                    brillo::CrosConfigInterface* cros_config) {
+  std::string required;
+  if (cros_config &&
+      cros_config->GetString(kModemPath, kModemAttachApnProperty, &required) &&
+      required == "true") {
+    builder->AddFeatureEnableOverride("CellularUseAttachApn");
+  }
 }
 
 // Called by AddUiFlags() to take a wallpaper flag type ("default" or "guest"
@@ -591,6 +606,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpAllowAmbientEQFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
+  SetUpModemFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
