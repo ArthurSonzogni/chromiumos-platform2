@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "minios/draw_utils.h"
 #include "minios/screens.h"
 
 #include <algorithm>
@@ -77,143 +76,10 @@ void Screens::StartMiniOsFlow() {
   return ShowMiniOsWelcomeScreen();
 }
 
-void DrawUtils::ShowLanguageDropdown(int current_index) {
-  constexpr int kItemHeight = 40;
-  const int kItemPerPage = (frecon_canvas_size_ - 260) / kItemHeight;
-
-  // Pick begin index such that the selected index is centered on the screen if
-  // possible.
-  int begin_index =
-      std::clamp(current_index - kItemPerPage / 2, 0,
-                 static_cast<int>(supported_locales_.size()) - kItemPerPage);
-
-  int offset_y = -frecon_canvas_size_ / 2 + 88;
-  const int kBackgroundX = -frecon_canvas_size_ / 2 + 360;
-  for (int i = begin_index;
-       i < (begin_index + kItemPerPage) && i < supported_locales_.size(); i++) {
-    // Get placement for the language image.
-    int language_width;
-    if (!GetLangConstants(supported_locales_[i], &language_width)) {
-      language_width = 95;
-      LOG(WARNING) << "Could not get width for " << supported_locales_[i]
-                   << ". Defaulting to " << language_width;
-    }
-    int lang_x = -frecon_canvas_size_ / 2 + language_width / 2 + 40;
-
-    // This is the currently selected language. Show in blue.
-    if (current_index == i) {
-      ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
-      ShowImage(screens_path_.Append(supported_locales_[i])
-                    .Append("language_focused.png"),
-                lang_x, offset_y);
-    } else {
-      ShowBox(kBackgroundX, offset_y, 720, 40, kMenuDropdownFrameNavy);
-      ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
-      ShowImage(
-          screens_path_.Append(supported_locales_[i]).Append("language.png"),
-          lang_x, offset_y);
-    }
-    offset_y += kItemHeight;
-  }
-}
-
 void Screens::LanguageMenuOnSelect() {
   ShowLanguageMenu(false);
   int start_index = FindLocaleIndex(index_);
   ShowLanguageDropdown(start_index);
-}
-
-void DrawUtils::ShowLanguageMenu(bool is_selected) {
-  const int kOffsetY = -frecon_canvas_size_ / 2 + 40;
-  const int kBgX = -frecon_canvas_size_ / 2 + 145;
-  const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
-  const int kArrowX = -frecon_canvas_size_ / 2 + 268;
-  int language_width;
-  if (!GetLangConstants(locale_, &language_width)) {
-    language_width = 100;
-    LOG(WARNING) << "Could not get language width for " << locale_
-                 << ". Defaulting to 100.";
-  }
-  const int kTextX = -frecon_canvas_size_ / 2 + 40 + language_width / 2;
-
-  base::FilePath menu_background =
-      is_selected ? screens_path_.Append("language_menu_bg_focused.png")
-                  : screens_path_.Append("language_menu_bg.png");
-
-  ShowImage(menu_background, kBgX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
-
-  ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("language_folded", kTextX, kOffsetY);
-}
-
-void DrawUtils::ShowFooter() {
-  constexpr int kQrCodeSize = 86;
-  const int kQrCodeX = (-frecon_canvas_size_ / 2) + (kQrCodeSize / 2);
-  const int kQrCodeY = (frecon_canvas_size_ / 2) - (kQrCodeSize / 2) - 56;
-
-  const int kSeparatorX = 410 - (frecon_canvas_size_ / 2);
-  const int kSeparatorY = kQrCodeY;
-  constexpr int kFooterLineHeight = 18;
-
-  const int kFooterY = (frecon_canvas_size_ / 2) - kQrCodeSize + 9 - 56;
-  const int kFooterLeftX =
-      kQrCodeX + (kQrCodeSize / 2) + 16 + (kDefaultMessageWidth / 2);
-  const int kFooterRightX = kSeparatorX + 32 + (kDefaultMessageWidth / 2);
-
-  ShowMessage("footer_left_1", kFooterLeftX, kFooterY);
-  ShowMessage("footer_left_2", kFooterLeftX,
-              kFooterY + kFooterLineHeight * 2 + 14);
-  ShowMessage("footer_left_3", kFooterLeftX,
-              kFooterY + kFooterLineHeight * 3 + 14);
-
-  constexpr int kNavButtonHeight = 24;
-  const int kNavButtonY =
-      (frecon_canvas_size_ / 2) - (kNavButtonHeight / 2) - 56;
-  int nav_btn_x = kSeparatorX + 32;
-  // Navigation key icons.
-  const std::string kFooterType = is_detachable_ ? "tablet" : "clamshell";
-  const std::string kNavKeyEnter =
-      is_detachable_ ? "button_power" : "key_enter";
-  const std::string kNavKeyUp = is_detachable_ ? "button_volume_up" : "key_up";
-  const std::string kNavKeyDown =
-      is_detachable_ ? "button_volume_down" : "key_down";
-
-  constexpr int kUpDownIconWidth = 24;
-  constexpr int kIconPadding = 8;
-  const int kEnterIconWidth = is_detachable_ ? 40 : 66;
-
-  ShowMessage("footer_right_1_" + kFooterType, kFooterRightX, kFooterY);
-  ShowMessage("footer_right_2_" + kFooterType, kFooterRightX,
-              kFooterY + kFooterLineHeight + 8);
-
-  nav_btn_x += kEnterIconWidth / 2;
-  ShowImage(screens_path_.Append("nav-" + kNavKeyEnter + ".png"), nav_btn_x,
-            kNavButtonY);
-  nav_btn_x += kEnterIconWidth / 2 + kIconPadding + kUpDownIconWidth / 2;
-  ShowImage(screens_path_.Append("nav-" + kNavKeyUp + ".png"), nav_btn_x,
-            kNavButtonY);
-  nav_btn_x += kIconPadding + kUpDownIconWidth;
-  ShowImage(screens_path_.Append("nav-" + kNavKeyDown + ".png"), nav_btn_x,
-            kNavButtonY);
-
-  ShowImage(screens_path_.Append("qr_code.png"), kQrCodeX, kQrCodeY);
-  int hwid_len = hwid_.size();
-  int hwid_x = kQrCodeX + (kQrCodeSize / 2) + 16 + 5;
-  const int kHwidY = kFooterY + kFooterLineHeight;
-
-  if (right_to_left_) {
-    hwid_x = -hwid_x - kMonospaceGlyphWidth * (hwid_len - 2);
-  }
-
-  ShowText(hwid_, hwid_x, kHwidY, "grey");
-  ShowBox(kSeparatorX, kSeparatorY, 1, kQrCodeSize, kMenuGrey);
-}
-
-void DrawUtils::MessageBaseScreen() {
-  ClearMainArea();
-  ShowLanguageMenu(false);
-  ShowFooter();
 }
 
 void Screens::ShowMiniOsWelcomeScreen() {
@@ -388,99 +254,6 @@ void Screens::UpdateButtons(int menu_count, int key, bool* enter) {
   index_ = starting_index;
 }
 
-bool DrawUtils::ReadLangConstants() {
-  lang_constants_.clear();
-  supported_locales_.clear();
-  // Read language widths from lang_constants.sh into memory.
-  auto lang_constants_path = screens_path_.Append("lang_constants.sh");
-  if (!base::PathExists(lang_constants_path)) {
-    LOG(ERROR) << "Language constants path: " << lang_constants_path
-               << " not found.";
-    return false;
-  }
-
-  std::string const_values;
-  if (!ReadFileToString(lang_constants_path, &const_values)) {
-    LOG(ERROR) << "Could not read lang constants file " << lang_constants_path;
-    return false;
-  }
-
-  if (!base::SplitStringIntoKeyValuePairs(const_values, '=', '\n',
-                                          &lang_constants_)) {
-    LOG(ERROR) << "Unable to parse language width information.";
-    return false;
-  }
-  for (const auto& pair : lang_constants_) {
-    if (pair.first == "SUPPORTED_LOCALES") {
-      // Parse list of supported locales and store separately.
-      std::string locale_list;
-      if (!base::RemoveChars(pair.second, "\"", &locale_list))
-        LOG(WARNING) << "Unable to remove surrounding quotes from locale list.";
-      supported_locales_ = base::SplitString(
-          locale_list, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    }
-  }
-
-  if (supported_locales_.empty()) {
-    LOG(ERROR) << "Unable to get supported locales. Will not be able to "
-                  "change locale.";
-    return false;
-  }
-  return true;
-}
-
-bool DrawUtils::GetLangConstants(const std::string& locale, int* lang_width) {
-  if (lang_constants_.empty()) {
-    LOG(ERROR) << "No language widths available.";
-    return false;
-  }
-
-  // Lang_consts uses '_' while supported locale list uses '-'.
-  std::string token;
-  base::ReplaceChars(locale, "-", "_", &token);
-  token = "LANGUAGE_" + token + "_WIDTH";
-
-  // Find the width for the token.
-  for (const auto& width_token : lang_constants_) {
-    if (width_token.first == token) {
-      if (!base::StringToInt(width_token.second, lang_width)) {
-        LOG(ERROR) << "Could not convert " << width_token.second
-                   << " to a number.";
-        return false;
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-void DrawUtils::LocaleChange(int selected_locale) {
-  // Change locale and update constants.
-  locale_ = supported_locales_[selected_locale];
-  CheckRightToLeft();
-  ReadDimensionConstants();
-  ClearScreen();
-  ShowFooter();
-}
-
-void DrawUtils::ShowCollapsedNetworkDropDown(bool is_selected) {
-  const int kOffsetY = -frecon_canvas_size_ / 2 + 350;
-  const int kBgX = -frecon_canvas_size_ / 2 + 145;
-  const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
-  const int kArrowX = -frecon_canvas_size_ / 2 + 268;
-  const int kTextX = -frecon_canvas_size_ / 2 + 100;
-
-  // Currently using language and globe icons as placeholders.
-  base::FilePath menu_background =
-      is_selected ? screens_path_.Append("language_menu_bg_focused.png")
-                  : screens_path_.Append("language_menu_bg.png");
-
-  ShowImage(menu_background, kBgX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);
-}
-
 void Screens::ShowNetworkDropdown() {
   int offset_y = -frecon_canvas_size_ / 2 + 350 + 40;
   const int kBackgroundX = -frecon_canvas_size_ / 2 + 360;
@@ -517,57 +290,6 @@ void Screens::ShowNetworkDropdown() {
     }
     offset_y += kItemHeight;
   }
-}
-
-void DrawUtils::CheckRightToLeft() {
-  // TODO(vyshu): Create an unblocked_terms.txt to allow "he" for Hebrew.
-  right_to_left_ = (locale_ == "ar" || locale_ == "fa" || locale_ == "he");
-}
-
-bool DrawUtils::IsDetachable() {
-  is_detachable_ =
-      base::PathExists(root_.Append("etc/cros-initramfs/is_detachable"));
-  return is_detachable_;
-}
-
-void DrawUtils::GetVpdRegion() {
-  if (ReadFileToString(root_.Append("sys/firmware/vpd/ro/region"),
-                       &vpd_region_)) {
-    return;
-  }
-  LOG(WARNING) << "Could not read vpd region from file. Trying commandline.";
-  int exit_code = 0;
-  std::string error;
-  if (!process_manager_->RunCommandWithOutput(
-          {"/bin/vpd", "-g", "region"}, &exit_code, &vpd_region_, &error) ||
-      exit_code) {
-    vpd_region_ = "us";
-    PLOG(WARNING) << "Error getting vpd -g region. Exit code " << exit_code
-                  << " with error " << error << ". Defaulting to 'us'. ";
-    return;
-  }
-  return;
-}
-
-void DrawUtils::ReadHardwareId() {
-  int exit_code = 0;
-  std::string output, error;
-  if (!process_manager_->RunCommandWithOutput({"/bin/crossystem", "hwid"},
-                                              &exit_code, &output, &error) ||
-      exit_code) {
-    hwid_ = "CHROMEBOOK";
-    PLOG(WARNING)
-        << "Could not get hwid from crossystem. Exited with exit code "
-        << exit_code << " and error " << error
-        << ". Defaulting to 'CHROMEBOOK'.";
-    return;
-  }
-
-  // Truncate HWID.
-  std::vector<std::string> hwid_parts = base::SplitString(
-      output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  hwid_ = hwid_parts[0];
-  return;
 }
 
 bool Screens::MapRegionToKeyboard(std::string* xkb_keyboard_layout) {

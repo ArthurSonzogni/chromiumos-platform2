@@ -104,22 +104,8 @@ class Screens : public DrawUtils,
   }
 
  private:
-  FRIEND_TEST(ScreensTest, ReadDimension);
-  FRIEND_TEST(ScreensTest, GetDimension);
-  FRIEND_TEST(ScreensTest, GetLangConsts);
-  FRIEND_TEST(ScreensTest, GetLangConstsError);
   FRIEND_TEST(ScreensTest, UpdateButtons);
   FRIEND_TEST(ScreensTest, UpdateButtonsIsDetachable);
-  FRIEND_TEST(ScreensTest, CheckRightToLeft);
-  FRIEND_TEST(ScreensTest, CheckDetachable);
-  FRIEND_TEST(ScreensTest, GetVpdFromFile);
-  FRIEND_TEST(ScreensTest, GetVpdFromCommand);
-  FRIEND_TEST(ScreensTest, GetVpdFromDefault);
-  FRIEND_TEST(ScreensTest, GetHwidFromCommand);
-  FRIEND_TEST(ScreensTest, GetHwidFromDefault);
-  FRIEND_TEST(ScreensTest, GetFreconConstFile);
-  FRIEND_TEST(ScreensTest, GetFreconConstNoInt);
-  FRIEND_TEST(ScreensTest, GetFreconConstNoFile);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoFile);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNotDict);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);

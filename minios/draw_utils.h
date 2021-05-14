@@ -128,6 +128,23 @@ class DrawUtils : public DrawInterface {
   void SetLocaleRtlForTest(bool is_rtl) { right_to_left_ = is_rtl; }
 
  protected:
+  FRIEND_TEST(DrawUtilsTest, InstructionsWithTitle);
+  FRIEND_TEST(DrawUtilsTest, ReadDimension);
+  FRIEND_TEST(DrawUtilsTest, GetDimension);
+  FRIEND_TEST(DrawUtilsTest, GetLangConsts);
+  FRIEND_TEST(DrawUtilsTest, GetLangConstsError);
+  FRIEND_TEST(DrawUtilsTest, CheckRightToLeft);
+  FRIEND_TEST(DrawUtilsTest, CheckDetachable);
+  FRIEND_TEST(DrawUtilsTest, GetVpdFromFile);
+  FRIEND_TEST(DrawUtilsTest, GetVpdFromCommand);
+  FRIEND_TEST(DrawUtilsTest, GetVpdFromDefault);
+  FRIEND_TEST(DrawUtilsTest, GetHwidFromCommand);
+  FRIEND_TEST(DrawUtilsTest, GetHwidFromDefault);
+  FRIEND_TEST(DrawUtilsTest, GetFreconConstFile);
+  FRIEND_TEST(DrawUtilsTest, GetFreconConstNoInt);
+  FRIEND_TEST(DrawUtilsTest, GetFreconConstNoFile);
+  FRIEND_TEST(DrawUtilsTestMocks, ShowFooter);
+
   // Show progress bar at percentage given.
   void ShowProgressPercentage(double progress);
 
