@@ -37,6 +37,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
@@ -1998,6 +1999,56 @@ void ArcSetup::UnmountOnOnetimeStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmount(arc_paths_->android_rootfs_directory));
 }
 
+void ArcSetup::CreateCrosEcRingDeviceOnPreChroot(const base::FilePath& rootfs) {
+  if (USE_IIOSERVICE) {
+    // If iioservice is used, the container needs no access to the device.
+    return;
+  }
+
+  // Wait for the cros-ec-ring device.
+  EXIT_IF(!LaunchAndWait({"/bin/udevadm", "trigger", "--action=add",
+                          "--property-match=DRIVER-cros-ec-ring", "--settle"}));
+
+  // Find the cros-ec-ring device directory.
+  base::FileEnumerator enumerator(base::FilePath("/sys/bus/iio/devices"),
+                                  false /* recursive */,
+                                  base::FileEnumerator::DIRECTORIES);
+  base::FilePath cros_ec_ring_dir;
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    std::string name;
+    if (base::ReadFileToString(path.Append("name"), &name) &&
+        base::TrimString(name, "\n", base::TRIM_TRAILING) == "cros-ec-ring") {
+      cros_ec_ring_dir = path;
+      break;
+    }
+  }
+
+  if (cros_ec_ring_dir.empty())
+    return;
+  const base::FilePath device_name = cros_ec_ring_dir.BaseName();
+
+  // Get the device number of cros-ec-ring.
+  struct stat st = {};
+  EXIT_IF(stat(base::FilePath("/dev").Append(device_name).value().c_str(),
+               &st) < 0);
+
+  // Create the device file for the container.
+  base::ScopedFD container_dev_dir_fd(
+      brillo::OpenSafely(rootfs.Append("dev"), O_DIRECTORY | O_RDONLY, 0));
+  EXIT_IF(!container_dev_dir_fd.is_valid());
+  EXIT_IF(mknodat(container_dev_dir_fd.get(), device_name.value().c_str(),
+                  S_IFCHR | S_IRWXU, st.st_rdev) < 0);
+
+  // Set the owner.
+  // NOTE: Here openat() and fchown() are used instead of Chown() or
+  // brillo::OpenAtSafely() because they reject device files.
+  base::ScopedFD device_fd(HANDLE_EINTR(openat(
+      container_dev_dir_fd.get(), device_name.value().c_str(), O_RDONLY)));
+  EXIT_IF(!device_fd.is_valid());
+  EXIT_IF(fchown(device_fd.get(), kSystemUid, kSystemGid) < 0);
+}
+
 void ArcSetup::BindMountInContainerNamespaceOnPreChroot(
     const base::FilePath& rootfs,
     const ArcBinaryTranslationType binary_translation_type) {
@@ -2220,6 +2271,7 @@ void ArcSetup::OnPreChroot() {
   PLOG_IF(FATAL, !container_mount_ns)
       << "Failed to enter the container mount namespace";
 
+  CreateCrosEcRingDeviceOnPreChroot(rootfs);
   BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
   RestoreContextOnPreChroot(rootfs);
   CreateDevColdbootDoneOnPreChroot(rootfs);

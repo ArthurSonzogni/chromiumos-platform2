@@ -315,6 +315,9 @@ class ArcSetup {
   // Unmounts image files that have been mounted in MountOnOnetimeSetup.
   void UnmountOnOnetimeStop();
 
+  // Creates a device file of the cros-ec-ring sensor device.
+  void CreateCrosEcRingDeviceOnPreChroot(const base::FilePath& rootfs);
+
   // Various bind-mounts inside the container's mount namespace on pre-chroot
   // stage.
   void BindMountInContainerNamespaceOnPreChroot(
