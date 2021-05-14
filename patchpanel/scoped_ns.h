@@ -5,6 +5,9 @@
 #ifndef PATCHPANEL_SCOPED_NS_H_
 #define PATCHPANEL_SCOPED_NS_H_
 
+#include <memory>
+#include <string>
+
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
@@ -14,21 +17,24 @@ namespace patchpanel {
 // namespace.
 class ScopedNS {
  public:
-  enum Type {
-    Network = 1,
-    Mount,
-  };
+  // Records the current mount (network) namespace and enters another namespace
+  // identified by the input argument. Will go back to the current namespace if
+  // the returned object goes out of scope. Returns nullptr on failure.
+  static std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid);
+  static std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid);
+  static std::unique_ptr<ScopedNS> EnterNetworkNS(
+      const std::string& netns_name);
 
-  explicit ScopedNS(pid_t pid, Type type);
   ScopedNS(const ScopedNS&) = delete;
   ScopedNS& operator=(const ScopedNS&) = delete;
 
   ~ScopedNS();
 
-  // Returns whether or not the object was able to enter the target namespace.
-  bool IsValid() const { return valid_; }
-
  private:
+  ScopedNS(int nstype,
+           const std::string& current_ns_path,
+           const std::string& target_ns_path);
+
   int nstype_;
   bool valid_;
   base::ScopedFD ns_fd_;

@@ -207,7 +207,8 @@ message SetVpnIntentResponse {
 // trigger the teardown of the routing setup, the veth setup, and the release
 // of the IPv4 subnet assigned to the namespace.
 message ConnectNamespaceRequest {
-  // The pid of the client network namespace.
+  // The pid of the client network namespace. If set to -1, a new network
+  // namespace which is not associated with any process will be created.
   int32 pid = 1;
 
   // If the client sets this field to the name of a physical network device
@@ -254,6 +255,9 @@ message ConnectNamespaceResponse {
   // The IPv4 address in network order assigned to the interface in the host
   // namespace.
   uint32 host_ipv4_address = 5;
+
+  // Name of the netns attached or created.
+  string netns_name = 6;
 }
 
 // Represents the traffic usage ({tx, rx} x {packets, bytes}) between a source

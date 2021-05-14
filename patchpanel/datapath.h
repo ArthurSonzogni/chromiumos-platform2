@@ -28,6 +28,10 @@ namespace patchpanel {
 
 // Struct holding parameters for Datapath::StartRoutingNamespace requests.
 struct ConnectedNamespace {
+  // The special pid which indicates this namespace is not attached to an
+  // associated process but should be/was created by `ip netns add`.
+  static constexpr pid_t kNewNetnsPid = -1;
+
   // The pid of the client network namespace.
   pid_t pid;
   // The name attached to the client network namespace.
@@ -100,8 +104,9 @@ class Datapath {
   virtual void Stop();
 
   // Attaches the name |netns_name| to a network namespace identified by
-  // |netns_pid|. If |netns_name| had already been created, it will be deleted
-  // first.
+  // |netns_pid|. If |netns_pid| is -1, a new namespace with name |netns_name|
+  // will be created instead. If |netns_name| had already been created, it will
+  // be deleted first.
   virtual bool NetnsAttachName(const std::string& netns_name, pid_t netns_pid);
 
   // Deletes the name |netns_name| of a network namespace.

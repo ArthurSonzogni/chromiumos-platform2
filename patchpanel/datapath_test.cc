@@ -118,6 +118,8 @@ class MockProcessRunner : public MinijailedProcessRunner {
                int(const std::string& key,
                    const std::string& value,
                    bool log_failures));
+  MOCK_METHOD2(ip_netns_add,
+               int(const std::string& netns_name, bool log_failures));
   MOCK_METHOD3(ip_netns_attach,
                int(const std::string& netns_name,
                    pid_t netns_pid,
@@ -169,6 +171,11 @@ void Verify_sysctl_w(MockProcessRunner& runner,
                      const std::string& key,
                      const std::string& value) {
   EXPECT_CALL(runner, sysctl_w(StrEq(key), StrEq(value), _));
+}
+
+void Verify_ip_netns_add(MockProcessRunner& runner,
+                         const std::string& netns_name) {
+  EXPECT_CALL(runner, ip_netns_add(StrEq(netns_name), _));
 }
 
 void Verify_ip_netns_attach(MockProcessRunner& runner,
@@ -643,6 +650,33 @@ TEST(DatapathTest, StopRoutingNamespace) {
                                                 base::DoNothing());
   Datapath datapath(&runner, &firewall);
   datapath.StopRoutingNamespace(nsinfo);
+}
+
+TEST(DatapathTest, StartRoutingNewNamespace) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+  MacAddress mac = {1, 2, 3, 4, 5, 6};
+
+  // The running may fail at checking ScopedNS.IsValid() in
+  // Datapath::ConnectVethPair(), so we only check if `ip netns add` is invoked
+  // correctly here.
+  Verify_ip_netns_add(runner, "netns_foo");
+
+  ConnectedNamespace nsinfo = {};
+  nsinfo.pid = ConnectedNamespace::kNewNetnsPid;
+  nsinfo.netns_name = "netns_foo";
+  nsinfo.source = TrafficSource::USER;
+  nsinfo.outbound_ifname = "";
+  nsinfo.route_on_vpn = true;
+  nsinfo.host_ifname = "arc_ns0";
+  nsinfo.peer_ifname = "veth0";
+  nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
+                                                base::DoNothing());
+  nsinfo.peer_mac_addr = mac;
+  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
+  datapath.StartRoutingNamespace(nsinfo);
+  ioctl_reqs.clear();
+  ioctl_rtentry_args.clear();
 }
 
 TEST(DatapathTest, StartRoutingDevice_Arc) {

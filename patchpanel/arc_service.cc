@@ -62,8 +62,8 @@ bool KernelVersion(int* major, int* minor) {
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
 void SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
-  ScopedNS ns(pid, ScopedNS::Type::Mount);
-  if (!ns.IsValid()) {
+  auto ns = ScopedNS::EnterMountNS(pid);
+  if (!ns) {
     LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
     return;
   }

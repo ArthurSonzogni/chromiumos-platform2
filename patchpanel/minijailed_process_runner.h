@@ -72,6 +72,10 @@ class MinijailedProcessRunner {
                        const std::string& value,
                        bool log_failures = true);
 
+  // Creates a new named network namespace with name |netns_name|.
+  virtual int ip_netns_add(const std::string& netns_name,
+                           bool log_failures = true);
+
   // Attaches a name to the network namespace of the given pid
   // TODO(hugobenichi) How can patchpanel create a |netns_name| file in
   // /run/netns without running ip as root ?

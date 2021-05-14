@@ -201,6 +201,12 @@ int MinijailedProcessRunner::sysctl_w(const std::string& key,
   return RunSync(args, log_failures, nullptr);
 }
 
+int MinijailedProcessRunner::ip_netns_add(const std::string& netns_name,
+                                          bool log_failures) {
+  std::vector<std::string> args = {kIpPath, "netns", "add", netns_name};
+  return RunSync(args, log_failures, nullptr);
+}
+
 int MinijailedProcessRunner::ip_netns_attach(const std::string& netns_name,
                                              pid_t netns_pid,
                                              bool log_failures) {

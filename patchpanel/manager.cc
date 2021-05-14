@@ -889,9 +889,9 @@ std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
     writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
     return dbus_response;
   }
-  {
-    ScopedNS ns(pid, ScopedNS::Type::Network);
-    if (!ns.IsValid()) {
+  if (pid != ConnectedNamespace::kNewNetnsPid) {
+    auto ns = ScopedNS::EnterNetworkNS(pid);
+    if (!ns) {
       LOG(ERROR) << "ConnectNamespaceRequest: invalid namespace pid " << pid;
       writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
       return dbus_response;
@@ -1067,6 +1067,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   response->set_peer_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
   response->set_host_ifname(nsinfo.host_ifname);
   response->set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(0));
+  response->set_netns_name(nsinfo.netns_name);
   auto* response_subnet = response->mutable_ipv4_subnet();
   response_subnet->set_base_addr(nsinfo.peer_subnet->BaseAddress());
   response_subnet->set_prefix_len(nsinfo.peer_subnet->PrefixLength());

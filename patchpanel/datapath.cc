@@ -340,7 +340,11 @@ bool Datapath::NetnsAttachName(const std::string& netns_name, pid_t netns_pid) {
   // did not exit cleanly.
   if (process_runner_->ip_netns_delete(netns_name, false /*log_failures*/) == 0)
     LOG(INFO) << "Deleted left over network namespace name " << netns_name;
-  return process_runner_->ip_netns_attach(netns_name, netns_pid) == 0;
+
+  if (netns_pid == ConnectedNamespace::kNewNetnsPid)
+    return process_runner_->ip_netns_add(netns_name) == 0;
+  else
+    return process_runner_->ip_netns_attach(netns_name, netns_pid) == 0;
 }
 
 bool Datapath::NetnsDeleteName(const std::string& netns_name) {
@@ -520,8 +524,8 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
 
   // Configure the remote veth in namespace |netns_name|.
   {
-    ScopedNS ns(netns_pid, ScopedNS::Type::Network);
-    if (!ns.IsValid() && netns_pid != kTestPID) {
+    auto ns = ScopedNS::EnterNetworkNS(netns_name);
+    if (!ns && netns_pid != kTestPID) {
       LOG(ERROR)
           << "Cannot create virtual link -- invalid container namespace?";
       return false;
@@ -597,7 +601,8 @@ bool Datapath::AddSourceIPv4DropRule(const std::string& oif,
 
 bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   // Veth interface configuration and client routing configuration:
-  //  - attach a name to the client namespace.
+  //  - attach a name to the client namespace (or create a new named namespace
+  //    if no client is specified).
   //  - create veth pair across the current namespace and the client namespace.
   //  - configure IPv4 address on remote veth inside client namespace.
   //  - configure IPv4 address on local veth inside host namespace.
@@ -630,8 +635,8 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   {
-    ScopedNS ns(nsinfo.pid, ScopedNS::Type::Network);
-    if (!ns.IsValid() && nsinfo.pid != kTestPID) {
+    auto ns = ScopedNS::EnterNetworkNS(nsinfo.netns_name);
+    if (!ns && nsinfo.pid != kTestPID) {
       LOG(ERROR) << "Invalid namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);
       NetnsDeleteName(nsinfo.netns_name);
