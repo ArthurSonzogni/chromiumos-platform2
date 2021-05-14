@@ -24,8 +24,7 @@ message ArcStartupRequest {
 
 // This is an intentionally empty mesage. ARC++ startup does not require
 // any information from networking to proceed.
-message ArcStartupResponse {
-}
+message ArcStartupResponse {}
 
 // Notification that the ARC++ container is shutting down.
 message ArcShutdownRequest {
@@ -37,8 +36,7 @@ message ArcShutdownRequest {
 
 // This is an intentionally empty message. ARC++ startup does not require
 // any information from networking to proceed.
-message ArcShutdownResponse {
-}
+message ArcShutdownResponse {}
 
 // Notification that the ARC VM is starting up.
 // Unlike in the container case, Concierge needs to know which TAP devices
@@ -114,8 +112,7 @@ message ArcVmShutdownRequest {
 }
 
 // Intentionally empty response.
-message ArcVmShutdownResponse {
-}
+message ArcVmShutdownResponse {}
 
 // Notification that a Termina VM is starting up.
 message TerminaVmStartupRequest {
@@ -143,8 +140,7 @@ message TerminaVmShutdownRequest {
 }
 
 // Intentionally empty response.
-message TerminaVmShutdownResponse {
-}
+message TerminaVmShutdownResponse {}
 
 // Notification that a Plugin VM is starting up.
 message PluginVmStartupRequest {
@@ -172,8 +168,7 @@ message PluginVmShutdownRequest {
 }
 
 // Intentionally empty response.
-message PluginVmShutdownResponse {
-}
+message PluginVmShutdownResponse {}
 
 // Request to set the VPN routing policy for a socket. The socket file
 // descriptor must be immediately appended to the DBUS message after the
@@ -324,9 +319,9 @@ message ModifyPortRuleRequest {
 
   enum RuleType {
     INVALID_RULE_TYPE = 0;
-    ACCESS = 1;     // Equivalent of iptables 'ACCEPT'
-    LOCKDOWN = 2;   // Equivalent of iptables 'DROP'
-    FORWARDING = 3; // Equivalent of iptables 'DNAT'
+    ACCESS = 1;      // Equivalent of iptables 'ACCEPT'
+    LOCKDOWN = 2;    // Equivalent of iptables 'DROP'
+    FORWARDING = 3;  // Equivalent of iptables 'DNAT'
   }
 
   enum Protocol {
@@ -364,6 +359,18 @@ message ModifyPortRuleRequest {
 message ModifyPortRuleResponse {
   bool success = 1;
 }
+
+// Request to start or stop VPN lockdown. When VPN lockdown is enabled and no
+// VPN connection exists, any non-ARC traffic that would be routed to a VPN
+// connection is instead rejected. ARC traffic is ignored because Android
+// already implements VPN lockdown.
+message SetVpnLockdownRequest {
+  // true: start VPN lockdown. false: stop VPN lockdown.
+  bool enable_vpn_lockdown = 1;
+}
+
+// Intentionally empty response to a SetVpnIntentRequest.
+message SetVpnLockdownResponse {}
 
 // Signal that is emitted when a device managed by patchpanel is added or
 // removed.
