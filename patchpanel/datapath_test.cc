@@ -9,6 +9,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -202,6 +203,10 @@ TEST(DatapathTest, Start) {
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       // Asserts for iptables chain reset.
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
+      {Dual, "filter -D OUTPUT -j vpn_accept -w"},
+      {Dual, "filter -D FORWARD -j vpn_accept -w"},
+      {Dual, "filter -D OUTPUT -j vpn_lockdown -w"},
+      {Dual, "filter -D FORWARD -j vpn_lockdown -w"},
       {Dual, "filter -F FORWARD -w"},
       {Dual, "mangle -F FORWARD -w"},
       {Dual, "mangle -F INPUT -w"},
@@ -217,6 +222,12 @@ TEST(DatapathTest, Start) {
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {Dual, "filter -L vpn_accept -w"},
+      {Dual, "filter -F vpn_accept -w"},
+      {Dual, "filter -X vpn_accept -w"},
+      {Dual, "filter -L vpn_lockdown -w"},
+      {Dual, "filter -F vpn_lockdown -w"},
+      {Dual, "filter -X vpn_lockdown -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
@@ -314,6 +325,13 @@ TEST(DatapathTest, Start) {
        "apply_vpn_mark -w"},
       // Asserts for redirect_dns chain creation
       {IPv4, "nat -N redirect_dns -w"},
+      // Asserts for VPN filter chain creations
+      {Dual, "filter -N vpn_lockdown -w"},
+      {Dual, "filter -I OUTPUT -j vpn_lockdown -w"},
+      {Dual, "filter -I FORWARD -j vpn_lockdown -w"},
+      {Dual, "filter -N vpn_accept -w"},
+      {Dual, "filter -I OUTPUT -j vpn_accept -w"},
+      {Dual, "filter -I FORWARD -j vpn_accept -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(runner, c.first, c.second);
@@ -333,6 +351,10 @@ TEST(DatapathTest, Stop) {
   // Asserts for iptables chain reset.
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
+      {Dual, "filter -D OUTPUT -j vpn_accept -w"},
+      {Dual, "filter -D FORWARD -j vpn_accept -w"},
+      {Dual, "filter -D OUTPUT -j vpn_lockdown -w"},
+      {Dual, "filter -D FORWARD -j vpn_lockdown -w"},
       {Dual, "filter -F FORWARD -w"},
       {Dual, "mangle -F FORWARD -w"},
       {Dual, "mangle -F INPUT -w"},
@@ -348,6 +370,12 @@ TEST(DatapathTest, Stop) {
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {Dual, "filter -L vpn_accept -w"},
+      {Dual, "filter -F vpn_accept -w"},
+      {Dual, "filter -X vpn_accept -w"},
+      {Dual, "filter -L vpn_lockdown -w"},
+      {Dual, "filter -F vpn_lockdown -w"},
+      {Dual, "filter -X vpn_lockdown -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
@@ -784,6 +812,9 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   Verify_iptables(runner, IPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
+  Verify_iptables(runner, Dual,
+                  "filter -A vpn_accept -m mark "
+                  "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
 
   // Teardown
   Verify_iptables(runner, Dual,
@@ -798,6 +829,7 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   Verify_iptables(runner, IPv4,
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
+  Verify_iptables(runner, Dual, "filter -F vpn_accept -w");
 
   Datapath datapath(&runner, &firewall);
   datapath.SetIfnameIndex("arcbr0", 5);
@@ -834,6 +866,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(runner, IPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
+  Verify_iptables(runner, Dual,
+                  "filter -A vpn_accept -m mark "
+                  "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
   // Teardown
   Verify_iptables(runner, Dual,
                   "mangle -D POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
@@ -846,6 +881,7 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(runner, IPv4,
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
+  Verify_iptables(runner, Dual, "filter -F vpn_accept -w");
   // Start tun0 <-> arcbr0 routing
   Verify_iptables(runner, IPv4,
                   "filter -A FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
@@ -1077,6 +1113,20 @@ TEST(DatapathTest, RedirectDnsRules) {
   datapath.AddRedirectDnsRule("wlan0", "8.8.8.8");
   datapath.RemoveRedirectDnsRule("eth0");
   datapath.RemoveRedirectDnsRule("wlan0");
+}
+
+TEST(DatapathTest, SetVpnLockdown) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_iptables(runner, Dual,
+                  "filter -A vpn_lockdown -m mark --mark 0x00008000/0x0000c000 "
+                  "-j REJECT -w");
+  Verify_iptables(runner, Dual, "filter -F vpn_lockdown -w");
+
+  Datapath datapath(&runner, &firewall);
+  datapath.SetVpnLockdown(true);
+  datapath.SetVpnLockdown(false);
 }
 
 TEST(DatapathTest, ArcVethHostName) {

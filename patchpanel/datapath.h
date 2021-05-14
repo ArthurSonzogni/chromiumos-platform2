@@ -9,6 +9,8 @@
 #include <sys/types.h>
 
 #include <iostream>
+#include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -198,6 +200,12 @@ class Datapath {
   //  - Forwarded virtual devices tracking the default network.
   virtual void StartVpnRouting(const std::string& vpn_ifname);
   virtual void StopVpnRouting(const std::string& vpn_ifname);
+
+  // Starts and stops VPN lockdown mode. When patchpanel VPN lockdown is enabled
+  // and no VPN connection exists, any non-ARC traffic that would be routed to a
+  // VPN connection is instead rejected in iptables. ARC traffic is ignored
+  // because Android already implements VPN lockdown.
+  virtual void SetVpnLockdown(bool enable_vpn_lockdown);
 
   // Methods supporting IPv6 configuration for ARC.
   virtual bool MaskInterfaceFlags(const std::string& ifname,

@@ -52,6 +52,8 @@ constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
 constexpr char kRedirectDnsChain[] = "redirect_dns";
+constexpr char kVpnAcceptChain[] = "vpn_accept";
+constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
@@ -160,6 +162,31 @@ void Datapath::Start() {
                    << kGuestIPv4Subnet << " exiting " << oif;
   }
 
+  // Create filter subchains for managing the egress firewall rules associated
+  // with VPN lockdown. When VPN lockdown is enabled, a REJECT rule must stop
+  // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark. This
+  // REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN lockdown
+  // is enabled and a VPN is connected, an ACCEPT rule protects the traffic
+  // tagged with the VPN routing mark from being reject by the VPN lockdown
+  // rule. This ACCEPT rule is added to |kVpnAcceptChain|. Therefore, egress
+  // traffic must:
+  //   - traverse kVpnAcceptChain before kVpnLockdownChain,
+  //   - traverse kVpnLockdownChain before other ACCEPT rules in OUTPUT and
+  //   FORWARD.
+  std::vector<std::string> vpn_chains = {kVpnLockdownChain, kVpnAcceptChain};
+  for (const auto& chain : vpn_chains) {
+    if (!AddChain(IpFamily::Dual, "filter", chain))
+      LOG(ERROR) << "Failed to create " << chain << " filter chain";
+    if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "OUTPUT", chain,
+                        "" /*iif*/, "" /*oif*/))
+      LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
+                 << chain;
+    if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "FORWARD", chain,
+                        "" /*iif*/, "" /*oif*/))
+      LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
+                 << chain;
+  }
+
   // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
   // Crostini, ...) or a connected namespace.
   // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
@@ -250,16 +277,25 @@ void Datapath::Stop() {
 }
 
 void Datapath::ResetIptables() {
-  // If it exists, remove jump rules from a built-in chain to a custom routing
-  // or tagging chain.
+  // If they exists, remove jump rules from built-in chains to custom chains
+  // for any built-in chains that is not explicitly flushed.
   ModifyJumpRule(IpFamily::IPv4, "filter", "-D", "OUTPUT",
                  kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
+  std::vector<std::string> vpn_chains = {kVpnAcceptChain, kVpnLockdownChain};
+  for (const auto& chain : vpn_chains) {
+    ModifyJumpRule(IpFamily::Dual, "filter", "-D", "OUTPUT", chain, "" /*iif*/,
+                   "" /*oif*/, false /*log_failures*/);
+    ModifyJumpRule(IpFamily::Dual, "filter", "-D", "FORWARD", chain, "" /*iif*/,
+                   "" /*oif*/, false /*log_failures*/);
+  }
 
   // Flush chains used for routing and fwmark tagging. Also delete additional
   // chains made by patchpanel. Chains used by permission broker (nat
   // PREROUTING, filter INPUT) and chains used for traffic counters (mangle
   // {rx,tx}_{<iface>, vpn}) are not flushed.
+  // If there is any jump rule between from a chain to another chain that must
+  // be removed, the first chain must be flushed first.
   static struct {
     IpFamily family;
     std::string table;
@@ -275,9 +311,11 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain, true},
       {IpFamily::Dual, "mangle", kApplyVpnMarkChain, true},
       {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain, true},
-      {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
+      {IpFamily::Dual, "filter", kVpnAcceptChain, true},
+      {IpFamily::Dual, "filter", kVpnLockdownChain, true},
       {IpFamily::IPv4, "nat", "POSTROUTING", false},
       {IpFamily::IPv4, "nat", "OUTPUT", false},
+      {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
   };
   for (const auto& op : resetOps) {
     // Chains to delete are custom chains and will not exist the first time
@@ -972,22 +1010,47 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
                        TrafficSource::ARC, true /* route_on_vpn */);
   if (!ModifyRedirectDnsJumpRule("-A"))
     LOG(ERROR) << "Failed to set jump rule to " << kRedirectDnsChain;
+
+  // All traffic with the VPN routing tag are explicitly accepted in the filter
+  // table. This prevents the VPN lockdown chain to reject that traffic when VPN
+  // lockdown is enabled.
+  if (!ModifyIptables(
+          IpFamily::Dual, "filter",
+          {"-A", kVpnAcceptChain, "-m", "mark", "--mark",
+           routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(), "-j",
+           "ACCEPT", "-w"}))
+    LOG(ERROR) << "Failed to set filter rule for accepting VPN marked traffic";
 }
 
 void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   LOG(INFO) << "Stop VPN routing on " << vpn_ifname;
+  if (!FlushChain(IpFamily::Dual, "filter", kVpnAcceptChain))
+    LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
   if (vpn_ifname != kArcBridge)
     StopRoutingDevice(vpn_ifname, kArcBridge, 0 /* no inbound DNAT */,
                       TrafficSource::ARC, false /* route_on_vpn */);
   if (!FlushChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain))
     LOG(ERROR) << "Could not flush " << kApplyVpnMarkChain;
-
   StopConnectionPinning(vpn_ifname);
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "POSTROUTING", "MASQUERADE",
                       "" /*iif*/, vpn_ifname))
     LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
   if (!ModifyRedirectDnsJumpRule("-D"))
     LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
+}
+
+void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
+  if (enable_vpn_lockdown) {
+    if (!ModifyIptables(
+            IpFamily::Dual, "filter",
+            {"-A", kVpnLockdownChain, "-m", "mark", "--mark",
+             kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
+             "-j", "REJECT", "-w"}))
+      LOG(ERROR) << "Failed to start VPN lockdown mode";
+  } else {
+    if (!FlushChain(IpFamily::Dual, "filter", kVpnLockdownChain))
+      LOG(ERROR) << "Failed to stop VPN lockdown mode";
+  }
 }
 
 bool Datapath::ModifyConnmarkSet(IpFamily family,
