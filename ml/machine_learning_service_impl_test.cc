@@ -1583,7 +1583,7 @@ TEST(TextSuggesterTest, LoadModelAndInference) {
   // TODO(crbug/1146266): Add prediction test case after next sharedlib uprev
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
-  query->suggestion_mode = TextSuggestionMode::COMPLETION;
+  query->suggestion_mode = TextSuggestionMode::kCompletion;
 
   NextWordCompletionCandidatePtr candidate_one =
       NextWordCompletionCandidate::New();

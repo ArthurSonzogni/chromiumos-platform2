@@ -22,10 +22,10 @@ using ::chromeos::machine_learning::mojom::TextSuggestionMode;
 chrome_knowledge::RequestSuggestionMode ToRequestSuggestionMode(
     TextSuggestionMode suggestion_mode) {
   switch (suggestion_mode) {
-    case TextSuggestionMode::COMPLETION:
+    case TextSuggestionMode::kCompletion:
       return chrome_knowledge::RequestSuggestionMode::
           SUGGESTION_MODE_COMPLETION;
-    case TextSuggestionMode::PREDICTION:
+    case TextSuggestionMode::kPrediction:
       return chrome_knowledge::RequestSuggestionMode::
           SUGGESTION_MODE_PREDICTION;
     default:

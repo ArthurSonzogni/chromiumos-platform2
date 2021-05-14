@@ -22,7 +22,7 @@ using ::chromeos::machine_learning::mojom::TextSuggestionMode;
 TEST(TextSuggesterMojomConversionTest, CompletionQueryMojomToRequestProto) {
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
-  query->suggestion_mode = TextSuggestionMode::COMPLETION;
+  query->suggestion_mode = TextSuggestionMode::kCompletion;
 
   const chrome_knowledge::TextSuggesterRequest request_proto =
       TextSuggesterQueryToProto(std::move(query));
@@ -37,7 +37,7 @@ TEST(TextSuggesterMojomConversionTest, CompletionQueryMojomToRequestProto) {
 TEST(TextSuggesterMojomConversionTest, PredictionQueryMojomToRequestProto) {
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
-  query->suggestion_mode = TextSuggestionMode::PREDICTION;
+  query->suggestion_mode = TextSuggestionMode::kPrediction;
 
   const chrome_knowledge::TextSuggesterRequest request_proto =
       TextSuggesterQueryToProto(std::move(query));

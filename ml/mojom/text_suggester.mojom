@@ -31,18 +31,18 @@ struct NextWordCompletionCandidate {
 };
 
 // The mode with which a suggestion should be used by a consumer
-[Stable, Extensible, Default=PREDICTION]
+[Stable, Extensible]
 enum TextSuggestionMode {
    // A prediction suggestion is the text predicted after a word. For example
    // the preceding text could be "how are", and the suggested text would be
    // "you".
-   PREDICTION = 1,
+   [Default] kPrediction = 1,
 
    // A completion suggestion is similar to a prediction, however the suggestion
    // also completes any unfinished words in the preceding text. For example,
    // the preceding text could be "how ar", and the suggested text would be
    // "e you".
-   COMPLETION = 2,
+   kCompletion = 2,
 };
 
 // Defines a query for text suggestions
