@@ -8,9 +8,6 @@
 
 namespace hps {
 
-// TODO(amcrae): Remove when constants are read.
-constexpr char kHpsServiceName[] = "org.chromium.Hps";
-
 HpsDaemon::HpsDaemon()
     : brillo::DBusServiceDaemon(::hps::kHpsServiceName),
       org::chromium::HpsAdaptor(this) {}
