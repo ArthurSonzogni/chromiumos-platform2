@@ -26,6 +26,8 @@
 
 #include "ml/daemon.h"
 #include "ml/machine_learning_service_impl.h"
+#include "ml/request_metrics.h"
+#include "ml/time_metrics.h"
 
 namespace ml {
 
@@ -124,9 +126,9 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
       channel.remote_endpoint().platform_handle().GetFD().get());
   char* const argv[3] = {&ml_service_path_[0], &fd_argv[0], nullptr};
 
-  // TODO(https://crbug.com/1202545): report the failure.
   if (minijail_run_pid(jail.get(), &ml_service_path_[0], argv, worker_pid) !=
       0) {
+    RecordProcessErrorEvent(ProcessError::kSpawnWorkerProcessFailed);
     LOG(DFATAL) << "Failed to spawn worker process for " << model_name;
     return false;
   }
@@ -188,7 +190,7 @@ void Process::ControlProcessRun() {
   // will block us because our euid inside of the userns is 0 but is 20106
   // outside of the userns.
   if (seteuid(kMlServiceDBusUid) != 0) {
-    // TODO(https://crbug.com/1202545): report this error to UMA.
+    RecordProcessErrorEvent(ProcessError::kChangeEuidToMlServiceDBusFailed);
     LOG(ERROR) << "Unable to change effective uid to " << kMlServiceDBusUid;
     exit(EX_OSERR);
   }
@@ -205,9 +207,13 @@ void Process::WorkerProcessRun() {
   mojo::core::ScopedIPCSupport ipc_support(
       base::ThreadTaskRunnerHandle::Get(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
-  mojo::IncomingInvitation invitation =
-      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
-          mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))));
+  mojo::IncomingInvitation invitation;
+  {
+    WallTimeMetric(
+        "MachineLearningService.WorkerProcessAcceptMojoConnectionTime");
+    invitation = mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+        mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))));
+  }
   mojo::ScopedMessagePipeHandle pipe =
       invitation.ExtractMessagePipe(kInternalMojoPrimordialPipeName);
   // The worker process exits if it disconnects with the control process.
@@ -253,14 +259,17 @@ bool Process::IsWorkerProcess() {
 }
 
 void Process::InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
+  WallTimeMetric("MachineLearningService.WorkerProcessCleanUpTime");
+
   UnregisterWorkerProcess(child_pid);
   // Reap the worker process.
   int status;
   pid_t ret_pid = waitpid(child_pid, &status, 0);
   DCHECK(ret_pid == child_pid);
-  // TODO(https://crbug.com/1202545): report WEXITSTATUS(status) to UMA.
-  DVLOG(1) << "Worker process (" << child_pid << ") exits with status "
-           << WEXITSTATUS(status);
+  int exit_status = WEXITSTATUS(status);
+  if (exit_status != 0) {
+    RecordWorkerProcessExitStatus(WEXITSTATUS(status));
+  }
 
   // Call the hooks used in testing.
   if (process_type_ == Type::kControlForTest &&

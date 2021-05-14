@@ -120,6 +120,7 @@ static_library("ml_common") {
     "text_suggester_impl.cc",
     "text_suggester_proto_mojom_conversion.cc",
     "text_suggestions.cc",
+    "time_metrics.cc",
     "util.cc",
     "web_platform_handwriting_proto_mojom_conversion.cc",
     "web_platform_handwriting_recognizer_impl.cc",
@@ -198,6 +199,7 @@ shared_library("libml_for_benchmark") {
     "process.cc",
     "request_metrics.cc",
     "tensor_view.cc",
+    "time_metrics.cc",
     "util.cc",
   ]
   include_dirs = [ "${sysroot}/usr/include/tensorflow" ]

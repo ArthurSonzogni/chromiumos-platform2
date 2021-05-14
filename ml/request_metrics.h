@@ -100,6 +100,21 @@ void RequestMetrics::RecordRequestEvent(RequestEventEnum event) {
 // (LoadBuiltinModel or LoadFlatBufferModel) request.
 void RecordModelSpecificationErrorEvent();
 
+// Multiprocess related errors.
+enum class ProcessError {
+  kSpawnWorkerProcessFailed = 0,
+  kChangeEuidToMlServiceDBusFailed = 1,
+  kChangeEuidBackToRootFailed = 2,
+  kGetWorkerProcessMemoryUsageFailed = 3,
+  kMaxValue = kGetWorkerProcessMemoryUsageFailed,
+};
+
+// Records Multiprocess related errors.
+void RecordProcessErrorEvent(ProcessError error);
+
+// Records the exit status of worker process.
+void RecordWorkerProcessExitStatus(int status);
+
 }  // namespace ml
 
 #endif  // ML_REQUEST_METRICS_H_

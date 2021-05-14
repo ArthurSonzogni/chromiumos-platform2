@@ -527,7 +527,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
     constexpr char kModelName[] = "WebPlatformHandwritingModel";
     if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
             channel, kModelName, &worker_pid)) {
-      // TODO(https://crbug.com/1202545): may need a better error code here.
+      // UMA metrics has already been reported in `SpawnWorkerProcessAndGetPid`.
       std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
       return;
     }

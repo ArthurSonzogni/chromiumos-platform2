@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 
 #include "ml/process.h"
+#include "ml/request_metrics.h"
 #include "ml/util.h"
 
 namespace ml {
@@ -29,6 +30,8 @@ constexpr char kTotalMemoryMetricName[] =
     "MachineLearningService.TotalMemoryKb";
 constexpr char kPeakTotalMemoryMetricName[] =
     "MachineLearningService.PeakTotalMemoryKb";
+constexpr char kNumWorkerProcessMetricName[] =
+    "MachineLearningService.NumWorkerProcess";
 
 // UMA histogram ranges:
 constexpr int kCpuUsageMinMilliPercent = 1;       // 0.001%
@@ -37,6 +40,9 @@ constexpr int kCpuUsageBuckets = 25;
 constexpr int kMemoryUsageMinKb = 10;         // 10 KB
 constexpr int kMemoryUsageMaxKb = 100000000;  // 100 GB
 constexpr int kMemoryUsageBuckets = 100;
+constexpr int kNumWorkerProcessMin = 0;
+constexpr int kNumWorkerProcessMax = 1000;
+constexpr int kNumWorkerProcessBuckets = 100;
 
 // chromeos_metrics::CumulativeMetrics constants:
 constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/ml_service/metrics";
@@ -74,6 +80,8 @@ bool GetControlAndWorkerProcessMemoryUsage(size_t* total_mem_usage) {
   for (const auto& pid_info : Process::GetInstance()->GetWorkerPidInfoMap()) {
     if (GetProcessMemoryUsage(&usage, pid_info.first)) {
       *total_mem_usage += usage.VmRSSKb + usage.VmSwapKb;
+    } else {
+      RecordProcessErrorEvent(ProcessError::kGetWorkerProcessMemoryUsageFailed);
     }
   }
   // Collect RAM usage for control processes.
@@ -149,6 +157,12 @@ void Metrics::UpdateAndRecordMetrics(
     // Record memory usage:
     metrics_library_.SendToUMA(kTotalMemoryMetricName, usage, kMemoryUsageMinKb,
                                kMemoryUsageMaxKb, kMemoryUsageBuckets);
+
+    // Record how many worker processes.
+    metrics_library_.SendToUMA(
+        kNumWorkerProcessMetricName,
+        Process::GetInstance()->GetWorkerPidInfoMap().size(),
+        kNumWorkerProcessMin, kNumWorkerProcessMax, kNumWorkerProcessBuckets);
   }
 }
 

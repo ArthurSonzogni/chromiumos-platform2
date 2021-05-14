@@ -23,6 +23,7 @@
 
 #include "ml/dlcservice_client.h"
 #include "ml/machine_learning_service_impl.h"
+#include "ml/request_metrics.h"
 
 namespace ml {
 
@@ -40,7 +41,7 @@ int Daemon::OnInit() {
   // process to be root in the user namespace because it needs to spawn worker
   // processes and sandbox them.
   if (seteuid(0) != 0) {
-    // TODO(https://crbug.com/1202545): report this error to UMA.
+    RecordProcessErrorEvent(ProcessError::kChangeEuidBackToRootFailed);
     LOG(ERROR) << "Unable to change effective uid back to 0";
     exit(EX_OSERR);
   }

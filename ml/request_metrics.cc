@@ -70,4 +70,15 @@ void RecordModelSpecificationErrorEvent() {
       static_cast<int>(LoadModelResult::kMaxValue) + 1);
 }
 
+void RecordProcessErrorEvent(ProcessError error) {
+  MetricsLibrary().SendEnumToUMA("MachineLearningService.ProcessError",
+                                 static_cast<int>(error),
+                                 static_cast<int>(ProcessError::kMaxValue) + 1);
+}
+
+void RecordWorkerProcessExitStatus(int status) {
+  MetricsLibrary().SendSparseToUMA(
+      "MachineLearningService.WorkerProcessExitStatus", status);
+}
+
 }  // namespace ml
