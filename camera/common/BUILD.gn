@@ -42,7 +42,7 @@ generate_mojom_bindings("libcros_camera_mojom") {
     "//camera/mojo/gpu/mjpeg_decode_accelerator.mojom",
     "//camera/mojo/unguessable_token.mojom",
   ]
-  mojo_root = "//camera"
+  mojo_root = "${platform2_root}"
   use_pic = true
   standalone = true
 }
@@ -108,7 +108,7 @@ generate_pkg_config("libcros_camera_pkg_config") {
   version = getenv("PV")
   requires_private = [ "libchrome" ]
   requires = [ "libmojo" ]
-  cflags = [ "-I/usr/include/cros-camera" ]
+  cflags = [ "-I/usr/include/cros-camera/mojo" ]
   libs = [
     "-lcros_camera",
     "-lcros_camera_mojom",

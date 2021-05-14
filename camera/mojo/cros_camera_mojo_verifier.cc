@@ -6,9 +6,9 @@
 
 #include <hardware/camera3.h>
 
+#include "camera/mojo/camera3.mojom.h"
+#include "camera/mojo/camera_common.mojom.h"
 #include "cros-camera/camera_buffer_manager.h"
-#include "mojo/camera3.mojom.h"
-#include "mojo/camera_common.mojom.h"
 
 namespace cros {
 

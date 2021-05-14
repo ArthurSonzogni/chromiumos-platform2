@@ -17,7 +17,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 
-#include "mojo/camera3.mojom.h"
+#include "camera/mojo/camera3.mojom.h"
 
 namespace cros {
 

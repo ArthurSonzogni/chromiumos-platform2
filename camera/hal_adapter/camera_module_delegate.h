@@ -7,10 +7,10 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_
 
+#include "camera/mojo/camera3.mojom.h"
+#include "camera/mojo/camera_common.mojom.h"
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/utils/cros_camera_mojo_utils.h"
-#include "mojo/camera3.mojom.h"
-#include "mojo/camera_common.mojom.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
 

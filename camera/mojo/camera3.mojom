@@ -6,7 +6,7 @@
 
 module cros.mojom;
 
-import "mojo/camera_metadata.mojom";
+import "camera/mojo/camera_metadata.mojom";
 
 [Extensible]
 enum HalPixelFormat {

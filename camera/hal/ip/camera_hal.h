@@ -22,10 +22,10 @@
 #include <vector>
 
 #include "camera/camera_metadata.h"
+#include "camera/mojo/ip/ip_camera.mojom.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/future.h"
 #include "hal/ip/camera_device.h"
-#include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 

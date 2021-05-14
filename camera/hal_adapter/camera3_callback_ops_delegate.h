@@ -9,8 +9,8 @@
 
 #include <hardware/camera3.h>
 
+#include "camera/mojo/camera3.mojom.h"
 #include "common/utils/cros_camera_mojo_utils.h"
-#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

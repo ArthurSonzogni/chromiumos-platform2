@@ -22,12 +22,12 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/camera_common.mojom.h"
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/libcamera_connector/camera_client_ops.h"
 #include "common/libcamera_connector/camera_module_callbacks.h"
 #include "common/libcamera_connector/types.h"
 #include "cros-camera/camera_service_connector.h"
-#include "mojo/camera_common.mojom.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
 

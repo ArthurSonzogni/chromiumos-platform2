@@ -10,8 +10,8 @@
 #include <base/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "camera/mojo/algorithm/camera_algorithm.mojom.h"
 #include "cros-camera/camera_algorithm.h"
-#include "mojo/algorithm/camera_algorithm.mojom.h"
 
 namespace cros {
 

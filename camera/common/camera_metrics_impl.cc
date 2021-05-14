@@ -21,8 +21,8 @@
 #include <hardware/camera3.h>
 #include <system/graphics.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "cros-camera/common.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
 

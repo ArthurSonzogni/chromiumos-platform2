@@ -25,10 +25,10 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/camera3.mojom.h"
 #include "common/utils/common_types.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
-#include "mojo/camera3.mojom.h"
 
 namespace cros {
 namespace internal {

@@ -20,9 +20,9 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/libcamera_connector/camera_client.h"
 #include "cros-camera/camera_service_connector.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
 

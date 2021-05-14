@@ -25,6 +25,8 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "camera/mojo/camera3.mojom.h"
+#include "camera/mojo/camera_common.mojom.h"
 #include "common/utils/common_types.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
@@ -32,8 +34,6 @@
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
-#include "mojo/camera3.mojom.h"
-#include "mojo/camera_common.mojom.h"
 
 namespace cros {
 

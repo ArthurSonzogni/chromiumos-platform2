@@ -22,10 +22,10 @@
 #include <mojo/public/cpp/system/buffer.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
+#include "camera/mojo/gpu/dmabuf.mojom.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
-#include "mojo/gpu/dmabuf.mojom.h"
 
 #define STATIC_ASSERT_ENUM(name)                                 \
   static_assert(static_cast<int>(JpegEncodeAccelerator::name) == \

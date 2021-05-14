@@ -6,10 +6,10 @@
 
 module cros.mojom;
 
-import "mojo/camera_common.mojom";
-import "mojo/gpu/jpeg_encode_accelerator.mojom";
-import "mojo/gpu/mjpeg_decode_accelerator.mojom";
-import "mojo/unguessable_token.mojom";
+import "camera/mojo/camera_common.mojom";
+import "camera/mojo/gpu/jpeg_encode_accelerator.mojom";
+import "camera/mojo/gpu/mjpeg_decode_accelerator.mojom";
+import "camera/mojo/unguessable_token.mojom";
 
 // CameraClientType indicates the type of a CameraHalClient.
 // It should be kept in sync with the ChromeOSCameraClientType enum in

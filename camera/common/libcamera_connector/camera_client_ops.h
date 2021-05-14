@@ -17,10 +17,10 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/camera3.mojom.h"
 #include "common/libcamera_connector/stream_buffer_manager.h"
 #include "common/libcamera_connector/types.h"
 #include "cros-camera/camera_service_connector.h"
-#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

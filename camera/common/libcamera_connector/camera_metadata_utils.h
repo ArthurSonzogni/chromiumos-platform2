@@ -10,8 +10,8 @@
 #include <base/check_op.h>
 #include <base/containers/span.h>
 
+#include "camera/mojo/camera3.mojom.h"
 #include "cros-camera/export.h"
-#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

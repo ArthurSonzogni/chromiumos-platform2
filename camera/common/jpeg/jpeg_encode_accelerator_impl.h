@@ -17,12 +17,12 @@
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
+#include "camera/mojo/gpu/jpeg_encode_accelerator.mojom.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
-#include "mojo/cros_camera_service.mojom.h"
-#include "mojo/gpu/jpeg_encode_accelerator.mojom.h"
 
 namespace cros {
 

@@ -16,11 +16,11 @@
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 #include "cros-camera/jpeg_decode_accelerator.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
 

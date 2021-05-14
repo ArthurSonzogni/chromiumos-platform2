@@ -12,7 +12,7 @@
 
 #include <camera/camera_metadata.h>
 
-#include "mojo/ip/ip_camera.mojom.h"
+#include "camera/mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 

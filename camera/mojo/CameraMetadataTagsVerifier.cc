@@ -22,7 +22,7 @@
 
 
 #include <system/camera_metadata_tags.h>
-#include "mojo/camera_metadata_tags.mojom.h"
+#include "camera/mojo/camera_metadata_tags.mojom.h"
 
 namespace cros {
 

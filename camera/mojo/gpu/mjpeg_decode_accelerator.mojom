@@ -7,7 +7,7 @@ module cros.mojom;
 // The Mojo interfaces defined here should be sync'd with upstream Chromium:
 // https://cs.chromium.org/chromium/src/components/chromeos_camera/common/mjpeg_decode_accelerator.mojom
 
-import "mojo/gpu/dmabuf.mojom";
+import "camera/mojo/gpu/dmabuf.mojom";
 
 // Decode errors. (see
 // https://cs.chromium.org/chromium/src/media/video/jpeg_decode_accelerator.h)

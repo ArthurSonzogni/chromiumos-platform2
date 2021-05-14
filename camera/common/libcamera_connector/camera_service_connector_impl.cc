@@ -15,12 +15,12 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
+#include "camera/mojo/unguessable_token.mojom.h"
 #include "common/libcamera_connector/types.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
-#include "mojo/unguessable_token.mojom.h"
 
 namespace cros {
 

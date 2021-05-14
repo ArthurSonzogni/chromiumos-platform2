@@ -20,9 +20,9 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "cros-camera/cros_camera_hal.h"
 #include "hal_adapter/camera_hal_adapter.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
 

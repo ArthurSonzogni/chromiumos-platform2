@@ -28,6 +28,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <system/camera_metadata.h>
 
+#include "camera/mojo/camera3.mojom.h"
 #include "common/utils/common_types.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_buffer_manager.h"
@@ -35,7 +36,6 @@
 #include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
 #include "hal_adapter/zsl_helper.h"
-#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

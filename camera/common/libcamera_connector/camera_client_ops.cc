@@ -21,10 +21,10 @@
 #include <sync/sync.h>
 #include <sys/mman.h>
 
+#include "camera/mojo/camera3.mojom.h"
 #include "common/libcamera_connector/camera_metadata_utils.h"
 #include "common/libcamera_connector/supported_formats.h"
 #include "cros-camera/common.h"
-#include "mojo/camera3.mojom.h"
 
 namespace cros {
 

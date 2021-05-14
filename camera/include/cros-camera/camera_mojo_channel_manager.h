@@ -17,11 +17,11 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/algorithm/camera_algorithm.mojom.h"
+#include "camera/mojo/cros_camera_service.mojom.h"
+#include "camera/mojo/gpu/jpeg_encode_accelerator.mojom.h"
+#include "camera/mojo/gpu/mjpeg_decode_accelerator.mojom.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
-#include "mojo/algorithm/camera_algorithm.mojom.h"
-#include "mojo/cros_camera_service.mojom.h"
-#include "mojo/gpu/jpeg_encode_accelerator.mojom.h"
-#include "mojo/gpu/mjpeg_decode_accelerator.mojom.h"
 
 namespace base {
 class SingleThreadTaskRunner;

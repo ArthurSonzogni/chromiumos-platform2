@@ -20,11 +20,11 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/ip/ip_camera.mojom.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/future.h"
 #include "cros-camera/jpeg_decode_accelerator.h"
 #include "hal/ip/request_queue.h"
-#include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 

@@ -18,9 +18,9 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_thread.h"
-#include "mojo/cros_camera_service.mojom.h"
 
 namespace camera3_test {
 
