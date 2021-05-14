@@ -30,6 +30,16 @@ WakeupSourceIdentifier::WakeupSourceIdentifier(UdevInterface* udev) {
     LOG(ERROR) << "Cannot monitor event counts of input devices. Dark resume "
                   "might not work properly";
   }
+
+  std::vector<UdevDeviceInfo> power_supply_device_list;
+  if (udev_->GetSubsystemDevices("power_supply", &power_supply_device_list)) {
+    for (const auto& device : power_supply_device_list) {
+      auto dirname = device.wakeup_device_path.DirName().value();
+      // Filter out other power supplies (e.g. battery) for now.
+      if (dirname.find("cros-ec-pchg") != std::string::npos)
+        HandleAddedInput(device.sysname, device.wakeup_device_path);
+    }
+  }
 }
 
 WakeupSourceIdentifier::~WakeupSourceIdentifier() {
@@ -85,8 +95,10 @@ void WakeupSourceIdentifier::HandleAddedInput(
   std::unique_ptr<WakeupDeviceInterface> wakeup_device =
       WakeupDevice::CreateWakeupDevice(wakeup_device_path);
 
-  if (!wakeup_device)
+  if (!wakeup_device) {
+    LOG(ERROR) << "Failed to create wakeup device for " << input_name;
     return;
+  }
 
   monitored_paths_[wakeup_device_path] = std::move(wakeup_device);
   LOG(INFO) << "Monitoring wakeup path " << wakeup_device_path.value()

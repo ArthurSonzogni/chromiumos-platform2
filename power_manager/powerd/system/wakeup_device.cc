@@ -83,6 +83,10 @@ bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
   std::string event_count_str;
 
   auto wakeup_dir = sys_path_.Append(kWakeupDir);
+  // For power_supply devices, 'wakeup*' is directly below device's root dir.
+  if (sys_path_.value().find("/power_supply/") != std::string::npos)
+    wakeup_dir = sys_path_;
+
   // event_count lies under wakeup/wakeupN directory. Thus look for wakeupN
   // directory under |wakeup_dir|.
   base::FileEnumerator events_count_dir(
