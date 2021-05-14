@@ -6,7 +6,7 @@
 
 use std::env;
 use std::fs::File;
-use std::io::{self, copy, stdin, stdout, BufRead, BufReader, Read};
+use std::io::{self, copy, stdin, stdout, BufRead, BufReader, Read, Write};
 use std::mem::replace;
 use std::os::unix::io::FromRawFd;
 use std::path::PathBuf;
@@ -17,7 +17,20 @@ use std::time::Duration;
 
 use dbus::blocking::Connection;
 use getopts::Options;
+use libsirenia::{
+    cli::{
+        self, TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
+        DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
+    },
+    communication::trichechus::{AppInfo, Trichechus, TrichechusClient},
+    rpc,
+    transport::{
+        self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
+    },
+};
+use log::{self, error, info};
 use manatee_client::client::OrgChromiumManaTEEInterface;
+use stderrlog;
 use sys_util::{wait_for_interrupt, KillOnDrop};
 use thiserror::Error as ThisError;
 
@@ -38,6 +51,8 @@ const DUGONG_USER: &str = "dugong";
 enum Error {
     #[error("failed parse command line options: {0:}")]
     OptionsParse(getopts::Fail),
+    #[error("failed to get transport type option: {0}")]
+    TransportOptionsParse(cli::Error),
     #[error("failed set incompatible options: {0:?}")]
     ConflictingOptions(Vec<String>),
     #[error("failed to get D-Bus connection: {0:}")]
@@ -50,26 +65,55 @@ enum Error {
     StartCmd(String, io::Error),
     #[error("failed to read stderr of {0:}: '{1:}'")]
     ReadLineFailed(String, io::Error),
+    #[error("failed to bind to socket: {0}")]
+    TransportBind(transport::Error),
+    #[error("failed to connect to socket: {0}")]
+    TransportConnection(transport::Error),
     #[error("failed to locate listening URI for {0:}; last line: '{1:}'")]
     FindUri(String, String),
     #[error("failed to parse port number from line '{0:}'")]
     ParsePort(String),
+    #[error("failed to call rpc: {0}")]
+    Rpc(rpc::Error),
     #[error("start app failed with code: {0:}")]
     StartApp(i32),
     #[error("copy failed: {0:}")]
     Copy(io::Error),
+    #[error("failed to get port: {0:}")]
+    GetPort(transport::Error),
+    #[error("failed to get client for transport: {0:}")]
+    IntoClient(transport::Error),
 }
 
 /// The result of an operation in this crate.
 type Result<T> = std::result::Result<T, Error>;
 
-fn start_manatee_app(app_id: &str) -> Result<()> {
+fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + Sized>(
+    mut input: R,
+    mut output: W,
+) -> Result<()> {
+    let output_thread_handle = spawn(move || -> Result<()> {
+        copy(&mut input, &mut stdout()).map_err(Error::Copy)?;
+        // Once stdout is closed, stdin is invalid and it is time to exit.
+        exit(0);
+    });
+
+    copy(&mut stdin(), &mut output).map_err(Error::Copy)?;
+
+    output_thread_handle
+        .join()
+        .map_err(|boxed_err| *boxed_err.downcast::<Error>().unwrap())?
+}
+
+fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
+    info!("Connecting to D-Bus.");
     let connection = Connection::new_system().map_err(Error::NewDBusConnection)?;
     let conn_path = connection.with_proxy(
         "org.chromium.ManaTEE",
         "/org/chromium/ManaTEE1",
         DEFAULT_DBUS_TIMEOUT,
     );
+    info!("Starting TEE application: {}", app_id);
     let (fd_in, fd_out) = match conn_path
         .start_teeapplication(app_id)
         .map_err(Error::DBusCall)?
@@ -77,24 +121,54 @@ fn start_manatee_app(app_id: &str) -> Result<()> {
         (0, fd_in, fd_out) => (fd_in, fd_out),
         (code, _, _) => return Err(Error::StartApp(code)),
     };
-
-    let output = spawn(move || -> Result<()> {
-        // Safe because ownership of the file descriptor is transferred.
-        let mut file_in = unsafe { File::from_raw_fd(fd_in.into_fd()) };
-        copy(&mut file_in, &mut stdout()).map_err(Error::Copy)?;
-        // Once stdout is closed, stdin is invalid and it is time to exit.
-        exit(0);
-    });
+    info!("Forwarding stdio.");
 
     // Safe because ownership of the file descriptor is transferred.
-    let mut file_out = unsafe { File::from_raw_fd(fd_out.into_fd()) };
-    copy(&mut stdin(), &mut file_out).map_err(Error::Copy)?;
+    let file_in = unsafe { File::from_raw_fd(fd_in.into_fd()) };
+    // Safe because ownership of the file descriptor is transferred.
+    let file_out = unsafe { File::from_raw_fd(fd_out.into_fd()) };
 
-    output
-        .join()
-        .map_err(|boxed_err| *boxed_err.downcast::<Error>().unwrap())??;
+    handle_app_fds(file_in, file_out)
+}
 
-    Ok(())
+fn direct_start_manatee_app(trichechus_uri: TransportType, app_id: &str) -> Result<()> {
+    info!("Opening connection to trichechus");
+    // Adjust the source port when connecting to a non-standard port to facilitate testing.
+    let bind_port = match trichechus_uri.get_port().map_err(Error::GetPort)? {
+        DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
+        port => port + 1,
+    };
+    let mut transport = trichechus_uri
+        .try_into_client(Some(bind_port))
+        .map_err(Error::IntoClient)?;
+
+    let transport = transport.connect().map_err(|e| {
+        error!("transport connect failed: {}", e);
+        Error::TransportConnection(e)
+    })?;
+    let client = TrichechusClient::new(transport);
+
+    info!("Setting up app vsock.");
+    let mut app_transport = trichechus_uri
+        .try_into_client(None)
+        .map_err(Error::IntoClient)?;
+    let addr = app_transport.bind().map_err(Error::TransportBind)?;
+    let app_info = AppInfo {
+        app_id: String::from(app_id),
+        port_number: addr.get_port().map_err(Error::GetPort)?,
+    };
+
+    info!("Starting rpc.");
+    client.start_session(app_info).map_err(Error::Rpc)?;
+
+    info!("Starting TEE application: {}", app_id);
+    match app_transport.connect() {
+        Ok(Transport { r, w, id: _ }) => {
+            info!("Forwarding stdio.");
+            handle_app_fds(r, w)
+        }
+        Err(err) => Err(Error::TransportConnection(err)),
+    }
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
@@ -249,12 +323,26 @@ fn main() -> Result<()> {
         "Specify the app ID to invoke.",
         "demo_app",
     );
+    let trichechus_uri_opt = TransportTypeOption::new(
+        DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
+        DEFAULT_TRANSPORT_TYPE_LONG_NAME,
+        "trichechus URI (set to bypass dugong D-Bus)",
+        LOOPBACK_DEFAULT,
+        &mut options,
+    );
+    let verbosity_opt = VerbosityOption::default(&mut options);
 
     let args: Vec<String> = env::args().collect();
     let matches = options.parse(&args[1..]).map_err(|err| {
         eprintln!("{}", options.usage(""));
         Error::OptionsParse(err)
     })?;
+
+    stderrlog::new()
+        .verbosity(verbosity_opt.from_matches(&matches))
+        .init()
+        .unwrap();
+
     if matches.opt_present(HELP_SHORT_NAME) {
         println!("{}", options.usage(""));
         return Ok(());
@@ -287,5 +375,12 @@ fn main() -> Result<()> {
     } else {
         DEVELOPER_SHELL_APP_ID.to_string()
     };
-    start_manatee_app(&app_id)
+
+    match trichechus_uri_opt
+        .from_matches(&matches)
+        .map_err(Error::TransportOptionsParse)?
+    {
+        None => dbus_start_manatee_app(&app_id),
+        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id),
+    }
 }

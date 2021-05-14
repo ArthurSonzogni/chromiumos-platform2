@@ -49,6 +49,10 @@ pub enum Error {
     TransportBind(transport::Error),
     #[error("failed to connect to socket: {0}")]
     TransportConnection(transport::Error),
+    #[error("failed to get port: {0:}")]
+    GetPort(transport::Error),
+    #[error("failed to get client for transport: {0:}")]
+    IntoClient(transport::Error),
 }
 
 /// The result of an operation in this crate.
@@ -91,11 +95,14 @@ impl OrgChromiumManaTEEInterface for DugongDevice {
 }
 
 fn request_start_tee_app(device: &DugongDevice, app_id: &str) -> Result<(OwnedFd, OwnedFd)> {
-    let mut transport = device.transport_type.try_into_client(None).unwrap();
+    let mut transport = device
+        .transport_type
+        .try_into_client(None)
+        .map_err(Error::IntoClient)?;
     let addr = transport.bind().map_err(Error::TransportBind)?;
     let app_info = AppInfo {
         app_id: String::from(app_id),
-        port_number: addr.get_port().unwrap(),
+        port_number: addr.get_port().map_err(Error::GetPort)?,
     };
     info!("Requesting start {:?}", &app_info);
     device
@@ -197,11 +204,13 @@ fn main() -> Result<()> {
     info!("Starting dugong: {}", BUILD_TIMESTAMP);
     info!("Opening connection to trichechus");
     // Adjust the source port when connecting to a non-standard port to facilitate testing.
-    let bind_port = match transport_type.get_port() {
-        Ok(DEFAULT_SERVER_PORT) | Err(_) => DEFAULT_CLIENT_PORT,
-        Ok(port) => port + 1,
+    let bind_port = match transport_type.get_port().map_err(Error::GetPort)? {
+        DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
+        port => port + 1,
     };
-    let mut transport = transport_type.try_into_client(Some(bind_port)).unwrap();
+    let mut transport = transport_type
+        .try_into_client(Some(bind_port))
+        .map_err(Error::IntoClient)?;
 
     let transport = transport.connect().map_err(|e| {
         error!("transport connect failed: {}", e);

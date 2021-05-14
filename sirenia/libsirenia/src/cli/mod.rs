@@ -21,11 +21,15 @@ pub enum Error {
 /// The result of an operation in this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
-const DEFAULT_TRANSPORT_TYPE_SHORT_NAME: &str = "U";
-const DEFAULT_TRANSPORT_TYPE_LONG_NAME: &str = "server-url";
-const DEFAULT_TRANSPORT_TYPE_DESC: &str = "URL to the server";
+pub const DEFAULT_TRANSPORT_TYPE_SHORT_NAME: &str = "U";
+pub const DEFAULT_TRANSPORT_TYPE_LONG_NAME: &str = "server-url";
+pub const DEFAULT_TRANSPORT_TYPE_DESC: &str = "URL to the server";
 
-const HELP_OPTION_SHORT_NAME: &str = "h";
+pub const DEFAULT_VERBOSITY_SHORT_NAME: &str = "v";
+pub const DEFAULT_VERBOSITY_LONG_NAME: &str = "verbose";
+pub const DEFAULT_VERBOSITY_DESC: &str = "Set the logging level (Can be set more than once)";
+
+pub const HELP_OPTION_SHORT_NAME: &str = "h";
 
 /// A TransportType command-line option that allows for multiple transport options to be defined for
 /// the same set of arguments.
@@ -72,6 +76,36 @@ impl TransportTypeOption {
                 .map(Some),
             None => Ok(None),
         }
+    }
+}
+
+pub struct VerbosityOption {
+    short_name: String,
+}
+
+impl VerbosityOption {
+    /// Add the default VerbosityOption to the specified Options.
+    pub fn default(mut opts: &mut Options) -> Self {
+        Self::new(
+            DEFAULT_VERBOSITY_SHORT_NAME,
+            DEFAULT_VERBOSITY_LONG_NAME,
+            DEFAULT_VERBOSITY_DESC,
+            &mut opts,
+        )
+    }
+
+    /// Add a customized VerbosityOption to the specified Options.
+    /// Prefer Self::default unless it short_name or long_name are not available.
+    pub fn new(short_name: &str, long_name: &str, desc: &str, opts: &mut Options) -> Self {
+        opts.optflagmulti(short_name, long_name, desc);
+        Self {
+            short_name: short_name.to_string(),
+        }
+    }
+
+    /// Returns the number of times the verbosity option was set.
+    pub fn from_matches(&self, matches: &Matches) -> usize {
+        matches.opt_count(&self.short_name)
     }
 }
 
