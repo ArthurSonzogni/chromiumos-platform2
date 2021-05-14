@@ -33,7 +33,9 @@ static_library("overalls_library") {
 
 source_set("error_library") {
   sources = []
-  if (!use.tpm2) {
+  if (use.tpm2) {
+    sources += [ "error/tpm2_error.cc" ]
+  } else {
     sources += [ "error/tpm1_error.cc" ]
   }
   configs += [
