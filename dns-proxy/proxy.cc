@@ -260,7 +260,9 @@ void Proxy::Enable() {
   if (!ns_fd_.is_valid())
     return;
 
-  SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+  if (opts_.type == Type::kSystem)
+    SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+
   // TODO(garrick, jasongustaman): Setup routing redirection.
 }
 
