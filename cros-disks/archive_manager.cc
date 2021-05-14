@@ -140,7 +140,6 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
     const base::FilePath& mount_path,
-    bool* mounted_as_read_only,
     MountErrorType* error) {
   // Here source_path is already resolved and free from symlinks and '..' by
   // the base class.
@@ -152,7 +151,6 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
   base::FilePath name;
   for (const auto& m : mounters_) {
     if (m->CanMount(source_path, {}, &name)) {
-      *mounted_as_read_only = true;
       return m->Mount(source_path, mount_path, options, error);
     }
   }

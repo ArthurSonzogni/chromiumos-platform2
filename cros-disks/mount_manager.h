@@ -147,18 +147,16 @@ class MountManager {
                          std::vector<std::string> options,
                          std::string* mount_path);
 
-  // Implemented by a derived class to mount |source_path| to |mount_path|
-  // as |filesystem_type| with |options|. An implementation may change the
-  // options to mount command, and should store all options to
-  // |applied_options|. On success, an implementation MUST set |error| to
-  // MOUNT_ERROR_NONE and return a non-null MountPoint. On failure, |error| must
-  // be set to an appropriate error code and nullptr is returned.
+  // Implemented by a derived class to mount |source_path| to |mount_path| as
+  // |filesystem_type| with |options|. An implementation may append their own
+  // mount options to |options|. On success, an implementation MUST set |error|
+  // to MOUNT_ERROR_NONE and return a non-null MountPoint. On failure, |error|
+  // must be set to an appropriate error code and nullptr is returned.
   virtual std::unique_ptr<MountPoint> DoMount(
       const std::string& source_path,
       const std::string& filesystem_type,
       const std::vector<std::string>& options,
       const base::FilePath& mount_path,
-      bool* mounted_as_read_only,
       MountErrorType* error) = 0;
 
   // Returns a suggested mount path for |source_path|.
@@ -203,11 +201,6 @@ class MountManager {
   MountErrorType CreateMountPathForSource(const std::string& source,
                                           const std::string& label,
                                           base::FilePath* mount_path);
-
-  // Adds or updates a mapping |source_path| to its mount state in the cache.
-  void AddOrUpdateMountStateCache(const std::string& source_path,
-                                  std::unique_ptr<MountPoint> mount_point,
-                                  bool is_read_only);
 
   // Returns true if |mount_path| is reserved.
   bool IsMountPathReserved(const base::FilePath& mount_path) const;

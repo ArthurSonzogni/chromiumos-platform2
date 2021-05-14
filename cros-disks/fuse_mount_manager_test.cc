@@ -123,10 +123,8 @@ class FUSEMountManagerTest : public ::testing::Test {
   std::unique_ptr<MountPoint> DoMount(const std::string& type,
                                       const std::string& src,
                                       MountErrorType* error) {
-    bool mounted_as_read_only = false;
     std::unique_ptr<MountPoint> mount_point =
-        manager_.DoMount(src, type, {}, base::FilePath(kSomeMountpoint),
-                         &mounted_as_read_only, error);
+        manager_.DoMount(src, type, {}, base::FilePath(kSomeMountpoint), error);
     if (*error == MOUNT_ERROR_NONE) {
       EXPECT_TRUE(mount_point);
     } else {

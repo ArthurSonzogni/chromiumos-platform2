@@ -336,7 +336,6 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
     const base::FilePath& mount_path,
-    bool* mounted_as_read_only,
     MountErrorType* error) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
@@ -394,7 +393,6 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   bool media_read_only = disk.is_read_only || disk.IsOpticalDisk();
   if (media_read_only && !IsReadOnlyMount(applied_options)) {
     applied_options.push_back("ro");
-    *mounted_as_read_only = true;
   }
 
   std::unique_ptr<MountPoint> mount_point =
@@ -405,7 +403,6 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     if (!IsReadOnlyMount(applied_options)) {
       LOG(INFO) << "Trying to mount " << quote(source_path) << " read-only";
       applied_options.push_back("ro");
-      *mounted_as_read_only = true;
       mount_point =
           mounter->Mount(disk.device_file, mount_path, applied_options, error);
     }

@@ -66,7 +66,6 @@ class ArchiveManager : public MountManager {
                                       const std::string& filesystem_type,
                                       const std::vector<std::string>& options,
                                       const base::FilePath& mount_path,
-                                      bool* mounted_as_read_only,
                                       MountErrorType* error) override;
 
  private:

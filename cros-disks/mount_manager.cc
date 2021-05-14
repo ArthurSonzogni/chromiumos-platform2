@@ -171,11 +171,10 @@ MountErrorType MountManager::MountNewSource(const std::string& source_path,
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
-  bool mounted_as_read_only = false;
   MountErrorType error_type = MOUNT_ERROR_UNKNOWN;
-  std::unique_ptr<MountPoint> mount_point = DoMount(
-      source_path, filesystem_type, std::move(options),
-      base::FilePath(actual_mount_path), &mounted_as_read_only, &error_type);
+  std::unique_ptr<MountPoint> mount_point =
+      DoMount(source_path, filesystem_type, std::move(options),
+              base::FilePath(actual_mount_path), &error_type);
   if (error_type == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Path " << quote(source_path) << " is mounted to "
               << quote(actual_mount_path);

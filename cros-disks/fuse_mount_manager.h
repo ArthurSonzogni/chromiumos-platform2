@@ -51,14 +51,12 @@ class FUSEMountManager : public MountManager {
   // Mounts |source| to |mount_path| as |fuse_type| with |options|.
   // |fuse_type| can be used to specify the type of |source|.
   // If |fuse_type| is an empty string, the type is determined based on the
-  // format of the |source|. The underlying mounter may decide to apply mount
-  // options different than |options|. |applied_options| is used to return
-  // the mount options applied by the mounter.
+  // format of the |source|. The underlying mounter may append their own mount
+  // options to |options|.
   std::unique_ptr<MountPoint> DoMount(const std::string& source,
                                       const std::string& fuse_type,
                                       const std::vector<std::string>& options,
                                       const base::FilePath& mount_path,
-                                      bool* mounted_as_read_only,
                                       MountErrorType* error) override;
 
   // Returns a suggested mount path for a source.

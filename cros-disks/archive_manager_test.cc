@@ -52,7 +52,6 @@ class ArchiveManagerUnderTest : public ArchiveManager {
                const std::string&,
                const std::vector<std::string>&,
                const base::FilePath&,
-               bool*,
                MountErrorType*),
               (override));
 
