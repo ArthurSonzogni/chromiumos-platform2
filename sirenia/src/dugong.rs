@@ -16,13 +16,13 @@ use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection;
 use dbus::tree::{self, Interface, MTFn};
 use getopts::Options;
+use libsirenia::communication::trichechus::{AppInfo, Trichechus, TrichechusClient};
 use libsirenia::rpc;
 use libsirenia::transport::{
     self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT,
 };
 use sirenia::build_info::BUILD_TIMESTAMP;
 use sirenia::cli::initialize_common_arguments;
-use sirenia::communication::{AppInfo, Trichechus, TrichechusClient};
 use sirenia::server::{org_chromium_mana_teeinterface_server, OrgChromiumManaTEEInterface};
 use sys_util::{error, info, syslog};
 use thiserror::Error as ThisError;

@@ -8,6 +8,7 @@
 //!
 
 pub mod persistence;
+pub mod trichechus;
 
 use std::fmt::{self, Debug, Display};
 use std::io::{self, BufWriter, Read, Write};
