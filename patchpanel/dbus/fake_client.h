@@ -69,6 +69,8 @@ class BRILLO_EXPORT FakeClient : public Client {
                       const std::string& dst_ip,
                       uint32_t dst_port) override;
 
+  bool SetVpnLockdown(bool enable) override;
+
   std::vector<NetworkDevice> GetDevices() override;
 
   void RegisterNetworkDeviceChangedSignalHandler(

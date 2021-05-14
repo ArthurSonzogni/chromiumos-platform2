@@ -205,6 +205,7 @@ void Manager::InitialSetup() {
       {patchpanel::kGetTrafficCountersMethod, &Manager::OnGetTrafficCounters},
       {patchpanel::kModifyPortRuleMethod, &Manager::OnModifyPortRule},
       {patchpanel::kGetDevicesMethod, &Manager::OnGetDevices},
+      {patchpanel::kSetVpnLockdown, &Manager::OnSetVpnLockdown},
   };
 
   for (const auto& kv : kServiceMethods) {
@@ -965,6 +966,27 @@ std::unique_ptr<dbus::Response> Manager::OnModifyPortRule(
   }
 
   response.set_success(ModifyPortRule(request));
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnSetVpnLockdown(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::SetVpnLockdownRequest request;
+  patchpanel::SetVpnLockdownResponse response;
+
+  if (reader.PopArrayOfBytesAsProto(&request)) {
+    datapath_->SetVpnLockdown(request.enable_vpn_lockdown());
+  } else {
+    LOG(ERROR) << "Unable to parse SetVpnLockdownRequest";
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

@@ -158,6 +158,8 @@ class ClientImpl : public Client {
                       const std::string& dst_ip,
                       uint32_t dst_port) override;
 
+  bool SetVpnLockdown(bool enable) override;
+
   std::vector<NetworkDevice> GetDevices() override;
 
   void RegisterNetworkDeviceChangedSignalHandler(
@@ -668,6 +670,36 @@ bool ClientImpl::ModifyPortRule(ModifyPortRuleRequest::Operation op,
     LOG(ERROR) << "ModifyPortRuleRequest failed " << request;
     return false;
   }
+  return true;
+}
+
+bool ClientImpl::SetVpnLockdown(bool enable) {
+  dbus::MethodCall method_call(kPatchPanelInterface, kSetVpnLockdown);
+  dbus::MessageWriter writer(&method_call);
+
+  SetVpnLockdownRequest request;
+  SetVpnLockdownResponse response;
+
+  request.set_enable_vpn_lockdown(enable);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode SetVpnLockdownRequest proto";
+    return false;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus_, proxy_, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to call SetVpnLockdown patchpanel API";
+    return false;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse SetVpnLockdownResponse";
+    return false;
+  }
+
   return true;
 }
 

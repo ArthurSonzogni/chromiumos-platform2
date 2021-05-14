@@ -112,6 +112,12 @@ class BRILLO_EXPORT Client {
                               const std::string& dst_ip,
                               uint32_t dst_port) = 0;
 
+  // Start or stop VPN lockdown. When VPN lockdown is enabled and no VPN
+  // connection exists, any non-ARC traffic that would be routed to a VPN
+  // connection is instead rejected. ARC traffic is ignored because Android
+  // already implements VPN lockdown.
+  virtual bool SetVpnLockdown(bool enable) = 0;
+
   // Obtains a list of NetworkDevices currently managed by patchpanel.
   virtual std::vector<NetworkDevice> GetDevices() = 0;
 

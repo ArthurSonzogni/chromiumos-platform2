@@ -147,6 +147,10 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnModifyPortRule(
       dbus::MethodCall* method_call);
 
+  // Handles DBus requests for starting and stopping VPN lockdown.
+  std::unique_ptr<dbus::Response> OnSetVpnLockdown(
+      dbus::MethodCall* method_call);
+
   // Sends out DBus signal for notifying neighbor reachability event.
   void OnNeighborReachabilityEvent(
       int ifindex,

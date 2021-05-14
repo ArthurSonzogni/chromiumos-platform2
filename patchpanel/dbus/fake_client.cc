@@ -98,6 +98,10 @@ bool FakeClient::ModifyPortRule(
   return true;
 }
 
+bool FakeClient::SetVpnLockdown(bool enable) {
+  return true;
+}
+
 std::vector<NetworkDevice> FakeClient::GetDevices() {
   return {};
 }
