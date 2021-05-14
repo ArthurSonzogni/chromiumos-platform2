@@ -9,8 +9,8 @@
 #include <memory>
 #include <vector>
 
+#include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
-#include <mojo/sensor.mojom.h>
 
 #include "power_manager/powerd/system/fake_sensor_device.h"
 

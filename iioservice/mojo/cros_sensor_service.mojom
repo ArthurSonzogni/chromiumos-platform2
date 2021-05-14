@@ -6,7 +6,7 @@
 
 module cros.mojom;
 
-import "mojo/sensor.mojom";
+import "iioservice/mojo/sensor.mojom";
 
 // The CrOS sensor HAL Mojo server.
 //

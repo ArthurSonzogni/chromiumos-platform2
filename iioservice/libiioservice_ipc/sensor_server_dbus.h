@@ -9,7 +9,7 @@
 
 #include "iioservice/include/export.h"
 #include "iioservice/libiioservice_ipc/sensor_dbus.h"
-#include "mojo/cros_sensor_service.mojom.h"
+#include "iioservice/mojo/cros_sensor_service.mojom.h"
 
 namespace iioservice {
 

@@ -23,7 +23,7 @@
 
 #include "iioservice/daemon/common_types.h"
 #include "iioservice/daemon/samples_handler.h"
-#include "mojo/sensor.mojom.h"
+#include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 

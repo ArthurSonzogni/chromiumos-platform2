@@ -18,7 +18,7 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "iioservice/daemon/common_types.h"
-#include "mojo/sensor.mojom.h"
+#include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 

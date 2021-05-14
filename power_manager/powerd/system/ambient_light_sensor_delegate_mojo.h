@@ -18,8 +18,8 @@
 #include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <base/stl_util.h>
+#include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#include <mojo/sensor.mojom.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"

@@ -13,10 +13,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/optional.h>
 #include <base/sequence_checker.h>
+#include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
-
-#include <mojo/cros_sensor_service.mojom.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"

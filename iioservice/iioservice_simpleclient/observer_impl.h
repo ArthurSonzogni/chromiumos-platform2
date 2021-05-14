@@ -14,8 +14,8 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "mojo/cros_sensor_service.mojom.h"
-#include "mojo/sensor.mojom.h"
+#include "iioservice/mojo/cros_sensor_service.mojom.h"
+#include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 

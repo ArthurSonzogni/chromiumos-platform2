@@ -15,7 +15,7 @@
 
 #include "iioservice/daemon/sensor_device_impl.h"
 #include "iioservice/daemon/test_fakes.h"
-#include "mojo/sensor.mojom.h"
+#include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 

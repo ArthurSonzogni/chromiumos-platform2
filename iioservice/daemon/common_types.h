@@ -12,7 +12,7 @@
 
 #include <libmems/iio_device.h>
 
-#include "mojo/sensor.mojom.h"
+#include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 

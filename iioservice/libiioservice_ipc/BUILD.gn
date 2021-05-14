@@ -13,7 +13,7 @@ generate_mojom_bindings("libiioservice_ipc_mojom") {
     "//iioservice/mojo/cros_sensor_service.mojom",
     "//iioservice/mojo/sensor.mojom",
   ]
-  mojo_root = "//iioservice"
+  mojo_root = "${platform2_root}"
   use_pic = true
   standalone = true
 }
