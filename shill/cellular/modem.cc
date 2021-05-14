@@ -65,12 +65,6 @@ Modem::~Modem() {
   // may not have been removed.
   modem_info_->manager()->RemoveTerminationAction(device_->link_name());
 
-  // Explicitly removes this object from being an observer to
-  // |home_provider_info_| and |serving_operator_info_| to avoid them from
-  // calling into this object while this object is being destructed.
-  device_->home_provider_info()->RemoveObserver(device_.get());
-  device_->serving_operator_info()->RemoveObserver(device_.get());
-
   // Note: The Cellular Device |device_| is owned by DeviceInfo. It will not
   // be destroyed here, instead it will be kept around until/unless an RTNL
   // link delete message is received. If/when a new Modem instance is

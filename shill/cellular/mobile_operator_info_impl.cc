@@ -290,6 +290,7 @@ void MobileOperatorInfoImpl::UpdateICCID(const std::string& iccid) {
     return;
   }
 
+  SLOG(this, 1) << __func__ << ": " << iccid;
   user_iccid_ = iccid;
   // |iccid| is not an exposed property, so don't raise event for just this
   // property update.
@@ -303,6 +304,7 @@ void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
     return;
   }
 
+  SLOG(this, 3) << __func__ << ": " << mccmnc;
   user_mccmnc_ = mccmnc;
   HandleMCCMNCUpdate();
   candidates_by_operator_code_.clear();
@@ -323,6 +325,7 @@ void MobileOperatorInfoImpl::UpdateSID(const std::string& sid) {
     return;
   }
 
+  SLOG(this, 3) << __func__ << ": " << sid;
   user_sid_ = sid;
   HandleSIDUpdate();
   candidates_by_operator_code_.clear();
@@ -343,6 +346,7 @@ void MobileOperatorInfoImpl::UpdateNID(const std::string& nid) {
     return;
   }
 
+  SLOG(this, 3) << __func__ << ": " << nid;
   user_nid_ = nid;
   if (UpdateMVNO() || ShouldNotifyPropertyUpdate()) {
     PostNotifyOperatorChanged();
@@ -361,6 +365,7 @@ void MobileOperatorInfoImpl::UpdateOperatorName(
     return;
   }
 
+  SLOG(this, 2) << __func__ << ": " << operator_name;
   HandleOperatorNameUpdate();
 
   // We must update the candidates by name anyway.
@@ -392,6 +397,7 @@ void MobileOperatorInfoImpl::UpdateOnlinePortal(const std::string& url,
     return;
   }
 
+  SLOG(this, 3) << __func__ << ": " << url;
   user_olp_empty_ = false;
   user_olp_.url = url;
   user_olp_.method = method;
@@ -405,6 +411,7 @@ void MobileOperatorInfoImpl::UpdateOnlinePortal(const std::string& url,
 }
 
 void MobileOperatorInfoImpl::Reset() {
+  SLOG(this, 1) << __func__;
   bool should_notify = current_mno_ != nullptr || current_mvno_ != nullptr;
 
   current_mno_ = nullptr;

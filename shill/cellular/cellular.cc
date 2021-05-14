@@ -258,8 +258,6 @@ Cellular::Cellular(ModemInfo* modem_info,
   // crbug.com/363874
   home_provider_info_->Init();
   serving_operator_info_->Init();
-  home_provider_info_->AddObserver(this);
-  serving_operator_info_->AddObserver(this);
 
   socket_destroyer_ = NetlinkSockDiag::Create(std::make_unique<Sockets>());
   if (!socket_destroyer_) {
@@ -1002,6 +1000,9 @@ void Cellular::CreateCapability(ModemInfo* modem_info) {
   CHECK(!capability_);
   capability_ = CellularCapability::Create(type_, this, modem_info);
 
+  home_provider_info_->AddObserver(this);
+  serving_operator_info_->AddObserver(this);
+
   // If Cellular::Start has not been called, or Cellular::Stop has been called,
   // we still want to create the capability, but not call StartModem.
   if (capability_state_ == CapabilityState::kModemStopping ||
@@ -1014,6 +1015,9 @@ void Cellular::CreateCapability(ModemInfo* modem_info) {
 
 void Cellular::DestroyCapability() {
   SLOG(this, 1) << __func__;
+
+  home_provider_info_->RemoveObserver(this);
+  serving_operator_info_->RemoveObserver(this);
 
   // Make sure we are disconnected.
   StopPPP();
@@ -2077,27 +2081,28 @@ void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
   SLOG(this, 1) << __func__ << " EID= " << sim_properties.eid
                 << " ICCID= " << sim_properties.iccid;
 
-  home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
-  home_provider_info()->UpdateOperatorName(sim_properties.spn);
-
   eid_ = sim_properties.eid;
   iccid_ = sim_properties.iccid;
   imsi_ = sim_properties.imsi;
 
-  SetSimPresent(!iccid_.empty());
-
+  home_provider_info()->Reset();
+  serving_operator_info()->Reset();
+  home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
+  home_provider_info()->UpdateOperatorName(sim_properties.spn);
   home_provider_info()->UpdateICCID(iccid_);
   // Provide ICCID to serving operator as well to aid in MVNO identification.
   serving_operator_info()->UpdateICCID(iccid_);
+  if (!imsi_.empty()) {
+    home_provider_info()->UpdateIMSI(imsi_);
+    // We do not obtain IMSI OTA right now. Provide the value to serving
+    // operator as well, to aid in MVNO identification.
+    serving_operator_info()->UpdateIMSI(imsi_);
+  }
 
   adaptor()->EmitStringChanged(kEidProperty, eid_);
   adaptor()->EmitStringChanged(kIccidProperty, iccid_);
   adaptor()->EmitStringChanged(kImsiProperty, imsi_);
-
-  home_provider_info()->UpdateIMSI(imsi_);
-  // We do not obtain IMSI OTA right now. Provide the value to serving
-  // operator as well, to aid in MVNO identification.
-  serving_operator_info()->UpdateIMSI(imsi_);
+  SetSimPresent(!iccid_.empty());
 
   // Ensure Service creation once SIM properties are set.
   UpdateServices();
@@ -2306,7 +2311,7 @@ void Cellular::set_serving_operator_info(
 }
 
 void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
-  SLOG(this, 3) << __func__;
+  SLOG(this, 2) << __func__;
 
   Stringmap home_provider;
   if (!operator_info->sid().empty()) {
@@ -2394,6 +2399,8 @@ void Cellular::UpdateServingOperator(
                  << service()->log_name();
     return;
   }
+  SLOG(this, 2) << __func__ << " Service: " << service()->log_name()
+                << " Name: " << service_name;
   service()->SetFriendlyName(service_name);
 }
 
@@ -2419,7 +2426,7 @@ std::vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
 }
 
 void Cellular::OnOperatorChanged() {
-  SLOG(this, 3) << __func__;
+  SLOG(this, 2) << __func__;
   CHECK(capability_);
 
   if (service()) {
