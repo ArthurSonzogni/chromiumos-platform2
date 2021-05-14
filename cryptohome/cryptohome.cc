@@ -314,7 +314,6 @@ static const char kProfileSwitch[] = "profile";
 static const char kIgnoreCache[] = "ignore_cache";
 static const char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
 static const char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
-static const char kEnrollSwitch[] = "enroll";
 static const char kUseDBus[] = "use_dbus";
 static const char kAuthSessionId[] = "auth_session_id";
 }  // namespace switches
@@ -451,32 +450,34 @@ FilePath GetOutputFile(const base::CommandLine* cl) {
 }
 
 bool GetProfile(const base::CommandLine* cl,
-                cryptohome::CertificateProfile* profile) {
+                attestation::CertificateProfile* profile) {
   const std::string profile_str =
       cl->GetSwitchValueASCII(switches::kProfileSwitch);
   if (profile_str.empty() || profile_str == "enterprise_user" ||
       profile_str == "user" || profile_str == "u") {
-    *profile = cryptohome::ENTERPRISE_USER_CERTIFICATE;
+    *profile = attestation::CertificateProfile::ENTERPRISE_USER_CERTIFICATE;
   } else if (profile_str == "enterprise_machine" || profile_str == "machine" ||
              profile_str == "m") {
-    *profile = cryptohome::ENTERPRISE_MACHINE_CERTIFICATE;
+    *profile = attestation::CertificateProfile::ENTERPRISE_MACHINE_CERTIFICATE;
   } else if (profile_str == "enterprise_enrollment" ||
              profile_str == "enrollment" || profile_str == "e") {
-    *profile = cryptohome::ENTERPRISE_ENROLLMENT_CERTIFICATE;
+    *profile =
+        attestation::CertificateProfile::ENTERPRISE_ENROLLMENT_CERTIFICATE;
   } else if (profile_str == "content_protection" || profile_str == "content" ||
              profile_str == "c") {
-    *profile = cryptohome::CONTENT_PROTECTION_CERTIFICATE;
+    *profile = attestation::CertificateProfile::CONTENT_PROTECTION_CERTIFICATE;
   } else if (profile_str == "content_protection_with_stable_id" ||
              profile_str == "cpsi") {
-    *profile = cryptohome::CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
+    *profile = attestation::CertificateProfile::
+        CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
   } else if (profile_str == "cast") {
-    *profile = cryptohome::CAST_CERTIFICATE;
+    *profile = attestation::CertificateProfile::CAST_CERTIFICATE;
   } else if (profile_str == "gfsc") {
-    *profile = cryptohome::GFSC_CERTIFICATE;
+    *profile = attestation::CertificateProfile::GFSC_CERTIFICATE;
   } else if (profile_str == "jetstream") {
-    *profile = cryptohome::JETSTREAM_CERTIFICATE;
+    *profile = attestation::CertificateProfile::JETSTREAM_CERTIFICATE;
   } else if (profile_str == "soft_bind") {
-    *profile = cryptohome::SOFT_BIND_CERTIFICATE;
+    *profile = attestation::CertificateProfile::SOFT_BIND_CERTIFICATE;
   } else {
     printf("Unknown certificate profile: %s.\n", profile_str.c_str());
     return false;
@@ -2124,42 +2125,32 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    std::string response_data;
-    cryptohome::CertificateProfile profile;
+    attestation::CertificateProfile profile;
     if (!GetProfile(cl, &profile)) {
       return 1;
     }
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      brillo::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
-              proxy.gproxy(), pca_type, profile, "", "",
-              &brillo::Resetter(&data).lvalue(),
-              &brillo::Resetter(&error).lvalue())) {
-        printf("TpmAttestationCreateCertRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      }
-      response_data = std::string(static_cast<char*>(data->data), data->len);
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(  // NOLINT
-              proxy.gproxy(), pca_type, profile, "", "", &async_id,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationCreateCertRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      } else {
-        client_loop.Run(async_id);
-        if (!client_loop.get_return_status()) {
-          printf("Attestation certificate request failed.\n");
-          return 1;
-        }
-        response_data = client_loop.get_return_data();
-      }
+
+    attestation::CreateCertificateRequestRequest req;
+    attestation::CreateCertificateRequestReply reply;
+    req.set_certificate_profile(profile);
+    req.set_username("");
+    req.set_request_origin("");
+    req.set_aca_type(pca_type);
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.CreateCertificateRequest(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printf("TpmAttestationCreateCertRequest call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationCreateCertRequest call failed: status %d\n",
+             static_cast<int>(reply.status()));
+      return 1;
     }
+
+    const std::string& response_data = reply.pca_request();
     base::WriteFile(GetOutputFile(cl), response_data.data(),
                     response_data.length());
   } else if (!strcmp(switches::kActions
@@ -2177,100 +2168,34 @@ int main(int argc, char** argv) {
       printf("Failed to read input file.\n");
       return 1;
     }
-    gboolean is_user_specific = !account_id.empty();
-    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
-    g_array_append_vals(data.get(), contents.data(), contents.length());
-    gboolean success = FALSE;
-    brillo::glib::ScopedError error;
-    std::string cert_data;
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      brillo::glib::ScopedArray cert;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
-              proxy.gproxy(), data.get(), is_user_specific, account_id.c_str(),
-              key_name.c_str(), &brillo::Resetter(&cert).lvalue(), &success,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("TpmAttestationFinishCertRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      }
-      cert_data = std::string(static_cast<char*>(cert->data), cert->len);
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_finish_cert_request(  // NOLINT
-              proxy.gproxy(), data.get(), is_user_specific, account_id.c_str(),
-              key_name.c_str(), &async_id,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationFinishCertRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      } else {
-        client_loop.Run(async_id);
-        success = client_loop.get_return_status();
-        cert_data = client_loop.get_return_data();
-      }
+
+    attestation::FinishCertificateRequestRequest req;
+    attestation::FinishCertificateRequestReply reply;
+    req.set_pca_response(contents);
+    req.set_key_label(key_name);
+    if (!account_id.empty()) {
+      req.set_username(account_id);
     }
-    if (!success) {
-      printf("Attestation certificate request failed.\n");
+
+    brillo::ErrorPtr error;
+    if (!attestation_proxy.FinishCertificateRequest(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printf("TpmAttestationFinishCertRequest call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    } else if (reply.status() != attestation::STATUS_SUCCESS) {
+      printf("TpmAttestationFinishCertRequest call failed: status %d\n",
+             static_cast<int>(reply.status()));
       return 1;
     }
+
+    const std::string& cert_data = reply.certificate();
     base::WriteFile(GetOutputFile(cl), cert_data.data(), cert_data.length());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_GET_CERTIFICATE],
                      action.c_str())) {
-    brillo::glib::ScopedError error;
-    cryptohome::CertificateProfile profile;
-    const std::string account_id =
-        cl->GetSwitchValueASCII(switches::kUserSwitch);
-    const std::string key_name =
-        cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    const bool forced = cl->HasSwitch(switches::kForceSwitch);
-    const bool shall_trigger_enrollment =
-        cl->HasSwitch(switches::kEnrollSwitch);
-
-    gboolean success = FALSE;
-    std::string cert;
-    if (!GetProfile(cl, &profile)) {
-      return 1;
-    }
-    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      brillo::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate_ex(
-              proxy.gproxy(), profile, account_id.c_str(),
-              /*request_origin=*/"", pca_type,
-              /*key_type=*/1, key_name.c_str(), forced,
-              shall_trigger_enrollment, &brillo::Resetter(&data).lvalue(),
-              &success, &brillo::Resetter(&error).lvalue())) {
-        printf("TpmAttestationCreateCertRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      }
-      cert = std::string(static_cast<char*>(data->data), data->len);
-    } else {
-      ClientLoop client_loop;
-      client_loop.Initialize(&proxy);
-      gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_get_certificate_ex(  // NOLINT
-              proxy.gproxy(), profile, account_id.c_str(),
-              /*request_origin=*/"", pca_type,
-              /*key_type=*/1, key_name.c_str(), forced,
-              shall_trigger_enrollment, &async_id,
-              &brillo::Resetter(&error).lvalue())) {
-        printf("AsyncTpmAttestationCreateCertRequest call failed: %s.\n",
-               error->message);
-        return 1;
-      } else {
-        client_loop.Run(async_id);
-        success = client_loop.get_return_status();
-        cert = client_loop.get_return_data();
-      }
-    }
-    if (!success) {
-      printf("Attestation certificate request failed.\n");
-      return 1;
-    }
-    base::WriteFile(GetOutputFile(cl), cert.data(), cert.length());
+    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
                      action.c_str())) {
