@@ -530,6 +530,15 @@ int sl_process_pending_configure_acks(struct sl_window* window,
   if (!window->pending_config.serial)
     return 0;
 
+#ifdef COMMIT_LOOP_FIX
+  // Do not commit/ack if there is nothing to change.
+  //
+  // TODO(b/181077580): we should never do this, but avoiding it requires a
+  // more systemic fix
+  if (!window->pending_config.mask && window->pending_config.states_length == 0)
+    return 0;
+#endif
+
   if (window->managed && host_surface) {
     uint32_t width = window->width + window->border_width * 2;
     uint32_t height = window->height + window->border_width * 2;
@@ -553,6 +562,13 @@ int sl_process_pending_configure_acks(struct sl_window* window,
   return 1;
 }
 
+void sl_commit(struct sl_window* window, struct sl_host_surface* host_surface) {
+  if (sl_process_pending_configure_acks(window, host_surface)) {
+    if (host_surface)
+      wl_surface_commit(host_surface->proxy);
+  }
+}
+
 static void sl_internal_xdg_surface_configure(
     void* data, struct zxdg_surface_v6* xdg_surface, uint32_t serial) {
   TRACE_EVENT("surface", "sl_internal_xdg_surface_configure");
@@ -571,11 +587,7 @@ static void sl_internal_xdg_surface_configure(
           wl_resource_get_user_data(host_resource));
 
     sl_configure_window(window);
-
-    if (sl_process_pending_configure_acks(window, host_surface)) {
-      if (host_surface)
-        wl_surface_commit(host_surface->proxy);
-    }
+    sl_commit(window, host_surface);
   }
 }
 
@@ -931,7 +943,12 @@ void sl_window_update(struct sl_window* window) {
                              (window->y - parent->y) / ctx->scale);
   }
 
+#ifdef COMMIT_LOOP_FIX
+  sl_commit(window, host_surface);
+#else
   wl_surface_commit(host_surface->proxy);
+#endif
+
   if (host_surface->contents_width && host_surface->contents_height)
     window->realized = 1;
 }

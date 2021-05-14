@@ -75,9 +75,9 @@ if get_option('tracing')
   includes += include_directories('perfetto/sdk')
 endif
 
-#==========#
+#=================#
 # Gamepad support #
-#==========#
+#=================#
 
 gamepad_sources = []
 gamepad_dependencies = []
@@ -95,6 +95,10 @@ endif
 #===========#
 # Sommelier #
 #===========#
+
+if get_option('commit_loop_fix')
+  cpp_args += '-DCOMMIT_LOOP_FIX'
+endif
 
 executable('sommelier',
   install: true,
