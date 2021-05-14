@@ -93,7 +93,7 @@ shared_library("trunks") {
     "trunks_factory_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  libs = [ "hwsec" ]
+  libs = [ "hwsec-foundation" ]
   if (use.ftdi_tpm) {
     sources += [
       "ftdi/mpsse.c",

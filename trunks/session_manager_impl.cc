@@ -15,7 +15,7 @@
 #include <crypto/openssl_util.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
-#include <libhwsec/crypto_utility.h>
+#include <libhwsec-foundation/utility/crypto.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -64,12 +64,12 @@ bool GenerateEcdhKeys(const trunks::TPMS_ECC_POINT& salting_key_pub,
   crypto::ScopedEC_KEY ephemeral_key(EC_KEY_new_by_curve_name(kEccCurveID));
   if (!ephemeral_key.get()) {
     LOG(ERROR) << "Failed to create an ephemeral ECC key object: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
   if (!EC_KEY_generate_key(ephemeral_key.get())) {
     LOG(ERROR) << "Failed to generate an ephemeral ECC key: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 
@@ -82,7 +82,8 @@ bool GenerateEcdhKeys(const trunks::TPMS_ECC_POINT& salting_key_pub,
       EC_GROUP_new_by_curve_name(kEccCurveID));
   if (!ec_group.get()) {
     LOG(ERROR) << "Failed to generate EC_GROUP for the "
-               << "ephemeral key and z point: " << hwsec::GetOpensslError();
+               << "ephemeral key and z point: "
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 
@@ -142,7 +143,7 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
 
-  *salt = hwsec::CreateSecureRandomBlob(kSessionSecretSize);
+  *salt = hwsec_foundation::utility::CreateSecureRandomBlob(kSessionSecretSize);
   if (salt->size() != kSessionSecretSize) {
     LOG(ERROR) << "Error generating a cryptographically random salt.";
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
@@ -152,14 +153,14 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
   crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
   if (!salting_key_rsa || !n || !e) {
     LOG(ERROR) << "Failed to allocate RSA or BIGNUM: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
 
   if (!BN_set_word(e.get(), kWellKnownExponent) ||
       !BN_bin2bn(public_area.unique.rsa.buffer, rsa_key_size, n.get())) {
     LOG(ERROR) << "Error setting public area of rsa key: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   if (!RSA_set0_key(salting_key_rsa.get(), n.release(), e.release(), nullptr)) {
@@ -169,11 +170,13 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
 
   crypto::ScopedEVP_PKEY salting_key(EVP_PKEY_new());
   if (!salting_key) {
-    LOG(ERROR) << "Failed to allocate EVP_PKEY: " << hwsec::GetOpensslError();
+    LOG(ERROR) << "Failed to allocate EVP_PKEY: "
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   if (!EVP_PKEY_set1_RSA(salting_key.get(), salting_key_rsa.get())) {
-    LOG(ERROR) << "Error setting up EVP_PKEY: " << hwsec::GetOpensslError();
+    LOG(ERROR) << "Error setting up EVP_PKEY: "
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
 
@@ -192,7 +195,7 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
       !EVP_PKEY_CTX_set0_rsa_oaep_label(salt_encrypt_context.get(), oaep_label,
                                         kSessionKeyLabelLength)) {
     LOG(ERROR) << "Error setting up salt encrypt context: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   size_t out_length = EVP_PKEY_size(salting_key.get());
@@ -200,7 +203,8 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
   if (!EVP_PKEY_encrypt(salt_encrypt_context.get(),
                         reinterpret_cast<uint8_t*>(base::data(*encrypted_salt)),
                         &out_length, salt->data(), salt->size())) {
-    LOG(ERROR) << "Error encrypting salt: " << hwsec::GetOpensslError();
+    LOG(ERROR) << "Error encrypting salt: "
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   encrypted_salt->resize(out_length);
@@ -290,7 +294,7 @@ trunks::TPM_RC GenerateEccSessionSalt(const trunks::TPMT_PUBLIC& public_area,
                        &final_seed_size) ||
       final_seed_size != seed->size()) {
     LOG(ERROR) << "Error creating a SHA-256 digest: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return trunks::TRUNKS_RC_SESSION_SETUP_ERROR;
   }
 

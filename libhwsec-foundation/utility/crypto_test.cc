@@ -15,7 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "libhwsec/crypto_utility.h"
+#include "libhwsec-foundation/utility/crypto.h"
 
 using testing::_;
 using testing::NiceMock;
@@ -72,7 +72,8 @@ std::vector<uint8_t> HexDecode(const std::string& hex) {
 
 }  // namespace
 
-namespace hwsec {
+namespace hwsec_foundation {
+namespace utility {
 
 class CryptoUtilityTest : public testing::Test {
  public:
@@ -131,4 +132,5 @@ TEST_F(CryptoUtilityTest, EccKeyToSubjectPublicKeyInfoBytesFailWithNullptr) {
   EXPECT_FALSE(EccKeyToSubjectPublicKeyInfoBytes(nullptr));
 }
 
-}  // namespace hwsec
+}  // namespace utility
+}  // namespace hwsec_foundation

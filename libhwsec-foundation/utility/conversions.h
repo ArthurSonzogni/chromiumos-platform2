@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBHWSEC_CONVERSIONS_H_
-#define LIBHWSEC_CONVERSIONS_H_
+#ifndef LIBHWSEC_FOUNDATION_UTILITY_CONVERSIONS_H_
+#define LIBHWSEC_FOUNDATION_UTILITY_CONVERSIONS_H_
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace hwsec {
+namespace hwsec_foundation {
+namespace utility {
 
 // Type conversion from C string buffer (char*) to bytes buffer (uint8_t*)
 inline const uint8_t* CStringAsBytesByffer(const char* str) {
@@ -29,6 +30,7 @@ inline base::Optional<std::string> BytesToString(
   return BytesToString(*maybe_bytes);
 }
 
-}  // namespace hwsec
+}  // namespace utility
+}  // namespace hwsec_foundation
 
-#endif  // LIBHWSEC_CONVERSIONS_H_
+#endif  // LIBHWSEC_FOUNDATION_UTILITY_CONVERSIONS_H_

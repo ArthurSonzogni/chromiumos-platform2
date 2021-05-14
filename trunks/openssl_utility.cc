@@ -6,7 +6,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <libhwsec/crypto_utility.h>
+#include <libhwsec-foundation/utility/crypto.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 
@@ -38,7 +38,7 @@ bool BignumCoordinateToEccParameter(const BIGNUM& coordinate,
       reinterpret_cast<unsigned char*>(param->buffer) + coord_size - key_size;
   if (BN_bn2bin(&coordinate, start_pos) != key_size) {
     LOG(ERROR) << "BN_bn2bin() doesn't write a correct size: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 
@@ -55,12 +55,13 @@ bool TpmToOpensslEccPoint(const TPMS_ECC_POINT& point,
                           EC_POINT* ec_point) {
   CHECK(ec_point);
 
-  hwsec::ScopedBN_CTX ctx;
+  hwsec_foundation::utility::ScopedBN_CTX ctx;
   BIGNUM* x = BN_CTX_get(ctx.get());
   BIGNUM* y = BN_CTX_get(ctx.get());
   if (!x || !y) {
     LOG(ERROR) << "Failed to create bignums for x or y when converting to "
-               << "openssl ECC point: " << hwsec::GetOpensslError();
+               << "openssl ECC point: "
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 
@@ -71,7 +72,7 @@ bool TpmToOpensslEccPoint(const TPMS_ECC_POINT& point,
       !EC_POINT_set_affine_coordinates_GFp(&ec_group, ec_point, x, y,
                                            ctx.get())) {
     LOG(ERROR) << "Failed to convert TPMS_ECC_POINT to OpenSSL EC_POINT: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 
@@ -84,19 +85,19 @@ bool OpensslToTpmEccPoint(const EC_GROUP& ec_group,
                           TPMS_ECC_POINT* ecc_point) {
   CHECK(ecc_point);
 
-  hwsec::ScopedBN_CTX ctx;
+  hwsec_foundation::utility::ScopedBN_CTX ctx;
   BIGNUM* x = BN_CTX_get(ctx.get());
   BIGNUM* y = BN_CTX_get(ctx.get());
   if (!x || !y) {
     LOG(ERROR) << "Failed to create bignums for x or y when converting to TPM "
-               << "ECC point: " << hwsec::GetOpensslError();
+               << "ECC point: " << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 
   if (!EC_POINT_get_affine_coordinates_GFp(&ec_group, &point, x, y,
                                            ctx.get())) {
     LOG(ERROR) << "Failed to get X and Y from OpenSSL EC_POINT: "
-               << hwsec::GetOpensslError();
+               << hwsec_foundation::utility::GetOpensslError();
     return false;
   }
 

@@ -16,6 +16,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "openssl",
   ]
 }
 
@@ -25,6 +26,7 @@ shared_library("libhwsec-foundation") {
     "tpm_error/auth_failure_analysis.cc",
     "tpm_error/handle_auth_failure.cc",
     "tpm_error/tpm_error_uma_reporter.cc",
+    "utility/crypto.cc",
   ]
   pkg_deps = [
     "libmetrics",
@@ -50,6 +52,7 @@ if (use.test) {
       "da_reset/da_resetter_test.cc",
       "tpm_error/auth_failure_analysis_test.cc",
       "tpm_error/tpm_error_uma_reporter_test.cc",
+      "utility/crypto_test.cc",
     ]
     sources += [ "tpm_error/tpm_error_uma_reporter.cc" ]
     configs += [

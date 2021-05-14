@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/crypto_utility.h"
+#include "libhwsec-foundation/utility/crypto.h"
 
 #include <limits>
 #include <string>
@@ -46,7 +46,8 @@ base::Optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
 
 }  // namespace
 
-namespace hwsec {
+namespace hwsec_foundation {
+namespace utility {
 
 brillo::SecureBlob CreateSecureRandomBlob(size_t length) {
   // OpenSSL takes a signed integer. Returns nullopt if the user requests
@@ -86,4 +87,5 @@ base::Optional<std::vector<uint8_t>> EccKeyToSubjectPublicKeyInfoBytes(
   return OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get());
 }
 
-}  // namespace hwsec
+}  // namespace utility
+}  // namespace hwsec_foundation

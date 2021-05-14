@@ -13,7 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
-#include <libhwsec/crypto_utility.h>
+#include <libhwsec-foundation/utility/crypto.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/obj_mac.h>
@@ -56,7 +56,7 @@ class OpensslUtilityTest : public testing::Test {
   void CreateOpensslEccPoint(const char* hex_x,
                              const char* hex_y,
                              EC_POINT* ec_point) {
-    hwsec::ScopedBN_CTX ctx;
+    hwsec_foundation::utility::ScopedBN_CTX ctx;
     BIGNUM* x = BN_CTX_get(ctx.get());
     BIGNUM* y = BN_CTX_get(ctx.get());
     BN_hex2bn(&x, hex_x);
@@ -132,7 +132,7 @@ TEST_F(OpensslUtilityTest, TpmToOpensslEccPointSuccess) {
   EXPECT_TRUE(TpmToOpensslEccPoint(tpm_point, *default_ec_group_.get(),
                                    openssl_point.get()));
 
-  hwsec::ScopedBN_CTX ctx;
+  hwsec_foundation::utility::ScopedBN_CTX ctx;
   BIGNUM* actual_x = BN_CTX_get(ctx.get());
   BIGNUM* actual_y = BN_CTX_get(ctx.get());
   ASSERT_EQ(EC_POINT_get_affine_coordinates_GFp(default_ec_group_.get(),

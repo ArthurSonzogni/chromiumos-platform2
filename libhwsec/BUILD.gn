@@ -16,7 +16,6 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "openssl",
   ]
   defines = [ "USE_TPM2=${use.tpm2}" ]
 }
@@ -48,8 +47,11 @@ config("libhwsec_tpm1_config") {
   libs = [ "tspi" ]
 }
 
+config("libhwsec_tpm2_config") {
+  libs = [ "trunks" ]
+}
+
 shared_library("libhwsec") {
-  sources = [ "crypto_utility.cc" ]
   if (!use.tpm2) {
     all_dependent_configs = [ ":libhwsec_tpm1_config" ]
     deps = [ ":overalls_library" ]
@@ -63,10 +65,7 @@ if (use.test) {
   }
 
   executable("hwsec_testrunner") {
-    sources = [
-      "crypto_utility_test.cc",
-      "task_dispatching_framework_test.cc",
-    ]
+    sources = [ "task_dispatching_framework_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
