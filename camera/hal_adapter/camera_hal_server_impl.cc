@@ -276,15 +276,22 @@ void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
     cros_camera_hal->tear_down();
   }
 
-  base::AutoLock l(ipc_bridge_lock_);
-  auto future = Future<void>::Create(nullptr);
-  auto delete_ipc_bridge = base::BindOnce(
-      [](std::unique_ptr<IPCBridge> ipc_bridge,
-         base::Callback<void(void)> callback) { std::move(callback).Run(); },
-      std::move(ipc_bridge_), cros::GetFutureCallback(future));
-  mojo_manager_->GetIpcTaskRunner()->PostTask(FROM_HERE,
-                                              std::move(delete_ipc_bridge));
-  future->Wait(-1);
+  // We need to wrap the following into a scope since we need to acquire
+  // |ipc_bridge_lock_| when deleting the ipc bridge. However, when resetting
+  // |camera_hal_adapter_|, it also has chance to acquire |ipc_bridge_lock_|
+  // (e.g. Calling CameraHalServerImpl::OnCameraActivityChange()). To avoid
+  // causing a deadlock, we should release the lock right after the usage.
+  {
+    base::AutoLock l(ipc_bridge_lock_);
+    auto future = Future<void>::Create(nullptr);
+    auto delete_ipc_bridge = base::BindOnce(
+        [](std::unique_ptr<IPCBridge> ipc_bridge,
+           base::Callback<void(void)> callback) { std::move(callback).Run(); },
+        std::move(ipc_bridge_), cros::GetFutureCallback(future));
+    mojo_manager_->GetIpcTaskRunner()->PostTask(FROM_HERE,
+                                                std::move(delete_ipc_bridge));
+    future->Wait(-1);
+  }
 
   // To make sure all the devices are properly closed before triggering the exit
   // handlers on Camera HALs side, we explicitly reset the CameraHalAdapter.
