@@ -82,6 +82,7 @@
           "smbios-name-match": "Some"
         },
         "modem": {
+          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -223,6 +224,7 @@
           "smbios-name-match": "Some"
         },
         "modem": {
+          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
@@ -356,6 +358,7 @@
           "smbios-name-match": "Some"
         },
         "modem": {
+          "attach-apn-required": true,
           "firmware-variant": "some",
           "wedge-reboot-delay-ms": "20000"
         },
