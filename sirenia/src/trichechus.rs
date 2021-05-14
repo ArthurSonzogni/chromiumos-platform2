@@ -18,6 +18,8 @@ use std::rc::Rc;
 use std::result::Result as StdResult;
 
 use getopts::Options;
+use libsirenia::build_info::BUILD_TIMESTAMP;
+use libsirenia::cli::trichechus::initialize_common_arguments;
 use libsirenia::cli::TransportTypeOption;
 use libsirenia::communication::persistence::{Cronista, CronistaClient, Status};
 use libsirenia::communication::trichechus::{AppInfo, Trichechus, TrichechusServer};
@@ -33,8 +35,6 @@ use libsirenia::transport::{
     DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
 };
 use sirenia::app_info::{self, AppManifest, AppManifestEntry, SandboxType};
-use sirenia::build_info::BUILD_TIMESTAMP;
-use sirenia::cli::initialize_common_arguments;
 use sys_util::vsock::SocketAddr as VSocketAddr;
 use sys_util::{self, error, getpid, getsid, info, setsid, syslog};
 use thiserror::Error as ThisError;

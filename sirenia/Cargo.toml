@@ -29,7 +29,6 @@ panic = "abort"
 overflow-checks = true
 
 [build-dependencies]
-chrono = "0.4"
 chromeos-dbus-bindings = { path = "../chromeos-dbus-bindings"} # provided by ebuild
 
 [dependencies]
@@ -38,6 +37,5 @@ getopts = "0.2"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "libsirenia" } # provided by ebuild
 serde = { version = "1.0.114", features = ["derive"] }
-sirenia-rpc-macros = { path = "libsirenia/sirenia-rpc-macros" } # provided by ebuild
 sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 thiserror = "1.0.20"

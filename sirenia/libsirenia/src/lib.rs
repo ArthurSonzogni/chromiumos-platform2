@@ -5,6 +5,9 @@
 //! Ties together the various modules that make up the Sirenia library used by
 //! both Trichechus and Dugong.
 
+pub mod build_info {
+    include!(concat!(env!("OUT_DIR"), "/build_info.rs"));
+}
 pub mod cli;
 pub mod communication;
 pub mod linux;
