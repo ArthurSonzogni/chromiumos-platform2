@@ -11,7 +11,7 @@
 #include "libhwsec-foundation/tpm_error/tpm_error_constants.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_metrics_constants.h"
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 namespace {
 constexpr uint32_t kFakeCommand = 123;
@@ -57,4 +57,4 @@ TEST_F(TpmErrorUmaReporterTest, ReportNoFailure) {
   reporter_.Report(data);
 }
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation

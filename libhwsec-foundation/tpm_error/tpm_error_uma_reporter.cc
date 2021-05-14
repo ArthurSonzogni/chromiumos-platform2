@@ -8,7 +8,7 @@
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_metrics_constants.h"
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 TpmErrorUmaReporter::TpmErrorUmaReporter(MetricsLibraryInterface* metrics)
     : metrics_(metrics) {}
@@ -26,4 +26,4 @@ void TpmErrorUmaReporter::Report(const TpmErrorData& data) {
   }
 }
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation

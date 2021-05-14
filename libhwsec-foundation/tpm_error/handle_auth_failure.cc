@@ -9,13 +9,13 @@
 #include "libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h"
 
 extern "C" int HandleAuthFailure(const struct TpmErrorData* data) {
-  if (!libhwsec_foundation::DoesCauseDAIncrease(*data)) {
+  if (!hwsec_foundation::DoesCauseDAIncrease(*data)) {
     return true;
   }
 
-  libhwsec_foundation::TpmErrorUmaReporter reporter;
+  hwsec_foundation::TpmErrorUmaReporter reporter;
   reporter.Report(*data);
 
-  libhwsec_foundation::DAResetter resetter;
+  hwsec_foundation::DAResetter resetter;
   return resetter.ResetDictionaryAttackLock();
 }

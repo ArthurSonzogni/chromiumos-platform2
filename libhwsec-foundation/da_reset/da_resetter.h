@@ -15,7 +15,7 @@
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 // `DAResetter` resets the DA counter. The underlying implementation uses tpm
 // manager D-Bus proxy.
@@ -40,6 +40,6 @@ class HWSEC_FOUNDATION_EXPORT DAResetter {
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> proxy_;
 };
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_DA_RESET_DA_RESETTER_H_

@@ -7,13 +7,13 @@
 
 #include <stdint.h>
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 // The value of `TPM_E_AUTHFAIL`, per TPM1.2 spec.
 constexpr uint32_t kTpm1AuthFailResponse = 1;
 // The value of `TPM_E_AUTHF2AIL`, per TPM1.2 spec.
 constexpr uint32_t kTpm1Auth2FailResponse = 29;
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_TPM_ERROR_TPM_ERROR_CONSTANTS_H_

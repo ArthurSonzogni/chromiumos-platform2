@@ -10,7 +10,7 @@
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 // Reports various types of UMA regarding to TPM errors.
 class HWSEC_FOUNDATION_EXPORT TpmErrorUmaReporter {
@@ -34,6 +34,6 @@ class HWSEC_FOUNDATION_EXPORT TpmErrorUmaReporter {
   MetricsLibraryInterface* metrics_ = &default_metrics_;
 };
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_TPM_ERROR_TPM_ERROR_UMA_REPORTER_H_

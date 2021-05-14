@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -66,4 +66,4 @@ TEST_F(DAResetterTest, DBusError) {
   EXPECT_FALSE(resetter_->ResetDictionaryAttackLock());
 }
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation

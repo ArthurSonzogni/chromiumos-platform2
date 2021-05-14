@@ -7,7 +7,7 @@
 #include "libhwsec-foundation/tpm_error/tpm_error_constants.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 bool DoesCauseDAIncrease(const TpmErrorData& data) {
   // For TPM2.0 case, the reactive trigger model of DA reset is not implemented;
@@ -19,4 +19,4 @@ bool DoesCauseDAIncrease(const TpmErrorData& data) {
          data.response == kTpm1AuthFailResponse;
 }
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation

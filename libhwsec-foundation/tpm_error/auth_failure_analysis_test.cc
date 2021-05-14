@@ -10,7 +10,7 @@
 #include "libhwsec-foundation/tpm_error/tpm_error_constants.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 #if USE_TPM2
 TEST(DoesCauseDAIncreaseTest, AlwaysReturnFalseForTpm2) {
@@ -38,4 +38,4 @@ TEST(DoesCauseDAIncreaseTest, ReturnTrueForAuthFailure) {
 
 #endif
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation

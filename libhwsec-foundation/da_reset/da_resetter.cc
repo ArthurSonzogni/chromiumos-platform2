@@ -13,7 +13,7 @@
 // This has to go after tpm_manager.pb.h.
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-namespace libhwsec_foundation {
+namespace hwsec_foundation {
 
 namespace {
 
@@ -54,4 +54,4 @@ bool DAResetter::ResetDictionaryAttackLock() {
   return true;
 }
 
-}  // namespace libhwsec_foundation
+}  // namespace hwsec_foundation
