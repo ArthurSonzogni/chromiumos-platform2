@@ -2170,8 +2170,8 @@ TEST_F(ServiceTest, SanitizeStorageIdentifier) {
               Service::SanitizeStorageIdentifier(identifier));
   }
 
-  EXPECT_EQ("service_1_2_3_2_Dummy_Net_",
-            Service::SanitizeStorageIdentifier("service_1-2:3.2_Dummy^Net!"));
+  EXPECT_EQ("service_1_2_3_2_Fake_Net_",
+            Service::SanitizeStorageIdentifier("service_1-2:3.2_Fake^Net!"));
 }
 
 TEST_F(ServiceTest, DisconnectSetsDisconnectState) {

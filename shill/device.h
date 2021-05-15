@@ -89,7 +89,7 @@ class Device : public base::RefCounted<Device> {
                          const ResultCallback& callback);
   // Similar to SetEnabledChecked, but without coherence checking, and
   // without saving the new value of |enable| to the profile. If you
-  // are sane (i.e. not Cellular), you should use
+  // are rational (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
   void SetEnabledUnchecked(bool enable,
                            Error* error,

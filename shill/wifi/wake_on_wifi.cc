@@ -1359,29 +1359,29 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
           reinterpret_cast<struct nl80211_pattern_support*>(
               pattern_data.GetData());
       // Determine the IPv4 and IPv6 pattern lengths we will use by
-      // constructing dummy patterns and getting their lengths.
-      ByteString dummy_pattern;
-      ByteString dummy_mask;
+      // constructing fake patterns and getting their lengths.
+      ByteString fake_pattern;
+      ByteString fake_mask;
       // Currently intel WiFi chip doesn't wake on min len patterns(b/62726471).
       // Adding 1 as a hack to fix this issue.
       // TODO(ravisadineni): Remove this check after b/62726471 is fixed.
       min_pattern_len_ = patt_support->min_pattern_len + 1;
       WakeOnWiFi::CreateIPV4PatternAndMask(IPAddress("192.168.0.20"),
-                                           min_pattern_len_, &dummy_pattern,
-                                           &dummy_mask);
-      size_t ipv4_pattern_len = dummy_pattern.GetLength();
+                                           min_pattern_len_, &fake_pattern,
+                                           &fake_mask);
+      size_t ipv4_pattern_len = fake_pattern.GetLength();
       WakeOnWiFi::CreateIPV6PatternAndMask(
-          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"), &dummy_pattern,
-          &dummy_mask, min_pattern_len_);
-      size_t ipv6_pattern_len = dummy_pattern.GetLength();
+          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"), &fake_pattern,
+          &fake_mask, min_pattern_len_);
+      size_t ipv6_pattern_len = fake_pattern.GetLength();
       WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
-          mac_address_, min_pattern_len_, IPPROTO_TCP, &dummy_pattern,
-          &dummy_mask);
-      size_t ipv4_packet_type_pattern_len = dummy_pattern.GetLength();
+          mac_address_, min_pattern_len_, IPPROTO_TCP, &fake_pattern,
+          &fake_mask);
+      size_t ipv4_packet_type_pattern_len = fake_pattern.GetLength();
       WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
-          mac_address_, min_pattern_len_, IPPROTO_TCP, &dummy_pattern,
-          &dummy_mask);
-      size_t ipv6_packet_type_pattern_len = dummy_pattern.GetLength();
+          mac_address_, min_pattern_len_, IPPROTO_TCP, &fake_pattern,
+          &fake_mask);
+      size_t ipv6_packet_type_pattern_len = fake_pattern.GetLength();
       size_t min_pattern_len = std::min({ipv4_pattern_len, ipv6_pattern_len,
                                          ipv4_packet_type_pattern_len,
                                          ipv6_packet_type_pattern_len});

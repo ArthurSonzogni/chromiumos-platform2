@@ -1333,14 +1333,14 @@ class WiFiMainTest : public WiFiObjectTest {
   MockWiFiServiceRefPtr AttemptConnection(WiFi::ScanMethod method,
                                           WiFiEndpointRefPtr* endpoint,
                                           RpcIdentifier* bss_path) {
-    WiFiEndpointRefPtr dummy_endpoint;
+    WiFiEndpointRefPtr fake_endpoint;
     if (!endpoint) {
-      endpoint = &dummy_endpoint;  // If caller doesn't care about endpoint.
+      endpoint = &fake_endpoint;  // If caller doesn't care about endpoint.
     }
 
-    RpcIdentifier dummy_bss_path;
+    RpcIdentifier fake_bss_path;
     if (!bss_path) {
-      bss_path = &dummy_bss_path;  // If caller doesn't care about bss_path.
+      bss_path = &fake_bss_path;  // If caller doesn't care about bss_path.
     }
 
     ExpectScanStop();

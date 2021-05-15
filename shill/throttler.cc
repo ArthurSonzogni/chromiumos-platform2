@@ -212,8 +212,8 @@ bool Throttler::ApplyThrottleToNewInterface(const std::string& interface_name) {
     return true;
   }
   // No operation currently in progress, start a new tc process
-  ResultCallback dummy;
-  return Throttle(dummy, interface_name, desired_upload_rate_kbits_,
+  ResultCallback fake;
+  return Throttle(fake, interface_name, desired_upload_rate_kbits_,
                   desired_download_rate_kbits_);
 }
 

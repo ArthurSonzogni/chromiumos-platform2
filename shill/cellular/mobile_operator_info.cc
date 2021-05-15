@@ -21,7 +21,7 @@ static std::string ObjectID(const MobileOperatorInfo* m) {
 // /////////////////////////////////////////////////////////////////////////////
 // MobileOperatorInfo implementation note:
 // MobileOperatorInfo simply forwards all operations to |impl_|.
-// It also logs the functions/arguments/results at sane log levels. So the
+// It also logs the functions/arguments/results at reasonable log levels. So the
 // implementation need not leave a trace itself.
 
 MobileOperatorInfo::MobileOperatorInfo(EventDispatcher* dispatcher,

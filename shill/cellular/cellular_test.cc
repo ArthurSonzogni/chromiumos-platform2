@@ -1664,7 +1664,7 @@ TEST_P(CellularTest, Notify) {
   Mock::VerifyAndClearExpectations(ppp_device.get());
 
   // Re-connect on same network device: if pppd sends us multiple connect
-  // events, we behave sanely.
+  // events, we behave rationally.
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*ppp_device, SetEnabled(true));

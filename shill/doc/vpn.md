@@ -26,8 +26,8 @@ exposed to D-Bus clients.
 
 ChromeOS supports 4 types of VPN solutions:
 *   Android 3rd-party VPN apps in ARC
-*   Native L2TP/IPSec VPN
-*   Native OpenVPN
+*   Built-in L2TP/IPSec VPN
+*   Built-in OpenVPN
 *   Chrome Extension VPN App
 
 Each of these types has a corresponding `VPNDriver` child which contains the
@@ -70,9 +70,9 @@ connects. This triggers `ArcNetHostImpl::AndroidVpnConnected` on the
 Chrome-side, which will Connect the appropriate `VpnService` in Shill, first
 configuring a new `VpnService` in Shill if needed.
 
-### Native L2TP/IPSec VPN
+### Built-in L2TP/IPSec VPN
 
-The native L2TP/IPSec VPN is implemented with multiple projects, the two Chrome
+The built-in L2TP/IPSec VPN is implemented with multiple projects, the two Chrome
 OS components being the Shill `L2TPIPSecDriver` and the
 [vpn-manager](../../vpn-manager) project. The vpn-manager project (in particular
 the l2tpipsec_vpn binary) serves to create the L2TP/IPSec nested tunnels that
@@ -101,9 +101,9 @@ method is also used to get information about a disconnection, although
 `L2TPIPSecDriver::OnL2TPIPSecVPNDied` also serves that purpose but receives the
 exit status from l2tpipsec_vpn rather than pppd.
 
-### Native OpenVPN
+### Built-in OpenVPN
 
-The native OpenVPN implementation consists primarily of the open-source
+The built-in OpenVPN implementation consists primarily of the open-source
 [OpenVPN](https://openvpn.net) project, and of Shill's `OpenVPNDriver` and
 `OpenVPNManagementServer`. Upon a Connect request, `OpenVPNDriver` creates a TUN
 interface and spawns an `openvpn` process, passing a set of command-line options
@@ -159,7 +159,7 @@ VPN Apps use the SendPacket vpnProvider function to cause its Chrome
 the TUN interface. Understandably, the performance of Chrome App VPNs is not
 optimal, but the performance drawbacks of this design are embedded in the
 ThirdPartyVpn and Chrome vpnProvider APIs, as opposed to being hidden
-implementation details. One can contrast this with how native OpenVPN above
+implementation details. One can contrast this with how built-in OpenVPN above
 works, where the TUN interface is passed to `openvpn` so that the Shill <->
 external VPN entity communication is exclusively a control channel rather than
 both a control and data channel.

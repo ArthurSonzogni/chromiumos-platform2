@@ -635,7 +635,8 @@ void OpenVPNDriver::InitOptions(std::vector<std::vector<std::string>>* options,
       AppendRemoteOption(host, options);
     }
   }
-  AppendOption("mark", "1280", options);  // 0x500: source type = 5 (Native VPN)
+  AppendOption("mark", "1280",
+               options);  // 0x500: source type = 5 (Built-in VPN)
   AppendOption("nobind", options);
   AppendOption("persist-key", options);
   AppendOption("persist-tun", options);

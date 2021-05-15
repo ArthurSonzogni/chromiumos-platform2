@@ -924,11 +924,11 @@ TEST_F(RTNLMessageTest, EncodeRuleAdd) {
       FRA_UID_RANGE,
       ByteString(reinterpret_cast<const unsigned char*>(&r), sizeof(r)));
 
-  msg.SetAttribute(FRA_IFNAME, ByteString(std::string("dummy0"), true));
+  msg.SetAttribute(FRA_IFNAME, ByteString(std::string("fake0"), true));
 
   TestParseRule(msg.Encode(), RTNLMessage::kModeAdd, IPAddress::kFamilyIPv4,
                 RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, dst,
-                src, 13, 0x1234, 0xffff, 1000, 2000, "dummy0");
+                src, 13, 0x1234, 0xffff, 1000, 2000, "fake0");
 }
 
 TEST_F(RTNLMessageTest, EncodeLinkDel) {

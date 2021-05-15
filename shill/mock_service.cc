@@ -38,7 +38,7 @@ MockService::MockService(Manager* manager)
 MockService::~MockService() = default;
 
 bool MockService::FauxSave(StoreInterface* store) {
-  return store->SetString(GetStorageIdentifier(), "dummy", "dummy");
+  return store->SetString(GetStorageIdentifier(), "fake", "fake");
 }
 
 }  // namespace shill

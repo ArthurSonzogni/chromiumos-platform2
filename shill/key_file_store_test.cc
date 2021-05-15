@@ -585,7 +585,7 @@ TEST_F(KeyFileStoreTest, GetUint64) {
   const uint64_t kValueGood = 0xFEDCBA9876543210LL;
   static const char kValueBad[] = "nan";
   // Use base::NumberToString() instead of using something like "%llu"
-  // (not correct for native 64 bit architectures) or PRIu64 (does not
+  // (not correct for built-in 64 bit architectures) or PRIu64 (does not
   // work correctly using cros_workon_make due to include intricacies).
   WriteKeyFile(base::StringPrintf(
       "[%s]\n"

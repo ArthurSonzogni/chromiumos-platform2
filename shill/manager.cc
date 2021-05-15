@@ -149,7 +149,7 @@ constexpr char kDefaultClaimerName[] = "";
 const char* const kUserTrafficUsernames[] = {
     "chronos",         // Traffic originating from chrome and nacl applications
     "debugd",          // crosh terminal
-    "cups",            // native printing using the cups daemon
+    "cups",            // built-in printing using the cups daemon
     "lpadmin",         // printer configuration utility used by cups
     "kerberosd",       // Chrome OS Kerberos daemon
     "kerberosd-exec",  // Kerberos third party untrusted code
@@ -1301,8 +1301,8 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   if (network_throttling_enabled_ &&
       to_manage->technology().IsPrimaryConnectivityTechnology()) {
     if (devices_.size() == 1) {
-      ResultCallback dummy;
-      throttler_->ThrottleInterfaces(dummy, upload_rate_kbits_,
+      ResultCallback fake;
+      throttler_->ThrottleInterfaces(fake, upload_rate_kbits_,
                                      download_rate_kbits_);
     } else {
       // Apply any existing network bandwidth throttling.

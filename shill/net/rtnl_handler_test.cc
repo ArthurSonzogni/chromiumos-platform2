@@ -51,7 +51,7 @@ MATCHER_P(MessageType, message_type, "") {
   return std::get<0>(arg).type() == message_type;
 }
 
-std::unique_ptr<RTNLMessage> CreateDummyMessage() {
+std::unique_ptr<RTNLMessage> CreateFakeMessage() {
   return std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
                                        RTNLMessage::kModeGet, 0, 0, 0, 0,
                                        IPAddress::kFamilyUnknown);
@@ -264,7 +264,7 @@ TEST_F(RTNLHandlerTest, SendMessageReturnsErrorAndAdvancesSequenceNumber) {
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(Return(-1));
   uint32_t seq = 0;
   EXPECT_FALSE(
-      RTNLHandler::GetInstance()->SendMessage(CreateDummyMessage(), &seq));
+      RTNLHandler::GetInstance()->SendMessage(CreateFakeMessage(), &seq));
 
   // |seq| should not be set if there was a failure.
   EXPECT_EQ(seq, 0);
@@ -280,7 +280,7 @@ TEST_F(RTNLHandlerTest, SendMessageWithEmptyMask) {
   SetErrorMask(kSequenceNumber, {1, 2, 3});
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
   uint32_t seq;
-  EXPECT_TRUE(SendMessageWithErrorMask(CreateDummyMessage(), {}, &seq));
+  EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {}, &seq));
   EXPECT_EQ(seq, kSequenceNumber);
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   EXPECT_TRUE(GetAndClearErrorMask(kSequenceNumber).empty());
@@ -293,7 +293,7 @@ TEST_F(RTNLHandlerTest, SendMessageWithErrorMask) {
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
   uint32_t seq;
-  EXPECT_TRUE(SendMessageWithErrorMask(CreateDummyMessage(), {1, 2, 3}, &seq));
+  EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {1, 2, 3}, &seq));
   EXPECT_EQ(seq, kSequenceNumber);
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   EXPECT_TRUE(GetAndClearErrorMask(kSequenceNumber + 1).empty());
@@ -335,7 +335,7 @@ TEST_F(RTNLHandlerTest, MaskedError) {
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
   uint32_t seq;
-  EXPECT_TRUE(SendMessageWithErrorMask(CreateDummyMessage(), {1, 2, 3}, &seq));
+  EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {1, 2, 3}, &seq));
   EXPECT_EQ(seq, kSequenceNumber);
   ScopedMockLog log;
 

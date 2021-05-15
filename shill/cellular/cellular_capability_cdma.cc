@@ -290,7 +290,7 @@ void CellularCapabilityCdma::OnActivateReply(const ResultCallback& callback,
   }
   UpdatePendingActivationState();
 
-  // CellularCapabilityCdma::ActivateAutomatic passes a dummy
+  // CellularCapabilityCdma::ActivateAutomatic passes a fake
   // ResultCallback when it calls Activate on the proxy object, in which case
   // |callback.is_null()| will return true.
   if (!callback.is_null())

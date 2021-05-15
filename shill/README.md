@@ -33,7 +33,7 @@ functionality as:
          Shill's main responsibility is to ensure that traffic which doesn't
          originate in Android and should go through the VPN is sent to ARC
          rather than directly out of a physical interface).
-    *    Native OpenVPN (a very limited subset; it is recommended that OpenVPN
+    *    Built-in OpenVPN (a very limited subset; it is recommended that OpenVPN
          users use an Android VPN app for this) and L2TP/IPsec VPNs.
 *   Detecting connectivity issues and trying to determine potential causes.
 *   Collecting non-privacy-invasive metrics to allow for a better understanding

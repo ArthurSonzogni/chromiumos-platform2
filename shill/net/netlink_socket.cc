@@ -61,11 +61,11 @@ bool NetlinkSocket::RecvMessage(ByteString* message) {
   }
 
   // Determine the amount of data currently waiting.
-  const size_t kDummyReadByteCount = 1;
-  ByteString dummy_read(kDummyReadByteCount);
+  const size_t kFakeReadByteCount = 1;
+  ByteString fake_read(kFakeReadByteCount);
   ssize_t result;
-  result = sockets_->RecvFrom(file_descriptor_, dummy_read.GetData(),
-                              dummy_read.GetLength(), MSG_TRUNC | MSG_PEEK,
+  result = sockets_->RecvFrom(file_descriptor_, fake_read.GetData(),
+                              fake_read.GetLength(), MSG_TRUNC | MSG_PEEK,
                               nullptr, nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed.";

@@ -1214,7 +1214,7 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
 }
 
 TEST_F(WiFiServiceTest, SignalToStrength) {
-  // Verify that our mapping is sane, in the sense that it preserves ordering.
+  // Verify that our mapping is valid, in the sense that it preserves ordering.
   // We test that the current_map returns results as expect and fall into
   // correct category of Excellent, Good, Medium, Poor signal quality.
   for (int16_t i = std::numeric_limits<int16_t>::min();
@@ -1357,7 +1357,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   service->RemoveEndpoint(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
-  // Removing the current endpoint is safe and sane.
+  // Removing the current endpoint is safe and healthy.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor,
@@ -1365,7 +1365,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   service->RemoveEndpoint(bad_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
-  // Clearing the current endpoint (without removing it) is also safe and sane.
+  // Clearing the current endpoint (without removing it) is also safe and
+  // healthy.
   service->NotifyCurrentEndpoint(ok_endpoint);
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, _)).Times(0);
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);

@@ -584,12 +584,12 @@ TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
 
   int ulrate = 1024;
   int dlrate = 2048;
-  ResultCallback dummy;
+  ResultCallback fake;
 
   EXPECT_CALL(*throttler_, ThrottleInterfaces(_, ulrate, dlrate));
-  manager()->SetNetworkThrottlingStatus(dummy, true, ulrate, dlrate);
+  manager()->SetNetworkThrottlingStatus(fake, true, ulrate, dlrate);
   EXPECT_CALL(*throttler_, DisableThrottlingOnAllInterfaces(_));
-  manager()->SetNetworkThrottlingStatus(dummy, false, ulrate, dlrate);
+  manager()->SetNetworkThrottlingStatus(fake, false, ulrate, dlrate);
 }
 
 TEST_F(ManagerTest, DeviceRegistrationAndStart) {

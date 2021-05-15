@@ -380,7 +380,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
 
   void SetMockRegistrationDroppedUpdateCallback() {
     capability_->registration_dropped_update_callback_.Reset(base::Bind(
-        &CellularCapability3gppTest::DummyCallback, base::Unretained(this)));
+        &CellularCapability3gppTest::FakeCallback, base::Unretained(this)));
   }
 
   void SetApnTryList(const std::deque<Stringmap>& apn) {
@@ -406,7 +406,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   void InitProxies() { capability_->InitProxies(); }
 
   MOCK_METHOD(void, TestCallback, (const Error&));
-  MOCK_METHOD(void, DummyCallback, ());
+  MOCK_METHOD(void, FakeCallback, ());
 
  protected:
   brillo::VariantDictionary GetSimProperties(const RpcIdentifier& sim_path) {
@@ -1085,7 +1085,7 @@ TEST_F(CellularCapability3gppTest, UpdateRegistrationState) {
 
   // Home --> Searching --> Searching --> wait till dispatch should see
   // Searching *and* the first callback should be cancelled.
-  EXPECT_CALL(*this, DummyCallback()).Times(0);
+  EXPECT_CALL(*this, FakeCallback()).Times(0);
   EXPECT_CALL(metrics_, Notify3GPPRegistrationDelayedDropPosted());
 
   capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,

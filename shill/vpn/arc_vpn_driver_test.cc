@@ -30,7 +30,7 @@ namespace {
 
 const char kInterfaceName[] = "arcbr0";
 const int kInterfaceIndex = 123;
-const char kStorageId[] = "dummystorage";
+const char kStorageId[] = "fakestorage";
 
 }  // namespace
 

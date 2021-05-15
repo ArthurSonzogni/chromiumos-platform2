@@ -4,8 +4,5 @@
 # See repohooks/README.md for more details.
 
 crazy
-dummy
 master
-\bnative
-\b(in)?sane(\b|\d)
 slave
