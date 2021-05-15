@@ -116,18 +116,14 @@ void CameraClient::Init(RegisterClientCallback register_client_callback,
 
 int CameraClient::Exit() {
   VLOGF_ENTER();
-  int ret = StopCapture(context_.info.camera_id);
+  auto future = cros::Future<int>::Create(nullptr);
+  StopCurrentCapture(cros::GetFutureCallback(future));
+  int ret = future->Get();
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraClient::ResetOnIpcThread, base::Unretained(this)));
   ipc_thread_.Stop();
   info_thread_.Stop();
-  // The stop might fail due to the camera already being closed. Ignore the
-  // failure.
-  if (ret == -EIO) {
-    LOGF(INFO) << "Camera is already closed";
-    ret = 0;
-  }
   return ret;
 }
 
@@ -300,9 +296,10 @@ void CameraClient::OnSetCallbacks(int32_t result) {
   size_t num_cameras = pending_camera_id_set_.size() +
                        processing_camera_id_set_.size() + camera_id_set_.size();
   if (num_cameras == 0) {
-    LOGF(ERROR) << "No built-in or connected cameras found";
+    LOGF(WARNING) << "No built-in or connected cameras found";
     if (init_callback_) {
-      std::move(init_callback_).Run(-ENODEV);
+      context_.state = SessionState::kIdle;
+      std::move(init_callback_).Run(0);
     }
     return;
   }
@@ -716,6 +713,35 @@ void CameraClient::OnStoppedCaptureFromCallback(int result) {
   if (result != 0) {
     LOGF(ERROR) << "Failed to stop capture from capture callback";
   }
+}
+
+void CameraClient::StopCurrentCapture(IntOnceCallback callback) {
+  VLOGF_ENTER();
+  ipc_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&CameraClient::StopCurrentCaptureOnIpcThread,
+                                base::Unretained(this), std::move(callback)));
+}
+
+void CameraClient::StopCurrentCaptureOnIpcThread(IntOnceCallback callback) {
+  VLOGF_ENTER();
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+
+  // Flush all inflight session requests to stop the capture immediately.
+  FlushInflightSessionRequests(-EIO);
+
+  if (context_.state == SessionState::kStopping ||
+      context_.state == SessionState::kIdle) {
+    // No need to stop capturing if there's no ongoing capture session or it's
+    // already being stopped.
+    std::move(callback).Run(0);
+    return;
+  }
+  // TODO(lnishan): Stopping capture would fail here if the current state is
+  // |SessionState::kStarting|. Handle that situation properly.
+  SessionRequest request = {.type = SessionRequestType::kStop,
+                            .info = context_.info,
+                            .result_callback = std::move(callback)};
+  PushSessionRequestOnIpcThread(std::move(request));
 }
 
 }  // namespace cros

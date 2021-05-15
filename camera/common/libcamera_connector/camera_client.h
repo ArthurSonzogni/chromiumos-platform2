@@ -224,6 +224,12 @@ class CameraClient final : public mojom::CameraHalClient {
 
   void OnStoppedCaptureFromCallback(int result);
 
+  // Called by CameraClient::Exit() to stop the current capture session if we're
+  // capturing.
+  void StopCurrentCapture(IntOnceCallback callback);
+
+  void StopCurrentCaptureOnIpcThread(IntOnceCallback callback);
+
   base::Thread ipc_thread_;
   base::Thread info_thread_;
   mojo::Remote<mojom::CameraModule> camera_module_;
