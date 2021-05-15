@@ -45,8 +45,9 @@ pkg_config("target_default_pkg_deps") {
 
 config("target_defaults") {
   configs = [ ":target_default_pkg_deps" ]
+  defines = [ "USE_GENERIC_TPM2=${use.generic_tpm2}" ]
   if (use.tpm2_simulator) {
-    defines = [ "USE_SIMULATOR=1" ]
+    defines += [ "USE_SIMULATOR=1" ]
   }
 }
 

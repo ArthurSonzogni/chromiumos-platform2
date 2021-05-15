@@ -36,8 +36,14 @@ const int TPM_RC_NO_SUCH_COMMAND = 0x57f;
 
 // Real NVRAM index for endoresement certificate. It is the real index which
 // sent to TPM.
+#if USE_GENERIC_TPM2
+// This is specified in TCG EK Credential Profile for TPM Family 2.0.
+constexpr uint32_t kRsaEndorsementCertificateIndex = 0x01c00002;
+constexpr uint32_t kEccEndorsementCertificateIndex = 0x01c0000a;
+#else
 constexpr uint32_t kRsaEndorsementCertificateIndex = 0x1C00000;
 constexpr uint32_t kEccEndorsementCertificateIndex = 0x1C00001;
+#endif
 
 // The non-real NVRAM index is only used and accepted by tpm_utility API.
 // TODO(crbug/956855): remove these indexes.
