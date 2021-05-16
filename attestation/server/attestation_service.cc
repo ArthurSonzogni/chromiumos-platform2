@@ -203,6 +203,17 @@ const CertificateAuthority kKnownEndorsementCA[] = {
      "c4b8783c177c7c02468ca67393859c7cc2d61aa1f2815dda51e930cc6b834095"
      "9bade2e0bb2e0d45c203f09bf6b661ce105af962ebf2d62714c153599a32a864"
      "24de5775b22f26aede04bdcb91725849c6cc90401d05d458fa896baf4588f8ef"},
+    // TODO(b/183476655): Remove this once we don't care about FW-upgraded
+    // chips.
+    {"Infineon OPTIGA(TM) RSA Manufacturing CA 033",
+     "a85eb214d5ef5c642dfc70ee8dfbd7b6fcc765692e5065fb3c0bfa049f456190"
+     "5098cbba4ecb490d96233093d5393deb3660a0aeab79c1297b97755e03e477c9"
+     "401e8c820aeed9143eaa11edd2a99a852d6e56ed8e7f9a0f594c432a6689a5b0"
+     "3001b023ce22d9d1b045b429f755b89f6a69f593154397aec0c8d2b296cb1fe7"
+     "f6c27bd717537ac1210b79557e3f6fd5de589223f7780a3af4cc9d8d1526348c"
+     "d3e0b41578cd9309d578668b18912626f764b5e334be9b1532aaf09c4effd31a"
+     "228723fd91c61d3f2f07852ce6bc33ecddcf66dd583c04e6483f8d58791e86ae"
+     "f12f156d9662d544e29795f79a2a750bf821c2465873db5c1dc26509490e4afd"},
 };
 
 struct CertificateAuthoritySubjectPublicKeyInfo {
@@ -222,6 +233,12 @@ const CertificateAuthoritySubjectPublicKeyInfo
          "3059301306072a8648ce3d020106082a8648ce3d030107034200042c43929137"
          "299e67555a9f947c2f17a6412e8d0ad5a50b8e91475ac49c7861520b0711fa7a"
          "e1ea0194a8f4d31fbcd1d36b940b3a6d66dc34092dac5655ff49c7"},
+        // TODO(b/183476655): Remove this once we don't care about FW-upgraded
+        // chips.
+        {"Infineon OPTIGA(TM) ECC Manufacturing CA 033",
+         "3059301306072a8648ce3d020106082a8648ce3d030107034200048e72217be0"
+         "16b33242092808a77dc4ec9671ceda85525748d6522455a3c61504afe1a21e12"
+         "7876b346b6c89a84f1bd0e0343abcbc1617a1fbe2dbfd0bf18ce3e"},
 };
 
 const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
