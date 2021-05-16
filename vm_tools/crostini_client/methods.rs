@@ -170,9 +170,20 @@ impl fmt::Display for ChromeOSError {
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
             NotPluginVm => write!(f, "this VM is not a Parallels VM"),
-            PluginVmDisabled => write!(f, "Parallels VMs are not available"),
+            PluginVmDisabled => {
+                write!(
+                    f,
+                    "Parallels VMs are not available. Visit `chrome://vm/parallels` \
+                           page in Chrome browser to review state of Parallels Desktop software."
+                )
+            }
             PluginVmDisabledReason(reason) => {
-                write!(f, "Parallels VMs are not available: {}", reason)
+                write!(
+                    f,
+                    "Parallels VMs are not available: {}. Visit `chrome://vm/parallels` \
+                           page in Chrome browser to review state of Parallels Desktop software.",
+                    reason
+                )
             }
             PluginVmGenericError(rc) => write!(f, "failed to execute request: {:#X}", rc),
             PluginVmLicenseExpired(rc) => write!(f, "expired license: {:#X}", rc),
