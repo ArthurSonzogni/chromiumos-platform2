@@ -45,6 +45,30 @@ const char kValidModulusHex[] =
     "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
     "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F";
 
+constexpr char kSelfSignedCertDerHex[] =
+    "308201fd308201a3a00302010202147b54cc22c8b391d4f8da07d97dc1e48b94be1442300a"
+    "06082a8648ce3d0403023044310b300906035504030c025457310b30090603550406130254"
+    "573113301106035504080c0a4e6577205461697065693113301106035504070c0a4e657720"
+    "546169706569301e170d3231303531343135303132345a170d323230353134313530313234"
+    "5a3044310b300906035504030c025457310b30090603550406130254573113301106035504"
+    "080c0a4e6577205461697065693113301106035504070c0a4e657720546169706569305930"
+    "1306072a8648ce3d020106082a8648ce3d030107034200044ebf9113fcb118d4b2ac828f73"
+    "ec374e2ca4e2983d791b3f846a4ab20a340710f84aae65c858bb26faa59a3baec969f573ae"
+    "ae435c40c8c4fdada7a87043eb35a3733071301d0603551d0e041604145a6b9f9f94437d3f"
+    "df85fb0cebc7a90d28f03f60301f0603551d230418301680145a6b9f9f94437d3fdf85fb0c"
+    "ebc7a90d28f03f60300e0603551d0f0101ff0404030202a4301f0603551d11041830168214"
+    "746573742e63657274696669636174652e636f6d300a06082a8648ce3d0403020348003045"
+    "02204f96089130341b6545f4c2ea7cf34b8e60d187c39de18b227dcc5f7fd985b81c022100"
+    "a661c5790d1677f02f2a073f4396d63a24add9a0f650e5ff5f926c8ef67342ee";
+constexpr char kSelfSignedPublikKeyDerHex[] =
+    "3059301306072a8648ce3d020106082a8648ce3d030107034200044ebf9113fcb118d4b2ac"
+    "828f73ec374e2ca4e2983d791b3f846a4ab20a340710f84aae65c858bb26faa59a3baec969"
+    "f573aeae435c40c8c4fdada7a87043eb35";
+constexpr char kMismatchedPublicKeyDerHex[] =
+    "3059301306072a8648ce3d020106082a8648ce3d03010703420004c84758541dd419adcfec"
+    "8e9868ba4b59755a7c1e3bcf892d11e7bd0afe9714de3043063afe9face5b5d53ebcabc3de"
+    "7df2a67726fde0a7f1f4c1ed070e942e92";
+
 std::string HexDecode(const std::string hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
@@ -287,6 +311,38 @@ TEST_F(CryptoUtilityImplTest, VerifySignatureBadSignature) {
 TEST_F(CryptoUtilityImplTest, VerifySignatureBadKey) {
   EXPECT_FALSE(
       crypto_utility_->VerifySignature(NID_sha256, "bad_key", "input", ""));
+}
+
+TEST_F(CryptoUtilityImplTest, VerifyCertificateWithSubjectPublicKey) {
+  EXPECT_TRUE(crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+      HexDecode(kSelfSignedCertDerHex), kSelfSignedPublikKeyDerHex));
+}
+
+TEST_F(CryptoUtilityImplTest,
+       VerifyCertificateWithSubjectPublicKeyPublicKeyHexDecodeFailure) {
+  constexpr char kBadHexEncodedContent[] = "Not a hex-encoded content";
+  EXPECT_FALSE(crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+      HexDecode(kSelfSignedCertDerHex), kBadHexEncodedContent));
+}
+
+TEST_F(CryptoUtilityImplTest,
+       VerifyCertificateWithSubjectPublicKeyPublicKeyCertificateParseFailure) {
+  constexpr char kBadCertificateDer[] = "A bad certificate";
+  EXPECT_FALSE(crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+      kBadCertificateDer, kSelfSignedPublikKeyDerHex));
+}
+
+TEST_F(CryptoUtilityImplTest,
+       VerifyCertificateWithSubjectPublicKeyPublicKeyDecodeFailure) {
+  constexpr char kBadPublicKeyDerHex[] = "badbad";
+  EXPECT_FALSE(crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+      HexDecode(kSelfSignedCertDerHex), kBadPublicKeyDerHex));
+}
+
+TEST_F(CryptoUtilityImplTest,
+       VerifyCertificateWithSubjectPublicKeyVerifyFailure) {
+  EXPECT_FALSE(crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+      HexDecode(kSelfSignedCertDerHex), kMismatchedPublicKeyDerHex));
 }
 
 TEST_F(CryptoUtilityImplTest, EncryptDataForGoogle) {

@@ -127,6 +127,12 @@ class CryptoUtility {
   virtual bool VerifyCertificate(const std::string& certificate,
                                  const std::string& ca_public_key_hex) = 0;
 
+  // Verifies that the X.509 |certificate| is signed by CA with the public key
+  // with |ca_public_key_der_hex|.
+  virtual bool VerifyCertificateWithSubjectPublicKey(
+      const std::string& certificate,
+      const std::string& ca_public_key_der_hex) = 0;
+
   // Gets issuer name for the X.509 |certificate|. On success returns true and
   // populates |issuer_name|.
   virtual bool GetCertificateIssuerName(const std::string& certificate,

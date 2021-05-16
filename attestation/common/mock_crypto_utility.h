@@ -87,6 +87,10 @@ class MockCryptoUtility : public CryptoUtility {
               (const std::string&, const std::string&),
               (override));
   MOCK_METHOD(bool,
+              VerifyCertificateWithSubjectPublicKey,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
               GetCertificateIssuerName,
               (const std::string&, std::string*),
               (override));

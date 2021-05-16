@@ -72,6 +72,9 @@ class CryptoUtilityImpl : public CryptoUtility {
                    std::string* spkac) override;
   bool VerifyCertificate(const std::string& certificate,
                          const std::string& ca_public_key_hex) override;
+  bool VerifyCertificateWithSubjectPublicKey(
+      const std::string& certificate,
+      const std::string& ca_public_key_der_hex) override;
   bool GetCertificateIssuerName(const std::string& certificate,
                                 std::string* issuer_name) override;
   bool GetCertificateSubjectPublicKeyInfo(const std::string& certificate,

@@ -908,7 +908,39 @@ bool CryptoUtilityImpl::VerifyCertificate(
     return false;
   }
   if (X509_verify(x509.get(), issuer_key.get()) != 1) {
-    LOG(ERROR) << __func__ << ": Bad certificate signature.";
+    LOG(ERROR) << __func__
+               << ": Bad certificate signature: " << GetOpenSSLError();
+    return false;
+  }
+  return true;
+}
+
+bool CryptoUtilityImpl::VerifyCertificateWithSubjectPublicKey(
+    const std::string& certificate, const std::string& ca_public_key_der_hex) {
+  std::vector<uint8_t> ca_public_key_der_vec;
+  if (!base::HexStringToBytes(ca_public_key_der_hex, &ca_public_key_der_vec)) {
+    LOG(ERROR) << __func__ << "Failed to hex-decode subject public key info.";
+    return false;
+  }
+  std::string ca_public_key_der(ca_public_key_der_vec.begin(),
+                                ca_public_key_der_vec.end());
+
+  auto openssl_buffer = StringAsConstOpenSSLBuffer(ca_public_key_der);
+  crypto::ScopedEVP_PKEY issuer_key(
+      d2i_PUBKEY(nullptr, &openssl_buffer, ca_public_key_der.size()));
+  if (!issuer_key) {
+    LOG(ERROR) << __func__
+               << ": Failed to decode CA public key: " << GetOpenSSLError();
+    return false;
+  }
+  auto x509 = CreateX509FromCertificate(certificate);
+  if (!x509) {
+    LOG(ERROR) << __func__ << ": Failed to parse certificate.";
+    return false;
+  }
+  if (X509_verify(x509.get(), issuer_key.get()) != 1) {
+    LOG(ERROR) << __func__
+               << ": Bad certificate signature: " << GetOpenSSLError();
     return false;
   }
   return true;
