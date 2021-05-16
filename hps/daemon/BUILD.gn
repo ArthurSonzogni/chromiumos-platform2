@@ -24,7 +24,7 @@ generate_dbus_adaptors("hpsd-adaptors") {
 }
 
 static_library("hps-core") {
-  sources = [ "hps_daemon.cpp" ]
+  sources = [ "hps_daemon.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":hpsd-adaptors",
@@ -33,7 +33,7 @@ static_library("hps-core") {
 }
 
 executable("hpsd") {
-  sources = [ "main.cpp" ]
+  sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":hps-core" ]
 }

@@ -17,15 +17,15 @@ pkg_config("target_defaults") {
 
 static_library("hpslib") {
   sources = [
-    "ftdi.cpp",
+    "ftdi.cc",
     "ftdi.h",
-    "hps.cpp",
+    "hps.cc",
     "hps.h",
-    "i2c.cpp",
+    "i2c.cc",
     "i2c.h",
-    "retry.cpp",
+    "retry.cc",
     "retry.h",
-    "uart.cpp",
+    "uart.cc",
     "uart.h",
   ]
 
@@ -36,7 +36,7 @@ static_library("hpslib") {
 
 static_library("fakedev") {
   sources = [
-    "fake_dev.cpp",
+    "fake_dev.cc",
     "fake_dev.h",
   ]
 
@@ -47,7 +47,7 @@ static_library("fakedev") {
 
 static_library("dev") {
   sources = [
-    "dev.cpp",
+    "dev.cc",
     "dev.h",
     "hps_reg.h",
   ]

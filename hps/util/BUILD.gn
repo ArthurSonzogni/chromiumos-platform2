@@ -18,14 +18,14 @@ pkg_config("target_defaults") {
 
 executable("hps") {
   sources = [
-    "boot.cpp",
-    "cmd.cpp",
-    "download.cpp",
-    "enable.cpp",
-    "main.cpp",
-    "readtest.cpp",
-    "status.cpp",
-    "watch.cpp",
+    "boot.cc",
+    "cmd.cc",
+    "download.cc",
+    "enable.cc",
+    "main.cc",
+    "readtest.cc",
+    "status.cc",
+    "watch.cc",
   ]
 
   configs += [ ":target_defaults" ]
