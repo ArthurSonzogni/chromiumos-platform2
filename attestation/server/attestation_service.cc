@@ -183,6 +183,15 @@ const CertificateAuthority kKnownEndorsementCA[] = {
      "1460743584f5a3eaef303dbc5cfda48e4c7a1f338108c7f0c70a694f814b6691"
      "ba9d058ab988152bb7097a010e400462187811c3e062001bce8aa808db485bd8"
      "2f7f0e1e2a2ddb95c364dffea4c23e872fc3874c4756e85e6cf8eca6eb6a07bf"},
+    {"Infineon OPTIGA(TM) TPM 2.0 RSA CA 055",
+     "9e502b0e792c885d628ad9ddd9268afbae74b00fc6c65a607dd528b5136dc2f5"
+     "dbb932ca9b6613e39fd648460a438229adc3b7c40998519d99386c5dccab49bf"
+     "d06a5b82d24b596bc890274e40ad7018f34f39c9b3e6b7f8d5eac264d243e5f9"
+     "054d0f26ecb75e45dd4e25b3d6ef606b3a646a593b3e4841bb7de7519489c560"
+     "2442aeef11ab30c211f4706ab39c2cbbcf2ad2f8d6b2a1517298a37cd12f24e5"
+     "f8e4f7c8adb19faa3420592ce368ae599affbb97daad11a2baccd7c1714ca8e0"
+     "c6620434771b12005c51f25ee32383e6fa5f4b0ba6248e27fb57c6ff22b12b3c"
+     "52c2cb774bd6a86ca2c7f1f24ee4e2c06e3e215f61d5a9462cf3c45f2b1f2c13"},
 };
 
 const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
