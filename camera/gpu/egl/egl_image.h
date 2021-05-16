@@ -12,7 +12,7 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
-#include <system/window.h>
+#include <cutils/native_handle.h>
 
 namespace cros {
 
