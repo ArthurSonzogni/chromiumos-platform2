@@ -52,11 +52,17 @@ bool Uart::Read(uint8_t cmd, uint8_t* data, size_t len) {
   }
   // Send start and byte length of 1 for command.
   uint8_t c = 0x80 | 1;
-  write(this->fd_, &c, 1);
-  write(this->fd_, &cmd, 1);
+  if (write(this->fd_, &c, 1) != 1) {
+    return false;
+  }
+  if (write(this->fd_, &cmd, 1) != 1) {
+    return false;
+  }
   // Now request read.
   c = len;
-  write(this->fd_, &c, 1);
+  if (write(this->fd_, &c, 1) != 1) {
+    return false;
+  }
   // Read loop to retrieve data.
   while (len > 0) {
     int rd = read(this->fd_, data, len);
@@ -69,7 +75,9 @@ bool Uart::Read(uint8_t cmd, uint8_t* data, size_t len) {
   }
   // Send stop.
   c = 0;
-  write(this->fd_, &c, 1);
+  if (write(this->fd_, &c, 1) != 1) {
+    return false;
+  }
   return true;
 }
 
@@ -79,13 +87,21 @@ bool Uart::Write(uint8_t cmd, const uint8_t* data, size_t len) {
   }
   // Send start and byte count (including command).
   uint8_t c = 0x80 | (len + 1);
-  write(this->fd_, &c, 1);
+  if (write(this->fd_, &c, 1) != 1) {
+    return false;
+  }
   // Send cmd followed by data.
-  write(this->fd_, &cmd, 1);
-  write(this->fd_, data, len);
+  if (write(this->fd_, &cmd, 1) != 1) {
+    return false;
+  }
+  if (write(this->fd_, data, len) != len) {
+    return false;
+  }
   // Send stop.
   c = 0;
-  write(this->fd_, &c, 1);
+  if (write(this->fd_, &c, 1) != 1) {
+    return false;
+  }
   return true;
 }
 
