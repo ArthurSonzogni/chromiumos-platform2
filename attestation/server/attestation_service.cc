@@ -219,9 +219,9 @@ const CertificateAuthoritySubjectPublicKeyInfo
         // TODO(b/183476655): Remove this once we don't care about FW-upgraded
         // chips.
         {"Infineon OPTIGA(TM) ECC Manufacturing CA 034",
-         "3059301306072a8648ce3d020106082a8648ce3d03010703420004c84758541d"
-         "d419adcfec8e9868ba4b59755a7c1e3bcf892d11e7bd0afe9714de3043063afe"
-         "9face5b5d53ebcabc3de7df2a67726fde0a7f1f4c1ed070e942e92"},
+         "3059301306072a8648ce3d020106082a8648ce3d030107034200042c43929137"
+         "299e67555a9f947c2f17a6412e8d0ad5a50b8e91475ac49c7861520b0711fa7a"
+         "e1ea0194a8f4d31fbcd1d36b940b3a6d66dc34092dac5655ff49c7"},
 };
 
 const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
