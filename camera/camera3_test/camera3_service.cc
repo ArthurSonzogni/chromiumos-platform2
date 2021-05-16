@@ -440,7 +440,7 @@ Camera3Service::Camera3DeviceService::ConstructDefaultRequestSettings(
 void Camera3Service::Camera3DeviceService::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   VLOGF_ENTER();
   service_thread_.PostTaskAsync(
       FROM_HERE,
@@ -731,7 +731,7 @@ void Camera3Service::Camera3DeviceService::
     ProcessResultMetadataOutputBuffersOnServiceThread(
         uint32_t frame_number,
         ScopedCameraMetadata metadata,
-        std::vector<ScopedBufferHandle> buffers) {
+        std::vector<cros::ScopedBufferHandle> buffers) {
   DCHECK(service_thread_.IsCurrentThread());
   --number_of_in_flight_requests_;
   size_t capture_request_idx = 0;
@@ -769,7 +769,8 @@ void Camera3Service::Camera3DeviceService::
   // perf logs only if there's no still capture in this result since it is
   // expected to take longer time.
   const bool has_still_capture = std::any_of(
-      buffers.begin(), buffers.end(), [](const ScopedBufferHandle& buffer) {
+      buffers.begin(), buffers.end(),
+      [](const cros::ScopedBufferHandle& buffer) {
         return Camera3TestGralloc::GetFormat(*buffer) == HAL_PIXEL_FORMAT_BLOB;
       });
   const bool stopping_preview =

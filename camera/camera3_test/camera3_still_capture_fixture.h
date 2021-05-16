@@ -33,7 +33,7 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
   virtual void ProcessStillCaptureResult(int cam_id,
                                          uint32_t frame_number,
                                          ScopedCameraMetadata metadata,
-                                         ScopedBufferHandle buffer);
+                                         cros::ScopedBufferHandle buffer);
 
   // Wait for still capture result with timeout
   int WaitStillCaptureResult(int cam_id, const struct timespec& timeout);
@@ -48,7 +48,7 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
 
     std::vector<time_t> result_date_time;
 
-    std::vector<ScopedBufferHandle> buffer_handles;
+    std::vector<cros::ScopedBufferHandle> buffer_handles;
 
     StillCaptureResult();
 

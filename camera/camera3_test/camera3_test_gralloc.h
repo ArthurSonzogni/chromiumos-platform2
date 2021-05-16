@@ -17,20 +17,16 @@
 
 namespace camera3_test {
 
-struct BufferHandleDeleter {
-  void operator()(buffer_handle_t* handle);
-};
-
-typedef std::unique_ptr<buffer_handle_t, struct BufferHandleDeleter>
-    ScopedBufferHandle;
-
 class Camera3TestGralloc {
  public:
   // Get Gralloc single instance
   static Camera3TestGralloc* GetInstance();
 
   // Allocate buffer by given parameters
-  ScopedBufferHandle Allocate(int width, int height, int format, int usage);
+  cros::ScopedBufferHandle Allocate(int width,
+                                    int height,
+                                    int format,
+                                    int usage);
 
   // This method is analogous to the lock() function in Android gralloc module.
   // Here the buffer handle is mapped with the given args.

@@ -14,16 +14,6 @@
 
 namespace camera3_test {
 
-void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
-  if (handle) {
-    auto* cbm = cros::CameraBufferManager::GetInstance();
-    if (cbm) {
-      cbm->Free(*handle);
-    }
-    delete handle;
-  }
-}
-
 base::Lock Camera3TestGralloc::lock_;
 
 // static
@@ -50,20 +40,12 @@ bool Camera3TestGralloc::Initialize() {
   return true;
 }
 
-ScopedBufferHandle Camera3TestGralloc::Allocate(int32_t width,
-                                                int32_t height,
-                                                int32_t format,
-                                                int32_t usage) {
-  if (!buffer_manager_) {
-    return ScopedBufferHandle(nullptr);
-  }
-  ScopedBufferHandle handle(new buffer_handle_t);
-  uint32_t stride;
-  if (buffer_manager_->Allocate(width, height, format, usage, handle.get(),
-                                &stride)) {
-    return ScopedBufferHandle(nullptr);
-  }
-  return handle;
+cros::ScopedBufferHandle Camera3TestGralloc::Allocate(int32_t width,
+                                                      int32_t height,
+                                                      int32_t format,
+                                                      int32_t usage) {
+  return cros::CameraBufferManager::AllocateScopedBuffer(width, height, format,
+                                                         usage);
 }
 
 int Camera3TestGralloc::Lock(buffer_handle_t buffer,

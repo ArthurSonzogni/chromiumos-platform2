@@ -7,8 +7,10 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 
+#include <cstdint>
+#include <memory>
+
 #include <cutils/native_handle.h>
-#include <stdint.h>
 #include <sys/types.h>
 #include <system/graphics.h>
 
@@ -63,6 +65,13 @@ class GbmDevice;
 //  manager->Unlock(buffer_handle);
 //  manager->Free(buffer_handle);
 
+struct CROS_CAMERA_EXPORT BufferHandleDeleter {
+  void operator()(buffer_handle_t* handle);
+};
+
+using ScopedBufferHandle =
+    std::unique_ptr<buffer_handle_t, BufferHandleDeleter>;
+
 class CROS_CAMERA_EXPORT CameraBufferManager {
  public:
   // Gets the singleton instance.  Returns nullptr if any error occurrs during
@@ -90,6 +99,23 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
                        uint32_t usage,
                        buffer_handle_t* out_buffer,
                        uint32_t* out_stride) = 0;
+
+  // Same as above, but returns a ScopedBufferHandle that deallocates the
+  // allocated buffer automatically.
+  //
+  // Args:
+  //    |width|: The width of the frame.
+  //    |height|: The height of the frame.
+  //    |format|: The HAL pixel format of the frame.
+  //    |usage|: The gralloc usage of the buffer.
+  //
+  // Returns:
+  //    A ScopedBufferHandle with valid buffer handle on success, or a
+  //    ScopedBufferHandle with nullptr on error.
+  static ScopedBufferHandle AllocateScopedBuffer(size_t width,
+                                                 size_t height,
+                                                 uint32_t format,
+                                                 uint32_t usage);
 
   // Frees |buffer| allocated with CameraBufferManager::Allocate().
   //

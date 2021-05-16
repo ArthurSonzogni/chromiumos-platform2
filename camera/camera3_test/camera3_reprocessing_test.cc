@@ -70,26 +70,26 @@ class Camera3ReprocessingTest : public Camera3FrameFixture,
   void DoTemplateCapture(int32_t template_type,
                          const camera3_stream_t* output_stream,
                          ScopedCameraMetadata* output_metadata,
-                         ScopedBufferHandle* output_buffer,
+                         cros::ScopedBufferHandle* output_buffer,
                          const uint32_t timeout);
 
   void DoReprocessingCapture(ScopedCameraMetadata* in_metadata,
                              const camera3_stream_t* in_stream,
-                             const ScopedBufferHandle& in_buffer,
+                             const cros::ScopedBufferHandle& in_buffer,
                              const camera3_stream_t* out_stream,
                              const ExifTestData& exif_test_data,
                              ScopedCameraMetadata* out_metadata,
-                             ScopedBufferHandle* out_buffer,
+                             cros::ScopedBufferHandle* out_buffer,
                              const uint32_t timeout);
 
  private:
-  ScopedBufferHandle buffer_handle_;
+  cros::ScopedBufferHandle buffer_handle_;
   ScopedCameraMetadata result_metadata_;
 
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) override;
+      std::vector<cros::ScopedBufferHandle> buffers) override;
 };
 
 Camera3ReprocessingTest::ScopedImage Camera3ReprocessingTest::CropAndScale(
@@ -168,7 +168,7 @@ void Camera3ReprocessingTest::TestReprocessing(
   for (int i = 0; i < num_reprocessing_captures; i++) {
     // Capture first image
     ScopedCameraMetadata result_metadata;
-    ScopedBufferHandle result_buffer;
+    cros::ScopedBufferHandle result_buffer;
     DoTemplateCapture(CAMERA3_TEMPLATE_STILL_CAPTURE, output_streams[0],
                       &result_metadata, &result_buffer, kDefaultTimeoutMs);
     time_t capture_time;
@@ -176,7 +176,7 @@ void Camera3ReprocessingTest::TestReprocessing(
 
     // Reprocessing first image
     ScopedCameraMetadata reprocess_result_metadata;
-    ScopedBufferHandle reprocess_result_buffer;
+    cros::ScopedBufferHandle reprocess_result_buffer;
     DoReprocessingCapture(&result_metadata, input_stream, result_buffer,
                           output_streams[1], exif_test_data,
                           &reprocess_result_metadata, &reprocess_result_buffer,
@@ -352,7 +352,7 @@ void Camera3ReprocessingTest::DoTemplateCapture(
     int32_t template_type,
     const camera3_stream_t* output_stream,
     ScopedCameraMetadata* output_metadata,
-    ScopedBufferHandle* output_buffer,
+    cros::ScopedBufferHandle* output_buffer,
     const uint32_t timeout) {
   const camera_metadata_t* metadata =
       cam_device_.ConstructDefaultRequestSettings(template_type);
@@ -381,11 +381,11 @@ void Camera3ReprocessingTest::DoTemplateCapture(
 void Camera3ReprocessingTest::DoReprocessingCapture(
     ScopedCameraMetadata* in_metadata,
     const camera3_stream_t* in_stream,
-    const ScopedBufferHandle& in_buffer,
+    const cros::ScopedBufferHandle& in_buffer,
     const camera3_stream_t* out_stream,
     const ExifTestData& exif_test_data,
     ScopedCameraMetadata* out_metadata,
-    ScopedBufferHandle* out_buffer,
+    cros::ScopedBufferHandle* out_buffer,
     const uint32_t timeout) {
   if (out_stream->format == HAL_PIXEL_FORMAT_BLOB) {
     int32_t thumbnail_resolution[] = {
@@ -437,7 +437,7 @@ void Camera3ReprocessingTest::DoReprocessingCapture(
 void Camera3ReprocessingTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   ASSERT_EQ(1, buffers.size()) << "Should return one output image only";
   buffer_handle_ = std::move(buffers[0]);
   result_metadata_ = std::move(metadata);

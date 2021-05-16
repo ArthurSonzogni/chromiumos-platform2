@@ -156,8 +156,8 @@ int Camera3DeviceImpl::AllocateOutputBuffersByStreams(
   return result;
 }
 
-int Camera3DeviceImpl::RegisterOutputBuffer(const camera3_stream_t& stream,
-                                            ScopedBufferHandle unique_buffer) {
+int Camera3DeviceImpl::RegisterOutputBuffer(
+    const camera3_stream_t& stream, cros::ScopedBufferHandle unique_buffer) {
   VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
@@ -415,7 +415,7 @@ void Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread(
   }
 
   for (const auto& it : *streams) {
-    ScopedBufferHandle buffer = gralloc_->Allocate(
+    cros::ScopedBufferHandle buffer = gralloc_->Allocate(
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it->width,
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it->height, it->format,
         it->usage);
@@ -441,7 +441,7 @@ void Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread(
 
 void Camera3DeviceImpl::RegisterOutputBufferOnThread(
     const camera3_stream_t* stream,
-    ScopedBufferHandle unique_buffer,
+    cros::ScopedBufferHandle unique_buffer,
     int32_t* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   VLOGF_ENTER();
@@ -579,7 +579,7 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     completed_request_set_.insert(result->frame_number);
 
     // Process all received metadata and output buffers
-    std::vector<ScopedBufferHandle> unique_buffers;
+    std::vector<cros::ScopedBufferHandle> unique_buffers;
     if (GetOutputStreamBufferHandles(
             capture_result_info_map_[result->frame_number].output_buffers_,
             &unique_buffers)) {
@@ -689,7 +689,7 @@ void Camera3DeviceImpl::Notify(const camera3_notify_msg_t* msg) {
 
 int Camera3DeviceImpl::GetOutputStreamBufferHandles(
     const std::vector<StreamBuffer>& output_buffers,
-    std::vector<ScopedBufferHandle>* unique_buffers) {
+    std::vector<cros::ScopedBufferHandle>* unique_buffers) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   VLOGF_ENTER();
 
@@ -703,7 +703,7 @@ int Camera3DeviceImpl::GetOutputStreamBufferHandles(
 
     auto stream_buffers = &stream_buffer_map_[output_buffer.stream];
     auto it = std::find_if(stream_buffers->begin(), stream_buffers->end(),
-                           [=](const ScopedBufferHandle& buffer) {
+                           [=](const cros::ScopedBufferHandle& buffer) {
                              return *buffer == output_buffer.buffer_handle;
                            });
     if (it != stream_buffers->end()) {

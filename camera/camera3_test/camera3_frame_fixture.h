@@ -149,14 +149,14 @@ class Camera3FrameFixture : public Camera3StreamFixture {
 
   // Convert the buffer to given format and return a new buffer in the Image
   // structure. The input buffer is freed.
-  ScopedImage ConvertToImage(ScopedBufferHandle buffer,
+  ScopedImage ConvertToImage(cros::ScopedBufferHandle buffer,
                              uint32_t width,
                              uint32_t height,
                              ImageFormat format);
 
   // Convert the buffer to given format, rotate the image by rotation and return
   // a new buffer in the Image structure. The input buffer is freed.
-  ScopedImage ConvertToImageAndRotate(ScopedBufferHandle buffer,
+  ScopedImage ConvertToImageAndRotate(cros::ScopedBufferHandle buffer,
                                       uint32_t width,
                                       uint32_t height,
                                       ImageFormat format,

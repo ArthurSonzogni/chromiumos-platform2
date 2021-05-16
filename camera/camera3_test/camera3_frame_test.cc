@@ -131,7 +131,7 @@ int Camera3FrameFixture::Image::SaveToFile(const std::string filename) const {
 }
 
 Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
-    ScopedBufferHandle buffer,
+    cros::ScopedBufferHandle buffer,
     uint32_t width,
     uint32_t height,
     ImageFormat format) {
@@ -264,7 +264,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
 }
 
 Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImageAndRotate(
-    ScopedBufferHandle buffer,
+    cros::ScopedBufferHandle buffer,
     uint32_t width,
     uint32_t height,
     ImageFormat format,
@@ -859,7 +859,7 @@ class Camera3SimpleCaptureFrames
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) override;
+      std::vector<cros::ScopedBufferHandle> buffers) override;
 
   // Validate capture result keys
   void ValidateCaptureResultKeys(const ScopedCameraMetadata& request_metadata);
@@ -888,7 +888,7 @@ class Camera3SimpleCaptureFrames
 void Camera3SimpleCaptureFrames::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   result_metadata_.push_back(std::move(metadata));
 }
 
@@ -1227,7 +1227,7 @@ class Camera3ResultTimestampsTest
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) override;
+      std::vector<cros::ScopedBufferHandle> buffers) override;
 
   // Validate and get one timestamp
   void ValidateAndGetTimestamp(int64_t* timestamp);
@@ -1259,7 +1259,7 @@ void Camera3ResultTimestampsTest::Notify(const camera3_notify_msg* msg) {
 void Camera3ResultTimestampsTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   VLOGF_ENTER();
   result_metadata_.push_back(std::move(metadata));
 }
@@ -1416,7 +1416,7 @@ class Camera3FrameContentTest
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) override;
+      std::vector<cros::ScopedBufferHandle> buffers) override;
 
   int32_t format_;
 
@@ -1424,13 +1424,13 @@ class Camera3FrameContentTest
 
   int32_t height_;
 
-  ScopedBufferHandle buffer_handle_;
+  cros::ScopedBufferHandle buffer_handle_;
 };
 
 void Camera3FrameContentTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   ASSERT_EQ(nullptr, buffer_handle_);
   buffer_handle_ = std::move(buffers.front());
 }
@@ -1569,7 +1569,7 @@ class Camera3PortraitRotationTest
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) override;
+      std::vector<cros::ScopedBufferHandle> buffers) override;
 
   // Rotate |in_buffer| 180 degrees to |out_buffer|.
   int Rotate180(const Image& in_buffer, Image* out_buffer);
@@ -1584,13 +1584,13 @@ class Camera3PortraitRotationTest
 
   bool save_images_;
 
-  ScopedBufferHandle buffer_handle_;
+  cros::ScopedBufferHandle buffer_handle_;
 };
 
 void Camera3PortraitRotationTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   ASSERT_EQ(nullptr, buffer_handle_);
   buffer_handle_ = std::move(buffers.front());
 }
@@ -1722,7 +1722,7 @@ class Camera3PortraitModeTest : public Camera3FrameFixture,
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) override;
+      std::vector<cros::ScopedBufferHandle> buffers) override;
 
   // Get portrait mode vendor tags; return false if the tag  is not listed in
   // available request keys.
@@ -1733,14 +1733,14 @@ class Camera3PortraitModeTest : public Camera3FrameFixture,
   void TakePortraitModePictureTest(bool has_face);
 
   ScopedCameraMetadata result_metadata_;
-  ScopedBufferHandle yuv_buffer_handle_;
-  ScopedBufferHandle blob_buffer_handle_;
+  cros::ScopedBufferHandle yuv_buffer_handle_;
+  cros::ScopedBufferHandle blob_buffer_handle_;
 };
 
 void Camera3PortraitModeTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    std::vector<ScopedBufferHandle> buffers) {
+    std::vector<cros::ScopedBufferHandle> buffers) {
   result_metadata_ = std::move(metadata);
   for (auto& buffer : buffers) {
     auto* native_handle = camera_buffer_handle_t::FromBufferHandle(*buffer);

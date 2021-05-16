@@ -63,7 +63,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
   int RegisterOutputBuffer(const camera3_stream_t& stream,
-                           ScopedBufferHandle unique_buffer);
+                           cros::ScopedBufferHandle unique_buffer);
 
   int ProcessCaptureRequest(camera3_capture_request_t* request);
 
@@ -114,7 +114,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
       int32_t* result);
 
   void RegisterOutputBufferOnThread(const camera3_stream_t* stream,
-                                    ScopedBufferHandle unique_buffer,
+                                    cros::ScopedBufferHandle unique_buffer,
                                     int32_t* result);
 
   void ProcessCaptureRequestOnThread(camera3_capture_request_t* request,
@@ -156,7 +156,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   // the function is expected to take the buffer ownership.
   int GetOutputStreamBufferHandles(
       const std::vector<StreamBuffer>& output_buffers,
-      std::vector<ScopedBufferHandle>* unique_buffers);
+      std::vector<cros::ScopedBufferHandle>* unique_buffers);
 
   // Whether or not partial result is used
   bool UsePartialResult() const;
@@ -194,7 +194,8 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   Camera3TestGralloc* gralloc_;
 
   // Store allocated buffers with streams as the key
-  std::unordered_map<const camera3_stream_t*, std::vector<ScopedBufferHandle>>
+  std::unordered_map<const camera3_stream_t*,
+                     std::vector<cros::ScopedBufferHandle>>
       stream_buffer_map_;
 
   uint32_t request_frame_number_;

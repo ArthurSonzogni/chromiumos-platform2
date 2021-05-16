@@ -43,7 +43,7 @@ class Camera3Device {
   typedef base::Callback<void(const camera3_notify_msg* msg)> NotifyCallback;
   typedef base::Callback<void(uint32_t frame_number,
                               ScopedCameraMetadata metadata,
-                              std::vector<ScopedBufferHandle> buffers)>
+                              std::vector<cros::ScopedBufferHandle> buffers)>
       ProcessResultMetadataOutputBuffersCallback;
   typedef base::Callback<void(
       std::vector<ScopedCameraMetadata>* partial_metadata)>
@@ -106,7 +106,7 @@ class Camera3Device {
   // Register buffer |unique_buffer| that is associated with the given stream
   // |stream|. Camera3Device takes buffer ownership.
   int RegisterOutputBuffer(const camera3_stream_t& stream,
-                           ScopedBufferHandle unique_buffer);
+                           cros::ScopedBufferHandle unique_buffer);
 
   // Process given capture request |capture_request|. The frame number field of
   // |capture_request| will be overwritten if this method returns 0 on success.

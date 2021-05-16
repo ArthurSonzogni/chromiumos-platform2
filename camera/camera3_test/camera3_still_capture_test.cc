@@ -32,7 +32,7 @@ void Camera3StillCaptureFixture::ProcessStillCaptureResult(
     int cam_id,
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    ScopedBufferHandle buffer) {
+    cros::ScopedBufferHandle buffer) {
   VLOGF_ENTER();
   StillCaptureResult* result = &still_capture_results_[cam_id];
   result->result_metadatas.emplace_back(std::move(metadata));
@@ -274,7 +274,7 @@ class Camera3DumpSimpleStillCaptureTest : public Camera3SimpleStillCaptureTest {
   void ProcessStillCaptureResult(int cam_id,
                                  uint32_t frame_number,
                                  ScopedCameraMetadata metadata,
-                                 ScopedBufferHandle buffer) override;
+                                 cros::ScopedBufferHandle buffer) override;
 
  protected:
   base::FilePath dump_path_;
@@ -289,7 +289,7 @@ void Camera3DumpSimpleStillCaptureTest::ProcessStillCaptureResult(
     int cam_id,
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
-    ScopedBufferHandle buffer) {
+    cros::ScopedBufferHandle buffer) {
   size_t jpeg_max_size = jpeg_max_sizes_[cam_id_];
   void* buf_addr = nullptr;
   ASSERT_EQ(0, Camera3TestGralloc::GetInstance()->Lock(

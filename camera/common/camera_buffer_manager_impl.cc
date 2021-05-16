@@ -107,6 +107,16 @@ size_t GetChromaStep(uint32_t drm_format) {
 
 }  // namespace
 
+void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
+  if (handle) {
+    auto* cbm = cros::CameraBufferManager::GetInstance();
+    if (cbm) {
+      cbm->Free(*handle);
+    }
+    delete handle;
+  }
+}
+
 // static
 CameraBufferManager* CameraBufferManager::GetInstance() {
   static base::NoDestructor<CameraBufferManagerImpl> instance;
@@ -434,6 +444,36 @@ int CameraBufferManagerImpl::Allocate(size_t width,
   buffer_context->usage = 1;
   buffer_context_[*out_buffer] = std::move(buffer_context);
   return 0;
+}
+
+// static
+ScopedBufferHandle CameraBufferManager::AllocateScopedBuffer(size_t width,
+                                                             size_t height,
+                                                             uint32_t format,
+                                                             uint32_t usage) {
+  auto* buf_mgr = CameraBufferManager::GetInstance();
+  ScopedBufferHandle buffer(new buffer_handle_t);
+  uint32_t stride;
+  if (buf_mgr->Allocate(width, height, format, usage, buffer.get(), &stride) !=
+      0) {
+    LOGF(ERROR) << "Failed to allocate buffer";
+    return nullptr;
+  }
+  VLOGF(1) << "Buffer allocated -";
+  VLOGF(1) << "\tplanes: " << CameraBufferManager::GetNumPlanes(*buffer);
+  VLOGF(1) << "\twidth: " << CameraBufferManager::GetWidth(*buffer);
+  VLOGF(1) << "\theight: " << CameraBufferManager::GetHeight(*buffer);
+  VLOGF(1) << "\tformat: "
+           << FormatToString(CameraBufferManager::GetDrmPixelFormat(*buffer));
+  for (size_t i = 0; i < CameraBufferManager::GetNumPlanes(*buffer); ++i) {
+    VLOGF(1) << "\tplane" << i
+             << " fd: " << CameraBufferManager::GetPlaneFd(*buffer, i);
+    VLOGF(1) << "\tplane" << i
+             << " offset: " << CameraBufferManager::GetPlaneOffset(*buffer, i);
+    VLOGF(1) << "\tplane" << i
+             << " stride: " << CameraBufferManager::GetPlaneStride(*buffer, i);
+  }
+  return buffer;
 }
 
 int CameraBufferManagerImpl::Free(buffer_handle_t buffer) {

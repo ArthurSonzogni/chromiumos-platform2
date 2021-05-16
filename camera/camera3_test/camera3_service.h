@@ -45,7 +45,7 @@ class Camera3Service {
   typedef base::Callback<void(int cam_id,
                               uint32_t frame_number,
                               ScopedCameraMetadata metadata,
-                              ScopedBufferHandle buffer)>
+                              cros::ScopedBufferHandle buffer)>
       ProcessStillCaptureResultCallback;
 
   typedef base::Callback<void(
@@ -191,7 +191,7 @@ class Camera3Service::Camera3DeviceService {
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers);
+      std::vector<cros::ScopedBufferHandle> buffers);
 
   void StartPreviewOnServiceThread(ResolutionInfo preview_resolution,
                                    ResolutionInfo still_capture_resolution,
@@ -232,7 +232,7 @@ class Camera3Service::Camera3DeviceService {
   void ProcessResultMetadataOutputBuffersOnServiceThread(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers);
+      std::vector<cros::ScopedBufferHandle> buffers);
 
   int cam_id_;
 

@@ -53,7 +53,7 @@ class Camera3DeviceFixture : public testing::Test {
   virtual void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       ScopedCameraMetadata metadata,
-      std::vector<ScopedBufferHandle> buffers) {}
+      std::vector<cros::ScopedBufferHandle> buffers) {}
 
   // Process partial metadata. Tests can override this function to handle all
   // received partial metadata.
