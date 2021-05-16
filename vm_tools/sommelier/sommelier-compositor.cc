@@ -20,6 +20,7 @@
 
 #include "drm-server-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 
 #define MIN_SIZE (INT_MIN / 10)
@@ -31,8 +32,17 @@
 #define DMA_BUF_SYNC_START (0 << 2)
 #define DMA_BUF_SYNC_END (1 << 2)
 
+struct dma_buf_sync_file {
+  __u32 flags;
+  __s32 fd;
+};
+
 #define DMA_BUF_BASE 'b'
 #define DMA_BUF_IOCTL_SYNC _IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
+// TODO(b/189505947): DMA_BUF_IOCTL_EXPORT_SYNC_FILE might not exist, and
+// hasn't been upstreamed. Remove this comment when the ioctl has landed.
+#define DMA_BUF_IOCTL_EXPORT_SYNC_FILE \
+  _IOWR(DMA_BUF_BASE, 2, struct dma_buf_sync_file)
 
 struct sl_host_compositor {
   struct sl_compositor* compositor;
@@ -275,10 +285,44 @@ static void sl_host_surface_attach(struct wl_client* client,
   x /= scale;
   y /= scale;
 
-  // TODO(davidriley): This should be done in the commit.
   if (host_buffer && host_buffer->sync_point) {
     TRACE_EVENT("surface", "sl_host_surface_attach: sync_point");
-    host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
+    dma_buf_sync_file sync_file;
+
+    bool needs_sync = true;
+    if (host->surface_sync) {
+      int ret = 0;
+      sync_file.flags = DMA_BUF_SYNC_READ;
+      do {
+        ret = ioctl(host_buffer->sync_point->fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE,
+                    &sync_file);
+      } while (ret == -1 && (errno == EAGAIN || errno == EINTR));
+
+      if (!ret) {
+        zwp_linux_surface_synchronization_v1_set_acquire_fence(
+            host->surface_sync, sync_file.fd);
+        close(sync_file.fd);
+        needs_sync = false;
+      } else if (ret == -1 && errno == ENOTTY) {
+        // export sync file ioctl not implemented. Revert to previous method of
+        // guest side sync going forward.
+        zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
+        host->surface_sync = NULL;
+        host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
+        fprintf(stderr,
+                "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, defaulting "
+                "to implicit fence for synchronization.\n");
+      } else {
+        fprintf(stderr,
+                "Explicit synchronization failed with reason: %s. "
+                "Will retry on next attach.\n",
+                strerror(errno));
+      }
+    }
+
+    if (needs_sync) {
+      host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
+    }
   }
 
   if (host->current_buffer) {
@@ -770,6 +814,10 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
     wp_viewport_destroy(host->viewport);
   wl_surface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
+  if (host->surface_sync) {
+    zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
+    host->surface_sync = NULL;
+  }
   free(host);
 }
 
@@ -888,6 +936,14 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   wl_surface_set_user_data(host_surface->proxy, host_surface);
   wl_surface_add_listener(host_surface->proxy, &sl_surface_listener,
                           host_surface);
+  if (host_surface->ctx->linux_explicit_synchronization) {
+    host_surface->surface_sync =
+        zwp_linux_explicit_synchronization_v1_get_synchronization(
+            host_surface->ctx->linux_explicit_synchronization->internal,
+            host_surface->proxy);
+  } else {
+    host_surface->surface_sync = NULL;
+  }
   host_surface->viewport = NULL;
   if (host_surface->ctx->viewporter) {
     host_surface->viewport = wp_viewporter_get_viewport(

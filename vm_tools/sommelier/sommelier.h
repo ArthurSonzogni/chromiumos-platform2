@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_SOMMELIER_SOMMELIER_H_
 #define VM_TOOLS_SOMMELIER_SOMMELIER_H_
 
+#include <linux/types.h>
 #include <sys/types.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
@@ -104,6 +105,7 @@ struct sl_context {
   struct sl_aura_shell* aura_shell;
   struct sl_viewporter* viewporter;
   struct sl_linux_dmabuf* linux_dmabuf;
+  struct sl_linux_explicit_synchronization* linux_explicit_synchronization;
   struct sl_keyboard_extension* keyboard_extension;
   struct sl_text_input_manager* text_input_manager;
 #ifdef GAMEPAD_SUPPORT
@@ -268,6 +270,7 @@ struct sl_host_surface {
   int has_output;
   uint32_t last_event_serial;
   struct sl_output_buffer* current_buffer;
+  struct zwp_linux_surface_synchronization_v1* surface_sync;
   struct wl_list released_buffers;
   struct wl_list busy_buffers;
 };
@@ -425,6 +428,12 @@ struct sl_linux_dmabuf {
   uint32_t version;
   struct sl_global* host_drm_global;
   struct zwp_linux_dmabuf_v1* internal;
+};
+
+struct sl_linux_explicit_synchronization {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct zwp_linux_explicit_synchronization_v1* internal;
 };
 
 struct sl_global {

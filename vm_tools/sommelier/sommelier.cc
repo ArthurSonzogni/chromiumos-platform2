@@ -35,6 +35,7 @@
 #endif
 #include "keyboard-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "pointer-constraints-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "relative-pointer-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -1328,6 +1329,18 @@ static void sl_registry_handler(void* data,
     assert(!ctx->linux_dmabuf);
     ctx->linux_dmabuf = linux_dmabuf;
     linux_dmabuf->host_drm_global = sl_drm_global_create(ctx);
+  } else if (strcmp(interface, "zwp_linux_explicit_synchronization_v1") == 0) {
+    struct sl_linux_explicit_synchronization* linux_explicit_synchronization =
+        static_cast<sl_linux_explicit_synchronization*>(
+            malloc(sizeof(struct sl_linux_explicit_synchronization)));
+    assert(linux_explicit_synchronization);
+    linux_explicit_synchronization->ctx = ctx;
+    linux_explicit_synchronization->id = id;
+    linux_explicit_synchronization->internal =
+        static_cast<zwp_linux_explicit_synchronization_v1*>(wl_registry_bind(
+            registry, id, &zwp_linux_explicit_synchronization_v1_interface, 1));
+    assert(!ctx->linux_explicit_synchronization);
+    ctx->linux_explicit_synchronization = linux_explicit_synchronization;
   } else if (strcmp(interface, "zcr_keyboard_extension_v1") == 0) {
     struct sl_keyboard_extension* keyboard_extension =
         static_cast<sl_keyboard_extension*>(
@@ -1443,6 +1456,14 @@ static void sl_registry_remover(void* data,
     zwp_linux_dmabuf_v1_destroy(ctx->linux_dmabuf->internal);
     free(ctx->linux_dmabuf);
     ctx->linux_dmabuf = NULL;
+    return;
+  }
+  if (ctx->linux_explicit_synchronization &&
+      ctx->linux_explicit_synchronization->id == id) {
+    zwp_linux_explicit_synchronization_v1_destroy(
+        ctx->linux_explicit_synchronization->internal);
+    free(ctx->linux_explicit_synchronization);
+    ctx->linux_explicit_synchronization = NULL;
     return;
   }
   if (ctx->keyboard_extension && ctx->keyboard_extension->id == id) {
@@ -3787,8 +3808,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   rv = ctx->channel->send(send);
   errno_assert(!rv);
 
-  while (send.num_fds--)
+  while (send.num_fds--) {
     close(send.fds[send.num_fds]);
+  }
 
   return 1;
 }

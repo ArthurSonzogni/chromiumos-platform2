@@ -42,6 +42,7 @@ wl_protocols = [
     'protocol/gtk-shell.xml',
     'protocol/keyboard-extension-unstable-v1.xml',
     'protocol/linux-dmabuf-unstable-v1.xml',
+    'protocol/linux-explicit-synchronization-unstable-v1.xml',
     'protocol/pointer-constraints-unstable-v1.xml',
     'protocol/relative-pointer-unstable-v1.xml',
     'protocol/text-input-unstable-v1.xml',
