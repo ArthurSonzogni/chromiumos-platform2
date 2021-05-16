@@ -34,6 +34,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus-proxies.h>
 
+#include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/process_with_output.h"
@@ -899,6 +900,7 @@ LogTool::LogMap LogTool::GetAllDebugLogs() {
 
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                  const std::string& username) {
+  GetBluetoothBqr();
   CreateConnectivityReport(true);
   LogMap map;
   GetPerfData(&map);

@@ -74,6 +74,7 @@ pkg_config("libdebugd_dependent_config") {
 static_library("libdebugd") {
   sources = [
     "src/battery_tool.cc",
+    "src/bluetooth_utils.cc",
     "src/constants.cc",
     "src/container_tool.cc",
     "src/crash_sender_tool.cc",
