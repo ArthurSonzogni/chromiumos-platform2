@@ -194,6 +194,19 @@ const CertificateAuthority kKnownEndorsementCA[] = {
      "52c2cb774bd6a86ca2c7f1f24ee4e2c06e3e215f61d5a9462cf3c45f2b1f2c13"},
 };
 
+struct CertificateAuthoritySubjectPublicKeyInfo {
+  const char* issuer;
+  const char* subject_public_key_info;
+};
+
+const CertificateAuthoritySubjectPublicKeyInfo
+    kKnownEndorsementCASubjectKeyInfo[] = {
+        {"Infineon OPTIGA(TM) TPM 2.0 ECC CA 055",
+         "3059301306072a8648ce3d020106082a8648ce3d03010703420004c84758541d"
+         "d419adcfec8e9868ba4b59755a7c1e3bcf892d11e7bd0afe9714de3043063afe"
+         "9face5b5d53ebcabc3de7df2a67726fde0a7f1f4c1ed070e942e92"},
+};
+
 const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
     {"IFX TPM EK Intermediate CA 24",
      "9D3F39677EBDB7B95F383021EA6EF90AD2BEA4E38B10CA65DCD84D0B33D400FA"
@@ -250,6 +263,24 @@ bool GetAuthorityPublicKey(const std::string& issuer_name,
   for (int i = 0; i < kNumIssuers; ++i) {
     if (issuer_name == kKnownCA[i].issuer) {
       public_key_hex->assign(kKnownCA[i].modulus);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Finds CA by |issuer_name| and |is_cros_core| flag. On success returns true
+// and fills |public_key_hex| with CA public key hex-encoded DER.
+bool GetAuthoritySubjectPublicKeyInfo(const std::string& issuer_name,
+                                      bool is_cros_core,
+                                      std::string* public_key_hex) {
+  if (is_cros_core) {
+    return false;
+  }
+  for (int i = 0; i < base::size(kKnownEndorsementCASubjectKeyInfo); ++i) {
+    if (issuer_name == kKnownEndorsementCASubjectKeyInfo[i].issuer) {
+      public_key_hex->assign(
+          kKnownEndorsementCASubjectKeyInfo[i].subject_public_key_info);
       return true;
     }
   }
@@ -2273,11 +2304,29 @@ void AttestationService::VerifyTask(
     return;
   }
   std::string ca_public_key;
-  if (!GetAuthorityPublicKey(issuer, request.cros_core(), &ca_public_key)) {
+  bool has_found_ca_public_key =
+      GetAuthorityPublicKey(issuer, request.cros_core(), &ca_public_key);
+  bool is_subject_public_key_info = false;
+  if (!has_found_ca_public_key) {
+    has_found_ca_public_key = GetAuthoritySubjectPublicKeyInfo(
+        issuer, request.cros_core(), &ca_public_key);
+    is_subject_public_key_info = has_found_ca_public_key;
+  }
+
+  if (!has_found_ca_public_key) {
     LOG(ERROR) << __func__ << ": Failed to get CA public key.";
     return;
   }
-  if (!crypto_utility_->VerifyCertificate(ek_cert.value(), ca_public_key)) {
+
+  bool valid_credential = false;
+  if (is_subject_public_key_info) {
+    valid_credential = crypto_utility_->VerifyCertificateWithSubjectPublicKey(
+        ek_cert.value(), ca_public_key);
+  } else {
+    valid_credential =
+        crypto_utility_->VerifyCertificate(ek_cert.value(), ca_public_key);
+  }
+  if (!valid_credential) {
     LOG(WARNING) << __func__ << ": Bad endorsement credential.";
     return;
   }
