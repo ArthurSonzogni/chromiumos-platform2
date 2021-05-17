@@ -238,7 +238,7 @@ void PortManager::HandleUnlock() {
       continue;
 
     // If TBT mode entry isn't supported, there is nothing left to do.
-    if (!port->CanEnterTBTCompatibilityMode())
+    if (port->CanEnterTBTCompatibilityMode() != ModeEntryResult::kSuccess)
       continue;
 
     // If peripheral data access is disabled, we shouldn't switch modes at all.
@@ -339,7 +339,7 @@ void PortManager::RunModeEntry(int port_num) {
   // handle the notification calls ahead, in order to prevent the logic from
   // becoming difficult to follow.
   if (notify_mgr_) {
-    if (port->CanEnterTBTCompatibilityMode()) {
+    if (port->CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess) {
       auto notif = port->CanEnterDPAltMode()
                        ? DeviceConnectedType::kThunderboltDp
                        : DeviceConnectedType::kThunderboltOnly;
@@ -353,7 +353,7 @@ void PortManager::RunModeEntry(int port_num) {
     SetPeripheralDataAccess(features_client_->IsPeripheralDataAccessEnabled());
 
   // If the host supports USB4 and we can enter USB4 in this partner, do so.
-  if (port->CanEnterUSB4()) {
+  if (port->CanEnterUSB4() == ModeEntryResult::kSuccess) {
     if (ec_util_->EnterMode(port_num, TypeCMode::kUSB4)) {
       port->SetCurrentMode(TypeCMode::kUSB4);
       LOG(INFO) << "Entered USB4 mode on port " << port_num;
@@ -364,7 +364,7 @@ void PortManager::RunModeEntry(int port_num) {
     return;
   }
 
-  if (port->CanEnterTBTCompatibilityMode()) {
+  if (port->CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess) {
     // Check if DP alt mode can be entered. If so:
     // - If the user is not active: enter DP.
     // - If the user is active: if peripheral data access is disabled, enter DP,

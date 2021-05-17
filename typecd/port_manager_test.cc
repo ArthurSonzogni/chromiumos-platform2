@@ -71,9 +71,10 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(false));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -101,9 +102,10 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode())
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
@@ -131,9 +133,10 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -179,9 +182,10 @@ TEST_F(PortManagerTest, ModeSwitchUnlockDPandTBT) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -223,9 +227,10 @@ TEST_F(PortManagerTest, ModeSwitchUnlockUSB4) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(false));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterDPAltMode())
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
@@ -275,9 +280,10 @@ TEST_F(PortManagerTest, ModeSwitchSessionStoppedDPandTBT) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -319,9 +325,10 @@ TEST_F(PortManagerTest, ModeSwitchSessionStoppedTBT) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode())
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
@@ -371,9 +378,10 @@ TEST_F(PortManagerTest, ModeSwitchUnlockDPAndTBTNoPeripheralAccess) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -433,9 +441,10 @@ TEST_F(PortManagerTest, ModeSwitchDPandTBTPeripheralDataAccessChanging) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -497,9 +506,10 @@ TEST_F(PortManagerTest,
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -558,9 +568,10 @@ TEST_F(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging) {
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port, CanEnterUSB4()).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
-      .WillRepeatedly(testing::Return(true));
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterDPAltMode())
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(

@@ -21,8 +21,8 @@ class MockPort : public Port {
 
   MOCK_METHOD(std::string, GetDataRole, (), (override));
   MOCK_METHOD(bool, CanEnterDPAltMode, (), (override));
-  MOCK_METHOD(bool, CanEnterTBTCompatibilityMode, (), (override));
-  MOCK_METHOD(bool, CanEnterUSB4, (), (override));
+  MOCK_METHOD(ModeEntryResult, CanEnterTBTCompatibilityMode, (), (override));
+  MOCK_METHOD(ModeEntryResult, CanEnterUSB4, (), (override));
   MOCK_METHOD(bool, IsPartnerDiscoveryComplete, (), (override));
   MOCK_METHOD(bool, IsCableDiscoveryComplete, (), (override));
 };

@@ -18,6 +18,13 @@
 
 namespace typecd {
 
+// Possible return values for the various CanEnter*() Mode entry checks.
+enum class ModeEntryResult {
+  kSuccess = 0,
+  kCableError = 1,
+  kPartnerError = 2,
+};
+
 // This class is used to represent a Type C Port. It can be used to access PD
 // state associated with the port, and will also contain handles to the object
 // representing a peripheral (i.e "Partner") if one is connected to the port.
@@ -61,14 +68,14 @@ class Port {
   // Check whether we can enter Thunderbolt Compatibility Alt Mode. This should
   // check for the presence of required attributes on the Partner and
   // (if applicable) Cable.
-  virtual bool CanEnterTBTCompatibilityMode();
+  virtual ModeEntryResult CanEnterTBTCompatibilityMode();
 
   // Returns whether the partner can enter USB4. This should check the following
   // attributes for USB4 support:
   // - Partner(SOP) PD identity.
   // - Cable speed.
   // - Cable type.
-  virtual bool CanEnterUSB4();
+  virtual ModeEntryResult CanEnterUSB4();
 
   // Returns true when all PD discovery information (PD Identity VDOs, all
   // Discover Mode data) for a partner has been processed.

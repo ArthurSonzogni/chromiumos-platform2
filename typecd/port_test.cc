@@ -192,7 +192,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech) {
   port->cable_->SetProductTypeVDO2(0x0);
   port->cable_->SetProductTypeVDO3(0x0);
 
-  EXPECT_TRUE(port->CanEnterTBTCompatibilityMode());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterTBTCompatibilityMode());
 }
 
 // Check that TBT Compat Mode Entry checks work as expected for the following
@@ -232,7 +232,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech) {
   port->cable_->SetProductTypeVDO2(0x0);
   port->cable_->SetProductTypeVDO3(0x0);
 
-  EXPECT_FALSE(port->CanEnterTBTCompatibilityMode());
+  EXPECT_EQ(ModeEntryResult::kCableError, port->CanEnterTBTCompatibilityMode());
 }
 
 // Check that TBT Compat Mode Entry checks work as expected for the following
@@ -292,7 +292,7 @@ TEST_F(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB) {
   port->cable_->SetProductTypeVDO2(0x0);
   port->cable_->SetProductTypeVDO3(0x0);
 
-  EXPECT_TRUE(port->CanEnterTBTCompatibilityMode());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterTBTCompatibilityMode());
 }
 
 // Check that USB4 mode checks work as expected for the following
@@ -348,7 +348,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveTBT3Cable) {
   ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0));
   port->AddCableAltMode(mode_path);
 
-  EXPECT_TRUE(port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
 }
 
 // Check that USB4 mode checks work as expected for the following
@@ -398,7 +398,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexPassiveNonTBT3Cable) {
 
   port->cable_->SetNumAltModes(0);
 
-  EXPECT_TRUE(port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
 }
 
 // Check that USB4 mode checks work as expected for the following
@@ -448,7 +448,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable) {
 
   port->cable_->SetNumAltModes(0);
 
-  EXPECT_FALSE(port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kCableError, port->CanEnterUSB4());
 }
 
 // Check that USB4 mode checks work as expected for the following
@@ -512,7 +512,7 @@ TEST_F(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable) {
   ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0));
   port->AddCableAltMode(mode_path);
 
-  EXPECT_FALSE(port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kCableError, port->CanEnterUSB4());
 }
 
 // Check that USB4 mode checks work as expected for the following
@@ -589,7 +589,7 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
   ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000002, 2));
   port->AddCableAltMode(mode_path);
 
-  EXPECT_TRUE(port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
 }
 
 }  // namespace typecd

@@ -164,50 +164,44 @@ bool Port::CanEnterDPAltMode() {
 // Ref:
 //   USB Type-C Connector Spec, release 2.0
 //   Figure F-1.
-bool Port::CanEnterTBTCompatibilityMode() {
-  if (!cable_) {
-    LOG(ERROR) << "No cable object registered, can't enter TBT Compat mode.";
-    return false;
-  }
-
-  // Check if the Cable meets TBT3 speed requirements.
-  // NOTE: Since we aren't configuring the TBT3 entry speed, we don't
-  // need to check for the existence of TBT3 alt mode in the SOP' discovery.
-  if (!cable_->TBT3PDIdentityCheck())
-    return false;
-
+ModeEntryResult Port::CanEnterTBTCompatibilityMode() {
   // Check if the partner supports Modal Operation
   // Ref:
   //   USB PD spec, rev 3.0, v2.0.
   //   Table 6-29
   auto partner_idh = partner_->GetIdHeaderVDO();
   if (!(partner_idh & kIDHeaderVDOModalOperationBitField)) {
-    return false;
+    return ModeEntryResult::kPartnerError;
   }
 
   // Check if the partner supports TBT compatibility mode.
   if (!IsPartnerAltModePresent(kTBTAltModeVID)) {
     LOG(INFO) << "TBT Compat mode not supported by partner.";
-    return false;
+    return ModeEntryResult::kPartnerError;
   }
 
-  return true;
+  if (!cable_) {
+    LOG(ERROR) << "No cable object registered, can't enter TBT Compat mode.";
+    return ModeEntryResult::kCableError;
+  }
+
+  // Check if the Cable meets TBT3 speed requirements.
+  // NOTE: Since we aren't configuring the TBT3 entry speed, we don't
+  // need to check for the existence of TBT3 alt mode in the SOP' discovery.
+  if (!cable_->TBT3PDIdentityCheck())
+    return ModeEntryResult::kCableError;
+
+  return ModeEntryResult::kSuccess;
 }
 
 // Follow the USB4 entry checks as per:
 // Figure 5-1: USB4 Discovery and Entry Flow Model
 // USB Type-C Cable & Connector Spec Rel 2.0.
-bool Port::CanEnterUSB4() {
+ModeEntryResult Port::CanEnterUSB4() {
   if (!partner_) {
     LOG(ERROR) << "Attempting USB4 entry without a registered partner on port: "
                << port_num_;
-    return false;
-  }
-
-  if (!cable_) {
-    LOG(ERROR) << "Attempting USB4 entry without a registered cable on port: "
-               << port_num_;
-    return false;
+    return ModeEntryResult::kPartnerError;
   }
 
   // Partner doesn't support USB4.
@@ -215,7 +209,13 @@ bool Port::CanEnterUSB4() {
       (partner_->GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
       kDeviceCapabilityMask;
   if (!(partner_cap & kDeviceCapabilityUSB4))
-    return false;
+    return ModeEntryResult::kPartnerError;
+
+  if (!cable_) {
+    LOG(ERROR) << "Attempting USB4 entry without a registered cable on port: "
+               << port_num_;
+    return ModeEntryResult::kCableError;
+  }
 
   // Cable checks.
   auto cable_type =
@@ -229,19 +229,22 @@ bool Port::CanEnterUSB4() {
     // For VDO version == 1.3, check if Active Cable VDO2 supports USB4.
     // NOTE: The meaning of this field is inverted; the bit field being set
     // means USB4 is *not* supported.
-    if (vdo_version == kActiveCableVDO1VDOVersion13)
-      return !(cable_->GetProductTypeVDO2() &
-               kActiveCableVDO2USB4SupportedBitField);
+    if (vdo_version == kActiveCableVDO1VDOVersion13) {
+      if (cable_->GetProductTypeVDO2() & kActiveCableVDO2USB4SupportedBitField)
+        return ModeEntryResult::kCableError;
+      else
+        return ModeEntryResult::kSuccess;
+    }
 
     // For VDO version != 1.3, don't enable USB4 if the cable:
     // - doesn't support modal operation, or
     // - doesn't have an Intel SVID Alt mode, or
     // - doesn't have rounded support.
     if (!(cable_->GetIdHeaderVDO() & kIDHeaderVDOModalOperationBitField))
-      return false;
+      return ModeEntryResult::kCableError;
 
     if (!IsCableAltModePresent(kTBTAltModeVID))
-      return false;
+      return ModeEntryResult::kCableError;
 
     // Go through cable alt modes and check for rounded support in the TBT VDO.
     auto num_altmodes = cable_->GetNumAltModes();
@@ -253,20 +256,23 @@ bool Port::CanEnterUSB4() {
           altmode->GetVDO() >> kTBT3CableDiscModeVDORoundedSupportOffset &
           kTBT3CableDiscModeVDORoundedSupportMask;
       if (rounded_support == kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded)
-        return true;
+        return ModeEntryResult::kSuccess;
     }
 
-    return false;
+    return ModeEntryResult::kCableError;
   } else if (cable_type == kIDHeaderVDOProductTypeCablePassive) {
     // Apart from USB2.0, USB4 is supported for all other speeds.
     auto speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
-    return speed != kUSBSpeed20;
+    if (speed != kUSBSpeed20)
+      return ModeEntryResult::kSuccess;
+    else
+      return ModeEntryResult::kCableError;
   }
 
   LOG(ERROR) << "Invalid cable type: " << cable_type
              << ", USB4 entry aborted on port " << port_num_;
 
-  return false;
+  return ModeEntryResult::kCableError;
 }
 
 bool Port::IsPartnerAltModePresent(uint16_t altmode_sid) {
