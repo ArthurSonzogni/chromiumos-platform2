@@ -2151,6 +2151,11 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
     return;
   }
 
+  if (!current_service_) {
+    LOG(INFO) << "No current service, skipping reassociate attempt.";
+    return;
+  }
+
   // Skip reassociate attempt if service is not reliable, meaning multiple link
   // failures in short period of time.
   if (current_service_->unreliable()) {
