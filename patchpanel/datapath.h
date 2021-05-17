@@ -72,7 +72,7 @@ enum IpFamily {
 // cros lint will yell to force using int16/int64 instead of long here, however
 // note that unsigned long IS the correct signature for ioctl in Linux kernel -
 // it's 32 bits on 32-bit platform and 64 bits on 64-bit one.
-using ioctl_req_t = unsigned long;
+using ioctl_req_t = unsigned long;  // NOLINT(runtime/int)
 typedef int (*ioctl_t)(int, ioctl_req_t, ...);
 
 // Returns for given interface name the host name of a ARC veth pair.

@@ -367,7 +367,7 @@ TEST(PrettyPrint, Rtentry) {
   SetSockaddrIn(&route.rt_genmask, Ipv4Addr(255, 255, 255, 252));
   SetSockaddrIn(&route.rt_gateway, Ipv4Addr(192, 168, 1, 1));
   std::string rt_dev = "eth0";
-  route.rt_dev = (char*)rt_dev.c_str();
+  route.rt_dev = const_cast<char*>(rt_dev.c_str());
   route.rt_flags =
       RTF_UP | RTF_GATEWAY | RTF_DYNAMIC | RTF_MODIFIED | RTF_REJECT;
   stream.str("");

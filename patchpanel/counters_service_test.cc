@@ -65,8 +65,6 @@ namespace {
 // The following string is copied from the real output of iptables v1.6.2 by
 // `iptables -t mangle -L -x -v`. This output contains all the accounting
 // chains/rules for eth0 and wlan0.
-// TODO(jiejiang): presubmit checker is complaining about the line length for
-// this (and the other raw strings in this file). Find a way to make it happy.
 const char kIptablesOutput[] = R"(
 Chain PREROUTING (policy ACCEPT 22785 packets, 136093545 bytes)
     pkts      bytes target     prot opt in     out     source               destination

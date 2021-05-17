@@ -5,6 +5,7 @@
 #include "patchpanel/routing_service.h"
 
 #include <iostream>
+#include <map>
 
 #include <base/logging.h>
 

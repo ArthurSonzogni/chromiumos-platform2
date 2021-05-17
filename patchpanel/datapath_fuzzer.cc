@@ -23,7 +23,7 @@
 namespace patchpanel {
 
 // Always succeeds
-int ioctl_stub(int fd, unsigned long req, ...) {
+int ioctl_stub(int fd, ioctl_req_t req, ...) {
   return 0;
 }
 

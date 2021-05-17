@@ -54,7 +54,7 @@ int ioctl_rtentry_cap(int fd, ioctl_req_t req, struct rtentry* arg) {
   if (arg->rt_dev) {
     auto& cap = ioctl_rtentry_args.back();
     cap.first = std::string(arg->rt_dev);
-    cap.second.rt_dev = (char*)cap.first.c_str();
+    cap.second.rt_dev = const_cast<char*>(cap.first.c_str());
   }
   return 0;
 }

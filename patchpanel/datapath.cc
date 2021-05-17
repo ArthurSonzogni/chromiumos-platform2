@@ -71,7 +71,7 @@ std::string PrefixIfname(const std::string& prefix, const std::string& ifname) {
   return n;
 }
 
-bool Ioctl(ioctl_t ioctl_h, unsigned long req, const char* arg) {
+bool Ioctl(ioctl_t ioctl_h, ioctl_req_t req, const char* arg) {
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!control_fd.is_valid()) {
     PLOG(ERROR) << "Failed to create control socket for ioctl request=" << req;
