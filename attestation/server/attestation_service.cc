@@ -1184,7 +1184,7 @@ bool AttestationService::CreateEnrollRequestInternal(
           enterprise_enrollment_nonce.size());
     }
 
-    if (GetEndorsementKeyType() != KEY_TYPE_RSA) {
+    if (GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
       // Include an encrypted quote of the RSA pub EK certificate so that
       // an EID can be computed during enrollment.
 
@@ -1825,11 +1825,11 @@ int AttestationService::CreateIdentity(int identity_features) {
       }
     }
 
-    // Certify the RSA EK cert only when we are using non-RSA EK. In this
-    // case, we don't provide the RSA EK cert which originally is used for
-    // calculating the Enrollment ID.
+    // Certify the RSA EK cert only when we are using non-RSA EK. In this case,
+    // we don't provide the RSA EK cert which originally is used for calculating
+    // the Enrollment ID.
     if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
-        GetEndorsementKeyType() != KEY_TYPE_RSA) {
+        GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
       if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
                                     &new_identity_pb)) {
         return -1;
