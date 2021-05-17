@@ -453,13 +453,13 @@ void CellularCapability3gpp::Stop_PowerDownCompleted(
   callback.Run(Error());
 }
 
-void CellularCapability3gpp::Connect(const KeyValueStore& properties,
-                                     const ResultCallback& callback) {
+void CellularCapability3gpp::Connect(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
-  RpcIdentifierCallback cb =
-      base::Bind(&CellularCapability3gpp::OnConnectReply,
-                 weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_simple_proxy_->Connect(properties, cb, kTimeoutConnect);
+  DCHECK(callback);
+
+  KeyValueStore properties;
+  SetupConnectProperties(&properties);
+  CallConnect(properties, callback);
 }
 
 void CellularCapability3gpp::Disconnect(const ResultCallback& callback) {
@@ -707,45 +707,68 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
   }
 }
 
+void CellularCapability3gpp::CallConnect(const KeyValueStore& properties,
+                                         const ResultCallback& callback) {
+  SLOG(this, 3) << __func__;
+  modem_simple_proxy_->Connect(
+      properties,
+      base::Bind(&CellularCapability3gpp::OnConnectReply,
+                 weak_ptr_factory_.GetWeakPtr(), callback),
+      kTimeoutConnect);
+}
+
 void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
                                             const RpcIdentifier& bearer,
                                             const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
+  DCHECK(callback);
 
   CellularServiceRefPtr service = cellular()->service();
   if (!service) {
     // The service could have been deleted before our Connect() request
     // completes if the modem was enabled and then quickly disabled.
     apn_try_list_.clear();
-  } else if (error.IsFailure()) {
-    service->ClearLastGoodApn();
-    // The APN that was just tried (and failed) is still at the
-    // front of the list, about to be removed. If the list is empty
-    // after that, try one last time without an APN. This may succeed
-    // with some modems in some cases.
-    if (RetriableConnectError(error) && !apn_try_list_.empty()) {
-      apn_try_list_.pop_front();
-      SLOG(this, 2) << "Connect failed with invalid APN, "
-                    << apn_try_list_.size() << " remaining APNs to try";
-      KeyValueStore props;
-      SetRoamingProperties(&props);
-      if (!apn_try_list_.empty())
-        SetApnProperties(apn_try_list_.front(), &props);
-      Connect(props, callback);
-      return;
-    }
-  } else {
-    if (!apn_try_list_.empty()) {
-      service->SetLastGoodApn(apn_try_list_.front());
-      apn_try_list_.clear();
-    }
-    SLOG(this, 2) << "Connected bearer " << bearer.value();
+    callback.Run(error);
+    return;
   }
 
-  if (!callback.is_null())
-    callback.Run(error);
+  if (error.IsFailure()) {
+    service->ClearLastGoodApn();
+    if (!RetriableConnectError(error) || !ConnectToNextApn(callback)) {
+      apn_try_list_.clear();
+      callback.Run(error);
+    }
+    return;
+  }
 
+  if (!apn_try_list_.empty()) {
+    service->SetLastGoodApn(apn_try_list_.front());
+    apn_try_list_.clear();
+  }
+
+  SLOG(this, 2) << "Connected bearer " << bearer.value();
+  callback.Run(error);
   UpdatePendingActivationState();
+}
+
+bool CellularCapability3gpp::ConnectToNextApn(const ResultCallback& callback) {
+  // The last connect attempt did not use an APN, nothing more to try.
+  if (apn_try_list_.empty())
+    return false;
+
+  // Remove the APN that was just tried and failed. If the APN list is empty,
+  // we still try again without an APN. This may succeed with some modems in
+  // some cases.
+  apn_try_list_.pop_front();
+
+  SLOG(this, 2) << "Connect failed with invalid APN, " << apn_try_list_.size()
+                << " remaining APNs to try";
+  KeyValueStore props;
+  SetRoamingProperties(&props);
+  if (!apn_try_list_.empty())
+    SetApnProperties(apn_try_list_.front(), &props);
+  CallConnect(props, callback);
+  return true;
 }
 
 void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(

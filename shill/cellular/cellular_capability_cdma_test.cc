@@ -108,6 +108,10 @@ class CellularCapabilityCdmaTest : public testing::Test {
     cellular_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
+  void SetupConnectProperties(KeyValueStore* properties) {
+    capability_->SetupConnectProperties(properties);
+  }
+
  protected:
   static const char kEsn[];
   static const char kMachineAddress[];
@@ -516,7 +520,7 @@ TEST_F(CellularCapabilityCdmaMainTest, IsRegistered) {
 
 TEST_F(CellularCapabilityCdmaMainTest, SetupConnectProperties) {
   KeyValueStore map;
-  capability_->SetupConnectProperties(&map);
+  SetupConnectProperties(&map);
   EXPECT_TRUE(map.properties().empty());
 }
 

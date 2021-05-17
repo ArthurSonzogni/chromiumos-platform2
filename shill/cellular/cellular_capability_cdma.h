@@ -39,7 +39,6 @@ class CellularCapabilityCdma : public CellularCapability3gpp {
   void SetUnregistered(bool searching) override;
   void OnServiceCreated() override;
   std::string GetRoamingStateString() const override;
-  void SetupConnectProperties(KeyValueStore* properties) override;
 
   void RegisterOnNetwork(const std::string& network_id,
                          Error* error,
@@ -66,6 +65,7 @@ class CellularCapabilityCdma : public CellularCapability3gpp {
 
  protected:
   // Inherited from CellularCapability3gpp.
+  void SetupConnectProperties(KeyValueStore* properties) override;
   void InitProxies() override;
   void ReleaseProxies() override;
   void UpdateServiceOLP() override;

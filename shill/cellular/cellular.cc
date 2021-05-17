@@ -1152,13 +1152,10 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  KeyValueStore properties;
-  capability_->SetupConnectProperties(&properties);
-  ResultCallback cb =
-      base::Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
-                 service->iccid());
   OnConnecting();
-  capability_->Connect(properties, cb);
+  capability_->Connect(base::Bind(&Cellular::OnConnectReply,
+                                  weak_ptr_factory_.GetWeakPtr(),
+                                  service->iccid()));
 
   bool is_auto_connecting = service->is_auto_connecting();
   metrics()->NotifyDeviceConnectStarted(interface_index(), is_auto_connecting);
@@ -1859,7 +1856,7 @@ void Cellular::ConnectToPendingAfterDelay() {
   CellularServiceRefPtr service =
       manager()->cellular_service_provider()->FindService(pending_iccid);
   if (!service) {
-    LOG(WARNING) << "No matching service for connect to.";
+    LOG(WARNING) << "No matching service for pending connect.";
     return;
   }
 

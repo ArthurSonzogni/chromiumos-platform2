@@ -391,6 +391,11 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     capability_->FillConnectPropertyMapForTesting(properties);
   }
 
+  void CallConnect(const KeyValueStore& properties,
+                   const ResultCallback& callback) {
+    capability_->CallConnect(properties, callback);
+  }
+
   void StartModem(Error* error) {
     capability_->StartModem(
         error, base::Bind(&CellularCapability3gppTest::TestCallback,
@@ -1460,7 +1465,6 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 TEST_F(CellularCapability3gppTest, Connect) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  KeyValueStore properties;
   SetApnTryList({});
   ResultCallback callback = base::Bind(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
@@ -1469,14 +1473,14 @@ TEST_F(CellularCapability3gppTest, Connect) {
   // Test connect failures
   EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _))
       .WillRepeatedly(SaveArg<1>(&connect_callback_));
-  capability_->Connect(properties, callback);
+  capability_->Connect(callback);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   EXPECT_CALL(*service_, ClearLastGoodApn());
   connect_callback_.Run(bearer, Error(Error::kOperationFailed));
   Mock::VerifyAndClearExpectations(this);
 
   // Test connect success
-  capability_->Connect(properties, callback);
+  capability_->Connect(callback);
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   connect_callback_.Run(bearer, Error(Error::kSuccess));
   Mock::VerifyAndClearExpectations(this);
@@ -1487,7 +1491,7 @@ TEST_F(CellularCapability3gppTest, Connect) {
   // and then quickly disabled.
   cellular_->SetServiceForTesting(nullptr);
   EXPECT_FALSE(capability_->cellular()->service());
-  capability_->Connect(properties, callback);
+  capability_->Connect(callback);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   connect_callback_.Run(bearer, Error(Error::kOperationFailed));
 }
@@ -1511,7 +1515,7 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
   apn2[kApnProperty] = apn_name_bar;
   SetApnTryList({apn1, apn2});
   FillConnectPropertyMap(&properties);
-  capability_->Connect(properties, callback);
+  CallConnect(properties, callback);
   Mock::VerifyAndClearExpectations(modem_simple_proxy);
 
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _))

@@ -178,14 +178,8 @@ class CellularCapability {
   // Connection management
   // -------------------------------------------------------------------------
 
-  // Fills |properties| with properties for establishing a connection, which
-  // will be passed to Connect().
-  virtual void SetupConnectProperties(KeyValueStore* properties) = 0;
-
-  // Connects the modem to a network based on the connection properties
-  // specified by |properties|.
-  virtual void Connect(const KeyValueStore& properties,
-                       const ResultCallback& callback) = 0;
+  // Connects the modem to a network.
+  virtual void Connect(const ResultCallback& callback) = 0;
 
   // Disconnects the modem from a network.
   virtual void Disconnect(const ResultCallback& callback) = 0;
@@ -241,17 +235,12 @@ class CellularCapability {
   CellularCapability(const CellularCapability&) = delete;
   CellularCapability& operator=(const CellularCapability&) = delete;
 
-  // Releases all proxies held by the object. This is most useful during unit
-  // tests.
-  virtual void ReleaseProxies() = 0;
-
   static void OnUnsupportedOperation(const char* operation, Error* error);
 
  private:
   friend class CellularCapability3gppTest;
   friend class CellularCapabilityCdmaTest;
   friend class CellularTest;
-  FRIEND_TEST(CellularTest, Connect);
 
   Cellular* cellular_;
   ControlInterface* control_interface_;

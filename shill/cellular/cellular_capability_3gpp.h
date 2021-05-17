@@ -95,9 +95,7 @@ class CellularCapability3gpp : public CellularCapability {
   void OnServiceCreated() override;
   std::string GetNetworkTechnologyString() const override;
   std::string GetRoamingStateString() const override;
-  void SetupConnectProperties(KeyValueStore* properties) override;
-  void Connect(const KeyValueStore& properties,
-               const ResultCallback& callback) override;
+  void Connect(const ResultCallback& callback) override;
   void Disconnect(const ResultCallback& callback) override;
   CellularBearer* GetActiveBearer() const override;
   const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
@@ -187,8 +185,9 @@ class CellularCapability3gpp : public CellularCapability {
   static const RpcIdentifier kRootPath;
 
  protected:
+  virtual void SetupConnectProperties(KeyValueStore* properties);
   virtual void InitProxies();
-  void ReleaseProxies() override;
+  virtual void ReleaseProxies();
 
   // Updates the online payment portal information, if any, for the cellular
   // provider.
@@ -321,15 +320,20 @@ class CellularCapability3gpp : public CellularCapability {
       std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
       const KeyValueStore& properties);
 
+  // Connect helpers and callbacks
+  void CallConnect(const KeyValueStore& properties,
+                   const ResultCallback& callback);
+  void OnConnectReply(const ResultCallback& callback,
+                      const RpcIdentifier& bearer,
+                      const Error& error);
+  bool ConnectToNextApn(const ResultCallback& callback);
+
   // Method callbacks
   void OnRegisterReply(const ResultCallback& callback, const Error& error);
   void OnResetReply(const ResultCallback& callback, const Error& error);
   void OnScanReply(const ResultStringmapsCallback& callback,
                    const ScanResults& results,
                    const Error& error);
-  void OnConnectReply(const ResultCallback& callback,
-                      const RpcIdentifier& bearer,
-                      const Error& error);
   void OnSetupLocationReply(const Error& error);
   void OnGetLocationReply(const StringCallback& callback,
                           const std::map<uint32_t, brillo::Any>& results,

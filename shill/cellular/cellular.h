@@ -405,7 +405,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, EstablishLinkStatic);
   FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
-  FRIEND_TEST(CellularTest, IsRoamingAllowedOrRequired);
   FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
   FRIEND_TEST(CellularTest, LinkEventUpWithoutPPP);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);

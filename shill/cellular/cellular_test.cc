@@ -181,7 +181,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void TearDown() override {
     device_->DestroyIPConfig();
     device_->state_ = Cellular::kStateDisabled;
-    device_->capability_->ReleaseProxies();
+    GetCapability3gpp()->ReleaseProxies();
     device_->set_dhcp_provider(nullptr);
     // Break cycle between Cellular and CellularService.
     device_->service_ = nullptr;
@@ -2516,6 +2516,43 @@ TEST_P(CellularTest, DontMergeProfileAndOperatorApn) {
   CHECK_EQ(kUsernameFromProfile, apn_list_prop[0][kApnUsernameProperty]);
   CHECK_EQ(kApn, apn_list_prop[1][kApnProperty]);
   CHECK_EQ(kUsernameFromOperator, apn_list_prop[1][kApnUsernameProperty]);
+}
+
+TEST_P(CellularTest, BuildApnTryList) {
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn1";
+  apn2[kApnProperty] = "apn2";
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  std::deque<Stringmap> apn_try_list = device_->BuildApnTryList();
+  ASSERT_EQ(apn_try_list.size(), apn_list.size());
+  EXPECT_EQ(apn_try_list[0], apn1);
+  EXPECT_EQ(apn_try_list[1], apn2);
+
+  // Add a custom APN
+  CellularService* service = SetService();
+  Stringmap custom_apn;
+  custom_apn[kApnProperty] = "custom_apn";
+  service->set_apn_info_for_testing(custom_apn);
+  apn_try_list = device_->BuildApnTryList();
+  ASSERT_EQ(apn_try_list.size(), apn_list.size() + 1u);
+  EXPECT_EQ(apn_try_list[0], custom_apn);
+  EXPECT_EQ(apn_try_list[1], apn1);
+  EXPECT_EQ(apn_try_list[2], apn2);
+
+  // Set the last good APN
+  Stringmap last_good_apn;
+  last_good_apn[kApnProperty] = "last_good_apn";
+  service->SetLastGoodApn(last_good_apn);
+  apn_try_list = device_->BuildApnTryList();
+  ASSERT_EQ(apn_try_list.size(), apn_list.size() + 2u);
+  EXPECT_EQ(apn_try_list[0], custom_apn);
+  EXPECT_EQ(apn_try_list[1], last_good_apn);
+  EXPECT_EQ(apn_try_list[2], apn1);
+  EXPECT_EQ(apn_try_list[3], apn2);
 }
 
 INSTANTIATE_TEST_SUITE_P(CellularTest,

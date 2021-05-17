@@ -133,6 +133,9 @@ class CellularService : public Service {
   void set_allow_roaming_for_testing(bool allow_roaming) {
     allow_roaming_ = allow_roaming;
   }
+  void set_apn_info_for_testing(const Stringmap& apn_info) {
+    apn_info_ = apn_info;
+  }
 
  protected:
   // Protected Service overrides
