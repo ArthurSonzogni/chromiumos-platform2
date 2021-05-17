@@ -599,6 +599,9 @@ class Manager {
   void ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service);
   // Update always-on VPN configuration with the one contained in |profile|.
   void UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile);
+  // Set the always-on VPN configuration and start or stop VPN lockdown if
+  // needed.
+  void SetAlwaysOnVpn(const std::string& mode, VPNServiceRefPtr service);
   // Connect the always-on VPN and maintain the previous connection attempts
   // count.
   void ConnectAlwaysOnVpn();

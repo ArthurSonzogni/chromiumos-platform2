@@ -1509,8 +1509,7 @@ bool Manager::UnloadService(
 
   if (IsServiceAlwaysOnVpn(**service_iterator)) {
     ActiveProfile()->ClearAlwaysOnVpn();
-    always_on_vpn_mode_ = kAlwaysOnVpnModeOff;
-    always_on_vpn_service_ = nullptr;
+    SetAlwaysOnVpn(kAlwaysOnVpnModeOff, nullptr);
   }
 
   DCHECK(!(**service_iterator)->connection());
@@ -2000,13 +1999,35 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
     if (service == nullptr || service->technology() != Technology::kVPN) {
       LOG(WARNING) << "Invalid VPN service: " << service_id.value()
                    << ". Always-on is disabled";
-      always_on_vpn_mode_ = kAlwaysOnVpnModeOff;
       // The service should be set to null as always-on VPN is disabled.
-      always_on_vpn_service_ = nullptr;
+      SetAlwaysOnVpn(kAlwaysOnVpnModeOff, nullptr);
       return;
     }
-    always_on_vpn_mode_ = mode;
-    always_on_vpn_service_ = static_cast<VPNService*>(service.get());
+    SetAlwaysOnVpn(mode, static_cast<VPNService*>(service.get()));
+  }
+}
+
+void Manager::SetAlwaysOnVpn(const std::string& mode,
+                             VPNServiceRefPtr service) {
+  LOG(INFO) << "Setting always-on-vpn to mode=" << mode
+            << " service=" << (service ? service->log_name() : "nullptr");
+
+  const std::string previous_mode = always_on_vpn_mode_;
+  always_on_vpn_mode_ = mode;
+  always_on_vpn_service_ = service;
+
+  // Update VpnLockdown mode below if necessary.
+  if (!patchpanel_client_ || previous_mode == mode)
+    return;
+
+  if (mode == kAlwaysOnVpnModeStrict) {
+    LOG(INFO) << "Starting VPN lockdown";
+    patchpanel_client_->SetVpnLockdown(true);
+  }
+
+  if (previous_mode == kAlwaysOnVpnModeStrict) {
+    LOG(INFO) << "Stopping VPN lockdown";
+    patchpanel_client_->SetVpnLockdown(false);
   }
 }
 
@@ -2937,6 +2958,11 @@ void Manager::InitializePatchpanelClient() {
   dispatcher_->PostDelayedTask(FROM_HERE,
                                refresh_traffic_counter_task_.callback(),
                                kTrafficCounterRefreshInterval.InMilliseconds());
+
+  // Ensure that VPN lockdown starts if needed.
+  std::string always_on_vpn_mode = always_on_vpn_mode_;
+  always_on_vpn_mode_ = kAlwaysOnVpnModeOff;
+  SetAlwaysOnVpn(always_on_vpn_mode, always_on_vpn_service_);
 }
 
 void Manager::RefreshAllTrafficCountersCallback(
