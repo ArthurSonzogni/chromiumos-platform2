@@ -88,6 +88,9 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
             Executor* executor);
   void InitializeUim();
   void RetryInitialization();
+  // Run RetryInitialization after running cb.
+  void RetryInitializationAfterCallback(base::OnceCallback<void(int)> cb,
+                                        int err);
   void Shutdown();
   uint16_t AllocateId();
 

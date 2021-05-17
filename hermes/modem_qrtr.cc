@@ -699,12 +699,22 @@ int ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
 
   if (!euicc_found) {
     LOG(ERROR) << "Expected to find an eSIM, retrying ...";
-    Shutdown();
-    RetryInitialization();
+    // RetryInitialization may delete the callback for this
+    // GET_SLOT_STATUS. Thus, we need to run the callback first, and then
+    // RetryInitialization
+    tx_queue_[0].cb_ =
+        base::BindOnce(&ModemQrtr::RetryInitializationAfterCallback,
+                       base::Unretained(this), std::move(tx_queue_[0].cb_));
     return kQmiMessageProcessingError;
   }
-
   return kQmiSuccess;
+}
+
+void ModemQrtr::RetryInitializationAfterCallback(
+    base::OnceCallback<void(int)> cb, int err) {
+  std::move(cb).Run(err);
+  Shutdown();
+  RetryInitialization();
 }
 
 int ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
@@ -783,8 +793,9 @@ int ModemQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
   if (current_state_ != State::kLogicalChannelOpened &&
       current_state_ != State::kSendApduReady) {
     LOG(ERROR) << "Could not open logical channel to eSIM";
-    Shutdown();
-    RetryInitialization();
+    tx_queue_[0].cb_ =
+        base::BindOnce(&ModemQrtr::RetryInitializationAfterCallback,
+                       base::Unretained(this), std::move(tx_queue_[0].cb_));
     // We tried to open a channel but failed. This could be because the
     // eUICC was still booting up while we tried to open the channel. We will
     // retry opening the channel immediately after initialization succeeds.
