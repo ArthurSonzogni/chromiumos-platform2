@@ -5,6 +5,7 @@
 #ifndef MINIOS_MOCK_DRAW_INTERFACE_H_
 #define MINIOS_MOCK_DRAW_INTERFACE_H_
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 #include <string>
@@ -63,6 +64,8 @@ class MockDrawInterface : public DrawInterface {
   MOCK_METHOD(void, LocaleChange, (int selected_locale));
   MOCK_METHOD(int, GetSupportedLocalesSize, ());
   MOCK_METHOD(int, GetDefaultButtonWidth, ());
+  MOCK_METHOD(int, GetFreconCanvasSize, ());
+  MOCK_METHOD(base::FilePath, GetScreenPath, ());
 };
 
 }  // namespace minios

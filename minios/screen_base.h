@@ -28,6 +28,8 @@ class ScreenBase : public ScreenInterface {
 
   void SetButtonCountForTest(int button_count) { button_count_ = button_count; }
 
+  int GetButtonCountForTest() { return button_count_; }
+
   void SetIndexForTest(int index) { index_ = index; }
 
   int GetIndexForTest() { return index_; }

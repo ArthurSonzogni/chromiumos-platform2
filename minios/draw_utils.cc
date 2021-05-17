@@ -41,10 +41,6 @@ constexpr char kScreens[] = "etc/screens";
 constexpr int kFreconScalingFactor = 1;
 constexpr int kCanvasSize = 1080;
 
-// Key state parameters.
-const int kFdsMax = 10;
-const int kKeyMax = 200;
-
 namespace {
 constexpr char kConsole0[] = "dev/pts/0";
 

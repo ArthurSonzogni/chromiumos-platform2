@@ -5,8 +5,8 @@
 #ifndef MINIOS_SCREEN_CONTROLLER_INTERFACE_H_
 #define MINIOS_SCREEN_CONTROLLER_INTERFACE_H_
 
-#include "minios/draw_interface.h"
 #include "minios/screen_interface.h"
+#include "minios/screen_types.h"
 
 namespace minios {
 
@@ -26,6 +26,12 @@ class ScreenControllerInterface {
 
   // Changes to the previous action in flow and shows UI.
   virtual void OnBackward(ScreenInterface* screen) = 0;
+
+  // Changes the screen to the given error.
+  virtual void OnError(ScreenType error_screen) = 0;
+
+  // Returns the current screen in flow.
+  virtual ScreenType GetCurrentScreen() = 0;
 };
 
 }  // namespace minios

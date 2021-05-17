@@ -29,6 +29,10 @@ const int kKeyVolUp = 115;
 const int kKeyVolDown = 114;
 const int kKeyPower = 116;
 
+// Key state parameters.
+const int kFdsMax = 10;
+const int kKeyMax = 200;
+
 namespace {
 constexpr char kDevInputEvent[] = "/dev/input";
 constexpr char kEventDevName[] = "*event*";

@@ -11,6 +11,7 @@
 
 #include "minios/draw_utils.h"
 #include "minios/key_reader.h"
+#include "minios/network_manager_interface.h"
 #include "minios/process_manager.h"
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
@@ -20,7 +21,8 @@ namespace minios {
 class ScreenController : public ScreenControllerInterface,
                          public KeyReader::Delegate {
  public:
-  explicit ScreenController(std::shared_ptr<DrawInterface> draw_utils);
+  ScreenController(std::shared_ptr<DrawInterface> draw_utils,
+                   std::shared_ptr<NetworkManagerInterface> network_manager);
   virtual ~ScreenController() = default;
 
   ScreenController(const ScreenController&) = delete;
@@ -35,6 +37,12 @@ class ScreenController : public ScreenControllerInterface,
   // Called by screens when the user presses the back or cancel button.
   void OnBackward(ScreenInterface* screen) override;
 
+  // Called by screens to show an error screen.
+  void OnError(ScreenType error_screen) override;
+
+  // Returns the `current_screen_` type.
+  ScreenType GetCurrentScreen() override;
+
   // Changes to the `kLanguageDropDownScreen` class.
   void SwitchLocale(ScreenInterface* screen) override;
 
@@ -43,15 +51,8 @@ class ScreenController : public ScreenControllerInterface,
   void UpdateLocale(ScreenInterface* screen,
                     int selected_locale_index) override;
 
-  ScreenType GetCurrentScreenForTest() { return current_screen_->GetType(); }
-
   void SetCurrentScreenForTest(ScreenType current_screen) {
     current_screen_ = CreateScreen(current_screen);
-  }
-
-  std::unique_ptr<ScreenInterface> GetCurrentScreenPtrForTest(
-      ScreenType current_screen) {
-    return CreateScreen(current_screen);
   }
 
  private:
@@ -69,6 +70,8 @@ class ScreenController : public ScreenControllerInterface,
   ProcessManager process_manager_;
 
   std::shared_ptr<DrawInterface> draw_utils_;
+
+  std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   // Records the key press for each fd and key, where the index of the fd is the
   // row and the key code the column. Resets to false after key is released.

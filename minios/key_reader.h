@@ -31,6 +31,10 @@ extern const int kKeyVolUp;
 extern const int kKeyVolDown;
 extern const int kKeyPower;
 
+// Key state parameters.
+extern const int kFdsMax;
+extern const int kKeyMax;
+
 class KeyReader {
  public:
   // Default constructor can only access EvWaitForKeys.

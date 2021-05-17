@@ -86,6 +86,7 @@ if (use.test) {
       "recovery_installer_test.cc",
       "screen_base_test.cc",
       "screen_controller_test.cc",
+      "screen_network_test.cc",
       "screens_test.cc",
       "utils_test.cc",
     ]

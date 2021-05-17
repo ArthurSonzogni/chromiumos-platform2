@@ -68,11 +68,6 @@ class DrawInterface {
   // Clears screen and shows footer and language drop down menu.
   virtual void MessageBaseScreen() = 0;
 
-  // Shows network menu drop down button on the screen. Button is
-  // highlighted if it is currently selected. Selecting this button directs to
-  // the expanded network dropdown.
-  virtual void ShowCollapsedNetworkDropDown(bool is_selected) = 0;
-
   // Shows the language dropdown button.
   virtual void ShowLanguageDropdown(int current_index) = 0;
 
@@ -93,6 +88,12 @@ class DrawInterface {
 
   // Returns the default button width, read from constants.
   virtual int GetDefaultButtonWidth() = 0;
+
+  // Returns the frecon canvas size.
+  virtual int GetFreconCanvasSize() = 0;
+
+  // Returns the screen assets path.
+  virtual base::FilePath GetScreenPath() = 0;
 };
 
 }  // namespace minios

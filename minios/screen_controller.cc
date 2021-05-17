@@ -14,9 +14,12 @@
 
 namespace minios {
 
-ScreenController::ScreenController(std::shared_ptr<DrawInterface> draw_utils)
+ScreenController::ScreenController(
+    std::shared_ptr<DrawInterface> draw_utils,
+    std::shared_ptr<NetworkManagerInterface> network_manager)
     : key_reader_(KeyReader{/*include_usb=*/true}),
       draw_utils_(draw_utils),
+      network_manager_(network_manager),
       key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {}
 
 void ScreenController::Init() {
@@ -43,7 +46,8 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
     case ScreenType::kWelcomeScreen:
       return std::make_unique<ScreenWelcome>(draw_utils_, this);
     case ScreenType::kNetworkDropDownScreen:
-      return std::make_unique<ScreenNetwork>(draw_utils_, this);
+      return std::make_unique<ScreenNetwork>(draw_utils_, network_manager_,
+                                             this);
     case ScreenType::kLanguageDropDownScreen:
       return std::make_unique<ScreenLanguageDropdown>(draw_utils_, this);
     default:
@@ -68,6 +72,8 @@ void ScreenController::OnForward(ScreenInterface* screen) {
 void ScreenController::OnBackward(ScreenInterface* screen) {
   switch (screen->GetType()) {
     case ScreenType::kWelcomeScreen:
+    case ScreenType::kExpandedNetworkDropDownScreen:
+      // Not moving to a new screen. Just reset the state of the current screen.
       current_screen_->Reset();
       break;
     case ScreenType::kNetworkDropDownScreen:
@@ -80,6 +86,26 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
   current_screen_->Show();
 }
 
+void ScreenController::OnError(ScreenType error_screen) {
+  switch (error_screen) {
+    case ScreenType::kDownloadError:
+    case ScreenType::kNetworkError:
+    case ScreenType::kPasswordError:
+    case ScreenType::kConnectionError:
+    case ScreenType::kGeneralError:
+      current_screen_ = CreateScreen(ScreenType::kGeneralError);
+      break;
+    default:
+      LOG(ERROR) << "Not a valid error screen.";
+      break;
+  }
+  current_screen_->Show();
+}
+
+ScreenType ScreenController::GetCurrentScreen() {
+  return current_screen_->GetType();
+}
+
 void ScreenController::SwitchLocale(ScreenInterface* screen) {
   previous_screen_ = std::move(current_screen_);
   current_screen_ = CreateScreen(ScreenType::kLanguageDropDownScreen);
@@ -90,11 +116,11 @@ void ScreenController::UpdateLocale(ScreenInterface* screen,
                                     int selected_locale_index) {
   // Change locale and update constants.
   CHECK(draw_utils_) << "Screen drawing utility not available.";
-  draw_utils_->LocaleChange(selected_locale_index);
   if (screen->GetType() != ScreenType::kLanguageDropDownScreen) {
     LOG(WARNING) << "Only the language dropdown screen can change the locale.";
     return;
   }
+  draw_utils_->LocaleChange(selected_locale_index);
   current_screen_ = std::move(previous_screen_);
   current_screen_->Reset();
   current_screen_->Show();

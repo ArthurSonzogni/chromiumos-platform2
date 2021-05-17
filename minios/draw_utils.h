@@ -46,10 +46,6 @@ extern const char kScreens[];
 extern const int kFreconScalingFactor;
 extern const int kCanvasSize;
 
-// Key state parameters.
-extern const int kFdsMax;
-extern const int kKeyMax;
-
 // `DrawUtils` contains all the different components needed to show MiniOS
 // Screens.
 class DrawUtils : public DrawInterface {
@@ -102,7 +98,11 @@ class DrawUtils : public DrawInterface {
 
   void MessageBaseScreen() override;
 
-  void ShowCollapsedNetworkDropDown(bool is_selected) override;
+  // Shows network menu drop down button on the screen. Button is
+  // highlighted if it is currently selected. Selecting this button directs to
+  // the expanded network dropdown.
+  // TODO(vyshu): Remove once screen.h is deleted.
+  void ShowCollapsedNetworkDropDown(bool is_selected);
 
   void ShowLanguageDropdown(int current_index) override;
 
@@ -115,6 +115,10 @@ class DrawUtils : public DrawInterface {
   int GetSupportedLocalesSize() override { return supported_locales_.size(); }
 
   int GetDefaultButtonWidth() override { return default_button_width_; }
+
+  int GetFreconCanvasSize() override { return frecon_canvas_size_; }
+
+  base::FilePath GetScreenPath() override { return screens_path_; }
 
   // Override the root directory for testing. Default is '/'.
   void SetRootForTest(const std::string& test_root) {
