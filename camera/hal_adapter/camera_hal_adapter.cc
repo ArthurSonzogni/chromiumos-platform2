@@ -22,6 +22,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata_hidden.h>
