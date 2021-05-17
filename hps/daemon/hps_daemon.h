@@ -32,8 +32,12 @@ class HpsDaemon : public brillo::DBusServiceDaemon,
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   // Methods for HpsInterface
+  bool EnableFeature(brillo::ErrorPtr* error, uint8_t feature) override;
+
+  bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature) override;
+
   bool GetFeatureResult(brillo::ErrorPtr* error,
-                        uint32_t feature,
+                        uint8_t feature,
                         uint16_t* result) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

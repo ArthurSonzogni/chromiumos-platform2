@@ -25,8 +25,16 @@ void HpsDaemon::RegisterDBusObjectsAsync(
                             /*failure_is_fatal=*/true));
 }
 
+bool HpsDaemon::EnableFeature(brillo::ErrorPtr* error, uint8_t feature) {
+  return true;
+}
+
+bool HpsDaemon::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
+  return true;
+}
+
 bool HpsDaemon::GetFeatureResult(brillo::ErrorPtr* error,
-                                 uint32_t feature,
+                                 uint8_t feature,
                                  uint16_t* result) {
   *result = 0;
   return true;

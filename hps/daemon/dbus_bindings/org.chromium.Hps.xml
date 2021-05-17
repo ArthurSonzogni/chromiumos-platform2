@@ -14,11 +14,24 @@
 <node name="/org/chromium/Hps"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Hps">
-    <method name="GetFeatureResult">
-      <arg name="feature" type="u" direction="in">
+    <method name="EnableFeature">
+      <arg name="feature" type="y" direction="in">
       <tp:docstring>
-        Feature to query for the result.
-        E.g. 1.
+        ID of feature to be enabled.
+      </tp:docstring>
+      </arg>
+    </method>
+    <method name="DisableFeature">
+      <arg name="feature" type="y" direction="in">
+      <tp:docstring>
+        ID of feature to be disabled.
+      </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetFeatureResult">
+      <arg name="feature" type="y" direction="in">
+      <tp:docstring>
+        ID of Feature to query for the result.
       </tp:docstring>
       </arg>
       <arg name="result" type="q" direction="out">
