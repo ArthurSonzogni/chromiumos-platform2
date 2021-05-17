@@ -248,6 +248,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "path to a custom bios image. Only valid on untrusted VMs.",
             "PATH",
         );
+        opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
 
         let matches = opts.parse(self.args)?;
 
@@ -288,7 +289,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             !matches.opt_present("no-start-lxd"),
         ));
         self.metrics_send_sample("Vm.VmcStartSuccess");
-        try_command!(self.methods.vsh_exec(vm_name, &user_id_hash));
+
+        if !matches.opt_present("no-shell") {
+            try_command!(self.methods.vsh_exec(vm_name, &user_id_hash));
+        }
 
         Ok(())
     }
@@ -304,6 +308,47 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         try_command!(self.methods.vm_stop(vm_name, &user_id_hash));
 
         Ok(())
+    }
+
+    fn launch(&mut self) -> VmcResult {
+        if self.args.len() != 1 {
+            return Err(ExpectedName.into());
+        }
+        match self.args[0] {
+            "borealis" => Command {
+                methods: self.methods,
+                args: &[
+                    "--enable-gpu",
+                    "--no-start-lxd",
+                    "--enable-vulkan",
+                    "--dlc-id=borealis-dlc",
+                    "borealis",
+                ],
+                environ: self.environ,
+            }
+            .start(),
+            "crostini" => {
+                Command {
+                    methods: self.methods,
+                    args: &["--no-shell", "--enable-gpu", "termina"],
+                    environ: self.environ,
+                }
+                .start()?;
+                Command {
+                    methods: self.methods,
+                    args: &["termina", "penguin"],
+                    environ: self.environ,
+                }
+                .container()
+            }
+            "termina" => Command {
+                methods: self.methods,
+                args: &["--enable-gpu", "termina"],
+                environ: self.environ,
+            }
+            .start(),
+            _ => Err(ExpectedName.into()),
+        }
     }
 
     fn create(&mut self) -> VmcResult {
@@ -799,6 +844,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 const USAGE: &str = r#"
    [ start [--enable-gpu] [--enable-vulkan] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] <name> |
      stop <name> |
+     launch <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
      adjust <name> <operation> [additional parameters] |
@@ -858,6 +904,7 @@ impl Frontend for Vmc {
         match command_name {
             "start" => command.start(),
             "stop" => command.stop(),
+            "launch" => command.launch(),
             "create" => command.create(),
             "create-extra-disk" => command.create_extra_disk(),
             "adjust" => command.adjust(),
@@ -1014,6 +1061,9 @@ mod tests {
             &["vmc", "start", "--bios", "mybios", "termina"],
             &["vmc", "start", "--bios=mybios", "termina"],
             &["vmc", "stop", "termina"],
+            &["vmc", "launch", "borealis"],
+            &["vmc", "launch", "crostini"],
+            &["vmc", "launch", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
             &[
@@ -1116,6 +1166,8 @@ mod tests {
             &["vmc", "start", "termina", "--bios"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
+            &["vmc", "launch", "borealis", "--enable-gpu"],
+            &["vmc", "launch", "notarealvm"],
             &["vmc", "create"],
             &["vmc", "create", "-p"],
             &[
