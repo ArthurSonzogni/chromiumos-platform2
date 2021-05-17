@@ -40,6 +40,7 @@ class RmadInterfaceImpl final : public RmadInterface {
  private:
   void Initialize();
   bool StoreStateHistory();
+  bool CanGoBack() const;
 
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;

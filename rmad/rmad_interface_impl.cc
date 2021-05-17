@@ -104,6 +104,7 @@ void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
   if (state_handler) {
     reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
+    reply.set_can_go_back(CanGoBack());
   } else {
     reply.set_error(RmadErrorCode::RMAD_ERROR_RMA_NOT_REQUIRED);
   }
@@ -146,9 +147,7 @@ void RmadInterfaceImpl::TransitionNextState(
 
     reply.set_error(error);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
-    // TODO(gavindodd): Set can go back by inspecting stack?
-    // Add a 'repeatable' flag on state handlers?
-    reply.set_can_go_back(state_history_.size() > 1);
+    reply.set_can_go_back(CanGoBack());
   } else {
     // TODO(gavindodd): This is a pretty bad error. What next?
     reply.set_error(RmadErrorCode::RMAD_ERROR_REQUEST_INVALID);
@@ -161,32 +160,29 @@ void RmadInterfaceImpl::TransitionNextState(
 void RmadInterfaceImpl::TransitionPreviousState(
     const GetStateCallback& callback) {
   GetStateReply reply;
+
   auto state_handler =
       state_handler_manager_->GetStateHandler(current_state_case_);
   CHECK(state_handler);
-  if (state_history_.size() > 1) {
-    auto prev_state_handler = state_handler_manager_->GetStateHandler(
-        *std::prev(state_history_.end(), 2));
-    CHECK(prev_state_handler);
-    if (state_handler->IsRepeatable() && prev_state_handler->IsRepeatable()) {
-      // Clear data from current state.
-      state_handler->ResetState();
-      // Remove current state from stack.
-      state_history_.pop_back();
-      StoreStateHistory();
-      // Get new state.
-      current_state_case_ = state_history_.back();
-      // Update the state handler for the new state.
-      state_handler = prev_state_handler;
-      reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
-    } else {
-      reply.set_error(RmadErrorCode::RMAD_ERROR_TRANSITION_FAILED);
-    }
+  if (CanGoBack()) {
+    // Clear data from current state.
+    state_handler->ResetState();
+    // Remove current state from stack.
+    state_history_.pop_back();
+    StoreStateHistory();
+    // Get new state and update state handler.
+    current_state_case_ = state_history_.back();
+    state_handler =
+        state_handler_manager_->GetStateHandler(current_state_case_);
+    CHECK(state_handler);
+    reply.set_error(RmadErrorCode::RMAD_ERROR_OK);
   } else {
     reply.set_error(RmadErrorCode::RMAD_ERROR_TRANSITION_FAILED);
   }
   // In all cases fetch whatever the current state is.
   reply.set_allocated_state(new RmadState(state_handler->GetState()));
+  reply.set_can_go_back(CanGoBack());
+
   callback.Run(reply);
 }
 
@@ -212,6 +208,20 @@ void RmadInterfaceImpl::GetLogPath(const GetLogPathCallback& callback) {
   // TODO(gavindodd): Return a valid log file path and add tests.
   std::string path = "";
   callback.Run(path);
+}
+
+bool RmadInterfaceImpl::CanGoBack() const {
+  if (state_history_.size() > 1) {
+    const auto current_state_handler =
+        state_handler_manager_->GetStateHandler(state_history_.back());
+    const auto prev_state_handler = state_handler_manager_->GetStateHandler(
+        *std::prev(state_history_.end(), 2));
+    CHECK(current_state_handler);
+    CHECK(prev_state_handler);
+    return (current_state_handler->IsRepeatable() &&
+            prev_state_handler->IsRepeatable());
+  }
+  return false;
 }
 
 }  // namespace rmad

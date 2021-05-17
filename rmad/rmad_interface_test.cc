@@ -132,6 +132,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -163,6 +164,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -178,6 +180,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_EQ(true, reply.can_go_back());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -193,6 +196,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_EQ(true, reply.can_go_back());
   };
   // TODO(gavindodd): Use mock log to check for expected error.
   rmad_interface.GetCurrentState(base::Bind(callback));
@@ -209,6 +213,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -223,6 +228,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -239,6 +245,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_EQ(true, reply.can_go_back());
   };
   rmad_interface.TransitionNextState(request, base::Bind(callback));
 }
@@ -271,6 +278,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
@@ -286,6 +294,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
@@ -301,6 +310,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
