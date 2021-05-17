@@ -7,6 +7,11 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_COMMON_TYPES_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_COMMON_TYPES_H_
 
+#include <cstdint>
+#include <string>
+
+#include <base/strings/stringprintf.h>
+
 namespace cros {
 
 /**
@@ -41,6 +46,9 @@ struct Size {
   }
   bool operator==(const Size& rhs) const {
     return width == rhs.width && height == rhs.height;
+  }
+  std::string ToString() const {
+    return base::StringPrintf("%ux%u", width, height);
   }
 };
 
