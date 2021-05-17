@@ -303,6 +303,10 @@ void CellularCapability3gpp::StartModem(Error* error,
   SLOG(this, 1) << __func__;
   InitProxies();
   CHECK(!callback.is_null());
+  if (!modem_proxy_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState, "No proxy");
+    return;
+  }
   Error local_error(Error::kOperationInitiated);
   metrics_->NotifyDeviceEnableStarted(cellular()->interface_index());
   modem_proxy_->Enable(true, &local_error,
@@ -370,6 +374,11 @@ void CellularCapability3gpp::StopModem(Error* error,
 void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   Error error;
+  if (!modem_proxy_) {
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
+    callback.Run(error);
+    return;
+  }
   metrics_->NotifyDeviceDisableStarted(cellular()->interface_index());
   modem_proxy_->Enable(
       false, &error,
@@ -401,6 +410,11 @@ void CellularCapability3gpp::Stop_DisableCompleted(
 void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   Error error;
+  if (!modem_proxy_) {
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
+    callback.Run(error);
+    return;
+  }
   modem_proxy_->SetPowerState(
       MM_MODEM_POWER_STATE_LOW, &error,
       base::Bind(&CellularCapability3gpp::Stop_PowerDownCompleted,
@@ -984,6 +998,10 @@ void CellularCapability3gpp::Reset(Error* error,
                           "Already resetting");
     return;
   }
+  if (!modem_proxy_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState, "No proxy");
+    return;
+  }
   ResultCallback cb = base::Bind(&CellularCapability3gpp::OnResetReply,
                                  weak_ptr_factory_.GetWeakPtr(), callback);
   modem_proxy_->Reset(error, cb, kTimeoutReset);
@@ -1439,7 +1457,11 @@ void CellularCapability3gpp::OnAllSimPropertiesReceived() {
 
 void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
   size_t slot_id = slot + 1;
-  LOG(INFO) << "SetPrimarySimSlot: " << slot_id << " (index=" << slot << ")";
+  LOG(INFO) << __func__ << ": " << slot_id << " (index=" << slot << ")";
+  if (!modem_proxy_) {
+    LOG(ERROR) << __func__ << ": No proxy";
+    return;
+  }
   modem_proxy_->SetPrimarySimSlot(
       slot_id, base::Bind([](const Error& error) {
         if (error.IsFailure()) {
