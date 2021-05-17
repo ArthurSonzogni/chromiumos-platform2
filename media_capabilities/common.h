@@ -29,7 +29,8 @@ enum class Profile : int32_t {
   kVP8,
   kVP9Profile0,
   kVP9Profile2,
-  // TODO(b/172229001): Add AV1, HEVC, HEVC10 profiles.
+  kAV1Main,
+  // TODO(b/172229001): Add HEVC and HEVC10 profiles.
   kJPEG,
 };
 

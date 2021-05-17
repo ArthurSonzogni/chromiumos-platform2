@@ -51,6 +51,8 @@ Profile VAProfileToProfile(VAProfile va_profile) {
       return Profile::kVP9Profile2;
     case VAProfileJPEGBaseline:
       return Profile::kJPEG;
+    case VAProfileAV1Profile0:
+      return Profile::kAV1Main;
     default:
       return Profile::kNone;
   }
@@ -81,6 +83,7 @@ std::vector<VAEntrypoint> GetVAEntrypoints(Profile profile, bool decode) {
     case Profile::kVP8:
     case Profile::kVP9Profile0:
     case Profile::kVP9Profile2:
+    case Profile::kAV1Main:
       return {VAEntrypointEncSlice, VAEntrypointEncSliceLP};
     case Profile::kJPEG:
       return {VAEntrypointEncPicture};
@@ -107,6 +110,8 @@ std::vector<uint32_t> GetVARTFormats(Profile profile, bool decode) {
         return {VA_RT_FORMAT_YUV420};
     case Profile::kVP9Profile2:
       return {VA_RT_FORMAT_YUV420_10};
+    case Profile::kAV1Main:
+      return {VA_RT_FORMAT_YUV420, VA_RT_FORMAT_YUV420_10};
     case Profile::kNone:
     default:
       LOG(FATAL) << "Unexpected profile: " << static_cast<int32_t>(profile);

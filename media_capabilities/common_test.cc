@@ -86,6 +86,12 @@ TEST(CommonTest, CapabilityConstructorAndToString) {
   cap = Capability(Profile::kVP9Profile2, true, Resolution::k2160p,
                    Subsampling::kYUV420, ColorDepth::k10bit);
   EXPECT_EQ(cap.ToString(), "vp9_2_decode_2160p_10bpp");
+  cap = Capability(Profile::kAV1Main, true, Resolution::k1080p,
+                   Subsampling::kYUV420, ColorDepth::k8bit);
+  EXPECT_EQ(cap.ToString(), "av1_main_decode_1080p");
+  cap = Capability(Profile::kAV1Main, true, Resolution::k2160p,
+                   Subsampling::kYUV420, ColorDepth::k10bit);
+  EXPECT_EQ(cap.ToString(), "av1_main_decode_2160p_10bpp");
   cap = Capability(CameraDescription::kBuiltinUSBCamera);
   EXPECT_EQ(cap.ToString(), "builtin_usb_camera");
   cap = Capability(CameraDescription::kVividCamera);
@@ -102,6 +108,10 @@ TEST(CommonTest, CapabilityCompareOperators) {
                  Subsampling::kYUV420, ColorDepth::k8bit),
       Capability(Profile::kVP8, false, Resolution::k1080p, Subsampling::kYUV420,
                  ColorDepth::k8bit),
+      Capability(Profile::kAV1Main, true, Resolution::k1080p,
+                 Subsampling::kYUV420, ColorDepth::k10bit),
+      Capability(Profile::kAV1Main, true, Resolution::k2160p,
+                 Subsampling::kYUV420, ColorDepth::k8bit),
       Capability(Profile::kJPEG, true, Resolution::k1080p, Subsampling::kYUV420,
                  ColorDepth::k8bit),
       Capability(Profile::kJPEG, false, Resolution::k1080p,
@@ -131,6 +141,10 @@ TEST(CommonTest, CapabilitySortAndUnique) {
                  Subsampling::kYUV420, ColorDepth::k8bit),
       Capability(Profile::kVP8, false, Resolution::k1080p, Subsampling::kYUV420,
                  ColorDepth::k8bit),
+      Capability(Profile::kAV1Main, true, Resolution::k1080p,
+                 Subsampling::kYUV420, ColorDepth::k10bit),
+      Capability(Profile::kAV1Main, true, Resolution::k2160p,
+                 Subsampling::kYUV420, ColorDepth::k8bit),
       Capability(Profile::kJPEG, true, Resolution::k1080p, Subsampling::kYUV420,
                  ColorDepth::k8bit),
       Capability(Profile::kJPEG, false, Resolution::k1080p,

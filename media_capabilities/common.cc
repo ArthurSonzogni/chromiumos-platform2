@@ -145,6 +145,9 @@ std::string Capability::ToString() const {
     case Profile::kVP9Profile2:
       output = "vp9_2";
       break;
+    case Profile::kAV1Main:
+      output = "av1_main";
+      break;
     case Profile::kJPEG:
       output = "jpeg";
       break;
