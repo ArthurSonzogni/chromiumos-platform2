@@ -166,6 +166,12 @@ class TpmUtility {
   virtual bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                               std::string* ekm) = 0;
 
+  // Reads the endorsement public key of `key_type` from TPM and extracts the
+  // "bytes". For RSA key type, it is the modulus, and for ECC key type it is
+  // the concatenation of X and Y components of the public key.
+  virtual bool GetEndorsementPublicKeyBytes(KeyType key_type,
+                                            std::string* ek_bytes) = 0;
+
   // Creates identity of |key_type| type and stores the output from TPM into
   // |identity|.
   virtual bool CreateIdentity(KeyType key_type,

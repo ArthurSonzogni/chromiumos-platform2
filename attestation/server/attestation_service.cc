@@ -3410,15 +3410,20 @@ std::string AttestationService::ComputeEnterpriseEnrollmentNonce() {
 
 std::string AttestationService::ComputeEnterpriseEnrollmentId() {
   std::string den = ComputeEnterpriseEnrollmentNonce();
-  if (den.empty())
+  if (den.empty()) {
+    LOG(ERROR) << __func__ << ": Failed to compute DEN.";
     return "";
+  }
 
-  std::string ekm;
-  if (!tpm_utility_->GetEndorsementPublicKeyModulus(KEY_TYPE_RSA, &ekm))
+  std::string ek_bytes;
+  if (!tpm_utility_->GetEndorsementPublicKeyBytes(
+          kEndorsementKeyTypeForEnrollmentID, &ek_bytes)) {
+    LOG(ERROR) << __func__ << ": Failed to key EK bytes.";
     return "";
+  }
 
-  // Compute the EID based on den and ekm.
-  return crypto_utility_->HmacSha256(den, ekm);
+  // Compute the EID based on DEN and EK bytes.
+  return crypto_utility_->HmacSha256(den, ek_bytes);
 }
 
 KeyType AttestationService::GetEndorsementKeyType() const {

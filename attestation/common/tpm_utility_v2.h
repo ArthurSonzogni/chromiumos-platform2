@@ -83,6 +83,8 @@ class TpmUtilityV2 : public TpmUtilityCommon {
                  std::string* quote) override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
+  bool GetEndorsementPublicKeyBytes(KeyType key_type,
+                                    std::string* ek_bytes) override;
 
   bool CreateIdentity(KeyType key_type,
                       AttestationDatabase::Identity* identity) override;
@@ -110,6 +112,10 @@ class TpmUtilityV2 : public TpmUtilityCommon {
   // Gets the specified endorsement key. Returns true on success and provides
   // the |key_handle|.
   bool GetEndorsementKey(KeyType key_type, trunks::TPM_HANDLE* key_handle);
+
+  // Gets the ECC EK's public key formatted as concatenation of X and Y
+  // component, and stores in `xy`.
+  bool GetECCEndorsementPublicKey(std::string* xy);
 
   std::map<KeyType, trunks::TPM_HANDLE> endorsement_keys_;
 

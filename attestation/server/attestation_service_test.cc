@@ -713,7 +713,7 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
 }
 
 TEST_F(AttestationServiceBaseTest, GetEnrollmentId) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyModulus(_, _))
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyBytes(_, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(std::string("ekm")), Return(true)));
   brillo::SecureBlob abe_data(0xCA, 32);
@@ -2201,7 +2201,7 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
 }
 
 TEST_P(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyModulus(_, _))
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyBytes(_, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(std::string("ekm")), Return(true)));
   brillo::SecureBlob abe_data(0xCA, 32);

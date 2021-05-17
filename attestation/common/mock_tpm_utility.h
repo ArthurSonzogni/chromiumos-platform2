@@ -68,6 +68,10 @@ class MockTpmUtility : public TpmUtility {
               (KeyType, std::string*),
               (override));
   MOCK_METHOD(bool,
+              GetEndorsementPublicKeyBytes,
+              (KeyType, std::string*),
+              (override));
+  MOCK_METHOD(bool,
               GetEndorsementCertificate,
               (KeyType, std::string*),
               (override));

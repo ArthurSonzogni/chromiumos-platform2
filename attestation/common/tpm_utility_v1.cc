@@ -1314,6 +1314,15 @@ bool TpmUtilityV1::GetEndorsementPublicKeyModulus(KeyType key_type,
   return true;
 }
 
+bool TpmUtilityV1::GetEndorsementPublicKeyBytes(KeyType key_type,
+                                                std::string* ek_bytes) {
+  if (key_type != KEY_TYPE_RSA) {
+    LOG(ERROR) << __func__ << ": Only RSA supported on TPM1.2.";
+    return false;
+  }
+  return GetEndorsementPublicKeyModulus(key_type, ek_bytes);
+}
+
 bool TpmUtilityV1::CreateIdentity(KeyType key_type,
                                   AttestationDatabase::Identity* identity) {
   if (KEY_TYPE_RSA != key_type) {

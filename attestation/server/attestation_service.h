@@ -64,6 +64,13 @@ namespace attestation {
 // safe because the thread is owned by this class (so it is guaranteed not to
 // process a task after destruction). Weak pointers are used to post replies
 // back to the main thread.
+
+#if USE_GENERIC_TPM2
+constexpr static KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_ECC;
+#else
+constexpr static KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_RSA;
+#endif
+
 class AttestationService : public AttestationInterface {
  public:
   using IdentityCertificateMap = google::protobuf::

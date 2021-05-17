@@ -32,6 +32,7 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
 const unsigned int kWellKnownExponent = 65537;
+constexpr size_t kEccKeyCoordinateByteLength = 32;
 
 // TODO(crbug/916023): move these utility functions to shared library.
 inline const uint8_t* StringToByteBuffer(const char* str) {
@@ -1166,6 +1167,62 @@ bool TpmUtilityV2::GetEndorsementPublicKeyModulus(KeyType key_type,
 
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
+}
+
+bool TpmUtilityV2::GetEndorsementPublicKeyBytes(KeyType key_type,
+                                                std::string* ek_bytes) {
+  if (key_type == KEY_TYPE_RSA) {
+    if (!GetEndorsementPublicKeyModulus(key_type, ek_bytes)) {
+      LOG(ERROR) << __func__ << ": Failed to get RSA EK modulus.";
+      return false;
+    }
+    return true;
+  } else if (key_type == KEY_TYPE_ECC) {
+    if (!GetECCEndorsementPublicKey(ek_bytes)) {
+      LOG(ERROR) << __func__ << ": Failed to get ECC EK public key.";
+      return false;
+    }
+    return true;
+  } else {
+    LOG(ERROR) << __func__ << ": Unsupported key type: " << key_type;
+    return false;
+  }
+}
+
+bool TpmUtilityV2::GetECCEndorsementPublicKey(std::string* xy) {
+  TPM_HANDLE key_handle;
+
+  if (!GetEndorsementKey(KEY_TYPE_ECC, &key_handle)) {
+    LOG(ERROR) << __func__ << ": EK not available.";
+    return false;
+  }
+
+  trunks::TPMT_PUBLIC public_area;
+  TPM_RC result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get EK public area: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  const std::string x =
+      StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.x);
+  const std::string y =
+      StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.y);
+
+  // By TPM spec, TPM is supposed to pad leading zeros for a short ecc point
+  // (i.e., size < 32), and the only supported curve by ChromeOS
+  // (TPM_ECC_NIST_P256) has 32 bytes for X and Y, respectively.
+  if (x.size() != kEccKeyCoordinateByteLength) {
+    LOG(DFATAL) << __func__ << ": X coordinate too short.";
+    return false;
+  }
+  if (y.size() != kEccKeyCoordinateByteLength) {
+    LOG(DFATAL) << __func__ << ": Y coordinate too short.";
+    return false;
+  }
+  *xy = x + y;
+
+  return true;
 }
 
 bool TpmUtilityV2::CreateIdentity(KeyType key_type,

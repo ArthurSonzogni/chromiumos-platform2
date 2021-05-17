@@ -81,6 +81,8 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
+  bool GetEndorsementPublicKeyBytes(KeyType key_type,
+                                    std::string* ek_bytes) override;
 
   bool CreateIdentity(KeyType key_type,
                       AttestationDatabase::Identity* identity) override;

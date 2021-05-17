@@ -91,7 +91,7 @@ class TpmUtilityTest : public testing::Test {
   }
 
   trunks::TPMT_PUBLIC GetValidEccPublicKey(
-      std::string* serialized_public_area) {
+      std::string* x, std::string* y, std::string* serialized_public_area) {
     constexpr char kValidECPointX[] =
         "06845c8f3ac8b98d0e8163d0475ad4c8be1710c9f2d39965719e3684a7b3f40b";
     constexpr char kValidECPointY[] =
@@ -104,6 +104,9 @@ class TpmUtilityTest : public testing::Test {
     public_area.unique.ecc.x.size = point_tmp_buffer.size();
     memcpy(public_area.unique.ecc.x.buffer, point_tmp_buffer.data(),
            point_tmp_buffer.size());
+    if (x) {
+      x->assign(point_tmp_buffer.begin(), point_tmp_buffer.end());
+    }
 
     point_tmp_buffer.clear();
     CHECK(base::HexStringToBytes(kValidECPointY, &point_tmp_buffer));
@@ -111,6 +114,9 @@ class TpmUtilityTest : public testing::Test {
     public_area.unique.ecc.y.size = point_tmp_buffer.size();
     memcpy(public_area.unique.ecc.y.buffer, point_tmp_buffer.data(),
            point_tmp_buffer.size());
+    if (y) {
+      y->assign(point_tmp_buffer.begin(), point_tmp_buffer.end());
+    }
 
     public_area.type = trunks::TPM_ALG_ECC;
     public_area.name_alg = trunks::TPM_ALG_SHA256;
@@ -122,6 +128,12 @@ class TpmUtilityTest : public testing::Test {
       Serialize_TPMT_PUBLIC(public_area, serialized_public_area);
     }
     return public_area;
+  }
+
+  trunks::TPMT_PUBLIC GetValidEccPublicKey(
+      std::string* serialized_public_area) {
+    return GetValidEccPublicKey(/*x=*/nullptr, /*y=*/nullptr,
+                                serialized_public_area);
   }
 
   void ExpectGetTpmStatus() {
@@ -440,6 +452,45 @@ TEST_F(TpmUtilityTest, GetEndorsementPublicKeyModulusNoKey) {
   EXPECT_FALSE(
       tpm_utility_->GetEndorsementPublicKeyModulus(KEY_TYPE_ECC, &key));
   EXPECT_TRUE(key.empty());
+}
+
+TEST_F(TpmUtilityTest, GetEndorsementPublicKeyBytesRsaSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKeyModulus(_))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  std::string ek_bytes;
+  EXPECT_TRUE(
+      tpm_utility_->GetEndorsementPublicKeyBytes(KEY_TYPE_RSA, &ek_bytes));
+}
+
+TEST_F(TpmUtilityTest, GetEndorsementPublicKeyBytesRsaFailure) {
+  EXPECT_CALL(mock_tpm_utility_, GetPublicRSAEndorsementKeyModulus(_))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  std::string ek_bytes;
+  EXPECT_FALSE(
+      tpm_utility_->GetEndorsementPublicKeyModulus(KEY_TYPE_RSA, &ek_bytes));
+  EXPECT_TRUE(ek_bytes.empty());
+}
+
+TEST_F(TpmUtilityTest, GetEndorsementPublicKeyBytesEccSuccess) {
+  ExpectGetTpmStatus();
+  std::string x, y;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(&x, &y, nullptr)),
+                      Return(TPM_RC_SUCCESS)));
+  std::string ek_bytes;
+  EXPECT_TRUE(
+      tpm_utility_->GetEndorsementPublicKeyBytes(KEY_TYPE_ECC, &ek_bytes));
+  EXPECT_EQ(ek_bytes, x + y);
+}
+
+TEST_F(TpmUtilityTest, GetEndorsementPublicKeyBytesEccFailure) {
+  ExpectGetTpmStatus();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  std::string ek_bytes;
+  EXPECT_FALSE(
+      tpm_utility_->GetEndorsementPublicKeyBytes(KEY_TYPE_ECC, &ek_bytes));
+  EXPECT_TRUE(ek_bytes.empty());
 }
 
 TEST_F(TpmUtilityTest, GetEndorsementCertificateRsa) {
