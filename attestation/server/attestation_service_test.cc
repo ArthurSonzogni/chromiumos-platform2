@@ -212,6 +212,9 @@ class AttestationServiceBaseTest : public testing::Test {
 #if USE_TPM2
     (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
     (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
+#if USE_GENERIC_TPM2
+    (*identity_data->mutable_nvram_quotes())[RMA_BYTES].set_quote("rma_bytes");
+#endif
     if (service_->GetEndorsementKeyType() != KEY_TYPE_RSA) {
       (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quote(
           "rsa_pub_ek_cert");
@@ -1998,6 +2001,9 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
 #if USE_TPM2
   EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
   EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+#if USE_GENERIC_TPM2
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(RMA_BYTES));
+#endif
   EXPECT_EQ(service_->GetEndorsementKeyType() != KEY_TYPE_RSA ? 1 : 0,
             identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
 #else
@@ -2220,7 +2226,7 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
 }
 
 TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
-#if USE_TPM2
+#if USE_TPM2 && !USE_GENERIC_TPM2
   EXPECT_CALL(mock_tpm_utility_,
               CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>("rsu_device_id_quoted_data"),
@@ -2241,10 +2247,14 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
     EXPECT_EQ(3, pca_request.nvram_quotes().size());
     EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
     EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+#if !USE_GENERIC_TPM2
     EXPECT_EQ("rsu_device_id",
               pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
     EXPECT_EQ("rsu_device_id_quoted_data",
               pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
+#else
+    EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
+#endif
 #else
     EXPECT_TRUE(pca_request.nvram_quotes().empty());
 #endif
@@ -2264,7 +2274,7 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
 
 TEST_P(AttestationServiceTest,
        CreateEnrollmentCertificateRequestSuccessWithUnattestedRsuDeviceId) {
-#if USE_TPM2
+#if USE_TPM2 && !USE_GENERIC_TPM2
   EXPECT_CALL(mock_tpm_utility_,
               CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
       .WillRepeatedly(Return(false));
@@ -2283,9 +2293,13 @@ TEST_P(AttestationServiceTest,
     EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
 #if USE_TPM2
-    EXPECT_EQ(2, pca_request.nvram_quotes().size());
+    //  for `USE_GENERIC_TPM2` case, we also have stand-alone counter.
+    EXPECT_EQ(USE_GENERIC_TPM2 ? 3 : 2, pca_request.nvram_quotes().size());
     EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
     EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+#if USE_GENERIC_TPM2
+    EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
+#endif
     EXPECT_EQ(pca_request.nvram_quotes().end(),
               pca_request.nvram_quotes().find(RSU_DEVICE_ID));
 #else
@@ -2307,7 +2321,7 @@ TEST_P(AttestationServiceTest,
 
 TEST_P(AttestationServiceTest,
        CreateEnrollmentCertificateRequestWithoutRsuDeviceIdSuccess) {
-#if USE_TPM2
+#if USE_TPM2 && !USE_GENERIC_TPM2
   EXPECT_CALL(mock_tpm_utility_,
               CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
       .WillRepeatedly(Return(false));
@@ -2326,11 +2340,16 @@ TEST_P(AttestationServiceTest,
     EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
 #if USE_TPM2
-    EXPECT_EQ(2, pca_request.nvram_quotes().size());
+    //  for `USE_GENERIC_TPM2` case, we also have stand-alone counter.
+    EXPECT_EQ(USE_GENERIC_TPM2 ? 3 : 2, pca_request.nvram_quotes().size());
     EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
     EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+#if USE_GENERIC_TPM2
+    EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
+#else
     EXPECT_EQ(pca_request.nvram_quotes().find(RSU_DEVICE_ID),
               pca_request.nvram_quotes().cend());
+#endif
 #else
     EXPECT_TRUE(pca_request.nvram_quotes().empty());
 #endif

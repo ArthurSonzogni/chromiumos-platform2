@@ -402,6 +402,10 @@ pca_agent::GetCertificateRequest ToPcaAgentCertRequest(
 
 #if USE_TPM2
 
+// For consistency with what we have in cr50 header, use all uppercases.
+constexpr uint32_t VIRTUAL_NV_INDEX_RMA_BYTES = 0x013fff04;
+constexpr uint32_t VIRTUAL_NV_INDEX_RMA_BYTES_SIZE = 8;
+
 // Description of virtual NVRAM indices used for attestation.
 const struct {
   NVRAMQuoteType quote_type;
@@ -416,14 +420,28 @@ const struct {
     {RSA_PUB_EK_CERT, "RSA Public EK Certificate",
      trunks::kRsaEndorsementCertificateIndex, 0},
     {RSU_DEVICE_ID, "RSU Device ID", VIRTUAL_NV_INDEX_RSU_DEV_ID,
-     VIRTUAL_NV_INDEX_RSU_DEV_ID_SIZE}};
+     VIRTUAL_NV_INDEX_RSU_DEV_ID_SIZE},
+    {RMA_BYTES, "RMA Bytes", VIRTUAL_NV_INDEX_RMA_BYTES,
+     VIRTUAL_NV_INDEX_RMA_BYTES_SIZE},
+};
 
+// TODO(b/188319058): abstract the lists of nvram quotes from attestation
+// service, so attestation service doesn't have to care about the details of
+// nvram quote type by TPM versions.
+#if USE_GENERIC_TPM2
+// Types of quotes being cached in the identity data.
+const NVRAMQuoteType kNvramQuoteTypeInIdentityData[] = {BOARD_ID, SN_BITS,
+                                                        RMA_BYTES};
+// Types of quotes needed to obtain an enrollment certificate.
+const NVRAMQuoteType kNvramQuoteTypeForEnrollmentCertificate[] = {
+    BOARD_ID, SN_BITS, RMA_BYTES};
+#else
 // Types of quotes being cached in the identity data.
 const NVRAMQuoteType kNvramQuoteTypeInIdentityData[] = {BOARD_ID, SN_BITS};
-
 // Types of quotes needed to obtain an enrollment certificate.
 const NVRAMQuoteType kNvramQuoteTypeForEnrollmentCertificate[] = {
     BOARD_ID, SN_BITS, RSU_DEVICE_ID};
+#endif
 
 #endif
 
