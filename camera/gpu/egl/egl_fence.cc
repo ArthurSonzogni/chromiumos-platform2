@@ -49,6 +49,7 @@ EglFence::EglFence() {
   if (display_ != EGL_NO_DISPLAY) {
     sync_ =
         g_eglCreateSyncKHR(display_, EGL_SYNC_NATIVE_FENCE_ANDROID, nullptr);
+    glFlush();
   }
   if (sync_ == EGL_NO_SYNC_KHR) {
     LOGF(ERROR) << "Failed to create EGL sync";
@@ -79,6 +80,9 @@ base::ScopedFD EglFence::GetNativeFd() {
     return base::ScopedFD();
   }
   const EGLint sync_fd = g_eglDupNativeFenceFDANDROID(display_, sync_);
+  if (sync_fd == EGL_NO_NATIVE_FENCE_FD_ANDROID) {
+    LOGF(ERROR) << "Failed to get native sync FD";
+  }
   return base::ScopedFD(sync_fd);
 }
 
