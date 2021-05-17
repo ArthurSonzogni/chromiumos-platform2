@@ -29,6 +29,65 @@
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/cros_camera_hal.h"
 
+namespace {
+
+// TODO(kamesan): Consolidate cros_config usages in camera HALs and here.
+struct NumberOfBuiltInCameras {
+  int mipi;
+  int usb;
+};
+
+struct CrosDeviceConfig {
+  std::string model_name;
+  base::Optional<NumberOfBuiltInCameras> num_cameras;
+};
+
+base::Optional<CrosDeviceConfig> GetCrosDeviceConfig() {
+  brillo::CrosConfig cros_config;
+  if (!cros_config.Init()) {
+    ADD_FAILURE() << "Failed to initialize CrOS config";
+    return base::nullopt;
+  }
+
+  CrosDeviceConfig config{};
+  if (!cros_config.GetString("/", "name", &config.model_name)) {
+    ADD_FAILURE() << "Failed to query model name";
+    config.model_name = "";
+  }
+
+  config.num_cameras = [&]() -> base::Optional<NumberOfBuiltInCameras> {
+    std::string count_str;
+    if (cros_config.GetString("/camera", "count", &count_str)) {
+      if (count_str == "0") {
+        return NumberOfBuiltInCameras{.mipi = 0, .usb = 0};
+      }
+    }
+    int mipi_count = 0, usb_count = 0;
+    std::string interface;
+    for (int i = 0;; ++i) {
+      if (!cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
+                                 "interface", &interface)) {
+        if (i == 0) {
+          return base::nullopt;
+        }
+        break;
+      }
+      if (interface == "mipi") {
+        ++mipi_count;
+      } else if (interface == "usb") {
+        ++usb_count;
+      } else {
+        ADD_FAILURE() << "Unknown camera interface: " << interface;
+      }
+    }
+    return NumberOfBuiltInCameras{.mipi = mipi_count, .usb = usb_count};
+  }();
+
+  return config;
+}
+
+}  // namespace
+
 namespace camera3_test {
 
 #define IGNORE_HARDWARE_LEVEL UINT8_MAX
@@ -392,44 +451,6 @@ static void InitPerfLog() {
   camera3_test::Camera3PerfLog::GetInstance()->SetCameraNameMap(name_map);
 }
 
-struct NumberOfBuiltInCameras {
-  int mipi;
-  int usb;
-};
-
-static base::Optional<NumberOfBuiltInCameras> GetNumberOfBuiltInCameras() {
-  NumberOfBuiltInCameras num_built_in_cams = {0};
-  brillo::CrosConfig cros_config;
-  if (!cros_config.Init()) {
-    ADD_FAILURE() << "Failed to initialize CrOS config";
-    return base::nullopt;
-  }
-
-  std::string count_str;
-  if (cros_config.GetString("/camera", "count", &count_str)) {
-    if (count_str == "0") {
-      return num_built_in_cams;
-    }
-  }
-  std::string interface;
-  for (int i = 0;; ++i) {
-    if (!cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                               "interface", &interface)) {
-      if (i == 0) {
-        return base::nullopt;
-      }
-      break;
-    }
-    if (interface == "mipi") {
-      ++num_built_in_cams.mipi;
-    } else {
-      ++num_built_in_cams.usb;
-    }
-  }
-
-  return num_built_in_cams;
-}
-
 static camera_module_t* GetCameraModule() {
   return g_cam_module;
 }
@@ -603,17 +624,17 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
-  auto num_built_in_cams = GetNumberOfBuiltInCameras();
-  if (num_built_in_cams.has_value()) {
+  base::Optional<CrosDeviceConfig> config = GetCrosDeviceConfig();
+  if (config.has_value() && config->num_cameras.has_value()) {
     if (camera_hal_path.empty()) {
       ASSERT_EQ(cam_module_.GetNumberOfCameras(),
-                num_built_in_cams->usb + num_built_in_cams->mipi)
+                config->num_cameras->usb + config->num_cameras->mipi)
           << "Incorrect number of cameras";
     } else if (camera_hal_path.value().find("usb") != std::string::npos) {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), num_built_in_cams->usb)
+      ASSERT_EQ(cam_module_.GetNumberOfCameras(), config->num_cameras->usb)
           << "Incorrect number of cameras";
     } else {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), num_built_in_cams->mipi)
+      ASSERT_EQ(cam_module_.GetNumberOfCameras(), config->num_cameras->mipi)
           << "Incorrect number of cameras";
     }
   } else {
@@ -1409,9 +1430,16 @@ bool InitializeTest(int* argc,
       "nocturne",
       "scarlet",
   };
+  const std::vector<std::string> kIgnoreSensorOrientationTestModels = {
+      "jelboz",
+      "jelboz360",
+  };
   std::string board = base::SysInfo::GetLsbReleaseBoard();
-  if (base::Contains(kIgnoreSensorOrientationTestBoards, board)) {
-    VLOG(1) << "Ignore SensorOrientationTest on " << board;
+  base::Optional<CrosDeviceConfig> config = GetCrosDeviceConfig();
+  std::string model = config.has_value() ? config->model_name : "";
+  if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
+      base::Contains(kIgnoreSensorOrientationTestModels, model)) {
+    LOG(INFO) << "Ignore SensorOrientationTest on " << board << "/" << model;
     AddGtestFilterNegativePattern("*SensorOrientationTest/*");
   }
 
