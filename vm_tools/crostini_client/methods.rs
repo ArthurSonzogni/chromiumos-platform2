@@ -1151,7 +1151,11 @@ impl Methods {
     }
 
     /// Checks if VM with given name/disk is running in Parallels.
-    fn is_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<bool, Box<dyn Error>> {
+    pub fn is_plugin_vm(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+    ) -> Result<bool, Box<dyn Error>> {
         let (images, _) = self.list_disk_images(
             user_id_hash,
             Some(StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM),

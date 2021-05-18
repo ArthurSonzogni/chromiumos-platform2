@@ -25,6 +25,7 @@ enum VmcError {
     ExpectedName,
     ExpectedNoArgs,
     ExpectedPath,
+    ExpectedPluginVm,
     ExpectedSize,
     ExpectedU8Bus,
     ExpectedU8Device,
@@ -39,6 +40,7 @@ enum VmcError {
     ExpectedVmPort,
     InvalidEmail,
     InvalidPath(std::ffi::OsString),
+    InvalidVmType,
     MissingActiveSession,
     ExpectedPrivilegedFlagValue,
     UnknownSubcommand(String),
@@ -102,6 +104,10 @@ impl fmt::Display for VmcError {
             ),
             ExpectedName => write!(f, "expected <name>"),
             ExpectedPath => write!(f, "expected <path>"),
+            ExpectedPluginVm => write!(
+                f,
+                "unable to launch pluginvm. Have you run `vmc create -p PvmDefault <source media>`?"
+            ),
             ExpectedSize => write!(f, "expected <size>"),
             ExpectedVmAndContainer => write!(
                 f,
@@ -125,6 +131,7 @@ impl fmt::Display for VmcError {
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
+            InvalidVmType => write!(f, "valid VM type not provided"),
             MissingActiveSession => write!(
                 f,
                 "missing active session corresponding to $CROS_USER_ID_HASH"
@@ -341,13 +348,28 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 }
                 .container()
             }
+            "pluginvm" => {
+                if self
+                    .methods
+                    .is_plugin_vm("PvmDefault", &get_user_hash(self.environ)?)?
+                {
+                    Command {
+                        methods: self.methods,
+                        args: &["PvmDefault"],
+                        environ: self.environ,
+                    }
+                    .start()
+                } else {
+                    Err(ExpectedPluginVm.into())
+                }
+            }
             "termina" => Command {
                 methods: self.methods,
                 args: &["--enable-gpu", "termina"],
                 environ: self.environ,
             }
             .start(),
-            _ => Err(ExpectedName.into()),
+            _ => Err(InvalidVmType.into()),
         }
     }
 
@@ -967,6 +989,15 @@ mod tests {
                     let msg_return = msg.method_return().append1(sessions);
                     return Err(Ok(msg_return));
                 }
+                b"ListVmDisks" => {
+                    let mut resp = ListVmDisksResponse::new();
+                    resp.mut_images()
+                        .push_default()
+                        .set_name("PvmDefault".to_owned());
+                    resp.set_success(true);
+                    let msg_return = msg.method_return().append1(resp.write_to_bytes().unwrap());
+                    return Err(Ok(msg_return));
+                }
                 _ => {}
             }
         }
@@ -1063,6 +1094,7 @@ mod tests {
             &["vmc", "stop", "termina"],
             &["vmc", "launch", "borealis"],
             &["vmc", "launch", "crostini"],
+            &["vmc", "launch", "pluginvm"],
             &["vmc", "launch", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
