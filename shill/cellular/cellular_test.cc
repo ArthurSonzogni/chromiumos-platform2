@@ -1305,7 +1305,7 @@ TEST_P(CellularTest, ConnectWhileInhibited) {
   Error error;
   device_->Connect(device_->service().get(), &error);
   EXPECT_FALSE(error.IsSuccess());
-  EXPECT_EQ(Error::kOperationFailed, error.type());
+  EXPECT_EQ(Error::kWrongState, error.type());
 }
 
 TEST_P(CellularTest, PendingConnect) {

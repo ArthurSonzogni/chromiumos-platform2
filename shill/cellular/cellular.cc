@@ -1059,19 +1059,25 @@ void Cellular::Connect(CellularService* service, Error* error) {
   LOG(INFO) << __func__ << ": " << service->log_name();
 
   if (!capability_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Modem not available.");
     return;
   }
 
   if (inhibited_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Inhibited.");
     return;
   }
 
+  if (!connect_pending_iccid_.empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
+                          "Connect Failed: Connect already pending.");
+    return;
+  }
+
   if (scanning_) {
-    LOG(INFO) << "Cellular is Scanning. Pending Connect to: "
+    LOG(INFO) << "Cellular is scanning. Pending connect to: "
               << service->log_name();
     SetPendingConnect(service->iccid());
     return;
@@ -1718,11 +1724,13 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
 }
 
 void Cellular::SetPendingConnect(const std::string& iccid) {
+  if (iccid == connect_pending_iccid_)
+    return;
+
   if (!connect_pending_iccid_.empty()) {
     SLOG(this, 1) << "Cancelling pending connect to: "
                   << connect_pending_iccid_;
-    if (service_ && service_->iccid() == connect_pending_iccid_)
-      service_->SetFailure(Service::kFailureDisconnect);
+    ConnectToPendingFailed(Service::kFailureDisconnect);
   }
 
   connect_pending_callback_.Cancel();
