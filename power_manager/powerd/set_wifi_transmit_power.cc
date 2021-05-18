@@ -169,7 +169,13 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
   base::FilePath link_path(base::StringPrintf("/sys/class/net/%s/device/driver",
                                               device_name.c_str()));
   base::FilePath driver_path;
-  CHECK(base::ReadSymbolicLink(link_path, &driver_path));
+  if (!base::ReadSymbolicLink(link_path, &driver_path)) {
+    // This can race with device removal, for instance. Just warn and do
+    // nothing.
+    PLOG(ERROR) << "Failed reading symbolic link: " << link_path.value();
+    return WirelessDriver::NONE;
+  }
+
   base::FilePath driver_name = driver_path.BaseName();
   const auto driver = drivers.find(driver_name.value());
   if (driver != drivers.end())
