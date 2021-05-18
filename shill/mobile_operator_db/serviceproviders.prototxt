@@ -2913,9 +2913,36 @@ mno {
     }
     mccmnc : "26201"
     mobile_apn {
-      apn : "internet.telekom"
-      username : "t-mobile"
-      password : "tm"
+      apn : "internet.v6.telekom"
+      localized_name {
+        name : "Telekom Internet"
+      }
+      username : "telekom"
+      password : "telekom"
+      ip_type: IPV4V6
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Congstar"
+    }
+    data {
+      uuid : "72c85e61-e818-4114-8d43-5114cb00f1f9"
+      country : "de"
+      localized_name {
+        name : "Congstar"
+      }
+      mccmnc : "26201"
+      mobile_apn {
+        apn : "internet.v6.telekom"
+        localized_name {
+          name : "Congstar Internet"
+        }
+        username : "congstar"
+        password : "cs"
+        ip_type: IPV4V6
+      }
     }
   }
 }
@@ -2930,9 +2957,16 @@ mno {
     }
     mccmnc : "26203"
     mccmnc : "26205"
+    mccmnc : "26207"
+    mccmnc : "26208"
+    mccmnc : "26211"
     mccmnc : "26277"
     mobile_apn {
       apn : "internet"
+      localized_name {
+        name : "o2 Internet"
+      }
+      ip_type: IPV4V6
     }
   }
   mvno {
@@ -3042,31 +3076,6 @@ mno {
       }
     }
   }
-}
-
-mno {
-  data {
-    uuid : "eda63e8b-273d-4502-bebc-f74bbd451d35"
-    country : "de"
-    localized_name {
-      name : "o2 - de"
-    }
-    mccmnc : "26207"
-    mccmnc : "26208"
-    mccmnc : "26211"
-    mobile_apn {
-      apn : "internet"
-      localized_name {
-        name : "o2 Internet Postpaid"
-      }
-    }
-    mobile_apn {
-      apn : "pinternet.interkom.de"
-      localized_name {
-        name : "o2 Internet Prepaid"
-      }
-    }
-  }
   mvno {
     mvno_filter {
       type : OPERATOR_NAME
@@ -3159,15 +3168,11 @@ mno {
     mccmnc : "26209"
     mobile_apn {
       apn : "web.vodafone.de"
-      is_attach_apn : true
-    }
-    mobile_apn {
-      apn : "event.vodafone.de"
       localized_name {
-        name : "WebSessions"
+        name : "VF DE Web"
       }
-      username : "vodafone"
-      password : "vodafone"
+      ip_type: IPV4V6
+      is_attach_apn : true
     }
   }
   mvno {
