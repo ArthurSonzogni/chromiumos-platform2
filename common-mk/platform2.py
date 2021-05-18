@@ -42,6 +42,7 @@ _IUSE = [
     'beanstalk',
     'bluetooth_suspend_management',
     'buffet',
+    'camera_feature_hdrnet',
     'camera_feature_portrait_mode',
     'cdm_factory_daemon',
     'cellular',

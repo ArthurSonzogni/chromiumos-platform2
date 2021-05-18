@@ -516,6 +516,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
         locked_static_info, gpu_thread_.task_runner());
     context->processor->Initialize(stream_size, viable_output_sizes);
     if (!context->processor) {
+      LOGF(ERROR) << "Failed to initialize HDRnet processor";
       return false;
     }
 

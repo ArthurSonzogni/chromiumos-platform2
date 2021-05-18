@@ -27,6 +27,7 @@
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata_hidden.h>
 
+#include "common/stream_manipulator.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common.h"
@@ -220,7 +221,9 @@ int32_t CameraHalAdapter::OpenDevice(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), close_callback,
-      base::Contains(can_attempt_zsl_camera_ids_, camera_id));
+      base::Contains(can_attempt_zsl_camera_ids_, camera_id),
+      StreamManipulator::GetEnabledStreamManipulators(
+          camera_module->common.name));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback =

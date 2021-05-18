@@ -41,6 +41,9 @@ static_library("libhdrnet") {
   libs = [ "hdrnet_cros" ]
   public_configs = [ ":target_defaults" ]
   defines = []
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
   public_deps = [ "//camera/gpu:gpu_base" ]
   deps = [
     "//camera/gpu:image_processor",

@@ -30,6 +30,7 @@
 #include <system/camera_metadata.h>
 
 #include "camera/mojo/camera3.mojom.h"
+#include "common/stream_manipulator.h"
 #include "common/utils/common_types.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_buffer_manager.h"
@@ -94,14 +95,15 @@ class CameraMonitor : public base::OneShotTimer {
 
 class CameraDeviceAdapter : public camera3_callback_ops_t {
  public:
-  explicit CameraDeviceAdapter(
+  CameraDeviceAdapter(
       camera3_device_t* camera_device,
       uint32_t device_api_version,
       const camera_metadata_t* static_info,
       base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
       base::RepeatingCallback<int(int)> get_public_camera_id_callback,
       base::Callback<void()> close_callback,
-      bool attempt_zsl);
+      bool attempt_zsl,
+      std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
 
   ~CameraDeviceAdapter();
 
@@ -352,6 +354,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // this situation.
   CameraMonitor capture_request_monitor_;
   CameraMonitor capture_result_monitor_;
+
+  std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraDeviceAdapter);
 };

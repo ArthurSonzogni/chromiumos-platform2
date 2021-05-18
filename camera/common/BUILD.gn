@@ -77,6 +77,7 @@ shared_library("libcros_camera") {
     "//camera/common/libcamera_connector/stream_buffer_manager.cc",
     "//camera/common/libcamera_connector/supported_formats.cc",
     "//camera/common/metadata_logger.cc",
+    "//camera/common/stream_manipulator.cc",
     "//camera/common/timezone.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",
@@ -85,7 +86,6 @@ shared_library("libcros_camera") {
     "//camera/common/v4l2_device/v4l2_video_node.cc",
     "//camera/mojo/cros_camera_mojo_verifier.cc",
   ]
-  configs += [ ":target_defaults" ]
   libs = [
     "facessd_cros",
     "jpeg",
@@ -100,7 +100,13 @@ shared_library("libcros_camera") {
     "libudev",
     "libyuv",
   ]
+  configs += [ ":target_defaults" ]
+  defines = [ "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}" ]
   deps = [ ":libcros_camera_mojom" ]
+
+  if (use.camera_feature_hdrnet) {
+    deps += [ "//camera/features/hdrnet:libhdrnet" ]
+  }
 
   if (use.camera_feature_portrait_mode) {
     sources += [ "//camera/common/camera_gpu_algorithm.cc" ]

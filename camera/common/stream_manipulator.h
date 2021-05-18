@@ -9,14 +9,26 @@
 
 #include <hardware/camera3.h>
 
+#include <memory>
+#include <string>
 #include <vector>
+
+#include "cros-camera/export.h"
 
 namespace cros {
 
 // Interface class that can be used by feature implementations to add hooks into
 // the standard camera HAL3 capture pipeline.
-class StreamManipulator {
+class CROS_CAMERA_EXPORT StreamManipulator {
  public:
+  // Gets the set of enabled StreamManipulator instances. The StreamManipulators
+  // are enabled through platform or device specific settings. This factory
+  // method is called by CameraDeviceAdapter.  |camera_module_name| can be used
+  // to identify the camera device that the stream manipulators will be created
+  // for (e.g. USB v.s. vendor camera HAL).
+  static std::vector<std::unique_ptr<StreamManipulator>>
+  GetEnabledStreamManipulators(std::string camera_module_name);
+
   virtual ~StreamManipulator() = default;
 
   // The followings are hooks to the camera3_device_ops APIs and will be called

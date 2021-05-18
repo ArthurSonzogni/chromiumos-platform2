@@ -167,7 +167,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
     base::RepeatingCallback<int(int)> get_public_camera_id_callback,
     base::Callback<void()> close_callback,
-    bool attempt_zsl)
+    bool attempt_zsl,
+    std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
@@ -183,7 +184,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       zsl_helper_(static_info),
       camera_metrics_(CameraMetrics::New()),
       capture_request_monitor_("CaptureRequest"),
-      capture_result_monitor_("CaptureResult") {
+      capture_result_monitor_("CaptureResult"),
+      stream_manipulators_(std::move(stream_manipulators)) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
@@ -260,6 +262,12 @@ int32_t CameraDeviceAdapter::Initialize(
     LOGF(ERROR) << "Reprocessing effect thread failed to start";
     return -ENODEV;
   }
+
+  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
+       ++it) {
+    (*it)->Initialize(static_info_);
+  }
+
   capture_request_monitor_.Attach();
   capture_result_monitor_.Attach();
   base::AutoLock l(callback_ops_delegate_lock_);
@@ -361,6 +369,11 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     stream_list.streams[i++] = it->second.get();
   }
 
+  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
+       ++it) {
+    (*it)->ConfigureStreams(&stream_list, &streams);
+  }
+
   zsl_enabled_ = false;
   bool is_zsl_stream_attached =
       attempt_zsl_ && zsl_helper_.AttachZslStream(&stream_list, &streams);
@@ -370,6 +383,14 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 
   int32_t result =
       camera_device_->ops->configure_streams(camera_device_, &stream_list);
+
+  // Call OnConfiguredStreams in reverse order so the stream manipulators can
+  // unwind the stream modifications.
+  for (auto it = stream_manipulators_.rbegin();
+       it != stream_manipulators_.rend(); ++it) {
+    (*it)->OnConfiguredStreams(&stream_list);
+  }
+
   if (result == 0) {
     if (is_zsl_stream_attached) {
       if (zsl_helper_.Initialize(&stream_list)) {
@@ -607,6 +628,11 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     return 0;
   }
 
+  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
+       ++it) {
+    (*it)->ProcessCaptureRequest(&req);
+  }
+
   int ret = camera_device_->ops->process_capture_request(camera_device_, &req);
 
   return ret;
@@ -620,6 +646,10 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
 
 int32_t CameraDeviceAdapter::Flush() {
   VLOGF_ENTER();
+  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
+       ++it) {
+    (*it)->Flush();
+  }
   return camera_device_->ops->flush(camera_device_);
 }
 
@@ -699,6 +729,17 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   self->capture_result_monitor_.Kick();
 
   camera3_capture_result_t res = *result;
+  std::vector<camera3_stream_buffer_t> output_buffers;
+  for (int i = 0; i < res.num_output_buffers; ++i) {
+    output_buffers.push_back(res.output_buffers[i]);
+  }
+  res.output_buffers = output_buffers.data();
+
+  for (auto it = self->stream_manipulators_.begin();
+       it != self->stream_manipulators_.end(); ++it) {
+    (*it)->ProcessCaptureResult(&res);
+  }
+
   camera3_stream_buffer_t in_buf = {};
   mojom::Camera3CaptureResultPtr result_ptr;
   {
@@ -754,18 +795,26 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
                                  const camera3_notify_msg_t* msg) {
   VLOGF_ENTER();
+
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
-  mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(msg);
+
+  camera3_notify_msg_t* mutable_msg = const_cast<camera3_notify_msg_t*>(msg);
+  for (auto it = self->stream_manipulators_.begin();
+       it != self->stream_manipulators_.end(); ++it) {
+    (*it)->Notify(mutable_msg);
+  }
+
+  mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(mutable_msg);
   base::AutoLock l(self->callback_ops_delegate_lock_);
-  if (msg->type == CAMERA3_MSG_ERROR) {
-    self->camera_metrics_->SendError(msg->message.error.error_code);
+  if (mutable_msg->type == CAMERA3_MSG_ERROR) {
+    self->camera_metrics_->SendError(mutable_msg->message.error.error_code);
   }
   if (self->callback_ops_delegate_) {
     self->callback_ops_delegate_->Notify(std::move(msg_ptr));
   }
-  if (msg->type == CAMERA3_MSG_ERROR &&
-      msg->message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
+  if (mutable_msg->type == CAMERA3_MSG_ERROR &&
+      mutable_msg->message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
     LOGF(ERROR) << "Fatal device error; aborting the camera service";
     _exit(EIO);
   }
