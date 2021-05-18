@@ -5,6 +5,7 @@
 #ifndef RMAD_UTILS_JSON_STORE_H_
 #define RMAD_UTILS_JSON_STORE_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -32,26 +33,18 @@ class JsonStore : public base::RefCounted<JsonStore> {
 
   explicit JsonStore(const base::FilePath& file_path);
 
+  // Set a (key, value) pair to the dictionary. Return true if there's no
+  // update or the updated data is successfully written to the file, false if
+  // the update cannot be written to the file.
+  bool SetValue(const std::string& key, base::Value&& value);
+
   // Set a (key, value) pair to the dictionary for types supported by
-  // base::Value (bool, int, double, string).
+  // base::Value (bool, int, double, string), or nested vector of these types.
   // Return true if there's no update or the updated data is successfully
   // written to the file, false if the update cannot be written to the file.
   template <typename T>
   bool SetValue(const std::string& key, const T& value) {
-    return SetValue(key, base::Value(value));
-  }
-
-  // Set a (key, list of values) pair to the dictionary for a lists of types
-  // supported by base::Value.
-  // Return true if there's no update or the updated data is successfully
-  // written to the file, false if the update cannot be written to the file.
-  template <typename T>
-  bool SetValue(const std::string& key, const std::vector<T>& values) {
-    std::vector<base::Value> list;
-    for (auto value : values) {
-      list.push_back(base::Value(value));
-    }
-    return SetValue(key, base::Value(list));
+    return SetValue(key, ConvertToValue(value));
   }
 
   // Get the value associated to the key, and copy to `value` for types
@@ -65,38 +58,6 @@ class JsonStore : public base::RefCounted<JsonStore> {
     DCHECK(data_.is_dict());
     return GetValueInternal(data_.FindKey(key), result);
   }
-
-  // Get the list of values associated to the key, and copy to `values` for
-  // lists of types supported by base::Value.
-  // If values is null then just the existence and type of the key value is
-  // checked.
-  // If the key is not found, `value` is not modified by the function. Return
-  // true if the key is found in the dictionary, false if the key is not found.
-  template <typename T>
-  bool GetValue(const std::string& key, std::vector<T>* results) const {
-    DCHECK(data_.is_dict());
-    const base::Value* list = data_.FindKey(key);
-    if (!list || !list->is_list()) {
-      return false;
-    }
-    std::vector<T> r;
-    for (auto& data : list->GetList()) {
-      if (T result; GetValueInternal(&data, &result)) {
-        r.push_back(result);
-      } else {
-        return false;
-      }
-    }
-    if (results) {
-      *results = std::move(r);
-    }
-    return true;
-  }
-
-  // Set a (key, value) pair to the dictionary. Return true if there's no
-  // update or the updated data is successfully written to the file, false if
-  // the update cannot be written to the file.
-  bool SetValue(const std::string& key, base::Value&& value);
 
   // Get the value associated to the key, and assign its const pointer to
   // `result`. If the key is not found, `result` is not modified by the
@@ -135,10 +96,80 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // Read result returned from internal read tasks.
   struct ReadResult;
 
+  // Convert the input type to base::Value. The input type should be supported
+  // by base::Value (bool, int, double, string).
+  template <typename T>
+  base::Value ConvertToValue(const T& value) {
+    return base::Value(value);
+  }
+
+  // Convert a vector to base::Value. The vector type should be supported
+  // by base::Value (bool, int, double, string) or vector/map of these types.
+  template <typename T>
+  base::Value ConvertToValue(const std::vector<T>& values) {
+    base::Value list(base::Value::Type::LIST);
+    for (const auto& value : values) {
+      list.Append(ConvertToValue(value));
+    }
+    return list;
+  }
+
+  // Convert a map to base::Value. The value type should be supported by
+  // base::Value (bool, int, double, string) or vector/map of these types.
+  // TODO(chenghan): Support more types, e.g. unordered_map.
+  template <typename T>
+  base::Value ConvertToValue(const std::map<std::string, T>& values) {
+    base::Value dict(base::Value::Type::DICTIONARY);
+    for (const auto& [key, value] : values) {
+      dict.SetKey(key, ConvertToValue(value));
+    }
+    return dict;
+  }
+
   static bool GetValueInternal(const base::Value* data, bool* result);
   static bool GetValueInternal(const base::Value* data, int* result);
   static bool GetValueInternal(const base::Value* data, double* result);
   static bool GetValueInternal(const base::Value* data, std::string* result);
+
+  template <typename T>
+  static bool GetValueInternal(const base::Value* data,
+                               std::vector<T>* result) {
+    if (!data || !data->is_list()) {
+      return false;
+    }
+    std::vector<T> r;
+    for (const auto& child_data : data->GetList()) {
+      if (T child_result; GetValueInternal(&child_data, &child_result)) {
+        r.push_back(child_result);
+      } else {
+        return false;
+      }
+    }
+    if (result) {
+      *result = std::move(r);
+    }
+    return true;
+  }
+
+  template <typename T>
+  static bool GetValueInternal(const base::Value* data,
+                               std::map<std::string, T>* result) {
+    if (!data || !data->is_dict()) {
+      return false;
+    }
+    std::map<std::string, T> r;
+    for (const auto& [key, child_data] : data->DictItems()) {
+      if (T child_result; GetValueInternal(&child_data, &child_result)) {
+        r.insert({key, child_result});
+      } else {
+        return false;
+      }
+    }
+    if (result) {
+      *result = std::move(r);
+    }
+    return true;
+  }
 
   void InitFromFile();
   std::unique_ptr<JsonStore::ReadResult> ReadFromFile();
