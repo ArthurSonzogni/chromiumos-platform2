@@ -35,7 +35,7 @@ bool Platform::GetRealPath(const std::string& path,
   std::unique_ptr<char, base::FreeDeleter> result(
       realpath(path.c_str(), nullptr));
   if (!result) {
-    PLOG(INFO) << "Cannot get real path of " << quote(path);
+    PLOG(ERROR) << "Cannot get real path of " << redact(path);
     return false;
   }
 

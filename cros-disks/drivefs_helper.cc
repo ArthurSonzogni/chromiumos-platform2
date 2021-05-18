@@ -140,6 +140,26 @@ bool ValidateDirectory(const Platform* platform,
   std::string path_string;
   if (!platform->GetRealPath(dir->value(), &path_string)) {
     LOG(ERROR) << "Unable to find real path of " << quote(*dir);
+    // TODO(crbug.com/1205308): Remove extra logging when root cause found.
+    LOG(ERROR) << "Checking ancestors:";
+    for (base::FilePath p = *dir; p != p.DirName(); p = p.DirName()) {
+      if (!platform->GetRealPath(p.value(), &path_string)) {
+        LOG(ERROR) << "Unable to find real path of " << quote(p);
+      }
+      if (!platform->DirectoryExists(p.value())) {
+        LOG(ERROR) << "Dir does not exist " << quote(p);
+        continue;
+      }
+      uid_t uid;
+      gid_t gid;
+      if (platform->GetOwnership(p.value(), &uid, &gid)) {
+        LOG(ERROR) << "Path " << quote(p) << " has owner " << uid << ":" << gid;
+      }
+      mode_t mode;
+      if (platform->GetPermissions(p.value(), &mode)) {
+        LOG(ERROR) << "Path " << quote(p) << " has mode " << std::oct << mode;
+      }
+    }
     return false;
   }
   *dir = base::FilePath(path_string);
