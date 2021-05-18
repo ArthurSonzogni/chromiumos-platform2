@@ -63,18 +63,25 @@ executable("federated_service") {
 }
 
 if (use.test) {
+  pkg_config("libchrome_test_config") {
+    pkg_deps = [ "libsession_manager-client-test" ]
+  }
   executable("federated_service_test") {
     sources = [
       "example_database_test.cc",
       "example_database_test_utils.cc",
       "federated_service_impl_test.cc",
       "mock_example_database.cc",
+      "session_manager_proxy_test.cc",
       "storage_manager_impl_test.cc",
       "test_utils.cc",
       "testrunner.cc",
       "utils_test.cc",
     ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":libchrome_test_config",
+    ]
     deps = [ ":federated_common" ]
   }
 }

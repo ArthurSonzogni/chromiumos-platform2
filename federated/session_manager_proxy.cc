@@ -29,7 +29,7 @@ void OnSignalConnected(const std::string& interface,
 }  // namespace
 
 SessionManagerProxy::SessionManagerProxy(
-    std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> proxy)
+    std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy)
     : proxy_(std::move(proxy)), weak_ptr_factory_(this) {
   proxy_->RegisterSessionStateChangedSignalHandler(
       base::BindRepeating(&SessionManagerProxy::OnSessionStateChanged,
