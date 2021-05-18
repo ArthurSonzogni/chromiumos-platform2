@@ -232,7 +232,7 @@ class Service : public base::RefCounted<Service> {
   // The default implementation returns the error kNotSupported.
   virtual std::string GetWiFiPassphrase(Error* error);
 
-  mockable bool IsActive(Error* error);
+  mockable bool IsActive(Error* error) const;
 
   // Returns whether services of this type should be auto-connect by default.
   virtual bool IsAutoConnectByDefault() const { return false; }
@@ -641,8 +641,6 @@ class Service : public base::RefCounted<Service> {
   // logic.
   virtual void OnDisconnect(Error* error, const char* reason) = 0;
 
-  bool GetVisibleProperty(Error* error);
-
   // Returns whether this service is in a state conducive to auto-connect.
   // This should include any tests used for computing connectable(),
   // as well as other critera such as whether the device associated with
@@ -655,6 +653,12 @@ class Service : public base::RefCounted<Service> {
   // Returns maximum auto connect cooldown time for ThrottleFutureAutoConnects.
   // May be overridden for types that require a longer cooldown period.
   virtual uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const;
+
+  // Returns true if a Service can be disconnected, otherwise returns false and
+  // sets |error|. By default tests whether the Service is active.
+  virtual bool IsDisconnectable(Error* error) const;
+
+  bool GetVisibleProperty(Error* error);
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
@@ -874,12 +878,6 @@ class Service : public base::RefCounted<Service> {
   // Disables autoconnect and posts a task to re-enable it after a cooldown.
   // Note that autoconnect could be disabled for other reasons as well.
   void ThrottleFutureAutoConnects();
-
-  // Returns whether a Service can be disconnected. |error| will only be
-  // modified if this method returns false, in which case it will be populated
-  // with the appropriate error information.
-  // WiFiService is an example of this being potentially false.
-  virtual bool IsDisconnectable(Error* error) const { return true; }
 
   // Saves settings to current Profile, if we have one. Unlike
   // Manager::PersistService, SaveToProfile never assigns this Service to a

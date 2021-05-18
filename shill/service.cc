@@ -379,15 +379,6 @@ void Service::Connect(Error* error, const char* reason) {
 
 void Service::Disconnect(Error* error, const char* reason) {
   CHECK(reason);
-  if (!IsActive(nullptr)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotConnected,
-        base::StringPrintf(
-            "Disconnect attempted but %s Service %s is not active: %s",
-            technology().GetName().c_str(), log_name().c_str(), reason));
-    return;
-  }
-
   if (!IsDisconnectable(error)) {
     LOG(WARNING) << "Disconnect attempted but " << log_name()
                  << " is not Disconnectable"
@@ -456,7 +447,7 @@ std::string Service::GetWiFiPassphrase(Error* error) {
   return std::string();
 }
 
-bool Service::IsActive(Error* /*error*/) {
+bool Service::IsActive(Error* /*error*/) const {
   return state() != kStateUnknown && state() != kStateIdle &&
          state() != kStateFailure && state() != kStateDisconnecting;
 }
@@ -1645,6 +1636,17 @@ bool Service::IsAutoConnectable(const char** reason) const {
 
 uint64_t Service::GetMaxAutoConnectCooldownTimeMilliseconds() const {
   return 1 * 60 * 1000;  // 1 minute
+}
+
+bool Service::IsDisconnectable(Error* error) const {
+  if (!IsActive(nullptr)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotConnected,
+        base::StringPrintf("Disconnect attempted but Service is not active: %s",
+                           log_name().c_str()));
+    return false;
+  }
+  return true;
 }
 
 bool Service::IsPortalDetectionDisabled() const {

@@ -157,6 +157,9 @@ class Cellular : public Device,
   // Asynchronously detach then re-attach the network.
   virtual void ReAttach();
 
+  // Cancel any pending connect request.
+  void CancelPendingConnect();
+
   // Performs the necessary steps to bring the service to the activated state,
   // once an online payment has been done.
   void CompleteActivation(Error* error);

@@ -52,9 +52,7 @@ class ServiceUnderTest : public Service {
   // Inherited from Service.
   void OnConnect(Error* error) override {}
   void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
-  bool IsDisconnectable(Error* /*error*/) const override {
-    return disconnectable_;
-  }
+  bool IsDisconnectable(Error* error) const override;
 
  private:
   // The Service superclass has no string array or KeyValueStore properties

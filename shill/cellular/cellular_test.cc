@@ -1334,6 +1334,27 @@ TEST_P(CellularTest, PendingConnect) {
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
 }
 
+TEST_P(CellularTest, PendingDisconnect) {
+  CellularService* service = SetRegisteredWithService();
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _, _))
+      .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
+  SetCapability3gppModemSimpleProxy();
+
+  // Connect while scanning should set a pending connect.
+  SetScanning(true);
+  Error error;
+  service->Connect(&error, "test");
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_NE(device_->state(), Cellular::kStateConnected);
+  EXPECT_EQ(device_->connect_pending_iccid(), service->iccid());
+
+  // Disconnecting from the service should cancel the pending connect.
+  service->Disconnect(&error, "test");
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_TRUE(device_->connect_pending_iccid().empty());
+}
+
 TEST_P(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.

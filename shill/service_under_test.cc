@@ -55,4 +55,10 @@ KeyValueStore ServiceUnderTest::GetKeyValueStore(Error* error) {
   return key_value_store_;
 }
 
+bool ServiceUnderTest::IsDisconnectable(Error* error) const {
+  if (!Service::IsDisconnectable(error))
+    return false;
+  return disconnectable_;
+}
+
 }  // namespace shill

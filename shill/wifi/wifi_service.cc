@@ -667,6 +667,9 @@ void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
 }
 
 bool WiFiService::IsDisconnectable(Error* error) const {
+  if (!Service::IsDisconnectable(error))
+    return false;
+
   if (!wifi_) {
     CHECK(!IsConnected())
         << "WiFi device does not exist. Cannot disconnect service "
@@ -681,7 +684,14 @@ bool WiFiService::IsDisconnectable(Error* error) const {
             log_name().c_str()));
     return false;
   }
-  return wifi_->IsPendingService(this) || wifi_->IsCurrentService(this);
+  if (!wifi_->IsPendingService(this) && !wifi_->IsCurrentService(this)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf("WiFi Service not pending or current: %s",
+                           log_name().c_str()));
+    return false;
+  }
+  return true;
 }
 
 RpcIdentifier WiFiService::GetDeviceRpcId(Error* error) const {

@@ -786,6 +786,10 @@ void Cellular::ReAttachOnDetachComplete(const Error&) {
     LOG(WARNING) << "Modem restart completed immediately.";
 }
 
+void Cellular::CancelPendingConnect() {
+  ConnectToPendingFailed(Service::kFailureDisconnect);
+}
+
 void Cellular::Scan(Error* error, const std::string& /*reason*/) {
   SLOG(this, 2) << "Scanning started";
   CHECK(error);

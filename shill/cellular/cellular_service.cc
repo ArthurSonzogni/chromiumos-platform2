@@ -449,6 +449,11 @@ void CellularService::OnDisconnect(Error* error, const char* reason) {
             kTypeCellular, log_name().c_str()));
     return;
   }
+  if (cellular_->connect_pending_iccid() == iccid_) {
+    cellular_->CancelPendingConnect();
+    SetState(kStateIdle);
+    return;
+  }
   cellular_->Disconnect(error, reason);
 }
 
@@ -509,6 +514,21 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
 
 uint64_t CellularService::GetMaxAutoConnectCooldownTimeMilliseconds() const {
   return 30 * 60 * 1000;  // 30 minutes
+}
+
+bool CellularService::IsDisconnectable(Error* error) const {
+  if (!cellular_) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotConnected,
+        base::StringPrintf("Disconnect attempted with no Cellular Device: %s",
+                           log_name().c_str()));
+    return false;
+  }
+  if (cellular_->connect_pending_iccid() == iccid_) {
+    // Allow disconnecting when a connect is pending.
+    return true;
+  }
+  return Service::IsDisconnectable(error);
 }
 
 bool CellularService::IsMeteredByServiceProperties() const {
