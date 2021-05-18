@@ -13,6 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/values.h>
 
+#include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
@@ -20,7 +21,6 @@ namespace rmad {
 namespace {
 
 const base::FilePath kDefaultJsonStoreFilePath("/var/lib/rmad/state");
-constexpr char kRmadStateHistory[] = "state_history";
 const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 
 }  // namespace
@@ -46,7 +46,7 @@ bool RmadInterfaceImpl::StoreStateHistory() {
   for (auto s : state_history_) {
     state_history.push_back(RmadState::StateCase(s));
   }
-  return json_store_->SetValue(kRmadStateHistory, state_history);
+  return json_store_->SetValue(kStateHistory, state_history);
 }
 
 void RmadInterfaceImpl::Initialize() {
@@ -57,7 +57,7 @@ void RmadInterfaceImpl::Initialize() {
   if (json_store_->GetReadError() != JsonStore::READ_ERROR_NO_SUCH_FILE) {
     if (std::vector<int> state_history;
         json_store_->GetReadError() == JsonStore::READ_ERROR_NONE &&
-        json_store_->GetValue(kRmadStateHistory, &state_history) &&
+        json_store_->GetValue(kStateHistory, &state_history) &&
         state_history.size()) {
       for (int state : state_history) {
         // Reject any state that does not have a handler.

@@ -24,14 +24,17 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
   }
 
   state_ = state;
+  StoreState();
+
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kUpdateDeviceInfo};
 }
 
 RmadErrorCode RestockStateHandler::ResetState() {
-  state_.set_allocated_restock(new RestockState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_restock(new RestockState);
+  }
   return RMAD_ERROR_OK;
 }
 

@@ -25,6 +25,8 @@ UpdateChromeStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
+  StoreState();
+
   if (state_.update_chrome().update() ==
       UpdateChromeState::RMAD_UPDATE_STATE_UPDATE) {
     LOG(INFO) << "Chrome needs update. Blocking state transition.";
@@ -36,8 +38,9 @@ UpdateChromeStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 RmadErrorCode UpdateChromeStateHandler::ResetState() {
-  state_.set_allocated_update_chrome(new UpdateChromeState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_update_chrome(new UpdateChromeState);
+  }
   return RMAD_ERROR_OK;
 }
 

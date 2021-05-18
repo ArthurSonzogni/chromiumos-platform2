@@ -21,14 +21,17 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
   // TODO(chenghan): Validate the values.
 
   state_ = state;
+  StoreState();
+
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kCalibrateComponents};
 }
 
 RmadErrorCode UpdateDeviceInfoStateHandler::ResetState() {
-  state_.set_allocated_update_device_info(new UpdateDeviceInfoState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_update_device_info(new UpdateDeviceInfoState);
+  }
   return RMAD_ERROR_OK;
 }
 

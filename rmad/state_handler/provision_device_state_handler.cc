@@ -19,14 +19,19 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
+  // There's nothing in |ProvisionDeviceState|.
+  state_ = state;
+  StoreState();
+
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpEnablePhysical};
 }
 
 RmadErrorCode ProvisionDeviceStateHandler::ResetState() {
-  state_.set_allocated_provision_device(new ProvisionDeviceState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_provision_device(new ProvisionDeviceState);
+  }
   return RMAD_ERROR_OK;
 }
 

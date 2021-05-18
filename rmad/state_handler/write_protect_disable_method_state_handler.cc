@@ -30,6 +30,8 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
   }
 
   state_ = state;
+  StoreState();
+
   switch (state_.wp_disable_method().disable_method()) {
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU:
       return {.error = RMAD_ERROR_OK,
@@ -46,8 +48,9 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
 }
 
 RmadErrorCode WriteProtectDisableMethodStateHandler::ResetState() {
-  state_.set_allocated_wp_disable_method(new WriteProtectDisableMethodState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_wp_disable_method(new WriteProtectDisableMethodState);
+  }
   return RMAD_ERROR_OK;
 }
 

@@ -41,6 +41,8 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
+  StoreState();
+
   // TODO(chenghan): This is currently a mock.
   switch (state_.update_ro_firmware().update()) {
     case UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_DOWNLOAD:
@@ -66,12 +68,13 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 RmadErrorCode UpdateRoFirmwareStateHandler::ResetState() {
-  auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
-  // This is currently always optional.
-  update_ro_firmware->set_optional(true);
+  if (!RetrieveState()) {
+    auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
+    // This is currently always optional.
+    update_ro_firmware->set_optional(true);
 
-  state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
-
+    state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
+  }
   return RMAD_ERROR_OK;
 }
 

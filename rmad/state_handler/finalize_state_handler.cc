@@ -24,15 +24,18 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
             .state_case = GetStateCase()};
   }
 
-  // TODO(chenghan): This is currently fake.
   state_ = state;
+  StoreState();
+
+  // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::STATE_NOT_SET};
 }
 
 RmadErrorCode FinalizeStateHandler::ResetState() {
-  state_.set_allocated_finalize(new FinalizeState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_finalize(new FinalizeState);
+  }
   return RMAD_ERROR_OK;
 }
 

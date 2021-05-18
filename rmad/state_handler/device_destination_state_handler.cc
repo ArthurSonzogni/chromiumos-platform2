@@ -26,15 +26,17 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
             .state_case = GetStateCase()};
   }
 
-  // TODO(chenghan): Store this information to |json_store_|.
   state_ = state;
+  StoreState();
+
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableMethod};
 }
 
 RmadErrorCode DeviceDestinationStateHandler::ResetState() {
-  state_.set_allocated_device_destination(new DeviceDestinationState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_device_destination(new DeviceDestinationState);
+  }
   return RMAD_ERROR_OK;
 }
 

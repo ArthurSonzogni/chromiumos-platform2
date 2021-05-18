@@ -49,6 +49,12 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // Reset the state. Used when entering or returning to the state.
   virtual RmadErrorCode ResetState() = 0;
 
+  // Store the state to |json_store_|.
+  bool StoreState();
+
+  // Retrieve the state from |json_store_|.
+  bool RetrieveState();
+
  protected:
   RmadState state_;
   scoped_refptr<JsonStore> json_store_;

@@ -20,14 +20,19 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
+  // There's nothing in |WriteProtectDisableCompleteState|.
+  state_ = state;
+  StoreState();
+
   // TODO(chenghan): Implement the logic for different paths.
   return {.error = RMAD_ERROR_OK, RmadState::StateCase::kUpdateRoFirmware};
 }
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::ResetState() {
-  state_.set_allocated_wp_disable_complete(
-      new WriteProtectDisableCompleteState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_wp_disable_complete(
+        new WriteProtectDisableCompleteState);
+  }
   return RMAD_ERROR_OK;
 }
 

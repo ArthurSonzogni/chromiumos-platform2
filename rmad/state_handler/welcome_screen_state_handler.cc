@@ -27,6 +27,8 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
+  StoreState();
+
   switch (state_.welcome().choice()) {
     case WelcomeState::RMAD_CHOICE_CANCEL:
       return {.error = RMAD_ERROR_RMA_NOT_REQUIRED,
@@ -43,8 +45,9 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 RmadErrorCode WelcomeScreenStateHandler::ResetState() {
-  state_.set_allocated_welcome(new WelcomeState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_welcome(new WelcomeState);
+  }
   return RMAD_ERROR_OK;
 }
 

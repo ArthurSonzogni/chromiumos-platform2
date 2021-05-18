@@ -24,14 +24,20 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     return {.error = RMAD_ERROR_TRANSITION_FAILED,
             .state_case = GetStateCase()};
   }
+
+  // There's nothing in |WriteProtectDisablePhysicalState|.
+  state_ = state;
+  StoreState();
+
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableComplete};
 }
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::ResetState() {
-  state_.set_allocated_wp_disable_physical(
-      new WriteProtectDisablePhysicalState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_wp_disable_physical(
+        new WriteProtectDisablePhysicalState);
+  }
   return RMAD_ERROR_OK;
 }
 

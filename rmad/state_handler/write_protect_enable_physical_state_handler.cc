@@ -19,14 +19,21 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |write protection enable| state.";
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
+
+  // There's nothing in |WriteProtectEnablePhysicalState|.
+  state_ = state;
+  StoreState();
+
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kFinalize};
 }
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::ResetState() {
-  state_.set_allocated_wp_enable_physical(new WriteProtectEnablePhysicalState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_wp_enable_physical(
+        new WriteProtectEnablePhysicalState);
+  }
   return RMAD_ERROR_OK;
 }
 

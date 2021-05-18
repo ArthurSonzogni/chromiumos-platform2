@@ -34,6 +34,8 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
+  StoreState();
+
   if (!VerifyComponents()) {
     LOG(ERROR) << "Component verification failed.";
     // TODO(chenghan): Create a more specific error code.
@@ -45,8 +47,9 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 RmadErrorCode ComponentsRepairStateHandler::ResetState() {
-  state_.set_allocated_components_repair(new ComponentsRepairState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_components_repair(new ComponentsRepairState);
+  }
   return RMAD_ERROR_OK;
 }
 

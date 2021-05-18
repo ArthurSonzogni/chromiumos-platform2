@@ -26,13 +26,16 @@ SelectNetworkStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
+  StoreState();
+
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kUpdateChrome};
 }
 
 RmadErrorCode SelectNetworkStateHandler::ResetState() {
-  state_.set_allocated_select_network(new SelectNetworkState);
-
+  if (!RetrieveState()) {
+    state_.set_allocated_select_network(new SelectNetworkState);
+  }
   return RMAD_ERROR_OK;
 }
 
