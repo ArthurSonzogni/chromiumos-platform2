@@ -140,8 +140,8 @@ pub fn check_memory_main() -> Result<()> {
     let signal = create_pressure_chrome_signal(&Factory::new_fn::<()>());
     let conn = LocalConnection::new_system()?;
     loop {
+        // TODO(vovoy): Reduce signal frequency when memory pressure is low.
         match memory::get_memory_pressure_status_chrome() {
-            Ok((memory::PressureLevelChrome::None, _)) => (),
             Ok((level, delta)) => send_pressure_chrome_signal(&conn, &signal, level as u8, delta),
             Err(e) => error!("Couldn't get memory pressure status for chrome: {}", e),
         }
