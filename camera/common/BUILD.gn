@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//camera/build/cc_embed_data.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
@@ -15,6 +16,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":cbm_test",
+      ":embed_file_toc_test",
       ":future_test",
     ]
   }
@@ -58,6 +60,7 @@ shared_library("libcros_camera") {
     "//camera/common/camera_face_detection.cc",
     "//camera/common/camera_metrics_impl.cc",
     "//camera/common/camera_mojo_channel_manager_impl.cc",
+    "//camera/common/embed_file_toc.cc",
     "//camera/common/exif_utils.cc",
     "//camera/common/future.cc",
     "//camera/common/ipc_util.cc",
@@ -162,5 +165,21 @@ if (use.test) {
       "//camera/common/future_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+  }
+
+  cc_embed_data("embed_file_toc_test_files") {
+    sources = [
+      "//camera/common/embed_file_toc.cc",
+      "//camera/common/embed_file_toc.h",
+    ]
+  }
+
+  executable("embed_file_toc_test") {
+    sources = [
+      "//camera/common/embed_file_toc.cc",
+      "//camera/common/embed_file_toc_test.cc",
+    ]
+    configs += [ ":target_defaults_test" ]
+    deps = [ ":embed_file_toc_test_files" ]
   }
 }
