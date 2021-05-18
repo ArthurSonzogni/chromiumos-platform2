@@ -24,27 +24,29 @@ A list of current devices with detachable base mappings is as follows:
 |Nocturne              |Whiskers
 |Krane                 |Masterball
 |Kodama                |Magnemite
+|Kakadu                |Moonball
+|Katsu                 |Don
 |CoachZ                |Zed
 
 
 ## ON HOST
 
- 1.  Create a [chroot](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#Create-a-chroot)
+1.  Create a [chroot](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#Create-a-chroot)
      from [ToT checkout](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#Get-the-source-code).
 
 
- 2.  Obtain the images that will be used in the tests. Obtain the base ec image
+2.  Obtain the images that will be used in the tests. Obtain the base ec image
 from GoldenEye/ BCS/ APFE.
 [Usually the dev will have supplied the image in the testing request bug or
 indicated where to download it from, because these tests are typically run
 before RO is locked in the firmware branch].
 
 
- 5.  Select build # you want to test.
+3.  Select build # you want to test.
 
- 6.  Select board name.
+4.  Select board name.
 
- 7.  Download the ‘`firmware_from_source.tar`’ file and unzip.
+5.  Download the ‘`firmware_from_source.tar`’ file and unzip.
 
 		Change directory into the unzipped folder then cd into the base
 		ec firmware folder (e.g. staff).
@@ -54,59 +56,10 @@ before RO is locked in the firmware branch].
 		to indicate that it’s base firmware e.g. *staff_ec.bin*.
 
 
- 10.  Flash the keyboard EC with the image obtained in step 2, following the
- steps below:
+6.  Flash the keyboard EC with the image obtained in step 2, following the
+ steps in this [document](https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/hammer.md#Flash-EC)
 
-
-      a. Expose the servo header in the base keyboard by partially opening the
-      back and/ or cutting out the covering to expose the servo header. Note
-      that for some devices (tablets), removing the entire back cover will
-      result in the keyboard not working as the pogo pins will detach.
-
-      b. Use servo v4 + micro to flash the base firmware. **Ensure that the
-      tablet is not powering the base and is completely detached when flashing
-      the firmware** using the commands below. Run these commands inside chroot
-      to flash the base ec firmware (this assumes you’re in the top-level
-      directory of the tot checkout and inside chroot)
-
-
-		E.g. for staff:
-
-		Start servod
-
-			sudo servod -b hammer
-
-
-
-		Power the base:
-
-			dut-control spi1_vref:pp3300 spi1_buf_en:on spi1_buf_on_flex_en:on
-
-
-		 Flash the base with ec image (refer to device: base mapping at the start of
-		 this document):
-
-			src/platform/ec/util/flash_ec --board=hammer --image=staff_ec.bin.
-		You should see the flashing completing successfully.
-
-
-
-		Power off the base:
-
-			dut-control spi1_vref:off spi1_buf_en:off spi1_buf_on_flex_en:off
-
-
-
-
-
-		c. Reconnect the base to the tablet and check that keyboard/
-		trackpad works i.e. type a key and see output on the display,
-		move the trackpad and see output on the display.
-
-
-
-
-3.  Generate the images needed for tests, from the base ec image obtained in
+7.  Generate the images needed for tests, from the base ec image obtained in
 step 5 following the steps below:
 
 
@@ -117,9 +70,13 @@ step 5 following the steps below:
 	the second argument e.g. for staff:
 
 
-		./src/third_party/autotest/files/server/cros/faft/gen_test_images.sh staff staff_ec.bin
+		~/trunk/src/third_party/autotest/files/server/cros/faft/gen_test_images.sh staff staff_ec.bin
 
-	**The above script needs to run inside chroot  of the DUT host**
+	**The above script needs to run inside chroot of the DUT host**
+
+	*For devices without fingerprint sensor, if you see error message like `Unable to open
+	/mnt/host/source/src/third_party/autotest/files/server/cros/faft/fingerprint_dev_keys/magnemite/dev_key.pem`,
+	please create a symlink from any existing key to the missing path manually.*
 
 	Ensure that the ec.bin image used above is the same image running on the
 	base ec of the DUT. If they are different, RW verification will fail
@@ -127,7 +84,7 @@ step 5 following the steps below:
 
 	You should then see the following 17 images created:
 
-	1.  *EC_RW.bin*
+	1. *EC_RW.bin*
 	2. *staff_corrupt_first_byte.bin*
 	3. *staff.dev.hex*
 	4. *staff.dev.rb9*
@@ -204,8 +161,7 @@ disabled persistently by renaming the ‘hammerd’ file to ‘hammerd.out’ so
 it doesn’t execute.
 Run the following commands on the DUT console:
 
-    /usr/share/vboot/bin/make_dev_ssd.sh --remove_rootfs_verification --partitions 2
-    /usr/share/vboot/bin/make_dev_ssd.sh --remove_rootfs_verification --partitions 4
+    /usr/share/vboot/bin/make_dev_ssd.sh --remove_rootfs_verification --force
 
 **Reboot** the DUT then rename hammerd
 
