@@ -19,7 +19,7 @@ namespace patchpanel {
 namespace {
 
 using Counter = CountersService::Counter;
-using SourceDevice = CountersService::SourceDevice;
+using CounterKey = CountersService::CounterKey;
 
 constexpr char kMangleTable[] = "mangle";
 constexpr char kVpnChainTag[] = "vpn";
@@ -76,7 +76,8 @@ bool MatchCounterLine(const std::string& line,
 // validate if |output| is an output from iptables.
 bool ParseOutput(const std::string& output,
                  const std::set<std::string>& devices,
-                 std::map<SourceDevice, Counter>* counters) {
+                 const TrafficCounter::IpFamily ip_family,
+                 std::map<CounterKey, Counter>* counters) {
   DCHECK(counters);
   const std::vector<std::string> lines = base::SplitString(
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -126,8 +127,11 @@ bool ParseOutput(const std::string& output,
       if (pkts == 0 && bytes == 0)
         continue;
 
-      auto& counter =
-          (*counters)[std::make_pair(TrafficSourceToProto(source), ifname)];
+      CounterKey key = {};
+      key.ifname = ifname;
+      key.source = TrafficSourceToProto(source);
+      key.ip_family = ip_family;
+      auto& counter = (*counters)[key];
       if (direction == "rx") {
         counter.rx_bytes += bytes;
         counter.rx_packets += pkts;
@@ -142,22 +146,13 @@ bool ParseOutput(const std::string& output,
 
 }  // namespace
 
-Counter::Counter(uint64_t rx_bytes,
-                 uint64_t rx_packets,
-                 uint64_t tx_bytes,
-                 uint64_t tx_packets)
-    : rx_bytes(rx_bytes),
-      rx_packets(rx_packets),
-      tx_bytes(tx_bytes),
-      tx_packets(tx_packets) {}
-
 CountersService::CountersService(Datapath* datapath,
                                  MinijailedProcessRunner* runner)
     : datapath_(datapath), runner_(runner) {}
 
-std::map<SourceDevice, Counter> CountersService::GetCounters(
+std::map<CounterKey, Counter> CountersService::GetCounters(
     const std::set<std::string>& devices) {
-  std::map<SourceDevice, Counter> counters;
+  std::map<CounterKey, Counter> counters;
 
   // Handles counters for IPv4 and IPv6 separately and returns failure if either
   // of the procession fails, since counters for only IPv4 or IPv6 are biased.
@@ -168,7 +163,7 @@ std::map<SourceDevice, Counter> CountersService::GetCounters(
     LOG(ERROR) << "Failed to query IPv4 counters";
     return {};
   }
-  if (!ParseOutput(iptables_result, devices, &counters)) {
+  if (!ParseOutput(iptables_result, devices, TrafficCounter::IPV4, &counters)) {
     LOG(ERROR) << "Failed to parse IPv4 counters";
     return {};
   }
@@ -180,7 +175,8 @@ std::map<SourceDevice, Counter> CountersService::GetCounters(
     LOG(ERROR) << "Failed to query IPv6 counters";
     return {};
   }
-  if (!ParseOutput(ip6tables_result, devices, &counters)) {
+  if (!ParseOutput(ip6tables_result, devices, TrafficCounter::IPV6,
+                   &counters)) {
     LOG(ERROR) << "Failed to parse IPv6 counters";
     return {};
   }
@@ -321,6 +317,22 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
     case TrafficCounter::UNKNOWN:
       return UNKNOWN;
   }
+}
+
+bool CountersService::CounterKey::operator<(const CounterKey& rhs) const {
+  if (ifname < rhs.ifname) {
+    return true;
+  }
+  if (ifname > rhs.ifname) {
+    return false;
+  }
+  if (source < rhs.source) {
+    return true;
+  }
+  if (source > rhs.source) {
+    return false;
+  }
+  return ip_family < rhs.ip_family;
 }
 
 }  // namespace patchpanel

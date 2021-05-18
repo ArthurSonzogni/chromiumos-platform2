@@ -47,18 +47,18 @@ namespace patchpanel {
 //
 // Query: Two commands (iptables and ip6tables) will be executed in the mangle
 // table to get all the chains and rules. And then we perform a text parsing on
-// the output to get the counters. Counters for the same entry will be merged
-// before return.
+// the output to get the counters.
 class CountersService {
  public:
-  using SourceDevice = std::pair<TrafficCounter::Source, std::string>;
-  struct Counter {
-    Counter() = default;
-    Counter(uint64_t rx_bytes,
-            uint64_t rx_packets,
-            uint64_t tx_bytes,
-            uint64_t tx_packets);
+  struct CounterKey {
+    std::string ifname;
+    TrafficCounter::Source source;
+    TrafficCounter::IpFamily ip_family;
 
+    bool operator<(const CounterKey& rhs) const;
+  };
+
+  struct Counter {
     uint64_t rx_bytes = 0;
     uint64_t rx_packets = 0;
     uint64_t tx_bytes = 0;
@@ -81,10 +81,8 @@ class CountersService {
   // |devices| is the set of interfaces for which counters should be returned,
   // any unknown interfaces will be ignored. If |devices| is empty, counters for
   // all known interfaces will be returned. An empty map will be returned on
-  // any failure. Note that currently all traffic to/from an interface will be
-  // counted by (UNKNOWN, ifname), i.e., no other sources except for UNKNOWN are
-  // used.
-  std::map<SourceDevice, Counter> GetCounters(
+  // any failure.
+  std::map<CounterKey, Counter> GetCounters(
       const std::set<std::string>& devices);
 
  private:

@@ -934,10 +934,11 @@ std::unique_ptr<dbus::Response> Manager::OnGetTrafficCounters(
   const auto counters = counters_svc_->GetCounters(devices);
   for (const auto& kv : counters) {
     auto* traffic_counter = response.add_counters();
-    const auto& source_and_device = kv.first;
+    const auto& key = kv.first;
     const auto& counter = kv.second;
-    traffic_counter->set_source(source_and_device.first);
-    traffic_counter->set_device(source_and_device.second);
+    traffic_counter->set_source(key.source);
+    traffic_counter->set_device(key.ifname);
+    traffic_counter->set_ip_family(key.ip_family);
     traffic_counter->set_rx_bytes(counter.rx_bytes);
     traffic_counter->set_rx_packets(counter.rx_packets);
     traffic_counter->set_tx_bytes(counter.tx_bytes);

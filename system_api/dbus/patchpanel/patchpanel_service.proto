@@ -285,6 +285,13 @@ message TrafficCounter {
     SYSTEM = 8;
   }
 
+  // Possible IP address family numbers.
+  enum IpFamily {
+    NONE = 0;
+    IPV4 = 1;
+    IPV6 = 2;
+  }
+
   // Counter values need to be 64bits as 32bits is not enough to account for
   // more than ~4GB of traffic.
   uint64 rx_bytes = 1;
@@ -292,10 +299,15 @@ message TrafficCounter {
   uint64 rx_packets = 3;
   uint64 tx_packets = 4;
 
+  // The source that originated the traffic.
   Source source = 5;
+
   // The shill device (interface) name (e.g., eth0) where the traffic leaves
   // from or comes in.
   string device = 6;
+
+  // The IP family of the traffic.
+  IpFamily ip_family = 7;
 }
 
 // Requests the traffic counters kept by patchpanel. |devices| is the set of

@@ -31,15 +31,28 @@ using ::testing::SetArgPointee;
 using ::testing::SizeIs;
 
 using Counter = CountersService::Counter;
-using SourceDevice = CountersService::SourceDevice;
+using CounterKey = CountersService::CounterKey;
 
-// The following two functions should be put outside the anounymous namespace
+// The following four functions should be put outside the anonymous namespace
 // otherwise they could not be found in the tests.
 std::ostream& operator<<(std::ostream& os, const Counter& counter) {
   os << "rx_bytes:" << counter.rx_bytes << ", rx_packets:" << counter.rx_packets
      << ", tx_bytes:" << counter.tx_bytes
      << ", tx_packets:" << counter.tx_packets;
   return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const CounterKey& key) {
+  os << "ifname:" << key.ifname
+     << ", source:" << TrafficCounter::Source_Name(key.source)
+     << ", ip_family:" << TrafficCounter::IpFamily_Name(key.ip_family);
+  return os;
+}
+
+bool operator==(const CountersService::CounterKey lhs,
+                const CountersService::CounterKey rhs) {
+  return lhs.ifname == rhs.ifname && lhs.source == rhs.source &&
+         lhs.ip_family == rhs.ip_family;
 }
 
 bool operator==(const CountersService::Counter lhs,
@@ -137,6 +150,33 @@ Chain rx_wlan0 (2 references)
        0        0            all  --  any    any     anywhere             anywhere            
 )";
 
+bool CompareCounters(std::map<CounterKey, Counter> expected,
+                     std::map<CounterKey, Counter> actual) {
+  bool success = true;
+  for (const auto& kv : expected) {
+    const auto it = actual.find(kv.first);
+    if (it == actual.end()) {
+      LOG(ERROR) << "Could not find expected CounterKey=" << kv.first;
+      success = false;
+      continue;
+    }
+    if (!(it->second == kv.second)) {
+      LOG(ERROR) << "Unexpected Counter=" << it->second
+                 << " for CounterKey=" << kv.first << ". Expected instead "
+                 << kv.second;
+      success = false;
+    }
+  }
+  for (const auto& kv : actual) {
+    if (expected.find(kv.first) == expected.end()) {
+      LOG(ERROR) << "Unexpected entry CounterKey=" << kv.first
+                 << " Counter=" << kv.second;
+      success = false;
+    }
+  }
+  return success;
+}
+
 class MockProcessRunner : public MinijailedProcessRunner {
  public:
   MockProcessRunner() = default;
@@ -176,9 +216,8 @@ class CountersServiceTest : public testing::Test {
         .WillRepeatedly(DoAll(SetArgPointee<3>(ipv6_output), Return(0)));
 
     auto actual = counters_svc_->GetCounters({});
-    std::map<SourceDevice, Counter> expected;
-
-    EXPECT_THAT(actual, ContainerEq(expected));
+    std::map<CounterKey, Counter> expected;
+    EXPECT_TRUE(CompareCounters(expected, actual));
   }
 
   MockProcessRunner runner_;
@@ -389,34 +428,58 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
   // The expected counters for eth0 and wlan0. All values are doubled because
   // the same output will be returned for both iptables and ip6tables in the
   // tests.
-  std::map<SourceDevice, Counter> expected{
-      {{TrafficCounter::CHROME, "eth0"},
-       {23876 /*rx_bytes*/, 146 /*rx_packets*/, 488854 /*tx_bytes*/,
-        2732 /*tx_packets*/}},
-      {{TrafficCounter::UPDATE_ENGINE, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 3340 /*tx_bytes*/,
-        40 /*tx_packets*/}},
-      {{TrafficCounter::SYSTEM, "eth0"},
-       {1388 /*rx_bytes*/, 10 /*rx_packets*/, 276804 /*tx_bytes*/,
-        1100 /*tx_packets*/}},
-      {{TrafficCounter::ARC, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 1752344 /*tx_bytes*/,
-        10748 /*tx_packets*/}},
-      {{TrafficCounter::CROSVM, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 5380 /*tx_bytes*/,
-        78 /*tx_packets*/}},
-      {{TrafficCounter::UNKNOWN, "eth0"},
-       {690 /*rx_bytes*/, 12 /*rx_packets*/, 246 /*tx_bytes*/,
-        8 /*tx_packets*/}},
-      {{TrafficCounter::CHROME, "wlan0"},
-       {56196 /*rx_bytes*/, 306 /*rx_packets*/, 114008 /*tx_bytes*/,
-        620 /*tx_packets*/}},
-      {{TrafficCounter::SYSTEM, "wlan0"},
-       {1680 /*rx_bytes*/, 12 /*rx_packets*/, 5602 /*tx_bytes*/,
-        48 /*tx_packets*/}},
+  std::map<CounterKey, Counter> expected{
+      {{"eth0", TrafficCounter::CHROME, TrafficCounter::IPV4},
+       {11938 /*rx_bytes*/, 73 /*rx_packets*/, 244427 /*tx_bytes*/,
+        1366 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UPDATE_ENGINE, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 1670 /*tx_bytes*/,
+        20 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::SYSTEM, TrafficCounter::IPV4},
+       {694 /*rx_bytes*/, 5 /*rx_packets*/, 138402 /*tx_bytes*/,
+        550 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::ARC, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 876172 /*tx_bytes*/,
+        5374 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::CROSVM, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 2690 /*tx_bytes*/,
+        39 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV4},
+       {345 /*rx_bytes*/, 6 /*rx_packets*/, 123 /*tx_bytes*/,
+        4 /*tx_packets*/}},
+      {{"wlan0", TrafficCounter::CHROME, TrafficCounter::IPV4},
+       {28098 /*rx_bytes*/, 153 /*rx_packets*/, 57004 /*tx_bytes*/,
+        310 /*tx_packets*/}},
+      {{"wlan0", TrafficCounter::SYSTEM, TrafficCounter::IPV4},
+       {840 /*rx_bytes*/, 6 /*rx_packets*/, 2801 /*tx_bytes*/,
+        24 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::CHROME, TrafficCounter::IPV6},
+       {11938 /*rx_bytes*/, 73 /*rx_packets*/, 244427 /*tx_bytes*/,
+        1366 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UPDATE_ENGINE, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 1670 /*tx_bytes*/,
+        20 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::SYSTEM, TrafficCounter::IPV6},
+       {694 /*rx_bytes*/, 5 /*rx_packets*/, 138402 /*tx_bytes*/,
+        550 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::ARC, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 876172 /*tx_bytes*/,
+        5374 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::CROSVM, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 2690 /*tx_bytes*/,
+        39 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV6},
+       {345 /*rx_bytes*/, 6 /*rx_packets*/, 123 /*tx_bytes*/,
+        4 /*tx_packets*/}},
+      {{"wlan0", TrafficCounter::CHROME, TrafficCounter::IPV6},
+       {28098 /*rx_bytes*/, 153 /*rx_packets*/, 57004 /*tx_bytes*/,
+        310 /*tx_packets*/}},
+      {{"wlan0", TrafficCounter::SYSTEM, TrafficCounter::IPV6},
+       {840 /*rx_bytes*/, 6 /*rx_packets*/, 2801 /*tx_bytes*/,
+        24 /*tx_packets*/}},
   };
 
-  EXPECT_THAT(actual, ContainerEq(expected));
+  EXPECT_TRUE(CompareCounters(expected, actual));
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
@@ -431,51 +494,80 @@ TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
   // The expected counters for eth0. All values are doubled because
   // the same output will be returned for both iptables and ip6tables in the
   // tests.
-  std::map<SourceDevice, Counter> expected{
-      {{TrafficCounter::CHROME, "eth0"},
-       {23876 /*rx_bytes*/, 146 /*rx_packets*/, 488854 /*tx_bytes*/,
-        2732 /*tx_packets*/}},
-      {{TrafficCounter::UPDATE_ENGINE, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 3340 /*tx_bytes*/,
-        40 /*tx_packets*/}},
-      {{TrafficCounter::SYSTEM, "eth0"},
-       {1388 /*rx_bytes*/, 10 /*rx_packets*/, 276804 /*tx_bytes*/,
-        1100 /*tx_packets*/}},
-      {{TrafficCounter::ARC, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 1752344 /*tx_bytes*/,
-        10748 /*tx_packets*/}},
-      {{TrafficCounter::CROSVM, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 5380 /*tx_bytes*/,
-        78 /*tx_packets*/}},
-      {{TrafficCounter::UNKNOWN, "eth0"},
-       {690 /*rx_bytes*/, 12 /*rx_packets*/, 246 /*tx_bytes*/,
-        8 /*tx_packets*/}},
+  std::map<CounterKey, Counter> expected{
+      {{"eth0", TrafficCounter::CHROME, TrafficCounter::IPV4},
+       {11938 /*rx_bytes*/, 73 /*rx_packets*/, 244427 /*tx_bytes*/,
+        1366 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UPDATE_ENGINE, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 1670 /*tx_bytes*/,
+        20 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::SYSTEM, TrafficCounter::IPV4},
+       {694 /*rx_bytes*/, 5 /*rx_packets*/, 138402 /*tx_bytes*/,
+        550 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::ARC, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 876172 /*tx_bytes*/,
+        5374 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::CROSVM, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 2690 /*tx_bytes*/,
+        39 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV4},
+       {345 /*rx_bytes*/, 6 /*rx_packets*/, 123 /*tx_bytes*/,
+        4 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::CHROME, TrafficCounter::IPV6},
+       {11938 /*rx_bytes*/, 73 /*rx_packets*/, 244427 /*tx_bytes*/,
+        1366 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UPDATE_ENGINE, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 1670 /*tx_bytes*/,
+        20 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::SYSTEM, TrafficCounter::IPV6},
+       {694 /*rx_bytes*/, 5 /*rx_packets*/, 138402 /*tx_bytes*/,
+        550 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::ARC, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 876172 /*tx_bytes*/,
+        5374 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::CROSVM, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 2690 /*tx_bytes*/,
+        39 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV6},
+       {345 /*rx_bytes*/, 6 /*rx_packets*/, 123 /*tx_bytes*/,
+        4 /*tx_packets*/}},
   };
 
-  EXPECT_THAT(actual, ContainerEq(expected));
+  EXPECT_TRUE(CompareCounters(expected, actual));
 }
 
 TEST_F(CountersServiceTest, QueryTraffic_UnknownTrafficOnly) {
-  const std::string unkwown_traffic_only = R"(
+  const std::string unknown_ipv4_traffic_only = R"(
 Chain tx_eth0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination
     6511 68041668            all  --  any    any     anywhere             anywhere
 )";
 
+  const std::string unknown_ipv6_traffic_only = R"(
+Chain tx_eth0 (1 references)
+    pkts      bytes target     prot opt in     out     source               destination
+    211 13456            all  --  any    any     anywhere             anywhere
+)";
+
   EXPECT_CALL(runner_, iptables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(unkwown_traffic_only), Return(0)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<3>(unknown_ipv4_traffic_only), Return(0)));
   EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(unkwown_traffic_only), Return(0)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<3>(unknown_ipv6_traffic_only), Return(0)));
 
   auto actual = counters_svc_->GetCounters({});
 
-  std::map<SourceDevice, Counter> expected{
-      {{TrafficCounter::UNKNOWN, "eth0"},
-       {0 /*rx_bytes*/, 0 /*rx_packets*/, 136083336 /*tx_bytes*/,
-        13022 /*tx_packets*/}},
+  std::map<CounterKey, Counter> expected{
+      {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV4},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 68041668 /*tx_bytes*/,
+        6511 /*tx_packets*/}},
+      {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV6},
+       {0 /*rx_bytes*/, 0 /*rx_packets*/, 13456 /*tx_bytes*/,
+        211 /*tx_packets*/}},
   };
 
-  EXPECT_THAT(actual, ContainerEq(expected));
+  EXPECT_TRUE(CompareCounters(expected, actual));
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithEmptyIPv4Output) {
