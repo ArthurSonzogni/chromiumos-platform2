@@ -5,6 +5,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/time/time_override.h>
 #include <gtest/gtest.h>
 
 #include "usb_bouncer/entry_manager.h"
@@ -31,13 +32,37 @@ bool IsUserPresent(SessionState session_state) {
 }
 }  // namespace
 
+// Provides a callback with a static type for controlling base::Time::Now()
+// during the garbage collection tests since it is undesirable for timeouts
+// to be hit during the unit tests.
+class TimeOverride {
+ public:
+  static base::Time Now() {
+    now_time_ += base::TimeDelta::FromMilliseconds(1);
+    return now_time_;
+  }
+
+  static base::Time now_time_;
+};
+
+// static
+base::Time TimeOverride::now_time_;
+
 class EntryManagerTest : public testing::Test {
  public:
   void GarbageCollectTest(SessionState session_state) {
+    // Take control of base::Time::Now() to eliminate races since the tests run
+    // under extreme load.
+    TimeOverride::now_time_ = base::Time::Now();
+    auto time_overrides = base::subtle::ScopedTimeClockOverrides(
+        &TimeOverride::Now, nullptr, nullptr);
+
     bool user_present = IsUserPresent(session_state);
     util_.RefreshDB(user_present /*include_user_db*/, true /*new_db*/);
 
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
+                                        kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
                                         kDefaultDevpath));
 
     bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
@@ -45,13 +70,6 @@ class EntryManagerTest : public testing::Test {
 
     EXPECT_EQ(util_.GarbageCollectInternal(true /*global_only*/), 0);
 
-    // It should be fine for this to precede GarbageCollectInternal, but only
-    // if less than a second passes before the check, so that
-    // kModeSwitchThreshold does not expire the entry. This was happening
-    // during CQ unit tests, so the operation was moved here to eliminate the
-    // race even though it means less coverage.
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
-                                        kDefaultDevpath));
     EXPECT_TRUE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
     if (user_present) {
       EXPECT_TRUE(util_.UserDBContainsEntry(kDefaultRule));
