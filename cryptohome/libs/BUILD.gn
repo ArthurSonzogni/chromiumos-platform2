@@ -195,6 +195,7 @@ static_library("libcrostpm") {
     "../crypto.cc",
     "../crypto_error.cc",
     "../cryptohome_key_loader.cc",
+    "../cryptohome_recovery_auth_block.cc",
     "../double_wrapped_compat_auth_block.cc",
     "../firmware_management_parameters.cc",
     "../fwmp_checker_owner_index.cc",

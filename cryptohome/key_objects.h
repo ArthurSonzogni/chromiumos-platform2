@@ -29,6 +29,11 @@ struct AuthInput {
   base::Optional<std::string> obfuscated_username;
   // A generated reset secret to unlock a rate limited credential.
   base::Optional<brillo::SecureBlob> reset_secret;
+  // Public key of the mediator for Cryptohome recovery flow.
+  base::Optional<brillo::SecureBlob> mediator_pub_key;
+  // A key received by Recovery Mediator service and used by Cryptohome recovery
+  // flow to derive the wrapping keys.
+  base::Optional<brillo::SecureBlob> mediated_publisher_pub_key;
 };
 
 // LibScrypt requires a salt to be passed from Create() into the encryption

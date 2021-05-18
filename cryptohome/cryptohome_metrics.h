@@ -66,6 +66,9 @@ enum DerivationType : int {
   kTpmBackedNonPcrBound,
   // Deprecated state - both TPM/GSC and scrypt is being used.
   kDoubleWrapped,
+  // Secret is generated on the device and later derived by Cryptohome Recovery
+  // process using data stored on the device and by Recovery Mediator service.
+  kCryptohomeRecovery,
   kDerivationTypeNumBuckets  // Must be the last entry.
 };
 
