@@ -27,16 +27,18 @@ VNC server will start listening on port 5900. Forward the port with SSH from
 your client, and connect through the port. Example:
 
 ```shell
-(workstation)$ ssh -L 5900:localhost:5900 DUT
+(workstation)$ ssh -L 5900:localhost:5900 DUT  # Keep this running to forward port.
 ```
 
-Then connect using a VNC client, such as
-[VNC Viewer for Google Chrome](https://chrome.google.com/webstore/detail/vnc%C2%AE-viewer-for-google-ch/iabmpiboiopbgfabjmgeedhcmjenhbla)
-to localhost:5900. It will ask you if you want to connect unauthenticated, here
-we are relying on ssh forwarding to restrict who can connect.
+Then connect using a VNC client. It could be any client but tigervnc-viewer
+Debian package worked well from crostini on fizz. Make the client connect to
+`localhost` port 5900 (which is display number 0, the parameter for
+xtigervncviewer becomes `localhost:0`)
 
-TODO(http://b/187650823): Update VNC Viewer recommendation with another app that
-works well as VNC Viewer for Google Chrome is unlaunched.
+```shell
+(workstation)$ sudo apt install tigervnc-viewer  # to install on Debian.
+(workstation)$ xtigervncviewer localhost:0
+```
 
 ### Reporting bugs
 
