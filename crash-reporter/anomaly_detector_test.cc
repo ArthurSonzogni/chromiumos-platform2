@@ -29,6 +29,7 @@ using ::anomaly::ParserTest;
 using ::anomaly::SELinuxParser;
 using ::anomaly::ServiceParser;
 using ::anomaly::SuspendParser;
+using ::anomaly::TcsdParser;
 using ::anomaly::TerminaParser;
 
 const ParserRun simple_run;
@@ -574,4 +575,16 @@ TEST(AnomalyDetectorTest, CryptohomeIgnoreFailedLogin) {
   ParserRun cryptohome_mount_failure = {.expected_size = 0};
   ParserTest<CryptohomeParser>("TEST_CRYPTOHOME_FAILED_LOGIN_IGNORE",
                                {cryptohome_mount_failure});
+}
+
+TEST(AnomalyDetectorTest, TcsdAuthFailure) {
+  ParserRun tcsd_auth_failure = {.expected_text = "b349c715-auth failure",
+                                 .expected_flags = {{"--auth_failure"}}};
+  ParserTest<TcsdParser>("TEST_TCSD_AUTH_FAILURE", {tcsd_auth_failure});
+}
+
+TEST(AnomalyDetectorTest, TcsdAuthFailureBlocklist) {
+  ParserRun tcsd_auth_failure = {.expected_size = 0};
+  ParserTest<TcsdParser>("TEST_TCSD_AUTH_FAILURE_BLOCKLIST",
+                         {tcsd_auth_failure});
 }

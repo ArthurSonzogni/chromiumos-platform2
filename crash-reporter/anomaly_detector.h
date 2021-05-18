@@ -153,6 +153,11 @@ class CryptohomeParser : public Parser {
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
 };
 
+class TcsdParser : public Parser {
+ public:
+  MaybeCrashReport ParseLogEntry(const std::string& line) override;
+};
+
 }  // namespace anomaly
 
 #endif  // CRASH_REPORTER_ANOMALY_DETECTOR_H_

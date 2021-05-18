@@ -4,6 +4,7 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
+#include <unordered_set>
 #include <utility>
 
 #include <anomaly_detector/proto_bindings/anomaly_detector.pb.h>
@@ -506,6 +507,27 @@ MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
 
   return CrashReport("", {std::move("--mount_failure"),
                           std::move("--mount_device=cryptohome")});
+}
+
+constexpr LazyRE2 auth_failure = {
+    R"(Found auth failure in the last life cycle. \(0x(.+)\))"};
+
+const std::unordered_set<uint32_t> auth_failure_blocklist = {
+    0x2010c9ae,  // wrong password attempts
+};
+
+MaybeCrashReport TcsdParser::ParseLogEntry(const std::string& line) {
+  uint32_t hash;
+  if (!RE2::PartialMatch(line, *auth_failure, RE2::Hex(&hash))) {
+    return base::nullopt;
+  }
+  if (auth_failure_blocklist.count(hash)) {
+    LOG(INFO) << "Ignoring auth_failure 0x" << std::hex << hash;
+    return base::nullopt;
+  }
+  std::string text = base::StringPrintf("%08x-auth failure\n", hash);
+
+  return CrashReport(std::move(text), {std::move("--auth_failure")});
 }
 
 }  // namespace anomaly

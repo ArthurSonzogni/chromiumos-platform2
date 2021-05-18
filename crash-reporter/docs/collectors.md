@@ -362,6 +362,13 @@ information on why the suspend failure happened.
 
 TODO(dbasehore): Expand on this section
 
+### auth failures
+
+When there are some auth failure on the previous life cycle of tcsd, we
+generate a report along with failed tpm commands.
+
+TODO(chingkang): Expand on this section
+
 ## kernel_warning_collector
 
 Collects WARN() messages from anywhere in the depths of the kernel.

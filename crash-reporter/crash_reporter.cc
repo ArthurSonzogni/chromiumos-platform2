@@ -250,6 +250,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
   DEFINE_bool(clobber_state, false,
               "Report a run of clobber-state unrelated to a mount failure");
+  DEFINE_bool(auth_failure, false, "Report auth failure");
   DEFINE_bool(mount_failure, false, "Report mount failure");
   DEFINE_bool(umount_failure, false, "Report umount failure");
   DEFINE_string(mount_device, "",
@@ -724,6 +725,13 @@ int main(int argc, char* argv[]) {
                    base::Unretained(&generic_failure_collector),
                    GenericFailureCollector::kSuspendFailure,
                    util::GetSuspendFailureWeight()),
+           },
+           {
+               .should_handle = FLAGS_auth_failure,
+               .cb = base::BindRepeating(
+                   &GenericFailureCollector::Collect,
+                   base::Unretained(&generic_failure_collector),
+                   GenericFailureCollector::kAuthFailure),
            },
            {
                .should_handle = !FLAGS_arc_service_failure.empty(),

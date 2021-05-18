@@ -49,6 +49,7 @@ class GenericFailureCollector : public CrashCollector {
                    base::Optional<int> weight);
 
   static const char* const kGenericFailure;
+  static const char* const kAuthFailure;
   static const char* const kSuspendFailure;
   static const char* const kServiceFailure;
   static const char* const kArcServiceFailure;

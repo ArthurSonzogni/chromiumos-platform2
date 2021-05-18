@@ -16,6 +16,7 @@ const char kSignatureKey[] = "sig";
 using base::FilePath;
 using base::StringPrintf;
 
+const char* const GenericFailureCollector::kAuthFailure = "auth-failure";
 const char* const GenericFailureCollector::kSuspendFailure = "suspend-failure";
 const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
