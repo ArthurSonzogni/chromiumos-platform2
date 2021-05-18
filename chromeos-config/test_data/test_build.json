@@ -49,6 +49,10 @@
         "camera": {
           "count": 1
         },
+        "demo-mode": {
+          "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
+          "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
+        },
         "fingerprint": {
           "board": "bloonchipper",
           "ro-version": "VERSION1"
@@ -194,6 +198,10 @@
         "camera": {
           "count": 1
         },
+        "demo-mode": {
+          "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
+          "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
+        },
         "fingerprint": {
           "board": "bloonchipper",
           "ro-version": "VERSION1"
@@ -334,6 +342,10 @@
         },
         "camera": {
           "count": 1
+        },
+        "demo-mode": {
+          "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
+          "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
         },
         "fingerprint": {
           "board": "bloonchipper",

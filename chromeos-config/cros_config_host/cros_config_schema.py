@@ -407,6 +407,12 @@ def _GenerateInferredAshSwitches(device_config):
   if extra_web_apps_dir:
     ash_switches.add('--extra-web-apps-dir=%s' % extra_web_apps_dir)
 
+  demo_mode_config = device_config.get('demo-mode', {})
+  for ext_type in ('highlights', 'screensaver'):
+    ext_id = demo_mode_config.get('%s-extension-id' % ext_type)
+    if ext_id:
+      ash_switches.add('--demo-mode-%s-extension=%s' % (ext_type, ext_id))
+
   if not ash_switches:
     return device_config
 

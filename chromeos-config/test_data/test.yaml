@@ -94,6 +94,9 @@ some_config: &some_config
   audio:
     <<: *audio
     $topology-name: "some"
+  demo-mode:
+    highlights-extension-id: "iggildboghmjpbjcpmobahnkmoefkike"
+    screensaver-extension-id: "gdobaoeekhiklaljmhladjfdfkigampc"
   firmware-signing:
     key-id: "{{$key-id}}"
     signature-id: "{{$name}}"
