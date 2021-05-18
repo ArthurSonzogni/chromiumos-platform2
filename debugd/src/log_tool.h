@@ -6,10 +6,12 @@
 #define DEBUGD_SRC_LOG_TOOL_H_
 
 #include <sys/types.h>
+
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -140,6 +142,8 @@ class LogTool {
   // ARC bug report has been backed up.
   std::set<std::string> arc_bug_report_backups_;
 };
+
+std::vector<std::vector<std::string>> GetAllDebugTitlesForTest();
 
 }  // namespace debugd
 

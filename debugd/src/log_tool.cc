@@ -430,8 +430,8 @@ const std::vector<Log> kExtraLogs {
     "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c '/system/bin/logcat -d'",
     kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
 #if USE_CELLULAR
-  {kCommand, "mm-status", "/usr/bin/modem status"},
   {kCommand, "mm-esim-status", "/usr/bin/modem esim status"},
+  {kCommand, "mm-status", "/usr/bin/modem status"},
 #endif  // USE_CELLULAR
   // --processes requires root.
   {kCommand, "netstat",
@@ -454,8 +454,8 @@ const std::vector<Log> kFeedbackLogs {
     "croslog --show-cursor=false --identifier=kernel --priority=err"
     "  --grep='iwlwifi.*ADVANCED_SYSASSERT' | wc -l"},
 #if USE_CELLULAR
-  {kCommand, "mm-status", "/usr/bin/modem status-feedback"},
   {kCommand, "mm-esim-status", "/usr/bin/modem esim status_feedback"},
+  {kCommand, "mm-status", "/usr/bin/modem status-feedback"},
 #endif  // USE_CELLULAR
   {kCommand, "network-devices",
       "/usr/bin/connectivity show-feedback devices"},
@@ -895,6 +895,22 @@ LogTool::LogMap LogTool::GetAllDebugLogs() {
   result[arc_bug_report_log_->GetName()] = GetArcBugReport("", nullptr);
   GetLsbReleaseInfo(&result);
   GetOsReleaseInfo(&result);
+  return result;
+}
+
+std::vector<std::string> GetTitlesFrom(const std::vector<Log>& logs) {
+  std::vector<std::string> result;
+  for (const Log& log : logs) {
+    result.push_back(log.GetName());
+  }
+  return result;
+}
+
+std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
+  std::vector<std::vector<std::string>> result;
+  result.push_back(GetTitlesFrom(kCommandLogsShort));
+  result.push_back(GetTitlesFrom(kCommandLogs));
+  result.push_back(GetTitlesFrom(kExtraLogs));
   return result;
 }
 
