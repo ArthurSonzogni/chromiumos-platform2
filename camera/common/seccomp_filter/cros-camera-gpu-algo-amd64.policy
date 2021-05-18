@@ -20,12 +20,7 @@ exit: 1
 exit_group: 1
 fcntl: 1
 fstat: 1
-# futex op values:
-#   0x0  == FUTEX_WAIT
-#   0x1  == FUTEX_WAKE
-#   0x80 == FUTEX_WAIT_PRIVATE
-#   0x81 == FUTEX_WAKE_PRIVATE
-futex: arg1 == 0x0 || arg1 == 0x1 || arg1 == 0x80 || arg1 == 0x81
+futex: 1
 getdents: 1
 getdents64: 1
 getegid: 1
