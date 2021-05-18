@@ -11,6 +11,7 @@
    ro_stay_ro.py
    verify_pairing.py
    rw_no_update_ro.py
+   ro_update_rw.py
 """
 
 from __future__ import print_function
@@ -30,7 +31,8 @@ def main(argv):
                'flash_wrong_address',
                'rb_rw_protected',
                'ro_boot_valid_rw',
-               'rw_no_update_ro'
+               'rw_no_update_ro',
+               'ro_update_rw',
               ]
 
   for test in test_list:
