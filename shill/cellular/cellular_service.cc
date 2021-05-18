@@ -484,7 +484,7 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnNotRegistered;
     return false;
   }
-  if (cellular_->has_pending_connect()) {
+  if (!cellular_->connect_pending_iccid().empty()) {
     *reason = kAutoConnConnecting;
     return false;
   }

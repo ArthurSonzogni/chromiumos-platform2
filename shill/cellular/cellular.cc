@@ -66,10 +66,6 @@ static std::string ObjectID(const Cellular* c) {
 
 namespace {
 
-// Delay before connecting to pending connect requests. This helps prevent
-// connect failures while the Modem is still starting up.
-const int64_t kPendingConnectDelayMilliseconds = 2 * 1000;
-
 // Maximum time to wait for Modem registration before canceling a pending
 // connect attempt.
 const int64_t kPendingConnectCancelMilliseconds = 60 * 1000;
@@ -484,7 +480,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
   // If the modem restarted it is no longer Inhibited.
   if (inhibited_)
-    SetInhibited(false);
+    SetInhibitedProperty(false);
 
   if (!error.IsSuccess()) {
     LOG(ERROR) << "StartModem failed: " << error;
@@ -1065,9 +1061,8 @@ void Cellular::Connect(CellularService* service, Error* error) {
   }
 
   if (inhibited_) {
-    LOG(INFO) << "Cellular is Inhibited. Pending Connect to: "
-              << service->log_name();
-    SetPendingConnect(service->iccid());
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Connect Failed: Inhibited.");
     return;
   }
 
@@ -1477,7 +1472,7 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                             "SetInhibited=false called with no UID set.");
       // MM should not actually be Inhibited if |uid_| is unset.
-      SetInhibited(false);
+      SetInhibitedProperty(false);
       return true;
     }
     // Request and cache the Device (uid) property before calling InhibitDevice.
@@ -1521,10 +1516,10 @@ void Cellular::OnInhibitDevice(bool inhibited, const Error& error) {
     LOG(ERROR) << __func__ << " Failed: " << error;
     return;
   }
-  SetInhibited(inhibited);
+  SetInhibitedProperty(inhibited);
 }
 
-void Cellular::SetInhibited(bool inhibited) {
+void Cellular::SetInhibitedProperty(bool inhibited) {
   LOG(INFO) << __func__ << ": " << inhibited;
   inhibited_ = inhibited;
   // Update and emit Scanning before Inhibited. This allows the UI to wait for
@@ -1793,7 +1788,7 @@ void Cellular::ConnectToPending() {
   connect_pending_callback_.Reset(base::Bind(
       &Cellular::ConnectToPendingAfterDelay, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
-                                kPendingConnectDelayMilliseconds);
+                                kPendingConnectDelay.InMilliseconds());
 }
 
 void Cellular::ConnectToPendingAfterDelay() {
@@ -1829,6 +1824,8 @@ void Cellular::ConnectToPendingAfterDelay() {
 
 void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
   if (!connect_pending_iccid_.empty()) {
+    SLOG(this, 1) << __func__ << ": " << connect_pending_iccid_
+                  << " Failure: " << Service::ConnectFailureToString(failure);
     CellularServiceRefPtr service =
         manager()->cellular_service_provider()->FindService(
             connect_pending_iccid_);

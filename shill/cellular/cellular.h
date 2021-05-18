@@ -312,7 +312,9 @@ class Cellular : public Device,
 
   Type type() const { return type_; }
   bool inhibited() const { return inhibited_; }
-  bool has_pending_connect() const { return !connect_pending_iccid_.empty(); }
+  const std::string& connect_pending_iccid() const {
+    return connect_pending_iccid_;
+  }
 
   // Returns a unique identifier for a SIM Card. For physical cards this will be
   // the ICCID and there should only be one matching service. For eSIM cards,
@@ -373,7 +375,13 @@ class Cellular : public Device,
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
+  void set_iccid_for_testing(const std::string& iccid) { iccid_ = iccid; }
   void set_state_for_testing(const State& state) { state_ = state; }
+
+  // Delay before connecting to pending connect requests. This helps prevent
+  // connect failures while the Modem is still starting up.
+  static constexpr base::TimeDelta kPendingConnectDelay =
+      base::TimeDelta::FromSeconds(2);
 
  private:
   friend class CellularTest;
@@ -526,7 +534,7 @@ class Cellular : public Device,
   bool SetInhibited(const bool& inhibited, Error* error);
   void SetInhibitedGetDeviceCallback(bool inhibited, const brillo::Any& device);
   void OnInhibitDevice(bool inhibited, const Error& error);
-  void SetInhibited(bool inhibited);
+  void SetInhibitedProperty(bool inhibited);
   KeyValueStore GetSimLockStatus(Error* error);
   void SetSimPresent(bool sim_present);
 

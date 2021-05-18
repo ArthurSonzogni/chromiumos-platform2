@@ -82,6 +82,7 @@ namespace shill {
 namespace {
 RpcIdentifier kTestBearerPath("/org/freedesktop/ModemManager1/Bearer/0");
 constexpr char kUid[] = "uid";
+constexpr char kIccid[] = "1234567890000";
 }  // namespace
 
 class CellularPropertyTest : public PropertyStoreTest {
@@ -561,6 +562,23 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   void InitCapability3gppProxies() { GetCapability3gpp()->InitProxies(); }
+
+  CellularService* SetRegisteredWithService() {
+    device_->set_iccid_for_testing(kIccid);
+    device_->set_state_for_testing(Cellular::kStateRegistered);
+    device_->set_capability_state_for_testing(
+        Cellular::CapabilityState::kModemStarted);
+    device_->set_modem_state_for_testing(Cellular::kModemStateRegistered);
+    CellularService* service = SetService();
+    cellular_service_provider_.LoadServicesForDevice(device_.get());
+    return service;
+  }
+
+  void SetInhibited(bool inhibited) {
+    device_->SetInhibitedProperty(inhibited);
+  }
+
+  void SetScanning(bool scanning) { device_->SetScanningProperty(scanning); }
 
   EventDispatcherForTest dispatcher_;
   TestControl control_interface_;
@@ -1266,9 +1284,7 @@ TEST_P(CellularTest, DisconnectFailure) {
 }
 
 TEST_P(CellularTest, ConnectFailure) {
-  device_->state_ = Cellular::kStateRegistered;
-  device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
-  SetService();
+  SetRegisteredWithService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
   EXPECT_CALL(*mm1_simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
@@ -1277,6 +1293,45 @@ TEST_P(CellularTest, ConnectFailure) {
   Error error;
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
+}
+
+TEST_P(CellularTest, ConnectWhileInhibited) {
+  SetRegisteredWithService();
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _, _)).Times(0);
+  SetCapability3gppModemSimpleProxy();
+
+  // Connect while inhibited should fail.
+  SetInhibited(true);
+  Error error;
+  device_->Connect(device_->service().get(), &error);
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_EQ(Error::kOperationFailed, error.type());
+}
+
+TEST_P(CellularTest, PendingConnect) {
+  CellularService* service = SetRegisteredWithService();
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _, _))
+      .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
+  SetCapability3gppModemSimpleProxy();
+
+  // Connect while scanning should set a pending connect.
+  SetScanning(true);
+  Error error;
+  service->Connect(&error, "test");
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_NE(device_->state(), Cellular::kStateConnected);
+  EXPECT_EQ(device_->connect_pending_iccid(), service->iccid());
+
+  // Setting scanning to false should connect to the pending iccid.
+  SetScanning(false);
+  // Fast forward the task environment by the pending connect delay plus
+  // time to complete the connect.
+  constexpr base::TimeDelta kTestTimeout =
+      Cellular::kPendingConnectDelay + base::TimeDelta::FromSeconds(10);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+  EXPECT_EQ(device_->state(), Cellular::kStateConnected);
+  EXPECT_TRUE(device_->connect_pending_iccid().empty());
 }
 
 TEST_P(CellularTest, LinkEventWontDestroyService) {
