@@ -96,10 +96,12 @@ void MissiveDaemon::AsyncStartUpload(
   scheduler_.EnqueueJob(std::move(upload_job_result.ValueOrDie()));
 }
 
-void MissiveDaemon::EnqueueRecords(
+void MissiveDaemon::EnqueueRecord(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         reporting::EnqueueRecordResponse>> response,
     const reporting::EnqueueRecordRequest& in_request) {
+  scoped_refptr<base::SequencedTaskRunner> task_runner =
+      base::SequencedTaskRunnerHandle::Get();
   if (!daemon_is_ready_) {
     reporting::EnqueueRecordResponse response_body;
     auto* status = response_body.mutable_status();

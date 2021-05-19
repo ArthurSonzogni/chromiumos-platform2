@@ -161,7 +161,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecrypt) {
 TEST_F(EncryptionModuleTest, EncryptionDisabled) {
   constexpr char kTestString[] = "ABCDEF";
 
-  // Disable encryption.
+  // Disable encryption for this test.
   test::ScopedEncryptionFeature encryption_feature_{/*enable=*/false};
 
   // Encrypt the test string.

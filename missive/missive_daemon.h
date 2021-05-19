@@ -46,7 +46,7 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   // Forward org::chromium::MissivedInterface
-  void EnqueueRecords(
+  void EnqueueRecord(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           reporting::EnqueueRecordResponse>> response,
       const reporting::EnqueueRecordRequest& in_request) override;

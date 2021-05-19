@@ -8,7 +8,7 @@
 <node name="/org/chromium/Missived"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Missived">
-    <method name="EnqueueRecords">
+    <method name="EnqueueRecord">
       <tp:docstring>
         Enqueues records for encryption, storage, and upload.
       </tp:docstring>

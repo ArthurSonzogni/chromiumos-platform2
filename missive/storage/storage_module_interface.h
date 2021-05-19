@@ -34,8 +34,7 @@ class StorageModuleInterface
   // Initiates upload of collected records according to the priority.
   // Called usually for a queue with an infinite or very large upload period.
   // Multiple |Flush| calls can safely run in parallel.
-  // On completion |callback| is called with Status OK or error if something
-  // went wrong.
+  // Returns error if cannot start upload.
   virtual void Flush(Priority priority,
                      base::OnceCallback<void(Status)> callback) = 0;
 

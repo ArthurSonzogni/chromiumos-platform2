@@ -10,6 +10,7 @@
 
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/proto/interface.pb.h"
 #include "missive/scheduler/scheduler.h"
@@ -21,7 +22,9 @@ namespace reporting {
 EnqueueJob::EnqueueResponseDelegate::EnqueueResponseDelegate(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>> response)
-    : response_(std::move(response)) {
+    : task_runner_(base::SequencedTaskRunnerHandle::Get()),
+      response_(std::move(response)) {
+  DCHECK(task_runner_);
   DCHECK(response_);
 }
 
@@ -36,7 +39,11 @@ Status EnqueueJob::EnqueueResponseDelegate::Cancel(Status status) {
 Status EnqueueJob::EnqueueResponseDelegate::SendResponse(Status status) {
   EnqueueRecordResponse response_body;
   status.SaveTo(response_body.mutable_status());
-  response_->Return(response_body);
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&brillo::dbus_utils::DBusMethodResponse<
+                         EnqueueRecordResponse>::Return,
+                     std::move(response_), std::move(response_body)));
   return Status::StatusOK();
 }
 
