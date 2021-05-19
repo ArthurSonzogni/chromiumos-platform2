@@ -1,0 +1,6 @@
+env HPS_HW="i2c"
+env FW_APPL_PATH="/lib/firmware/hps-appl.fw"
+env FW_SPI_PATH="/lib/firmware/hps-spi.fw"
+env FW_VERSION=123
+env I2C_DEV="/dev/i2c-2"
+env I2C_ADDR=0x30
