@@ -277,6 +277,20 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
     }
   }
 
+  // TODO(b/187918638): with Fibocom cell modem we are observing RAs coming
+  // from a src IP that is not present in neighbor table. Forwarding this
+  // will cause guest OS to set up a default route that's not routable.
+  // Skip these RAs now to avoid blocking connectivity on those devices, and
+  // we can revisit this case later to proper address the issue, potentially
+  // by using host IP as router IP instead.
+  MacAddress router_mac;
+  if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
+      !GetNeighborMac(ip6->ip6_src, &router_mac)) {
+    LOG(WARNING) << "Detected RA from unreachable src on interface "
+                 << dst_addr.sll_ifindex << ", skip proxying the RA.";
+    return;
+  }
+
   // On receiving RA from router, generate an address for each guest-facing
   // interface, and sent it to DeviceManager so it can be assigned. This address
   // will be used when directly communicating with guest OS through IPv6.
