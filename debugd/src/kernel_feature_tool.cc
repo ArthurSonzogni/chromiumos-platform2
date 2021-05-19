@@ -26,7 +26,7 @@ namespace debugd {
 
 namespace {
 constexpr char kErrorPath[] = "org.chromium.debugd.KernelFeatureError";
-constexpr char kKernelFeaturesPath[] = "/etc/init/kernel-features.conf";
+constexpr char kKernelFeaturesPath[] = "/etc/init/kernel-features.json";
 
 // JSON Helper to retrieve a string value given a string key
 bool GetStringFromKey(base::Value* obj,
