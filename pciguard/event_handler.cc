@@ -132,14 +132,4 @@ void EventHandler::OnUserPermissionChanged(bool new_permission) {
   }
 }
 
-// The intent behind having this routine is to cause a functional regression
-// for any new PCI devices that are not marked as external, and thus ensure that
-// no future platforms shall fail to mark external facing PCI ports as
-// "external-facing" in firmware (See b/187108427).
-void EventHandler::OnNewPciDev(base::FilePath path) {
-  std::lock_guard<std::mutex> lock(lock_);
-  LogEvent("New-PCI-Dev");
-  utils_->EnsurePciDevIsExternal(path);
-}
-
 }  // namespace pciguard

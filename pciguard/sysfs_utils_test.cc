@@ -188,36 +188,4 @@ TEST_F(SysfsUtilsTest, CheckDeauthorizeAllDevices) {
   EXPECT_EQ(data, "0");
 }
 
-TEST_F(SysfsUtilsTest, CheckNewInternalPciDeviceIsImmediatelyRemoved) {
-  auto devpath = root_ + kMockPciDevice;
-
-  auto remove = FilePath(devpath + "/remove");
-  ASSERT_TRUE(base::WriteFile(remove, "0"));
-
-  auto untrusted = FilePath(devpath + "/untrusted");
-  ASSERT_TRUE(base::WriteFile(untrusted, "0"));
-
-  utils_->EnsurePciDevIsExternal(FilePath(devpath));
-
-  std::string data = "0";
-  ASSERT_TRUE(ReadFileToString(remove, &data));
-  EXPECT_EQ(data, "1");
-}
-
-TEST_F(SysfsUtilsTest, CheckNewExternalPciDeviceIsNotRemoved) {
-  auto devpath = root_ + kMockPciDevice;
-
-  auto remove = FilePath(devpath + "/remove");
-  ASSERT_TRUE(base::WriteFile(remove, "0"));
-
-  auto untrusted = FilePath(devpath + "/untrusted");
-  ASSERT_TRUE(base::WriteFile(untrusted, "1"));
-
-  utils_->EnsurePciDevIsExternal(FilePath(devpath));
-
-  std::string data = "1";
-  ASSERT_TRUE(ReadFileToString(remove, &data));
-  EXPECT_EQ(data, "0");
-}
-
 }  // namespace pciguard
