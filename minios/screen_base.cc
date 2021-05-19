@@ -8,6 +8,9 @@
 
 namespace minios {
 
+const int kBtnYStep = 40;
+const int kTitleY = (-1080 / 2) + 238;
+
 ScreenBase::ScreenBase(int button_count,
                        int index,
                        std::shared_ptr<DrawInterface> draw_utils,

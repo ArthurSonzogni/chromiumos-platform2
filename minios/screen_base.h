@@ -8,12 +8,16 @@
 #include <memory>
 
 #include <base/logging.h>
+#include <gtest/gtest_prod.h>
 
 #include "minios/draw_interface.h"
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
 
 namespace minios {
+
+extern const int kBtnYStep;
+extern const int kTitleY;
 
 class ScreenBase : public ScreenInterface {
  public:
@@ -29,6 +33,9 @@ class ScreenBase : public ScreenInterface {
   int GetIndexForTest() { return index_; }
 
  protected:
+  FRIEND_TEST(ScreenBaseTest, UpdateButtons);
+  FRIEND_TEST(ScreenBaseTest, UpdateButtonsIsDetachable);
+
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items. Enter is whether
   // the enter key was pressed and released.

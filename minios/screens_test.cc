@@ -81,64 +81,6 @@ class ScreensTest : public ::testing::Test {
   std::string test_root_;
 };
 
-TEST_F(ScreensTest, UpdateButtons) {
-  screens_.SetIndexForTest(1);
-  int menu_items = 4;
-  bool enter = false;
-  screens_.UpdateButtons(menu_items, kKeyUp, &enter);
-  EXPECT_EQ(0, screens_.GetIndexForTest());
-
-  // Test range.
-  screens_.UpdateButtons(menu_items, kKeyUp, &enter);
-  EXPECT_EQ(0, screens_.GetIndexForTest());
-  // Move to last item.
-  screens_.SetIndexForTest(menu_items - 1);
-  screens_.UpdateButtons(menu_items, kKeyDown, &enter);
-  EXPECT_EQ(menu_items - 1, screens_.GetIndexForTest());
-  EXPECT_FALSE(enter);
-  // Enter key pressed.
-  screens_.SetIndexForTest(1);
-  screens_.UpdateButtons(menu_items, kKeyEnter, &enter);
-  EXPECT_EQ(1, screens_.GetIndexForTest());
-  EXPECT_TRUE(enter);
-
-  // Unknown key, no action taken.
-  screens_.SetIndexForTest(2);
-  enter = false;
-  screens_.UpdateButtons(menu_items, 89, &enter);
-  EXPECT_EQ(2, screens_.GetIndexForTest());
-  EXPECT_FALSE(enter);
-
-  // If index somehow goes out of range, reset to 0.
-  screens_.SetIndexForTest(menu_items + 5);
-  enter = false;
-  screens_.UpdateButtons(menu_items, kKeyEnter, &enter);
-  EXPECT_EQ(0, screens_.GetIndexForTest());
-}
-
-TEST_F(ScreensTest, UpdateButtonsIsDetachable) {
-  screens_.SetIndexForTest(1);
-  bool enter = false;
-  int menu_items = 4;
-
-  screens_.UpdateButtons(menu_items, kKeyVolUp, &enter);
-  EXPECT_EQ(0, screens_.GetIndexForTest());
-
-  // Test range.
-  screens_.UpdateButtons(menu_items, kKeyVolUp, &enter);
-  EXPECT_EQ(0, screens_.GetIndexForTest());
-  // Move to last item.
-  screens_.SetIndexForTest(menu_items - 1);
-  screens_.UpdateButtons(menu_items, kKeyVolDown, &enter);
-  EXPECT_EQ(3, screens_.GetIndexForTest());
-  EXPECT_FALSE(enter);
-  // Enter key pressed.
-  screens_.SetIndexForTest(1);
-  screens_.UpdateButtons(menu_items, kKeyPower, &enter);
-  EXPECT_EQ(1, screens_.GetIndexForTest());
-  EXPECT_TRUE(enter);
-}
-
 TEST_F(ScreensTest, MapRegionToKeyboardNoFile) {
   std::string keyboard;
   EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));

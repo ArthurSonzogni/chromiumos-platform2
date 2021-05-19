@@ -96,14 +96,11 @@ class Screens : public DrawUtils,
   }
 
  private:
-  FRIEND_TEST(ScreensTest, UpdateButtons);
-  FRIEND_TEST(ScreensTest, UpdateButtonsIsDetachable);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoFile);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNotDict);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboardBadKeyboardFormat);
   FRIEND_TEST(ScreensTest, MapRegionToKeyboard);
-  FRIEND_TEST(ScreensTestMocks, ShowFooter);
   FRIEND_TEST(ScreensTestMocks, OnKeyPress);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineError);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineProgressComplete);

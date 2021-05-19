@@ -46,6 +46,9 @@ static_library("libminios") {
     "process_manager.cc",
     "recovery_installer.cc",
     "screen_base.cc",
+    "screen_language_dropdown.cc",
+    "screen_network.cc",
+    "screen_welcome.cc",
     "screens.cc",
     "screens/debug_options_screen.cc",
     "screens/log_screen.cc",
@@ -80,6 +83,7 @@ if (use.test) {
       "logger_test.cc",
       "network_manager_test.cc",
       "recovery_installer_test.cc",
+      "screen_base_test.cc",
       "screens_test.cc",
       "utils_test.cc",
     ]
