@@ -17,11 +17,11 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
   SET_REPEATABLE;
 
+  RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
-  RmadErrorCode ResetState() override;
 
  private:
-  bool VerifyComponents() const;
+  bool VerifyInput(const RmadState& state) const;
 };
 
 }  // namespace rmad

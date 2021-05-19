@@ -10,8 +10,13 @@ namespace rmad {
 
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode WriteProtectDisableMethodStateHandler::InitializeState() {
+  if (!state_.has_wp_disable_method() && !RetrieveState()) {
+    state_.set_allocated_wp_disable_method(new WriteProtectDisableMethodState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -45,13 +50,6 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
   NOTREACHED();
   return {.error = RMAD_ERROR_NOT_SET,
           .state_case = RmadState::StateCase::STATE_NOT_SET};
-}
-
-RmadErrorCode WriteProtectDisableMethodStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_wp_disable_method(new WriteProtectDisableMethodState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

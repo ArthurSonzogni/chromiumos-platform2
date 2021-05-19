@@ -8,8 +8,13 @@ namespace rmad {
 
 CalibrateComponentsStateHandler::CalibrateComponentsStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode CalibrateComponentsStateHandler::InitializeState() {
+  if (!state_.has_calibrate_components() && !RetrieveState()) {
+    state_.set_allocated_calibrate_components(new CalibrateComponentsState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -23,16 +28,10 @@ CalibrateComponentsStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
-  // TODO(chenghan): This is currently fake.
+  // TODO(chenghan): This is currently fake. Should emit signals for calibration
+  //                 progress.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kProvisionDevice};
-}
-
-RmadErrorCode CalibrateComponentsStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_calibrate_components(new CalibrateComponentsState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

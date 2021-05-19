@@ -8,8 +8,13 @@ namespace rmad {
 
 UpdateChromeStateHandler::UpdateChromeStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode UpdateChromeStateHandler::InitializeState() {
+  if (!state_.has_update_chrome() && !RetrieveState()) {
+    state_.set_allocated_update_chrome(new UpdateChromeState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -23,25 +28,17 @@ UpdateChromeStateHandler::GetNextStateCase(const RmadState& state) {
     return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
             .state_case = GetStateCase()};
   }
-
-  state_ = state;
-  StoreState();
-
-  if (state_.update_chrome().update() ==
-      UpdateChromeState::RMAD_UPDATE_STATE_UPDATE) {
+  if (update_chrome.update() == UpdateChromeState::RMAD_UPDATE_STATE_UPDATE) {
     LOG(INFO) << "Chrome needs update. Blocking state transition.";
     return {.error = RMAD_ERROR_TRANSITION_FAILED,
             .state_case = GetStateCase()};
   }
+
+  state_ = state;
+  StoreState();
+
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kComponentsRepair};
-}
-
-RmadErrorCode UpdateChromeStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_update_chrome(new UpdateChromeState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

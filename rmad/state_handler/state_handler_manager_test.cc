@@ -34,6 +34,8 @@ class StateHandlerManagerTest : public testing::Test {
     auto handler =
         base::MakeRefCounted<StrictMock<MockStateHandler>>(json_store_);
     EXPECT_CALL(*handler, GetStateCase()).WillRepeatedly(Return(state));
+    EXPECT_CALL(*handler, InitializeState())
+        .WillRepeatedly(Return(RMAD_ERROR_OK));
     EXPECT_CALL(*handler, GetNextStateCase(_))
         .WillRepeatedly(Return(BaseStateHandler::GetNextStateCaseReply{
             .error = update_error, .state_case = next_state}));
@@ -54,11 +56,11 @@ TEST_F(StateHandlerManagerTest, GetStateHandler) {
   state_handler_manager_->RegisterStateHandler(handler1);
   state_handler_manager_->RegisterStateHandler(handler2);
 
-  scoped_refptr<BaseStateHandler> nonexistent_handler =
+  auto nonexistent_handler =
       state_handler_manager_->GetStateHandler(RmadState::STATE_NOT_SET);
   EXPECT_FALSE(nonexistent_handler.get());
 
-  scoped_refptr<BaseStateHandler> retrieve_handler =
+  auto retrieve_handler =
       state_handler_manager_->GetStateHandler(RmadState::kWelcome);
   EXPECT_TRUE(retrieve_handler.get());
   EXPECT_EQ(RmadState::kWelcome, retrieve_handler->GetStateCase());

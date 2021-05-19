@@ -40,14 +40,14 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // SET_REPEATABLE.
   virtual bool IsRepeatable() const { return false; }
 
+  // Initialize the state. Used when entering or returning to the state.
+  virtual RmadErrorCode InitializeState() = 0;
+
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition
   // fails, a corresponding RmadErrorCode is set, and |next_state_case| will be
   // the same as GetStateCase().
   virtual GetNextStateCaseReply GetNextStateCase(const RmadState& state) = 0;
-
-  // Reset the state. Used when entering or returning to the state.
-  virtual RmadErrorCode ResetState() = 0;
 
   // Store the state to |json_store_|.
   bool StoreState();

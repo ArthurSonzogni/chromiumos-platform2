@@ -39,7 +39,7 @@ void StateHandlerManager::RegisterStateHandler(
   DCHECK(res.second) << "Registered handlers should have unique RmadStates.";
 }
 
-void StateHandlerManager::InitializeStateHandlers() {
+void StateHandlerManager::RegisterStateHandlers() {
   // TODO(gavindodd): Some form of validation of state loaded from the store is
   // needed. e.g. RMA abortable state must match what is expected by the
   // current position in the state flow, but depends on some state in the
@@ -84,7 +84,7 @@ scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
     RmadState::StateCase state) const {
   auto it = state_handler_map_.find(state);
   if (it == state_handler_map_.end()) {
-    // Unregistered RmadState, return an empty pointer.
+    // Unregistered RmadState. Return a null pointer.
     return scoped_refptr<BaseStateHandler>(nullptr);
   }
   return it->second;

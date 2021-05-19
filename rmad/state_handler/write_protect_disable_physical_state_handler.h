@@ -18,8 +18,8 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
 
+  RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
-  RmadErrorCode ResetState() override;
 
  private:
   bool CheckWriteProtectionOn() const;

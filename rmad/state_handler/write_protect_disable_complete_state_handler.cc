@@ -8,8 +8,14 @@ namespace rmad {
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
+  if (!state_.has_wp_disable_complete() && !RetrieveState()) {
+    state_.set_allocated_wp_disable_complete(
+        new WriteProtectDisableCompleteState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -26,14 +32,6 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
 
   // TODO(chenghan): Implement the logic for different paths.
   return {.error = RMAD_ERROR_OK, RmadState::StateCase::kUpdateRoFirmware};
-}
-
-RmadErrorCode WriteProtectDisableCompleteStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_wp_disable_complete(
-        new WriteProtectDisableCompleteState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

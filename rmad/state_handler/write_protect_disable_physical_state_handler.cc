@@ -8,8 +8,14 @@ namespace rmad {
 
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
+  if (!state_.has_wp_disable_physical() && !RetrieveState()) {
+    state_.set_allocated_wp_disable_physical(
+        new WriteProtectDisablePhysicalState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -29,16 +35,10 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
   state_ = state;
   StoreState();
 
+  // TODO(chenghan): This is currently fake. Poll the write protect signal and
+  //                 emit a signal when it's disabled.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableComplete};
-}
-
-RmadErrorCode WriteProtectDisablePhysicalStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_wp_disable_physical(
-        new WriteProtectDisablePhysicalState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 bool WriteProtectDisablePhysicalStateHandler::CheckWriteProtectionOn() const {

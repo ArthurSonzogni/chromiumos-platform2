@@ -100,6 +100,9 @@ enum RmadErrorCode {
 
   // Failed to abort the RMA process.
   RMAD_ERROR_ABORT_FAILED = 29;
+
+  // No corresponding state handler for a state.
+  RMAD_ERROR_STATE_HANDLER_MISSING = 30;
 }
 
 // Defined Rmad states.

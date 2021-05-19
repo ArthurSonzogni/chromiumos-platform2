@@ -10,8 +10,13 @@ namespace rmad {
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
+  if (!state_.has_welcome() && !RetrieveState()) {
+    state_.set_allocated_welcome(new WelcomeState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -42,13 +47,6 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
   NOTREACHED();
   return {.error = RMAD_ERROR_NOT_SET,
           .state_case = RmadState::StateCase::STATE_NOT_SET};
-}
-
-RmadErrorCode WelcomeScreenStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_welcome(new WelcomeState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

@@ -17,11 +17,11 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
   SET_REPEATABLE;
 
+  RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
-  RmadErrorCode ResetState() override;
 
  private:
-  bool IsMotherboardRepair() const;
+  bool IsMainboardRepair() const;
 };
 
 }  // namespace rmad

@@ -18,8 +18,8 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kWpDisableRsu);
   SET_REPEATABLE;
 
+  RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
-  RmadErrorCode ResetState() override;
 };
 
 }  // namespace rmad

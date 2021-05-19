@@ -8,8 +8,13 @@ namespace rmad {
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
+  if (!state_.has_provision_device() && !RetrieveState()) {
+    state_.set_allocated_provision_device(new ProvisionDeviceState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -26,13 +31,6 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpEnablePhysical};
-}
-
-RmadErrorCode ProvisionDeviceStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_provision_device(new ProvisionDeviceState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

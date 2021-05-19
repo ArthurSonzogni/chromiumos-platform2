@@ -13,8 +13,21 @@ namespace rmad {
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
+  if (!state_.has_wp_disable_rsu() && !RetrieveState()) {
+    auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
+    Cr50UtilsImpl cr50_utils;
+    if (std::string challenge_code;
+        cr50_utils.GetRsuChallengeCode(&challenge_code)) {
+      wp_disable_rsu->set_challenge_code(challenge_code);
+    } else {
+      return RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE;
+    }
+    state_.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -44,21 +57,6 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
 
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableComplete};
-}
-
-RmadErrorCode WriteProtectDisableRsuStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
-    Cr50UtilsImpl cr50_utils;
-    if (std::string challenge_code;
-        cr50_utils.GetRsuChallengeCode(&challenge_code)) {
-      wp_disable_rsu->set_challenge_code(challenge_code);
-    } else {
-      return RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE;
-    }
-    state_.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

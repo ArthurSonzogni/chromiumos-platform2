@@ -8,8 +8,13 @@ namespace rmad {
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode DeviceDestinationStateHandler::InitializeState() {
+  if (!state_.has_device_destination() && !RetrieveState()) {
+    state_.set_allocated_device_destination(new DeviceDestinationState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -31,13 +36,6 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
 
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableMethod};
-}
-
-RmadErrorCode DeviceDestinationStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_device_destination(new DeviceDestinationState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

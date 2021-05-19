@@ -36,6 +36,12 @@ constexpr char kCurrentStateWithUnrepeatableHistoryJson[] =
     R"({"state_history": [ 1, 4, 5 ]})";
 constexpr char kCurrentStateWithUnsupportedStateJson[] =
     R"({"state_history": [ 1, 4, 6 ]})";
+constexpr char kInitializeCurrentStateFailJson[] =
+    R"({"state_history": [ 1 ]})";
+constexpr char kInitializeNextStateFailJson[] =
+    R"({"state_history": [ 1, 4 ]})";
+constexpr char kInitializePreviousStateFailJson[] =
+    R"({"state_history": [ 1, 4 ]})";
 constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
 
 class RmadInterfaceImplTest : public testing::Test {
@@ -60,6 +66,7 @@ class RmadInterfaceImplTest : public testing::Test {
       scoped_refptr<JsonStore> json_store,
       const RmadState& state,
       bool is_repeatable,
+      RmadErrorCode initialize_error,
       RmadState::StateCase next_state) {
     auto mock_handler =
         base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
@@ -67,6 +74,8 @@ class RmadInterfaceImplTest : public testing::Test {
     ON_CALL(*mock_handler, GetStateCase()).WillByDefault(Return(state_case));
     ON_CALL(*mock_handler, GetState()).WillByDefault(ReturnRef(state));
     ON_CALL(*mock_handler, IsRepeatable()).WillByDefault(Return(is_repeatable));
+    ON_CALL(*mock_handler, InitializeState())
+        .WillByDefault(Return(initialize_error));
     ON_CALL(*mock_handler, GetNextStateCase(_))
         .WillByDefault(Return(BaseStateHandler::GetNextStateCaseReply{
             .error = RMAD_ERROR_OK, .state_case = next_state}));
@@ -92,13 +101,14 @@ class RmadInterfaceImplTest : public testing::Test {
     // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
+                                              RMAD_ERROR_OK,
                                               RmadState::kComponentsRepair));
-    mock_handlers.push_back(CreateMockHandler(json_store,
-                                              components_repair_proto_, true,
-                                              RmadState::kDeviceDestination));
-    mock_handlers.push_back(CreateMockHandler(json_store,
-                                              device_destination_proto_, false,
-                                              RmadState::kWpDisableMethod));
+    mock_handlers.push_back(
+        CreateMockHandler(json_store, components_repair_proto_, true,
+                          RMAD_ERROR_OK, RmadState::kDeviceDestination));
+    mock_handlers.push_back(
+        CreateMockHandler(json_store, device_destination_proto_, false,
+                          RMAD_ERROR_OK, RmadState::kWpDisableMethod));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
@@ -108,7 +118,24 @@ class RmadInterfaceImplTest : public testing::Test {
     // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, false,
+                                              RMAD_ERROR_OK,
                                               RmadState::kComponentsRepair));
+    return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
+  }
+
+  std::unique_ptr<StateHandlerManager>
+  CreateStateHandlerManagerInitializeStateFail(
+      scoped_refptr<JsonStore> json_store) {
+    std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
+    mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
+                                              RMAD_ERROR_REQUEST_INVALID,
+                                              RmadState::kComponentsRepair));
+    mock_handlers.push_back(
+        CreateMockHandler(json_store, components_repair_proto_, true,
+                          RMAD_ERROR_OK, RmadState::kDeviceDestination));
+    mock_handlers.push_back(CreateMockHandler(
+        json_store, device_destination_proto_, false,
+        RMAD_ERROR_DEVICE_INFO_INVALID, RmadState::kWpDisableMethod));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
@@ -233,6 +260,20 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
 
+TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kInitializeCurrentStateFailJson,
+                      std::size(kInitializeCurrentStateFailJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManagerInitializeStateFail(json_store));
+
+  auto callback = [](const GetStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_REQUEST_INVALID, reply.error());
+  };
+  rmad_interface.GetCurrentState(base::Bind(callback));
+}
+
 TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
@@ -265,6 +306,21 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   EXPECT_DEATH(
       rmad_interface.TransitionNextState(request, base::Bind(callback)),
       "No registered state handler");
+}
+
+TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeStateFail) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kInitializeNextStateFailJson,
+                      std::size(kInitializeNextStateFailJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManagerInitializeStateFail(json_store));
+
+  TransitionNextStateRequest request;
+  auto callback = [](const GetStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
+  };
+  rmad_interface.TransitionNextState(request, base::Bind(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
@@ -311,6 +367,20 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+  };
+  rmad_interface.TransitionPreviousState(base::Bind(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, TransitionPreviousState_InitializeStateFail) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kInitializePreviousStateFailJson,
+                      std::size(kInitializePreviousStateFailJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManagerInitializeStateFail(json_store));
+
+  auto callback = [](const GetStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }

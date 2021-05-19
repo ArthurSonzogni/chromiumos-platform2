@@ -8,8 +8,14 @@ namespace rmad {
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
+  if (!state_.has_wp_enable_physical() && !RetrieveState()) {
+    state_.set_allocated_wp_enable_physical(
+        new WriteProtectEnablePhysicalState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -24,17 +30,10 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
   state_ = state;
   StoreState();
 
-  // TODO(chenghan): This is currently fake.
+  // TODO(chenghan): This is currently fake. Poll the write protect signal and
+  //                 emit a signal when it's enabled.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kFinalize};
-}
-
-RmadErrorCode WriteProtectEnablePhysicalStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_wp_enable_physical(
-        new WriteProtectEnablePhysicalState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

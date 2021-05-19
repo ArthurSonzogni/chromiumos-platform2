@@ -12,8 +12,17 @@ namespace rmad {
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
+  if (!state_.has_update_ro_firmware() && !RetrieveState()) {
+    auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
+    // TODO(chenghan): Set to false when RO verification is not supported.
+    update_ro_firmware->set_optional(true);
+
+    state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -52,7 +61,7 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
       return {.error = RMAD_ERROR_TRANSITION_FAILED,
               .state_case = GetStateCase()};
     case UpdateRoFirmwareState::RMAD_UPDATE_SKIP:
-      if (IsMotherboardRepair()) {
+      if (IsMainboardRepair()) {
         return {.error = RMAD_ERROR_OK,
                 .state_case = RmadState::StateCase::kRestock};
       } else {
@@ -67,19 +76,8 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
           .state_case = RmadState::StateCase::STATE_NOT_SET};
 }
 
-RmadErrorCode UpdateRoFirmwareStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
-    // This is currently always optional.
-    update_ro_firmware->set_optional(true);
-
-    state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
-  }
-  return RMAD_ERROR_OK;
-}
-
-bool UpdateRoFirmwareStateHandler::IsMotherboardRepair() const {
-  // TODO(chenghan): Check |json_store| for this info.
+bool UpdateRoFirmwareStateHandler::IsMainboardRepair() const {
+  // TODO(chenghan): Check |json_store_| for this info.
   return false;
 }
 

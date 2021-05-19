@@ -38,8 +38,20 @@ class RmadInterfaceImpl final : public RmadInterface {
   void GetLogPath(const GetLogPathCallback& callback) override;
 
  private:
+  // Initialize the class.
   void Initialize();
+
+  // Get and initialize the state handler for |state case|, and store it to
+  // |state_handler|. If there's no state handler for |state_case|, or the
+  // initialization fails, return an error, and |state_handler| is unchanged.
+  RmadErrorCode GetInitializedStateHandler(
+      RmadState::StateCase state_case,
+      scoped_refptr<BaseStateHandler>* state_handler) const;
+
+  // Store the state history to |json_store_|.
   bool StoreStateHistory();
+
+  // Check if it's allowed to go back to the previous state.
   bool CanGoBack() const;
 
   scoped_refptr<JsonStore> json_store_;

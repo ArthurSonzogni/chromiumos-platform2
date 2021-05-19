@@ -7,8 +7,13 @@
 namespace rmad {
 
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode FinalizeStateHandler::InitializeState() {
+  if (!state_.has_finalize() && !RetrieveState()) {
+    state_.set_allocated_finalize(new FinalizeState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
@@ -30,13 +35,6 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::STATE_NOT_SET};
-}
-
-RmadErrorCode FinalizeStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_finalize(new FinalizeState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

@@ -8,8 +8,13 @@ namespace rmad {
 
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
+  if (!state_.has_update_device_info() && !RetrieveState()) {
+    state_.set_allocated_update_device_info(new UpdateDeviceInfoState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -26,13 +31,6 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kCalibrateComponents};
-}
-
-RmadErrorCode UpdateDeviceInfoStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_update_device_info(new UpdateDeviceInfoState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad

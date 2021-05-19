@@ -7,8 +7,13 @@
 namespace rmad {
 
 RestockStateHandler::RestockStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  ResetState();
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode RestockStateHandler::InitializeState() {
+  if (!state_.has_restock() && !RetrieveState()) {
+    state_.set_allocated_restock(new RestockState);
+  }
+  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
@@ -29,13 +34,6 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kUpdateDeviceInfo};
-}
-
-RmadErrorCode RestockStateHandler::ResetState() {
-  if (!RetrieveState()) {
-    state_.set_allocated_restock(new RestockState);
-  }
-  return RMAD_ERROR_OK;
 }
 
 }  // namespace rmad
