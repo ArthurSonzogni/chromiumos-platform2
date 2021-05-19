@@ -30,17 +30,9 @@ constexpr char kLogPath[] = "/var/log/messages";
 }  // namespace
 
 bool Screens::Init() {
+  DrawUtils::Init();
   IsDetachable();
-  CheckRightToLeft();
   GetVpdRegion();
-  ReadHardwareId();
-
-  screens_path_ = root_.Append(kScreens);
-  // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
-  ReadDimensionConstants();
-  if (!ReadLangConstants()) {
-    return false;
-  }
 
   // Add size of language dropdown menu using the number of locales.
   menu_count_[ScreenType::kLanguageDropDownScreen] = GetSupportedLocalesSize();

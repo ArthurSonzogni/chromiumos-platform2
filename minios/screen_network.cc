@@ -51,8 +51,12 @@ void ScreenNetwork::Reset() {
   index_ = 1;
 }
 
-ScreenType ScreenNetwork::GetScreenType() {
+ScreenType ScreenNetwork::GetType() {
   return ScreenType::kNetworkDropDownScreen;
+}
+
+std::string ScreenNetwork::GetName() {
+  return "ScreenNetwork";
 }
 
 }  // namespace minios

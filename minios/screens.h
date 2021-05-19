@@ -50,7 +50,7 @@ class Screens : public DrawUtils,
 
   // Loads token constants for screen placement, checks whether locale is read
   // from right to left and whether device is detachable.
-  bool Init();
+  bool Init() override;
 
   // Has the minimum needed to set up tests, to reduce excessive logging. All
   // other components are tested separately.

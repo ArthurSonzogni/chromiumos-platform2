@@ -58,6 +58,18 @@ constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
 constexpr int kEnglishIndex = 9;
 }  // namespace
 
+bool DrawUtils::Init() {
+  CheckRightToLeft();
+  ReadHardwareId();
+  // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
+  ReadDimensionConstants();
+  if (!ReadLangConstants()) {
+    return false;
+  }
+  GetFreconConstants();
+  return true;
+}
+
 bool DrawUtils::ShowText(const std::string& text,
                          int glyph_offset_h,
                          int glyph_offset_v,

@@ -6,6 +6,7 @@
 #define MINIOS_SCREEN_WELCOME_H_
 
 #include <memory>
+#include <string>
 
 #include "minios/screen_base.h"
 
@@ -26,7 +27,9 @@ class ScreenWelcome : public ScreenBase {
 
   void OnKeyPress(int key_changed) override;
 
-  ScreenType GetScreenType() override;
+  ScreenType GetType() override;
+
+  std::string GetName() override;
 
  private:
   void ShowButtons();

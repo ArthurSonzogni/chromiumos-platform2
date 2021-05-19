@@ -6,6 +6,7 @@
 #define MINIOS_SCREEN_LANGUAGE_DROPDOWN_H_
 
 #include <memory>
+#include <string>
 
 #include "minios/screen_base.h"
 
@@ -26,7 +27,8 @@ class ScreenLanguageDropdown : public ScreenBase {
 
   void OnKeyPress(int key_changed) override;
 
-  ScreenType GetScreenType() override;
+  ScreenType GetType() override;
+  std::string GetName() override;
 
  private:
   // Updates locale dropdown menu with current selection.

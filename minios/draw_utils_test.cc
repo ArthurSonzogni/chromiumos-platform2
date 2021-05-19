@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "minios/draw_utils.h"
+#include "minios/mock_draw_utils.h"
 #include "minios/mock_process_manager.h"
 
 using testing::_;
@@ -351,33 +352,6 @@ TEST_F(DrawUtilsTest, GetFreconConstNoFile) {
   EXPECT_EQ(draw_utils_.frecon_scale_factor_, kFreconScalingFactor);
   EXPECT_EQ(draw_utils_.frecon_canvas_size_, kCanvasSize);
 }
-
-class MockDrawUtils : public DrawUtils {
- public:
-  MockDrawUtils() : DrawUtils(nullptr) {}
-  MOCK_METHOD(bool,
-              ShowBox,
-              (int offset_x,
-               int offset_y,
-               int size_x,
-               int size_y,
-               const std::string& color));
-  MOCK_METHOD(bool,
-              ShowImage,
-              (const base::FilePath& image_name, int offset_x, int offset_y));
-  MOCK_METHOD(bool,
-              ShowMessage,
-              (const std::string& message_token, int offset_x, int offset_y));
-  MOCK_METHOD(bool,
-              ShowText,
-              (const std::string& text,
-               int glyph_offset_h,
-               int glyph_offset_v,
-               const std::string& color));
-  MOCK_METHOD(void,
-              ShowInstructionsWithTitle,
-              (const std::string& message_token));
-};
 
 class DrawUtilsTestMocks : public ::testing::Test {
  public:

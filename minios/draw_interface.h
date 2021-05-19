@@ -16,6 +16,8 @@ class DrawInterface {
  public:
   virtual ~DrawInterface() = default;
 
+  virtual bool Init() = 0;
+
   // Show dynamic text using pre-rendered glyphs. Colors 'white', 'grey' and
   // 'black'. Returns true on success.
   virtual bool ShowText(const std::string& text,

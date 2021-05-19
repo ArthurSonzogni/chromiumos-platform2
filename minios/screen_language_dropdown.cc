@@ -39,8 +39,12 @@ void ScreenLanguageDropdown::Reset() {
   index_ = 0;
 }
 
-ScreenType ScreenLanguageDropdown::GetScreenType() {
+ScreenType ScreenLanguageDropdown::GetType() {
   return ScreenType::kLanguageDropDownScreen;
+}
+
+std::string ScreenLanguageDropdown::GetName() {
+  return "ScreenLanguageDropdown";
 }
 
 }  // namespace minios

@@ -55,11 +55,17 @@ extern const int kKeyMax;
 class DrawUtils : public DrawInterface {
  public:
   explicit DrawUtils(ProcessManagerInterface* process_manager)
-      : process_manager_(process_manager) {}
+      : process_manager_(process_manager),
+        screens_path_(root_.Append(kScreens)) {
+    // TODO(b/183791649): minios: Clean up. Replace screens_path_ with
+    // GetScreenPath.
+  }
   ~DrawUtils() override = default;
   // Not copyable or movable.
   DrawUtils(const DrawUtils&) = delete;
   DrawUtils& operator=(const DrawUtils&) = delete;
+
+  bool Init() override;
 
   bool ShowText(const std::string& text,
                 int glyph_offset_h,

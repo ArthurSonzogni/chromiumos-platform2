@@ -30,7 +30,10 @@ class ScreenInterface {
   virtual void Reset() = 0;
 
   // Gets the `ScreenType` for each screen.
-  virtual ScreenType GetScreenType() = 0;
+  virtual ScreenType GetType() = 0;
+
+  // Get the name of the screen as a string.
+  virtual std::string GetName() = 0;
 };
 
 }  // namespace minios

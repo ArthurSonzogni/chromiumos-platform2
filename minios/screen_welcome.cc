@@ -51,8 +51,12 @@ void ScreenWelcome::Reset() {
   index_ = 1;
 }
 
-ScreenType ScreenWelcome::GetScreenType() {
+ScreenType ScreenWelcome::GetType() {
   return ScreenType::kWelcomeScreen;
+}
+
+std::string ScreenWelcome::GetName() {
+  return "ScreenWelcome";
 }
 
 }  // namespace minios
