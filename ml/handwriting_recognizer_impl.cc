@@ -52,7 +52,7 @@ HandwritingRecognizerImpl::HandwritingRecognizerImpl(
   recognizer_ = library_->CreateHandwritingRecognizer();
 
   successfully_loaded_ =
-      library_->LoadHandwritingRecognizer(recognizer_, spec->language);
+      library_->LoadHandwritingRecognizer(recognizer_, std::move(spec));
 }
 
 HandwritingRecognizerImpl::~HandwritingRecognizerImpl() {

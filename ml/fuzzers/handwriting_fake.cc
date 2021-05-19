@@ -7,6 +7,11 @@
 #include <string>
 
 namespace ml {
+namespace {
+
+using chromeos::machine_learning::mojom::HandwritingRecognizerSpecPtr;
+
+}  // namespace
 
 HandwritingLibraryFake::HandwritingLibraryFake() = default;
 HandwritingLibraryFake::~HandwritingLibraryFake() = default;
@@ -21,6 +26,11 @@ HandwritingRecognizer HandwritingLibraryFake::CreateHandwritingRecognizer()
 }
 
 bool HandwritingLibraryFake::LoadHandwritingRecognizer(
+    HandwritingRecognizer recognizer, HandwritingRecognizerSpecPtr spec) const {
+  return true;
+}
+
+bool HandwritingLibraryFake::LoadHandwritingRecognizerFromRootFs(
     HandwritingRecognizer recognizer, const std::string& language) const {
   return true;
 }

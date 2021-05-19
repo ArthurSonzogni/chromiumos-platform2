@@ -6,6 +6,7 @@
 #define ML_UTIL_H_
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 
 namespace ml {
 
@@ -46,6 +47,15 @@ bool GetTotalProcessMemoryUsage(size_t* total_memory);
 constexpr bool IsAsan() {
   return __has_feature(address_sanitizer);
 }
+
+// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
+// realpath's errno unchanged.
+base::Optional<base::FilePath> GetRealPath(const base::FilePath& path);
+
+// Returns true if the given path is a valid path for DLC.
+// This allows ML Service to enforce a security check on the path received via
+// mojo.
+bool IsDlcPathValid(const base::FilePath& path);
 
 }  // namespace ml
 

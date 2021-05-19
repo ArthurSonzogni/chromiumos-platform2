@@ -18,6 +18,7 @@
 #include "ml/request_metrics.h"
 #include "ml/soda.h"
 #include "ml/soda_proto_mojom_conversion.h"
+#include "ml/util.h"
 
 namespace ml {
 namespace {
@@ -52,17 +53,6 @@ void SodaCallback(const char* soda_response_str,
 
 bool IsDlcFilePath(const base::FilePath& path) {
   return base::StartsWith(path.value(), kDlcBasePath);
-}
-
-// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
-// realpath's errno unchanged.
-base::Optional<base::FilePath> RealPath(const base::FilePath& path) {
-  const std::unique_ptr<char, base::FreeDeleter> result(
-      realpath(path.value().c_str(), nullptr));
-  if (!result) {
-    return {};
-  }
-  return base::FilePath(result.get());
 }
 
 }  // namespace
@@ -126,7 +116,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
       receiver_(this, std::move(soda_recognizer)),
       client_remote_(std::move(soda_client)) {
   const base::Optional<base::FilePath> real_library_dlc_path =
-      RealPath(base::FilePath(spec->library_dlc_path));
+      GetRealPath(base::FilePath(spec->library_dlc_path));
   if (!real_library_dlc_path) {
     PLOG(ERROR) << "Bad library path " << spec->library_dlc_path;
     return;
@@ -137,7 +127,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   }
 
   const base::Optional<base::FilePath> real_language_dlc_path =
-      RealPath(base::FilePath(spec->language_dlc_path));
+      GetRealPath(base::FilePath(spec->language_dlc_path));
   if (!real_language_dlc_path) {
     PLOG(ERROR) << "Bad language path " << spec->language_dlc_path;
     return;

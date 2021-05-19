@@ -90,7 +90,7 @@ void InitIcuIfNeeded() {
 }
 
 // Used to avoid duplicating code between two types of recognizers.
-// Currently used in function `LoadHandwritingModelFromDir`.
+// Currently used in function `LoadHandwritingLibAndRecognizer`.
 template <class Recognizer>
 struct RecognizerTraits;
 
@@ -250,7 +250,7 @@ void MachineLearningServiceImpl::LoadTextClassifier(
 }
 
 template <class Recognizer>
-void LoadHandwritingModelFromDir(
+void LoadHandwritingLibAndRecognizer(
     typename RecognizerTraits<Recognizer>::SpecPtr spec,
     mojo::PendingReceiver<Recognizer> receiver,
     typename RecognizerTraits<Recognizer>::Callback callback,
@@ -318,11 +318,13 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
     mojo::PendingReceiver<
         chromeos::machine_learning::mojom::HandwritingRecognizer> receiver,
     LoadHandwritingModelCallback callback) {
-  // If handwriting is installed on rootfs, load it from there.
-  if (ml::HandwritingLibrary::IsUseLibHandwritingEnabled()) {
-    LoadHandwritingModelFromDir<HandwritingRecognizer>(
+  // TODO(claudiomagni): When Language Packs is complete, deprecate the first
+  // case and only use Language Packs.
+  if (ml::HandwritingLibrary::IsUseLibHandwritingEnabled() ||
+      ml::HandwritingLibrary::IsUseLanguagePacksEnabled()) {
+    LoadHandwritingLibAndRecognizer<HandwritingRecognizer>(
         std::move(spec), std::move(receiver), std::move(callback),
-        ml::HandwritingLibrary::kHandwritingDefaultModelDir);
+        ml::HandwritingLibrary::kHandwritingDefaultInstallDir);
     return;
   }
 
@@ -331,7 +333,7 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
   if (ml::HandwritingLibrary::IsUseLibHandwritingDlcEnabled()) {
     dlcservice_client_->GetDlcRootPath(
         "libhandwriting",
-        base::BindOnce(&LoadHandwritingModelFromDir<HandwritingRecognizer>,
+        base::BindOnce(&LoadHandwritingLibAndRecognizer<HandwritingRecognizer>,
                        std::move(spec), std::move(receiver),
                        std::move(callback)));
     return;
@@ -547,10 +549,10 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
 
   // If handwriting is installed on rootfs, load it from there.
   if (is_rootfs_enabled) {
-    LoadHandwritingModelFromDir<
+    LoadHandwritingLibAndRecognizer<
         chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>(
         std::move(constraint), std::move(receiver), std::move(callback),
-        ml::HandwritingLibrary::kHandwritingDefaultModelDir);
+        ml::HandwritingLibrary::kHandwritingDefaultInstallDir);
     return;
   }
 
@@ -559,7 +561,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
   if (is_dlc_enabled) {
     dlcservice_client_->GetDlcRootPath(
         "libhandwriting",
-        base::BindOnce(&LoadHandwritingModelFromDir<
+        base::BindOnce(&LoadHandwritingLibAndRecognizer<
                            chromeos::machine_learning::web_platform::mojom::
                                HandwritingRecognizer>,
                        std::move(constraint), std::move(receiver),

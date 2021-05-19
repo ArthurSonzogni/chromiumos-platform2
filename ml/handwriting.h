@@ -39,8 +39,8 @@ class HandwritingLibrary {
     kNotSupported = 4,
   };
 
-  // Default handwriting model directory on rootfs.
-  static constexpr char kHandwritingDefaultModelDir[] =
+  // Default handwriting directory on rootfs for library and models.
+  static constexpr char kHandwritingDefaultInstallDir[] =
       "/opt/google/chrome/ml_models/handwriting";
 
   // Returns whether HandwritingLibrary is supported.
@@ -64,13 +64,17 @@ class HandwritingLibrary {
     return USE_ONDEVICE_HANDWRITING_DLC;
   }
 
+  // Returns bool of use.ondevice_handwriting_languagepack.
+  // TODO(claudiomagni): Use a USE flag.
+  static constexpr bool IsUseLanguagePacksEnabled() { return false; }
+
   // Gets the singleton HandwritingLibrary. The singleton is initialized with
-  // `model_path` on the first call to GetInstance; for the rest of the calls,
-  //  the `model_path` is ignored, and the existing singleton is returned.
-  // The `model_path` should be either a path on rootfs or a path returned by
+  // `lib_path` on the first call to GetInstance; for the rest of the calls,
+  // the `lib_path` is ignored, and the existing singleton is returned.
+  // The `lib_path` should be either a path on rootfs or a path returned by
   // DlcService.
   static HandwritingLibrary* GetInstance(
-      const std::string& model_path = kHandwritingDefaultModelDir);
+      const std::string& lib_path = kHandwritingDefaultInstallDir);
 
   // Sets a fake impl of HandwritingLibrary which doesn't dlopen the library.
   // This is only used in fuzzer test.
@@ -96,12 +100,20 @@ class HandwritingLibrary {
   // other interface. The memory is owned by the user and should be deleted
   // using `DestroyHandwritingRecognizer` after usage.
   virtual HandwritingRecognizer CreateHandwritingRecognizer() const = 0;
-  // Load the models with `spec` stores the language, the path to the data files
-  // of the model (machine learning models, configurations etc.).
+
+  // Loads the models with `spec` which holds the path to the data files of the
+  // model (machine learning models, configurations etc.).
   // Returns true if HandwritingRecognizer is correctly loaded and
   // initialized. Returns false otherwise.
-  virtual bool LoadHandwritingRecognizer(HandwritingRecognizer recognizer,
-                                         const std::string& language) const = 0;
+  virtual bool LoadHandwritingRecognizer(
+      HandwritingRecognizer recognizer,
+      chromeos::machine_learning::mojom::HandwritingRecognizerSpecPtr spec)
+      const = 0;
+  // This method will be deprecated in favor of the one above.
+  // TODO(claudiomagni): Remove this method once Language Packs is fully done.
+  virtual bool LoadHandwritingRecognizerFromRootFs(
+      HandwritingRecognizer recognizer, const std::string& language) const = 0;
+
   // Sends the specified `request` to `recognizer`, if succeeds, `result` (which
   // should not be null) is populated with the recognition result.
   // Returns true if succeeds, otherwise returns false.
@@ -109,6 +121,7 @@ class HandwritingLibrary {
       HandwritingRecognizer recognizer,
       const chrome_knowledge::HandwritingRecognizerRequest& request,
       chrome_knowledge::HandwritingRecognizerResult* result) const = 0;
+
   // Destroys the handwriting recognizer created by
   // `CreateHandwritingRecognizer`. Must be called if the handwriting recognizer
   // will not be used anymore, otherwise there will be memory leak.

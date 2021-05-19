@@ -53,6 +53,10 @@ TEST(HandwritingLibraryTest, CanLoadLibrary) {
               ml::HandwritingLibrary::Status::kLoadLibraryFailed);
     return;
   }
+
+  // This is only temporary until we use a feature flag.
+  // TODO(claudiomagni): Implement a proper check.
+  EXPECT_FALSE(ml::HandwritingLibrary::IsUseLanguagePacksEnabled());
 }
 
 // Tests each supported language against a file of labeled requests.
@@ -72,7 +76,8 @@ TEST(HandwritingLibraryTest, ExampleRequest) {
   for (int i = 0; i < languages.size(); ++i) {
     HandwritingRecognizer const recognizer =
         instance->CreateHandwritingRecognizer();
-    ASSERT_TRUE(instance->LoadHandwritingRecognizer(recognizer, languages[i]));
+    ASSERT_TRUE(instance->LoadHandwritingRecognizerFromRootFs(recognizer,
+                                                              languages[i]));
 
     chrome_knowledge::HandwritingRecognizerLabeledRequests test_data;
     std::string buf;

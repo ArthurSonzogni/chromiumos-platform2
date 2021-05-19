@@ -57,7 +57,7 @@ WebPlatformHandwritingRecognizerImpl::WebPlatformHandwritingRecognizerImpl(
 
   recognizer_ = library_->CreateHandwritingRecognizer();
 
-  successfully_loaded_ = library_->LoadHandwritingRecognizer(
+  successfully_loaded_ = library_->LoadHandwritingRecognizerFromRootFs(
       recognizer_, constraint->languages.front());
 }
 

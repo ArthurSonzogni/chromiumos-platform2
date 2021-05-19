@@ -32,8 +32,13 @@ class HandwritingLibraryFake : public HandwritingLibrary {
   // HandwritingLibrary:
   Status GetStatus() const override;
   HandwritingRecognizer CreateHandwritingRecognizer() const override;
-  bool LoadHandwritingRecognizer(HandwritingRecognizer recognizer,
-                                 const std::string& language) const override;
+  bool LoadHandwritingRecognizer(
+      HandwritingRecognizer recognizer,
+      chromeos::machine_learning::mojom::HandwritingRecognizerSpecPtr spec)
+      const override;
+  bool LoadHandwritingRecognizerFromRootFs(
+      HandwritingRecognizer recognizer,
+      const std::string& language) const override;
   bool RecognizeHandwriting(
       HandwritingRecognizer recognizer,
       const chrome_knowledge::HandwritingRecognizerRequest& request,

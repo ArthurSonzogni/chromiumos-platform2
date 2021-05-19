@@ -4,6 +4,7 @@
 
 #include "ml/handwriting.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -11,8 +12,12 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/free_deleter.h>
 #include <base/native_library.h>
 #include <base/optional.h>
+#include <base/strings/string_util.h>
+
+#include "ml/util.h"
 
 namespace ml {
 namespace {
@@ -55,8 +60,12 @@ class HandwritingLibraryImpl : public HandwritingLibrary {
 
   Status GetStatus() const override;
   HandwritingRecognizer CreateHandwritingRecognizer() const override;
-  bool LoadHandwritingRecognizer(HandwritingRecognizer recognizer,
-                                 const std::string& language) const override;
+  bool LoadHandwritingRecognizer(
+      HandwritingRecognizer recognizer,
+      HandwritingRecognizerSpecPtr spec) const override;
+  bool LoadHandwritingRecognizerFromRootFs(
+      HandwritingRecognizer recognizer,
+      const std::string& language) const override;
   bool RecognizeHandwriting(
       HandwritingRecognizer recognizer,
       const chrome_knowledge::HandwritingRecognizerRequest& request,
@@ -70,13 +79,14 @@ class HandwritingLibraryImpl : public HandwritingLibrary {
   FRIEND_TEST(HandwritingLibraryTest, CanLoadLibrary);
 
   // Initialize the handwriting library.
-  explicit HandwritingLibraryImpl(const std::string& root_path);
+  explicit HandwritingLibraryImpl(const std::string& lib_path);
   HandwritingLibraryImpl(const HandwritingLibraryImpl&) = delete;
   HandwritingLibraryImpl& operator=(const HandwritingLibraryImpl&) = delete;
 
   base::Optional<base::ScopedNativeLibrary> library_;
   Status status_;
-  const base::FilePath model_path_;
+  // Path that contains the library and the model files.
+  const base::FilePath lib_path_;
 
   // Store the interface function pointers.
   // TODO(honglinyu) as pointed out by cjmcdonald@, we should group the pointers
@@ -89,9 +99,9 @@ class HandwritingLibraryImpl : public HandwritingLibrary {
   DestroyHandwritingRecognizerFn destroy_handwriting_recognizer_;
 };
 
-HandwritingLibraryImpl::HandwritingLibraryImpl(const std::string& model_path)
+HandwritingLibraryImpl::HandwritingLibraryImpl(const std::string& lib_path)
     : status_(Status::kUninitialized),
-      model_path_(model_path),
+      lib_path_(lib_path),
       create_handwriting_recognizer_(nullptr),
       load_handwriting_recognizer_(nullptr),
       recognize_handwriting_(nullptr),
@@ -106,8 +116,8 @@ HandwritingLibraryImpl::HandwritingLibraryImpl(const std::string& model_path)
   base::NativeLibraryOptions native_library_options;
   native_library_options.prefer_own_symbols = true;
   library_.emplace(base::LoadNativeLibraryWithOptions(
-      model_path_.Append(kHandwritingLibraryRelativePath),
-      native_library_options, nullptr));
+      lib_path_.Append(kHandwritingLibraryRelativePath), native_library_options,
+      nullptr));
   if (!library_->is_valid()) {
     status_ = Status::kLoadLibraryFailed;
     return;
@@ -149,7 +159,7 @@ HandwritingRecognizer HandwritingLibraryImpl::CreateHandwritingRecognizer()
   return (*create_handwriting_recognizer_)();
 }
 
-bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
+bool HandwritingLibraryImpl::LoadHandwritingRecognizerFromRootFs(
     HandwritingRecognizer const recognizer, const std::string& language) const {
   DCHECK(status_ == Status::kOk);
 
@@ -158,7 +168,50 @@ bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
       HandwritingRecognizerOptions().SerializeAsString();
 
   const std::string paths_pb =
-      GetModelPaths(language, model_path_).SerializeAsString();
+      GetModelPaths(language, lib_path_).SerializeAsString();
+  return (*load_handwriting_recognizer_)(recognizer, options_pb.data(),
+                                         options_pb.size(), paths_pb.data(),
+                                         paths_pb.size());
+}
+
+bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
+    HandwritingRecognizer const recognizer,
+    const HandwritingRecognizerSpecPtr spec) const {
+  DCHECK(status_ == Status::kOk);
+
+  // options is not used for now.
+  const std::string options_pb =
+      HandwritingRecognizerOptions().SerializeAsString();
+
+  base::FilePath model_path;
+
+  // If enabled, get model data from Language Packs instead of the path on
+  // rootfs.
+  if (ml::HandwritingLibrary::IsUseLanguagePacksEnabled()) {
+    if (!spec->language_pack_path) {
+      LOG(ERROR) << "Language Pack path cannot be empty.";
+      return false;
+    }
+    const std::string target_path = spec->language_pack_path.value();
+    const base::Optional<base::FilePath> real_language_pack_path =
+        GetRealPath(base::FilePath(target_path));
+    if (!real_language_pack_path) {
+      LOG(ERROR) << "Bad Language Pack path" << target_path;
+      return false;
+    }
+    // For security, we check that the path is pointing to a safe location on
+    // disk.
+    if (!IsDlcPathValid(model_path)) {
+      LOG(ERROR) << "Not a valid Language Pack path " << target_path;
+      return false;
+    }
+    model_path = real_language_pack_path.value();
+  } else {
+    model_path = lib_path_;
+  }
+
+  const std::string paths_pb =
+      GetModelPaths(spec->language, model_path).SerializeAsString();
   return (*load_handwriting_recognizer_)(recognizer, options_pb.data(),
                                          options_pb.size(), paths_pb.data(),
                                          paths_pb.size());
@@ -196,14 +249,14 @@ static HandwritingLibrary* g_fake_handwriting_library = nullptr;
 
 }  // namespace
 
-constexpr char HandwritingLibrary::kHandwritingDefaultModelDir[];
+constexpr char HandwritingLibrary::kHandwritingDefaultInstallDir[];
 
 HandwritingLibrary* HandwritingLibrary::GetInstance(
-    const std::string& model_path) {
+    const std::string& lib_path) {
   if (g_fake_handwriting_library) {
     return g_fake_handwriting_library;
   }
-  static base::NoDestructor<HandwritingLibraryImpl> instance(model_path);
+  static base::NoDestructor<HandwritingLibraryImpl> instance(lib_path);
   return instance.get();
 }
 

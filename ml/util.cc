@@ -4,6 +4,7 @@
 
 #include "ml/util.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -11,11 +12,14 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/files/file_util.h>
+#include <base/memory/free_deleter.h>
 #include <base/process/process.h>
 
 namespace ml {
 
 namespace {
+
+constexpr char kDlcBasePath[] = "/run/imageloader";
 
 // Extracts the value from a value string of /proc/[pid]/status.
 // Only works for value strings in the form of "value kB".
@@ -98,6 +102,21 @@ bool GetTotalProcessMemoryUsage(size_t* total_memory) {
     return true;
   }
   return false;
+}
+
+// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
+// realpath's errno unchanged.
+base::Optional<base::FilePath> GetRealPath(const base::FilePath& path) {
+  const std::unique_ptr<char, base::FreeDeleter> result(
+      realpath(path.value().c_str(), nullptr));
+  if (!result) {
+    return {};
+  }
+  return base::FilePath(result.get());
+}
+
+bool IsDlcPathValid(const base::FilePath& path) {
+  return base::StartsWith(path.value(), kDlcBasePath);
 }
 
 }  // namespace ml
