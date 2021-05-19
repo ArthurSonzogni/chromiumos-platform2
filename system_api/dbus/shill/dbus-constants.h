@@ -352,6 +352,8 @@ const char kTransmitByteCountProperty[] = "TransmitByteCount";
 
 // Cellular Device property names.
 const char kCellularAllowRoamingProperty[] = "Cellular.AllowRoaming";
+const char kCellularPolicyAllowRoamingProperty[] =
+    "Cellular.PolicyAllowRoaming";
 const char kDeviceIdProperty[] = "Cellular.DeviceID";
 const char kEidProperty[] = "Cellular.EID";
 const char kEquipmentIdProperty[] = "Cellular.EquipmentID";
