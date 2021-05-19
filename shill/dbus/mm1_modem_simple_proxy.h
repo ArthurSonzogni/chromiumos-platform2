@@ -29,16 +29,12 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
 
   // Inherited methods from SimpleProxyInterface.
   void Connect(const KeyValueStore& properties,
-               Error* error,
                const RpcIdentifierCallback& callback,
                int timeout) override;
   void Disconnect(const RpcIdentifier& bearer,
-                  Error* error,
                   const ResultCallback& callback,
                   int timeout) override;
-  void GetStatus(Error* error,
-                 const KeyValueStoreCallback& callback,
-                 int timeout) override;
+  void GetStatus(const KeyValueStoreCallback& callback, int timeout) override;
 
  private:
   // Callbacks for Connect async call.

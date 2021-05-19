@@ -257,54 +257,28 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     callback.Run(props, Error());
   }
   void InvokeConnect(const KeyValueStore& props,
-                     Error* error,
                      const RpcIdentifierCallback& callback,
                      int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(kTestBearerPath, Error());
   }
   void InvokeConnectFail(const KeyValueStore& props,
-                         Error* error,
                          const RpcIdentifierCallback& callback,
                          int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectFailNoService(const KeyValueStore& props,
-                                  Error* error,
-                                  const RpcIdentifierCallback& callback,
-                                  int timeout) {
-    device_->service_ = nullptr;
-    callback.Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
-  }
-  void InvokeConnectSuccessNoService(const KeyValueStore& props,
-                                     Error* error,
-                                     const RpcIdentifierCallback& callback,
-                                     int timeout) {
-    device_->service_ = nullptr;
-    callback.Run(kTestBearerPath, Error());
-  }
   void InvokeDisconnect(const RpcIdentifier& bearer,
-                        Error* error,
                         const ResultCallback& callback,
                         int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
   }
   void InvokeDisconnectFail(const RpcIdentifier& bearer,
-                            Error* error,
                             const ResultCallback& callback,
                             int timeout) {
-    error->Populate(Error::kOperationFailed);
     if (!callback.is_null())
-      callback.Run(*error);
-  }
-  void InvokeDisconnectMM1(const RpcIdentifier& bearer,
-                           Error* error,
-                           const ResultCallback& callback,
-                           int timeout) {
-    if (!callback.is_null())
-      callback.Run(Error());
+      callback.Run(Error(Error::kOperationFailed));
   }
   void InvokeSetPowerState(const uint32_t& power_state,
                            Error* error,
@@ -315,8 +289,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   void ExpectDisconnectCapability3gpp() {
     device_->state_ = Cellular::kStateConnected;
-    EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _, _))
-        .WillOnce(Invoke(this, &CellularTest::InvokeDisconnectMM1));
+    EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _))
+        .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
     GetCapability3gpp()->modem_simple_proxy_.reset(mm1_simple_proxy_.release());
   }
 
@@ -1232,7 +1206,7 @@ TEST_P(CellularTest, Connect) {
       .Times(3)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, _, CellularCapability::kTimeoutConnect))
+              Connect(_, _, CellularCapability::kTimeoutConnect))
       .Times(3)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
@@ -1273,7 +1247,7 @@ TEST_P(CellularTest, Disconnect) {
 
   device_->state_ = Cellular::kStateConnected;
   EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->Disconnect(&error, "in test");
@@ -1287,18 +1261,16 @@ TEST_P(CellularTest, DisconnectFailure) {
   Error error;
   device_->state_ = Cellular::kStateConnected;
   EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .Times(2)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
   SetCapability3gppModemSimpleProxy();
   device_->modem_state_ = Cellular::kModemStateDisconnecting;
   device_->Disconnect(&error, "in test");
-  EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 
   device_->modem_state_ = Cellular::kModemStateConnected;
   device_->Disconnect(&error, "in test");
-  EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
@@ -1306,7 +1278,7 @@ TEST_P(CellularTest, ConnectFailure) {
   SetRegisteredWithService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
   EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, _, CellularCapability::kTimeoutConnect))
+              Connect(_, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
   SetCapability3gppModemSimpleProxy();
   Error error;
@@ -1316,7 +1288,7 @@ TEST_P(CellularTest, ConnectFailure) {
 
 TEST_P(CellularTest, ConnectWhileInhibited) {
   SetRegisteredWithService();
-  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _, _)).Times(0);
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _)).Times(0);
   SetCapability3gppModemSimpleProxy();
 
   // Connect while inhibited should fail.
@@ -1329,7 +1301,7 @@ TEST_P(CellularTest, ConnectWhileInhibited) {
 
 TEST_P(CellularTest, PendingConnect) {
   CellularService* service = SetRegisteredWithService();
-  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _, _))
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
 
@@ -1355,7 +1327,7 @@ TEST_P(CellularTest, PendingConnect) {
 
 TEST_P(CellularTest, PendingDisconnect) {
   CellularService* service = SetRegisteredWithService();
-  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _, _))
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
 
@@ -1427,7 +1399,7 @@ TEST_P(CellularTest, ModemStateChangeDisable) {
     return;
   }
 
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+  EXPECT_CALL(*proxy_, Disconnect(_, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   EXPECT_CALL(*proxy_, Enable(false, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));

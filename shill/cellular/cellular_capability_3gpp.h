@@ -97,9 +97,8 @@ class CellularCapability3gpp : public CellularCapability {
   std::string GetRoamingStateString() const override;
   void SetupConnectProperties(KeyValueStore* properties) override;
   void Connect(const KeyValueStore& properties,
-               Error* error,
                const ResultCallback& callback) override;
-  void Disconnect(Error* error, const ResultCallback& callback) override;
+  void Disconnect(const ResultCallback& callback) override;
   CellularBearer* GetActiveBearer() const override;
   const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
   GetProfiles() const override;

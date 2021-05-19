@@ -759,22 +759,20 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 }
 
 TEST_F(CellularCapability3gppTest, DisconnectModemNoBearer) {
-  Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .Times(0);
-  capability_->Disconnect(&error, disconnect_callback);
+  capability_->Disconnect(disconnect_callback);
 }
 
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
-  Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .Times(0);
   ReleaseCapabilityProxies();
-  capability_->Disconnect(&error, disconnect_callback);
+  capability_->Disconnect(disconnect_callback);
 }
 
 TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
@@ -1462,7 +1460,6 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 TEST_F(CellularCapability3gppTest, Connect) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  Error error;
   KeyValueStore properties;
   SetApnTryList({});
   ResultCallback callback = base::Bind(
@@ -1470,18 +1467,16 @@ TEST_F(CellularCapability3gppTest, Connect) {
   RpcIdentifier bearer("/foo");
 
   // Test connect failures
-  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _, _))
-      .WillRepeatedly(SaveArg<2>(&connect_callback_));
-  capability_->Connect(properties, &error, callback);
-  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _))
+      .WillRepeatedly(SaveArg<1>(&connect_callback_));
+  capability_->Connect(properties, callback);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   EXPECT_CALL(*service_, ClearLastGoodApn());
   connect_callback_.Run(bearer, Error(Error::kOperationFailed));
   Mock::VerifyAndClearExpectations(this);
 
   // Test connect success
-  capability_->Connect(properties, &error, callback);
-  EXPECT_TRUE(error.IsSuccess());
+  capability_->Connect(properties, callback);
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   connect_callback_.Run(bearer, Error(Error::kSuccess));
   Mock::VerifyAndClearExpectations(this);
@@ -1492,8 +1487,7 @@ TEST_F(CellularCapability3gppTest, Connect) {
   // and then quickly disabled.
   cellular_->SetServiceForTesting(nullptr);
   EXPECT_FALSE(capability_->cellular()->service());
-  capability_->Connect(properties, &error, callback);
-  EXPECT_TRUE(error.IsSuccess());
+  capability_->Connect(properties, callback);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   connect_callback_.Run(bearer, Error(Error::kOperationFailed));
 }
@@ -1502,7 +1496,6 @@ TEST_F(CellularCapability3gppTest, Connect) {
 TEST_F(CellularCapability3gppTest, ConnectApns) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  Error error;
   KeyValueStore properties;
   ResultCallback callback = base::Bind(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
@@ -1510,20 +1503,19 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
 
   const char apn_name_foo[] = "foo";
   const char apn_name_bar[] = "bar";
-  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _, _))
-      .WillOnce(SaveArg<2>(&connect_callback_));
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _))
+      .WillOnce(SaveArg<1>(&connect_callback_));
   Stringmap apn1;
   apn1[kApnProperty] = apn_name_foo;
   Stringmap apn2;
   apn2[kApnProperty] = apn_name_bar;
   SetApnTryList({apn1, apn2});
   FillConnectPropertyMap(&properties);
-  capability_->Connect(properties, &error, callback);
-  EXPECT_TRUE(error.IsSuccess());
+  capability_->Connect(properties, callback);
   Mock::VerifyAndClearExpectations(modem_simple_proxy);
 
-  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _, _))
-      .WillOnce(SaveArg<2>(&connect_callback_));
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _))
+      .WillOnce(SaveArg<1>(&connect_callback_));
   EXPECT_CALL(*service_, ClearLastGoodApn());
   connect_callback_.Run(bearer, Error(Error::kInvalidApn));
 

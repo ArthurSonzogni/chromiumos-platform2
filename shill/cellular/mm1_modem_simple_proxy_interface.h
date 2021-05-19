@@ -25,15 +25,12 @@ class ModemSimpleProxyInterface {
   virtual ~ModemSimpleProxyInterface() = default;
 
   virtual void Connect(const KeyValueStore& properties,
-                       Error* error,
                        const RpcIdentifierCallback& callback,
                        int timeout) = 0;
   virtual void Disconnect(const RpcIdentifier& bearer,
-                          Error* error,
                           const ResultCallback& callback,
                           int timeout) = 0;
-  virtual void GetStatus(Error* error,
-                         const KeyValueStoreCallback& callback,
+  virtual void GetStatus(const KeyValueStoreCallback& callback,
                          int timeout) = 0;
 };
 

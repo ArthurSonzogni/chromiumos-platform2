@@ -1150,9 +1150,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
       base::Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
                  service->iccid());
   OnConnecting();
-  capability_->Connect(properties, error, cb);
-  if (!error->IsSuccess())
-    return;
+  capability_->Connect(properties, cb);
 
   bool is_auto_connecting = service->is_auto_connecting();
   metrics()->NotifyDeviceConnectStarted(interface_index(), is_auto_connecting);
@@ -1227,7 +1225,7 @@ void Cellular::Disconnect(Error* error, const char* reason) {
   explicit_disconnect_ = true;
   ResultCallback cb =
       base::Bind(&Cellular::OnDisconnectReply, weak_ptr_factory_.GetWeakPtr());
-  capability_->Disconnect(error, cb);
+  capability_->Disconnect(cb);
 }
 
 void Cellular::OnDisconnectReply(const Error& error) {

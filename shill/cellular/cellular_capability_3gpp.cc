@@ -454,24 +454,21 @@ void CellularCapability3gpp::Stop_PowerDownCompleted(
 }
 
 void CellularCapability3gpp::Connect(const KeyValueStore& properties,
-                                     Error* error,
                                      const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   RpcIdentifierCallback cb =
       base::Bind(&CellularCapability3gpp::OnConnectReply,
                  weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
+  modem_simple_proxy_->Connect(properties, cb, kTimeoutConnect);
 }
 
-void CellularCapability3gpp::Disconnect(Error* error,
-                                        const ResultCallback& callback) {
+void CellularCapability3gpp::Disconnect(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   if (modem_simple_proxy_) {
     SLOG(this, 2) << "Disconnect all bearers.";
     // If "/" is passed as the bearer path, ModemManager will disconnect all
     // bearers.
-    modem_simple_proxy_->Disconnect(kRootPath, error, callback,
-                                    kTimeoutDisconnect);
+    modem_simple_proxy_->Disconnect(kRootPath, callback, kTimeoutDisconnect);
   }
 }
 
@@ -724,8 +721,7 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
                     << apn_try_list_.size() << " remaining APNs to try";
       KeyValueStore props;
       FillConnectPropertyMap(&props);
-      Error error;
-      Connect(props, &error, callback);
+      Connect(props, callback);
       return;
     }
   } else {

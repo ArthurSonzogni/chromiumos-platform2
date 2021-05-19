@@ -11,14 +11,7 @@ using testing::_;
 namespace shill {
 namespace mm1 {
 
-MockModemSimpleProxy::MockModemSimpleProxy() {
-  ON_CALL(*this, Connect(_, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
-  ON_CALL(*this, Disconnect(_, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
-  ON_CALL(*this, GetStatus(_, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
-}
+MockModemSimpleProxy::MockModemSimpleProxy() = default;
 
 MockModemSimpleProxy::~MockModemSimpleProxy() = default;
 

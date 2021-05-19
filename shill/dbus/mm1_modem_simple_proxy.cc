@@ -27,7 +27,6 @@ ModemSimpleProxy::ModemSimpleProxy(const scoped_refptr<dbus::Bus>& bus,
 ModemSimpleProxy::~ModemSimpleProxy() = default;
 
 void ModemSimpleProxy::Connect(const KeyValueStore& properties,
-                               Error* error,
                                const RpcIdentifierCallback& callback,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
@@ -42,7 +41,6 @@ void ModemSimpleProxy::Connect(const KeyValueStore& properties,
 }
 
 void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
-                                  Error* error,
                                   const ResultCallback& callback,
                                   int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
@@ -54,8 +52,7 @@ void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
                           timeout);
 }
 
-void ModemSimpleProxy::GetStatus(Error* error,
-                                 const KeyValueStoreCallback& callback,
+void ModemSimpleProxy::GetStatus(const KeyValueStoreCallback& callback,
                                  int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->GetStatusAsync(base::Bind(&ModemSimpleProxy::OnGetStatusSuccess,
