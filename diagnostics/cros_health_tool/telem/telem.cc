@@ -342,10 +342,13 @@ void DisplayAudioInfo(
   }
 
   const std::vector<std::string> headers = {
-      "output_mute", "input_mute", "output_device_name", "output_volume"};
+      "output_mute",   "input_mute", "output_device_name",
+      "output_volume", "underruns",  "severe_underruns"};
   const std::vector<std::vector<std::string>> values = {
       {std::to_string(audio->output_mute), std::to_string(audio->input_mute),
-       audio->output_device_name, std::to_string(audio->output_volume)}};
+       audio->output_device_name, std::to_string(audio->output_volume),
+       std::to_string(audio->underruns),
+       std::to_string(audio->severe_underruns)}};
 
   OutputData(headers, values, beauty);
 }

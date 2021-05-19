@@ -35,7 +35,9 @@ const brillo::VariantDictionary kActiveOutputDevice = {
     {cras::kNameProperty, std::string("Active output device")},
     {cras::kNodeVolumeProperty, static_cast<uint64_t>(20)},
     {cras::kIsInputProperty, false},
-    {cras::kActiveProperty, true}};
+    {cras::kActiveProperty, true},
+    {cras::kNumberOfUnderrunsProperty, static_cast<uint32_t>(13)},
+    {cras::kNumberOfSevereUnderrunsProperty, static_cast<uint32_t>(3)}};
 const brillo::VariantDictionary kInactiveInputDevice = {
     {cras::kNameProperty, std::string("Inactive input device")},
     {cras::kNodeVolumeProperty, static_cast<uint64_t>(30)},
@@ -101,6 +103,10 @@ TEST_P(AudioFetcherGetVolumeStateTest, FetchAudioInfo) {
                                                     cras::kNameProperty);
   uint64_t output_volume = brillo::GetVariantValueOrDefault<uint64_t>(
       kActiveOutputDevice, cras::kNodeVolumeProperty);
+  uint32_t underruns = brillo::GetVariantValueOrDefault<uint32_t>(
+      kActiveOutputDevice, cras::kNumberOfUnderrunsProperty);
+  uint32_t severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
+      kActiveOutputDevice, cras::kNumberOfSevereUnderrunsProperty);
 
   const bool output_mute = params().output_mute;
   const bool input_mute = params().input_mute;
@@ -121,6 +127,8 @@ TEST_P(AudioFetcherGetVolumeStateTest, FetchAudioInfo) {
   EXPECT_EQ(input_mute, audio->input_mute);
   EXPECT_EQ(output_device_name, audio->output_device_name);
   EXPECT_EQ(output_volume, audio->output_volume);
+  EXPECT_EQ(underruns, audio->underruns);
+  EXPECT_EQ(severe_underruns, audio->severe_underruns);
 }
 
 INSTANTIATE_TEST_SUITE_P(

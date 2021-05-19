@@ -33,7 +33,7 @@ mojo_ipc::AudioResultPtr AudioFetcher::FetchAudioInfo() {
     return mojo_ipc::AudioResult::NewError(std::move(error.value()));
   }
 
-  error = PopulateActiveOutputNodeInfo(&info);
+  error = PopulateActiveNodeInfo(&info);
   if (error.has_value()) {
     return mojo_ipc::AudioResult::NewError(std::move(error.value()));
   }
@@ -62,8 +62,8 @@ base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
   return base::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr>
-AudioFetcher::PopulateActiveOutputNodeInfo(mojo_ipc::AudioInfo* info) {
+base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
+    mojo_ipc::AudioInfo* info) {
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
   if (!context_->cras_proxy()->GetNodeInfos(&nodes, &error)) {
@@ -75,17 +75,30 @@ AudioFetcher::PopulateActiveOutputNodeInfo(mojo_ipc::AudioInfo* info) {
   // There might be no active output device such as Chromebox.
   info->output_device_name = std::string("No active output device");
   info->output_volume = 0;
+  info->underruns = 0;
+  info->severe_underruns = 0;
 
   for (const auto& node : nodes) {
-    // Active output node
-    if (node.find(cras::kIsInputProperty) != node.end() &&
-        node.find(cras::kActiveProperty) != node.end() &&
-        !brillo::GetVariantValueOrDefault<bool>(node, cras::kIsInputProperty) &&
-        brillo::GetVariantValueOrDefault<bool>(node, cras::kActiveProperty)) {
+    // Skip inactive node, or important fields are missing.
+    if (node.find(cras::kIsInputProperty) == node.end() ||
+        node.find(cras::kActiveProperty) == node.end() ||
+        !brillo::GetVariantValueOrDefault<bool>(node, cras::kActiveProperty)) {
+      continue;
+    }
+    if (!brillo::GetVariantValueOrDefault<bool>(node, cras::kIsInputProperty)) {
+      // Output node
       info->output_device_name = brillo::GetVariantValueOrDefault<std::string>(
           node, cras::kNameProperty);
       info->output_volume = brillo::GetVariantValueOrDefault<uint64_t>(
           node, cras::kNodeVolumeProperty);
+      if (node.find(cras::kNumberOfUnderrunsProperty) != node.end()) {
+        info->underruns = brillo::GetVariantValueOrDefault<uint32_t>(
+            node, cras::kNumberOfUnderrunsProperty);
+      }
+      if (node.find(cras::kNumberOfSevereUnderrunsProperty) != node.end()) {
+        info->severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
+            node, cras::kNumberOfSevereUnderrunsProperty);
+      }
     }
   }
 

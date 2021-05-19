@@ -31,7 +31,7 @@ class AudioFetcher final {
 
   OptionalProbeErrorPtr PopulateMuteInfo(
       chromeos::cros_healthd::mojom::AudioInfo* info);
-  OptionalProbeErrorPtr PopulateActiveOutputNodeInfo(
+  OptionalProbeErrorPtr PopulateActiveNodeInfo(
       chromeos::cros_healthd::mojom::AudioInfo* info);
 
   // Unowned pointer that outlives this AudioFetcher instance.
