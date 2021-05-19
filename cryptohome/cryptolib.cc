@@ -1053,8 +1053,16 @@ bool CryptoLib::DeriveSecretsScrypt(
     const brillo::SecureBlob& passkey,
     const brillo::SecureBlob& salt,
     std::vector<brillo::SecureBlob*> gen_secrets) {
+  if (gen_secrets.empty()) {
+    LOG(ERROR) << "No secrets requested from scrypt derivation.";
+    return false;
+  }
   size_t total_len = 0;
   for (auto& secret : gen_secrets) {
+    if (secret->empty()) {
+      LOG(ERROR) << "Empty secret requested from scrypt derivation.";
+      return false;
+    }
     total_len += secret->size();
   }
 

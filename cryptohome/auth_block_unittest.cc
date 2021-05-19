@@ -178,9 +178,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
 
   // Set up the mock expectations.
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
-  brillo::SecureBlob unused;
-  EXPECT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt,
-                                             {&le_secret, &unused, &unused}));
+  EXPECT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   NiceMock<MockLECredentialManager> le_cred_manager;

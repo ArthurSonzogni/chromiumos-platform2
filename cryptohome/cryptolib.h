@@ -268,7 +268,7 @@ class CryptoLib {
   //   salt - The salt used when deriving the secrets.
   //   gen_secrets (IN-OUT) - Vector containing resulting secrets.
   //                          The caller allocates each blob in |gen_secrets|
-  //                          to the appropriate size.
+  //                          to the appropriate (non-empty) size.
   //
   static bool DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
                                   const brillo::SecureBlob& salt,
