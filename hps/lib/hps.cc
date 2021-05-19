@@ -36,6 +36,8 @@ void HPS::Init(uint16_t appl_version,
 }
 
 bool HPS::Boot() {
+  // Exclusive access to module.
+  base::AutoLock l(this->lock_);
   // Make sure blobs are set etc.
   if (this->mcu_blob_.empty() || this->spi_blob_.empty()) {
     LOG(ERROR) << "No HPS firmware to download.";
@@ -58,18 +60,44 @@ bool HPS::Boot() {
   }
 }
 
-bool HPS::Enable(uint16_t features) {
+bool HPS::Enable(uint8_t feature) {
+  // Exclusive access to module.
+  base::AutoLock l(this->lock_);
   // Only 2 features available at the moment.
-  this->feat_enabled_ = features & 0x3;
-  // Check the application is enabled and running.
-  if ((this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+  if (feature >= 2) {
+    LOG(ERROR) << "Enabling unknown feature (" << feature << ")";
     return false;
   }
+  // Check the application is enabled and running.
+  if ((this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+    LOG(ERROR) << "Module not ready for feature control";
+    return false;
+  }
+  this->feat_enabled_ |= 1 << feature;
+  // Write the enable feature mask.
+  return this->device_->WriteReg(HpsReg::kFeatEn, this->feat_enabled_);
+}
+
+bool HPS::Disable(uint8_t feature) {
+  // Exclusive access to module.
+  base::AutoLock l(this->lock_);
+  if (feature >= 2) {
+    LOG(ERROR) << "Disabling unknown feature (" << feature << ")";
+    return false;
+  }
+  // Check the application is enabled and running.
+  if ((this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
+    LOG(ERROR) << "Module not ready for feature control";
+    return false;
+  }
+  this->feat_enabled_ &= ~(1 << feature);
   // Write the enable feature mask.
   return this->device_->WriteReg(HpsReg::kFeatEn, this->feat_enabled_);
 }
 
 int HPS::Result(int feature) {
+  // Exclusive access to module.
+  base::AutoLock l(this->lock_);
   // Check the application is enabled and running.
   if ((this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl) == 0) {
     return -1;
@@ -168,7 +196,7 @@ void HPS::HandleState() {
 
     case kUpdateAppl:
       // Update the MCU flash.
-      if (this->Download(0, this->mcu_blob_)) {
+      if (this->WriteFile(0, this->mcu_blob_)) {
         this->Reboot("MCU flash updated");
       } else if (this->retries_ > 5) {
         this->Fail("MCU flash");
@@ -177,7 +205,7 @@ void HPS::HandleState() {
 
     case kUpdateSpi:
       // Update the SPI flash.
-      if (this->Download(1, this->spi_blob_)) {
+      if (this->WriteFile(1, this->spi_blob_)) {
         this->Reboot("SPI flash updated");
       } else if (this->retries_ > 5) {
         this->Fail("SPI flash");
@@ -273,13 +301,22 @@ void HPS::Go(State newstate) {
  * The HPS/Host I2C Interface Memory Write is used.
  */
 bool HPS::Download(int bank, const base::FilePath& source) {
+  // Exclusive access to module.
+  base::AutoLock l(this->lock_);
   if (bank < 0 || bank >= kNumBanks) {
     return -1;
   }
+  return this->WriteFile(bank, source);
+}
+
+/*
+ * Write the file to the bank indicated.
+ */
+bool HPS::WriteFile(int bank, const base::FilePath& source) {
   base::File file(source,
                   base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
   if (!file.IsValid()) {
-    LOG(ERROR) << "Download: " << source << ": " << file.error_details();
+    LOG(ERROR) << "WriteFile: " << source << ": " << file.error_details();
     return false;
   }
   int bytes = 0;
@@ -313,9 +350,8 @@ bool HPS::Download(int bank, const base::FilePath& source) {
       bytes += rd;
     }
   } while (rd > 0);  // A read returning 0 indicates EOF.
-  VLOG(1) << "Downloaded " << bytes << " bytes from " << source;
-  // Wait for the bank to become ready again to ensure the
-  // write has completed.
+  VLOG(1) << "Wrote " << bytes << " bytes from " << source;
+  // Wait for the bank to become ready again to ensure the write is complete.
   this->WaitForBankReady(bank);
   return true;
 }

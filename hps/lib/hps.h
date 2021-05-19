@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/synchronization/lock.h>
 
 #include "hps/lib/dev.h"
 
@@ -40,12 +41,16 @@ class HPS {
    */
   bool Boot();
   /*
-   * Enable the selected features, return false if the
+   * Enable the selected feature, return false if the
    * request fails e.g if the module is not ready.
-   * The features are represented as a bit mask of
-   * enabled features e.g bit 0 is feature 0 etc.
+   * The feature is represented as a feature index
+   * starting from 0, with a current maximum of 15.
    */
-  bool Enable(uint16_t features);
+  bool Enable(uint8_t feature);
+  /*
+   * Disable the selected feature.
+   */
+  bool Disable(uint8_t feature);
   /*
    * Return the latest result for the feature selected,
    * where the feature ranges from 0 to 15, corresponding to
@@ -86,7 +91,9 @@ class HPS {
   void Fault();
   void Go(State newstate);
   bool WaitForBankReady(int bank);
+  bool WriteFile(int bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
+  base::Lock lock_;  // Exclusive module access lock
   State state_;  // Current state
   int retries_;  // Common retry counter for states.
   int reboots_;  // Count of reboots.
