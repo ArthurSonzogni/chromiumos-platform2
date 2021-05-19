@@ -38,3 +38,5 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 clock_gettime: 1
+futex: 1
+tgkill: 1

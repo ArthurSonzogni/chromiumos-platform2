@@ -95,11 +95,11 @@ int main(int argc, const char** argv) {
   LOG(INFO) << "Sending " << kDataReadyCommand << " to VM client.";
   if (!base::WriteFileDescriptor(vm_client.get(), kDataReadyCommand,
                                  strlen(kDataReadyCommand))) {
-    LOG(FATAL) << "Unable to send " << kDataReadyCommand << " to client.";
+    PLOG(FATAL) << "Unable to send " << kDataReadyCommand << " to client.";
   }
   if (!base::WriteFileDescriptor(vm_client.get(), props->c_str(),
                                  props->size())) {
-    LOG(FATAL) << "Unable to send props to client";
+    PLOG(FATAL) << "Unable to send props to client";
   }
 
   return 0;
