@@ -4,6 +4,7 @@
 
 #include "trunks/tpm_utility_impl.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 
@@ -1678,12 +1679,6 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
                                     bool extend,
                                     AuthorizationDelegate* delegate) {
   TPM_RC result;
-  if (nvram_data.size() > MAX_NV_BUFFER_SIZE) {
-    result = SAPI_RC_BAD_SIZE;
-    LOG(ERROR) << __func__ << ": Insufficient buffer for non-volatile write: "
-               << GetErrorString(result);
-    return result;
-  }
   if (index > kMaxNVSpaceIndex) {
     result = SAPI_RC_BAD_PARAMETER;
     LOG(ERROR) << __func__
@@ -1704,13 +1699,31 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
     auth_target_name = NameFromHandle(TPM_RH_OWNER);
   }
   if (extend) {
+    if (nvram_data.size() > MAX_NV_BUFFER_SIZE) {
+      result = SAPI_RC_BAD_SIZE;
+      LOG(ERROR) << __func__
+                 << ": Insufficient buffer for non-volatile extend: "
+                 << GetErrorString(result);
+      return result;
+    }
     result = factory_.GetTpm()->NV_ExtendSync(
         auth_target, auth_target_name, nv_index, nv_name,
         Make_TPM2B_MAX_NV_BUFFER(nvram_data), delegate);
   } else {
-    result = factory_.GetTpm()->NV_WriteSync(
-        auth_target, auth_target_name, nv_index, nv_name,
-        Make_TPM2B_MAX_NV_BUFFER(nvram_data), offset, delegate);
+    size_t max_chunk_size;
+    result = GetMaxNVChunkSize(&max_chunk_size);
+    if (result) {
+      LOG(ERROR) << __func__ << ": Failed to obtain max NV chunk size: "
+                 << GetErrorString(result);
+      return result;
+    }
+    for (size_t pos = 0; pos < nvram_data.size() && result == TPM_RC_SUCCESS;) {
+      std::string chunk = nvram_data.substr(pos, max_chunk_size);
+      result = factory_.GetTpm()->NV_WriteSync(
+          auth_target, auth_target_name, nv_index, nv_name,
+          Make_TPM2B_MAX_NV_BUFFER(chunk), offset + pos, delegate);
+      pos += chunk.size();
+    }
   }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error writing to non-volatile space: "
@@ -1732,12 +1745,6 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
                                    AuthorizationDelegate* delegate) {
   CHECK(nvram_data);
   TPM_RC result;
-  if (num_bytes > MAX_NV_BUFFER_SIZE) {
-    result = SAPI_RC_BAD_SIZE;
-    LOG(ERROR) << __func__ << ": Insufficient buffer for non-volatile read: "
-               << GetErrorString(result);
-    return result;
-  }
   if (index > kMaxNVSpaceIndex) {
     result = SAPI_RC_BAD_PARAMETER;
     LOG(ERROR) << __func__
@@ -1757,17 +1764,30 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
     auth_target = TPM_RH_OWNER;
     auth_target_name = NameFromHandle(TPM_RH_OWNER);
   }
-  TPM2B_MAX_NV_BUFFER data_buffer;
-  data_buffer.size = 0;
-  result = factory_.GetTpm()->NV_ReadSync(auth_target, auth_target_name,
-                                          nv_index, nv_name, num_bytes, offset,
-                                          &data_buffer, delegate);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Error reading from non-volatile space: "
+  size_t max_chunk_size;
+  result = GetMaxNVChunkSize(&max_chunk_size);
+  if (result) {
+    LOG(ERROR) << __func__ << ": Failed to obtain max NV chunk size: "
                << GetErrorString(result);
     return result;
   }
-  nvram_data->assign(StringFrom_TPM2B_MAX_NV_BUFFER(data_buffer));
+  nvram_data->clear();
+  for (uint32_t chunk_offset = offset; num_bytes > 0;) {
+    size_t chunk_size = std::min(num_bytes, max_chunk_size);
+    TPM2B_MAX_NV_BUFFER data_buffer;
+    data_buffer.size = 0;
+    result = factory_.GetTpm()->NV_ReadSync(
+        auth_target, auth_target_name, nv_index, nv_name, chunk_size,
+        chunk_offset, &data_buffer, delegate);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << __func__ << ": Error reading from non-volatile space: "
+                 << GetErrorString(result);
+      return result;
+    }
+    nvram_data->append(StringFrom_TPM2B_MAX_NV_BUFFER(data_buffer));
+    num_bytes -= chunk_size;
+    chunk_offset += chunk_size;
+  }
   return TPM_RC_SUCCESS;
 }
 
@@ -3032,6 +3052,23 @@ TPM_RC TpmUtilityImpl::PinWeaverCsmeCommand(const std::string& in,
     LOG(ERROR) << __func__ << ": Failed to call pinweaver-csme.";
     return TPM_RC_FAILURE;
   }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetMaxNVChunkSize(size_t* size) {
+  CHECK(size);
+  if (!max_nv_chunk_size_) {
+    std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+    TPM_RC result = tpm_state->Initialize();
+    if (result) {
+      LOG(ERROR) << __func__ << ": Failed to initialize TPM state: "
+                 << GetErrorString(result);
+      return result;
+    }
+    max_nv_chunk_size_ =
+        std::min((size_t)tpm_state->GetMaxNVSize(), (size_t)MAX_NV_BUFFER_SIZE);
+  }
+  *size = max_nv_chunk_size_;
   return TPM_RC_SUCCESS;
 }
 

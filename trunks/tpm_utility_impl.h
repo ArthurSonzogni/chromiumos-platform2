@@ -270,6 +270,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
   uint32_t vendor_id_;
   std::string cached_rsu_device_id_;
+  size_t max_nv_chunk_size_ = 0;
 
   // Creates the CSME salting key and calls `InitOwner()` API of CSME to
   // initialize the necessary TPM resources for pinweaver-csme. Returns
@@ -450,6 +451,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // Sends pinweaver command to CSME instead of GSC.
   TPM_RC PinWeaverCsmeCommand(const std::string& in, std::string* out);
+
+  // Obtains max supported size of NV_Read/Write buffer.
+  TPM_RC GetMaxNVChunkSize(size_t* size);
 };
 
 }  // namespace trunks

@@ -242,6 +242,15 @@ class NVTpmUtilityTest : public TpmUtilityTest {
     return TPM_RC_SUCCESS;
   }
 
+  TPM2B_MAX_NV_BUFFER MakeTpm2bMaxNvBufferWithData(
+      const std::string& data) const {
+    CHECK_LE(kNvDataSize, MAX_NV_BUFFER_SIZE);
+    TPM2B_MAX_NV_BUFFER tpm2b_max_nv_buffer;
+    tpm2b_max_nv_buffer.size = data.size();
+    memcpy(tpm2b_max_nv_buffer.buffer, data.data(), data.size());
+    return tpm2b_max_nv_buffer;
+  }
+
  private:
   TPM2B_NV_PUBLIC MakeTpm2bNvPublic() const {
     TPM2B_NV_PUBLIC tpm2b_nv_public;
@@ -264,11 +273,7 @@ class NVTpmUtilityTest : public TpmUtilityTest {
   }
 
   TPM2B_MAX_NV_BUFFER MakeTpm2bMaxNvBuffer() const {
-    CHECK_LE(kNvDataSize, MAX_NV_BUFFER_SIZE);
-    TPM2B_MAX_NV_BUFFER tpm2b_max_nv_buffer;
-    tpm2b_max_nv_buffer.size = kNvDataSize;
-    memcpy(tpm2b_max_nv_buffer.buffer, kNvData.data(), kNvDataSize);
-    return tpm2b_max_nv_buffer;
+    return MakeTpm2bMaxNvBufferWithData(kNvData);
   }
 };
 
@@ -2453,7 +2458,39 @@ TEST_F(NVTpmUtilityTest, WriteNVSpaceSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
 
   EXPECT_EQ(TPM_RC_SUCCESS,
-            utility_.WriteNVSpace(kNvIndex, offset, "", true, false,
+            utility_.WriteNVSpace(kNvIndex, offset, kNvData, true, false,
+                                  &mock_authorization_delegate_));
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_EQ(TPM_RC_SUCCESS, GetNVRAMMap(kNvIndex, &public_area));
+  EXPECT_EQ(kNvAttributes | TPMA_NV_WRITTEN, public_area.attributes);
+}
+
+TEST_F(NVTpmUtilityTest, WriteNVSpaceSuccessByChunks) {
+  EXPECT_FALSE(kNvAttributes & TPMA_NV_WRITTEN);
+
+  // We want to test if the chucks can be read by chunks with remainder part.
+  const size_t kMaxNVChunkSize = kNvDataSize / 2 - 1;
+  EXPECT_CALL(mock_tpm_state_, GetMaxNVSize())
+      .WillOnce(Return(kMaxNVChunkSize));
+
+  uint32_t offset = 5;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+  // Ideally we should also check the result of `Make_TPM2B_MAX_NV_BUFFER()`,
+  // but at least we can verify the offset is correct.
+  EXPECT_CALL(mock_tpm_,
+              NV_WriteSync(TPM_RH_OWNER, _, kNvTpmIndex, _, _, offset, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, NV_WriteSync(TPM_RH_OWNER, _, kNvTpmIndex, _, _,
+                                      offset + kMaxNVChunkSize, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, NV_WriteSync(TPM_RH_OWNER, _, kNvTpmIndex, _, _,
+                                      offset + kMaxNVChunkSize * 2, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.WriteNVSpace(kNvIndex, offset, kNvData, true, false,
                                   &mock_authorization_delegate_));
   TPMS_NV_PUBLIC public_area;
   EXPECT_EQ(TPM_RC_SUCCESS, GetNVRAMMap(kNvIndex, &public_area));
@@ -2470,7 +2507,7 @@ TEST_F(NVTpmUtilityTest, WriteNVSpaceNotOwner) {
       .WillOnce(Return(TPM_RC_SUCCESS));
 
   EXPECT_EQ(TPM_RC_SUCCESS,
-            utility_.WriteNVSpace(kNvIndex, offset, "", false, false,
+            utility_.WriteNVSpace(kNvIndex, offset, kNvData, false, false,
                                   &mock_authorization_delegate_));
 }
 
@@ -2487,13 +2524,18 @@ TEST_F(NVTpmUtilityTest, ExtendNVSpace) {
                                   &mock_authorization_delegate_));
 }
 
-TEST_F(NVTpmUtilityTest, WriteNVSpaceBadSize) {
-  std::string nvram_data(MAX_NV_INDEX_SIZE + 1, 0);
+TEST_F(NVTpmUtilityTest, ExtendNVSpaceWithBadSize) {
+  // The data is 1 byte larger than the max size.
+  const std::string nvram_data(MAX_NV_INDEX_SIZE + 1, 0);
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, NV_ExtendSync(_, _, _, _, _, _)).Times(0);
 
   EXPECT_EQ(SAPI_RC_BAD_SIZE,
-            utility_.WriteNVSpace(kNvIndex, 0, nvram_data, true, false,
-                                  &mock_authorization_delegate_));
+            utility_.WriteNVSpace(
+                kNvIndex, 0, nvram_data, /*using_owner_authorization=*/false,
+                /*extend=*/true, &mock_authorization_delegate_));
 }
 
 TEST_F(NVTpmUtilityTest, WriteNVSpaceBadIndex) {
@@ -2514,7 +2556,47 @@ TEST_F(NVTpmUtilityTest, WriteNVSpaceFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
 
   EXPECT_EQ(TPM_RC_FAILURE,
-            utility_.WriteNVSpace(kNvIndex, offset, "", true, false,
+            utility_.WriteNVSpace(kNvIndex, offset, kNvData, true, false,
+                                  &mock_authorization_delegate_));
+}
+
+TEST_F(NVTpmUtilityTest, WriteNVSpaceFailureAtNonFirstChunks) {
+  EXPECT_FALSE(kNvAttributes & TPMA_NV_WRITTEN);
+
+  // We want to test if the chucks can be read by chunks with remainder part.
+  const size_t kMaxNVChunkSize = kNvDataSize / 2 - 1;
+  EXPECT_CALL(mock_tpm_state_, GetMaxNVSize())
+      .WillOnce(Return(kMaxNVChunkSize));
+
+  uint32_t offset = 5;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+  // Ideally we should also check the result of `Make_TPM2B_MAX_NV_BUFFER()`,
+  // but at least we can verify the offset is correct.
+  EXPECT_CALL(mock_tpm_,
+              NV_WriteSync(TPM_RH_OWNER, _, kNvTpmIndex, _, _, offset, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, NV_WriteSync(TPM_RH_OWNER, _, kNvTpmIndex, _, _,
+                                      offset + kMaxNVChunkSize, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.WriteNVSpace(kNvIndex, offset, kNvData, true, false,
+                                  &mock_authorization_delegate_));
+}
+
+TEST_F(NVTpmUtilityTest, WriteNVSpaceFailureGetChunkSize) {
+  uint32_t offset = 5;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+  // This fails the query of maximum nv chunk size.
+  EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, NV_WriteSync(_, _, _, _, _, _, _)).Times(0);
+
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.WriteNVSpace(kNvIndex, offset, kNvData, false, false,
                                   &mock_authorization_delegate_));
 }
 
@@ -2527,6 +2609,47 @@ TEST_F(NVTpmUtilityTest, ReadNVSpaceSuccess) {
                                      kNvDataSize, offset, _, _))
       .WillOnce(
           DoAll(SetArgPointee<6>(kTpm2bMaxNvBuffer), Return(TPM_RC_SUCCESS)));
+
+  std::string nvram_data;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.ReadNVSpace(kNvIndex, offset, kNvDataSize, false,
+                                 &nvram_data, &mock_authorization_delegate_));
+  EXPECT_EQ(nvram_data, kNvData);
+}
+
+TEST_F(NVTpmUtilityTest, ReadNVSpaceSuccessByChunks) {
+  uint32_t offset = 5;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+
+  // We want to test if the chucks can be read by chunks with remainder part.
+  const size_t kMaxNVChunkSize = kNvDataSize / 2 - 1;
+  EXPECT_CALL(mock_tpm_state_, GetMaxNVSize())
+      .WillOnce(Return(kMaxNVChunkSize));
+
+  const auto k1stTpm2bMaxNvBuffer =
+      MakeTpm2bMaxNvBufferWithData(kNvData.substr(0, kMaxNVChunkSize));
+  const auto k2ndTpm2bMaxNvBuffer = MakeTpm2bMaxNvBufferWithData(
+      kNvData.substr(kMaxNVChunkSize, kMaxNVChunkSize));
+  const auto k3rdTpm2bMaxNvBuffer =
+      MakeTpm2bMaxNvBufferWithData(kNvData.substr(2 * kMaxNVChunkSize));
+
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(kNvTpmIndex, _, kNvTpmIndex, _,
+                                     kMaxNVChunkSize, offset, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(k1stTpm2bMaxNvBuffer),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_,
+              NV_ReadSync(kNvTpmIndex, _, kNvTpmIndex, _, kMaxNVChunkSize,
+                          offset + kMaxNVChunkSize, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(k2ndTpm2bMaxNvBuffer),
+                      Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(kNvTpmIndex, _, kNvTpmIndex, _,
+                                     kNvDataSize - 2 * kMaxNVChunkSize,
+                                     offset + 2 * kMaxNVChunkSize, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(k3rdTpm2bMaxNvBuffer),
+                      Return(TPM_RC_SUCCESS)));
 
   std::string nvram_data;
   EXPECT_EQ(TPM_RC_SUCCESS,
@@ -2552,13 +2675,28 @@ TEST_F(NVTpmUtilityTest, ReadNVSpaceOwner) {
   EXPECT_EQ(nvram_data, kNvData);
 }
 
-TEST_F(NVTpmUtilityTest, ReadNVSpaceBadReadLength) {
-  size_t length = MAX_NV_BUFFER_SIZE + 1;
+TEST_F(NVTpmUtilityTest, ReadNVSpaceFailedToReadPublic) {
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _)).Times(0);
 
   std::string nvram_data;
-  EXPECT_EQ(SAPI_RC_BAD_SIZE,
-            utility_.ReadNVSpace(kNvIndex, 0, length, true, &nvram_data,
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.ReadNVSpace(kNvIndex, 0, kNvDataSize, true, &nvram_data,
+                                 &mock_authorization_delegate_));
+}
+
+TEST_F(NVTpmUtilityTest, ReadNVSpaceFailedToGetChunkSize) {
+  // This fails the query of maximum nv chunk size.
+  EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, NV_ReadSync(_, _, _, _, _, _, _, _)).Times(0);
+
+  std::string nvram_data;
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.ReadNVSpace(kNvIndex, 0, kNvDataSize, true, &nvram_data,
                                  &mock_authorization_delegate_));
 }
 
