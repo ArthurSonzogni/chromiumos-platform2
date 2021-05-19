@@ -73,10 +73,12 @@ class CameraMonitor : public base::OneShotTimer {
   void Detach();
   void StartMonitor();
   void Kick();
+  bool HasBeenKicked();
 
  private:
   void SetTaskRunnerOnThread(base::Callback<void()> callback);
   void StartMonitorOnThread();
+  void MaybeResumeMonitorOnThread();
   void MonitorTimeout();
 
   std::string name_;
@@ -157,6 +159,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       mojom::Camera3StreamConfigurationPtr config,
       mojom::Camera3StreamConfigurationPtr* updated_config,
       AllocatedBuffers* allocated_buffers);
+
+  bool IsRequestOrResultStalling();
 
  private:
   // Implementation of camera3_callback_ops_t.

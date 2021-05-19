@@ -57,6 +57,7 @@ CameraHalAdapter::CameraHalAdapter(
     CameraMojoChannelManagerToken* token,
     CameraActivityCallback activity_callback)
     : camera_interfaces_(camera_interfaces),
+      main_task_runner_(base::ThreadTaskRunnerHandle::Get()),
       camera_module_thread_("CameraModuleThread"),
       camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
       module_id_(0),
@@ -152,6 +153,17 @@ int32_t CameraHalAdapter::OpenDevice(
 
   if (device_adapters_.find(camera_id) != device_adapters_.end()) {
     LOGF(WARNING) << "Multiple calls to OpenDevice on device " << camera_id;
+    if (device_adapters_[camera_id]->IsRequestOrResultStalling()) {
+      LOGF(WARNING) << "The camera HAL probably hung. Restart camera service "
+                       "to recover from bad state (b/155830039).";
+      main_task_runner_->PostTask(FROM_HERE, base::BindOnce([]() {
+                                    // Exit directly without attempting anything
+                                    // else to shutdown cleanly since the HAL
+                                    // thread may be wedged already.
+                                    exit(ENODEV);
+                                  }));
+      return -ENODEV;
+    }
     return -EBUSY;
   }
 

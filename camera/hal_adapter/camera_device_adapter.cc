@@ -78,6 +78,10 @@ void CameraMonitor::StartMonitor() {
 void CameraMonitor::Kick() {
   base::AutoLock l(lock_);
   is_kicked_ = true;
+  // Resume the monitor timer if it timed out before.
+  thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&CameraMonitor::MaybeResumeMonitorOnThread,
+                                base::Unretained(this)));
 }
 
 void CameraMonitor::Attach() {
@@ -91,6 +95,11 @@ void CameraMonitor::Attach() {
       base::BindOnce(&CameraMonitor::SetTaskRunnerOnThread,
                      base::Unretained(this), cros::GetFutureCallback(future)));
   future->Wait();
+}
+
+bool CameraMonitor::HasBeenKicked() {
+  base::AutoLock l(lock_);
+  return is_kicked_;
 }
 
 void CameraMonitor::Detach() {
@@ -113,7 +122,19 @@ void CameraMonitor::StartMonitorOnThread() {
   base::OneShotTimer::Start(
       FROM_HERE, kMonitorTimeDelta,
       base::Bind(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
-  LOG(INFO) << "Start " << name_ << " monitor";
+  LOGF(INFO) << "Start " << name_ << " monitor";
+}
+
+void CameraMonitor::MaybeResumeMonitorOnThread() {
+  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
+  if (base::OneShotTimer::IsRunning()) {
+    return;
+  }
+
+  base::OneShotTimer::Start(
+      FROM_HERE, kMonitorTimeDelta,
+      base::Bind(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
+  LOGF(INFO) << "Resume " << name_ << " monitor";
 }
 
 void CameraMonitor::MonitorTimeout() {
@@ -636,6 +657,11 @@ int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
   }
 
   return result;
+}
+
+bool CameraDeviceAdapter::IsRequestOrResultStalling() {
+  return !capture_request_monitor_.HasBeenKicked() ||
+         !capture_result_monitor_.HasBeenKicked();
 }
 
 // static

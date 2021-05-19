@@ -196,6 +196,10 @@ class CameraHalAdapter {
   std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
       camera_interfaces_;
 
+  // The task runner that CameraHalServer runs on.  Used only for serializing
+  // exit() call at the moment.
+  scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_;
+
   // The thread that all camera module functions operate on.
   base::Thread camera_module_thread_;
 
