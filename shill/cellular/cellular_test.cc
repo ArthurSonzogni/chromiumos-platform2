@@ -1194,9 +1194,6 @@ TEST_P(CellularTest, StorageIdentifier) {
 
 TEST_P(CellularTest, Connect) {
   Error error;
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
   device_->capability_state_ = Cellular::CapabilityState::kModemStarted;
   SetService();
   device_->state_ = Cellular::kStateConnected;
@@ -1224,9 +1221,12 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
 
   error.Populate(Error::kSuccess);
+  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
+      .Times(3)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*mm1_simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
-      .Times(2)
+      .Times(3)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
   device_->service_->roaming_state_ = kRoamingStateHome;
@@ -1237,6 +1237,17 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 
   device_->allow_roaming_ = true;
+  device_->service_->roaming_state_ = kRoamingStateRoaming;
+  device_->state_ = Cellular::kStateRegistered;
+  device_->Connect(device_->service().get(), &error);
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateConnected, device_->state_);
+
+  // Check that provider_requires_roaming_ will override all other roaming
+  // settings
+  device_->allow_roaming_ = false;
+  device_->provider_requires_roaming_ = true;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(device_->service().get(), &error);
@@ -1490,19 +1501,6 @@ TEST_P(CellularTest, StopModemCallbackFail) {
   CallStopModemCallback(Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state(), Cellular::kStateDisabled);
   EXPECT_EQ(device_->service(), nullptr);
-}
-
-TEST_P(CellularTest, IsRoamingAllowedOrRequired) {
-  EXPECT_FALSE(device_->allow_roaming_);
-  EXPECT_FALSE(device_->provider_requires_roaming());
-  EXPECT_FALSE(device_->IsRoamingAllowedOrRequired());
-
-  device_->set_provider_requires_roaming(true);
-  EXPECT_TRUE(device_->IsRoamingAllowedOrRequired());
-
-  device_->set_provider_requires_roaming(false);
-  device_->allow_roaming_ = true;
-  EXPECT_TRUE(device_->IsRoamingAllowedOrRequired());
 }
 
 TEST_P(CellularTest, SetAllowRoaming) {

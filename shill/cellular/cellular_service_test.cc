@@ -120,15 +120,6 @@ TEST_F(CellularServiceTest, LogName) {
   EXPECT_EQ("cellular_LTE_0", service_->log_name());
 }
 
-TEST_F(CellularServiceTest, SetRoamingState) {
-  EXPECT_CALL(*adaptor_,
-              EmitStringChanged(kRoamingStateProperty, kRoamingStateHome));
-  EXPECT_TRUE(service_->roaming_state().empty());
-  service_->SetRoamingState(kRoamingStateHome);
-  EXPECT_EQ(kRoamingStateHome, service_->roaming_state());
-  service_->SetRoamingState(kRoamingStateHome);
-}
-
 TEST_F(CellularServiceTest, SetServingOperator) {
   static const char kCode[] = "123456";
   static const char kName[] = "Some Cellular Operator";
@@ -592,6 +583,41 @@ TEST_F(CellularServiceTest, SetActivationState) {
   service_->SetActivationState(kActivationStateActivated);
   EXPECT_EQ(service_->activation_state(), kActivationStateActivated);
   EXPECT_FALSE(service_->auto_connect());
+}
+
+TEST_F(CellularServiceTest, SetAllowRoaming) {
+  Error error;
+  service_->SetRoamingState(kRoamingStateRoaming);
+  service_->SetAllowRoaming(true, &error);
+
+  // Check that disallowing roaming while on a roaming network leads to a
+  // disconnect
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kCellularAllowRoamingProperty, _))
+      .Times(2);
+  EXPECT_CALL(*device_, Disconnect(_, _)).Times(1);
+  service_->SetAllowRoaming(false, &error);
+  EXPECT_EQ(error.IsSuccess(), true);
+
+  // Check that Disconnect isn't called if roaming is allowed
+  EXPECT_CALL(*device_, Disconnect(_, _)).Times(0);
+  service_->SetAllowRoaming(true, &error);
+  EXPECT_EQ(error.IsSuccess(), true);
+}
+
+TEST_F(CellularServiceTest, SetRoamingState) {
+  // Check that a change in roaming state is advertised on dbus
+  EXPECT_CALL(*adaptor_,
+              EmitStringChanged(kRoamingStateProperty, kRoamingStateHome));
+  EXPECT_TRUE(service_->roaming_state().empty());
+  service_->SetRoamingState(kRoamingStateHome);
+  EXPECT_EQ(kRoamingStateHome, service_->roaming_state());
+
+  // Check that a disconnect occurs if we begin roaming when it isn't allowed.
+  service_->set_allow_roaming_for_testing(false);
+  EXPECT_CALL(*device_, Disconnect(_, _)).Times(1);
+  EXPECT_CALL(*adaptor_,
+              EmitStringChanged(kRoamingStateProperty, kRoamingStateRoaming));
+  service_->SetRoamingState(kRoamingStateRoaming);
 }
 
 }  // namespace shill

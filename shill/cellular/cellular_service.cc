@@ -47,6 +47,7 @@ const char CellularService::kStorageImsi[] = "Cellular.Imsi";
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
 const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 const char CellularService::kStorageSimCardId[] = "Cellular.SimCardId";
+const char CellularService::kStorageAllowRoaming[] = "Cellular.AllowRoaming";
 
 namespace {
 
@@ -83,6 +84,7 @@ CellularService::CellularService(Manager* manager,
       iccid_(iccid),
       eid_(eid),
       activation_type_(kActivationTypeUnknown),
+      provider_requires_roaming_(false),
       is_auto_connecting_(false),
       out_of_credits_(false) {
   // Note: This will change once SetNetworkTechnology() is called, but the
@@ -114,7 +116,11 @@ CellularService::CellularService(Manager* manager,
   store->RegisterConstString(kUsageURLProperty, &usage_url_);
   store->RegisterString(kCellularPPPUsernameProperty, &ppp_username_);
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
-
+  mutable_store()->RegisterDerivedBool(
+      kCellularAllowRoamingProperty,
+      BoolAccessor(new CustomAccessor<CellularService, bool>(
+          this, &CellularService::GetAllowRoaming,
+          &CellularService::SetAllowRoaming)));
   storage_identifier_ = GetDefaultStorageIdentifier();
   SLOG(this, 1) << "CellularService Created: " << log_name();
 }
@@ -261,6 +267,14 @@ bool CellularService::Load(const StoreInterface* storage) {
       (old_username != ppp_username_ || old_password != ppp_password_)) {
     SetState(kStateIdle);
   }
+
+  // If Chrome called SetAllowRoaming, we would have persisted the preference.
+  // If Chrome has never called SetAllowRoaming, we do not persist
+  // allow_roaming_
+  bool allow_roaming;
+  if (storage->GetBool(id, kStorageAllowRoaming, &allow_roaming))
+    allow_roaming_ = allow_roaming;
+
   return true;
 }
 
@@ -283,6 +297,9 @@ bool CellularService::Save(StoreInterface* storage) {
   SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
+
+  if (allow_roaming_.has_value())
+    storage->SetBool(id, kStorageAllowRoaming, allow_roaming_.value());
 
   return true;
 }
@@ -388,6 +405,27 @@ void CellularService::SetRoamingState(const std::string& state) {
   }
   roaming_state_ = state;
   adaptor()->EmitStringChanged(kRoamingStateProperty, state);
+  if (IsRoamingRuleViolated()) {
+    Error error;
+    OnDisconnect(&error, __func__);
+  }
+}
+
+bool CellularService::IsRoamingAllowed() {
+  if (cellular_ && cellular_->provider_requires_roaming())
+    return true;
+  return GetAllowRoaming();
+}
+
+bool CellularService::IsRoamingRuleViolated() {
+  if (roaming_state_ != kRoamingStateRoaming)
+    return false;
+
+  return !IsRoamingAllowed();
+}
+
+bool CellularService::GetAllowRoaming() {
+  return allow_roaming_.value_or(cellular_ && cellular_->allow_roaming());
 }
 
 Stringmap* CellularService::GetUserSpecifiedApn() {
@@ -737,6 +775,27 @@ std::string CellularService::GetDefaultStorageIdentifier() const {
 
 bool CellularService::IsOutOfCredits(Error* /*error*/) {
   return out_of_credits_;
+}
+
+bool CellularService::SetAllowRoaming(const bool& value, Error* error) {
+  SLOG(this, 2) << __func__ << ": " << value;
+  if (allow_roaming_ == value)
+    return false;
+
+  allow_roaming_ = value;
+  manager()->UpdateService(this);
+  adaptor()->EmitBoolChanged(kCellularAllowRoamingProperty, value);
+
+  if (IsRoamingRuleViolated()) {
+    Error disconnect_error;
+    OnDisconnect(&disconnect_error, __func__);
+  }
+
+  return true;
+}
+
+bool CellularService::GetAllowRoaming(Error* /*error*/) {
+  return GetAllowRoaming();
 }
 
 }  // namespace shill

@@ -300,6 +300,30 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			"LTE"          3.9G
 			"LTE Advanced" 4G
 
+		boolean Cellular.AllowRoaming [readwrite]
+
+			(Cellular only) Whether cellular data connections
+			are allowed when the device is roaming (i.e,
+			not registered on the home network). When this
+			property is false, data connections are not
+			allowed while roaming (regardless of the AutoConnect
+			setting of associated services).
+
+			If a connection was established while on the home
+			network, and the device begins roaming, the data
+			connection is terminated.
+
+			If the property is true, and a data connection was
+			established while roaming, and then the property is
+			set to false, the connection is terminated.
+
+			If the Cellular.ProviderRequiresRoaming property
+			in the cellular device is true, that setting will
+			override this property's setting.
+
+			By default Cellular.AllowRoaming returns the
+			value persisted by Device.AllowRoaming.
+
 		string Cellular.RoamingState [readonly]
 
 			(Cellular only) The roaming status of the modem on

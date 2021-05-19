@@ -670,8 +670,7 @@ void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
 }
 
 void CellularCapability3gpp::FillConnectPropertyMap(KeyValueStore* properties) {
-  properties->Set<bool>(kConnectAllowRoaming,
-                        cellular()->IsRoamingAllowedOrRequired());
+  properties->Set<bool>(kConnectAllowRoaming, cellular()->IsRoamingAllowed());
 
   if (apn_try_list_.empty())
     return;

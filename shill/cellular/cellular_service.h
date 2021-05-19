@@ -98,6 +98,15 @@ class CellularService : public Service {
   // Sets roaming state to |state| and broadcasts the property change.
   void SetRoamingState(const std::string& state);
   const std::string& roaming_state() const { return roaming_state_; }
+  // Checks device rules as well as service rules and returns if roaming is
+  // allowed for this service.
+  bool IsRoamingAllowed();
+  // Returns true if we are registered on a roaming network, but roaming is
+  // disallowed.
+  bool IsRoamingRuleViolated();
+  // Returns allow_roaming_ for the service. If allow_roaming_ is nullopt,
+  // returns any persisted value prior to M92.
+  bool GetAllowRoaming();
 
   bool is_auto_connecting() const { return is_auto_connecting_; }
 
@@ -116,9 +125,13 @@ class CellularService : public Service {
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
   static const char kStorageSimCardId[];
+  static const char kStorageAllowRoaming[];
 
   void set_activation_state_for_testing(const std::string& activation_state) {
     activation_state_ = activation_state;
+  }
+  void set_allow_roaming_for_testing(bool allow_roaming) {
+    allow_roaming_ = allow_roaming;
   }
 
  protected:
@@ -152,6 +165,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, SaveAndLoadApn);
   FRIEND_TEST(CellularServiceTest, MergeDetailsFromApnList);
   FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
+  FRIEND_TEST(CellularServiceTest, SetAllowRoaming);
 
   static const char kAutoConnActivating[];
   static const char kAutoConnSimUnselected[];
@@ -208,6 +222,8 @@ class CellularService : public Service {
   static void FetchDetailsFromApnList(const Stringmaps& apn_list,
                                       Stringmap* apn_info);
   bool IsOutOfCredits(Error* /*error*/);
+  bool GetAllowRoaming(Error* /*error*/);
+  bool SetAllowRoaming(const bool& value, Error* error);
 
   // The IMSI for the SIM. This is saved in the Profile and emitted as a
   // property so that it is available for non primary SIM Profiles.
@@ -233,6 +249,8 @@ class CellularService : public Service {
   Stringmap last_good_apn_info_;
   std::string ppp_username_;
   std::string ppp_password_;
+  base::Optional<bool> allow_roaming_;
+  bool provider_requires_roaming_;
 
   // The storage identifier defaults to cellular_{iccid}.
   std::string storage_identifier_;

@@ -234,13 +234,13 @@ Cellular::Cellular(ModemInfo* modem_info,
       scanning_supported_(false),
       scanning_(false),
       polling_location_(false),
-      provider_requires_roaming_(false),
       scan_interval_(0),
       sim_present_(false),
       type_(type),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()),
       allow_roaming_(false),
+      provider_requires_roaming_(false),
       use_attach_apn_(false),
       inhibited_(false),
       proposed_scan_in_progress_(false),
@@ -1120,8 +1120,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (!IsRoamingAllowedOrRequired() &&
-      service->roaming_state() == kRoamingStateRoaming) {
+  if (service->IsRoamingRuleViolated()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
                           "Connect Failed: Roaming disallowed.");
     return;
@@ -1180,11 +1179,15 @@ void Cellular::OnConnected() {
   SetState(kStateConnected);
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
-    Disconnect(nullptr, "no celluar service");
-  } else if (!IsRoamingAllowedOrRequired() &&
-             service_->roaming_state() == kRoamingStateRoaming) {
+    Disconnect(nullptr, "no cellular service");
+  } else if (service_->IsRoamingRuleViolated()) {
+    // TODO(pholla): This logic is probably unreachable since we have two gate
+    // keepers that prevent this scenario.
+    // a) Cellular::Connect prevents connects if roaming rules are violated.
+    // b) CellularCapability3gpp::FillConnectPropertyMap will not allow MM to
+    //    connect to roaming networks.
     LOG(INFO) << "Disconnecting due to roaming.";
-    Disconnect(nullptr, "roaming");
+    Disconnect(nullptr, "roaming disallowed");
   } else {
     EstablishLink();
   }
@@ -1410,38 +1413,25 @@ bool Cellular::IsActivating() const {
   return capability_ && capability_->IsActivating();
 }
 
-bool Cellular::IsRoamingAllowedOrRequired() const {
-  return allow_roaming_ || provider_requires_roaming_;
-}
-
 bool Cellular::GetAllowRoaming(Error* /*error*/) {
-  return allow_roaming_;
+  return service_ ? service_->GetAllowRoaming() : allow_roaming_;
 }
 
 bool Cellular::SetAllowRoaming(const bool& value, Error* error) {
   if (allow_roaming_ == value)
     return false;
 
-  if (!capability_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Modem not available.");
-    return false;
-  }
-
   LOG(INFO) << __func__ << ": " << allow_roaming_ << "->" << value;
 
   allow_roaming_ = value;
+  adaptor()->EmitBoolChanged(kCellularAllowRoamingProperty, value);
   manager()->UpdateDevice(this);
 
-  // Use IsRoamingAllowedOrRequired() instead of |allow_roaming_| in order to
-  // incorporate provider preferences when evaluating if a disconnect is
-  // required.
-  if (!IsRoamingAllowedOrRequired() &&
-      capability_->GetRoamingStateString() == kRoamingStateRoaming) {
+  if (service_ && service_->IsRoamingRuleViolated()) {
     Error error;
     Disconnect(&error, __func__);
   }
-  adaptor()->EmitBoolChanged(kCellularAllowRoamingProperty, value);
+
   return true;
 }
 
@@ -2303,6 +2293,10 @@ void Cellular::set_provider_requires_roaming(bool provider_requires_roaming) {
   provider_requires_roaming_ = provider_requires_roaming;
   adaptor()->EmitBoolChanged(kProviderRequiresRoamingProperty,
                              provider_requires_roaming_);
+}
+
+bool Cellular::IsRoamingAllowed() {
+  return service_ && service_->IsRoamingAllowed();
 }
 
 void Cellular::SetApnList(const Stringmaps& apn_list) {

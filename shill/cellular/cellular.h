@@ -250,14 +250,8 @@ class Cellular : public Device,
   void OnModemStateChanged(ModemState new_state);
   void OnScanReply(const Stringmaps& found_networks, const Error& error);
 
-  // accessor to read the allow roaming property
-  bool allow_roaming_property() const { return allow_roaming_; }
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
-
-  // Returns true if roaming is allowed by the user (via the user modifiable
-  // "allow_roaming" property) or required by the mobile provider.
-  bool IsRoamingAllowedOrRequired() const;
 
   // Initiate PPP link. Called from capabilities.
   virtual void StartPPP(const std::string& serial_device);
@@ -307,10 +301,11 @@ class Cellular : public Device,
 
   const std::string& selected_network() const { return selected_network_; }
   const Stringmaps& found_networks() const { return found_networks_; }
-  bool provider_requires_roaming() const { return provider_requires_roaming_; }
   bool sim_present() const { return sim_present_; }
   const Stringmaps& apn_list() const { return apn_list_; }
   const std::string& iccid() const { return iccid_; }
+  bool allow_roaming() const { return allow_roaming_; }
+  bool provider_requires_roaming() const { return provider_requires_roaming_; }
   bool use_attach_apn() const { return use_attach_apn_; }
 
   Type type() const { return type_; }
@@ -354,6 +349,7 @@ class Cellular : public Device,
   void clear_found_networks();
   void set_found_networks(const Stringmaps& found_networks);
   void set_provider_requires_roaming(bool provider_requires_roaming);
+  bool IsRoamingAllowed();
   void SetApnList(const Stringmaps& apn_list);
 
   // Takes ownership.
@@ -641,7 +637,6 @@ class Cellular : public Device,
   // They are always exposed but are non empty only for GSM technology modems.
   std::string selected_network_;
   Stringmaps found_networks_;
-  bool provider_requires_roaming_;
   uint16_t scan_interval_;
   Stringmaps apn_list_;
 
@@ -678,8 +673,12 @@ class Cellular : public Device,
   // When set in tests, |service_| is not created or destroyed by Cellular.
   CellularServiceRefPtr service_for_testing_;
 
-  // User preference to allow or disallow roaming
+  // User preference to allow or disallow roaming before M92. Used as a default
+  // until Chrome ties its roaming toggle to Service.AllowRoaming (b/184375691)
   bool allow_roaming_;
+  // If an operator has no home network, then set this flag. This overrides
+  // all other roaming preferences, and allows roaming unconditionally.
+  bool provider_requires_roaming_;
 
   // Chrome flags to enable setting the attach APN from the host
   bool use_attach_apn_;
