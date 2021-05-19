@@ -34,7 +34,7 @@ bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
     return false;
   }
 
-  int retries = 3;
+  int retries = 10;
   while (retries--) {
     dbus::MethodCall method_call(
         chromeos::kChromeFeaturesServiceInterface,
