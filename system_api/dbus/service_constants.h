@@ -462,6 +462,9 @@ const char kStableDeviceIdNewProperty[] = "StableDeviceIdNew";
 const char kMaxSupportedChannelsProperty[] = "MaxSupportedChannels";
 const char kAudioEffectProperty[] = "AudioEffect";
 const char kNodeVolumeProperty[] = "NodeVolume";
+// The following two properties are optional.
+const char kNumberOfUnderrunsProperty[] = "NumberOfUnderruns";
+const char kNumberOfSevereUnderrunsProperty[] = "NumberOfSevereUnderruns";
 enum AudioEffectType {
   EFFECT_TYPE_NOISE_CANCELLATION = 1 << 0,
 };
