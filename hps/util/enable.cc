@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 /*
- * Enable feature(s).
+ * Enable/disable feature(s).
  */
 
 #include <iomanip>
@@ -19,36 +19,43 @@
 
 namespace {
 
-// Argument is feature mask
-// 0 - disable features
-// 1 - enable feature 1
-// 2 - enable feature 2
-// 3 - enable both feature 1 and 2.
-int Enable(std::unique_ptr<hps::HPS> hps,
-           const base::CommandLine::StringVector& args) {
+// Argument is feature id
+// 0 - feature 1
+// 1 - feature 2
+int FeatureControl(std::unique_ptr<hps::HPS> hps,
+                   const base::CommandLine::StringVector& args) {
   int feat = 0;
   if (args.size() != 2) {
-    std::cerr << "Feature enable bit-mask required (0, 1, 2, 3)" << std::endl;
+    std::cerr << "Feature id required (0, 1)" << std::endl;
     return 1;
   }
-  if (!base::StringToInt(args[1], &feat) || feat < 0 || feat > 3) {
-    std::cerr << args[1] << ": illegal feature mask. "
-              << "Valid values are 0, 1, 2, 3." << std::endl;
+  if (!base::StringToInt(args[1], &feat) || feat < 0 || feat > 1) {
+    std::cerr << args[1] << ": illegal feature id. "
+              << "Valid values are 0, 1." << std::endl;
     return 1;
   }
-  if (hps->Enable(feat)) {
+  bool result;
+  if (args[0] == "enable") {
+    result = hps->Enable(feat);
+  } else {
+    result = hps->Disable(feat);
+  }
+  if (result) {
     std::cout << "Success!" << std::endl;
     return 0;
   } else {
-    std::cout << "Enable failed!" << std::endl;
+    std::cout << "Feature control failed!" << std::endl;
     return 1;
   }
 }
 
 Command enableCmd("enable",
-                  "enable feature-mask - "
-                  "Enable/disable features using bit-mask, valid values are "
-                  "0, 1, 2, 3",
-                  Enable);
+                  "enable feature-id - "
+                  "Enable feature, valid id values are 0, 1",
+                  FeatureControl);
+Command disableCmd("disable",
+                   "disable feature-id - "
+                   "Disable feature, valid id values are 0, 1",
+                   FeatureControl);
 
 }  // namespace
