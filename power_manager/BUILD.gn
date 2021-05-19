@@ -251,6 +251,7 @@ static_library("libpolicy") {
     "powerd/policy/internal_backlight_controller.cc",
     "powerd/policy/keyboard_backlight_controller.cc",
     "powerd/policy/shutdown_from_suspend.cc",
+    "powerd/policy/smart_dim_requestor.cc",
     "powerd/policy/state_controller.cc",
     "powerd/policy/suspend_delay_controller.cc",
     "powerd/policy/suspender.cc",

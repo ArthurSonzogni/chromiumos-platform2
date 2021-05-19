@@ -357,6 +357,7 @@ StateController::StateController()
       dim_wake_lock_(std::make_unique<ActivityInfo>()),
       system_wake_lock_(std::make_unique<ActivityInfo>()),
       wake_lock_logger_(kWakeLocksLoggingInterval),
+      smart_dim_requestor_(new SmartDimRequestor()),
       weak_ptr_factory_(this) {}
 
 StateController::~StateController() {
@@ -393,12 +394,10 @@ void StateController::Init(Delegate* delegate,
       base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  ml_decision_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
-      chromeos::kMlDecisionServiceName, chromeos::kMlDecisionServicePath);
-  dbus_wrapper_->RegisterForServiceAvailability(
-      ml_decision_dbus_proxy_,
-      base::Bind(&StateController::HandleMlDecisionServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+  smart_dim_requestor_->Init(
+      dbus_wrapper_,
+      base::BindRepeating(&StateController::HandleDeferFromSmartDim,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
@@ -841,13 +840,6 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
   return last_time;
 }
 
-base::TimeTicks StateController::GetLastActivityTimeForRequestSmartDim(
-    base::TimeTicks now) const {
-  base::TimeTicks last_time = GetLastActivityTimeForScreenDim(now);
-  last_time = std::max(last_time, last_smart_dim_decision_request_time_);
-  return last_time;
-}
-
 base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
     base::TimeTicks now) const {
   base::TimeTicks last_time = GetLastActivityTimeForScreenDim(now);
@@ -1131,8 +1123,6 @@ StateController::Action StateController::GetIdleAction() const {
 void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
-  base::TimeDelta request_smart_dim_decision_duration =
-      now - GetLastActivityTimeForRequestSmartDim(now);
   base::TimeDelta screen_dim_duration =
       now - GetLastActivityTimeForScreenDim(now);
   base::TimeDelta screen_off_duration =
@@ -1140,13 +1130,12 @@ void StateController::UpdateState() {
   base::TimeDelta screen_lock_duration =
       now - GetLastActivityTimeForScreenLock(now);
 
-  if (request_smart_dim_decision_ && ml_decision_service_available_ &&
-      delays_.screen_dim_imminent > base::TimeDelta() &&
-      request_smart_dim_decision_duration >= delays_.screen_dim_imminent &&
-      !waiting_for_smart_dim_decision_ && !screen_dimmed_) {
-    RequestSmartDimDecision();
-    last_smart_dim_decision_request_time_ = clock_->GetCurrentTime();
-    waiting_for_smart_dim_decision_ = true;
+  // We only want to send a smart dim request if the screen is not dimmed and it
+  // has been a while since the last smart_dim_activity.
+  if (!screen_dimmed_ && delays_.screen_dim_imminent > base::TimeDelta() &&
+      screen_dim_duration >= delays_.screen_dim_imminent &&
+      smart_dim_requestor_->ReadyForRequest(now, delays_.screen_dim_imminent)) {
+    smart_dim_requestor_->RequestSmartDimDecision(now);
   }
 
   const bool screen_was_dimmed = screen_dimmed_;
@@ -1270,7 +1259,7 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
-    if (request_smart_dim_decision_) {
+    if (smart_dim_requestor_->request_smart_dim_decision()) {
       UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
                           delays_.screen_dim_imminent, &timeout_delay);
     }
@@ -1398,65 +1387,11 @@ void StateController::EmitScreenIdleStateChanged(bool dimmed, bool off) {
                                               proto);
 }
 
-void StateController::HandleMlDecisionServiceAvailable(bool available) {
-  ml_decision_service_available_ = available;
-  if (!available) {
-    LOG(ERROR) << "Failed waiting for ml decision service to become "
-                  "available";
-    return;
-  }
-}
-
-void StateController::RequestSmartDimDecision() {
-  dbus::MethodCall method_call(
-      chromeos::kMlDecisionServiceInterface,
-      chromeos::kMlDecisionServiceShouldDeferScreenDimMethod);
-
-  dbus_wrapper_->CallMethodAsync(
-      ml_decision_dbus_proxy_, &method_call, kSmartDimDecisionTimeout,
-      base::Bind(&StateController::HandleSmartDimResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
-}
-
-void StateController::HandleSmartDimResponse(dbus::Response* response) {
-  screen_dim_deferred_for_testing_ = false;
-  if (!waiting_for_smart_dim_decision_) {
-    LOG(WARNING) << "Smart dim decision is not being waited for";
-    return;
-  }
-
-  waiting_for_smart_dim_decision_ = false;
-
+void StateController::HandleDeferFromSmartDim() {
   if (screen_dimmed_) {
     VLOG(1) << "Screen is already dimmed";
     return;
   }
-
-  if (!response) {
-    LOG(ERROR) << "D-Bus method call to "
-               << chromeos::kMlDecisionServiceInterface << "."
-               << chromeos::kMlDecisionServiceShouldDeferScreenDimMethod
-               << " failed";
-    return;
-  }
-
-  dbus::MessageReader reader(response);
-  bool should_defer_screen_dim = false;
-  if (!reader.PopBool(&should_defer_screen_dim)) {
-    LOG(ERROR) << "Unable to read info from "
-               << chromeos::kMlDecisionServiceInterface << "."
-               << chromeos::kMlDecisionServiceShouldDeferScreenDimMethod
-               << " response";
-    return;
-  }
-
-  if (!should_defer_screen_dim) {
-    VLOG(1) << "Smart dim decided not to defer screen dimming";
-    return;
-  }
-
-  screen_dim_deferred_for_testing_ = true;
-  LOG(INFO) << "Smart dim decided to defer screen dimming";
   last_defer_screen_dim_time_ = clock_->GetCurrentTime();
   UpdateState();
 }

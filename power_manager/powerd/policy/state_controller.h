@@ -20,6 +20,7 @@
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
+#include "power_manager/powerd/policy/smart_dim_requestor.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace dbus {
@@ -143,10 +144,6 @@ class StateController : public PrefsObserver {
   static constexpr base::TimeDelta kScreenDimImminentInterval =
       base::TimeDelta::FromSeconds(5);
 
-  // Timeout for RequestSmartDimDecision.
-  static constexpr base::TimeDelta kSmartDimDecisionTimeout =
-      base::TimeDelta::FromSeconds(3);
-
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
 
@@ -160,8 +157,12 @@ class StateController : public PrefsObserver {
     return last_user_activity_time_;
   }
 
+  bool screen_dim_deferred_for_testing() {
+    return smart_dim_requestor_->screen_dim_deferred_for_testing();
+  }
   void set_request_smart_dim_decision_for_testing(bool should_ask) {
-    request_smart_dim_decision_ = should_ask;
+    smart_dim_requestor_->set_request_smart_dim_decision_for_testing(
+        should_ask);
   }
 
   // Is the system currently in "docked mode", where it remains awake while
@@ -202,10 +203,6 @@ class StateController : public PrefsObserver {
 
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
-
-  bool screen_dim_deferred_for_testing() const {
-    return screen_dim_deferred_for_testing_;
-  }
 
  private:
   // Holds a collection of delays. Unset delays take the zero value.
@@ -306,8 +303,6 @@ class StateController : public PrefsObserver {
 
   // Returns the last time at which activity occurred that should defer a screen
   // timeout.
-  base::TimeTicks GetLastActivityTimeForRequestSmartDim(
-      base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenDim(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenLock(base::TimeTicks now) const;
@@ -392,14 +387,11 @@ class StateController : public PrefsObserver {
   // changed.
   void EmitScreenIdleStateChanged(bool dimmed, bool off);
 
-  // Handles the |ml_decision_dbus_proxy_| becoming initially available.
-  void HandleMlDecisionServiceAvailable(bool available);
-
   // Request from ML decision D-Bus service.
   void RequestSmartDimDecision();
 
-  // Handles smart dim response, serves as callback in RequestSmartDimDecision.
-  void HandleSmartDimResponse(dbus::Response* response);
+  // Called if RequestSmartDimDecision returns true.
+  void HandleDeferFromSmartDim();
 
   Delegate* delegate_ = nullptr;                          // not owned
   PrefsInterface* prefs_ = nullptr;                       // not owned
@@ -407,7 +399,6 @@ class StateController : public PrefsObserver {
 
   // Owned by |dbus_wrapper_|.
   dbus::ObjectProxy* update_engine_dbus_proxy_ = nullptr;
-  dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;
 
   std::unique_ptr<Clock> clock_;
 
@@ -451,7 +442,6 @@ class StateController : public PrefsObserver {
 
   // These track whether various actions have already been performed by
   // UpdateState().
-  bool waiting_for_smart_dim_decision_ = false;
   bool screen_dimmed_ = false;
   bool screen_turned_off_ = false;
   bool requested_screen_lock_ = false;
@@ -504,13 +494,6 @@ class StateController : public PrefsObserver {
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_ = false;
 
-  // Should powerd request smart dim decision via D-Bus service? May be disabled
-  // by tests.
-  bool request_smart_dim_decision_ = true;
-
-  // True if ml decision service is available.
-  bool ml_decision_service_available_ = false;
-
   // TPM dictionary-attack counter value.
   int tpm_dictionary_attack_count_ = 0;
 
@@ -529,8 +512,6 @@ class StateController : public PrefsObserver {
   base::TimeTicks last_video_activity_time_;
   base::TimeTicks last_wake_notification_time_;
 
-  // Time of the last request of RequestSmartDimDecision.
-  base::TimeTicks last_smart_dim_decision_request_time_;
   // Time of the last deferring screen dim.
   base::TimeTicks last_defer_screen_dim_time_;
 
@@ -567,14 +548,14 @@ class StateController : public PrefsObserver {
   // long ago.
   OngoingStateActivityLogger wake_lock_logger_;
 
-  // True if the most recent RequestSmartDimDecision call returned true.
-  // Used by unit tests.
-  bool screen_dim_deferred_for_testing_ = false;
-
   // Watcher to monitor the presence of |kCrashBootCollectorDoneFile|.
   // Presence of this file indicates successfull collection of per-boot crash
   // collection.
   base::FilePathWatcher crash_boot_collector_watcher_;
+
+  // Class that decides whether to defer the imminent screen dimming via dbus
+  // method call to kMlDecisionServiceInterface.
+  std::unique_ptr<SmartDimRequestor> smart_dim_requestor_;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 };
