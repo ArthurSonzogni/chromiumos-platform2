@@ -111,13 +111,6 @@ class Metrics : public DefaultServiceObserver {
     kWiFiNetworkPhyModeMax
   };
 
-  enum HiddenWiFiEverConnected {
-    kHiddenWiFiNeverConnected = 0,
-    kHiddenWiFiPreviouslyConnected = 1,
-
-    kHiddenWiFiEverConnectedMax
-  };
-
   enum EapOuterProtocol {
     kEapOuterProtocolUnknown = 0,
     kEapOuterProtocolLeap = 1,
@@ -194,40 +187,12 @@ class Metrics : public DefaultServiceObserver {
     kWiFiApChannelSwitchMax
   };
 
-  enum WiFiAp80211kSupport {
-    kWiFiAp80211kNone = 0,
-    kWiFiAp80211kNeighborList = 1,
-
-    kWiFiAp80211kMax
-  };
-
   enum WiFiAp80211rSupport {
     kWiFiAp80211rNone = 0,
     kWiFiAp80211rOTA = 1,
     kWiFiAp80211rOTDS = 2,
 
     kWiFiAp80211rMax
-  };
-
-  enum WiFiAp80211vDMSSupport {
-    kWiFiAp80211vNoDMS = 0,
-    kWiFiAp80211vDMS = 1,
-
-    kWiFiAp80211vDMSMax
-  };
-
-  enum WiFiAp80211vBSSMaxIdlePeriodSupport {
-    kWiFiAp80211vNoBSSMaxIdlePeriod = 0,
-    kWiFiAp80211vBSSMaxIdlePeriod = 1,
-
-    kWiFiAp80211vBSSMaxIdlePeriodMax
-  };
-
-  enum WiFiAp80211vBSSTransitionSupport {
-    kWiFiAp80211vNoBSSTransition = 0,
-    kWiFiAp80211vBSSTransition = 1,
-
-    kWiFiAp80211vBSSTransitionMax
   };
 
   enum WiFiRoamComplete {
@@ -532,12 +497,6 @@ class Metrics : public DefaultServiceObserver {
     kWakeOnWiFiFeaturesEnabledStateMax
   };
 
-  enum WakeOnWiFiThrottled {
-    kWakeOnWiFiThrottledFalse = 0,
-    kWakeOnWiFiThrottledTrue = 1,
-    kWakeOnWiFiThrottledMax
-  };
-
   enum WakeReasonReceivedBeforeOnDarkResume {
     kWakeReasonReceivedBeforeOnDarkResumeFalse = 0,
     kWakeReasonReceivedBeforeOnDarkResumeTrue = 1,
@@ -590,8 +549,6 @@ class Metrics : public DefaultServiceObserver {
     kHS20Version3 = 4,
     kHS20SupportMax
   };
-
-  enum MBOSupport { kMBOUnsupported = 0, kMBOSupported = 1, kMBOSupportMax };
 
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
@@ -1215,6 +1172,9 @@ class Metrics : public DefaultServiceObserver {
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max);
+
+  // Sends bool to UMA.
+  virtual bool SendBoolToUMA(const std::string& name, bool b);
 
   // Send logarithmic histogram data to UMA.
   virtual bool SendToUMA(

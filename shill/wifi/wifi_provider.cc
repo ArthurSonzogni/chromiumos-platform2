@@ -582,11 +582,8 @@ void WiFiProvider::ReportServiceSourceMetrics() {
 
   for (const auto& service : services_) {
     if (service->IsRemembered() && service->hidden_ssid()) {
-      metrics()->SendEnumToUMA(Metrics::kMetricHiddenSSIDEverConnected,
-                               service->has_ever_connected()
-                                   ? Metrics::kHiddenWiFiPreviouslyConnected
-                                   : Metrics::kHiddenWiFiNeverConnected,
-                               Metrics::kHiddenWiFiEverConnectedMax);
+      metrics()->SendBoolToUMA(Metrics::kMetricHiddenSSIDEverConnected,
+                               service->has_ever_connected());
     }
   }
 }

@@ -1202,11 +1202,7 @@ void Metrics::NotifyApChannelSwitch(uint16_t frequency,
 }
 
 void Metrics::NotifyAp80211kSupport(bool neighbor_list_supported) {
-  WiFiAp80211kSupport support = kWiFiAp80211kNone;
-  if (neighbor_list_supported) {
-    support = kWiFiAp80211kNeighborList;
-  }
-  SendEnumToUMA(kMetricAp80211kSupport, support, kWiFiAp80211kMax);
+  SendBoolToUMA(kMetricAp80211kSupport, neighbor_list_supported);
 }
 
 void Metrics::NotifyAp80211rSupport(bool ota_ft_supported,
@@ -1221,31 +1217,18 @@ void Metrics::NotifyAp80211rSupport(bool ota_ft_supported,
 }
 
 void Metrics::NotifyAp80211vDMSSupport(bool dms_supported) {
-  WiFiAp80211vDMSSupport support = kWiFiAp80211vNoDMS;
-  if (dms_supported) {
-    support = kWiFiAp80211vDMS;
-  }
-  SendEnumToUMA(kMetricAp80211vDMSSupport, support, kWiFiAp80211vDMSMax);
+  SendBoolToUMA(kMetricAp80211vDMSSupport, dms_supported);
 }
 
 void Metrics::NotifyAp80211vBSSMaxIdlePeriodSupport(
     bool bss_max_idle_period_supported) {
-  WiFiAp80211vBSSMaxIdlePeriodSupport support = kWiFiAp80211vNoBSSMaxIdlePeriod;
-  if (bss_max_idle_period_supported) {
-    support = kWiFiAp80211vBSSMaxIdlePeriod;
-  }
-  SendEnumToUMA(kMetricAp80211vBSSMaxIdlePeriodSupport, support,
-                kWiFiAp80211vBSSMaxIdlePeriodMax);
+  SendBoolToUMA(kMetricAp80211vBSSMaxIdlePeriodSupport,
+                bss_max_idle_period_supported);
 }
 
 void Metrics::NotifyAp80211vBSSTransitionSupport(
     bool bss_transition_supported) {
-  WiFiAp80211vBSSTransitionSupport support = kWiFiAp80211vNoBSSTransition;
-  if (bss_transition_supported) {
-    support = kWiFiAp80211vBSSTransition;
-  }
-  SendEnumToUMA(kMetricAp80211vBSSTransitionSupport, support,
-                kWiFiAp80211vBSSTransitionMax);
+  SendBoolToUMA(kMetricAp80211vBSSTransitionSupport, bss_transition_supported);
 }
 
 #if !defined(DISABLE_WIFI)
@@ -1722,6 +1705,11 @@ bool Metrics::SendEnumToUMA(const std::string& name, int sample, int max) {
   return library_->SendEnumToUMA(name, sample, max);
 }
 
+bool Metrics::SendBoolToUMA(const std::string& name, bool b) {
+  SLOG(this, 5) << "Sending bool " << name << " with value " << b << ".";
+  return library_->SendBoolToUMA(name, b);
+}
+
 bool Metrics::SendToUMA(
     const std::string& name, int sample, int min, int max, int num_buckets) {
   SLOG(this, 5) << "Sending metric " << name << " with value " << sample << ".";
@@ -1739,11 +1727,7 @@ void Metrics::NotifyWakeOnWiFiThrottled() {
 }
 
 void Metrics::NotifySuspendWithWakeOnWiFiEnabledDone() {
-  WakeOnWiFiThrottled throttled_result = wake_on_wifi_throttled_
-                                             ? kWakeOnWiFiThrottledTrue
-                                             : kWakeOnWiFiThrottledFalse;
-  SendEnumToUMA(kMetricWakeOnWiFiThrottled, throttled_result,
-                kWakeOnWiFiThrottledMax);
+  SendBoolToUMA(kMetricWakeOnWiFiThrottled, wake_on_wifi_throttled_);
 }
 
 void Metrics::NotifyWakeupReasonReceived() {
@@ -1910,11 +1894,7 @@ void Metrics::NotifyHS20Support(bool hs20_supported, int hs20_version_number) {
 }
 
 void Metrics::NotifyMBOSupport(bool mbo_support) {
-  if (mbo_support) {
-    SendEnumToUMA(kMetricMBOSupport, kMBOSupported, kMBOSupportMax);
-  } else {
-    SendEnumToUMA(kMetricMBOSupport, kMBOUnsupported, kMBOSupportMax);
-  }
+  SendBoolToUMA(kMetricMBOSupport, mbo_support);
 }
 
 // static

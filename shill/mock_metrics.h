@@ -52,6 +52,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropCanceled, (), (override));
   MOCK_METHOD(void, NotifyCorruptedProfile, (), (override));
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
+  MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool,
               SendToUMA,
               (const std::string&, int, int, int, int),

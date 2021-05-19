@@ -663,9 +663,8 @@ TEST_F(WiFiProviderTest, ServiceSourceStatsHiddenSSID) {
                         Metrics::kMetricRememberedWiFiNetworkCountMin,
                         Metrics::kMetricRememberedWiFiNetworkCountMax,
                         Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricHiddenSSIDEverConnected,
-                                      Metrics::kHiddenWiFiNeverConnected,
-                                      Metrics::kHiddenWiFiEverConnectedMax));
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricHiddenSSIDEverConnected, false));
   CreateServicesFromProfile(user_profile_.get());
 }
 
