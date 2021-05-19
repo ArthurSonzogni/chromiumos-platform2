@@ -99,6 +99,7 @@ void Observer::RecordHwVerificationReport(const HwVerificationReport& report) {
             base::StringPrintf("VENDOR_%s", device.vendor().c_str()),
             &vendor)) {
       VLOG(3) << "Unknown EDID vendor : " << device.vendor();
+      vendor = runtime_probe::Edid::VENDOR_UNKNOWN;
     }
     metrics::structured::events::hardware_verifier::ComponentInfo()
         .SetDisplayPanelVendor(vendor)
