@@ -26,11 +26,27 @@ void HpsDaemon::RegisterDBusObjectsAsync(
 }
 
 bool HpsDaemon::EnableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  return true;
+  int res = this->hps_->Enable(feature);
+  if (res < 0) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         kErrorPath, "hpsd: Unable to enable feature");
+
+    return false;
+  } else {
+    return true;
+  }
 }
 
 bool HpsDaemon::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  return true;
+  int res = this->hps_->Disable(feature);
+  if (res < 0) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         kErrorPath, "hpsd: Unable to disable feature");
+
+    return false;
+  } else {
+    return true;
+  }
 }
 
 bool HpsDaemon::GetFeatureResult(brillo::ErrorPtr* error,
