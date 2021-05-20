@@ -49,7 +49,9 @@ int main(int argc, char* argv[]) {
   if (strcmp(dev_type, "ftdi") == 0) {
     dev = hps::Ftdi::Create(GetI2CAddress());
   } else if (strcmp(dev_type, "test") == 0) {
-    dev = hps::FakeDev::Create(hps::FakeDev::Flags::kNone);
+    auto fake = hps::FakeHps::Create();
+    fake->SkipBoot();
+    dev = fake->CreateDevInterface();
   } else if (strcmp(dev_type, "uart") == 0) {
     const char* uart_dev = getenv("UART_DEV");
     CHECK(uart_dev) << "Missing UART device (UART_DEV)";

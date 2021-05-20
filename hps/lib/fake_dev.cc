@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 /*
- * Fake HPS device.
+ * Simulated HPS hardware device.
  *
  * When started, a thread is spawned to asynchronously
  * process register reads/writes and memory writes.
@@ -18,140 +18,120 @@
  * So a typical register read is:
  *
  *   Main thread                 device thread
- * ->Device->Read
- *     DevImpl->ReadReg
+ * ->DevInterface->Read
+ *     FakeHps->ReadRegister
  *       create event/result
- *       DevImpl->send
+ *       FakeHps->send
  *           Add msg to queue
- *               signal  - - -> DevImpl->Run
+ *               signal  - - -> FakeHps->Run
  *                                read msg from queue
- *                                DevImpl->ReadRegActual
+ *                                FakeHps->ReadRegActual
  *             result < - - - -
  *             event  < - - - -
  *     return result
  */
+#include "hps/lib/fake_dev.h"
+
 #include <atomic>
 #include <deque>
 #include <iostream>
-#include <vector>
 
 #include <base/check.h>
+#include <base/memory/ref_counted.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/simple_thread.h>
 
-#include "hps/lib/fake_dev.h"
 #include "hps/lib/hps_reg.h"
-
-namespace {
-
-// Message type.
-enum Cmd {
-  kStop,
-  kReadReg,
-  kWriteReg,
-  kWriteMem,
-};
-
-// Message to be delivered to device simulator thread.
-struct Msg {
-  Msg() : cmd(Cmd::kStop), reg(0), value(0), sig(nullptr), result(nullptr) {}
-  Msg(Cmd c,
-      int r,
-      uint16_t v,
-      base::WaitableEvent* e,
-      std::atomic<uint16_t>* res)
-      : cmd(c), reg(r), value(v), sig(e), result(res) {}
-  Cmd cmd;
-  int reg;  // Or bank for memory write
-  uint16_t value;
-  base::WaitableEvent* sig;
-  std::atomic<uint16_t>* result;
-  const uint8_t* data;
-  size_t length;
-};
-
-}  // namespace
 
 namespace hps {
 
 /*
- * DevImpl is an internal class that when started, will spawn a thread to
- * asynchronously process register reads/writes and memory writes.
- * A separate thread is used to simulate the latency and concurrency of
- * the real device.
- *
- * A set of flags passed at the start defines behaviour of the device
- * (such as forced errors etc.).
+ * SimDev is an internal class (implementing DevInterface) that
+ * forwards calls to the simulator.
  */
-class DevImpl : public base::SimpleThread {
+class SimDev : public DevInterface {
  public:
-  DevImpl()
-      : SimpleThread("fake HPS"),
-        stage_(Stage::kBootFault),
-        flags_(FakeDev::Flags::kNone),
-        feature_on_(0),
-        bank_(0) {}
-  virtual ~DevImpl();
-  virtual void Run();
-  void Start(enum FakeDev::Flags flags);
-  uint16_t ReadReg(int r);
-  void WriteReg(int r, uint16_t v) {
-    this->Send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
+  explicit SimDev(scoped_refptr<FakeHps> device) : device_(device) {}
+  virtual ~SimDev() {}
+
+  bool Read(uint8_t cmd, uint8_t* data, size_t len) override {
+    return this->device_->Read(cmd, data, len);
   }
-  bool WriteMem(int base, const uint8_t* mem, size_t len);
-  // Current stage of the device.
-  // The stage defines the registers and status values supported.
-  enum Stage {
-    kBootFault,
-    kStage0,
-    kStage1,
-    kAppl,
-  };
+
+  bool Write(uint8_t cmd, const uint8_t* data, size_t len) override {
+    return this->device_->Write(cmd, data, len);
+  }
 
  private:
-  void SetStage(Stage s);
-  uint16_t ReadRegActual(int);
-  void WriteRegActual(int, uint16_t);
-  uint16_t WriteMemActual(int base, const uint8_t* mem, size_t len);
-  void MsgStop() { this->Send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr)); }
-  void Send(const Msg m) {
-    base::AutoLock l(this->qlock_);
-    this->q_.push_back(m);
-    this->ev_.Signal();
-  }
-  std::deque<Msg> q_;           // Message queue
-  base::Lock qlock_;            // Lock for queue
-  base::WaitableEvent ev_;      // Signal for messages available
-  Stage stage_;                 // Current stage of the device
-  enum FakeDev::Flags flags_;   // Behaviour flags.
-  uint16_t feature_on_;         // Enabled features.
-  std::atomic<uint16_t> bank_;  // Current memory bank readiness
+  // Reference counted simulator object.
+  scoped_refptr<FakeHps> device_;
 };
 
-DevImpl::~DevImpl() {
-  // If thread is running, ask to terminate it.
+FakeHps::~FakeHps() {
+  // If thread is running, send a request to terminate it.
   if (SimpleThread::HasBeenStarted() && !SimpleThread::HasBeenJoined()) {
-    // Send message to terminate thread.
     this->MsgStop();
     this->Join();
   }
 }
 
-// Reset and start the device simulator.
-void DevImpl::Start(enum FakeDev::Flags flags) {
+// Start the simulator.
+void FakeHps::Start() {
   CHECK(!SimpleThread::HasBeenStarted());
-  this->flags_ = flags;
   SimpleThread::Start();
+}
+
+bool FakeHps::Read(uint8_t cmd, uint8_t* data, size_t len) {
+  // Clear the whole buffer.
+  for (int i = 0; i < len; i++) {
+    data[i] = 0;
+  }
+  if ((cmd & 0x80) != 0) {
+    // Register read.
+    uint16_t value = this->ReadRegister(cmd & 0x7F);
+    // Store the value of the register into the buffer.
+    if (len > 0) {
+      data[0] = (value >> 8) & 0xFF;
+      if (len > 1) {
+        data[1] = value & 0xFF;
+      }
+    }
+  } else {
+    // No memory read.
+    return false;
+  }
+  return true;
+}
+
+bool FakeHps::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+  if ((cmd & 0x80) != 0) {
+    if (len != 0) {
+      // Register write.
+      int reg = cmd & 0x7F;
+      uint16_t value = data[0] << 8;
+      if (len > 1) {
+        value |= data[1];
+      }
+      this->WriteRegister(reg, value);
+    }
+  } else if ((cmd & 0xC0) == 0) {
+    // Memory write.
+    return this->WriteMemory(cmd & 0x3F, data, len);
+  } else {
+    // Unknown command.
+    return false;
+  }
+  return true;
 }
 
 // Switch to the stage selected, and set up any flags or config.
 // Depending on the stage, the HPS module supports different
 // registers and attributes.
-void DevImpl::SetStage(Stage s) {
+void FakeHps::SetStage(Stage s) {
   this->stage_ = s;
   switch (s) {
-    case Stage::kBootFault:
+    case Stage::kFault:
       this->bank_ = 0;
       break;
     case Stage::kStage0:
@@ -167,14 +147,11 @@ void DevImpl::SetStage(Stage s) {
 }
 
 // Run reads the message queue and processes each message.
-void DevImpl::Run() {
+void FakeHps::Run() {
   // Initial startup.
   // Check for boot fault.
-  if (this->flags_ & FakeDev::Flags::kBootFault) {
-    this->SetStage(Stage::kBootFault);
-  } else if (this->flags_ & FakeDev::Flags::kSkipBoot) {
-    // Skip straight to application.
-    this->SetStage(Stage::kAppl);
+  if (this->Flag(FakeHps::Flags::kBootFault)) {
+    this->SetStage(Stage::kFault);
   }
   for (;;) {
     // Main message loop.
@@ -193,7 +170,7 @@ void DevImpl::Run() {
       }
       switch (m.cmd) {
         case kStop:
-          // Exit thread.
+          // Exit simulator.
           return;
         case kReadReg:
           // Read a register and return the result.
@@ -220,7 +197,7 @@ void DevImpl::Run() {
   }
 }
 
-uint16_t DevImpl::ReadReg(int r) {
+uint16_t FakeHps::ReadRegister(int r) {
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
   this->Send(Msg(Cmd::kReadReg, r, 0, &ev, &res));
@@ -228,9 +205,13 @@ uint16_t DevImpl::ReadReg(int r) {
   return res.load();
 }
 
+void FakeHps::WriteRegister(int r, uint16_t v) {
+  this->Send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
+}
+
 // At the start of the write, clear the bank ready bit.
-// The handler will set it again once the memory write completes.
-bool DevImpl::WriteMem(int base, const uint8_t* mem, size_t len) {
+// The simulator will set it again once the memory write completes.
+bool FakeHps::WriteMemory(int base, const uint8_t* mem, size_t len) {
   this->bank_.fetch_and(~(1 << base));
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
@@ -243,7 +224,7 @@ bool DevImpl::WriteMem(int base, const uint8_t* mem, size_t len) {
   return res.load() != 0;
 }
 
-uint16_t DevImpl::ReadRegActual(int reg) {
+uint16_t FakeHps::ReadRegActual(int reg) {
   uint16_t v = 0;
   switch (reg) {
     case HpsReg::kMagic:
@@ -255,26 +236,40 @@ uint16_t DevImpl::ReadRegActual(int reg) {
       }
       break;
     case HpsReg::kSysStatus:
-      if (this->stage_ == Stage::kBootFault) {
+      if (this->stage_ == Stage::kFault) {
         v = hps::R2::kFault;
         break;
       }
       v = hps::R2::kOK;
-      if (this->flags_ & FakeDev::Flags::kApplNotVerified) {
+      if (this->Flag(FakeHps::Flags::kApplNotVerified)) {
         v |= hps::R2::kApplNotVerified;
       } else {
         v |= hps::R2::kApplVerified;
       }
-      if (this->flags_ & FakeDev::Flags::kWpOff) {
+      if (this->Flag(FakeHps::Flags::kWpOff)) {
         v |= hps::R2::kWpOff;
       } else {
         v |= hps::R2::kWpOn;
       }
       if (this->stage_ == Stage::kStage1) {
-        v |= hps::R2::kStage1 | hps::R2::kSpiVerified;
+        v |= hps::R2::kStage1;
+        if (this->Flag(FakeHps::Flags::kSpiNotVerified)) {
+          v |= hps::R2::kSpiNotVerified;
+        } else {
+          v |= hps::R2::kSpiVerified;
+        }
       }
       if (this->stage_ == Stage::kAppl) {
         v |= hps::R2::kAppl;
+      }
+      break;
+
+    case HpsReg::kApplVers:
+      // Application version, only returned in stage0 if the
+      // application has been verified.
+      if (this->stage_ == Stage::kStage0 &&
+          this->Flag(FakeHps::Flags::kApplNotVerified)) {
+        v = this->version_.load();  // Version returned in stage0.
       }
       break;
 
@@ -284,17 +279,13 @@ uint16_t DevImpl::ReadRegActual(int reg) {
 
     case HpsReg::kF1:
       if (this->feature_on_ & hps::R7::kFeature1Enable) {
-        // Return a well known but random value.
-        // TODO(amcrae): Provide a mechanism to vary this value to
-        // test the user side detection of changes.
-        v = hps::RFeat::kValid | 42;
+        v = hps::RFeat::kValid | this->f1_result_.load();
       }
       break;
 
     case HpsReg::kF2:
       if (this->feature_on_ & hps::R7::kFeature2Enable) {
-        // Return a less well known but random value.
-        v = hps::RFeat::kValid | 43;
+        v = hps::RFeat::kValid | this->f2_result_.load();
       }
       break;
 
@@ -305,7 +296,7 @@ uint16_t DevImpl::ReadRegActual(int reg) {
   return v;
 }
 
-void DevImpl::WriteRegActual(int reg, uint16_t value) {
+void FakeHps::WriteRegActual(int reg, uint16_t value) {
   VLOG(2) << "Write reg " << reg << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
@@ -338,8 +329,8 @@ void DevImpl::WriteRegActual(int reg, uint16_t value) {
 // Returns 1 for OK, 0 for fault.
 // TODO(amcrae): Store the memory written for each bank so
 // it can be checked against what was requested to be written.
-uint16_t DevImpl::WriteMemActual(int bank, const uint8_t* data, size_t len) {
-  if (this->flags_ & FakeDev::Flags::kMemFail) {
+uint16_t FakeHps::WriteMemActual(int bank, const uint8_t* data, size_t len) {
+  if (this->Flag(FakeHps::Flags::kMemFail)) {
     return 0;
   }
   switch (this->stage_) {
@@ -361,70 +352,26 @@ uint16_t DevImpl::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   return 0;
 }
 
-// Main FakeDev class.
-
-FakeDev::FakeDev() {}
-
-FakeDev::~FakeDev() {}
-
-/*
- * Read from registers.
- */
-bool FakeDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
-  // Clear the whole buffer.
-  for (int i = 0; i < len; i++) {
-    data[i] = 0;
-  }
-  if ((cmd & 0x80) != 0) {
-    // Register read.
-    uint16_t value = this->device_->ReadReg(cmd & 0x7F);
-    // Store the value of the register into the buffer.
-    if (len > 0) {
-      data[0] = value >> 8;
-      if (len > 1) {
-        data[1] = value;
-      }
-    }
-  }
-  return true;
+void FakeHps::MsgStop() {
+  this->Send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr));
 }
 
-/*
- * Write to registers or memory.
- */
-bool FakeDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
-  if ((cmd & 0x80) != 0) {
-    if (len != 0) {
-      // Register write.
-      int reg = cmd & 0x7F;
-      uint16_t value = data[0] << 8;
-      if (len > 1) {
-        value |= data[1];
-      }
-      this->device_->WriteReg(reg, value);
-    }
-  } else if ((cmd & 0xC0) == 0) {
-    // Memory write.
-    return this->device_->WriteMem(cmd & 0x3F, data, len);
-  } else {
-    // Unknown command.
-    return false;
-  }
-  return true;
+void FakeHps::Send(const Msg& m) {
+  base::AutoLock l(this->qlock_);
+  this->q_.push_back(m);
+  this->ev_.Signal();
 }
 
-// Start the fake.
-void FakeDev::Start(enum Flags flags) {
-  this->device_ = std::make_unique<DevImpl>();
-  this->device_->Start(flags);
+// Return a DevInterface connected to the simulated device.
+std::unique_ptr<DevInterface> FakeHps::CreateDevInterface() {
+  return std::unique_ptr<DevInterface>(std::make_unique<SimDev>(this));
 }
 
-// Static factory method.
-std::unique_ptr<DevInterface> FakeDev::Create(enum Flags flags) {
-  // Use new so that private constructor can be accessed.
-  auto dev = std::unique_ptr<FakeDev>(new FakeDev);
-  dev->Start(flags);
-  return dev;
+// Static factory method to create and start an instance of a fake device.
+scoped_refptr<FakeHps> FakeHps::Create() {
+  auto fake_dev = base::MakeRefCounted<FakeHps>();
+  fake_dev->Start();
+  return fake_dev;
 }
 
 }  // namespace hps
