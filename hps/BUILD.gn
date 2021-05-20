@@ -2,8 +2,78 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ "//hps/util:hps" ]
+  deps = [ ":hpsd" ]
+}
+
+generate_dbus_adaptors("hpsd-adaptors") {
+  dbus_service_config = "daemon/dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+  sources = [ "daemon/dbus_bindings/org.chromium.Hps.xml" ]
+}
+
+static_library("hps-core") {
+  sources = [ "daemon/hps_daemon.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "system_api",
+  ]
+  deps = [
+    ":fakedev",
+    ":hpsd-adaptors",
+    ":hpslib",
+  ]
+}
+
+executable("hpsd") {
+  sources = [ "daemon/main.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  deps = [ ":hps-core" ]
+}
+
+static_library("hpslib") {
+  sources = [
+    "lib/ftdi.cc",
+    "lib/ftdi.h",
+    "lib/hps.cc",
+    "lib/hps.h",
+    "lib/i2c.cc",
+    "lib/i2c.h",
+    "lib/retry.cc",
+    "lib/retry.h",
+    "lib/uart.cc",
+    "lib/uart.h",
+  ]
+  pkg_deps = [
+    "libchrome",
+    "libftdi1",
+    "libusb-1.0",
+  ]
+
+  deps = [ ":dev" ]
+}
+
+static_library("fakedev") {
+  sources = [
+    "lib/fake_dev.cc",
+    "lib/fake_dev.h",
+  ]
+  pkg_deps = [ "libchrome" ]
+
+  deps = [ ":dev" ]
+}
+
+static_library("dev") {
+  sources = [
+    "lib/dev.cc",
+    "lib/dev.h",
+    "lib/hps_reg.h",
+  ]
 }
