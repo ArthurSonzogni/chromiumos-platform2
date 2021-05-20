@@ -87,6 +87,7 @@ const char PeripheralBatteryWatcher::kHealthFile[] = "health";
 const char PeripheralBatteryWatcher::kHealthValueUnknown[] = "Unknown";
 const char PeripheralBatteryWatcher::kHealthValueGood[] = "Good";
 const char PeripheralBatteryWatcher::kCapacityFile[] = "capacity";
+const char PeripheralBatteryWatcher::kSerialNumberFile[] = "serial_number";
 const char PeripheralBatteryWatcher::kUdevSubsystem[] = "power_supply";
 
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
@@ -209,6 +210,22 @@ int PeripheralBatteryWatcher::ReadChargeStatus(
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN;
 }
 
+std::string PeripheralBatteryWatcher::ReadSerialNumber(
+    const base::FilePath& path) const {
+  base::FilePath sn_path = path.Append(kSerialNumberFile);
+
+  // NOTE: This code is assuming that the serial_number sysfs file is
+  // relatively fast to read, and will not trigger significant delays, i.e.,
+  // does not involve Bluetooth traffic to possibly non-responsive receivers.
+
+  std::string result;
+  if (ReadStringFromFile(sn_path, &result)) {
+    return result;
+  } else {
+    return "";
+  }
+}
+
 void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
                                                  bool active_update) {
   // sysfs entry "capacity" has the current battery level.
@@ -222,7 +239,9 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
     return;
 
   int status;
+  std::string sn;
   status = ReadChargeStatus(path);
+  sn = ReadSerialNumber(path);
 
   battery_readers_.push_back(std::make_unique<AsyncFileReader>());
   AsyncFileReader* reader = battery_readers_.back().get();
@@ -230,7 +249,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
   if (reader->Init(capacity_path)) {
     reader->StartRead(base::Bind(&PeripheralBatteryWatcher::ReadCallback,
                                  base::Unretained(this), path, model_name,
-                                 status, active_update),
+                                 status, sn, active_update),
                       base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
                                  base::Unretained(this), path, model_name));
   } else {
@@ -257,11 +276,13 @@ void PeripheralBatteryWatcher::ReadBatteryStatusesTimer() {
                     &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 
-void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
-                                                 const std::string& model_name,
-                                                 int level,
-                                                 int charge_status,
-                                                 bool active_update) {
+void PeripheralBatteryWatcher::SendBatteryStatus(
+    const base::FilePath& path,
+    const std::string& model_name,
+    int level,
+    int charge_status,
+    const std::string& serial_number,
+    bool active_update) {
   std::string address;
   if (ExtractBluetoothAddress(path, &address) &&
       RE2::FullMatch(address, kBluetoothAddressRegex)) {
@@ -277,6 +298,8 @@ void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
       (power_manager::PeripheralBatteryStatus_ChargeStatus)charge_status);
   if (level >= 0)
     proto.set_level(level);
+  if (!serial_number.empty())
+    proto.set_serial_number(serial_number);
   proto.set_active_update(active_update);
 
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kPeripheralBatteryStatusSignal,
@@ -286,13 +309,15 @@ void PeripheralBatteryWatcher::SendBatteryStatus(const base::FilePath& path,
 void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
                                             const std::string& model_name,
                                             int status,
+                                            const std::string& serial_number,
                                             bool active_update,
                                             const std::string& data) {
   std::string trimmed_data;
   base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
   int level = -1;
   if (base::StringToInt(trimmed_data, &level)) {
-    SendBatteryStatus(path, model_name, level, status, active_update);
+    SendBatteryStatus(path, model_name, level, status, serial_number,
+                      active_update);
   } else {
     LOG(ERROR) << "Invalid battery level reading : [" << data << "]"
                << " from " << path.value();
@@ -303,7 +328,7 @@ void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
                                              const std::string& model_name) {
   SendBatteryStatus(path, model_name, -1,
                     PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
-                    false);
+                    "", false);
 }
 
 void PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall(

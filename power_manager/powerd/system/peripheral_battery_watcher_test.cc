@@ -39,6 +39,8 @@ const char kDeviceModelName[] = "Test HID Mouse";
 const char kWacomUevent[] = "HID_UNIQ=aa:aa:aa:aa:aa:aa";
 
 constexpr char kPeripheralBatterySysname[] = "hid-someperipheral-battery";
+constexpr char kPeripheralBatterySerialNumber1[] = "31245";
+constexpr char kPeripheralBatterySerialNumber2[] = "DG-0123456789ABCDEF";
 constexpr char kBluetoothBatterySysname[] = "hid-11:22:33:aa:bb:cc-battery";
 constexpr char kWacomBatterySysname[] = "wacom_battery_1";
 constexpr char kNonPeripheralBatterySysname[] = "AC";
@@ -103,6 +105,8 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
     WriteFile(model_name_file_, kDeviceModelName);
     peripheral_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
+    peripheral_sn_file_ =
+        device_dir.Append(PeripheralBatteryWatcher::kSerialNumberFile);
 
     // Create a fake Bluetooth directory (distinguished by the name)
     device_dir = temp_dir_.GetPath().Append(kBluetoothBatterySysname);
@@ -160,6 +164,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   base::FilePath scope_file_;
   base::FilePath status_file_;
   base::FilePath peripheral_capacity_file_;
+  base::FilePath peripheral_sn_file_;
   base::FilePath model_name_file_;
   base::FilePath non_peripheral_capacity_file_;
   base::FilePath bluetooth_capacity_file_;
@@ -501,6 +506,126 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerError) {
   EXPECT_TRUE(proto.has_charge_status());
   EXPECT_EQ(PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_ERROR,
             proto.charge_status());
+}
+
+TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithoutSerial) {
+  // TODO(kenalba): trim this down
+  // Initial reading of battery statuses.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(80));
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
+  PeripheralBatteryStatus proto;
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(80, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_FALSE(proto.active_update());
+  EXPECT_FALSE(proto.has_serial_number());
+
+  // An udev ADD event appear for a peripheral device.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(70));
+  udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
+                                   kPeripheralBatterySysname, ""},
+                                  UdevEvent::Action::ADD});
+  // Check that powerd reads the battery information and sends an update signal.
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+  ASSERT_EQ(2, test_wrapper_.num_sent_signals());
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(1, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(70, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_TRUE(proto.active_update());
+  EXPECT_FALSE(proto.has_serial_number());
+
+  // An udev CHANGE event appear for a peripheral device.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
+                                   kPeripheralBatterySysname, ""},
+                                  UdevEvent::Action::CHANGE});
+  // Check that powerd reads the battery information and sends an update signal.
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+  ASSERT_EQ(3, test_wrapper_.num_sent_signals());
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(2, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(60, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_TRUE(proto.active_update());
+  EXPECT_FALSE(proto.has_serial_number());
+  // An udev REMOVE event appear for a peripheral device.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
+                                   kPeripheralBatterySysname, ""},
+                                  UdevEvent::Action::REMOVE});
+  // A REMOVE event should not trigger battery update signal.
+  EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
+}
+
+TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
+  // TODO(kenalba): trim this down
+  // Initial reading of battery statuses.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(80));
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
+  PeripheralBatteryStatus proto;
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(80, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_FALSE(proto.active_update());
+  EXPECT_FALSE(proto.has_serial_number());
+
+  // An udev ADD event appear for a peripheral device.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(70));
+  WriteFile(peripheral_sn_file_, kPeripheralBatterySerialNumber1);
+  udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
+                                   kPeripheralBatterySysname, ""},
+                                  UdevEvent::Action::ADD});
+  // Check that powerd reads the battery information and sends an update signal.
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+  ASSERT_EQ(2, test_wrapper_.num_sent_signals());
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(1, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(70, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_TRUE(proto.active_update());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_TRUE(proto.has_serial_number());
+  EXPECT_EQ(kPeripheralBatterySerialNumber1, proto.serial_number());
+
+  // An udev CHANGE event appear for a peripheral device.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  WriteFile(peripheral_sn_file_, kPeripheralBatterySerialNumber2);
+  udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
+                                   kPeripheralBatterySysname, ""},
+                                  UdevEvent::Action::CHANGE});
+  // Check that powerd reads the battery information and sends an update signal.
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+  ASSERT_EQ(3, test_wrapper_.num_sent_signals());
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(2, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
+  EXPECT_EQ(60, proto.level());
+  EXPECT_EQ(kDeviceModelName, proto.name());
+  EXPECT_TRUE(proto.has_active_update());
+  EXPECT_TRUE(proto.active_update());
+  EXPECT_TRUE(proto.has_serial_number());
+  EXPECT_EQ(kPeripheralBatterySerialNumber2, proto.serial_number());
+
+  // An udev REMOVE event appear for a peripheral device.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
+                                   kPeripheralBatterySysname, ""},
+                                  UdevEvent::Action::REMOVE});
+  // A REMOVE event should not trigger battery update signal.
+  EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
 }
 
 }  // namespace system

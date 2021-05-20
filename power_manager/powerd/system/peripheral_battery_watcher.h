@@ -59,6 +59,8 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   static const char kModelNameFile[];
   // sysfs file containing a battery's capacity.
   static const char kCapacityFile[];
+  // sysfs file containing a battery's serial number.
+  static const char kSerialNumberFile[];
   // udev subsystem to listen to for peripheral battery events.
   static const char kUdevSubsystem[];
 
@@ -102,6 +104,9 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   // /sys/class/power_supply
   int ReadChargeStatus(const base::FilePath& path) const;
 
+  // Retrieves battery serial_number entry in /sys/class/power_supply
+  std::string ReadSerialNumber(const base::FilePath& path) const;
+
   // Fills |battery_list| with paths containing information about
   // peripheral batteries.
   void GetBatteryList(std::vector<base::FilePath>* battery_list);
@@ -117,12 +122,14 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
                          const std::string& model_name,
                          int level,
                          int charge_status,
+                         const std::string& serial_number,
                          bool active_update);
 
   // Asynchronous I/O success and error handlers, respectively.
   void ReadCallback(const base::FilePath& path,
                     const std::string& model_name,
                     int status,
+                    const std::string& serial_number,
                     bool active_update,
                     const std::string& data);
   void ErrorCallback(const base::FilePath& path, const std::string& model_name);
