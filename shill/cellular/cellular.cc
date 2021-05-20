@@ -1824,6 +1824,8 @@ void Cellular::ConnectToPendingAfterDelay() {
   LOG(INFO) << "Connecting to pending Cellular Service: "
             << service->log_name();
   service->Connect(&error, "Pending connect");
+  if (!error.IsSuccess())
+    service->SetFailure(Service::kFailureConnect);
 }
 
 void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
