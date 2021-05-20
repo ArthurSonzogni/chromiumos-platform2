@@ -356,6 +356,23 @@ message StopVmResponse {
   string failure_reason = 2;
 }
 
+enum VmStopReason {
+  // VM exited.
+  VM_EXITED = 0;
+
+  // StopVm() was requested.
+  STOP_VM_REQUESTED = 1;
+
+  // StopAllVms() was requested.
+  STOP_ALL_VMS_REQUESTED = 2;
+
+  // DestroyDiskImage() was requested.
+  DESTROY_DISK_IMAGE_REQUESTED = 3;
+
+  // The service process is shutting down.
+  SERVICE_SHUTDOWN = 4;
+}
+
 // Message used in the signal for when a VM has stopped.
 message VmStoppedSignal {
   // The name of the VM which has stopped.
@@ -366,6 +383,9 @@ message VmStoppedSignal {
 
   // The virtual socket context id assigned to the VM that was stopped.
   int64 cid = 3;
+
+  // Why the VM has stopped.
+  VmStopReason reason = 4;
 }
 
 // Information that must be included with every SuspendVm dbus message.
