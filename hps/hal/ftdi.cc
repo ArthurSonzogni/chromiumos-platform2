@@ -4,7 +4,7 @@
 
 /*
  * FTDI device interface layer.
- * FTDI APP note AN_255 used as reference.
+ * FTDI APP note AN_255 and AN_108 used as reference.
  */
 #include "hps/hal/ftdi.h"
 
@@ -45,16 +45,18 @@ enum {
 
 // ADBUS0/ADBUS1 bits for I2C I/O
 enum {
-  kSclock = 1,
-  kSdata = 2,
-  kGpio = 8,  // For debugging.
+  kSclock = 0x01,
+  kSdata = 0x02,
+  kGpio = 0x08,          // For debugging.
+  kLevelShifter = 0x20,  // Enable level shifter (ADBUS5, active high).
+  kPower = 0x40,         // Enable power (ADBUS6, active low).
 };
 
 // Set the state of the I/O pins.
 void Pins(std::vector<uint8_t>* b, uint8_t val, uint8_t dir) {
   b->push_back(kSetPins);
-  b->push_back(val);
-  b->push_back(dir | kGpio);
+  b->push_back(val | kLevelShifter);
+  b->push_back(dir | kPower | kLevelShifter);
 }
 
 // Add a I2C Start sequence to the buffer.
