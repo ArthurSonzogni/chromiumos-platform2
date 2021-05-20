@@ -114,9 +114,8 @@ TEST_F(CellularPropertyTest, Contains) {
 TEST_F(CellularPropertyTest, SetProperty) {
   {
     Error error;
-    const bool allow_roaming = true;
     EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
-        kCellularAllowRoamingProperty, allow_roaming, &error));
+        kCellularPolicyAllowRoamingProperty, false, &error));
   }
   // Ensure that attempting to write a R/O property returns InvalidArgs error.
   {
@@ -1220,6 +1219,14 @@ TEST_P(CellularTest, Connect) {
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
 
+  // Check that connect fails if policy restricts roaming
+  error.Reset();
+  device_->allow_roaming_ = true;
+  device_->policy_allow_roaming_ = false;
+  device_->Connect(device_->service().get(), &error);
+  EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
+  device_->policy_allow_roaming_ = true;
+
   error.Populate(Error::kSuccess);
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .Times(3)
@@ -1247,6 +1254,7 @@ TEST_P(CellularTest, Connect) {
   // Check that provider_requires_roaming_ will override all other roaming
   // settings
   device_->allow_roaming_ = false;
+  device_->policy_allow_roaming_ = false;
   device_->provider_requires_roaming_ = true;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->state_ = Cellular::kStateRegistered;
@@ -1510,6 +1518,17 @@ TEST_P(CellularTest, SetAllowRoaming) {
   device_->SetAllowRoaming(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(device_->allow_roaming_);
+}
+
+TEST_P(CellularTest, SetPolicyAllowRoaming) {
+  EXPECT_TRUE(device_->policy_allow_roaming_);
+  EXPECT_CALL(manager_, UpdateDevice(_));
+  Error error;
+  device_->SetPolicyAllowRoaming(false, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  error.Reset();
+  EXPECT_FALSE(device_->GetPolicyAllowRoaming(&error));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_P(CellularTest, SetUseAttachApn) {

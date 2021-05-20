@@ -129,6 +129,7 @@ class ApnList {
 
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
+const char Cellular::kPolicyAllowRoaming[] = "PolicyAllowRoaming";
 const char Cellular::kUseAttachApn[] = "UseAttachAPN";
 const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
 const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
@@ -240,6 +241,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()),
       allow_roaming_(false),
+      policy_allow_roaming_(true),
       provider_requires_roaming_(false),
       use_attach_apn_(false),
       inhibited_(false),
@@ -305,6 +307,7 @@ bool Cellular::Load(const StoreInterface* storage) {
     return false;
   }
   storage->GetBool(id, kAllowRoaming, &allow_roaming_);
+  storage->GetBool(id, kPolicyAllowRoaming, &policy_allow_roaming_);
   storage->GetBool(id, kUseAttachApn, &use_attach_apn_);
   return Device::Load(storage);
 }
@@ -312,6 +315,7 @@ bool Cellular::Load(const StoreInterface* storage) {
 bool Cellular::Save(StoreInterface* storage) {
   const std::string id = GetStorageIdentifier();
   storage->SetBool(id, kAllowRoaming, allow_roaming_);
+  storage->SetBool(id, kPolicyAllowRoaming, policy_allow_roaming_);
   storage->SetBool(id, kUseAttachApn, use_attach_apn_);
   return Device::Save(storage);
 }
@@ -1435,6 +1439,28 @@ bool Cellular::SetAllowRoaming(const bool& value, Error* error) {
   return true;
 }
 
+bool Cellular::GetPolicyAllowRoaming(Error* /*error*/) {
+  return policy_allow_roaming_;
+}
+
+bool Cellular::SetPolicyAllowRoaming(const bool& value, Error* error) {
+  if (policy_allow_roaming_ == value)
+    return false;
+
+  LOG(INFO) << __func__ << ": " << policy_allow_roaming_ << "->" << value;
+
+  policy_allow_roaming_ = value;
+  adaptor()->EmitBoolChanged(kCellularPolicyAllowRoamingProperty, value);
+  manager()->UpdateDevice(this);
+
+  if (service_ && service_->IsRoamingRuleViolated()) {
+    Error error;
+    Disconnect(&error, __func__);
+  }
+
+  return true;
+}
+
 bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
   if (use_attach_apn_ == value)
     return false;
@@ -1921,6 +1947,9 @@ void Cellular::RegisterProperties() {
   HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
                           &Cellular::GetAllowRoaming,
                           &Cellular::SetAllowRoaming);
+  HelpRegisterDerivedBool(kCellularPolicyAllowRoamingProperty,
+                          &Cellular::GetPolicyAllowRoaming,
+                          &Cellular::SetPolicyAllowRoaming);
   HelpRegisterDerivedBool(kUseAttachAPNProperty, &Cellular::GetUseAttachApn,
                           &Cellular::SetUseAttachApn);
   HelpRegisterDerivedBool(kInhibitedProperty, &Cellular::GetInhibited,

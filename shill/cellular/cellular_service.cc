@@ -414,7 +414,7 @@ void CellularService::SetRoamingState(const std::string& state) {
 bool CellularService::IsRoamingAllowed() {
   if (cellular_ && cellular_->provider_requires_roaming())
     return true;
-  return GetAllowRoaming();
+  return GetAllowRoaming() && cellular_ && cellular_->policy_allow_roaming();
 }
 
 bool CellularService::IsRoamingRuleViolated() {

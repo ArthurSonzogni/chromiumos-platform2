@@ -305,6 +305,7 @@ class Cellular : public Device,
   const Stringmaps& apn_list() const { return apn_list_; }
   const std::string& iccid() const { return iccid_; }
   bool allow_roaming() const { return allow_roaming_; }
+  bool policy_allow_roaming() const { return policy_allow_roaming_; }
   bool provider_requires_roaming() const { return provider_requires_roaming_; }
   bool use_attach_apn() const { return use_attach_apn_; }
 
@@ -427,6 +428,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
+  FRIEND_TEST(CellularTest, SetPolicyAllowRoaming);
   FRIEND_TEST(CellularTest, SetInhibited);
   FRIEND_TEST(CellularTest, SetUseAttachApn);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
@@ -442,6 +444,7 @@ class Cellular : public Device,
 
   // Names of properties in storage
   static const char kAllowRoaming[];
+  static const char kPolicyAllowRoaming[];
   static const char kUseAttachApn[];
 
   // Modem reset sysfs path
@@ -529,6 +532,8 @@ class Cellular : public Device,
   // DBus accessors
   bool GetAllowRoaming(Error* /*error*/);
   bool SetAllowRoaming(const bool& value, Error* error);
+  bool GetPolicyAllowRoaming(Error* /*error*/);
+  bool SetPolicyAllowRoaming(const bool& value, Error* error);
   bool GetInhibited(Error* /*error*/);
   bool SetInhibited(const bool& inhibited, Error* error);
   void SetInhibitedGetDeviceCallback(bool inhibited, const brillo::Any& device);
@@ -676,8 +681,11 @@ class Cellular : public Device,
   // User preference to allow or disallow roaming before M92. Used as a default
   // until Chrome ties its roaming toggle to Service.AllowRoaming (b/184375691)
   bool allow_roaming_;
+
   // If an operator has no home network, then set this flag. This overrides
   // all other roaming preferences, and allows roaming unconditionally.
+  bool policy_allow_roaming_;
+
   bool provider_requires_roaming_;
 
   // Chrome flags to enable setting the attach APN from the host
