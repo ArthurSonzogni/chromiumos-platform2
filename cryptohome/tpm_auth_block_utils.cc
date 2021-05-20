@@ -45,11 +45,36 @@ CryptoError TpmAuthBlockUtils::TpmErrorToCrypto(
   }
 }
 
+CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
+    const hwsec::error::TPMErrorBase& err) {
+  hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
+  switch (action) {
+    case hwsec::error::TPMRetryAction::kCommunication:
+    case hwsec::error::TPMRetryAction::kLater:
+      return CryptoError::CE_TPM_COMM_ERROR;
+    case hwsec::error::TPMRetryAction::kDefend:
+      return CryptoError::CE_TPM_DEFEND_LOCK;
+    case hwsec::error::TPMRetryAction::kReboot:
+      return CryptoError::CE_TPM_REBOOT;
+    default:
+      // TODO(chromium:709646): kNoRetry maps here now. Find
+      // a better corresponding CryptoError.
+      return CryptoError::CE_TPM_CRYPTO;
+  }
+}
+
 // static
 bool TpmAuthBlockUtils::TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
   return retry_action == Tpm::kTpmRetryLoadFail ||
          retry_action == Tpm::kTpmRetryInvalidHandle ||
          retry_action == Tpm::kTpmRetryCommFailure;
+}
+
+bool TpmAuthBlockUtils::TPMErrorIsRetriable(
+    const hwsec::error::TPMErrorBase& err) {
+  hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
+  return action == hwsec::error::TPMRetryAction::kLater ||
+         action == hwsec::error::TPMRetryAction::kCommunication;
 }
 
 bool TpmAuthBlockUtils::IsTPMPubkeyHash(const brillo::SecureBlob& hash,

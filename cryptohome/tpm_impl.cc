@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -57,9 +58,12 @@ using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using hwsec::error::TPM1Error;
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec::overalls::GetOveralls;
 using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -346,17 +350,19 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob key;
     PasskeyToAesKey(password, salt, 13, &key, NULL);
-    if (EncryptBlob(key_handle.value(), data, key, &data_out) !=
-        kTpmRetryNone) {
+    if (TPMErrorBase err =
+            EncryptBlob(key_handle.value(), data, key, &data_out)) {
+      LOG(ERROR) << __func__ << ": Failed to encrypt blob: " << *err;
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (DecryptBlob(key_handle.value(), data_out, key,
-                    std::map<uint32_t, std::string>(),
-                    &data) != kTpmRetryNone) {
+    if (TPMErrorBase err =
+            DecryptBlob(key_handle.value(), data_out, key,
+                        std::map<uint32_t, std::string>(), &data)) {
+      LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << *err;
       return;
     }
     status->can_decrypt = true;
@@ -515,17 +521,17 @@ Tpm::TpmRetryAction TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
   return kTpmRetryNone;
 }
 
-Tpm::TpmRetryAction TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
-                                         const SecureBlob& plaintext,
-                                         const SecureBlob& key,
-                                         SecureBlob* ciphertext) {
+TPMErrorBase TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
+                                  const SecureBlob& plaintext,
+                                  const SecureBlob& key,
+                                  SecureBlob* ciphertext) {
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(tpm_context_.value());
   if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
           tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
           enc_handle.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Context_CreateObject");
   }
 
   // TODO(fes): Check RSA key modulus size, return an error or block input
@@ -533,25 +539,25 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   if (auto err = CreateError<TPM1Error>(
           Tspi_Data_Bind(enc_handle, key_handle, plaintext.size(),
                          const_cast<BYTE*>(plaintext.data())))) {
-    LOG(ERROR) << "Error calling Tspi_Data_Bind: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Data_Bind");
   }
 
   SecureBlob enc_data_blob;
   if (TPM1Error err = GetDataAttribute(
           tpm_context_.value(), enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
           TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_blob)) {
-    LOG(ERROR) << "Failed to read encrypted blob: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to read encrypted blob");
   }
   if (!ObscureRsaMessage(enc_data_blob, key, ciphertext)) {
-    LOG(ERROR) << "Error obscuring message.";
-    return kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Error obscuring message",
+                                 TPMRetryAction::kNoRetry);
   }
-  return kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction TpmImpl::DecryptBlob(
+TPMErrorBase TpmImpl::DecryptBlob(
     TpmKeyHandle key_handle,
     const SecureBlob& ciphertext,
     const SecureBlob& key,
@@ -559,8 +565,8 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(
     SecureBlob* plaintext) {
   SecureBlob local_data;
   if (!UnobscureRsaMessage(ciphertext, key, &local_data)) {
-    LOG(ERROR) << "Error unobscureing message.";
-    return kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Error unobscureing message",
+                                 TPMRetryAction::kNoRetry);
   }
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
@@ -568,31 +574,31 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(
   if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
           tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
           enc_handle.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Context_CreateObject");
   }
 
   if (auto err = CreateError<TPM1Error>(
           Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, local_data.size(),
                              local_data.data()))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribData: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_SetAttribData");
   }
 
   ScopedTssMemory dec_data(tpm_context_.value());
   UINT32 dec_data_length = 0;
   if (auto err = CreateError<TPM1Error>(Tspi_Data_Unbind(
           enc_handle, key_handle, &dec_data_length, dec_data.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_Data_Unbind: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Data_Unbind");
   }
 
   plaintext->resize(dec_data_length);
   memcpy(plaintext->data(), dec_data.value(), dec_data_length);
   brillo::SecureClearBytes(dec_data.value(), dec_data_length);
 
-  return kTpmRetryNone;
+  return nullptr;
 }
 
 bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,

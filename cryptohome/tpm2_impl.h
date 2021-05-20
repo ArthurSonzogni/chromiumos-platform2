@@ -64,15 +64,17 @@ class Tpm2Impl : public Tpm {
 
   // Tpm methods
   TpmVersion GetVersion() override { return TpmVersion::TPM_2_0; }
-  TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
-                             const brillo::SecureBlob& plaintext,
-                             const brillo::SecureBlob& key,
-                             brillo::SecureBlob* ciphertext) override;
-  TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
-                             const brillo::SecureBlob& ciphertext,
-                             const brillo::SecureBlob& key,
-                             const std::map<uint32_t, std::string>& pcr_map,
-                             brillo::SecureBlob* plaintext) override;
+  hwsec::error::TPMErrorBase EncryptBlob(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& key,
+      brillo::SecureBlob* ciphertext) override;
+  hwsec::error::TPMErrorBase DecryptBlob(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& ciphertext,
+      const brillo::SecureBlob& key,
+      const std::map<uint32_t, std::string>& pcr_map,
+      brillo::SecureBlob* plaintext) override;
   TpmRetryAction SealToPcrWithAuthorization(
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& auth_value,

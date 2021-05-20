@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
@@ -30,6 +31,10 @@
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.h"
 
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMErrorBase;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Exactly;
@@ -135,7 +140,7 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_skey}));
   ON_CALL(tpm, EncryptBlob(_, _, aes_skey, _))
-      .WillByDefault(Return(Tpm::kTpmRetryNone));
+      .WillByDefault(ReturnError<TPMErrorBase>());
   EXPECT_CALL(tpm, EncryptBlob(_, _, aes_skey, _)).Times(Exactly(1));
 
   AuthInput user_input = {vault_key,
@@ -164,7 +169,7 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   ON_CALL(tpm, EncryptBlob(_, _, _, _))
-      .WillByDefault(Return(Tpm::kTpmRetryFatal));
+      .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/base::nullopt, salt,

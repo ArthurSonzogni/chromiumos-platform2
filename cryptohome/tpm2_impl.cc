@@ -45,8 +45,11 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
 using hwsec::error::TPM2Error;
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 using trunks::GetErrorString;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
@@ -923,30 +926,31 @@ void Tpm2Impl::CloseHandle(TpmKeyHandle key_handle) {
           key_handle));
 }
 
-Tpm::TpmRetryAction Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
-                                          const SecureBlob& plaintext,
-                                          const SecureBlob& key,
-                                          SecureBlob* ciphertext) {
+TPMErrorBase Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
+                                   const SecureBlob& plaintext,
+                                   const SecureBlob& key,
+                                   SecureBlob* ciphertext) {
   CHECK(ciphertext);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
   std::string tpm_ciphertext;
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricEncrypt(
           key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
           plaintext.to_string(), nullptr, &tpm_ciphertext))) {
-    LOG(ERROR) << "Error encrypting plaintext: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error encrypting plaintext");
   }
   if (!ObscureRsaMessage(SecureBlob(tpm_ciphertext), key, ciphertext)) {
-    LOG(ERROR) << "Error obscuring tpm encrypted blob.";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Error obscuring tpm encrypted blob",
+                                 TPMRetryAction::kNoRetry);
   }
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
+TPMErrorBase Tpm2Impl::DecryptBlob(
     TpmKeyHandle key_handle,
     const SecureBlob& ciphertext,
     const SecureBlob& key,
@@ -955,12 +959,13 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
   CHECK(plaintext);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
   SecureBlob local_data;
   if (!UnobscureRsaMessage(ciphertext, key, &local_data)) {
-    LOG(ERROR) << "Error unobscureing message.";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Error unobscureing message",
+                                 TPMRetryAction::kNoRetry);
   }
   trunks::AuthorizationDelegate* delegate;
   std::unique_ptr<trunks::PolicySession> policy_session;
@@ -969,12 +974,14 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
     policy_session = trunks->factory->GetPolicySession();
     if (auto err = CreateError<TPM2Error>(
             policy_session->StartUnboundSession(true, true))) {
-      LOG(ERROR) << "Error starting policy session: " << *err;
-      return Tpm::kTpmRetryFailNoRetry;
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Error starting policy session",
+                                       TPMRetryAction::kNoRetry);
     }
     if (auto err = CreateError<TPM2Error>(policy_session->PolicyPCR(pcr_map))) {
-      LOG(ERROR) << "Error creating PCR policy: " << *err;
-      return Tpm::kTpmRetryFailNoRetry;
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Error creating PCR policy",
+                                       TPMRetryAction::kNoRetry);
     }
     delegate = policy_session->GetDelegate();
   } else {
@@ -986,11 +993,11 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
           key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
           local_data.to_string(), delegate, &tpm_plaintext))) {
-    LOG(ERROR) << "Error decrypting plaintext: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error decrypting plaintext");
   }
   plaintext->assign(tpm_plaintext.begin(), tpm_plaintext.end());
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
@@ -1147,16 +1154,18 @@ void Tpm2Impl::GetStatus(base::Optional<TpmKeyHandle> key,
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob aes_key;
     PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
-    if (EncryptBlob(key.value(), data, aes_key, &data_out) != kTpmRetryNone) {
+    if (TPMErrorBase err = EncryptBlob(key.value(), data, aes_key, &data_out)) {
+      LOG(ERROR) << __func__ << ": Failed to encrypt blob: " << *err;
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (DecryptBlob(key.value(), data_out, aes_key,
-                    std::map<uint32_t, std::string>(),
-                    &data) != kTpmRetryNone) {
+    if (TPMErrorBase err =
+            DecryptBlob(key.value(), data_out, aes_key,
+                        std::map<uint32_t, std::string>(), &data)) {
+      LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << *err;
       return;
     }
     status->can_decrypt = true;

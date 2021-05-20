@@ -17,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <vector>
 
 #include "cryptohome/attestation.pb.h"
@@ -34,6 +35,10 @@
 using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMErrorBase;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
@@ -287,7 +292,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_1_2));
   EXPECT_CALL(tpm, EncryptBlob(_, _, _, _))
       .Times(1)
-      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
+      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -325,7 +330,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), Return(Tpm::kTpmRetryNone)));
+      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), ReturnError<TPMErrorBase>()));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));

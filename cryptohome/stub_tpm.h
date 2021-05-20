@@ -26,18 +26,21 @@ class StubTpm : public Tpm {
 
   // See tpm.h for comments
   TpmVersion GetVersion() override { return TpmVersion::TPM_UNKNOWN; }
-  TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
-                             const SecureBlob& plaintext,
-                             const SecureBlob& key,
-                             SecureBlob* ciphertext) override {
-    return kTpmRetryFatal;
+  hwsec::error::TPMErrorBase EncryptBlob(TpmKeyHandle key_handle,
+                                         const SecureBlob& plaintext,
+                                         const SecureBlob& key,
+                                         SecureBlob* ciphertext) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
-                             const SecureBlob& ciphertext,
-                             const SecureBlob& key,
-                             const std::map<uint32_t, std::string>& pcr_map,
-                             SecureBlob* plaintext) override {
-    return kTpmRetryFatal;
+  hwsec::error::TPMErrorBase DecryptBlob(
+      TpmKeyHandle key_handle,
+      const SecureBlob& ciphertext,
+      const SecureBlob& key,
+      const std::map<uint32_t, std::string>& pcr_map,
+      SecureBlob* plaintext) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
   bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
                     const brillo::SecureBlob& pass_blob,

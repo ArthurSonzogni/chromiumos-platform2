@@ -24,14 +24,14 @@ class MockTpm : public Tpm {
   MockTpm();
   ~MockTpm();
   MOCK_METHOD(TpmVersion, GetVersion, (), (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               EncryptBlob,
               (TpmKeyHandle,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               DecryptBlob,
               (TpmKeyHandle,
                const brillo::SecureBlob&,
@@ -195,23 +195,24 @@ class MockTpm : public Tpm {
               (override));
 
  private:
-  TpmRetryAction XorDecrypt(TpmKeyHandle _key,
-                            const brillo::SecureBlob& plaintext,
-                            const brillo::SecureBlob& key,
-                            const std::map<uint32_t, std::string>& pcr_map,
-                            brillo::SecureBlob* ciphertext) {
+  hwsec::error::TPMErrorBase XorDecrypt(
+      TpmKeyHandle _key,
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& key,
+      const std::map<uint32_t, std::string>& pcr_map,
+      brillo::SecureBlob* ciphertext) {
     return Xor(_key, plaintext, key, ciphertext);
   }
-  TpmRetryAction Xor(TpmKeyHandle _key,
-                     const brillo::SecureBlob& plaintext,
-                     const brillo::SecureBlob& key,
-                     brillo::SecureBlob* ciphertext) {
+  hwsec::error::TPMErrorBase Xor(TpmKeyHandle _key,
+                                 const brillo::SecureBlob& plaintext,
+                                 const brillo::SecureBlob& key,
+                                 brillo::SecureBlob* ciphertext) {
     brillo::SecureBlob local_data_out(plaintext.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {
       local_data_out[i] = plaintext[i] ^ 0x1e;
     }
     ciphertext->swap(local_data_out);
-    return kTpmRetryNone;
+    return nullptr;
   }
 
   bool FakeGetRandomDataBlob(size_t num_bytes, brillo::Blob* blob) {

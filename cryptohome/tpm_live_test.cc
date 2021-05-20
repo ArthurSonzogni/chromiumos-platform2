@@ -44,6 +44,7 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
+using hwsec::error::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -114,15 +115,15 @@ bool TpmLiveTest::EncryptAndDecryptData(
   SecureBlob aes_key(32, 'a');
   SecureBlob plaintext(32, 'b');
   SecureBlob ciphertext;
-  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
-      Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error encrypting blob.";
+  if (TPMErrorBase err =
+          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext)) {
+    LOG(ERROR) << "Error encrypting blob: " << *err;
     return false;
   }
   SecureBlob decrypted_plaintext;
-  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
-                        &decrypted_plaintext) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error decrypting the data.";
+  if (TPMErrorBase err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
+                                           pcr_map, &decrypted_plaintext)) {
+    LOG(ERROR) << "Error decrypting the data: " << *err;
     return false;
   }
   if (plaintext != decrypted_plaintext) {
@@ -261,15 +262,15 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
   SecureBlob aes_key(32, 'a');
   SecureBlob plaintext(32, 'b');
   SecureBlob ciphertext;
-  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
-      Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error encrypting blob.";
+  if (TPMErrorBase err =
+          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext)) {
+    LOG(ERROR) << "Error encrypting blob: " << *err;
     return false;
   }
   SecureBlob decrypted_plaintext;
-  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
-                        &decrypted_plaintext) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error decrypting blob.";
+  if (TPMErrorBase err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
+                                           pcr_map, &decrypted_plaintext)) {
+    LOG(ERROR) << "Error decrypting blob: " << *err;
     return false;
   }
   if (plaintext != decrypted_plaintext) {
@@ -287,7 +288,7 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
   }
   // Check that the text cannot be decrypted anymore, after the PCR change.
   if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
-                        &decrypted_plaintext) == Tpm::kTpmRetryNone) {
+                        &decrypted_plaintext) == nullptr) {
     LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
     return false;
   }
@@ -298,7 +299,7 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
   // Check that the text cannot be decrypted even with the right PCR values.
   pcr_map[index2] = BlobToString(pcr_data2);
   if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
-                        &decrypted_plaintext) == Tpm::kTpmRetryNone) {
+                        &decrypted_plaintext) == nullptr) {
     LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
     return false;
   }
@@ -308,13 +309,13 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
     return false;
   }
   // Check that even a newly encrypted text cannot be decrypted.
-  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
-      Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error encrypting blob.";
+  if (TPMErrorBase err =
+          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext)) {
+    LOG(ERROR) << "Error encrypting blob: " << *err;
     return false;
   }
   if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
-                        &decrypted_plaintext) == Tpm::kTpmRetryNone) {
+                        &decrypted_plaintext) == nullptr) {
     LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
     return false;
   }
@@ -344,16 +345,16 @@ bool TpmLiveTest::DecryptionKeyTest() {
   SecureBlob aes_key(32, 'a');
   SecureBlob plaintext(32, 'b');
   SecureBlob ciphertext;
-  if (tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext) !=
-      Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error encrypting blob.";
+  if (TPMErrorBase err =
+          tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext)) {
+    LOG(ERROR) << "Error encrypting blob: " << *err;
     return false;
   }
   SecureBlob decrypted_plaintext;
-  if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
-                        std::map<uint32_t, std::string>(),
-                        &decrypted_plaintext) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error decrypting blob.";
+  if (TPMErrorBase err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
+                                           std::map<uint32_t, std::string>(),
+                                           &decrypted_plaintext)) {
+    LOG(ERROR) << "Error decrypting blob: " << *err;
     return false;
   }
   if (plaintext != decrypted_plaintext) {

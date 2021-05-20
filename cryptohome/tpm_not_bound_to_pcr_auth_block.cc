@@ -24,6 +24,8 @@
 #include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using hwsec::error::TPMErrorBase;
+
 namespace cryptohome {
 
 TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
@@ -114,9 +116,10 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
   // encrypted blob in tpm_key, which is stored in the serialized vault
   // keyset.
-  if (tpm_->EncryptBlob(cryptohome_key_loader_->GetCryptohomeKey(), local_blob,
-                        aes_skey, &tpm_key) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to wrap vkk with creds.";
+  if (TPMErrorBase err =
+          tpm_->EncryptBlob(cryptohome_key_loader_->GetCryptohomeKey(),
+                            local_blob, aes_skey, &tpm_key)) {
+    LOG(ERROR) << "Failed to wrap vkk with creds: " << *err;
     return base::nullopt;
   }
 
@@ -174,26 +177,25 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   }
 
   for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
-    Tpm::TpmRetryAction retry_action = tpm_->DecryptBlob(
-        cryptohome_key_loader_->GetCryptohomeKey(), tpm_key, aes_skey,
-        std::map<uint32_t, std::string>(), &local_vault_key);
+    if (TPMErrorBase err = tpm_->DecryptBlob(
+            cryptohome_key_loader_->GetCryptohomeKey(), tpm_key, aes_skey,
+            std::map<uint32_t, std::string>(), &local_vault_key)) {
+      if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err)) {
+        LOG(ERROR) << "Failed to unwrap VKK with creds: " << *err;
+        ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
+        *error = TpmAuthBlockUtils::TPMErrorToCrypto(err);
+        return false;
+      }
 
-    if (retry_action == Tpm::kTpmRetryNone)
+      // If the error is retriable, reload the key first.
+      if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
+        LOG(ERROR) << "Unable to reload Cryptohome key.";
+        ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
+        *error = CryptoError::CE_TPM_CRYPTO;
+        return false;
+      }
+    } else {
       break;
-
-    if (!TpmAuthBlockUtils::TpmErrorIsRetriable(retry_action)) {
-      LOG(ERROR) << "Failed to unwrap VKK with creds.";
-      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
-      *error = TpmAuthBlockUtils::TpmErrorToCrypto(retry_action);
-      return false;
-    }
-
-    // If the error is retriable, reload the key first.
-    if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
-      LOG(ERROR) << "Unable to reload Cryptohome key.";
-      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
-      *error = TpmAuthBlockUtils::TpmErrorToCrypto(Tpm::kTpmRetryFailNoRetry);
-      return false;
     }
   }
 

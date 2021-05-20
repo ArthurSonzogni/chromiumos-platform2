@@ -25,8 +25,16 @@ class TpmAuthBlockUtils {
   // A static method which converts an error object.
   static CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action);
 
+  // A static method which converts an error object.
+  // |err| shouldn't be a nullptr.
+  static CryptoError TPMErrorToCrypto(const hwsec::error::TPMErrorBase& err);
+
   // A static method to report which errors can be recovered from with a retry.
   static bool TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action);
+
+  // A static method to report which errors can be recovered from with a retry.
+  // |err| shouldn't be a nullptr.
+  static bool TPMErrorIsRetriable(const hwsec::error::TPMErrorBase& err);
 
   // Checks if the specified |hash| is the same as the hash for the |tpm_| used
   // by the class.

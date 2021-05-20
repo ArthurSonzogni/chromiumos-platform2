@@ -21,6 +21,7 @@
 #include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/error/tpm_error.h>
 #include <openssl/rsa.h>
 
 namespace cryptohome {
@@ -190,21 +191,22 @@ class Tpm {
   // Returns TPM version
   virtual TpmVersion GetVersion() = 0;
 
-  // Encrypts a data blob using the provided RSA key. Returns a TpmRetryAction
-  // struct
+  // Encrypts a data blob using the provided RSA key. Returns a
+  // hwsec::error::TPMErrorBase.
   //
   // Parameters
   //   key_handle - The loaded TPM key handle
   //   plaintext - One RSA message to encrypt
   //   key - AES key to encrypt with
   //   ciphertext (OUT) - Encrypted blob
-  virtual TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
-                                     const brillo::SecureBlob& plaintext,
-                                     const brillo::SecureBlob& key,
-                                     brillo::SecureBlob* ciphertext) = 0;
+  virtual hwsec::error::TPMErrorBase EncryptBlob(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& key,
+      brillo::SecureBlob* ciphertext) = 0;
 
-  // Decrypts a data blob using the provided RSA key. Returns a TpmRetryAction
-  // struct
+  // Decrypts a data blob using the provided RSA key. Returns a
+  // hwsec::error::TPMErrorBase.
   //
   // Parameters
   //   key_handle - The loaded TPM key handle
@@ -215,7 +217,7 @@ class Tpm {
   //             should be provided. For TPM 1.2 this parameter is ignored, even
   //             if the key is bound to PCR, so an empty map can be used.
   //   plaintext (OUT) - Decrypted blob
-  virtual TpmRetryAction DecryptBlob(
+  virtual hwsec::error::TPMErrorBase DecryptBlob(
       TpmKeyHandle key_handle,
       const brillo::SecureBlob& ciphertext,
       const brillo::SecureBlob& key,

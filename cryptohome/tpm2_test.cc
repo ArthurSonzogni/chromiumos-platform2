@@ -53,6 +53,8 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
+using hwsec::error::TPMErrorBase;
+using hwsec::error::TPMRetryAction;
 using testing::_;
 using testing::DoAll;
 using testing::ElementsAreArray;
@@ -1286,8 +1288,7 @@ TEST_F(Tpm2Test, EncryptBlobSuccess) {
       .WillOnce(
           DoAll(SetArgPointee<5>(tpm_ciphertext), Return(TPM_RC_SUCCESS)));
   SecureBlob ciphertext;
-  EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->EncryptBlob(handle, plaintext, key, &ciphertext));
+  EXPECT_EQ(nullptr, tpm_->EncryptBlob(handle, plaintext, key, &ciphertext));
 }
 
 TEST_F(Tpm2Test, EncryptBlobBadAesKey) {
@@ -1299,8 +1300,9 @@ TEST_F(Tpm2Test, EncryptBlobBadAesKey) {
       .WillOnce(
           DoAll(SetArgPointee<5>(tpm_ciphertext), Return(TPM_RC_SUCCESS)));
   SecureBlob ciphertext;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->EncryptBlob(handle, plaintext, key, &ciphertext));
+  TPMErrorBase err = tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, EncryptBlobBadTpmEncrypt) {
@@ -1312,8 +1314,9 @@ TEST_F(Tpm2Test, EncryptBlobBadTpmEncrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(tpm_ciphertext), Return(TPM_RC_SUCCESS)));
   SecureBlob ciphertext;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->EncryptBlob(handle, plaintext, key, &ciphertext));
+  TPMErrorBase err = tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, EncryptBlobFailure) {
@@ -1323,8 +1326,9 @@ TEST_F(Tpm2Test, EncryptBlobFailure) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricEncrypt(handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob ciphertext;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->EncryptBlob(handle, plaintext, key, &ciphertext));
+  TPMErrorBase err = tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, DecryptBlobSuccess) {
@@ -1335,7 +1339,7 @@ TEST_F(Tpm2Test, DecryptBlobSuccess) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(handle, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(tpm_plaintext), Return(TPM_RC_SUCCESS)));
   SecureBlob plaintext;
-  EXPECT_EQ(Tpm::kTpmRetryNone,
+  EXPECT_EQ(nullptr,
             tpm_->DecryptBlob(handle, ciphertext, key,
                               std::map<uint32_t, std::string>(), &plaintext));
 }
@@ -1345,9 +1349,10 @@ TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
   SecureBlob key(16, 'a');
   SecureBlob ciphertext(32, 'b');
   SecureBlob plaintext;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->DecryptBlob(handle, ciphertext, key,
-                              std::map<uint32_t, std::string>(), &plaintext));
+  TPMErrorBase err = tpm_->DecryptBlob(
+      handle, ciphertext, key, std::map<uint32_t, std::string>(), &plaintext);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
@@ -1355,9 +1360,10 @@ TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
   SecureBlob key(32, 'a');
   SecureBlob ciphertext(16, 'b');
   SecureBlob plaintext;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->DecryptBlob(handle, ciphertext, key,
-                              std::map<uint32_t, std::string>(), &plaintext));
+  TPMErrorBase err = tpm_->DecryptBlob(
+      handle, ciphertext, key, std::map<uint32_t, std::string>(), &plaintext);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, DecryptBlobFailure) {
@@ -1367,9 +1373,10 @@ TEST_F(Tpm2Test, DecryptBlobFailure) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob plaintext;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->DecryptBlob(handle, ciphertext, key,
-                              std::map<uint32_t, std::string>(), &plaintext));
+  TPMErrorBase err = tpm_->DecryptBlob(
+      handle, ciphertext, key, std::map<uint32_t, std::string>(), &plaintext);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, GetAuthValueSuccess) {
