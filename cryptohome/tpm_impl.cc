@@ -29,6 +29,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/overalls/overalls_api.h>
+#include <libhwsec/error/tpm1_error.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -54,7 +55,10 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
+using hwsec::error::TPM1Error;
+using hwsec::error::TPMRetryAction;
 using hwsec::overalls::GetOveralls;
+using hwsec_foundation::error::CreateError;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -135,6 +139,48 @@ Tpm::TpmRetryAction ResultToRetryActionWithMessage(TSS_RESULT result,
 
 Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
   return ResultToRetryActionWithMessage(result, "");
+}
+
+Tpm::TpmRetryAction TPM1ErrorToRetryAction(const TPM1Error& err) {
+  if (!err) {
+    return Tpm::kTpmRetryNone;
+  }
+  Tpm::TpmRetryAction status = Tpm::kTpmRetryFatal;
+  // TODO(b/174816474): We should report this in libhwsec.
+  ReportTpmResult(GetTpmResultSample(err->ErrorCode()));
+  switch (err->ToTPMRetryAction()) {
+    case TPMRetryAction::kNone:
+      status = Tpm::kTpmRetryNone;
+      break;
+    case TPMRetryAction::kCommunication:
+      LOG(ERROR) << "Communications failure with the TPM.";
+      ReportCryptohomeError(kTssCommunicationFailure);
+      status = Tpm::kTpmRetryCommFailure;
+      break;
+    case TPMRetryAction::kLater:
+      LOG(ERROR) << "Should retry the TPM action later.";
+      ReportCryptohomeError(kTcsKeyLoadFailed);
+      status = Tpm::kTpmRetryLater;
+      break;
+    case TPMRetryAction::kReboot:
+      LOG(ERROR) << "TPM require a reboot. Maybe it's out of memory, or in an "
+                    "error state";
+      ReportCryptohomeError(kTpmFail);
+      status = Tpm::kTpmRetryReboot;
+      break;
+    case TPMRetryAction::kDefend:
+      LOG(ERROR) << "The TPM is defending itself against possible dictionary "
+                 << "attacks.";
+      ReportCryptohomeError(kTpmDefendLockRunning);
+      status = Tpm::kTpmRetryDefendLock;
+      break;
+    case TPMRetryAction::kNoRetry:
+    default:
+      status = Tpm::kTpmRetryFailNoRetry;
+      LOG(ERROR) << "Retrying will not help: " << *err;
+      break;
+  }
+  return status;
 }
 
 // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
@@ -526,10 +572,10 @@ bool TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
 
 Tpm::TpmRetryAction TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
                                               SecureBlob* hash) {
-  TSS_RESULT result = TSS_SUCCESS;
   SecureBlob pubkey;
-  if (!GetPublicKeyBlob(tpm_context_.value(), key_handle, &pubkey, &result)) {
-    return ResultToRetryAction(result);
+  if (TPM1Error err =
+          GetPublicKeyBlob(tpm_context_.value(), key_handle, &pubkey)) {
+    return TPM1ErrorToRetryAction(err);
   }
   *hash = Sha1(pubkey);
   return kTpmRetryNone;
@@ -792,24 +838,23 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
   return kTpmRetryNone;
 }
 
-bool TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
-                               TSS_HKEY key_handle,
-                               SecureBlob* data_out,
-                               TSS_RESULT* result) const {
-  *result = TSS_SUCCESS;
+TPM1Error TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
+                                    TSS_HKEY key_handle,
+                                    SecureBlob* data_out) const {
   ScopedTssMemory blob(context_handle);
   UINT32 blob_size;
-  if (TPM_ERROR(*result =
-                    Tspi_Key_GetPubKey(key_handle, &blob_size, blob.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Key_GetPubKey";
-    return false;
+
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Key_GetPubKey(key_handle, &blob_size, blob.ptr()))) {
+    LOG(ERROR) << "Error calling Tspi_Key_GetPubKey: " << *err;
+    return err;
   }
 
   SecureBlob local_data(blob_size);
   memcpy(local_data.data(), blob.value(), blob_size);
   brillo::SecureClearBytes(blob.value(), blob_size);
   data_out->swap(local_data);
-  return true;
+  return nullptr;
 }
 
 bool TpmImpl::LoadSrk(TSS_HCONTEXT context_handle,
@@ -1968,10 +2013,11 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
   // is not available.
   {
     SecureBlob pubkey;
-    if (!GetPublicKeyBlob(tpm_context_.value(), srk_handle, &pubkey, &result)) {
-      TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load SRK public key";
+    if (TPM1Error err =
+            GetPublicKeyBlob(tpm_context_.value(), srk_handle, &pubkey)) {
+      LOG(ERROR) << __func__ << ": Cannot load SRK public key: " << *err;
       ReportCryptohomeError(kCannotReadTpmSrkPublic);
-      return ResultToRetryAction(result);
+      return TPM1ErrorToRetryAction(err);
     }
   }
   TpmKeyHandle local_key_handle;
@@ -1989,11 +2035,11 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
 
   SecureBlob pub_key;
   // Make sure that we can get the public key
-  if (!GetPublicKeyBlob(tpm_context_.value(), local_key_handle, &pub_key,
-                        &result)) {
+  if (TPM1Error err =
+          GetPublicKeyBlob(tpm_context_.value(), local_key_handle, &pub_key)) {
     ReportCryptohomeError(kCannotReadTpmPublicKey);
     Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
-    return ResultToRetryAction(result);
+    return TPM1ErrorToRetryAction(err);
   }
   key_handle->reset(this, local_key_handle);
   return kTpmRetryNone;

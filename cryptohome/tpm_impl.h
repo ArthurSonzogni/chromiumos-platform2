@@ -7,6 +7,7 @@
 
 #include <base/macros.h>
 
+#include <libhwsec/error/tpm1_error.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
@@ -205,10 +206,9 @@ class TpmImpl : public Tpm {
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
 
   // Gets the Public Key blob associated with |key_handle|.
-  bool GetPublicKeyBlob(TSS_HCONTEXT context_handle,
-                        TSS_HKEY key_handle,
-                        brillo::SecureBlob* data_out,
-                        TSS_RESULT* result) const;
+  hwsec::error::TPM1Error GetPublicKeyBlob(TSS_HCONTEXT context_handle,
+                                           TSS_HKEY key_handle,
+                                           brillo::SecureBlob* data_out) const;
 
   // Gets the key blob associated with |key_handle|.
   bool GetKeyBlob(TSS_HCONTEXT context_handle,
