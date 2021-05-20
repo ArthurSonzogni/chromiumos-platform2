@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::thread;
+use std::os::raw::c_uint;
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::time::Duration;
 
 use anyhow::Result;
-use dbus::blocking::LocalConnection;
-use dbus::channel::Sender; // For LocalConnection::send()
+use dbus::ffidisp::{Connection, WatchEvent};
 use dbus::tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult, Signal};
-use sys_util::error;
+use sys_util::{error, PollContext, PollToken, TimerFd, WatchingEvents};
 
 use crate::common;
 use crate::memory;
@@ -59,20 +59,25 @@ fn set_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     }
 }
 
-pub struct ServiceContext {
-    connection: LocalConnection,
-}
-
 fn create_pressure_chrome_signal(f: &Factory<MTFn<()>, ()>) -> Signal<()> {
     f.signal("MemoryPressureChrome", ())
         .sarg::<u8, _>("pressure_level")
         .sarg::<u64, _>("memory_delta")
 }
 
-pub fn service_init() -> Result<ServiceContext> {
+fn send_pressure_chrome_signal(conn: &Connection, signal: &Signal<()>, level: u8, delta: u64) {
+    let msg = signal
+        .msg(&PATH_NAME.into(), &INTERFACE_NAME.into())
+        .append2(level, delta);
+    if conn.send(msg).is_err() {
+        error!("Send pressure chrome signal failed.");
+    }
+}
+
+pub fn service_main() -> Result<()> {
     // Starting up a connection to the system bus and request a name.
-    let conn = LocalConnection::new_system()?;
-    conn.request_name(SERVICE_NAME, false, true, false)?;
+    let conn = Connection::new_system()?;
+    conn.register_name(SERVICE_NAME, 0)?;
 
     let f = Factory::new_fn::<()>();
 
@@ -109,42 +114,64 @@ pub fn service_init() -> Result<ServiceContext> {
         ),
     );
 
-    tree.start_receive(&conn);
+    tree.set_registered(&conn, true)?;
+    conn.add_handler(tree);
 
-    Ok(ServiceContext { connection: conn })
-}
+    let pressure_chrome_signal = create_pressure_chrome_signal(&f);
+    let check_timer = TimerFd::new()?;
+    let check_interval = Duration::from_millis(1000);
+    check_timer.reset(check_interval, Some(check_interval))?;
 
-pub fn service_main_loop(context: ServiceContext) -> Result<()> {
-    // Serve clients forever.
-    loop {
-        context
-            .connection
-            .process(Duration::from_millis(u64::MAX))?;
+    #[derive(PollToken)]
+    enum Token {
+        TimerMsg,
+        DBusMsg(RawFd),
     }
-}
 
-fn send_pressure_chrome_signal(conn: &LocalConnection, signal: &Signal<()>, level: u8, delta: u64) {
-    if conn
-        .send(
-            signal
-                .msg(&PATH_NAME.into(), &INTERFACE_NAME.into())
-                .append2(level, delta),
-        )
-        .is_err()
-    {
-        error!("Send pressure chrome signal failed.");
-    }
-}
+    let poll_ctx = PollContext::<Token>::new()?;
 
-pub fn check_memory_main() -> Result<()> {
-    let signal = create_pressure_chrome_signal(&Factory::new_fn::<()>());
-    let conn = LocalConnection::new_system()?;
-    loop {
-        // TODO(vovoy): Reduce signal frequency when memory pressure is low.
-        match memory::get_memory_pressure_status_chrome() {
-            Ok((level, delta)) => send_pressure_chrome_signal(&conn, &signal, level as u8, delta),
-            Err(e) => error!("Couldn't get memory pressure status for chrome: {}", e),
+    poll_ctx.add(&check_timer.as_raw_fd(), Token::TimerMsg)?;
+    for watch in conn.watch_fds() {
+        let mut events = WatchingEvents::empty();
+        if watch.readable() {
+            events = events.set_read()
         }
-        thread::sleep(Duration::from_secs(1));
+        if watch.writable() {
+            events = events.set_write()
+        }
+        poll_ctx.add_fd_with_events(&watch.fd(), events, Token::DBusMsg(watch.fd()))?;
+    }
+
+    loop {
+        // Wait for events.
+        for event in poll_ctx.wait()?.iter() {
+            match event.token() {
+                Token::TimerMsg => {
+                    // wait() reads the fd. It's necessary to read periodic timerfd after each
+                    // timerout.
+                    check_timer.wait()?;
+                    match memory::get_memory_pressure_status_chrome() {
+                        Ok((level, delta)) => send_pressure_chrome_signal(
+                            &conn,
+                            &pressure_chrome_signal,
+                            level as u8,
+                            delta,
+                        ),
+                        Err(e) => error!("get_memory_pressure_status_chrome() failed: {}", e),
+                    }
+                }
+                Token::DBusMsg(fd) => {
+                    let mut revents = 0;
+                    if event.readable() {
+                        revents += WatchEvent::Readable as c_uint;
+                    }
+                    if event.writable() {
+                        revents += WatchEvent::Writable as c_uint;
+                    }
+                    // Iterate through the watch items would call next() to process messages.
+                    for _item in conn.watch_handle(fd, revents) {}
+                }
+            }
+        }
     }
 }

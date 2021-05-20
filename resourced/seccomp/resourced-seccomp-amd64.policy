@@ -7,6 +7,9 @@ clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
 exit: 1
 exit_group: 1
 fcntl: 1
@@ -38,4 +41,6 @@ set_robust_list: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
 tgkill: 1
+timerfd_create: 1
+timerfd_settime: 1
 write: 1
