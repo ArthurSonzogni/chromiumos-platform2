@@ -150,9 +150,8 @@ class TpmImpl : public Tpm {
                                       TSS_HPOLICY* policy_handle);
 
   // Gets a handle to the SRK.
-  bool LoadSrk(TSS_HCONTEXT context_handle,
-               TSS_HKEY* srk_handle,
-               TSS_RESULT* result);
+  hwsec::error::TPM1Error LoadSrk(TSS_HCONTEXT context_handle,
+                                  TSS_HKEY* srk_handle);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object iff the owner password is available and
@@ -211,10 +210,9 @@ class TpmImpl : public Tpm {
                                            brillo::SecureBlob* data_out) const;
 
   // Gets the key blob associated with |key_handle|.
-  bool GetKeyBlob(TSS_HCONTEXT context_handle,
-                  TSS_HKEY key_handle,
-                  brillo::SecureBlob* data_out,
-                  TSS_RESULT* result) const;
+  hwsec::error::TPM1Error GetKeyBlob(TSS_HCONTEXT context_handle,
+                                     TSS_HKEY key_handle,
+                                     brillo::SecureBlob* data_out) const;
 
   // Tries to connect to the TPM
   TSS_HCONTEXT ConnectContext();

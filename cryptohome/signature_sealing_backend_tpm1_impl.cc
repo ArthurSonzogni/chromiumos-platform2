@@ -1010,10 +1010,8 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
   }
   // Load the required keys into Trousers.
   ScopedTssKey srk_handle(tpm_context);
-  TSS_RESULT tss_result = TSS_SUCCESS;
-  if (!tpm_->LoadSrk(tpm_context, srk_handle.ptr(), &tss_result)) {
-    LOG(ERROR) << "Failed to load the SRK: "
-               << FormatTrousersErrorCode(tss_result);
+  if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+    LOG(ERROR) << "Failed to load the SRK: " << *err;
     return false;
   }
   int protection_key_size_bits = 0;
@@ -1160,10 +1158,8 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Load the SRK.
   ScopedTssKey srk_handle(tpm_context);
-  TSS_RESULT tss_result = TSS_SUCCESS;
-  if (!tpm_->LoadSrk(tpm_context, srk_handle.ptr(), &tss_result)) {
-    LOG(ERROR) << "Failed to load the SRK: "
-               << FormatTrousersErrorCode(tss_result);
+  if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+    LOG(ERROR) << "Failed to load the SRK: " << *err;
     return false;
   }
   // Generate the Certified Migratable Key, associated with the protection

@@ -354,8 +354,8 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
 
   // Check the Storage Root Key
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    status->last_tpm_error = result;
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    status->last_tpm_error = err->ErrorCode();
     return;
   }
   status->can_load_srk = true;
@@ -421,8 +421,9 @@ base::Optional<bool> TpmImpl::IsSrkRocaVulnerable() {
     return base::nullopt;
   ScopedTssKey srk_handle(tpm_context_);
   TSS_RESULT tss_result;
-  if (!LoadSrk(tpm_context_, srk_handle.ptr(), &tss_result))
+  if (TPM1Error err = LoadSrk(tpm_context_, srk_handle.ptr())) {
     return base::nullopt;
+  }
   unsigned public_srk_size;
   ScopedTssMemory public_srk_bytes(tpm_context_);
   if (TPM_ERROR(tss_result = Tspi_Key_GetPubKey(srk_handle, &public_srk_size,
@@ -702,8 +703,8 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "Failed to load SRK.";
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return Tpm::kTpmRetryFailNoRetry;
   }
 
@@ -792,9 +793,9 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "Failed to load SRK.";
-    return ResultToRetryAction(result);
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
+    return TPM1ErrorToRetryAction(err);
   }
 
   // Create an ENCDATA object with the sealed value.
@@ -845,52 +846,46 @@ TPM1Error TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
   return nullptr;
 }
 
-bool TpmImpl::LoadSrk(TSS_HCONTEXT context_handle,
-                      TSS_HKEY* srk_handle,
-                      TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
+TPM1Error TpmImpl::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle) {
   // We shouldn't load the SRK if the TPM have been fully owned.
   if (!IsOwned()) {
-    *result = TSS_LAYER_TCS | TSS_E_FAIL;
-    return false;
+    return CreateError<TPM1Error>(TSS_LAYER_TCS | TSS_E_FAIL);
   }
 
   // Load the Storage Root Key
   TSS_UUID SRK_UUID = TSS_UUID_SRK;
   ScopedTssKey local_srk_handle(context_handle);
-  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByUUID(
-                    context_handle, TSS_PS_TYPE_SYSTEM, SRK_UUID,
-                    local_srk_handle.ptr()))) {
-    return false;
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_LoadKeyByUUID(context_handle, TSS_PS_TYPE_SYSTEM,
+                                     SRK_UUID, local_srk_handle.ptr()))) {
+    return err;
   }
 
   // Check if the SRK wants a password
   UINT32 srk_authusage;
-  if (TPM_ERROR(*result = Tspi_GetAttribUint32(
-                    local_srk_handle, TSS_TSPATTRIB_KEY_INFO,
-                    TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage))) {
-    return false;
+  if (auto err = CreateError<TPM1Error>(Tspi_GetAttribUint32(
+          local_srk_handle, TSS_TSPATTRIB_KEY_INFO,
+          TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage))) {
+    return err;
   }
 
   // Give it the password if needed
   if (srk_authusage) {
     TSS_HPOLICY srk_usage_policy;
-    if (TPM_ERROR(*result = Tspi_GetPolicyObject(
-                      local_srk_handle, TSS_POLICY_USAGE, &srk_usage_policy))) {
-      return false;
+    if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
+            local_srk_handle, TSS_POLICY_USAGE, &srk_usage_policy))) {
+      return err;
     }
 
-    *result = Tspi_Policy_SetSecret(srk_usage_policy, TSS_SECRET_MODE_PLAIN,
-                                    srk_auth_.size(),
-                                    const_cast<BYTE*>(srk_auth_.data()));
-    if (TPM_ERROR(*result)) {
-      return false;
+    if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+            srk_usage_policy, TSS_SECRET_MODE_PLAIN, srk_auth_.size(),
+            const_cast<BYTE*>(srk_auth_.data())))) {
+      return err;
     }
   }
 
   *srk_handle = local_srk_handle.release();
-  return true;
+  return nullptr;
 }
 
 bool TpmImpl::CreateEndorsementKey() {
@@ -1239,8 +1234,8 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "SealToPCR0: Failed to load SRK.";
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
@@ -1313,8 +1308,8 @@ bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "Unseal: Failed to load SRK.";
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
@@ -1500,8 +1495,8 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "Sign: Failed to load SRK.";
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
@@ -1567,8 +1562,8 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << __func__ << ": Failed to load SRK.";
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
@@ -1671,8 +1666,8 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << __func__ << ": Failed to load SRK.";
+  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
@@ -1877,9 +1872,9 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   TSS_RESULT result;
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
-  if (!LoadSrk(tpm_context_.value(), srk_handle.ptr(), &result)) {
-    if (result != kKeyNotFoundError) {
-      TPM_LOG(INFO, result) << "WrapRsaKey: Cannot load SRK";
+  if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
+    if (err->ErrorCode() != kKeyNotFoundError) {
+      LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     }
     return false;
   }
@@ -1961,28 +1956,26 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
     return false;
   }
 
-  if (!GetKeyBlob(tpm_context_.value(), local_key_handle, wrapped_key,
-                  &result)) {
+  if (TPM1Error err =
+          GetKeyBlob(tpm_context_.value(), local_key_handle, wrapped_key)) {
+    LOG(ERROR) << "Failed to GetKeyBlob: " << *err;
     return false;
   }
 
   return true;
 }
 
-bool TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
-                         TSS_HKEY key_handle,
-                         SecureBlob* data_out,
-                         TSS_RESULT* result) const {
-  *result = TSS_SUCCESS;
-
+TPM1Error TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
+                              TSS_HKEY key_handle,
+                              SecureBlob* data_out) const {
   if (TPM1Error err =
           GetDataAttribute(context_handle, key_handle, TSS_TSPATTRIB_KEY_BLOB,
                            TSS_TSPATTRIB_KEYBLOB_BLOB, data_out)) {
     LOG(ERROR) << __func__ << ": Failed to get key blob " << *err;
-    return false;
+    return err;
   }
 
-  return true;
+  return nullptr;
 }
 
 Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
@@ -1991,12 +1984,12 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
   TSS_RESULT result = TSS_SUCCESS;
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
-  if (!LoadSrk(tpm_context_.value(), srk_handle.ptr(), &result)) {
-    if (result != kKeyNotFoundError) {
-      TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load SRK";
+  if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
+    if (err->ErrorCode() != kKeyNotFoundError) {
+      LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
       ReportCryptohomeError(kCannotLoadTpmSrk);
     }
-    return ResultToRetryAction(result);
+    return TPM1ErrorToRetryAction(err);
   }
 
   // Make sure we can get the public key for the SRK.  If not, then the TPM
@@ -2047,10 +2040,13 @@ bool TpmImpl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
     return false;
   }
 
-  if (key_blob &&
-      !GetKeyBlob(tpm_context_.value(), local_key_handle, key_blob, &result)) {
-    Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
-    return false;
+  if (key_blob) {
+    if (TPM1Error err =
+            GetKeyBlob(tpm_context_.value(), local_key_handle, key_blob)) {
+      LOG(ERROR) << __func__ << ": failed to GetKeyBlob: " << *err;
+      Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
+      return false;
+    }
   }
   key_handle->reset(this, local_key_handle);
   return true;
