@@ -11,6 +11,8 @@
 #include <base/files/file_path_watcher.h>
 #include <base/synchronization/lock.h>
 
+#include "features/hdrnet/ae_info.h"
+
 namespace cros {
 
 // The Config class holds all the settings that controls the operation and
@@ -23,27 +25,43 @@ class HdrNetConfig {
 
   struct Options {
     // Enables the HDRnet pipeline to produce output frames.
-    bool enable = true;
-
-    // The HDR ratio use for HDRnet rendering. Only effective if Gcam AE isn't
-    // running.
-    float hdr_ratio = 3.0;
+    bool hdrnet_enable = true;
 
     // Enables Gcam AE to produce exposure settings and HDR ratio.
     bool gcam_ae_enable = true;
 
-    // Controls the frequency Gcam AE is run. The AE will run every
-    // |gcam_ae_interval| frames.
-    int gcam_ae_interval = 5;
+    // Controls the duty cycle of Gcam AE. The AE will run every
+    // |ae_frame_interval| frames.
+    int ae_frame_interval = 2;
 
-    // Enables face ROI for Gcam AE.
-    bool face_detection_enable = true;
+    // Controls the max HDR ratio passed to Gcam AE.
+    float max_hdr_ratio = 10.0f;
+
+    // Controls how Gcam AE gets the AE stats input parameters.
+    AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;
+
+    // Controls how HdrNetAeController overrides camera HAL's AE decision.
+    AeOverrideMode ae_override_mode = AeOverrideMode::kWithExposureCompensation;
+
+    // Uses CrOS face detector for face detection instead of the vendor one.
+    bool use_cros_face_detector = false;
+
+    // Controls the duty cycle of CrOS face detector. The face detector will run
+    // every |fd_frame_interval| frames.
+    int fd_frame_interval = 10;
+
+    // The HDR ratio use for HDRnet rendering. Only effective if Gcam AE isn't
+    // running.
+    float hdr_ratio = 3.0;
 
     // The manual exposure compensation set to every capture request.
     int32_t exp_comp = 0;
 
     // Dumps intermediate processing buffers for debugging.
     bool dump_buffer = false;
+
+    // Whether to log per-frame metadata using MetadataLogger.
+    bool log_frame_metadata = false;
   };
 
   explicit HdrNetConfig(const char* config_file_path = kHdrNetConfigFile);

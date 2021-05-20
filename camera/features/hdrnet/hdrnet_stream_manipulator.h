@@ -20,17 +20,19 @@
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_thread.h"
+#include "features/hdrnet/hdrnet_ae_controller.h"
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_processor.h"
-#include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 
 namespace cros {
 
 class HdrNetStreamManipulator : public StreamManipulator {
  public:
-  explicit HdrNetStreamManipulator(
-      HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback());
+  HdrNetStreamManipulator(
+      HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback(),
+      HdrNetAeController::Factory hdrnet_ae_controller_factory =
+          base::NullCallback());
 
   ~HdrNetStreamManipulator() override;
 
@@ -111,7 +113,11 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   void ResetStateOnGpuThread();
 
-  void UpdateCaptureMetadataOnGpuThread(camera_metadata_t* metadata);
+  void RecordCaptureMetadataOnGpuThread(int frame_number,
+                                        camera_metadata_t* metadata);
+
+  void RecordYuvBufferForAeControllerOnGpuThread(int frame_number,
+                                                 const SharedImage& yuv_input);
 
   HdrNetStreamContext* CreateReplaceContext(camera3_stream_t* original,
                                             uint32_t replace_format);
@@ -126,7 +132,9 @@ class HdrNetStreamManipulator : public StreamManipulator {
   android::CameraMetadata static_info_;
 
   std::unique_ptr<EglContext> egl_context_;
-  std::unique_ptr<GpuImageProcessor> image_processor_;
+
+  HdrNetAeController::Factory hdrnet_ae_controller_factory_;
+  std::unique_ptr<HdrNetAeController> ae_controller_;
 
   // The mapping between original and replacement buffers for in-flight
   // requests.

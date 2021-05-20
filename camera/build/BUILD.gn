@@ -9,6 +9,9 @@ pkg_config("cros_camera_common_pkg_config") {
 }
 
 config("cros_camera_common") {
+  # CHROME_OS_CAMERA_BUILD_ENV is used to toggle the include path in header
+  # files imported from google3.
+  defines = [ "CHROME_OS_CAMERA_BUILD_ENV" ]
   include_dirs = [
     "//camera",
     "//camera/include",

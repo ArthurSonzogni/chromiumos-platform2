@@ -144,7 +144,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
     sync_wait(input_release_fence.get(), 300);
   }
 
-  if (!options.enable) {
+  if (!options.hdrnet_enable) {
     // Convert to NV12 directly.
     for (const auto& output_nv12 : output_images) {
       YUVToNV12(input_yuv, output_nv12);

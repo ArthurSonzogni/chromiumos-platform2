@@ -9,7 +9,6 @@ group("all") {
   deps = [
     ":hdrnet_processor_impl_test",
     ":hdrnet_stream_manipulator_test",
-    ":libhdrnet",
   ]
 }
 
@@ -33,12 +32,18 @@ if (use.ipu6ep) {
 
 static_library("libhdrnet") {
   sources = [
+    "//camera/features/hdrnet/hdrnet_ae_controller_impl.cc",
+    "//camera/features/hdrnet/hdrnet_ae_device_adapter.cc",
     "//camera/features/hdrnet/hdrnet_config.cc",
     "//camera/features/hdrnet/hdrnet_device_processor.cc",
     "//camera/features/hdrnet/hdrnet_processor_impl.cc",
     "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",
   ]
-  libs = [ "hdrnet_cros" ]
+  libs = [
+    "facessd_cros",
+    "gcam_ae_cros",
+    "hdrnet_cros",
+  ]
   public_configs = [ ":target_defaults" ]
   defines = []
 
@@ -53,6 +58,7 @@ static_library("libhdrnet") {
 
   if (use.ipu6ep) {
     sources += [
+      "//camera/features/hdrnet/hdrnet_ae_device_adapter_ipu6.cc",
       "//camera/features/hdrnet/hdrnet_device_processor_ipu6.cc",
       "//camera/features/hdrnet/ipu6_gamma.cc",
     ]
@@ -62,16 +68,16 @@ static_library("libhdrnet") {
 }
 
 pkg_config("test_target_defaults") {
-  configs = [ ":target_defaults" ]
+  configs = [
+    ":target_defaults",
+    "//common-mk:test",
+  ]
   pkg_deps = [ "libchrome-test" ]
 }
 
 executable("hdrnet_processor_impl_test") {
   sources = [ "//camera/features/hdrnet/hdrnet_processor_impl_test.cc" ]
-  configs += [
-    ":test_target_defaults",
-    "//common-mk:test",
-  ]
+  configs += [ ":test_target_defaults" ]
   deps = [
     ":libhdrnet",
     "//camera/gpu:gpu_test_support",
@@ -82,14 +88,6 @@ executable("hdrnet_processor_impl_test") {
 
 executable("hdrnet_stream_manipulator_test") {
   sources = [ "//camera/features/hdrnet/hdrnet_stream_manipulator_test.cc" ]
-  configs += [
-    ":test_target_defaults",
-    "//common-mk:test",
-  ]
-  deps = [
-    ":libhdrnet",
-
-    # TODO(jcliang): Remove dependency on image_processor in test.
-    "//camera/gpu:image_processor",
-  ]
+  configs += [ ":test_target_defaults" ]
+  deps = [ ":libhdrnet" ]
 }

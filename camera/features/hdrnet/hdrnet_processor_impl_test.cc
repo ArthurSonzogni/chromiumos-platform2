@@ -217,9 +217,6 @@ TEST_F(HdrNetProcessorTest, HdrNetProcessorBenchmark) {
     FillTestPattern(*input_buffer_);
   }
 
-  HdrNetConfig::Options options;
-  options.enable = true;
-
   base::TimeTicks start_ticks = base::TimeTicks::Now();
   base::TimeDelta total_latency_for_updating_gtm_textures;
   base::TimeDelta total_latency_for_processing;
@@ -235,8 +232,9 @@ TEST_F(HdrNetProcessorTest, HdrNetProcessorBenchmark) {
     }
 
     base = base::TimeTicks::Now();
-    base::ScopedFD fence = processor_->Run(i, options, input_image_,
-                                           base::ScopedFD(), output_buffers);
+    base::ScopedFD fence =
+        processor_->Run(i, HdrNetConfig::Options(), input_image_,
+                        base::ScopedFD(), output_buffers);
     constexpr int kFenceWaitTimeoutMs = 300;
     ASSERT_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
     total_latency_for_processing += base::TimeTicks::Now() - base;

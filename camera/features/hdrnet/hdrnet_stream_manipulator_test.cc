@@ -26,6 +26,7 @@
 #pragma pop_macro("Bool")
 #include <hardware/camera3.h>
 
+#include "features/hdrnet/hdrnet_ae_controller.h"
 #include "features/hdrnet/hdrnet_processor.h"
 
 using ::testing::Test;
@@ -136,9 +137,8 @@ class Camera3StreamConfig {
 
 class MockHdrNetProcessor : public HdrNetProcessor {
  public:
-  explicit MockHdrNetProcessor(
-      const camera_metadata_t* static_info,
-      scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+  MockHdrNetProcessor(const camera_metadata_t* static_info,
+                      scoped_refptr<base::SingleThreadTaskRunner> task_runner)
       : task_runner_(task_runner) {}
 
   ~MockHdrNetProcessor() override = default;
@@ -165,11 +165,47 @@ class MockHdrNetProcessor : public HdrNetProcessor {
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 };
 
-std::unique_ptr<HdrNetProcessor> GetMockHdrNetProcessorInstance(
+std::unique_ptr<HdrNetProcessor> CreateMockHdrNetProcessorInstance(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
   return std::make_unique<::testing::NiceMock<MockHdrNetProcessor>>(
       static_info, task_runner);
+}
+
+class MockHdrNetAeController : public HdrNetAeController {
+ public:
+  explicit MockHdrNetAeController(const camera_metadata_t* static_info) {}
+
+  MOCK_METHOD(void,
+              RecordYuvBuffer,
+              (int frame_number,
+               buffer_handle_t buffer,
+               base::ScopedFD acquire_fence),
+              (override));
+  MOCK_METHOD(void,
+              RecordAeMetadata,
+              (int frame_number, const camera_metadata_t* metadata),
+              (override));
+  MOCK_METHOD(void, SetOptions, (const Options& options), (override));
+  MOCK_METHOD(float,
+              GetCalculatedHdrRatio,
+              (int frame_number),
+              (const override));
+  MOCK_METHOD(bool,
+              WriteRequestAeParameters,
+              (int frame_number, camera_metadata_t* capture_metadata),
+              (override));
+  MOCK_METHOD(bool,
+              WriteResultFaceRectangles,
+              (camera_metadata_t * metadata),
+              (override));
+  ~MockHdrNetAeController() = default;
+};
+
+std::unique_ptr<HdrNetAeController> CreateMockHdrNetAeControllerInstance(
+    const camera_metadata_t* static_info) {
+  return std::make_unique<::testing::NiceMock<MockHdrNetAeController>>(
+      static_info);
 }
 
 class HdrNetStreamManipulatorTest : public Test {
@@ -190,7 +226,9 @@ class HdrNetStreamManipulatorTest : public Test {
 
   void SetUp() {
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
-        base::BindRepeating(GetMockHdrNetProcessorInstance));
+        base::BindRepeating(CreateMockHdrNetProcessorInstance),
+        base::BindRepeating(CreateMockHdrNetAeControllerInstance));
+    stream_manipulator_->Initialize(nullptr);
   }
 
   void SetImpl720pStreamInConfig() {

@@ -18,13 +18,18 @@ namespace cros {
 
 namespace {
 
+constexpr char kAeFrameIntervalKey[] = "ae_frame_interval";
+constexpr char kAeOverrideModeKey[] = "ae_override_mode";
+constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
 constexpr char kDumpBufferKey[] = "dump_buffer";
-constexpr char kEnableKey[] = "enable";
 constexpr char kExpCompKey[] = "exp_comp";
 constexpr char kFaceDetectionEnableKey[] = "face_detection_enable";
+constexpr char kFdFrameIntervalKey[] = "fd_frame_interval";
 constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
-constexpr char kGcamAeIntervalKey[] = "gcam_ae_interval";
+constexpr char kHdrNetEnableKey[] = "hdrnet_enable";
 constexpr char kHdrRatioKey[] = "hdr_ratio";
+constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
+constexpr char kMaxHdrRatio[] = "max_hdr_ratio";
 
 }  // namespace
 
@@ -64,26 +69,58 @@ bool HdrNetConfig::ReadConfigFile() {
   }
 
   base::AutoLock l(options_lock_);
-  auto enable = json_values->FindBoolKey(kEnableKey);
-  if (enable) {
-    options_.enable = *enable;
-  }
-  auto hdr_ratio = json_values->FindDoubleKey(kHdrRatioKey);
-  if (hdr_ratio) {
-    options_.hdr_ratio = *hdr_ratio;
+  auto hdrnet_enable = json_values->FindBoolKey(kHdrNetEnableKey);
+  if (hdrnet_enable) {
+    options_.hdrnet_enable = *hdrnet_enable;
   }
   auto gcam_ae_enable = json_values->FindBoolKey(kGcamAeEnableKey);
   if (gcam_ae_enable) {
     options_.gcam_ae_enable = *gcam_ae_enable;
   }
-  auto gcam_ae_interval = json_values->FindIntKey(kGcamAeIntervalKey);
-  if (gcam_ae_interval) {
-    options_.gcam_ae_interval = *gcam_ae_interval;
+  auto ae_frame_interval = json_values->FindIntKey(kAeFrameIntervalKey);
+  if (ae_frame_interval) {
+    options_.ae_frame_interval = *ae_frame_interval;
   }
-  auto face_detection_enable =
+  auto max_hdr_ratio = json_values->FindDoubleKey(kMaxHdrRatio);
+  if (max_hdr_ratio) {
+    options_.max_hdr_ratio = *max_hdr_ratio;
+  }
+  auto ae_stats_input_mode = json_values->FindIntKey(kAeStatsInputModeKey);
+  if (ae_stats_input_mode) {
+    if (*ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
+        *ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
+      options_.ae_stats_input_mode =
+          static_cast<AeStatsInputMode>(*ae_stats_input_mode);
+    } else {
+      LOGF(ERROR) << "Invalid AE stats input mode: " << *ae_stats_input_mode;
+    }
+  }
+  auto ae_override_method = json_values->FindIntKey(kAeOverrideModeKey);
+  if (ae_override_method) {
+    if (*ae_override_method ==
+            static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
+        *ae_override_method ==
+            static_cast<int>(AeOverrideMode::kWithManualSensorControl)) {
+      options_.ae_override_mode =
+          static_cast<AeOverrideMode>(*ae_override_method);
+    } else {
+      LOGF(ERROR) << "Invalid AE override method: " << *ae_override_method;
+    }
+  }
+  auto use_cros_face_detector =
       json_values->FindBoolKey(kFaceDetectionEnableKey);
-  if (face_detection_enable) {
-    options_.face_detection_enable = *face_detection_enable;
+  if (use_cros_face_detector) {
+    options_.use_cros_face_detector = *use_cros_face_detector;
+  }
+  auto fd_frame_interval = json_values->FindIntKey(kFdFrameIntervalKey);
+  if (fd_frame_interval) {
+    options_.fd_frame_interval = *fd_frame_interval;
+  }
+  auto hdr_ratio = json_values->FindDoubleKey(kHdrRatioKey);
+  if (hdr_ratio) {
+    options_.hdr_ratio = *hdr_ratio;
   }
   auto exp_comp = json_values->FindIntKey(kExpCompKey);
   if (exp_comp) {
@@ -93,15 +130,24 @@ bool HdrNetConfig::ReadConfigFile() {
   if (dump_buffer) {
     options_.dump_buffer = *dump_buffer;
   }
+  auto log_frame_metadata = json_values->FindBoolKey(kLogFrameMetadataKey);
+  if (log_frame_metadata) {
+    options_.log_frame_metadata = *log_frame_metadata;
+  }
 
   VLOGF(1) << "HDRnet config:"
-           << " enable=" << options_.enable
+           << " hdrnet_enable=" << options_.hdrnet_enable
            << " hdr_ratio=" << options_.hdr_ratio
            << " gcam_ae_enable=" << options_.gcam_ae_enable
-           << " gcam_ae_interval=" << options_.gcam_ae_interval
-           << " face_detection_enable=" << options_.face_detection_enable
+           << " ae_frame_interval=" << options_.ae_frame_interval
+           << " max_hdr_ratio=" << options_.max_hdr_ratio
+           << " ae_stats_input_mode="
+           << static_cast<int>(options_.ae_stats_input_mode)
+           << " use_cros_face_detector=" << options_.use_cros_face_detector
+           << " fd_frame_interval=" << options_.fd_frame_interval
            << " exp_comp=" << options_.exp_comp
-           << " dump_buffer=" << options_.dump_buffer;
+           << " dump_buffer=" << options_.dump_buffer
+           << " log_frame_metadata=" << options_.log_frame_metadata;
 
   return true;
 }

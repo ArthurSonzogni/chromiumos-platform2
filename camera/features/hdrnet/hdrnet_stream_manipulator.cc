@@ -16,6 +16,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "features/hdrnet/hdrnet_ae_controller_impl.h"
 #include "features/hdrnet/hdrnet_processor_impl.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/egl/utils.h"
@@ -63,12 +64,17 @@ void HdrNetStreamManipulator::HdrNetStreamContext::PushBuffer(
 }
 
 HdrNetStreamManipulator::HdrNetStreamManipulator(
-    HdrNetProcessor::Factory hdrnet_processor_factory)
+    HdrNetProcessor::Factory hdrnet_processor_factory,
+    HdrNetAeController::Factory hdrnet_ae_controller_factory)
     : gpu_thread_("HdrNetPipelineGpuThread"),
       hdrnet_processor_factory_(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
-              : base::BindRepeating(HdrNetProcessorImpl::GetInstance)) {
+              : base::BindRepeating(HdrNetProcessorImpl::GetInstance)),
+      hdrnet_ae_controller_factory_(
+          !hdrnet_ae_controller_factory.is_null()
+              ? std::move(hdrnet_ae_controller_factory)
+              : base::BindRepeating(HdrNetAeControllerImpl::CreateInstance)) {
   CHECK(gpu_thread_.Start());
 }
 
@@ -157,6 +163,7 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
   DCHECK(gpu_thread_.IsCurrentThread());
 
   static_info_.acquire(clone_camera_metadata(static_info));
+  ae_controller_ = hdrnet_ae_controller_factory_.Run(static_info);
   return true;
 }
 
@@ -254,7 +261,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
 
   camera_metadata_t* request_metadata =
       const_cast<camera_metadata_t*>(request->settings);
-  UpdateCaptureMetadataOnGpuThread(request_metadata);
+  RecordCaptureMetadataOnGpuThread(request->frame_number, request_metadata);
 
   RequestContext request_context;
   HdrNetStreamContext* candidate = nullptr;
@@ -324,13 +331,23 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
   HdrNetConfig::Options options = config_.GetOptions();
 
-  if (result->result && options.enable) {
-    // Result metadata may come before the buffers due to partial results.
-    for (const auto& context : stream_replace_context_) {
-      // TODO(jcliang): Update the LUT textures once and share it with all
-      // processors.
-      context->processor->ProcessResultMetadata(result->frame_number,
-                                                result->result);
+  if (result->result) {
+    ae_controller_->RecordAeMetadata(result->frame_number, result->result);
+
+    if (options.use_cros_face_detector) {
+      // This is mainly for displaying the face rectangles in camera app for
+      // development and debugging.
+      ae_controller_->WriteResultFaceRectangles(
+          const_cast<camera_metadata_t*>(result->result));
+    }
+    if (options.hdrnet_enable) {
+      // Result metadata may come before the buffers due to partial results.
+      for (const auto& context : stream_replace_context_) {
+        // TODO(jcliang): Update the LUT textures once and share it with all
+        // processors.
+        context->processor->ProcessResultMetadata(result->frame_number,
+                                                  result->result);
+      }
     }
   }
 
@@ -357,6 +374,10 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   if (stream_context) {
     // Run the HDRNet pipeline and convert the buffers.
     HdrNetConfig::Options processor_config = config_.GetOptions();
+    if (processor_config.gcam_ae_enable) {
+      processor_config.hdr_ratio =
+          ae_controller_->GetCalculatedHdrRatio(result->frame_number);
+    }
 
     // Prepare the set of client-requested buffers that will written to by the
     // HDRnet pipeline.
@@ -388,6 +409,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
       requested_buffer.release_fence =
           DupWithCloExec(hdrnet_release_fence.get()).release();
     }
+
+    RecordYuvBufferForAeControllerOnGpuThread(result->frame_number, image);
 
     // Clean up the mapping and return the free replacement buffer.
     stream_context->PushBuffer(request_context.buffer_index,
@@ -492,10 +515,6 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     return false;
   }
 
-  if (!image_processor_) {
-    image_processor_ = std::make_unique<GpuImageProcessor>();
-  }
-
   std::vector<Size> all_output_sizes;
   for (const auto& context : stream_replace_context_) {
     all_output_sizes.push_back(
@@ -559,8 +578,8 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   result_stream_mapping_.clear();
 }
 
-void HdrNetStreamManipulator::UpdateCaptureMetadataOnGpuThread(
-    camera_metadata_t* metadata) {
+void HdrNetStreamManipulator::RecordCaptureMetadataOnGpuThread(
+    int frame_number, camera_metadata_t* metadata) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
   if (!egl_context_->MakeCurrent()) {
@@ -569,21 +588,29 @@ void HdrNetStreamManipulator::UpdateCaptureMetadataOnGpuThread(
   }
 
   HdrNetConfig::Options options = config_.GetOptions();
+  HdrNetAeController::Options ae_controller_options = {
+      .enabled = options.gcam_ae_enable,
+      .ae_frame_interval = options.ae_frame_interval,
+      .max_hdr_ratio = options.max_hdr_ratio,
+      .use_cros_face_detector = options.use_cros_face_detector,
+      .fd_frame_interval = options.fd_frame_interval,
+      .ae_stats_input_mode = options.ae_stats_input_mode,
+      .ae_override_mode = options.ae_override_mode,
+      .log_frame_metadata = options.log_frame_metadata,
+  };
+  ae_controller_->SetOptions(ae_controller_options);
 
-  // The following metadata modifications are mainly for testing and debugging.
-  // The change should only be triggered by changing the on-device config file
-  // during testing and development, but not in production.
-  //
-  // TODO(jcliang): The AE compensation may be needed for production once we
-  // integrate Gcam AE. We need to find a way to not set AE compensation on
-  // production if we end up controlling AE in another way.
-  base::Optional<int32_t*> exp_comp =
-      GetMetadata<int32_t>(metadata, ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
-  if (exp_comp) {
-    **exp_comp = options.exp_comp;
-  } else {
-    LOGF(ERROR) << "Failed to update aeExposureCompensation";
-  }
+  ae_controller_->WriteRequestAeParameters(frame_number, metadata);
+}
+
+void HdrNetStreamManipulator::RecordYuvBufferForAeControllerOnGpuThread(
+    int frame_number, const SharedImage& yuv_input) {
+  DCHECK(gpu_thread_.IsCurrentThread());
+
+  // TODO(jcliang): We may want to take the HDRnet-rendered buffer instead if
+  // this is only used for face detection.
+  ae_controller_->RecordYuvBuffer(frame_number, yuv_input.buffer(),
+                                  base::ScopedFD());
 }
 
 HdrNetStreamManipulator::HdrNetStreamContext*
