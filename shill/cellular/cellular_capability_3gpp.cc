@@ -65,6 +65,7 @@ const char CellularCapability3gpp::kOperatorAccessTechnologyProperty[] =
 
 const char CellularCapability3gpp::kRsrpProperty[] = "rsrp";
 const char CellularCapability3gpp::kRssiProperty[] = "rssi";
+const char CellularCapability3gpp::kRscpProperty[] = "rscp";
 // Range of RSSI's reported to UI. Any RSSI out of this range is clamped to the
 // nearest threshold.
 const CellularCapability3gpp::SignalQualityBounds
@@ -73,6 +74,10 @@ const CellularCapability3gpp::SignalQualityBounds
 // nearest threshold.
 const CellularCapability3gpp::SignalQualityBounds
     CellularCapability3gpp::kRsrpBounds = {-128, -88};
+// Range of RSCP's reported to UI. Any RSCP out of this range is clamped to the
+// nearest threshold.
+const CellularCapability3gpp::SignalQualityBounds
+    CellularCapability3gpp::kRscpBounds = {-115, -89};
 
 const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
@@ -1810,6 +1815,7 @@ void CellularCapability3gpp::OnPcoChanged(const PcoList& pco_list) {
 // network icons. UI code maps |quality| to number of bars as follows:
 // [1-25] 1 bar, [26-50] 2 bars, [51-75] 3 bars and [76-100] 4 bars.
 // -128->-88 rsrp scales to UI quality of 0->100, used for 4G
+// -115->-89 rscp scales to UI quality of 0->100, used for 3G
 // -105->-83 rssi scales to UI quality of 0->100, used for other tech
 void CellularCapability3gpp::OnModemSignalPropertiesChanged(
     const KeyValueStore& props) {
@@ -1828,11 +1834,15 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
       if (tech_props.Contains<double>(kRsrpProperty)) {
         signal_quality = tech_props.Get<double>(kRsrpProperty);
         scaled_quality = kRsrpBounds.GetAsPercentage(signal_quality);
+      } else if (tech_props.Contains<double>(kRscpProperty)) {
+        signal_quality = tech_props.Get<double>(kRscpProperty);
+        scaled_quality = kRscpBounds.GetAsPercentage(signal_quality);
       } else if (tech_props.Contains<double>(kRssiProperty)) {
         signal_quality = tech_props.Get<double>(kRssiProperty);
         scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
       } else {
-        // we aren't interested in this tech since it does not report rssi/rsrp
+        // we aren't interested in this tech since it does not report
+        // rssi/rsrp/rscp
         continue;
       }
 

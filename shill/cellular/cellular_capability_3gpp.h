@@ -170,9 +170,11 @@ class CellularCapability3gpp : public CellularCapability {
 
   static const SignalQualityBounds kRssiBounds;
   static const SignalQualityBounds kRsrpBounds;
+  static const SignalQualityBounds kRscpBounds;
 
   static const char kRsrpProperty[];
   static const char kRssiProperty[];
+  static const char kRscpProperty[];
 
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
