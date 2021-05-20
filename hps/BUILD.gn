@@ -7,6 +7,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":hpsd" ]
+  if (use.test) {
+    deps += [ ":dev_test" ]
+  }
 }
 
 generate_dbus_adaptors("hpsd-adaptors") {
@@ -76,4 +79,16 @@ static_library("dev") {
     "lib/dev.h",
     "lib/hps_reg.h",
   ]
+}
+
+if (use.test) {
+  executable("dev_test") {
+    sources = [ "lib/dev_test.cc" ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [ "libchrome" ]
+    deps = [
+      ":dev",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
 }
