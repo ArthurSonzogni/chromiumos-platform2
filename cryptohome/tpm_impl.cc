@@ -1334,7 +1334,7 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "CreateDelegate: Could not connect to the TPM.";
+    LOG(ERROR) << __func__ << ": Could not connect to the TPM.";
     return false;
   }
 
@@ -1345,25 +1345,22 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
 
   // Create an owner delegation policy.
   ScopedTssPolicy policy(context_handle);
-  TSS_RESULT result;
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
-                                     TSS_POLICY_USAGE, policy.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create policy.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
+                                    TSS_POLICY_USAGE, policy.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to create policy: " << *err;
     return false;
   }
-  result =
-      Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_PLAIN,
-                            delegate_secret->size(), delegate_secret->data());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set policy secret.";
+  if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+          policy, TSS_SECRET_MODE_PLAIN, delegate_secret->size(),
+          delegate_secret->data()))) {
+    LOG(ERROR) << __func__ << ": Failed to set policy secret: " << *err;
     return false;
   }
-  result =
-      Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-                           TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_OWNER);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set delegation type.";
+  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribUint32(
+          policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+          TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_OWNER))) {
+    LOG(ERROR) << __func__ << ": Failed to set delegation type: " << *err;
     return false;
   }
   // These are the privileged operations we will allow the delegate to perform.
@@ -1372,16 +1369,16 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
       TPM_DELEGATE_DAA_Sign | TPM_DELEGATE_ResetLockValue |
       TPM_DELEGATE_OwnerReadInternalPub | TPM_DELEGATE_CMK_ApproveMA |
       TPM_DELEGATE_CMK_CreateTicket | TPM_DELEGATE_AuthorizeMigrationKey;
-  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-                                TSS_TSPATTRIB_POLDEL_PER1, permissions);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set permissions.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                               TSS_TSPATTRIB_POLDEL_PER1, permissions))) {
+    LOG(ERROR) << __func__ << ": Failed to set permissions: " << *err;
     return false;
   }
-  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-                                TSS_TSPATTRIB_POLDEL_PER2, 0);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set permissions.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                               TSS_TSPATTRIB_POLDEL_PER2, 0))) {
+    LOG(ERROR) << __func__ << ": Failed to set permissions: " << *err;
     return false;
   }
 
@@ -1390,58 +1387,56 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   // otherwise it will fail with TPM_E_BAD_PARAM_SIZE.
   ScopedTssPcrs pcrs_handle(context_handle);
   if (!bound_pcrs.empty()) {
-    result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
-                                       TSS_PCRS_STRUCT_INFO_SHORT,
-                                       pcrs_handle.ptr());
-    if (TPM_ERROR(result)) {
-      TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create PCRS object.";
+    if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
+            context_handle, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO_SHORT,
+            pcrs_handle.ptr()))) {
+      LOG(ERROR) << __func__ << ": Failed to create PCRS object: " << *err;
       return false;
     }
     for (auto bound_pcr : bound_pcrs) {
       UINT32 pcr_len = 0;
       ScopedTssMemory pcr_value(context_handle);
-      if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, bound_pcr, &pcr_len,
-                                              pcr_value.ptr()))) {
-        TPM_LOG(ERROR, result) << "Could not read PCR value";
+      if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
+              tpm_handle, bound_pcr, &pcr_len, pcr_value.ptr()))) {
+        LOG(ERROR) << __func__ << ": Could not read PCR value: " << *err;
         return false;
       }
-      result = Tspi_PcrComposite_SetPcrValue(pcrs_handle, bound_pcr, pcr_len,
-                                             pcr_value.value());
-      if (TPM_ERROR(result)) {
-        TPM_LOG(ERROR, result) << "Could not set value for PCR in PCRS handle";
+      if (auto err = CreateError<TPM1Error>(Tspi_PcrComposite_SetPcrValue(
+              pcrs_handle, bound_pcr, pcr_len, pcr_value.value()))) {
+        LOG(ERROR) << __func__
+                   << ": Could not set value for PCR in PCRS handle: " << *err;
         return false;
       }
     }
-    result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle, kTpmPCRLocality);
-    if (TPM_ERROR(result)) {
-      TPM_LOG(ERROR, result)
-          << "Could not set locality for PCRs in PCRS handle";
+    if (auto err = CreateError<TPM1Error>(
+            Tspi_PcrComposite_SetPcrLocality(pcrs_handle, kTpmPCRLocality))) {
+      LOG(ERROR) << __func__
+                 << ": Could not set locality for PCRs in PCRS handle: "
+                 << *err;
       return false;
     }
   }
 
   // Create a delegation family.
   ScopedTssObject<TSS_HDELFAMILY> family(context_handle);
-  result = Tspi_TPM_Delegate_AddFamily(tpm_handle, delegate_family_label,
-                                       family.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create family.";
+  if (auto err = CreateError<TPM1Error>(Tspi_TPM_Delegate_AddFamily(
+          tpm_handle, delegate_family_label, family.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to create family: " << *err;
     return false;
   }
 
   // Create the delegation.
-  result = Tspi_TPM_Delegate_CreateDelegation(tpm_handle, delegate_label, 0,
-                                              pcrs_handle, family, policy);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create delegation.";
+  if (auto err = CreateError<TPM1Error>(Tspi_TPM_Delegate_CreateDelegation(
+          tpm_handle, delegate_label, 0, pcrs_handle, family, policy))) {
+    LOG(ERROR) << __func__ << ": Failed to create delegation: " << *err;
     return false;
   }
 
   // Enable the delegation family.
-  result = Tspi_SetAttribUint32(family, TSS_TSPATTRIB_DELFAMILY_STATE,
-                                TSS_TSPATTRIB_DELFAMILYSTATE_ENABLED, TRUE);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to enable family.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribUint32(family, TSS_TSPATTRIB_DELFAMILY_STATE,
+                               TSS_TSPATTRIB_DELFAMILYSTATE_ENABLED, TRUE))) {
+    LOG(ERROR) << __func__ << ": Failed to enable family: " << *err;
     return false;
   }
 
@@ -1468,12 +1463,11 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Sign: Failed to connect to the TPM.";
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
     return false;
   }
 
   // Load the Storage Root Key.
-  TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
@@ -1482,20 +1476,19 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
 
   // Load the key (which should be wrapped by the SRK).
   ScopedTssKey key_handle(context_handle);
-  result = Tspi_Context_LoadKeyByBlob(
-      context_handle, srk_handle, key_blob.size(),
-      const_cast<BYTE*>(key_blob.data()), key_handle.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Sign: Failed to load key.";
+  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+          context_handle, srk_handle, key_blob.size(),
+          const_cast<BYTE*>(key_blob.data()), key_handle.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to load key: " << *err;
     return false;
   }
 
   // Create a hash object to hold the input.
   ScopedTssObject<TSS_HHASH> hash_handle(context_handle);
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_HASH,
-                                     TSS_HASH_OTHER, hash_handle.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Sign: Failed to create hash object.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_HASH,
+                                    TSS_HASH_OTHER, hash_handle.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to create hash object: " << *err;
     return false;
   }
 
@@ -1505,18 +1498,18 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   SecureBlob der_encoded_input = SecureBlob::Combine(der_header, Sha256(input));
 
   // Don't hash anything, just push the input data into the hash object.
-  result = Tspi_Hash_SetHashValue(hash_handle, der_encoded_input.size(),
-                                  const_cast<BYTE*>(der_encoded_input.data()));
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Sign: Failed to set hash data.";
+  if (auto err = CreateError<TPM1Error>(Tspi_Hash_SetHashValue(
+          hash_handle, der_encoded_input.size(),
+          const_cast<BYTE*>(der_encoded_input.data())))) {
+    LOG(ERROR) << __func__ << ": Failed to set hash data: " << *err;
     return false;
   }
 
   UINT32 length = 0;
   ScopedTssMemory buffer(context_handle);
-  result = Tspi_Hash_Sign(hash_handle, key_handle, &length, buffer.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Sign: Failed to generate signature.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Hash_Sign(hash_handle, key_handle, &length, buffer.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to generate signature: " << *err;
     return false;
   }
   SecureBlob tmp(buffer.value(), buffer.value() + length);
@@ -1540,7 +1533,6 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
 
   // Load the Storage Root Key.
-  TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
@@ -1549,10 +1541,10 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Create a PCRS object to hold pcr_index and pcr_value.
   ScopedTssPcrs pcrs(context_handle);
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
-                                     TSS_PCRS_STRUCT_INFO, pcrs.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to create PCRS object.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
+                                    TSS_PCRS_STRUCT_INFO, pcrs.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to create PCRS object: " << *err;
     return false;
   }
 
@@ -1588,27 +1580,27 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
       init_flags |= TSS_KEY_TYPE_LEGACY;
       break;
   }
-  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
-                                     init_flags, pcr_bound_key.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to create object.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
+                                    init_flags, pcr_bound_key.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to create object: " << *err;
     return false;
   }
-  result = Tspi_SetAttribUint32(pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
-                                TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
-                                TSS_SS_RSASSAPKCS1V15_DER);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to set signature scheme.";
+
+  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribUint32(
+          pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
+          TSS_TSPATTRIB_KEYINFO_SIGSCHEME, TSS_SS_RSASSAPKCS1V15_DER))) {
+    LOG(ERROR) << __func__ << ": Failed to set signature scheme: " << *err;
     return false;
   }
-  result = Tspi_Key_CreateKey(pcr_bound_key, srk_handle, pcrs);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to create key.";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Key_CreateKey(pcr_bound_key, srk_handle, pcrs))) {
+    LOG(ERROR) << __func__ << ": Failed to create key: " << *err;
     return false;
   }
-  result = Tspi_Key_LoadKey(pcr_bound_key, srk_handle);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to load key.";
+  if (auto err =
+          CreateError<TPM1Error>(Tspi_Key_LoadKey(pcr_bound_key, srk_handle))) {
+    LOG(ERROR) << __func__ << ": Failed to load key: " << *err;
     return false;
   }
 
@@ -1644,7 +1636,6 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     return false;
   }
 
-  TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
@@ -1652,11 +1643,10 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
 
   ScopedTssKey key(context_handle);
-  result =
-      Tspi_Context_LoadKeyByBlob(context_handle, srk_handle, key_blob.size(),
-                                 const_cast<BYTE*>(key_blob.data()), key.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to load key.";
+  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+          context_handle, srk_handle, key_blob.size(),
+          const_cast<BYTE*>(key_blob.data()), key.ptr()))) {
+    LOG(ERROR) << __func__ << ": Failed to load key: " << *err;
     return false;
   }
 
