@@ -114,6 +114,29 @@ TEST_F(SaneDeviceImplTest, SetColorMode) {
   }
 }
 
+// Check that Scan Region can be set without problems from justification with
+// all source types.
+TEST_F(SaneDeviceImplTest, SetScanRegionWithJustification) {
+  ReloadOptions();
+  const double width = 187;  /* mm */
+  const double height = 123; /* mm */
+
+  ScanRegion region;
+  region.set_top_left_x(0);
+  region.set_top_left_y(0);
+  region.set_bottom_right_x(width);
+  region.set_bottom_right_y(height);
+
+  base::Optional<ValidOptionValues> values =
+      device_->GetValidOptionValues(nullptr);
+  EXPECT_TRUE(values.has_value());
+
+  for (const DocumentSource& source : values->sources) {
+    EXPECT_TRUE(device_->SetDocumentSource(nullptr, source.name()));
+    EXPECT_TRUE(device_->SetScanRegion(nullptr, region));
+  }
+}
+
 // Check that extra calls to StartScan fail properly.
 TEST_F(SaneDeviceImplTest, DuplicateStartScan) {
   EXPECT_EQ(device_->StartScan(nullptr), SANE_STATUS_GOOD);

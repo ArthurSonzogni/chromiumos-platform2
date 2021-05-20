@@ -136,6 +136,7 @@ class SaneDeviceImpl : public SaneDevice {
     kResolution,
     kScanMode,
     kSource,
+    kJustificationX,
     kTopLeftX,
     kTopLeftY,
     kBottomRightX,
@@ -161,6 +162,9 @@ class SaneDeviceImpl : public SaneDevice {
   base::Optional<std::vector<uint32_t>> GetResolutions(brillo::ErrorPtr* error);
   base::Optional<std::vector<std::string>> GetColorModes(
       brillo::ErrorPtr* error);
+  base::Optional<uint32_t> GetJustificationXOffset(const ScanRegion& region,
+                                                   brillo::ErrorPtr* error);
+  base::Optional<OptionRange> GetXRange(brillo::ErrorPtr* error);
 
   SANE_Handle handle_;
   std::string name_;

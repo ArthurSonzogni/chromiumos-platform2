@@ -9,12 +9,16 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <re2/re2.h>
 #include <sane/saneopts.h>
+#include <sane-airscan/airscan.h>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/guess_source.h"
 
 static const char* kDbusDomain = brillo::errors::dbus::kDomain;
+static const char* kRightJustification = "Right";
+static const char* kCenterJustification = "Center";
 
 namespace lorgnette {
 
@@ -327,6 +331,14 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
   base::Optional<double> x_offset = GetOptionOffset(error, kTopLeftX);
   if (!x_offset.has_value())
     return false;
+
+  // Get ADF justification offset modification if justification is specified.
+  base::Optional<uint32_t> justification_x_offset =
+      GetJustificationXOffset(region, error);
+  if (!justification_x_offset.has_value()) {
+    return false;
+  }
+  x_offset.value() += justification_x_offset.value();
 
   base::Optional<double> y_offset = GetOptionOffset(error, kTopLeftY);
   if (!y_offset.has_value())
@@ -687,6 +699,9 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
     } else if ((opt->type == SANE_TYPE_STRING) &&
                strcmp(opt->name, SANE_NAME_SCAN_SOURCE) == 0) {
       option_name = kSource;
+    } else if ((opt->type == SANE_TYPE_STRING) &&
+               strcmp(opt->name, SANE_NAME_ADF_JUSTIFICATION_X) == 0) {
+      option_name = kJustificationX;
     } else if ((opt->type == SANE_TYPE_INT || opt->type == SANE_TYPE_FIXED) &&
                opt->size == sizeof(SANE_Int)) {
       auto enum_value = region_options.find(opt->name);
@@ -760,24 +775,12 @@ base::Optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
   // Based on my examination of sane-backends, every backend that declares this
   // set of options uses a range constraint.
   ScannableArea area;
-  int index = options_.at(kTopLeftX).GetIndex();
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to get top-left X option at index %d", index);
-    return base::nullopt;
-  }
-
-  base::Optional<OptionRange> x_range = GetOptionRange(error, *descriptor);
-  if (!x_range.has_value()) {
-    return base::nullopt;
-  }
+  base::Optional<OptionRange> x_range = GetXRange(error);
   area.set_width(x_range.value().size);
 
-  index = options_.at(kBottomRightY).GetIndex();
-  descriptor = sane_get_option_descriptor(handle_, index);
+  int index = options_.at(kBottomRightY).GetIndex();
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, index);
   if (!descriptor) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -843,6 +846,8 @@ const char* SaneDeviceImpl::OptionDisplayName(ScanOption option) {
       return SANE_NAME_SCAN_BR_X;
     case kBottomRightY:
       return SANE_NAME_SCAN_BR_Y;
+    case kJustificationX:
+      return SANE_NAME_ADF_JUSTIFICATION_X;
   }
 }
 
@@ -939,6 +944,61 @@ base::Optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
     return base::nullopt;
   }
   return color_modes.value();
+}
+
+base::Optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
+    const ScanRegion& region, brillo::ErrorPtr* error) {
+  // Offset modification only necessary for ADF source at the moment.
+  base::Optional<std::string> current_source = GetDocumentSource(error);
+  if (!current_source.has_value()) {
+    return base::nullopt;
+  }
+  DocumentSource src = CreateDocumentSource(current_source.value());
+  if (src.type() != SOURCE_ADF_SIMPLEX && src.type() != SOURCE_ADF_DUPLEX) {
+    return 0;
+  }
+
+  base::Optional<OptionRange> x_range = GetXRange(error);
+  if (!x_range.has_value()) {
+    return base::nullopt;
+  }
+
+  base::Optional<std::string> x_justification =
+      GetOption<std::string>(error, kJustificationX);
+  if (!x_justification.has_value()) {
+    return 0;
+  }
+
+  int max_width = (x_range.value().size);
+  int width = region.bottom_right_x() - region.top_left_x();
+  // Calculate offset based off of Epson-provided math.
+  uint32_t x_offset = 0;
+  if (x_justification.value() == kRightJustification) {
+    x_offset = max_width - width;
+  } else if (x_justification.value() == kCenterJustification) {
+    x_offset = (max_width - width) / 2;
+  }
+
+  return x_offset;
+}
+
+base::Optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
+  int index = options_.at(kTopLeftX).GetIndex();
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, index);
+  if (!descriptor) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Unable to get top-left X option at index %d", index);
+    return base::nullopt;
+  }
+
+  base::Optional<OptionRange> x_range = GetOptionRange(error, *descriptor);
+  if (!x_range.has_value()) {
+    return base::nullopt;
+  }
+
+  return x_range;
 }
 
 }  // namespace lorgnette
