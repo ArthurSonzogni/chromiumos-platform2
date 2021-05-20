@@ -783,7 +783,6 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
     return Tpm::kTpmRetryFailNoRetry;
   }
   // Load the Storage Root Key.
-  TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
@@ -797,21 +796,21 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
     return Tpm::kTpmRetryFailNoRetry;
   }
 
-  if (TPM_ERROR(result = Tspi_SetAttribData(
-                    enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-                    TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_data.size(),
-                    const_cast<BYTE*>(sealed_data.data())))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+                             TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_data.size(),
+                             const_cast<BYTE*>(sealed_data.data())))) {
+    LOG(ERROR) << "Error calling Tspi_SetAttribData: " << *err;
+    return TPM1ErrorToRetryAction(err);
   }
 
   // Unseal using the SRK.
   ScopedTssMemory dec_data(context_handle);
   UINT32 dec_data_length = 0;
-  if (TPM_ERROR(result = Tspi_Data_Unseal(enc_handle, srk_handle,
-                                          &dec_data_length, dec_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Data_Unseal";
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM1Error>(Tspi_Data_Unseal(
+          enc_handle, srk_handle, &dec_data_length, dec_data.ptr()))) {
+    LOG(ERROR) << "Error calling Tspi_Data_Unseal: " << *err;
+    return TPM1ErrorToRetryAction(err);
   }
   plaintext->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
   brillo::SecureClearBytes(dec_data.value(), dec_data_length);
@@ -881,7 +880,6 @@ TPM1Error TpmImpl::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle) {
 }
 
 bool TpmImpl::CreateEndorsementKey() {
-  TSS_RESULT result;
   TSS_HTPM tpm_handle;
   if (!GetTpm(tpm_context_.value(), &tpm_handle)) {
     return false;
@@ -889,16 +887,16 @@ bool TpmImpl::CreateEndorsementKey() {
 
   ScopedTssKey local_key_handle(tpm_context_.value());
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048;
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
-                    local_key_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
+  if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
+          tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
+          local_key_handle.ptr()))) {
+    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_TPM_CreateEndorsementKey(
-                    tpm_handle, local_key_handle, NULL))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_CreateEndorsementKey";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_TPM_CreateEndorsementKey(tpm_handle, local_key_handle, NULL))) {
+    LOG(ERROR) << "Error calling Tspi_TPM_CreateEndorsementKey: " << *err;
     return false;
   }
 
@@ -906,16 +904,15 @@ bool TpmImpl::CreateEndorsementKey() {
 }
 
 bool TpmImpl::IsEndorsementKeyAvailable() {
-  TSS_RESULT result;
   TSS_HTPM tpm_handle;
   if (!GetTpm(tpm_context_.value(), &tpm_handle)) {
     return false;
   }
 
   ScopedTssKey local_key_handle(tpm_context_.value());
-  if (TPM_ERROR(result = Tspi_TPM_GetPubEndorsementKey(
-                    tpm_handle, false, NULL, local_key_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetPubEndorsementKey";
+  if (auto err = CreateError<TPM1Error>(Tspi_TPM_GetPubEndorsementKey(
+          tpm_handle, false, NULL, local_key_handle.ptr()))) {
+    LOG(ERROR) << "Error calling Tspi_TPM_GetPubEndorsementKey: " << *err;
     return false;
   }
 
@@ -935,11 +932,10 @@ bool TpmImpl::TakeOwnership(int, const SecureBlob&) {
 }
 
 bool TpmImpl::GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle) {
-  TSS_RESULT result;
   TSS_HTPM local_tpm_handle;
-  if (TPM_ERROR(result = Tspi_Context_GetTpmObject(context_handle,
-                                                   &local_tpm_handle))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_GetTpmObject";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_GetTpmObject(context_handle, &local_tpm_handle))) {
+    LOG(ERROR) << "Error calling Tspi_Context_GetTpmObject: " << *err;
     return false;
   }
   *tpm_handle = local_tpm_handle;
@@ -949,24 +945,22 @@ bool TpmImpl::GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle) {
 bool TpmImpl::GetTpmWithAuth(TSS_HCONTEXT context_handle,
                              const SecureBlob& owner_password,
                              TSS_HTPM* tpm_handle) {
-  TSS_RESULT result;
   TSS_HTPM local_tpm_handle;
   if (!GetTpm(context_handle, &local_tpm_handle)) {
     return false;
   }
 
   TSS_HPOLICY tpm_usage_policy;
-  if (TPM_ERROR(result = Tspi_GetPolicyObject(
-                    local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+  if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
+          local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
+    LOG(ERROR) << "Error calling Tspi_GetPolicyObject: " << *err;
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
-                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                    owner_password.size(),
-                    const_cast<BYTE*>(owner_password.data())))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
+  if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+          tpm_usage_policy, TSS_SECRET_MODE_PLAIN, owner_password.size(),
+          const_cast<BYTE*>(owner_password.data())))) {
+    LOG(ERROR) << "Error calling Tspi_Policy_SetSecret: " << *err;
     return false;
   }
 
@@ -983,27 +977,26 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
     return false;
   }
 
-  TSS_RESULT result;
   TSS_HPOLICY tpm_usage_policy;
-  if (TPM_ERROR(result = Tspi_GetPolicyObject(
-                    local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+  if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
+          local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
+    LOG(ERROR) << "Error calling Tspi_GetPolicyObject: " << *err;
     return false;
   }
 
   BYTE* secret_buffer = const_cast<BYTE*>(delegate_secret.data());
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
-                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                    delegate_secret.size(), secret_buffer))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Policy_SetSecret(tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
+                                delegate_secret.size(), secret_buffer))) {
+    LOG(ERROR) << "Error calling Tspi_Policy_SetSecret: " << *err;
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_SetAttribData(
-                    tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-                    TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob.size(),
-                    const_cast<BYTE*>(delegate_blob.data())))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
+  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribData(
+          tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+          TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob.size(),
+          const_cast<BYTE*>(delegate_blob.data())))) {
+    LOG(ERROR) << "Error calling Tspi_SetAttribData: " << *err;
     return false;
   }
 
@@ -1051,12 +1044,11 @@ bool TpmImpl::GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) {
     return false;
   }
 
-  TSS_RESULT result;
   SecureBlob random(length);
   ScopedTssMemory tpm_data(context_handle);
-  result = Tspi_TPM_GetRandom(tpm_handle, random.size(), tpm_data.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not get random data from the TPM";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_TPM_GetRandom(tpm_handle, random.size(), tpm_data.ptr()))) {
+    LOG(ERROR) << "Could not get random data from the TP1: " << *err;
     return false;
   }
   memcpy(random.data(), tpm_data.value(), random.size());
@@ -1187,28 +1179,26 @@ bool TpmImpl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
   }
 
   TSS_HCONTEXT context_handle = context.context();
-  TSS_RESULT result;
   TSS_HTPM tpm_handle;
 
-  if (TPM_ERROR(result =
-                    Tspi_Context_GetTpmObject(context_handle, &tpm_handle))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_GetTpmObject";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_GetTpmObject(context_handle, &tpm_handle))) {
+    LOG(ERROR) << "Error calling Tspi_Context_GetTpmObject: " << *err;
     return false;
   }
 
   UINT32 sub_cap = TSS_TPMCAP_PROP_OWNER;
   UINT32 cap_length = 0;
   trousers::ScopedTssMemory cap(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_GetCapability(
-                    tpm_handle, TSS_TPMCAP_PROPERTY, sizeof(sub_cap),
-                    reinterpret_cast<BYTE*>(&sub_cap), &cap_length,
-                    cap.ptr())) == 0) {
-    if (cap_length >= (sizeof(TSS_BOOL))) {
-      *enabled = true;
-      *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
+  if (auto err = CreateError<TPM1Error>(Tspi_TPM_GetCapability(
+          tpm_handle, TSS_TPMCAP_PROPERTY, sizeof(sub_cap),
+          reinterpret_cast<BYTE*>(&sub_cap), &cap_length, cap.ptr()))) {
+    if (ERROR_CODE(err->ErrorCode()) == TPM_E_DISABLED) {
+      *enabled = false;
     }
-  } else if (ERROR_CODE(result) == TPM_E_DISABLED) {
-    *enabled = false;
+  } else if (cap_length >= (sizeof(TSS_BOOL))) {
+    *enabled = true;
+    *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
   }
 
   return true;
@@ -1224,7 +1214,6 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
     return false;
   }
   // Load the Storage Root Key.
-  TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
@@ -1234,19 +1223,19 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   // Check the SRK public key
   unsigned int size_n = 0;
   ScopedTssMemory public_srk(context_handle);
-  if (TPM_ERROR(
-          result = Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr()))) {
-    TPM_LOG(ERROR, result) << "SealToPCR0: Unable to get the SRK public key";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr()))) {
+    LOG(ERROR) << __func__ << ": Unable to get the SRK public key: " << *err;
     return false;
   }
 
   // Create a PCRS object which holds the value of PCR0.
   ScopedTssPcrs pcrs_handle(context_handle);
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    context_handle, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO,
-                    pcrs_handle.ptr()))) {
-    TPM_LOG(ERROR, result)
-        << "SealToPCR0: Error calling Tspi_Context_CreateObject";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
+                                    TSS_PCRS_STRUCT_INFO, pcrs_handle.ptr()))) {
+    LOG(ERROR) << __func__
+               << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
@@ -1257,30 +1246,29 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   Tspi_PcrComposite_SetPcrValue(pcrs_handle, 0, pcr_len, pcr_value.value());
 
   ScopedTssKey enc_handle(context_handle);
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    context_handle, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_SEAL,
-                    enc_handle.ptr()))) {
-    TPM_LOG(ERROR, result)
-        << "SealToPCR0: Error calling Tspi_Context_CreateObject";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_ENCDATA,
+                                    TSS_ENCDATA_SEAL, enc_handle.ptr()))) {
+    LOG(ERROR) << __func__
+               << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
   // Seal the given value with the SRK.
-  if (TPM_ERROR(result = Tspi_Data_Seal(enc_handle, srk_handle, value.size(),
-                                        const_cast<BYTE*>(value.data()),
-                                        pcrs_handle))) {
-    TPM_LOG(ERROR, result) << "SealToPCR0: Error calling Tspi_Data_Seal";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Data_Seal(enc_handle, srk_handle, value.size(),
+                         const_cast<BYTE*>(value.data()), pcrs_handle))) {
+    LOG(ERROR) << __func__ << ": Error calling Tspi_Data_Seal: " << *err;
     return false;
   }
 
   // Extract the sealed value.
   ScopedTssMemory enc_data(context_handle);
   UINT32 enc_data_length = 0;
-  if (TPM_ERROR(result =
-                    Tspi_GetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-                                       TSS_TSPATTRIB_ENCDATABLOB_BLOB,
-                                       &enc_data_length, enc_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "SealToPCR0: Error calling Tspi_GetAttribData";
+  if (auto err = CreateError<TPM1Error>(Tspi_GetAttribData(
+          enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+          TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length, enc_data.ptr()))) {
+    LOG(ERROR) << __func__ << ": Error calling Tspi_GetAttribData: " << *err;
     return false;
   }
   sealed_value->assign(&enc_data.value()[0],
@@ -1298,7 +1286,6 @@ bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
     return false;
   }
   // Load the Storage Root Key.
-  TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
@@ -1307,27 +1294,28 @@ bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
 
   // Create an ENCDATA object with the sealed value.
   ScopedTssKey enc_handle(context_handle);
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    context_handle, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_SEAL,
-                    enc_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Unseal: Error calling Tspi_Context_CreateObject";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_ENCDATA,
+                                    TSS_ENCDATA_SEAL, enc_handle.ptr()))) {
+    LOG(ERROR) << __func__
+               << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_SetAttribData(
-                    enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-                    TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_value.size(),
-                    const_cast<BYTE*>(sealed_value.data())))) {
-    TPM_LOG(ERROR, result) << "Unseal: Error calling Tspi_SetAttribData";
+  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribData(
+          enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+          TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_value.size(),
+          const_cast<BYTE*>(sealed_value.data())))) {
+    LOG(ERROR) << __func__ << ": Error calling Tspi_SetAttribData: " << *err;
     return false;
   }
 
   // Unseal using the SRK.
   ScopedTssMemory dec_data(context_handle);
   UINT32 dec_data_length = 0;
-  if (TPM_ERROR(result = Tspi_Data_Unseal(enc_handle, srk_handle,
-                                          &dec_data_length, dec_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "Unseal: Error calling Tspi_Data_Unseal";
+  if (auto err = CreateError<TPM1Error>(Tspi_Data_Unseal(
+          enc_handle, srk_handle, &dec_data_length, dec_data.ptr()))) {
+    LOG(ERROR) << __func__ << ": Error calling Tspi_Data_Unseal: " << *err;
     return false;
   }
   value->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
