@@ -21,6 +21,14 @@
 
 namespace minios {
 
+// Key values.
+const int kKeyUp = 103;
+const int kKeyDown = 108;
+const int kKeyEnter = 28;
+const int kKeyVolUp = 115;
+const int kKeyVolDown = 114;
+const int kKeyPower = 116;
+
 namespace {
 constexpr char kDevInputEvent[] = "/dev/input";
 constexpr char kEventDevName[] = "*event*";

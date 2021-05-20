@@ -22,14 +22,6 @@
 
 namespace minios {
 
-// Key values.
-extern const int kKeyUp;
-extern const int kKeyDown;
-extern const int kKeyEnter;
-extern const int kKeyVolUp;
-extern const int kKeyVolDown;
-extern const int kKeyPower;
-
 // Screens contains the different MiniOs Screens as well as specific components
 // which are built using the pieces of `DrawUtils`.
 

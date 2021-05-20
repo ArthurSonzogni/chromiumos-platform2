@@ -22,6 +22,15 @@ constexpr int kMaxInputLength = 64;
 // Increasing `kBackspaceSensitivity` will slow backspace speed.
 constexpr int kBackspaceSensitivity = 2;
 
+// Key values.
+extern const int kKeyUp;
+extern const int kKeyDown;
+extern const int kKeyEnter;
+// Key values for detachable.
+extern const int kKeyVolUp;
+extern const int kKeyVolDown;
+extern const int kKeyPower;
+
 class KeyReader {
  public:
   // Default constructor can only access EvWaitForKeys.

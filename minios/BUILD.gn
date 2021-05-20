@@ -45,6 +45,7 @@ static_library("libminios") {
     "network_manager.cc",
     "process_manager.cc",
     "recovery_installer.cc",
+    "screen_base.cc",
     "screens.cc",
     "screens/debug_options_screen.cc",
     "screens/log_screen.cc",
