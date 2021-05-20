@@ -8,7 +8,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [ ":hpsd" ]
   if (use.test) {
-    deps += [ ":dev_test" ]
+    deps += [
+      ":dev_test",
+      ":hps_test",
+    ]
   }
 }
 
@@ -88,6 +91,17 @@ if (use.test) {
     pkg_deps = [ "libchrome" ]
     deps = [
       ":dev",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("hps_test") {
+    sources = [ "lib/hps_test.cc" ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [ "libchrome" ]
+    deps = [
+      ":fakedev",
+      ":hpslib",
       "//common-mk/testrunner:testrunner",
     ]
   }
