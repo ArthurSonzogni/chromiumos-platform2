@@ -47,7 +47,6 @@ r_dir_file(cros_cryptohomed, {
   cros_stateful_partition
   cros_run_daemon_store
   cros_var_db
-  unlabeled
 });
 
 # ioctl is restricted for Chrome OS domains, see chrome_os.te. Give required
@@ -187,10 +186,10 @@ is_arc_vm(`
     unmount
   };
   # Permissions to remove ARCVM files when removing a user
-  allow cros_cryptohomed arc_files:dir { rw_dir_perms rmdir };
-  allow cros_cryptohomed arc_files:file { rw_file_perms unlink };
-  allow cros_cryptohomed arc_files:lnk_file { rw_file_perms unlink };
-  allow cros_cryptohomed arc_files:sock_file { rw_file_perms unlink };
+  allow cros_cryptohomed { arc_files unlabeled }:dir { rw_dir_perms rmdir };
+  allow cros_cryptohomed { arc_files unlabeled }:file { rw_file_perms unlink };
+  allow cros_cryptohomed { arc_files unlabeled }:lnk_file { rw_file_perms unlink };
+  allow cros_cryptohomed { arc_files unlabeled }:sock_file { rw_file_perms unlink };
 ',`
   arc_cts_fails_release(`
     allow cros_cryptohomed self:capability {
