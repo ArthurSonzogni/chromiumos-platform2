@@ -87,60 +87,6 @@ const unsigned char kSha256DigestInfo[] = {
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0,
                                            0,          0, {0, 9, 8, 1, 0, 3}};
 
-// Returns whether given input is a valid value for PCR0 state.
-Tpm::TpmRetryAction ResultToRetryActionWithMessage(TSS_RESULT result,
-                                                   const std::string& message) {
-  Tpm::TpmRetryAction status = Tpm::kTpmRetryFatal;
-  ReportTpmResult(GetTpmResultSample(result));
-  switch (ERROR_CODE(result)) {
-    case ERROR_CODE(TSS_SUCCESS):
-      status = Tpm::kTpmRetryNone;
-      break;
-    case ERROR_CODE(TSS_E_COMM_FAILURE):
-      LOG(ERROR) << "Communications failure with the TPM.";
-      ReportCryptohomeError(kTssCommunicationFailure);
-      status = Tpm::kTpmRetryCommFailure;
-      break;
-    case ERROR_CODE(TSS_E_INVALID_HANDLE):
-      LOG(ERROR) << "Invalid handle to the TPM.";
-      ReportCryptohomeError(kTssInvalidHandle);
-      status = Tpm::kTpmRetryInvalidHandle;
-      break;
-    case ERROR_CODE(TCS_E_KM_LOADFAILED):
-      LOG(ERROR) << "Key load failed; problem with parent key authorization.";
-      ReportCryptohomeError(kTcsKeyLoadFailed);
-      status = Tpm::kTpmRetryLoadFail;
-      break;
-    case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
-      LOG(ERROR) << "The TPM is defending itself against possible dictionary "
-                 << "attacks.";
-      ReportCryptohomeError(kTpmDefendLockRunning);
-      status = Tpm::kTpmRetryDefendLock;
-      break;
-    case ERROR_CODE(TPM_E_SIZE):
-      LOG(ERROR) << "TPM is out of memory, a reboot is needed.";
-      ReportCryptohomeError(kTpmOutOfMemory);
-      status = Tpm::kTpmRetryReboot;
-      break;
-    // This error code occurs when the TPM is in an error state.
-    case ERROR_CODE(TPM_E_FAIL):
-      status = Tpm::kTpmRetryReboot;
-      ReportCryptohomeError(kTpmFail);
-      LOG(ERROR) << "The TPM returned TPM_E_FAIL. A reboot is required.";
-      break;
-    default:
-      status = Tpm::kTpmRetryFailNoRetry;
-      TPM_LOG(ERROR, result)
-          << (message.size() ? message : "Retrying will not help.");
-      break;
-  }
-  return status;
-}
-
-Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
-  return ResultToRetryActionWithMessage(result, "");
-}
-
 Tpm::TpmRetryAction TPM1ErrorToRetryAction(const TPM1Error& err) {
   if (!err) {
     return Tpm::kTpmRetryNone;
@@ -1737,12 +1683,10 @@ bool TpmImpl::ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) {
   Blob mutable_extension = extension;
   UINT32 new_pcr_value_length = 0;
   ScopedTssMemory new_pcr_value(context_handle);
-  TSS_RESULT result = Tspi_TPM_PcrExtend(
-      tpm_handle, pcr_index, extension.size(), mutable_extension.data(), NULL,
-      &new_pcr_value_length, new_pcr_value.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to extend PCR "
-                           << pcr_index;
+  if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrExtend(
+          tpm_handle, pcr_index, extension.size(), mutable_extension.data(),
+          NULL, &new_pcr_value_length, new_pcr_value.ptr()))) {
+    LOG(ERROR) << "Failed to extend PCR " << pcr_index << ": " << *err;
     return false;
   }
   return true;
@@ -1757,10 +1701,9 @@ bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) {
   }
   UINT32 pcr_len = 0;
   ScopedTssMemory pcr_value_buffer(context_handle);
-  TSS_RESULT result =
-      Tspi_TPM_PcrRead(tpm_handle, pcr_index, &pcr_len, pcr_value_buffer.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not read PCR " << pcr_index << " value";
+  if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
+          tpm_handle, pcr_index, &pcr_len, pcr_value_buffer.ptr()))) {
+    LOG(ERROR) << "Could not read PCR " << pcr_index << ": " << *err;
     return false;
   }
   pcr_value->assign(pcr_value_buffer.value(),
@@ -1839,7 +1782,6 @@ bool TpmImpl::HasResetLockPermissions() {
 bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
                          const SecureBlob& prime_factor,
                          SecureBlob* wrapped_key) {
-  TSS_RESULT result;
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
   if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
@@ -1853,9 +1795,9 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   // is not available.
   unsigned int size_n;
   trousers::ScopedTssMemory public_srk(tpm_context_.value());
-  if (TPM_ERROR(
-          result = Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr()))) {
-    TPM_LOG(INFO, result) << "WrapRsaKey: Cannot load SRK pub key";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr()))) {
+    LOG(ERROR) << __func__ << ": Cannot load SRK pub key: " << *err;
     return false;
   }
 
@@ -1863,27 +1805,28 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE |
                         TSS_KEY_MIGRATABLE | kDefaultTpmRsaKeyFlag;
   trousers::ScopedTssKey local_key_handle(tpm_context_.value());
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
-                    local_key_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
+  if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
+          tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
+          local_key_handle.ptr()))) {
+    LOG(ERROR) << __func__
+               << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
   // Set the attributes
   UINT32 sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
-  if (TPM_ERROR(result = Tspi_SetAttribUint32(
-                    local_key_handle, TSS_TSPATTRIB_KEY_INFO,
-                    TSS_TSPATTRIB_KEYINFO_SIGSCHEME, sig_scheme))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribUint32";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
+                               TSS_TSPATTRIB_KEYINFO_SIGSCHEME, sig_scheme))) {
+    LOG(ERROR) << __func__ << ": Error calling Tspi_SetAttribUint32: " << *err;
     return false;
   }
 
   UINT32 enc_scheme = TSS_ES_RSAESPKCSV15;
-  if (TPM_ERROR(result = Tspi_SetAttribUint32(
-                    local_key_handle, TSS_TSPATTRIB_KEY_INFO,
-                    TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribUint32";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
+                               TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme))) {
+    LOG(ERROR) << __func__ << ": Error calling Tspi_SetAttribUint32: " << *err;
     return false;
   }
 
@@ -1893,36 +1836,37 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   trousers::ScopedTssPolicy policy_handle(tpm_context_);
   if (!CreatePolicyWithRandomPassword(tpm_context_, TSS_POLICY_MIGRATION,
                                       policy_handle.ptr())) {
-    TPM_LOG(ERROR, result) << "Error creating policy object";
+    LOG(ERROR) << __func__ << ": Error creating policy object";
     return false;
   }
-  if (TPM_ERROR(result = Tspi_Policy_AssignToObject(policy_handle,
-                                                    local_key_handle))) {
-    TPM_LOG(ERROR, result) << "Error assigning migration policy";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Policy_AssignToObject(policy_handle, local_key_handle))) {
+    LOG(ERROR) << __func__ << ": Error assigning migration policy: " << *err;
     return false;
   }
 
   SecureBlob mutable_modulus(public_modulus.begin(), public_modulus.end());
   BYTE* public_modulus_buffer = static_cast<BYTE*>(mutable_modulus.data());
-  if (TPM_ERROR(result = Tspi_SetAttribData(
-                    local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
-                    TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, public_modulus.size(),
-                    public_modulus_buffer))) {
-    TPM_LOG(ERROR, result) << "Error setting RSA modulus";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribData(local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+                             TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+                             public_modulus.size(), public_modulus_buffer))) {
+    LOG(ERROR) << __func__ << ": Error setting RSA modulus: " << *err;
     return false;
   }
   SecureBlob mutable_factor(prime_factor.begin(), prime_factor.end());
   BYTE* prime_factor_buffer = static_cast<BYTE*>(mutable_factor.data());
-  if (TPM_ERROR(result = Tspi_SetAttribData(
-                    local_key_handle, TSS_TSPATTRIB_KEY_BLOB,
-                    TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY, prime_factor.size(),
-                    prime_factor_buffer))) {
-    TPM_LOG(ERROR, result) << "Error setting private key";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_SetAttribData(local_key_handle, TSS_TSPATTRIB_KEY_BLOB,
+                             TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
+                             prime_factor.size(), prime_factor_buffer))) {
+    LOG(ERROR) << __func__ << ": Error setting private key: " << *err;
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_Key_WrapKey(local_key_handle, srk_handle, 0))) {
-    TPM_LOG(ERROR, result) << "Error wrapping RSA key";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Key_WrapKey(local_key_handle, srk_handle, 0))) {
+    LOG(ERROR) << __func__ << ": Error wrapping RSA key: " << *err;
     return false;
   }
 
@@ -1951,7 +1895,6 @@ TPM1Error TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
 Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
     const brillo::SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
-  TSS_RESULT result = TSS_SUCCESS;
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
   if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
@@ -1974,16 +1917,15 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
     }
   }
   TpmKeyHandle local_key_handle;
-  if (TPM_ERROR(result = Tspi_Context_LoadKeyByBlob(
-                    tpm_context_.value(), srk_handle, wrapped_key.size(),
-                    const_cast<BYTE*>(wrapped_key.data()),
-                    &local_key_handle))) {
-    TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load key from blob";
+  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+          tpm_context_.value(), srk_handle, wrapped_key.size(),
+          const_cast<BYTE*>(wrapped_key.data()), &local_key_handle))) {
+    LOG(ERROR) << __func__ << ": Cannot load key from blob: " << *err;
     ReportCryptohomeError(kCannotLoadTpmKey);
-    if (result == TPM_E_BAD_KEY_PROPERTY) {
+    if (err->ErrorCode() == TPM_E_BAD_KEY_PROPERTY) {
       ReportCryptohomeError(kTpmBadKeyProperty);
     }
-    return ResultToRetryAction(result);
+    return TPM1ErrorToRetryAction(err);
   }
 
   SecureBlob pub_key;
@@ -2001,12 +1943,11 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
 bool TpmImpl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                       brillo::SecureBlob* key_blob) {
   CHECK(key_handle);
-  TSS_RESULT result = TSS_SUCCESS;
   TpmKeyHandle local_key_handle;
-  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(
-                    tpm_context_.value(), TSS_PS_TYPE_SYSTEM,
-                    kCryptohomeWellKnownUuid, &local_key_handle))) {
-    TPM_LOG(INFO, result) << "LoadKeyByUuid: failed LoadKeyByUUID";
+  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByUUID(
+          tpm_context_.value(), TSS_PS_TYPE_SYSTEM, kCryptohomeWellKnownUuid,
+          &local_key_handle))) {
+    LOG(ERROR) << __func__ << ": failed LoadKeyByUUID: " << *err;
     return false;
   }
 
@@ -2095,14 +2036,13 @@ bool TpmImpl::GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) {
     return false;
   }
 
-  TSS_RESULT result = TSS_SUCCESS;
   uint8_t kRequest[] = {0x11, 0x00, 0x00};
   uint32_t response_size;
   ScopedTssMemory response(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_FieldUpgrade(tpm_handle, sizeof(kRequest),
-                                               kRequest, &response_size,
-                                               response.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_FieldUpgrade";
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_TPM_FieldUpgrade(tpm_handle, sizeof(kRequest), kRequest,
+                                &response_size, response.ptr()))) {
+    LOG(ERROR) << "Error calling Tspi_TPM_FieldUpgrade: " << *err;
     return false;
   }
 
@@ -2157,11 +2097,11 @@ bool TpmImpl::SetDelegateData(const brillo::Blob& delegate_blob,
   TPM_DELEGATE_OWNER_BLOB ownerBlob;
   // TODO(b/169392230): Fix the potential memory leak while migrating to tpm
   // manager.
-  TSS_RESULT result = Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB(
-      &offset, const_cast<BYTE*>(delegate_blob.data()), &ownerBlob);
 
-  if (result != TSS_SUCCESS) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to unload delegate blob.";
+  if (auto err =
+          CreateError<TPM1Error>(Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB(
+              &offset, const_cast<BYTE*>(delegate_blob.data()), &ownerBlob))) {
+    LOG(ERROR) << __func__ << ": Failed to unload delegate blob: " << *err;
     return false;
   }
 
