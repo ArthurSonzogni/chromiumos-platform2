@@ -38,7 +38,7 @@ class ViewerPlaintext : public Multiplexer::Observer {
   enum class CursorMode { UNSPECIFIED, SAME_AND_NEWER, NEWER };
 
   base::RunLoop run_loop_;
-  base::Closure quit_closure_{run_loop_.QuitWhenIdleClosure()};
+  base::OnceCallback<void()> quit_closure_{run_loop_.QuitWhenIdleClosure()};
 
   const croslog::Config config_;
   base::Optional<RE2> config_grep_;
