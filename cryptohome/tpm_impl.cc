@@ -594,12 +594,11 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   }
 
   SecureBlob enc_data_blob;
-  Tpm::TpmRetryAction action = GetDataAttribute(
-      tpm_context_.value(), enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-      TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_blob);
-  if (action != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to read encrypted blob.";
-    return action;
+  if (TPM1Error err = GetDataAttribute(
+          tpm_context_.value(), enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+          TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_blob)) {
+    LOG(ERROR) << "Failed to read encrypted blob: " << *err;
+    return TPM1ErrorToRetryAction(err);
   }
   if (!ObscureRsaMessage(enc_data_blob, key, ciphertext)) {
     LOG(ERROR) << "Error obscuring message.";
@@ -1473,10 +1472,10 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
 
   // Save the delegation blob for later.
   SecureBlob delegate;
-  if (GetDataAttribute(
+  if (TPM1Error err = GetDataAttribute(
           context_handle, policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-          TSS_TSPATTRIB_POLDEL_OWNERBLOB, &delegate) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "CreateDelegate: Failed to get delegate blob.";
+          TSS_TSPATTRIB_POLDEL_OWNERBLOB, &delegate)) {
+    LOG(ERROR) << __func__ << ": Failed to get delegate blob: " << *err;
     return false;
   }
   delegate_blob->assign(delegate.begin(), delegate.end());
@@ -1640,10 +1639,10 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Get the public key.
   SecureBlob public_key;
-  if (GetDataAttribute(context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
-                       TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
-                       &public_key) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to read public key.";
+  if (TPM1Error err = GetDataAttribute(
+          context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to read public key: " << *err;
     return false;
   }
   if (!ConvertPublicKeyToDER(public_key, public_key_der)) {
@@ -1651,10 +1650,10 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
 
   // Get the key blob so we can load it later.
-  if (GetDataAttribute(context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
-                       TSS_TSPATTRIB_KEYBLOB_BLOB,
-                       key_blob) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to read key blob.";
+  if (TPM1Error err = GetDataAttribute(context_handle, pcr_bound_key,
+                                       TSS_TSPATTRIB_KEY_BLOB,
+                                       TSS_TSPATTRIB_KEYBLOB_BLOB, key_blob)) {
+    LOG(ERROR) << __func__ << ": Failed to read key blob: " << *err;
     return false;
   }
   return true;
@@ -1688,10 +1687,11 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Check that |pcr_index| is selected.
   SecureBlob pcr_selection_blob;
-  if (GetDataAttribute(context_handle, key, TSS_TSPATTRIB_KEY_PCR,
-                       TSS_TSPATTRIB_KEYPCR_SELECTION,
-                       &pcr_selection_blob) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to read PCR selection for key.";
+  if (TPM1Error err = GetDataAttribute(
+          context_handle, key, TSS_TSPATTRIB_KEY_PCR,
+          TSS_TSPATTRIB_KEYPCR_SELECTION, &pcr_selection_blob)) {
+    LOG(ERROR) << __func__
+               << ": Failed to read PCR selection for key: " << *err;
     return false;
   }
   UINT64 trspi_offset = 0;
@@ -1732,10 +1732,11 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Check that the PCR value matches the key creation PCR value.
   SecureBlob pcr_at_creation;
-  if (GetDataAttribute(context_handle, key, TSS_TSPATTRIB_KEY_PCR,
-                       TSS_TSPATTRIB_KEYPCR_DIGEST_ATCREATION,
-                       &pcr_at_creation) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to read PCR value at key creation.";
+  if (TPM1Error err = GetDataAttribute(
+          context_handle, key, TSS_TSPATTRIB_KEY_PCR,
+          TSS_TSPATTRIB_KEYPCR_DIGEST_ATCREATION, &pcr_at_creation)) {
+    LOG(ERROR) << __func__ << ": Failed to read PCR value at key creation"
+               << *err;
     return false;
   }
 
@@ -1746,10 +1747,11 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Check that the PCR value matches the PCR value required to use the key.
   SecureBlob pcr_at_release;
-  if (GetDataAttribute(context_handle, key, TSS_TSPATTRIB_KEY_PCR,
-                       TSS_TSPATTRIB_KEYPCR_DIGEST_ATRELEASE,
-                       &pcr_at_release) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to read PCR value for key usage.";
+  if (TPM1Error err = GetDataAttribute(
+          context_handle, key, TSS_TSPATTRIB_KEY_PCR,
+          TSS_TSPATTRIB_KEYPCR_DIGEST_ATRELEASE, &pcr_at_release)) {
+    LOG(ERROR) << __func__
+               << ": Failed to read PCR value for key usage: " << *err;
     return false;
   }
   if (pcr_at_release != pcr_hash) {
@@ -1801,23 +1803,22 @@ bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) {
   return true;
 }
 
-Tpm::TpmRetryAction TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
-                                              TSS_HOBJECT object,
-                                              TSS_FLAG flag,
-                                              TSS_FLAG sub_flag,
-                                              SecureBlob* data) const {
+TPM1Error TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
+                                    TSS_HOBJECT object,
+                                    TSS_FLAG flag,
+                                    TSS_FLAG sub_flag,
+                                    SecureBlob* data) const {
   UINT32 length = 0;
   ScopedTssMemory buf(context);
-  TSS_RESULT result =
-      Tspi_GetAttribData(object, flag, sub_flag, &length, buf.ptr());
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << "Failed to read object attribute.";
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_GetAttribData(object, flag, sub_flag, &length, buf.ptr()))) {
+    LOG(ERROR) << "Failed to read object attribute: " << *err;
+    return err;
   }
   SecureBlob tmp(buf.value(), buf.value() + length);
   brillo::SecureClearBytes(buf.value(), length);
   data->swap(tmp);
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 bool TpmImpl::IsEnabled() {
@@ -1974,10 +1975,10 @@ bool TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
                          TSS_RESULT* result) const {
   *result = TSS_SUCCESS;
 
-  if (GetDataAttribute(context_handle, key_handle, TSS_TSPATTRIB_KEY_BLOB,
-                       TSS_TSPATTRIB_KEYBLOB_BLOB,
-                       data_out) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << __func__ << ": Failed to get key blob.";
+  if (TPM1Error err =
+          GetDataAttribute(context_handle, key_handle, TSS_TSPATTRIB_KEY_BLOB,
+                           TSS_TSPATTRIB_KEYBLOB_BLOB, data_out)) {
+    LOG(ERROR) << __func__ << ": Failed to get key blob " << *err;
     return false;
   }
 

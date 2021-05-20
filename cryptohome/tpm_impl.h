@@ -168,11 +168,11 @@ class TpmImpl : public Tpm {
                                 TSS_HTPM* tpm_handle);
 
   // Wrapper for Tspi_GetAttribData.
-  TpmRetryAction GetDataAttribute(TSS_HCONTEXT context,
-                                  TSS_HOBJECT object,
-                                  TSS_FLAG flag,
-                                  TSS_FLAG sub_flag,
-                                  brillo::SecureBlob* data) const;
+  hwsec::error::TPM1Error GetDataAttribute(TSS_HCONTEXT context,
+                                           TSS_HOBJECT object,
+                                           TSS_FLAG flag,
+                                           TSS_FLAG sub_flag,
+                                           brillo::SecureBlob* data) const;
 
   // Creates Trousers key object for the RSA public key, given its public
   // modulus in |key_modulus|, creation flags in |key_flags|, signature scheme
