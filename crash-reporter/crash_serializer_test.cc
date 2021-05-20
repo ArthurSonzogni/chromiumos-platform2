@@ -311,7 +311,7 @@ TEST_F(CrashSerializerTest, SerializeCrashes) {
   ASSERT_TRUE(test_util::CreateFile(system_log, "system log data"));
   util::CrashInfo system_info;
   EXPECT_TRUE(system_info.metadata.LoadFromString(system_meta));
-  system_info.payload_file = system_log;
+  system_info.payload_file = system_log.BaseName();
   system_info.payload_kind = "log";
   EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:23:44 GMT",
                                      &system_info.last_modified));
@@ -337,7 +337,7 @@ TEST_F(CrashSerializerTest, SerializeCrashes) {
   ASSERT_TRUE(test_util::CreateFile(user_core, "user core"));
   util::CrashInfo user_info;
   EXPECT_TRUE(user_info.metadata.LoadFromString(user_meta));
-  user_info.payload_file = user_log;
+  user_info.payload_file = user_log.BaseName();  // Payloads are relative
   user_info.payload_kind = "log";
   EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:24:01 GMT",
                                      &user_info.last_modified));
@@ -862,8 +862,12 @@ TEST_P(CrashSerializerParameterizedTest, SerializeCrash) {
   EXPECT_EQ(info.collector(), "fake_collector");
 
   int num_fields = 8;
-  if (missing_file_ != kTextFile) {
-    num_fields++;
+  // Absolute paths are masked
+  if (!absolute_paths_ && missing_file_ != kTextFile) {
+    num_fields++;  // No missing text file
+  }
+  if (absolute_paths_) {
+    num_fields += 3;  // Account for the 3 blocked files
   }
 
   ASSERT_EQ(info.fields_size(), num_fields);
@@ -897,40 +901,47 @@ TEST_P(CrashSerializerParameterizedTest, SerializeCrash) {
   EXPECT_EQ(info.fields(field_idx).text(), "00112233445566778899aabbccddeeff");
   field_idx++;
 
-  if (missing_file_ != kTextFile) {
+  if (!absolute_paths_ && missing_file_ != kTextFile) {
     EXPECT_EQ(info.fields(field_idx).key(), "footext");
     EXPECT_EQ(info.fields(field_idx).text(), "upload_text_contents");
     field_idx++;
   }
 
-  EXPECT_EQ(info.fields(field_idx).key(), "foovar");
-  EXPECT_EQ(info.fields(field_idx).text(), "bar");
+  if (absolute_paths_) {
+    EXPECT_EQ(info.fields(field_idx).key(), "file_blocked_by_path");
+    EXPECT_EQ(info.fields(field_idx).text(), file_var_file.value());
+  } else {
+    EXPECT_EQ(info.fields(field_idx).key(), "foovar");
+    EXPECT_EQ(info.fields(field_idx).text(), "bar");
+  }
   field_idx++;
 
   int num_blobs = 1;
-  if (missing_file_ != kBinFile) {
+  if (!absolute_paths_ && missing_file_ != kBinFile) {
     num_blobs++;
   }
-  if (missing_file_ != kLogFile) {
+  if (!absolute_paths_ && missing_file_ != kLogFile) {
     num_blobs++;
   }
 
   ASSERT_EQ(blobs.size(), num_blobs);
 
   int blob_idx = 0;
-  EXPECT_EQ(blobs[blob_idx].key(), "upload_file_fake_payload");
-  EXPECT_EQ(blobs[blob_idx].blob(), "foobar_payload");
-  EXPECT_EQ(blobs[blob_idx].filename(), payload_file_relative.value());
-  blob_idx++;
+  if (!absolute_paths_) {
+    EXPECT_EQ(blobs[blob_idx].key(), "upload_file_fake_payload");
+    EXPECT_EQ(blobs[blob_idx].blob(), "foobar_payload");
+    EXPECT_EQ(blobs[blob_idx].filename(), payload_file_relative.value());
+    blob_idx++;
+  }
 
-  if (missing_file_ != kBinFile) {
+  if (!absolute_paths_ && missing_file_ != kBinFile) {
     EXPECT_EQ(blobs[blob_idx].key(), "foofile");
     EXPECT_EQ(blobs[blob_idx].blob(), "upload_file_contents");
     EXPECT_EQ(blobs[blob_idx].filename(), file_var_file_relative.value());
     blob_idx++;
   }
 
-  if (missing_file_ != kLogFile) {
+  if (!absolute_paths_ && missing_file_ != kLogFile) {
     EXPECT_EQ(blobs[blob_idx].key(), "log");
     EXPECT_EQ(blobs[blob_idx].blob(), "foobar_log");
     EXPECT_EQ(blobs[blob_idx].filename(), log_file_relative.value());

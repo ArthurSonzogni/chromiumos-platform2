@@ -220,6 +220,9 @@ class SenderBase {
     crash_during_testing_ = crash;
   }
 
+  // Read the meta file and return a struct representing its contents.
+  FullCrash ReadMetaFile(const CrashDetails& details);
+
  protected:
   // Do a minimal evaluation of the given meta file, only performing basic
   // validation (e.g. that it's fully written, that the payload field is valid,
@@ -250,9 +253,6 @@ class SenderBase {
 
   // Makes sure we have the DBus object initialized and connected.
   void EnsureDBusIsReady();
-
-  // Read the meta file and return a struct representing its contents.
-  FullCrash ReadMetaFile(const CrashDetails& details);
 
   // These are accessed by child classes.
   base::Callback<void(base::TimeDelta)> sleep_function_;

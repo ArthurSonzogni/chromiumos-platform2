@@ -490,9 +490,11 @@ FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
   details.metadata.GetString("sig", &crash.sig);
 
   base::FilePath payload_file = details.payload_file;
+  // Payload file should have been made absolute in EvaluateMetaFileMinimal
   if (!payload_file.IsAbsolute()) {
     payload_file = details.meta_file.DirName().Append(payload_file);
   }
+
   crash.payload =
       std::make_pair("upload_file_" + details.payload_kind, payload_file);
   // The crash infrastructure expects "upload_file_minidump" for minidumps but
@@ -529,22 +531,25 @@ FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
                                   value);
     } else if (is_upload_text || is_upload_file) {
       base::FilePath value_file(value);
-      // Relative paths are relative to the meta data file.
-      if (!value_file.IsAbsolute()) {
+      // Upload only files without path information in them
+      if (value_file != value_file.BaseName()) {
+        LOG(ERROR) << "Blocking path file " << value_file.value();
+        crash.key_vals.emplace_back("file_blocked_by_path", value_file.value());
+      } else {
         value_file = details.meta_file.DirName().Append(value_file);
-      }
-      if (is_upload_text) {
-        std::string value_content;
-        if (base::ReadFileToString(value_file, &value_content)) {
-          crash.key_vals.emplace_back(key.substr(sizeof(kUploadTextPrefix) - 1),
-                                      value_content);
-        } else {
-          LOG(ERROR) << "Failed attaching file contents from "
-                     << value_file.value();
+        if (is_upload_text) {
+          std::string value_content;
+          if (base::ReadFileToString(value_file, &value_content)) {
+            crash.key_vals.emplace_back(
+                key.substr(sizeof(kUploadTextPrefix) - 1), value_content);
+          } else {
+            LOG(ERROR) << "Failed attaching file contents from "
+                       << value_file.value();
+          }
+        } else {  // not is_upload_text so must be is_upload_file
+          crash.files.emplace_back(key.substr(sizeof(kUploadFilePrefix) - 1),
+                                   value_file);
         }
-      } else {  // not is_upload_text so must be is_upload_file
-        crash.files.emplace_back(key.substr(sizeof(kUploadFilePrefix) - 1),
-                                 value_file);
       }
     }
   }

@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/strcat.h>
 #include <base/guid.h>
 #include <brillo/key_value_store.h>
 #include <gtest/gtest.h>
@@ -18,6 +19,8 @@
 
 namespace util {
 namespace {
+using ::testing::Not;
+using ::testing::StartsWith;
 
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
 
@@ -51,6 +54,16 @@ bool SetIntegrationTesting(bool success) {
                                success ? "" : "0") &&
          base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
 }
+
+class CrashSenderBaseForTesting : public util::SenderBase {
+ public:
+  CrashSenderBaseForTesting(std::unique_ptr<base::Clock> clock,
+                            const Options& options)
+      : util::SenderBase(std::move(clock), options) {}
+
+  // We don't need this implementation
+  void RecordCrashRemoveReason(CrashRemoveReason reason) {}
+};
 
 class CrashSenderBaseTest : public testing::Test {
  protected:
@@ -137,6 +150,58 @@ TEST_F(CrashSenderBaseTest, IsCompleteMetadata) {
 
   metadata.LoadFromString("done=1\n");
   EXPECT_TRUE(IsCompleteMetadata(metadata));
+}
+
+TEST_F(CrashSenderBaseTest, ReadMetaFile_BlockAbsoluteAttachments) {
+  const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
+  const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
+  const base::FilePath log_file = test_dir_.Append("read_meta_file.log");
+  const base::FilePath log2_file = test_dir_.Append("read_meta_file2.log");
+  const std::string meta =
+      base::StrCat({"payload=read_meta_file.xyz\n"
+                    "exec_name=exec_bar\n"
+                    "fake_report_id=456\n"
+                    "upload_var_prod=bar\n"
+                    "upload_file_test.log=",
+                    log_file.value(),
+                    "\n"
+                    "upload_text_test2.log=",
+                    log2_file.value(),
+                    "\n"
+                    "done=1\n"});
+  ASSERT_TRUE(test_util::CreateFile(meta_file, meta));
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "payload file"));
+  ASSERT_TRUE(test_util::CreateFile(log_file, "log file"));
+  ASSERT_TRUE(test_util::CreateFile(log2_file, "log file 2"));
+  brillo::KeyValueStore metadata;
+  EXPECT_TRUE(ParseMetadata(meta, &metadata));
+
+  const util::CrashDetails details = {
+      .meta_file = meta_file,
+      .payload_file = payload_file.BaseName(),
+      .payload_kind = "log",
+      .client_id = "client",
+      .metadata = metadata,
+  };
+
+  SenderBase::Options options;
+  CrashSenderBaseForTesting sender(
+      std::make_unique<test_util::AdvancingClock>(), options);
+  FullCrash crash = sender.ReadMetaFile(details);
+
+  int log_files_blocked = 0;
+  for (const auto& kv : crash.key_vals) {
+    const std::string& key = kv.first;
+    const std::string& val = kv.second;
+    EXPECT_THAT(key, Not(StartsWith("upload_file_")));
+    EXPECT_THAT(key, Not(StartsWith("upload_text_")));
+    if (key == "file_blocked_by_path") {
+      EXPECT_TRUE(val == log_file.value() || val == log2_file.value());
+      log_files_blocked++;
+    }
+  }
+
+  EXPECT_EQ(2, log_files_blocked);
 }
 
 TEST_F(CrashSenderBaseTest, CreateClientId) {

@@ -1493,13 +1493,12 @@ enum MissingFile {
 
 class CreateCrashFormDataTest
     : public CrashSenderUtilTest,
-      public ::testing::WithParamInterface<std::tuple<bool, MissingFile>> {
+      public ::testing::WithParamInterface<std::tuple<MissingFile>> {
  protected:
   void SetUp() override {
-    std::tie(absolute_paths_, missing_file_) = GetParam();
+    std::tie(missing_file_) = GetParam();
     CrashSenderUtilTest::SetUp();
   }
-  bool absolute_paths_;
   MissingFile missing_file_;
 };
 
@@ -1507,46 +1506,33 @@ TEST_P(CreateCrashFormDataTest, TestCreateCrashFormData) {
   const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(base::CreateDirectory(system_dir));
 
-  const base::FilePath payload_file_relative("0.0.0.0.0.payload");
-  const base::FilePath payload_file_absolute =
-      system_dir.Append(payload_file_relative);
+  const base::FilePath payload_file("0.0.0.0.0.payload");
   const std::string payload_contents = "foobar_payload";
   if (missing_file_ != kPayloadFile) {
-    ASSERT_TRUE(test_util::CreateFile(payload_file_absolute, payload_contents));
+    ASSERT_TRUE(test_util::CreateFile(system_dir.Append(payload_file),
+                                      payload_contents));
   }
-  const base::FilePath& payload_file =
-      absolute_paths_ ? payload_file_absolute : payload_file_relative;
 
-  const base::FilePath log_file_relative("0.0.0.0.0.log");
-  const base::FilePath log_file_absolute = system_dir.Append(log_file_relative);
+  const base::FilePath log_file("0.0.0.0.0.log");
   const std::string log_contents = "foobar_log";
   if (missing_file_ != kLogFile) {
-    ASSERT_TRUE(test_util::CreateFile(log_file_absolute, log_contents));
+    ASSERT_TRUE(
+        test_util::CreateFile(system_dir.Append(log_file), log_contents));
   }
-  const base::FilePath& log_file =
-      absolute_paths_ ? log_file_absolute : log_file_relative;
 
-  const base::FilePath text_var_file_relative("data.txt");
-  const base::FilePath text_var_file_absolute =
-      system_dir.Append(text_var_file_relative);
+  const base::FilePath text_var_file("data.txt");
   const std::string text_var_contents = "upload_text_contents";
   if (missing_file_ != kTextFile) {
-    ASSERT_TRUE(
-        test_util::CreateFile(text_var_file_absolute, text_var_contents));
+    ASSERT_TRUE(test_util::CreateFile(system_dir.Append(text_var_file),
+                                      text_var_contents));
   }
-  const base::FilePath& text_var_file =
-      absolute_paths_ ? text_var_file_absolute : text_var_file_relative;
 
-  const base::FilePath file_var_file_relative("data.bin");
-  const base::FilePath file_var_file_absolute =
-      system_dir.Append(file_var_file_relative);
+  const base::FilePath file_var_file("data.bin");
   const std::string file_var_contents = "upload_file_contents";
   if (missing_file_ != kBinFile) {
-    ASSERT_TRUE(
-        test_util::CreateFile(file_var_file_absolute, file_var_contents));
+    ASSERT_TRUE(test_util::CreateFile(system_dir.Append(file_var_file),
+                                      file_var_contents));
   }
-  const base::FilePath& file_var_file =
-      absolute_paths_ ? file_var_file_absolute : file_var_file_relative;
 
   brillo::KeyValueStore metadata;
   metadata.SetString("exec_name", "fake_exec_name");
@@ -1668,7 +1654,6 @@ INSTANTIATE_TEST_SUITE_P(
     CreateCrashFormDataInstantiation,
     CreateCrashFormDataTest,
     testing::Combine(
-        testing::Bool(),
         testing::Values(kNone, kPayloadFile, kLogFile, kTextFile, kBinFile)));
 
 TEST_F(CrashSenderUtilTest, SendCrashes) {
