@@ -203,7 +203,7 @@ class TpmImpl : public Tpm {
                        bool has_reset_lock_permissions);
 
   // Connects to the TPM and return its context at |context_handle|.
-  bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
+  hwsec::error::TPM1Error OpenAndConnectTpm(TSS_HCONTEXT* context_handle);
 
   // Gets the Public Key blob associated with |key_handle|.
   hwsec::error::TPM1Error GetPublicKeyBlob(TSS_HCONTEXT context_handle,

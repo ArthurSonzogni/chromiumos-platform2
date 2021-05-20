@@ -259,9 +259,9 @@ void TpmImpl::SetTpmManagerUtilityForTesting(
 }
 
 TSS_HCONTEXT TpmImpl::ConnectContext() {
-  TSS_RESULT result;
   TSS_HCONTEXT context_handle = 0;
-  if (!OpenAndConnectTpm(&context_handle, &result)) {
+  if (TPM1Error err = OpenAndConnectTpm(&context_handle)) {
+    LOG(ERROR) << "Failed to OpenAndConnectTpm: " << *err;
     return 0;
   }
   return context_handle;
@@ -346,8 +346,8 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
   ScopedTssContext context_handle;
   // Check if we can connect
   TSS_RESULT result;
-  if (!OpenAndConnectTpm(context_handle.ptr(), &result)) {
-    status->last_tpm_error = result;
+  if (TPM1Error err = OpenAndConnectTpm(context_handle.ptr())) {
+    status->last_tpm_error = err->ErrorCode();
     return;
   }
   status->can_connect = true;
@@ -527,47 +527,36 @@ bool TpmImpl::CreateRsaPublicKeyObject(TSS_HCONTEXT context_handle,
   return true;
 }
 
-bool TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
-                                TSS_RESULT* result) {
-  TSS_RESULT local_result;
+TPM1Error TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle) {
   ScopedTssContext local_context_handle;
-  if (TPM_ERROR(local_result =
-                    Tspi_Context_Create(local_context_handle.ptr()))) {
-    TPM_LOG(ERROR, local_result) << "Error calling Tspi_Context_Create";
-    if (result)
-      *result = local_result;
-    return false;
+  if (auto err = CreateError<TPM1Error>(
+          Tspi_Context_Create(local_context_handle.ptr()))) {
+    LOG(ERROR) << "Error calling Tspi_Context_Create: " << *err;
+    return err;
   }
 
   for (unsigned int i = 0; i < kTpmConnectRetries; i++) {
-    if (TPM_ERROR(local_result = GetOveralls()->Ospi_Context_Connect(
-                      local_context_handle, NULL))) {
-      // If there was a communications failure, try sleeping a bit here--it may
-      // be that tcsd is still starting
-      if (ERROR_CODE(local_result) == TSS_E_COMM_FAILURE) {
+    if (auto err = CreateError<TPM1Error>(
+            GetOveralls()->Ospi_Context_Connect(local_context_handle, NULL))) {
+      // If there was a communications failure, try sleeping a bit here, it may
+      // be that tcsd is still starting.
+      if (err->ToTPMRetryAction() ==
+              hwsec::error::TPMRetryAction::kCommunication &&
+          i + 1 != kTpmConnectRetries) {
         PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
+
       } else {
-        TPM_LOG(ERROR, local_result) << "Error calling Tspi_Context_Connect";
-        if (result)
-          *result = local_result;
-        return false;
+        LOG(ERROR) << "Error calling Tspi_Context_Connect: " << *err;
+        return err;
       }
     } else {
       break;
     }
   }
-  if (TPM_ERROR(local_result)) {
-    TPM_LOG(ERROR, local_result) << "Error calling Tspi_Context_Connect";
-    if (result)
-      *result = local_result;
-    return false;
-  }
 
   *context_handle = local_context_handle.release();
-  if (result)
-    *result = local_result;
-  return (*context_handle != 0);
+  return nullptr;
 }
 
 Tpm::TpmRetryAction TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
