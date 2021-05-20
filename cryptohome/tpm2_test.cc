@@ -1253,9 +1253,9 @@ TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
         .WillOnce(Return(error_code_fmt1 | layer_code))
         .RetiresOnSaturation();
     EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-              Tpm::kTpmRetryInvalidHandle);
+              Tpm::kTpmRetryLater);
     EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-              Tpm::kTpmRetryInvalidHandle);
+              Tpm::kTpmRetryLater);
   }
   // For response codes produced by other layers (e.g. trunks, SAPI), should
   // always return FailNoRetry, even if lower 12 bits match hardware TPM errors.
