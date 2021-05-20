@@ -48,64 +48,12 @@ using hwsec::error::TPM2Error;
 using hwsec::error::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using trunks::GetErrorString;
-using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
 
 namespace cryptohome {
 
 namespace {
-
-// The upper bits that identify the layer that produced the response.
-// These bits are always 0 for the hardware TPM response codes.
-constexpr TPM_RC kResponseLayerMask = 0xFFFFF000;
-
-Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
-  // For hardware TPM errors and TPM-equivalent response codes produced by
-  // Resource Manager, use just the error number and strip everything else.
-  if ((result & kResponseLayerMask) == 0 ||
-      (result & kResponseLayerMask) == trunks::kResourceManagerTpmErrorBase) {
-    result = trunks::GetFormatOneError(result & ~kResponseLayerMask);
-  }
-  Tpm::TpmRetryAction action;
-  switch (result) {
-    case trunks::TPM_RC_SUCCESS:
-      action = Tpm::kTpmRetryNone;
-      break;
-    case trunks::TPM_RC_LOCKOUT:
-      action = Tpm::kTpmRetryDefendLock;
-      break;
-    case trunks::TPM_RC_HANDLE:
-    case trunks::TPM_RC_REFERENCE_H0:
-    case trunks::TPM_RC_REFERENCE_H1:
-    case trunks::TPM_RC_REFERENCE_H2:
-    case trunks::TPM_RC_REFERENCE_H3:
-    case trunks::TPM_RC_REFERENCE_H4:
-    case trunks::TPM_RC_REFERENCE_H5:
-    case trunks::TPM_RC_REFERENCE_H6:
-      action = Tpm::kTpmRetryInvalidHandle;
-      break;
-    case trunks::TPM_RC_INITIALIZE:
-    case trunks::TPM_RC_REBOOT:
-      action = Tpm::kTpmRetryReboot;
-      break;
-    case trunks::TRUNKS_RC_WRITE_ERROR:
-    case trunks::TRUNKS_RC_READ_ERROR:
-    case trunks::SAPI_RC_NO_CONNECTION:
-    case trunks::SAPI_RC_NO_RESPONSE_RECEIVED:
-    case trunks::SAPI_RC_MALFORMED_RESPONSE:
-      action = Tpm::kTpmRetryCommFailure;
-      break;
-    case trunks::TPM_RC_RETRY:
-    case trunks::TPM_RC_NV_RATE:
-      action = Tpm::kTpmRetryLater;
-      break;
-    default:
-      action = Tpm::kTpmRetryFailNoRetry;
-      break;
-  }
-  return action;
-}
 
 Tpm::TpmRetryAction TPM2ErrorToRetryAction(const TPM2Error& err) {
   if (!err) {
@@ -1057,29 +1005,27 @@ Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
 
   // Get the policy digest for PCR.
   std::string policy_digest;
-  TPM_RC result = trunks->tpm_utility->GetPolicyDigestForPcrValues(
-      pcr_map, true /* use_auth_value */, &policy_digest);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM2Error>(
+          trunks->tpm_utility->GetPolicyDigestForPcrValues(
+              pcr_map, true /* use_auth_value */, &policy_digest))) {
+    LOG(ERROR) << "Error getting policy digest: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
 
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
-  result = session->StartUnboundSession(true, true);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err =
+          CreateError<TPM2Error>(session->StartUnboundSession(true, true))) {
+    LOG(ERROR) << "Error starting hmac session: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
 
   std::string sealed_str;
-  result = trunks->tpm_utility->SealData(plaintext.to_string(), policy_digest,
-                                         auth_value.to_string(),
-                                         session->GetDelegate(), &sealed_str);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error sealing data to PCR with authorization: "
-               << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->SealData(
+          plaintext.to_string(), policy_digest, auth_value.to_string(),
+          session->GetDelegate(), &sealed_str))) {
+    LOG(ERROR) << "Error sealing data to PCR with authorization: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
   sealed_data->assign(sealed_str.begin(), sealed_str.end());
 
@@ -1105,35 +1051,37 @@ Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetPolicySession();
   // Use unsalted session here, to unseal faster.
-  TPM_RC result = policy_session->StartUnboundSession(false, false);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM2Error>(
+          policy_session->StartUnboundSession(false, false))) {
+    LOG(ERROR) << "Error starting policy session: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
-  result = policy_session->PolicyAuthValue();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Error setting session to use auth_value: "
-               << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM2Error>(policy_session->PolicyAuthValue())) {
+    LOG(ERROR) << __func__
+               << ": Error setting session to use auth_value: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
-  result = policy_session->PolicyPCR(pcr_map);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error in PolicyPCR: " << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM2Error>(policy_session->PolicyPCR(pcr_map))) {
+    LOG(ERROR) << "Error in PolicyPCR: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
   policy_session->SetEntityAuthorizationValue(auth_value.to_string());
   std::string unsealed_data;
   if (preload_handle) {
-    result = trunks->tpm_utility->UnsealDataWithHandle(
-        *preload_handle, policy_session->GetDelegate(), &unsealed_data);
+    if (auto err =
+            CreateError<TPM2Error>(trunks->tpm_utility->UnsealDataWithHandle(
+                *preload_handle, policy_session->GetDelegate(),
+                &unsealed_data))) {
+      LOG(ERROR) << "Error unsealing data with authorization: " << *err;
+      return TPM2ErrorToRetryAction(err);
+    }
   } else {
-    result = trunks->tpm_utility->UnsealData(
-        sealed_data.to_string(), policy_session->GetDelegate(), &unsealed_data);
-  }
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error unsealing data with authorization: "
-               << GetErrorString(result);
-    return ResultToRetryAction(result);
+    if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->UnsealData(
+            sealed_data.to_string(), policy_session->GetDelegate(),
+            &unsealed_data))) {
+      LOG(ERROR) << "Error unsealing data with authorization: " << *err;
+      return TPM2ErrorToRetryAction(err);
+    }
   }
   plaintext->assign(unsealed_data.begin(), unsealed_data.end());
 
@@ -1148,11 +1096,10 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
     return Tpm::kTpmRetryFailNoRetry;
   }
   trunks::TPMT_PUBLIC public_data;
-  TPM_RC result =
-      trunks->tpm_utility->GetKeyPublicArea(key_handle, &public_data);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting key public area: " << GetErrorString(result);
-    return ResultToRetryAction(result);
+  if (auto err = CreateError<TPM2Error>(
+          trunks->tpm_utility->GetKeyPublicArea(key_handle, &public_data))) {
+    LOG(ERROR) << "Error getting key public area: " << *err;
+    return TPM2ErrorToRetryAction(err);
   }
   std::string public_modulus =
       trunks::StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa);
@@ -1245,8 +1192,9 @@ bool Tpm2Impl::ResetDictionaryAttackMitigation(
 void Tpm2Impl::DeclareTpmFirmwareStable() {
   TrunksClientContext* trunks;
   if (!fw_declared_stable_ && GetTrunksContext(&trunks)) {
-    TPM_RC res = trunks->tpm_utility->DeclareTpmFirmwareStable();
-    fw_declared_stable_ = (res == TPM_RC_SUCCESS);
+    auto err =
+        CreateError<TPM2Error>(trunks->tpm_utility->DeclareTpmFirmwareStable());
+    fw_declared_stable_ = (err == nullptr);
   }
 }
 
@@ -1326,11 +1274,11 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
   if (!GetTrunksContext(&trunks))
     return false;
   trunks::TPM_HANDLE key_handle_raw = 0;
-  TPM_RC tpm_result = trunks->tpm_utility->LoadRSAPublicKey(
-      ConvertAsymmetricKeyUsage(key_type), scheme, hash_alg,
-      key_modulus.to_string(), key_exponent, session_delegate, &key_handle_raw);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error loading public key: " << GetErrorString(tpm_result);
+  if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->LoadRSAPublicKey(
+          ConvertAsymmetricKeyUsage(key_type), scheme, hash_alg,
+          key_modulus.to_string(), key_exponent, session_delegate,
+          &key_handle_raw))) {
+    LOG(ERROR) << "Error loading public key: " << *err;
     return false;
   }
   key_handle->reset(this, key_handle_raw);
@@ -1390,11 +1338,10 @@ bool Tpm2Impl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
   std::string decrypted_value;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  TPM_RC result = trunks->tpm_utility->AsymmetricDecrypt(
-      key_handle.value(), trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
-      value_to_decrypt, delegate.get(), &decrypted_value);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error decrypting pass_blob: " << GetErrorString(result);
+  if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
+          key_handle.value(), trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
+          value_to_decrypt, delegate.get(), &decrypted_value))) {
+    LOG(ERROR) << "Error decrypting pass_blob: " << *err;
     return false;
   }
   *auth_value = Sha256(SecureBlob(decrypted_value));
