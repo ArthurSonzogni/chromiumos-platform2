@@ -75,6 +75,7 @@ class ServiceTestingHelper {
     kRemoveFileWatch,
     kRegisterVshSession,
     kGetVshSession,
+    kFileSelected,
 
     kNumDbusCalls
   };

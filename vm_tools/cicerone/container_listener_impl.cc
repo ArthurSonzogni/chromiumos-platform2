@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -507,6 +508,37 @@ grpc::Status ContainerListenerImpl::ForwardSecurityKeyMessage(
   }
 
   response->set_message(security_key_response.message());
+  return grpc::Status::OK;
+}
+
+grpc::Status ContainerListenerImpl::SelectFile(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::SelectFileRequest* request,
+    vm_tools::container::SelectFileResponse* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+  vm_tools::apps::SelectFileRequest select_file;
+  select_file.set_type(request->type());
+  select_file.set_title(request->title());
+  select_file.set_default_path(request->default_path());
+  select_file.set_allowed_extensions(request->allowed_extensions());
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  std::vector<std::string> files;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::SelectFile, service_,
+                 request->token(), cid, &select_file, &files, &event));
+  // Waits for dialog to be shown, and user to select file(s), then chrome sends
+  // back the FileSelectedSignal.
+  event.Wait();
+  std::copy(
+      std::make_move_iterator(files.begin()),
+      std::make_move_iterator(files.end()),
+      google::protobuf::RepeatedFieldBackInserter(response->mutable_files()));
   return grpc::Status::OK;
 }
 

@@ -89,6 +89,10 @@ class ContainerListenerImpl final
       const vm_tools::container::ForwardSecurityKeyMessageRequest* request,
       vm_tools::container::ForwardSecurityKeyMessageResponse* response)
       override;
+  grpc::Status SelectFile(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::SelectFileRequest* request,
+      vm_tools::container::SelectFileResponse* response) override;
 
  private:
   // Returns 0 on failure, otherwise the parsed vsock cid from a

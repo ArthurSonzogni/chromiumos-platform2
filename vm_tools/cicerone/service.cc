@@ -13,6 +13,7 @@
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -24,6 +25,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
+#include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/no_destructor.h>
@@ -362,6 +364,16 @@ class CiceroneGrpcCallbacks final : public grpc::Server::GlobalCallbacks {
   CiceroneGrpcCallbacks(const CiceroneGrpcCallbacks&) = delete;
   CiceroneGrpcCallbacks& operator=(const CiceroneGrpcCallbacks&) = delete;
 };
+
+// Callback invoked after cicerone sends SelectFile request to chrome, and
+// chrome shows the file select dialog and sends a FileSelectedSignal.
+void OnFileSelected(std::vector<std::string>* result,
+                    base::WaitableEvent* event,
+                    std::vector<std::string> files) {
+  std::copy(std::make_move_iterator(files.begin()),
+            std::make_move_iterator(files.end()), std::back_inserter(*result));
+  event->Signal();
+}
 
 }  // namespace
 
@@ -1101,6 +1113,61 @@ void Service::OpenUrl(const std::string& container_token,
   event->Signal();
 }
 
+void Service::SelectFile(const std::string& container_token,
+                         const uint32_t cid,
+                         vm_tools::apps::SelectFileRequest* select_file,
+                         std::vector<std::string>* files,
+                         base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(select_file);
+  CHECK(files);
+  CHECK(event);
+  std::string owner_id;
+  std::string vm_name;
+  VirtualMachine* vm;
+  if (!GetVirtualMachineForCidOrToken(cid, container_token, &vm, &owner_id,
+                                      &vm_name)) {
+    LOG(ERROR) << "Could not get virtual machine for cid " << cid;
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    LOG(ERROR) << "Could not get container";
+    event->Signal();
+    return;
+  }
+  select_file->set_vm_name(vm_name);
+  select_file->set_container_name(container_name);
+  select_file->set_owner_id(owner_id);
+  std::string select_file_token = base::GenerateGUID();
+  select_file->set_select_file_token(select_file_token);
+  dbus::MethodCall method_call(
+      vm_tools::apps::kVmApplicationsServiceInterface,
+      vm_tools::apps::kVmApplicationsServiceSelectFileMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  if (!writer.AppendProtoAsArrayOfBytes(*select_file)) {
+    LOG(ERROR) << "Failed to encode SelectFile protobuf";
+    event->Signal();
+    return;
+  }
+
+  // |event| will be signalled when FileSelected() is called with a matching
+  // |select_file_token|.
+  select_file_dialogs_.emplace(select_file_token,
+                               base::BindOnce(&OnFileSelected, files, event));
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      vm_applications_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to Chrome for SelectFile";
+    select_file_dialogs_.erase(select_file_token);
+    event->Signal();
+  }
+}
+
 void Service::InstallLinuxPackageProgress(
     const std::string& container_token,
     const uint32_t cid,
@@ -1310,6 +1377,7 @@ bool Service::Init(
       {kRemoveFileWatchMethod, &Service::RemoveFileWatch},
       {kRegisterVshSessionMethod, &Service::RegisterVshSession},
       {kGetVshSessionMethod, &Service::GetVshSession},
+      {kFileSelectedMethod, &Service::FileSelected},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -3298,6 +3366,54 @@ std::unique_ptr<dbus::Response> Service::GetVshSession(
     response.set_success(true);
     response.set_container_shell_pid(pid);
   }
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+std::unique_ptr<dbus::Response> Service::FileSelected(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received FileSelected request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  FileSelectedSignal request;
+  EmptyMessage response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse FileSelectedSignal from message";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  Container* container = vm->GetContainerForName(request.container_name());
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: "
+               << request.container_name();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto it = select_file_dialogs_.find(request.select_file_token());
+  if (it == select_file_dialogs_.end()) {
+    LOG(ERROR) << "Select file token not found: "
+               << request.select_file_token();
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::move(it->second)
+      .Run(std::vector<string>(
+          std::make_move_iterator(request.mutable_files()->begin()),
+          std::make_move_iterator(request.mutable_files()->end())));
+  select_file_dialogs_.erase(it);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

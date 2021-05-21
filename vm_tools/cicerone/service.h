@@ -258,6 +258,14 @@ class Service final {
                bool* result,
                base::WaitableEvent* event);
 
+  // Sends a D-Bus message to Chrome to open a SelectFile dialog. |files| is
+  // a list of the files selected by the user. Signals |event| when done.
+  void SelectFile(const std::string& container_token,
+                  const uint32_t cid,
+                  vm_tools::apps::SelectFileRequest* select_file,
+                  std::vector<std::string>* files,
+                  base::WaitableEvent* event);
+
   // Sends a D-Bus signal to inform listeners on update for the progress or
   // completion of a Linux package install. It will use |cid| to
   // resolve the request to a VM and then |container_token| to resolve it to a
@@ -565,6 +573,9 @@ class Service final {
   // Handles a request to retrieve vsh session data.
   std::unique_ptr<dbus::Response> GetVshSession(dbus::MethodCall* method_call);
 
+  // Handles a notification from Chrome in response to a SelectFile() request.
+  std::unique_ptr<dbus::Response> FileSelected(dbus::MethodCall* method_call);
+
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
                            const std::string& vm_name,
@@ -631,6 +642,10 @@ class Service final {
   // Map of TCP4 ports to forwarding targets.
   using TcpForwardTarget = std::pair<std::string, std::string>;
   std::map<uint16_t, TcpForwardTarget> listening_tcp4_ports_;
+
+  // Map of SelectFile() dialogs currently open.
+  std::map<std::string, base::OnceCallback<void(std::vector<std::string>)>>
+      select_file_dialogs_;
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;

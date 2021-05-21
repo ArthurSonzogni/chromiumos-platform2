@@ -226,6 +226,13 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kSelectFileRequest:
+        // ContainerListenerImpl::SelectFile() cannot be fuzzed since it blocks
+        // the execution thread and expects a call to cicerone::FileSelected()
+        // to signal the thread to continue.
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kInstallLinuxPackageProgressInfo:
         container_listener->InstallLinuxPackageProgress(
             &context, &action.install_linux_package_progress_info(), &response);
