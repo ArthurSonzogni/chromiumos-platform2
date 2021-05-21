@@ -7,7 +7,8 @@ use std::fmt;
 use std::io::{self, Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 use std::vec::Vec;
 
 use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
@@ -574,15 +575,42 @@ impl Read for &UsbConnection {
         // Unwrap because interface only becomes None at drop.
         let interface = self.interface.as_ref().unwrap();
         let endpoint = interface.descriptor.in_endpoint;
-        let result = interface
+        let start = Instant::now();
+        let mut result = interface
             .handle
             .read_bulk(endpoint, buf, USB_TRANSFER_TIMEOUT)
             .map_err(to_io_error);
+        let mut zero_reads = 0;
 
-        match result {
-            // USB reads cannot hit EOF. This is an interrupted read.
-            Ok(0) => Err(io::Error::from_raw_os_error(libc::EINTR)),
-            _ => result,
+        loop {
+            match result {
+                // USB reads cannot hit EOF. We will retry after a short delay so that higher-level
+                // readers can pretend this doesn't exist.
+                Ok(0) => {
+                    zero_reads += 1;
+                    if start.elapsed() > USB_TRANSFER_TIMEOUT {
+                        result = Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "Timed out waiting for non-zero USB read",
+                        ));
+                        break;
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                    result = interface
+                        .handle
+                        .read_bulk(endpoint, buf, USB_TRANSFER_TIMEOUT)
+                        .map_err(to_io_error);
+                }
+                _ => break,
+            }
         }
+        if zero_reads > 0 {
+            debug!(
+                "Spent {}ms waiting for {} 0-byte USB reads",
+                start.elapsed().as_millis(),
+                zero_reads
+            );
+        }
+        result
     }
 }
