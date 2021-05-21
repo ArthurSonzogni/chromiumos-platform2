@@ -45,4 +45,21 @@ TEST(UserSecretStashTest, GetEncryptedUSS) {
   EXPECT_FALSE(FindBlobInBlob(wrapped_blob, stash.GetResetSecret()));
 }
 
+TEST(UserSecretStashTest, EncryptAndDecryptUSS) {
+  UserSecretStash stash;
+  stash.InitializeRandom();
+
+  brillo::SecureBlob main_key(kAesGcm256KeySize);
+  memset(main_key.data(), 0xA, main_key.size());
+
+  auto wrapped_uss = stash.GetAesGcmEncrypted(main_key);
+  EXPECT_NE(base::nullopt, wrapped_uss);
+
+  UserSecretStash stash2;
+  EXPECT_TRUE(stash2.FromAesGcmEncrypted(wrapped_uss.value(), main_key));
+
+  EXPECT_EQ(stash.GetFileSystemKey(), stash2.GetFileSystemKey());
+  EXPECT_EQ(stash.GetResetSecret(), stash2.GetResetSecret());
+}
+
 }  // namespace cryptohome

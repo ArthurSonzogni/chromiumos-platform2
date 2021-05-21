@@ -43,6 +43,13 @@ class UserSecretStash {
   base::Optional<brillo::SecureBlob> GetAesGcmEncrypted(
       const brillo::SecureBlob& main_key);
 
+  // This deserializes the |flatbuffer| into a AesGcmEncryptedUSS table.
+  // That table is contains a ciphertext, which is decrypted with the |main_key|
+  // using AES-GMC-256. It doesn't return the plaintext, it populates the fields
+  // of the class with the encrypted message.
+  bool FromAesGcmEncrypted(const brillo::SecureBlob& flatbuffer,
+                           const brillo::SecureBlob& main_key);
+
  private:
   // A key registered with the kernel to decrypt files.
   base::Optional<brillo::SecureBlob> file_system_key_;

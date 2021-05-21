@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 
+#include "cryptohome/aes_gcm_encrypted_uss_generated.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
@@ -110,6 +111,73 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetAesGcmEncrypted(
 
   return base::Optional<brillo::SecureBlob>(
       GenerateAesGcmEncryptedUSS(ciphertext, tag, iv));
+}
+
+bool UserSecretStash::FromAesGcmEncrypted(const brillo::SecureBlob& flatbuffer,
+                                          const brillo::SecureBlob& main_key) {
+  flatbuffers::Verifier aes_verifier(flatbuffer.data(), flatbuffer.size());
+  if (!VerifyAesGcmEncryptedUSSBuffer(aes_verifier)) {
+    LOG(ERROR) << "The AesGcmEncryptedUSS flatbuffer is invalid";
+    return false;
+  }
+
+  auto encrypted_uss = GetAesGcmEncryptedUSS(flatbuffer.data());
+  if (!flatbuffers::IsFieldPresent(encrypted_uss,
+                                   AesGcmEncryptedUSS::VT_CIPHERTEXT) ||
+      !flatbuffers::IsFieldPresent(encrypted_uss, AesGcmEncryptedUSS::VT_IV) ||
+      !flatbuffers::IsFieldPresent(encrypted_uss, AesGcmEncryptedUSS::VT_TAG)) {
+    LOG(ERROR) << "AesGcmEncryptedUSS is missing fields";
+    return false;
+  }
+
+  brillo::SecureBlob ciphertext(encrypted_uss->ciphertext()->begin(),
+                                encrypted_uss->ciphertext()->end());
+  brillo::SecureBlob iv(encrypted_uss->iv()->begin(),
+                        encrypted_uss->iv()->end());
+  brillo::SecureBlob tag(encrypted_uss->tag()->begin(),
+                         encrypted_uss->tag()->end());
+
+  if (ciphertext.empty() || iv.empty() || tag.empty()) {
+    LOG(ERROR) << "AesGcmEncryptedUSS has empty fields";
+    return false;
+  }
+
+  brillo::SecureBlob serialized_uss;
+  if (!CryptoLib::AesGcmDecrypt(ciphertext, tag, main_key, iv,
+                                &serialized_uss)) {
+    LOG(ERROR) << "Failed to decrypt UserSecretStash";
+    return false;
+  }
+
+  flatbuffers::Verifier uss_verifier(serialized_uss.data(),
+                                     serialized_uss.size());
+  if (!VerifyUserSecretStashBufBuffer(uss_verifier)) {
+    LOG(ERROR) << "The UserSecretStashBuf flatbuffer is invalid";
+    return false;
+  }
+
+  auto uss = GetUserSecretStashBuf(serialized_uss.data());
+
+  brillo::SecureBlob file_system_key;
+  if (flatbuffers::IsFieldPresent(uss,
+                                  UserSecretStashBuf::VT_FILE_SYSTEM_KEY)) {
+    file_system_key = brillo::SecureBlob(uss->file_system_key()->begin(),
+                                         uss->file_system_key()->end());
+  }
+  if (!file_system_key.empty()) {
+    file_system_key_ = file_system_key;
+  }
+
+  brillo::SecureBlob reset_secret;
+  if (flatbuffers::IsFieldPresent(uss, UserSecretStashBuf::VT_RESET_SECRET)) {
+    reset_secret = brillo::SecureBlob(uss->reset_secret()->begin(),
+                                      uss->reset_secret()->end());
+  }
+  if (!reset_secret.empty()) {
+    reset_secret_ = reset_secret;
+  }
+
+  return true;
 }
 
 }  // namespace cryptohome

@@ -53,7 +53,10 @@ pkg_config("cryptohome-proto_config") {
 
 flatbuffer("cryptohome-flatbuffers") {
   flatc_out_dir = "include/cryptohome"
-  sources = [ "../user_secret_stash.fbs" ]
+  sources = [
+    "../flatbuffer_schemas/aes_gcm_encrypted_uss.fbs",
+    "../flatbuffer_schemas/user_secret_stash.fbs",
+  ]
 }
 
 proto_library("cryptohome-proto") {
