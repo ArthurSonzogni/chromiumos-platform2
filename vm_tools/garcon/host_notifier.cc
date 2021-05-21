@@ -199,6 +199,45 @@ bool HostNotifier::OpenTerminal(std::vector<std::string> args) {
   return true;
 }
 
+bool HostNotifier::SelectFile(const std::string& type,
+                              const std::string& title,
+                              const std::string& default_path,
+                              const std::string& allowed_extensions,
+                              std::vector<std::string>* files) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+  vm_tools::container::SelectFileRequest select_file_request;
+  select_file_request.set_token(token);
+  select_file_request.set_type(type);
+  select_file_request.set_title(title);
+  select_file_request.set_default_path(default_path);
+  select_file_request.set_allowed_extensions(allowed_extensions);
+
+  vm_tools::container::SelectFileResponse select_file_response;
+  grpc::Status status =
+      stub->SelectFile(&ctx, select_file_request, &select_file_response);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed request to select file, error: "
+                 << status.error_message();
+    return false;
+  }
+
+  std::copy(
+      std::make_move_iterator(select_file_response.mutable_files()->begin()),
+      std::make_move_iterator(select_file_response.mutable_files()->end()),
+      std::back_inserter(*files));
+  return true;
+}
+
 HostNotifier::HostNotifier(base::Closure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),

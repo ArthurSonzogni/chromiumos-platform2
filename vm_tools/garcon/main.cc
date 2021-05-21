@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iostream>
 #include <limits.h>
 #include <sys/socket.h>
 #include <syslog.h>
@@ -53,6 +54,12 @@ constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
 constexpr char kUrlSwitch[] = "url";
 constexpr char kTerminalSwitch[] = "terminal";
+constexpr char kSelectFileSwitch[] = "selectfile";
+constexpr char kSelectFileTypeSwitch[] = "type";
+constexpr char kSelectFileTitleSwitch[] = "title";
+constexpr char kSelectFilePathSwitch[] = "path";
+constexpr char kSelectFileExtensionsSwitch[] = "extensions";
+
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
 
@@ -158,6 +165,14 @@ void PrintUsage() {
             << "  --client: run as client and send message to host\n"
             << "Client Switches (only with --client):\n"
             << "  --url: opens all arguments as URLs in host browser\n"
+            << "  --terminal: opens terminal\n"
+            << "  --selectfile: open file dialog and return file: URL list\n"
+            << "Select File Switches (only with --client --selectfile):\n"
+            << "  --type: "
+               "open-file|open-multi-file|saveas-file|folder|upload-folder\n"
+            << "  --title: title for dialog\n"
+            << "  --path: default path (file: URL or path)\n"
+            << "  --extensions: comma-separated list of allowed extensions\n"
             << "Server Switches (only with --server):\n"
             << "  --allow_any_user: allow running as non-default uid\n";
 }
@@ -204,6 +219,22 @@ int main(int argc, char** argv) {
         return 0;
       else
         return -1;
+    } else if (cl->HasSwitch(kSelectFileSwitch)) {
+      std::string type = cl->GetSwitchValueNative(kSelectFileTypeSwitch);
+      std::string title = cl->GetSwitchValueNative(kSelectFileTitleSwitch);
+      std::string path = cl->GetSwitchValueNative(kSelectFilePathSwitch);
+      std::string extensions =
+          cl->GetSwitchValueNative(kSelectFileExtensionsSwitch);
+      std::vector<std::string> files;
+      if (vm_tools::garcon::HostNotifier::SelectFile(type, title, path,
+                                                     extensions, &files)) {
+        for (const auto& file : files) {
+          std::cout << file << std::endl;
+        }
+        return 0;
+      } else {
+        return -1;
+      }
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();

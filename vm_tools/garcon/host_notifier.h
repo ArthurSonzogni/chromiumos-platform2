@@ -44,6 +44,13 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // the terminal if any are passed.
   static bool OpenTerminal(std::vector<std::string> args);
 
+  // Sends a gRPC call to the host to request a SelectFile dialog be shown.
+  static bool SelectFile(const std::string& type,
+                         const std::string& title,
+                         const std::string& default_path,
+                         const std::string& allowed_extensions,
+                         std::vector<std::string>* files);
+
   ~HostNotifier() override;
 
   // Notifies the host that garcon is ready. This will send the initial update
