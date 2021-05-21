@@ -350,13 +350,6 @@ const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 1;
 const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 const char Metrics::kMetricCellularDrop[] = "Network.Shill.Cellular.Drop";
 
-// static
-const char Metrics::kMetricCellularFailure[] = "Network.Shill.Cellular.Failure";
-const int Metrics::kMetricCellularConnectionFailure = 0;
-const int Metrics::kMetricCellularDisconnectionFailure = 1;
-const int Metrics::kMetricCellularMaxFailure =
-    kMetricCellularDisconnectionFailure + 1;
-
 const char Metrics::kMetricCellularOutOfCreditsReason[] =
     "Network.Shill.Cellular.OutOfCreditsReason";
 const char Metrics::kMetricCellularSignalStrengthBeforeDrop[] =
@@ -1528,18 +1521,6 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
             kMetricCellularSignalStrengthBeforeDropMin,
             kMetricCellularSignalStrengthBeforeDropMax,
             kMetricCellularSignalStrengthBeforeDropNumBuckets);
-}
-
-void Metrics::NotifyCellularDeviceConnectionFailure() {
-  library_->SendEnumToUMA(kMetricCellularFailure,
-                          kMetricCellularConnectionFailure,
-                          kMetricCellularMaxFailure);
-}
-
-void Metrics::NotifyCellularDeviceDisconnectionFailure() {
-  library_->SendEnumToUMA(kMetricCellularFailure,
-                          kMetricCellularDisconnectionFailure,
-                          kMetricCellularMaxFailure);
 }
 
 void Metrics::NotifyCellularOutOfCredits(

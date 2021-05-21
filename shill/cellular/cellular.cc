@@ -1161,7 +1161,6 @@ void Cellular::Connect(CellularService* service, Error* error) {
 void Cellular::OnConnectReply(std::string iccid, const Error& error) {
   if (!error.IsSuccess()) {
     LOG(WARNING) << __func__ << ": Failed: " << error;
-    metrics()->NotifyCellularDeviceConnectionFailure();
     if (service_ && service_->iccid() == iccid)
       service_->SetFailure(Service::kFailureConnect);
     return;
@@ -1232,7 +1231,6 @@ void Cellular::OnDisconnectReply(const Error& error) {
   explicit_disconnect_ = false;
   if (!error.IsSuccess()) {
     LOG(WARNING) << __func__ << ": Failed: " << error;
-    metrics()->NotifyCellularDeviceDisconnectionFailure();
     OnDisconnectFailed();
     return;
   }

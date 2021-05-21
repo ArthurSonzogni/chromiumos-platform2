@@ -758,10 +758,6 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricCellularDropsPerHourMax;
   static const int kMetricCellularDropsPerHourMin;
   static const int kMetricCellularDropsPerHourNumBuckets;
-  static const char kMetricCellularFailure[];
-  static const int kMetricCellularConnectionFailure;
-  static const int kMetricCellularDisconnectionFailure;
-  static const int kMetricCellularMaxFailure;
   static const char kMetricCellularOutOfCreditsReason[];
   static const char kMetricCellularSignalStrengthBeforeDrop[];
   static const int kMetricCellularSignalStrengthBeforeDropMax;
@@ -1105,12 +1101,6 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();
   virtual void Notify3GPPRegistrationDelayedDropCanceled();
-
-  // Notifies this object about a cellular connection failure.
-  void NotifyCellularDeviceConnectionFailure();
-
-  // Notifies this object about a cellular disconnection failure.
-  void NotifyCellularDeviceDisconnectionFailure();
 
   // Notifies this object that a cellular service has been marked as
   // out-of-credits.

@@ -633,13 +633,6 @@ TEST_F(MetricsTest, CellularDrop) {
   }
 }
 
-TEST_F(MetricsTest, CellularDeviceFailure) {
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCellularFailure,
-                                      Metrics::kMetricCellularConnectionFailure,
-                                      Metrics::kMetricCellularMaxFailure));
-  metrics_.NotifyCellularDeviceConnectionFailure();
-}
-
 TEST_F(MetricsTest, CellularOutOfCreditsReason) {
   EXPECT_CALL(
       library_,
