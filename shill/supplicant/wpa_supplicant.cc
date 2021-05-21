@@ -138,6 +138,8 @@ const char WPASupplicant::kNetworkPropertyEngine[] = "engine";
 const char WPASupplicant::kNetworkPropertyEngineId[] = "engine_id";
 const char WPASupplicant::kNetworkPropertyFrequency[] = "frequency";
 const char WPASupplicant::kNetworkPropertyIeee80211w[] = "ieee80211w";
+const char WPASupplicant::kNetworkPropertyMACAddrPolicy[] = "mac_addr";
+const char WPASupplicant::kNetworkPropertyMACAddrValue[] = "mac_value";
 const char WPASupplicant::kNetworkPropertyMode[] = "mode";
 const char WPASupplicant::kNetworkPropertyScanSSID[] = "scan_ssid";
 const char WPASupplicant::kNetworkPropertySSID[] = "ssid";
@@ -182,6 +184,11 @@ const uint32_t WPASupplicant::kProactiveKeyCachingEnabled = 1;
 
 const char WPASupplicant::kSupplicantConfPath[] =
     SHIMDIR "/wpa_supplicant.conf";
+
+const int32_t WPASupplicant::kMACAddrPolicyHardware = 0;
+const int32_t WPASupplicant::kMACAddrPolicyFullRandom = 1;
+const int32_t WPASupplicant::kMACAddrPolicyOUIRandom = 2;
+const int32_t WPASupplicant::kMACAddrPolicyPersistentRandom = 3;
 
 // static
 bool WPASupplicant::ExtractRemoteCertification(const KeyValueStore& properties,

@@ -191,6 +191,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return service == current_service_.get();
   }
 
+  bool random_mac_supported() const { return random_mac_supported_; }
+
   bool IsPendingService(const WiFiService* service) const {
     return service == pending_service_.get();
   }
@@ -307,6 +309,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiTimerTest, ScanDoneDispatchesTasks);
   // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
+  FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
 
   using EndpointMap = std::map<const RpcIdentifier, WiFiEndpointRefPtr>;
   using ReverseServiceMap = std::map<const WiFiService*, RpcIdentifier>;

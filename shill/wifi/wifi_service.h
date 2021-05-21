@@ -13,9 +13,11 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
+#include "shill/mac_address.h"
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
 
@@ -36,6 +38,15 @@ class WiFiService : public Service {
 
   // Default signal level value without any endpoint.
   static const int16_t SignalLevelMin = std::numeric_limits<int16_t>::min();
+
+  // Enumeration of supported randomization policies.
+  enum class RandomizationPolicy : uint16_t {
+    Hardware = 0,      // Use hardware MAC address.
+    FullRandom,        // Change whole MAC every time we associate.
+    OUIRandom,         // Change non-OUI MAC part every time we associate.
+    PersistentRandom,  // Set per-SSID/profile persistent MAC.
+    // Not supported currently: NonPersistentRandom
+  };
 
   WiFiService(Manager* manager,
               WiFiProvider* provider,
@@ -208,9 +219,14 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
   FRIEND_TEST(WiFiServiceTest, ChooseDevice);
+  FRIEND_TEST(WiFiServiceTest, SetMACAddress);
+  FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
 
   static const char kAnyDeviceAddress[];
   static const int kSuspectedCredentialFailureThreshold;
+
+  static const char kStorageMACAddress[];
+  static const char kStorageMACPolicy[];
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
@@ -308,6 +324,17 @@ class WiFiService : public Service {
   // endpoints).
   WiFiRefPtr ChooseDevice();
 
+  // Return MAC address randomization policy setting.
+  std::string GetMACPolicy(Error* error);
+
+  // Set MAC address randomization policy.
+  bool SetMACPolicy(const std::string& policy, Error* error);
+
+  // Sets MAC address to be used for this service.  The input is optional, if
+  // provided the 'mac_str' is parsed and used otherwise random MAC value is
+  // generated.
+  void SetMACAddress(const std::string* mac_str = nullptr);
+
   void SetWiFi(const WiFiRefPtr& new_wifi);
 
   // Properties
@@ -321,6 +348,11 @@ class WiFiService : public Service {
   // with this service instead.
   const std::string mode_;
   bool hidden_ssid_;
+  // Random MAC address policy.
+  RandomizationPolicy random_mac_policy_ = RandomizationPolicy::Hardware;
+  // MAC Address used when |random_mac_policy_| is set to |PersistentRandom|.
+  // Empty otherwise.
+  MACAddress mac_address_;
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
   uint16_t physical_mode_;

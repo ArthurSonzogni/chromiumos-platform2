@@ -126,6 +126,8 @@ class WPASupplicant {
   static const char kNetworkPropertyEngineId[];
   static const char kNetworkPropertyFrequency[];
   static const char kNetworkPropertyIeee80211w[];
+  static const char kNetworkPropertyMACAddrPolicy[];
+  static const char kNetworkPropertyMACAddrValue[];
   static const char kNetworkPropertyMode[];
   static const char kNetworkPropertySSID[];
   static const char kNetworkPropertyScanSSID[];
@@ -172,6 +174,11 @@ class WPASupplicant {
   static const uint32_t kProactiveKeyCachingEnabled;
 
   static const char kSupplicantConfPath[];
+
+  static const int32_t kMACAddrPolicyHardware;
+  static const int32_t kMACAddrPolicyFullRandom;
+  static const int32_t kMACAddrPolicyOUIRandom;
+  static const int32_t kMACAddrPolicyPersistentRandom;
 
   // Retrieve the |subject| and |depth| of an a remote certifying entity,
   // as contained the the |properties| to a Certification event from

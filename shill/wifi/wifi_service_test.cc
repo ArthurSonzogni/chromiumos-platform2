@@ -1887,4 +1887,65 @@ TEST_F(WiFiServiceTest, ChooseDevice) {
   Mock::VerifyAndClearExpectations(mock_manager());
 }
 
+TEST_F(WiFiServiceTest, SetMACAddress) {
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
+  std::string addr_str = "foobar";
+  wifi_service->SetMACAddress(&addr_str);
+  EXPECT_NE(wifi_service->mac_address_.ToString(), "<UNSET>");
+  // Randomized address will at least set msb to a non-zero value.
+  EXPECT_NE(wifi_service->mac_address_.ToString(), "00:00:00:00:00:00");
+
+  wifi_service->SetMACAddress();
+  EXPECT_NE(wifi_service->mac_address_.ToString(), "<UNSET>");
+  EXPECT_NE(wifi_service->mac_address_.ToString(), "00:00:00:00:00:00");
+
+  addr_str = "aa:bb:cc:dd:ee:ff";
+  wifi_service->SetMACAddress(&addr_str);
+  EXPECT_EQ(wifi_service->mac_address_.ToString(), "aa:bb:cc:dd:ee:ff");
+}
+
+TEST_F(WiFiServiceTest, SetMACPolicy) {
+  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
+  Error ret;
+
+  EXPECT_FALSE(wifi_service->SetMACPolicy("foo", &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+  EXPECT_FALSE(wifi_service->SetMACPolicy("", &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+
+  wifi()->random_mac_supported_ = true;
+  EXPECT_TRUE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyHardware, &ret));
+  EXPECT_EQ(wifi_service->random_mac_policy_,
+            WiFiService::RandomizationPolicy::Hardware);
+  EXPECT_TRUE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyFullRandom, &ret));
+  EXPECT_EQ(wifi_service->random_mac_policy_,
+            WiFiService::RandomizationPolicy::FullRandom);
+  EXPECT_TRUE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyOUIRandom, &ret));
+  EXPECT_EQ(wifi_service->random_mac_policy_,
+            WiFiService::RandomizationPolicy::OUIRandom);
+  EXPECT_TRUE(
+      wifi_service->SetMACPolicy(kWifiRandomMacPolicyPersistentRandom, &ret));
+  EXPECT_EQ(wifi_service->random_mac_policy_,
+            WiFiService::RandomizationPolicy::PersistentRandom);
+  EXPECT_FALSE(wifi_service->SetMACPolicy(
+      kWifiRandomMacPolicyNonPersistentRandom, &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+
+  wifi()->random_mac_supported_ = false;
+  EXPECT_TRUE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyHardware, &ret));
+  EXPECT_EQ(wifi_service->random_mac_policy_,
+            WiFiService::RandomizationPolicy::Hardware);
+  EXPECT_FALSE(
+      wifi_service->SetMACPolicy(kWifiRandomMacPolicyFullRandom, &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+  EXPECT_FALSE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyOUIRandom, &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+  EXPECT_FALSE(
+      wifi_service->SetMACPolicy(kWifiRandomMacPolicyPersistentRandom, &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+  EXPECT_FALSE(wifi_service->SetMACPolicy(
+      kWifiRandomMacPolicyNonPersistentRandom, &ret));
+  EXPECT_FALSE(ret.IsSuccess());
+}
+
 }  // namespace shill

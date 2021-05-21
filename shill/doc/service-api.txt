@@ -1832,6 +1832,26 @@ Methods		dict GetProperties()
 			"802.11n".  This value is for informational
 			purposes only.
 
+		string WiFi.RandomMACPolicy [writeonly]
+
+			(WiFi only) This property defines MAC Address
+			Randomization for connections behavior.
+			Possible values:
+
+			"Hardware"	Use MAC Address from Hardware,
+
+			"FullRandom"	Randomize Address every time we associate,
+
+			"OUIRandom"	Same as Full Random, but keeps OUI part intact
+					(% local admin bit),
+
+			"PersistentRandom"	Use random MAC address, different for
+						each SSID but persistent between associations,
+
+			"NonPersistentRandom"	Use random MAC address, different for
+						each SSID and changing at least
+						every 24 hours (upon association).
+
 		string WiFi.HexSSID [readonly]
 
 			(WiFi only) This property holds a hex-encoded copy
