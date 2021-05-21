@@ -394,6 +394,7 @@ bool Profile::DBusSetAlwaysOnVpnMode(const std::string& mode, Error* error) {
     return false;
   }
   properties_.always_on_vpn_mode = mode;
+  Save();
   return true;
 }
 
@@ -419,6 +420,7 @@ bool Profile::DBusSetAlwaysOnVpnService(const RpcIdentifier& id, Error* error) {
     return false;
   }
   properties_.always_on_vpn_service = service->GetStorageIdentifier();
+  Save();
   return true;
 }
 
