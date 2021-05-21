@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/arc_collector.h"
+#include "crash-reporter/arcpp_cxx_collector.h"
 
 #include <memory>
 #include <unordered_map>
@@ -58,11 +58,11 @@ const char k64BitAuxv[] = R"(
 
 }  // namespace
 
-class MockArcCollector : public ArcCollector {
+class MockArcppCxxCollector : public ArcppCxxCollector {
  public:
-  MockArcCollector() : ArcCollector() {}
-  explicit MockArcCollector(ContextPtr context)
-      : ArcCollector(std::move(context)) {}
+  MockArcppCxxCollector() : ArcppCxxCollector() {}
+  explicit MockArcppCxxCollector(ContextPtr context)
+      : ArcppCxxCollector(std::move(context)) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
@@ -75,12 +75,12 @@ class Test : public ::testing::Test {
     ClearLog();
   }
 
-  std::unique_ptr<MockArcCollector> collector_;
+  std::unique_ptr<MockArcppCxxCollector> collector_;
 };
 
-class ArcCollectorTest : public Test {
+class ArcppCxxCollectorTest : public Test {
  protected:
-  class MockContext : public ArcCollector::Context {
+  class MockContext : public ArcppCxxCollector::Context {
    public:
     void SetArcPid(pid_t pid) { arc_pid_ = pid; }
     void AddProcess(pid_t pid,
@@ -162,8 +162,8 @@ class ArcCollectorTest : public Test {
  private:
   void SetUp() override {
     context_ = new MockContext;
-    collector_ =
-        std::make_unique<MockArcCollector>(ArcCollector::ContextPtr(context_));
+    collector_ = std::make_unique<MockArcppCxxCollector>(
+        ArcppCxxCollector::ContextPtr(context_));
     Initialize();
   }
 };
@@ -174,13 +174,13 @@ class ArcContextTest : public Test {
 
  private:
   void SetUp() override {
-    collector_ = std::make_unique<MockArcCollector>();
+    collector_ = std::make_unique<MockArcppCxxCollector>();
     Initialize();
     pid_ = getpid();
   }
 };
 
-TEST_F(ArcCollectorTest, IsArcProcess) {
+TEST_F(ArcppCxxCollectorTest, IsArcProcess) {
   EXPECT_FALSE(collector_->IsArcProcess(123));
   EXPECT_TRUE(FindLog("Failed to get PID of ARC container"));
   ClearLog();
@@ -209,7 +209,7 @@ TEST_F(ArcCollectorTest, IsArcProcess) {
   EXPECT_TRUE(GetLog().empty());
 }
 
-TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
+TEST_F(ArcppCxxCollectorTest, GetExeBaseNameForUserCrash) {
   context_->SetArcPid(100);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
   context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
@@ -220,7 +220,7 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
   EXPECT_EQ("chrome", exe);
 }
 
-TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
+TEST_F(ArcppCxxCollectorTest, GetExeBaseNameForArcCrash) {
   context_->SetArcPid(100);
   context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
   context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service",
@@ -241,7 +241,7 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
   EXPECT_EQ("com.arc.app", exe);
 }
 
-TEST_F(ArcCollectorTest, ShouldDump) {
+TEST_F(ArcppCxxCollectorTest, ShouldDump) {
   context_->SetArcPid(100);
   context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome",
                        k32BitAuxv);
@@ -257,27 +257,27 @@ TEST_F(ArcCollectorTest, ShouldDump) {
   EXPECT_TRUE(collector_->ShouldDump(123, 0, "arc_service", &reason));
   EXPECT_EQ("handling", reason);
 
-  EXPECT_FALSE(collector_->ShouldDump(123, ArcCollector::kSystemUserEnd,
+  EXPECT_FALSE(collector_->ShouldDump(123, ArcppCxxCollector::kSystemUserEnd,
                                       "com.arc.app", &reason));
   EXPECT_EQ("ignoring - not a system process", reason);
 }
 
-TEST_F(ArcCollectorTest, CorrectlyDetectBitness) {
+TEST_F(ArcppCxxCollectorTest, CorrectlyDetectBitness) {
   bool is_64_bit;
 
   context_->AddProcess(100, "arc", "app_process64", "zygote64", k64BitAuxv);
-  EXPECT_EQ(ArcCollector::kErrorNone,
+  EXPECT_EQ(ArcppCxxCollector::kErrorNone,
             collector_->Is64BitProcess(100, &is_64_bit));
   EXPECT_TRUE(is_64_bit);
 
   context_->AddProcess(101, "arc", "app_process32", "zygote32", k32BitAuxv);
-  EXPECT_EQ(ArcCollector::kErrorNone,
+  EXPECT_EQ(ArcppCxxCollector::kErrorNone,
             collector_->Is64BitProcess(101, &is_64_bit));
   EXPECT_FALSE(is_64_bit);
 }
 
 TEST_F(ArcContextTest, GetArcPid) {
-  EXPECT_FALSE(ArcCollector::IsArcRunning());
+  EXPECT_FALSE(ArcppCxxCollector::IsArcRunning());
 
   pid_t pid;
   EXPECT_FALSE(collector_->context().GetArcPid(&pid));

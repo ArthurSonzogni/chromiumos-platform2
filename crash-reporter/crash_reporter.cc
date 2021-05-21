@@ -25,8 +25,9 @@
 #include <libminijail.h>
 #include <metrics/metrics_library.h>
 
-#include "crash-reporter/arc_collector.h"
+#include "crash-reporter/arc_java_collector.h"
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/arcpp_cxx_collector.h"
 #include "crash-reporter/arcvm_cxx_collector.h"
 #include "crash-reporter/arcvm_kernel_collector.h"
 #include "crash-reporter/bert_collector.h"
@@ -462,46 +463,51 @@ int main(int argc, char* argv[]) {
 #endif  // USE_ARCVM
 
 #if USE_ARCPP || USE_ARCVM
-  ArcCollector arc_collector;
+  ArcJavaCollector arc_java_collector;
+  collectors.push_back({
+      .collector = &arc_java_collector,
+      .handlers = {{
+          // This handles Java app crashes of ARC++ and ARCVM.
+          .should_handle = !FLAGS_arc_java_crash.empty(),
+          .cb = base::BindRepeating(
+              &ArcJavaCollector::HandleCrash,
+              base::Unretained(&arc_java_collector), FLAGS_arc_java_crash,
+              arc_util::BuildProperty{
+                  .device = FLAGS_arc_device,
+                  .board = FLAGS_arc_board,
+                  .cpu_abi = FLAGS_arc_cpu_abi,
+                  .fingerprint = FLAGS_arc_fingerprint,
+              },
+              base::TimeDelta::FromMilliseconds(FLAGS_arc_uptime)),
+      }},
+  });
+#endif  // USE_ARCPP || USE_ARCVM
 
-  // Always initialize arc_collector so that we can use it to determine if the
-  // process is an arc process.
-  arc_collector.Initialize(FLAGS_directory_failure, false /* early */);
-  bool is_arc_process = !FLAGS_user.empty() && ArcCollector::IsArcRunning() &&
-                        arc_collector.IsArcProcess(user_crash_attrs.pid);
+#if USE_ARCPP
+  ArcppCxxCollector arcpp_cxx_collector;
+
+  // Always initialize arcpp_cxx_collector so that we can use it to determine
+  // whether the process is a process in the ARC++ container or a normal
+  // process of the host.
+  arcpp_cxx_collector.Initialize(FLAGS_directory_failure, false /* early */);
+  bool is_arcpp_cxx_process =
+      !FLAGS_user.empty() && ArcppCxxCollector::IsArcRunning() &&
+      arcpp_cxx_collector.IsArcProcess(user_crash_attrs.pid);
 
   collectors.push_back({
-      .collector = &arc_collector,
+      .collector = &arcpp_cxx_collector,
       .init = base::DoNothing(),
-      .handlers =
-          {
-#if USE_ARCPP
-              {
-                  // This handles native crashes of ARC++.
-                  .should_handle = is_arc_process,
-                  .cb = base::BindRepeating(&ArcCollector::HandleCrash,
-                                            base::Unretained(&arc_collector),
-                                            user_crash_attrs, nullptr),
-              },
-#endif  // USE_ARCPP
-              {
-                  // This handles Java app crashes of ARC++ and ARCVM.
-                  .should_handle = !FLAGS_arc_java_crash.empty(),
-                  .cb = base::BindRepeating(
-                      &ArcCollector::HandleJavaCrash,
-                      base::Unretained(&arc_collector), FLAGS_arc_java_crash,
-                      arc_util::BuildProperty{
-                          .device = FLAGS_arc_device,
-                          .board = FLAGS_arc_board,
-                          .cpu_abi = FLAGS_arc_cpu_abi,
-                          .fingerprint = FLAGS_arc_fingerprint,
-                      },
-                      base::TimeDelta::FromMilliseconds(FLAGS_arc_uptime)),
-              }},
+      .handlers = {{
+          // This handles native crashes of ARC++.
+          .should_handle = is_arcpp_cxx_process,
+          .cb = base::BindRepeating(&ArcppCxxCollector::HandleCrash,
+                                    base::Unretained(&arcpp_cxx_collector),
+                                    user_crash_attrs, nullptr),
+      }},
   });
-#else   // USE_ARCPP || USE_ARCVM
-  bool is_arc_process = false;
-#endif  // USE_ARCPP || USE_ARCVM
+#else   // USE_ARCPP
+  bool is_arcpp_cxx_process = false;
+#endif  // USE_ARCPP
 
   UserCollector user_collector;
   collectors.push_back({
@@ -510,25 +516,25 @@ int main(int argc, char* argv[]) {
                                   base::Unretained(&user_collector),
                                   my_path.value(), FLAGS_core2md_failure,
                                   FLAGS_directory_failure, FLAGS_early),
-      .handlers = {{
-                       // NOTE: This is not handling a crash; it's instead
-                       // initializing the entire crash reporting system.
-                       // So, leave |cb| unset and call InitializeSystem
-                       // manually below.
-                       .should_handle = FLAGS_init,
-                   },
-                   {
-                       .should_handle = FLAGS_clean_shutdown,
-                       // Leave cb unset: clean_shutdown requires other
-                       // collectors, so it's handled later.
-                   },
-                   {
-                       .should_handle = !FLAGS_user.empty() && !is_arc_process,
-                       .cb = base::BindRepeating(
-                           &UserCollector::HandleCrash,
-                           base::Unretained(&user_collector), user_crash_attrs,
-                           nullptr),
-                   }},
+      .handlers =
+          {{
+               // NOTE: This is not handling a crash; it's instead
+               // initializing the entire crash reporting system.
+               // So, leave |cb| unset and call InitializeSystem
+               // manually below.
+               .should_handle = FLAGS_init,
+           },
+           {
+               .should_handle = FLAGS_clean_shutdown,
+               // Leave cb unset: clean_shutdown requires other
+               // collectors, so it's handled later.
+           },
+           {
+               .should_handle = !FLAGS_user.empty() && !is_arcpp_cxx_process,
+               .cb = base::BindRepeating(&UserCollector::HandleCrash,
+                                         base::Unretained(&user_collector),
+                                         user_crash_attrs, nullptr),
+           }},
   });
 
   EphemeralCrashCollector ephemeral_crash_collector;

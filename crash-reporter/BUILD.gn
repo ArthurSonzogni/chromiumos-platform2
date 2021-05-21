@@ -98,9 +98,13 @@ static_library("libcrash_reporter") {
 
   if (use.arcpp || use.arcvm) {
     sources += [
-      "arc_collector.cc",
+      "arc_java_collector.cc",
       "arc_util.cc",
     ]
+  }
+
+  if (use.arcpp) {
+    sources += [ "arcpp_cxx_collector.cc" ]
   }
 
   if (use.arcvm) {
@@ -400,10 +404,11 @@ if (use.test) {
     ]
 
     if (use.arcpp || use.arcvm) {
-      sources += [
-        "arc_collector_test.cc",
-        "arc_util_test.cc",
-      ]
+      sources += [ "arc_util_test.cc" ]
+    }
+
+    if (use.arcpp) {
+      sources += [ "arcpp_cxx_collector_test.cc" ]
     }
 
     if (use.arcvm) {

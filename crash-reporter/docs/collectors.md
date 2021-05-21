@@ -148,16 +148,18 @@ Collects unclean shutdown events.
 Here are the collectors that are triggered on demand while the OS is running.
 They are invoked either by the kernel or by other program.
 
-## arc_collector
+## arc_java_collector
 
-Collects [ARC++] crashes from programs inside the [ARC++] container.
-This handles Android NDK and Java crashes. For Java crashes, it also collects
-[ARCVM]'s one.
+Collects Java crashes from programs inside the [ARC++] container or [ARCVM].
+
+## arcpp_cxx_collector
+
+Collects crashes from Android NDK programs inside the [ARC++] container.
 It does not handle crashes from [ARC++] support daemons that run outside of the
 container as those are collected like any other userland crash via the main
 [user_collector].
 
-[arc_collector] shares a lot of code with [user_collector] so it can overlay
+[arcpp_cxx_collector] shares a lot of code with [user_collector] so it can overlay
 [ARC++]-specific processing details.
 
 ## arcvm_kernel_collector
@@ -414,7 +416,8 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 
 [anomaly_detector]: ../anomaly_detector.cc
 [anomaly-detector.conf]: ../init/anomaly-detector.conf
-[arc_collector]: ../arc_collector.cc
+[arc_java_collector]: ../arc_java_collector.cc
+[arcpp_cxx_collector]: ../arcpp_cxx_collector.cc
 [arcvm_kernel_collector]: ../arcvm_kernel_collector.cc
 [arcvm_cxx_collector]: ../arcvm_cxx_collector.cc
 [bert_collector]: ../bert_collector.cc

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // UserCollectorBase implements common functionality shared by user collectors.
-// (e.g. user_collector, arc_collector).
+// (e.g. user_collector, arcpp_cxx_collector).
 
 #ifndef CRASH_REPORTER_USER_COLLECTOR_BASE_H_
 #define CRASH_REPORTER_USER_COLLECTOR_BASE_H_

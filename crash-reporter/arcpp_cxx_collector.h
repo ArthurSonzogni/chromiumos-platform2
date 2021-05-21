@@ -1,22 +1,18 @@
-// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// The ARC collector reports crashes that happen in the ARC++ container (android
-// on chrome os).
-// If a process crashes (not just exits abnormally), the kernel invokes
-// crash_reporter via /proc/sys/kernel/core_pattern, which in turn calls the ARC
-// collector if the crash happened in that container namespace.
+// The ARC++ C++ collector reports C++ crashes that happen in the ARC++
+// container. If a process crashes (not just exits abnormally), the kernel
+// invokes crash_reporter via /proc/sys/kernel/core_pattern, which in turn calls
+// the ARC++ C++ collector if the crash happened in that container namespace.
 
-#ifndef CRASH_REPORTER_ARC_COLLECTOR_H_
-#define CRASH_REPORTER_ARC_COLLECTOR_H_
+#ifndef CRASH_REPORTER_ARCPP_CXX_COLLECTOR_H_
+#define CRASH_REPORTER_ARCPP_CXX_COLLECTOR_H_
 
 #include <memory>
-#include <sstream>
 #include <string>
-#include <unordered_map>
 
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -24,7 +20,7 @@
 #include "crash-reporter/user_collector_base.h"
 
 // Collector for system crashes in the ARC container.
-class ArcCollector : public UserCollectorBase {
+class ArcppCxxCollector : public UserCollectorBase {
  public:
   struct Context {
     virtual ~Context() = default;
@@ -38,12 +34,12 @@ class ArcCollector : public UserCollectorBase {
 
   using ContextPtr = std::unique_ptr<Context>;
 
-  ArcCollector();
-  explicit ArcCollector(ContextPtr context);
-  ArcCollector(const ArcCollector&) = delete;
-  ArcCollector& operator=(const ArcCollector&) = delete;
+  ArcppCxxCollector();
+  explicit ArcppCxxCollector(ContextPtr context);
+  ArcppCxxCollector(const ArcppCxxCollector&) = delete;
+  ArcppCxxCollector& operator=(const ArcppCxxCollector&) = delete;
 
-  ~ArcCollector() override = default;
+  ~ArcppCxxCollector() override = default;
 
   const Context& context() const { return *context_; }
 
@@ -53,21 +49,14 @@ class ArcCollector : public UserCollectorBase {
   // during teardown.
   bool IsArcProcess(pid_t pid) const;
 
-  // Reads a Java crash log for the given |crash_type| from standard input, or
-  // closes the stream if reporting is disabled.
-  // |uptime| can be zero if the value is unknown.
-  bool HandleJavaCrash(const std::string& crash_type,
-                       const arc_util::BuildProperty& build_property,
-                       base::TimeDelta uptime);
-
   static bool IsArcRunning();
   static bool GetArcPid(pid_t* arc_pid);
 
  private:
-  FRIEND_TEST(ArcCollectorTest, CorrectlyDetectBitness);
-  FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);
-  FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
-  FRIEND_TEST(ArcCollectorTest, ShouldDump);
+  FRIEND_TEST(ArcppCxxCollectorTest, CorrectlyDetectBitness);
+  FRIEND_TEST(ArcppCxxCollectorTest, GetExeBaseNameForUserCrash);
+  FRIEND_TEST(ArcppCxxCollectorTest, GetExeBaseNameForArcCrash);
+  FRIEND_TEST(ArcppCxxCollectorTest, ShouldDump);
 
   // Shift for UID namespace in ARC.
   static constexpr uid_t kUserShift = 655360;
@@ -77,7 +66,7 @@ class ArcCollector : public UserCollectorBase {
 
   class ArcContext : public Context {
    public:
-    explicit ArcContext(ArcCollector* collector) : collector_(collector) {}
+    explicit ArcContext(ArcppCxxCollector* collector) : collector_(collector) {}
 
     bool GetArcPid(pid_t* pid) const override;
     bool GetPidNamespace(pid_t pid, std::string* ns) const override;
@@ -86,7 +75,7 @@ class ArcCollector : public UserCollectorBase {
     bool ReadAuxvForProcess(pid_t pid, std::string* contents) const override;
 
    private:
-    ArcCollector* const collector_;
+    ArcppCxxCollector* const collector_;
   };
 
   // CrashCollector overrides.
@@ -107,18 +96,7 @@ class ArcCollector : public UserCollectorBase {
   // Adds the |process|, |crash_type| and Chrome version as metadata.
   // |uptime| can be zero if the value is unknown.
   void AddArcMetaData(const std::string& process,
-                      const std::string& crash_type,
-                      base::TimeDelta uptime);
-
-  using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
-
-  bool CreateReportForJavaCrash(const std::string& crash_type,
-                                const arc_util::BuildProperty& build_property,
-                                const CrashLogHeaderMap& map,
-                                const std::string& exception_info,
-                                const std::string& log,
-                                base::TimeDelta uptime,
-                                bool* out_of_capacity);
+                      const std::string& crash_type);
 
   // Returns whether the process identified by |pid| is 32- or 64-bit.
   ErrorType Is64BitProcess(int pid, bool* is_64_bit) const;
@@ -126,4 +104,4 @@ class ArcCollector : public UserCollectorBase {
   const ContextPtr context_;
 };
 
-#endif  // CRASH_REPORTER_ARC_COLLECTOR_H_
+#endif  // CRASH_REPORTER_ARCPP_CXX_COLLECTOR_H_
