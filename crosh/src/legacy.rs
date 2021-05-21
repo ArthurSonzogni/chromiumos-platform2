@@ -15,7 +15,6 @@ const BASE_COMMANDS: &[&str] = &[
     "authpolicy_debug",
     "battery_firmware",
     "battery_test",
-    "borealis",
     "bt_console",
     "chaps_debug",
     "connectivity",
