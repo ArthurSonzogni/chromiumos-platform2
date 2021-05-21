@@ -1310,5 +1310,19 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <signal name="PacketCaptureStart">
+      <tp:docstring>
+        The signal is emitted when a packet capture process starts in debugd.
+        The signal is expected to be received by Chrome to send a notification
+        to the user to indicate the ongoing packet capture.
+      </tp:docstring>
+    </signal>
+    <signal name="PacketCaptureStop">
+      <tp:docstring>
+        The signal is emitted when the packet capture process is stopped in
+        debugd. The signal is expected to be received by Chrome to close the
+        notification about packet capture.
+      </tp:docstring>
+    </signal>
   </interface>
 </node>

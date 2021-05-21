@@ -58,6 +58,10 @@ const char kDeleteArcBugReportBackup[] = "DeleteArcBugReportBackup";
 const char kKernelFeatureList[] = "KernelFeatureList";
 const char kKernelFeatureEnable[] = "KernelFeatureEnable";
 
+// Signals.
+const char kPacketCaptureStartSignal[] = "PacketCaptureStart";
+const char kPacketCaptureStopSignal[] = "PacketCaptureStop";
+
 // Properties.
 const char kCrashSenderTestMode[] = "CrashSenderTestMode";
 

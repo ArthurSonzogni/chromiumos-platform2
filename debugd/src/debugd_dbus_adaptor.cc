@@ -297,12 +297,21 @@ bool DebugdDBusAdaptor::PacketCaptureStart(
     const base::ScopedFD& outfd,
     const brillo::VariantDictionary& options,
     std::string* handle) {
-  return packet_capture_tool_->Start(statfd, outfd, options, handle, error);
+  bool packet_capture_started =
+      packet_capture_tool_->Start(statfd, outfd, options, handle, error);
+  if (packet_capture_started) {
+    SendPacketCaptureStartSignal();
+  }
+  return packet_capture_started;
 }
 
 bool DebugdDBusAdaptor::PacketCaptureStop(brillo::ErrorPtr* error,
                                           const std::string& handle) {
-  return packet_capture_tool_->Stop(handle, error);
+  bool packet_capture_stopped = packet_capture_tool_->Stop(handle, error);
+  if (packet_capture_stopped) {
+    SendPacketCaptureStopSignal();
+  }
+  return packet_capture_stopped;
 }
 
 bool DebugdDBusAdaptor::LogKernelTaskStates(brillo::ErrorPtr* error) {
