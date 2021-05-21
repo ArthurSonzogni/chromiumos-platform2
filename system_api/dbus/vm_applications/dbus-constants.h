@@ -17,9 +17,6 @@ const char kVmApplicationsServiceUpdateApplicationListMethod[] =
     "UpdateApplicationList";
 const char kVmApplicationsServiceLaunchTerminalMethod[] = "LaunchTerminal";
 const char kVmApplicationsServiceUpdateMimeTypesMethod[] = "UpdateMimeTypes";
-const char kVmApplicationsServiceGetDiskInfoMethod[] = "GetDiskInfo";
-const char kVmApplicationsServiceRequestSpaceMethod[] = "RequestSpace";
-const char kVmApplicationsServiceReleaseSpaceMethod[] = "ReleaseSpace";
 
 }  // namespace apps
 }  // namespace vm_tools
