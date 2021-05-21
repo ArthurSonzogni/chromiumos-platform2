@@ -204,6 +204,38 @@ message OpenTerminalRequest {
   repeated string params = 2;
 }
 
+// Request protobuf for requesting the host to launch a SelectFile dialog.
+message SelectFileRequest {
+  // The security token the container was given.
+  string token = 1;
+
+  // The type of file dialog to be shown.
+  // 'open-file': For opening files. Default.
+  // 'open-multi-file': Allow opening multiple files.
+  // 'saveas-file': For saving a file. Allows nonexistent file to be selected.
+  // 'folder': For selecting a folder. Allows nonexistent folder to be selected.
+  // 'upload-folder': For uploading a folder.
+  string type = 2;
+
+  // The title to be displayed in the dialog. If this string is empty, the
+  // default title is used.
+  string title = 3;
+
+  // The default path and suggested file name to be shown in the dialog. This
+  // only works for SELECT_SAVEAS_FILE and SELECT_OPEN_FILE.
+  // Can be an empty string to indicate the platform default.
+  string default_path = 4;
+
+  // Comma separated list of file extensions to filter which files are shown in
+  // the dialog. Leave empty to show all files. Do not include leading dot.
+  string allowed_extensions = 5;
+}
+
+// Response to SelectFileRequest contains list of files selected by user.
+message SelectFileResponse {
+  repeated string files = 1;
+}
+
 // Request protobuf for updating the container MIME types.
 message UpdateMimeTypesRequest {
   // The security token the container was given.
@@ -312,6 +344,9 @@ service ContainerListener {
   // Called by a VM to forward a Security Key request to gnubbyd extension.
   rpc ForwardSecurityKeyMessage(ForwardSecurityKeyMessageRequest)
       returns (ForwardSecurityKeyMessageResponse);
+
+  // Called by a container to request the host to launch a SelectFile dialog.
+  rpc SelectFile(SelectFileRequest) returns (SelectFileResponse);
 
   // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
   // well.
