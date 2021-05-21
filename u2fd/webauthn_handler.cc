@@ -1087,7 +1087,7 @@ GetAssertionResponse::GetAssertionStatus WebAuthnHandler::DoU2fSign(
     struct u2f_sign_resp sign_resp = {};
     return SendU2fSignWaitForPresence(&sign_req, &sign_resp, signature);
   } else {
-    return GetAssertionResponse::INVALID_REQUEST;
+    return GetAssertionResponse::UNKNOWN_CREDENTIAL_ID;
   }
 }
 
@@ -1371,7 +1371,7 @@ WebAuthnHandler::DoU2fSignCheckOnly(
     sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
     brillo::SecureClearContainer(sign_req.userSecret);
   } else {
-    return HasCredentialsResponse::INVALID_REQUEST;
+    return HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
   }
 
   // Return status of 0 indicates the credential is valid.
