@@ -81,6 +81,9 @@ config("compiler_defaults") {
               "-Wl,-z,now",
               "-Wl,--as-needed",
             ]
+  if (link_stdcppfs) {
+    libs += [ "stdc++fs" ]
+  }
   if (enable_werror) {
     cflags += [ "-Werror" ]
   }

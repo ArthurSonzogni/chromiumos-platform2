@@ -46,6 +46,12 @@ declare_args() {
   # Additional flags for C and C++ linker.
   external_ldflags = []
 
+  # Whether to link against libstdc++fs. Set this to true if the compiler
+  # version requires -lstdc++fs to use std::filesystem. Useful when compiling
+  # common-mk projects outside Chrome OS where there are many compiler
+  # variations.
+  link_stdcppfs = false
+
   # Set this to true if you want to activate the debug mode.
   is_debug = false
 
