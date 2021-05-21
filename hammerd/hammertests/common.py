@@ -13,6 +13,11 @@ import subprocess
 
 import hammerd_api # pylint: disable=import-error
 
+
+def cros_config(path, key):
+  cmd = ['cros_config', path, key]
+  return subprocess.check_output(cmd, encoding='utf-8')
+
 # The root path of the hammertests.
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 IMAGE_DIR = os.path.join(ROOT_DIR, 'images')
@@ -27,12 +32,12 @@ BASE_TABLE = {
     'kakadu': 'moonball',
 }
 
-board_name_cmd = 'mosys platform model'
-BOARD_NAME = subprocess.check_output(board_name_cmd, shell=True,
-                                     encoding='utf-8')
+BOARD_NAME = cros_config('/', 'name')
 BASE_NAME = BASE_TABLE[BOARD_NAME.rstrip()]
 
 # Device-dependent information.
+# Deprecated, new devices should use cros_config instead.
+# (b/188625010)
 if BASE_NAME == 'staff':
   BASE_VENDOR_ID = 0x18d1
   BASE_PRODUCT_ID = 0x502b
@@ -76,7 +81,12 @@ elif BASE_NAME == 'zed':
   BASE_CONN_GPIO = 'EN_BASE'
   TP = '/lib/firmware/%s-touch.fw' % BASE_NAME
 else:
-  print('Error: unknown board: %s' % BASE_NAME)
+  BASE_VENDOR_ID = int(cros_config('/detachable-base', 'vendor-id'))
+  BASE_PRODUCT_ID = int(cros_config('/detachable-base', 'product-id'))
+  BASE_USB_PATH = cros_config('/detachable-base', 'usb-path')
+  BASE_CONN_GPIO = None
+  TP = os.path.join('/lib/firmware/',
+                    cros_config('/detachable-base', 'touch-image-name'))
 
 # Status of flash protect.
 EC_FLASH_PROTECT_RO_AT_BOOT = (1 << 0)
@@ -118,8 +128,12 @@ def connect_usb(updater):
 
 def sim_disconnect_connect(updater):
   print('Simulate hammer disconnect/ reconnect to reset base')
-  subprocess.call('ectool gpioset ' + BASE_CONN_GPIO + ' 0', shell=True)
-  subprocess.call('ectool gpioset ' + BASE_CONN_GPIO + ' 1', shell=True)
+  if BASE_CONN_GPIO:
+    subprocess.call(['ectool', 'gpioset', BASE_CONN_GPIO, '0'])
+    subprocess.call(['ectool', 'gpioset', BASE_CONN_GPIO, '1'])
+  else:
+    subprocess.call(['ectool', 'basestate', 'detach'])
+    subprocess.call(['ectool', 'basestate', 'attach'])
   updater.CloseUsb()
   # Need to give base time to be visible to lid
   time.sleep(3)
