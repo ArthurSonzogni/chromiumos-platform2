@@ -1397,6 +1397,16 @@ void Datapath::DeleteAdbPortAccessRule(const std::string& ifname) {
                                kAdbProxyTcpListenPort, ifname);
 }
 
+bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
+  if (process_runner_->sysctl_w("net.netfilter.nf_conntrack_helper",
+                                enable_helpers ? "1" : "0") != 0) {
+    LOG(ERROR) << "Failed to " << (enable_helpers ? "enable" : "disable")
+               << " netfilter conntrack helpers";
+    return false;
+  }
+  return true;
+}
+
 void Datapath::SetIfnameIndex(const std::string& ifname, int ifindex) {
   if_nametoindex_[ifname] = ifindex;
 }

@@ -221,6 +221,9 @@ TEST_F(ArcServiceTest, ContainerImpl_Start) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostIP, 30))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+  // Needed because the service will be stopped in dtor.
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
@@ -392,11 +395,13 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   // Expectations for arc0 teardown.
   EXPECT_CALL(*datapath_,
               MaskInterfaceFlags(StrEq("arcbr0"), IFF_DEBUG, IFF_UP))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetharc0")));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC);
   svc->Start(kTestPID);
@@ -453,6 +458,9 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+  // Required because the service will be stopped in dtor.
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC_VM);
   svc->Start(kTestPID);
@@ -550,6 +558,7 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   // Expectations for "arc0" teardown.
   EXPECT_CALL(*datapath_,
               MaskInterfaceFlags(StrEq("arcbr0"), IFF_DEBUG, IFF_UP))
@@ -561,6 +570,7 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap3")));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap4")));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap5")));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(GuestMessage::ARC_VM);
   svc->Start(kTestPID);

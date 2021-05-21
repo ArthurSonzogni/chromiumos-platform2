@@ -1183,4 +1183,16 @@ TEST(DatapathTest, ArcBridgeName) {
   EXPECT_LT(ifname.length(), IFNAMSIZ);
 }
 
+TEST(DatapathTest, SetConntrackHelpers) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_sysctl_w(runner, "net.netfilter.nf_conntrack_helper", "1");
+  Verify_sysctl_w(runner, "net.netfilter.nf_conntrack_helper", "0");
+
+  Datapath datapath(&runner, &firewall);
+  datapath.SetConntrackHelpers(true);
+  datapath.SetConntrackHelpers(false);
+}
+
 }  // namespace patchpanel

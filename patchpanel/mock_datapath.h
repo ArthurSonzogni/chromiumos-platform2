@@ -73,6 +73,7 @@ class MockDatapath : public Datapath {
   MOCK_METHOD2(RemoveIPv6Forwarding,
                void(const std::string& ifname1, const std::string& ifname2));
   MOCK_METHOD3(AddIPv4Route, bool(uint32_t gw, uint32_t dst, uint32_t netmask));
+  MOCK_METHOD1(SetConntrackHelpers, bool(const bool enable_helpers));
 };
 
 }  // namespace patchpanel

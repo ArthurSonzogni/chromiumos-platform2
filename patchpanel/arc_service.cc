@@ -337,6 +337,12 @@ bool ArcService::Start(uint32_t id) {
   for (const auto& [ifname, type] : shill_devices_)
     AddDevice(ifname, type);
 
+  // Enable conntrack helpers (b/172214190).
+  if (!datapath_->SetConntrackHelpers(true)) {
+    LOG(ERROR) << "Failed to enable conntrack helpers";
+    return false;
+  }
+
   return true;
 }
 
@@ -351,6 +357,9 @@ void ArcService::Stop(uint32_t id) {
     LOG(ERROR) << "Mismatched ARCVM CIDs " << id_ << " != " << id;
     return;
   }
+
+  if (!datapath_->SetConntrackHelpers(false))
+    LOG(ERROR) << "Failed to disable conntrack helpers";
 
   // Stop Shill <-> ARC mapped devices.
   for (const auto& [ifname, type] : shill_devices_)

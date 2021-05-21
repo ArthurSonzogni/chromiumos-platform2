@@ -261,6 +261,9 @@ class Datapath {
   virtual bool AddAdbPortAccessRule(const std::string& ifname);
   virtual void DeleteAdbPortAccessRule(const std::string& ifname);
 
+  // Enables or disables netfilter conntrack helpers.
+  virtual bool SetConntrackHelpers(bool enable_helpers);
+
   // Create (or delete) DNAT rules for redirecting DNS queries from system
   // services to the nameservers of a particular physical networks. These
   // DNAT rules are only applied if a VPN is connected and allows system
