@@ -99,6 +99,9 @@ class Port {
   // registered.
   void ReportCableMetrics(Metrics* metrics);
 
+  // Reports port level metrics.
+  void ReportPortMetrics(Metrics* metrics);
+
  private:
   friend class PortTest;
   FRIEND_TEST(PortTest, TestBasicAdd);
@@ -127,6 +130,9 @@ class Port {
   // Tracks the user active state when a mode was last entered.
   bool user_active_on_mode_entry_;
   TypeCMode current_mode_;
+  // Field which tracks whether port metrics have been reported. This
+  // prevents duplicate reporting.
+  bool metrics_reported_;
 };
 
 }  // namespace typecd

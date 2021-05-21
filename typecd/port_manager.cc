@@ -287,6 +287,11 @@ void PortManager::ReportMetrics(int port_num) {
   if (port->IsCableDiscoveryComplete()) {
     port->ReportCableMetrics(metrics_);
   }
+
+  // The only Port metric we are reporting is cable misconfiguration; we only
+  // need to report that if we're on a system supporting USB4/TBT.
+  if (GetModeEntrySupported())
+    port->ReportPortMetrics(metrics_);
 }
 
 void PortManager::RunModeEntry(int port_num) {

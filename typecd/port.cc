@@ -23,7 +23,8 @@ Port::Port(const base::FilePath& syspath, int port_num)
     : syspath_(syspath),
       port_num_(port_num),
       user_active_on_mode_entry_(false),
-      current_mode_(TypeCMode::kNone) {
+      current_mode_(TypeCMode::kNone),
+      metrics_reported_(false) {
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
 }
 
@@ -72,6 +73,10 @@ void Port::RemovePartner() {
     return;
   }
   partner_.reset();
+
+  // Since a partner is disconnected, we should reset the |metrics_reported_|
+  // flag so that metrics can be reported on the next connect.
+  metrics_reported_ = false;
 
   LOG(INFO) << "Partner removed for port " << port_num_;
 }
@@ -332,6 +337,22 @@ void Port::ReportCableMetrics(Metrics* metrics) {
   }
 
   cable_->ReportMetrics(metrics);
+}
+
+void Port::ReportPortMetrics(Metrics* metrics) {
+  if (!metrics || metrics_reported_)
+    return;
+
+  if (!IsCableDiscoveryComplete() || !IsPartnerDiscoveryComplete())
+    return;
+
+  if (CanEnterUSB4() == ModeEntryResult::kCableError)
+    metrics->ReportWrongCableError(WrongConfigurationMetric::kUSB4WrongCable);
+  else if (CanEnterTBTCompatibilityMode() == ModeEntryResult::kCableError)
+    metrics->ReportWrongCableError(WrongConfigurationMetric::kTBTWrongCable);
+
+  metrics_reported_ = true;
+  return;
 }
 
 }  // namespace typecd

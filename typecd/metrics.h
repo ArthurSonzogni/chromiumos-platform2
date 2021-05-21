@@ -40,6 +40,14 @@ enum class CableSpeedMetric {
   kMaxValue = kTBTOnly10G20G,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class WrongConfigurationMetric {
+  kTBTWrongCable = 0,
+  kUSB4WrongCable = 1,
+  kMaxValue = kUSB4WrongCable,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -51,6 +59,7 @@ class Metrics {
 
   void ReportPartnerType(PartnerTypeMetric type);
   void ReportCableSpeed(CableSpeedMetric speed);
+  void ReportWrongCableError(WrongConfigurationMetric value);
 
  private:
   MetricsLibrary metrics_library_;
