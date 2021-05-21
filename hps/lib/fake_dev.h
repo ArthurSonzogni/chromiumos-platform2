@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <deque>
+#include <map>
 #include <memory>
 
 #include <base/memory/ref_counted.h>
@@ -60,6 +61,7 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
   void SetVersion(uint16_t version) { this->version_ = version; }
   void SetF1Result(uint16_t result) { this->f1_result_ = result & 0x7FFF; }
   void SetF2Result(uint16_t result) { this->f2_result_ = result & 0x7FFF; }
+  size_t GetBankLen(int bank);
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
   // Create an instance of a simulator.
@@ -115,6 +117,8 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
   void MsgStop();
   void Send(const Msg& m);
   std::deque<Msg> q_;                // Message queue
+  std::map<int, size_t> bank_len_;   // Count of writes to banks.
+  base::Lock bank_lock_;             // Lock for bank_len_
   base::Lock qlock_;                 // Lock for queue
   base::WaitableEvent ev_;           // Signal for messages available
   Stage stage_;                      // Current stage of the device

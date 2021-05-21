@@ -61,6 +61,7 @@ enum RFeat {
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;
+inline constexpr int kFeatures = 2;  // Maximum of 2 features at this stage.
 /*
  * The interface allows up to 64 banks, but only 16 are
  * usable at this stage because of the requirement to check

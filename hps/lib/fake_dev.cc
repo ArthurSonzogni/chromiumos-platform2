@@ -35,6 +35,7 @@
 #include <atomic>
 #include <deque>
 #include <iostream>
+#include <map>
 
 #include <base/check.h>
 #include <base/memory/ref_counted.h>
@@ -152,6 +153,8 @@ void FakeHps::Run() {
   // Check for boot fault.
   if (this->Flag(FakeHps::Flags::kBootFault)) {
     this->SetStage(Stage::kFault);
+  } else {
+    this->SetStage(Stage::kStage0);
   }
   for (;;) {
     // Main message loop.
@@ -212,6 +215,10 @@ void FakeHps::WriteRegister(int r, uint16_t v) {
 // At the start of the write, clear the bank ready bit.
 // The simulator will set it again once the memory write completes.
 bool FakeHps::WriteMemory(int base, const uint8_t* mem, size_t len) {
+  // Ensure minimum length (4 bytes of address).
+  if (len < sizeof(uint32_t)) {
+    return false;
+  }
   this->bank_.fetch_and(~(1 << base));
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
@@ -220,8 +227,9 @@ bool FakeHps::WriteMemory(int base, const uint8_t* mem, size_t len) {
   m.length = len;
   this->Send(m);
   ev.Wait();
-  // Device response is 1 for OK, 0 for not OK.
-  return res.load() != 0;
+  // Device response is number of bytes written.
+  // Return true if write succeeded.
+  return res.load() == len;
 }
 
 uint16_t FakeHps::ReadRegActual(int reg) {
@@ -326,30 +334,37 @@ void FakeHps::WriteRegActual(int reg, uint16_t value) {
   }
 }
 
-// Returns 1 for OK, 0 for fault.
-// TODO(amcrae): Store the memory written for each bank so
-// it can be checked against what was requested to be written.
+// Returns the number of bytes written.
+// The length includes 4 bytes of prepended address.
 uint16_t FakeHps::WriteMemActual(int bank, const uint8_t* data, size_t len) {
+  base::AutoLock l(this->bank_lock_);
   if (this->Flag(FakeHps::Flags::kMemFail)) {
     return 0;
   }
   switch (this->stage_) {
     case Stage::kStage0:
-      // Stage1 allows the MCU flash.
+      // Stage0 allows the MCU flash.
       if (bank == 0) {
-        return 1;
+        this->bank_len_[bank] += len - sizeof(uint32_t);
+        return len;
       }
       break;
     case Stage::kStage1:
       // Stage1 allows the SPI flash.
       if (bank == 1) {
-        return 1;
+        this->bank_len_[bank] += len - sizeof(uint32_t);
+        return len;
       }
       break;
     default:
       break;
   }
   return 0;
+}
+
+size_t FakeHps::GetBankLen(int bank) {
+  base::AutoLock l(this->bank_lock_);
+  return this->bank_len_[bank];
 }
 
 void FakeHps::MsgStop() {

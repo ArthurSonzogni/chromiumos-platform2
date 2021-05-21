@@ -21,8 +21,8 @@
 
 namespace hps {
 
-static const int kBlock = 256;
-static const int kTimeoutMs = 250;  // Bank ready timeout
+static const int kBlock = 256;      // Size of a download block.
+static const int kTimeoutMs = 250;  // Bank ready timeout.
 static const int kPollMs = 5;       // Delay time for poll.
 static const int kMaxBootRetries = 5;
 
@@ -70,7 +70,7 @@ bool HPS::Enable(uint8_t feature) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   // Only 2 features available at the moment.
-  if (feature >= 2) {
+  if (feature >= kFeatures) {
     LOG(ERROR) << "Enabling unknown feature (" << feature << ")";
     return false;
   }
@@ -87,7 +87,7 @@ bool HPS::Enable(uint8_t feature) {
 bool HPS::Disable(uint8_t feature) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
-  if (feature >= 2) {
+  if (feature >= kFeatures) {
     LOG(ERROR) << "Disabling unknown feature (" << feature << ")";
     return false;
   }
@@ -310,6 +310,7 @@ bool HPS::Download(int bank, const base::FilePath& source) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   if (bank < 0 || bank >= kNumBanks) {
+    LOG(ERROR) << "Download: Illegal bank: " << bank << ": " << source;
     return -1;
   }
   return this->WriteFile(bank, source);
@@ -330,6 +331,8 @@ bool HPS::WriteFile(int bank, const base::FilePath& source) {
   int rd;
   do {
     if (!this->WaitForBankReady(bank)) {
+      LOG(ERROR) << "WriteFile: " << source << ": "
+                 << "bank not ready";
       return false;
     }
     /*
@@ -350,6 +353,8 @@ bool HPS::WriteFile(int bank, const base::FilePath& source) {
     if (rd > 0) {
       if (!this->device_->Write(I2cMemWrite(bank), buf,
                                 rd + sizeof(uint32_t))) {
+        LOG(ERROR) << "WriteFile: " << source << ": "
+                   << " device write error";
         return false;
       }
       address += rd;
