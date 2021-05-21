@@ -53,7 +53,7 @@ GLuint LoadShader(const GLenum type, const char* const src) {
   return shader;
 }
 
-void LoadProgram(const GLchar* vert, const GLchar* frag) {
+GLuint LoadProgram(const GLchar* vert, const GLchar* frag) {
   GLint program = glCreateProgram();
   GLuint vertex_shader = LoadShader(GL_VERTEX_SHADER, vert);
   GLuint frag_shader = LoadShader(GL_FRAGMENT_SHADER, frag);
@@ -76,6 +76,7 @@ void LoadProgram(const GLchar* vert, const GLchar* frag) {
   glDeleteProgram(program);
   glDeleteShader(vertex_shader);
   glDeleteShader(frag_shader);
+  return program;
 }
 
 bool DoesExtensionExist(const char* extension_string, const char* name) {
@@ -239,6 +240,7 @@ EglDisplayBuffer::EglDisplayBuffer(
 
   const GLchar* vert = R"(#version 300 es
 out vec2 tex_pos;
+uniform vec2 uvs[4];
 void main() {
   vec2 pos[4];
   pos[0] = vec2(-1.0, -1.0);
@@ -247,11 +249,6 @@ void main() {
   pos[3] = vec2(1.0, 1.0);
   gl_Position.xy = pos[gl_VertexID];
   gl_Position.zw = vec2(0.0, 1.0);
-  vec2 uvs[4];
-  uvs[0] = vec2(0.0, 0.0);
-  uvs[1] = vec2(1.0, 0.0);
-  uvs[2] = vec2(0.0, 1.0);
-  uvs[3] = vec2(1.0, 1.0);
   tex_pos = uvs[gl_VertexID];
 }
 )";
@@ -267,14 +264,14 @@ void main() {
 }
 )";
 
-  LoadProgram(vert, frag);
+  GLuint program = LoadProgram(vert, frag);
+  uvs_uniform_location_ = glGetUniformLocation(program, "uvs");
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                          output_texture_, 0);
 
   GLenum fb_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   CHECK(fb_status == GL_FRAMEBUFFER_COMPLETE) << "fb did not complete";
-
 
   glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -301,6 +298,10 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
                     crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
     CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
+    SetUVRect(/*crop_x=*/0, /*crop_y=*/0, /*crop_width=*/crtc_.fb2()->width,
+              /*crop_height=*/crtc_.fb2()->height,
+              /*src_width=*/crtc_.fb2()->width,
+              /*src_height=*/crtc_.fb2()->height);
     glViewport(0, 0, width_, height_);
     glEGLImageTargetTexture2DOES_(GL_TEXTURE_EXTERNAL_OES, image);
 
@@ -317,7 +318,12 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
                                       plane.first.get());
       CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
-      // TODO(dcastagna): Handle SRC_ and rotation.
+      // Handle the plane's crop rectangle.
+      SetUVRect(plane.second.crop_x, plane.second.crop_y, plane.second.crop_w,
+                plane.second.crop_h, /*src_width=*/plane.first->width,
+                /*src_height=*/plane.first->height);
+
+      // TODO(andrescj): Handle rotation.
       glViewport(plane.second.x, plane.second.y, plane.second.w,
                  plane.second.h);
 
@@ -340,6 +346,29 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
       width_ * kBytesPerPixel,            // stride
       static_cast<void*>(buffer_.data())  // buffer
   };
+}
+
+void EglDisplayBuffer::SetUVRect(float crop_x,
+                                 float crop_y,
+                                 float crop_width,
+                                 float crop_height,
+                                 uint32_t src_width,
+                                 uint32_t src_height) {
+  const float uv_left = crop_x / src_width;
+  const float uv_right = (crop_x + crop_width) / src_width;
+  const float uv_top = crop_y / src_height;
+  const float uv_bottom = (crop_y + crop_height) / src_height;
+  // |uvs| is an array of 4 vec2s: each pair of elements represents X and Y
+  // coordinates.
+  GLfloat uvs[] = {
+      // clang-format off
+      uv_left,  uv_top,
+      uv_right, uv_top,
+      uv_left,  uv_bottom,
+      uv_right, uv_bottom
+      // clang-format on
+  };
+  glUniform2fv(uvs_uniform_location_, 4, uvs);
 }
 
 }  // namespace screenshot

@@ -18,7 +18,13 @@
 
 namespace screenshot {
 
-struct PlanePosition {
+struct PlaneConfiguration {
+  float crop_x;
+  float crop_y;
+  float crop_w;
+  float crop_h;
+
+  // |x|, |y|, |w|, and |h| describe the destination rectangle.
   int32_t x;
   int32_t y;
   uint32_t w;
@@ -27,7 +33,7 @@ struct PlanePosition {
 
 class Crtc {
  public:
-  using PlaneInfo = std::pair<ScopedDrmModeFB2Ptr, PlanePosition>;
+  using PlaneInfo = std::pair<ScopedDrmModeFB2Ptr, PlaneConfiguration>;
 
   Crtc(base::File file,
        ScopedDrmModeConnectorPtr connector,

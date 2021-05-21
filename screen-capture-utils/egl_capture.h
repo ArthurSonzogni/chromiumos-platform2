@@ -40,6 +40,15 @@ class EglDisplayBuffer : public DisplayBuffer {
   DisplayBuffer::Result Capture() override;
 
  private:
+  // Sets the UV coordinates uniform for a crop rectangle with respect to
+  // |src_width| and |src_height|.
+  void SetUVRect(float crop_x,
+                 float crop_y,
+                 float crop_width,
+                 float crop_height,
+                 uint32_t src_width,
+                 uint32_t src_height);
+
   const Crtc& crtc_;
   const uint32_t x_;
   const uint32_t y_;
@@ -48,6 +57,7 @@ class EglDisplayBuffer : public DisplayBuffer {
   const ScopedGbmDevicePtr device_;
   const EGLDisplay display_;
 
+  GLint uvs_uniform_location_;
   GLuint input_texture_;
   GLuint output_texture_;
   unsigned int fbo_;
