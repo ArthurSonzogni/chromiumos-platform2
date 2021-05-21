@@ -406,7 +406,10 @@ if (use.test) {
     ]
 
     if (use.arcpp || use.arcvm) {
-      sources += [ "arc_util_test.cc" ]
+      sources += [
+        "arc_java_collector_test.cc",
+        "arc_util_test.cc",
+      ]
     }
 
     if (use.arcpp) {

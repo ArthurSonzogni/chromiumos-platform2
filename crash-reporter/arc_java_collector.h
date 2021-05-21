@@ -36,6 +36,9 @@ class ArcJavaCollector : public CrashCollector {
                    base::TimeDelta uptime);
 
  private:
+  FRIEND_TEST(ArcJavaCollectorTest, AddArcMetaData);
+  FRIEND_TEST(ArcJavaCollectorTest, CreateReportForJavaCrash);
+
   // CrashCollector overrides.
   std::string GetProductVersion() const override;
 
