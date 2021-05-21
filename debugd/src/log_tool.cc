@@ -447,6 +447,7 @@ const std::vector<Log> kExtraLogs {
 
 // clang-format off
 const std::vector<Log> kFeedbackLogs {
+  {kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
   {kGlob, "iwlwifi_firmware_version",
     "/sys/kernel/debug/iwlwifi/*/iwlmvm/fw_ver", kRoot, kRoot},
   {kCommand, "iwlwifi_sysasserts",
