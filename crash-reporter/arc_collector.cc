@@ -297,7 +297,21 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   if (exit_code == EX_OK) {
     std::string process;
     ArcCollector::GetExecutableBaseNameFromPid(pid, &process);
-    AddArcMetaData(process, "native_crash", true, base::TimeDelta());
+    AddArcMetaData(process, "native_crash", base::TimeDelta());
+
+    arc_util::BuildProperty build_property;
+    if (GetArcProperties(&build_property)) {
+      for (const auto& metadata :
+           arc_util::ListMetadataForBuildProperty(build_property)) {
+        AddCrashMetaUploadData(metadata.first, metadata.second);
+      }
+    }
+    std::string abi_migration_state;
+    // Error logging sits inside |GetAbiMigrationState|
+    if (GetAbiMigrationState(&abi_migration_state)) {
+      AddCrashMetaUploadData(arc_util::kAbiMigrationField, abi_migration_state);
+    }
+
     return kErrorNone;
   }
 
@@ -317,27 +331,11 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
 
 void ArcCollector::AddArcMetaData(const std::string& process,
                                   const std::string& crash_type,
-                                  bool add_arc_properties,
                                   base::TimeDelta uptime) {
   AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
   AddCrashMetaUploadData(arc_util::kProcessField, process);
   AddCrashMetaUploadData(arc_util::kCrashTypeField, crash_type);
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
-
-  arc_util::BuildProperty build_property;
-
-  if (add_arc_properties) {
-    if (GetArcProperties(&build_property)) {
-      for (const auto& metadata :
-           arc_util::ListMetadataForBuildProperty(build_property)) {
-        AddCrashMetaUploadData(metadata.first, metadata.second);
-      }
-    }
-    std::string abi_migration_state;
-    // Error logging sits inside |GetAbiMigrationState|
-    if (GetAbiMigrationState(&abi_migration_state))
-      AddCrashMetaUploadData(arc_util::kAbiMigrationField, abi_migration_state);
-  }
 
 #if USE_ARCPP
   if (uptime.is_zero()) {
@@ -382,7 +380,7 @@ bool ArcCollector::CreateReportForJavaCrash(
     return false;
   }
 
-  AddArcMetaData(process, crash_type, false, uptime);
+  AddArcMetaData(process, crash_type, uptime);
   for (const auto& metadata :
        arc_util::ListMetadataForBuildProperty(build_property)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);

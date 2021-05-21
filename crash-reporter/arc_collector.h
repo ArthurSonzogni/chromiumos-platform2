@@ -104,12 +104,10 @@ class ArcCollector : public UserCollectorBase {
                                   const base::FilePath& core_path,
                                   const base::FilePath& minidump_path) override;
 
-  // Adds the |process|, |crash_type| and Chrome version as metadata. The
-  // |add_arc_properties| option requires privilege to access the ARC root.
+  // Adds the |process|, |crash_type| and Chrome version as metadata.
   // |uptime| can be zero if the value is unknown.
   void AddArcMetaData(const std::string& process,
                       const std::string& crash_type,
-                      bool add_arc_properties,
                       base::TimeDelta uptime);
 
   using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
