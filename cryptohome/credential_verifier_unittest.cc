@@ -2,28 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/password_verifier.h>
+#include <cryptohome/credential_verifier.h>
 
 #include <memory>
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include <cryptohome/scrypt_password_verifier.h>
+#include <cryptohome/scrypt_verifier.h>
 
 namespace cryptohome {
 
-class VerifierTest : public ::testing::TestWithParam<PasswordVerifier*> {
+class VerifierTest : public ::testing::TestWithParam<CredentialVerifier*> {
  public:
   VerifierTest() { password_verifier_.reset(GetParam()); }
 
  protected:
-  std::unique_ptr<PasswordVerifier> password_verifier_;
+  std::unique_ptr<CredentialVerifier> password_verifier_;
 };
 
 INSTANTIATE_TEST_SUITE_P(Scrypt,
                          VerifierTest,
-                         ::testing::Values(new ScryptPasswordVerifier()));
+                         ::testing::Values(new ScryptVerifier()));
 
 TEST_P(VerifierTest, Ok) {
   brillo::SecureBlob secret("good");

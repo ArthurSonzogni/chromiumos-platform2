@@ -9,7 +9,7 @@
 #include <utility>
 
 #include <brillo/cryptohome.h>
-#include <cryptohome/scrypt_password_verifier.h>
+#include <cryptohome/scrypt_verifier.h>
 
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/password_auth_factor.h"
@@ -109,8 +109,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
   return MountErrorToCryptohomeError(code);
 }
 
-std::unique_ptr<PasswordVerifier> AuthSession::TakePasswordVerifier() {
-  return auth_factor_->TakePasswordVerifier();
+std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
+  return auth_factor_->TakeCredentialVerifier();
 }
 
 // static

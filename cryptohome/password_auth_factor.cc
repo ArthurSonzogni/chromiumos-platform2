@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-#include "cryptohome/scrypt_password_verifier.h"
+#include "cryptohome/scrypt_verifier.h"
 namespace cryptohome {
 
 PasswordAuthFactor::PasswordAuthFactor(KeysetManagement* keyset_management)
@@ -20,14 +20,15 @@ bool PasswordAuthFactor::AuthenticateAuthFactor(const Credentials& credential,
   }
   vault_keyset_ = keyset_management_->LoadUnwrappedKeyset(credential, code);
   if (vault_keyset_) {
-    password_verifier_.reset(new ScryptPasswordVerifier());
-    password_verifier_->Set(credential.passkey());
+    credential_verifier_.reset(new ScryptVerifier());
+    credential_verifier_->Set(credential.passkey());
   }
   return vault_keyset_ != nullptr;
 }
 
-std::unique_ptr<PasswordVerifier> PasswordAuthFactor::TakePasswordVerifier() {
-  return std::move(password_verifier_);
+std::unique_ptr<CredentialVerifier>
+PasswordAuthFactor::TakeCredentialVerifier() {
+  return std::move(credential_verifier_);
 }
 
 const cryptohome::KeyData& PasswordAuthFactor::GetKeyData() {

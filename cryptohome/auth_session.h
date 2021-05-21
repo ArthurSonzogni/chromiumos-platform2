@@ -15,9 +15,9 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/password_verifier.h"
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/UserDataAuth.pb.h"
@@ -85,7 +85,7 @@ class AuthSession final {
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
-  std::unique_ptr<PasswordVerifier> TakePasswordVerifier();
+  std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
 
   // This function returns the current index of the keyset that was used to
   // Authenticate. This is useful during verification of challenge credentials.

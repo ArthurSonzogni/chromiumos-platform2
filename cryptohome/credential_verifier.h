@@ -2,23 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_PASSWORD_VERIFIER_H_
-#define CRYPTOHOME_PASSWORD_VERIFIER_H_
+#ifndef CRYPTOHOME_CREDENTIAL_VERIFIER_H_
+#define CRYPTOHOME_CREDENTIAL_VERIFIER_H_
 
 #include <brillo/secure_blob.h>
 
 namespace cryptohome {
 
-class PasswordVerifier {
+class CredentialVerifier {
  public:
-  PasswordVerifier() = default;
-  virtual ~PasswordVerifier() = default;
+  CredentialVerifier() = default;
+  virtual ~CredentialVerifier() = default;
 
   // Prohibit copy/move/assignment.
-  PasswordVerifier(const PasswordVerifier&) = delete;
-  PasswordVerifier(const PasswordVerifier&&) = delete;
-  PasswordVerifier& operator=(const PasswordVerifier&) = delete;
-  PasswordVerifier& operator=(const PasswordVerifier&&) = delete;
+  CredentialVerifier(const CredentialVerifier&) = delete;
+  CredentialVerifier(const CredentialVerifier&&) = delete;
+  CredentialVerifier& operator=(const CredentialVerifier&) = delete;
+  CredentialVerifier& operator=(const CredentialVerifier&&) = delete;
 
   // Sets internal state for |secret| Verify().
   virtual bool Set(const brillo::SecureBlob& secret) = 0;
@@ -29,4 +29,4 @@ class PasswordVerifier {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_PASSWORD_VERIFIER_H_
+#endif  // CRYPTOHOME_CREDENTIAL_VERIFIER_H_

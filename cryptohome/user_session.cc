@@ -11,7 +11,7 @@
 #include <base/memory/ref_counted.h>
 
 #include <brillo/cryptohome.h>
-#include <cryptohome/scrypt_password_verifier.h>
+#include <cryptohome/scrypt_verifier.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/filesystem_layout.h"
@@ -177,16 +177,15 @@ bool UserSession::SetCredentials(const Credentials& credentials,
   key_data_ = credentials.key_data();
   key_index_ = key_index;
 
-  password_verifier_.reset(new ScryptPasswordVerifier());
-  return password_verifier_->Set(credentials.passkey());
+  credential_verifier_.reset(new ScryptVerifier());
+  return credential_verifier_->Set(credentials.passkey());
 }
 
 void UserSession::SetCredentials(AuthSession* auth_session) {
   username_ = auth_session->username();
   obfuscated_username_ = SanitizeUserName(username_);
   key_data_ = auth_session->current_key_data();
-  key_index_ = auth_session->key_index();
-  password_verifier_ = auth_session->TakePasswordVerifier();
+  credential_verifier_ = auth_session->TakeCredentialVerifier();
 }
 
 bool UserSession::VerifyUser(const std::string& obfuscated_username) const {
@@ -196,7 +195,7 @@ bool UserSession::VerifyUser(const std::string& obfuscated_username) const {
 bool UserSession::VerifyCredentials(const Credentials& credentials) const {
   ReportTimerStart(kSessionUnlockTimer);
 
-  if (!password_verifier_) {
+  if (!credential_verifier_) {
     LOG(ERROR) << "Attempt to verify credentials with no verifier set";
     return false;
   }
@@ -211,7 +210,7 @@ bool UserSession::VerifyCredentials(const Credentials& credentials) const {
     return false;
   }
 
-  bool status = password_verifier_->Verify(credentials.passkey());
+  bool status = credential_verifier_->Verify(credentials.passkey());
 
   ReportTimerStop(kSessionUnlockTimer);
 

@@ -26,7 +26,7 @@ class PasswordAuthFactor : public AuthFactor {
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
-  std::unique_ptr<PasswordVerifier> TakePasswordVerifier() override;
+  std::unique_ptr<CredentialVerifier> TakeCredentialVerifier() override;
   // Returns the key data with which this AuthFactor is authenticated with.
   const cryptohome::KeyData& GetKeyData() override;
 
@@ -45,7 +45,7 @@ class PasswordAuthFactor : public AuthFactor {
   // life of KeysetManagement object.
   KeysetManagement* keyset_management_;
   // This is used by User Session to verify users credentials at unlock.
-  std::unique_ptr<PasswordVerifier> password_verifier_;
+  std::unique_ptr<CredentialVerifier> credential_verifier_;
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
 };

@@ -320,7 +320,7 @@ static_library("libcryptohome") {
     "../key_challenge_service_impl.cc",
     "../keyset_management.cc",
     "../lockbox-cache.cc",
-    "../scrypt_password_verifier.cc",
+    "../scrypt_verifier.cc",
     "../service_userdataauth.cc",
     "../stateful_recovery.cc",
     "../storage/arc_disk_quota.cc",

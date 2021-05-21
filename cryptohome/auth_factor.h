@@ -9,9 +9,9 @@
 #include <string>
 
 #include "cryptohome/auth_block.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/password_verifier.h"
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/UserDataAuth.pb.h"
@@ -33,7 +33,7 @@ class AuthFactor {
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
-  virtual std::unique_ptr<PasswordVerifier> TakePasswordVerifier() = 0;
+  virtual std::unique_ptr<CredentialVerifier> TakeCredentialVerifier() = 0;
   // -------------------------------------------------------------------------
   // Temporary functions below as we transition from AuthSession to AuthFactor
   // -------------------------------------------------------------------------

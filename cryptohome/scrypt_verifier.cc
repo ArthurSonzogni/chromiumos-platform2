@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/scrypt_password_verifier.h>
+#include "cryptohome/scrypt_verifier.h"
 
 #include <brillo/secure_blob.h>
 
@@ -20,7 +20,7 @@ constexpr int kScryptOutputSize = 256 / CHAR_BIT;
 
 }  // namespace
 
-bool ScryptPasswordVerifier::Set(const brillo::SecureBlob& secret) {
+bool ScryptVerifier::Set(const brillo::SecureBlob& secret) {
   verifier_.clear();
   verifier_.resize(kScryptOutputSize, 0);
   scrypt_salt_ = CryptoLib::CreateSecureRandomBlob(kScryptSaltSize);
@@ -29,7 +29,7 @@ bool ScryptPasswordVerifier::Set(const brillo::SecureBlob& secret) {
                            kScryptPFactor, &verifier_);
 }
 
-bool ScryptPasswordVerifier::Verify(const brillo::SecureBlob& secret) {
+bool ScryptVerifier::Verify(const brillo::SecureBlob& secret) {
   brillo::SecureBlob hashed_secret(kScryptOutputSize, 0);
   if (!CryptoLib::Scrypt(secret, scrypt_salt_, kScryptNFactor, kScryptRFactor,
                          kScryptPFactor, &hashed_secret)) {

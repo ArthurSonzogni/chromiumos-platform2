@@ -13,8 +13,8 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_session.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/password_verifier.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 
@@ -105,7 +105,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   std::string obfuscated_username_;
   std::string username_;
   brillo::SecureBlob system_salt_;
-  std::unique_ptr<PasswordVerifier> password_verifier_;
+  std::unique_ptr<CredentialVerifier> credential_verifier_;
   int key_index_ = -1;
   KeyData key_data_;
 
