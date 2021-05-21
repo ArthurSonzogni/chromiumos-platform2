@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/arcvm_native_collector.h"
+#include "crash-reporter/arcvm_cxx_collector.h"
 
 #include <fcntl.h>
 #include <memory>
@@ -44,19 +44,19 @@ arc_util::BuildProperty GetBuildProperty() {
           .cpu_abi = kCpuAbi,
           .fingerprint = kFingerprint};
 }
-ArcvmNativeCollector::CrashInfo GetCrashInfo() {
+ArcvmCxxCollector::CrashInfo GetCrashInfo() {
   return {.time = kTime, .pid = kPid, .exec_name = kExecName};
 }
 
 }  // namespace
 
-class TestArcvmNativeCollector : public ArcvmNativeCollector {
+class TestArcvmCxxCollector : public ArcvmCxxCollector {
  public:
-  explicit TestArcvmNativeCollector(const base::FilePath& crash_directory) {
+  explicit TestArcvmCxxCollector(const base::FilePath& crash_directory) {
     Initialize(false /* early */);
     set_crash_directory_for_test(crash_directory);
   }
-  ~TestArcvmNativeCollector() override = default;
+  ~TestArcvmCxxCollector() override = default;
 
   bool HasMetaData(const std::string& key, const std::string& value) const {
     const std::string metadata =
@@ -68,9 +68,9 @@ class TestArcvmNativeCollector : public ArcvmNativeCollector {
   void SetUpDBus() override {}
 };
 
-class ArcvmNativeCollectorTest : public ::testing::Test {
+class ArcvmCxxCollectorTest : public ::testing::Test {
  public:
-  ~ArcvmNativeCollectorTest() override = default;
+  ~ArcvmCxxCollectorTest() override = default;
 
   void SetUp() override {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
@@ -85,18 +85,17 @@ class ArcvmNativeCollectorTest : public ::testing::Test {
     test_crash_directory_ =
         scoped_temp_dir_.GetPath().Append(kTestCrashDirectory);
     ASSERT_TRUE(base::CreateDirectory(test_crash_directory_));
-    collector_ =
-        std::make_unique<TestArcvmNativeCollector>(test_crash_directory_);
+    collector_ = std::make_unique<TestArcvmCxxCollector>(test_crash_directory_);
   }
 
  protected:
-  std::unique_ptr<TestArcvmNativeCollector> collector_;
+  std::unique_ptr<TestArcvmCxxCollector> collector_;
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath test_crash_directory_;
   base::ScopedFD minidump_fd_;
 };
 
-TEST_F(ArcvmNativeCollectorTest, HandleCrashWithMinidumpFD) {
+TEST_F(ArcvmCxxCollectorTest, HandleCrashWithMinidumpFD) {
   ASSERT_TRUE(collector_->HandleCrashWithMinidumpFD(
       GetBuildProperty(), GetCrashInfo(), kUptimeValue,
       std::move(minidump_fd_)));
@@ -114,7 +113,7 @@ TEST_F(ArcvmNativeCollectorTest, HandleCrashWithMinidumpFD) {
   EXPECT_EQ(minidump_content, kMinidumpSampleContent);
 }
 
-TEST_F(ArcvmNativeCollectorTest, AddArcMetadata) {
+TEST_F(ArcvmCxxCollectorTest, AddArcMetadata) {
   collector_->AddArcMetadata(GetBuildProperty(), GetCrashInfo(), kUptimeValue);
   EXPECT_TRUE(collector_->HasMetaData(arc_util::kProcessField, kExecName));
   EXPECT_TRUE(

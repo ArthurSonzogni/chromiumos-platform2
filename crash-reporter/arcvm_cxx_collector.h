@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// ArcvmNativeCollector handles crashes of native binaries in ARCVM. When the
+// ArcvmCxxCollector handles crashes of binaries written in C++ (or other
+// languages like Rust which are compiled to machine code) in ARCVM. When the
 // ARCVM kernel detects a crash, it executes arc-native-crash-dispatcher via its
 // /proc/sys/kernel/core_pattern. arc-native-crash-dispatcher calls
 // arc-native-crash-collector32 or arc-native-crash-collector64 and writes dump
@@ -11,8 +12,8 @@
 // /data/vendor/arc_native_crash_reports directory and sends detected dump files
 // to Chrome via Mojo. Finally Chrome invokes this collector.
 
-#ifndef CRASH_REPORTER_ARCVM_NATIVE_COLLECTOR_H_
-#define CRASH_REPORTER_ARCVM_NATIVE_COLLECTOR_H_
+#ifndef CRASH_REPORTER_ARCVM_CXX_COLLECTOR_H_
+#define CRASH_REPORTER_ARCVM_CXX_COLLECTOR_H_
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/crash_collector.h"
@@ -23,8 +24,8 @@
 #include <base/files/scoped_file.h>
 #include <base/time/time.h>
 
-// Collector for native crashes in ARCVM.
-class ArcvmNativeCollector : public CrashCollector {
+// Collector for C++ crashes (native_crash) in ARCVM.
+class ArcvmCxxCollector : public CrashCollector {
  public:
   // The basic information about crash. They are used for the filename of files
   // passed to crash_sender.
@@ -34,25 +35,25 @@ class ArcvmNativeCollector : public CrashCollector {
     std::string exec_name;  // The name of crashed binary.
   };
 
-  ArcvmNativeCollector();
-  ~ArcvmNativeCollector() override;
+  ArcvmCxxCollector();
+  ~ArcvmCxxCollector() override;
 
-  // Handles a native crash in ARCVM.
+  // Handles a C++ crash in ARCVM.
   // |uptime| can be zero if the value is unknown.
   bool HandleCrash(const arc_util::BuildProperty& build_property,
                    const CrashInfo& crash_info,
                    base::TimeDelta uptime);
 
  private:
-  friend class ArcvmNativeCollectorMock;
-  friend class ArcvmNativeCollectorTest;
-  FRIEND_TEST(ArcvmNativeCollectorTest, HandleCrashWithMinidumpFD);
-  FRIEND_TEST(ArcvmNativeCollectorTest, AddArcMetadata);
+  friend class ArcvmCxxCollectorMock;
+  friend class ArcvmCxxCollectorTest;
+  FRIEND_TEST(ArcvmCxxCollectorTest, HandleCrashWithMinidumpFD);
+  FRIEND_TEST(ArcvmCxxCollectorTest, AddArcMetadata);
 
   // CrashCollector overrides.
   std::string GetProductVersion() const override;
 
-  // Handles a native crash in ARCVM using the given FD for minidump.
+  // Handles a C++ crash in ARCVM using the given FD for minidump.
   // TODO(kimiyuki): Replace |minidump_fd| with a path and make "/dev/stdin" the
   // default argument.
   bool HandleCrashWithMinidumpFD(const arc_util::BuildProperty& build_property,
@@ -69,4 +70,4 @@ class ArcvmNativeCollector : public CrashCollector {
   bool DumpFdToFile(base::ScopedFD fd, const base::FilePath& path);
 };
 
-#endif  // CRASH_REPORTER_ARCVM_NATIVE_COLLECTOR_H_
+#endif  // CRASH_REPORTER_ARCVM_CXX_COLLECTOR_H_

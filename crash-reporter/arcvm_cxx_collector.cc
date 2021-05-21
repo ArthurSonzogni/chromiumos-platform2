@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/arcvm_native_collector.h"
+#include "crash-reporter/arcvm_cxx_collector.h"
 
 #include <utility>
 
@@ -18,19 +18,22 @@
 
 namespace {
 
-constexpr char kArcvmNativeCollectorName[] = "ARCVM_native";
+// TODO(b/169638371): Remove the word "native".
+constexpr char kArcvmCxxCollectorName[] = "ARCVM_native";
+
+// "native_crash" is a tag defined in Android.
 constexpr char kArcvmNativeCrashType[] = "native_crash";
 
 }  // namespace
 
-ArcvmNativeCollector::ArcvmNativeCollector()
-    : CrashCollector(kArcvmNativeCollectorName,
+ArcvmCxxCollector::ArcvmCxxCollector()
+    : CrashCollector(kArcvmCxxCollectorName,
                      kAlwaysUseUserCrashDirectory,
                      kNormalCrashSendMode) {}
 
-ArcvmNativeCollector::~ArcvmNativeCollector() = default;
+ArcvmCxxCollector::~ArcvmCxxCollector() = default;
 
-bool ArcvmNativeCollector::HandleCrash(
+bool ArcvmCxxCollector::HandleCrash(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
     base::TimeDelta uptime) {
@@ -38,7 +41,7 @@ bool ArcvmNativeCollector::HandleCrash(
                                    base::ScopedFD(STDIN_FILENO));
 }
 
-bool ArcvmNativeCollector::HandleCrashWithMinidumpFD(
+bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
     base::TimeDelta uptime,
@@ -76,7 +79,7 @@ bool ArcvmNativeCollector::HandleCrashWithMinidumpFD(
   return true;
 }
 
-void ArcvmNativeCollector::AddArcMetadata(
+void ArcvmCxxCollector::AddArcMetadata(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
     base::TimeDelta uptime) {
@@ -94,8 +97,8 @@ void ArcvmNativeCollector::AddArcMetadata(
   }
 }
 
-bool ArcvmNativeCollector::DumpFdToFile(base::ScopedFD src_fd,
-                                        const base::FilePath& dst_path) {
+bool ArcvmCxxCollector::DumpFdToFile(base::ScopedFD src_fd,
+                                     const base::FilePath& dst_path) {
   base::ScopedFD dst_fd = GetNewFileHandle(dst_path);
   if (!dst_fd.is_valid())
     return false;
@@ -116,7 +119,7 @@ bool ArcvmNativeCollector::DumpFdToFile(base::ScopedFD src_fd,
   }
 }
 
-std::string ArcvmNativeCollector::GetProductVersion() const {
+std::string ArcvmCxxCollector::GetProductVersion() const {
   std::string version;
   return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
 }

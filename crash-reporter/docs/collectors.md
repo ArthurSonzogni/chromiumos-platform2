@@ -171,11 +171,12 @@ backend exists on Chrome OS as `/home/root/<hash>/crosvm/*.pstore`.
 ArcCrashCollector and ARC bridge via Mojo (or possibly, directly reads the
 ring buffer in pstore file) and processes it.
 
-## arcvm_native_collector
+## arcvm_cxx_collector
 
-Collects crashes of native binaries in [ARCVM].
+Collects crashes of machine-code binaries (i.e. non-Java crashes, it's mainly
+crashes of C++ programs) in [ARCVM].
 
-When a native binary crashes, Linux kernel detects the crash and invokes
+When a machine-code binary crashes, Linux kernel detects the crash and invokes
 `arc-native-crash-dispatcher` via `/proc/sys/kernel/core_pattern`.
 `arc-native-crash-dispatcher` calls `arc-native-crash-collector32` or
 `arc-native-crash-collector64`, and they dump crash file in
@@ -415,7 +416,7 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [anomaly-detector.conf]: ../init/anomaly-detector.conf
 [arc_collector]: ../arc_collector.cc
 [arcvm_kernel_collector]: ../arcvm_kernel_collector.cc
-[arcvm_native_collector]: ../arcvm_native_collector.cc
+[arcvm_cxx_collector]: ../arcvm_cxx_collector.cc
 [bert_collector]: ../bert_collector.cc
 [chrome_collector]: ../chrome_collector.cc
 [chromeos_startup]: ../../init/chromeos_startup

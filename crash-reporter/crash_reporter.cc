@@ -27,8 +27,8 @@
 
 #include "crash-reporter/arc_collector.h"
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/arcvm_cxx_collector.h"
 #include "crash-reporter/arcvm_kernel_collector.h"
-#include "crash-reporter/arcvm_native_collector.h"
 #include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
 #include "crash-reporter/constants.h"
@@ -333,6 +333,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(arc_uptime, 0, "Uptime of ARC instance in milliseconds");
 #endif
 #if USE_ARCVM
+  // TODO(b/169638371): Replace the word "native".
   DEFINE_bool(arc_native, false, "ARC Native Crash");
   DEFINE_int64(arc_native_time, -1,
                "UNIX timestamp of the time when the native crash happened. "
@@ -421,20 +422,20 @@ int main(int argc, char* argv[]) {
 
   std::vector<CollectorInfo> collectors;
 #if USE_ARCVM
-  ArcvmNativeCollector arcvm_native_collector;
+  ArcvmCxxCollector arcvm_cxx_collector;
   collectors.push_back({
-      .collector = &arcvm_native_collector,
+      .collector = &arcvm_cxx_collector,
       .handlers = {{
-          // This handles native crashes of ARCVM.
+          // This handles C++ crashes of ARCVM.
           .should_handle = FLAGS_arc_native,
           .cb = base::BindRepeating(
-              &ArcvmNativeCollector::HandleCrash,
-              base::Unretained(&arcvm_native_collector),
+              &ArcvmCxxCollector::HandleCrash,
+              base::Unretained(&arcvm_cxx_collector),
               arc_util::BuildProperty{.device = FLAGS_arc_device,
                                       .board = FLAGS_arc_board,
                                       .cpu_abi = FLAGS_arc_cpu_abi,
                                       .fingerprint = FLAGS_arc_fingerprint},
-              ArcvmNativeCollector::CrashInfo{
+              ArcvmCxxCollector::CrashInfo{
                   .time = static_cast<time_t>(FLAGS_arc_native_time),
                   .pid = FLAGS_pid,
                   .exec_name = FLAGS_exe},
