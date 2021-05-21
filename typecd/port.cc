@@ -169,6 +169,11 @@ ModeEntryResult Port::CanEnterTBTCompatibilityMode() {
   // Ref:
   //   USB PD spec, rev 3.0, v2.0.
   //   Table 6-29
+  if (!partner_) {
+    LOG(ERROR) << "No partner object registered, can't enter TBT Compat mode.";
+    return ModeEntryResult::kPartnerError;
+  }
+
   auto partner_idh = partner_->GetIdHeaderVDO();
   if (!(partner_idh & kIDHeaderVDOModalOperationBitField)) {
     return ModeEntryResult::kPartnerError;
