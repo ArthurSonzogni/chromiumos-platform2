@@ -26,13 +26,16 @@ int SendCmd(std::unique_ptr<hps::HPS> hps,
   int cmd;
 
   if (args.size() <= 1) {
-    std::cerr << "Missing command ('reset' or 'launch' expected)" << std::endl;
+    std::cerr << "Missing command ('reset', 'launch' or 'appl' expected)"
+              << std::endl;
     return 1;
   }
   if (args[1] == "reset") {
-    cmd = 1;
+    cmd = hps::R3::kReset;
   } else if (args[1] == "launch") {
-    cmd = 2;
+    cmd = hps::R3::kLaunch;
+  } else if (args[1] == "appl") {
+    cmd = hps::R3::kEnable;
   } else {
     std::cerr << args[0] << ": Unknown command (" << args[1] << ")"
               << std::endl;
@@ -54,6 +57,8 @@ int SendCmd(std::unique_ptr<hps::HPS> hps,
   return 0;
 }
 
-Command cmd("cmd", "cmd [reset | launch ] - Send command to hps.", SendCmd);
+Command cmd("cmd",
+            "cmd [ reset | launch | appl ] - Send command to hps.",
+            SendCmd);
 
 }  // namespace
