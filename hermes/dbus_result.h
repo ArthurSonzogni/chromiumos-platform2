@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef HERMES_RESULT_CALLBACK_H_
-#define HERMES_RESULT_CALLBACK_H_
+#ifndef HERMES_DBUS_RESULT_H_
+#define HERMES_DBUS_RESULT_H_
 
 #include <memory>
 #include <utility>
@@ -11,15 +11,15 @@
 namespace hermes {
 
 template <typename... T>
-class ResultCallback {
+class DbusResult {
  public:
   using DBusResponse = brillo::dbus_utils::DBusMethodResponse<T...>;
-  explicit ResultCallback(std::unique_ptr<DBusResponse> response)
+  explicit DbusResult(std::unique_ptr<DBusResponse> response)
       : response_(std::move(response)) {}
-  ResultCallback(const ResultCallback&) = default;
-  ResultCallback(ResultCallback&&) = default;
-  ResultCallback& operator=(const ResultCallback&) = default;
-  ResultCallback& operator=(ResultCallback&&) = default;
+  DbusResult(const DbusResult&) = default;
+  DbusResult(DbusResult&&) = default;
+  DbusResult& operator=(const DbusResult&) = default;
+  DbusResult& operator=(DbusResult&&) = default;
 
   void Success(const T&... object) const { response_->Return(object...); }
   void Error(const brillo::ErrorPtr& decoded_error) const {
@@ -32,4 +32,4 @@ class ResultCallback {
 
 }  // namespace hermes
 
-#endif  // HERMES_RESULT_CALLBACK_H_
+#endif  // HERMES_DBUS_RESULT_H_

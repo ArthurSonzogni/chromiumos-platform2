@@ -16,7 +16,7 @@
 #include "hermes/context.h"
 #include "hermes/euicc_slot_info.h"
 #include "hermes/profile.h"
-#include "hermes/result_callback.h"
+#include "hermes/dbus_result.h"
 
 namespace hermes {
 
@@ -34,20 +34,19 @@ class Euicc {
   void InstallProfileFromActivationCode(
       std::string activation_code,
       std::string confirmation_code,
-      ResultCallback<dbus::ObjectPath> result_callback);
+      DbusResult<dbus::ObjectPath> dbus_result);
   void UninstallProfile(dbus::ObjectPath profile_path,
-                        ResultCallback<> result_callback);
+                        DbusResult<> dbus_result);
   // Request the eUICC to provide all installed profiles.
-  void RequestInstalledProfiles(ResultCallback<> result_callback);
+  void RequestInstalledProfiles(DbusResult<> dbus_result);
 
   void InstallPendingProfile(dbus::ObjectPath profile_path,
                              std::string confirmation_code,
-                             ResultCallback<dbus::ObjectPath> result_callback);
-  void RequestPendingProfiles(ResultCallback<> result_callback,
-                              std::string root_smds);
-  void SetTestMode(ResultCallback<> result_callback, bool is_test_mode);
+                             DbusResult<dbus::ObjectPath> dbus_result);
+  void RequestPendingProfiles(DbusResult<> dbus_result, std::string root_smds);
+  void SetTestMode(DbusResult<> dbus_result, bool is_test_mode);
   void UseTestCerts(bool use_test_certs);
-  void ResetMemory(ResultCallback<> result_callback, int reset_options);
+  void ResetMemory(DbusResult<> dbus_result, int reset_options);
 
   uint8_t physical_slot() const { return physical_slot_; }
   dbus::ObjectPath object_path() const { return dbus_adaptor_->object_path(); }
@@ -55,10 +54,10 @@ class Euicc {
  private:
   void OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
                           int error,
-                          ResultCallback<dbus::ObjectPath> result_callback);
+                          DbusResult<dbus::ObjectPath> dbus_result);
   void OnProfileUninstalled(const dbus::ObjectPath& profile_path,
                             int error,
-                            ResultCallback<> result_callback);
+                            DbusResult<> dbus_result);
 
   void UpdateInstalledProfilesProperty();
 
@@ -66,14 +65,14 @@ class Euicc {
   void OnInstalledProfilesReceived(
       const std::vector<lpa::proto::ProfileInfo>& profile_infos,
       int error,
-      ResultCallback<> result_callback);
+      DbusResult<> dbus_result);
 
   // Update |pending_profiles_| with all profiles installed on the SMDS.
   void UpdatePendingProfilesProperty();
   void OnPendingProfilesReceived(
       const std::vector<lpa::proto::ProfileInfo>& profile_infos,
       int error,
-      ResultCallback<> result_callback);
+      DbusResult<> dbus_result);
 
   const uint8_t physical_slot_;
   EuiccSlotInfo slot_info_;

@@ -13,7 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "hermes/euicc.h"
-#include "hermes/result_callback.h"
+#include "hermes/dbus_result.h"
 
 namespace hermes {
 
@@ -39,43 +39,43 @@ void EuiccDBusAdaptor::InstallProfileFromActivationCode(
     std::unique_ptr<DBusResponse<dbus::ObjectPath>> response,
     const std::string& in_activation_code,
     const std::string& in_confirmation_code) {
-  ResultCallback<dbus::ObjectPath> result_callback(std::move(response));
+  DbusResult<dbus::ObjectPath> dbus_result(std::move(response));
   euicc_->InstallProfileFromActivationCode(
-      in_activation_code, in_confirmation_code, std::move(result_callback));
+      in_activation_code, in_confirmation_code, std::move(dbus_result));
 }
 
 void EuiccDBusAdaptor::InstallPendingProfile(
     std::unique_ptr<DBusResponse<dbus::ObjectPath>> response,
     const dbus::ObjectPath& in_pending_profile,
     const std::string& in_confirmation_code) {
-  ResultCallback<dbus::ObjectPath> result_callback(std::move(response));
+  DbusResult<dbus::ObjectPath> dbus_result(std::move(response));
   euicc_->InstallPendingProfile(in_pending_profile, in_confirmation_code,
-                                std::move(result_callback));
+                                std::move(dbus_result));
 }
 
 void EuiccDBusAdaptor::UninstallProfile(
     std::unique_ptr<DBusResponse<>> response,
     const dbus::ObjectPath& in_profile) {
-  ResultCallback<> result_callback(std::move(response));
-  euicc_->UninstallProfile(in_profile, std::move(result_callback));
+  DbusResult<> dbus_result(std::move(response));
+  euicc_->UninstallProfile(in_profile, std::move(dbus_result));
 }
 
 void EuiccDBusAdaptor::RequestPendingProfiles(
     std::unique_ptr<DBusResponse<>> response, const std::string& in_root_smds) {
-  ResultCallback<> result_callback(std::move(response));
-  euicc_->RequestPendingProfiles(std::move(result_callback), in_root_smds);
+  DbusResult<> dbus_result(std::move(response));
+  euicc_->RequestPendingProfiles(std::move(dbus_result), in_root_smds);
 }
 
 void EuiccDBusAdaptor::RequestInstalledProfiles(
     std::unique_ptr<DBusResponse<>> response) {
-  ResultCallback<> result_callback(std::move(response));
-  euicc_->RequestInstalledProfiles(std::move(result_callback));
+  DbusResult<> dbus_result(std::move(response));
+  euicc_->RequestInstalledProfiles(std::move(dbus_result));
 }
 
 void EuiccDBusAdaptor::SetTestMode(std::unique_ptr<DBusResponse<>> response,
                                    bool in_is_test_mode) {
-  ResultCallback<> result_callback(std::move(response));
-  euicc_->SetTestMode(std::move(result_callback), in_is_test_mode);
+  DbusResult<> dbus_result(std::move(response));
+  euicc_->SetTestMode(std::move(dbus_result), in_is_test_mode);
 }
 
 void EuiccDBusAdaptor::UseTestCerts(bool in_use_test_certs) {
@@ -84,8 +84,8 @@ void EuiccDBusAdaptor::UseTestCerts(bool in_use_test_certs) {
 
 void EuiccDBusAdaptor::ResetMemory(std::unique_ptr<DBusResponse<>> response,
                                    int in_reset_options) {
-  ResultCallback<> result_callback(std::move(response));
-  euicc_->ResetMemory(std::move(result_callback), in_reset_options);
+  DbusResult<> dbus_result(std::move(response));
+  euicc_->ResetMemory(std::move(dbus_result), in_reset_options);
 }
 
 }  // namespace hermes

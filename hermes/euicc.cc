@@ -52,7 +52,7 @@ void Euicc::UpdateLogicalSlot(base::Optional<uint8_t> logical_slot) {
 void Euicc::InstallProfileFromActivationCode(
     std::string activation_code,
     std::string confirmation_code,
-    ResultCallback<dbus::ObjectPath> result_callback) {
+    DbusResult<dbus::ObjectPath> dbus_result) {
   LOG(INFO) << __func__;
   if (!context_->lpa()->IsLpaIdle()) {
     // The LPA performs background tasks even after a dbus call is returned.
@@ -63,14 +63,13 @@ void Euicc::InstallProfileFromActivationCode(
         FROM_HERE,
         base::BindOnce(&Euicc::InstallProfileFromActivationCode,
                        weak_factory_.GetWeakPtr(), std::move(activation_code),
-                       std::move(confirmation_code),
-                       std::move(result_callback)),
+                       std::move(confirmation_code), std::move(dbus_result)),
         kLpaRetryDelay);
     return;
   }
-  auto profile_cb = [result_callback{std::move(result_callback)}, this](
+  auto profile_cb = [dbus_result{std::move(dbus_result)}, this](
                         lpa::proto::ProfileInfo& info, int error) mutable {
-    OnProfileInstalled(info, error, std::move(result_callback));
+    OnProfileInstalled(info, error, std::move(dbus_result));
   };
   context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
   if (activation_code.empty()) {
@@ -87,18 +86,16 @@ void Euicc::InstallProfileFromActivationCode(
                                    context_->executor(), std::move(profile_cb));
 }
 
-void Euicc::InstallPendingProfile(
-    dbus::ObjectPath profile_path,
-    std::string confirmation_code,
-    ResultCallback<dbus::ObjectPath> result_callback) {
+void Euicc::InstallPendingProfile(dbus::ObjectPath profile_path,
+                                  std::string confirmation_code,
+                                  DbusResult<dbus::ObjectPath> dbus_result) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::InstallPendingProfile,
                        weak_factory_.GetWeakPtr(), std::move(profile_path),
-                       std::move(confirmation_code),
-                       std::move(result_callback)),
+                       std::move(confirmation_code), std::move(dbus_result)),
         kLpaRetryDelay);
     return;
   }
@@ -108,7 +105,7 @@ void Euicc::InstallPendingProfile(
                       });
 
   if (iter == pending_profiles_.end()) {
-    result_callback.Error(brillo::Error::Create(
+    dbus_result.Error(brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorInvalidParameter,
         "Could not find Profile " + profile_path.value()));
     return;
@@ -117,17 +114,17 @@ void Euicc::InstallPendingProfile(
   std::string activation_code = iter->get()->GetActivationCode();
   InstallProfileFromActivationCode(std::move(activation_code),
                                    std::move(confirmation_code),
-                                   std::move(result_callback));
+                                   std::move(dbus_result));
 }
 
 void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
-                             ResultCallback<> result_callback) {
+                             DbusResult<> dbus_result) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::UninstallProfile, weak_factory_.GetWeakPtr(),
-                       std::move(profile_path), std::move(result_callback)),
+                       std::move(profile_path), std::move(dbus_result)),
         kLpaRetryDelay);
     return;
   }
@@ -139,7 +136,7 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
     }
   }
   if (!matching_profile) {
-    result_callback.Error(brillo::Error::Create(
+    dbus_result.Error(brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorInvalidParameter,
         "Could not find Profile " + profile_path.value()));
     return;
@@ -148,9 +145,9 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
   context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
   context_->lpa()->DeleteProfile(
       matching_profile->GetIccid(), context_->executor(),
-      [result_callback{std::move(result_callback)}, profile_path,
+      [dbus_result{std::move(dbus_result)}, profile_path,
        this](int error) mutable {
-        OnProfileUninstalled(profile_path, error, std::move(result_callback));
+        OnProfileUninstalled(profile_path, error, std::move(dbus_result));
       });
 }
 
@@ -172,14 +169,13 @@ void Euicc::UpdatePendingProfilesProperty() {
   dbus_adaptor_->SetPendingProfiles(profile_paths);
 }
 
-void Euicc::OnProfileInstalled(
-    const lpa::proto::ProfileInfo& profile_info,
-    int error,
-    ResultCallback<dbus::ObjectPath> result_callback) {
+void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
+                               int error,
+                               DbusResult<dbus::ObjectPath> dbus_result) {
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
-    result_callback.Error(decoded_error);
+    dbus_result.Error(decoded_error);
     return;
   }
 
@@ -202,7 +198,7 @@ void Euicc::OnProfileInstalled(
   }
 
   if (!profile) {
-    result_callback.Error(brillo::Error::Create(
+    dbus_result.Error(brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorInternalLpaFailure,
         "Failed to create Profile object"));
     return;
@@ -213,24 +209,24 @@ void Euicc::OnProfileInstalled(
   // Refresh LPA profile cache
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
-      [result_callback{std::move(result_callback)}, this](
+      [dbus_result{std::move(dbus_result)}, this](
           std::vector<lpa::proto::ProfileInfo>& profile_infos, int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          result_callback.Error(decoded_error);
+          dbus_result.Error(decoded_error);
           return;
         }
-        result_callback.Success(installed_profiles_.back()->object_path());
+        dbus_result.Success(installed_profiles_.back()->object_path());
       });
 }
 
 void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
                                  int error,
-                                 ResultCallback<> result_callback) {
+                                 DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
-    result_callback.Error(decoded_error);
+    dbus_result.Error(decoded_error);
     return;
   }
 
@@ -246,47 +242,47 @@ void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
   // Refresh LPA profile cache
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
-      [result_callback{std::move(result_callback)}](
+      [dbus_result{std::move(dbus_result)}](
           std::vector<lpa::proto::ProfileInfo>& profile_infos, int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          result_callback.Error(decoded_error);
+          dbus_result.Error(decoded_error);
           return;
         }
-        result_callback.Success();
+        dbus_result.Success();
       });
 }
 
-void Euicc::RequestInstalledProfiles(ResultCallback<> result_callback) {
+void Euicc::RequestInstalledProfiles(DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::RequestInstalledProfiles,
-                       weak_factory_.GetWeakPtr(), std::move(result_callback)),
+                       weak_factory_.GetWeakPtr(), std::move(dbus_result)),
         kLpaRetryDelay);
     return;
   }
   context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
-      [result_callback{std::move(result_callback)}, this](
+      [dbus_result{std::move(dbus_result)}, this](
           std::vector<lpa::proto::ProfileInfo>& profile_infos,
           int error) mutable {
         OnInstalledProfilesReceived(profile_infos, error,
-                                    std::move(result_callback));
+                                    std::move(dbus_result));
       });
 }
 
 void Euicc::OnInstalledProfilesReceived(
     const std::vector<lpa::proto::ProfileInfo>& profile_infos,
     int error,
-    ResultCallback<> result_callback) {
+    DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(ERROR) << "Failed to retrieve installed profiles";
-    result_callback.Error(decoded_error);
+    dbus_result.Error(decoded_error);
     return;
   }
   installed_profiles_.clear();
@@ -298,17 +294,17 @@ void Euicc::OnInstalledProfilesReceived(
     }
   }
   UpdateInstalledProfilesProperty();
-  result_callback.Success();
+  dbus_result.Success();
 }
 
-void Euicc::RequestPendingProfiles(ResultCallback<> result_callback,
+void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
                                    std::string root_smds) {
   LOG(INFO) << __func__;
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::RequestPendingProfiles,
-                       weak_factory_.GetWeakPtr(), std::move(result_callback),
+                       weak_factory_.GetWeakPtr(), std::move(dbus_result),
                        std::move(root_smds)),
         kLpaRetryDelay);
     return;
@@ -316,23 +312,22 @@ void Euicc::RequestPendingProfiles(ResultCallback<> result_callback,
   context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
   context_->lpa()->GetPendingProfilesFromSmds(
       root_smds.empty() ? kDefaultRootSmds : root_smds, context_->executor(),
-      [result_callback{std::move(result_callback)}, this](
+      [dbus_result{std::move(dbus_result)}, this](
           std::vector<lpa::proto::ProfileInfo>& profile_infos,
           int error) mutable {
-        OnPendingProfilesReceived(profile_infos, error,
-                                  std::move(result_callback));
+        OnPendingProfilesReceived(profile_infos, error, std::move(dbus_result));
       });
 }
 
 void Euicc::OnPendingProfilesReceived(
     const std::vector<lpa::proto::ProfileInfo>& profile_infos,
     int error,
-    ResultCallback<> result_callback) {
+    DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
     LOG(ERROR) << "Failed to retrieve pending profiles";
-    result_callback.Error(decoded_error);
+    dbus_result.Error(decoded_error);
     return;
   }
 
@@ -345,21 +340,21 @@ void Euicc::OnPendingProfilesReceived(
     }
   }
   UpdatePendingProfilesProperty();
-  result_callback.Success();
+  dbus_result.Success();
 }
 
-void Euicc::SetTestMode(ResultCallback<> result_callback, bool is_test_mode) {
+void Euicc::SetTestMode(DbusResult<> dbus_result, bool is_test_mode) {
   context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
   VLOG(2) << __func__ << " : is_test_mode" << is_test_mode;
   context_->lpa()->SetTestMode(
       is_test_mode, context_->executor(),
-      [result_callback{std::move(result_callback)}](int error) {
+      [dbus_result{std::move(dbus_result)}](int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          result_callback.Error(decoded_error);
+          dbus_result.Error(decoded_error);
           return;
         }
-        result_callback.Success();
+        dbus_result.Success();
       });
 }
 
@@ -370,12 +365,12 @@ void Euicc::UseTestCerts(bool use_test_certs) {
   context_->lpa()->SetTlsCertsDir(kPath + (use_test_certs ? "test/" : "prod/"));
 }
 
-void Euicc::ResetMemory(ResultCallback<> result_callback, int reset_options) {
+void Euicc::ResetMemory(DbusResult<> dbus_result, int reset_options) {
   VLOG(2) << __func__ << " : reset_options: " << reset_options;
   if (reset_options != lpa::data::reset_options::kDeleteOperationalProfiles &&
       reset_options !=
           lpa::data::reset_options::kDeleteFieldLoadedTestProfiles) {
-    result_callback.Error(brillo::Error::Create(
+    dbus_result.Error(brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorInvalidParameter,
         "Illegal value for reset_options."));
     return;
@@ -385,13 +380,13 @@ void Euicc::ResetMemory(ResultCallback<> result_callback, int reset_options) {
   bool reset_uicc = false;  // Ignored by the lpa.
   context_->lpa()->ResetMemory(
       reset_options, reset_uicc, context_->executor(),
-      [result_callback{std::move(result_callback)}](int error) {
+      [dbus_result{std::move(dbus_result)}](int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
-          result_callback.Error(decoded_error);
+          dbus_result.Error(decoded_error);
           return;
         }
-        result_callback.Success();
+        dbus_result.Success();
       });
 }
 
