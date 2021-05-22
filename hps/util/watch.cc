@@ -24,16 +24,20 @@ namespace {
 // Argument is feature number.
 int Watch(std::unique_ptr<hps::HPS> hps,
           const base::CommandLine::StringVector& args) {
-  int feat = 0;
+  int feat;
   if (args.size() != 2) {
     std::cerr << "Feature number required" << std::endl;
     return 1;
   }
-  if (!base::StringToInt(args[1], &feat) || feat < 0 || feat > 1) {
+  if (!base::StringToInt(args[1], &feat)) {
     std::cerr << args[1] << ": illegal feature number" << std::endl;
     return 1;
   }
-  hps->Enable(1 << feat);
+  if (feat < 0 || feat > 1) {
+    std::cerr << args[1] << ": feature number out of range (0,1)" << std::endl;
+    return 1;
+  }
+  hps->Enable(feat);
   int last = -2;
   for (;;) {
     int result = hps->Result(feat);
