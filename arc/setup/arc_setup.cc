@@ -103,6 +103,7 @@ constexpr char kBuildPropFile[] = "/usr/share/arc/properties/build.prop";
 constexpr char kBuildPropFileVm[] = "/usr/share/arcvm/properties/build.prop";
 constexpr char kCameraProfileDir[] =
     "/mnt/stateful_partition/encrypted/var/cache/camera";
+constexpr char kCameraTestConfig[] = "/var/cache/camera/test_config.json";
 constexpr char kCrasSocketDirectory[] = "/run/cras";
 constexpr char kCombinedPropFileVm[] =
     "/run/arcvm/host_generated/combined.prop";
@@ -554,6 +555,7 @@ struct ArcPaths {
   const base::FilePath art_dalvik_cache_directory{kArtDalvikCacheDirectory};
   const base::FilePath binfmt_misc_directory{kBinFmtMiscDirectory};
   const base::FilePath camera_profile_dir{kCameraProfileDir};
+  const base::FilePath camera_test_config{kCameraTestConfig};
   const base::FilePath cras_socket_directory{kCrasSocketDirectory};
   const base::FilePath debugfs_directory{kDebugfsDirectory};
   const base::FilePath fake_kptr_restrict{kFakeKptrRestrict};
@@ -847,19 +849,28 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
   }
 
   if (base::PathExists(media_profile_xml)) {
-    const base::FilePath new_media_profile_xml =
-        base::FilePath(oem_mount_directory)
-            .Append("etc")
-            .Append(arc_paths_->media_profile_file);
-    brillo::SafeFD dest_parent(
-        brillo::SafeFD::Root()
-            .first.OpenExistingDir(new_media_profile_xml.DirName())
-            .first);
-    (void)dest_parent.Unlink(new_media_profile_xml.BaseName().value());
-    EXIT_IF(!SafeCopyFile(
-        media_profile_xml, brillo::SafeFD::Root().first /*src_parent*/,
-        new_media_profile_xml.BaseName(), std::move(dest_parent),
-        0644 /*permissions*/, kHostArcCameraUid, kHostArcCameraGid));
+    base::Optional<std::string> content =
+        FilterMediaProfile(media_profile_xml, arc_paths_->camera_test_config);
+    EXIT_IF(!content);
+
+    if (content->size() > 0) {
+      const base::FilePath new_media_profile_xml =
+          base::FilePath(oem_mount_directory)
+              .Append("etc")
+              .Append(arc_paths_->media_profile_file);
+      brillo::SafeFD dest_parent(
+          brillo::SafeFD::Root()
+              .first.OpenExistingDir(new_media_profile_xml.DirName())
+              .first);
+      (void)dest_parent.Unlink(new_media_profile_xml.BaseName().value());
+      brillo::SafeFD dest_fd(dest_parent
+                                 .MakeFile(new_media_profile_xml.BaseName(),
+                                           0644 /*permissions*/,
+                                           kHostArcCameraUid, kHostArcCameraGid)
+                                 .first);
+      EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), content->c_str(),
+                                         content->size()));
+    }
   }
 
   base::FilePath hardware_features_xml("/etc/hardware_features.xml");

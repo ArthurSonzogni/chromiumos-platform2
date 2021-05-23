@@ -55,6 +55,8 @@
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <crypto/sha2.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 using base::StringPiece;
 
@@ -69,6 +71,14 @@ constexpr char kElementVersion[] = "<version ";
 // Fingerprint attribute prefix in packages.xml and packages_cache.xml files.
 // Note: This constant has to be in sync with Android's arc-boot-type-detector.
 constexpr char kAttributeFingerprint[] = " fingerprint=\"";
+
+// Name of json field in camera test config specifying whether the front camera
+// is enable.
+constexpr char kEnableFrontCamera[] = "enable_front_camera";
+
+// Name of json field in camera test config specifying whether the back camera
+// is enable.
+constexpr char kEnableBackCamera[] = "enable_back_camera";
 
 // Gets the loop device path for a loop device number.
 base::FilePath GetLoopDevicePath(int32_t device) {
@@ -1110,6 +1120,155 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
       fstab_path, 0644,
       base::StringPrintf(kFirstStageFstabTemplate,
                          combined_property_file_name.value().c_str()));
+}
+
+base::Optional<std::string> FilterMediaProfile(
+    const base::FilePath& media_profile_xml,
+    const base::FilePath& camera_test_config) {
+  std::string content;
+  if (!base::ReadFileToString(media_profile_xml, &content)) {
+    LOG(ERROR) << "Failed to read media profile from "
+               << media_profile_xml.value();
+    return base::nullopt;
+  }
+
+  if (!base::PathExists(camera_test_config)) {
+    // Don't filter if we cannot find the test config.
+    return content;
+  }
+  std::string json_str;
+  if (!base::ReadFileToString(camera_test_config, &json_str)) {
+    LOG(ERROR) << "Failed to read camera test config from "
+               << camera_test_config.value();
+    return content;
+  }
+  auto config = base::JSONReader::ReadAndReturnValueWithError(json_str);
+  if (!config.value) {
+    LOG(ERROR) << "Failed to parse camera test config content: " << json_str;
+    return content;
+  }
+  bool enable_front_camera =
+      config.value->FindBoolPath(kEnableFrontCamera).value_or(true);
+  bool enable_back_camera =
+      config.value->FindBoolPath(kEnableBackCamera).value_or(true);
+  if (enable_front_camera && enable_back_camera) {
+    return content;
+  }
+  if (!enable_front_camera && !enable_back_camera) {
+    // All built-in cameras are filtered out. No need of media profile xml.
+    return "";
+  }
+
+  LIBXML_TEST_VERSION
+  xmlDocPtr doc;
+
+  auto result = [&doc, &content, enable_front_camera,
+                 enable_back_camera]() -> base::Optional<std::string> {
+    doc = xmlReadMemory(content.c_str(), content.size(), NULL, NULL, 0);
+    if (doc == NULL) {
+      LOG(ERROR) << "Failed to parse media profile content:\n" << content;
+      return base::nullopt;
+    }
+    // For keeping indent.
+    xmlKeepBlanksDefault(0);
+
+    xmlNodePtr settings = xmlDocGetRootElement(doc);
+    if (settings == NULL) {
+      LOG(ERROR) << "No root element node found in media profile content:\n"
+                 << content;
+      return base::nullopt;
+    }
+    if (std::string(reinterpret_cast<const char*>(settings->name)) !=
+        "MediaSettings") {
+      LOG(ERROR) << "Failed to find media settings in media profile content:\n"
+                 << content;
+      return base::nullopt;
+    }
+
+    std::vector<xmlNodePtr> camera_profiles;
+    for (xmlNodePtr cur = xmlFirstElementChild(settings); cur != NULL;
+         cur = xmlNextElementSibling(cur)) {
+      if (std::string("CamcorderProfiles") !=
+          reinterpret_cast<const char*>(cur->name)) {
+        continue;
+      }
+      camera_profiles.push_back(cur);
+    }
+
+    switch (camera_profiles.size()) {
+      case 0:
+        LOG(ERROR) << "No camera profile found in media profile content:\n"
+                   << content;
+        return base::nullopt;
+      case 1:
+        // The original content of media profile may already be filtered by test
+        // code[1]. Here we ensure there's always have at least one camera to be
+        // tested is available after applying all filtering.  TODO(b/187239915):
+        // Remove filter in test code and unify filter logic here.
+        // [1]
+        // https://source.corp.google.com/chromeos_public/src/third_party/labpack/files/server/cros/camerabox_utils.py;rcl=d30bb56fe7ae9c39b122a28f1d5d2b64f928555c;l=106
+        return content;
+      case 2:
+        break;
+      default:
+        NOTREACHED() << "Found more than 2 camera profiles";
+        return base::nullopt;
+    }
+
+    xmlNodePtr front_camera_profile = NULL;
+    xmlNodePtr back_camera_profile = NULL;
+    for (xmlNodePtr profile : camera_profiles) {
+      auto* cameraId = reinterpret_cast<const char*>(
+          xmlGetProp(profile, reinterpret_cast<const xmlChar*>("cameraId")));
+      if (std::string("0") == cameraId) {
+        CHECK(back_camera_profile == NULL) << "Duplicate back facing profile";
+        back_camera_profile = profile;
+      } else if (std::string("1") == cameraId) {
+        CHECK(front_camera_profile == NULL) << "Duplicate front facing profile";
+        front_camera_profile = profile;
+      } else {
+        LOG(ERROR) << "Unknown cameraId \"" << cameraId
+                   << "\" in media profile content:\n"
+                   << content;
+        return base::nullopt;
+      }
+    }
+
+    if (enable_front_camera) {
+      // After deleting the profile, the camera id of left profile should start
+      // from 0.
+      xmlSetProp(front_camera_profile,
+                 reinterpret_cast<const xmlChar*>("cameraId"),
+                 reinterpret_cast<const xmlChar*>("0"));
+    } else {
+      xmlUnlinkNode(front_camera_profile);
+      xmlFreeNode(front_camera_profile);
+    }
+
+    if (enable_back_camera) {
+      // After deleting the profile, the camera id of left profile should start
+      // from 0.
+      xmlSetProp(back_camera_profile,
+                 reinterpret_cast<const xmlChar*>("cameraId"),
+                 reinterpret_cast<const xmlChar*>("0"));
+    } else {
+      xmlUnlinkNode(back_camera_profile);
+      xmlFreeNode(back_camera_profile);
+    }
+
+    // Dump results.
+    xmlChar* buf;
+    int size;
+    xmlDocDumpFormatMemory(doc, &buf, &size, /* format */ 1);
+    CHECK(buf != NULL) << "Failed to dump filtered xml result";
+    std::string xml_result(reinterpret_cast<const char*>(buf));
+    xmlFree(buf);
+    return xml_result;
+  }();
+  xmlFreeDoc(doc);
+  xmlCleanupParser();
+
+  return result;
 }
 
 }  // namespace arc

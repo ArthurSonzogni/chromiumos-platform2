@@ -289,6 +289,12 @@ bool SafeCopyFile(const base::FilePath& src_path,
 bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
                              const base::FilePath& fstab_path);
 
+// Filters camera profiles in |media_profile_xml| with the settings in
+// |camera_test_config| and returns the filtered content.
+base::Optional<std::string> FilterMediaProfile(
+    const base::FilePath& media_profile_xml,
+    const base::FilePath& camera_test_config);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_
