@@ -114,10 +114,7 @@ class KeysetManagement {
   // matching, labeled keys, then it does nothing.  If there is an identically
   // labeled key, it will overwrite it.
   virtual user_data_auth::CryptohomeErrorCode AddKeyset(
-      const Credentials& new_credentials,
-      VaultKeyset vault_keyset,
-      bool clobber,
-      bool has_new_key_data);
+      const Credentials& new_credentials, VaultKeyset vault_keyset);
 
   // Removes the keyset identified by |key_data| if |credentials|
   // has the remove() KeyPrivilege.  The VaultKeyset backing

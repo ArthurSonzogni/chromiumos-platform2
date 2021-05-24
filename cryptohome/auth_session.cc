@@ -67,6 +67,7 @@ void AuthSession::AuthSessionTimedOut() {
 user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
     const user_data_auth::AddCredentialsRequest& request) {
   MountError code;
+  CHECK(request.authorization().key().has_data());
   auto credentials = GetCredentials(request.authorization(), &code);
   if (!credentials) {
     return MountErrorToCryptohomeError(code);
@@ -80,9 +81,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
       return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
     }
 
-    return keyset_management_->AddKeyset(
-        *credentials, auth_factor_->vault_keyset(), request.clobber_if_exists(),
-        request.authorization().key().has_data() /* Has new data */);
+    return keyset_management_->AddKeyset(*credentials,
+                                         auth_factor_->vault_keyset());
   }
 
   user_data_auth::CryptohomeErrorCode errorCode =

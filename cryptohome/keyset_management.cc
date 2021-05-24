@@ -562,10 +562,7 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
 // Overloaded AddKeyset for use with AuthSession.
 user_data_auth::CryptohomeErrorCode KeysetManagement::AddKeyset(
-    const Credentials& new_credentials,
-    VaultKeyset vault_keyset,
-    bool clobber,
-    bool has_new_key_data) {
+    const Credentials& new_credentials, VaultKeyset vault_keyset) {
   std::string obfuscated_username =
       new_credentials.GetObfuscatedUsername(system_salt_);
 
@@ -591,24 +588,17 @@ user_data_auth::CryptohomeErrorCode KeysetManagement::AddKeyset(
   }
 
   // Before persisting, check if there is an existing labeled credential.
-  if (has_new_key_data) {
-    std::unique_ptr<VaultKeyset> match =
-        GetVaultKeyset(obfuscated_username, new_credentials.key_data().label());
-    if (match.get()) {
-      LOG(INFO) << "Label already exists.";
-      platform_->DeleteFile(vk_path);
-      if (!clobber) {
-        return user_data_auth::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
-      }
-      vk_path = match->GetSourceFile();
-    }
+  std::unique_ptr<VaultKeyset> match =
+      GetVaultKeyset(obfuscated_username, new_credentials.key_data().label());
+  if (match.get()) {
+    LOG(INFO) << "Label already exists.";
+    platform_->DeleteFile(vk_path);
+    vk_path = match->GetSourceFile();
   }
+
   // Since we're reusing the authorizing VaultKeyset, be careful with the
   // metadata.
-  vault_keyset.ClearKeyData();
-  if (has_new_key_data) {
-    vault_keyset.SetKeyData(new_credentials.key_data());
-  }
+  vault_keyset.SetKeyData(new_credentials.key_data());
 
   // Repersist the VK with the new creds.
   user_data_auth::CryptohomeErrorCode ret_code =
@@ -617,8 +607,8 @@ user_data_auth::CryptohomeErrorCode KeysetManagement::AddKeyset(
       !vault_keyset.Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
     ret_code = user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
-    // If we're clobbering, don't delete on error.
-    if (!clobber) {
+    // If we're re-saving an existing keyset, don't delete on error.
+    if (!match.get()) {
       platform_->DeleteFile(vk_path);
     }
   }
