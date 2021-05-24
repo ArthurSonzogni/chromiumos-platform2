@@ -1315,9 +1315,11 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
 
-    // TODO(benchan): IPv6 support is currently disabled for cellular devices.
-    // Check and obtain IPv6 configuration from the bearer when we later enable
-    // IPv6 support on cellular devices.
+    // b/182524993, b/185750211 - Currently we only support 1 config method
+    // (either IPv4 or IPv6) per bearer. On IPv4 only and IPv6 only network,
+    // we will pick the corresponding method from the bearer. For dual stack
+    // networks, IPv4 config will be used here and Ipv6 config will be
+    // populated using the kernel path.
     CHECK(capability_);
     CellularBearer* bearer = capability_->GetActiveBearer();
     if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodStatic) {
@@ -1326,7 +1328,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
       SetServiceState(Service::kStateConfiguring);
       // Override the MTU with a given limit for a specific serving operator
       // if the network doesn't report something lower.
-      // TODO(b:176060170): Combine values from IPv6 as well..
       IPConfig::Properties properties = *bearer->ipv4_config_properties();
       if (serving_operator_info_ &&
           serving_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
@@ -1335,6 +1336,16 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
         properties.mtu = serving_operator_info_->mtu();
       }
       AssignIPConfig(properties);
+      return;
+    }
+
+    if (bearer && bearer->ipv6_config_method() == IPConfig::kMethodStatic) {
+      LOG(INFO) << "Assign static IPv6 configuration from bearer.";
+      SelectService(service_);
+      SetServiceState(Service::kStateConfiguring);
+      IPConfig::Properties properties = *bearer->ipv6_config_properties();
+      // TODO(b:176060170): Combine values from IPv6 as well..
+      AssignIPv6Config(properties);
       return;
     }
 

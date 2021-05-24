@@ -467,8 +467,11 @@ class Device : public base::RefCounted<Device> {
   bool AcquireIPv6ConfigWithLeaseName(const std::string& lease_name);
 #endif
 
-  // Assigns the IP configuration |properties| to |ipconfig_|.
+  // Assigns the IPv4 configuration |properties| to |ipconfig_|.
   void AssignIPConfig(const IPConfig::Properties& properties);
+
+  // Assigns the IPv6 configuration |properties| to |ip6config_|.
+  void AssignIPv6Config(const IPConfig::Properties& properties);
 
   // Callback invoked on successful IP configuration updates.
   virtual void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,

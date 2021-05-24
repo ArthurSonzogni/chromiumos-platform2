@@ -771,6 +771,15 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
                                                AsWeakPtr(), ipconfig_, true));
 }
 
+void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
+  DestroyIPConfig();
+  StartIPv6();
+  ip6config_ = new IPConfig(control_interface(), link_name_);
+  ip6config_->set_properties(properties);
+  dispatcher()->PostTask(FROM_HERE, base::Bind(&Device::OnIPConfigUpdated,
+                                               AsWeakPtr(), ip6config_, true));
+}
+
 void Device::DestroyIPConfigLease(const std::string& name) {
   dhcp_provider_->DestroyLease(name);
 }
