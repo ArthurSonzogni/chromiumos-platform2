@@ -118,6 +118,7 @@ _IUSE = [
     'vm_borealis',
     'vpn',
     'vtpm_proxy',
+    'vulkan',
     'wake_on_wifi',
     'wifi',
     'wired_8021x',

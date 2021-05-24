@@ -272,11 +272,16 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(shared_fonts)
       .EnableBattery(true /* enable */);
 
+  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
+  // Enable vulkan only in dev mode for now.
+  if (is_dev_mode && USE_CROSVM_VULKAN) {
+    vm_builder.EnableGpu(true, "--gpu=vulkan=true");
+  }
+
   auto args = vm_builder.BuildVmArgs();
 
   // Load any custom parameters from the development configuration file if the
   // feature is turned on (default) and path exists (dev mode only).
-  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   if (is_dev_mode && use_dev_conf()) {
     const base::FilePath dev_conf(kDevConfFilePath);
     if (base::PathExists(dev_conf)) {
