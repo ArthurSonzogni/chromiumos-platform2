@@ -44,10 +44,11 @@ constexpr size_t kUUIDStringLength = 37;
 
 // The maximum memory size allowed to be allocated for an image.  At the current
 // maximum resolution and color depth that the frontend will request, this gives
-// 388 sq in, which is more than enough for an 11x17 ledger page or an 8.5x40
-// ADF scan.  This limit will need to be reconsidered if we want to enable 1200
-// dpi scanning.
-constexpr size_t kMaximumImageSize = 400 * 1024 * 1024;
+// 407 sq in, which is more than enough for an 11x17 ledger page or an 8.5x47
+// ADF scan.  This also gives just enough for a 1200-dpi 24-bit scan of a
+// typical letter/A4-sized platen.  This limit will need to be reconsidered if
+// we want to enable full 1200 dpi scanning.
+constexpr size_t kMaximumImageSize = 420 * 1024 * 1024;
 
 // The default libpng config limits images to 1 million pixels in width and
 // height.  Update these constants to match if you add a call to
