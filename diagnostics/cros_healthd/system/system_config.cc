@@ -146,24 +146,24 @@ bool SystemConfig::IsWilcoDevice() {
                     base::SysInfo::GetLsbReleaseBoard());
 }
 
-std::string SystemConfig::GetMarketingName() {
+base::Optional<std::string> SystemConfig::GetMarketingName() {
   std::string marketing_name;
-  // Assume that device does NOT have a marketing name unless otherwise
-  // configured.
   if (!cros_config_->GetString(kArcBuildPropertiesPath, kMarketingNameProperty,
                                &marketing_name)) {
-    return "";
+    return base::nullopt;
   }
   return marketing_name;
 }
 
-std::string SystemConfig::GetProductName() {
-  std::string product_name;
-  if (!cros_config_->GetString(kRootPath, kProductNameProperty,
-                               &product_name)) {
+std::string SystemConfig::GetCodeName() {
+  std::string code_name;
+  if (!cros_config_->GetString(kRootPath, kCodeNameProperty, &code_name)) {
+    // "/name" is a required field in cros config. This should not be reached in
+    // normal situation. However, if in a device which is in the early
+    // development stage or in a vm environment, this could still happen.
     return "";
   }
-  return product_name;
+  return code_name;
 }
 
 }  // namespace diagnostics

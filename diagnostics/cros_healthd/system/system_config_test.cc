@@ -24,8 +24,8 @@ namespace {
 
 // Fake marketing name used for testing cros config.
 constexpr char kFakeMarketingName[] = "chromebook X 1234";
-// Fake product name used for testing cros config.
-constexpr char kFakeProductName[] = "product name";
+// Fake code name used for testing cros config.
+constexpr char kFakeCodeName[] = "CodeName";
 
 }  // namespace
 
@@ -179,21 +179,21 @@ TEST_F(SystemConfigTest, WilcoDeviceFalse) {
 TEST_F(SystemConfigTest, CorrectMarketingName) {
   fake_cros_config()->SetString(kArcBuildPropertiesPath, kMarketingNameProperty,
                                 kFakeMarketingName);
-  EXPECT_EQ(system_config()->GetMarketingName(), kFakeMarketingName);
+  EXPECT_TRUE(system_config()->GetMarketingName().has_value());
+  EXPECT_EQ(system_config()->GetMarketingName().value(), kFakeMarketingName);
 }
 
 TEST_F(SystemConfigTest, MarketingNameUnset) {
-  EXPECT_EQ(system_config()->GetMarketingName(), "");
+  EXPECT_FALSE(system_config()->GetMarketingName().has_value());
 }
 
-TEST_F(SystemConfigTest, CorrectProductName) {
-  fake_cros_config()->SetString(kRootPath, kProductNameProperty,
-                                kFakeProductName);
-  EXPECT_EQ(system_config()->GetProductName(), kFakeProductName);
+TEST_F(SystemConfigTest, CorrectCodeName) {
+  fake_cros_config()->SetString(kRootPath, kCodeNameProperty, kFakeCodeName);
+  EXPECT_EQ(system_config()->GetCodeName(), kFakeCodeName);
 }
 
-TEST_F(SystemConfigTest, ProductNameUnset) {
-  EXPECT_EQ(system_config()->GetProductName(), "");
+TEST_F(SystemConfigTest, CodeNameUnset) {
+  EXPECT_EQ(system_config()->GetCodeName(), "");
 }
 
 }  // namespace diagnostics

@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/optional.h>
+
 namespace diagnostics {
 
 class SystemConfigInterface {
@@ -42,10 +44,10 @@ class SystemConfigInterface {
   virtual bool IsWilcoDevice() = 0;
 
   // Returns the marketing name associated with this device.
-  virtual std::string GetMarketingName() = 0;
+  virtual base::Optional<std::string> GetMarketingName() = 0;
 
-  // Returns the product name associated with this device.
-  virtual std::string GetProductName() = 0;
+  // Returns the code name associated with this device.
+  virtual std::string GetCodeName() = 0;
 };
 
 }  // namespace diagnostics

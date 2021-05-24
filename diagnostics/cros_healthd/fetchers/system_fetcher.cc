@@ -112,8 +112,9 @@ bool FetchCachedVpdInfo(const base::FilePath& root_dir,
 }  // namespace
 
 void SystemFetcher::FetchMasterConfigInfo(mojo_ipc::SystemInfo* output_info) {
-  output_info->marketing_name = context_->system_config()->GetMarketingName();
-  output_info->product_name = context_->system_config()->GetProductName();
+  output_info->marketing_name =
+      context_->system_config()->GetMarketingName().value_or("");
+  output_info->product_name = context_->system_config()->GetCodeName();
 }
 
 base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchOsVersion(

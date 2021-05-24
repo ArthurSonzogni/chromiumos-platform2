@@ -37,8 +37,8 @@ class SystemConfig final : public SystemConfigInterface {
   bool NvmeSelfTestSupported() override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
-  std::string GetMarketingName() override;
-  std::string GetProductName() override;
+  base::Optional<std::string> GetMarketingName() override;
+  std::string GetCodeName() override;
 
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.

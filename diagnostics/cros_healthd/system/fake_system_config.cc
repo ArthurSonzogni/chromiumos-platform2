@@ -49,12 +49,12 @@ bool FakeSystemConfig::IsWilcoDevice() {
   return wilco_device_;
 }
 
-std::string FakeSystemConfig::GetMarketingName() {
+base::Optional<std::string> FakeSystemConfig::GetMarketingName() {
   return marketing_name_;
 }
 
-std::string FakeSystemConfig::GetProductName() {
-  return product_name_;
+std::string FakeSystemConfig::GetCodeName() {
+  return code_name_;
 }
 
 void FakeSystemConfig::SetHasBacklight(bool value) {
@@ -89,12 +89,13 @@ void FakeSystemConfig::SetIsWilcoDevice(bool value) {
   wilco_device_ = value;
 }
 
-void FakeSystemConfig::SetMarketingName(const std::string& value) {
+void FakeSystemConfig::SetMarketingName(
+    const base::Optional<std::string>& value) {
   marketing_name_ = value;
 }
 
-void FakeSystemConfig::SetProductName(const std::string& value) {
-  product_name_ = value;
+void FakeSystemConfig::SetCodeName(const std::string& value) {
+  code_name_ = value;
 }
 
 }  // namespace diagnostics

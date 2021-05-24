@@ -83,7 +83,7 @@ class SystemUtilsTest : public BaseFileTest {
     mock_context_.fake_system_config()->SetMarketingName(
         system_info->marketing_name);
     ASSERT_TRUE(system_info->product_name.has_value());
-    mock_context_.fake_system_config()->SetProductName(
+    mock_context_.fake_system_config()->SetCodeName(
         system_info->product_name.value());
 
     SetMockFile({kRelativePathDmiInfo, kFileNameBiosVersion},

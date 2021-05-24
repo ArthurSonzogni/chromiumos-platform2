@@ -16,7 +16,7 @@ const char kHasSkuNumberProperty[] = "has-sku-number";
 const char kArcBuildPropertiesPath[] = "/arc/build-properties";
 const char kMarketingNameProperty[] = "marketing-name";
 const char kRootPath[] = "/";
-const char kProductNameProperty[] = "name";
+const char kCodeNameProperty[] = "name";
 
 const char kNvmeToolPath[] = "usr/sbin/nvme";
 const char kDevicePath[] = "dev";

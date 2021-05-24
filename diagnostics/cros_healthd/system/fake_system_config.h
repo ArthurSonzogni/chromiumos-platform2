@@ -28,8 +28,8 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool NvmeSelfTestSupported() override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
-  std::string GetMarketingName() override;
-  std::string GetProductName() override;
+  base::Optional<std::string> GetMarketingName() override;
+  std::string GetCodeName() override;
 
   // Setters for FakeSystemConfig attributes.
   void SetFioSupported(bool value);
@@ -41,8 +41,8 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetNvmeSelfTestSupported(bool value);
   void SetSmartCtrlSupported(bool value);
   void SetIsWilcoDevice(bool value);
-  void SetMarketingName(const std::string& value);
-  void SetProductName(const std::string& value);
+  void SetMarketingName(const base::Optional<std::string>& value);
+  void SetCodeName(const std::string& value);
 
  private:
   bool fio_supported_ = true;
@@ -54,8 +54,8 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool nvme_self_test_supported_ = true;
   bool smart_ctrl_supported_ = true;
   bool wilco_device_ = true;
-  std::string marketing_name_;
-  std::string product_name_;
+  base::Optional<std::string> marketing_name_;
+  std::string code_name_;
 };
 
 }  // namespace diagnostics

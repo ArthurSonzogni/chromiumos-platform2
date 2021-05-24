@@ -84,7 +84,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   SetUpSystemFiles(mock_context.root_dir(), &provider);
   mock_context.fake_system_config()->SetHasSkuNumber(true);
   mock_context.fake_system_config()->SetMarketingName("fake_marketing_name");
-  mock_context.fake_system_config()->SetProductName("fake_product_name");
+  mock_context.fake_system_config()->SetCodeName("fake_code_name");
   SystemFetcher system_fetcher{&mock_context};
   auto system_info = system_fetcher.FetchSystemInfo();
 
