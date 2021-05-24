@@ -151,7 +151,7 @@ void FakeHps::SetStage(Stage s) {
 void FakeHps::Run() {
   // Initial startup.
   // Check for boot fault.
-  if (this->Flag(FakeHps::Flags::kBootFault)) {
+  if (this->Flag(kBootFault)) {
     this->SetStage(kFault);
   } else {
     this->SetStage(kStage0);
@@ -249,19 +249,19 @@ uint16_t FakeHps::ReadRegActual(int reg) {
         break;
       }
       v = hps::R2::kOK;
-      if (this->Flag(FakeHps::Flags::kApplNotVerified)) {
+      if (this->Flag(kApplNotVerified)) {
         v |= hps::R2::kApplNotVerified;
       } else {
         v |= hps::R2::kApplVerified;
       }
-      if (this->Flag(FakeHps::Flags::kWpOff)) {
+      if (this->Flag(kWpOff)) {
         v |= hps::R2::kWpOff;
       } else {
         v |= hps::R2::kWpOn;
       }
       if (this->stage_ == kStage1) {
         v |= hps::R2::kStage1;
-        if (this->Flag(FakeHps::Flags::kSpiNotVerified)) {
+        if (this->Flag(kSpiNotVerified)) {
           v |= hps::R2::kSpiNotVerified;
         } else {
           v |= hps::R2::kSpiVerified;
@@ -275,8 +275,7 @@ uint16_t FakeHps::ReadRegActual(int reg) {
     case HpsReg::kApplVers:
       // Application version, only returned in stage0 if the
       // application has been verified.
-      if (this->stage_ == kStage0 &&
-          this->Flag(FakeHps::Flags::kApplNotVerified)) {
+      if (this->stage_ == kStage0 && this->Flag(kApplNotVerified)) {
         v = this->version_.load();  // Version returned in stage0.
       }
       break;
@@ -337,8 +336,7 @@ void FakeHps::WriteRegActual(int reg, uint16_t value) {
 // Returns the number of bytes written.
 // The length includes 4 bytes of prepended address.
 uint16_t FakeHps::WriteMemActual(int bank, const uint8_t* data, size_t len) {
-  base::AutoLock l(this->bank_lock_);
-  if (this->Flag(FakeHps::Flags::kMemFail)) {
+  if (this->Flag(kMemFail)) {
     return 0;
   }
   switch (this->stage_) {

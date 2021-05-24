@@ -56,8 +56,8 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
   void Run() override;
   void Start();
   void SkipBoot() { this->SetStage(kAppl); }
-  void Set(uint16_t set) { this->flags_.fetch_or(set); }
-  void Clear(uint16_t clear) { this->flags_.fetch_and(~clear); }
+  void Set(Flags f) { this->flags_.fetch_or(1 << f); }
+  void Clear(Flags f) { this->flags_.fetch_and(~(1 << f)); }
   void SetVersion(uint16_t version) { this->version_ = version; }
   void SetF1Result(uint16_t result) { this->f1_result_ = result & 0x7FFF; }
   void SetF2Result(uint16_t result) { this->f2_result_ = result & 0x7FFF; }
@@ -101,7 +101,7 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
   uint16_t ReadRegister(int r);
   void WriteRegister(int r, uint16_t v);
   bool WriteMemory(int base, const uint8_t* mem, size_t len);
-  bool Flag(FakeHps::Flags f) { return (this->flags_.load() & (1 << f)) != 0; }
+  bool Flag(Flags f) { return (this->flags_.load() & (1 << f)) != 0; }
   // Current stage (phase) of the device.
   // The device behaves differently in different stages.
   enum Stage {
