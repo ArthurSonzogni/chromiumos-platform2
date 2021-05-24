@@ -13,18 +13,37 @@
 
 namespace diagnostics {
 
-// Reads the contents of |filename| within |directory| into |out|, trimming
-// trailing whitespace. Returns true on success.
+// Reads the contents of |file_path| into |out|, trims leading and trailing
+// whitespace. Returns true on success.
+// |StringType| can be any type which can be converted from |std::string|. For
+// example, |base::Optional<std::string>|.
+template <typename StringType>
+bool ReadAndTrimString(const base::FilePath& file_path, StringType* out) {
+  DCHECK(out);
+  std::string out_raw;
+
+  if (!ReadAndTrimString(file_path, &out_raw))
+    return false;
+
+  *out = static_cast<StringType>(out_raw);
+  return true;
+}
+
+template <>
+bool ReadAndTrimString<std::string>(const base::FilePath& file_path,
+                                    std::string* out);
+
+// Like ReadAndTrimString() above, but expects a |filename| within |directory|
+// to be read.
+template <typename StringType>
 bool ReadAndTrimString(const base::FilePath& directory,
                        const std::string& filename,
-                       std::string* out);
+                       StringType* out) {
+  return ReadAndTrimString(directory.Append(filename), out);
+}
 
-// Like ReadAndTrimString() above, but expects |file_path| to be the full path
-// to the file to be read.
-bool ReadAndTrimString(const base::FilePath& file_path, std::string* out);
-
-// Like ReadInteger() above, but expects |file_path| to be the full path to the
-// file to be read.
+// Reads an integer value from a file and converts it using the provided
+// function. Returns true on success.
 template <typename T>
 bool ReadInteger(const base::FilePath& file_path,
                  bool (*StringToInteger)(base::StringPiece, T*),
@@ -39,8 +58,8 @@ bool ReadInteger(const base::FilePath& file_path,
   return StringToInteger(buffer, out);
 }
 
-// Reads an integer value from a file and converts it using the provided
-// function. Returns true on success.
+// Like ReadInteger() above, but expects a |filename| within |directory| to be
+// read.
 template <typename T>
 bool ReadInteger(const base::FilePath& directory,
                  const std::string& filename,

@@ -4,25 +4,20 @@
 
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
-#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 
 namespace diagnostics {
 
-bool ReadAndTrimString(const base::FilePath& directory,
-                       const std::string& filename,
-                       std::string* out) {
-  return ReadAndTrimString(directory.Append(filename), out);
-}
-
-bool ReadAndTrimString(const base::FilePath& file_path, std::string* out) {
+template <>
+bool ReadAndTrimString<std::string>(const base::FilePath& file_path,
+                                    std::string* out) {
   DCHECK(out);
 
   if (!base::ReadFileToString(file_path, out))
     return false;
 
-  base::TrimWhitespaceASCII(*out, base::TRIM_TRAILING, out);
+  base::TrimWhitespaceASCII(*out, base::TRIM_ALL, out);
   return true;
 }
 
