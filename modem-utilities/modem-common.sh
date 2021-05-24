@@ -54,10 +54,15 @@ mm1_modems() {
 #
 # Common stuff
 #
-MASKED_PROPERTIES="DeviceIdentifier|EquipmentIdentifier|OwnNumbers|ESN|MEID|IMEI|IMSI|SimIdentifier|MDN|MIN|payment_url_postdata"
+MASKED_PROPERTIES="DeviceIdentifier|EquipmentIdentifier|OwnNumbers|\
+ESN|MEID|IMEI|IMSI|SimIdentifier|MDN|MIN|payment_url_postdata|Eid|Iccid"
 
 mask_modem_properties() {
   sed -E "s/\<(${MASKED_PROPERTIES}): (.+)/\1: *** MASKED ***/i"
+}
+
+mask_profiles() {
+  sed -E "s/(\/profile\/)[0-9]+\/[0-9]+/\1[ ***MASKED*** ]/"
 }
 
 all_modem_status() {
@@ -136,6 +141,10 @@ esim() {
       poll_for_dbus_service "${HERMES}"
       esim_status "$@"
       ;;
+    status_feedback)
+      poll_for_dbus_service "${HERMES}"
+      esim_status_feedback "$@"
+      ;;
     install)
       poll_for_dbus_service "${HERMES}"
       esim_install "${euicc}" "$@"
@@ -163,8 +172,9 @@ esim() {
       ;;
     *)
       error_exit "Expected one of "\
-        "{use_test_certs|refresh_profiles|request_pending_profiles|status"\
-        "install|install_pending_profile|uninstall|enable|disable}"
+        "{use_test_certs|refresh_profiles|request_pending_profiles|"\
+        "status|status_feedback|install|install_pending_profile|uninstall|"\
+        "enable|disable}"
       ;;
   esac
 }
@@ -242,6 +252,10 @@ esim_status() {
     done
     echo ""
   done
+}
+
+esim_status_feedback() {
+  esim_status | mask_modem_properties | mask_profiles
 }
 
 esim_refresh_profiles() {

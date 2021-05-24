@@ -431,6 +431,7 @@ const std::vector<Log> kExtraLogs {
     kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
 #if USE_CELLULAR
   {kCommand, "mm-status", "/usr/bin/modem status"},
+  {kCommand, "mm-esim-status", "/usr/bin/modem esim status"},
 #endif  // USE_CELLULAR
   // --processes requires root.
   {kCommand, "netstat",
@@ -454,6 +455,7 @@ const std::vector<Log> kFeedbackLogs {
     "  --grep='iwlwifi.*ADVANCED_SYSASSERT' | wc -l"},
 #if USE_CELLULAR
   {kCommand, "mm-status", "/usr/bin/modem status-feedback"},
+  {kCommand, "mm-esim-status", "/usr/bin/modem esim status_feedback"},
 #endif  // USE_CELLULAR
   {kCommand, "network-devices",
       "/usr/bin/connectivity show-feedback devices"},
