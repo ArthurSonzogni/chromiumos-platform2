@@ -132,16 +132,16 @@ bool FakeHps::Write(uint8_t cmd, const uint8_t* data, size_t len) {
 void FakeHps::SetStage(Stage s) {
   this->stage_ = s;
   switch (s) {
-    case Stage::kFault:
+    case kFault:
       this->bank_ = 0;
       break;
-    case Stage::kStage0:
+    case kStage0:
       this->bank_ = 0x0001;
       break;
-    case Stage::kStage1:
+    case kStage1:
       this->bank_ = 0x0002;
       break;
-    case Stage::kAppl:
+    case kAppl:
       this->bank_ = 0;
       break;
   }
@@ -152,9 +152,9 @@ void FakeHps::Run() {
   // Initial startup.
   // Check for boot fault.
   if (this->Flag(FakeHps::Flags::kBootFault)) {
-    this->SetStage(Stage::kFault);
+    this->SetStage(kFault);
   } else {
-    this->SetStage(Stage::kStage0);
+    this->SetStage(kStage0);
   }
   for (;;) {
     // Main message loop.
@@ -239,12 +239,12 @@ uint16_t FakeHps::ReadRegActual(int reg) {
       v = kHpsMagic;
       break;
     case HpsReg::kHwRev:
-      if (this->stage_ == Stage::kStage0) {
+      if (this->stage_ == kStage0) {
         v = 0x0101;  // Version return in stage0.
       }
       break;
     case HpsReg::kSysStatus:
-      if (this->stage_ == Stage::kFault) {
+      if (this->stage_ == kFault) {
         v = hps::R2::kFault;
         break;
       }
@@ -259,7 +259,7 @@ uint16_t FakeHps::ReadRegActual(int reg) {
       } else {
         v |= hps::R2::kWpOn;
       }
-      if (this->stage_ == Stage::kStage1) {
+      if (this->stage_ == kStage1) {
         v |= hps::R2::kStage1;
         if (this->Flag(FakeHps::Flags::kSpiNotVerified)) {
           v |= hps::R2::kSpiNotVerified;
@@ -275,7 +275,7 @@ uint16_t FakeHps::ReadRegActual(int reg) {
     case HpsReg::kApplVers:
       // Application version, only returned in stage0 if the
       // application has been verified.
-      if (this->stage_ == Stage::kStage0 &&
+      if (this->stage_ == kStage0 &&
           this->Flag(FakeHps::Flags::kApplNotVerified)) {
         v = this->version_.load();  // Version returned in stage0.
       }
@@ -310,16 +310,16 @@ void FakeHps::WriteRegActual(int reg, uint16_t value) {
   switch (reg) {
     case HpsReg::kSysCmd:
       if (value & hps::R3::kReset) {
-        this->SetStage(Stage::kStage0);
+        this->SetStage(kStage0);
       } else if (value & hps::R3::kLaunch) {
         // Only valid in stage0
-        if (this->stage_ == Stage::kStage0) {
-          this->SetStage(Stage::kStage1);
+        if (this->stage_ == kStage0) {
+          this->SetStage(kStage1);
         }
       } else if (value & hps::R3::kEnable) {
         // Only valid in stage1
-        if (this->stage_ == Stage::kStage1) {
-          this->SetStage(Stage::kAppl);
+        if (this->stage_ == kStage1) {
+          this->SetStage(kAppl);
         }
       }
       break;
@@ -342,14 +342,14 @@ uint16_t FakeHps::WriteMemActual(int bank, const uint8_t* data, size_t len) {
     return 0;
   }
   switch (this->stage_) {
-    case Stage::kStage0:
+    case kStage0:
       // Stage0 allows the MCU flash.
       if (bank == 0) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         return len;
       }
       break;
-    case Stage::kStage1:
+    case kStage1:
       // Stage1 allows the SPI flash.
       if (bank == 1) {
         this->bank_len_[bank] += len - sizeof(uint32_t);

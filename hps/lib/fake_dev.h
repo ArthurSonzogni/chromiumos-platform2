@@ -35,7 +35,7 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
  public:
   FakeHps()
       : SimpleThread("HPS Simulator"),
-        stage_(Stage::kFault),
+        stage_(kFault),
         feature_on_(0),
         bank_(0),
         flags_(0),
@@ -55,7 +55,7 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
   bool Write(uint8_t cmd, const uint8_t* data, size_t len);
   void Run() override;
   void Start();
-  void SkipBoot() { this->SetStage(Stage::kAppl); }
+  void SkipBoot() { this->SetStage(kAppl); }
   void Set(uint16_t set) { this->flags_.fetch_or(set); }
   void Clear(uint16_t clear) { this->flags_.fetch_and(~clear); }
   void SetVersion(uint16_t version) { this->version_ = version; }
