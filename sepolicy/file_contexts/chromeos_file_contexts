@@ -224,6 +224,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var                            u:object_r:cros_var:s0
 /var/cache                      u:object_r:cros_var_cache:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
+/var/cache/modem-utilities(/.*)? u:object_r:cros_var_cache_modem_utilities:s0
 /var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
 /var/db                         u:object_r:cros_var_db:s0
 /var/empty                      u:object_r:cros_var_empty:s0
