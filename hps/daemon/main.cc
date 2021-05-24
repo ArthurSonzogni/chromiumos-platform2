@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_string(uart, "", "Use UART connection");
+  DEFINE_bool(skipboot, false, "Skip boot sequence");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
 
   // Always log to syslog and log to stderr if we are connected to a tty.
@@ -51,6 +52,9 @@ int main(int argc, char* argv[]) {
   CHECK(dev) << "Hardware device failed to initialise";
   LOG(INFO) << "Starting HPS Service.";
   auto hps = std::make_unique<hps::HPS>(std::move(dev));
+  if (FLAGS_skipboot) {
+    hps->SkipBoot();
+  }
   int exit_code = hps::HpsDaemon(std::move(hps)).Run();
   LOG(INFO) << "HPS Service ended with exit_code=" << exit_code;
 

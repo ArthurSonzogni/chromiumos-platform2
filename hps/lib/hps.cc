@@ -35,6 +35,12 @@ void HPS::Init(uint16_t appl_version,
   this->spi_blob_ = spi;
 }
 
+void HPS::SkipBoot() {
+  // Force state to ready.
+  LOG(INFO) << "Forcing module state to ready";
+  this->Go(State::kReady);
+}
+
 bool HPS::Boot() {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);

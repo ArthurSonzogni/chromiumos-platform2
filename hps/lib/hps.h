@@ -41,6 +41,12 @@ class HPS {
    */
   bool Boot();
   /*
+   * Skip the boot sequence, and assume the module is ready for
+   * feature processing. Required if the module is running
+   * application code without stage 0 RO and RW boot code.
+   */
+  void SkipBoot();
+  /*
    * Enable the selected feature, return false if the
    * request fails e.g if the module is not ready.
    * The feature is represented as a feature index
