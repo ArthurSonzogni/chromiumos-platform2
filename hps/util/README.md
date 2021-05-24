@@ -2,14 +2,23 @@
 
 ## Building
 
-To build the host utilities:
+The host utilities are part of the ChromeOS source, and
+the [developer guide](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md)
+should be followed to create a chroot where building can take place.
+
+To build the host utilities, ensure the chroot SDK has been entered,
+and use emerge to build the tool:
 ```bash
+cros_sdk
+...
 sudo emerge hps-tool
 ```
 
 ## Running the host utilities
 
-To run the utilities:
+The host utilities are contained with a single ```hps``` binary.
+
+To run the different commands:
 
 ```bash
 hps [ --ftdi | --test | --bus <i2c-bus> ] [ --addr <i2c-addr> ] <command> <command arguments>
@@ -56,11 +65,11 @@ the state of the hardware and what firmware is running on it.
 
 For a full description of the interface presented for
 the different stages, the
-(Common Host Interface)[https://docs.google.com/document/d/19RBB24DLq8DqQqLh3qfAumYQaAyNiHQx9ZqL4SxGwfQ/edit?usp=sharing]
+[Common Host Interface](https://docs.google.com/document/d/19RBB24DLq8DqQqLh3qfAumYQaAyNiHQx9ZqL4SxGwfQ/edit?usp=sharing)
 document, the
-(Stage 1 Host interface)[https://docs.google.com/document/d/1cG7yyLvlsszud33i-qw_UB7T0jpHfJtnt1dtQG104b0/edit?usp=sharing]
+[Stage 1 Host interface](https://docs.google.com/document/d/1cG7yyLvlsszud33i-qw_UB7T0jpHfJtnt1dtQG104b0/edit?usp=sharing)
 document, and the
-(Application Host interface)[https://docs.google.com/document/d/1rXH4jzS1kLUby-CkSLjQxJQx2w_qiAxcyKsyRTonHns/edit?usp=sharing]
+[Application Host interface](https://docs.google.com/document/d/1rXH4jzS1kLUby-CkSLjQxJQx2w_qiAxcyKsyRTonHns/edit?usp=sharing)
 document may be referred to.
 
 Typical actions at various stages may be (assumes FTDI connection):
