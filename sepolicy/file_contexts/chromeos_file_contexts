@@ -320,6 +320,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/l2tpipsec_vpn              u:object_r:cros_run_l2tpipsec_vpn:s0
 /run/lock                       u:object_r:cros_run_lock:s0
 /run/lock/power_override        u:object_r:cros_run_lock_power_override:s0
+/run/lockbox(/.*)?              u:object_r:cros_run_lockbox:s0
 /run/log                        u:object_r:cros_run_log:s0
 /run/metrics                    u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
