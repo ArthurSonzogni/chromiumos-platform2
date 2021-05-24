@@ -62,6 +62,8 @@ void SaneClientFake::SetDeviceForName(const std::string& device_name,
 
 SaneDeviceFake::SaneDeviceFake()
     : resolution_(100),
+      source_name_("Fake source name"),
+      color_mode_(MODE_COLOR),
       start_scan_result_(SANE_STATUS_GOOD),
       read_scan_data_result_(SANE_STATUS_GOOD),
       scan_running_(false),
@@ -90,7 +92,8 @@ bool SaneDeviceFake::SetDocumentSource(brillo::ErrorPtr*,
   return true;
 }
 
-bool SaneDeviceFake::SetColorMode(brillo::ErrorPtr*, ColorMode) {
+bool SaneDeviceFake::SetColorMode(brillo::ErrorPtr*, ColorMode color_mode) {
+  color_mode_ = color_mode;
   return true;
 }
 

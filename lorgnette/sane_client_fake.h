@@ -68,6 +68,9 @@ class SaneDeviceFake : public SaneDevice {
   }
   bool SetDocumentSource(brillo::ErrorPtr* error,
                          const std::string& source_name) override;
+  base::Optional<ColorMode> GetColorMode(brillo::ErrorPtr* error) override {
+    return color_mode_;
+  }
   bool SetColorMode(brillo::ErrorPtr* error, ColorMode color_mode) override;
   bool SetScanRegion(brillo::ErrorPtr* error,
                      const ScanRegion& region) override;
@@ -89,6 +92,7 @@ class SaneDeviceFake : public SaneDevice {
  private:
   int resolution_;
   std::string source_name_;
+  ColorMode color_mode_;
   base::Optional<ValidOptionValues> values_;
   SANE_Status start_scan_result_;
   SANE_Status read_scan_data_result_;

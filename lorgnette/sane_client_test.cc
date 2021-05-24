@@ -99,6 +99,8 @@ TEST_F(SaneDeviceImplTest, SetSource) {
 }
 
 // Check that SetColorMode rejects invalid values, and accepts all valid values.
+// Also check that GetColorMode returns the correct value after SetColorMode,
+// even if we force-reload option values from the scanner.
 TEST_F(SaneDeviceImplTest, SetColorMode) {
   EXPECT_FALSE(device_->SetColorMode(nullptr, MODE_UNSPECIFIED));
 
@@ -106,11 +108,25 @@ TEST_F(SaneDeviceImplTest, SetColorMode) {
       device_->GetValidOptionValues(nullptr);
   EXPECT_TRUE(values.has_value());
 
-  for (const std::string& mode_string : values->color_modes) {
-    ColorMode mode = impl::ColorModeFromSaneString(mode_string);
-    EXPECT_NE(mode, MODE_UNSPECIFIED)
-        << "Unexpected ColorMode string " << mode_string;
-    EXPECT_TRUE(device_->SetColorMode(nullptr, mode));
+  // Test both with and without reloading options after setting option, since
+  // it can surface different bugs.
+  for (bool reload_options : {true, false}) {
+    LOG(INFO) << "Testing " << (reload_options ? "with" : "without")
+              << " option reloading.";
+    for (const std::string& mode_string : values->color_modes) {
+      ColorMode mode = impl::ColorModeFromSaneString(mode_string);
+      EXPECT_NE(mode, MODE_UNSPECIFIED)
+          << "Unexpected ColorMode string " << mode_string;
+      EXPECT_TRUE(device_->SetColorMode(nullptr, mode));
+
+      if (reload_options) {
+        ReloadOptions();
+      }
+
+      base::Optional<ColorMode> scanner_value = device_->GetColorMode(nullptr);
+      EXPECT_TRUE(scanner_value.has_value());
+      EXPECT_EQ(scanner_value.value(), mode);
+    }
   }
 }
 

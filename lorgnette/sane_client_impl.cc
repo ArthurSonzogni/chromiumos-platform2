@@ -299,6 +299,16 @@ bool SaneDeviceImpl::SetDocumentSource(brillo::ErrorPtr* error,
   return SetOption(error, kSource, source_name);
 }
 
+base::Optional<ColorMode> SaneDeviceImpl::GetColorMode(
+    brillo::ErrorPtr* error) {
+  base::Optional<std::string> sane_color_mode =
+      GetOption<std::string>(error, kScanMode);
+  if (!sane_color_mode.has_value())
+    return base::nullopt;
+
+  return ColorModeFromSaneString(sane_color_mode.value());
+}
+
 bool SaneDeviceImpl::SetColorMode(brillo::ErrorPtr* error,
                                   ColorMode color_mode) {
   std::string mode_string = "";

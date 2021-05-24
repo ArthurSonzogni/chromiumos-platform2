@@ -108,6 +108,7 @@ class SaneDeviceImpl : public SaneDevice {
       brillo::ErrorPtr* error) override;
   bool SetDocumentSource(brillo::ErrorPtr* error,
                          const std::string& source_name) override;
+  base::Optional<ColorMode> GetColorMode(brillo::ErrorPtr* error) override;
   bool SetColorMode(brillo::ErrorPtr* error, ColorMode color_mode) override;
   bool SetScanRegion(brillo::ErrorPtr* error,
                      const ScanRegion& region) override;
