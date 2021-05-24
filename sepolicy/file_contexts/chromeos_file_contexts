@@ -309,7 +309,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
 /opt/google/containers/android/rootfs/android-data/cache                   u:object_r:cache_file:s0
-/opt/google/containers/android/rootfs/android-data/data                    u:object_r:system_data_file:s0
+/opt/google/containers/android/rootfs/android-data/data                    u:object_r:system_data_root_file:s0
+/opt/google/containers/android/rootfs/android-data/data/.*                 u:object_r:system_data_file:s0
 /opt/google/containers/android/rootfs/android-data/data/dalvik-cache(/.*)? u:object_r:dalvikcache_data_file:s0
 /opt/google/easy_unlock/easy_unlock u:object_r:cros_easy_unlock_exec:s0
 
@@ -324,8 +325,14 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # runtime.
 /run                            u:object_r:cros_run:s0
 /run/arc/debugfs                u:object_r:debugfs:s0
+/run/arc/oem(/.*)?              u:object_r:oem_fs:s0
 /run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
-/run/arcvm                      u:object_r:cros_run_arcvm:s0
+/run/arcvm(/.*)?                u:object_r:cros_run_arcvm:s0
+/run/arcvm/android-data         u:object_r:system_data_root_file:s0
+/run/arcvm/android-data/.*      u:object_r:system_data_file:s0
+/run/arcvm/apkcache(/.*)?       u:object_r:apkcache_file:s0
+/run/arcvm/host_generated(/.*)? u:object_r:oem_fs:s0
+# /run/camera requires labels from Android.
 /run/camera                     u:object_r:camera_dir:s0
 /run/camera/.*\.sock            u:object_r:camera_socket:s0
 /run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
@@ -402,6 +409,7 @@ has_arc(`
 # /mnt
 /mnt/stateful_partition                      u:object_r:cros_stateful_partition:s0
 /mnt/stateful_partition/unencrypted          u:object_r:cros_stateful_partition_unencrypted:s0
+/mnt/stateful_partition/unencrypted/apkcache(/.*)?   u:object_r:apkcache_file:s0
 /mnt/stateful_partition/unencrypted/cache    u:object_r:cros_stateful_partition_unencrypted_cache:s0
 /mnt/stateful_partition/unencrypted/preserve u:object_r:cros_stateful_partition_unencrypted_preserve:s0
 
@@ -433,7 +441,8 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/user/MyFiles(/.*)?   u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data u:object_r:cros_home_shadow_uid_root_android:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache u:object_r:cache_file:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data u:object_r:system_data_file:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data   u:object_r:system_data_root_file:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/.*   u:object_r:system_data_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
