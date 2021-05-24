@@ -3,6 +3,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Set logging level and scope if sticky flag exists.
+if [ -f /var/cache/modem-utilities/log_shill_verbose3 ]; then
+  # Only set SHILL_LOG_LEVEL if no value was set
+  if [ -z "${SHILL_LOG_LEVEL}" ]; then
+    SHILL_LOG_LEVEL="-3"
+  fi
+  APPEND_SCOPES="cellular+modem+device+dbus+manager"
+  if [ -z "${SHILL_LOG_SCOPES}" ]; then
+    SHILL_LOG_SCOPES="${APPEND_SCOPES}"
+  else
+    SHILL_LOG_SCOPES="${SHILL_LOG_SCOPES}+${APPEND_SCOPES}"
+  fi
+fi
+if [ -z "${SHILL_LOG_LEVEL}" ]; then
+  SHILL_LOG_LEVEL=0
+fi
 set -- "$@" --log-level="${SHILL_LOG_LEVEL}" --log-scopes="${SHILL_LOG_SCOPES}"
 
 if [ -n "${SHILL_LOG_VMODULES}" ]; then
