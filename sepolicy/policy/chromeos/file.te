@@ -444,17 +444,23 @@ type cros_run_metrics_external_crash, file_type, cros_file_type, cros_run_file_t
 type cros_run_mount_encrypted, file_type, cros_file_type, cros_run_file_type;
 type cros_run_perfetto, file_type, cros_file_type, cros_run_file_type;
 type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
+type cros_run_pvm, file_type, cros_file_type, cros_run_file_type;
+type cros_run_seneschal, file_type, cros_file_type, cros_run_file_type;
 type cros_run_session_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_shill, file_type, cros_file_type, cros_run_file_type;
 type cros_run_tcsd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_udev, file_type, cros_file_type, cros_run_file_type;
 type cros_run_usb_bouncer, file_type, cros_file_type, cros_run_file_type;
 type cros_run_usbguard, file_type, cros_file_type, cros_run_file_type;
+type cros_run_vm, file_type, cros_file_type, cros_run_file_type;
+type cros_run_vm_cicerone, file_type, cros_file_type, cros_run_file_type;
+type cros_run_vm_cicerone_client, file_type, cros_file_type, cros_run_file_type;
 type cros_run_wireguard, file_type, cros_file_type, cros_run_file_type;
 type cros_run_arcvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_rsyslogd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_namespaces, file_type, cros_file_type, cros_run_file_type;
 type cros_run_namespaces_mnt_chrome, file_type, cros_file_type, cros_run_file_type;
+type cros_run_namespaces_mnt_concierge, file_type, cros_file_type, cros_run_file_type;
 
 type cros_avahi_socket, file_type, cros_file_type, cros_run_file_type;
 
