@@ -21,7 +21,6 @@
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_icmp_session.h"
-#include "shill/mock_icmp_session_factory.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
@@ -186,8 +185,6 @@ class ConnectionDiagnosticsTest : public Test {
         portal_detector_);  // Passes ownership
     connection_diagnostics_.routing_table_ = &routing_table_;
     connection_diagnostics_.rtnl_handler_ = &rtnl_handler_;
-    connection_diagnostics_.icmp_session_factory_ =
-        MockIcmpSessionFactory::GetInstance();
   }
 
   void TearDown() override {}
@@ -666,10 +663,11 @@ class ConnectionDiagnosticsTest : public Test {
                   Start(IsSameIPAddress(IPAddress(kDNSServer1)), _, _))
           .WillOnce(Return(is_success));
 
-      EXPECT_CALL(*MockIcmpSessionFactory::GetInstance(),
-                  CreateIcmpSession(&dispatcher_))
-          .WillOnce(Return(ByMove(std::move(dns_server_icmp_session_0))))
-          .WillOnce(Return(ByMove(std::move(dns_server_icmp_session_1))));
+      connection_diagnostics_.id_to_pending_dns_server_icmp_session_.clear();
+      connection_diagnostics_.id_to_pending_dns_server_icmp_session_[0] =
+          std::move(dns_server_icmp_session_0);
+      connection_diagnostics_.id_to_pending_dns_server_icmp_session_[1] =
+          std::move(dns_server_icmp_session_1);
     }
 
     if (is_success) {
@@ -976,7 +974,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_1) {
 TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_2) {
   // Portal detection ends with a DNS timeout, and we attempt to pinging DNS
   // servers, but all DNS servers configured for this connection have invalid IP
-  // addresses, so we fail to start ping DNs servers, andend diagnostics.
+  // addresses, so we fail to start ping DNs servers, and end diagnostics.
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);

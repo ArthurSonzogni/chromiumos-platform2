@@ -353,7 +353,6 @@ class ConnectionDiagnostics {
   std::unique_ptr<HttpUrl> target_url_;
 
   // Used to ping multiple DNS servers in parallel.
-  IcmpSessionFactory* icmp_session_factory_;
   std::map<int, std::unique_ptr<IcmpSession>>
       id_to_pending_dns_server_icmp_session_;
   std::vector<std::string> pingable_dns_servers_;

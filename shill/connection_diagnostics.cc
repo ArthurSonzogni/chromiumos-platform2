@@ -16,7 +16,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
 #include "shill/icmp_session.h"
-#include "shill/icmp_session_factory.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/arp_client.h"
@@ -142,7 +141,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       dns_list_(dns_list),
       arp_client_(new ArpClient(iface_index_)),
       icmp_session_(new IcmpSession(dispatcher_)),
-      icmp_session_factory_(IcmpSessionFactory::GetInstance()),
       num_dns_attempts_(0),
       running_(false),
       result_callback_(result_callback),
@@ -157,6 +155,10 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       dispatcher_, metrics_,
       base::Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
                  weak_ptr_factory_.GetWeakPtr())));
+  for (size_t i = 0; i < dns_list_.size(); i++) {
+    id_to_pending_dns_server_icmp_session_[i] =
+        std::make_unique<IcmpSession>(dispatcher_);
+  }
 }
 
 ConnectionDiagnostics::~ConnectionDiagnostics() {
@@ -363,7 +365,6 @@ void ConnectionDiagnostics::PingDNSServers() {
     return;
   }
 
-  id_to_pending_dns_server_icmp_session_.clear();
   pingable_dns_servers_.clear();
   size_t num_invalid_dns_server_addr = 0;
   size_t num_failed_icmp_session_start = 0;
@@ -377,28 +378,23 @@ void ConnectionDiagnostics::PingDNSServers() {
       LOG(ERROR) << __func__
                  << ": could not parse DNS server IP address from string";
       ++num_invalid_dns_server_addr;
+      id_to_pending_dns_server_icmp_session_.erase(i);
       continue;
     }
 
-    bool emplace_success =
-        (id_to_pending_dns_server_icmp_session_.emplace(
-             i, icmp_session_factory_->CreateIcmpSession(dispatcher_)))
-            .second;
-    if (emplace_success &&
-        id_to_pending_dns_server_icmp_session_.at(i)->Start(
+    if (!id_to_pending_dns_server_icmp_session_.at(i)->Start(
             dns_server_ip_addr, iface_index_,
             base::Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
                        weak_ptr_factory_.GetWeakPtr(), i))) {
-      SLOG(this, 3) << __func__ << ": pinging DNS server at "
-                    << dns_server_ip_addr.ToString();
-    } else {
       LOG(ERROR) << "Failed to initiate ping for DNS server at "
                  << dns_server_ip_addr.ToString();
       ++num_failed_icmp_session_start;
-      if (emplace_success) {
-        id_to_pending_dns_server_icmp_session_.erase(i);
-      }
+      id_to_pending_dns_server_icmp_session_.erase(i);
+      continue;
     }
+
+    SLOG(this, 3) << __func__ << ": pinging DNS server at "
+                  << dns_server_ip_addr.ToString();
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
