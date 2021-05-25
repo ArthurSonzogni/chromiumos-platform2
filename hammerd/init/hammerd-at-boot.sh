@@ -29,13 +29,15 @@ monitor_dbus_signal() {
 }
 
 main() {
+  logger -t "${LOGGER_TAG}" "Start checking base status."
+
   if ! base_connected "${LOGGER_TAG}"; then
     logger -t "${LOGGER_TAG}" "Base not connected, skipping hammerd at boot."
     metrics_client -e Platform.DetachableBase.AttachedOnBoot 0 2
     return
   fi
 
-  logger -t "${LOGGER_TAG}" "Force trigger hammerd at boot."
+  logger -t "${LOGGER_TAG}" "Base attached. Force trigger hammerd at boot."
   metrics_client -e Platform.DetachableBase.AttachedOnBoot 1 2
 
   # Background process that catches the DBus signal.
