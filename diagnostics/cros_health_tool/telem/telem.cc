@@ -35,7 +35,25 @@ namespace diagnostics {
 
 namespace {
 
+using chromeos::cros_healthd::mojom::AudioResultPtr;
+using chromeos::cros_healthd::mojom::BacklightResultPtr;
+using chromeos::cros_healthd::mojom::BatteryResultPtr;
+using chromeos::cros_healthd::mojom::BluetoothResultPtr;
 using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
+using chromeos::cros_healthd::mojom::CpuResultPtr;
+using chromeos::cros_healthd::mojom::ErrorType;
+using chromeos::cros_healthd::mojom::FanResultPtr;
+using chromeos::cros_healthd::mojom::MemoryResultPtr;
+using chromeos::cros_healthd::mojom::NetworkResultPtr;
+using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
+using chromeos::cros_healthd::mojom::ProbeCategoryEnum;
+using chromeos::cros_healthd::mojom::ProbeErrorPtr;
+using chromeos::cros_healthd::mojom::ProcessResultPtr;
+using chromeos::cros_healthd::mojom::ProcessState;
+using chromeos::cros_healthd::mojom::StatefulPartitionResultPtr;
+using chromeos::cros_healthd::mojom::SystemResultPtr;
+using chromeos::cros_healthd::mojom::TelemetryInfoPtr;
+using chromeos::cros_healthd::mojom::TimezoneResultPtr;
 using chromeos::network_config::mojom::NetworkType;
 using chromeos::network_config::mojom::PortalState;
 using chromeos::network_health::mojom::NetworkState;
@@ -43,62 +61,54 @@ using chromeos::network_health::mojom::NetworkState;
 // Value printed for optional fields when they aren't populated.
 constexpr char kNotApplicableString[] = "N/A";
 
-constexpr std::pair<const char*,
-                    chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-    kCategorySwitches[] = {
-        {"battery", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kBattery},
-        {"storage", chromeos::cros_healthd::mojom::ProbeCategoryEnum::
-                        kNonRemovableBlockDevices},
-        {"cpu", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCpu},
-        {"timezone",
-         chromeos::cros_healthd::mojom::ProbeCategoryEnum::kTimezone},
-        {"memory", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kMemory},
-        {"backlight",
-         chromeos::cros_healthd::mojom::ProbeCategoryEnum::kBacklight},
-        {"fan", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kFan},
-        {"stateful_partition",
-         chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition},
-        {"bluetooth",
-         chromeos::cros_healthd::mojom::ProbeCategoryEnum::kBluetooth},
-        {"system", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kSystem},
-        {"network", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kNetwork},
-        {"audio", chromeos::cros_healthd::mojom::ProbeCategoryEnum::kAudio},
+constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
+    {"battery", ProbeCategoryEnum::kBattery},
+    {"storage", ProbeCategoryEnum::kNonRemovableBlockDevices},
+    {"cpu", ProbeCategoryEnum::kCpu},
+    {"timezone", ProbeCategoryEnum::kTimezone},
+    {"memory", ProbeCategoryEnum::kMemory},
+    {"backlight", ProbeCategoryEnum::kBacklight},
+    {"fan", ProbeCategoryEnum::kFan},
+    {"stateful_partition", ProbeCategoryEnum::kStatefulPartition},
+    {"bluetooth", ProbeCategoryEnum::kBluetooth},
+    {"system", ProbeCategoryEnum::kSystem},
+    {"network", ProbeCategoryEnum::kNetwork},
+    {"audio", ProbeCategoryEnum::kAudio},
 };
 
-std::string ProcessStateToString(
-    chromeos::cros_healthd::mojom::ProcessState state) {
+std::string ProcessStateToString(ProcessState state) {
   switch (state) {
-    case chromeos::cros_healthd::mojom::ProcessState::kRunning:
+    case ProcessState::kRunning:
       return "Running";
-    case chromeos::cros_healthd::mojom::ProcessState::kSleeping:
+    case ProcessState::kSleeping:
       return "Sleeping";
-    case chromeos::cros_healthd::mojom::ProcessState::kWaiting:
+    case ProcessState::kWaiting:
       return "Waiting";
-    case chromeos::cros_healthd::mojom::ProcessState::kZombie:
+    case ProcessState::kZombie:
       return "Zombie";
-    case chromeos::cros_healthd::mojom::ProcessState::kStopped:
+    case ProcessState::kStopped:
       return "Stopped";
-    case chromeos::cros_healthd::mojom::ProcessState::kTracingStop:
+    case ProcessState::kTracingStop:
       return "Tracing Stop";
-    case chromeos::cros_healthd::mojom::ProcessState::kDead:
+    case ProcessState::kDead:
       return "Dead";
   }
 }
 
-std::string ErrorTypeToString(chromeos::cros_healthd::mojom::ErrorType type) {
+std::string ErrorTypeToString(ErrorType type) {
   switch (type) {
-    case chromeos::cros_healthd::mojom::ErrorType::kFileReadError:
+    case ErrorType::kFileReadError:
       return "File Read Error";
-    case chromeos::cros_healthd::mojom::ErrorType::kParseError:
+    case ErrorType::kParseError:
       return "Parse Error";
-    case chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError:
+    case ErrorType::kSystemUtilityError:
       return "Error running system utility";
-    case chromeos::cros_healthd::mojom::ErrorType::kServiceUnavailable:
+    case ErrorType::kServiceUnavailable:
       return "External service not aviailable";
   }
 }
 
-void DisplayError(const chromeos::cros_healthd::mojom::ProbeErrorPtr& error) {
+void DisplayError(const ProbeErrorPtr& error) {
   std::cout << ErrorTypeToString(error->type) << ": " << error->msg
             << std::endl;
 }
@@ -228,9 +238,8 @@ void OutputData(const std::vector<std::string>& headers,
   }
 }
 
-void DisplayProcessInfo(
-    const chromeos::cros_healthd::mojom::ProcessResultPtr& process_result,
-    const bool beauty) {
+void DisplayProcessInfo(const ProcessResultPtr& process_result,
+                        const bool beauty) {
   if (process_result.is_null())
     return;
 
@@ -283,9 +292,8 @@ void DisplayProcessInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayBatteryInfo(
-    const chromeos::cros_healthd::mojom::BatteryResultPtr& battery_result,
-    const bool beauty) {
+void DisplayBatteryInfo(const BatteryResultPtr& battery_result,
+                        const bool beauty) {
   if (battery_result->is_error()) {
     DisplayError(battery_result->get_error());
     return;
@@ -327,9 +335,7 @@ void DisplayBatteryInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayAudioInfo(
-    const chromeos::cros_healthd::mojom::AudioResultPtr& audio_result,
-    const bool beauty) {
+void DisplayAudioInfo(const AudioResultPtr& audio_result, const bool beauty) {
   if (audio_result->is_error()) {
     DisplayError(audio_result->get_error());
     return;
@@ -354,8 +360,7 @@ void DisplayAudioInfo(
 }
 
 void DisplayBlockDeviceInfo(
-    const chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr&
-        block_device_result,
+    const NonRemovableBlockDeviceResultPtr& block_device_result,
     const bool beauty) {
   if (block_device_result->is_error()) {
     DisplayError(block_device_result->get_error());
@@ -399,9 +404,8 @@ void DisplayBlockDeviceInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayBluetoothInfo(
-    const chromeos::cros_healthd::mojom::BluetoothResultPtr& bluetooth_result,
-    const bool beauty) {
+void DisplayBluetoothInfo(const BluetoothResultPtr& bluetooth_result,
+                          const bool beauty) {
   if (bluetooth_result->is_error()) {
     DisplayError(bluetooth_result->get_error());
     return;
@@ -421,8 +425,7 @@ void DisplayBluetoothInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayCpuInfo(
-    const chromeos::cros_healthd::mojom::CpuResultPtr& cpu_result) {
+void DisplayCpuInfo(const CpuResultPtr& cpu_result) {
   if (cpu_result->is_error()) {
     DisplayError(cpu_result->get_error());
     return;
@@ -501,9 +504,7 @@ void DisplayCpuInfo(
   }
 }
 
-void DisplayFanInfo(
-    const chromeos::cros_healthd::mojom::FanResultPtr& fan_result,
-    const bool beauty) {
+void DisplayFanInfo(const FanResultPtr& fan_result, const bool beauty) {
   if (fan_result->is_error()) {
     DisplayError(fan_result->get_error());
     return;
@@ -520,9 +521,8 @@ void DisplayFanInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayNetworkInfo(
-    const chromeos::cros_healthd::mojom::NetworkResultPtr& network_result,
-    const bool beauty) {
+void DisplayNetworkInfo(const NetworkResultPtr& network_result,
+                        const bool beauty) {
   if (network_result->is_error()) {
     DisplayError(network_result->get_error());
     return;
@@ -555,9 +555,8 @@ void DisplayNetworkInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayTimezoneInfo(
-    const chromeos::cros_healthd::mojom::TimezoneResultPtr& timezone_result,
-    const bool beauty) {
+void DisplayTimezoneInfo(const TimezoneResultPtr& timezone_result,
+                         const bool beauty) {
   if (timezone_result->is_error()) {
     DisplayError(timezone_result->get_error());
     return;
@@ -576,9 +575,8 @@ void DisplayTimezoneInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayMemoryInfo(
-    const chromeos::cros_healthd::mojom::MemoryResultPtr& memory_result,
-    const bool beauty) {
+void DisplayMemoryInfo(const MemoryResultPtr& memory_result,
+                       const bool beauty) {
   if (memory_result->is_error()) {
     DisplayError(memory_result->get_error());
     return;
@@ -597,9 +595,8 @@ void DisplayMemoryInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayBacklightInfo(
-    const chromeos::cros_healthd::mojom::BacklightResultPtr& backlight_result,
-    const bool beauty) {
+void DisplayBacklightInfo(const BacklightResultPtr& backlight_result,
+                          const bool beauty) {
   if (backlight_result->is_error()) {
     DisplayError(backlight_result->get_error());
     return;
@@ -620,8 +617,7 @@ void DisplayBacklightInfo(
 }
 
 void DisplayStatefulPartitionInfo(
-    const chromeos::cros_healthd::mojom::StatefulPartitionResultPtr&
-        stateful_partition_result,
+    const StatefulPartitionResultPtr& stateful_partition_result,
     const bool beauty) {
   if (stateful_partition_result->is_error()) {
     DisplayError(stateful_partition_result->get_error());
@@ -641,9 +637,8 @@ void DisplayStatefulPartitionInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplaySystemInfo(
-    const chromeos::cros_healthd::mojom::SystemResultPtr& system_result,
-    const bool beauty) {
+void DisplaySystemInfo(const SystemResultPtr& system_result,
+                       const bool beauty) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
     return;
@@ -689,9 +684,7 @@ void DisplaySystemInfo(
 }
 
 // Displays the retrieved telemetry information to the console.
-void DisplayTelemetryInfo(
-    const chromeos::cros_healthd::mojom::TelemetryInfoPtr& info,
-    const bool beauty) {
+void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
   const auto& battery_result = info->battery_result;
   if (battery_result)
     DisplayBatteryInfo(battery_result, beauty);
