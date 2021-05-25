@@ -398,6 +398,9 @@ TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
 }
 
 TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
+  // The default style "fast" does not support multi-threaded death tests.
+  testing::FLAGS_gtest_death_test_style = "threadsafe";
+
   CK_SLOT_INFO slot_info;
   CK_TOKEN_INFO token_info;
   Session* session;
