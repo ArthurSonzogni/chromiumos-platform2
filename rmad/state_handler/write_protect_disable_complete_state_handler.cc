@@ -30,8 +30,8 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
   state_ = state;
   StoreState();
 
-  // TODO(chenghan): Implement the logic for different paths.
-  return {.error = RMAD_ERROR_OK, RmadState::StateCase::kUpdateRoFirmware};
+  return {.error = RMAD_ERROR_OK,
+          .state_case = RmadState::StateCase::kUpdateRoFirmware};
 }
 
 }  // namespace rmad

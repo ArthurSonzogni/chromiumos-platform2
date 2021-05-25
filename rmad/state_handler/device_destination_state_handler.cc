@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/device_destination_state_handler.h"
 
+#include "rmad/constants.h"
+
 namespace rmad {
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
@@ -33,9 +35,16 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
 
   state_ = state;
   StoreState();
+  StoreVars();
 
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableMethod};
+}
+
+bool DeviceDestinationStateHandler::StoreVars() const {
+  return json_store_->SetValue(
+      kSameOwner, state_.device_destination().destination() ==
+                      DeviceDestinationState::RMAD_DESTINATION_SAME);
 }
 
 }  // namespace rmad

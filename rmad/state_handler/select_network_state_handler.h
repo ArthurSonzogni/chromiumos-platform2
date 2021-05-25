@@ -19,6 +19,10 @@ class SelectNetworkStateHandler : public BaseStateHandler {
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ private:
+  // Store variables that can be used by other state handlers to make decisions.
+  bool StoreVars() const;
 };
 
 }  // namespace rmad

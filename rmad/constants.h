@@ -10,6 +10,8 @@ namespace rmad {
 // JsonStore rmad_interface keys.
 constexpr char kStateHistory[] = "state_history";
 constexpr char kStateMap[] = "state_map";
+constexpr char kNetworkConnected[] = "network_connected";
+constexpr char kSameOwner[] = "same_owner";
 
 }  // namespace rmad
 

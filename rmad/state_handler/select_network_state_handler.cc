@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/select_network_state_handler.h"
 
+#include "rmad/constants.h"
+
 namespace rmad {
 
 SelectNetworkStateHandler::SelectNetworkStateHandler(
@@ -32,9 +34,16 @@ SelectNetworkStateHandler::GetNextStateCase(const RmadState& state) {
 
   state_ = state;
   StoreState();
+  StoreVars();
 
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kUpdateChrome};
+}
+
+bool SelectNetworkStateHandler::StoreVars() const {
+  return json_store_->SetValue(kNetworkConnected,
+                               state_.select_network().connection_state() ==
+                                   SelectNetworkState::RMAD_NETWORK_CONNECTED);
 }
 
 }  // namespace rmad
