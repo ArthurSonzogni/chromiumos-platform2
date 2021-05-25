@@ -23,8 +23,7 @@ class CpuFetcher final {
 
   // Returns a structure with a list of data fields for each of the device's
   // CPUs or the error that occurred fetching the information.
-  chromeos::cros_healthd::mojom::CpuResultPtr FetchCpuInfo(
-      const base::FilePath& root_dir);
+  chromeos::cros_healthd::mojom::CpuResultPtr FetchCpuInfo();
 
  private:
   // Uses |context_| to obtain the CPU architecture.

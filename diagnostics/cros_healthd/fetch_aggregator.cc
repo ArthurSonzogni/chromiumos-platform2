@@ -72,7 +72,7 @@ void FetchAggregator::Run(
       }
       case mojo_ipc::ProbeCategoryEnum::kCpu: {
         WrapFetchProbeData(category, itr, &info->cpu_result,
-                           cpu_fetcher_->FetchCpuInfo(base::FilePath("/")));
+                           cpu_fetcher_->FetchCpuInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kNonRemovableBlockDevices: {
@@ -92,14 +92,12 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBacklight: {
-        WrapFetchProbeData(
-            category, itr, &info->backlight_result,
-            backlight_fetcher_->FetchBacklightInfo(base::FilePath("/")));
+        WrapFetchProbeData(category, itr, &info->backlight_result,
+                           backlight_fetcher_->FetchBacklightInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kFan: {
         fan_fetcher_->FetchFanInfo(
-            base::FilePath("/"),
             base::BindOnce(
                 &FetchAggregator::WrapFetchProbeData<mojo_ipc::FanResultPtr>,
                 weak_factory_.GetWeakPtr(), category, itr, &info->fan_result));
@@ -116,9 +114,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kSystem: {
-        WrapFetchProbeData(
-            category, itr, &info->system_result,
-            system_fetcher_->FetchSystemInfo(base::FilePath("/")));
+        WrapFetchProbeData(category, itr, &info->system_result,
+                           system_fetcher_->FetchSystemInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kNetwork: {

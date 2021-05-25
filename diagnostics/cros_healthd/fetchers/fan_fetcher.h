@@ -34,8 +34,7 @@ class FanFetcher {
 
   // Returns either a list of data about each of the device's fans or the error
   // that occurred retrieving the information.
-  void FetchFanInfo(const base::FilePath& root_dir,
-                    FetchFanInfoCallback callback);
+  void FetchFanInfo(FetchFanInfoCallback callback);
 
  private:
   // Handles the executor's response to a GetFanSpeed IPC.

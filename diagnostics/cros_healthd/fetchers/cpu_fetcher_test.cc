@@ -11,7 +11,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <gmock/gmock.h>
@@ -219,8 +218,6 @@ class CpuFetcherTest : public testing::Test {
   CpuFetcherTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-
     ASSERT_TRUE(mock_context_.Initialize());
 
     // Set up valid files for two physical CPUs, the first of which has two
@@ -228,14 +225,14 @@ class CpuFetcherTest : public testing::Test {
     // configuration when necessary.
 
     // Write /proc/cpuinfo.
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        GetProcCpuInfoPath(temp_dir_path()), kFakeCpuinfoContents));
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
+                                             kFakeCpuinfoContents));
     // Write /proc/stat.
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(temp_dir_path()),
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(root_dir()),
                                              kFakeStatContents));
     // Write /sys/devices/system/cpu/present.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        GetCpuDirectoryPath(temp_dir_path()).Append(kCpuPresentFile),
+        GetCpuDirectoryPath(root_dir()).Append(kCpuPresentFile),
         kFakePresentContents));
     // Write policy data for the first logical CPU.
     WritePolicyData(std::to_string(kFirstFakeMaxClockSpeed),
@@ -261,7 +258,7 @@ class CpuFetcherTest : public testing::Test {
 
     // Write CPU temperature data.
     base::FilePath first_temp_dir =
-        temp_dir_path().AppendASCII(kFirstFakeCpuTemperatureDir);
+        root_dir().AppendASCII(kFirstFakeCpuTemperatureDir);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         first_temp_dir.AppendASCII(kFirstFakeCpuTemperatureInputFile),
         std::to_string(kFirstFakeCpuTemperatureMilliDegrees)));
@@ -269,7 +266,7 @@ class CpuFetcherTest : public testing::Test {
         first_temp_dir.AppendASCII(kFirstFakeCpuTemperatureLabelFile),
         kFirstFakeCpuTemperatureLabel));
     base::FilePath second_temp_dir =
-        temp_dir_path().AppendASCII(kSecondFakeCpuTemperatureDir);
+        root_dir().AppendASCII(kSecondFakeCpuTemperatureDir);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         second_temp_dir.AppendASCII(kSecondFakeCpuTemperatureInputFile),
         std::to_string(kSecondFakeCpuTemperatureMilliDegrees)));
@@ -281,15 +278,13 @@ class CpuFetcherTest : public testing::Test {
     fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineX86_64);
   }
 
-  const base::FilePath& temp_dir_path() const { return temp_dir_.GetPath(); }
+  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   FakeSystemUtilities* fake_system_utils() const {
     return mock_context_.fake_system_utils();
   }
 
-  mojo_ipc::CpuResultPtr FetchCpuInfo() {
-    return cpu_fetcher_.FetchCpuInfo(temp_dir_path());
-  }
+  mojo_ipc::CpuResultPtr FetchCpuInfo() { return cpu_fetcher_.FetchCpuInfo(); }
 
   const std::vector<std::pair<std::string, uint64_t>>& GetCStateVector(
       const std::string& logical_id) {
@@ -364,7 +359,7 @@ class CpuFetcherTest : public testing::Test {
   void WriteCStateFiles(const std::string& logical_id,
                         const std::string& name_contents,
                         const std::string& time_contents) {
-    auto policy_dir = GetCStateDirectoryPath(temp_dir_path(), logical_id);
+    auto policy_dir = GetCStateDirectoryPath(root_dir(), logical_id);
     int state_to_write = c_states_written[logical_id];
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         policy_dir.Append("state" + std::to_string(state_to_write))
@@ -381,12 +376,11 @@ class CpuFetcherTest : public testing::Test {
   void WritePolicyFile(const std::string& logical_id,
                        const std::string& file_name,
                        const std::string& file_contents) {
-    auto policy_dir = GetCpuFreqDirectoryPath(temp_dir_path(), logical_id);
+    auto policy_dir = GetCpuFreqDirectoryPath(root_dir(), logical_id);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(policy_dir.Append(file_name),
                                              file_contents));
   }
 
-  base::ScopedTempDir temp_dir_;
   MockContext mock_context_;
   CpuFetcher cpu_fetcher_{&mock_context_};
   // Records the next C-state file to be written.
@@ -416,7 +410,7 @@ TEST_F(CpuFetcherTest, TestFetchCpuInfo) {
 
 // Test that we handle a cpuinfo file for processors without physical_ids.
 TEST_F(CpuFetcherTest, NoPhysicalIdCpuinfoFile) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(temp_dir_path()),
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            kNoPhysicalIdCpuinfoContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -457,7 +451,7 @@ TEST_F(CpuFetcherTest, NoPhysicalIdCpuinfoFile) {
 
 // Test that we handle a missing cpuinfo file.
 TEST_F(CpuFetcherTest, MissingCpuinfoFile) {
-  ASSERT_TRUE(base::DeleteFile(GetProcCpuInfoPath(temp_dir_path())));
+  ASSERT_TRUE(base::DeleteFile(GetProcCpuInfoPath(root_dir())));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -469,7 +463,7 @@ TEST_F(CpuFetcherTest, MissingCpuinfoFile) {
 TEST_F(CpuFetcherTest, HardwareDescriptionCpuinfoFile) {
   std::string cpu_info_contents = kFakeCpuinfoContents;
   cpu_info_contents += kHardwareDescriptionCpuinfoContents;
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(temp_dir_path()),
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            cpu_info_contents));
 
   auto cpu_result = FetchCpuInfo();
@@ -484,7 +478,7 @@ TEST_F(CpuFetcherTest, HardwareDescriptionCpuinfoFile) {
 
 // Test that we handle a cpuinfo file without a model name.
 TEST_F(CpuFetcherTest, NoModelNameCpuinfoFile) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(temp_dir_path()),
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
                                            kNoModelNameCpuinfoContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -497,7 +491,7 @@ TEST_F(CpuFetcherTest, NoModelNameCpuinfoFile) {
 
 // Test that we handle a missing stat file.
 TEST_F(CpuFetcherTest, MissingStatFile) {
-  ASSERT_TRUE(base::DeleteFile(GetProcStatPath(temp_dir_path())));
+  ASSERT_TRUE(base::DeleteFile(GetProcStatPath(root_dir())));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -507,7 +501,7 @@ TEST_F(CpuFetcherTest, MissingStatFile) {
 
 // Test that we handle an incorrectly-formatted stat file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedStatFile) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(temp_dir_path()),
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(root_dir()),
                                            kBadStatContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -519,7 +513,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedStatFile) {
 // Test that we handle a stat file which is missing an entry for an existing
 // logical CPU.
 TEST_F(CpuFetcherTest, StatFileMissingLogicalCpuEntry) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(temp_dir_path()),
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcStatPath(root_dir()),
                                            kMissingLogicalCpuStatContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -531,7 +525,7 @@ TEST_F(CpuFetcherTest, StatFileMissingLogicalCpuEntry) {
 // Test that we handle a missing present file.
 TEST_F(CpuFetcherTest, MissingPresentFile) {
   ASSERT_TRUE(base::DeleteFile(
-      GetCpuDirectoryPath(temp_dir_path()).Append(kCpuPresentFile)));
+      GetCpuDirectoryPath(root_dir()).Append(kCpuPresentFile)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -542,7 +536,7 @@ TEST_F(CpuFetcherTest, MissingPresentFile) {
 // Test that we handle an incorrectly-formatted present file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetCpuDirectoryPath(temp_dir_path()).Append(kCpuPresentFile),
+      GetCpuDirectoryPath(root_dir()).Append(kCpuPresentFile),
       kBadPresentContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -554,7 +548,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
 // Test that we handle a missing cpuinfo_max_freq file.
 TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCpuFreqDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kCpuinfoMaxFreqFile)));
 
   auto cpu_result = FetchCpuInfo();
@@ -566,7 +560,7 @@ TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
 // Test that we handle an incorrectly-formatted cpuinfo_max_freq file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetCpuFreqDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
           .Append(kCpuinfoMaxFreqFile),
       kNonIntegralFileContents));
 
@@ -579,7 +573,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
 // Test that we handle a missing scaling_max_freq file.
 TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCpuFreqDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kCpuScalingMaxFreqFile)));
 
   auto cpu_result = FetchCpuInfo();
@@ -591,7 +585,7 @@ TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
 // Test that we handle an incorrectly-formatted scaling_max_freq file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetCpuFreqDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
           .Append(kCpuScalingMaxFreqFile),
       kNonIntegralFileContents));
 
@@ -604,7 +598,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
 // Test that we handle a missing scaling_cur_freq file.
 TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCpuFreqDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kCpuScalingCurFreqFile)));
 
   auto cpu_result = FetchCpuInfo();
@@ -616,7 +610,7 @@ TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
 // Test that we handle an incorrectly-formatted scaling_cur_freq file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingCurFreqFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetCpuFreqDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
           .Append(kCpuScalingCurFreqFile),
       kNonIntegralFileContents));
 
@@ -629,7 +623,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingCurFreqFile) {
 // Test that we handle a missing C-state name file.
 TEST_F(CpuFetcherTest, MissingCStateNameFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCStateDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      base::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kFirstCStateDir)
                            .Append(kCStateNameFile)));
 
@@ -642,7 +636,7 @@ TEST_F(CpuFetcherTest, MissingCStateNameFile) {
 // Test that we handle a missing C-state time file.
 TEST_F(CpuFetcherTest, MissingCStateTimeFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCStateDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      base::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kFirstCStateDir)
                            .Append(kCStateTimeFile)));
 
@@ -655,7 +649,7 @@ TEST_F(CpuFetcherTest, MissingCStateTimeFile) {
 // Test that we handle an incorrectly-formatted C-state time file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetCStateDirectoryPath(temp_dir_path(), kFirstLogicalId)
+      GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
           .Append(kFirstCStateDir)
           .Append(kCStateTimeFile),
       kNonIntegralFileContents));
@@ -669,7 +663,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
 // Test that we handle CPU temperatures without labels.
 TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
   ASSERT_TRUE(
-      base::DeleteFile(temp_dir_path()
+      base::DeleteFile(root_dir()
                            .AppendASCII(kFirstFakeCpuTemperatureDir)
                            .AppendASCII(kFirstFakeCpuTemperatureLabelFile)));
 
@@ -700,7 +694,7 @@ TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
 // Test that we handle incorrectly-formatted CPU temperature files.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      temp_dir_path()
+      root_dir()
           .AppendASCII(kFirstFakeCpuTemperatureDir)
           .AppendASCII(kFirstFakeCpuTemperatureInputFile),
       kNonIntegralFileContents));

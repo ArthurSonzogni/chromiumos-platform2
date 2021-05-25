@@ -392,10 +392,9 @@ CpuFetcher::CpuFetcher(Context* context) : context_(context) {
 
 CpuFetcher::~CpuFetcher() = default;
 
-mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo(
-    const base::FilePath& root_dir) {
+mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo() {
   std::string stat_contents;
-  auto stat_file = GetProcStatPath(root_dir);
+  auto stat_file = GetProcStatPath(context_->root_dir());
   if (!ReadFileToString(stat_file, &stat_contents)) {
     return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
         mojo_ipc::ErrorType::kFileReadError,
@@ -410,7 +409,7 @@ mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo(
   }
 
   std::string cpu_info_contents;
-  auto cpu_info_file = GetProcCpuInfoPath(root_dir);
+  auto cpu_info_file = GetProcCpuInfoPath(context_->root_dir());
   if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
     return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
         mojo_ipc::ErrorType::kFileReadError,
@@ -421,8 +420,8 @@ mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo(
       cpu_info_contents, "\n\n", base::KEEP_WHITESPACE,
       base::SPLIT_WANT_NONEMPTY);
   return GetCpuInfoFromProcessorInfo(processor_info,
-                                     parsed_stat_contents.value(), root_dir,
-                                     GetArchitecture());
+                                     parsed_stat_contents.value(),
+                                     context_->root_dir(), GetArchitecture());
 }
 
 mojo_ipc::CpuArchitectureEnum CpuFetcher::GetArchitecture() {

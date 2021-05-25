@@ -42,8 +42,7 @@ class SystemFetcher final {
 
   // Returns either a structure with the system information or the error that
   // occurred fetching the information.
-  chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo(
-      const base::FilePath& root_dir);
+  chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo();
 
  private:
   // Fetches information from cached VPD. On success, populates |output_info|

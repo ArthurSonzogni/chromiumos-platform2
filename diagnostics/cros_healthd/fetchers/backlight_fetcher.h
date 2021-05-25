@@ -23,8 +23,7 @@ class BacklightFetcher final {
 
   // Returns a structure with either the device's backlight info or the error
   // that occurred fetching the information.
-  chromeos::cros_healthd::mojom::BacklightResultPtr FetchBacklightInfo(
-      const base::FilePath& root_dir);
+  chromeos::cros_healthd::mojom::BacklightResultPtr FetchBacklightInfo();
 
  private:
   // Unowned pointer that should outlive this instance.

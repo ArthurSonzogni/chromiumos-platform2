@@ -7,7 +7,6 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/optional.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <gtest/gtest.h>
@@ -51,15 +50,13 @@ class SystemUtilsTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(mock_context_.Initialize());
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-    base::FilePath root_dir = GetTempDirPath();
     // Populate fake cached VPD values.
-    relative_vpd_rw_dir_ = root_dir.Append(kRelativeVpdRwPath);
+    relative_vpd_rw_dir_ = root_dir().Append(kRelativeVpdRwPath);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         relative_vpd_rw_dir_.Append(kFirstPowerDateFileName),
         kFakeFirstPowerDate));
-    relative_vpd_ro_dir_ = root_dir.Append(kRelativeVpdRoPath);
+    relative_vpd_ro_dir_ = root_dir().Append(kRelativeVpdRoPath);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         relative_vpd_ro_dir_.Append(kManufactureDateFileName),
         kFakeManufactureDate));
@@ -72,7 +69,7 @@ class SystemUtilsTest : public ::testing::Test {
         relative_vpd_ro_dir_.Append(kProductModelNameFileName),
         kFakeProductModelName));
     // Populate fake DMI values.
-    relative_dmi_info_path_ = root_dir.Append(kRelativeDmiInfoPath);
+    relative_dmi_info_path_ = root_dir().Append(kRelativeDmiInfoPath);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         relative_dmi_info_path_.Append(kBiosVersionFileName),
         kFakeBiosVersion));
@@ -91,14 +88,10 @@ class SystemUtilsTest : public ::testing::Test {
     PopulateLsbRelease();
   }
 
-  const base::FilePath& GetTempDirPath() const {
-    DCHECK(temp_dir_.IsValid());
-    return temp_dir_.GetPath();
-  }
+  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
-  chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo(
-      const base::FilePath& root_dir) {
-    return system_fetcher_.FetchSystemInfo(root_dir);
+  chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo() {
+    return system_fetcher_.FetchSystemInfo();
   }
 
   void SetHasSkuNumber(bool val) {
@@ -177,7 +170,6 @@ class SystemUtilsTest : public ::testing::Test {
  private:
   MockContext mock_context_;
   SystemFetcher system_fetcher_{&mock_context_};
-  base::ScopedTempDir temp_dir_;
   base::FilePath relative_vpd_rw_dir_;
   base::FilePath relative_vpd_ro_dir_;
   base::FilePath relative_dmi_info_path_;
@@ -185,7 +177,7 @@ class SystemUtilsTest : public ::testing::Test {
 
 // Test that we can read the system info, when it exists.
 TEST_F(SystemUtilsTest, TestFetchSystemInfo) {
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
   ValidateCachedVpdInfo(system_info);
@@ -201,7 +193,7 @@ TEST_F(SystemUtilsTest, TestNoFirstPowerDate) {
   ASSERT_TRUE(
       base::DeleteFile(relative_vpd_rw_dir().Append(kFirstPowerDateFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
   // Confirm that cached VPD values except first power date are obtained.
@@ -228,7 +220,7 @@ TEST_F(SystemUtilsTest, TestNoManufactureDate) {
   ASSERT_TRUE(
       base::DeleteFile(relative_vpd_ro_dir().Append(kManufactureDateFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
   // Confirm that cached VPD values except manufacture date are obtained.
@@ -256,7 +248,7 @@ TEST_F(SystemUtilsTest, TestSkuNumberError) {
       base::DeleteFile(relative_vpd_ro_dir().Append(kSkuNumberFileName)));
 
   // Confirm that an error is obtained.
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_error());
   EXPECT_EQ(system_result->get_error()->type,
             chromeos::cros_healthd::mojom::ErrorType::kFileReadError);
@@ -271,7 +263,7 @@ TEST_F(SystemUtilsTest, TestNoSkuNumber) {
   // Ensure that there is no sku number.
   SetHasSkuNumber(false);
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
   // Confirm that correct cached VPD values except sku number are obtained.
@@ -298,7 +290,7 @@ TEST_F(SystemUtilsTest, TestNoProductSerialNumber) {
   ASSERT_TRUE(base::DeleteFile(
       relative_vpd_ro_dir().Append(kProductSerialNumberFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
   // Confirm that correct cached VPD values except serial number are obtained.
@@ -324,7 +316,7 @@ TEST_F(SystemUtilsTest, TestNoProductModelName) {
   ASSERT_TRUE(base::DeleteFile(
       relative_vpd_ro_dir().Append(kProductModelNameFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
   // Confirm that correct cached VPD values except serial number are obtained.
@@ -350,7 +342,7 @@ TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
   // Delete the directory |kRelativeDmiInfoPath|.
   ASSERT_TRUE(base::DeletePathRecursively(relative_dmi_info_path()));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
 
@@ -371,7 +363,7 @@ TEST_F(SystemUtilsTest, TestNoBiosVersion) {
   ASSERT_TRUE(
       base::DeleteFile(relative_dmi_info_path().Append(kBiosVersionFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
 
@@ -395,7 +387,7 @@ TEST_F(SystemUtilsTest, TestNoBoardName) {
   ASSERT_TRUE(
       base::DeleteFile(relative_dmi_info_path().Append(kBoardNameFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
 
@@ -419,7 +411,7 @@ TEST_F(SystemUtilsTest, TestNoBoardVersion) {
   ASSERT_TRUE(
       base::DeleteFile(relative_dmi_info_path().Append(kBoardVersionFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
 
@@ -443,7 +435,7 @@ TEST_F(SystemUtilsTest, TestNoChassisType) {
   ASSERT_TRUE(
       base::DeleteFile(relative_dmi_info_path().Append(kChassisTypeFileName)));
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_system_info());
   const auto& system_info = system_result->get_system_info();
 
@@ -471,7 +463,7 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
       relative_dmi_info_path().Append(kChassisTypeFileName), bad_chassis_type));
 
   // Confirm that an error is obtained.
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_error());
   EXPECT_EQ(system_result->get_error()->type,
             chromeos::cros_healthd::mojom::ErrorType::kParseError);
@@ -482,7 +474,7 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
 TEST_F(SystemUtilsTest, TestNoOsVersion) {
   base::test::ScopedChromeOSVersionInfo version("", base::Time::Now());
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_error());
   EXPECT_EQ(system_result->get_error()->type,
             chromeos::cros_healthd::mojom::ErrorType::kFileReadError);
@@ -497,7 +489,7 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
       "\nCHROMEOS_RELEASE_TRACK=" + kFakeReleaseChannel;
   base::test::ScopedChromeOSVersionInfo version(lsb_release, base::Time::Now());
 
-  auto system_result = FetchSystemInfo(GetTempDirPath());
+  auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_error());
   EXPECT_EQ(system_result->get_error()->type,
             chromeos::cros_healthd::mojom::ErrorType::kFileReadError);

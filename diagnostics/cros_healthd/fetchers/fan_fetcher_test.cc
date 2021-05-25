@@ -12,7 +12,6 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
@@ -60,23 +59,17 @@ class FanUtilsTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(mock_context_.Initialize());
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    ASSERT_TRUE(
-        base::CreateDirectory(GetTempDirPath().Append(kRelativeCrosEcPath)));
+    ASSERT_TRUE(base::CreateDirectory(root_dir().Append(kRelativeCrosEcPath)));
   }
 
-  const base::FilePath& GetTempDirPath() const {
-    DCHECK(temp_dir_.IsValid());
-    return temp_dir_.GetPath();
-  }
+  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
 
   mojo_ipc::FanResultPtr FetchFanInfo() {
     base::RunLoop run_loop;
     mojo_ipc::FanResultPtr result;
-    fan_fetcher_.FetchFanInfo(GetTempDirPath(),
-                              base::BindOnce(&OnGetFanSpeedResponseReceived,
+    fan_fetcher_.FetchFanInfo(base::BindOnce(&OnGetFanSpeedResponseReceived,
                                              &result, run_loop.QuitClosure()));
 
     run_loop.Run();
@@ -89,7 +82,6 @@ class FanUtilsTest : public ::testing::Test {
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
   FanFetcher fan_fetcher_{&mock_context_};
-  base::ScopedTempDir temp_dir_;
 };
 
 // Test that fan information can be fetched successfully.
@@ -219,9 +211,8 @@ TEST_F(FanUtilsTest, BadValue) {
 
 // Test that no fan info is fetched for a device that does not have a Google EC.
 TEST_F(FanUtilsTest, NoGoogleEc) {
-  base::FilePath root_dir = GetTempDirPath();
   ASSERT_TRUE(
-      base::DeletePathRecursively(root_dir.Append(kRelativeCrosEcPath)));
+      base::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
 
   auto fan_result = FetchFanInfo();
 

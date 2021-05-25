@@ -41,10 +41,9 @@ FanFetcher::FanFetcher(Context* context) : context_(context) {
 
 FanFetcher::~FanFetcher() = default;
 
-void FanFetcher::FetchFanInfo(const base::FilePath& root_dir,
-                              FetchFanInfoCallback callback) {
+void FanFetcher::FetchFanInfo(FetchFanInfoCallback callback) {
   // Devices without a Google EC, and therefore ectool, cannot obtain fan info.
-  if (!base::PathExists(root_dir.Append(kRelativeCrosEcPath))) {
+  if (!base::PathExists(context_->root_dir().Append(kRelativeCrosEcPath))) {
     LOG(INFO) << "Device does not have a Google EC.";
     std::move(callback).Run(mojo_ipc::FanResult::NewFanInfo({}));
     return;

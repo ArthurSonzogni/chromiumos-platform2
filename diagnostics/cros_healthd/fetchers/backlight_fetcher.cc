@@ -60,15 +60,14 @@ BacklightFetcher::BacklightFetcher(Context* context) : context_(context) {
 }
 BacklightFetcher::~BacklightFetcher() = default;
 
-mojo_ipc::BacklightResultPtr BacklightFetcher::FetchBacklightInfo(
-    const base::FilePath& root) {
+mojo_ipc::BacklightResultPtr BacklightFetcher::FetchBacklightInfo() {
   std::vector<mojo_ipc::BacklightInfoPtr> backlights;
 
   if (!context_->system_config()->HasBacklight())
     return mojo_ipc::BacklightResult::NewBacklightInfo(std::move(backlights));
 
   base::FileEnumerator backlight_dirs(
-      root.AppendASCII(kRelativeBacklightDirectoryPath),
+      context_->root_dir().AppendASCII(kRelativeBacklightDirectoryPath),
       false /* is_recursive */,
       base::FileEnumerator::SHOW_SYM_LINKS | base::FileEnumerator::FILES |
           base::FileEnumerator::DIRECTORIES);
@@ -90,7 +89,9 @@ mojo_ipc::BacklightResultPtr BacklightFetcher::FetchBacklightInfo(
     return mojo_ipc::BacklightResult::NewError(CreateAndLogProbeError(
         mojo_ipc::ErrorType::kFileReadError,
         "Device supports backlight, but no backlight information found in " +
-            root.AppendASCII(kRelativeBacklightDirectoryPath).value()));
+            context_->root_dir()
+                .AppendASCII(kRelativeBacklightDirectoryPath)
+                .value()));
   }
 
   return mojo_ipc::BacklightResult::NewBacklightInfo(std::move(backlights));

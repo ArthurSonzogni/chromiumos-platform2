@@ -181,17 +181,16 @@ base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchOsVersion(
   return base::nullopt;
 }
 
-mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo(
-    const base::FilePath& root_dir) {
+mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
   mojo_ipc::SystemInfo system_info;
 
   base::Optional<mojo_ipc::ProbeErrorPtr> error =
-      FetchCachedVpdInfo(root_dir, &system_info);
+      FetchCachedVpdInfo(context_->root_dir(), &system_info);
   if (error.has_value())
     return mojo_ipc::SystemResult::NewError(std::move(error.value()));
 
   FetchMasterConfigInfo(&system_info);
-  error = FetchDmiInfo(root_dir, &system_info);
+  error = FetchDmiInfo(context_->root_dir(), &system_info);
   if (error.has_value())
     return mojo_ipc::SystemResult::NewError(std::move(error.value()));
 

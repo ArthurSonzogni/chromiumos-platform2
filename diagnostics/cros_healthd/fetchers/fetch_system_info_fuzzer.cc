@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
@@ -75,20 +74,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
 
   FuzzedDataProvider provider(data, size);
-  base::ScopedTempDir temp_dir;
-  // Setup temp dir for writing out the system files the fetcher will read
-  // from.
-  CHECK(temp_dir.CreateUniqueTempDir());
-  SetUpSystemFiles(temp_dir.GetPath(), &provider);
-
   MockContext mock_context;
+  SetUpSystemFiles(mock_context.root_dir(), &provider);
   mock_context.Initialize();
   mock_context.fake_system_config()->SetHasSkuNumber(true);
   mock_context.fake_system_config()->SetMarketingName("fake_marketing_name");
   mock_context.fake_system_config()->SetProductName("fake_product_name");
   SystemFetcher system_fetcher{&mock_context};
-  auto system_info =
-      system_fetcher.FetchSystemInfo(base::FilePath(temp_dir.GetPath()));
+  auto system_info = system_fetcher.FetchSystemInfo();
 
   return 0;
 }

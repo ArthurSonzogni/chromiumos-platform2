@@ -8,7 +8,6 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
-#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -64,32 +63,27 @@ class BacklightUtilsTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(mock_context_.Initialize());
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   }
 
-  const base::FilePath& GetTempDirPath() const {
-    DCHECK(temp_dir_.IsValid());
-    return temp_dir_.GetPath();
-  }
-
-  BacklightResultPtr FetchBacklightInfo(const base::FilePath& root_dir) {
-    return backlight_fetcher_.FetchBacklightInfo(root_dir);
+  BacklightResultPtr FetchBacklightInfo() {
+    return backlight_fetcher_.FetchBacklightInfo();
   }
 
   void SetHasBacklight(const bool val) {
     mock_context_.fake_system_config()->SetHasBacklight(val);
   }
 
+  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
+
  private:
   MockContext mock_context_;
   BacklightFetcher backlight_fetcher_{&mock_context_};
-  base::ScopedTempDir temp_dir_;
 };
 
 // Test that backlight info can be read when it exists.
 TEST_F(BacklightUtilsTest, TestFetchBacklightInfo) {
-  auto root_dir = GetTempDirPath();
-  base::FilePath first_backlight_dir = GetFirstFakeBacklightDirectory(root_dir);
+  base::FilePath first_backlight_dir =
+      GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
       std::to_string(kFirstFakeBacklightMaxBrightness)));
@@ -97,7 +91,7 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfo) {
       first_backlight_dir.Append(kBrightnessFileName),
       std::to_string(kFirstFakeBacklightBrightness)));
   base::FilePath second_backlight_dir =
-      GetSecondFakeBacklightDirectory(root_dir);
+      GetSecondFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       second_backlight_dir.Append(kMaxBrightnessFileName),
       std::to_string(kSecondFakeBacklightMaxBrightness)));
@@ -113,7 +107,7 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfo) {
       second_backlight_dir.value(), kSecondFakeBacklightMaxBrightness,
       kSecondFakeBacklightBrightness));
 
-  auto backlight_result = FetchBacklightInfo(root_dir);
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_backlight_info());
   const auto& backlight_info = backlight_result->get_backlight_info();
 
@@ -129,14 +123,14 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfo) {
 // Test that one bad backlight directory (missing required files) returns an
 // error.
 TEST_F(BacklightUtilsTest, TestFetchBacklightInfoOneBadOneGoodDirectory) {
-  auto root_dir = GetTempDirPath();
-  base::FilePath first_backlight_dir = GetFirstFakeBacklightDirectory(root_dir);
+  base::FilePath first_backlight_dir =
+      GetFirstFakeBacklightDirectory(root_dir());
   // Skip the brightness file for the first directory.
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
       std::to_string(kFirstFakeBacklightMaxBrightness)));
   base::FilePath second_backlight_dir =
-      GetSecondFakeBacklightDirectory(root_dir);
+      GetSecondFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       second_backlight_dir.Append(kMaxBrightnessFileName),
       std::to_string(kSecondFakeBacklightMaxBrightness)));
@@ -144,7 +138,7 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoOneBadOneGoodDirectory) {
       second_backlight_dir.Append(kBrightnessFileName),
       std::to_string(kSecondFakeBacklightBrightness)));
 
-  auto backlight_result = FetchBacklightInfo(root_dir);
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
   EXPECT_EQ(backlight_result->get_error()->type, ErrorType::kFileReadError);
 }
@@ -152,7 +146,7 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoOneBadOneGoodDirectory) {
 // Test that fetching backlight info returns an error when no backlight
 // directories exist, but the device has a backlight.
 TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoDirectories) {
-  auto backlight_result = FetchBacklightInfo(GetTempDirPath());
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
   EXPECT_EQ(backlight_result->get_error()->type, ErrorType::kFileReadError);
 }
@@ -160,13 +154,13 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoDirectories) {
 // Test that fetching backlight info returns an error when the brightness file
 // doesn't exist.
 TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoBrightness) {
-  auto root_dir = GetTempDirPath();
-  base::FilePath first_backlight_dir = GetFirstFakeBacklightDirectory(root_dir);
+  base::FilePath first_backlight_dir =
+      GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
       std::to_string(kFirstFakeBacklightMaxBrightness)));
 
-  auto backlight_result = FetchBacklightInfo(root_dir);
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
   EXPECT_EQ(backlight_result->get_error()->type, ErrorType::kFileReadError);
 }
@@ -174,13 +168,13 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoBrightness) {
 // Test that fetching backlight info returns an error when the max_brightness
 // file doesn't exist.
 TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoMaxBrightness) {
-  auto root_dir = GetTempDirPath();
-  base::FilePath first_backlight_dir = GetFirstFakeBacklightDirectory(root_dir);
+  base::FilePath first_backlight_dir =
+      GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kBrightnessFileName),
       std::to_string(kFirstFakeBacklightBrightness)));
 
-  auto backlight_result = FetchBacklightInfo(root_dir);
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
   EXPECT_EQ(backlight_result->get_error()->type, ErrorType::kFileReadError);
 }
@@ -189,8 +183,8 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoMaxBrightness) {
 // formatted incorrectly.
 TEST_F(BacklightUtilsTest,
        TestFetchBacklightInfoBrightnessFormattedIncorrectly) {
-  auto root_dir = GetTempDirPath();
-  base::FilePath first_backlight_dir = GetFirstFakeBacklightDirectory(root_dir);
+  base::FilePath first_backlight_dir =
+      GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
       std::to_string(kFirstFakeBacklightMaxBrightness)));
@@ -198,7 +192,7 @@ TEST_F(BacklightUtilsTest,
       first_backlight_dir.Append(kBrightnessFileName),
       kFakeNonIntegerFileContents));
 
-  auto backlight_result = FetchBacklightInfo(root_dir);
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
   EXPECT_EQ(backlight_result->get_error()->type, ErrorType::kFileReadError);
 }
@@ -207,8 +201,8 @@ TEST_F(BacklightUtilsTest,
 // file is formatted incorrectly.
 TEST_F(BacklightUtilsTest,
        TestFetchBacklightInfoMaxBrightnessFormattedIncorrectly) {
-  auto root_dir = GetTempDirPath();
-  base::FilePath first_backlight_dir = GetFirstFakeBacklightDirectory(root_dir);
+  base::FilePath first_backlight_dir =
+      GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
       kFakeNonIntegerFileContents));
@@ -216,7 +210,7 @@ TEST_F(BacklightUtilsTest,
       first_backlight_dir.Append(kBrightnessFileName),
       std::to_string(kFirstFakeBacklightMaxBrightness)));
 
-  auto backlight_result = FetchBacklightInfo(root_dir);
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
   EXPECT_EQ(backlight_result->get_error()->type, ErrorType::kFileReadError);
 }
@@ -226,7 +220,7 @@ TEST_F(BacklightUtilsTest,
 TEST_F(BacklightUtilsTest, TestCrosConfigReportsNoBacklight) {
   SetHasBacklight(false);
 
-  auto backlight_result = FetchBacklightInfo(GetTempDirPath());
+  auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_backlight_info());
   EXPECT_EQ(backlight_result->get_backlight_info().size(), 0);
 }
