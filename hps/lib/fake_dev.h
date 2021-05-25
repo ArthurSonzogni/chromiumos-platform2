@@ -24,16 +24,17 @@
 namespace hps {
 
 /*
- * FakeHps is an class that when started, spawns a thread to
- * asynchronously process register reads/writes and memory writes.
+ * FakeDev is an class that when started, spawns a thread to
+ * asynchronously process register reads/writes and memory writes to
+ * simulate the HPS hardware.
  * A separate thread is used to simulate the latency and concurrency of
  * the real device.
  *
  * A set of flags defines behaviour of the device (such as forced errors etc.).
  */
-class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
+class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
  public:
-  FakeHps()
+  FakeDev()
       : SimpleThread("HPS Simulator"),
         stage_(kFault),
         feature_on_(0),
@@ -65,7 +66,7 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
   // Create an instance of a simulator.
-  static scoped_refptr<FakeHps> Create();
+  static scoped_refptr<FakeDev> Create();
 
  private:
   // Message code identifying the type of message passed
@@ -96,8 +97,8 @@ class FakeHps : public base::RefCounted<FakeHps>, base::SimpleThread {
     size_t length;
   };
 
-  friend class base::RefCounted<FakeHps>;
-  virtual ~FakeHps();
+  friend class base::RefCounted<FakeDev>;
+  virtual ~FakeDev();
   uint16_t ReadRegister(int r);
   void WriteRegister(int r, uint16_t v);
   bool WriteMemory(int base, const uint8_t* mem, size_t len);

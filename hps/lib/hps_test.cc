@@ -19,7 +19,7 @@ namespace {
 class HPSTest : public testing::Test {
  protected:
   virtual void SetUp() {
-    fake_ = hps::FakeHps::Create();
+    fake_ = hps::FakeDev::Create();
     hps_ = std::make_unique<hps::HPS>(fake_->CreateDevInterface());
   }
   void CreateBlob(const base::FilePath& file, int len) {
@@ -28,7 +28,7 @@ class HPSTest : public testing::Test {
     f.SetLength(len);
   }
 
-  scoped_refptr<hps::FakeHps> fake_;
+  scoped_refptr<hps::FakeDev> fake_;
   std::unique_ptr<hps::HPS> hps_;
 };
 
@@ -83,11 +83,11 @@ TEST_F(HPSTest, Download) {
   EXPECT_EQ(fake_->GetBankLen(0), len);
   // Fail the memory write and confirm that the request fails.
   // TODO(amcrae): Refactor to use enum directly.
-  fake_->Set(hps::FakeHps::Flags::kMemFail);
+  fake_->Set(hps::FakeDev::Flags::kMemFail);
   ASSERT_FALSE(hps_->Download(0, f));
   // No change to length.
   EXPECT_EQ(fake_->GetBankLen(0), len);
-  fake_->Clear(hps::FakeHps::Flags::kMemFail);
+  fake_->Clear(hps::FakeDev::Flags::kMemFail);
   EXPECT_FALSE(hps_->Download(1, f));
   fake_->SkipBoot();
   // No downloads allowed when running.

@@ -19,13 +19,13 @@
  *
  *   Main thread                 device thread
  * ->DevInterface->Read
- *     FakeHps->ReadRegister
+ *     FakeDev->ReadRegister
  *       create event/result
- *       FakeHps->send
+ *       FakeDev->send
  *           Add msg to queue
- *               signal  - - -> FakeHps->Run
+ *               signal  - - -> FakeDev->Run
  *                                read msg from queue
- *                                FakeHps->ReadRegActual
+ *                                FakeDev->ReadRegActual
  *             result < - - - -
  *             event  < - - - -
  *     return result
@@ -53,7 +53,7 @@ namespace hps {
  */
 class SimDev : public DevInterface {
  public:
-  explicit SimDev(scoped_refptr<FakeHps> device) : device_(device) {}
+  explicit SimDev(scoped_refptr<FakeDev> device) : device_(device) {}
   virtual ~SimDev() {}
 
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override {
@@ -66,10 +66,10 @@ class SimDev : public DevInterface {
 
  private:
   // Reference counted simulator object.
-  scoped_refptr<FakeHps> device_;
+  scoped_refptr<FakeDev> device_;
 };
 
-FakeHps::~FakeHps() {
+FakeDev::~FakeDev() {
   // If thread is running, send a request to terminate it.
   if (SimpleThread::HasBeenStarted() && !SimpleThread::HasBeenJoined()) {
     this->MsgStop();
@@ -78,12 +78,12 @@ FakeHps::~FakeHps() {
 }
 
 // Start the simulator.
-void FakeHps::Start() {
+void FakeDev::Start() {
   CHECK(!SimpleThread::HasBeenStarted());
   SimpleThread::Start();
 }
 
-bool FakeHps::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool FakeDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
   // Clear the whole buffer.
   for (int i = 0; i < len; i++) {
     data[i] = 0;
@@ -105,7 +105,7 @@ bool FakeHps::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return true;
 }
 
-bool FakeHps::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool FakeDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
   if ((cmd & 0x80) != 0) {
     if (len != 0) {
       // Register write.
@@ -129,7 +129,7 @@ bool FakeHps::Write(uint8_t cmd, const uint8_t* data, size_t len) {
 // Switch to the stage selected, and set up any flags or config.
 // Depending on the stage, the HPS module supports different
 // registers and attributes.
-void FakeHps::SetStage(Stage s) {
+void FakeDev::SetStage(Stage s) {
   this->stage_ = s;
   switch (s) {
     case kFault:
@@ -148,7 +148,7 @@ void FakeHps::SetStage(Stage s) {
 }
 
 // Run reads the message queue and processes each message.
-void FakeHps::Run() {
+void FakeDev::Run() {
   // Initial startup.
   // Check for boot fault.
   if (this->Flag(kBootFault)) {
@@ -200,7 +200,7 @@ void FakeHps::Run() {
   }
 }
 
-uint16_t FakeHps::ReadRegister(int r) {
+uint16_t FakeDev::ReadRegister(int r) {
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
   this->Send(Msg(Cmd::kReadReg, r, 0, &ev, &res));
@@ -208,13 +208,13 @@ uint16_t FakeHps::ReadRegister(int r) {
   return res.load();
 }
 
-void FakeHps::WriteRegister(int r, uint16_t v) {
+void FakeDev::WriteRegister(int r, uint16_t v) {
   this->Send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
 }
 
 // At the start of the write, clear the bank ready bit.
 // The simulator will set it again once the memory write completes.
-bool FakeHps::WriteMemory(int base, const uint8_t* mem, size_t len) {
+bool FakeDev::WriteMemory(int base, const uint8_t* mem, size_t len) {
   // Ensure minimum length (4 bytes of address).
   if (len < sizeof(uint32_t)) {
     return false;
@@ -232,7 +232,7 @@ bool FakeHps::WriteMemory(int base, const uint8_t* mem, size_t len) {
   return res.load() == len;
 }
 
-uint16_t FakeHps::ReadRegActual(int reg) {
+uint16_t FakeDev::ReadRegActual(int reg) {
   uint16_t v = 0;
   switch (reg) {
     case HpsReg::kMagic:
@@ -303,7 +303,7 @@ uint16_t FakeHps::ReadRegActual(int reg) {
   return v;
 }
 
-void FakeHps::WriteRegActual(int reg, uint16_t value) {
+void FakeDev::WriteRegActual(int reg, uint16_t value) {
   VLOG(2) << "Write reg " << reg << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
@@ -335,7 +335,7 @@ void FakeHps::WriteRegActual(int reg, uint16_t value) {
 
 // Returns the number of bytes written.
 // The length includes 4 bytes of prepended address.
-uint16_t FakeHps::WriteMemActual(int bank, const uint8_t* data, size_t len) {
+uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   if (this->Flag(kMemFail)) {
     return 0;
   }
@@ -360,29 +360,29 @@ uint16_t FakeHps::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   return 0;
 }
 
-size_t FakeHps::GetBankLen(int bank) {
+size_t FakeDev::GetBankLen(int bank) {
   base::AutoLock l(this->bank_lock_);
   return this->bank_len_[bank];
 }
 
-void FakeHps::MsgStop() {
+void FakeDev::MsgStop() {
   this->Send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr));
 }
 
-void FakeHps::Send(const Msg& m) {
+void FakeDev::Send(const Msg& m) {
   base::AutoLock l(this->qlock_);
   this->q_.push_back(m);
   this->ev_.Signal();
 }
 
 // Return a DevInterface connected to the simulated device.
-std::unique_ptr<DevInterface> FakeHps::CreateDevInterface() {
+std::unique_ptr<DevInterface> FakeDev::CreateDevInterface() {
   return std::unique_ptr<DevInterface>(std::make_unique<SimDev>(this));
 }
 
 // Static factory method to create and start an instance of a fake device.
-scoped_refptr<FakeHps> FakeHps::Create() {
-  auto fake_dev = base::MakeRefCounted<FakeHps>();
+scoped_refptr<FakeDev> FakeDev::Create() {
+  auto fake_dev = base::MakeRefCounted<FakeDev>();
   fake_dev->Start();
   return fake_dev;
 }

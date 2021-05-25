@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_test) {
     // Initialise the fake device as already booted so that
     // features can be enabled/disabled.
-    auto fake = hps::FakeHps::Create();
+    auto fake = hps::FakeDev::Create();
     fake->SkipBoot();
     dev = fake->CreateDevInterface();
   } else if (!FLAGS_uart.empty()) {
