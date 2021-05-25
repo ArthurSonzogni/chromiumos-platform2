@@ -99,10 +99,13 @@ class Process {
   // Sets the path of mlservice. Only used in testing.
   void SetMlServicePathForTesting(const std::string& path);
 
-  // Sets the `before_exit_worker_disconnect_handler_hook`, only used in
-  // testing.
-  void SetBeforeExitWorkerDisconnectHandlerHookForTesting(
-      base::RepeatingClosure hook);
+  // Sets the `reap_worker_process_succeed_callback_`, only used in testing.
+  void SetReapWorkerProcessSucceedCallbackForTesting(
+      base::RepeatingClosure callback);
+
+  // Sets the `reap_worker_process_succeed_callback_`, only used in testing.
+  void SetReapWorkerProcessFailCallbackForTesting(
+      base::RepeatingCallback<void(std::string reason)> callback);
 
   // Returns if the current process is a control process (i.e. `kControl ||
   // kControlForTest`).
@@ -125,6 +128,20 @@ class Process {
   // Input: the file descriptor used to bootstrap Mojo connection.
   void WorkerProcessRun();
 
+  // A helper function for reaping worker processes. This function is
+  // unblocking. If the reap failed, it will post itself with some delay time
+  // and try again.
+  // - `child_pid` is the pid of the worker process to reap.
+  // - `times_tried` denotes how many times we have tried to reap the worker
+  // process. Every time a trial failed, we will enlarge the delay time to have
+  // a next try. We will try this for at maximum of `kWaitPidMaxNumOfRetrials`
+  // times. Also, when it succeeds, we will report how long it has taken.
+  // - `begin_time` is the the time we start to try to reap worker process, used
+  // in metric reporting.
+  void ReapWorkerProcess(pid_t child_pid,
+                         int times_tried,
+                         base::Time begin_time);
+
   // The disconnect handler of control process for the mojo connection to the
   // worker process.
   void InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid);
@@ -144,10 +161,15 @@ class Process {
   // control process.
   std::unordered_map<pid_t, WorkerInfo> worker_pid_info_map_;
 
-  // The function called in the `kControlForTesting` process at the last of
-  // disconnection handler of the mojo connection to the worker process, only
-  // used in testing.
-  base::RepeatingClosure before_exit_worker_disconnect_handler_hook_;
+  // The function called in the `kControlForTesting` process after a worker
+  // process has been successfully reaped.
+  base::RepeatingClosure reap_worker_process_succeed_callback_;
+
+  // The function called in the `kControlForTesting` process if we failed to
+  // reap the worker process after `kWaitPidMaxNumOfTrials` times of trials.
+  // The reason of failure will be passed in as the argument.
+  base::RepeatingCallback<void(std::string reason)>
+      reap_worker_process_fail_callback_;
 
   // Mainly used for guarding `worker_pid_info_map_`.
   SEQUENCE_CHECKER(sequence_checker_);

@@ -38,6 +38,7 @@ gettid: 1
 gettimeofday: 1
 getuid32: 1
 ioctl: arg1 == SIOCSIFFLAGS || arg1 == TCGETS || arg1 == SIOCGIFFLAGS
+kill: arg1 == SIGKILL
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mount: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

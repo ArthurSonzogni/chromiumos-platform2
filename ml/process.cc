@@ -14,10 +14,13 @@
 #include <unistd.h>
 #include <pwd.h>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/process/process_metrics.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/task/post_task.h>
+#include <base/time/time.h>
 #include <libminijail.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
@@ -39,6 +42,13 @@ constexpr char kInternalMojoPrimordialPipeName[] = "cros_ml";
 constexpr char kDefaultMlServiceBinaryPath[] = "/usr/bin/ml_service";
 
 constexpr uid_t kMlServiceDBusUid = 20177;
+
+// This is the maximum of re-trials we will reap a child process.
+constexpr unsigned int kMaxNumOfWaitPidRetrials = 5;
+
+// The delay time in trying to reap worker process.
+constexpr int kWaitPidRetrialDelayTimesMilliseconds[kMaxNumOfWaitPidRetrials] =
+    {100, 300, 1000, 3000, 10000};
 
 std::string GetSeccompPolicyPath(const std::string& model_name) {
   return "/usr/share/policy/ml_service-" + model_name + "-seccomp.policy";
@@ -243,9 +253,14 @@ void Process::SetMlServicePathForTesting(const std::string& path) {
   ml_service_path_ = path;
 }
 
-void Process::SetBeforeExitWorkerDisconnectHandlerHookForTesting(
-    base::RepeatingClosure hook) {
-  before_exit_worker_disconnect_handler_hook_ = std::move(hook);
+void Process::SetReapWorkerProcessSucceedCallbackForTesting(
+    base::RepeatingClosure callback) {
+  reap_worker_process_succeed_callback_ = std::move(callback);
+}
+
+void Process::SetReapWorkerProcessFailCallbackForTesting(
+    base::RepeatingCallback<void(std::string reason)> callback) {
+  reap_worker_process_fail_callback_ = std::move(callback);
 }
 
 bool Process::IsControlProcess() {
@@ -258,25 +273,73 @@ bool Process::IsWorkerProcess() {
          process_type_ == Type::kSingleProcessForTest;
 }
 
-void Process::InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
-  WallTimeMetric walltime_metric(
-      "MachineLearningService.WorkerProcessCleanUpTime");
+void Process::ReapWorkerProcess(pid_t child_pid,
+                                int times_tried,
+                                base::Time begin_time) {
+  if (times_tried >= kMaxNumOfWaitPidRetrials) {
+    // Tried too many time, give up on reaping child process and report an
+    // error.
+    RecordProcessErrorEvent(
+        ProcessError::kReapWorkerProcessMaxNumOfRetrialsExceeded);
+    LOG(ERROR) << "Max number of retrials (" << kMaxNumOfWaitPidRetrials
+               << ") exceeded in trying to reap the worker process";
+    if (process_type_ == Type::kControlForTest &&
+        !reap_worker_process_fail_callback_.is_null()) {
+      reap_worker_process_fail_callback_.Run("Max number of retrials exceeded");
+    }
+    return;
+  }
 
-  UnregisterWorkerProcess(child_pid);
   // Reap the worker process.
   int status;
-  pid_t ret_pid = waitpid(child_pid, &status, 0);
-  DCHECK(ret_pid == child_pid);
-  int exit_status = WEXITSTATUS(status);
-  if (exit_status != 0) {
-    RecordWorkerProcessExitStatus(WEXITSTATUS(status));
-  }
+  const pid_t ret_pid = waitpid(child_pid, &status, WNOHANG);
+  if (ret_pid > 0) {
+    // Worker process has exited and been correctly reaped.
+    DCHECK(ret_pid == child_pid);
+    UnregisterWorkerProcess(child_pid);
+    int exit_status = WEXITSTATUS(status);
+    if (exit_status != 0) {
+      RecordWorkerProcessExitStatus(WEXITSTATUS(status));
+    }
+    // Record how long it takes to reap the worker process.
+    RecordReapWorkerProcessWallTime(begin_time, base::Time::Now());
+    // Call the "succeed callback" used in testing.
+    if (process_type_ == Type::kControlForTest &&
+        !reap_worker_process_succeed_callback_.is_null()) {
+      reap_worker_process_succeed_callback_.Run();
+    }
+    return;
+  } else if (ret_pid == 0) {
+    // The worker process hasn't exited yet.
+    DCHECK(times_tried < sizeof(kWaitPidRetrialDelayTimesMilliseconds) /
+                             sizeof(kWaitPidRetrialDelayTimesMilliseconds[0]));
+    // Try to reap the process again after some time.
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Process::ReapWorkerProcess, base::Unretained(this),
+                       child_pid, times_tried + 1, begin_time),
+        base::TimeDelta::FromMilliseconds(
+            kWaitPidRetrialDelayTimesMilliseconds[times_tried]));
+    return;
+  } else {
+    // Records the errno first to avoid it being changed.
+    RecordReapWorkerProcessErrno(errno);
+    LOG(ERROR) << "waitpid met error with errno: " << errno;
 
-  // Call the hooks used in testing.
-  if (process_type_ == Type::kControlForTest &&
-      !before_exit_worker_disconnect_handler_hook_.is_null()) {
-    before_exit_worker_disconnect_handler_hook_.Run();
+    // Call the "fail callback" used in testing.
+    if (process_type_ == Type::kControlForTest &&
+        !reap_worker_process_fail_callback_.is_null()) {
+      reap_worker_process_fail_callback_.Run("waitpid met error with errno: " +
+                                             std::to_string(errno));
+    }
   }
+}
+
+void Process::InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
+  // Try our best to ensure the worker process is exiting.
+  kill(child_pid, SIGKILL);
+  // Reap the child process. This is (and should be) unblocking.
+  ReapWorkerProcess(child_pid, 0, base::Time::Now());
 }
 
 }  // namespace ml

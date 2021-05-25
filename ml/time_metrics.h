@@ -24,5 +24,9 @@ class WallTimeMetric {
   const base::Time start_time_;
 };
 
+// Records how long it takes to reap the worker process.
+void RecordReapWorkerProcessWallTime(base::Time begin_time,
+                                     base::Time end_time);
+
 }  // namespace ml
 #endif  // ML_TIME_METRICS_H_

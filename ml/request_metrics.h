@@ -106,7 +106,8 @@ enum class ProcessError {
   kChangeEuidToMlServiceDBusFailed = 1,
   kChangeEuidBackToRootFailed = 2,
   kGetWorkerProcessMemoryUsageFailed = 3,
-  kMaxValue = kGetWorkerProcessMemoryUsageFailed,
+  kReapWorkerProcessMaxNumOfRetrialsExceeded = 4,
+  kMaxValue = kReapWorkerProcessMaxNumOfRetrialsExceeded,
 };
 
 // Records Multiprocess related errors.
@@ -114,6 +115,9 @@ void RecordProcessErrorEvent(ProcessError error);
 
 // Records the exit status of worker process.
 void RecordWorkerProcessExitStatus(int status);
+
+// Records the `errno` when waitpid failed in reaping worker processes.
+void RecordReapWorkerProcessErrno(int error_number);
 
 }  // namespace ml
 

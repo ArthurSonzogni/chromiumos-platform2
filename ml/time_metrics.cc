@@ -24,4 +24,13 @@ WallTimeMetric::~WallTimeMetric() {
       kWallTimeMinMicrosec, kWallTimeMaxMicrosec, kWallTimeBuckets);
 }
 
+void RecordReapWorkerProcessWallTime(base::Time begin_time,
+                                     base::Time end_time) {
+  DCHECK_GE(end_time, begin_time);
+  MetricsLibrary().SendToUMA("MachineLearningService.WorkerProcessCleanUpTime",
+                             (end_time - begin_time).InMicroseconds(),
+                             kWallTimeMinMicrosec, kWallTimeMaxMicrosec,
+                             kWallTimeBuckets);
+}
+
 }  // namespace ml

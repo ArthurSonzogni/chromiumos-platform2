@@ -72,8 +72,24 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
   // Sets the process to be control to test multiprocess code.
   Process::GetInstance()->SetTypeForTesting(Process::Type::kControlForTest);
 
+  // Set the callback when the worker process has been reaped successfully. We
+  // need to quit the runloop here.
+  Process::GetInstance()->SetReapWorkerProcessSucceedCallbackForTesting(
+      base::BindLambdaForTesting([&]() { runloop.Quit(); }));
+
+  // Set the callback when the worker process fails to be reaped. We need to
+  // quit the runloop here. Also we should set a flag and report the error.
+  bool reap_worker_process_succeeded = true;
+  std::string reap_worker_process_fail_reason;
+  Process::GetInstance()->SetReapWorkerProcessFailCallbackForTesting(
+      base::BindLambdaForTesting([&](std::string reason) {
+        reap_worker_process_succeeded = false;
+        reap_worker_process_fail_reason = reason;
+        runloop.Quit();
+      }));
+
   // Binds the disconnection handler. We need to quit the runloop here.
-  Process::GetInstance()->SetBeforeExitWorkerDisconnectHandlerHookForTesting(
+  Process::GetInstance()->SetReapWorkerProcessSucceedCallbackForTesting(
       base::BindLambdaForTesting([&]() { runloop.Quit(); }));
 
   // Sets the mlservice binary path which should be at the same dir of the test
@@ -177,8 +193,9 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
   // If timeout, the unit test failed.
   ASSERT_FALSE(is_timeout);
 
-  // Verify the worker process has exited. This is OK because the disconnection
-  // handler calls `waitpid`.
+  // Fail the test if the worker process can not be reaped.
+  ASSERT_TRUE(reap_worker_process_succeeded) << reap_worker_process_fail_reason;
+  // Verify the worker process has exited.
   EXPECT_NE(kill(worker_pid, 0), 0);
   // Verify the worker process has been unregistered.
   EXPECT_EQ(Process::GetInstance()->GetWorkerPidInfoMap().size(), 0u);

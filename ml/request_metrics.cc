@@ -4,14 +4,31 @@
 
 #include "ml/request_metrics.h"
 
+#include <errno.h>
+
 #include <base/check.h>
 #include <base/logging.h>
 
 #include "ml/mojom/machine_learning_service.mojom.h"
+#include "ml/process.h"
 
 namespace ml {
 
+namespace {
+
 using chromeos::machine_learning::mojom::LoadModelResult;
+
+// Renumbering the errno of waiptid to make it suitable for UMA recording.
+// Also added an "unknown" error.
+enum class WaitPidError {
+  kUnknown = 0,  // errno equals values other than below.
+  kECHILD = 1,   // errno == ECHILD.
+  kEINTR = 2,    // errno == EINTR.
+  kEINVAL = 3,   // errno == kEINVAL.
+  kMaxValue = kEINVAL,
+};
+
+}  // namespace
 
 RequestMetrics::RequestMetrics(const std::string& model_name,
                                const std::string& request_name)
@@ -79,6 +96,21 @@ void RecordProcessErrorEvent(ProcessError error) {
 void RecordWorkerProcessExitStatus(int status) {
   MetricsLibrary().SendSparseToUMA(
       "MachineLearningService.WorkerProcessExitStatus", status);
+}
+
+void RecordReapWorkerProcessErrno(int error_number) {
+  WaitPidError waitpid_error = WaitPidError::kUnknown;
+  if (error_number == ECHILD) {
+    waitpid_error = WaitPidError::kECHILD;
+  } else if (error_number == EINTR) {
+    waitpid_error = WaitPidError::kEINTR;
+  } else if (error_number == EINVAL) {
+    waitpid_error = WaitPidError::kEINVAL;
+  }
+  MetricsLibrary().SendEnumToUMA(
+      "MachineLearningService.ReapWorkerProcessErrno",
+      static_cast<int>(waitpid_error),
+      static_cast<int>(WaitPidError::kMaxValue) + 1);
 }
 
 }  // namespace ml
