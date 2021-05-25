@@ -469,7 +469,15 @@ const char kNumberOfSevereUnderrunsProperty[] = "NumberOfSevereUnderruns";
 enum AudioEffectType {
   EFFECT_TYPE_NOISE_CANCELLATION = 1 << 0,
 };
-
+// Screen Rotation in clock-wise degrees.
+// This enum corresponds to enum Rotation in chromium ui/display/display.h
+enum class DisplayRotation {
+  ROTATE_0 = 0,
+  ROTATE_90,
+  ROTATE_180,
+  ROTATE_270,
+  NUM_DISPLAY_ROTATION,
+};
 // Names of properties returned by
 // * method - GetNumberOfInputStreamsWithPermission and
 // * signal - NumberOfInputStreamsWithPermissionChanged.
