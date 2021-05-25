@@ -1111,8 +1111,6 @@ bool ArcSetup::InstallLinksToHostSideCode() {
 
 void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   const bool is_inside_vm = config_.GetBoolOrDie("CHROMEOS_INSIDE_VM");
-  // TODO(b/185548303): Remove ro.boot.debuggable.
-  const bool is_debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
   const bool disable_system_default_app =
       config_.GetBoolOrDie("DISABLE_SYSTEM_DEFAULT_APP");
 
@@ -1172,7 +1170,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
   LOG(INFO) << "Inside VM is " << is_inside_vm;
-  LOG(INFO) << "Debuggable is " << is_debuggable;
   const std::string chromeos_channel =
       GetChromeOsChannelFromFile(lsb_release_file_path);
   LOG(INFO) << "ChromeOS channel is \"" << chromeos_channel << "\"";
@@ -1233,8 +1230,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.dev_mode=%d "
       "androidboot.disable_runas=%d "
       "androidboot.host_is_in_vm=%d "
-      // TODO(b/185548303): Remove ro.boot.debuggable.
-      "androidboot.debuggable=%d "
       "androidboot.lcd_density=%d "
       "androidboot.native_bridge=%s "
       "androidboot.arc_file_picker=%d "
@@ -1249,7 +1244,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.boottime_offset=%" PRId64
       " " /* in nanoseconds */
       "androidboot.iioservice_present=%d\n",
-      is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density,
+      is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       chromeos_channel.c_str(),
       GetPlayStoreAutoUpdateParam(play_store_auto_update).c_str(),
