@@ -25,6 +25,7 @@ namespace {
 using ::chromeos::machine_learning::mojom::EndpointReason;
 using ::chromeos::machine_learning::mojom::FinalResult;
 using ::chromeos::machine_learning::mojom::FinalResultPtr;
+using ::chromeos::machine_learning::mojom::OptionalBool;
 using ::chromeos::machine_learning::mojom::SodaClient;
 using ::chromeos::machine_learning::mojom::SodaConfigPtr;
 using ::chromeos::machine_learning::mojom::SodaRecognizer;
@@ -156,6 +157,11 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   cfg_msg.set_sample_rate(spec->sample_rate);
   cfg_msg.set_language_pack_directory(real_language_dlc_path->value());
   cfg_msg.set_api_key(spec->api_key);
+
+  if (spec->enable_formatting != OptionalBool::kUnknown) {
+    cfg_msg.set_enable_formatting(spec->enable_formatting ==
+                                  OptionalBool::kTrue);
+  }
   std::string serialized = cfg_msg.SerializeAsString();
 
   ExtendedSodaConfig cfg;
