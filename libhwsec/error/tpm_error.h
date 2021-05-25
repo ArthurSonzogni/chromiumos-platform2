@@ -17,7 +17,7 @@ namespace hwsec {
 namespace error {
 
 // A base class of all kinds of TPM ErrorBase.
-class TPMErrorObj : public hwsec_foundation::error::ErrorBaseObj {
+class TPMErrorBaseObj : public hwsec_foundation::error::ErrorBaseObj {
  public:
   TPMErrorBaseObj() = default;
   virtual ~TPMErrorBaseObj() = default;

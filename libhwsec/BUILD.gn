@@ -65,7 +65,10 @@ if (use.test) {
   }
 
   executable("hwsec_testrunner") {
-    sources = [ "task_dispatching_framework_test.cc" ]
+    sources = [
+      "error/tpm_error_test.cc",
+      "task_dispatching_framework_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
