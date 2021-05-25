@@ -11,59 +11,23 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <gtest/gtest.h>
-#include <libtpmcrypto/tpm_crypto_impl.h>
 
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 
 namespace oobe_config {
 
-// Fake crypto helper. Encrypt and Decrypt just flip every bit.
-// This means that they are symmetric but also that the plaintext
-// and ciphertext are different.
-class BitFlipCrypto : public tpmcrypto::TpmCrypto {
- public:
-  bool Encrypt(const brillo::SecureBlob& data,
-               std::string* encrypted_data) override {
-    *encrypted_data = data.to_string();
-    for (size_t i = 0; i < encrypted_data->size(); i++) {
-      (*encrypted_data)[i] = ~(*encrypted_data)[i];
-    }
-
-    return true;
-  }
-
-  bool Decrypt(const std::string& encrypted_data,
-               brillo::SecureBlob* data) override {
-    *data = brillo::SecureBlob(encrypted_data);
-    for (size_t i = 0; i < data->size(); i++) {
-      (*data)[i] = ~(*data)[i];
-    }
-
-    return true;
-  }
-};
-
 class OobeConfigTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    std::unique_ptr<tpmcrypto::TpmCrypto> crypto =
-        std::make_unique<BitFlipCrypto>();
-    oobe_config_ = std::make_unique<OobeConfig>(std::move(crypto));
+    oobe_config_ = std::make_unique<OobeConfig>();
     ASSERT_TRUE(fake_root_dir_.CreateUniqueTempDir());
     oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
   }
 
   void CheckSaveAndRestore(bool encrypted) {
-    oobe_config_->WriteFile(kSaveTempPath.Append(kInstallAttributesFileName),
-                            "install_attributes");
-    oobe_config_->WriteFile(kSaveTempPath.Append(kOwnerKeyFileName), "owner");
-    oobe_config_->WriteFile(kSaveTempPath.Append(kPolicyFileName), "policy0");
-    oobe_config_->WriteFile(
-        kSaveTempPath.Append(kPolicyDotOneFileNameForTesting), "policy1");
-    oobe_config_->WriteFile(kSaveTempPath.Append(kShillDefaultProfileFileName),
-                            "shill");
     oobe_config_->WriteFile(kSaveTempPath.Append(kOobeCompletedFileName), "");
 
     // Saving rollback data.
@@ -111,45 +75,11 @@ class OobeConfigTest : public ::testing::Test {
     } else {
       EXPECT_TRUE(oobe_config_->UnencryptedRollbackRestore());
     }
-
-    // Verify that the config files are restored.
-    std::string file_content;
-    EXPECT_TRUE(oobe_config_->ReadFile(
-        kRestoreTempPath.Append(kInstallAttributesFileName), &file_content));
-    EXPECT_EQ("install_attributes", file_content);
-    EXPECT_TRUE(oobe_config_->ReadFile(
-        kRestoreTempPath.Append(kOwnerKeyFileName), &file_content));
-    EXPECT_EQ("owner", file_content);
-    EXPECT_TRUE(oobe_config_->ReadFile(kRestoreTempPath.Append(kPolicyFileName),
-                                       &file_content));
-    EXPECT_EQ("policy0", file_content);
-    EXPECT_TRUE(oobe_config_->ReadFile(
-        kRestoreTempPath.Append(kPolicyDotOneFileNameForTesting),
-        &file_content));
-    EXPECT_EQ("policy1", file_content);
-    EXPECT_TRUE(oobe_config_->ReadFile(
-        kRestoreTempPath.Append(kShillDefaultProfileFileName), &file_content));
-    EXPECT_EQ("shill", file_content);
   }
 
   base::ScopedTempDir fake_root_dir_;
   std::unique_ptr<OobeConfig> oobe_config_;
 };
-
-TEST_F(OobeConfigTest, BitFlipTest) {
-  BitFlipCrypto crypto;
-  const std::string expected_plaintext = "I'm secret!";
-  brillo::SecureBlob plaintext_blob;
-  std::string actual_plaintext;
-  std::string encrypted;
-
-  crypto.Encrypt(brillo::SecureBlob(expected_plaintext), &encrypted);
-  crypto.Decrypt(encrypted, &plaintext_blob);
-  EXPECT_NE(encrypted, expected_plaintext);
-
-  actual_plaintext = plaintext_blob.to_string();
-  EXPECT_EQ(expected_plaintext, actual_plaintext);
-}
 
 TEST_F(OobeConfigTest, UnencryptedSaveAndRestoreTest) {
   CheckSaveAndRestore(false /* encrypted */);

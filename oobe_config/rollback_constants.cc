@@ -37,25 +37,6 @@ const base::FilePath kMetricsReportingEnabledFile =
     base::FilePath("/home/chronos/Consent To Send Stats");
 const char kMetricsReportingEnabledFileName[] = "Consent To Send Stats";
 
-const base::FilePath kInstallAttributesPath =
-    base::FilePath("/home/.shadow/install_attributes.pb");
-const char kInstallAttributesFileName[] = "install_attributes.pb";
-
-const base::FilePath kOwnerKeyFilePath =
-    base::FilePath("/var/lib/whitelist/owner.key");
-const char kOwnerKeyFileName[] = "owner.key";
-
-const base::FilePath kPolicyFileDirectory =
-    base::FilePath("/var/lib/whitelist/");
-const char kPolicyFileName[] = "policy";
-const char kPolicyFileNamePattern[] = "policy*";
-
-const base::FilePath kShillDefaultProfilePath =
-    base::FilePath("/var/cache/shill/default.profile");
-const char kShillDefaultProfileFileName[] = "default.profile";
-
-const char kPolicyDotOneFileNameForTesting[] = "policy.1";
-
 const char kOobeConfigSaveUsername[] = "oobe_config_save";
 const char kRootUsername[] = "root";
 const char kPreserveGroupName[] = "preserve";

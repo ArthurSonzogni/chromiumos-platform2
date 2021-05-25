@@ -12,21 +12,13 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <policy/resilient_policy_util.h>
-#include <libtpmcrypto/tpm_crypto_impl.h>
 
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 
 namespace oobe_config {
 
-OobeConfig::OobeConfig() {
-  crypto_ = std::make_unique<tpmcrypto::TpmCryptoImpl>();
-}
-
-OobeConfig::OobeConfig(std::unique_ptr<tpmcrypto::TpmCrypto> crypto)
-    : crypto_(std::move(crypto)) {}
-
+OobeConfig::OobeConfig() = default;
 OobeConfig::~OobeConfig() = default;
 
 base::FilePath OobeConfig::GetPrefixedFilePath(
@@ -80,15 +72,7 @@ bool OobeConfig::WriteFile(const base::FilePath& file_path,
   return WriteFileWithoutPrefix(GetPrefixedFilePath(file_path), data);
 }
 
-bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
-  std::string file_content;
-  ReadFile(kSaveTempPath.Append(kInstallAttributesFileName), &file_content);
-  rollback_data->set_install_attributes(file_content);
-  ReadFile(kSaveTempPath.Append(kOwnerKeyFileName), &file_content);
-  rollback_data->set_owner_key(file_content);
-  ReadFile(kSaveTempPath.Append(kShillDefaultProfileFileName), &file_content);
-  rollback_data->set_shill_default_profile(file_content);
-
+void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   if (base::PathExists(
           GetPrefixedFilePath(kSaveTempPath.Append(kOobeCompletedFileName)))) {
     // If OOBE has been completed already, we know the EULA has been accepted.
@@ -100,53 +84,17 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
     // If |kMetricsReportingEnabledFile| exists, metrics are enabled.
     rollback_data->set_eula_send_statistics(true);
   }
-
-  PolicyData* policy_data = rollback_data->mutable_device_policy();
-  std::map<int, base::FilePath> policy_paths =
-      policy::GetSortedResilientPolicyFilePaths(
-          GetPrefixedFilePath(kSaveTempPath.Append(kPolicyFileName)));
-  for (auto entry : policy_paths) {
-    policy_data->add_policy_index(entry.first);
-    ReadFileWithoutPrefix(entry.second, &file_content);
-    policy_data->add_policy_file(file_content);
-  }
-  return true;
+  return;
 }
 
 bool OobeConfig::GetSerializedRollbackData(
     std::string* serialized_rollback_data) const {
   RollbackData rollback_data;
-  if (!GetRollbackData(&rollback_data)) {
-    return false;
-  }
+  GetRollbackData(&rollback_data);
 
   if (!rollback_data.SerializeToString(serialized_rollback_data)) {
     LOG(ERROR) << "Couldn't serialize proto.";
     return false;
-  }
-
-  return true;
-}
-
-bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) const {
-  WriteFile(kRestoreTempPath.Append(kInstallAttributesFileName),
-            rollback_data.install_attributes());
-  WriteFile(kRestoreTempPath.Append(kOwnerKeyFileName),
-            rollback_data.owner_key());
-  WriteFile(kRestoreTempPath.Append(kShillDefaultProfileFileName),
-            rollback_data.shill_default_profile());
-
-  if (rollback_data.device_policy().policy_file_size() !=
-      rollback_data.device_policy().policy_index_size()) {
-    LOG(ERROR) << "Invalid rollback_data.";
-    return false;
-  }
-  for (int i = 0; i < rollback_data.device_policy().policy_file_size(); ++i) {
-    base::FilePath policy_path = policy::GetResilientPolicyFilePathForIndex(
-        GetPrefixedFilePath(kRestoreTempPath.Append(kPolicyFileName)),
-        rollback_data.device_policy().policy_index(i));
-    WriteFileWithoutPrefix(policy_path,
-                           rollback_data.device_policy().policy_file(i));
   }
 
   return true;
@@ -178,14 +126,9 @@ bool OobeConfig::EncryptedRollbackSave() const {
     return false;
   }
 
-  LOG(INFO) << "Encrypting rollback data size="
-            << serialized_rollback_data.size();
-  std::string encrypted;
-  brillo::SecureBlob blob(serialized_rollback_data);
-  if (!crypto_->Encrypt(blob, &encrypted)) {
-    LOG(ERROR) << "Failed to encrypt rollback data.";
-    return false;
-  }
+  // TODO(crbug/1212958) implement encryption that works across TPM clear.
+  LOG(WARNING) << "Encryption not yet implemented!";
+  std::string encrypted = serialized_rollback_data;
 
   LOG(INFO) << "Writing encrypted rollback data.";
   if (!WriteFile(kUnencryptedStatefulRollbackDataPath, encrypted)) {
@@ -219,8 +162,7 @@ bool OobeConfig::UnencryptedRollbackRestore() const {
   }
   LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataPath.value();
 
-  // Data is already unencrypted, restore it.
-  return RestoreRollbackData(rollback_data);
+  return true;
 }
 
 bool OobeConfig::EncryptedRollbackRestore() const {
@@ -231,9 +173,8 @@ bool OobeConfig::EncryptedRollbackRestore() const {
 
   // Decrypt the data.
   LOG(INFO) << "Decrypting rollback data size=" << encrypted_data.size();
-  brillo::SecureBlob serialized_rollback_data;
-  crypto_->Decrypt(encrypted_data, &serialized_rollback_data);
-  std::string rollback_data_str = serialized_rollback_data.to_string();
+  LOG(WARNING) << "Encryption not yet implemented, expecting unencrypted data!";
+  std::string rollback_data_str = encrypted_data;
 
   // Write the unencrypted data immediately to
   // kEncryptedStatefulRollbackDataPath.
@@ -248,8 +189,7 @@ bool OobeConfig::EncryptedRollbackRestore() const {
   }
   LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataPath.value();
 
-  // Data is already unencrypted, restore it.
-  return RestoreRollbackData(rollback_data);
+  return true;
 }
 
 void OobeConfig::CleanupEncryptedStatefulDirectory() const {

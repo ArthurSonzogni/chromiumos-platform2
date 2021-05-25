@@ -69,10 +69,7 @@ static_library("liboobeconfig") {
   ]
   configs += [ ":liboobeconfig_config" ]
   all_dependent_configs = [ ":target_defaults" ]
-  libs = [
-    "policy",
-    "tpmcrypto",
-  ]
+  libs = [ "policy" ]
   deps = [ ":oobe_config_proto" ]
 }
 
@@ -128,10 +125,7 @@ executable("oobe_config_restore") {
     "oobe_config_restore_main.cc",
     "oobe_config_restore_service.cc",
   ]
-  configs += [
-    ":crypto",
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libload_oobe_config_usb",
     ":liboobeconfig",

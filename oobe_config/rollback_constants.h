@@ -42,19 +42,6 @@ extern const char kOobeCompletedFileName[];
 extern const base::FilePath kMetricsReportingEnabledFile;
 extern const char kMetricsReportingEnabledFileName[];
 
-// Name of the files (without path) we want to preserve.
-extern const base::FilePath kInstallAttributesPath;
-extern const char kInstallAttributesFileName[];
-extern const base::FilePath kOwnerKeyFilePath;
-extern const char kOwnerKeyFileName[];
-extern const base::FilePath kPolicyFileDirectory;
-extern const char kPolicyFileName[];
-extern const char kPolicyFileNamePattern[];
-extern const base::FilePath kShillDefaultProfilePath;
-extern const char kShillDefaultProfileFileName[];
-
-extern const char kPolicyDotOneFileNameForTesting[];
-
 extern const char kOobeConfigSaveUsername[];
 extern const char kRootUsername[];
 extern const char kPreserveGroupName[];

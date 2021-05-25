@@ -135,24 +135,10 @@ bool PrepareSave(const base::FilePath& root_path,
   }
 
   LOG(INFO) << "Copying data to save path";
-  TryFileCopy(PrefixAbsolutePath(root_path, kInstallAttributesPath),
-              save_path.Append(kInstallAttributesFileName));
-  TryFileCopy(PrefixAbsolutePath(root_path, kOwnerKeyFilePath),
-              save_path.Append(kOwnerKeyFileName));
-  TryFileCopy(PrefixAbsolutePath(root_path, kShillDefaultProfilePath),
-              save_path.Append(kShillDefaultProfileFileName));
   TryFileCopy(PrefixAbsolutePath(root_path, kOobeCompletedFile),
               save_path.Append(kOobeCompletedFileName));
   TryFileCopy(PrefixAbsolutePath(root_path, kMetricsReportingEnabledFile),
               save_path.Append(kMetricsReportingEnabledFileName));
-
-  base::FileEnumerator policy_file_enumerator(
-      PrefixAbsolutePath(root_path, kPolicyFileDirectory), false,
-      base::FileEnumerator::FILES, kPolicyFileNamePattern);
-  for (auto file = policy_file_enumerator.Next(); !file.empty();
-       file = policy_file_enumerator.Next()) {
-    TryFileCopy(file, save_path.Append(file.BaseName()));
-  }
 
   return true;
 }
@@ -171,52 +157,6 @@ bool FinishRestore(const base::FilePath& root_path,
 
   LOG(INFO) << "Starting rollback restore stage 2.";
   base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
-  // Restore install attributes. /home/.shadow should already exist at OOBE
-  // time. Owner should be root:root, with permissions 644.
-  if (!CopyFileAndSetPermissions(
-          restore_path.Append(kInstallAttributesFileName),
-          PrefixAbsolutePath(root_path, kInstallAttributesPath), kRootUsername,
-          0644, ignore_permissions_for_testing)) {
-    LOG(ERROR) << "Couldn't restore install attributes.";
-    // Need to reset the TPM if we could not restore install attributes.
-    return false;
-  }
-
-  // Restore owner.key. /var/lib/whitelist/ should already exist at OOBE
-  // time. Owner should be root:root, with permissions 604.
-  if (!CopyFileAndSetPermissions(
-          restore_path.Append(kOwnerKeyFileName),
-          PrefixAbsolutePath(root_path, kOwnerKeyFilePath), kRootUsername, 0604,
-          ignore_permissions_for_testing)) {
-    LOG(ERROR) << "Couldn't restore owner.key.";
-    // Need to reset the TPM if we could not restore the owner key.
-    return false;
-  }
-
-  // Restore shill default profile. /var/cache/shill/ should already exist at
-  // OOBE time. The file is restored with owner root:root, permissions 600,
-  // shill will take care of setting these properly in shill-pre-start.sh.
-  if (!CopyFileAndSetPermissions(
-          restore_path.Append(kShillDefaultProfileFileName),
-          PrefixAbsolutePath(root_path, kShillDefaultProfilePath),
-          kRootUsername, 0600, ignore_permissions_for_testing)) {
-    LOG(WARNING) << "Couldn't restore shill default profile.";
-  }
-
-  // Restore policy files. /var/lib/whitelist/ should already exist at OOBE
-  // time. Owner should be root:root, with permissions 604.
-  base::FileEnumerator policy_file_enumerator(
-      restore_path, false, base::FileEnumerator::FILES, kPolicyFileNamePattern);
-  for (auto file = policy_file_enumerator.Next(); !file.empty();
-       file = policy_file_enumerator.Next()) {
-    if (!CopyFileAndSetPermissions(
-            file,
-            PrefixAbsolutePath(root_path, kPolicyFileDirectory)
-                .Append(file.BaseName()),
-            kRootUsername, 0604, ignore_permissions_for_testing)) {
-      LOG(WARNING) << "Couldn't restore policy.";
-    }
-  }
 
   // Delete all files from the directory except the ones needed
   // for stage 3.

@@ -9,6 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <gtest/gtest.h>
 
 #include "oobe_config/rollback_constants.h"
@@ -40,28 +41,11 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
 
-  WriteTestFile(PrefixAbsolutePath(temp_path, kInstallAttributesPath));
-  WriteTestFile(PrefixAbsolutePath(temp_path, kOwnerKeyFilePath));
-  WriteTestFile(PrefixAbsolutePath(temp_path, kShillDefaultProfilePath));
-  WriteTestFile(PrefixAbsolutePath(
-      temp_path, kPolicyFileDirectory.Append(kPolicyFileName)));
-  WriteTestFile(PrefixAbsolutePath(
-      temp_path, kPolicyFileDirectory.Append(kPolicyDotOneFileNameForTesting)));
   WriteTestFile(PrefixAbsolutePath(temp_path, kOobeCompletedFile));
   WriteTestFile(PrefixAbsolutePath(temp_path, kMetricsReportingEnabledFile));
 
   ASSERT_TRUE(PrepareSave(temp_path, /*ignore_permissions_for_testing=*/true));
 
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
-                     .Append(kInstallAttributesFileName));
-  VerifyTestFile(
-      PrefixAbsolutePath(temp_path, kSaveTempPath).Append(kOwnerKeyFileName));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
-                     .Append(kShillDefaultProfileFileName));
-  VerifyTestFile(
-      PrefixAbsolutePath(temp_path, kSaveTempPath).Append(kPolicyFileName));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
-                     .Append(kPolicyDotOneFileNameForTesting));
   VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
                      .Append(kOobeCompletedFileName));
   VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
@@ -83,53 +67,6 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {
   ASSERT_TRUE(PrepareSave(temp_path, /*ignore_permissions_for_testing=*/true));
 
   EXPECT_FALSE(base::PathExists(already_existing_file_path));
-}
-
-TEST(OobeConfigFinishRestoreTest, FinishRestoreTest) {
-  // Creating pre-restore state.
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath temp_path = temp_dir.GetPath();
-
-  WriteTestFile(
-      PrefixAbsolutePath(temp_path, kUnencryptedStatefulRollbackDataPath));
-  WriteTestFile(
-      PrefixAbsolutePath(temp_path, kEncryptedStatefulRollbackDataPath));
-
-  WriteTestFile(PrefixAbsolutePath(
-      temp_path, kRestoreTempPath.Append(kInstallAttributesFileName)));
-  WriteTestFile(PrefixAbsolutePath(temp_path,
-                                   kRestoreTempPath.Append(kOwnerKeyFileName)));
-  WriteTestFile(PrefixAbsolutePath(
-      temp_path, kRestoreTempPath.Append(kShillDefaultProfileFileName)));
-  WriteTestFile(
-      PrefixAbsolutePath(temp_path, kRestoreTempPath.Append(kPolicyFileName)));
-  WriteTestFile(PrefixAbsolutePath(
-      temp_path, kRestoreTempPath.Append(kPolicyDotOneFileNameForTesting)));
-
-  // Create dirs
-  ASSERT_TRUE(base::CreateDirectory(
-      PrefixAbsolutePath(temp_path, kInstallAttributesPath.DirName())));
-  ASSERT_TRUE(base::CreateDirectory(
-      PrefixAbsolutePath(temp_path, kOwnerKeyFilePath.DirName())));
-  ASSERT_TRUE(base::CreateDirectory(
-      PrefixAbsolutePath(temp_path, kPolicyFileDirectory)));
-  ASSERT_TRUE(base::CreateDirectory(
-      PrefixAbsolutePath(temp_path, kShillDefaultProfilePath.DirName())));
-
-  // Make sure the first stage completed file exists.
-  WriteTestFile(PrefixAbsolutePath(temp_path, kFirstStageCompletedFile));
-
-  ASSERT_TRUE(
-      FinishRestore(temp_path, /*ignore_permissions_for_testing=*/true));
-
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kInstallAttributesPath));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kOwnerKeyFilePath));
-  VerifyTestFile(PrefixAbsolutePath(temp_path, kShillDefaultProfilePath));
-  WriteTestFile(PrefixAbsolutePath(
-      temp_path, kPolicyFileDirectory.Append(kPolicyFileName)));
-  VerifyTestFile(PrefixAbsolutePath(
-      temp_path, kPolicyFileDirectory.Append(kPolicyDotOneFileNameForTesting)));
 }
 
 }  // namespace oobe_config

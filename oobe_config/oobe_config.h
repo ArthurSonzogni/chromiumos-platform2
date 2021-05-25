@@ -10,10 +10,6 @@
 
 #include <base/files/file_path.h>
 
-namespace tpmcrypto {
-class TpmCrypto;
-}
-
 namespace oobe_config {
 
 class RollbackData;
@@ -23,7 +19,6 @@ class RollbackData;
 class OobeConfig {
  public:
   OobeConfig();
-  explicit OobeConfig(std::unique_ptr<tpmcrypto::TpmCrypto> crypto);
   OobeConfig(const OobeConfig&) = delete;
   OobeConfig& operator=(const OobeConfig&) = delete;
 
@@ -96,19 +91,11 @@ class OobeConfig {
   bool GetSerializedRollbackData(std::string* serialized_rollback_data) const;
 
   // Gets the files needed for rollback and returns them in |rollback_data|.
-  // Returns true if succeeded, false otherwise.
-  bool GetRollbackData(RollbackData* rollback_data) const;
-
-  // Restores the files stored in |rollback_data|. Returns true if succeeded,
-  // false otherwise.
-  bool RestoreRollbackData(const RollbackData& rollback_data) const;
+  void GetRollbackData(RollbackData* rollback_data) const;
 
   // We're prefixing all paths for testing with a temp directory. Empty (no
   // prefix) by default.
   base::FilePath prefix_path_for_testing_;
-
-  // Class for implementing crypto.
-  std::unique_ptr<tpmcrypto::TpmCrypto> crypto_;
 };
 
 }  // namespace oobe_config
