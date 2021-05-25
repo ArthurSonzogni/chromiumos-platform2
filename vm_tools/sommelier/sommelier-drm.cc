@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <gbm.h>
@@ -28,6 +29,7 @@ struct sl_host_drm {
 static void sl_drm_authenticate(struct wl_client* client,
                                 struct wl_resource* resource,
                                 uint32_t id) {
+  TRACE_EVENT("drm", "sl_drm_authenticate");
   wl_drm_send_authenticated(resource);
 }
 
@@ -69,6 +71,7 @@ static void sl_drm_sync(struct sl_context* ctx,
   // device given to sommelier.
   memset(&prime_handle, 0, sizeof(prime_handle));
   prime_handle.fd = sync_point->fd;
+  TRACE_EVENT("drm", "sl_drm_sync", "prime_fd", prime_handle.fd);
   ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
   if (!ret) {
     struct drm_virtgpu_3d_wait wait_arg;
@@ -101,6 +104,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
                                        int32_t stride1,
                                        int32_t offset2,
                                        int32_t stride2) {
+  TRACE_EVENT("drm", "sl_drm_create_prime_buffer", "id", id);
   struct sl_host_drm* host =
       static_cast<sl_host_drm*>(wl_resource_get_user_data(resource));
   struct zwp_linux_buffer_params_v1* buffer_params;

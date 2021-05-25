@@ -12,6 +12,7 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category("surface").SetDescription(
         "Events for Wayland surface management"),
     perfetto::Category("display").SetDescription("Events for Wayland display"),
+    perfetto::Category("drm").SetDescription("Events for Wayland drm"),
     perfetto::Category("shell").SetDescription("Events for Wayland shell"),
     perfetto::Category("shm").SetDescription(
         "Events for Wayland shared memory"),
