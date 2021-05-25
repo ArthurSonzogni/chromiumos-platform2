@@ -33,8 +33,14 @@ using BootMode = char[3];
 constexpr BootMode kVerifiedBootMode = {0, 0, 1};
 constexpr BootMode kDevMode = {1, 0, 1};
 
-// Structure for defining the PCR-binding policy for the sealed storage.
-// The policy defines the state, in which the data can be unsealed.
+// Data type for non-sensitive data (e.g. serialized encrypted blob).
+using Data = brillo::Blob;
+
+// Data type for sensitive data (e.g. plaintext stored in the sealed storage).
+using SecretData = brillo::SecureBlob;
+
+// Structure for defining the policy for the sealed storage.
+// The policy defines the state in which the data can be unsealed.
 struct Policy {
   using PcrMap = std::map<uint32_t, std::string>;
 
@@ -47,13 +53,10 @@ struct Policy {
   static PcrMap::value_type UnchangedPCR(uint32_t pcr_num);
 
   PcrMap pcr_map;
+
+  // A secret that needs to be known in order unseal data.
+  SecretData secret;
 };
-
-// Data type for non-sensitive data (e.g. serialized encrypted blob).
-using Data = brillo::Blob;
-
-// Data type for sensitive data (e.g. plaintext stored in the sealed storage).
-using SecretData = brillo::SecureBlob;
 
 // Public seeds: data that will go into the resulting blob to allow later
 // decryption. Contains pub point, IV, plaintext size and policy digest.

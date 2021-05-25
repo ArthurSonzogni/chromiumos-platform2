@@ -75,7 +75,7 @@ brillo::SecureBlob GetKeyFromZ(const trunks::TPM2B_ECC_POINT& z) {
   return key;
 }
 
-// Get a PCR0 value corresponding to one of the knwon modes.
+// Get a PCR0 value corresponding to one of the known modes.
 std::string GetPCR0ValueForMode(const sealed_storage::BootMode& mode) {
   std::string mode_str(std::cbegin(mode), std::cend(mode));
   std::string mode_digest = base::SHA1HashString(mode_str);
@@ -334,11 +334,28 @@ bool SealedStorage::PrepareSealingKeyObject(
     auto tpm_utility = trunks_factory_->GetTpmUtility();
     auto result = tpm_utility->GetPolicyDigestForPcrValues(
         policy_.pcr_map, false /* use_auth_value */, &policy_digest);
-    if (!CheckTpmResult(result, "calculate policy")) {
+    if (!CheckTpmResult(result, "calculate pcr policy")) {
       return false;
     }
   } else {
     policy_digest = GetEmptyPolicy();
+  }
+  if (!policy_.secret.empty()) {
+    auto trial_session = trunks_factory_->GetTrialSession();
+    auto result = trial_session->StartUnboundSession(true, false);
+    if (!CheckTpmResult(result, "start unbounded trial session")) {
+      return false;
+    }
+    result =
+        trial_session->PolicyOR({policy_digest, policy_.secret.to_string()});
+    if (!CheckTpmResult(result,
+                        "create policy with secret included in digest")) {
+      return false;
+    }
+    result = trial_session->GetDigest(&policy_digest);
+    if (!CheckTpmResult(result, "calculate policy with secret")) {
+      return false;
+    }
   }
   VLOG(2) << "Created policy digest: " << HexDump(policy_digest);
   if (expected_digest.has_value() && expected_digest.value() != policy_digest) {
@@ -503,6 +520,20 @@ bool SealedStorage::RestoreEncryptionSeeds(const PubSeeds& pub_seeds,
       return false;
     }
   }
+
+  if (!policy_.secret.empty()) {
+    std::string current_digest;
+    result = policy_session->GetDigest(&current_digest);
+    if (!CheckTpmResult(result, "obtain policy digest")) {
+      return false;
+    }
+    result =
+        policy_session->PolicyOR({current_digest, policy_.secret.to_string()});
+    if (!CheckTpmResult(result, "create policy with secret")) {
+      return false;
+    }
+  }
+
   VLOG(2) << "Created policy session";
 
   result = trunks_factory_->GetTpm()->ECDH_ZGenSync(

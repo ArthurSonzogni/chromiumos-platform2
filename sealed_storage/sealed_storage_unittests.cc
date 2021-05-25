@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -24,6 +26,7 @@ using testing::ExpectationSet;
 using testing::InSequence;
 using testing::Invoke;
 using testing::Mock;
+using testing::NiceMock;
 using testing::Return;
 using testing::WithArgs;
 
@@ -109,6 +112,15 @@ class SealedStorageTest : public ::testing::Test {
     return std::string(kPcrValueSize, pcr ^ 0xFF);
   }
 
+  static Policy ConstructSecretBoundPolicy(std::string secret) {
+    return {{}, SecretData(secret)};
+  }
+
+  static Policy ConstructSecretAndPcrBoundPolicy(std::string secret) {
+    Policy pcr_bound_policy = ConstructPcrBoundPolicy();
+    return {pcr_bound_policy.pcr_map, SecretData(secret)};
+  }
+
   // Convert the sealed data blob of the default version produced by Seal()
   // into V1 blob.
   static void ConvertToV1(Data* sealed_data) {
@@ -136,6 +148,7 @@ class SealedStorageTest : public ::testing::Test {
     trunks_factory_.set_tpm(&tpm_);
     trunks_factory_.set_tpm_utility(&tpm_utility_);
     trunks_factory_.set_policy_session(&policy_session_);
+    trunks_factory_.set_trial_session(&policy_session_);
 
     ON_CALL(tpm_ownership_, GetTpmStatus(_, _, _, _))
         .WillByDefault(
@@ -164,6 +177,12 @@ class SealedStorageTest : public ::testing::Test {
         .WillByDefault(Invoke(this, &SealedStorageTest::PolicyPCR));
     ON_CALL(policy_session_, GetDelegate())
         .WillByDefault(Return(&auth_delegate_));
+    ON_CALL(policy_session_, GetDigest(_))
+        .WillByDefault(Invoke(this, &SealedStorageTest::GetDigest));
+    ON_CALL(policy_session_, PolicyOR(_))
+        .WillByDefault(Return(policy_or_result_));
+    ON_CALL(policy_session_, StartUnboundSession(_, _))
+        .WillByDefault(Return(start_session_result_));
   }
 
   trunks::TPM_RC CreatePrimarySyncShort(
@@ -227,6 +246,11 @@ class SealedStorageTest : public ::testing::Test {
 
   trunks::TPM_RC PolicyPCR(const std::map<uint32_t, std::string>& pcr_map) {
     return policy_pcr_result_;
+  }
+
+  trunks::TPM_RC GetDigest(std::string* policy_digest) {
+    *policy_digest = policy_digest_;
+    return get_policy_digest_result_;
   }
 
   void ExpectCommandSequence(bool do_seal = true, bool do_unseal = true) {
@@ -300,7 +324,7 @@ class SealedStorageTest : public ::testing::Test {
       /* Unseal: Restore seeds */
       Expectation start_session =
           EXPECT_CALL(policy_session_, StartUnboundSession(_, _))
-              .After(seal_commands);
+              .Times(AtLeast(1));
       if (use_empty_policy) {
         EXPECT_CALL(policy_session_, PolicyPCR(_)).Times(0);
       } else {
@@ -352,7 +376,7 @@ class SealedStorageTest : public ::testing::Test {
   trunks::MockTpm tpm_;
   trunks::MockTpmUtility tpm_utility_;
   trunks::MockAuthorizationDelegate auth_delegate_;
-  trunks::MockPolicySession policy_session_;
+  NiceMock<trunks::MockPolicySession> policy_session_;
   trunks::TrunksFactoryForTest trunks_factory_;
   testing::StrictMock<org::chromium::TpmManagerProxyMock> tpm_ownership_;
   SealedStorage sealed_storage_{policy_, &trunks_factory_, &tpm_ownership_};
@@ -380,6 +404,10 @@ class SealedStorageTest : public ::testing::Test {
   std::string policy_digest_ = DftPolicyDigest();
 
   trunks::TPM_RC policy_pcr_result_ = trunks::TPM_RC_SUCCESS;
+
+  trunks::TPM_RC policy_or_result_ = trunks::TPM_RC_SUCCESS;
+
+  trunks::TPM_RC start_session_result_ = trunks::TPM_RC_SUCCESS;
 };
 
 TEST_F(SealedStorageTest, TrivialPolicySuccess) {
@@ -398,6 +426,18 @@ TEST_F(SealedStorageTest, VariousPlaintextSizesSuccess) {
 
 TEST_F(SealedStorageTest, PcrBoundPolicySuccess) {
   policy_ = ConstructPcrBoundPolicy();
+  ExpectCommandSequence();
+  SealUnseal(true, true, DftDataToSeal());
+}
+
+TEST_F(SealedStorageTest, SecretBoundPolicySuccess) {
+  policy_ = ConstructSecretBoundPolicy("secret");
+  ExpectCommandSequence();
+  SealUnseal(true, true, DftDataToSeal());
+}
+
+TEST_F(SealedStorageTest, SecretAndPcrBoundPolicySuccess) {
+  policy_ = ConstructSecretAndPcrBoundPolicy("secret");
   ExpectCommandSequence();
   SealUnseal(true, true, DftDataToSeal());
 }
@@ -523,6 +563,51 @@ TEST_F(SealedStorageTest, WrongSizeForV1) {
   sealed_storage_.set_plain_size_for_v1(data_to_seal.size() + 10);
   auto result = sealed_storage_.Unseal(sealed_data.value());
   ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(SealedStorageTest, WrongPolicySecret) {
+  const auto data_to_seal = SetupWrongZPointWithGarbageData();
+  policy_ = ConstructSecretBoundPolicy("correct secret");
+  sealed_storage_.reset_policy(policy_);
+
+  ExpectCommandSequence(true, false);
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  EXPECT_TRUE(sealed_data.has_value());
+  ResetMocks();
+
+  policy_ = ConstructSecretBoundPolicy("wrong secret");
+  sealed_storage_.reset_policy(policy_);
+  // A different secret leads to a wrong policy digest.
+  policy_digest_ = WrongPolicyDigest();
+  EXPECT_CALL(tpm_ownership_, GetTpmStatus(_, _, _, _)).Times(AtLeast(0));
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(SealedStorageTest, PcrAndSecretWrongDeviceStateCorrectSecret) {
+  policy_ = ConstructSecretAndPcrBoundPolicy("secret");
+  policy_pcr_result_ = trunks::TPM_RC_VALUE;
+  ExpectCommandSequence();
+  SealUnseal(true, false, DftDataToSeal());
+}
+
+TEST_F(SealedStorageTest, PcrAndSecretCorrectDeviceStateWrongSecret) {
+  const auto data_to_seal = SetupWrongZPointWithGarbageData();
+  policy_ = ConstructSecretAndPcrBoundPolicy("correct secret");
+  sealed_storage_.reset_policy(policy_);
+
+  ExpectCommandSequence(true, false);
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  EXPECT_TRUE(sealed_data.has_value());
+  ResetMocks();
+
+  policy_ = ConstructSecretBoundPolicy("wrong secret");
+  sealed_storage_.reset_policy(policy_);
+  // A different secret leads to a wrong policy digest.
+  policy_digest_ = WrongPolicyDigest();
+  EXPECT_CALL(tpm_ownership_, GetTpmStatus(_, _, _, _)).Times(AtLeast(0));
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  EXPECT_FALSE(result.has_value());
 }
 
 }  // namespace sealed_storage

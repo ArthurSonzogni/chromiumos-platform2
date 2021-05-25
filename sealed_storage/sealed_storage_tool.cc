@@ -21,7 +21,8 @@ namespace {
 
 sealed_storage::Policy ConstructPolicy(bool verified_boot_mode,
                                        bool dev_mode,
-                                       int32_t unchanged_pcr) {
+                                       int32_t unchanged_pcr,
+                                       std::string secret) {
   sealed_storage::Policy::PcrMap pcr_map;
 
   auto val_boot_mode = sealed_storage::Policy::BootModePCR(
@@ -43,8 +44,17 @@ sealed_storage::Policy ConstructPolicy(bool verified_boot_mode,
     pcr_map = {val_unchanged_pcr};
     descr = base::StringPrintf("PCR%d", unchanged_pcr);
   }
+
+  if (!secret.empty()) {
+    if (!descr.empty()) {
+      descr += ", secret: " + secret;
+    } else {
+      descr = "secret: " + secret;
+    }
+  }
+
   LOG(INFO) << "Policy: {" << descr << "}";
-  return {pcr_map};
+  return {pcr_map, sealed_storage::SecretData(secret)};
 }
 
 }  // namespace
@@ -131,6 +141,8 @@ int main(int argc, char** argv) {
   DEFINE_int32(policy_pcr, -1, "policy: unchanged PCR");
   DEFINE_int32(extend_pcr, -1, "PCR to extend");
 
+  DEFINE_string(policy_secret, "", "policy: bind to secret");
+
   DEFINE_string(data, "/tmp/_test_data", "plaintext data file");
   DEFINE_string(blob, "/tmp/_sealed_storage_blob", "sealed blob file");
 
@@ -169,8 +181,8 @@ int main(int argc, char** argv) {
   }
 
   // Create the right object.
-  sealed_storage::Policy policy =
-      ConstructPolicy(FLAGS_verified_boot, FLAGS_dev, FLAGS_policy_pcr);
+  sealed_storage::Policy policy = ConstructPolicy(
+      FLAGS_verified_boot, FLAGS_dev, FLAGS_policy_pcr, FLAGS_policy_secret);
   sealed_storage::SealedStorage storage(policy);
 
   if (FLAGS_test) {
