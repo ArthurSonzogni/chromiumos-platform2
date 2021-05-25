@@ -116,6 +116,13 @@ void ConfigureAndEnterMinijail() {
                 1);  // Diagnostics can create test files in this directory.
   // Symlink for reading the boot up info.
   BindMountIfPathExists(jail.get(), base::FilePath("/var/log/bios_times.txt"));
+  // There might be no shutdown info, so we only bind mount it when the files
+  // exist. e.g. First boot up.
+  // Symlink for reading the previous shutdown info.
+  BindMountIfPathExists(
+      jail.get(), base::FilePath("/var/log/power_manager/powerd.PREVIOUS"));
+  // Symlink for reading the previous shutdown metrics.
+  BindMountIfPathExists(jail.get(), base::FilePath("/var/log/metrics"));
 
   // Create a new tmpfs filesystem for /tmp and mount necessary files.
   // We should not use minijail_mount_tmp() to create /tmp when we have file to

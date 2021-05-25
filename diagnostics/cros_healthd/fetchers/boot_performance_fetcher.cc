@@ -23,6 +23,9 @@ namespace diagnostics {
 
 constexpr char kRelativeBiosTimesPath[] = "var/log/bios_times.txt";
 constexpr char kRelativeUptimeLoginPath[] = "tmp/uptime-login-prompt-visible";
+constexpr char kRelativeShutdownMetricsPath[] = "var/log/metrics";
+constexpr char kRelativePreviousPowerdLogPath[] =
+    "var/log/power_manager/powerd.PREVIOUS";
 
 namespace {
 
@@ -45,6 +48,9 @@ BootPerformanceFetcher::FetchBootPerformanceInfo() {
   if (error.has_value()) {
     return mojo_ipc::BootPerformanceResult::NewError(std::move(error.value()));
   }
+
+  // There might be no shutdown info, so we don't check if there is any error.
+  PopulateShutdownInfo(&info);
 
   return mojo_ipc::BootPerformanceResult::NewBootPerformanceInfo(info.Clone());
 }
@@ -168,6 +174,81 @@ base::Optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
   }
 
   return base::nullopt;
+}
+
+void BootPerformanceFetcher::PopulateShutdownInfo(
+    mojo_ipc::BootPerformanceInfo* info) {
+  // Shutdown stages
+  //
+  //           |<-     shutdown seconds      ->|
+  // running --|-------------------------------|-------------------|------> off
+  // powerd receives request          create metrics log   unmount partition
+  double shutdown_start_timestamp;
+  double shutdown_end_timestamp;
+  std::string shutdown_reason;
+
+  if (!ParsePreviousPowerdLog(&shutdown_start_timestamp, &shutdown_reason) ||
+      !GetShutdownEndTimestamp(&shutdown_end_timestamp) ||
+      shutdown_end_timestamp < shutdown_start_timestamp) {
+    info->shutdown_reason = "N/A";
+    info->shutdown_timestamp = 0.0;
+    info->shutdown_seconds = 0.0;
+    return;
+  }
+
+  info->shutdown_reason = shutdown_reason;
+  info->shutdown_timestamp = shutdown_end_timestamp;
+  info->shutdown_seconds = shutdown_end_timestamp - shutdown_start_timestamp;
+}
+
+bool BootPerformanceFetcher::ParsePreviousPowerdLog(
+    double* shutdown_start_timestamp, std::string* shutdown_reason) {
+  const auto& data_path =
+      context_->root_dir().Append(kRelativePreviousPowerdLogPath);
+  std::string content;
+  if (!ReadAndTrimString(data_path, &content)) {
+    return false;
+  }
+
+  std::vector<std::string> lines = base::SplitString(
+      content, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  const char shutdown_regex[] =
+      R"((.*)Z INFO powerd:.*Shutting down, reason: (.*))";
+  const char restart_regex[] =
+      R"((.*)Z INFO powerd:.*Restarting, reason: (.*))";
+  const int max_parsed_line = 300;
+
+  std::string time_raw;
+  int parsed_line_cnt = 0;
+  // The target line is super close to the end of the log.
+  for (auto it = lines.rbegin();
+       it != lines.rend() && parsed_line_cnt < max_parsed_line;
+       ++it, ++parsed_line_cnt) {
+    if (RE2::FullMatch(*it, shutdown_regex, &time_raw, shutdown_reason) ||
+        RE2::FullMatch(*it, restart_regex, &time_raw, shutdown_reason)) {
+      base::Time time;
+      if (base::Time::FromUTCString(time_raw.c_str(), &time)) {
+        *shutdown_start_timestamp = time.ToDoubleT();
+      }
+      break;
+    }
+  }
+
+  return !shutdown_reason->empty();
+}
+
+bool BootPerformanceFetcher::GetShutdownEndTimestamp(
+    double* shutdown_end_timestamp) {
+  const auto& data_path =
+      context_->root_dir().Append(kRelativeShutdownMetricsPath);
+  base::File::Info file_info;
+  if (!GetFileInfo(data_path, &file_info)) {
+    return false;
+  }
+
+  *shutdown_end_timestamp = file_info.last_modified.ToDoubleT();
+
+  return true;
 }
 
 }  // namespace diagnostics

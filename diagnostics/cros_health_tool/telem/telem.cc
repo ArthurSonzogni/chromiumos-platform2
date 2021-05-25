@@ -378,11 +378,15 @@ void DisplayBootPerformanceInfo(
     return;
   }
 
-  const std::vector<std::string> headers = {"boot_up_seconds",
-                                            "boot_up_timestamp"};
+  const std::vector<std::string> headers = {
+      "boot_up_seconds", "boot_up_timestamp", "shutdown_seconds",
+      "shutdown_timestamp", "shutdown_reason"};
   const std::vector<std::vector<std::string>> values = {
       {std::to_string(boot_performance->boot_up_seconds),
-       std::to_string(boot_performance->boot_up_timestamp)}};
+       std::to_string(boot_performance->boot_up_timestamp),
+       std::to_string(boot_performance->shutdown_seconds),
+       std::to_string(boot_performance->shutdown_timestamp),
+       boot_performance->shutdown_reason}};
 
   OutputData(headers, values, beauty);
 }

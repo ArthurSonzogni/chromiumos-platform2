@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BOOT_PERFORMANCE_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BOOT_PERFORMANCE_FETCHER_H_
 
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/optional.h>
 
@@ -16,6 +18,10 @@ namespace diagnostics {
 // Relative path to boot up information.
 extern const char kRelativeBiosTimesPath[];
 extern const char kRelativeUptimeLoginPath[];
+
+// Relative path to shutdown information.
+extern const char kRelativeShutdownMetricsPath[];
+extern const char kRelativePreviousPowerdLogPath[];
 
 // The BootPerformanceFetcher class is responsible for gathering boot
 // performance info.
@@ -38,11 +44,19 @@ class BootPerformanceFetcher final {
   OptionalProbeErrorPtr PopulateBootUpInfo(
       chromeos::cros_healthd::mojom::BootPerformanceInfo* info);
 
+  void PopulateShutdownInfo(
+      chromeos::cros_healthd::mojom::BootPerformanceInfo* info);
+
   OptionalProbeErrorPtr ParseBootFirmwareTime(double* firmware_time);
 
   OptionalProbeErrorPtr ParseBootKernelTime(double* kernel_time);
 
   OptionalProbeErrorPtr ParseProcUptime(double* proc_uptime);
+
+  bool ParsePreviousPowerdLog(double* shutdown_start_timestamp,
+                              std::string* shutdown_reason);
+
+  bool GetShutdownEndTimestamp(double* shutdown_end_timestamp);
 
   // Unowned pointer that outlives this BootPerformanceFetcher instance.
   Context* const context_ = nullptr;
