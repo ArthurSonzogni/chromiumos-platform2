@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/json/json_string_value_serializer.h>
+#include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -22,16 +23,16 @@ namespace {
 const char* kColorPolicy = authpolicy::kColorPolicy;
 const char* kColorReset = authpolicy::kColorReset;
 
-// Converts a RegistryDict to a DictionaryValue by converting all keys() to
+// Converts a RegistryDict to a base::Value by converting all keys() to
 // Values. In case of name collisions, keys win over values. Similar to
 // RegistryDict::ConvertToJSON, just without schema validation.
-std::unique_ptr<base::Value> ConvertToValue(const RegistryDict& dict) {
-  auto value = std::make_unique<base::DictionaryValue>();
+base::Value ConvertToValue(const RegistryDict& dict) {
+  base::Value value(base::Value::Type::DICTIONARY);
   for (const auto& entry : dict.values())
-    value->SetWithoutPathExpansion(entry.first, entry.second->CreateDeepCopy());
+    value.SetKey(entry.first, entry.second->Clone());
   for (const auto& entry : dict.keys())
-    value->SetWithoutPathExpansion(entry.first, ConvertToValue(*entry.second));
-  return std::move(value);
+    value.SetKey(entry.first, ConvertToValue(*entry.second));
+  return value;
 }
 
 // Verifies that id is a Chrome extension id. Pretty much copied from
@@ -69,9 +70,9 @@ void ExtensionPolicyEncoder::EncodePolicy(ExtensionPolicies* policies) const {
 
     // Convert dict to a JSON string.
     std::string json_data;
-    std::unique_ptr<base::Value> value = ConvertToValue(*dict);
+    base::Value value = ConvertToValue(*dict);
     JSONStringValueSerializer serializer(&json_data);
-    if (!serializer.Serialize(*value)) {
+    if (!serializer.Serialize(value)) {
       LOG(ERROR) << "Failed to convert policy for extension '" << extension_id
                  << "' to JSON. Ignoring.";
       continue;
@@ -88,7 +89,7 @@ void ExtensionPolicyEncoder::EncodePolicy(ExtensionPolicies* policies) const {
       std::string pretty_json;
       JSONStringValueSerializer pretty_serializer(&pretty_json);
       pretty_serializer.set_pretty_print(true);
-      pretty_serializer.Serialize(*value);
+      pretty_serializer.Serialize(value);
       LOG(INFO) << kColorPolicy << "Extension policy (id '" << extension_id
                 << "')" << kColorReset;
       std::vector<std::string> lines = base::SplitString(
