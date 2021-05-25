@@ -209,7 +209,7 @@ void Process::WorkerProcessRun() {
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo::IncomingInvitation invitation;
   {
-    WallTimeMetric(
+    WallTimeMetric walltime_metric(
         "MachineLearningService.WorkerProcessAcceptMojoConnectionTime");
     invitation = mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
         mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))));
@@ -259,7 +259,8 @@ bool Process::IsWorkerProcess() {
 }
 
 void Process::InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
-  WallTimeMetric("MachineLearningService.WorkerProcessCleanUpTime");
+  WallTimeMetric walltime_metric(
+      "MachineLearningService.WorkerProcessCleanUpTime");
 
   UnregisterWorkerProcess(child_pid);
   // Reap the worker process.
