@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/flag_helper.h>
@@ -26,6 +27,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_string(uart, "", "Use UART connection");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
+  DEFINE_uint32(version, 0, "Firmware version");
+  DEFINE_string(mcu_path, 0, "MCU firmware file");
+  DEFINE_string(spi_path, 0, "SPI firmware file");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
 
   // Always log to syslog and log to stderr if we are connected to a tty.
@@ -54,6 +58,11 @@ int main(int argc, char* argv[]) {
   auto hps = std::make_unique<hps::HPS>(std::move(dev));
   if (FLAGS_skipboot) {
     hps->SkipBoot();
+  } else {
+    hps->Init(FLAGS_version, base::FilePath(FLAGS_mcu_path),
+              base::FilePath(FLAGS_spi_path));
+    // TODO(amcrae): Likely need a better recovery mechanism.
+    CHECK(hps->Boot()) << "Hardware failed to boot";
   }
   int exit_code = hps::HpsDaemon(std::move(hps)).Run();
   LOG(INFO) << "HPS Service ended with exit_code=" << exit_code;
