@@ -26,11 +26,14 @@ const uint32_t kUsbHalVendorTagEnd = 0x80020000;
 const uint32_t kCamxHalVendorTagStart = 0x80020000;
 const uint32_t kCamxHalVendorTagEnd = 0x80030000;
 
+const uint32_t kArcvmVendorTagStart = 0x80030000;
+const uint32_t kArcvmVendorTagEnd = 0x80040000;
+
 // Please update this value when allocating a new interval, such as
 // const uint32_t kFooVendorTagStart = {value of kNextAvailableVendorTag};
 // const uint32_t kFooVendorTagEnd = ...;
 // const uint32_t kNextAvailableVendorTag = {value of kFooVendorTagEnd};
-const uint32_t kNextAvailableVendorTag = 0x80030000;
+const uint32_t kNextAvailableVendorTag = 0x80040000;
 
 class VendorTagManager : public vendor_tag_ops_t {
  public:

@@ -49,6 +49,10 @@ namespace {
 // |module_delegates_| and |callbacks_delegates_| maps.
 const uint32_t kIdAll = 0xFFFFFFFF;
 
+constexpr char kArcvmVendorTagSectionName[] = "com.google.arcvm";
+constexpr char kArcvmVendorTagHostTimeTagName[] = "hostSensorTimestamp";
+constexpr uint32_t kArcvmVendorTagHostTime = kArcvmVendorTagStart;
+
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(
@@ -571,6 +575,15 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
 
   if (reprocess_effect_manager_.Initialize(mojo_manager_token_) != 0) {
     LOGF(ERROR) << "Failed to initialize reprocess effect manager";
+    callback.Run(false);
+    return;
+  }
+
+  if (!vendor_tag_manager_.Add(kArcvmVendorTagHostTime,
+                               kArcvmVendorTagSectionName,
+                               kArcvmVendorTagHostTimeTagName, TYPE_INT64)) {
+    LOGF(ERROR)
+        << "Failed to add the vendor tag for ARCVM timestamp synchronization";
     callback.Run(false);
     return;
   }
