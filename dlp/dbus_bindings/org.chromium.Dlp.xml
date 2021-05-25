@@ -32,5 +32,24 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
+
+    <method name="RequestFileAccess">
+      <tp:docstring>
+        Requests access to the file to be copied/uploaded to the given destination.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        Serialized RequestFileAccessRequest message.
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        Serialized RequestFileAccessResponse message.
+      </arg>
+      <arg name="lifeline_fd" type="h" direction="out">
+        |lifeline_fd| is a file descriptor by which the clients can manage the
+        lifetime of the approved requests. Closing it will revoke the approval.
+        |lifeline_fd| is already closed if the request was not allowed.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
   </interface>
 </node>

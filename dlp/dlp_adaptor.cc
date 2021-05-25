@@ -15,9 +15,11 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
@@ -188,6 +190,60 @@ std::vector<uint8_t> DlpAdaptor::AddFile(
   return SerializeProto(response);
 }
 
+void DlpAdaptor::RequestFileAccess(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        std::vector<uint8_t>,
+        brillo::dbus_utils::FileDescriptor>> response,
+    const std::vector<uint8_t>& request_blob) {
+  base::ScopedFD local_fd, remote_fd;
+  if (!base::CreatePipe(&local_fd, &remote_fd, /*non_blocking=*/true)) {
+    PLOG(ERROR) << "Failed to create lifeline pipe";
+    std::move(response)->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, dlp::kErrorFailedToCreatePipe,
+        "Failed to create lifeline pipe");
+    return;
+  }
+  RequestFileAccessRequest request;
+
+  const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse RequestFileAccess request: " << parse_error;
+    ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
+                             /*allowed=*/false, parse_error);
+    return;
+  }
+
+  const std::string inode_s = base::NumberToString(request.inode());
+  std::string serialized_proto;
+  const leveldb::Status get_status =
+      db_->Get(leveldb::ReadOptions(), inode_s, &serialized_proto);
+  if (!get_status.ok()) {
+    ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
+                             /*allowed=*/true,
+                             /*error_message=*/std::string());
+    return;
+  }
+  FileEntry file_entry;
+  file_entry.ParseFromString(serialized_proto);
+
+  std::pair<RequestFileAccessCallback, RequestFileAccessCallback> callbacks =
+      base::SplitOnceCallback(base::BindOnce(
+          &DlpAdaptor::ReplyOnRequestFileAccess, base::Unretained(this),
+          std::move(response), std::move(remote_fd)));
+  IsRestrictedRequest is_restricted_request;
+  is_restricted_request.set_source_url(file_entry.source_url());
+  is_restricted_request.set_destination_url(request.destination_url());
+  dlp_files_policy_service_->IsRestrictedAsync(
+      SerializeProto(is_restricted_request),
+      base::AdaptCallbackForRepeating(base::BindOnce(
+          &DlpAdaptor::OnIsRestrictedReply, base::Unretained(this),
+          request.inode(), request.process_id(), std::move(local_fd),
+          std::move(callbacks.first))),
+      base::AdaptCallbackForRepeating(
+          base::BindOnce(&DlpAdaptor::OnIsRestrictedError,
+                         base::Unretained(this), std::move(callbacks.second))));
+}
+
 void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
@@ -243,20 +299,31 @@ void DlpAdaptor::ProcessFileOpenRequest(
   FileEntry file_entry;
   file_entry.ParseFromString(serialized_proto);
 
-  // TODO(poromov): Check whether the operation was explicitly allowed.
+  int lifeline_fd = -1;
+  for (const auto& [key, value] : approved_requests_) {
+    if (value.first == inode && value.second == pid) {
+      lifeline_fd = key;
+      break;
+    }
+  }
+  if (lifeline_fd != -1) {
+    std::move(callback).Run(/*allowed=*/true);
+    return;
+  }
 
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
   request.set_source_url(file_entry.source_url());
-  // TODO(poromov): Use base::SplitOnceCallback once it's available.
-  base::RepeatingCallback<void(bool)> adapted_callback =
-      base::AdaptCallbackForRepeating(std::move(callback));
+  std::pair<base::OnceCallback<void(bool)>, base::OnceCallback<void(bool)>>
+      callbacks = base::SplitOnceCallback(std::move(callback));
   dlp_files_policy_service_->IsDlpPolicyMatchedAsync(
       SerializeProto(request),
-      base::BindRepeating(&DlpAdaptor::OnDlpPolicyMatched,
-                          base::Unretained(this), adapted_callback),
-      base::BindRepeating(&DlpAdaptor::OnDlpPolicyMatchedError,
-                          base::Unretained(this), adapted_callback));
+      base::AdaptCallbackForRepeating(
+          base::BindOnce(&DlpAdaptor::OnDlpPolicyMatched,
+                         base::Unretained(this), std::move(callbacks.first))),
+      base::AdaptCallbackForRepeating(
+          base::BindOnce(&DlpAdaptor::OnDlpPolicyMatchedError,
+                         base::Unretained(this), std::move(callbacks.second))));
 }
 
 void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
@@ -278,6 +345,51 @@ void DlpAdaptor::OnDlpPolicyMatchedError(
   std::move(callback).Run(/*allowed=*/false);
 }
 
+void DlpAdaptor::OnIsRestrictedReply(
+    uint64_t inode,
+    int pid,
+    base::ScopedFD local_fd,
+    RequestFileAccessCallback callback,
+    const std::vector<uint8_t>& response_blob) {
+  IsRestrictedResponse response;
+  std::string parse_error = ParseProto(FROM_HERE, &response, response_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse IsRestricted response: " << parse_error;
+    std::move(callback).Run(
+        /*allowed=*/false, parse_error);
+    return;
+  }
+
+  if (!response.restricted()) {
+    int lifeline_fd = AddLifelineFd(local_fd.get());
+    std::pair<uint64_t, int> pair = std::make_pair(inode, pid);
+    approved_requests_[lifeline_fd] = pair;
+  }
+
+  std::move(callback).Run(!response.restricted(),
+                          /*error_message=*/std::string());
+}
+
+void DlpAdaptor::OnIsRestrictedError(RequestFileAccessCallback callback,
+                                     brillo::Error* error) {
+  LOG(ERROR) << "Failed to check whether file could be restricted";
+  std::move(callback).Run(/*allowed=*/false, error->GetMessage());
+}
+
+void DlpAdaptor::ReplyOnRequestFileAccess(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        std::vector<uint8_t>,
+        brillo::dbus_utils::FileDescriptor>> response,
+    base::ScopedFD remote_fd,
+    bool allowed,
+    const std::string& error) {
+  RequestFileAccessResponse response_proto;
+  response_proto.set_allowed(allowed);
+  if (!error.empty())
+    response_proto.set_error_message(error);
+  response->Return(SerializeProto(response_proto), std::move(remote_fd));
+}
+
 // static
 ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
   struct stat file_stats;
@@ -286,6 +398,47 @@ ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
     return 0;
   }
   return file_stats.st_ino;
+}
+
+int DlpAdaptor::AddLifelineFd(int dbus_fd) {
+  int fd = dup(dbus_fd);
+  if (fd < 0) {
+    PLOG(ERROR) << "dup failed";
+    return -1;
+  }
+
+  lifeline_fd_controllers_[fd] = base::FileDescriptorWatcher::WatchReadable(
+      fd, base::BindRepeating(&DlpAdaptor::OnLifelineFdClosed,
+                              base::Unretained(this), fd));
+
+  return fd;
+}
+
+bool DlpAdaptor::DeleteLifelineFd(int fd) {
+  auto iter = lifeline_fd_controllers_.find(fd);
+  if (iter == lifeline_fd_controllers_.end()) {
+    return false;
+  }
+
+  iter->second.reset();  // Destruct the controller, which removes the callback.
+  lifeline_fd_controllers_.erase(iter);
+
+  // AddLifelineFd() calls dup(), so this function should close the fd.
+  // We still return true since at this point the FileDescriptorWatcher object
+  // has been destructed.
+  if (IGNORE_EINTR(close(fd)) < 0) {
+    PLOG(ERROR) << "close failed";
+  }
+
+  return true;
+}
+
+void DlpAdaptor::OnLifelineFdClosed(int client_fd) {
+  // The process that requested this access has died/exited.
+  DeleteLifelineFd(client_fd);
+
+  // Remove the approvals tied to the lifeline fd.
+  approved_requests_.erase(client_fd);
 }
 
 }  // namespace dlp
