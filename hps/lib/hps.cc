@@ -142,14 +142,14 @@ void HPS::HandleState() {
       if (this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) {
         this->Go(State::kBootCheckFault);
       } else if (this->retries_++ >= 50) {
-        this->Fail("Timeout waiting for boot magic number");
+        this->Reboot("Timeout waiting for boot magic number");
       }
       break;
 
     case kBootCheckFault:
       // Wait for OK or Fault.
       if (this->retries_++ >= 50) {
-        this->Fail("Timeout waiting for boot OK/Fault");
+        this->Reboot("Timeout waiting for boot OK/Fault");
         break;
       }
       {
@@ -169,7 +169,7 @@ void HPS::HandleState() {
 
     case kBootOK:
       if (this->retries_++ >= 50) {
-        this->Fail("Timeout boot appl verification");
+        this->Reboot("Timeout boot appl verification");
         break;
       }
       // Wait for application verified or not.
@@ -192,7 +192,8 @@ void HPS::HandleState() {
               this->Go(State::kStage1);
             } else {
               // Versions do not match, need to update.
-              LOG(INFO) << "Appl version mismatch, updating";
+              LOG(INFO) << "Appl version mismatch, module: " << r
+                        << " expected: " << this->appl_version_;
               this->Go(State::kUpdateAppl);
             }
           }
@@ -204,8 +205,8 @@ void HPS::HandleState() {
       // Update the MCU flash.
       if (this->WriteFile(0, this->mcu_blob_)) {
         this->Reboot("MCU flash updated");
-      } else if (this->retries_ > 5) {
-        this->Fail("MCU flash");
+      } else if (this->retries_++ > 5) {
+        this->Reboot("MCU flash failed to update");
       }
       break;
 
@@ -213,8 +214,8 @@ void HPS::HandleState() {
       // Update the SPI flash.
       if (this->WriteFile(1, this->spi_blob_)) {
         this->Reboot("SPI flash updated");
-      } else if (this->retries_ > 5) {
-        this->Fail("SPI flash");
+      } else if (this->retries_++ > 5) {
+        this->Reboot("SPI flash failed to update");
       }
       break;
 
@@ -224,14 +225,14 @@ void HPS::HandleState() {
           (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kStage1)) {
         this->Go(State::kSpiVerify);
       } else if (this->retries_++ >= 50) {
-        this->Fail("Timeout stage1");
+        this->Reboot("Timeout stage1");
       }
       break;
 
     case kSpiVerify:
       // Wait for SPI verified or not.
       if (this->retries_++ >= 50) {
-        this->Fail("Timeout SPI verify");
+        this->Reboot("Timeout SPI verify");
       }
       {
         uint16_t r = this->device_->ReadReg(HpsReg::kSysStatus);
@@ -256,7 +257,7 @@ void HPS::HandleState() {
           (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kAppl)) {
         this->Go(State::kReady);
       } else if (this->retries_++ >= 50) {
-        this->Fail("Timeout application");
+        this->Reboot("Timeout application");
       }
       break;
 
@@ -269,22 +270,17 @@ void HPS::HandleState() {
   }
 }
 
-// Something went wrong, so reboot to try again.
-void HPS::Fail(const char* msg) {
+// Reboot the hardware module.
+void HPS::Reboot(const char* msg) {
   if (++this->reboots_ > kMaxBootRetries) {
     LOG(ERROR) << "Too many reboots, giving up";
     this->Go(State::kFailed);
   } else {
-    this->Reboot(msg);
+    LOG(INFO) << "Rebooting: " << msg;
+    // Send a reset cmd - maybe should power cycle.
+    this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset);
+    this->Go(State::kBoot);
   }
-}
-
-// Reboot the module.
-void HPS::Reboot(const char* msg) {
-  LOG(INFO) << "Rebooting: " << msg;
-  // Send a reset cmd - maybe should power cycle.
-  this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset);
-  this->Go(State::kBoot);
 }
 
 // Fault bit seen, attempt to dump status information, and
@@ -292,7 +288,7 @@ void HPS::Reboot(const char* msg) {
 // If the count of reboots is too high, set the module as failed.
 void HPS::Fault() {
   int errors = this->device_->ReadReg(HpsReg::kError);
-  this->Fail(base::StringPrintf("Fault: cause 0x%04x", errors).c_str());
+  this->Reboot(base::StringPrintf("Fault: cause 0x%04x", errors).c_str());
 }
 
 // Move to new state, reset retry counter.

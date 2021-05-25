@@ -92,7 +92,6 @@ class HPS {
     kReady,
   };
   void HandleState();
-  void Fail(const char* msg);
   void Reboot(const char* msg);
   void Fault();
   void Go(State newstate);

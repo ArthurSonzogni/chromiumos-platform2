@@ -94,4 +94,152 @@ TEST_F(HPSTest, Download) {
   EXPECT_FALSE(hps_->Download(0, f));
 }
 
+/*
+ * Boot testing.
+ */
+TEST_F(HPSTest, SkipBoot) {
+  // Make sure features can't be enabled.
+  ASSERT_FALSE(hps_->Enable(0));
+  // Put the fake straight into application stage.
+  fake_->SkipBoot();
+  // Inform the HPS handler that application stage is ready.
+  hps_->SkipBoot();
+  // Ensure that features can be enabled.
+  EXPECT_TRUE(hps_->Enable(0));
+}
+
+/*
+ * Test normal boot, where the versions match and
+ * the files are verified, so no flash update should occur.
+ */
+TEST_F(HPSTest, NormalBoot) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi = temp_dir.GetPath().Append("spi");
+  // Set the expected version
+  const uint16_t version = 1234;
+  fake_->SetVersion(version);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi);
+  // Boot the module.
+  ASSERT_TRUE(hps_->Boot());
+  // Ensure that features can be enabled.
+  EXPECT_TRUE(hps_->Enable(0));
+  EXPECT_EQ(fake_->GetBankLen(0), 0);
+  EXPECT_EQ(fake_->GetBankLen(1), 0);
+}
+
+/*
+ * Test that the MCU flash is updated when not verified.
+ */
+TEST_F(HPSTest, McuUpdate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi = temp_dir.GetPath().Append("spi");
+  const int len = 1024;
+  CreateBlob(mcu, len);
+  // Set the expected version
+  const uint16_t version = 1234;
+  fake_->SetVersion(version);
+  fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi);
+  // Boot the module.
+  ASSERT_TRUE(hps_->Boot());
+  // Check that MCU was downloaded.
+  EXPECT_EQ(fake_->GetBankLen(0), len);
+  EXPECT_EQ(fake_->GetBankLen(1), 0);
+}
+
+/*
+ * Test that the SPI flash is updated when not verified.
+ */
+TEST_F(HPSTest, SpiUpdate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi = temp_dir.GetPath().Append("spi");
+  const int len = 1024;
+  CreateBlob(spi, len);
+  // Set the expected version
+  const uint16_t version = 1234;
+  fake_->SetVersion(version);
+  fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi);
+  // Boot the module.
+  ASSERT_TRUE(hps_->Boot());
+  // Check that SPI was downloaded.
+  EXPECT_EQ(fake_->GetBankLen(0), 0);
+  EXPECT_EQ(fake_->GetBankLen(1), len);
+}
+
+/*
+ * Test that the both SPI and MCU are updated
+ * when not verified.
+ */
+TEST_F(HPSTest, BothUpdate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi = temp_dir.GetPath().Append("spi");
+  const int len = 1024;
+  CreateBlob(spi, len);
+  CreateBlob(mcu, len);
+  // Set the expected version
+  const uint16_t version = 1234;
+  fake_->SetVersion(version);
+  fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
+  fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi);
+  // Boot the module.
+  ASSERT_TRUE(hps_->Boot());
+  // Check that both MCU and SPI blobs were updated.
+  EXPECT_EQ(fake_->GetBankLen(0), len);
+  EXPECT_EQ(fake_->GetBankLen(1), len);
+}
+
+/*
+ * Verify that mismatching version will update both MCU and SPI
+ */
+TEST_F(HPSTest, VersionUpdate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi = temp_dir.GetPath().Append("spi");
+  const int len = 1024;
+  CreateBlob(spi, len);
+  CreateBlob(mcu, len);
+  // Set the current version
+  const uint16_t version = 1234;
+  fake_->SetVersion(version);
+  fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
+  fake_->Set(hps::FakeDev::Flags::kIncrementVersion);
+  // Set up the version to be the next version.
+  hps_->Init(version + 1, mcu, spi);
+  // Boot the module.
+  ASSERT_TRUE(hps_->Boot());
+  // Check that both MCU and SPI were downloaded.
+  EXPECT_EQ(fake_->GetBankLen(0), len);
+  EXPECT_EQ(fake_->GetBankLen(1), len);
+}
+
 }  //  namespace

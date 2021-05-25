@@ -46,11 +46,22 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   // Flags for controlling behaviour. Multiple flags can be set,
   // controlling how the fake responds under test conditions.
   enum Flags {
+    // Set FAULT bit at boot.
     kBootFault = 0,
+    // Set MCU RW not verified status bit.
     kApplNotVerified = 1,
+    // Set SPI flash not verified status bit.
     kSpiNotVerified = 2,
+    // Set WP bit as off.
     kWpOff = 3,
+    // Fail any memory writes.
     kMemFail = 4,
+    // If MCU download occurs, reset the RW not-verified flag.
+    kResetApplVerification = 5,
+    // If SPI download occurs, reset the SPI not-verified flag.
+    kResetSpiVerification = 6,
+    // When a RW download occurs, increment the appl. version number.
+    kIncrementVersion = 7,
   };
   bool Read(uint8_t cmd, uint8_t* data, size_t len);
   bool Write(uint8_t cmd, const uint8_t* data, size_t len);

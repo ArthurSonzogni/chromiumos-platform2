@@ -275,7 +275,7 @@ uint16_t FakeDev::ReadRegActual(int reg) {
     case HpsReg::kApplVers:
       // Application version, only returned in stage0 if the
       // application has been verified.
-      if (this->stage_ == kStage0 && this->Flag(kApplNotVerified)) {
+      if (this->stage_ == kStage0 && !this->Flag(kApplNotVerified)) {
         v = this->version_.load();  // Version returned in stage0.
       }
       break;
@@ -341,16 +341,29 @@ uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   }
   switch (this->stage_) {
     case kStage0:
-      // Stage0 allows the MCU flash.
+      // Stage0 allows the MCU flash to be written.
       if (bank == 0) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
+        // Check if the fake needs to reset the not-verified bit.
+        if (this->Flag(kResetApplVerification)) {
+          this->Clear(kApplNotVerified);
+        }
+        // Check if the fake should increment the version.
+        if (this->Flag(kIncrementVersion)) {
+          this->Clear(kIncrementVersion);
+          this->version_++;
+        }
         return len;
       }
       break;
     case kStage1:
-      // Stage1 allows the SPI flash.
+      // Stage1 allows the SPI flash to be written.
       if (bank == 1) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
+        // Check if the fake needs to reset the not-verified bit.
+        if (this->Flag(kResetSpiVerification)) {
+          this->Clear(kSpiNotVerified);
+        }
         return len;
       }
       break;
