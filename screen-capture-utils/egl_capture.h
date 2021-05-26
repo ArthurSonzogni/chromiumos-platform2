@@ -48,7 +48,6 @@ class EglDisplayBuffer : public DisplayBuffer {
   const ScopedGbmDevicePtr device_;
   const EGLDisplay display_;
 
-  GLint uvs_uniform_location_;
   GLuint input_texture_;
   GLuint output_texture_;
   unsigned int fbo_;

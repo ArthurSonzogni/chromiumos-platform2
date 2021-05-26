@@ -53,7 +53,7 @@ GLuint LoadShader(const GLenum type, const char* const src) {
   return shader;
 }
 
-GLuint LoadProgram(const GLchar* vert, const GLchar* frag) {
+void LoadProgram(const GLchar* vert, const GLchar* frag) {
   GLint program = glCreateProgram();
   GLuint vertex_shader = LoadShader(GL_VERTEX_SHADER, vert);
   GLuint frag_shader = LoadShader(GL_FRAGMENT_SHADER, frag);
@@ -76,7 +76,6 @@ GLuint LoadProgram(const GLchar* vert, const GLchar* frag) {
   glDeleteProgram(program);
   glDeleteShader(vertex_shader);
   glDeleteShader(frag_shader);
-  return program;
 }
 
 bool DoesExtensionExist(const char* extension_string, const char* name) {
@@ -240,7 +239,6 @@ EglDisplayBuffer::EglDisplayBuffer(
 
   const GLchar* vert = R"(#version 300 es
 out vec2 tex_pos;
-uniform vec2 uvs[4];
 void main() {
   vec2 pos[4];
   pos[0] = vec2(-1.0, -1.0);
@@ -249,6 +247,11 @@ void main() {
   pos[3] = vec2(1.0, 1.0);
   gl_Position.xy = pos[gl_VertexID];
   gl_Position.zw = vec2(0.0, 1.0);
+  vec2 uvs[4];
+  uvs[0] = vec2(0.0, 0.0);
+  uvs[1] = vec2(1.0, 0.0);
+  uvs[2] = vec2(0.0, 1.0);
+  uvs[3] = vec2(1.0, 1.0);
   tex_pos = uvs[gl_VertexID];
 }
 )";
@@ -264,14 +267,14 @@ void main() {
 }
 )";
 
-  GLuint program = LoadProgram(vert, frag);
-  uvs_uniform_location_ = glGetUniformLocation(program, "uvs");
+  LoadProgram(vert, frag);
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                          output_texture_, 0);
 
   GLenum fb_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   CHECK(fb_status == GL_FRAMEBUFFER_COMPLETE) << "fb did not complete";
+
 
   glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -314,28 +317,7 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
                                       plane.first.get());
       CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
-      // Handle the plane's crop rectangle.
-      const uint32_t plane_width = plane.first->width;
-      const uint32_t plane_height = plane.first->height;
-      const float uv_left = plane.second.crop_x / plane_width;
-      const float uv_right =
-          (plane.second.crop_x + plane.second.crop_w) / plane_width;
-      const float uv_top = plane.second.crop_y / plane_height;
-      const float uv_bottom =
-          (plane.second.crop_y + plane.second.crop_h) / plane_height;
-      // |uvs| is an array of 4 vec2s: each pair of elements represents X and Y
-      // coordinates.
-      GLfloat uvs[] = {
-          // clang-format off
-          uv_left,  uv_top,
-          uv_right, uv_top,
-          uv_left,  uv_bottom,
-          uv_right, uv_bottom
-          // clang-format on
-      };
-      glUniform2fv(uvs_uniform_location_, 4, uvs);
-
-      // TODO(andrescj): Handle rotation.
+      // TODO(dcastagna): Handle SRC_ and rotation.
       glViewport(plane.second.x, plane.second.y, plane.second.w,
                  plane.second.h);
 

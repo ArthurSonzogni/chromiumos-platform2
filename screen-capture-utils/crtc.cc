@@ -5,8 +5,6 @@
 #include "screen-capture-utils/crtc.h"
 
 #include <algorithm>
-#include <map>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -24,19 +22,14 @@ namespace {
 constexpr const char kDrmDeviceDir[] = "/dev/dri";
 constexpr const char kDrmDeviceGlob[] = "card?";
 
-float FixedPoint1616ToFloat(uint32_t n) {
-  float result = (n & 0xFFFF0000) >> 16;
-  result += (n & 0xFFFF) / 65536.0f;
-  return result;
-}
-
-bool PopulatePlaneConfiguration(int fd,
-                                uint32_t plane_id,
-                                PlaneConfiguration* conf) {
-  // TODO(andrescj): Handle rotation.
-  std::map<std::string, uint64_t> interesting_props{
+bool PopulatePlanePosition(int fd, uint32_t plane_id, PlanePosition* pos) {
+  struct {
+    const char* name;
+    uint64_t val;
+  } crtc_props[4] = {
       {"CRTC_X", 0}, {"CRTC_Y", 0}, {"CRTC_W", 0}, {"CRTC_H", 0},
-      {"SRC_X", 0},  {"SRC_Y", 0},  {"SRC_W", 0},  {"SRC_H", 0}};
+      // TODO(dcastagna): Handle SRC_ and rotation
+  };
 
   ScopedDrmObjectPropertiesPtr props(
       drmModeObjectGetProperties(fd, plane_id, DRM_MODE_OBJECT_PLANE));
@@ -51,24 +44,22 @@ bool PopulatePlaneConfiguration(int fd,
       continue;
     }
 
-    if (interesting_props.find(prop->name) != interesting_props.end()) {
-      interesting_props[prop->name] = props->prop_values[i];
-      found++;
+    for (int j = 0; j < base::size(crtc_props); j++) {
+      if (strcmp(crtc_props[j].name, prop->name) == 0) {
+        crtc_props[j].val = props->prop_values[i];
+        found++;
+      }
     }
   }
 
-  if (found != interesting_props.size()) {
+  if (found != base::size(crtc_props)) {
     return false;
   }
 
-  conf->x = static_cast<int32_t>(interesting_props["CRTC_X"]);
-  conf->y = static_cast<int32_t>(interesting_props["CRTC_Y"]);
-  conf->w = static_cast<uint32_t>(interesting_props["CRTC_W"]);
-  conf->h = static_cast<uint32_t>(interesting_props["CRTC_H"]);
-  conf->crop_x = FixedPoint1616ToFloat(interesting_props["SRC_X"]);
-  conf->crop_y = FixedPoint1616ToFloat(interesting_props["SRC_Y"]);
-  conf->crop_w = FixedPoint1616ToFloat(interesting_props["SRC_W"]);
-  conf->crop_h = FixedPoint1616ToFloat(interesting_props["SRC_H"]);
+  pos->x = static_cast<int32_t>(crtc_props[0].val);
+  pos->y = static_cast<int32_t>(crtc_props[1].val);
+  pos->w = static_cast<uint32_t>(crtc_props[2].val);
+  pos->h = static_cast<uint32_t>(crtc_props[3].val);
   return true;
 }
 
@@ -230,9 +221,9 @@ std::vector<Crtc::PlaneInfo> Crtc::GetConnectedPlanes() const {
       continue;
     }
 
-    PlaneConfiguration conf{};
-    bool res = PopulatePlaneConfiguration(file_.GetPlatformFile(),
-                                          plane->plane_id, &conf);
+    PlanePosition pos{};
+    bool res =
+        PopulatePlanePosition(file_.GetPlatformFile(), plane->plane_id, &pos);
     if (!res) {
       LOG(WARNING) << "Failed to query plane position, skipping.\n";
       continue;
@@ -243,7 +234,7 @@ std::vector<Crtc::PlaneInfo> Crtc::GetConnectedPlanes() const {
       LOG(WARNING) << "Failed to query plane fb info, skipping.\n";
       continue;
     }
-    planes.emplace_back(std::make_pair(std::move(fb_info), conf));
+    planes.emplace_back(std::make_pair(std::move(fb_info), pos));
   }
   return planes;
 }
