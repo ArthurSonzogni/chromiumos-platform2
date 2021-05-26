@@ -28,8 +28,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(uart, "", "Use UART connection");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
   DEFINE_uint32(version, 0, "Firmware version");
-  DEFINE_string(mcu_path, 0, "MCU firmware file");
-  DEFINE_string(spi_path, 0, "SPI firmware file");
+  DEFINE_string(mcu_path, "", "MCU firmware file");
+  DEFINE_string(spi_path, "", "SPI firmware file");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
 
   // Always log to syslog and log to stderr if we are connected to a tty.
