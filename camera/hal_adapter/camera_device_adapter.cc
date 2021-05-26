@@ -32,6 +32,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
+#include "cros-camera/utils/camera_config.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
 
@@ -69,7 +70,8 @@ Camera3CaptureRequest::Camera3CaptureRequest(
 CameraMonitor::CameraMonitor(const std::string& name)
     : name_(name), thread_(name + "Monitor"), is_kicked_(false) {}
 
-void CameraMonitor::StartMonitor() {
+void CameraMonitor::StartMonitor(base::OnceClosure timeout_callback) {
+  timeout_callback_ = std::move(timeout_callback);
   thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraMonitor::StartMonitorOnThread,
                                 base::Unretained(this)));
@@ -146,6 +148,9 @@ void CameraMonitor::MonitorTimeout() {
         base::Bind(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
   } else {
     LOGF(WARNING) << "No " << name_ << " for more than " << kMonitorTimeDelta;
+    if (timeout_callback_) {
+      std::move(timeout_callback_).Run();
+    }
   }
   is_kicked_ = false;
 }
@@ -409,8 +414,16 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       }
       (*updated_config)->streams.push_back(std::move(ptr));
     }
-    capture_request_monitor_.StartMonitor();
-    capture_result_monitor_.StartMonitor();
+
+    base::RepeatingClosure timeout_callback = base::DoNothing();
+    std::unique_ptr<CameraConfig> config =
+        CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
+    if (config->GetBoolean(constants::kCrosAbortWhenCaptureMonitorTimeout,
+                           false)) {
+      timeout_callback = base::BindRepeating([]() { abort(); });
+    }
+    capture_request_monitor_.StartMonitor(timeout_callback);
+    capture_result_monitor_.StartMonitor(timeout_callback);
   }
 
   camera_metrics_->SendConfigureStreamsLatency(timer.Elapsed());

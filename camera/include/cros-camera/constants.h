@@ -34,6 +34,11 @@ const char kCrosForceJpegHardwareDecodeOption[] = "force_jpeg_hw_dec";
 const char kCrosEnableFrontCameraOption[] = "enable_front_camera";
 const char kCrosEnableBackCameraOption[] = "enable_back_camera";
 const char kCrosEnableExternalCameraOption[] = "enable_external_camera";
+
+// boolean value for specify enable/disable the mechanism to abort camera
+// service when capture request/response monitors reach timeout.
+const char kCrosAbortWhenCaptureMonitorTimeout[] =
+    "abort_when_capture_monitor_timeout";
 // ------End configuration for |kCrosCameraTestConfigPathString|-------
 
 // ------Configuration for |kCrosCameraConfigPathString|-------

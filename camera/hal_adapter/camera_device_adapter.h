@@ -18,6 +18,7 @@
 
 #include <hardware/camera3.h>
 
+#include <base/callback_helpers.h>
 #include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
@@ -71,7 +72,7 @@ class CameraMonitor : public base::OneShotTimer {
 
   void Attach();
   void Detach();
-  void StartMonitor();
+  void StartMonitor(base::OnceClosure timeout_callback = base::DoNothing());
   void Kick();
   bool HasBeenKicked();
 
@@ -87,6 +88,8 @@ class CameraMonitor : public base::OneShotTimer {
 
   base::Lock lock_;
   bool is_kicked_ GUARDED_BY(lock_);
+
+  base::OnceClosure timeout_callback_;
 };
 
 class CameraDeviceAdapter : public camera3_callback_ops_t {
