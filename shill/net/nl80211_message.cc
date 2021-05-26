@@ -259,13 +259,11 @@ GetStationMessage::GetStationMessage()
                                    NetlinkMessage::MessageContext()));
 }
 
-const uint8_t SetWakeOnPacketConnMessage::kCommand = NL80211_CMD_SET_WOWLAN;
-const char SetWakeOnPacketConnMessage::kCommandString[] =
-    "NL80211_CMD_SET_WOWLAN";
+const uint8_t SetWakeOnWiFiMessage::kCommand = NL80211_CMD_SET_WOWLAN;
+const char SetWakeOnWiFiMessage::kCommandString[] = "NL80211_CMD_SET_WOWLAN";
 
-const uint8_t GetWakeOnPacketConnMessage::kCommand = NL80211_CMD_GET_WOWLAN;
-const char GetWakeOnPacketConnMessage::kCommandString[] =
-    "NL80211_CMD_GET_WOWLAN";
+const uint8_t GetWakeOnWiFiMessage::kCommand = NL80211_CMD_GET_WOWLAN;
+const char GetWakeOnWiFiMessage::kCommandString[] = "NL80211_CMD_GET_WOWLAN";
 
 const uint8_t GetWiphyMessage::kCommand = NL80211_CMD_GET_WIPHY;
 const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
@@ -482,8 +480,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<FrameTxStatusMessage>();
     case GetInterfaceMessage::kCommand:
       return std::make_unique<GetInterfaceMessage>();
-    case GetWakeOnPacketConnMessage::kCommand:
-      return std::make_unique<GetWakeOnPacketConnMessage>();
+    case GetWakeOnWiFiMessage::kCommand:
+      return std::make_unique<GetWakeOnWiFiMessage>();
     case GetRegMessage::kCommand:
       return std::make_unique<GetRegMessage>();
     case GetStationMessage::kCommand:
@@ -518,8 +516,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<RemainOnChannelMessage>();
     case RoamMessage::kCommand:
       return std::make_unique<RoamMessage>();
-    case SetWakeOnPacketConnMessage::kCommand:
-      return std::make_unique<SetWakeOnPacketConnMessage>();
+    case SetWakeOnWiFiMessage::kCommand:
+      return std::make_unique<SetWakeOnWiFiMessage>();
     case ScanAbortedMessage::kCommand:
       return std::make_unique<ScanAbortedMessage>();
     case TriggerScanMessage::kCommand:

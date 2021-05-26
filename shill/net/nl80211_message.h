@@ -214,26 +214,24 @@ class SHILL_EXPORT GetStationMessage : public Nl80211Message {
   GetStationMessage& operator=(const GetStationMessage&) = delete;
 };
 
-class SHILL_EXPORT SetWakeOnPacketConnMessage : public Nl80211Message {
+class SHILL_EXPORT SetWakeOnWiFiMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  SetWakeOnPacketConnMessage() : Nl80211Message(kCommand, kCommandString) {}
-  SetWakeOnPacketConnMessage(const SetWakeOnPacketConnMessage&) = delete;
-  SetWakeOnPacketConnMessage& operator=(const SetWakeOnPacketConnMessage&) =
-      delete;
+  SetWakeOnWiFiMessage() : Nl80211Message(kCommand, kCommandString) {}
+  SetWakeOnWiFiMessage(const SetWakeOnWiFiMessage&) = delete;
+  SetWakeOnWiFiMessage& operator=(const SetWakeOnWiFiMessage&) = delete;
 };
 
-class SHILL_EXPORT GetWakeOnPacketConnMessage : public Nl80211Message {
+class SHILL_EXPORT GetWakeOnWiFiMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  GetWakeOnPacketConnMessage() : Nl80211Message(kCommand, kCommandString) {}
-  GetWakeOnPacketConnMessage(const GetWakeOnPacketConnMessage&) = delete;
-  GetWakeOnPacketConnMessage& operator=(const GetWakeOnPacketConnMessage&) =
-      delete;
+  GetWakeOnWiFiMessage() : Nl80211Message(kCommand, kCommandString) {}
+  GetWakeOnWiFiMessage(const GetWakeOnWiFiMessage&) = delete;
+  GetWakeOnWiFiMessage& operator=(const GetWakeOnWiFiMessage&) = delete;
 };
 
 class SHILL_EXPORT GetWiphyMessage : public Nl80211Message {

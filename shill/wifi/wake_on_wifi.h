@@ -36,11 +36,11 @@ namespace shill {
 class ByteString;
 class Error;
 class EventDispatcher;
-class GetWakeOnPacketConnMessage;
+class GetWakeOnWiFiMessage;
 class Metrics;
 class Nl80211Message;
 class PropertyStore;
-class SetWakeOnPacketConnMessage;
+class SetWakeOnWiFiMessage;
 
 // |WakeOnWiFi| performs all wake on WiFi related tasks and logic (e.g.
 // suspend/dark resume/resume logic, NIC wowlan programming via nl80211), and
@@ -291,13 +291,13 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
   friend class WiFiObjectTest;  // netlink_manager_
-  // kMaxSetWakeOnPacketRetries.
+  // kMaxSetWakeOnWiFiRetries.
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              RetrySetWakeOnPacketConnections_LessThanMaxRetries);
+              RetrySetWakeOnWiFiConnections_LessThanMaxRetries);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              RetrySetWakeOnPacketConnections_MaxAttemptsWithCallbackSet);
+              RetrySetWakeOnWiFiConnections_MaxAttemptsWithCallbackSet);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
-              RetrySetWakeOnPacketConnections_MaxAttemptsCallbackUnset);
+              RetrySetWakeOnWiFiConnections_MaxAttemptsCallbackUnset);
   // kDarkResumeActionsTimeoutMilliseconds
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               OnBeforeSuspend_DHCPLeaseRenewal);
@@ -325,7 +325,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   static const char kMaxWakeOnPatternsReached[];
   static const char kWakeOnWiFiNotAllowed[];
   static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
-  static const int kMaxSetWakeOnPacketRetries;
+  static const int kMaxSetWakeOnWiFiRetries;
   static const int kMetricsReportingFrequencySeconds;
   static const uint32_t kDefaultWakeToScanPeriodSeconds;
   static const uint32_t kDefaultNetDetectScanPeriodSeconds;
@@ -416,14 +416,14 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // the index of the wiphy interface to program. Returns true iff |msg| is
   // successfully configured.
   static bool ConfigureWiphyIndex(Nl80211Message* msg, int32_t index);
-  // Creates and sets attributes in an SetWakeOnPacketConnMessage |msg| so that
+  // Creates and sets attributes in an SetWakeOnWiFiMessage |msg| so that
   // the message will disable wake-on-packet functionality of the NIC with wiphy
   // index |wiphy_index|. Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
-  static bool ConfigureDisableWakeOnWiFiMessage(SetWakeOnPacketConnMessage* msg,
+  static bool ConfigureDisableWakeOnWiFiMessage(SetWakeOnWiFiMessage* msg,
                                                 uint32_t wiphy_index,
                                                 Error* error);
-  // Creates and sets attributes in a SetWakeOnPacketConnMessage |msg|
+  // Creates and sets attributes in a SetWakeOnWiFiMessage |msg|
   // so that the message will program the NIC with wiphy index |wiphy_index|
   // with wake on wireless triggers in |trigs|. If |trigs| contains the
   // kWakeTriggerPattern trigger, the message is configured to program the NIC
@@ -434,7 +434,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
   static bool ConfigureSetWakeOnWiFiSettingsMessage(
-      SetWakeOnPacketConnMessage* msg,
+      SetWakeOnWiFiMessage* msg,
       const std::set<WakeOnWiFiTrigger>& trigs,
       const IPAddressStore& addrs,
       uint32_t wiphy_index,
@@ -458,13 +458,14 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
                                     AttributeListRefPtr patterns,
                                     uint8_t patnum,
                                     Error* error);
-  // Creates and sets attributes in an GetWakeOnPacketConnMessage msg| so that
+  // Creates and sets attributes in an GetWakeOnWiFiMessage msg| so that
   // the message will request for wake-on-packet settings information from the
   // NIC with wiphy index |wiphy_index|. Returns true iff |msg| is successfully
   // configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
-  static bool ConfigureGetWakeOnWiFiSettingsMessage(
-      GetWakeOnPacketConnMessage* msg, uint32_t wiphy_index, Error* error);
+  static bool ConfigureGetWakeOnWiFiSettingsMessage(GetWakeOnWiFiMessage* msg,
+                                                    uint32_t wiphy_index,
+                                                    Error* error);
   // Given a NL80211_CMD_GET_WOWLAN response or NL80211_CMD_SET_WOWLAN request
   // |msg|, returns true iff the wake-on-wifi trigger settings in |msg| match
   // those in |trigs|. Performs the following checks for the following triggers:
@@ -491,10 +492,10 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       NetlinkManager::AuxilliaryMessageType type,
       const NetlinkMessage* raw_message);
   // Message handler for NL80211_CMD_SET_WOWLAN responses.
-  static void OnSetWakeOnPacketConnectionResponse(
+  static void OnSetWakeOnWiFiConnectionResponse(
       const Nl80211Message& nl80211_message);
   // Request wake on WiFi settings for this WiFi device.
-  void RequestWakeOnPacketSettings();
+  void RequestWakeOnWiFiSettings();
   // Verify that the wake on WiFi settings programmed into the NIC match
   // those recorded locally for this device in |wake_on_packet_connections_|,
   // |wake_on_wifi_triggers_|, and |wake_on_allowed_ssids_|.
@@ -508,9 +509,9 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // message to program the NIC to disable wake on WiFi.
   void DisableWakeOnWiFi();
   // Calls |ApplyWakeOnWiFiSettings| and counts this call as
-  // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
+  // a retry. If |kMaxSetWakeOnWiFiRetries| retries have already been
   // performed, resets counter and returns.
-  void RetrySetWakeOnPacketConnections();
+  void RetrySetWakeOnWiFiConnections();
   // Utility function to check if wake on WiFi is not supported or disabled.
   bool WakeOnWiFiDisabled();
   // Utility functions to check which wake on WiFi features are currently
@@ -572,9 +573,9 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   EventDispatcher* dispatcher_;
   NetlinkManager* netlink_manager_;
   Metrics* metrics_;
-  // Executes after the NIC's wake-on-packet settings are configured via
+  // Executes after the NIC's wake on WiFi settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
-  // Calls RequestWakeOnPacketSettings.
+  // Calls RequestWakeOnWiFiSettings.
   base::CancelableClosure verify_wake_on_packet_settings_callback_;
   // Callback to be invoked after all suspend actions finish executing both
   // before regular suspend and before suspend in dark resume.

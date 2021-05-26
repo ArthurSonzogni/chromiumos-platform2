@@ -50,7 +50,7 @@ const char WakeOnWiFi::kMaxWakeOnPatternsReached[] =
     "Max number of patterns already registered";
 const char WakeOnWiFi::kWakeOnWiFiNotAllowed[] = "Wake on WiFi not allowed";
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
-const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
+const int WakeOnWiFi::kMaxSetWakeOnWiFiRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 900;
 const uint32_t WakeOnWiFi::kDefaultNetDetectScanPeriodSeconds = 120;
@@ -467,8 +467,9 @@ bool WakeOnWiFi::ConfigureWiphyIndex(Nl80211Message* msg, int32_t index) {
 }
 
 // static
-bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
-    SetWakeOnPacketConnMessage* msg, uint32_t wiphy_index, Error* error) {
+bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(SetWakeOnWiFiMessage* msg,
+                                                   uint32_t wiphy_index,
+                                                   Error* error) {
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
@@ -479,7 +480,7 @@ bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
 
 // static
 bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
-    SetWakeOnPacketConnMessage* msg,
+    SetWakeOnWiFiMessage* msg,
     const std::set<WakeOnWiFiTrigger>& trigs,
     const IPAddressStore& addrs,
     uint32_t wiphy_index,
@@ -721,20 +722,20 @@ bool WakeOnWiFi::CreateSingleAttribute(const ByteString& pattern,
   if (!patterns->CreateNestedAttribute(patnum, "Pattern info")) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not create nested attribute "
-                          "patnum for SetWakeOnPacketConnMessage.");
+                          "patnum for SetWakeOnWiFiMessage.");
     return false;
   }
   if (!patterns->SetNestedAttributeHasAValue(patnum)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set nested attribute "
-                          "patnum for SetWakeOnPacketConnMessage.");
+                          "patnum for SetWakeOnWiFiMessage.");
     return false;
   }
   AttributeListRefPtr pattern_info;
   if (!patterns->GetNestedAttributeList(patnum, &pattern_info)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not get nested attribute list "
-                          "patnum for SetWakeOnPacketConnMessage.");
+                          "patnum for SetWakeOnWiFiMessage.");
     return false;
   }
   // Add mask.
@@ -781,7 +782,7 @@ bool WakeOnWiFi::CreateSingleAttribute(const ByteString& pattern,
 
 // static
 bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
-    GetWakeOnPacketConnMessage* msg, uint32_t wiphy_index, Error* error) {
+    GetWakeOnWiFiMessage* msg, uint32_t wiphy_index, Error* error) {
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
@@ -1151,16 +1152,16 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
 }
 
 // static
-void WakeOnWiFi::OnSetWakeOnPacketConnectionResponse(
+void WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse(
     const Nl80211Message& nl80211_message) {
   // NOP because kernel does not send a response to NL80211_CMD_SET_WOWLAN
   // requests.
 }
 
-void WakeOnWiFi::RequestWakeOnPacketSettings() {
+void WakeOnWiFi::RequestWakeOnWiFiSettings() {
   SLOG(this, 3) << __func__;
   Error e;
-  GetWakeOnPacketConnMessage get_wowlan_msg;
+  GetWakeOnWiFiMessage get_wowlan_msg;
   CHECK(wiphy_index_received_);
   if (!ConfigureGetWakeOnWiFiSettingsMessage(&get_wowlan_msg, wiphy_index_,
                                              &e)) {
@@ -1194,7 +1195,7 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
                   "structure detected";
     metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
         Metrics::kVerifyWakeOnWiFiSettingsResultFailure);
-    RetrySetWakeOnPacketConnections();
+    RetrySetWakeOnWiFiConnections();
   }
 }
 
@@ -1210,7 +1211,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     return;
   }
   Error error;
-  SetWakeOnPacketConnMessage set_wowlan_msg;
+  SetWakeOnWiFiMessage set_wowlan_msg;
   if (!ConfigureSetWakeOnWiFiSettingsMessage(
           &set_wowlan_msg, wake_on_wifi_triggers_, wake_on_packet_connections_,
           wiphy_index_, wake_on_packet_types_, mac_address_, min_pattern_len_,
@@ -1222,7 +1223,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
   }
   if (!netlink_manager_->SendNl80211Message(
           &set_wowlan_msg,
-          base::Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
+          base::Bind(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
           base::Bind(&NetlinkManager::OnAckDoNothing),
           base::Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                      weak_ptr_factory_.GetWeakPtr()))) {
@@ -1231,9 +1232,8 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     return;
   }
 
-  verify_wake_on_packet_settings_callback_.Reset(
-      base::Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
-                 weak_ptr_factory_.GetWeakPtr()));
+  verify_wake_on_packet_settings_callback_.Reset(base::Bind(
+      &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, verify_wake_on_packet_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
@@ -1242,7 +1242,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
 void WakeOnWiFi::DisableWakeOnWiFi() {
   SLOG(this, 3) << __func__;
   Error error;
-  SetWakeOnPacketConnMessage disable_wowlan_msg;
+  SetWakeOnWiFiMessage disable_wowlan_msg;
   CHECK(wiphy_index_received_);
   if (!ConfigureDisableWakeOnWiFiMessage(&disable_wowlan_msg, wiphy_index_,
                                          &error)) {
@@ -1254,7 +1254,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   wake_on_wifi_triggers_.clear();
   if (!netlink_manager_->SendNl80211Message(
           &disable_wowlan_msg,
-          base::Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
+          base::Bind(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
           base::Bind(&NetlinkManager::OnAckDoNothing),
           base::Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                      weak_ptr_factory_.GetWeakPtr()))) {
@@ -1263,17 +1263,16 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
     return;
   }
 
-  verify_wake_on_packet_settings_callback_.Reset(
-      base::Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
-                 weak_ptr_factory_.GetWeakPtr()));
+  verify_wake_on_packet_settings_callback_.Reset(base::Bind(
+      &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, verify_wake_on_packet_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
-void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
+void WakeOnWiFi::RetrySetWakeOnWiFiConnections() {
   SLOG(this, 3) << __func__;
-  if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
+  if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnWiFiRetries) {
     ApplyWakeOnWiFiSettings();
     ++num_set_wake_on_packet_retries_;
   } else {
@@ -1421,7 +1420,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
   }
   const Nl80211Message& wakeup_reason_msg =
       *reinterpret_cast<const Nl80211Message*>(&netlink_message);
-  if (wakeup_reason_msg.command() != SetWakeOnPacketConnMessage::kCommand) {
+  if (wakeup_reason_msg.command() != SetWakeOnWiFiMessage::kCommand) {
     SLOG(this, 7) << __func__ << ": "
                   << "Not a NL80211_CMD_SET_WOWLAN message";
     return;
