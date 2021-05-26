@@ -206,7 +206,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   bool ShutdownSignalHandler(const signalfd_siginfo& info) {
     // Trigger daemon shutdown, because the signal handler replaces the
     // original signal handler from |brillo::Daemon|.
-    LOG(INFO) << "Shutdown triggered by signal " << info.ssi_signo << ".";
+    LOG(INFO) << "Chaps exit triggered by signal " << info.ssi_signo << ".";
     Quit();
     return true;  // Unregister the signal handler.
   }
