@@ -187,7 +187,8 @@ class VirtGpuChannel : public WaylandChannel {
       : virtgpu_{-1},
         ring_addr_{MAP_FAILED},
         ring_handle_{0},
-        supports_dmabuf_(false) {}
+        supports_dmabuf_(false),
+        descriptor_id_{1} {}
   ~VirtGpuChannel();
 
   int32_t init() override;
@@ -213,22 +214,64 @@ class VirtGpuChannel : public WaylandChannel {
   struct BufferDescription {
     struct WaylandBufferCreateInfo input;
     struct WaylandBufferCreateOutput output;
-    uint64_t blob_id;
+    uint32_t blob_id;
+  };
+
+  /*
+   * Provides the read end and write end of a pipe, along with the inode (a
+   * guest unique identifier) and host descriptor id;
+   */
+  struct PipeDescription {
+    int read_fd;
+    int write_fd;
+    uint32_t identifier_type;
+    uint32_t inode;
+    uint32_t identifier;
   };
 
   int32_t image_query(const struct WaylandBufferCreateInfo& input,
                       struct WaylandBufferCreateOutput& output,
                       uint64_t& blob_id);
 
-  int32_t submit_cmd(uint32_t* cmd, uint32_t size, bool wait);
+  int32_t submit_cmd(uint32_t* cmd,
+                     uint32_t size,
+                     uint32_t ring_idx,
+                     bool wait);
+  int32_t channel_poll(void);
   int32_t close_gem_handle(uint32_t gem_handle);
+  int32_t create_host_blob(uint64_t blob_id, uint64_t size, int& out_fd);
+
+  int32_t fd_analysis(int fd, uint32_t& identifier, uint32_t& identifier_type);
+
+  int32_t create_fd(uint32_t identifier,
+                    uint32_t identifier_type,
+                    uint32_t identifier_size,
+                    int& out_fd);
+
+  int32_t create_pipe_internal(int& out_pipe_fd,
+                               uint32_t identifier,
+                               uint32_t identifier_type);
+
+  int32_t handle_receive(enum WaylandChannelEvent& event_type,
+                         struct WaylandSendReceive& receive,
+                         int& out_read_pipe);
+
+  int32_t handle_read(void);
+
+  int32_t pipe_lookup(uint32_t identifier_type,
+                      uint32_t& identifier,
+                      int& fd,
+                      size_t& index);
 
   int32_t virtgpu_;
   void* ring_addr_;
   uint32_t ring_handle_;
   bool supports_dmabuf_;
+  // Matches the crosvm-side descriptor_id, must be an odd number.
+  uint32_t descriptor_id_;
 
   std::vector<BufferDescription> description_cache_;
+  std::vector<PipeDescription> pipe_cache_;
 };
 
 int open_virtgpu(char** drm_device);
