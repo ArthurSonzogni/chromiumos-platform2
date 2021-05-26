@@ -1022,6 +1022,10 @@ void Cellular::DestroyCapability() {
 
   home_provider_info_->RemoveObserver(this);
   serving_operator_info_->RemoveObserver(this);
+  // When there is a SIM swap, ModemManager destroys and creates a new modem
+  // object. Reset the mobile operator info to avoid stale data.
+  home_provider_info()->Reset();
+  serving_operator_info()->Reset();
 
   // Make sure we are disconnected.
   StopPPP();
@@ -2115,8 +2119,6 @@ void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
   iccid_ = sim_properties.iccid;
   imsi_ = sim_properties.imsi;
 
-  home_provider_info()->Reset();
-  serving_operator_info()->Reset();
   home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
   home_provider_info()->UpdateOperatorName(sim_properties.spn);
   home_provider_info()->UpdateICCID(iccid_);
