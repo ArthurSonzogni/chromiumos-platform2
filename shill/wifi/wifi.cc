@@ -2486,55 +2486,6 @@ void WiFi::OnIPConfigFailure() {
   Device::OnIPConfigFailure();
 }
 
-void WiFi::AddWakeOnPacketConnection(const std::string& ip_endpoint,
-                                     Error* error) {
-  if (wake_on_wifi_) {
-    wake_on_wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
-  } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kWakeOnWiFiNotSupported);
-  }
-}
-
-void WiFi::AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                                  Error* error) {
-  if (wake_on_wifi_) {
-    wake_on_wifi_->AddWakeOnPacketOfTypes(packet_types, error);
-  } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kWakeOnWiFiNotSupported);
-  }
-}
-
-void WiFi::RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                        Error* error) {
-  if (wake_on_wifi_) {
-    wake_on_wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
-  } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kWakeOnWiFiNotSupported);
-  }
-}
-
-void WiFi::RemoveWakeOnPacketOfTypes(
-    const std::vector<std::string>& packet_types, Error* error) {
-  if (wake_on_wifi_) {
-    wake_on_wifi_->RemoveWakeOnPacketOfTypes(packet_types, error);
-  } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kWakeOnWiFiNotSupported);
-  }
-}
-
-void WiFi::RemoveAllWakeOnPacketConnections(Error* error) {
-  if (wake_on_wifi_) {
-    wake_on_wifi_->RemoveAllWakeOnPacketConnections(error);
-  } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kWakeOnWiFiNotSupported);
-  }
-}
-
 void WiFi::RestartFastScanAttempts() {
   if (!enabled()) {
     SLOG(this, 2) << "Skpping fast scan attempts while not enabled.";

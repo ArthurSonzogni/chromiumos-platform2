@@ -178,32 +178,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // periodically collected.
   void Start() override;
 
-  // Enables the NIC to wake on packets received from |ip_endpoint|.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
-  void AddWakeOnPacketConnection(const std::string& ip_endpoint,
-                                 Error* error) override;
-  // Enables the NIC to wake on packets(IPv4/IPv6) with IP protocol
-  // belonging to |packet_types|.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
-  void AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                              Error* error) override;
-  // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
-  void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                    Error* error) override;
-  // Remove rule to wake on packets(IPv4/IPv6) with IP protocol
-  // belonging to |packet_types|.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
-  void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                                 Error* error) override;
-  // Remove all rules to wake on incoming packets from the NIC.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
-  void RemoveAllWakeOnPacketConnections(Error* error) override;
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
   // wake on WiFi capabilities of the NIC and set relevant members of this
   // WakeOnWiFi object to reflect the supported capbilities.

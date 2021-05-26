@@ -43,15 +43,6 @@ class WakeOnWiFiInterface {
 
   virtual void InitPropertyStore(PropertyStore* store) = 0;
   virtual void Start() = 0;
-  virtual void AddWakeOnPacketConnection(const std::string& ip_endpoint,
-                                         Error* error) = 0;
-  virtual void AddWakeOnPacketOfTypes(
-      const std::vector<std::string>& packet_types, Error* error) = 0;
-  virtual void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                            Error* error) = 0;
-  virtual void RemoveWakeOnPacketOfTypes(
-      const std::vector<std::string>& packet_types, Error* error) = 0;
-  virtual void RemoveAllWakeOnPacketConnections(Error* error) = 0;
   virtual void ParseWakeOnWiFiCapabilities(
       const Nl80211Message& nl80211_message) = 0;
   virtual void OnBeforeSuspend(

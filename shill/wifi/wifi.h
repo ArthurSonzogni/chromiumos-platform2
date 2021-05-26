@@ -145,18 +145,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
 
-  // Calls corresponding functions of |wake_on_wifi_|. Refer to wake_on_wifi.h
-  // for documentation.
-  void AddWakeOnPacketConnection(const std::string& ip_endpoint,
-                                 Error* error) override;
-  void AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                              Error* error) override;
-  void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                    Error* error) override;
-  void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                                 Error* error) override;
-  void RemoveAllWakeOnPacketConnections(Error* error) override;
-
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
