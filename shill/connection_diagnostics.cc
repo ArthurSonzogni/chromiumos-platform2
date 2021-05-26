@@ -382,7 +382,11 @@ void ConnectionDiagnostics::PingDNSServers() {
       continue;
     }
 
-    if (!id_to_pending_dns_server_icmp_session_.at(i)->Start(
+    auto session_iter = id_to_pending_dns_server_icmp_session_.find(i);
+    if (session_iter == id_to_pending_dns_server_icmp_session_.end())
+      continue;
+
+    if (!session_iter->second->Start(
             dns_server_ip_addr, iface_index_,
             base::Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
                        weak_ptr_factory_.GetWeakPtr(), i))) {
