@@ -98,6 +98,38 @@ is_kip() {
   crossystem hwid | grep -q '^KIP '
 }
 
+igb_devices=""
+
+# The Intel gigabit driver (igb) prevents Intel platforms (the only platforms
+# that use this driver currently) from going into suspend-to-idle i.e. S0ix
+# (see b/189345571). So in order to enter S0ix, need to unbind its devices while
+# suspending, and rebind again at resume.
+unbind_igb_devices() {
+  /sbin/lsmod | grep -qw "^igb"
+  if [ $? -ne 0 ]; then
+    return
+  fi
+
+  for pcidev in `readlink /sys/class/net/*/device`; do
+    pcidev="$(basename ${pcidev})"
+    pcidrvr="$(readlink /sys/bus/pci/devices/${pcidev}/driver)"
+    pcidrvr="$(basename ${pcidrvr})"
+
+    if [ "${pcidrvr}" = "igb" ]; then
+      log_msg "Temporarily unbinding igb driver from ${pcidev} for suspend"
+      echo "${pcidev}" > /sys/bus/pci/drivers/igb/unbind
+      igb_devices="${igb_devices} ${pcidev}"
+    fi
+  done
+}
+
+bind_igb_devices() {
+  for pcidev in ${igb_devices}; do
+    log_msg "Re-binding igb driver to ${pcidev} after resume"
+    echo "${pcidev}" > /sys/bus/pci/drivers/igb/bind
+  done
+}
+
 # Checks if the system has a Huawei Technologies Mobile Broadband Module.
 has_huawei_modem() {
   lsusb -d 12d1:15bb
@@ -300,6 +332,7 @@ else
   action='mem'
   if [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
     action='freeze'
+    unbind_igb_devices
   fi
 
   # Suspend to RAM. This is piped through cat since we want to determine
@@ -352,6 +385,8 @@ else
       result="${RESULT_FAILURE}"
     fi
   fi
+
+  bind_igb_devices
 
   # Power back on the Huawei modem if it was powered off before suspend.
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
