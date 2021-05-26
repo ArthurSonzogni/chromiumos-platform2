@@ -221,6 +221,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optopt(
             "",
+            "tools-dlc",
+            "Identifier for the DLC from which guest tools should be pulled.",
+            "ID",
+        );
+        opts.optopt(
+            "",
             "kernel",
             "path to a custom kernel image. Only valid on untrusted VMs.",
             "PATH",
@@ -276,6 +282,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             run_as_untrusted: matches.opt_present("untrusted"),
             dlc: matches.opt_str("dlc-id"),
             kernel_params: matches.opt_strs("kernel-param"),
+            tools_dlc_id: matches.opt_str("tools-dlc"),
         };
 
         let user_disks = UserDisks {
@@ -1091,6 +1098,8 @@ mod tests {
             &["vmc", "start", "--kernel-param", "quiet", "termina"],
             &["vmc", "start", "--bios", "mybios", "termina"],
             &["vmc", "start", "--bios=mybios", "termina"],
+            &["vmc", "start", "--tools-dlc", "my-dlc", "termina"],
+            &["vmc", "start", "--tools-dlc=my-dlc", "termina"],
             &["vmc", "stop", "termina"],
             &["vmc", "launch", "borealis"],
             &["vmc", "launch", "crostini"],
@@ -1196,6 +1205,7 @@ mod tests {
             &["vmc", "start", "termina", "--writable-rootfs", "myrootfs"],
             &["vmc", "start", "termina", "--kernel-param"],
             &["vmc", "start", "termina", "--bios"],
+            &["vmc", "start", "termina", "--tools-dlc"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "launch", "borealis", "--enable-gpu"],

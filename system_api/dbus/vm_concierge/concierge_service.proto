@@ -28,6 +28,10 @@ message VirtualMachineSpec {
 
   // Optional path to the initrd that should be used for the VM.
   string initrd = 4;
+
+  // ID of a DLC package that contains the vm_tools.img for this vm. If empty
+  // the vm_tools.img from the above dlc_id is used if available.
+  string tools_dlc_id = 5;
 }
 
 // The type of disk image.

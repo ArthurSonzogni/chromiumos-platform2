@@ -221,6 +221,7 @@ pub struct VmFeatures {
     pub run_as_untrusted: bool,
     pub dlc: Option<String>,
     pub kernel_params: Vec<String>,
+    pub tools_dlc_id: Option<String>,
 }
 
 pub enum ContainerSource {
@@ -1184,6 +1185,9 @@ impl Methods {
         let mut request = StartVmRequest::new();
         if let Some(dlc_id) = self.get_dlc_id_or_none(features.dlc, start_termina)? {
             request.mut_vm().dlc_id = dlc_id;
+        }
+        if let Some(tools_dlc_id) = features.tools_dlc_id {
+            request.mut_vm().tools_dlc_id = tools_dlc_id;
         }
         request.start_termina = start_termina;
         request.owner_id = user_id_hash.to_owned();
