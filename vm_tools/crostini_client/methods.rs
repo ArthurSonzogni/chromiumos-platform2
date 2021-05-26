@@ -392,7 +392,6 @@ pub enum VmTypeStatus {
 pub struct Methods {
     connection: ConnectionProxy,
     crostini_enabled: Option<VmTypeStatus>,
-    crostini_dlc: Option<bool>,
     plugin_vm_enabled: Option<VmTypeStatus>,
 }
 
@@ -403,7 +402,6 @@ impl Methods {
         Ok(Methods {
             connection: connection.into(),
             crostini_enabled: None,
-            crostini_dlc: None,
             plugin_vm_enabled: None,
         })
     }
@@ -413,7 +411,6 @@ impl Methods {
         Methods {
             connection: ConnectionProxy::dummy(),
             crostini_enabled: Some(VmTypeStatus::Enabled),
-            crostini_dlc: Some(true),
             plugin_vm_enabled: Some(VmTypeStatus::Enabled),
         }
     }
@@ -653,18 +650,6 @@ impl Methods {
             .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
 
         Ok(())
-    }
-
-    fn does_crostini_use_dlc(&mut self) -> Result<bool, Box<dyn Error>> {
-        let enabled = match self.crostini_dlc {
-            Some(value) => value,
-            None => {
-                let value = self.is_chrome_feature_enabled("CrostiniUseDlc")?;
-                self.crostini_dlc = Some(value);
-                value
-            }
-        };
-        Ok(enabled)
     }
 
     /// Request debugd to start vmplugin_dispatcher.
@@ -1178,7 +1163,7 @@ impl Methods {
                 Ok(Some(id))
             }
         } else {
-            if is_termina && self.does_crostini_use_dlc()? {
+            if is_termina {
                 Ok(Some("termina-dlc".to_owned()))
             } else {
                 Ok(None)
