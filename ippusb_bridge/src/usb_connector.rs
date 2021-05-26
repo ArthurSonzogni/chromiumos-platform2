@@ -14,7 +14,7 @@ use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
 use sync::{Condvar, Mutex};
 use sys_util::{debug, error, info, EventFd, PollContext};
 
-const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(30);
+const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Debug)]
 pub enum Error {
