@@ -188,9 +188,6 @@ class Daemon : public brillo::DBusServiceDaemon {
   }
 
   void OnShutdown(int* exit_code) override {
-    // TODO(https://crbug.com/844537): Remove when root cause of disappearing
-    // system token certificates is found.
-    LOG(INFO) << "chapsd Daemon::OnShutdown invoked.";
     DBusServiceDaemon::OnShutdown(exit_code);
   }
 
