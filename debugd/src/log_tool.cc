@@ -369,7 +369,7 @@ const std::vector<Log> kCommandLogs {
   {kFile, "upstart", "/var/log/upstart.log"},
   {kCommand, "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime"},
   {kCommand, "usb4 devices", "/usr/libexec/debugd/helpers/usb4_devinfo_helper",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+    kRoot, kDebugfsGroup},
   {kFile, "verified boot", "/var/log/debug_vboot_noisy.log"},
   {kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"},
   {kFile, "vmlog.1.PREVIOUS", "/var/log/vmlog/vmlog.1.PREVIOUS"},
