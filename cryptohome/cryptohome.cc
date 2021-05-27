@@ -2593,6 +2593,14 @@ int main(int argc, char** argv) {
              static_cast<int>(reply.error()));
       return 1;
     }
+    // TODO(b/189388158): because PrintDebugString won't print a field if it's
+    // default value in proto3. We use a workaround to print it manually here.
+    if (!reply.owner_user_exists()) {
+      printf("owner_user_exists: false\n");
+    }
+    if (!reply.is_locked_to_single_user()) {
+      printf("is_locked_to_single_user: false\n");
+    }
 
     printf("GetLoginStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_INITIALIZE_CAST_KEY],
