@@ -81,6 +81,47 @@ auto ReturnError(Args&&... args) {
                          std::forward<Args>(args)...);
 }
 
+// Test helpers for CreateError.
+template <typename ErrorType, typename... Args>
+struct TestForCreateError {
+  // primary template handles types that can't "CreateError".
+  template <typename InnerErrorType, typename = void, typename... InnerArgs>
+  struct CheckImpl : std::false_type {};
+
+  // specialization recognizes types that can "CreateError".
+  template <typename InnerErrorType, typename... InnerArgs>
+  struct CheckImpl<InnerErrorType,
+                   std::void_t<decltype(CreateError<InnerErrorType>(
+                       std::declval<InnerArgs>()...))>,
+                   InnerArgs...> : std::true_type {};
+
+  using Check = CheckImpl<ErrorType, void, Args...>;
+};
+
+// Test helpers for CreateErrorWrap.
+template <typename ErrorType, typename ErrorType2, typename... Args>
+struct TestForCreateErrorWrap {
+  // primary template handles types that can't "CreateErrorWrap".
+  template <typename InnerErrorType,
+            typename InnerErrorType2,
+            typename = void,
+            typename... InnerArgs>
+  struct CheckImpl : std::false_type {};
+
+  // specialization recognizes types that can "CreateErrorWrap".
+  template <typename InnerErrorType,
+            typename InnerErrorType2,
+            typename... InnerArgs>
+  struct CheckImpl<
+      InnerErrorType,
+      InnerErrorType2,
+      std::void_t<decltype(CreateErrorWrap<InnerErrorType>(
+          std::declval<InnerErrorType2>(), std::declval<InnerArgs>()...))>,
+      InnerArgs...> : std::true_type {};
+
+  using Check = CheckImpl<ErrorType, ErrorType2, void, Args...>;
+};
+
 }  // namespace testing
 }  // namespace error
 }  // namespace hwsec_foundation
