@@ -227,15 +227,15 @@ fn get_memory_parameters() -> MemoryParameters {
             0
         }
     });
-    static MIN_FILELIST: Lazy<u64> =
-        Lazy::new(|| common::read_file_to_u64("/proc/sys/vm/min_filelist_kbytes").unwrap_or(0));
+    let min_filelist: u64 =
+        common::read_file_to_u64("/proc/sys/vm/min_filelist_kbytes").unwrap_or(0);
     // TODO(vovoy): Use a regular config file instead of sysfs file.
     static RAM_SWAP_WEIGHT: Lazy<u64> = Lazy::new(|| {
         common::read_file_to_u64("/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight").unwrap_or(0)
     });
     MemoryParameters {
         reserved_free: *RESERVED_FREE,
-        min_filelist: *MIN_FILELIST,
+        min_filelist,
         ram_swap_weight: *RAM_SWAP_WEIGHT,
     }
 }
