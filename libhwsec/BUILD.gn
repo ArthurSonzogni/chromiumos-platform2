@@ -67,7 +67,9 @@ config("libhwsec_tpm2_config") {
 shared_library("libhwsec") {
   configs += [ ":target_defaults" ]
   deps = [ ":error_library" ]
-  if (!use.tpm2) {
+  if (use.tpm2) {
+    all_dependent_configs = [ ":libhwsec_tpm2_config" ]
+  } else {
     all_dependent_configs = [ ":libhwsec_tpm1_config" ]
     deps += [ ":overalls_library" ]
   }
@@ -99,6 +101,8 @@ if (use.test) {
         "overalls/overalls_api_test.cc",
         "overalls/overalls_singleton_test.cc",
       ]
+    } else {
+      sources += [ "error/tpm2_error_test.cc" ]
     }
   }
 }
