@@ -113,6 +113,12 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "DEVICETYPE", "cros_config /hardware-properties form-factor"},
   // We consistently use UTC in feedback reports.
   {kCommand, "LOGDATE", "/bin/date --utc; /bin/date"},
+  {kFile, "amdgpu_gem_info", "/sys/kernel/debug/dri/0/amdgpu_gem_info",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "amdgpu_gtt_mm", "/sys/kernel/debug/dri/0/amdgpu_gtt_mm",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "amdgpu_vram_mm", "/sys/kernel/debug/dri/0/amdgpu_vram_mm",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   // We need to enter init's mount namespace to access /home/root. Also, we use
   // neither ARC container's mount namespace (with android-sh) nor
   // /opt/google/containers/android/rootfs/android-data/ so that we can get
@@ -120,44 +126,55 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "android_app_storage", "/usr/bin/nsenter -t1 -m "
    "/bin/sh -c \"/usr/bin/du -h /home/root/*/android-data/data/\"",
    kRoot, kDebugfsGroup},
-  {kFile, "atrus_logs", "/var/log/atrus.log"},
-  {kFile, "authpolicy", "/var/log/authpolicy.log"},
 #if USE_ARCVM
   {kCommand, "arcvm_console_output", "/usr/bin/vm_pstore_dump", "crosvm",
     "crosvm", Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},
 #endif  // USE_ARCVM
-  {kCommand, "bootstat_summary", "/usr/bin/bootstat_summary",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
-    true /* access_root_mount_ns */},
+  {kCommand, "atmel_tp_deltas",
+    "/opt/google/touch/scripts/atmel_tools.sh tp d", kRoot, kRoot},
+  {kCommand, "atmel_tp_refs",
+    "/opt/google/touch/scripts/atmel_tools.sh tp r", kRoot, kRoot},
+  {kCommand, "atmel_ts_deltas",
+    "/opt/google/touch/scripts/atmel_tools.sh ts d", kRoot, kRoot},
+  {kCommand, "atmel_ts_refs",
+    "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot},
+  {kFile, "atrus_logs", "/var/log/atrus.log"},
+  {kFile, "authpolicy", "/var/log/authpolicy.log"},
   {kFile, "bio_crypto_init.LATEST",
     "/var/log/bio_crypto_init/bio_crypto_init.LATEST"},
   {kFile, "bio_crypto_init.PREVIOUS",
     "/var/log/bio_crypto_init/bio_crypto_init.PREVIOUS"},
-  {kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"},
-  {kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"},
   {kFile, "bio_fw_updater.LATEST", "/var/log/biod/bio_fw_updater.LATEST"},
   {kFile, "bio_fw_updater.PREVIOUS", "/var/log/biod/bio_fw_updater.PREVIOUS"},
+  {kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"},
+  {kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"},
   {kFile, "bios_info", "/var/log/bios_info.txt"},
   {kCommand, "bios_log", "cat /sys/firmware/log "
     "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null"},
   {kFile, "bios_times", "/var/log/bios_times.txt"},
-  {kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
-    "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   // Slow or non-responsive block devices could cause this command to stall. Use
   // a timeout to prevent this command from blocking log fetching. This command
   // is expected to take O(100ms) in the normal case.
   {kCommand, "blkid", "timeout -s KILL 5s /sbin/blkid", kRoot, kRoot},
+  {kCommand, "bootstat_summary", "/usr/bin/bootstat_summary",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
+    true /* access_root_mount_ns */},
+  {kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
+    "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
+  {kCommand, "bt_usb_disconnects",
+    "/usr/libexec/debugd/helpers/bt_usb_disconnect_helper",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kFile, "buddyinfo", "/proc/buddyinfo"},
   {kCommand, "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot,
     kRoot},
   {kFile, "cheets_log", "/var/log/arc.log"},
-  {kFile, "clobber.log", "/var/log/clobber.log"},
-  {kFile, "clobber-state.log", "/var/log/clobber-state.log"},
-  {kCommand, "chromeos-pgmem", "/usr/bin/chromeos-pgmem", kRoot, kRoot},
   {kFile, "chrome_system_log", "/var/log/chrome/chrome"},
   {kFile, "chrome_system_log.PREVIOUS", "/var/log/chrome/chrome.PREVIOUS"},
+  {kCommand, "chromeos-pgmem", "/usr/bin/chromeos-pgmem", kRoot, kRoot},
+  {kFile, "clobber-state.log", "/var/log/clobber-state.log"},
+  {kFile, "clobber.log", "/var/log/clobber.log"},
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
@@ -179,24 +196,30 @@ const std::vector<Log> kCommandLogs {
       // stderr output just tells us it failed
       "ectool usbpd \"${port}\" 2>/dev/null || break; "
     "done", kRoot, kRoot},
-  {kFile, "cros_fp.previous", "/var/log/cros_fp.previous",
-    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   {kFile, "cros_fp.log", "/var/log/cros_fp.log",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
-  {kFile, "cros_ish.previous", "/var/log/cros_ish.previous",
+  {kFile, "cros_fp.previous", "/var/log/cros_fp.previous",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   {kFile, "cros_ish.log", "/var/log/cros_ish.log",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
-  {kFile, "cros_scp.previous", "/var/log/cros_scp.previous",
+  {kFile, "cros_ish.previous", "/var/log/cros_ish.previous",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-    64 * 1024, LogTool::Encoding::kUtf8},
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   {kFile, "cros_scp.log", "/var/log/cros_scp.log",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     64 * 1024, LogTool::Encoding::kUtf8},
+  {kFile, "cros_scp.previous", "/var/log/cros_scp.previous",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    64 * 1024, LogTool::Encoding::kUtf8},
+  {kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
+    kRoot, kRoot},
+  {kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
+    kRoot, kRoot},
+  {kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
+  {kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
   {kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
     " /run/daemon-store/crosvm/*/log/*.log.1"
     " /run/daemon-store/crosvm/*/log/*.log'", kRoot, kRoot},
@@ -207,6 +230,13 @@ const std::vector<Log> kCommandLogs {
   {kGlob, "drm_gem_objects", "/sys/kernel/debug/dri/?/gem",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kGlob, "drm_state", "/sys/kernel/debug/dri/?/state",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "drm_trace", "/sys/kernel/debug/tracing/instances/drm/trace",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  // TODO(seanpaul): Once we've finished moving over to the upstream tracefs
+  //                 implementation, remove drm_trace_legacy. Tracked in
+  //                 b/163580546.
+  {kFile, "drm_trace_legacy", "/sys/kernel/debug/dri/trace",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kFile, "ec_info", "/var/log/ec_info.txt"},
   {kCommand, "edid-decode",
@@ -221,25 +251,18 @@ const std::vector<Log> kCommandLogs {
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "fwupd_state", "/sbin/initctl emit fwupdtool-getdevices;"
     "cat /var/lib/fwupd/state.json", kRoot, kRoot},
-  {kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"},
   {kFile, "hammerd", "/var/log/hammerd.log"},
   {kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
   {kFile, "hardware_verification_report",
     "/var/cache/hardware_verifier.result"},
   {kCommand, "hostname", "/bin/hostname"},
-  {kFile, "i915_gem_gtt", "/sys/kernel/debug/dri/0/i915_gem_gtt",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  {kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "i915_error_state",
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kBase64},
-  {kFile, "amdgpu_gem_info", "/sys/kernel/debug/dri/0/amdgpu_gem_info",
+  {kFile, "i915_gem_gtt", "/sys/kernel/debug/dri/0/i915_gem_gtt",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  {kFile, "amdgpu_gtt_mm", "/sys/kernel/debug/dri/0/amdgpu_gtt_mm",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  {kFile, "amdgpu_vram_mm", "/sys/kernel/debug/dri/0/amdgpu_vram_mm",
+  {kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "ifconfig", "/bin/ifconfig -a"},
   {kFile, "input_devices", "/proc/bus/input/devices"},
@@ -250,9 +273,6 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm)},
   {kCommand, "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi)},
 #endif  // USE_IWLWIFI_DUMP
-  {kCommand, "bt_usb_disconnects",
-    "/usr/libexec/debugd/helpers/bt_usb_disconnect_helper",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kGlob, "kernel-crashes", "/var/spool/crash/kernel.*.kcrash",
     SandboxedProcess::kDefaultUser, "crash-access"},
   {kCommand, "lsblk", "timeout -s KILL 5s lsblk -a", kRoot, kRoot,
@@ -262,8 +282,8 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "lsusb", "lsusb && lsusb -t"},
   {kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  {kFile, "memd.parameters", "/var/log/memd/memd.parameters"},
   {kGlob, "memd clips", "/var/log/memd/memd.clip*"},
+  {kFile, "memd.parameters", "/var/log/memd/memd.parameters"},
   {kFile, "meminfo", "/proc/meminfo"},
   {kCommand, "memory_spd_info",
     // mosys may use 'i2c-dev', which may not be loaded yet.
@@ -303,14 +323,14 @@ const std::vector<Log> kCommandLogs {
   {kFile, "pagetypeinfo", "/proc/pagetypeinfo", kRoot},
   {kCommand, "pchg_info", "/usr/share/userfeedback/scripts/pchg_info",
     kRoot, kRoot},
+  {kFile, "platform_identity_customization_id",
+    "/run/chromeos-config/v1/identity/customization-id"},
+  {kFile, "platform_identity_model", "/run/chromeos-config/v1/name"},
   {kFile, "platform_identity_name",
     "/run/chromeos-config/v1/identity/platform-name"},
-  {kFile, "platform_identity_model", "/run/chromeos-config/v1/name"},
   {kFile, "platform_identity_sku", "/run/chromeos-config/v1/identity/sku-id"},
   {kFile, "platform_identity_whitelabel_tag",
     "/run/chromeos-config/v1/identity/whitelabel-tag"},
-  {kFile, "platform_identity_customization_id",
-    "/run/chromeos-config/v1/identity/customization-id"},
   {kCommand, "power_supply_info", "/usr/bin/power_supply_info"},
   {kCommand, "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data"},
   {kFile, "powerd.LATEST", "/var/log/power_manager/powerd.LATEST"},
@@ -320,8 +340,11 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "ps", "/bin/ps auxZ"},
   {kGlob, "qcom_fw_info", "/sys/kernel/debug/qcom_socinfo/*/*",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"},
   // /proc/slabinfo is owned by root and has 0400 permission.
   {kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
+  {kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
+  {kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
   {kFile, "storage_info", "/var/log/storage_info.txt"},
   {kCommand, "swap_info", "/usr/share/cros/init/swap.sh status 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
@@ -333,9 +356,9 @@ const std::vector<Log> kCommandLogs {
     kRoot, kRoot},
   {kCommand, "threads", "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm"},
   {kFile, "tlsdate", "/var/log/tlsdate.log"},
-  {kCommand, "top thread", "/usr/bin/top -Hbc -w128 -n 1 | head -n 40"},
   {kCommand, "top memory",
     "/usr/bin/top -o \"+%MEM\" -w128 -bcn 1 | head -n 57"},
+  {kCommand, "top thread", "/usr/bin/top -Hbc -w128 -n 1 | head -n 40"},
   {kCommand, "touch_fw_version",
     "grep -aE"
     " -e 'synaptics: Touchpad model'"
@@ -353,16 +376,6 @@ const std::vector<Log> kCommandLogs {
   // typecd logs average around 56K. VID/PIDs are obfuscated from the printed
   // PD identity information.
   {kFile, "typecd", "/var/log/typecd.log"},
-  {kCommand, "atmel_ts_refs",
-    "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot},
-  {kCommand, "atmel_tp_refs",
-    "/opt/google/touch/scripts/atmel_tools.sh tp r", kRoot, kRoot},
-  {kCommand, "atmel_ts_deltas",
-    "/opt/google/touch/scripts/atmel_tools.sh ts d", kRoot, kRoot},
-  {kCommand, "atmel_tp_deltas",
-    "/opt/google/touch/scripts/atmel_tools.sh tp d", kRoot, kRoot},
-  {kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
-  {kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
   {kFile, "ui_log", "/var/log/ui/ui.LATEST"},
   {kCommand, "uname", "/bin/uname -a"},
   {kCommand, "update_engine.log",
@@ -379,28 +392,15 @@ const std::vector<Log> kCommandLogs {
   {kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
   {kFile, "vmstat", "/proc/vmstat"},
   {kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"},
-  {kCommand, "zram new stats names",
-    "echo orig_size compr_size used_total limit used_max zero_pages migrated"},
-  {kFile, "zram new stats values", "/sys/block/zram0/mm_stat"},
   {kCommand, "zram block device stat names",
     "echo read_ios read_merges read_sectors read_ticks write_ios "
     "write_merges write_sectors write_ticks in_flight io_ticks "
     "time_in_queue discard_ios dicard_merges discard_sectors discard_ticks "
     "flush_ios flush_ticks"},
-  {kFile, "zram block device stat", "/sys/block/zram0/stat"},
-  {kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
-  {kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
-    kRoot, kRoot},
-  {kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
-    kRoot, kRoot},
-  {kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
-  // TODO(seanpaul): Once we've finished moving over to the upstream tracefs
-  //                 implementation, remove drm_trace_legacy. Tracked in
-  //                 b/163580546.
-  {kFile, "drm_trace_legacy", "/sys/kernel/debug/dri/trace",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  {kFile, "drm_trace", "/sys/kernel/debug/tracing/instances/drm/trace",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "zram block device stat values", "/sys/block/zram0/stat"},
+  {kCommand, "zram new stats names",
+    "echo orig_size compr_size used_total limit used_max zero_pages migrated"},
+  {kFile, "zram new stats values", "/sys/block/zram0/mm_stat"},
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
   // the current session (in the setsid(2) sense), which is not useful for
@@ -426,19 +426,19 @@ const std::vector<Log> kCommandLogsShort{
 //
 // clang-format off
 const std::vector<Log> kExtraLogs {
+  {kCommand, "logcat",
+    "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c '/system/bin/logcat -d'",
+    kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
 #if USE_CELLULAR
   {kCommand, "mm-status", "/usr/bin/modem status"},
 #endif  // USE_CELLULAR
+  // --processes requires root.
+  {kCommand, "netstat",
+    "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
   {kCommand, "network-devices", "/usr/bin/connectivity show devices"},
   {kCommand, "network-services", "/usr/bin/connectivity show services"},
   {kCommand, "wifi_status_no_anonymize",
     "/usr/bin/network_diag --wifi-internal --no-log"},
-  // --processes requires root.
-  {kCommand, "netstat",
-    "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
-  {kCommand, "logcat",
-    "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c '/system/bin/logcat -d'",
-    kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
 };
 // clang-format on
 
