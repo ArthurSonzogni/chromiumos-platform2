@@ -93,6 +93,7 @@ if (use.test) {
     ]
     if (!use.tpm2) {
       sources += [
+        "error/tpm1_error_test.cc",
         "overalls/overalls_api_test.cc",
         "overalls/overalls_singleton_test.cc",
       ]
