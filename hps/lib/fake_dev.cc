@@ -159,6 +159,7 @@ void FakeDev::Run() {
   for (;;) {
     // Main message loop.
     this->ev_.Wait();
+    this->ev_.Reset();
     for (;;) {
       // Read all messages available.
       Msg m;
