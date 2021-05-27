@@ -53,3 +53,4 @@ clock_gettime: 1
 clock_gettime64: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
+futex: 1
