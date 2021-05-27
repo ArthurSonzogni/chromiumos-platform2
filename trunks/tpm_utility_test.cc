@@ -50,6 +50,22 @@ int CountSetBits(const uint8_t* array, size_t size) {
   return res;
 }
 
+trunks::TPM2B_PUBLIC MakeTpm2bPublic() {
+  trunks::TPM2B_PUBLIC tpm2b_public;
+  tpm2b_public.size = sizeof(trunks::TPMT_PUBLIC);
+  trunks::TPMT_PUBLIC& tpmt_public = tpm2b_public.public_area;
+  memset(&tpmt_public, 0, sizeof(trunks::TPMT_PUBLIC));
+  return tpm2b_public;
+}
+
+trunks::TPM2B_PUBLIC MakeEmptyTpm2bPublic() {
+  trunks::TPM2B_PUBLIC tpm2b_public;
+  tpm2b_public.size = 0;
+  // Intentionally not initializing |tpm2b_public.public_area| as a size of zero
+  // indicates that |public_area| is not meant to be read.
+  return tpm2b_public;
+}
+
 }  // namespace
 
 namespace trunks {
@@ -181,6 +197,9 @@ class TpmUtilityTest : public testing::Test {
   }
 
  protected:
+  const TPM2B_PUBLIC kTpm2bPublic = MakeTpm2bPublic();
+  const TPM2B_PUBLIC kEmptyTpm2bPublic = MakeEmptyTpm2bPublic();
+
   TrunksFactoryForTest factory_;
   NiceMock<MockCommandTransceiver> mock_transceiver_;
   NiceMock<MockBlobParser> mock_blob_parser_;
@@ -595,6 +614,16 @@ TEST_F(TpmUtilityTest, ReadPCRBadReturn) {
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ReadPCR(1, &pcr_value));
 }
 
+TEST_F(TpmUtilityTest, GetKeyPublicAreaFailureEmptyData) {
+  TPM_HANDLE key_handle = 42;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(kEmptyTpm2bPublic), Return(TPM_RC_SUCCESS)));
+  TPMT_PUBLIC tpmt_public;
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.GetKeyPublicArea(key_handle, &tpmt_public));
+}
+
 TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
   TPM_HANDLE key_handle = 42;
   std::string plaintext;
@@ -602,7 +631,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
   std::string ciphertext;
   TPM2B_PUBLIC_KEY_RSA out_message =
       Make_TPM2B_PUBLIC_KEY_RSA(output_ciphertext);
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -624,7 +653,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
   TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string ciphertext;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -643,7 +672,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
   TPM_HANDLE key_handle = TPM_RH_FIRST;
   std::string plaintext;
   std::string ciphertext;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt | kRestricted;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, nullptr))
@@ -661,7 +690,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
   std::string ciphertext;
   TPM2B_PUBLIC_KEY_RSA out_message =
       Make_TPM2B_PUBLIC_KEY_RSA(output_ciphertext);
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -687,7 +716,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
   std::string ciphertext;
   TPM2B_PUBLIC_KEY_RSA out_message =
       Make_TPM2B_PUBLIC_KEY_RSA(output_ciphertext);
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -713,7 +742,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
   std::string password("password");
   TPM2B_PUBLIC_KEY_RSA out_message =
       Make_TPM2B_PUBLIC_KEY_RSA(output_plaintext);
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -737,7 +766,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
   std::string plaintext;
   std::string ciphertext;
   std::string password;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -757,7 +786,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
   TPM_HANDLE key_handle = TPM_RH_FIRST;
   std::string plaintext;
   std::string ciphertext;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt | kRestricted;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
@@ -788,7 +817,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptNullHashAlgorithmForward) {
   std::string password;
   TPM2B_PUBLIC_KEY_RSA out_message =
       Make_TPM2B_PUBLIC_KEY_RSA(output_plaintext);
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -816,7 +845,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
   std::string password;
   TPM2B_PUBLIC_KEY_RSA out_message =
       Make_TPM2B_PUBLIC_KEY_RSA(output_plaintext);
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   public_area.public_area.auth_policy.size = 0;
@@ -848,7 +877,7 @@ TEST_F(TpmUtilityTest, SignRsaSuccess) {
                                   &mock_authorization_delegate_))
       .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
 
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
   public_area.public_area.auth_policy.size = 0;
@@ -878,7 +907,7 @@ TEST_F(TpmUtilityTest, SignEcdsaSuccess) {
                                   &mock_authorization_delegate_))
       .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
 
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_ECC;
   public_area.public_area.object_attributes = kSign;
   public_area.public_area.auth_policy.size = 0;
@@ -904,7 +933,7 @@ TEST_F(TpmUtilityTest, SignFail) {
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
   public_area.public_area.auth_policy.size = 0;
@@ -933,7 +962,7 @@ TEST_F(TpmUtilityTest, SignInputLength) {
       .WillRepeatedly(
           DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
 
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
   public_area.public_area.auth_policy.size = 0;
@@ -967,7 +996,7 @@ TEST_F(TpmUtilityTest, SignBadWithRestrictedKey) {
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign | kRestricted;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
@@ -994,7 +1023,7 @@ TEST_F(TpmUtilityTest, SignBadWithNonSigningKey) {
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
@@ -1011,7 +1040,7 @@ TEST_F(TpmUtilityTest, SignBadSchemeTypeNotMatchedWithKeyType) {
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.object_attributes = kSign;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(
@@ -1041,7 +1070,7 @@ TEST_F(TpmUtilityTest, SignBadWithBadKeyHandle) {
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
@@ -1071,7 +1100,7 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -1098,7 +1127,7 @@ TEST_F(TpmUtilityTest, SignRSASSAWithNullAlgorithm) {
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -1125,7 +1154,7 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -1178,7 +1207,7 @@ TEST_F(TpmUtilityTest, ChangeAuthDataSuccess) {
   TPM_HANDLE key_handle = 1;
   std::string new_password;
   std::string key_blob;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.auth_policy.size = 0;
   public_area.public_area.unique.rsa.size = 0;
@@ -1215,7 +1244,7 @@ TEST_F(TpmUtilityTest, ChangeAuthDataParserFail) {
   TPM_HANDLE key_handle = 1;
   std::string new_password;
   std::string key_blob;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.auth_policy.size = 0;
   public_area.public_area.unique.rsa.size = 0;
@@ -1237,7 +1266,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
   std::string password("password");
   std::string key_blob;
   TPM2B_DATA encryption_key;
-  TPM2B_PUBLIC public_data;
+  TPM2B_PUBLIC public_data = kTpm2bPublic;
   TPM2B_PRIVATE private_data;
   EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&encryption_key), SaveArg<3>(&public_data),
@@ -1324,7 +1353,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeyParserFail) {
 
 TEST_F(TpmUtilityTest, ImportEccKeySuccess) {
   TPM2B_DATA encryption_key;
-  TPM2B_PUBLIC public_data;
+  TPM2B_PUBLIC public_data = kTpm2bPublic;
   TPM2B_PRIVATE private_data;
   EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&encryption_key), SaveArg<3>(&public_data),
@@ -1375,7 +1404,7 @@ TEST_F(TpmUtilityTest, ImportEccKeySuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPML_PCR_SELECTION creation_pcrs;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
@@ -1405,7 +1434,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairMultiplePCRSuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPML_PCR_SELECTION creation_pcrs;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
@@ -1441,7 +1470,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairMultiplePCRSuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
@@ -1458,7 +1487,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPM2B_SENSITIVE_CREATE sensitive_create;
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
@@ -1497,7 +1526,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccessNoPaddingOnlyAlg) {
   // Unknown vendor - no padding-only alg support expected for TPM.
   uint32_t vendor_id = 0xaabbccdd;
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
       .WillOnce(DoAll(SetArgPointee<1>(vendor_id), Return(true)));
@@ -1571,7 +1600,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairCreationParserFail) {
 }
 
 TEST_F(TpmUtilityTest, CreateECCKeyPairSuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   TPM2B_SENSITIVE_CREATE sensitive_create;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
@@ -1629,7 +1658,7 @@ TEST_F(TpmUtilityTest, CreateECCKeyPairMultiplePCRSuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateECCKeyPairDecryptKeySuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
@@ -1653,7 +1682,7 @@ TEST_F(TpmUtilityTest, CreateECCKeyPairDecryptKeySuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateECCKeyPairSignKeySuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
@@ -1677,7 +1706,7 @@ TEST_F(TpmUtilityTest, CreateECCKeyPairSignKeySuccess) {
 }
 
 TEST_F(TpmUtilityTest, CreateECCKeyPairWithPolicyAuthSuccess) {
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
@@ -1801,8 +1830,7 @@ TEST_F(TpmUtilityTest, LoadECPublicKey) {
 
   TPM2B_SENSITIVE in_private_arg;
   memset(&in_private_arg, 0, sizeof(TPM2B_SENSITIVE));
-  TPM2B_PUBLIC in_public_arg;
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  TPM2B_PUBLIC in_public_arg = kTpm2bPublic;
   TPMI_RH_HIERARCHY hierarchy_arg = 0;
   TPM_HANDLE loaded_handle = 0;
 
@@ -1841,8 +1869,7 @@ TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
 
   TPM2B_SENSITIVE in_private_arg;
   memset(&in_private_arg, 0, sizeof(TPM2B_SENSITIVE));
-  TPM2B_PUBLIC in_public_arg;
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  TPM2B_PUBLIC in_public_arg = kTpm2bPublic;
   TPMI_RH_HIERARCHY hierarchy_arg = 0;
   TPM_HANDLE loaded_handle = 0;
 
@@ -1875,7 +1902,7 @@ TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
   EXPECT_EQ(kKeyHandle, loaded_handle);
 
   // Test a signing SHA-256 key with the default (RSASSA) scheme.
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  in_public_arg = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_,
               LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
@@ -1893,7 +1920,7 @@ TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
                                 .scheme.details.rsassa.hash_alg);
 
   // Test a signing RSAPSS SHA-512 key.
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  in_public_arg = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_,
               LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
@@ -1911,7 +1938,7 @@ TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
                                 .scheme.details.rsapss.hash_alg);
 
   // Test a decrypting OAEP SHA-256 key.
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  in_public_arg = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_,
               LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
@@ -1929,7 +1956,7 @@ TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
                                 .scheme.details.oaep.hash_alg);
 
   // Test a decrypting SHA-256 key with the default (OAEP) scheme.
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  in_public_arg = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_,
               LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
@@ -1963,7 +1990,7 @@ TEST_F(TpmUtilityTest, LoadRSAPublicKey) {
             in_public_arg.public_area.parameters.rsa_detail.scheme.scheme);
 
   // Test a key that is both for decrypting and signing.
-  memset(&in_public_arg, 0, sizeof(TPM2B_PUBLIC));
+  in_public_arg = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_,
               LoadExternalSync(_, _, _, _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&in_public_arg), Return(TPM_RC_SUCCESS)));
@@ -1983,7 +2010,7 @@ TEST_F(TpmUtilityTest, SealedDataSuccess) {
   std::string data_to_seal("seal_data");
   std::string sealed_data;
   TPM2B_SENSITIVE_CREATE sensitive_create;
-  TPM2B_PUBLIC in_public;
+  TPM2B_PUBLIC in_public = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_,
               CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&in_public),
@@ -2031,7 +2058,7 @@ TEST_F(TpmUtilityTest, UnsealDataSuccess) {
   std::string tpm_unsealed_data("password");
   std::string unsealed_data;
   TPM_HANDLE object_handle = 42;
-  TPM2B_PUBLIC public_data;
+  TPM2B_PUBLIC public_data = kTpm2bPublic;
   public_data.public_area.type = TPM_ALG_RSA;
   public_data.public_area.object_attributes = kDecrypt;
   public_data.public_area.auth_policy.size = 0;
@@ -2652,7 +2679,7 @@ TEST_F(TpmUtilityTest, SetKnownPasswordFailure) {
 TEST_F(TpmUtilityTest, RootKeysRsaSuccess) {
   EXPECT_CALL(mock_tpm_cache_, GetBestSupportedKeyType())
       .WillOnce(Return(TPM_ALG_RSA));
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SaveArg<1>(&public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
@@ -2662,7 +2689,7 @@ TEST_F(TpmUtilityTest, RootKeysRsaSuccess) {
 TEST_F(TpmUtilityTest, RootKeysEccSuccess) {
   EXPECT_CALL(mock_tpm_cache_, GetBestSupportedKeyType())
       .WillOnce(Return(TPM_ALG_ECC));
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SaveArg<1>(&public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
@@ -2707,7 +2734,7 @@ TEST_F(TpmUtilityTest, RootKeysAlreadyExist) {
 TEST_F(TpmUtilityTest, SaltingKeyRsaSuccess) {
   EXPECT_CALL(mock_tpm_cache_, GetBestSupportedKeyType())
       .WillOnce(Return(TPM_ALG_RSA));
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
@@ -2718,7 +2745,7 @@ TEST_F(TpmUtilityTest, SaltingKeyRsaSuccess) {
 TEST_F(TpmUtilityTest, SaltingKeyEccSuccess) {
   EXPECT_CALL(mock_tpm_cache_, GetBestSupportedKeyType())
       .WillOnce(Return(TPM_ALG_ECC));
-  TPM2B_PUBLIC public_area;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));

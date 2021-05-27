@@ -1314,12 +1314,17 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
   TPM2B_PUBLIC public_area;
   TPM2B_NAME qualified_name;
   std::string handle_name;  // Unused
-  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(
+  TPM_RC result = factory_.GetTpm()->ReadPublicSync(
       handle, handle_name, &public_area, &out_name, &qualified_name, nullptr);
-  if (return_code) {
+  if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error getting public area for object: " << handle;
-    return return_code;
+    return result;
+  }
+  if (!public_area.size) {
+    LOG(ERROR) << __func__
+               << ": Error reading key public information - empty data";
+    return TPM_RC_FAILURE;
   }
   *public_data = public_area.public_area;
   return TPM_RC_SUCCESS;
