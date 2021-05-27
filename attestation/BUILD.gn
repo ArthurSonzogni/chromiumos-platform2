@@ -180,6 +180,7 @@ source_set("server_library") {
     ":local_proto_include",
   ]
   deps = [
+    ":pca-agent-proxies",
     ":proto_library",
     ":proto_library_proto",
   ]
@@ -239,6 +240,7 @@ source_set("pca_agent_server_library") {
     "pca_agent/server/pca_request.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":pca-agent-adaptors" ]
 }
 
 executable("pca_agentd") {
