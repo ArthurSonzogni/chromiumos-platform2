@@ -5,9 +5,11 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
@@ -72,6 +74,14 @@ class TestVerifierImpl : public testing::Test {
     return result.value();
   }
 
+  // Sets model names to the given value.
+  void SetModel(const std::string& val) {
+    if (cros_config_) {
+      cros_config_->SetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
+                              val);
+    }
+  }
+
   void TestVerifySuccWithSampleData(const std::string& probe_result_sample_name,
                                     const std::string& spec_sample_name,
                                     const std::string& report_sample_name) {
@@ -83,6 +93,10 @@ class TestVerifierImpl : public testing::Test {
         GetSampleDataPath().Append(report_sample_name + kPrototxtExtension));
 
     VerifierImpl verifier;
+    auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
+    cros_config_ = cros_config.get();
+    verifier.SetCrosConfigForTesting(std::move(cros_config));
+    SetModel("");
     const auto& actual_hw_verification_report =
         verifier.Verify(probe_result, hw_verification_spec);
     EXPECT_TRUE(actual_hw_verification_report);
@@ -98,6 +112,10 @@ class TestVerifierImpl : public testing::Test {
         GetSampleDataPath().Append(spec_sample_name + kPrototxtExtension));
 
     VerifierImpl verifier;
+    auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
+    cros_config_ = cros_config.get();
+    verifier.SetCrosConfigForTesting(std::move(cros_config));
+    SetModel("");
     EXPECT_FALSE(verifier.Verify(probe_result, hw_verification_spec));
   }
 
@@ -106,6 +124,7 @@ class TestVerifierImpl : public testing::Test {
   }
 
  private:
+  brillo::FakeCrosConfig* cros_config_;
   std::unique_ptr<ProbeResultGetter> pr_getter_;
   std::unique_ptr<HwVerificationSpecGetter> vs_getter_;
   MessageDifferencer hw_verification_report_differencer_;

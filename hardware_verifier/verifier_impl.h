@@ -8,12 +8,17 @@
 
 #include "hardware_verifier/verifier.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <google/protobuf/descriptor.h>
 
 namespace hardware_verifier {
+
+constexpr auto kCrosConfigModelNamePath = "/";
+constexpr auto kCrosConfigModelNameKey = "name";
 
 class VerifierImpl : public Verifier {
  public:
@@ -22,6 +27,9 @@ class VerifierImpl : public Verifier {
   base::Optional<HwVerificationReport> Verify(
       const runtime_probe::ProbeResult& probe_result,
       const HwVerificationSpec& hw_verification_spec) const override;
+
+  void SetCrosConfigForTesting(
+      std::unique_ptr<brillo::CrosConfigInterface> cros_config);
 
  private:
   struct CompCategoryInfo {
@@ -47,9 +55,13 @@ class VerifierImpl : public Verifier {
     const google::protobuf::FieldDescriptor* report_comp_values_field;
   };
 
+  std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
+
   // An array that records each component category's related info like enum
   // value and name.
   std::vector<CompCategoryInfo> comp_category_infos_;
+
+  std::string GetModelName() const;
 };
 
 }  // namespace hardware_verifier

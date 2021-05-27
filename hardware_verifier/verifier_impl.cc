@@ -6,6 +6,7 @@
 #include "hardware_verifier/verifier_impl.h"
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -13,6 +14,9 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <base/strings/string_util.h>
+#include <base/system/sys_info.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 
 namespace hardware_verifier {
 
@@ -35,9 +39,19 @@ void AddFoundComponentInfo(
   }
 }
 
+bool IsModelComponent(const ComponentInfo& comp_info,
+                      const std::string& model_name) {
+  if (model_name.length() == 0)
+    return true;
+  return base::StartsWith(comp_info.component_uuid(), model_name + "_");
+}
+
 }  // namespace
 
 VerifierImpl::VerifierImpl() {
+  auto config = std::make_unique<brillo::CrosConfig>();
+  CHECK(config->Init());
+  cros_config_ = std::move(config);
   using CppType = google::protobuf::FieldDescriptor::CppType;
   constexpr int kCppTypeMsg = CppType::CPPTYPE_MESSAGE;
   constexpr int kCppTypeStr = CppType::CPPTYPE_STRING;
@@ -110,7 +124,10 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
   // A dictionary which maps (component_category, component_uuid) to its
   // qualification status.
   std::map<int, std::map<std::string, QualificationStatus>> qual_status_dict;
+  const auto model_name = GetModelName();
   for (const auto& comp_info : hw_verification_spec.component_infos()) {
+    if (!IsModelComponent(comp_info, model_name))
+      continue;
     const auto& category = comp_info.component_category();
     const auto& uuid = comp_info.component_uuid();
     const auto& qualification_status = comp_info.qualification_status();
@@ -232,6 +249,23 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
 
   // TODO(yhong): Implement the SKU specific checks.
   return hw_verification_report;
+}
+
+void VerifierImpl::SetCrosConfigForTesting(
+    std::unique_ptr<brillo::CrosConfigInterface> cros_config) {
+  cros_config_ = std::move(cros_config);
+}
+
+std::string VerifierImpl::GetModelName() const {
+  std::string model_name;
+
+  if (cros_config_ &&
+      cros_config_->GetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
+                              &model_name))
+    return model_name;
+
+  // Fallback to sys_info.
+  return base::SysInfo::GetLsbReleaseBoard();
 }
 
 }  // namespace hardware_verifier
