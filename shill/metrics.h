@@ -282,6 +282,24 @@ class Metrics : public DefaultServiceObserver {
     kCellularDropTechnologyMax
   };
 
+  // These values are persisted to logs for
+  // Network.Shill.Cellular.ConnectResult. CellularConnectResult entries should
+  // not be renumbered and numeric values should never be reused.
+  enum class CellularConnectResult {
+    kCellularConnectResultSuccess = 0,
+    kCellularConnectResultUnknown = 1,
+    kCellularConnectResultWrongState = 2,
+    kCellularConnectResultOperationFailed = 3,
+    kCellularConnectResultAlreadyConnected = 4,
+    kCellularConnectResultNotRegistered = 5,
+    kCellularConnectResultNotOnHomeNetwork = 6,
+    kCellularConnectResultIncorrectPin = 7,
+    kCellularConnectResultPinRequired = 8,
+    kCellularConnectResultPinBlocked = 9,
+    kCellularConnectResultInvalidApn = 10,
+    kCellularConnectResultMax
+  };
+
   enum CellularOutOfCreditsReason {
     kCellularOutOfCreditsReasonConnectDisconnectLoop = 0,
     kCellularOutOfCreditsReasonTxCongested = 1,
@@ -758,6 +776,7 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricCellularDropsPerHourMax;
   static const int kMetricCellularDropsPerHourMin;
   static const int kMetricCellularDropsPerHourNumBuckets;
+  static const char kMetricCellularConnectResult[];
   static const char kMetricCellularOutOfCreditsReason[];
   static const char kMetricCellularSignalStrengthBeforeDrop[];
   static const int kMetricCellularSignalStrengthBeforeDropMax;
@@ -1097,6 +1116,9 @@ class Metrics : public DefaultServiceObserver {
   // network.
   void NotifyCellularDeviceDrop(const std::string& network_technology,
                                 uint16_t signal_strength);
+
+  // Notifies this object of the resulting status of a cellular connection
+  void NotifyCellularConnectionResult(Error::Type error);
 
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();

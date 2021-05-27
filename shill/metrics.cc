@@ -349,6 +349,8 @@ const int Metrics::kMetricCellularAutoConnectTotalTimeMax =
 const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 1;
 const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 const char Metrics::kMetricCellularDrop[] = "Network.Shill.Cellular.Drop";
+const char Metrics::kMetricCellularConnectResult[] =
+    "Network.Shill.Cellular.ConnectResult";
 
 const char Metrics::kMetricCellularOutOfCreditsReason[] =
     "Network.Shill.Cellular.OutOfCreditsReason";
@@ -1521,6 +1523,58 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
             kMetricCellularSignalStrengthBeforeDropMin,
             kMetricCellularSignalStrengthBeforeDropMax,
             kMetricCellularSignalStrengthBeforeDropNumBuckets);
+}
+
+void Metrics::NotifyCellularConnectionResult(Error::Type error) {
+  SLOG(this, 2) << __func__ << ": " << error;
+
+  CellularConnectResult connect_result;
+
+  switch (error) {
+    case Error::kSuccess:
+      connect_result = CellularConnectResult::kCellularConnectResultSuccess;
+      break;
+    case Error::kWrongState:
+      connect_result = CellularConnectResult::kCellularConnectResultWrongState;
+      break;
+    case Error::kOperationFailed:
+      connect_result =
+          CellularConnectResult::kCellularConnectResultOperationFailed;
+      break;
+    case Error::kAlreadyConnected:
+      connect_result =
+          CellularConnectResult::kCellularConnectResultAlreadyConnected;
+      break;
+    case Error::kNotRegistered:
+      connect_result =
+          CellularConnectResult::kCellularConnectResultNotRegistered;
+      break;
+    case Error::kNotOnHomeNetwork:
+      connect_result =
+          CellularConnectResult::kCellularConnectResultNotOnHomeNetwork;
+      break;
+    case Error::kIncorrectPin:
+      connect_result =
+          CellularConnectResult::kCellularConnectResultIncorrectPin;
+      break;
+    case Error::kPinRequired:
+      connect_result = CellularConnectResult::kCellularConnectResultPinRequired;
+      break;
+    case Error::kPinBlocked:
+      connect_result = CellularConnectResult::kCellularConnectResultPinBlocked;
+      break;
+    case Error::kInvalidApn:
+      connect_result = CellularConnectResult::kCellularConnectResultInvalidApn;
+      break;
+    default:
+      connect_result = CellularConnectResult::kCellularConnectResultUnknown;
+      LOG(WARNING) << "Unexpected error type: " << error;
+      break;
+  }
+
+  SendEnumToUMA(
+      kMetricCellularConnectResult, static_cast<int>(connect_result),
+      static_cast<int>(CellularConnectResult::kCellularConnectResultMax));
 }
 
 void Metrics::NotifyCellularOutOfCredits(

@@ -1079,18 +1079,21 @@ void Cellular::Connect(CellularService* service, Error* error) {
   if (!capability_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Modem not available.");
+    metrics()->NotifyCellularConnectionResult(error->type());
     return;
   }
 
   if (inhibited_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           "Connect Failed: Inhibited.");
+    metrics()->NotifyCellularConnectionResult(error->type());
     return;
   }
 
   if (!connect_pending_iccid_.empty() &&
       connect_pending_iccid_ == service->iccid()) {
     LOG(WARNING) << "Connect already pending.";
+    metrics()->NotifyCellularConnectionResult(Error::kWrongState);
     return;
   }
 
@@ -1117,6 +1120,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     } else {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "Connect Failed: ICCID not available.");
+      metrics()->NotifyCellularConnectionResult(error->type());
     }
     return;
   }
@@ -1124,23 +1128,27 @@ void Cellular::Connect(CellularService* service, Error* error) {
   if (capability_state_ != CapabilityState::kModemStarted) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Connect Failed: Modem not started.");
+    metrics()->NotifyCellularConnectionResult(error->type());
     return;
   }
 
   if (StateIsConnected()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
+    metrics()->NotifyCellularConnectionResult(error->type());
     return;
   } else if (state_ != kStateRegistered) {
     LOG(ERROR) << "Connect attempted while state = " << GetStateString(state_);
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
                           "Connect Failed: Modem not registered.");
+    metrics()->NotifyCellularConnectionResult(error->type());
     return;
   }
 
   if (service->IsRoamingRuleViolated()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
                           "Connect Failed: Roaming disallowed.");
+    metrics()->NotifyCellularConnectionResult(error->type());
     return;
   }
 
@@ -1159,6 +1167,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
 // Note that there's no ResultCallback argument to this since Connect() isn't
 // yet passed one.
 void Cellular::OnConnectReply(std::string iccid, const Error& error) {
+  metrics()->NotifyCellularConnectionResult(error.type());
   if (!error.IsSuccess()) {
     LOG(WARNING) << __func__ << ": Failed: " << error;
     if (service_ && service_->iccid() == iccid)

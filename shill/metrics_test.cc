@@ -633,6 +633,32 @@ TEST_F(MetricsTest, CellularDrop) {
   }
 }
 
+TEST_F(MetricsTest, NotifyCellularConnectionResult_Valid) {
+  Error::Type error = Error::Type::kOperationFailed;
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricCellularConnectResult,
+          static_cast<int>(Metrics::CellularConnectResult::
+                               kCellularConnectResultOperationFailed),
+          static_cast<int>(
+              Metrics::CellularConnectResult::kCellularConnectResultMax)));
+  metrics_.NotifyCellularConnectionResult(error);
+}
+
+TEST_F(MetricsTest, NotifyCellularConnectionResult_Unknown) {
+  Error::Type invalid_error = Error::Type::kNumErrors;
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricCellularConnectResult,
+          static_cast<int>(
+              Metrics::CellularConnectResult::kCellularConnectResultUnknown),
+          static_cast<int>(
+              Metrics::CellularConnectResult::kCellularConnectResultMax)));
+  metrics_.NotifyCellularConnectionResult(invalid_error);
+}
+
 TEST_F(MetricsTest, CellularOutOfCreditsReason) {
   EXPECT_CALL(
       library_,
