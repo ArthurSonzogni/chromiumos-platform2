@@ -11,6 +11,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "arc/vm/sensor_service/sensor_data_forwarder.h"
 #include "arc/vm/sensor_service/sensor_service.mojom.h"
 
 namespace arc {
@@ -36,15 +37,11 @@ class SensorDeviceImpl : public mojom::SensorDevice {
   void OpenBuffer(OpenBufferCallback callback) override;
 
  private:
-  // Forwards data read from device_fd_ to pipe_write_end_.
-  void OnDeviceFdReadReady();
-
   const base::FilePath iio_sysfs_dir_;
   const base::FilePath device_file_;
   mojo::ReceiverSet<mojom::SensorDevice> receivers_;
 
-  base::ScopedFD device_fd_, pipe_write_end_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> device_fd_watcher_;
+  std::unique_ptr<SensorDataForwarder> data_forwarder_;
 };
 
 }  // namespace arc

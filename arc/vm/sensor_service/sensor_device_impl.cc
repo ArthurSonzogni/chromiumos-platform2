@@ -102,36 +102,16 @@ void SensorDeviceImpl::OpenBuffer(OpenBufferCallback callback) {
   // The device file cannot cross the VM boundary. Instead, we return a pipe
   // from this method.
   // Data read from the device file will be forwarded to the pipe.
-  device_fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      device_fd.get(),
-      base::BindRepeating(&SensorDeviceImpl::OnDeviceFdReadReady,
-                          base::Unretained(this)));
-  device_fd_ = std::move(device_fd);
-  pipe_write_end_ = std::move(pipe_write_end);
-  // Return the pipe read end to the caller.
-  std::move(callback).Run(mojo::WrapPlatformFile(std::move(pipe_read_end)));
-}
-
-void SensorDeviceImpl::OnDeviceFdReadReady() {
-  char buf[4096];
-  ssize_t read_size = HANDLE_EINTR(read(device_fd_.get(), buf, sizeof(buf)));
-  if (read_size < 0) {
-    PLOG(ERROR) << "read failed.";
-    device_fd_watcher_.reset();
-    pipe_write_end_.reset();
+  auto data_forwarder = std::make_unique<SensorDataForwarder>(
+      std::move(device_fd), std::move(pipe_write_end));
+  if (!data_forwarder->Init()) {
+    LOG(ERROR) << "Failed to initialize data forwarder.";
+    std::move(callback).Run({});
     return;
   }
-  for (ssize_t written = 0; written < read_size;) {
-    ssize_t r = HANDLE_EINTR(
-        write(pipe_write_end_.get(), buf + written, read_size - written));
-    if (r < 0) {
-      PLOG(ERROR) << "write failed.";
-      device_fd_watcher_.reset();
-      pipe_write_end_.reset();
-      return;
-    }
-    written += r;
-  }
+  data_forwarder_ = std::move(data_forwarder);
+  // Return the pipe read end to the caller.
+  std::move(callback).Run(mojo::WrapPlatformFile(std::move(pipe_read_end)));
 }
 
 }  // namespace arc
