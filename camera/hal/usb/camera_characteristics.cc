@@ -127,7 +127,7 @@ void SetEntry(const std::string& key,
   } else if (IsUsbV1Key(key)) {
     VLOGF(1) << "Ignored v1 key: " << key << " value: " << value;
   } else {
-    LOGF(ERROR) << "Unknown key: " << key << " value: " << value;
+    LOGF(FATAL) << "Unknown key: " << key << " value: " << value;
   }
 }
 
