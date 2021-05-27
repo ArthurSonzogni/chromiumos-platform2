@@ -38,12 +38,20 @@ TPM_RC TpmCacheImpl::GetSaltingKeyPublicArea(TPMT_PUBLIC* public_area) {
       &unused_out_name, &unused_qualified_name,
       nullptr /* authorization_delegate */);
 
-  if (result == TPM_RC_SUCCESS) {
-    salting_key_pub_area_ = public_data.public_area;
-    *public_area = *salting_key_pub_area_;
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get public area for salting key";
+    return result;
   }
 
-  return result;
+  if (!public_data.size) {
+    LOG(ERROR) << __func__
+               << ": Failed to read public information - empty data";
+    return TPM_RC_FAILURE;
+  }
+  salting_key_pub_area_ = public_data.public_area;
+  *public_area = *salting_key_pub_area_;
+
+  return TPM_RC_SUCCESS;
 }
 
 TPM_ALG_ID TpmCacheImpl::GetBestSupportedKeyType() {

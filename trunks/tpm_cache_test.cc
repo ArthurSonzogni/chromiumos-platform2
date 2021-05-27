@@ -42,7 +42,9 @@ TEST_F(TpmCacheTest, GetSaltingKeyPublicAreaSuccess) {
   expected_pub_area.name_alg = TPM_ALG_SHA256;
 
   TPM2B_PUBLIC expected_pub_data;
+  memset(&expected_pub_data, 0, sizeof(TPM2B_PUBLIC));
   expected_pub_data.public_area = expected_pub_area;
+  expected_pub_data.size = sizeof(TPMT_PUBLIC);
 
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
       .WillOnce(
@@ -62,6 +64,18 @@ TEST_F(TpmCacheTest, GetSaltingKeyPublicAreaSuccess) {
             TPM_RC_SUCCESS);
   EXPECT_EQ(actual_pub_area.type, expected_pub_area.type);
   EXPECT_EQ(actual_pub_area.name_alg, expected_pub_area.name_alg);
+}
+
+TEST_F(TpmCacheTest, GetSaltingKeyPublicAreaEmptyResult) {
+  TPM2B_PUBLIC empty_pub_data;
+  empty_pub_data.size = 0;
+
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(empty_pub_data), Return(TPM_RC_SUCCESS)));
+
+  TPMT_PUBLIC pub_area;
+  EXPECT_EQ(tpm_cache_impl_.GetSaltingKeyPublicArea(&pub_area), TPM_RC_FAILURE);
 }
 
 TEST_F(TpmCacheTest, GetSaltingKeyPublicAreaBadInput) {
