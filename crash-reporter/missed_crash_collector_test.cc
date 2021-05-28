@@ -15,15 +15,8 @@
 #include "crash-reporter/test_util.h"
 
 using ::testing::HasSubstr;
-using ::testing::Return;
 
 namespace {
-
-class MissedCrashCollectorMock : public MissedCrashCollector {
- public:
-  MissedCrashCollectorMock() : MissedCrashCollector() {}
-  MOCK_METHOD(void, SetUpDBus, (), (override));
-};
 
 void RunTestWithLogContents(base::StringPiece log_contents) {
   base::ScopedTempDir tmp_dir;
@@ -35,8 +28,7 @@ void RunTestWithLogContents(base::StringPiece log_contents) {
   base::ScopedFILE input_file(fopen(input.value().c_str(), "r"));
   ASSERT_TRUE(input_file.get());
 
-  MissedCrashCollectorMock collector;
-  EXPECT_CALL(collector, SetUpDBus()).WillRepeatedly(Return());
+  MissedCrashCollector collector;
   collector.set_crash_directory_for_test(tmp_dir.GetPath());
   collector.set_input_file_for_testing(input_file.get());
   collector.Initialize(false /*early*/);
