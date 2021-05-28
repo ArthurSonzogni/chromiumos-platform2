@@ -14,7 +14,6 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
@@ -138,117 +137,9 @@ class CryptoTest : public ::testing::Test {
     return false;
   }
 
-  // The test wants to confirm that the unwrapped keys don't show up in the
-  // wrapped keys. This merges them all into one blob to search through.
-  static void MergeBlobs(const WrappedKeyMaterial& wrapped_key_material,
-                         SecureBlob* blob) {
-    brillo::SecureBlob final_blob;
-    if (wrapped_key_material.vkk_iv.has_value()) {
-      final_blob.insert(final_blob.begin(),
-                        wrapped_key_material.vkk_iv->begin(),
-                        wrapped_key_material.vkk_iv->end());
-    }
-    if (wrapped_key_material.wrapped_keyset.has_value()) {
-      final_blob.insert(final_blob.begin(),
-                        wrapped_key_material.wrapped_keyset->begin(),
-                        wrapped_key_material.wrapped_keyset->end());
-    }
-    if (wrapped_key_material.chaps_iv.has_value()) {
-      final_blob.insert(final_blob.begin(),
-                        wrapped_key_material.chaps_iv->begin(),
-                        wrapped_key_material.chaps_iv->end());
-    }
-    if (wrapped_key_material.wrapped_chaps_key.has_value()) {
-      final_blob.insert(final_blob.begin(),
-                        wrapped_key_material.wrapped_chaps_key->begin(),
-                        wrapped_key_material.wrapped_chaps_key->end());
-    }
-    if (wrapped_key_material.reset_iv.has_value()) {
-      final_blob.insert(final_blob.begin(),
-                        wrapped_key_material.reset_iv->begin(),
-                        wrapped_key_material.reset_iv->end());
-    }
-    if (wrapped_key_material.wrapped_reset_seed.has_value()) {
-      final_blob.insert(final_blob.begin(),
-                        wrapped_key_material.wrapped_reset_seed->begin(),
-                        wrapped_key_material.wrapped_reset_seed->end());
-    }
-
-    blob->swap(final_blob);
-  }
-
  protected:
   MockPlatform platform_;
 };
-
-TEST_F(CryptoTest, EncryptionTest) {
-  // Check that EncryptVaultKeyset returns something other than the bytes passed
-  Crypto crypto(&platform_);
-
-  VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
-
-  SecureBlob key(20);
-  GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-
-  AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(
-      vault_keyset, key, salt, "", &auth_block_state, &wrapped_key_material));
-
-  SecureBlob original;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original));
-  SecureBlob encrypted;
-  MergeBlobs(wrapped_key_material, &encrypted);
-
-  ASSERT_GT(encrypted.size(), 0);
-  ASSERT_FALSE(CryptoTest::FindBlobInBlob(encrypted, original));
-}
-
-TEST_F(CryptoTest, DecryptionTest) {
-  // Check that DecryptVaultKeyset returns the original keyset
-  MockPlatform platform;
-  Crypto crypto(&platform);
-
-  VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
-
-  SecureBlob key(20);
-  GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-  vault_keyset.salt_ = salt;
-
-  AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(
-      vault_keyset, key, salt, "", &auth_block_state, &wrapped_key_material));
-  SecureBlob encrypted;
-  MergeBlobs(wrapped_key_material, &encrypted);
-
-  // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
-  // modified to take a key material and an auth block state.
-  vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
-  vault_keyset.SetAuthBlockState(auth_block_state);
-
-  SecureBlob original_data;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
-
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
-                                        false /* locked_to_single_user */,
-                                        nullptr, &crypto_error));
-
-  SecureBlob new_data;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
-
-  EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
-}
 
 TEST_F(CryptoTest, SaltCreateTest) {
   MockPlatform platform;
@@ -345,18 +236,13 @@ TEST_F(CryptoTest, TpmStepTest) {
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(
-      vault_keyset, key, salt, "", &auth_block_state, &wrapped_key_material));
-  SecureBlob encrypted;
-  MergeBlobs(wrapped_key_material, &encrypted);
+  ASSERT_TRUE(
+      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
-  vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
@@ -365,9 +251,8 @@ TEST_F(CryptoTest, TpmStepTest) {
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
-                                        false /* locked_to_single_user */,
-                                        &crypt_flags, &crypto_error));
+  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
+      key, false /* locked_to_single_user */, &crypto_error));
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
@@ -377,6 +262,7 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   // Check that the keyset was indeed wrapped by the TPM, and the
   // keys were derived using scrypt.
+  unsigned int crypt_flags = vault_keyset.flags_;
   EXPECT_EQ(0, (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED));
   EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
             (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
@@ -423,18 +309,13 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(
-      vault_keyset, key, salt, "", &auth_block_state, &wrapped_key_material));
-  SecureBlob encrypted;
-  MergeBlobs(wrapped_key_material, &encrypted);
+  ASSERT_TRUE(
+      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
-  vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
@@ -443,9 +324,8 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
-                                        false /* locked_to_single_user */,
-                                        &crypt_flags, &crypto_error));
+  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
+      key, false /* locked_to_single_user */, &crypto_error));
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
@@ -455,6 +335,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 
   // Check that the keyset was indeed wrapped by the TPM, and the
   // keys were derived using scrypt.
+  unsigned int crypt_flags = vault_keyset.flags_;
   EXPECT_EQ(0, (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED));
   EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
             (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
@@ -495,27 +376,21 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(
-      vault_keyset, key, salt, "", &auth_block_state, &wrapped_key_material));
-  SecureBlob encrypted;
-  MergeBlobs(wrapped_key_material, &encrypted);
+  ASSERT_TRUE(
+      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
-  vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
-  unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   // UnsealWithAuthorization operation will fail.
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(Return(Tpm::kTpmRetryFatal));
 
-  ASSERT_FALSE(crypto.DecryptVaultKeyset(&vault_keyset, key,
-                                         false /* locked_to_single_user */,
-                                         &crypt_flags, &crypto_error));
+  ASSERT_FALSE(vault_keyset.DecryptVaultKeyset(
+      key, false /* locked_to_single_user */, &crypto_error));
   ASSERT_NE(CryptoError::CE_NONE, crypto_error);
 }
 
@@ -535,25 +410,19 @@ TEST_F(CryptoTest, ScryptStepTest) {
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  ASSERT_TRUE(crypto.EncryptVaultKeyset(
-      vault_keyset, key, salt, "", &auth_block_state, &wrapped_key_material));
-  SecureBlob encrypted;
-  MergeBlobs(wrapped_key_material, &encrypted);
+  ASSERT_TRUE(
+      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
-  vault_keyset.SetWrappedKeyMaterial(wrapped_key_material);
   vault_keyset.SetAuthBlockState(auth_block_state);
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
 
-  unsigned int crypt_flags = 0;
   CryptoError crypto_error = CryptoError::CE_NONE;
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(&vault_keyset, key,
-                                        false /* locked_to_single_user */,
-                                        &crypt_flags, &crypto_error));
+  ASSERT_TRUE(vault_keyset.DecryptVaultKeyset(
+      key, false /* locked_to_single_user */, &crypto_error));
 
   SecureBlob new_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
@@ -699,146 +568,6 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   // Tpm failing to unseal a valid key.
   EXPECT_CALL(tpm, Unseal(sealed_key, _)).WillOnce(Return(false));
   EXPECT_FALSE(crypto.DecryptWithTpm(encrypted_data, &output_blob));
-}
-
-namespace {
-constexpr char kHexHeSecret[] =
-    "F3D9D5B126C36676689E18BB8517D95DF4F30947E71D4A840824425760B1D3FA";
-constexpr char kHexResetSecret[] =
-    "B133D2450392335BA8D33AA95AD52488254070C66F5D79AEA1A46AC4A30760D4";
-constexpr char kHexWrappedKeyset[] =
-    "B737B5D73E39BD390A4F361CE2FC166CF1E89EC6AEAA35D4B34456502C48B4F5EFA310077"
-    "324B393E13AF633DF3072FF2EC78BD2B80D919035DB97C30F1AD418737DA3F26A4D35DF6B"
-    "6A9743BD0DF3D37D8A68DE0932A9905452D05ECF92701B9805937F76EE01D10924268F057"
-    "EDD66087774BB86C2CB92B01BD3A3C41C10C52838BD3A3296474598418E5191DEE9E8D831"
-    "3C859C9EDB0D5F2BC1D7FC3C108A0D4ABB2D90E413086BCFFD0902AB68E2BF787817EB10C"
-    "25E2E43011CAB3FB8AA";
-constexpr char kHexSalt[] = "D470B9B108902241";
-constexpr char kHexVaultKey[] =
-    "665A58534E684F2B61516B6D42624B514E6749732B4348427450305453754158377232347"
-    "37A79466C6B383D";
-constexpr char kHexFekIv[] = "EA80F14BF29C6D580D536E7F0CC47F3E";
-constexpr char kHexChapsIv[] = "ED85D928940E5B02ED218F29225AA34F";
-constexpr char kHexWrappedChapsKey[] =
-    "7D7D01EECC8DAE7906CAD56310954BBEB3CC81765210D29902AB92DDE074217771AD284F2"
-    "12C13897C6CBB30CEC4CD75";
-
-std::string HexDecode(const std::string& hex) {
-  std::vector<uint8_t> output;
-  CHECK(base::HexStringToBytes(hex, &output));
-  return std::string(output.begin(), output.end());
-}
-}  // namespace
-
-class LeCredentialsManagerTest : public ::testing::Test {
- public:
-  LeCredentialsManagerTest() : crypto_(&platform_) {
-    EXPECT_CALL(cryptohome_key_loader_, Init())
-        .WillOnce(Return());  // because HasCryptohomeKey returned false once.
-
-    EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
-    EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
-
-    // Raw pointer as crypto expects unique_ptr, which we will wrap this
-    // allocation into.
-    le_cred_manager_ = new MockLECredentialManager();
-    EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
-        .WillRepeatedly(DoAll(
-            SetArgPointee<2>(brillo::SecureBlob(HexDecode(kHexHeSecret))),
-            SetArgPointee<3>(brillo::SecureBlob(HexDecode(kHexResetSecret))),
-            Return(LE_CRED_SUCCESS)));
-    crypto_.set_le_manager_for_testing(
-        std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
-
-    crypto_.Init(&tpm_, &cryptohome_key_loader_);
-
-    pin_vault_keyset_.Initialize(&platform_, &crypto_);
-  }
-
-  ~LeCredentialsManagerTest() override = default;
-
-  // Not copyable or movable
-  LeCredentialsManagerTest(const LeCredentialsManagerTest&) = delete;
-  LeCredentialsManagerTest& operator=(const LeCredentialsManagerTest&) = delete;
-  LeCredentialsManagerTest(LeCredentialsManagerTest&&) = delete;
-  LeCredentialsManagerTest& operator=(LeCredentialsManagerTest&&) = delete;
-
- protected:
-  MockPlatform platform_;
-  Crypto crypto_;
-  NiceMock<MockTpm> tpm_;
-  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader_;
-  MockLECredentialManager* le_cred_manager_;
-
-  VaultKeyset pin_vault_keyset_;
-};
-
-TEST_F(LeCredentialsManagerTest, Encrypt) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_SUCCESS));
-
-  pin_vault_keyset_.CreateRandom();
-  pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  // This used to happen in Crypto::EncryptVaultKeyset, but now happens in
-  // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = HmacSha256(
-      pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
-
-  AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  EXPECT_TRUE(crypto_.EncryptVaultKeyset(
-      pin_vault_keyset_, brillo::SecureBlob(HexDecode(kHexVaultKey)),
-      brillo::SecureBlob(HexDecode(kHexSalt)), "unused", &auth_block_state,
-      &wrapped_key_material));
-
-  EXPECT_TRUE(auth_block_state.has_pin_weaver_state());
-}
-
-TEST_F(LeCredentialsManagerTest, EncryptFail) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
-
-  pin_vault_keyset_.CreateRandom();
-  pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  // This used to happen in Crypto::EncryptVaultKeyset, but now happens in
-  // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = HmacSha256(
-      pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
-
-  AuthBlockState auth_block_state;
-  WrappedKeyMaterial wrapped_key_material;
-  EXPECT_FALSE(crypto_.EncryptVaultKeyset(
-      pin_vault_keyset_, brillo::SecureBlob(HexDecode(kHexVaultKey)),
-      brillo::SecureBlob(HexDecode(kHexSalt)), "unused", &auth_block_state,
-      &wrapped_key_material));
-}
-
-TEST_F(LeCredentialsManagerTest, Decrypt) {
-  SerializedVaultKeyset serialized;
-  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
-  serialized.set_le_fek_iv(HexDecode(kHexFekIv));
-  serialized.set_le_chaps_iv(HexDecode(kHexChapsIv));
-  serialized.set_wrapped_keyset(HexDecode(kHexWrappedKeyset));
-  serialized.set_wrapped_chaps_key(HexDecode(kHexWrappedChapsKey));
-  serialized.set_salt(HexDecode(kHexSalt));
-  serialized.set_le_label(0644);
-
-  VaultKeyset vk;
-  vk.InitializeFromSerialized(serialized);
-  AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
-
-  CryptoError crypto_error = CryptoError::CE_NONE;
-  EXPECT_TRUE(crypto_.DecryptVaultKeyset(
-      &vk, brillo::SecureBlob(HexDecode(kHexVaultKey)), false, nullptr,
-      &crypto_error));
-  EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
 }
 
 }  // namespace cryptohome

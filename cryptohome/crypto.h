@@ -23,7 +23,6 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptolib.h"
@@ -34,7 +33,6 @@
 namespace cryptohome {
 
 struct KeyBlobs;
-struct WrappedKeyMaterial;
 class VaultKeyset;
 class AuthBlock;
 
@@ -49,44 +47,6 @@ class Crypto {
 
   // Initializes Crypto
   virtual bool Init(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader);
-
-  // Decrypts an encrypted vault keyset.  The vault keyset should be the output
-  // of EncryptVaultKeyset().
-  //
-  // Parameters
-  //   vault_keyset - (OUT) - This is the vault keyset to decrypt. It is
-  //   populated with the unwrapped keys. For legacy reasons, it is also
-  //   accessed to retrieve the SerializedVaultKeyset.
-  //   vault_key - The passkey used to decrypt the keyset
-  //   crypt_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
-  //   locked_to_single_user - Whether the device has transitioned into
-  //   user-specific modality by extending PCR4 with a user-specific value.
-  //   error (OUT) - The specific error code on failure
-  virtual bool DecryptVaultKeyset(VaultKeyset* vault_keyset,
-                                  const brillo::SecureBlob& vault_key,
-                                  bool locked_to_single_user,
-                                  unsigned int* crypt_flags,
-                                  CryptoError* error);
-
-  // Encrypts the vault keyset with the given passkey
-  //
-  // Parameters
-  //   vault_keyset - The VaultKeyset to encrypt
-  //   vault_key - The passkey used to encrypt the keyset
-  //   vault_key_salt - The salt to use for the vault passkey to key conversion
-  //                    when encrypting the keyset
-  //   obfuscated_username - The value of username obfuscated. It's the same
-  //                         value used as the folder name where the user data
-  //                         is stored.
-  //   auth_block_state - On success, the plaintext state needed to initialize
-  //                      the auth block.
-  //   wrapped_key_material - On success, the encrypted vault keys.
-  virtual bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
-                                  const brillo::SecureBlob& vault_key,
-                                  const brillo::SecureBlob& vault_key_salt,
-                                  const std::string& obfuscated_username,
-                                  AuthBlockState* auth_block_state,
-                                  WrappedKeyMaterial* wrapped) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -186,7 +146,15 @@ class Crypto {
   bool has_tpm() const { return (tpm_ != NULL); }
 
   // Gets the TPM implementation
-  Tpm* get_tpm() { return tpm_; }
+  Tpm* tpm() { return tpm_; }
+
+  // Gets the CryptohomeKeyLoader object.
+  CryptohomeKeyLoader* cryptohome_key_loader() {
+    return cryptohome_key_loader_;
+  }
+
+  // Gets an instance of the LECredentialManagerImpl object.
+  LECredentialManager* le_manager() { return le_manager_.get(); }
 
   // Checks if the cryptohome key is loaded in TPM
   bool is_cryptohome_key_loaded() const;
@@ -216,19 +184,6 @@ class Crypto {
                                   const std::string& obfuscated_username,
                                   SerializedVaultKeyset* serialized) const;
 
-  // This function consumes the Vault Keyset Key (VKK) and IV, and produces the
-  // unwrapped secrets from the Vault Keyset.
-  // |serialized| is the serialized vault keyset protobuf.
-  // |vkk_data| is the VKK and the VKK IV.
-  // |keyset| is the C++ class populated with the |serialized| protobuf.
-  // |error| is populated upon failure.
-  //
-  // Returns true on success, and false on failure.
-  bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
-                         const KeyBlobs& vkk_data,
-                         VaultKeyset* keyset,
-                         CryptoError* error);
-
   bool DecryptScrypt(const SerializedVaultKeyset& serialized,
                      const brillo::SecureBlob& key,
                      CryptoError* error,
@@ -242,18 +197,6 @@ class Crypto {
   bool EncryptAuthorizationData(SerializedVaultKeyset* serialized,
                                 const brillo::SecureBlob& vkk_key,
                                 const brillo::SecureBlob& vkk_iv) const;
-
-  // This function serves as a factory method to return the authblock used in
-  // authentication creation.
-  // |serialized_key_flags| is the flag data stores in the vault keyset which
-  // helps determine the type of AuthBlock.
-  std::unique_ptr<AuthBlock> CreateAuthBlock(const VaultKeyset& vk) const;
-
-  // This function serves as a factory method to return the authblock used in
-  // authentication derivation.
-  // |serialized_key_flags| is the flag data stores in the vault keyset which
-  // helps determine the type of AuthBlock.
-  std::unique_ptr<AuthBlock> DeriveAuthBlock(int serialized_key_flags);
 
   // The TPM implementation
   Tpm* tpm_;

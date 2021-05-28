@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_VAULT_KEYSET_H_
 #define CRYPTOHOME_VAULT_KEYSET_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -207,9 +208,6 @@ class VaultKeyset {
   // Clears all the fields set from the SerializedVaultKeyset.
   void ResetVaultKeyset();
 
-  // Sets the wrapped keys and IVs.
-  void SetWrappedKeyMaterial(const WrappedKeyMaterial& key_material);
-
   // This populates each sub type of AuthBlockState into the caller allocated
   // object.
   bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;
@@ -234,6 +232,93 @@ class VaultKeyset {
       const AuthBlockState::LibScryptCompatAuthBlockState& auth_state);
   void SetChallengeCredentialState(
       const AuthBlockState::ChallengeCredentialAuthBlockState& auth_state);
+
+  // This function serves as a factory method to return the authblock used in
+  // authentication creation.
+  std::unique_ptr<AuthBlock> GetAuthBlockForCreation() const;
+
+  // This function serves as a factory method to return the authblock used in
+  // authentication derivation. The type of the AuthBlock is determined based on
+  // |flags_|.which derived from vault keyset.
+  std::unique_ptr<AuthBlock> GetAuthBlockForDerivation();
+
+  // This function decrypts a keyset that is encrypted with a VaultKeysetKey.
+  //
+  // Parameters
+  //   serialized - The serialized vault keyset protobuf.
+  //   vkk_data - Key data includes the VaultKeysetKey to decrypt the serialized
+  // keyset.
+  //   error (OUT) - The specific error code on failure.
+  bool UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
+                            const KeyBlobs& vkk_data,
+                            CryptoError* error);
+
+  // This function decrypts a keyset that is encrypted with an scrypt derived
+  // key.
+  //
+  // Parameters
+  //   serialized - The serialized vault keyset protobuf.
+  //   vkk_data - Key data that includes the scrypt derived keys.
+  //   error (OUT) - The specific error code on failure.
+  bool UnwrapScryptVaultKeyset(const SerializedVaultKeyset& serialized,
+                               const KeyBlobs& vkk_data,
+                               CryptoError* error);
+
+  // This function encrypts a keyset with a VaultKeysetKey.
+  //
+  // Parameters
+  //   key_blobs - Key bloc that stores VaultKeysetKey.
+  //   store_reset_seed - Whether to store PinWeaver reset seed. This parameter
+  // is here for legacy reasons because PinWeaver only stores a reset seed in
+  // some of the keysets.
+  bool WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
+                                        bool store_reset_seed);
+
+  // This function encrypts a VaultKeyset with an scrypt derived key.
+  //
+  // Parameters
+  //   key_blobs - Key blob that stores scrypt derived keys.
+  bool WrapScryptVaultKeyset(const KeyBlobs& key_blobs);
+
+  // This function consumes the Vault Keyset Key (VKK) and IV, and produces
+  // the unwrapped secrets from the Vault Keyset.
+  //
+  // Parameters
+  //   serialized - The serialized vault keyset protobuf.
+  //   vkk_data - The VKK and the VKK IV.
+  //   error (OUT) - The specific error code on failure.
+  bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
+                         const KeyBlobs& vkk_data,
+                         CryptoError* error);
+
+  // Decrypts an encrypted vault keyset which is obtained from the unwrapped
+  // secrets returned from UnwrapVaultKeyset().
+  //
+  // Parameters
+  //   vault_key - The passkey used to decrypt the keyset.
+  //   locked_to_single_user - Whether the device has transitioned.
+  //   into user-specific modality by extending PCR4 with a user-specific
+  //   value.
+  //   error(OUT) - The specific error code on failure.
+  bool DecryptVaultKeyset(const brillo::SecureBlob& vault_key,
+                          bool locked_to_single_user,
+                          CryptoError* error);
+
+  // Encrypts the vault keyset with the given passkey
+  //
+  // Parameters
+  //   vault_key - The passkey used to encrypt the keyset.
+  //   vault_key_salt - The salt to use for the vault passkey to key conversion
+  //                    when encrypting the keyset.
+  //   obfuscated_username - The value of username obfuscated. It's the same
+  //                         value used as the folder name where the user data
+  //                         is stored.
+  //   auth_block_state - On success, the plaintext state needed to initialize
+  //                      the auth block.
+  bool EncryptVaultKeyset(const brillo::SecureBlob& vault_key,
+                          const brillo::SecureBlob& vault_key_salt,
+                          const std::string& obfuscated_username,
+                          AuthBlockState* auth_block_state);
 
   // These store run time state for the class.
   Platform* platform_;
@@ -327,10 +412,12 @@ class VaultKeyset {
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, TpmStepTest);
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, Tpm1_2_StepTest);
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, TpmDecryptFailureTest);
-  FRIEND_TEST_ALL_PREFIXES(CryptoTest, DecryptionTest);
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, ScryptStepTest);
+  FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, Decrypt);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, Encrypt);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptFail);
+  FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, EncryptionTest);
+  FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, DecryptionTest);
 };
 
 }  // namespace cryptohome

@@ -95,17 +95,6 @@ struct KeyBlobs {
   std::unique_ptr<LibScryptCompatKeyObjects> scrypt_wrapped_reset_seed_key;
 };
 
-// This struct passes the wrapped keys, and IVs used to wrap them, out of the
-// Encrypt method.
-struct WrappedKeyMaterial {
-  base::Optional<brillo::SecureBlob> vkk_iv;
-  base::Optional<brillo::SecureBlob> wrapped_keyset;
-  base::Optional<brillo::SecureBlob> chaps_iv;
-  base::Optional<brillo::SecureBlob> wrapped_chaps_key;
-  base::Optional<brillo::SecureBlob> reset_iv;
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
-};
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_KEY_OBJECTS_H_
