@@ -53,7 +53,7 @@ void PeakMemorySampler::SampleMemory(scoped_refptr<PeakMemorySampler> sampler) {
   sampler->max_sample_ = std::max(sampler->max_sample_, GetSwapAndRSSBytes());
   sampler->task_runner_->PostDelayedTask(
       sampler->from_here_,
-      base::Bind(&PeakMemorySampler::SampleMemory, sampler),
+      base::BindRepeating(&PeakMemorySampler::SampleMemory, sampler),
       sampler->sampling_interval_);
 }
 
