@@ -47,7 +47,7 @@ constexpr LazyRE2 kChainLine = {R"(Chain (rx|tx)_(\w+).*)"};
 // matcher, the source is also captured.
 constexpr LazyRE2 kCounterLine = {R"( *(\d+) +(\d+).*mark match (.*)/0x3f00)"};
 constexpr LazyRE2 kFinalCounterLine = {
-    R"( *(\d+) +(\d+).*(0.0.0.0/0|::/0)\s*)"};
+    R"( *(\d+) +(\d+).*(?:0\.0\.0\.0/0|::/0)\s*)"};
 
 bool MatchCounterLine(const std::string& line,
                       uint64_t* pkts,
