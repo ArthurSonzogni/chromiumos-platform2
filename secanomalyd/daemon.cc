@@ -80,7 +80,8 @@ void Daemon::CheckWXMounts() {
   DoWXMountCheck();
 
   brillo::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&Daemon::CheckWXMounts, base::Unretained(this)),
+      FROM_HERE,
+      base::BindRepeating(&Daemon::CheckWXMounts, base::Unretained(this)),
       kCheckInterval);
 }
 
