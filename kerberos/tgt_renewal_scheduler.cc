@@ -103,7 +103,7 @@ void TgtRenewalScheduler::ScheduleRenewal(bool notify_expiration) {
   VLOG(1) << kLogHeader << "Scheduling renewal in "
           << FormatTimeDelta(delay_seconds) << " " << tgt_status;
 
-  tgt_renewal_callback_.Reset(base::Bind(
+  tgt_renewal_callback_.Reset(base::BindOnce(
       &TgtRenewalScheduler::RunScheduledTgtRenewal, base::Unretained(this)));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, tgt_renewal_callback_.callback(),

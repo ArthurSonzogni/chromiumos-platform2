@@ -82,7 +82,7 @@ class TgtRenewalScheduler {
   Delegate* const delegate_;
 
   // Callback for scheduled renewal tasks.
-  base::CancelableClosure tgt_renewal_callback_;
+  base::CancelableOnceClosure tgt_renewal_callback_;
 };
 
 }  // namespace kerberos
