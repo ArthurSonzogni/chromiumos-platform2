@@ -88,9 +88,9 @@ int SimulatorDaemon::OnInit() {
       command_fd_.get(),
       base::BindRepeating(&SimulatorDaemon::OnCommand, base::Unretained(this)));
   tpm_watcher_.reset(new base::FilePathWatcher);
-  tpm_watcher_->Watch(
-      tpm_path, base::FilePathWatcher::Type::kNonRecursive,
-      base::Bind(&SimulatorDaemon::OnTpmPathChange, base::Unretained(this)));
+  tpm_watcher_->Watch(tpm_path, base::FilePathWatcher::Type::kNonRecursive,
+                      base::BindRepeating(&SimulatorDaemon::OnTpmPathChange,
+                                          base::Unretained(this)));
   return EX_OK;
 }
 
