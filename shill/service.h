@@ -100,6 +100,7 @@ class Service : public base::RefCounted<Service> {
   // An array of the traffic counter storage suffixes in the order that we
   // expect them to be read from patchpanel and stored in the profile.
   static const char* const kStorageTrafficCounterSuffixes[];
+  static const char kStorageTrafficCounterResetTime[];
 
   static const uint8_t kStrengthMax;
   static const uint8_t kStrengthMin;
@@ -687,6 +688,10 @@ class Service : public base::RefCounted<Service> {
                                 int32_t (Service::*get)(Error* error),
                                 bool (Service::*set)(const int32_t& value,
                                                      Error* error));
+  void HelpRegisterDerivedUint64(const std::string& name,
+                                 uint64_t (Service::*get)(Error* error),
+                                 bool (Service::*set)(const uint64_t& value,
+                                                      Error* error));
   void HelpRegisterDerivedString(const std::string& name,
                                  std::string (Service::*get)(Error* error),
                                  bool (Service::*set)(const std::string& value,
@@ -698,6 +703,9 @@ class Service : public base::RefCounted<Service> {
                                            const);
   void HelpRegisterConstDerivedString(const std::string& name,
                                       std::string (Service::*get)(Error* error)
+                                          const);
+  void HelpRegisterConstDerivedUint64(const std::string& name,
+                                      uint64_t (Service::*get)(Error* error)
                                           const);
 
   ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
@@ -873,6 +881,8 @@ class Service : public base::RefCounted<Service> {
   Strings GetDisconnectsProperty(Error* error) const;
   Strings GetMisconnectsProperty(Error* error) const;
 
+  uint64_t GetTrafficCounterResetTimeProperty(Error* error) const;
+
   bool GetMeteredProperty(Error* error);
   bool SetMeteredProperty(const bool& metered, Error* error);
   void ClearMeteredProperty(Error* error);
@@ -1021,6 +1031,8 @@ class Service : public base::RefCounted<Service> {
   TrafficCounterMap current_traffic_counters_;
   // Snapshot of the counter values from the last time they were refreshed.
   TrafficCounterMap traffic_counter_snapshot_;
+  // Represents when traffic counters were last reset.
+  base::Time traffic_counter_reset_time_;
 };
 
 }  // namespace shill

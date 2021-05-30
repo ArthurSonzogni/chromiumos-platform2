@@ -630,6 +630,11 @@ void PropertyStore::RegisterWriteOnlyInt32(const std::string& name,
   int32_properties_[name].reset(new WriteOnlyPropertyAccessor<int32_t>(prop));
 }
 
+void PropertyStore::RegisterUint64(const std::string& name, uint64_t* prop) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  uint64_properties_[name].reset(new PropertyAccessor<uint64_t>(prop));
+}
+
 void PropertyStore::RegisterString(const std::string& name, std::string* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   string_properties_[name].reset(new PropertyAccessor<std::string>(prop));

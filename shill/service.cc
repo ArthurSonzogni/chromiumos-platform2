@@ -18,6 +18,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
@@ -136,6 +137,8 @@ const char* const Service::kStorageTrafficCounterSuffixes[] = {
     kStorageTrafficCounterRxBytesSuffix, kStorageTrafficCounterTxBytesSuffix,
     kStorageTrafficCounterRxPacketsSuffix,
     kStorageTrafficCounterTxPacketsSuffix};
+const char Service::kStorageTrafficCounterResetTime[] =
+    "TrafficCounterResetTime";
 
 const size_t Service::kTrafficCounterArraySize = 4;
 
@@ -280,6 +283,9 @@ Service::Service(Manager* manager, Technology technology)
 
   HelpRegisterDerivedString(kONCSourceProperty, &Service::GetONCSource,
                             &Service::SetONCSource);
+  HelpRegisterConstDerivedUint64(kTrafficCounterResetTimeProperty,
+                                 &Service::GetTrafficCounterResetTimeProperty);
+
   metrics()->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -747,6 +753,13 @@ bool Service::Load(const StoreInterface* storage) {
     }
   }
 
+  uint64_t traffic_counter_reset_time_ms;
+  if (storage->GetUint64(id, kStorageTrafficCounterResetTime,
+                         &traffic_counter_reset_time_ms)) {
+    traffic_counter_reset_time_ = base::Time::FromDeltaSinceWindowsEpoch(
+        base::TimeDelta::FromMilliseconds(traffic_counter_reset_time_ms));
+  }
+
   return true;
 }
 
@@ -875,6 +888,9 @@ bool Service::Save(StoreInterface* storage) {
       }
     }
   }
+
+  storage->SetUint64(id, kStorageTrafficCounterResetTime,
+                     GetTrafficCounterResetTimeProperty(/*error=*/nullptr));
 
   return true;
 }
@@ -1357,6 +1373,7 @@ void Service::RefreshTrafficCounters(
 
 void Service::ResetTrafficCounters(Error* /*error*/) {
   current_traffic_counters_.clear();
+  traffic_counter_reset_time_ = base::Time::Now();
   SaveToProfile();
 }
 
@@ -1710,6 +1727,13 @@ void Service::HelpRegisterConstDerivedString(
                 new CustomReadOnlyAccessor<Service, std::string>(this, get)));
 }
 
+void Service::HelpRegisterConstDerivedUint64(
+    const std::string& name, uint64_t (Service::*get)(Error* error) const) {
+  store_.RegisterDerivedUint64(
+      name,
+      Uint64Accessor(new CustomReadOnlyAccessor<Service, uint64_t>(this, get)));
+}
+
 // static
 void Service::LoadString(const StoreInterface* storage,
                          const std::string& id,
@@ -1934,6 +1958,11 @@ Strings Service::GetDisconnectsProperty(Error* /*error*/) const {
 
 Strings Service::GetMisconnectsProperty(Error* /*error*/) const {
   return misconnects_.ExtractWallClockToStrings();
+}
+
+uint64_t Service::GetTrafficCounterResetTimeProperty(Error* /*error*/) const {
+  return traffic_counter_reset_time_.ToDeltaSinceWindowsEpoch()
+      .InMilliseconds();
 }
 
 bool Service::GetMeteredProperty(Error* /*error*/) {

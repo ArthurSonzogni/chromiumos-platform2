@@ -1702,6 +1702,14 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			(i.e., if VPN connectivity is gained via Ethernet
 			or WiFi).
 
+		uint64 TrafficCounterResetTime [readonly]
+
+			A UTC timestamp, in milliseconds, representing when
+			the traffic counters for a Service were last reset.
+			The timestamp's value equals the number of milli-
+			seconds since the Windows epoch (1601-01-01
+			00:00:00 UTC).
+
 		string Type [readonly]
 
 			The service type; one of:

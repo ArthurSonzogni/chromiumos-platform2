@@ -156,6 +156,7 @@ const char kSignalStrengthProperty[] = "Strength";
 const char kStateProperty[] = "State";
 const char kStaticIPConfigProperty[] = "StaticIPConfig";
 const char kTetheringProperty[] = "Tethering";
+const char kTrafficCounterResetTimeProperty[] = "TrafficCounterResetTime";
 const char kTypeProperty[] = "Type";
 const char kUIDataProperty[] = "UIData";
 const char kVisibleProperty[] = "Visible";
