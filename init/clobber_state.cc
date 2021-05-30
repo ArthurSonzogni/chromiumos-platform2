@@ -50,6 +50,8 @@ namespace {
 
 constexpr char kStatefulPath[] = "/mnt/stateful_partition";
 constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
+constexpr char kLastPowerWashTimePath[] =
+    "unencrypted/preserve/last_powerwash_time";
 constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
@@ -277,6 +279,12 @@ bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
   new_value.append("\n");
   return new_value.size() ==
          base::WriteFile(path, new_value.c_str(), new_value.size());
+}
+
+// static
+bool ClobberState::WriteLastPowerwashTime(const base::FilePath& path,
+                                          const base::Time& time) {
+  return base::WriteFile(path, base::StringPrintf("%ld\n", time.ToTimeT()));
 }
 
 // static
@@ -1261,6 +1269,12 @@ int ClobberState::Run() {
     }
     base::WriteFile(stateful_.Append("unencrypted/.powerwash_completed"), "",
                     0);
+    // TODO(b/190143108) Add one unit test in the context of
+    // ClobberState::Run() to check the powerwash time file existence.
+    if (!WriteLastPowerwashTime(stateful_.Append(kLastPowerWashTimePath),
+                                base::Time::Now())) {
+      PLOG(WARNING) << "Write the last_powerwash_time to file failed";
+    }
   }
 
   brillo::ProcessImpl log_restore;

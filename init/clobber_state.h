@@ -72,6 +72,11 @@ class ClobberState {
   // be read, or if the contents are not an integer, writes '1' to the file.
   static bool IncrementFileCounter(const base::FilePath& path);
 
+  // Attempts to write the last powerwash time to |path|.
+  // The |time| is that when the device have powerwash completed.
+  static bool WriteLastPowerwashTime(const base::FilePath& path,
+                                     const base::Time& time);
+
   // Given a list of files to preserve (relative to |preserved_files_root|),
   // creates a tar file containing those files at |tar_file_path|.
   // The directory structure of the preserved files is preserved.

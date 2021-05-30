@@ -206,6 +206,37 @@ TEST(IncrementFileCounter, InputNoNewline) {
   EXPECT_EQ(contents, "8\n");
 }
 
+TEST(WriteLastPowerwashTime, FileNonexistentWriteSuccess) {
+  const time_t curr_value = 55;
+  base::Time parsed_time = base::Time::FromTimeT(curr_value);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath last_powerwash_time_path =
+      temp_dir.GetPath().Append("lastPowerwashTime");
+  EXPECT_TRUE(ClobberState::WriteLastPowerwashTime(last_powerwash_time_path,
+                                                   parsed_time));
+  EXPECT_TRUE(base::PathExists(last_powerwash_time_path));
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(last_powerwash_time_path, &contents));
+  EXPECT_EQ(contents, "55\n");
+}
+
+TEST(WriteLastPowerwashTime, FileExistentOverwriteSuccess) {
+  const time_t curr_value = 66;
+  base::Time parsed_time = base::Time::FromTimeT(curr_value);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath last_powerwash_time_path =
+      temp_dir.GetPath().Append("lastPowerwashTime");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(last_powerwash_time_path, "55\n"));
+  EXPECT_TRUE(ClobberState::WriteLastPowerwashTime(last_powerwash_time_path,
+                                                   parsed_time));
+  EXPECT_TRUE(base::PathExists(last_powerwash_time_path));
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(last_powerwash_time_path, &contents));
+  EXPECT_EQ(contents, "66\n");
+}
+
 TEST(PreserveFiles, NoFiles) {
   base::ScopedTempDir fake_stateful_dir;
   ASSERT_TRUE(fake_stateful_dir.CreateUniqueTempDir());
