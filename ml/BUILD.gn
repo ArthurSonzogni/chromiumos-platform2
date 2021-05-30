@@ -98,6 +98,24 @@ proto_library("ml_text_suggester_proto") {
   sources = [ "${proto_in_dir}/text_suggester_interface.proto" ]
 }
 
+proto_library("ml_assist_ranker_proto") {
+  proto_in_dir = "./proto/"
+  proto_out_dir = "chrome/knowledge/assist_ranker/"
+  sources = [
+    "${proto_in_dir}/example_preprocessor.proto",
+    "${proto_in_dir}/ranker_example.proto",
+  ]
+}
+
+source_set("example_preprocessor") {
+  sources = [
+    "example_preprocessor/example_preprocessing.cc",
+    "example_preprocessor/ranker_example_util.cc",
+  ]
+  configs += [ ":ml_common_pkg_deps" ]
+  deps = [ ":ml_assist_ranker_proto" ]
+}
+
 static_library("ml_common") {
   sources = [
     "daemon.cc",
@@ -149,6 +167,8 @@ static_library("ml_common") {
   ]
   public_deps = [ ":ml_mojo_bindings_lib" ]
   deps = [
+    ":example_preprocessor",
+    ":ml_assist_ranker_proto",
     ":ml_grammar_proto",
     ":ml_handwriting_proto",
     ":ml_text_suggester_proto",
@@ -238,6 +258,8 @@ if (use.test) {
   executable("ml_service_test") {
     sources = [
       "dlcservice_client_test.cc",
+      "example_preprocessor/example_preprocessing_test.cc",
+      "example_preprocessor/ranker_example_util_test.cc",
       "grammar_library_test.cc",
       "grammar_proto_mojom_conversion_test.cc",
       "graph_executor_impl_test.cc",
@@ -262,6 +284,7 @@ if (use.test) {
       "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     ]
     deps = [
+      ":ml_assist_ranker_proto",
       ":ml_common",
       ":ml_grammar_proto",
       ":ml_handwriting_proto",
