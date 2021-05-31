@@ -6,11 +6,14 @@
 // encoded as command line switch values back to feature flag names (the format
 // chrome://flags uses for bookkeeping).
 //
-// In the past, session_manager would pass feature flags encoded as raw command
-// line switches. This proved problematic due to the inability to validate
+// In the past, chrome://flags would translate flag configuration set by the
+// user to command line switches, pass these to session_manager via device
+// settings, and session_manager would append the raw command line switches on
+// chrome startup. This proved problematic due to the inability to validate
 // whether command line switches referred to valid feature flags. Hence,
 // session_manager and Chrome have been updated to store feature flags in the
-// same format used by chrome://flags on other platforms.
+// same format used by chrome://flags on other platforms and pass them around in
+// that format.
 //
 // However, Chrome OS device settings files in the field may still contain
 // feature flags expressed as raw command line switches. These can only be

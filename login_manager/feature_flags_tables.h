@@ -6,13 +6,15 @@
 #define LOGIN_MANAGER_FEATURE_FLAGS_TABLES_H_
 
 // This file defines mapping tables for translating Chrome feature flags in
-// switch representation back to feature flags names.
+// switch representation back to feature flags names. This is used to translate
+// chrome://flags configuration in legacy format.
 //
 // The tables have been extracted from Chrome revision
 // 91fdd0ebe85424b9257762184a0f02b6a2ea03b4. There is no need to update the
 // tables since it suffices to support switches which were valid at the cut-over
 // point to the regular feature flags format. Any subsequently defined feature
-// flags will have been written by Chrome in the feature flag format.
+// flags will have been written by Chrome to device settings in the feature flag
+// format when the user set the flag in chrome://flags.
 //
 // The tables live in their own file so they can be included both from the
 // implementation and test files.

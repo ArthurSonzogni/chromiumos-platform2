@@ -10,11 +10,12 @@
 
 namespace login_manager {
 
-// Maps the command line switch provided in |switch_string| to feature flags and
-// appends these to the |feature_flags| vector. Note that one switch can expand
-// to multiple feature flags in the case of --{enable,disable}-features. Returns
-// true if the mapping was performed successfully and false in case the switch
-// can't be parsed or is unknown.
+// Maps a command line switch |switch_string| (as present in legacy feature
+// flags device settings) to feature flags and appends these to the
+// |feature_flags| vector. Note that one switch can expand to multiple feature
+// flags in the case of --{enable,disable}-features. Returns true if the mapping
+// was performed successfully and false in case the switch can't be parsed or is
+// unknown.
 bool MapSwitchToFeatureFlags(const std::string& switch_string,
                              std::vector<std::string>* feature_flags);
 
