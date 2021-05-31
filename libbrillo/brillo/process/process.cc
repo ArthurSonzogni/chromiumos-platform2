@@ -15,7 +15,9 @@
 
 #include <map>
 #include <memory>
+#include <utility>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
@@ -69,7 +71,7 @@ ProcessImpl::ProcessImpl()
     : pid_(0),
       uid_(-1),
       gid_(-1),
-      pre_exec_(base::Bind(&ReturnTrue)),
+      pre_exec_(base::BindOnce(&ReturnTrue)),
       search_path_(false),
       inherit_parent_signal_mask_(false),
       close_unused_file_descriptors_(false) {}
@@ -197,8 +199,8 @@ void ProcessImpl::SetInheritParentSignalMask(bool inherit) {
   inherit_parent_signal_mask_ = inherit;
 }
 
-void ProcessImpl::SetPreExecCallback(const PreExecCallback& cb) {
-  pre_exec_ = cb;
+void ProcessImpl::SetPreExecCallback(PreExecCallback cb) {
+  pre_exec_ = std::move(cb);
 }
 
 void ProcessImpl::SetSearchPath(bool search_path) {
@@ -445,7 +447,7 @@ bool ProcessImpl::Start() {
       PLOG(ERROR) << "Unable to set UID to " << uid_;
       _exit(kErrorExitStatus);
     }
-    if (!pre_exec_.Run()) {
+    if (!std::move(pre_exec_).Run()) {
       LOG(ERROR) << "Pre-exec callback failed";
       _exit(kErrorExitStatus);
     }

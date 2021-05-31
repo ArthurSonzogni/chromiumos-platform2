@@ -121,12 +121,12 @@ class BRILLO_EXPORT Process {
   // in the parent's signal mask.
   virtual void SetInheritParentSignalMask(bool inherit) = 0;
 
-  typedef base::Callback<bool(void)> PreExecCallback;
+  typedef base::OnceCallback<bool(void)> PreExecCallback;
 
   // Set the pre-exec callback. This is called after all setup is complete but
   // before we exec() the process. The callback may return false to cause Start
   // to return false without starting the process.
-  virtual void SetPreExecCallback(const PreExecCallback& cb) = 0;
+  virtual void SetPreExecCallback(PreExecCallback cb) = 0;
 
   // Sets whether starting the process should search the system path or not.
   // By default the system path will not be searched.
@@ -206,7 +206,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual void ApplySyscallFilter(const std::string& path);
   virtual void EnterNewPidNamespace();
   virtual void SetInheritParentSignalMask(bool inherit);
-  virtual void SetPreExecCallback(const PreExecCallback& cb);
+  virtual void SetPreExecCallback(PreExecCallback cb);
   virtual void SetSearchPath(bool search_path);
   virtual int GetPipe(int child_fd);
   virtual std::string GetOutputString(int child_fd);

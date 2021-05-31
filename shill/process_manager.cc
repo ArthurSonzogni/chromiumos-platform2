@@ -8,12 +8,13 @@
 #include <stdlib.h>
 #include <sys/prctl.h>
 
-#include <memory>
-#include <utility>
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/notreached.h>
 
@@ -99,7 +100,7 @@ pid_t ProcessManager::StartProcess(
   // Important to close unused fds. See crbug.com/531655 and crbug.com/911234.
   process->SetCloseUnusedFileDescriptors(true);
   process->SetPreExecCallback(
-      base::Bind(&SetupChild, environment, terminate_with_parent));
+      base::BindOnce(&SetupChild, environment, terminate_with_parent));
   if (!process->Start()) {
     LOG(ERROR) << "Failed to start child process for " << program.value();
     return -1;

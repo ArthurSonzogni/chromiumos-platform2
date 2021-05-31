@@ -106,7 +106,7 @@ std::unique_ptr<brillo::Process> ProcessLauncher::StartProcess(
     process->BindFd(output_fd, 1);
   process->SetCloseUnusedFileDescriptors(true);
   process->SetSearchPath(true);
-  process->SetPreExecCallback(base::Bind(&PreExecSettings, vars));
+  process->SetPreExecCallback(base::BindOnce(&PreExecSettings, vars));
   if (!process->Start()) {
     PrintMessage(source_, Position(command), "brillo::Process::Start() failed");
     return nullptr;

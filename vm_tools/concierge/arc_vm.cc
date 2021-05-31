@@ -16,6 +16,7 @@
 #include <tuple>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -301,7 +302,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
   // cpu cgroup for ARCVM's crosvm processes.
-  process_.SetPreExecCallback(base::Bind(
+  process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kArcvmCpuCgroup).Append("tasks")));
 
   if (!StartProcess(std::move(args))) {

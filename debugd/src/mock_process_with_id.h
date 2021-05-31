@@ -42,7 +42,7 @@ class MockProcessWithId : public ProcessWithId {
   MOCK_METHOD(void, ApplySyscallFilter, (const std::string&), (override));
   MOCK_METHOD(void, EnterNewPidNamespace, (), (override));
   MOCK_METHOD(void, SetInheritParentSignalMask, (bool), (override));
-  MOCK_METHOD(void, SetPreExecCallback, (const PreExecCallback&), (override));
+  MOCK_METHOD(void, SetPreExecCallback, (PreExecCallback), (override));
   MOCK_METHOD(void, SetSearchPath, (bool), (override));
   MOCK_METHOD(int, GetPipe, (int), (override));
   MOCK_METHOD(bool, Start, (), (override));

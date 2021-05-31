@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -420,7 +421,7 @@ bool ReturnFalse() {
 
 TEST_F(ProcessTest, PreExecCallback) {
   process_.AddArg(kBinTrue);
-  process_.SetPreExecCallback(base::Bind(&ReturnFalse));
+  process_.SetPreExecCallback(base::BindOnce(&ReturnFalse));
   ASSERT_NE(0, process_.Run());
 }
 

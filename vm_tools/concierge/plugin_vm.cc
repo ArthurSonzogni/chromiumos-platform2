@@ -761,7 +761,7 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   // Change the process group before exec so that crosvm sending SIGKILL to
   // the whole process group doesn't kill us as well. The function also
   // changes the cpu cgroup for PluginVm crosvm processes.
-  process_.SetPreExecCallback(base::Bind(
+  process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kPluginVmCpuCgroup).Append("tasks")));
 
   if (!StartProcess(vm_builder.BuildVmArgs())) {

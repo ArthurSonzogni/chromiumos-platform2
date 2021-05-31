@@ -65,7 +65,7 @@ Process* Daemon::CreateProcess() {
 Process* Daemon::CreateProcessWithResourceLimits(
     const ResourceLimits& rlimits) {
   Process* process = SetProcess(std::make_unique<ProcessImpl>());
-  process->SetPreExecCallback(base::Bind(&SetResourceLimits, rlimits));
+  process->SetPreExecCallback(base::BindOnce(&SetResourceLimits, rlimits));
   return process;
 }
 
