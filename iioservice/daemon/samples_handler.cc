@@ -351,7 +351,11 @@ void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
   if (RemoveFrequencyOnThread(orig_freq))
     return;
 
-  observers_[client_data]->OnErrorOccurred(
+  const auto& it = observers_.find(client_data);
+  if (it == observers_.end())
+    return;
+
+  it->second->OnErrorOccurred(
       cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
 }
 
