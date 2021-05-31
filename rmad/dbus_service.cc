@@ -153,8 +153,18 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   power_cable_signal_ =
       dbus_interface->RegisterSignal<bool>(kPowerCableStateSignal);
 
+  RegisterSignalSenders();
+
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
+}
+
+void DBusService::RegisterSignalSenders() {
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kWpDisablePhysical,
+      std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
+          &DBusService::SendHardwareWriteProtectionStateSignal,
+          base::Unretained(this))));
 }
 
 bool DBusService::SendErrorSignal(RmadErrorCode error) {
@@ -167,15 +177,18 @@ bool DBusService::SendCalibrationProgressSignal(
   auto signal = calibration_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(component, progress);
 }
+
 bool DBusService::SendProvisioningProgressSignal(
     ProvisionDeviceState::ProvisioningStep step, double progress) {
   auto signal = provisioning_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(step, progress);
 }
+
 bool DBusService::SendHardwareWriteProtectionStateSignal(bool enabled) {
   auto signal = hwwp_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(enabled);
 }
+
 bool DBusService::SendPowerCableStateSignal(bool plugged_in) {
   auto signal = power_cable_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(plugged_in);

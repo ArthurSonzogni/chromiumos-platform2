@@ -43,10 +43,7 @@ static_library("libjson_store") {
 }
 
 static_library("libcrossystem_utils") {
-  sources = [
-    "utils/crossystem_utils.cc",
-    "utils/crossystem_utils_impl.cc",
-  ]
+  sources = [ "utils/crossystem_utils_impl.cc" ]
   configs += [ ":target_defaults" ]
 }
 
@@ -89,6 +86,7 @@ static_library("libstate_handler") {
   configs += [ ":target_defaults" ]
   deps = [
     ":libcr50_utils",
+    ":libcrossystem_utils",
     ":libjson_store",
   ]
 }

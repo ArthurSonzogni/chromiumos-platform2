@@ -7,6 +7,11 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/timer/timer.h>
+
 namespace rmad {
 
 class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
@@ -18,11 +23,22 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
 
+  void RegisterSignalSender(
+      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override {
+    write_protect_signal_sender_ = std::move(callback);
+  }
+
   RmadErrorCode InitializeState() override;
+  void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
  private:
-  bool CheckWriteProtectionOn() const;
+  void PollUntilWriteProtectOff();
+  void CheckWriteProtectOffTask();
+
+  std::unique_ptr<base::RepeatingCallback<bool(bool)>>
+      write_protect_signal_sender_;
+  base::RepeatingTimer timer_;
 };
 
 }  // namespace rmad

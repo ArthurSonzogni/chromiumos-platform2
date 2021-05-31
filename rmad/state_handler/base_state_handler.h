@@ -5,6 +5,9 @@
 #ifndef RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 
+#include <memory>
+
+#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 
@@ -45,6 +48,10 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 
   // Clean up the state. Called when leaving the state.
   virtual void CleanUpState() {}
+
+  // Register a signal sender.
+  virtual void RegisterSignalSender(
+      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {}
 
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition

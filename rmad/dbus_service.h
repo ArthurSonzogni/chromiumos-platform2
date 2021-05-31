@@ -44,6 +44,9 @@ class DBusService : public brillo::DBusServiceDaemon {
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
+  // Provide callbacks for sending signals to rmad_interface.
+  void RegisterSignalSenders();
+
  private:
   friend class DBusServiceTest;
 

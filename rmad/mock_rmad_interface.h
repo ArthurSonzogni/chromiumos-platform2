@@ -7,6 +7,8 @@
 
 #include "rmad/rmad_interface.h"
 
+#include <memory>
+
 #include <gmock/gmock.h>
 
 namespace rmad {
@@ -15,6 +17,12 @@ class MockRmadInterface : public RmadInterface {
  public:
   MockRmadInterface() = default;
   virtual ~MockRmadInterface() = default;
+
+  MOCK_METHOD(void,
+              RegisterSignalSender,
+              (RmadState::StateCase,
+               std::unique_ptr<base::RepeatingCallback<bool(bool)>>),
+              (override));
 
   MOCK_METHOD(void, GetCurrentState, (const GetStateCallback&), (override));
   MOCK_METHOD(void,

@@ -45,6 +45,8 @@ class DBusServiceTest : public testing::Test {
               reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
               callback.Run(reply);
             }));
+    EXPECT_CALL(mock_rmad_service_, RegisterSignalSender(_, _))
+        .WillRepeatedly(Return());
   }
   ~DBusServiceTest() override = default;
 

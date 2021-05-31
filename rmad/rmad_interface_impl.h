@@ -30,6 +30,10 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   ~RmadInterfaceImpl() override = default;
 
+  void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override;
+
   void GetCurrentState(const GetStateCallback& callback) override;
   void TransitionNextState(const TransitionNextStateRequest& request,
                            const GetStateCallback& callback) override;

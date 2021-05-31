@@ -118,6 +118,15 @@ RmadErrorCode RmadInterfaceImpl::GetInitializedStateHandler(
   return RMAD_ERROR_OK;
 }
 
+void RmadInterfaceImpl::RegisterSignalSender(
+    RmadState::StateCase state_case,
+    std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {
+  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
+  if (state_handler) {
+    state_handler->RegisterSignalSender(std::move(callback));
+  }
+}
+
 void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> state_handler;
@@ -169,7 +178,6 @@ void RmadInterfaceImpl::TransitionNextState(
     return;
   }
 
-  // TODO(chenghan): What about states waiting for signals?
   CHECK(next_state_case != current_state_case_)
       << "Staying at the same state without errors.";
 

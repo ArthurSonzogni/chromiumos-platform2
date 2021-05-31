@@ -5,6 +5,7 @@
 #ifndef RMAD_RMAD_INTERFACE_H_
 #define RMAD_RMAD_INTERFACE_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -16,6 +17,12 @@ class RmadInterface {
  public:
   RmadInterface() = default;
   virtual ~RmadInterface() = default;
+
+  // Register a signal sender for specific states. Virtual functions cannot be
+  // declared as template so we need to declare them one by one.
+  virtual void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) = 0;
 
   // Callback used by all state functions to return the current state to the
   // dbus service.

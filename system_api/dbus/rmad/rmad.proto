@@ -17,92 +17,101 @@ enum RmadErrorCode {
   // No error.
   RMAD_ERROR_OK = 1;
 
+  // No error, and wait for a signal.
+  RMAD_ERROR_WAIT = 2;
+
+  // Need a reboot to continue.
+  RMAD_ERROR_NEED_REBOOT = 3;
+
   // The device is not in RMA mode.
-  RMAD_ERROR_RMA_NOT_REQUIRED = 2;
-
-  // The request could not be processed (e.g. bad proto).
-  RMAD_ERROR_REQUEST_INVALID = 3;
-
-  // The request is missing mandatory arguments.
-  RMAD_ERROR_REQUEST_ARGS_MISSING = 4;
-
-  // The request arguments are violating some rules of the state.
-  RMAD_ERROR_REQUEST_ARGS_VIOLATION = 5;
-
-  // An expected component was not found.
-  RMAD_ERROR_MISSING_COMPONENT = 6;
-
-  // Cannot get the RSU challenge code.
-  RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE = 7;
-
-  // The RSU code was incorrect.
-  RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID = 8;
-
-  // The battery was not disconnected when WP disable was required.
-  RMAD_ERROR_WRITE_PROTECT_DISABLE_BATTERY_NOT_DISCONNECTED = 9;
-
-  // WP was not disabled when required.
-  RMAD_ERROR_WRITE_PROTECT_DISABLE_SIGNAL_NOT_DETECTED = 10;
-
-  // File could not be downloaded because a network connection was unavailable.
-  RMAD_ERROR_REIMAGING_DOWNLOAD_NO_NETWORK = 11;
-
-  // File download did not complete because of a network error.
-  RMAD_ERROR_REIMAGING_DOWNLOAD_NETWORK_ERROR = 12;
-
-  // The user cancelled the file download.
-  RMAD_ERROR_REIMAGING_DOWNLOAD_CANCELLED = 13;
-
-  // No valid USB device with a Chrome OS image was found.
-  RMAD_ERROR_REIMAGING_USB_NOT_FOUND = 14;
-
-  // More than one USB device with a Chrome OS image was found.
-  RMAD_ERROR_REIMAGING_USB_TOO_MANY_FOUND = 15;
-
-  // The Chrome OS image found was corrupt.
-  RMAD_ERROR_REIMAGING_USB_INVALID_IMAGE = 16;
-
-  // The image could not be written.
-  RMAD_ERROR_REIMAGING_IMAGING_FAILED = 17;
-
-  // An unexpected failure prevented imaging from completing.
-  RMAD_ERROR_REIMAGING_UNKNOWN_FAILURE = 18;
-
-  // The device info is incorrect.
-  RMAD_ERROR_DEVICE_INFO_INVALID = 19;
-
-  // Calibration failed for a component.
-  RMAD_ERROR_CALIBRATION_FAILED = 20;
-
-  // Provisioning failed for the device.
-  RMAD_ERROR_PROVISIONING_FAILED = 21;
-
-  // Device could not be powerwashed.
-  RMAD_ERROR_POWERWASH_FAILED = 22;
-
-  // Device finalization failed.
-  RMAD_ERROR_FINALIZATION_FAILED = 23;
-
-  // Logs failed to upload because the server could not be reached.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CANNOT_CONNECT = 24;
-
-  // Logs failed to upload because the server refused the connection.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CONNECTION_REJECTED = 25;
-
-  // Logs failed to upload because the connection was interrupted.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_TRANSFER_FAILED = 26;
-
-  // It is not possible to cancel RMA finalization process at this point.
-  RMAD_ERROR_CANNOT_CANCEL_RMA = 27;
-
-  // It is not possible to transition state at this point.
-  RMAD_ERROR_TRANSITION_FAILED = 28;
-
-  // Failed to abort the RMA process.
-  RMAD_ERROR_ABORT_FAILED = 29;
+  RMAD_ERROR_RMA_NOT_REQUIRED = 4;
 
   // No corresponding state handler for a state.
-  RMAD_ERROR_STATE_HANDLER_MISSING = 30;
+  RMAD_ERROR_STATE_HANDLER_MISSING = 5;
+
+  // State handler initialization failed.
+  RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED = 6;
+
+  // The request could not be processed (e.g. bad proto).
+  RMAD_ERROR_REQUEST_INVALID = 7;
+
+  // The request is missing mandatory arguments.
+  RMAD_ERROR_REQUEST_ARGS_MISSING = 8;
+
+  // The request arguments are violating some rules of the state.
+  RMAD_ERROR_REQUEST_ARGS_VIOLATION = 9;
+
+  // It is not possible to transition state at this point.
+  RMAD_ERROR_TRANSITION_FAILED = 10;
+
+  // Failed to abort the RMA process.
+  RMAD_ERROR_ABORT_FAILED = 11;
+
+  // An expected component was not found.
+  RMAD_ERROR_MISSING_COMPONENT = 12;
+
+  // Cannot get the RSU challenge code.
+  RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE = 13;
+
+  // The RSU code was incorrect.
+  RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID = 14;
+
+  // The battery was not disconnected when WP disable was required.
+  RMAD_ERROR_WRITE_PROTECT_DISABLE_BATTERY_NOT_DISCONNECTED = 15;
+
+  // WP was not disabled when required.
+  RMAD_ERROR_WRITE_PROTECT_DISABLE_SIGNAL_NOT_DETECTED = 16;
+
+  // File could not be downloaded because a network connection was unavailable.
+  RMAD_ERROR_REIMAGING_DOWNLOAD_NO_NETWORK = 17;
+
+  // File download did not complete because of a network error.
+  RMAD_ERROR_REIMAGING_DOWNLOAD_NETWORK_ERROR = 18;
+
+  // The user cancelled the file download.
+  RMAD_ERROR_REIMAGING_DOWNLOAD_CANCELLED = 19;
+
+  // No valid USB device with a Chrome OS image was found.
+  RMAD_ERROR_REIMAGING_USB_NOT_FOUND = 20;
+
+  // More than one USB device with a Chrome OS image was found.
+  RMAD_ERROR_REIMAGING_USB_TOO_MANY_FOUND = 21;
+
+  // The Chrome OS image found was corrupt.
+  RMAD_ERROR_REIMAGING_USB_INVALID_IMAGE = 22;
+
+  // The image could not be written.
+  RMAD_ERROR_REIMAGING_IMAGING_FAILED = 23;
+
+  // An unexpected failure prevented imaging from completing.
+  RMAD_ERROR_REIMAGING_UNKNOWN_FAILURE = 24;
+
+  // The device info is incorrect.
+  RMAD_ERROR_DEVICE_INFO_INVALID = 25;
+
+  // Calibration failed for a component.
+  RMAD_ERROR_CALIBRATION_FAILED = 26;
+
+  // Provisioning failed for the device.
+  RMAD_ERROR_PROVISIONING_FAILED = 27;
+
+  // Device could not be powerwashed.
+  RMAD_ERROR_POWERWASH_FAILED = 28;
+
+  // Device finalization failed.
+  RMAD_ERROR_FINALIZATION_FAILED = 29;
+
+  // Logs failed to upload because the server could not be reached.
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CANNOT_CONNECT = 30;
+
+  // Logs failed to upload because the server refused the connection.
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CONNECTION_REJECTED = 31;
+
+  // Logs failed to upload because the connection was interrupted.
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_TRANSFER_FAILED = 32;
+
+  // It is not possible to cancel RMA finalization process at this point.
+  RMAD_ERROR_CANNOT_CANCEL_RMA = 33;
 }
 
 // Defined Rmad states.

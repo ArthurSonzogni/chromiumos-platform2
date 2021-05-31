@@ -33,10 +33,6 @@ class CrosSystemUtils {
   // function. Return true if successfully get the value, false if fail to get
   // the value.
   virtual bool GetString(const std::string& key, std::string* value) const = 0;
-
-  // Get the HWWP status. Return 0 if HWWP is off, 1 if HWWP is on, -1 if fail
-  // to get the status.
-  int GetHwwpStatus() const;
 };
 
 }  // namespace rmad

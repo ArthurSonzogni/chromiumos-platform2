@@ -4,7 +4,19 @@
 
 #include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
 
+#include "rmad/utils/crossystem_utils_impl.h"
+
 namespace rmad {
+
+namespace {
+
+// Poll every two seconds.
+constexpr int kPollIntervalSecs = 2;
+
+// crossystem HWWP property name.
+constexpr char kWriteProtectProperty[] = "wpsw_cur";
+
+}  // namespace
 
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
@@ -15,7 +27,19 @@ RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
     state_.set_allocated_wp_disable_physical(
         new WriteProtectDisablePhysicalState);
   }
+  if (!write_protect_signal_sender_) {
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
+
+  PollUntilWriteProtectOff();
   return RMAD_ERROR_OK;
+}
+
+void WriteProtectDisablePhysicalStateHandler::CleanUpState() {
+  // Stop the polling loop.
+  if (timer_.IsRunning()) {
+    timer_.Stop();
+  }
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -25,25 +49,46 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |physical write protection| state.";
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  if (CheckWriteProtectionOn()) {
-    LOG(ERROR) << "Write protection still enabled.";
-    return {.error = RMAD_ERROR_TRANSITION_FAILED,
-            .state_case = GetStateCase()};
-  }
 
   // There's nothing in |WriteProtectDisablePhysicalState|.
   state_ = state;
   StoreState();
 
-  // TODO(chenghan): This is currently fake. Poll the write protect signal and
-  //                 emit a signal when it's disabled.
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kWpDisableComplete};
+  CrosSystemUtilsImpl crossystem_utils;
+  int wp_status;
+  if (crossystem_utils.GetInt(kWriteProtectProperty, &wp_status) &&
+      wp_status == 0) {
+    return {.error = RMAD_ERROR_OK,
+            .state_case = RmadState::StateCase::kWpDisableComplete};
+  }
+
+  return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
 }
 
-bool WriteProtectDisablePhysicalStateHandler::CheckWriteProtectionOn() const {
-  // TODO(chenghan): Get the info from crossystem.
-  return false;
+void WriteProtectDisablePhysicalStateHandler::PollUntilWriteProtectOff() {
+  LOG(INFO) << "Start polling write protection";
+  if (timer_.IsRunning()) {
+    timer_.Stop();
+  }
+  timer_.Start(
+      FROM_HERE, base::TimeDelta::FromSeconds(kPollIntervalSecs), this,
+      &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
+}
+
+void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
+  DCHECK(write_protect_signal_sender_);
+  LOG(INFO) << "Check write protection";
+
+  CrosSystemUtilsImpl crossystem_utils;
+  int wp_status;
+  if (!crossystem_utils.GetInt(kWriteProtectProperty, &wp_status)) {
+    LOG(ERROR) << "Failed to get HWWP status";
+    return;
+  }
+  if (wp_status == 0) {
+    write_protect_signal_sender_->Run(false);
+    timer_.Stop();
+  }
 }
 
 }  // namespace rmad
