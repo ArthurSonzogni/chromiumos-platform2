@@ -99,6 +99,12 @@ base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
         info->severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
             node, cras::kNumberOfSevereUnderrunsProperty);
       }
+    } else {
+      // Input node
+      info->input_device_name = brillo::GetVariantValueOrDefault<std::string>(
+          node, cras::kNameProperty);
+      info->input_gain = brillo::GetVariantValueOrDefault<uint32_t>(
+          node, cras::kInputNodeGainProperty);
     }
   }
 
