@@ -585,11 +585,11 @@ void Proxy::SetShillProperty(const std::string& addr,
       kShillPropertyAttemptDelay);
 }
 
-std::vector<std::string> Proxy::DoHConfig::ipv4_nameservers() {
+const std::vector<std::string>& Proxy::DoHConfig::ipv4_nameservers() {
   return ipv4_nameservers_;
 }
 
-std::vector<std::string> Proxy::DoHConfig::ipv6_nameservers() {
+const std::vector<std::string>& Proxy::DoHConfig::ipv6_nameservers() {
   return ipv6_nameservers_;
 }
 
