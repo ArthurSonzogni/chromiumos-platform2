@@ -51,3 +51,5 @@ socket: arg0 == AF_UNIX
 stat: 1
 unlink: 1
 write: 1
+# tgkill is used by abort() and CHECK()/LOG(FATAL).
+tgkill: arg2 == SIGABRT
