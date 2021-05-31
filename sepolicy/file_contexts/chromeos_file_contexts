@@ -252,6 +252,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/update_engine(/.*)?    u:object_r:cros_var_lib_update_engine:s0
 /var/lib/ureadahead(/.*)?       u:object_r:cros_var_lib_ureadahead:s0
 /var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_whitelist:s0
+/var/lib/devicesettings(/.*)?   u:object_r:cros_var_lib_whitelist:s0
 /var/lock                       u:object_r:cros_var_lock:s0
 /var/log                        u:object_r:cros_var_log:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0
