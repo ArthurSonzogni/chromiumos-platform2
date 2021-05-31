@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -115,13 +116,14 @@ bool ParseUsbControlResponse(base::StringPiece s,
   return false;
 }
 
-bool CallUsbControl(brillo::ProcessImpl crosvm, UsbControlResponse* response) {
-  crosvm.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
-  int ret = crosvm.Run();
+bool CallUsbControl(std::unique_ptr<brillo::ProcessImpl> crosvm,
+                    UsbControlResponse* response) {
+  crosvm->RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
+  int ret = crosvm->Run();
   if (ret != 0)
     LOG(ERROR) << "Failed crosvm call returned code " << ret;
 
-  base::ScopedFD read_fd(crosvm.GetPipe(STDOUT_FILENO));
+  base::ScopedFD read_fd(crosvm->GetPipe(STDOUT_FILENO));
   std::string crosvm_response;
   crosvm_response.resize(2048);
 
@@ -359,14 +361,14 @@ bool AttachUsbDevice(std::string socket_path,
                      uint16_t pid,
                      int fd,
                      UsbControlResponse* response) {
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg("usb");
-  crosvm.AddArg("attach");
-  crosvm.AddArg(base::StringPrintf("%d:%d:%x:%x", bus, addr, vid, pid));
-  crosvm.AddArg("/proc/self/fd/" + std::to_string(fd));
-  crosvm.AddArg(std::move(socket_path));
-  crosvm.BindFd(fd, fd);
+  auto crosvm = std::make_unique<brillo::ProcessImpl>();
+  crosvm->AddArg(kCrosvmBin);
+  crosvm->AddArg("usb");
+  crosvm->AddArg("attach");
+  crosvm->AddArg(base::StringPrintf("%d:%d:%x:%x", bus, addr, vid, pid));
+  crosvm->AddArg("/proc/self/fd/" + std::to_string(fd));
+  crosvm->AddArg(std::move(socket_path));
+  crosvm->BindFd(fd, fd);
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
   CallUsbControl(std::move(crosvm), response);
@@ -377,12 +379,12 @@ bool AttachUsbDevice(std::string socket_path,
 bool DetachUsbDevice(std::string socket_path,
                      uint8_t port,
                      UsbControlResponse* response) {
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg("usb");
-  crosvm.AddArg("detach");
-  crosvm.AddArg(std::to_string(port));
-  crosvm.AddArg(std::move(socket_path));
+  auto crosvm = std::make_unique<brillo::ProcessImpl>();
+  crosvm->AddArg(kCrosvmBin);
+  crosvm->AddArg("usb");
+  crosvm->AddArg("detach");
+  crosvm->AddArg(std::to_string(port));
+  crosvm->AddArg(std::move(socket_path));
 
   CallUsbControl(std::move(crosvm), response);
 
@@ -390,11 +392,11 @@ bool DetachUsbDevice(std::string socket_path,
 }
 
 bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* device) {
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg("usb");
-  crosvm.AddArg("list");
-  crosvm.AddArg(std::move(socket_path));
+  auto crosvm = std::make_unique<brillo::ProcessImpl>();
+  crosvm->AddArg(kCrosvmBin);
+  crosvm->AddArg("usb");
+  crosvm->AddArg("list");
+  crosvm->AddArg(std::move(socket_path));
 
   UsbControlResponse response;
   CallUsbControl(std::move(crosvm), &response);
