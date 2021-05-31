@@ -205,8 +205,7 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
 
   // Ensure the system proxy address is cleared from shill.
   brillo::ErrorPtr error;
-  if (!shill_->ManagerProperties()->Set(shill::kDNSProxyIPv4AddressProperty, "",
-                                        &error))
+  if (!shill_->GetManagerProxy()->SetDNSProxyIPv4Address("", &error))
     LOG(WARNING) << "Failed to clear shill dns-proxy property for " << proc
                  << ": " << error->GetMessage();
 }

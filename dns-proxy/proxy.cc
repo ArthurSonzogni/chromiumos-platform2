@@ -572,7 +572,7 @@ void Proxy::SetShillProperty(const std::string& addr,
   }
 
   brillo::ErrorPtr error;
-  if (shill_props()->Set(shill::kDNSProxyIPv4AddressProperty, addr, &error))
+  if (shill_->GetManagerProxy()->SetDNSProxyIPv4Address(addr, &error))
     return;
 
   LOG(ERROR) << "Failed to set dns-proxy address property [" << addr
