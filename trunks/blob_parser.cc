@@ -49,6 +49,10 @@ bool BlobParser::ParseKeyBlob(const std::string& key_blob,
     LOG(ERROR) << "Error parsing public info: " << GetErrorString(result);
     return false;
   }
+  if (!public_info->size) {
+    LOG(ERROR) << "Error parsing public info: Empty data";
+    return false;
+  }
   result = Parse_TPM2B_PRIVATE(&mutable_key_blob, private_info, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error parsing private info: " << GetErrorString(result);
@@ -101,6 +105,10 @@ bool BlobParser::ParseCreationBlob(const std::string& creation_blob,
       Parse_TPM2B_CREATION_DATA(&mutable_creation_blob, creation_data, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error parsing creation_data: " << GetErrorString(result);
+    return false;
+  }
+  if (!creation_data->size) {
+    LOG(ERROR) << "Error parsing creation_data: Empty data";
     return false;
   }
   result = Parse_TPM2B_DIGEST(&mutable_creation_blob, creation_hash, nullptr);
