@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <va/va.h>
 #include <va/va_drm.h>
+#include <va/va_str.h>
 
 #include <utility>
 #include <vector>
