@@ -5,11 +5,11 @@
 /*
  * Retry device handler.
  */
+#include "hps/hal/retry.h"
+
 #include <iostream>
 
 #include <base/threading/thread.h>
-
-#include "hps/lib/retry.h"
 
 namespace hps {
 

@@ -5,8 +5,8 @@
 /*
  * Main HPS class.
  */
-#ifndef HPS_LIB_HPS_H_
-#define HPS_LIB_HPS_H_
+#ifndef HPS_HPS_H_
+#define HPS_HPS_H_
 
 #include <fstream>
 #include <iostream>
@@ -16,7 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/synchronization/lock.h>
 
-#include "hps/lib/dev.h"
+#include "hps/dev.h"
 
 namespace hps {
 
@@ -99,9 +99,9 @@ class HPS {
   bool WriteFile(int bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   base::Lock lock_;  // Exclusive module access lock
-  State state_;  // Current state
-  int retries_;  // Common retry counter for states.
-  int reboots_;  // Count of reboots.
+  State state_;      // Current state
+  int retries_;      // Common retry counter for states.
+  int reboots_;      // Count of reboots.
   uint16_t hw_rev_;
   uint16_t appl_version_;
   uint16_t feat_enabled_;
@@ -111,4 +111,4 @@ class HPS {
 
 }  // namespace hps
 
-#endif  // HPS_LIB_HPS_H_
+#endif  // HPS_HPS_H_

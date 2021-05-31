@@ -5,7 +5,7 @@
 /*
  * UART interconnection device handler.
  */
-#include "hps/lib/uart.h"
+#include "hps/hal/uart.h"
 
 #include <utility>
 

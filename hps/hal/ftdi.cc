@@ -6,7 +6,7 @@
  * FTDI device interface layer.
  * FTDI APP note AN_255 used as reference.
  */
-#include "hps/lib/ftdi.h"
+#include "hps/hal/ftdi.h"
 
 #include <iomanip>
 #include <iostream>

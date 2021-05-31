@@ -12,7 +12,7 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "hps/lib/hps.h"
+#include "hps/hps.h"
 
 #include "dbus_adaptors/org.chromium.Hps.h"
 

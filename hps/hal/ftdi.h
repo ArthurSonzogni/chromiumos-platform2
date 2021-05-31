@@ -5,8 +5,8 @@
 /*
  * Access via FTDI device, using open source library.
  */
-#ifndef HPS_LIB_FTDI_H_
-#define HPS_LIB_FTDI_H_
+#ifndef HPS_HAL_FTDI_H_
+#define HPS_HAL_FTDI_H_
 
 #include <memory>
 #include <string>
@@ -14,7 +14,7 @@
 
 #include <libftdi1/ftdi.h>
 
-#include "hps/lib/dev.h"
+#include "hps/dev.h"
 
 namespace hps {
 
@@ -46,4 +46,4 @@ class Ftdi : public DevInterface {
 
 }  // namespace hps
 
-#endif  // HPS_LIB_FTDI_H_
+#endif  // HPS_HAL_FTDI_H_

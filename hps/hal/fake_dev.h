@@ -5,8 +5,8 @@
 /*
  * Fake device for HPS testing.
  */
-#ifndef HPS_LIB_FAKE_DEV_H_
-#define HPS_LIB_FAKE_DEV_H_
+#ifndef HPS_HAL_FAKE_DEV_H_
+#define HPS_HAL_FAKE_DEV_H_
 
 #include <atomic>
 #include <deque>
@@ -18,8 +18,8 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/simple_thread.h>
 
-#include "hps/lib/dev.h"
-#include "hps/lib/hps_reg.h"
+#include "hps/dev.h"
+#include "hps/hps_reg.h"
 
 namespace hps {
 
@@ -144,4 +144,4 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
 
 }  // namespace hps
 
-#endif  // HPS_LIB_FAKE_DEV_H_
+#endif  // HPS_HAL_FAKE_DEV_H_

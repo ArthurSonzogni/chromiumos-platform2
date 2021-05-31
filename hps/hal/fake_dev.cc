@@ -30,7 +30,7 @@
  *             event  < - - - -
  *     return result
  */
-#include "hps/lib/fake_dev.h"
+#include "hps/hal/fake_dev.h"
 
 #include <atomic>
 #include <deque>
@@ -43,7 +43,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/simple_thread.h>
 
-#include "hps/lib/hps_reg.h"
+#include "hps/hps_reg.h"
 
 namespace hps {
 

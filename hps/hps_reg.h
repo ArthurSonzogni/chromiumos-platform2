@@ -5,8 +5,8 @@
 /*
  * Definitions for HPS host interface.
  */
-#ifndef HPS_LIB_HPS_REG_H_
-#define HPS_LIB_HPS_REG_H_
+#ifndef HPS_HPS_REG_H_
+#define HPS_HPS_REG_H_
 
 namespace hps {
 
@@ -79,4 +79,4 @@ inline uint8_t I2cReg(int reg) {
 
 }  // namespace hps
 
-#endif  // HPS_LIB_HPS_REG_H_
+#endif  // HPS_HPS_REG_H_

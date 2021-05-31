@@ -3,38 +3,33 @@
 // found in the LICENSE file.
 
 /*
- * I2C device handler.
+ * UART based device handler.
  */
-#ifndef HPS_LIB_I2C_H_
-#define HPS_LIB_I2C_H_
+#ifndef HPS_HAL_UART_H_
+#define HPS_HAL_UART_H_
 
 #include <memory>
 
 #include <stdint.h>
-#include <string>
 
-#include "hps/lib/dev.h"
-
-struct i2c_msg;
+#include "hps/dev.h"
 
 namespace hps {
 
-class I2CDev : public DevInterface {
+class Uart : public DevInterface {
  public:
-  ~I2CDev() {}
+  virtual ~Uart();
   int Open();
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
-  static std::unique_ptr<DevInterface> Create(const char* dev, uint8_t address);
+  static std::unique_ptr<DevInterface> Create(const char* device);
 
  private:
-  I2CDev(const char* bus, uint8_t address);
-  bool Ioc(struct i2c_msg* msg, size_t count);
-  const char* bus_;
-  int address_;
+  explicit Uart(const char* device);
+  const char* device_;
   int fd_;
 };
 
 }  // namespace hps
 
-#endif  // HPS_LIB_I2C_H_
+#endif  // HPS_HAL_UART_H_

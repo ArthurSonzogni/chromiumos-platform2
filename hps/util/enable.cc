@@ -13,8 +13,8 @@
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "hps/lib/hps.h"
-#include "hps/lib/hps_reg.h"
+#include "hps/hps.h"
+#include "hps/hps_reg.h"
 #include "hps/util/command.h"
 
 namespace {

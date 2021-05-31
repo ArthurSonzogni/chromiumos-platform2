@@ -16,8 +16,8 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 
-#include "hps/lib/hps.h"
-#include "hps/lib/hps_reg.h"
+#include "hps/hps.h"
+#include "hps/hps_reg.h"
 
 namespace hps {
 

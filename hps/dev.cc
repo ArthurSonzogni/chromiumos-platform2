@@ -5,8 +5,8 @@
 /*
  * Device access interface common functions.
  */
-#include "hps/lib/dev.h"
-#include "hps/lib/hps_reg.h"
+#include "hps/dev.h"
+#include "hps/hps_reg.h"
 
 namespace hps {
 

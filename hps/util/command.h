@@ -17,7 +17,7 @@
 
 #include <base/command_line.h>
 
-#include "hps/lib/hps.h"
+#include "hps/hps.h"
 
 class Command {
  public:

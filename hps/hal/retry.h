@@ -5,15 +5,15 @@
 /*
  * Intermediate device that implements retries
  */
-#ifndef HPS_LIB_RETRY_H_
-#define HPS_LIB_RETRY_H_
+#ifndef HPS_HAL_RETRY_H_
+#define HPS_HAL_RETRY_H_
 
 #include <memory>
 #include <utility>
 
 #include <base/time/time.h>
 
-#include "hps/lib/dev.h"
+#include "hps/dev.h"
 
 namespace hps {
 
@@ -35,4 +35,4 @@ class RetryDev : public DevInterface {
 
 }  // namespace hps
 
-#endif  // HPS_LIB_RETRY_H_
+#endif  // HPS_HAL_RETRY_H_

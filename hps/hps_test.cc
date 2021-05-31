@@ -10,9 +10,9 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "hps/lib/fake_dev.h"
-#include "hps/lib/hps.h"
-#include "hps/lib/hps_reg.h"
+#include "hps/hal/fake_dev.h"
+#include "hps/hps.h"
+#include "hps/hps_reg.h"
 
 namespace {
 

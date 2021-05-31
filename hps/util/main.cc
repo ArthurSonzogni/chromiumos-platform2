@@ -21,12 +21,12 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
-#include "hps/lib/fake_dev.h"
-#include "hps/lib/ftdi.h"
-#include "hps/lib/hps.h"
-#include "hps/lib/i2c.h"
-#include "hps/lib/retry.h"
-#include "hps/lib/uart.h"
+#include "hps/hal/fake_dev.h"
+#include "hps/hal/ftdi.h"
+#include "hps/hal/i2c.h"
+#include "hps/hal/retry.h"
+#include "hps/hal/uart.h"
+#include "hps/hps.h"
 #include "hps/util/command.h"
 
 // Static allocation of global command list head.

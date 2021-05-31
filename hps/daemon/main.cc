@@ -15,10 +15,10 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "hps/lib/fake_dev.h"
-#include "hps/lib/ftdi.h"
-#include "hps/lib/i2c.h"
-#include "hps/lib/uart.h"
+#include "hps/hal/fake_dev.h"
+#include "hps/hal/ftdi.h"
+#include "hps/hal/i2c.h"
+#include "hps/hal/uart.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");

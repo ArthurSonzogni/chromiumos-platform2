@@ -46,16 +46,27 @@ executable("hpsd") {
 
 static_library("hpslib") {
   sources = [
-    "lib/ftdi.cc",
-    "lib/ftdi.h",
-    "lib/hps.cc",
-    "lib/hps.h",
-    "lib/i2c.cc",
-    "lib/i2c.h",
-    "lib/retry.cc",
-    "lib/retry.h",
-    "lib/uart.cc",
-    "lib/uart.h",
+    "hps.cc",
+    "hps.h",
+  ]
+  pkg_deps = [ "libchrome" ]
+
+  deps = [
+    ":dev",
+    ":hal",
+  ]
+}
+
+static_library("hal") {
+  sources = [
+    "hal/ftdi.cc",
+    "hal/ftdi.h",
+    "hal/i2c.cc",
+    "hal/i2c.h",
+    "hal/retry.cc",
+    "hal/retry.h",
+    "hal/uart.cc",
+    "hal/uart.h",
   ]
   pkg_deps = [
     "libchrome",
@@ -68,8 +79,8 @@ static_library("hpslib") {
 
 static_library("fakedev") {
   sources = [
-    "lib/fake_dev.cc",
-    "lib/fake_dev.h",
+    "hal/fake_dev.cc",
+    "hal/fake_dev.h",
   ]
   pkg_deps = [ "libchrome" ]
 
@@ -78,15 +89,15 @@ static_library("fakedev") {
 
 static_library("dev") {
   sources = [
-    "lib/dev.cc",
-    "lib/dev.h",
-    "lib/hps_reg.h",
+    "dev.cc",
+    "dev.h",
+    "hps_reg.h",
   ]
 }
 
 if (use.test) {
   executable("dev_test") {
-    sources = [ "lib/dev_test.cc" ]
+    sources = [ "dev_test.cc" ]
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libchrome" ]
     deps = [
@@ -96,7 +107,7 @@ if (use.test) {
   }
 
   executable("hps_test") {
-    sources = [ "lib/hps_test.cc" ]
+    sources = [ "hps_test.cc" ]
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libchrome" ]
     deps = [

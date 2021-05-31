@@ -5,8 +5,8 @@
 /*
  * Device access interface.
  */
-#ifndef HPS_LIB_DEV_H_
-#define HPS_LIB_DEV_H_
+#ifndef HPS_DEV_H_
+#define HPS_DEV_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -40,4 +40,4 @@ class DevInterface {
 
 }  // namespace hps
 
-#endif  // HPS_LIB_DEV_H_
+#endif  // HPS_DEV_H_

@@ -5,7 +5,7 @@
 /*
  * I2C device handler.
  */
-#include "hps/lib/i2c.h"
+#include "hps/hal/i2c.h"
 
 #include <utility>
 
