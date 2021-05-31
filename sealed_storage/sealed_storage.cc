@@ -626,7 +626,8 @@ bool SealedStorage::DeserializeSealedBlob(const Data& sealed_data,
 
   if (trunks::Parse_TPM2B_ECC_POINT(&serialized_data, &pub_seeds->pub_point,
                                     nullptr /* value_bytes */) !=
-      trunks::TPM_RC_SUCCESS) {
+          trunks::TPM_RC_SUCCESS ||
+      !pub_seeds->pub_point.size) {
     LOG(ERROR) << "Failed to parse public point";
     return false;
   }
