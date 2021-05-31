@@ -252,51 +252,6 @@ bool DeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
-bool DeviceDBusAdaptor::AddWakeOnPacketConnection(
-    brillo::ErrorPtr* error, const std::string& ip_endpoint) {
-  SLOG(this, 2) << __func__;
-
-  Error e;
-  device_->AddWakeOnPacketConnection(ip_endpoint, &e);
-  return !e.ToChromeosError(error);
-}
-
-bool DeviceDBusAdaptor::AddWakeOnPacketOfTypes(
-    brillo::ErrorPtr* error, const std::vector<std::string>& packet_types) {
-  SLOG(this, 2) << __func__;
-
-  Error e;
-  device_->AddWakeOnPacketOfTypes(packet_types, &e);
-  return !e.ToChromeosError(error);
-}
-
-bool DeviceDBusAdaptor::RemoveWakeOnPacketConnection(
-    brillo::ErrorPtr* error, const std::string& ip_endpoint) {
-  SLOG(this, 2) << __func__;
-
-  Error e;
-  device_->RemoveWakeOnPacketConnection(ip_endpoint, &e);
-  return !e.ToChromeosError(error);
-}
-
-bool DeviceDBusAdaptor::RemoveWakeOnPacketOfTypes(
-    brillo::ErrorPtr* error, const std::vector<std::string>& packet_types) {
-  SLOG(this, 2) << __func__;
-
-  Error e;
-  device_->RemoveWakeOnPacketOfTypes(packet_types, &e);
-  return !e.ToChromeosError(error);
-}
-
-bool DeviceDBusAdaptor::RemoveAllWakeOnPacketConnections(
-    brillo::ErrorPtr* error) {
-  SLOG(this, 2) << __func__;
-
-  Error e;
-  device_->RemoveAllWakeOnPacketConnections(&e);
-  return !e.ToChromeosError(error);
-}
-
 void DeviceDBusAdaptor::SetUsbEthernetMacAddressSource(
     DBusMethodResponsePtr<> response, const std::string& source) {
   SLOG(this, 2) << __func__;

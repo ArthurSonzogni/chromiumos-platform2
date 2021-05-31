@@ -603,46 +603,6 @@ void Device::StopAllActivities() {
   StopIPv6DNSServerTimer();
 }
 
-void Device::AddWakeOnPacketConnection(const std::string& ip_endpoint,
-                                       Error* error) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "AddWakeOnPacketConnection not implemented for " + link_name_ + ".");
-  return;
-}
-
-void Device::AddWakeOnPacketOfTypes(
-    const std::vector<std::string>& packet_types, Error* error) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "AddWakeOnPacketOfType not implemented for " + link_name_ + ".");
-  return;
-}
-
-void Device::RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                          Error* error) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "RemoveWakeOnPacketConnection not implemented for " + link_name_ + ".");
-  return;
-}
-
-void Device::RemoveWakeOnPacketOfTypes(
-    const std::vector<std::string>& packet_types, Error* error) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "RemoveWakeOnPacketOfType not implemented for " + link_name_ + ".");
-  return;
-}
-
-void Device::RemoveAllWakeOnPacketConnections(Error* error) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "RemoveAllWakeOnPacketConnections not implemented for " + link_name_ +
-          ".");
-  return;
-}
-
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
                                             Error* error,
                                             const ResultCallback& callback) {

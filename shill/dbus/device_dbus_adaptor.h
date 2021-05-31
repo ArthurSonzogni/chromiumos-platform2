@@ -87,19 +87,6 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::DeviceAdaptor,
   void Reset(DBusMethodResponsePtr<> response) override;
   bool ResetByteCounters(brillo::ErrorPtr* error) override;
   bool RequestRoam(brillo::ErrorPtr* error, const std::string& addr) override;
-  bool AddWakeOnPacketConnection(brillo::ErrorPtr* error,
-                                 const std::string& ip_endpoint) override;
-  bool AddWakeOnPacketOfTypes(
-      brillo::ErrorPtr* error,
-      const std::vector<std::string>& packet_types) override;
-
-  bool RemoveWakeOnPacketConnection(brillo::ErrorPtr* error,
-                                    const std::string& ip_endpoint) override;
-  bool RemoveWakeOnPacketOfTypes(
-      brillo::ErrorPtr* error,
-      const std::vector<std::string>& packet_types) override;
-
-  bool RemoveAllWakeOnPacketConnections(brillo::ErrorPtr* error) override;
 
   void SetUsbEthernetMacAddressSource(DBusMethodResponsePtr<> response,
                                       const std::string& source) override;

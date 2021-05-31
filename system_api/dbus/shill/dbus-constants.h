@@ -54,18 +54,11 @@ const char kSetPropertiesFunction[] = "SetProperties";
 const char kRemoveConfigFunction[] = "Remove";
 
 // Device function names.
-const char kAddWakeOnPacketConnectionFunction[] = "AddWakeOnPacketConnection";
-const char kAddWakeOnPacketOfTypesFunction[] = "AddWakeOnPacketOfTypes";
 const char kChangePinFunction[] = "ChangePin";
 const char kEnterPinFunction[] = "EnterPin";
 // Deprecated: crbug.com/938698.
 const char kPerformTDLSOperationFunction[] = "PerformTDLSOperation";
 const char kRegisterFunction[] = "Register";
-const char kRemoveAllWakeOnPacketConnectionsFunction[] =
-    "RemoveAllWakeOnPacketConnections";
-const char kRemoveWakeOnPacketConnectionFunction[] =
-    "RemoveWakeOnPacketConnection";
-const char kRemoveWakeOnPacketOfTypesFunction[] = "RemoveWakeOnPacketOfTypes";
 const char kRequirePinFunction[] = "RequirePin";
 const char kResetFunction[] = "Reset";
 const char kSetUsbEthernetMacAddressSourceFunction[] =

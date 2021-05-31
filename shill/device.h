@@ -287,29 +287,6 @@ class Device : public base::RefCounted<Device> {
   // addresses from this interface.
   mockable void OnIPv6DnsServerAddressesChanged();
 
-  // Program a rule into the NIC to wake the system from suspend upon receiving
-  // packets from |ip_endpoint|. |error| indicates the result of the
-  // operation.
-  virtual void AddWakeOnPacketConnection(const std::string& ip_endpoint,
-                                         Error* error);
-  // Programs the NIC to wake on every packet of IP protocol type belonging to
-  // |packet_types|. |error| indicates the result of the operation.
-  virtual void AddWakeOnPacketOfTypes(
-      const std::vector<std::string>& packet_types, Error* error);
-  // Removes a rule previously programmed into the NIC to wake the system from
-  // suspend upon receiving packets from |ip_endpoint|. |error| indicates the
-  // result of the operation.
-  virtual void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
-                                            Error* error);
-  // Removes a rule previously programmed  to wake on every packet of IP
-  // protocol type belonging to |packet_types|.
-  // |error| indicates the result of the operation.
-  virtual void RemoveWakeOnPacketOfTypes(
-      const std::vector<std::string>& packet_types, Error* error);
-  // Removes all wake-on-packet rules programmed into the NIC. |error| indicates
-  // the result of the operation.
-  virtual void RemoveAllWakeOnPacketConnections(Error* error);
-
   // Sets MAC address source for USB Ethernet device. Callback will only be
   // invoke when device successfully changed MAC address or failed to change MAC
   // address.
