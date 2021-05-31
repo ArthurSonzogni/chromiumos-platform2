@@ -807,4 +807,9 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
   return device;
 }
 
+org::chromium::flimflam::ManagerProxyInterface* Client::GetManagerProxy()
+    const {
+  return manager_proxy_.get();
+}
+
 }  // namespace shill

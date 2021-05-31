@@ -283,6 +283,10 @@ class BRILLO_EXPORT Client {
   // handler (assuming one is interested in the VPN device).
   virtual std::unique_ptr<Device> DefaultDevice(bool exclude_vpn);
 
+  // Returns the manager proxy. This pointer must not be deleted by the caller.
+  virtual org::chromium::flimflam::ManagerProxyInterface* GetManagerProxy()
+      const;
+
  protected:
   // All of the methods and members with protected access scope are needed for
   // unit testing.
