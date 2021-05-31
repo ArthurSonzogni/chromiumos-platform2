@@ -40,14 +40,18 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_string(uart, "", "Use UART connection");
-  brillo::FlagHelper::Init(argc, argv, "HPS tool.");
+  brillo::FlagHelper::Init(
+      argc, argv,
+      "usage: hps [ --ftdi | --test | --bus <i2c-bus> ] [ --addr <i2c-addr> ]\n"
+      "           <command> <command arguments>\n\n" +
+          Command::GetHelp());
 
   const logging::LoggingSettings ls;
   logging::InitLogging(ls);
 
   auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
   if (args.size() == 0) {
-    Command::ShowHelp();
+    std::cerr << "no command, " << Command::GetHelp();
     return 1;
   }
   std::unique_ptr<hps::DevInterface> dev;

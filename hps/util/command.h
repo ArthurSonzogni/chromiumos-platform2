@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <string.h>
@@ -42,14 +43,16 @@ class Command {
         return el->func_(std::move(hps), args);
       }
     }
-    ShowHelp();
+    std::cerr << "no matching command: " << cmd << std::endl << GetHelp();
     return 1;
   }
-  static void ShowHelp() {
-    std::cerr << "Error - commands are:" << std::endl;
+  static std::string GetHelp() {
+    std::ostringstream out;
+    out << "commands are:" << std::endl;
     for (auto el = list_; el != nullptr; el = el->next_) {
-      std::cerr << el->help_ << std::endl;
+      out << "  " << el->help_ << std::endl;
     }
+    return out.str();
   }
 
  private:
