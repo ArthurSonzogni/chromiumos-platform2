@@ -48,4 +48,4 @@ addresses.
 
 [CEC]: https://en.wikipedia.org/wiki/Consumer_Electronics_Control
 [Linux CEC API]: https://www.kernel.org/doc/html/latest/media/uapi/cec/cec-api.html
-[system API]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/cecservice/dbus-constants.h
+[system API]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/cecservice/dbus-constants.h

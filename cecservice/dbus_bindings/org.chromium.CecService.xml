@@ -34,7 +34,7 @@
           Returns array of integers, each representing power status of a TV
           connected to the device. The order of returned values is arbitrary.
           See the link below for the meaning of the values:
-          https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/cecservice/dbus-constants.h
+          https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/cecservice/dbus-constants.h
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
