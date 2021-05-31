@@ -59,3 +59,6 @@ flock: 1
 
 sched_getattr: 1
 sched_setattr: 1
+
+# tgkill is used by abort() and CHECK()/LOG(FATAL).
+tgkill: arg2 == SIGABRT

@@ -65,3 +65,6 @@ mlock: 1
 munlock: 1
 nanosleep: 1
 clock_nanosleep: 1
+
+# tgkill is used by abort() and CHECK()/LOG(FATAL).
+tgkill: arg2 == SIGABRT
