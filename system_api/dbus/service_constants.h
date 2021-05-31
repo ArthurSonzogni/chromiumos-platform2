@@ -463,6 +463,7 @@ const char kStableDeviceIdNewProperty[] = "StableDeviceIdNew";
 const char kMaxSupportedChannelsProperty[] = "MaxSupportedChannels";
 const char kAudioEffectProperty[] = "AudioEffect";
 const char kNodeVolumeProperty[] = "NodeVolume";
+const char kInputNodeGainProperty[] = "InputNodeGain";
 // The following two properties are optional.
 const char kNumberOfUnderrunsProperty[] = "NumberOfUnderruns";
 const char kNumberOfSevereUnderrunsProperty[] = "NumberOfSevereUnderruns";
