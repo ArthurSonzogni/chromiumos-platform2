@@ -128,9 +128,7 @@
     "-b",
     "/sys/devices/pci0000:00/",
     "-b",
-    "/dev/",
-    "-c",
-    "CAP_DAC_READ_SEARCH+ep"
+    "/dev/"
   ],
   "vpd_cached": [
     "-k",
