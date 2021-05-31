@@ -12,6 +12,7 @@
 #include <google-lpa/lpa/core/lpa.h>
 
 #include "hermes/context.h"
+#include "hermes/euicc_interface.h"
 #include "hermes/modem_qrtr.h"
 #include "hermes/socket_qrtr.h"
 
@@ -35,11 +36,8 @@ void Daemon::RegisterDBusObjectsAsync(
   lpa_ = b.Build();
 
   Context::Initialize(bus_, lpa_.get(), &executor_, &adaptor_factory_,
-                      dynamic_cast<ModemControlInterface*>(modem_.get()));
+                      modem_.get());
   manager_ = std::make_unique<Manager>();
-  // TODO(crbug.com/1085825) Once a Channel class is created to abstract out the
-  // logical channel logic in ModemQrtr, a Channel (subclass?) can be used as an
-  // EuiccCard rather than the ModemQrtr instance.
   auto cb = base::BindOnce([](int err) {
     if (err) {
       LOG(ERROR) << "eSIM init failed with err:" << err;
@@ -48,8 +46,7 @@ void Daemon::RegisterDBusObjectsAsync(
     LOG(INFO) << "eSIM init finished";
   });
 
-  static_cast<ModemQrtr*>(modem_.get())
-      ->Initialize(manager_.get(), std::move(cb));
+  modem_->Initialize(manager_.get(), std::move(cb));
 }
 
 }  // namespace hermes

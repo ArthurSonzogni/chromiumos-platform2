@@ -18,6 +18,7 @@
 #include <libqrtr.h>
 
 #include "hermes/dms_cmd.h"
+#include "hermes/euicc_interface.h"
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 #include "hermes/logger.h"
@@ -27,11 +28,9 @@
 
 namespace hermes {
 
-class EuiccManagerInterface;
-
 // Implementation of EuiccCard using QRTR sockets to send QMI UIM
 // messages.
-class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
+class ModemQrtr : public EuiccInterface {
  public:
   // Base class for the tx info specific to a certain type of uim command.
   // Uim command types that need any additional information should define
@@ -52,7 +51,9 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
       Executor* executor);
   virtual ~ModemQrtr();
 
-  void Initialize(EuiccManagerInterface* euicc_manager, ResultCallback cb);
+  // EuiccInterface overrides
+  void Initialize(EuiccManagerInterface* euicc_manager,
+                  ResultCallback cb) override;
 
   // ModemControlInterface overrides
   void StoreAndSetActiveSlot(uint32_t physical_slot,
