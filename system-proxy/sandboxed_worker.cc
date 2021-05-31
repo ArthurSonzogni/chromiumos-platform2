@@ -272,10 +272,7 @@ void SandboxedWorker::OnProxyResolved(
                          base::CompareCase::INSENSITIVE_ASCII) ||
         base::StartsWith(proxy, kPrefixDirect,
                          base::CompareCase::INSENSITIVE_ASCII)) {
-      // Make sure the local proxy doesn't try to connect to itself.
-      if (!adaptor_->IsLocalProxy(proxy)) {
-        reply.add_proxy_servers(proxy);
-      }
+      reply.add_proxy_servers(proxy);
     }
   }
 

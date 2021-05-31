@@ -60,12 +60,6 @@ class SystemProxyAdaptor : public org::chromium::SystemProxyAdaptor,
   void RequestAuthenticationCredentials(
       const worker::ProtectionSpace& protection_space,
       bool bad_cached_credentials);
-  // Returns true if |proxy| points to one of the local proxy workers. The
-  // method only matches against host and port, but not scheme.
-  // TODO(acostinas, crbug.com/1109207) Add an option to the proxy resolution
-  // service in Chrome that allows fetching only the addresses of "real"
-  // proxies.
-  bool IsLocalProxy(const std::string& proxy);
 
  protected:
   virtual std::unique_ptr<SandboxedWorker> CreateWorker();

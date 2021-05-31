@@ -210,18 +210,9 @@ std::vector<uint8_t> SystemProxyAdaptor::ShutDownProcess(
 void SystemProxyAdaptor::GetChromeProxyServersAsync(
     const std::string& target_url,
     const brillo::http::GetChromeProxyServersCallback& callback) {
-  brillo::http::GetChromeProxyServersAsync(dbus_object_->GetBus(), target_url,
-                                           move(callback));
-}
-
-bool SystemProxyAdaptor::IsLocalProxy(const std::string& proxy) {
-  if (system_services_worker_ &&
-      proxy.find(system_services_worker_->local_proxy_host_and_port()) !=
-          std::string::npos) {
-    return true;
-  }
-  return arc_worker_ && proxy.find(arc_worker_->local_proxy_host_and_port()) !=
-                            std::string::npos;
+  brillo::http::GetChromeProxyServersWithOverrideAsync(
+      dbus_object_->GetBus(), target_url,
+      brillo::http::SystemProxyOverride::kOptOut, move(callback));
 }
 
 std::unique_ptr<SandboxedWorker> SystemProxyAdaptor::CreateWorker() {

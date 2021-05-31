@@ -380,35 +380,6 @@ TEST_F(SystemProxyAdaptorTest, ConnectNamespace) {
   EXPECT_TRUE(active_worker_signal_called_);
 }
 
-TEST_F(SystemProxyAdaptorTest, ProxyResolutionFilter) {
-  std::vector<std::string> proxy_list = {
-      base::StringPrintf("%s%s", "http://", kLocalProxyHostPort),
-      "http://test.proxy.com", "https://test.proxy.com", "direct://"};
-
-  adaptor_->system_services_worker_ = adaptor_->CreateWorker();
-  int fds[2];
-  ASSERT_TRUE(base::CreateLocalNonBlockingPipe(fds));
-  base::ScopedFD read_scoped_fd(fds[0]);
-  // Reset the worker stdin pipe to read the input from the other endpoint.
-  adaptor_->system_services_worker_->stdin_pipe_.reset(fds[1]);
-  adaptor_->system_services_worker_->OnProxyResolved("target_url", true,
-                                                     proxy_list);
-
-  brillo_loop_.RunOnce(false);
-
-  worker::WorkerConfigs config;
-  ASSERT_TRUE(ReadProtobuf(read_scoped_fd.get(), &config));
-  EXPECT_TRUE(config.has_proxy_resolution_reply());
-  std::list<std::string> proxies;
-  const worker::ProxyResolutionReply& reply = config.proxy_resolution_reply();
-  for (auto const& proxy : reply.proxy_servers())
-    proxies.push_back(proxy);
-
-  EXPECT_EQ("target_url", reply.target_url());
-  EXPECT_EQ(2, proxies.size());
-  EXPECT_EQ("http://test.proxy.com", proxies.front());
-}
-
 // Test that verifies that authentication requests are result in sending a
 // signal to notify credentials are missing and credentials and protection space
 // if correctly forwarded to the worker processes.
