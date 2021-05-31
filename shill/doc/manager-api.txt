@@ -397,6 +397,17 @@ Methods
 			claimer |claimer_name| back to shill. The specified device
 			will be removed from the block list and managed by shill.
 
+		void SetDNSProxyIPv4Address(string ipv4_address)
+
+			Assigns the IPv4 address of the dns-proxy service.
+			When set, shill will use this address as the
+			system name server rather than those specified by the
+			relevant service.
+
+			This address is enforced to be within a predetermined
+			system local subnet.
+
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -636,16 +647,6 @@ Properties 	object ActiveProfile [readonly]
 
 			Specifies whether or not 802.11r Fast BSS Transition should be
 			used.
-
-		string DNSProxyIPv4Address [readwrite]
-
-			The IPv4 address of the dns-proxy service. If this
-			property is set, shill will use this address as the
-			system name server rather than those specified by the
-			relevant service.
-
-			This address is enforced to be within a predetermined
-			system local subnet.
 
 		array{string, string} DNSProxyDOHProviders [readwrite]
 

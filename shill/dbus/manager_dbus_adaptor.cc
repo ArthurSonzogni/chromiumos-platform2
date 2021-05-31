@@ -434,4 +434,12 @@ void ManagerDBusAdaptor::OnDeviceClaimerVanished() {
   watcher_for_device_claimer_.reset();
 }
 
+bool ManagerDBusAdaptor::SetDNSProxyIPv4Address(
+    brillo::ErrorPtr* error, const std::string& ipv4_address) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  manager_->SetDNSProxyIPv4Address(ipv4_address, &e);
+  return !e.ToChromeosError(error);
+}
+
 }  // namespace shill

@@ -294,9 +294,6 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
-  HelpRegisterDerivedString(kDNSProxyIPv4AddressProperty,
-                            &Manager::GetDNSProxyIPv4Address,
-                            &Manager::SetDNSProxyIPv4Address);
   HelpRegisterDerivedKeyValueStore(kDNSProxyDOHProvidersProperty,
                                    &Manager::GetDNSProxyDOHProviders,
                                    &Manager::SetDNSProxyDOHProviders);

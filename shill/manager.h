@@ -531,6 +531,9 @@ class Manager {
   // connections.
   static std::vector<uint32_t> ComputeUserTrafficUids();
 
+  // Assigns (or clears) the IPv4 address of the dns-proxy service.
+  bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -650,7 +653,6 @@ class Manager {
   void OnTechnologyProhibited(Technology technology, const Error& error);
 
   std::string GetDNSProxyIPv4Address(Error* error);
-  bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
   void UseDNSProxy(const std::string& proxy_addr);
 
   KeyValueStore GetDNSProxyDOHProviders(Error* error);
