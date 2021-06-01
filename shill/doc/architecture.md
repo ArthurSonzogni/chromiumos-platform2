@@ -79,11 +79,9 @@ addition to the regular `Profile` behavior of persisting `Service` properties, a
 `DefaultProfile` will also persist `Device` properties and a subset of `Manager`
 properties.
 
-On user login, specifically when Chrome instructs session_manager to emit the
-load-shill-profile upstart event, the
-[shill_login_user](../bin/shill_login_user) script is run, which creates a
-`Profile` for that user if one doesn't already exist, and then pushes that
-`Profile` onto the `Profile` stack. Correspondingly,
+On user login, the [shill_login_user](../bin/shill_login_user) script is run,
+which creates a `Profile` for that user if one doesn't already exist, and then
+pushes that `Profile` onto the `Profile` stack. Correspondingly,
 [shill_logout_user](../bin/shill_logout_user) will pop the user's `Profile` when
 logging out. When a guest user is used, a `Profile` will still be created and
 pushed onto the stack as usual, but the persisted data will simply be deleted so
