@@ -118,6 +118,9 @@
 		<method name="SetDNSProxyIPv4Address">
 			<arg type="s" direction="in"/>
 		</method>
+		<method name="SetDNSProxyDOHProviders">
+			<arg type="a{sv}" direction="in"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

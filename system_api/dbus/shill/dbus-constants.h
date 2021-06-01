@@ -35,6 +35,7 @@ const char kGetNetworksForGeolocation[] = "GetNetworksForGeolocation";
 const char kGetServiceFunction[] = "GetService";
 const char kRequestScanFunction[] = "RequestScan";
 const char kSetNetworkThrottlingFunction[] = "SetNetworkThrottlingStatus";
+const char kSetDNSProxyDOHProvidersProperty[] = "SetDNSProxyDOHProviders";
 
 // Service function names.
 const char kActivateCellularModemFunction[] = "ActivateCellularModem";

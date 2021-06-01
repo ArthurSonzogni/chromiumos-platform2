@@ -442,4 +442,13 @@ bool ManagerDBusAdaptor::SetDNSProxyIPv4Address(
   return !e.ToChromeosError(error);
 }
 
+bool ManagerDBusAdaptor::SetDNSProxyDOHProviders(
+    brillo::ErrorPtr* error, const brillo::VariantDictionary& providers) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  manager_->SetDNSProxyDOHProviders(
+      KeyValueStore::ConvertFromVariantDictionary(providers), &e);
+  return !e.ToChromeosError(error);
+}
+
 }  // namespace shill

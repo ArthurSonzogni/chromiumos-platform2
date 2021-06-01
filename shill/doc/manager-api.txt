@@ -407,6 +407,14 @@ Methods
 			This address is enforced to be within a predetermined
 			system local subnet.
 
+		void DNSProxyDOHProviders(array{string, string} providers)
+
+			Assigns the DNS-over-HTTPS service providers for use by
+			the dns-proxy service. URLs of the secure
+			DNS service endpoints are used as keys. If applicable,
+			each value is a comma-separated list of the IP addresses
+			(both v4 and v6 are supported) of the standard DNS name
+			servers that map to the secure DNS service provider.
 
 Signals		PropertyChanged(string name, variant value)
 
@@ -648,7 +656,7 @@ Properties 	object ActiveProfile [readonly]
 			Specifies whether or not 802.11r Fast BSS Transition should be
 			used.
 
-		array{string, string} DNSProxyDOHProviders [readwrite]
+		array{string, string} DNSProxyDOHProviders [readonly]
 
 			The DNS-over-HTTPS service providers. URLs of the secure
 			DNS service endpoints are used as keys. If applicable,

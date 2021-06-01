@@ -534,6 +534,10 @@ class Manager {
   // Assigns (or clears) the IPv4 address of the dns-proxy service.
   bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
 
+  // Assigns the DNS-over-HTTPS service providers for use by the dns-proxy
+  // service.
+  bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -656,7 +660,6 @@ class Manager {
   void UseDNSProxy(const std::string& proxy_addr);
 
   KeyValueStore GetDNSProxyDOHProviders(Error* error);
-  bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.
