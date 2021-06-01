@@ -208,6 +208,7 @@ class MockPatchpanelClient : public patchpanel::Client {
               RegisterNeighborReachabilityEventHandler,
               (NeighborReachabilityEventHandler),
               (override));
+  MOCK_METHOD(bool, SetVpnLockdown, (bool), (override));
 };
 
 class MockResolver : public Resolver {
