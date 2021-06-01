@@ -13,8 +13,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-#include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
-
 namespace diagnostics {
 
 namespace {
@@ -37,7 +35,8 @@ FetchAggregator::FetchAggregator(Context* context)
           std::make_unique<BootPerformanceFetcher>(context)),
       memory_fetcher_(std::make_unique<MemoryFetcher>(context)),
       stateful_partition_fetcher_(
-          std::make_unique<StatefulPartitionFetcher>(context)) {
+          std::make_unique<StatefulPartitionFetcher>(context)),
+      timezone_fetcher_(std::make_unique<TimezoneFetcher>(context)) {
   DCHECK(backlight_fetcher_);
   DCHECK(battery_fetcher_);
   DCHECK(bluetooth_fetcher_);
@@ -50,6 +49,7 @@ FetchAggregator::FetchAggregator(Context* context)
   DCHECK(boot_performance_fetcher_);
   DCHECK(memory_fetcher_);
   DCHECK(stateful_partition_fetcher_);
+  DCHECK(timezone_fetcher_);
 }
 
 FetchAggregator::~FetchAggregator() = default;
@@ -89,7 +89,7 @@ void FetchAggregator::Run(
       }
       case mojo_ipc::ProbeCategoryEnum::kTimezone: {
         WrapFetchProbeData(category, itr, &info->timezone_result,
-                           FetchTimezoneInfo(base::FilePath("/")));
+                           timezone_fetcher_->FetchTimezoneInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kMemory: {

@@ -6,17 +6,19 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
+#include "diagnostics/cros_healthd/system/mock_context.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 constexpr char kLocaltimeFile[] = "var/lib/timezone/localtime";
 constexpr char kZoneInfoPath[] = "usr/share/zoneinfo";
@@ -25,14 +27,31 @@ constexpr char kPosixTimezoneFile[] = "MST.tzif";
 constexpr char kPosixTimezoneOutput[] = "MST7MDT,M3.2.0,M11.1.0";
 constexpr char kSrcPath[] = "cros_healthd/fetchers";
 
+class TimezoneFetcherTest : public ::testing::Test {
+ protected:
+  TimezoneFetcherTest() = default;
+  TimezoneFetcherTest(const TimezoneFetcherTest&) = delete;
+  TimezoneFetcherTest& operator=(const TimezoneFetcherTest&) = delete;
+
+  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
+
+  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
+
+  mojo_ipc::TimezoneResultPtr FetchTimezoneInfo() {
+    return timezone_fetcher_.FetchTimezoneInfo();
+  }
+
+ private:
+  MockContext mock_context_;
+  TimezoneFetcher timezone_fetcher_{&mock_context_};
+};
+
 // Test the logic to get and parse the timezone information.
-TEST(TimezoneUtils, TestGetTimezone) {
+TEST_F(TimezoneFetcherTest, TestGetTimezone) {
   // Create files and symlinks expected to be present for the localtime file.
-  base::ScopedTempDir root;
-  ASSERT_TRUE(root.CreateUniqueTempDir());
   base::FilePath timezone_file_path =
-      root.GetPath().AppendASCII(kZoneInfoPath).AppendASCII(kTimezoneRegion);
-  base::FilePath localtime_path = root.GetPath().AppendASCII(kLocaltimeFile);
+      root_dir().AppendASCII(kZoneInfoPath).AppendASCII(kTimezoneRegion);
+  base::FilePath localtime_path = root_dir().AppendASCII(kLocaltimeFile);
 
   ASSERT_TRUE(
       WriteFileAndCreateSymbolicLink(timezone_file_path, "", localtime_path));
@@ -42,22 +61,19 @@ TEST(TimezoneUtils, TestGetTimezone) {
                                  .AppendASCII(kPosixTimezoneFile);
   ASSERT_TRUE(base::CopyFile(test_file, timezone_file_path));
 
-  auto timezone_result = FetchTimezoneInfo(root.GetPath());
-  ASSERT_TRUE(timezone_result->is_timezone_info());
-  const auto& timezone_info = timezone_result->get_timezone_info();
-  EXPECT_EQ(timezone_info->posix, kPosixTimezoneOutput);
-  EXPECT_EQ(timezone_info->region, kTimezoneRegion);
+  auto result = FetchTimezoneInfo();
+  ASSERT_TRUE(result->is_timezone_info());
+
+  const auto& info = result->get_timezone_info();
+  EXPECT_EQ(info->posix, kPosixTimezoneOutput);
+  EXPECT_EQ(info->region, kTimezoneRegion);
 }
 
 // Test that the function fails gracefully if the files do not exist.
-TEST(TimezoneUtils, TestGetTimezoneFailure) {
-  base::ScopedTempDir root;
-  ASSERT_TRUE(root.CreateUniqueTempDir());
-
-  auto timezone_result = FetchTimezoneInfo(root.GetPath());
-  ASSERT_TRUE(timezone_result->is_error());
-  EXPECT_EQ(timezone_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kFileReadError);
+TEST_F(TimezoneFetcherTest, TestGetTimezoneFailure) {
+  auto result = FetchTimezoneInfo();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
 }
 
 }  // namespace

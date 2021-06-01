@@ -5,16 +5,27 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_TIMEZONE_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_TIMEZONE_FETCHER_H_
 
-#include <base/files/file_path.h>
-
+#include "diagnostics/cros_healthd/system/context.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
-// Returns a structure with either the device's timezone data or the error that
-// occurred fetching the information.
-chromeos::cros_healthd::mojom::TimezoneResultPtr FetchTimezoneInfo(
-    const base::FilePath& root_dir);
+// The TimezoneFetcher class is responsible for gathering timezone info.
+class TimezoneFetcher final {
+ public:
+  explicit TimezoneFetcher(Context* context);
+  TimezoneFetcher(const TimezoneFetcher&) = delete;
+  TimezoneFetcher& operator=(const TimezoneFetcher&) = delete;
+  ~TimezoneFetcher() = default;
+
+  // Returns a structure with either the device's timezone data or the error
+  // that occurred fetching the information.
+  chromeos::cros_healthd::mojom::TimezoneResultPtr FetchTimezoneInfo();
+
+ private:
+  // Unowned pointer that outlives this TimezoneFetcher instance.
+  Context* const context_ = nullptr;
+};
 
 }  // namespace diagnostics
 

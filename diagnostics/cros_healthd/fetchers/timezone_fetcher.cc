@@ -23,9 +23,14 @@ constexpr char kZoneInfoPath[] = "usr/share/zoneinfo";
 
 }  // namespace
 
-mojo_ipc::TimezoneResultPtr FetchTimezoneInfo(const base::FilePath& root) {
+TimezoneFetcher::TimezoneFetcher(Context* context) : context_(context) {
+  DCHECK(context_);
+}
+
+mojo_ipc::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
   base::FilePath timezone_path;
-  base::FilePath localtime_path = root.AppendASCII(kLocaltimeFile);
+  base::FilePath localtime_path =
+      context_->root_dir().AppendASCII(kLocaltimeFile);
   if (!base::NormalizeFilePath(localtime_path, &timezone_path)) {
     return mojo_ipc::TimezoneResult::NewError(CreateAndLogProbeError(
         mojo_ipc::ErrorType::kFileReadError,
@@ -33,7 +38,8 @@ mojo_ipc::TimezoneResultPtr FetchTimezoneInfo(const base::FilePath& root) {
   }
 
   base::FilePath timezone_region_path;
-  base::FilePath zone_info_path = root.AppendASCII(kZoneInfoPath);
+  base::FilePath zone_info_path =
+      context_->root_dir().AppendASCII(kZoneInfoPath);
   if (!zone_info_path.AppendRelativePath(timezone_path,
                                          &timezone_region_path)) {
     return mojo_ipc::TimezoneResult::NewError(CreateAndLogProbeError(

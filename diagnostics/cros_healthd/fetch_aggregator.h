@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/cros_healthd_probe.mojom.h"
@@ -101,6 +102,7 @@ class FetchAggregator final {
   std::unique_ptr<MemoryFetcher> const memory_fetcher_ = nullptr;
   std::unique_ptr<StatefulPartitionFetcher> const stateful_partition_fetcher_ =
       nullptr;
+  std::unique_ptr<TimezoneFetcher> const timezone_fetcher_ = nullptr;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};
