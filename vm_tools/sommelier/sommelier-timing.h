@@ -8,6 +8,9 @@
 #include <unordered_map>
 #include <vector>
 
+const int kUnknownBufferId = -1;
+const int kUnknownSurfaceId = -1;
+
 class Timing {
  public:
   explicit Timing(const char* fname);
@@ -23,10 +26,13 @@ class Timing {
     int surface_id;
     int buffer_id;
     Type action_type;
-    BufferAction() : surface_id(-1), buffer_id(-1), action_type(UNKNOWN) {}
+    BufferAction()
+        : surface_id(kUnknownSurfaceId),
+          buffer_id(kUnknownBufferId),
+          action_type(UNKNOWN) {}
     explicit BufferAction(timespec t,
-                          int sid = -1,
-                          int bid = -1,
+                          int sid = kUnknownSurfaceId,
+                          int bid = kUnknownBufferId,
                           Type type = UNKNOWN)
         : time(t), surface_id(sid), buffer_id(bid), action_type(type) {}
   };

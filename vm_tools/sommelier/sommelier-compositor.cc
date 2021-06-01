@@ -120,7 +120,8 @@ static void sl_host_surface_attach(struct wl_client* client,
                                    int32_t x,
                                    int32_t y) {
   auto resource_id = wl_resource_get_id(resource);
-  auto buffer_id = wl_resource_get_id(buffer_resource);
+  auto buffer_id =
+      buffer_resource ? wl_resource_get_id(buffer_resource) : kUnknownBufferId;
   TRACE_EVENT("surface", "sl_host_surface_attach", "resource_id", resource_id,
               "buffer_id", buffer_id);
   struct sl_host_surface* host =

@@ -10,7 +10,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <thread>
 #include <time.h>
 
 // 60 sec * 60 frames/sec * 3 actions/frame = 10800 actions
@@ -35,15 +34,15 @@ void Timing::UpdateLastAttach(int surface_id, int buffer_id) {
 
 // Create a new action, add info gained from commit call.
 void Timing::UpdateLastCommit(int surface_id) {
-  actions[actions_idx] =
-      BufferAction(GetTime(), surface_id, -1, BufferAction::COMMIT);
+  actions[actions_idx] = BufferAction(GetTime(), surface_id, kUnknownBufferId,
+                                      BufferAction::COMMIT);
   actions_idx = ((actions_idx + 1) % MAX_NUM_ACTIONS);
 }
 
 // Add a release action with release timing info.
 void Timing::UpdateLastRelease(int buffer_id) {
-  actions[actions_idx] =
-      BufferAction(GetTime(), -1, buffer_id, BufferAction::RELEASE);
+  actions[actions_idx] = BufferAction(GetTime(), kUnknownSurfaceId, buffer_id,
+                                      BufferAction::RELEASE);
   actions_idx = ((actions_idx + 1) % MAX_NUM_ACTIONS);
 }
 
