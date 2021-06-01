@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/optional.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <gtest/gtest.h>
 
@@ -85,7 +87,13 @@ class SystemUtilsTest : public ::testing::Test {
     SetHasSkuNumber(true);
     SetMarketingName(kFakeMarketingName);
     SetProductName(kFakeProductName);
-    PopulateLsbRelease();
+    PopulateLsbRelease(
+        base::StringPrintf("CHROMEOS_RELEASE_CHROME_MILESTONE=%s\n"
+                           "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
+                           "CHROMEOS_RELEASE_PATCH_NUMBER=%s\n"
+                           "CHROMEOS_RELEASE_TRACK=%s\n",
+                           kFakeReleaseMilestone, kFakeBuildNumber,
+                           kFakePatchNumber, kFakeReleaseChannel));
   }
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
@@ -106,15 +114,12 @@ class SystemUtilsTest : public ::testing::Test {
     mock_context_.fake_system_config()->SetProductName(val);
   }
 
-  void PopulateLsbRelease() {
-    std::string lsb_release =
-        std::string("CHROMEOS_RELEASE_CHROME_MILESTONE=") +
-        kFakeReleaseMilestone +
-        "\nCHROMEOS_RELEASE_BUILD_NUMBER=" + kFakeBuildNumber +
-        "\nCHROMEOS_RELEASE_PATCH_NUMBER=" + kFakePatchNumber +
-        "\nCHROMEOS_RELEASE_TRACK=" + kFakeReleaseChannel;
-    base::test::ScopedChromeOSVersionInfo version(lsb_release,
-                                                  base::Time::Now());
+  void PopulateLsbRelease(const std::string& lsb_release) {
+    // Deletes the old instance to release the global lock before creating a new
+    // instance.
+    chromeos_version_.reset();
+    chromeos_version_ = std::make_unique<base::test::ScopedChromeOSVersionInfo>(
+        lsb_release, base::Time::Now());
   }
 
   void ValidateCachedVpdInfo(
@@ -173,6 +178,7 @@ class SystemUtilsTest : public ::testing::Test {
   base::FilePath relative_vpd_rw_dir_;
   base::FilePath relative_vpd_ro_dir_;
   base::FilePath relative_dmi_info_path_;
+  std::unique_ptr<base::test::ScopedChromeOSVersionInfo> chromeos_version_;
 };
 
 // Test that we can read the system info, when it exists.
@@ -472,7 +478,7 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
 // Tests that an error is returned if there is no OS version information
 // populated in lsb-release.
 TEST_F(SystemUtilsTest, TestNoOsVersion) {
-  base::test::ScopedChromeOSVersionInfo version("", base::Time::Now());
+  PopulateLsbRelease("");
 
   auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_error());
@@ -482,12 +488,13 @@ TEST_F(SystemUtilsTest, TestNoOsVersion) {
 
 // Tests that an error is returned if the lsb-release file is malformed.
 TEST_F(SystemUtilsTest, TestBadOsVersion) {
-  std::string lsb_release =
-      std::string("Milestone") + kFakeReleaseMilestone +
-      "\nCHROMEOS_RELEASE_BUILD_NUMBER=" + kFakeBuildNumber +
-      "\nCHROMEOS_RELEASE_PATCH_NUMBER=" + kFakePatchNumber +
-      "\nCHROMEOS_RELEASE_TRACK=" + kFakeReleaseChannel;
-  base::test::ScopedChromeOSVersionInfo version(lsb_release, base::Time::Now());
+  PopulateLsbRelease(
+      base::StringPrintf("Milestone%s\n"
+                         "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
+                         "CHROMEOS_RELEASE_PATCH_NUMBER=%s\n"
+                         "CHROMEOS_RELEASE_TRACK=%s\n",
+                         kFakeReleaseMilestone, kFakeBuildNumber,
+                         kFakePatchNumber, kFakeReleaseChannel));
 
   auto system_result = FetchSystemInfo();
   ASSERT_TRUE(system_result->is_error());

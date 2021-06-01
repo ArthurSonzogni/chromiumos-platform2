@@ -50,9 +50,6 @@ void SetUpSystemFiles(const base::FilePath& root_dir,
   CHECK(WriteFileAndCreateParentDirs(
       relative_dmi_info_path.Append(kChassisTypeFileName),
       provider->ConsumeRandomLengthString()));
-  // Populate the fake lsb-release file.
-  base::test::ScopedChromeOSVersionInfo version(
-      provider->ConsumeRandomLengthString(), base::Time::Now());
 }
 
 }  // namespace
@@ -74,6 +71,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
 
   FuzzedDataProvider provider(data, size);
+  // Populate the fake lsb-release file.
+  base::test::ScopedChromeOSVersionInfo version(
+      provider.ConsumeRandomLengthString(), base::Time::Now());
+
   MockContext mock_context;
 
   mock_context.Initialize();
