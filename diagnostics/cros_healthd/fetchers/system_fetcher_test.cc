@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/common/mojo_type_utils.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -187,7 +188,8 @@ class SystemUtilsTest : public BaseFileTest {
     ASSERT_FALSE(system_result->is_error());
     ASSERT_TRUE(system_result->is_system_info_v2());
     auto res = std::move(system_result->get_system_info_v2());
-    EXPECT_EQ(res, expected_system_info_);
+    EXPECT_EQ(res, expected_system_info_)
+        << GetDiffString(res, expected_system_info_);
 
     auto system_result_old = system_fetcher_.FetchSystemInfo();
     ASSERT_FALSE(system_result_old.is_null());

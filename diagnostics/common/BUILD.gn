@@ -24,10 +24,12 @@ if (use.test || use.fuzzer) {
     deps = [
       ":libcommon",
       "system:libsystem_test_utils",
+      "//diagnostics/mojo:cros_healthd_mojo_bindings",
     ]
     sources = [
       "file_test_utils.cc",
       "mojo_test_utils.cc",
+      "mojo_type_utils.cc",
     ]
   }
 }
