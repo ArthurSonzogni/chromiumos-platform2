@@ -18,7 +18,6 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
-
 namespace {
 
 // Fake lsb-release values used for testing.
@@ -42,9 +41,7 @@ constexpr char kFakeBoardVersion[] = "rev1234";
 constexpr char kFakeChassisType[] = "9";
 constexpr uint64_t kFakeChassisTypeOutput = 9;
 
-}  // namespace
-
-class SystemUtilsTest : public ::testing::Test {
+class SystemUtilsTest : public BaseFileTest {
  protected:
   SystemUtilsTest() = default;
   SystemUtilsTest(const SystemUtilsTest&) = delete;
@@ -52,6 +49,7 @@ class SystemUtilsTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(mock_context_.Initialize());
+    SetTestRoot(mock_context_.root_dir());
 
     // Populate fake cached VPD values.
     relative_vpd_rw_dir_ = root_dir().Append(kRelativeVpdRwPath);
@@ -95,8 +93,6 @@ class SystemUtilsTest : public ::testing::Test {
                            kFakeReleaseMilestone, kFakeBuildNumber,
                            kFakePatchNumber, kFakeReleaseChannel));
   }
-
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo() {
     return system_fetcher_.FetchSystemInfo();
@@ -502,4 +498,5 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
             chromeos::cros_healthd::mojom::ErrorType::kFileReadError);
 }
 
+}  // namespace
 }  // namespace diagnostics
