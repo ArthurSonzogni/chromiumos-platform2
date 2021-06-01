@@ -1,0 +1,33 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":featured" ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+generate_dbus_adaptors("featured-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/featured/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.featured.xml" ]
+}
+
+executable("featured") {
+  sources = [
+    "main.cc",
+    "service.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":featured-adaptors" ]
+}

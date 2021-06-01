@@ -59,6 +59,7 @@ copies.
 | [dlp](./dlp/) | Date Leak Prevention (DLP) daemon |
 | [dns-proxy](./dns-proxy/) | DNS Proxy daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
+| [featured](./featured/) | Feature daemon for enabling and managing platform features |
 | [federated](./federated/) | Federated computation service (Federated Analytics & Federated Learning) |
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
 | [fitpicker](./fitpicker/) ||

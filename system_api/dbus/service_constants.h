@@ -24,6 +24,7 @@
 #include "debugd/dbus-constants.h"
 #include "dlp/dbus-constants.h"
 #include "drivefs/dbus-constants.h"
+#include "featured/dbus-constants.h"
 #include "hammerd/dbus-constants.h"
 #include "hermes/dbus-constants.h"
 #include "hps/dbus-constants.h"
