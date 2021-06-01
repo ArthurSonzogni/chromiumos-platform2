@@ -811,7 +811,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   int GetNumSetWakeOnWiFiRetries() {
-    return wake_on_wifi_->num_set_wake_on_packet_retries_;
+    return wake_on_wifi_->num_set_wake_on_wifi_retries_;
   }
 
   void SetConnectedBeforeSuspend(bool was_connected) {
@@ -819,7 +819,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   void SetNumSetWakeOnWiFiRetries(int retries) {
-    wake_on_wifi_->num_set_wake_on_packet_retries_ = retries;
+    wake_on_wifi_->num_set_wake_on_wifi_retries_ = retries;
   }
 
   void OnBeforeSuspend(bool is_connected,

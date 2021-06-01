@@ -82,7 +82,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager* netlink_manager,
       metrics_(metrics),
       report_metrics_callback_(
           base::Bind(&WakeOnWiFi::ReportMetrics, base::Unretained(this))),
-      num_set_wake_on_packet_retries_(0),
+      num_set_wake_on_wifi_retries_(0),
       wake_on_wifi_max_patterns_(0),
       wake_on_wifi_max_ssids_(0),
       wiphy_index_(0),
@@ -1138,10 +1138,10 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     return;
   }
 
-  verify_wake_on_packet_settings_callback_.Reset(base::Bind(
+  verify_wake_on_wifi_settings_callback_.Reset(base::Bind(
       &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
-      FROM_HERE, verify_wake_on_packet_settings_callback_.callback(),
+      FROM_HERE, verify_wake_on_wifi_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
@@ -1169,21 +1169,21 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
     return;
   }
 
-  verify_wake_on_packet_settings_callback_.Reset(base::Bind(
+  verify_wake_on_wifi_settings_callback_.Reset(base::Bind(
       &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
-      FROM_HERE, verify_wake_on_packet_settings_callback_.callback(),
+      FROM_HERE, verify_wake_on_wifi_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
 void WakeOnWiFi::RetrySetWakeOnWiFiConnections() {
   SLOG(this, 3) << __func__;
-  if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnWiFiRetries) {
+  if (num_set_wake_on_wifi_retries_ < kMaxSetWakeOnWiFiRetries) {
     ApplyWakeOnWiFiSettings();
-    ++num_set_wake_on_packet_retries_;
+    ++num_set_wake_on_wifi_retries_;
   } else {
     SLOG(this, 3) << __func__ << ": max retry attempts reached";
-    num_set_wake_on_packet_retries_ = 0;
+    num_set_wake_on_wifi_retries_ = 0;
     RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
   }
 }

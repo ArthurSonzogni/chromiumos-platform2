@@ -550,14 +550,14 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Executes after the NIC's wake on WiFi settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
   // Calls RequestWakeOnWiFiSettings.
-  base::CancelableClosure verify_wake_on_packet_settings_callback_;
+  base::CancelableClosure verify_wake_on_wifi_settings_callback_;
   // Callback to be invoked after all suspend actions finish executing both
   // before regular suspend and before suspend in dark resume.
   ResultCallback suspend_actions_done_callback_;
   // Callback to report wake on WiFi related metrics.
   base::CancelableClosure report_metrics_callback_;
-  // Number of retry attempts to program the NIC's wake-on-packet settings.
-  int num_set_wake_on_packet_retries_;
+  // Number of retry attempts to program the NIC's wake-on-WiFi settings.
+  int num_set_wake_on_wifi_retries_;
   // Keeps track of triggers that the NIC will be programmed to wake from
   // while suspended.
   std::set<WakeOnWiFiTrigger> wake_on_wifi_triggers_;
