@@ -5,7 +5,6 @@
 # This file defines library targets and other auxillary definitions that
 # are used for the resulting executable targets.
 
-import("//common-mk/dbus_glib.gni")
 import("//common-mk/flatbuffer.gni")
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
@@ -97,39 +96,6 @@ proto_library("cryptohome-generated-proto") {
   public_deps = [ ":cryptohome-proto-external" ]
 }
 
-pkg_config("cryptohome-dbus-client_dependent_config") {
-  pkg_deps = [
-    "dbus-glib-1",
-    "glib-2.0",
-  ]
-}
-
-# D-Bus bindings.
-generate_dbus_glib("cryptohome-dbus-client") {
-  dbus_glib_out_dir = "include/bindings"
-  dbus_glib_prefix = "cryptohome"
-  dbus_glib_header_stem = "cryptohome"
-  dbus_glib_type = "client"
-  sources = [ "../dbus_bindings/org.chromium.CryptohomeInterface.xml" ]
-  all_dependent_configs = [ ":cryptohome-dbus-client_dependent_config" ]
-}
-
-pkg_config("cryptohome-dbus-server_dependent_config") {
-  pkg_deps = [
-    "dbus-glib-1",
-    "glib-2.0",
-  ]
-}
-
-generate_dbus_glib("cryptohome-dbus-server") {
-  dbus_glib_out_dir = "include/bindings"
-  dbus_glib_prefix = "cryptohome"
-  dbus_glib_header_stem = "cryptohome"
-  dbus_glib_type = "server"
-  sources = [ "../dbus_bindings/org.chromium.CryptohomeInterface.xml" ]
-  all_dependent_configs = [ ":cryptohome-dbus-server_dependent_config" ]
-}
-
 generate_dbus_proxies("cryptohome-key-delegate-proxies") {
   proxy_output_file = "include/cryptohome_key_delegate/dbus-proxies.h"
   sources =
@@ -193,7 +159,6 @@ static_library("libcrosplatform") {
 
 pkg_config("libcrostpm_dependent_config") {
   pkg_deps = [
-    "glib-2.0",
     "libbrillo",
     "libchrome",
     "openssl",
@@ -284,10 +249,7 @@ generate_dbus_adaptors("cryptohome_adaptors") {
 
 pkg_config("libcryptohome_dependent_config") {
   pkg_deps = [
-    "dbus-glib-1",
-    "glib-2.0",
     "libbrillo",
-    "libbrillo-glib",
     "libchrome",
   ]
   if (use.tpm2) {
@@ -355,7 +317,6 @@ static_library("libcryptohome") {
   ]
   all_dependent_configs = [ ":libcryptohome_dependent_config" ]
   deps = [
-    ":cryptohome-dbus-server",
     ":cryptohome-key-delegate-proxies",
     ":cryptohome-proto",
     ":libcrosplatform",

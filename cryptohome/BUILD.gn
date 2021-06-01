@@ -64,7 +64,6 @@ executable("cryptohome") {
     "pthread",
   ]
   deps = [
-    "libs:cryptohome-dbus-client",
     "libs:cryptohome-proto",
     "libs:cryptohome-proto-external",
     "libs:libcrostpm",
@@ -74,10 +73,7 @@ executable("cryptohome") {
   # NOSORT
   pkg_deps = [
     "dbus-1",
-    "dbus-glib-1",
-    "glib-2.0",
     "libbrillo",
-    "libbrillo-glib",
     "libchrome",
     "libecryptfs",
     "libmetrics",
@@ -130,11 +126,8 @@ executable("cryptohomed") {
   # NOSORT
   pkg_deps = [
     "dbus-1",
-    "dbus-glib-1",
-    "glib-2.0",
     "libbootlockbox-client",
     "libbrillo",
-    "libbrillo-glib",
     "libchrome",
     "libecryptfs",
     "libmetrics",
@@ -246,7 +239,6 @@ static_library("mount_encrypted_lib") {
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
   deps = [ "libs:cryptohome-proto" ]
   pkg_deps = [
-    "glib-2.0",
     "libbrillo",
     "libchrome",
     "openssl",
@@ -286,7 +278,6 @@ executable("mount-encrypted") {
     "libs:libcrostpm",
   ]
   pkg_deps = [
-    "glib-2.0",
     "libbrillo",
     "libchrome",
     "openssl",
@@ -304,9 +295,7 @@ executable("tpm-manager") {
 
   # NOSORT
   pkg_deps = [
-    "glib-2.0",
     "libbrillo",
-    "libbrillo-glib",
     "libchrome",
     "libecryptfs",
     "libmetrics",
@@ -389,10 +378,8 @@ if (use.cert_provision) {
 
     # NOSORT
     public_pkg_deps = [
-      "dbus-glib-1",
       "libattestation-client",
       "libbrillo",
-      "libbrillo-glib",
       "libchrome",
       "openssl",
       "protobuf",
@@ -400,7 +387,6 @@ if (use.cert_provision) {
 
     deps = [
       ":cert_provision-proto",
-      "libs:cryptohome-dbus-client",
       "libs:cryptohome-proto",
     ]
   }
@@ -519,12 +505,9 @@ if (use.test) {
     # NOSORT
     pkg_deps = [
       "dbus-1",
-      "dbus-glib-1",
-      "glib-2.0",
       "libattestation-client",
       "libattestation-client-test",
       "libbrillo",
-      "libbrillo-glib",
       "libbrillo-test",
       "libchrome",
       "libchrome-test",
@@ -591,7 +574,6 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
     pkg_deps = [
-      "glib-2.0",
       "libbrillo",
       "libbrillo-test",
       "libchrome",
@@ -612,7 +594,6 @@ if (use.test) {
 
     # NOSORT
     pkg_deps = [
-      "glib-2.0",
       "libbrillo",
       "libbrillo-test",
       "libchrome",
