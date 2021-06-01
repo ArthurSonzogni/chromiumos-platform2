@@ -328,7 +328,7 @@ void ArcCollector::AddArcMetaData(const std::string& process,
 
   if (add_arc_properties) {
     if (GetArcProperties(&build_property)) {
-      for (auto metadata :
+      for (const auto& metadata :
            arc_util::ListMetadataForBuildProperty(build_property)) {
         AddCrashMetaUploadData(metadata.first, metadata.second);
       }
@@ -383,15 +383,10 @@ bool ArcCollector::CreateReportForJavaCrash(
   }
 
   AddArcMetaData(process, crash_type, false, uptime);
-  AddCrashMetaUploadData(arc_util::kArcVersionField,
-                         build_property.fingerprint);
-  AddCrashMetaUploadData(
-      arc_util::kAndroidVersionField,
-      arc_util::GetVersionFromFingerprint(build_property.fingerprint)
-          .value_or(kUnknownValue));
-  AddCrashMetaUploadData(arc_util::kDeviceField, build_property.device);
-  AddCrashMetaUploadData(arc_util::kBoardField, build_property.board);
-  AddCrashMetaUploadData(arc_util::kCpuAbiField, build_property.cpu_abi);
+  for (const auto& metadata :
+       arc_util::ListMetadataForBuildProperty(build_property)) {
+    AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
 
   for (const auto& mapping : arc_util::kHeaderToFieldMapping) {
     if (map.count(mapping.first)) {
