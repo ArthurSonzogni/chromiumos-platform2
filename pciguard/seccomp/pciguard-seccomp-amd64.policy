@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # Generated using "instructions for generating a seccomp policy" at:
-# https://chromium.googlesource.com/chromiumos/docs/+/master/sandboxing.md
+# https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
 
 access: 1
 bind: 1
