@@ -1412,8 +1412,7 @@ fn main() {
     } else {
         log::LevelFilter::Warn
     };
-    syslog::init(syslog::Facility::LOG_USER, log_level, Some("memd"))
-        .expect("cannot initialize syslog");
+    syslog::init_unix(syslog::Facility::LOG_USER, log_level).expect("cannot initialize syslog");
 
     // Unlike log!(), warn!() etc., panic!() is not redirected by the syslog
     // facility, instead always goes to stderr, which can get lost.  Here we
