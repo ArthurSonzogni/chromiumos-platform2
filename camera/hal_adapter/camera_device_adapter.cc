@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <set>
 #include <utility>
@@ -398,19 +399,26 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
           static_cast<mojom::Camera3StreamRotation>(
               s.second->crop_rotate_scale_degrees));
       if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
-        ptr->physical_camera_id = s.second->physical_camera_id;
-        int internal_camera_id = 0;
-        if (!base::StringToInt(s.second->physical_camera_id,
-                               &internal_camera_id)) {
-          LOGF(ERROR) << "Invalid physical camera ID: " << internal_camera_id;
+        if (strlen(s.second->physical_camera_id) == 0) {
+          ptr->physical_camera_id = "";
+        } else {
+          int internal_camera_id = 0;
+          if (!base::StringToInt(s.second->physical_camera_id,
+                                 &internal_camera_id)) {
+            LOGF(ERROR) << "Invalid physical camera ID: "
+                        << s.second->physical_camera_id;
+            return -EINVAL;
+          }
+          int public_camera_id =
+              get_public_camera_id_callback_.Run(internal_camera_id);
+          if (public_camera_id == -1) {
+            LOGF(ERROR)
+                << "Failed to find public camera ID for internal camera "
+                << internal_camera_id;
+            return -EINVAL;
+          }
+          ptr->physical_camera_id = base::NumberToString(public_camera_id);
         }
-        int public_camera_id =
-            get_public_camera_id_callback_.Run(internal_camera_id);
-        if (public_camera_id == -1) {
-          LOGF(ERROR) << "Failed to find public camera ID for internal camera "
-                      << internal_camera_id;
-        }
-        ptr->physical_camera_id = base::NumberToString(public_camera_id);
       }
       (*updated_config)->streams.push_back(std::move(ptr));
     }
