@@ -21,16 +21,22 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
-mojo_ipc::StatefulPartitionResultPtr FetchStatefulPartitionInfo(
-    const base::FilePath& root_dir) {
-  const auto statefulPartitionPath = root_dir.Append(kStatefulPartitionPath);
+StatefulPartitionFetcher::StatefulPartitionFetcher(Context* context)
+    : context_(context) {
+  DCHECK(context_);
+}
+
+mojo_ipc::StatefulPartitionResultPtr
+StatefulPartitionFetcher::FetchStatefulPartitionInfo() {
+  const auto statefulPartitionPath =
+      context_->root_dir().Append(kStatefulPartitionPath);
   const int64_t available_space =
       base::SysInfo::AmountOfFreeDiskSpace(statefulPartitionPath);
   const int64_t total_space =
       base::SysInfo::AmountOfTotalDiskSpace(statefulPartitionPath);
 
   const auto mtab = mnt_new_table();
-  const auto mtabPath = root_dir.Append(kMtabPath);
+  const auto mtabPath = context_->root_dir().Append(kMtabPath);
   mnt_table_parse_mtab(mtab, mtabPath.value().c_str());
 
   const auto fs = mnt_table_find_target(
