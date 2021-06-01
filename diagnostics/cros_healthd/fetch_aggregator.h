@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -84,27 +85,19 @@ class FetchAggregator final {
   // time.
   base::Lock lock_;
 
-  // Unowned. The backlight fetcher should outlive this instance.
+  // Unowned. The following fetchers should outlive this instance.
   std::unique_ptr<BacklightFetcher> const backlight_fetcher_ = nullptr;
-  // Unowned. The battery fetcher should outlive this instance.
   std::unique_ptr<BatteryFetcher> const battery_fetcher_ = nullptr;
-  // Unowned. The Bluetooth fetcher should outlive this instance.
   std::unique_ptr<BluetoothFetcher> const bluetooth_fetcher_ = nullptr;
-  // Unowned. The CPU fetcher should outlive this instance.
   std::unique_ptr<CpuFetcher> const cpu_fetcher_ = nullptr;
-  // Unowned. The disk fetcher should outlive this instance.
   std::unique_ptr<DiskFetcher> const disk_fetcher_ = nullptr;
-  // Unowned. The fan fetcher should outlive this instance.
   std::unique_ptr<FanFetcher> const fan_fetcher_ = nullptr;
-  // Unowned. The system fetcher should outlive this instance.
   std::unique_ptr<SystemFetcher> const system_fetcher_ = nullptr;
-  // Unowned. The network fetcher should outlive this instance.
   std::unique_ptr<NetworkFetcher> const network_fetcher_ = nullptr;
-  // Unowned. The audio fetcher should outlive this instance.
   std::unique_ptr<AudioFetcher> const audio_fetcher_ = nullptr;
-  // Unowned. The boot performance fetcher should outlive this instance.
   std::unique_ptr<BootPerformanceFetcher> const boot_performance_fetcher_ =
       nullptr;
+  std::unique_ptr<MemoryFetcher> const memory_fetcher_ = nullptr;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};

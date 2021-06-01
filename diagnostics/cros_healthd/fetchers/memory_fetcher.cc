@@ -21,19 +21,26 @@ namespace diagnostics {
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+using OptionalProbeErrorPtr = base::Optional<mojo_ipc::ProbeErrorPtr>;
 
 // Path to procfs, relative to the root directory.
 constexpr char kRelativeProcPath[] = "proc";
+
+}  // namespace
+
+MemoryFetcher::MemoryFetcher(Context* context) : context_(context) {
+  DCHECK(context_);
+}
 
 // Sets the total_memory_kib, free_memory_kib and available_memory_kib fields of
 // |info| with information read from proc/meminfo. Returns any error
 // encountered probing the memory information. |info| is valid iff no error
 // occurred.
-base::Optional<mojo_ipc::ProbeErrorPtr> ParseProcMeminfo(
-    const base::FilePath& root_dir, mojo_ipc::MemoryInfo* info) {
+OptionalProbeErrorPtr MemoryFetcher::ParseProcMeminfo(
+    mojo_ipc::MemoryInfo* info) {
   std::string file_contents;
-  if (!ReadAndTrimString(root_dir.Append(kRelativeProcPath), "meminfo",
-                         &file_contents)) {
+  if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
+                         "meminfo", &file_contents)) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
                                   "Unable to read /proc/meminfo");
   }
@@ -104,11 +111,11 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ParseProcMeminfo(
 // Sets the page_faults_per_second field of |info| with information read from
 // /proc/vmstat. Returns any error encountered probing the memory information.
 // |info| is valid iff no error occurred.
-base::Optional<mojo_ipc::ProbeErrorPtr> ParseProcVmStat(
-    const base::FilePath& root_dir, mojo_ipc::MemoryInfo* info) {
+OptionalProbeErrorPtr MemoryFetcher::ParseProcVmStat(
+    mojo_ipc::MemoryInfo* info) {
   std::string file_contents;
-  if (!ReadAndTrimString(root_dir.Append(kRelativeProcPath), "vmstat",
-                         &file_contents)) {
+  if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
+                         "vmstat", &file_contents)) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
                                   "Unable to read /proc/vmstat");
   }
@@ -142,16 +149,14 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ParseProcVmStat(
   return base::nullopt;
 }
 
-}  // namespace
-
-mojo_ipc::MemoryResultPtr FetchMemoryInfo(const base::FilePath& root_dir) {
+mojo_ipc::MemoryResultPtr MemoryFetcher::FetchMemoryInfo() {
   mojo_ipc::MemoryInfo info;
 
-  auto error = ParseProcMeminfo(root_dir, &info);
+  auto error = ParseProcMeminfo(&info);
   if (error.has_value())
     return mojo_ipc::MemoryResult::NewError(std::move(error.value()));
 
-  error = ParseProcVmStat(root_dir, &info);
+  error = ParseProcVmStat(&info);
   if (error.has_value())
     return mojo_ipc::MemoryResult::NewError(std::move(error.value()));
 

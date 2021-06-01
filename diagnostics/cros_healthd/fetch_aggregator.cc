@@ -13,7 +13,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 
@@ -36,7 +35,8 @@ FetchAggregator::FetchAggregator(Context* context)
       network_fetcher_(std::make_unique<NetworkFetcher>(context)),
       audio_fetcher_(std::make_unique<AudioFetcher>(context)),
       boot_performance_fetcher_(
-          std::make_unique<BootPerformanceFetcher>(context)) {
+          std::make_unique<BootPerformanceFetcher>(context)),
+      memory_fetcher_(std::make_unique<MemoryFetcher>(context)) {
   DCHECK(backlight_fetcher_);
   DCHECK(battery_fetcher_);
   DCHECK(bluetooth_fetcher_);
@@ -47,6 +47,7 @@ FetchAggregator::FetchAggregator(Context* context)
   DCHECK(network_fetcher_);
   DCHECK(audio_fetcher_);
   DCHECK(boot_performance_fetcher_);
+  DCHECK(memory_fetcher_);
 }
 
 FetchAggregator::~FetchAggregator() = default;
@@ -91,7 +92,7 @@ void FetchAggregator::Run(
       }
       case mojo_ipc::ProbeCategoryEnum::kMemory: {
         WrapFetchProbeData(category, itr, &info->memory_result,
-                           FetchMemoryInfo(base::FilePath("/")));
+                           memory_fetcher_->FetchMemoryInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBacklight: {
