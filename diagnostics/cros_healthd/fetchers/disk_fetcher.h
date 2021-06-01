@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -18,7 +19,7 @@ namespace diagnostics {
 // cros_healthd.
 class DiskFetcher {
  public:
-  DiskFetcher() = default;
+  explicit DiskFetcher(Context* context);
   ~DiskFetcher() = default;
   DiskFetcher(const DiskFetcher&) = delete;
   DiskFetcher& operator=(const DiskFetcher&) = delete;
@@ -26,12 +27,15 @@ class DiskFetcher {
   // Returns a structure with either the device's non-removable block device
   // info or the error that occurred fetching the information.
   chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr
-  FetchNonRemovableBlockDevicesInfo(const base::FilePath& root_dir);
+  FetchNonRemovableBlockDevicesInfo();
 
  private:
   std::unique_ptr<StorageDeviceManager> manager_;
 
-  Status InitManager(const base::FilePath& root);
+  // Unowned pointer that outlives this DiskFetcher instance.
+  Context* const context_ = nullptr;
+
+  Status InitManager();
 };
 
 }  // namespace diagnostics

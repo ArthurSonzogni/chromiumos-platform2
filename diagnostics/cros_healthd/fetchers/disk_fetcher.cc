@@ -47,14 +47,19 @@ mojo_ipc::NonRemovableBlockDeviceResultPtr StatusToProbeError(
 
 }  // namespace
 
-Status DiskFetcher::InitManager(const base::FilePath& root) {
+DiskFetcher::DiskFetcher(Context* context) : context_(context) {
+  DCHECK(context_);
+}
+
+Status DiskFetcher::InitManager() {
   auto udev = brillo::Udev::Create();
   if (!udev)
     return Status(StatusCode::kInternal, "Unable to create udev interface");
 
   auto platform = std::make_unique<Platform>();
-  ASSIGN_OR_RETURN(auto resolver, StorageDeviceResolver::Create(
-                                      root, platform->GetRootDeviceName()));
+  ASSIGN_OR_RETURN(auto resolver,
+                   StorageDeviceResolver::Create(
+                       context_->root_dir(), platform->GetRootDeviceName()));
   manager_.reset(new StorageDeviceManager(
       std::make_unique<StorageDeviceLister>(), std::move(resolver),
       std::move(udev), std::move(platform)));
@@ -63,16 +68,15 @@ Status DiskFetcher::InitManager(const base::FilePath& root) {
 }
 
 mojo_ipc::NonRemovableBlockDeviceResultPtr
-DiskFetcher::FetchNonRemovableBlockDevicesInfo(const base::FilePath& root) {
+DiskFetcher::FetchNonRemovableBlockDevicesInfo() {
   if (!manager_) {
-    auto status = InitManager(root);
+    auto status = InitManager();
     if (!status.ok())
       return StatusToProbeError(status);
   }
 
-  StatusOr<std::vector<
-      chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>
-      devices_or = manager_->FetchDevicesInfo(root);
+  StatusOr<std::vector<mojo_ipc::NonRemovableBlockDeviceInfoPtr>> devices_or =
+      manager_->FetchDevicesInfo(context_->root_dir());
 
   if (devices_or.ok()) {
     return mojo_ipc::NonRemovableBlockDeviceResult::NewBlockDeviceInfo(

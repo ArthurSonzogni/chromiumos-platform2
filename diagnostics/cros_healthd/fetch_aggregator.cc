@@ -26,7 +26,7 @@ FetchAggregator::FetchAggregator(Context* context)
       battery_fetcher_(std::make_unique<BatteryFetcher>(context)),
       bluetooth_fetcher_(std::make_unique<BluetoothFetcher>(context)),
       cpu_fetcher_(std::make_unique<CpuFetcher>(context)),
-      disk_fetcher_(std::make_unique<DiskFetcher>()),
+      disk_fetcher_(std::make_unique<DiskFetcher>(context)),
       fan_fetcher_(std::make_unique<FanFetcher>(context)),
       system_fetcher_(std::make_unique<SystemFetcher>(context)),
       network_fetcher_(std::make_unique<NetworkFetcher>(context)),
@@ -83,8 +83,7 @@ void FetchAggregator::Run(
       }
       case mojo_ipc::ProbeCategoryEnum::kNonRemovableBlockDevices: {
         WrapFetchProbeData(category, itr, &info->block_device_result,
-                           disk_fetcher_->FetchNonRemovableBlockDevicesInfo(
-                               base::FilePath("/")));
+                           disk_fetcher_->FetchNonRemovableBlockDevicesInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kTimezone: {
