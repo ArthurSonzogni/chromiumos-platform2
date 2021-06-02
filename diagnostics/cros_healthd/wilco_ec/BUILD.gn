@@ -4,8 +4,43 @@
 
 import("//common-mk/pkg_config.gni")
 
+# Library that provides cros_healthd's Wilco EC functionality.
+pkg_config("libcros_healthd_wilco_ec_pkg_deps") {
+  pkg_deps = [ "libchrome" ]
+}
+
 source_set("libcros_healthd_wilco_ec") {
-  configs += []
-  deps = []
-  sources = [ "ec_constants.cc" ]
+  sources = [
+    "ec_constants.cc",
+    "ec_service.cc",
+  ]
+  configs += [ ":libcros_healthd_wilco_ec_pkg_deps" ]
+  deps = [ "//diagnostics/common:libcommon" ]
+}
+
+if (use.test) {
+  pkg_config("libcros_healthd_wilco_ec_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+
+  executable("libcros_healthd_wilco_ec_test") {
+    sources = [
+      "ec_service_test.cc",
+      "ec_service_test_utils.cc",
+      "ec_service_test_utils_test.cc",
+      "fake_ec_service.cc",
+    ]
+    configs += [
+      ":libcros_healthd_wilco_ec_test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":libcros_healthd_wilco_ec",
+      "//diagnostics/common:libcommon_test_utils",
+      "//diagnostics/common:mojo_testrunner",
+    ]
+  }
 }
