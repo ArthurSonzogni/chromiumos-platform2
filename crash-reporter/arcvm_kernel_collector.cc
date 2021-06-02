@@ -98,10 +98,12 @@ bool ArcvmKernelCollector::HandleCrashWithRamoopsStreamAndTimestamp(
 
 void ArcvmKernelCollector::AddArcMetadata(
     const arc_util::BuildProperty& build_property) {
-  AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
-  AddCrashMetaUploadData(arc_util::kProcessField, kKernelExecName);
-  AddCrashMetaUploadData(arc_util::kCrashTypeField, kArcvmKernelCrashType);
+  for (const auto& metadata : arc_util::ListBasicARCRelatedMetadata(
+           kKernelExecName, kArcvmKernelCrashType)) {
+    AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
+
   for (const auto& metadata :
        arc_util::ListMetadataForBuildProperty(build_property)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);

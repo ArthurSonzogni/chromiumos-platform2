@@ -162,6 +162,15 @@ pid_t CreateRandomPID() {
   return (now - ToSeconds(now)).InMicroseconds();
 }
 
+std::vector<std::pair<std::string, std::string>> ListBasicARCRelatedMetadata(
+    const std::string& process, const std::string& crash_type) {
+  std::vector<std::pair<std::string, std::string>> metadata;
+  metadata.emplace_back(arc_util::kProductField, arc_util::kArcProduct);
+  metadata.emplace_back(arc_util::kProcessField, process);
+  metadata.emplace_back(arc_util::kCrashTypeField, crash_type);
+  return metadata;
+}
+
 std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
     const BuildProperty& build_property) {
   std::vector<std::pair<std::string, std::string>> metadata;

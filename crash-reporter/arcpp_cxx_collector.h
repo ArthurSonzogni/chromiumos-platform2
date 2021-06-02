@@ -93,10 +93,8 @@ class ArcppCxxCollector : public UserCollectorBase {
                                   const base::FilePath& core_path,
                                   const base::FilePath& minidump_path) override;
 
-  // Adds the |process|, |crash_type| and Chrome version as metadata.
-  // |uptime| can be zero if the value is unknown.
-  void AddArcMetaData(const std::string& process,
-                      const std::string& crash_type);
+  // Adds the |process| and other ARC-related info as metadata.
+  void AddArcMetaData(const std::string& process);
 
   // Returns whether the process identified by |pid| is 32- or 64-bit.
   ErrorType Is64BitProcess(int pid, bool* is_64_bit) const;

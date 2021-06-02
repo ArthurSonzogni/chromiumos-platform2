@@ -30,6 +30,9 @@ using brillo::ProcessImpl;
 
 namespace {
 
+// "native_crash" is a tag defined in Android.
+const char kCrashType[] = "native_crash";
+
 const FilePath kContainersDir("/run/containers");
 const char kArcDirPattern[] = "android*";
 const FilePath kContainerPid("container.pid");
@@ -243,7 +246,7 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
   if (exit_code == EX_OK) {
     std::string process;
     ArcppCxxCollector::GetExecutableBaseNameFromPid(pid, &process);
-    AddArcMetaData(process, "native_crash");
+    AddArcMetaData(process);
     return kErrorNone;
   }
 
@@ -261,11 +264,11 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
   }
 }
 
-void ArcppCxxCollector::AddArcMetaData(const std::string& process,
-                                       const std::string& crash_type) {
-  AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
-  AddCrashMetaUploadData(arc_util::kProcessField, process);
-  AddCrashMetaUploadData(arc_util::kCrashTypeField, crash_type);
+void ArcppCxxCollector::AddArcMetaData(const std::string& process) {
+  for (const auto& metadata :
+       arc_util::ListBasicARCRelatedMetadata(process, kCrashType)) {
+    AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
 
   SetUpDBus();
@@ -275,7 +278,7 @@ void ArcppCxxCollector::AddArcMetaData(const std::string& process,
                            arc_util::FormatDuration(uptime));
   }
 
-  if (arc_util::IsSilentReport(crash_type))
+  if (arc_util::IsSilentReport(kCrashType))
     AddCrashMetaData(arc_util::kSilentKey, "true");
 
   arc_util::BuildProperty build_property;

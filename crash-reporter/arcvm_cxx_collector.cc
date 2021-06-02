@@ -83,10 +83,12 @@ void ArcvmCxxCollector::AddArcMetadata(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
     base::TimeDelta uptime) {
-  AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
-  AddCrashMetaUploadData(arc_util::kProcessField, crash_info.exec_name);
-  AddCrashMetaUploadData(arc_util::kCrashTypeField, kArcvmNativeCrashType);
+  for (const auto& metadata : arc_util::ListBasicARCRelatedMetadata(
+           crash_info.exec_name, kArcvmNativeCrashType)) {
+    AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
+
   for (auto metadata : arc_util::ListMetadataForBuildProperty(build_property)) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
   }

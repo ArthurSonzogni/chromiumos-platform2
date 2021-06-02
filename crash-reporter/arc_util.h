@@ -86,6 +86,10 @@ std::string GetCrashLogHeader(const CrashLogHeaderMap& map, const char* key);
 // since the current second.
 pid_t CreateRandomPID();
 
+// Lists metadata which all ARC-related collectors should attach.
+std::vector<std::pair<std::string, std::string>> ListBasicARCRelatedMetadata(
+    const std::string& process, const std::string& crash_type);
+
 // Lists metadata from |build_property| as a list of pairs of key and value.
 std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
     const BuildProperty& build_property);

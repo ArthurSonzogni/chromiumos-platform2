@@ -76,9 +76,10 @@ std::string ArcJavaCollector::GetProductVersion() const {
 void ArcJavaCollector::AddArcMetaData(const std::string& process,
                                       const std::string& crash_type,
                                       base::TimeDelta uptime) {
-  AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
-  AddCrashMetaUploadData(arc_util::kProcessField, process);
-  AddCrashMetaUploadData(arc_util::kCrashTypeField, crash_type);
+  for (const auto& metadata :
+       arc_util::ListBasicARCRelatedMetadata(process, crash_type)) {
+    AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
   AddCrashMetaUploadData(arc_util::kChromeOsVersionField, GetOsVersion());
 
 #if USE_ARCPP
