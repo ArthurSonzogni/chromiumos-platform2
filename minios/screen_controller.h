@@ -57,7 +57,7 @@ class ScreenController : public ScreenControllerInterface,
 
  private:
   // Creates each class ptr as needed.
-  std::unique_ptr<ScreenInterface> CreateScreen(ScreenType screen);
+  std::unique_ptr<ScreenInterface> CreateScreen(ScreenType screen_type);
 
   // This function overloads Delegate. It is only called when the key is
   // valid and updates the key state for the given fd and key. Calls

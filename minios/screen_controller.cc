@@ -11,6 +11,7 @@
 #include "minios/screen_language_dropdown.h"
 #include "minios/screen_network.h"
 #include "minios/screen_welcome.h"
+#include "minios/screens/screen_error.h"
 
 namespace minios {
 
@@ -41,8 +42,8 @@ void ScreenController::Init() {
 }
 
 std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
-    ScreenType screen) {
-  switch (screen) {
+    ScreenType screen_type) {
+  switch (screen_type) {
     case ScreenType::kWelcomeScreen:
       return std::make_unique<ScreenWelcome>(draw_utils_, this);
     case ScreenType::kNetworkDropDownScreen:
@@ -50,6 +51,12 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
                                              this);
     case ScreenType::kLanguageDropDownScreen:
       return std::make_unique<ScreenLanguageDropdown>(draw_utils_, this);
+    case ScreenType::kDownloadError:
+    case ScreenType::kNetworkError:
+    case ScreenType::kPasswordError:
+    case ScreenType::kConnectionError:
+    case ScreenType::kGeneralError:
+      return std::make_unique<ScreenError>(screen_type, draw_utils_, this);
     default:
       // TODO(vyshu) : Other screens not yet implemented. Once all screens are
       // done, this should never return nullptr.
@@ -62,6 +69,13 @@ void ScreenController::OnForward(ScreenInterface* screen) {
     case ScreenType::kWelcomeScreen:
       current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
       break;
+    case ScreenType::kDownloadError:
+    case ScreenType::kNetworkError:
+    case ScreenType::kPasswordError:
+    case ScreenType::kConnectionError:
+    case ScreenType::kGeneralError:
+    // Show debug options and log screen.
+    // TODO(vyshu) : kDebugOptionsScreen not yet implemented.
     default:
       // TODO(vyshu) : Other screens not yet implemented.
       break;
@@ -79,6 +93,26 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
     case ScreenType::kNetworkDropDownScreen:
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
+    case ScreenType::kPasswordError:
+      // Return to network screen if it was the previous screen otherwise create
+      // a new one.
+      if (previous_screen_ &&
+          previous_screen_->GetType() == ScreenType::kNetworkDropDownScreen) {
+        current_screen_ = std::move(previous_screen_);
+      } else {
+        current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
+      }
+      break;
+    case ScreenType::kNetworkError:
+    case ScreenType::kConnectionError:
+      // Return to network dropdown screen.
+      current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
+      break;
+    case ScreenType::kDownloadError:
+    case ScreenType::kGeneralError:
+      // Return to beginning of the flow.
+      current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
+      break;
     default:
       // TODO(vyshu) : Other screens not yet implemented.
       break;
@@ -93,10 +127,14 @@ void ScreenController::OnError(ScreenType error_screen) {
     case ScreenType::kPasswordError:
     case ScreenType::kConnectionError:
     case ScreenType::kGeneralError:
-      current_screen_ = CreateScreen(ScreenType::kGeneralError);
+      previous_screen_ = std::move(current_screen_);
+      current_screen_ = CreateScreen(error_screen);
       break;
     default:
-      LOG(ERROR) << "Not a valid error screen.";
+      LOG(WARNING)
+          << "Not a valid error screen. Defaulting to general error case.";
+      previous_screen_ = std::move(current_screen_);
+      current_screen_ = CreateScreen(ScreenType::kGeneralError);
       break;
   }
   current_screen_->Show();

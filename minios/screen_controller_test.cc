@@ -6,6 +6,7 @@
 
 #include "minios/draw_interface.h"
 #include "minios/mock_draw_interface.h"
+#include "minios/mock_network_manager.h"
 #include "minios/mock_screen_interface.h"
 #include "minios/screen_controller.h"
 
@@ -23,7 +24,9 @@ class ScreenControllerTest : public ::testing::Test {
   std::shared_ptr<DrawInterface> draw_interface_ =
       std::make_shared<NiceMock<MockDrawInterface>>();
   MockScreenInterface mock_screen_;
-  ScreenController screen_controller_{draw_interface_, nullptr};
+  std::shared_ptr<NetworkManagerInterface> mock_network_manager_ =
+      std::make_shared<NiceMock<MockNetworkManager>>();
+  ScreenController screen_controller_{draw_interface_, mock_network_manager_};
 };
 
 TEST_F(ScreenControllerTest, OnForward) {
@@ -59,6 +62,45 @@ TEST_F(ScreenControllerTest, ChangeLocale) {
   EXPECT_CALL(mock_screen_, GetType())
       .WillOnce(testing::Return(ScreenType::kLanguageDropDownScreen));
   screen_controller_.UpdateLocale(&mock_screen_, /*index=*/1);
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            screen_controller_.GetCurrentScreen());
+}
+
+TEST_F(ScreenControllerTest, RestartFromDownloadError) {
+  // Starting from Download error screen.
+  screen_controller_.SetCurrentScreenForTest(ScreenType::kDownloadError);
+  EXPECT_EQ(ScreenType::kDownloadError, screen_controller_.GetCurrentScreen());
+
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kDownloadError));
+  screen_controller_.OnBackward(&mock_screen_);
+
+  // Back to start screen.
+  EXPECT_EQ(ScreenType::kWelcomeScreen, screen_controller_.GetCurrentScreen());
+}
+
+TEST_F(ScreenControllerTest, RestartFromNetworkError) {
+  // Starting from network error screen.
+  screen_controller_.SetCurrentScreenForTest(ScreenType::kNetworkError);
+
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kNetworkError));
+  screen_controller_.OnBackward(&mock_screen_);
+
+  // Back to dropdown.
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            screen_controller_.GetCurrentScreen());
+}
+
+TEST_F(ScreenControllerTest, RestartFromPasswordError) {
+  // Start from password error screen.
+  screen_controller_.SetCurrentScreenForTest(
+      ScreenType::kNetworkDropDownScreen);
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kPasswordError));
+  screen_controller_.OnForward(&mock_screen_);
+
+  // Back to dropdown.
   EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
             screen_controller_.GetCurrentScreen());
 }
