@@ -53,7 +53,8 @@ Camera3Service::~Camera3Service() {}
 
 int Camera3Service::Initialize(
     ProcessStillCaptureResultCallback still_capture_cb,
-    ProcessRecordingResultCallback recording_cb) {
+    ProcessRecordingResultCallback recording_cb,
+    ProcessPreviewResultCallback preview_cb) {
   base::AutoLock l(lock_);
   if (initialized_) {
     LOG(ERROR) << "Camera service is already initialized";
@@ -61,7 +62,7 @@ int Camera3Service::Initialize(
   }
   for (const auto& it : cam_ids_) {
     cam_dev_service_map_[it].reset(new Camera3Service::Camera3DeviceService(
-        it, still_capture_cb, recording_cb));
+        it, still_capture_cb, recording_cb, preview_cb));
     int result = cam_dev_service_map_[it]->Initialize();
     if (result != 0) {
       LOG(ERROR) << "Camera device " << it << " service initialization fails";
@@ -810,6 +811,10 @@ void Camera3Service::Camera3DeviceService::
         }
         break;
       default:
+        if (!process_preview_result_cb_.is_null()) {
+          process_preview_result_cb_.Run(cam_id_, frame_number,
+                                         std::move(metadata));
+        }
         if (!has_still_capture) {
           Camera3PerfLog::GetInstance()->UpdateFrameEvent(
               cam_id_, frame_number, FrameEvent::PREVIEW_RESULT,

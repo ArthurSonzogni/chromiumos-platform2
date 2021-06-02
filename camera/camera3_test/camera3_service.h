@@ -52,10 +52,16 @@ class Camera3Service {
       int cam_id, uint32_t frame_number, ScopedCameraMetadata metadata)>
       ProcessRecordingResultCallback;
 
+  typedef base::Callback<void(
+      int cam_id, uint32_t frame_number, ScopedCameraMetadata metadata)>
+      ProcessPreviewResultCallback;
+
   // Initialize service and corresponding devices and register processing
   // still capture and recording result callback
-  int Initialize(ProcessStillCaptureResultCallback still_capture_cb,
-                 ProcessRecordingResultCallback recording_cb);
+  int Initialize(
+      ProcessStillCaptureResultCallback still_capture_cb,
+      ProcessRecordingResultCallback recording_cb,
+      ProcessPreviewResultCallback preview_cb = ProcessPreviewResultCallback());
 
   // Destroy service and corresponding devices
   void Destroy();
@@ -126,12 +132,14 @@ class Camera3Service::Camera3DeviceService {
  public:
   Camera3DeviceService(int cam_id,
                        ProcessStillCaptureResultCallback still_capture_cb,
-                       ProcessRecordingResultCallback recording_cb)
+                       ProcessRecordingResultCallback recording_cb,
+                       ProcessPreviewResultCallback preview_cb)
       : cam_id_(cam_id),
         cam_device_(cam_id),
         service_thread_("Camera3 Test Service Thread"),
         process_still_capture_result_cb_(still_capture_cb),
         process_recording_result_cb_(recording_cb),
+        process_preview_result_cb_(preview_cb),
         preview_state_(PREVIEW_STOPPED),
         number_of_capture_requests_(0),
         number_of_in_flight_requests_(0),
@@ -243,6 +251,8 @@ class Camera3Service::Camera3DeviceService {
   ProcessStillCaptureResultCallback process_still_capture_result_cb_;
 
   ProcessRecordingResultCallback process_recording_result_cb_;
+
+  ProcessPreviewResultCallback process_preview_result_cb_;
 
   int32_t preview_state_;
 

@@ -614,6 +614,20 @@ int32_t Camera3Device::StaticInfo::GetAvailableTestPatternModes(
   return result;
 }
 
+int32_t Camera3Device::StaticInfo::GetAvailableFaceDetectModes(
+    std::vector<uint8_t>* face_detect_modes) const {
+  camera_metadata_ro_entry_t entry;
+  int32_t result = find_camera_metadata_ro_entry(
+      characteristics_, ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
+      &entry);
+  if (result == 0) {
+    for (size_t i = 0; i < entry.count; i++) {
+      face_detect_modes->push_back(entry.data.u8[i]);
+    }
+  }
+  return result;
+}
+
 int32_t Camera3Device::StaticInfo::GetAeMaxRegions() const {
   constexpr size_t kMaxRegionsAeIdx = 0;
   camera_metadata_ro_entry_t entry;

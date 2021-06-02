@@ -248,6 +248,11 @@ class Camera3Device::StaticInfo {
   int32_t GetAvailableTestPatternModes(
       std::vector<int32_t>* test_pattern_modes) const;
 
+  // Get available face detection modes
+  // Returns: 0 on success; corresponding error code on failure.
+  int32_t GetAvailableFaceDetectModes(
+      std::vector<uint8_t>* face_detect_modes) const;
+
   // Get max AE regions
   int32_t GetAeMaxRegions() const;
 
