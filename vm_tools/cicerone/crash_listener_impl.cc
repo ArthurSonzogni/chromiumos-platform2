@@ -246,7 +246,7 @@ grpc::Status CrashListenerImpl::SendFailureReport(
   }
 
   if (metrics_.SendEnumToUMA(histogram, static_cast<int>(sample),
-                             static_cast<int>(FailureClasses::kMaxValue))) {
+                             static_cast<int>(FailureClasses::kMaxValue) + 1)) {
     return grpc::Status::OK;
   } else {
     return {grpc::UNKNOWN, "Failed to record event in stability histogram"};
