@@ -29,6 +29,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
@@ -2958,7 +2959,7 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
                               obfuscated_username.end());
 
   if (tpm_->GetVersion() == cryptohome::Tpm::TPM_1_2) {
-    extention_blob = CryptoLib::Sha1(extention_blob);
+    extention_blob = Sha1(extention_blob);
   }
 
   if (!tpm_->ExtendPCR(kTpmSingleUserPCR, extention_blob)) {

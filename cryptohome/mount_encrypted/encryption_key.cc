@@ -15,6 +15,7 @@
 
 #include <brillo/file_utils.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/tpm.h"
@@ -152,7 +153,7 @@ void ShredFile(const base::FilePath& file) {
 
 brillo::SecureBlob Sha256(const std::string& str) {
   brillo::SecureBlob blob(str);
-  return cryptohome::CryptoLib::Sha256(blob);
+  return cryptohome::Sha256(blob);
 }
 
 brillo::SecureBlob GetUselessKey() {

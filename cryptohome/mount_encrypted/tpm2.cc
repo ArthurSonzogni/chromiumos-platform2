@@ -17,6 +17,7 @@
 
 #include <vboot/tlcl.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
@@ -62,7 +63,7 @@ result_code IsSpaceDefinedCorrectly(NvramSpace* space) {
 
 // Derive the system key from the key material in |area|.
 brillo::SecureBlob DeriveSystemKey(const struct nvram_area_tpm2* area) {
-  return cryptohome::CryptoLib::Sha256(brillo::SecureBlob(
+  return cryptohome::Sha256(brillo::SecureBlob(
       area->key_material, area->key_material + sizeof(area->key_material)));
 }
 

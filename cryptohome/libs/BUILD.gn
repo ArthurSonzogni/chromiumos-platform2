@@ -156,6 +156,7 @@ static_library("libcrosplatform") {
     "../crypto/error_util.cc",
     "../crypto/hkdf.cc",
     "../crypto/recovery_crypto.cc",
+    "../crypto/sha.cc",
     "../cryptohome_metrics.cc",
     "../cryptolib.cc",
     "../dircrypto_util.cc",

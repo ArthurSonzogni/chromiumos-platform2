@@ -45,6 +45,7 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_for_test.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/protobuf_test_utils.h"
@@ -867,8 +868,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   std::string pcr_policy_value;
@@ -968,7 +969,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
   creation_data.creation_data.pcr_digest =
-      trunks::Make_TPM2B_DIGEST(CryptoLib::Sha256(SecureBlob("")).to_string());
+      trunks::Make_TPM2B_DIGEST(Sha256(SecureBlob("")).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
@@ -988,8 +989,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
@@ -1015,8 +1016,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
     pcr_select.pcr_selections[0].pcr_select[i] = 0;
   }
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
@@ -1042,8 +1043,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
     pcr_select.pcr_selections[0].pcr_select[i] = 0;
   }
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
@@ -1066,8 +1067,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
@@ -1090,8 +1091,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
@@ -1121,8 +1122,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
-  creation_data.creation_data.pcr_digest = trunks::Make_TPM2B_DIGEST(
-      CryptoLib::Sha256ToSecureBlob(pcr_value).to_string());
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
 
@@ -1424,7 +1425,7 @@ TEST_F(Tpm2Test, GetPublicKeyHashSuccess) {
   SecureBlob public_key_hash;
   EXPECT_EQ(Tpm::kTpmRetryNone,
             tpm_->GetPublicKeyHash(handle, &public_key_hash));
-  SecureBlob expected_key_hash = CryptoLib::Sha256(public_key);
+  SecureBlob expected_key_hash = Sha256(public_key);
   EXPECT_EQ(expected_key_hash, public_key_hash);
 }
 

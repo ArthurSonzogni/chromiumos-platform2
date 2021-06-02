@@ -8,6 +8,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/rpc.pb.h"
@@ -50,7 +51,7 @@ SecureBlob ChallengeCredentialsOperation::ConstructPasskey(
     const SecureBlob& tpm_protected_secret_value, const Blob& salt_signature) {
   // Use a digest of the salt signature, to make the resulting passkey
   // reasonably short, and to avoid any potential bias.
-  const Blob salt_signature_hash = CryptoLib::Sha256(salt_signature);
+  const Blob salt_signature_hash = Sha256(salt_signature);
   return SecureBlob::Combine(tpm_protected_secret_value,
                              SecureBlob(salt_signature_hash));
 }

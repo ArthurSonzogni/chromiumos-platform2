@@ -26,6 +26,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
@@ -1316,7 +1317,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity12) {
       .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
   brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
                               kUsername1Obfuscated.end());
-  extention_blob = CryptoLib::Sha1(extention_blob);
+  extention_blob = Sha1(extention_blob);
   EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
       .WillOnce(Return(true));
 

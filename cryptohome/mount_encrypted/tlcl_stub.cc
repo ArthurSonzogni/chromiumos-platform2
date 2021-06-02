@@ -15,6 +15,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
@@ -439,7 +440,7 @@ uint32_t TlclInitNvAuthPolicy(uint32_t pcr_selection_bitmap,
     }
   }
 
-  brillo::SecureBlob digest = cryptohome::CryptoLib::Sha256ToSecureBlob(input);
+  brillo::SecureBlob digest = cryptohome::Sha256ToSecureBlob(input);
   memcpy(auth_policy, digest.data(), digest.size());
   return TPM_SUCCESS;
 }

@@ -35,37 +35,6 @@ using brillo::SecureBlob;
 
 namespace {
 
-template <class T, class U>
-T Sha1Helper(const U& data) {
-  SHA_CTX sha_context;
-  unsigned char md_value[SHA_DIGEST_LENGTH];
-  T hash;
-
-  SHA1_Init(&sha_context);
-  SHA1_Update(&sha_context, data.data(), data.size());
-  SHA1_Final(md_value, &sha_context);
-  hash.resize(sizeof(md_value));
-  memcpy(hash.data(), md_value, sizeof(md_value));
-  // Zero the stack to match expectations set by SecureBlob.
-  brillo::SecureClearContainer(md_value);
-  return hash;
-}
-
-template <class T, class U>
-T Sha256Helper(const U& data) {
-  SHA256_CTX sha_context;
-  unsigned char md_value[SHA256_DIGEST_LENGTH];
-  T hash;
-
-  SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, data.data(), data.size());
-  SHA256_Final(md_value, &sha_context);
-  hash.resize(sizeof(md_value));
-  memcpy(hash.data(), md_value, sizeof(md_value));
-  // Zero the stack to match expectations set by SecureBlob.
-  brillo::SecureClearContainer(md_value);
-  return hash;
-}
 
 template <class T>
 brillo::SecureBlob HmacSha512Helper(const brillo::SecureBlob& key,
@@ -299,30 +268,6 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(const SecureBlob& secret_prime,
     return false;
   }
   return true;
-}
-
-brillo::Blob CryptoLib::Sha1(const brillo::Blob& data) {
-  return Sha1Helper<brillo::Blob, brillo::Blob>(data);
-}
-
-brillo::SecureBlob CryptoLib::Sha1ToSecureBlob(const brillo::Blob& data) {
-  return Sha1Helper<brillo::SecureBlob, brillo::Blob>(data);
-}
-
-brillo::SecureBlob CryptoLib::Sha1(const brillo::SecureBlob& data) {
-  return Sha1Helper<brillo::SecureBlob, brillo::SecureBlob>(data);
-}
-
-brillo::Blob CryptoLib::Sha256(const brillo::Blob& data) {
-  return Sha256Helper<brillo::Blob, brillo::Blob>(data);
-}
-
-brillo::SecureBlob CryptoLib::Sha256ToSecureBlob(const brillo::Blob& data) {
-  return Sha256Helper<brillo::SecureBlob, brillo::Blob>(data);
-}
-
-brillo::SecureBlob CryptoLib::Sha256(const brillo::SecureBlob& data) {
-  return Sha256Helper<brillo::SecureBlob, brillo::SecureBlob>(data);
 }
 
 brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,

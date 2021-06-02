@@ -22,6 +22,7 @@
 #include <brillo/file_utils.h>
 #include <brillo/process/process.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
@@ -544,7 +545,7 @@ result_code Tpm1SystemKeyLoader::LoadLockboxKey(
     return RESULT_FAIL_FATAL;
   }
 
-  *system_key = cryptohome::CryptoLib::Sha256(key_material);
+  *system_key = cryptohome::Sha256(key_material);
   return RESULT_SUCCESS;
 }
 

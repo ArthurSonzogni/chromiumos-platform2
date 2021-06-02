@@ -35,6 +35,7 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 
 using brillo::Blob;
@@ -768,8 +769,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     }
     concatenated_pcr_values += pcr_value;
   }
-  Blob expected_pcr_digest =
-      CryptoLib::Sha256(BlobFromString(concatenated_pcr_values));
+  Blob expected_pcr_digest = Sha256(BlobFromString(concatenated_pcr_values));
   if (creation_data.creation_data.pcr_digest.size !=
       expected_pcr_digest.size()) {
     LOG(ERROR) << "Incorrect PCR digest size.";
@@ -1114,7 +1114,7 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
   }
   std::string public_modulus =
       trunks::StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa);
-  *hash = CryptoLib::Sha256(SecureBlob(public_modulus));
+  *hash = Sha256(SecureBlob(public_modulus));
   return Tpm::kTpmRetryNone;
 }
 
@@ -1349,7 +1349,7 @@ bool Tpm2Impl::GetAuthValue(TpmKeyHandle key_handle,
     LOG(ERROR) << "Error decrypting pass_blob: " << GetErrorString(result);
     return false;
   }
-  *auth_value = CryptoLib::Sha256(SecureBlob(decrypted_value)).to_string();
+  *auth_value = Sha256(SecureBlob(decrypted_value)).to_string();
 
   return true;
 }
@@ -1478,10 +1478,8 @@ std::map<uint32_t, std::string> Tpm2Impl::GetPcrMap(
   std::map<uint32_t, std::string> pcr_map;
   if (use_extended_pcr) {
     brillo::SecureBlob starting_value(SHA256_DIGEST_LENGTH, 0);
-    brillo::SecureBlob digest_value =
-        CryptoLib::Sha256(brillo::SecureBlob::Combine(
-            starting_value,
-            CryptoLib::Sha256(brillo::SecureBlob(obfuscated_username))));
+    brillo::SecureBlob digest_value = Sha256(brillo::SecureBlob::Combine(
+        starting_value, Sha256(brillo::SecureBlob(obfuscated_username))));
     pcr_map[kTpmSingleUserPCR] = digest_value.to_string();
   } else {
     pcr_map[kTpmSingleUserPCR] = std::string(SHA256_DIGEST_LENGTH, 0);

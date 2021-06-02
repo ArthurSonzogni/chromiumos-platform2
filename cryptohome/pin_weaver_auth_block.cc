@@ -17,6 +17,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -68,13 +69,13 @@ bool GetValidPCRValues(const std::string& obfuscated_username,
   // (sha256(initial_value | user_specific_digest)).
   // Step 2 - calculate digest of those values, to support multi-PCR case,
   // where all those expected values for all PCRs are sha256'ed togetheri
-  brillo::Blob default_digest = CryptoLib::Sha256(default_pcr_str);
+  brillo::Blob default_digest = Sha256(default_pcr_str);
 
   // The second valid digest is the one obtained from the future value of
   // PCR4, after it's extended by |obfuscated_username|. Compute the value of
   // PCR4 after it will be extended first, which is
   // sha256(default_value + sha256(extend_text)).
-  brillo::Blob obfuscated_username_digest = CryptoLib::Sha256(
+  brillo::Blob obfuscated_username_digest = Sha256(
       brillo::Blob(obfuscated_username.begin(), obfuscated_username.end()));
   brillo::Blob combined_pcr_and_username(default_pcr_str);
   combined_pcr_and_username.insert(
@@ -82,12 +83,11 @@ bool GetValidPCRValues(const std::string& obfuscated_username,
       std::make_move_iterator(obfuscated_username_digest.begin()),
       std::make_move_iterator(obfuscated_username_digest.end()));
 
-  brillo::Blob extended_arc_pcr_value =
-      CryptoLib::Sha256(combined_pcr_and_username);
+  brillo::Blob extended_arc_pcr_value = Sha256(combined_pcr_and_username);
 
   // The second valid digest used by pinweaver for validation will be
   // sha256 of the extended value of pcr4.
-  brillo::Blob extended_digest = CryptoLib::Sha256(extended_arc_pcr_value);
+  brillo::Blob extended_digest = Sha256(extended_arc_pcr_value);
 
   ValidPcrValue default_pcr_value;
   memset(default_pcr_value.bitmask, 0, 2);

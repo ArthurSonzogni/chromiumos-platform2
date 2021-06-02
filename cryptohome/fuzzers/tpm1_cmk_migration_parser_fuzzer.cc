@@ -23,6 +23,7 @@
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
@@ -209,7 +210,7 @@ Blob FuzzedOaepMgf1Encode(const Blob& message,
   const Blob zeroes_padding(encoded_message_length - message_length -
                             2 * SHA_DIGEST_LENGTH - 1);
   // Step #4. Generate "pHash".
-  const Blob oaep_label_digest = cryptohome::CryptoLib::Sha1(oaep_label);
+  const Blob oaep_label_digest = cryptohome::Sha1(oaep_label);
   // Step #5. Generate "DB".
   const Blob padded_message =
       CombineBlobs({oaep_label_digest, zeroes_padding, Blob(1, 1),
@@ -269,7 +270,7 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
   *cmk_pubkey = BuildRsaTpmPubkeyBlob(cmk_rsa);
 
   // Build the |cmk_pubkey_digest| parameter.
-  const Blob cmk_pubkey_digest = cryptohome::CryptoLib::Sha1(*cmk_pubkey);
+  const Blob cmk_pubkey_digest = cryptohome::Sha1(*cmk_pubkey);
   *fuzzed_cmk_pubkey_digest = MutateBlob(
       cmk_pubkey_digest, cmk_pubkey_digest.size() + kFuzzingExtraSizeDelta,
       fuzzed_data_provider);

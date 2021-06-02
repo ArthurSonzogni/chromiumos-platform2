@@ -26,6 +26,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/signature_sealing_backend.h"
 
@@ -91,7 +92,7 @@ bool TpmLiveTest::SignData(const SecureBlob& pcr_bound_key,
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
-  SecureBlob digest = CryptoLib::Sha256(input_data);
+  SecureBlob digest = Sha256(input_data);
   if (!RSA_verify(NID_sha256, digest.data(), digest.size(), signature.data(),
                   signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";

@@ -28,6 +28,7 @@
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/challenge_credential_auth_block.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -242,7 +243,7 @@ bool WrapScryptVaultKeyset(const VaultKeyset& vault_keyset,
   // backwards-compatibility purposes, since scrypt already creates a
   // MAC for the encrypted blob. It is ignored in DecryptScrypt since
   // it is redundant.
-  brillo::SecureBlob hash = CryptoLib::Sha1(blob);
+  brillo::SecureBlob hash = Sha1(blob);
   brillo::SecureBlob local_blob = SecureBlob::Combine(blob, hash);
   brillo::SecureBlob cipher_text;
   if (!LibScryptCompat::Encrypt(key_blobs.scrypt_key->derived_key(),

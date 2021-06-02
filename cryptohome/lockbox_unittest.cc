@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_lockbox.h"
 #include "cryptohome/mock_platform.h"
@@ -209,9 +210,8 @@ TEST_P(LockboxTest, StoreOk) {
   EXPECT_CALL(process_, Reset(0)).Times(1);
   EXPECT_CALL(process_, AddArg("/usr/sbin/mount-encrypted")).Times(1);
   EXPECT_CALL(process_, AddArg("finalize")).Times(1);
-  EXPECT_CALL(
-      process_,
-      AddArg(CryptoLib::SecureBlobToHex(CryptoLib::Sha256(key_material))))
+  EXPECT_CALL(process_,
+              AddArg(CryptoLib::SecureBlobToHex(Sha256(key_material))))
       .Times(1);
   EXPECT_CALL(process_, BindFd(_, 1)).Times(1);
   EXPECT_CALL(process_, BindFd(_, 2)).Times(1);

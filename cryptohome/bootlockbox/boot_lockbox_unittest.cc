@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_platform.h"
@@ -72,7 +73,7 @@ class BootLockboxTest : public testing::Test {
     brillo::SecureBlob der_header(std::begin(kSha256DigestInfo),
                                   std::end(kSha256DigestInfo));
     brillo::SecureBlob der_encoded_input =
-        brillo::SecureBlob::Combine(der_header, CryptoLib::Sha256(input));
+        brillo::SecureBlob::Combine(der_header, Sha256(input));
     unsigned char buffer[256];
     int length =
         RSA_private_encrypt(der_encoded_input.size(), der_encoded_input.data(),

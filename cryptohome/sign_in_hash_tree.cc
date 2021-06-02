@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/hash_tree_leaf_data.pb.h"
 
@@ -272,7 +273,7 @@ std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
     input_buffer.insert(input_buffer.end(), child_hash.begin(),
                         child_hash.end());
   }
-  ret_val = CryptoLib::Sha256(input_buffer);
+  ret_val = Sha256(input_buffer);
 
   // Update the hash cache with the new value.
   UpdateInnerHashArray(label.cache_index(), ret_val.data(), ret_val.size());
@@ -295,7 +296,7 @@ void SignInHashTree::UpdateHashCacheLabelPath(const Label& label) {
       input_buffer.insert(input_buffer.end(), array_address,
                           array_address + kHashSize);
     }
-    brillo::Blob result_hash = CryptoLib::Sha256(input_buffer);
+    brillo::Blob result_hash = Sha256(input_buffer);
     UpdateInnerHashArray(parent.cache_index(), result_hash.data(),
                          result_hash.size());
     cur_label = parent;

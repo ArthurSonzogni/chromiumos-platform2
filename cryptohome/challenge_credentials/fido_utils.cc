@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/fido.pb.h"
 
@@ -26,8 +27,7 @@ constexpr base::TimeDelta kRequestTimeOut = base::TimeDelta::FromSeconds(30);
 constexpr int kCOSEAlgorithmIdentifierES256 = -7;
 
 std::vector<uint8_t> GetFidoUserId(const std::string& account_id) {
-  auto digest =
-      CryptoLib::Sha256ToSecureBlob(brillo::BlobFromString(account_id));
+  auto digest = Sha256ToSecureBlob(brillo::BlobFromString(account_id));
   return std::vector<uint8_t>(digest.begin(), digest.end());
 }
 

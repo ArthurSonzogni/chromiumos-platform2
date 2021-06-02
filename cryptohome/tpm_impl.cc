@@ -38,6 +38,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm1_static_utils.h"
@@ -521,7 +522,7 @@ Tpm::TpmRetryAction TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
   if (!GetPublicKeyBlob(tpm_context_.value(), key_handle, &pubkey, &result)) {
     return ResultToRetryAction(result);
   }
-  *hash = CryptoLib::Sha1(pubkey);
+  *hash = Sha1(pubkey);
   return kTpmRetryNone;
 }
 
@@ -1474,8 +1475,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   // Create the DER encoded input.
   SecureBlob der_header(std::begin(kSha256DigestInfo),
                         std::end(kSha256DigestInfo));
-  SecureBlob der_encoded_input =
-      SecureBlob::Combine(der_header, CryptoLib::Sha256(input));
+  SecureBlob der_encoded_input = SecureBlob::Combine(der_header, Sha256(input));
 
   // Don't hash anything, just push the input data into the hash object.
   result = Tspi_Hash_SetHashValue(hash_handle, der_encoded_input.size(),
@@ -1673,7 +1673,7 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   Blob pcr_value_length_blob(sizeof(UINT32));
   Trspi_LoadBlob_UINT32(&trspi_offset, pcr_value_length,
                         pcr_value_length_blob.data());
-  const SecureBlob pcr_hash = CryptoLib::Sha1ToSecureBlob(CombineBlobs(
+  const SecureBlob pcr_hash = Sha1ToSecureBlob(CombineBlobs(
       {Blob(pcr_selection_blob.begin(), pcr_selection_blob.end()),
        pcr_value_length_blob, BlobFromString(concatenated_pcr_values)}));
 
@@ -2213,8 +2213,8 @@ std::map<uint32_t, std::string> TpmImpl::GetPcrMap(
   std::map<uint32_t, std::string> pcr_map;
   if (use_extended_pcr) {
     SecureBlob starting_value(SHA_DIGEST_LENGTH, 0);
-    SecureBlob digest_value = CryptoLib::Sha1(SecureBlob::Combine(
-        starting_value, CryptoLib::Sha1(SecureBlob(obfuscated_username))));
+    SecureBlob digest_value = Sha1(SecureBlob::Combine(
+        starting_value, Sha1(SecureBlob(obfuscated_username))));
     pcr_map[kTpmSingleUserPCR] = digest_value.to_string();
   } else {
     pcr_map[kTpmSingleUserPCR] = std::string(SHA_DIGEST_LENGTH, 0);

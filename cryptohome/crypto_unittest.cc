@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "cryptohome/attestation.pb.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
@@ -565,7 +566,7 @@ TEST_F(CryptoTest, GetSha1FipsTest) {
   Crypto crypto(&platform);
   ShaTestVectors vectors(1);
   for (size_t i = 0; i < vectors.count(); ++i) {
-    Blob digest = CryptoLib::Sha1(*vectors.input(i));
+    Blob digest = Sha1(*vectors.input(i));
     std::string computed(reinterpret_cast<const char*>(digest.data()),
                          digest.size());
     std::string expected = vectors.output(i)->to_string();
@@ -578,7 +579,7 @@ TEST_F(CryptoTest, GetSha256FipsTest) {
   Crypto crypto(&platform);
   ShaTestVectors vectors(256);
   for (size_t i = 0; i < vectors.count(); ++i) {
-    Blob digest = CryptoLib::Sha256(*vectors.input(i));
+    Blob digest = Sha256(*vectors.input(i));
     std::string computed(reinterpret_cast<const char*>(digest.data()),
                          digest.size());
     std::string expected = vectors.output(i)->to_string();

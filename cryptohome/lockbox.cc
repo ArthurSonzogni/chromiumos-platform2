@@ -25,6 +25,7 @@
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
@@ -204,7 +205,7 @@ void Lockbox::FinalizeMountEncrypted(const brillo::SecureBlob& entropy) const {
   int rc;
 
   // Take hash of entropy and convert to hex string for cmdline.
-  SecureBlob hash = CryptoLib::Sha256(entropy);
+  SecureBlob hash = Sha256(entropy);
   hex = CryptoLib::SecureBlobToHex(hash);
 
   process_->Reset(0);
@@ -327,7 +328,7 @@ bool LockboxContents::Protect(const brillo::Blob& blob) {
   brillo::SecureBlob salty_blob(blob);
   salty_blob.insert(salty_blob.end(), key_material_.begin(),
                     key_material_.end());
-  SecureBlob salty_blob_hash = CryptoLib::Sha256(salty_blob);
+  SecureBlob salty_blob_hash = Sha256(salty_blob);
   CHECK_EQ(sizeof(hash_), salty_blob_hash.size());
   std::copy(salty_blob_hash.begin(), salty_blob_hash.end(), std::begin(hash_));
   size_ = blob.size();
@@ -347,7 +348,7 @@ LockboxContents::VerificationResult LockboxContents::Verify(
   brillo::SecureBlob salty_blob(blob);
   salty_blob.insert(salty_blob.end(), key_material_.begin(),
                     key_material_.end());
-  SecureBlob salty_blob_hash = CryptoLib::Sha256(salty_blob);
+  SecureBlob salty_blob_hash = Sha256(salty_blob);
 
   // Validate the blob hash versus the stored hash.
   if (sizeof(hash_) != salty_blob_hash.size() ||

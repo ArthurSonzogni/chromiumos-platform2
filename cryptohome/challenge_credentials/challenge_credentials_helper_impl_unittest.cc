@@ -21,6 +21,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/mock_key_challenge_service.h"
@@ -343,7 +344,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // ChallengeCredentialsHelperImpl operations. Its value is derived from the
   // injected fake data.
   const Blob kPasskey =
-      CombineBlobs({kTpmProtectedSecret, CryptoLib::Sha256(kSaltSignature)});
+      CombineBlobs({kTpmProtectedSecret, Sha256(kSaltSignature)});
 
  private:
   // Mock objects:

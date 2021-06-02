@@ -18,6 +18,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/pkcs11_init.h"
 
@@ -216,7 +217,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
   CK_BBOOL false_value = CK_FALSE;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_OBJECT_CLASS public_key_class = CKO_PUBLIC_KEY;
-  SecureBlob id = CryptoLib::Sha1(modulus);
+  SecureBlob id = Sha1(modulus);
   SecureBlob mutable_label(label);
   CK_ULONG modulus_bits = modulus.size() * 8;
   unsigned char public_exponent[] = {1, 0, 1};

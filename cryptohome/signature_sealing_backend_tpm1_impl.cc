@@ -24,6 +24,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
@@ -550,7 +551,7 @@ Blob BuildMsaCompositeDigest(const Blob& msa_pubkey_digest) {
   serializing_offset = 0;
   Trspi_LoadBlob_MSA_COMPOSITE(&serializing_offset, msa_composite_blob.data(),
                                &msa_composite);
-  return CryptoLib::Sha1(msa_composite_blob);
+  return Sha1(msa_composite_blob);
 }
 
 // Obtains via the TPM_CMK_ApproveMA command the migration authority approval
@@ -718,7 +719,7 @@ bool DecodeOaepMgf1Encoding(const Blob& encoded_blob,
   DCHECK_EQ(padded_message.size(), obtained_label_digest.size() +
                                        obtained_zeroes_ones_padding.size() +
                                        message->size());
-  if (obtained_label_digest != CryptoLib::Sha1(oaep_label)) {
+  if (obtained_label_digest != Sha1(oaep_label)) {
     LOG(ERROR) << "Incorrect OAEP label";
     return false;
   }
@@ -975,13 +976,13 @@ UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
       delegate_blob_(delegate_blob),
       delegate_secret_(delegate_secret),
       cmk_pubkey_(cmk_pubkey),
-      cmk_pubkey_digest_(CryptoLib::Sha1(cmk_pubkey_)),
+      cmk_pubkey_digest_(Sha1(cmk_pubkey_)),
       protection_key_pubkey_(protection_key_pubkey),
-      protection_key_pubkey_digest_(CryptoLib::Sha1(protection_key_pubkey_)),
+      protection_key_pubkey_digest_(Sha1(protection_key_pubkey_)),
       migration_destination_rsa_(std::move(migration_destination_rsa)),
       migration_destination_key_pubkey_(migration_destination_key_pubkey),
       migration_destination_key_pubkey_digest_(
-          CryptoLib::Sha1(migration_destination_key_pubkey_)),
+          Sha1(migration_destination_key_pubkey_)),
       msa_composite_digest_(
           BuildMsaCompositeDigest(protection_key_pubkey_digest_)) {}
 
@@ -1141,8 +1142,8 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     LOG(ERROR) << "Failed to read the protection public key";
     return false;
   }
-  const Blob protection_key_pubkey_digest = CryptoLib::Sha1(
-      Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()));
+  const Blob protection_key_pubkey_digest =
+      Sha1(Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()));
   const Blob msa_composite_digest =
       BuildMsaCompositeDigest(protection_key_pubkey_digest);
   // Obtain the migration authority approval ticket for the TPM_MSA_COMPOSITE

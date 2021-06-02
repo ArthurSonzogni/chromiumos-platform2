@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 
 #if USE_TPM2
@@ -64,7 +65,7 @@ int Tpm::TpmVersionInfo::GetFingerprint() const {
                          family, spec_level, manufacturer, tpm_model,
                          firmware_version, vendor_specific.size());
   encoded_parameters.append(vendor_specific);
-  brillo::SecureBlob hash = CryptoLib::Sha256(
+  brillo::SecureBlob hash = Sha256(
       brillo::SecureBlob(encoded_parameters.begin(), encoded_parameters.end()));
 
   // Return the first 31 bits from |hash|.

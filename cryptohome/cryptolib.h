@@ -83,17 +83,6 @@ class CryptoLib {
   static bool FillRsaPrivateKeyFromSecretPrime(
       const brillo::SecureBlob& secret_prime, RSA* rsa);
 
-  // TODO(jorgelo,crbug.com/728047): Review current usage of these functions and
-  // consider making the functions that take a plain Blob also return a plain
-  // Blob.
-  static brillo::Blob Sha1(const brillo::Blob& data);
-  static brillo::SecureBlob Sha1ToSecureBlob(const brillo::Blob& data);
-  static brillo::SecureBlob Sha1(const brillo::SecureBlob& data);
-
-  static brillo::Blob Sha256(const brillo::Blob& data);
-  static brillo::SecureBlob Sha256ToSecureBlob(const brillo::Blob& data);
-  static brillo::SecureBlob Sha256(const brillo::SecureBlob& data);
-
   static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
                                        const brillo::Blob& data);
   static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,

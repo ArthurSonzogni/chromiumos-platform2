@@ -17,6 +17,7 @@
 
 #include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
 #include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
@@ -124,7 +125,7 @@ bool NVRamBootLockbox::Load() {
     return false;
   }
 
-  brillo::Blob digest_blob = CryptoLib::Sha256(data);
+  brillo::Blob digest_blob = Sha256(data);
   std::string digest(digest_blob.begin(), digest_blob.end());
 
   if (digest != root_digest_) {
@@ -161,7 +162,7 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
   brillo::Blob content(message.ByteSizeLong());
   message.SerializeWithCachedSizesToArray(content.data());
 
-  brillo::Blob digest_blob = CryptoLib::Sha256(content);
+  brillo::Blob digest_blob = Sha256(content);
   std::string digest(digest_blob.begin(), digest_blob.end());
 
   // It is hard to make this atomic. In the case the file digest

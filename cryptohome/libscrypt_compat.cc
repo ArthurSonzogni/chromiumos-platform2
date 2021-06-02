@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
@@ -95,7 +96,7 @@ void GenerateHeader(const brillo::SecureBlob& salt,
   uint8_t* header_ptr = reinterpret_cast<uint8_t*>(header_struct);
   brillo::Blob header_blob_to_hash(header_ptr,
                                    header_ptr + kLibScryptSubHeaderSize);
-  brillo::Blob sha = CryptoLib::Sha256(header_blob_to_hash);
+  brillo::Blob sha = Sha256(header_blob_to_hash);
   memcpy(&header_struct->check_sum[0], sha.data(),
          sizeof(header_struct->check_sum));
 
@@ -202,7 +203,7 @@ bool LibScryptCompat::ParseHeader(const brillo::SecureBlob& encrypted_blob,
   const uint8_t* header_ptr = reinterpret_cast<const uint8_t*>(header);
   brillo::Blob header_blob_to_hash(header_ptr,
                                    header_ptr + kLibScryptSubHeaderSize);
-  brillo::Blob sha = CryptoLib::Sha256(header_blob_to_hash);
+  brillo::Blob sha = Sha256(header_blob_to_hash);
   if (brillo::SecureMemcmp(sha.data(), header->check_sum,
                            sizeof(header->check_sum)) != 0) {
     LOG(ERROR) << "Wrong checksum present.";

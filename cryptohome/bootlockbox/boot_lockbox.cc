@@ -19,6 +19,7 @@
 #include <openssl/sha.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
@@ -104,8 +105,7 @@ bool BootLockbox::FinalizeBoot() {
     // The PCR is already not at the initial value, no need to extend again.
     return true;
   }
-  return tpm_->ExtendPCR(kPCRIndex,
-                         CryptoLib::Sha1(BlobFromString(kPCRExtension)));
+  return tpm_->ExtendPCR(kPCRIndex, Sha1(BlobFromString(kPCRExtension)));
 }
 
 bool BootLockbox::IsFinalized() {
@@ -224,7 +224,7 @@ bool BootLockbox::VerifySignature(const brillo::Blob& public_key,
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
-  brillo::SecureBlob digest = CryptoLib::Sha256ToSecureBlob(signed_data);
+  brillo::SecureBlob digest = Sha256ToSecureBlob(signed_data);
   if (!RSA_verify(NID_sha256, digest.data(), digest.size(), signature.data(),
                   signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";

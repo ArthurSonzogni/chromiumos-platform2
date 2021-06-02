@@ -21,6 +21,7 @@
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
@@ -218,7 +219,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   std::string dmcrypt_name = std::string(kCryptDevName);
   if (rootdir != base::FilePath("/")) {
     brillo::SecureBlob digest =
-        cryptohome::CryptoLib::Sha256(brillo::SecureBlob(rootdir.value()));
+        cryptohome::Sha256(brillo::SecureBlob(rootdir.value()));
     std::string hex = cryptohome::CryptoLib::SecureBlobToHex(digest);
     dmcrypt_name += "_" + hex.substr(0, 16);
   }
