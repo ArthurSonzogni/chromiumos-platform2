@@ -100,10 +100,19 @@ if get_option('commit_loop_fix')
   cpp_args += '-DCOMMIT_LOOP_FIX'
 endif
 
-executable('sommelier',
-  install: true,
+sommelier_defines = [
+    '-D_GNU_SOURCE',
+    '-DWL_HIDE_DEPRECATED',
+    '-DXWAYLAND_PATH="' + get_option('xwayland_path') + '"',
+    '-DXWAYLAND_GL_DRIVER_PATH="' + get_option('xwayland_gl_driver_path') + '"',
+    '-DFRAME_COLOR="' + get_option('frame_color') + '"',
+    '-DDARK_FRAME_COLOR="' + get_option('dark_frame_color') + '"',
+]
+
+libsommelier = static_library('sommelier',
   sources: [
     'sommelier-compositor.cc',
+    'sommelier-ctx.cc',
     'sommelier-data-device-manager.cc',
     'sommelier-display.cc',
     'sommelier-drm.cc',
@@ -120,7 +129,6 @@ executable('sommelier',
     'sommelier-tracing.cc',
     'sommelier-viewporter.cc',
     'sommelier-xdg-shell.cc',
-    'sommelier.cc',
     'virtualization/virtwl_channel.cc',
     'virtualization/virtgpu_channel.cc',
   ] + wl_outs + tracing_sources + gamepad_sources,
@@ -136,13 +144,32 @@ executable('sommelier',
     dependency('xcb-xfixes'),
     dependency('xkbcommon'),
   ] + tracing_dependencies + gamepad_dependencies,
-  cpp_args: cpp_args + [
-    '-D_GNU_SOURCE',
-    '-DWL_HIDE_DEPRECATED',
-    '-DXWAYLAND_PATH="' + get_option('xwayland_path') + '"',
-    '-DXWAYLAND_GL_DRIVER_PATH="' + get_option('xwayland_gl_driver_path') + '"',
-    '-DFRAME_COLOR="' + get_option('frame_color') + '"',
-    '-DDARK_FRAME_COLOR="' + get_option('dark_frame_color') + '"',
-  ],
+  cpp_args: cpp_args + sommelier_defines,
   include_directories: includes,
 )
+
+executable('sommelier',
+  install: true,
+  sources: [
+    'sommelier.cc',
+  ] + wl_outs, 
+  link_with: libsommelier,
+  cpp_args: cpp_args + sommelier_defines,
+  include_directories: includes,
+)
+
+sommelier_test = executable('sommelier_test',
+  install: true,
+  sources: [
+    'sommelier_test.cc',
+  ],
+  link_with: libsommelier,
+  dependencies: [
+    dependency('gtest'),
+    dependency('gmock')
+  ],
+  cpp_args: cpp_args + sommelier_defines,
+  include_directories: includes,
+)
+
+test('sommelier_test', sommelier_test)

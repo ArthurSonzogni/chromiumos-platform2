@@ -5,7 +5,10 @@
 import("wayland_protocol.gni")
 
 group("all") {
-  deps = [ ":sommelier" ]
+  deps = [
+    ":sommelier",
+    ":sommelier_test",
+  ]
 }
 
 # Set this to the Xwayland path.
@@ -44,7 +47,16 @@ wayland_protocol_library("sommelier-protocol") {
   ]
 }
 
-executable("sommelier") {
+sommelier_defines = [
+  "_GNU_SOURCE",
+  "WL_HIDE_DEPRECATED",
+  "XWAYLAND_PATH=${xwayland_path}",
+  "XWAYLAND_GL_DRIVER_PATH=${xwayland_gl_driver_path}",
+  "FRAME_COLOR=${frame_color}",
+  "DARK_FRAME_COLOR=${dark_frame_color}",
+]
+
+static_library("libsommelier") {
   pkg_deps = [
     "gbm",
     "libdrm",
@@ -56,8 +68,10 @@ executable("sommelier") {
     "xcb-xfixes",
     "xkbcommon",
   ]
+
   sources = [
     "sommelier-compositor.cc",
+    "sommelier-ctx.cc",
     "sommelier-data-device-manager.cc",
     "sommelier-display.cc",
     "sommelier-drm.cc",
@@ -74,18 +88,30 @@ executable("sommelier") {
     "sommelier-tracing.cc",
     "sommelier-viewporter.cc",
     "sommelier-xdg-shell.cc",
-    "sommelier.cc",
     "virtualization/virtgpu_channel.cc",
     "virtualization/virtwl_channel.cc",
   ]
+  defines = sommelier_defines
   libs = [ "m" ]
-  defines = [
-    "_GNU_SOURCE",
-    "WL_HIDE_DEPRECATED",
-    "XWAYLAND_PATH=${xwayland_path}",
-    "XWAYLAND_GL_DRIVER_PATH=${xwayland_gl_driver_path}",
-    "FRAME_COLOR=${frame_color}",
-    "DARK_FRAME_COLOR=${dark_frame_color}",
-  ]
   deps = [ ":sommelier-protocol" ]
+}
+
+executable("sommelier") {
+  sources = [ "sommelier.cc" ]
+
+  defines = sommelier_defines
+
+  deps = [ ":libsommelier" ]
+}
+
+executable("sommelier_test") {
+  sources = [ "sommelier_test.cc" ]
+
+  # gnlint: disable=GnLintCommonTesting
+  libs = [
+    "gmock",
+    "gtest",
+  ]
+  defines = sommelier_defines
+  deps = [ ":libsommelier" ]
 }

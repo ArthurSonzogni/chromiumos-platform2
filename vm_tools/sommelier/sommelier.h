@@ -11,6 +11,7 @@
 #include <xcb/xcb.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "sommelier-ctx.h"     // NOLINT(build/include_directory)
 #include "sommelier-timing.h"  // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"
 
