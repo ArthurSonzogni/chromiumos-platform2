@@ -7390,6 +7390,7 @@ mno {
       localized_name {
         name : "mopera U"
       }
+      is_attach_apn : true
     }
     mobile_apn {
       apn : "lte-d.ocn.ne.jp"
@@ -7398,6 +7399,7 @@ mno {
       }
       username : "mobileid@ocn"
       password : "mobile"
+      is_attach_apn : true
     }
   }
   mvno {
@@ -7423,6 +7425,7 @@ mno {
         }
         username : "bmobile@u300"
         password : "bmobile"
+        is_attach_apn : true
       }
     }
   }
