@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <chromeos-config/libcros_config/cros_config.h>
@@ -41,9 +42,12 @@ void AddFoundComponentInfo(
 
 bool IsModelComponent(const ComponentInfo& comp_info,
                       const std::string& model_name) {
-  if (model_name.length() == 0)
+  if (model_name.empty())
     return true;
-  return base::StartsWith(comp_info.component_uuid(), model_name + "_");
+
+  const auto& parts = base::SplitString(model_name, "_", base::KEEP_WHITESPACE,
+                                        base::SPLIT_WANT_ALL);
+  return base::StartsWith(comp_info.component_uuid(), parts[0] + "_");
 }
 
 }  // namespace

@@ -75,7 +75,7 @@ class TestVerifierImpl : public testing::Test {
   }
 
   // Sets model names to the given value.
-  void SetModel(const std::string& val) {
+  void SetModelName(const std::string& val) {
     if (cros_config_) {
       cros_config_->SetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
                               val);
@@ -96,7 +96,7 @@ class TestVerifierImpl : public testing::Test {
     auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
     cros_config_ = cros_config.get();
     verifier.SetCrosConfigForTesting(std::move(cros_config));
-    SetModel("");
+    SetModelName("");
     const auto& actual_hw_verification_report =
         verifier.Verify(probe_result, hw_verification_spec);
     EXPECT_TRUE(actual_hw_verification_report);
@@ -115,7 +115,7 @@ class TestVerifierImpl : public testing::Test {
     auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
     cros_config_ = cros_config.get();
     verifier.SetCrosConfigForTesting(std::move(cros_config));
-    SetModel("");
+    SetModelName("");
     EXPECT_FALSE(verifier.Verify(probe_result, hw_verification_spec));
   }
 
