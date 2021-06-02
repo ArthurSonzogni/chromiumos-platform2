@@ -1971,6 +1971,7 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
   LOG(INFO) << __func__ << " Modem Path: " << dbus_path.value();
   dbus_path_ = dbus_path;
   dbus_path_str_ = dbus_path.value();
+  adaptor()->EmitStringChanged(kDBusObjectProperty, dbus_path_str_);
   SetModemState(kModemStateUnknown);
   set_mac_address(mac_address);
 }
