@@ -144,6 +144,9 @@ bool ParseOutput(const std::string& output,
         counter.tx_packets += pkts;
       }
     }
+
+    if (it == lines.cend())
+      break;
   }
   return true;
 }
