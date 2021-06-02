@@ -94,6 +94,11 @@ std::vector<std::pair<std::string, std::string>> ListMetadataForBuildProperty(
 // reports use versions of Chrome browser as their product version.
 bool GetChromeVersion(std::string* version);
 
+// Returns the value which ARC-related collectors should use as the product
+// version of their reports. ARC-related collectors need to override
+// GetProductVersion method using this.
+std::string GetProductVersion();
+
 // Format the given time delta in human-readable manner.
 std::string FormatDuration(base::TimeDelta delta);
 

@@ -190,6 +190,11 @@ bool GetChromeVersion(std::string* version) {
   return true;
 }
 
+std::string GetProductVersion() {
+  std::string version;
+  return GetChromeVersion(&version) ? version : kUnknownValue;
+}
+
 std::string FormatDuration(base::TimeDelta delta) {
   constexpr int64_t kSecondsPerMinute = 60;
   constexpr int64_t kSecondsPerHour = 60 * kSecondsPerMinute;

@@ -70,8 +70,7 @@ bool ArcJavaCollector::HandleCrash(
 }
 
 std::string ArcJavaCollector::GetProductVersion() const {
-  std::string version;
-  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
+  return arc_util::GetProductVersion();
 }
 
 void ArcJavaCollector::AddArcMetaData(const std::string& process,

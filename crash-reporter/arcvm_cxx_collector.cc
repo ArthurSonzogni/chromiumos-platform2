@@ -120,6 +120,5 @@ bool ArcvmCxxCollector::DumpFdToFile(base::ScopedFD src_fd,
 }
 
 std::string ArcvmCxxCollector::GetProductVersion() const {
-  std::string version;
-  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
+  return arc_util::GetProductVersion();
 }

@@ -164,8 +164,7 @@ bool ArcppCxxCollector::ArcContext::ReadAuxvForProcess(
 }
 
 std::string ArcppCxxCollector::GetProductVersion() const {
-  std::string version;
-  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
+  return arc_util::GetProductVersion();
 }
 
 bool ArcppCxxCollector::GetExecutableBaseNameFromPid(pid_t pid,

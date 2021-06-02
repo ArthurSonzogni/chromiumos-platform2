@@ -109,6 +109,5 @@ void ArcvmKernelCollector::AddArcMetadata(
 }
 
 std::string ArcvmKernelCollector::GetProductVersion() const {
-  std::string version;
-  return arc_util::GetChromeVersion(&version) ? version : kUnknownValue;
+  return arc_util::GetProductVersion();
 }
