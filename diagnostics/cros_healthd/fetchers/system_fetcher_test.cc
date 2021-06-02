@@ -38,8 +38,21 @@ constexpr char kFakeProductName[] = "ProductName";
 constexpr char kFakeBiosVersion[] = "Google_BoardName.12200.68.0";
 constexpr char kFakeBoardName[] = "BoardName";
 constexpr char kFakeBoardVersion[] = "rev1234";
-constexpr char kFakeChassisType[] = "9";
 constexpr uint64_t kFakeChassisTypeOutput = 9;
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+template <typename T>
+base::Optional<std::string> GetMockValue(const T& value) {
+  return value;
+}
+
+base::Optional<std::string> GetMockValue(
+    const mojo_ipc::NullableUint64Ptr& ptr) {
+  if (ptr)
+    return std::to_string(ptr->value);
+  return base::nullopt;
+}
 
 class SystemUtilsTest : public BaseFileTest {
  protected:
@@ -51,47 +64,82 @@ class SystemUtilsTest : public BaseFileTest {
     ASSERT_TRUE(mock_context_.Initialize());
     SetTestRoot(mock_context_.root_dir());
 
-    // Populate fake cached VPD values.
     relative_vpd_rw_dir_ = root_dir().Append(kRelativeVpdRwPath);
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_vpd_rw_dir_.Append(kFirstPowerDateFileName),
-        kFakeFirstPowerDate));
     relative_vpd_ro_dir_ = root_dir().Append(kRelativeVpdRoPath);
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_vpd_ro_dir_.Append(kManufactureDateFileName),
-        kFakeManufactureDate));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_vpd_ro_dir_.Append(kSkuNumberFileName), kFakeSkuNumber));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_vpd_ro_dir_.Append(kProductSerialNumberFileName),
-        kFakeProductSerialNumber));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_vpd_ro_dir_.Append(kProductModelNameFileName),
-        kFakeProductModelName));
-    // Populate fake DMI values.
     relative_dmi_info_path_ = root_dir().Append(kRelativeDmiInfoPath);
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_dmi_info_path_.Append(kBiosVersionFileName),
-        kFakeBiosVersion));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_dmi_info_path_.Append(kBoardNameFileName), kFakeBoardName));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_dmi_info_path_.Append(kBoardVersionFileName),
-        kFakeBoardVersion));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        relative_dmi_info_path_.Append(kChassisTypeFileName),
-        kFakeChassisType));
 
+    expected_system_info_ = mojo_ipc::SystemInfo::New();
+    expected_system_info_->first_power_date = "2020-40";
+    expected_system_info_->manufacture_date = "2019-01-01";
+    expected_system_info_->product_sku_number = "ABCD&^A";
+    expected_system_info_->product_serial_number = "8607G03EDF";
+    expected_system_info_->product_model_name = "XX ModelName 007 XY";
+    expected_system_info_->marketing_name =
+        "Latitude 1234 Chromebook Enterprise";
+    expected_system_info_->bios_version = "Google_BoardName.12200.68.0";
+    expected_system_info_->board_name = "BoardName";
+    expected_system_info_->board_version = "rev1234";
+    expected_system_info_->chassis_type = mojo_ipc::NullableUint64::New(9);
+    expected_system_info_->product_name = "ProductName";
+    expected_system_info_->os_version = mojo_ipc::OsVersion::New();
+    expected_system_info_->os_version->release_milestone = "87";
+    expected_system_info_->os_version->build_number = "13544";
+    expected_system_info_->os_version->patch_number = "59.0";
+    expected_system_info_->os_version->release_channel = "stable-channel";
+
+    SetSystemInfo(expected_system_info_);
     SetHasSkuNumber(true);
-    SetMarketingName(kFakeMarketingName);
-    SetProductName(kFakeProductName);
-    PopulateLsbRelease(
-        base::StringPrintf("CHROMEOS_RELEASE_CHROME_MILESTONE=%s\n"
-                           "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
-                           "CHROMEOS_RELEASE_PATCH_NUMBER=%s\n"
-                           "CHROMEOS_RELEASE_TRACK=%s\n",
-                           kFakeReleaseMilestone, kFakeBuildNumber,
-                           kFakePatchNumber, kFakeReleaseChannel));
+  }
+
+  void SetSystemInfo(const mojo_ipc::SystemInfoPtr& system_info) {
+    SetMockFile({kRelativeVpdRwPath, kFirstPowerDateFileName},
+                system_info->first_power_date);
+    SetMockFile({kRelativeVpdRoPath, kManufactureDateFileName},
+                system_info->manufacture_date);
+    SetMockFile({kRelativeVpdRoPath, kSkuNumberFileName},
+                system_info->product_sku_number);
+    SetMockFile({kRelativeVpdRoPath, kProductSerialNumberFileName},
+                system_info->product_serial_number);
+    SetMockFile({kRelativeVpdRoPath, kProductModelNameFileName},
+                system_info->product_model_name);
+    // Currently, cros_config never returns base::nullopt.
+    mock_context_.fake_system_config()->SetMarketingName(
+        system_info->marketing_name);
+    ASSERT_TRUE(system_info->product_name.has_value());
+    mock_context_.fake_system_config()->SetProductName(
+        system_info->product_name.value());
+
+    SetMockFile({kRelativeDmiInfoPath, kBiosVersionFileName},
+                system_info->bios_version);
+    SetMockFile({kRelativeDmiInfoPath, kBoardNameFileName},
+                system_info->board_name);
+    SetMockFile({kRelativeDmiInfoPath, kBoardVersionFileName},
+                system_info->board_version);
+    SetMockFile({kRelativeDmiInfoPath, kChassisTypeFileName},
+                system_info->chassis_type);
+    SetOsVersion(system_info->os_version);
+  }
+
+  void SetOsVersion(const mojo_ipc::OsVersionPtr& os_version) {
+    PopulateLsbRelease(base::StringPrintf(
+        "CHROMEOS_RELEASE_CHROME_MILESTONE=%s\n"
+        "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
+        "CHROMEOS_RELEASE_PATCH_NUMBER=%s\n"
+        "CHROMEOS_RELEASE_TRACK=%s\n",
+        os_version->release_milestone.c_str(), os_version->build_number.c_str(),
+        os_version->patch_number.c_str(), os_version->release_channel.c_str()));
+  }
+
+  // Sets the mock file with |value|. If the |value| is omitted, deletes the
+  // file.
+  template <typename T>
+  void SetMockFile(const PathType& path, const T& value) {
+    auto mock = GetMockValue(value);
+    if (mock) {
+      SetFile(path, mock.value());
+    } else {
+      UnsetPath(path);
+    }
   }
 
   chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo() {
@@ -100,14 +148,6 @@ class SystemUtilsTest : public BaseFileTest {
 
   void SetHasSkuNumber(bool val) {
     mock_context_.fake_system_config()->SetHasSkuNumber(val);
-  }
-
-  void SetMarketingName(const std::string& val) {
-    mock_context_.fake_system_config()->SetMarketingName(val);
-  }
-
-  void SetProductName(const std::string& val) {
-    mock_context_.fake_system_config()->SetProductName(val);
   }
 
   void PopulateLsbRelease(const std::string& lsb_release) {
@@ -167,6 +207,9 @@ class SystemUtilsTest : public BaseFileTest {
   const base::FilePath& relative_dmi_info_path() {
     return relative_dmi_info_path_;
   }
+
+ protected:
+  mojo_ipc::SystemInfoPtr expected_system_info_;
 
  private:
   MockContext mock_context_;
