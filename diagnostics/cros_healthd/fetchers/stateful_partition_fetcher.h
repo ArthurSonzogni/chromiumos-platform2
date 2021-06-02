@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STATEFUL_PARTITION_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STATEFUL_PARTITION_FETCHER_H_
 
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -15,21 +15,14 @@ constexpr auto kMtabPath = "etc/mtab";
 
 // The StatefulPartitionFetcher class is responsible for gathering stateful
 // partition info.
-class StatefulPartitionFetcher final {
+class StatefulPartitionFetcher final : public BaseFetcher {
  public:
-  explicit StatefulPartitionFetcher(Context* context);
-  StatefulPartitionFetcher(const StatefulPartitionFetcher&) = delete;
-  StatefulPartitionFetcher& operator=(const StatefulPartitionFetcher&) = delete;
-  ~StatefulPartitionFetcher() = default;
+  using BaseFetcher::BaseFetcher;
 
   // Returns stateful partition data or the error
   // that occurred retrieving the information.
   chromeos::cros_healthd::mojom::StatefulPartitionResultPtr
   FetchStatefulPartitionInfo();
-
- private:
-  // Unowned pointer that outlives this StatefulPartitionFetcher instance.
-  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

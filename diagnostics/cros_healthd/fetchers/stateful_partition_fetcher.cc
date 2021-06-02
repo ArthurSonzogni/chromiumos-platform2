@@ -21,11 +21,6 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
-StatefulPartitionFetcher::StatefulPartitionFetcher(Context* context)
-    : context_(context) {
-  DCHECK(context_);
-}
-
 mojo_ipc::StatefulPartitionResultPtr
 StatefulPartitionFetcher::FetchStatefulPartitionInfo() {
   const auto statefulPartitionPath =

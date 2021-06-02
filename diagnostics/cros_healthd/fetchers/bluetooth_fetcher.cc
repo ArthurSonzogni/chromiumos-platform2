@@ -24,12 +24,6 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
-BluetoothFetcher::BluetoothFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-BluetoothFetcher::~BluetoothFetcher() = default;
-
 mojo_ipc::BluetoothResultPtr BluetoothFetcher::FetchBluetoothInfo() {
   BluetoothClient* bluetooth_client = context_->bluetooth_client();
   DCHECK(bluetooth_client);

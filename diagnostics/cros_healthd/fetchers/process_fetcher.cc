@@ -205,14 +205,10 @@ void FinishFetchingProcessInfo(
 ProcessFetcher::ProcessFetcher(Context* context,
                                pid_t process_id,
                                const base::FilePath& root_dir)
-    : context_(context),
+    : BaseFetcher(context),
       root_dir_(root_dir),
       proc_pid_dir_(GetProcProcessDirectoryPath(root_dir, process_id)),
-      process_id_(process_id) {
-  DCHECK(context_);
-}
-
-ProcessFetcher::~ProcessFetcher() = default;
+      process_id_(process_id) {}
 
 void ProcessFetcher::FetchProcessInfo(
     base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback) {

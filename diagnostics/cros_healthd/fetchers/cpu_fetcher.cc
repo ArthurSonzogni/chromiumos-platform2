@@ -386,12 +386,6 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
 
 }  // namespace
 
-CpuFetcher::CpuFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-CpuFetcher::~CpuFetcher() = default;
-
 mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo() {
   std::string stat_contents;
   auto stat_file = GetProcStatPath(context_->root_dir());

@@ -54,12 +54,6 @@ std::string ConvertSmartBatteryManufactureDate(uint32_t manufacture_date) {
 
 }  // namespace
 
-BatteryFetcher::BatteryFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-BatteryFetcher::~BatteryFetcher() = default;
-
 mojo_ipc::BatteryResultPtr BatteryFetcher::FetchBatteryInfo() {
   if (!context_->system_config()->HasBattery())
     return mojo_ipc::BatteryResult::NewBatteryInfo(mojo_ipc::BatteryInfoPtr());

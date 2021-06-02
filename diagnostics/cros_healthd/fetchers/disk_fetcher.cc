@@ -47,10 +47,6 @@ mojo_ipc::NonRemovableBlockDeviceResultPtr StatusToProbeError(
 
 }  // namespace
 
-DiskFetcher::DiskFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
 Status DiskFetcher::InitManager() {
   auto udev = brillo::Udev::Create();
   if (!udev)

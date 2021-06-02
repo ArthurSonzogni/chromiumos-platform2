@@ -19,12 +19,6 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
-AudioFetcher::AudioFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-AudioFetcher::~AudioFetcher() = default;
-
 mojo_ipc::AudioResultPtr AudioFetcher::FetchAudioInfo() {
   mojo_ipc::AudioInfo info;
 

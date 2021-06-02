@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/optional.h>
 
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
@@ -20,16 +21,13 @@ namespace diagnostics {
 
 // The ProcessFetcher class is responsible for gathering information about a
 // particular process on the device.
-class ProcessFetcher final {
+class ProcessFetcher final : public BaseFetcher {
  public:
   // |process_id| is the PID for the process whose information will be fetched.
   // Only override |root_dir| for testing.
   ProcessFetcher(Context* context,
                  pid_t process_id,
                  const base::FilePath& root_dir = base::FilePath("/"));
-  ProcessFetcher(const ProcessFetcher&) = delete;
-  ProcessFetcher& operator=(const ProcessFetcher&) = delete;
-  ~ProcessFetcher();
 
   // Returns information about a particular process on the device, or the error
   // that occurred retrieving the information.
@@ -69,9 +67,6 @@ class ProcessFetcher final {
   // valid if base::nullopt was returned.
   base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> GetProcessUid(
       uid_t* user_id);
-
-  // Unowned. Should outlive this instance.
-  Context* const context_ = nullptr;
 
   // File paths read will be relative to |root_dir_|. In production, this should
   // be "/", but it can be overridden for testing.

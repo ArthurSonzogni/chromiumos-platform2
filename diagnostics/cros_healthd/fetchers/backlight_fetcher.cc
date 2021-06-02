@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -54,11 +55,6 @@ base::Optional<mojo_ipc::ProbeErrorPtr> FetchBacklightInfoForPath(
 }
 
 }  // namespace
-
-BacklightFetcher::BacklightFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-BacklightFetcher::~BacklightFetcher() = default;
 
 mojo_ipc::BacklightResultPtr BacklightFetcher::FetchBacklightInfo() {
   std::vector<mojo_ipc::BacklightInfoPtr> backlights;

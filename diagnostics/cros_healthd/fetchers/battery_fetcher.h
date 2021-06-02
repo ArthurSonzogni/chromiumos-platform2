@@ -10,7 +10,7 @@
 
 #include <base/optional.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -18,12 +18,9 @@ namespace diagnostics {
 // The BatteryFetcher class is responsible for gathering battery info reported
 // by cros_healthd. Some info is fetched via powerd, while Smart Battery info
 // is collected from ectool via debugd.
-class BatteryFetcher {
+class BatteryFetcher final : public BaseFetcher {
  public:
-  explicit BatteryFetcher(Context* context);
-  BatteryFetcher(const BatteryFetcher&) = delete;
-  BatteryFetcher& operator=(const BatteryFetcher&) = delete;
-  ~BatteryFetcher();
+  using BaseFetcher::BaseFetcher;
 
   // Returns a structure with either the device's battery info or the error that
   // occurred fetching the information.
@@ -54,9 +51,6 @@ class BatteryFetcher {
       base::OnceCallback<bool(const base::StringPiece& input, T* output)>
           convert_string_to_num,
       T* metric_value);
-
-  // Unowned pointer that outlives this BatteryFetcher instance.
-  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

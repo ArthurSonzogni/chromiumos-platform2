@@ -10,7 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/optional.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -25,12 +25,9 @@ extern const char kRelativePreviousPowerdLogPath[];
 
 // The BootPerformanceFetcher class is responsible for gathering boot
 // performance info.
-class BootPerformanceFetcher final {
+class BootPerformanceFetcher final : public BaseFetcher {
  public:
-  explicit BootPerformanceFetcher(Context* context);
-  BootPerformanceFetcher(const BootPerformanceFetcher&) = delete;
-  BootPerformanceFetcher& operator=(const BootPerformanceFetcher&) = delete;
-  ~BootPerformanceFetcher();
+  using BaseFetcher::BaseFetcher;
 
   // Returns a structure with either the device's boot performance info or the
   // error that occurred fetching the information.
@@ -57,9 +54,6 @@ class BootPerformanceFetcher final {
                               std::string* shutdown_reason);
 
   bool GetShutdownEndTimestamp(double* shutdown_end_timestamp);
-
-  // Unowned pointer that outlives this BootPerformanceFetcher instance.
-  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

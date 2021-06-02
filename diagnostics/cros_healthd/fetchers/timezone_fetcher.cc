@@ -23,10 +23,6 @@ constexpr char kZoneInfoPath[] = "usr/share/zoneinfo";
 
 }  // namespace
 
-TimezoneFetcher::TimezoneFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
 mojo_ipc::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
   base::FilePath timezone_path;
   base::FilePath localtime_path =

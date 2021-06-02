@@ -35,12 +35,6 @@ constexpr auto kFanSpeedRegex = R"(Fan \d+ RPM: (\d+))";
 
 }  // namespace
 
-FanFetcher::FanFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-FanFetcher::~FanFetcher() = default;
-
 void FanFetcher::FetchFanInfo(FetchFanInfoCallback callback) {
   // Devices without a Google EC, and therefore ectool, cannot obtain fan info.
   if (!base::PathExists(context_->root_dir().Append(kRelativeCrosEcPath))) {

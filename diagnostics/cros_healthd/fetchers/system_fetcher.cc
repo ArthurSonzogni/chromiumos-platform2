@@ -85,12 +85,6 @@ base::Optional<mojo_ipc::ProbeErrorPtr> FetchDmiInfo(
 
 }  // namespace
 
-SystemFetcher::SystemFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-SystemFetcher::~SystemFetcher() = default;
-
 base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchCachedVpdInfo(
     const base::FilePath& root_dir, mojo_ipc::SystemInfo* output_info) {
   std::string first_power_date;

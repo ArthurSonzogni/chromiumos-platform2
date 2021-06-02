@@ -5,18 +5,15 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 // The MemoryFetcher class is responsible for gathering memory info.
-class MemoryFetcher final {
+class MemoryFetcher final : public BaseFetcher {
  public:
-  explicit MemoryFetcher(Context* context);
-  MemoryFetcher(const MemoryFetcher&) = delete;
-  MemoryFetcher& operator=(const MemoryFetcher&) = delete;
-  ~MemoryFetcher() = default;
+  using BaseFetcher::BaseFetcher;
 
   // Returns a structure with either the device's memory info or the error that
   // occurred fetching the information.
@@ -30,9 +27,6 @@ class MemoryFetcher final {
       chromeos::cros_healthd::mojom::MemoryInfo* info);
   OptionalProbeErrorPtr ParseProcVmStat(
       chromeos::cros_healthd::mojom::MemoryInfo* info);
-
-  // Unowned pointer that outlives this MemoryFetcher instance.
-  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

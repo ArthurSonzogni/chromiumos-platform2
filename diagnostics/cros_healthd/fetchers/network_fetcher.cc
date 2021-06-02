@@ -39,12 +39,6 @@ void HandleNetworkInfoResponse(
 
 }  // namespace
 
-NetworkFetcher::NetworkFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
-NetworkFetcher::~NetworkFetcher() = default;
-
 void NetworkFetcher::FetchNetworkInfo(FetchNetworkInfoCallback callback) {
   context_->network_health_adapter()->GetNetworkHealthState(
       base::BindOnce(&HandleNetworkInfoResponse, std::move(callback)));

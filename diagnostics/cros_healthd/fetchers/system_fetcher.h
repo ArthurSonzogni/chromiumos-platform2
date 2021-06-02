@@ -8,7 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/optional.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -33,12 +33,9 @@ extern const char kSkuNumberFileName[];
 extern const char kProductSerialNumberFileName[];
 extern const char kProductModelNameFileName[];
 
-class SystemFetcher final {
+class SystemFetcher final : public BaseFetcher {
  public:
-  explicit SystemFetcher(Context* context);
-  SystemFetcher(const SystemFetcher&) = delete;
-  SystemFetcher& operator=(const SystemFetcher&) = delete;
-  ~SystemFetcher();
+  using BaseFetcher::BaseFetcher;
 
   // Returns either a structure with the system information or the error that
   // occurred fetching the information.
@@ -62,9 +59,6 @@ class SystemFetcher final {
   // structure.
   base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> FetchOsVersion(
       chromeos::cros_healthd::mojom::OsVersion* os_version);
-
-  // Unowned pointer that outlives this SystemFetcher instance.
-  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

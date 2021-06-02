@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_executor.mojom.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 
@@ -22,15 +22,12 @@ constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 
 // The FanFetcher class is responsible for gathering fan info reported by
 // cros_healthd.
-class FanFetcher {
+class FanFetcher final : public BaseFetcher {
  public:
   using FetchFanInfoCallback =
       base::OnceCallback<void(chromeos::cros_healthd::mojom::FanResultPtr)>;
 
-  explicit FanFetcher(Context* context);
-  FanFetcher(const FanFetcher&) = delete;
-  FanFetcher& operator=(const FanFetcher&) = delete;
-  ~FanFetcher();
+  using BaseFetcher::BaseFetcher;
 
   // Returns either a list of data about each of the device's fans or the error
   // that occurred retrieving the information.
@@ -41,9 +38,6 @@ class FanFetcher {
   void HandleFanSpeedResponse(
       FetchFanInfoCallback callback,
       chromeos::cros_healthd_executor::mojom::ProcessResultPtr result);
-
-  // Unowned pointer that outlives this FanFetcher instance.
-  Context* const context_ = nullptr;
 
   // Must be the last member of the class, so that it's destroyed first when an
   // instance of the class is destroyed. This will prevent any outstanding

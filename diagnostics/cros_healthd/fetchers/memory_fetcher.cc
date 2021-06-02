@@ -28,10 +28,6 @@ constexpr char kRelativeProcPath[] = "proc";
 
 }  // namespace
 
-MemoryFetcher::MemoryFetcher(Context* context) : context_(context) {
-  DCHECK(context_);
-}
-
 // Sets the total_memory_kib, free_memory_kib and available_memory_kib fields of
 // |info| with information read from proc/meminfo. Returns any error
 // encountered probing the memory information. |info| is valid iff no error

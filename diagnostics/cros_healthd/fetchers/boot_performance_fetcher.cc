@@ -33,13 +33,6 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
-BootPerformanceFetcher::BootPerformanceFetcher(Context* context)
-    : context_(context) {
-  DCHECK(context_);
-}
-
-BootPerformanceFetcher::~BootPerformanceFetcher() = default;
-
 mojo_ipc::BootPerformanceResultPtr
 BootPerformanceFetcher::FetchBootPerformanceInfo() {
   mojo_ipc::BootPerformanceInfo info;
