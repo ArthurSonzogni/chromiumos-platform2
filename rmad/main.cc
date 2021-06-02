@@ -47,6 +47,10 @@ void EnterMinijail() {
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
 
+  minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, nullptr);
+  minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
+  minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
+
   rmad::CrosSystemUtilsImpl crossystem_utils;
   int wpsw_cur;
   if (crossystem_utils.GetInt("wpsw_cur", &wpsw_cur) && wpsw_cur == 0) {
