@@ -1733,9 +1733,6 @@ void Metrics::NotifyWakeOnWiFiOnDarkResume(
 
   DarkResumeWakeReason wake_reason;
   switch (reason) {
-    case WakeOnWiFi::kWakeTriggerPattern:
-      wake_reason = kDarkResumeWakeReasonPattern;
-      break;
     case WakeOnWiFi::kWakeTriggerDisconnect:
       wake_reason = kDarkResumeWakeReasonDisconnect;
       break;

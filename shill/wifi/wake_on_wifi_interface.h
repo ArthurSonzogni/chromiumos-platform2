@@ -34,7 +34,7 @@ class WakeOnWiFiInterface {
   // Types of triggers that we can program the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger {
     kWakeTriggerUnsupported = 0,  // Used for reporting, not programming NIC.
-    kWakeTriggerPattern = 1,
+    // deprecated: kWakeTriggerPattern = 1,
     kWakeTriggerDisconnect = 2,
     kWakeTriggerSSID = 3
   };

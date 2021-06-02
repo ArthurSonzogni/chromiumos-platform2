@@ -754,10 +754,7 @@ const char kTDLSNonexistentState[] = "Nonexistent";
 const char kTDLSUnknownState[] = "Unknown";
 
 // Wake on WiFi features.
-const char kWakeOnWiFiFeaturesEnabledPacket[] = "packet";
 const char kWakeOnWiFiFeaturesEnabledDarkConnect[] = "darkconnect";
-const char kWakeOnWiFiFeaturesEnabledPacketDarkConnect[] =
-    "packet_and_darkconnect";
 const char kWakeOnWiFiFeaturesEnabledNone[] = "none";
 
 // Wake on WiFi wake reasons.

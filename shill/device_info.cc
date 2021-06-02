@@ -1413,7 +1413,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
 
 #if !defined(DISABLE_WAKE_ON_WIFI)
   auto wake_on_wifi = std::make_unique<WakeOnWiFi>(
-      netlink_manager_, dispatcher_, metrics_, address,
+      netlink_manager_, dispatcher_, metrics_,
       base::Bind(&DeviceInfo::RecordDarkResumeWakeReason,
                  weak_factory_.GetWeakPtr()));
 #else

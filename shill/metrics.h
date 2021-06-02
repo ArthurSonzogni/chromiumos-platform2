@@ -502,9 +502,9 @@ class Metrics : public DefaultServiceObserver {
 
   enum WakeOnWiFiFeaturesEnabledState {
     kWakeOnWiFiFeaturesEnabledStateNone = 0,
-    kWakeOnWiFiFeaturesEnabledStatePacket = 1,
+    kWakeOnWiFiFeaturesEnabledStatePacket = 1,  // Deprecated.
     kWakeOnWiFiFeaturesEnabledStateDarkConnect = 2,
-    kWakeOnWiFiFeaturesEnabledStatePacketDarkConnect = 3,
+    kWakeOnWiFiFeaturesEnabledStatePacketDarkConnect = 3,  // Deprecated.
     kWakeOnWiFiFeaturesEnabledStateMax
   };
 
