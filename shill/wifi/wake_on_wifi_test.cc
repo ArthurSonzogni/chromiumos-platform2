@@ -74,10 +74,10 @@ const uint32_t kTimeToNextLeaseRenewalShort = 1;
 const uint32_t kTimeToNextLeaseRenewalLong = 1000;
 const uint32_t kNetDetectScanIntervalSeconds = 120;
 // These blobs represent NL80211 messages from the kernel reporting the NIC's
-// wake-on-packet settings, sent in response to NL80211_CMD_GET_WOWLAN requests.
-const uint8_t kResponseNoIPAddresses[] = {
-    0x14, 0x00, 0x00, 0x00, 0x13, 0x00, 0x01, 0x00, 0x01, 0x00,
-    0x00, 0x00, 0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00};
+// wake on WiFi settings, sent in response to NL80211_CMD_GET_WOWLAN requests.
+const uint8_t kResponseNoWake[] = {0x14, 0x00, 0x00, 0x00, 0x13, 0x00, 0x01,
+                                   0x00, 0x01, 0x00, 0x00, 0x00, 0x57, 0x40,
+                                   0x00, 0x00, 0x49, 0x01, 0x00, 0x00};
 const uint8_t kResponseIPV40[] = {
     0x4C, 0x00, 0x00, 0x00, 0x13, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
     0x00, 0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00, 0x38, 0x00,
@@ -145,6 +145,12 @@ const uint8_t kResponseIPV401IPV601[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFE, 0xDC,
     0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54,
     0x32, 0x10, 0x00, 0x00};
+// This blob represents an NL80211 messages that the NIC is programmed to wake
+// on disconnect.
+const uint8_t kResponseWakeOnDisconnect[] = {
+    0x1c, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00,
+    0x08, 0x00, 0x75, 0x00, 0x04, 0x00, 0x02, 0x00};
 // This blob represents an NL80211 messages from the kernel reporting that the
 // NIC is programmed to wake on the SSIDs represented by kSSIDBytes1 and
 // kSSIDBytes2, and scans for these SSIDs at interval
@@ -1401,14 +1407,14 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, ConfigureDisableWakeOnWiFiMessage) {
   EXPECT_EQ(value, 57);
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch_Packet) {
   IPAddressStore all_addresses;
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
   std::vector<ByteString> allowed;
   const uint32_t interval = kNetDetectScanIntervalSeconds;
 
   GetWakeOnWiFiMessage msg0;
-  NetlinkPacket packet0(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
+  NetlinkPacket packet0(kResponseNoWake, sizeof(kResponseNoWake));
   msg0.InitFromPacket(&packet0, NetlinkMessage::MessageContext());
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
                                       kHardwareAddress, allowed));
@@ -1482,44 +1488,76 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
   EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
                                        kHardwareAddress, allowed));
 
-  // Test matching of wake on SSID trigger.
-  all_addresses.Clear();
+  // Test that we get a mismatch if triggers are present in the message that we
+  // don't expect.
+  trigs.clear();
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, allowed));
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch_Disconnect) {
+  IPAddressStore all_addresses;
+  std::set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
+  std::vector<ByteString> allowed;
+  const uint32_t interval = kNetDetectScanIntervalSeconds;
+
+  // Initialize test messages.
+  GetWakeOnWiFiMessage msgNoWake;
+  NetlinkPacket packetNoWake(kResponseNoWake, sizeof(kResponseNoWake));
+  msgNoWake.InitFromPacket(&packetNoWake, NetlinkMessage::MessageContext());
+
+  GetWakeOnWiFiMessage msgWakeOnDisconnect;
+  NetlinkPacket packetWakeOnDisconnect(kResponseWakeOnDisconnect,
+                                       sizeof(kResponseWakeOnDisconnect));
+  msgWakeOnDisconnect.InitFromPacket(&packetWakeOnDisconnect,
+                                     NetlinkMessage::MessageContext());
+
+  GetWakeOnWiFiMessage msgWakeOnSSID;
+  NetlinkPacket packetWakeOnSSID(kResponseWakeOnSSID,
+                                 sizeof(kResponseWakeOnSSID));
+  msgWakeOnSSID.InitFromPacket(&packetWakeOnSSID,
+                               NetlinkMessage::MessageContext());
+
+  // No trigger.
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgNoWake, trigs, all_addresses, interval,
+                                      {}, kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgWakeOnDisconnect, trigs,
+                                       all_addresses, interval, {},
+                                       kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgWakeOnSSID, trigs, all_addresses,
+                                       interval, {}, kHardwareAddress,
+                                       allowed));
+  // Wake on disconnect.
+  trigs.insert(WakeOnWiFi::kWakeTriggerDisconnect);
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgWakeOnDisconnect, trigs, all_addresses,
+                                      interval, {}, kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgNoWake, trigs, all_addresses,
+                                       interval, {}, kHardwareAddress,
+                                       allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgWakeOnSSID, trigs, all_addresses,
+                                       interval, {}, kHardwareAddress,
+                                       allowed));
+
+  // Wake on SSID.
   trigs.clear();
   trigs.insert(WakeOnWiFi::kWakeTriggerSSID);
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
   AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), &allowed);
-  GetWakeOnWiFiMessage msg6;
-  NetlinkPacket packet6(kResponseWakeOnSSID, sizeof(kResponseWakeOnSSID));
-  msg6.InitFromPacket(&packet6, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
-                                      kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-
-  // Test that we get a mismatch if triggers are present in the message that we
-  // don't expect.
-  trigs.clear();
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                                       kHardwareAddress, allowed));
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgWakeOnSSID, trigs, all_addresses,
+                                      interval, {}, kHardwareAddress, allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgNoWake, trigs, all_addresses,
+                                       interval, {}, kHardwareAddress,
+                                       allowed));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgWakeOnDisconnect, trigs,
+                                       all_addresses, interval, {},
                                        kHardwareAddress, allowed));
 }
 
@@ -1628,17 +1666,27 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg11, trigs, all_addresses, interval,
                                       {proto_udp}, kHardwareAddress, allowed));
 
-  SetWakeOnWiFiMessage msg12;
+  SetWakeOnWiFiMessage msgWakeOnDisconnect;
+  all_addresses.Clear();
+  trigs.clear();
+  trigs.insert(WakeOnWiFi::kWakeTriggerDisconnect);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msgWakeOnDisconnect, trigs, all_addresses, index, {}, kHardwareAddress,
+      interval, allowed, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgWakeOnDisconnect, trigs, all_addresses,
+                                      interval, {}, kHardwareAddress, allowed));
+
+  SetWakeOnWiFiMessage msgWakeOnSSID;
   all_addresses.Clear();
   trigs.clear();
   trigs.insert(WakeOnWiFi::kWakeTriggerSSID);
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
   AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), &allowed);
   EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg12, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      allowed, &e));
-  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg12, trigs, all_addresses, interval, {},
-                                      kHardwareAddress, allowed));
+      &msgWakeOnSSID, trigs, all_addresses, index, {}, kHardwareAddress,
+      interval, allowed, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgWakeOnSSID, trigs, all_addresses,
+                                      interval, {}, kHardwareAddress, allowed));
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, RequestWakeOnWiFiSettings) {
@@ -1657,7 +1705,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that there are no wake-on-packet rules programmed into the NIC.
   GetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
+  NetlinkPacket packet(kResponseNoWake, sizeof(kResponseNoWake));
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Successful verification and consequent invocation of callback.
   SetSuspendActionsDoneCallback();
@@ -1734,6 +1782,46 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       VerifyWakeOnWiFiSettings_WakeOnDisconnectRules) {
+  ScopedMockLog log;
+  // Create a non-trivial Nl80211 response to a NL80211_CMD_GET_WOWLAN request
+  // indicating that the NIC wakes on disconnects.
+  GetWakeOnWiFiMessage msg;
+  NetlinkPacket packet(kResponseWakeOnDisconnect,
+                       sizeof(kResponseWakeOnDisconnect));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  // Successful verification and consequent invocation of callback.
+  SetSuspendActionsDoneCallback();
+  EXPECT_FALSE(SuspendActionsCallbackIsNull());
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerDisconnect);
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(2);
+  EXPECT_CALL(*this, DoneCallback(ErrorTypeIs(Error::kSuccess))).Times(1);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(
+      log, Log(_, _, HasSubstr("Wake on WiFi settings successfully verified")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
+  VerifyWakeOnWiFiSettings(msg);
+  // Suspend action callback cleared after being invoked.
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+
+  // Unsuccessful verification if locally stored settings do not match.
+  GetWakeOnWiFiTriggers()->erase(WakeOnWiFi::kWakeTriggerDisconnect);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(
+      log,
+      Log(logging::LOGGING_ERROR, _,
+          HasSubstr(" failed: discrepancy between wake-on-packet settings on "
+                    "NIC and those in local data structure detected")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
+  VerifyWakeOnWiFiSettings(msg);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
        VerifyWakeOnWiFiSettings_WakeOnSSIDRules) {
   ScopedMockLog log;
   // Create a non-trivial Nl80211 response to a NL80211_CMD_GET_WOWLAN request
@@ -1771,7 +1859,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that there are no wake-on-packet rules programmed into the NIC.
   GetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
+  NetlinkPacket packet(kResponseNoWake, sizeof(kResponseNoWake));
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Successful verification, but since there is no suspend action callback
   // set, no callback is invoked.
@@ -3263,7 +3351,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   // This message has command NL80211_CMD_GET_WOWLAN, not a
   // NL80211_CMD_SET_WOWLAN.
   GetWakeOnWiFiMessage msg1;
-  NetlinkPacket packet1(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
+  NetlinkPacket packet1(kResponseNoWake, sizeof(kResponseNoWake));
   msg1.InitFromPacket(&packet1, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
