@@ -126,14 +126,9 @@ class Cellular : public Device,
 
   ~Cellular() override;
 
-  // Returns the equipment identifier of the device. If the device is a 3GPP
-  // device, its IMEI is returned. If the device is a 3GPP2 device, its MEID is
-  // returned. When neither IMEI nor MEID is available, the MAC address of the
-  // device is returned. IMEI and MEID are unique identifiers, while the MAC
-  // address may not be (e.g. some cellular devices of the same model may share
-  // the same MAC address, or some cellular devices may not have a MAC address
-  // and are assigned with a randomly generated MAC address by the kernel).
-  std::string GetEquipmentIdentifier() const;
+  // Returns the legacy identifier used by GetStorageIdentifier for loading
+  // entries from older profiles. TODO(b/181843251): Remove after M94.
+  std::string GetLegacyEquipmentIdentifier() const;
 
   std::string GetStorageIdentifier() const override;
 
@@ -717,6 +712,9 @@ class Cellular : public Device,
   base::CancelableClosure connect_pending_callback_;
   // Used to cancel a pending connect while waiting for Modem registration.
   base::CancelableClosure connect_cancel_callback_;
+
+  // Legacy device storage identifier, used for removing legacy entry.
+  std::string legacy_storage_id_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 };

@@ -603,24 +603,7 @@ const Stringmaps CellularTest::kTestNetworksCellular = {
 const int CellularTest::kStrength = 90;
 
 TEST_P(CellularTest, GetStorageIdentifier) {
-  // IMEI should be used if IMEI, MEID, and equipment ID are available.
-  device_->SetImei(kIMEI);
-  device_->set_meid(kMEID);
-  device_->set_equipment_id("1234ABCD");
-  EXPECT_EQ("device_987654321098765", device_->GetStorageIdentifier());
-
-  // MEID should be used if IMEI is not available.
-  device_->SetImei("");
-  EXPECT_EQ("device_01234567EF8901", device_->GetStorageIdentifier());
-
-  // Equipment ID should be used if neither IMEI nor MEID is available.
-  device_->set_meid("");
-  EXPECT_EQ("device_1234ABCD", device_->GetStorageIdentifier());
-
-  // MAC address should be used as if none of IMEI, MEID, and equipment ID is
-  // available.
-  device_->set_equipment_id("");
-  EXPECT_EQ("device_000102030405", device_->GetStorageIdentifier());
+  EXPECT_EQ("device_usb0", device_->GetStorageIdentifier());
 }
 
 TEST_P(CellularTest, GetStateString) {

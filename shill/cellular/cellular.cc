@@ -282,7 +282,7 @@ Cellular::~Cellular() {
   SLOG(this, 1) << "~Cellular() " << this->link_name();
 }
 
-std::string Cellular::GetEquipmentIdentifier() const {
+std::string Cellular::GetLegacyEquipmentIdentifier() const {
   // 3GPP devices are uniquely identified by IMEI, which has 15 decimal digits.
   if (!imei_.empty())
     return imei_;
@@ -307,15 +307,23 @@ std::string Cellular::GetEquipmentIdentifier() const {
 }
 
 std::string Cellular::GetStorageIdentifier() const {
-  return "device_" + GetEquipmentIdentifier();
+  // Cellular is not guaranteed to have a valid MAC address, and other unique
+  // identifiers may not be initially available. Use the link name to
+  // differentiate between internal devices and external devices.
+  return "device_" + link_name();
 }
 
 bool Cellular::Load(const StoreInterface* storage) {
-  const std::string id = GetStorageIdentifier();
+  std::string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
-    LOG(WARNING) << "Device is not available in the persistent store: " << id;
-    return false;
+    id = "device_" + GetLegacyEquipmentIdentifier();
+    if (!storage->ContainsGroup(id)) {
+      LOG(WARNING) << "Device is not available in the persistent store: " << id;
+      return false;
+    }
+    legacy_storage_id_ = id;
   }
+  LOG(INFO) << __func__ << " id: " << id;
   storage->GetBool(id, kAllowRoaming, &allow_roaming_);
   storage->GetBool(id, kPolicyAllowRoaming, &policy_allow_roaming_);
   storage->GetBool(id, kUseAttachApn, &use_attach_apn_);
@@ -327,7 +335,17 @@ bool Cellular::Save(StoreInterface* storage) {
   storage->SetBool(id, kAllowRoaming, allow_roaming_);
   storage->SetBool(id, kPolicyAllowRoaming, policy_allow_roaming_);
   storage->SetBool(id, kUseAttachApn, use_attach_apn_);
-  return Device::Save(storage);
+  bool result = Device::Save(storage);
+  LOG(INFO) << __func__ << " id: " << id << ": " << result;
+  // TODO(b/181843251): Remove after M94.
+  if (result && !legacy_storage_id_.empty() &&
+      storage->ContainsGroup(legacy_storage_id_)) {
+    LOG(INFO) << __func__
+              << ": Deleting legacy storage id: " << legacy_storage_id_;
+    storage->DeleteGroup(legacy_storage_id_);
+    legacy_storage_id_.clear();
+  }
+  return result;
 }
 
 std::string Cellular::GetTechnologyFamily(Error* error) {
