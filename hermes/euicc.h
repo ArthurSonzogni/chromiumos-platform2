@@ -14,9 +14,9 @@
 
 #include "hermes/adaptor_interfaces.h"
 #include "hermes/context.h"
+#include "hermes/dbus_result.h"
 #include "hermes/euicc_slot_info.h"
 #include "hermes/profile.h"
-#include "hermes/dbus_result.h"
 
 namespace hermes {
 
@@ -44,9 +44,9 @@ class Euicc {
                              std::string confirmation_code,
                              DbusResult<dbus::ObjectPath> dbus_result);
   void RequestPendingProfiles(DbusResult<> dbus_result, std::string root_smds);
-  void SetTestMode(DbusResult<> dbus_result, bool is_test_mode);
+  void SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result);
   void UseTestCerts(bool use_test_certs);
-  void ResetMemory(DbusResult<> dbus_result, int reset_options);
+  void ResetMemoryHelper(DbusResult<> dbus_result, int reset_options);
 
   uint8_t physical_slot() const { return physical_slot_; }
   dbus::ObjectPath object_path() const { return dbus_adaptor_->object_path(); }
@@ -73,6 +73,21 @@ class Euicc {
       const std::vector<lpa::proto::ProfileInfo>& profile_infos,
       int error,
       DbusResult<> dbus_result);
+
+  // Methods that call an eponymous LPA method.
+  // These methods are used once a slot switch is performed and a channel has
+  // been acquired.
+  void GetInstalledProfiles(DbusResult<> dbus_result);
+  void DownloadProfile(std::string activation_code,
+                       std::string confirmation_code,
+                       DbusResult<dbus::ObjectPath> dbus_result);
+  void DeleteProfile(dbus::ObjectPath profile_path,
+                     std::string iccid,
+                     DbusResult<> dbus_result);
+  void GetPendingProfilesFromSmds(std::string root_smds,
+                                  DbusResult<> dbus_result);
+  void SetTestMode(bool is_test_mode, DbusResult<> dbus_result);
+  void ResetMemory(int reset_options, DbusResult<> dbus_result);
 
   const uint8_t physical_slot_;
   EuiccSlotInfo slot_info_;

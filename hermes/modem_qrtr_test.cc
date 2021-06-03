@@ -331,7 +331,7 @@ class ModemQrtrTest : public testing::Test {
       EXPECT_SEND(*socket_, kQrtrResetReq);
       EXPECT_SEND(*socket_, kQrtrOpenLogicalChannelReq);
     }
-    modem_->StoreAndSetActiveSlot(physical_slot);
+    modem_->StoreAndSetActiveSlot(physical_slot, ResultCallback());
   }
 
   void ModemReceiveInitSlot(uint8_t physical_slot) {
@@ -382,7 +382,7 @@ class ModemQrtrTest : public testing::Test {
           this->receive_ids_.push_back(0);
           return true;
         })));
-    modem_->Initialize(&euicc_manager_);
+    modem_->Initialize(&euicc_manager_, ResultCallback());
     EXPECT_EQ(euicc_manager_.valid_slots().size(), 0);
     EXPECT_SEND(*socket_, kQrtrGetSerialNumbersReq);
     ModemReceiveData(kQrtrNewDmsServerResp.begin(), kQrtrNewDmsServerResp.end(),
@@ -402,16 +402,16 @@ class ModemQrtrTest : public testing::Test {
       ::testing::InSequence in_seq;
       // Expect RESET and GET_SLOTS request after
       // receiving UIM NEW_SERVER.
-      EXPECT_SEND(*socket_, kQrtrResetReq);
       EXPECT_SEND(*socket_, kQrtrGetSlotsReq);
+      EXPECT_SEND(*socket_, kQrtrResetReq);
     }
     ModemReceiveData(kQrtrNewUimServerResp.begin(), kQrtrNewUimServerResp.end(),
                      QRTR_PORT_CTRL);
-    // Receive RESET response from RESET request.
-    ModemReceiveData(kQrtrResetResp.begin(), kQrtrResetResp.end(), kUimPort);
     // Receive slot info from GET_SLOTS request.
     ModemReceiveData(kQrtrGetSlotsResp.begin(), kQrtrGetSlotsResp.end(),
                      kUimPort);
+    // Receive RESET response from RESET request.
+    ModemReceiveData(kQrtrResetResp.begin(), kQrtrResetResp.end(), kUimPort);
     EXPECT_EQ(euicc_manager_.valid_slots().size(), 2);
     EXPECT_EQ(euicc_manager_.valid_slots().at(1),
               EuiccSlotInfo("89033023425120000000000971041704"));

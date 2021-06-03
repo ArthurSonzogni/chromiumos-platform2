@@ -19,6 +19,7 @@
 
 #include "hermes/dms_cmd.h"
 #include "hermes/executor.h"
+#include "hermes/hermes_common.h"
 #include "hermes/logger.h"
 #include "hermes/modem_control_interface.h"
 #include "hermes/socket_qrtr.h"
@@ -51,13 +52,14 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
       Executor* executor);
   virtual ~ModemQrtr();
 
-  void Initialize(EuiccManagerInterface* euicc_manager);
+  void Initialize(EuiccManagerInterface* euicc_manager, ResultCallback cb);
 
   // ModemControlInterface overrides
-  void StoreAndSetActiveSlot(uint32_t physical_slot) override;
-  void RestoreActiveSlot() override;
-  void StartProfileOp(uint32_t physical_slot) override;
-  void FinishProfileOp() override;
+  void StoreAndSetActiveSlot(uint32_t physical_slot,
+                             ResultCallback cb) override;
+  void RestoreActiveSlot(ResultCallback cb) override;
+  void StartProfileOp(uint32_t physical_slot, ResultCallback cb) override;
+  void FinishProfileOp(ResultCallback cb) override;
 
   // lpa::card::EuiccCard overrides.
   void SendApdus(std::vector<lpa::card::Apdu> apdus,
@@ -87,12 +89,13 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
             Logger* logger,
             Executor* executor);
   void InitializeUim();
-  void RetryInitialization();
-  // Run RetryInitialization after running cb.
-  void RetryInitializationAfterCallback(base::OnceCallback<void(int)> cb,
-                                        int err);
+  void RetryInitialization(ResultCallback cb);
   void Shutdown();
   uint16_t AllocateId();
+
+  // Helper methods to create TxElements and add them to the queue.
+  void SendReset(ResultCallback cb);
+  void SendOpenLogicalChannel(base::OnceCallback<void(int)> cb);
 
   // Top-level method to transmit an element from the tx queue. Dispatches to
   // the proper Transmit*CmdFromQueue method based on the service being
@@ -126,6 +129,11 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
   int ReceiveQmiSwitchSlot(const qrtr_packet& packet);
   // Performs decoding for GET_SLOTS QMI response.
   int ReceiveQmiGetSlots(const qrtr_packet& packet);
+  // Used to retry GET_SLOTS if no euicc is found
+  void RunNextStepOrRetry(
+      base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
+      base::OnceCallback<void(int)> cb,
+      int err);
   // Performs decoding for OPEN_LOGICAL_CHANNEL QMI response.
   int ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet);
   int ParseQmiOpenLogicalChannel(const qrtr_packet& packet);
@@ -145,7 +153,7 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
 
   // Set the active slot to a euicc so that a channel can be established and
   // profiles can be installed.
-  void SetActiveSlot(uint32_t physical_slot);
+  void SetActiveSlot(const uint32_t physical_slot, ResultCallback cb);
 
   // Request that the Euicc does not send intermediate procedure bytes.
   // Useful in eliminating race between card refresh and profile enable response
@@ -155,40 +163,11 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
     DisableIntermediateBytes = 1
   };
   void SetProcedureBytes(ProcedureBytesMode procedure_bytes_mode);
-  void ReacquireChannel();
+  void AcquireChannel(base::OnceCallback<void(int)> cb);
   void SendApdusResponse(ResponseCallback callback, int err);
 
   friend class ModemQrtrTest;
 
-  ///////////////////
-  // State Diagram //
-  ///////////////////
-  //
-  //       [Start state]
-  //     +---------------+  (FinalizeInitialization() called w/failure)
-  //     | Uninitialized | <--------------------------------------------------+
-  //     +---------------+                                                    |
-  //             +                                                            |
-  //             | (Initialize() called)                                      |
-  //             |                                                            |
-  //             V                                                            |
-  //    +-------------------+     +------------+     +------------+           |
-  //    | InitializeStarted | +-> | DmsStarted | +-> | UimStarted | +---+     |
-  //    +-------------------+     +------------+     +------------+     |     |
-  //                                                                    |     |
-  //              +-----------------------------------------------------+     |
-  //              |                                                           |
-  //              V                                                           |
-  //   +-----------------------+     +----------------------+                 |
-  //   | LogicalChannelPending | +-> | LogicalChannelOpened | +---------------+
-  //   +-----------------------+     +----------------------+                 |
-  //                                                                          |
-  //             +------------------------------------------------------------+
-  //             |     (FinalizeInitialization() called w/success)
-  //             V
-  //         +---------------+
-  //         | SendApduReady |
-  //         +---------------+
   class State {
    public:
     enum Value : uint8_t {
@@ -196,23 +175,12 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
       kInitializeStarted,
       kDmsStarted,
       kUimStarted,
-      kLogicalChannelPending,
-      kLogicalChannelOpened,
-      kSendApduReady,
     };
 
     State() : value_(kUninitialized) {}
     // Transitions to the indicated state. Returns whether or not the transition
     // was successful.
     bool Transition(Value value);
-
-    bool IsInitialized() const { return value_ == kSendApduReady; }
-    // Returns whether or not some QMI packet can be sent out in the state. Note
-    // that APDUs in particular may only be sent in the kSendApduReady state.
-    bool CanSend() const {
-      return value_ == kDmsStarted || value_ == kUimStarted ||
-             value_ == kSendApduReady;
-    }
 
     bool operator==(Value value) const { return value_ == value; }
     bool operator!=(Value value) const { return value_ != value; }
@@ -230,15 +198,6 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
         case kUimStarted:
           os << "UimStarted";
           break;
-        case kLogicalChannelPending:
-          os << "LogicalChannelPending";
-          break;
-        case kLogicalChannelOpened:
-          os << "LogicalChannelOpened";
-          break;
-        case kSendApduReady:
-          os << "SendApduReady";
-          break;
       }
       return os;
     }
@@ -251,8 +210,11 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
 
   State current_state_;
   bool qmi_disabled_;
-  base::RepeatingClosure retry_initialization_callback_;
+  base::OnceClosure retry_initialization_callback_;
   int retry_count_;
+
+  ResultCallback init_done_cb_;
+
   // Indicates that a qmi message has been sent and that a response is expected
   // Set for all known message types except QMI_RESET
   std::unique_ptr<QmiCmdInterface> pending_response_type_;
@@ -316,6 +278,8 @@ class ModemQrtr : public lpa::card::EuiccCard, public ModemControlInterface {
   Logger* logger_;
   Executor* executor_;
   lpa::proto::EuiccSpecVersion spec_version_;
+
+  base::WeakPtrFactory<ModemQrtr> weak_factory_;
 };
 
 }  // namespace hermes

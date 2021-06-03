@@ -40,7 +40,16 @@ void Daemon::RegisterDBusObjectsAsync(
   // TODO(crbug.com/1085825) Once a Channel class is created to abstract out the
   // logical channel logic in ModemQrtr, a Channel (subclass?) can be used as an
   // EuiccCard rather than the ModemQrtr instance.
-  static_cast<ModemQrtr*>(modem_.get())->Initialize(manager_.get());
+  auto cb = base::BindOnce([](int err) {
+    if (err) {
+      LOG(ERROR) << "eSIM init failed with err:" << err;
+      return;
+    }
+    LOG(INFO) << "eSIM init finished";
+  });
+
+  static_cast<ModemQrtr*>(modem_.get())
+      ->Initialize(manager_.get(), std::move(cb));
 }
 
 }  // namespace hermes

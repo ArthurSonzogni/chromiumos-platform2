@@ -12,8 +12,8 @@
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "hermes/euicc.h"
 #include "hermes/dbus_result.h"
+#include "hermes/euicc.h"
 
 namespace hermes {
 
@@ -75,7 +75,7 @@ void EuiccDBusAdaptor::RequestInstalledProfiles(
 void EuiccDBusAdaptor::SetTestMode(std::unique_ptr<DBusResponse<>> response,
                                    bool in_is_test_mode) {
   DbusResult<> dbus_result(std::move(response));
-  euicc_->SetTestMode(std::move(dbus_result), in_is_test_mode);
+  euicc_->SetTestModeHelper(in_is_test_mode, std::move(dbus_result));
 }
 
 void EuiccDBusAdaptor::UseTestCerts(bool in_use_test_certs) {
@@ -85,7 +85,7 @@ void EuiccDBusAdaptor::UseTestCerts(bool in_use_test_certs) {
 void EuiccDBusAdaptor::ResetMemory(std::unique_ptr<DBusResponse<>> response,
                                    int in_reset_options) {
   DbusResult<> dbus_result(std::move(response));
-  euicc_->ResetMemory(std::move(dbus_result), in_reset_options);
+  euicc_->ResetMemoryHelper(std::move(dbus_result), in_reset_options);
 }
 
 }  // namespace hermes

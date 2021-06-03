@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hermes/euicc.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,17 +13,35 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
 
+#include "hermes/euicc.h"
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 #include "hermes/lpa_util.h"
 
 using lpa::proto::ProfileInfo;
 
+namespace hermes {
+
 namespace {
+
 const char kDefaultRootSmds[] = "lpa.ds.gsma.com";
+
+template <typename... T>
+void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
+                  DbusResult<T...> dbus_result,
+                  int err) {
+  if (err) {
+    LOG(ERROR) << "Received modem error: " << err;
+    auto decoded_error = brillo::Error::Create(
+        FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
+        "QMI/MBIM operation failed with code: " + std::to_string(err));
+    dbus_result.Error(decoded_error);
+    return;
+  }
+  std::move(cb).Run(std::move(dbus_result));
 }
 
-namespace hermes {
+}  // namespace
 
 Euicc::Euicc(uint8_t physical_slot, EuiccSlotInfo slot_info)
     : physical_slot_(physical_slot),
@@ -67,11 +83,23 @@ void Euicc::InstallProfileFromActivationCode(
         kLpaRetryDelay);
     return;
   }
+  auto download_profile =
+      base::BindOnce(&Euicc::DownloadProfile, weak_factory_.GetWeakPtr(),
+                     std::move(activation_code), std::move(confirmation_code));
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<dbus::ObjectPath>,
+                     std::move(download_profile), std::move(dbus_result)));
+}
+
+void Euicc::DownloadProfile(std::string activation_code,
+                            std::string confirmation_code,
+                            DbusResult<dbus::ObjectPath> dbus_result) {
+  LOG(INFO) << __func__;
   auto profile_cb = [dbus_result{std::move(dbus_result)}, this](
                         lpa::proto::ProfileInfo& info, int error) mutable {
     OnProfileInstalled(info, error, std::move(dbus_result));
   };
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
   if (activation_code.empty()) {
     context_->lpa()->GetDefaultProfileFromSmdp("", context_->executor(),
                                                std::move(profile_cb));
@@ -142,13 +170,23 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
     return;
   }
 
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
-  context_->lpa()->DeleteProfile(
-      matching_profile->GetIccid(), context_->executor(),
-      [dbus_result{std::move(dbus_result)}, profile_path,
-       this](int error) mutable {
-        OnProfileUninstalled(profile_path, error, std::move(dbus_result));
-      });
+  auto delete_profile =
+      base::BindOnce(&Euicc::DeleteProfile, weak_factory_.GetWeakPtr(),
+                     std::move(profile_path), matching_profile->GetIccid());
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_, base::BindOnce(&RunOnSuccess<>, std::move(delete_profile),
+                                     std::move(dbus_result)));
+}
+
+void Euicc::DeleteProfile(dbus::ObjectPath profile_path,
+                          std::string iccid,
+                          DbusResult<> dbus_result) {
+  context_->lpa()->DeleteProfile(std::move(iccid), context_->executor(),
+                                 [dbus_result{std::move(dbus_result)},
+                                  profile_path, this](int error) mutable {
+                                   OnProfileUninstalled(profile_path, error,
+                                                        std::move(dbus_result));
+                                 });
 }
 
 void Euicc::UpdateInstalledProfilesProperty() {
@@ -263,7 +301,15 @@ void Euicc::RequestInstalledProfiles(DbusResult<> dbus_result) {
         kLpaRetryDelay);
     return;
   }
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  auto get_installed_profiles =
+      base::Bind(&Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr());
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::Bind(&RunOnSuccess<>, std::move(get_installed_profiles),
+                 std::move(dbus_result)));
+}
+
+void Euicc::GetInstalledProfiles(DbusResult<> dbus_result) {
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
       [dbus_result{std::move(dbus_result)}, this](
@@ -309,7 +355,17 @@ void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
         kLpaRetryDelay);
     return;
   }
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  auto get_pending_profiles_from_smds =
+      base::BindOnce(&Euicc::GetPendingProfilesFromSmds,
+                     weak_factory_.GetWeakPtr(), std::move(root_smds));
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<>, std::move(get_pending_profiles_from_smds),
+                     std::move(dbus_result)));
+}
+
+void Euicc::GetPendingProfilesFromSmds(std::string root_smds,
+                                       DbusResult<> dbus_result) {
   context_->lpa()->GetPendingProfilesFromSmds(
       root_smds.empty() ? kDefaultRootSmds : root_smds, context_->executor(),
       [dbus_result{std::move(dbus_result)}, this](
@@ -343,8 +399,17 @@ void Euicc::OnPendingProfilesReceived(
   dbus_result.Success();
 }
 
-void Euicc::SetTestMode(DbusResult<> dbus_result, bool is_test_mode) {
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+void Euicc::SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result) {
+  VLOG(2) << __func__ << " : is_test_mode" << is_test_mode;
+  auto set_test_mode_internal = base::BindOnce(
+      &Euicc::SetTestMode, weak_factory_.GetWeakPtr(), is_test_mode);
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<>, std::move(set_test_mode_internal),
+                     std::move(dbus_result)));
+}
+
+void Euicc::SetTestMode(bool is_test_mode, DbusResult<> dbus_result) {
   VLOG(2) << __func__ << " : is_test_mode" << is_test_mode;
   context_->lpa()->SetTestMode(
       is_test_mode, context_->executor(),
@@ -365,7 +430,7 @@ void Euicc::UseTestCerts(bool use_test_certs) {
   context_->lpa()->SetTlsCertsDir(kPath + (use_test_certs ? "test/" : "prod/"));
 }
 
-void Euicc::ResetMemory(DbusResult<> dbus_result, int reset_options) {
+void Euicc::ResetMemoryHelper(DbusResult<> dbus_result, int reset_options) {
   VLOG(2) << __func__ << " : reset_options: " << reset_options;
   if (reset_options != lpa::data::reset_options::kDeleteOperationalProfiles &&
       reset_options !=
@@ -376,7 +441,15 @@ void Euicc::ResetMemory(DbusResult<> dbus_result, int reset_options) {
     return;
   }
 
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  auto reset_memory_internal = base::BindOnce(
+      &Euicc::ResetMemory, weak_factory_.GetWeakPtr(), reset_options);
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<>, std::move(reset_memory_internal),
+                     std::move(dbus_result)));
+}
+
+void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
   bool reset_uicc = false;  // Ignored by the lpa.
   context_->lpa()->ResetMemory(
       reset_options, reset_uicc, context_->executor(),

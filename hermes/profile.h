@@ -47,6 +47,13 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
                         const std::string& value) override;
   void SetProfileNickname(std::string nickname);
 
+  // Functions that call eponymous LPA methods. Called after channel acquisition
+  void EnableProfile(std::unique_ptr<DBusResponse<>> response);
+  void DisableProfile(std::unique_ptr<DBusResponse<>> response);
+  void SetNicknameProperty(std::string nickname);
+  void SetNicknameMethod(std::string nickname,
+                         std::unique_ptr<DBusResponse<>> response);
+
   Context* context_;
   dbus::ObjectPath object_path_;
   brillo::dbus_utils::DBusObject dbus_object_;

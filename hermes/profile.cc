@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
@@ -48,6 +49,21 @@ base::Optional<profile::ProfileClass> LpaProfileClassToHermes(
       LOG(ERROR) << "Unrecognized lpa ProfileClass: " << cls;
       return base::nullopt;
   }
+}
+
+template <typename T>
+void RunOnSuccess(base::OnceCallback<void(T)> cb, T response, int err) {
+  if (err) {
+    LOG(ERROR) << "Received modem error: " << err;
+    auto decoded_error = LpaErrorToBrillo(FROM_HERE, err);
+    if (decoded_error) {
+      response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
+          "QMI/MBIM operation failed with code: " + std::to_string(err));
+    }
+    return;
+  }
+  std::move(cb).Run(std::move(response));
 }
 
 }  // namespace
@@ -124,16 +140,30 @@ void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
     return;
   }
 
-  LOG(INFO) << "Enabling profile: " << object_path_.value();
-  context_->modem_control()->StartProfileOp(physical_slot_);
+  LOG(INFO) << "Enabling profile: " << GetObjectPathForLog(object_path_);
+  auto enable_profile =
+      base::BindOnce(&Profile::EnableProfile, weak_factory_.GetWeakPtr());
+  context_->modem_control()->StartProfileOp(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+                     std::move(enable_profile), std::move(response)));
+}
+
+void Profile::EnableProfile(std::unique_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   context_->lpa()->EnableProfile(
       GetIccid(), context_->executor(),
       [response{std::shared_ptr<DBusResponse<>>(std::move(response))},
        weak{weak_factory_.GetWeakPtr()}](int error) mutable {
-        if (weak) {
-          weak->context_->modem_control()->FinishProfileOp();
-          weak->OnEnabled(error, std::move(response));
+        if (!weak) {
+          return;
         }
+        base::OnceCallback<void(std::shared_ptr<DBusResponse<>>)> on_enabled;
+        on_enabled = base::BindOnce(&Profile::OnEnabled, weak, error);
+
+        weak->context_->modem_control()->FinishProfileOp(
+            base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+                           std::move(on_enabled), std::move(response)));
       });
 }
 
@@ -154,16 +184,28 @@ void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
     return;
   }
 
-  LOG(INFO) << "Disabling profile: " << object_path_.value();
-  context_->modem_control()->StartProfileOp(physical_slot_);
+  LOG(INFO) << "Disabling profile: " << GetObjectPathForLog(object_path_);
+  auto disable_profile =
+      base::BindOnce(&Profile::DisableProfile, weak_factory_.GetWeakPtr());
+  context_->modem_control()->StartProfileOp(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+                     std::move(disable_profile), std::move(response)));
+}
+
+void Profile::DisableProfile(std::unique_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   context_->lpa()->DisableProfile(
       GetIccid(), context_->executor(),
       [response{std::shared_ptr<DBusResponse<>>(std::move(response))},
        weak{weak_factory_.GetWeakPtr()}](int error) mutable {
-        if (weak) {
-          weak->context_->modem_control()->FinishProfileOp();
-          weak->OnDisabled(error, std::move(response));
+        if (!weak) {
+          return;
         }
+        auto on_disabled = base::BindOnce(&Profile::OnDisabled, weak, error);
+        weak->context_->modem_control()->FinishProfileOp(
+            base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+                           std::move(on_disabled), std::move(response)));
       });
 }
 
@@ -207,19 +249,13 @@ void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
         kLpaRetryDelay);
     return;
   }
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
-  context_->lpa()->SetProfileNickname(
-      GetIccid(), nickname, context_->executor(),
-      [this, response{std::shared_ptr<DBusResponse<>>(std::move(response))}](
-          int error) {
-        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-        if (decoded_error) {
-          LOG(ERROR) << "Failed to set profile nickname: "
-                     << decoded_error->GetMessage();
-        }
-        context_->modem_control()->RestoreActiveSlot();
-        response->Return();
-      });
+  auto set_nickname =
+      base::BindOnce(&Profile::SetNicknameMethod, weak_factory_.GetWeakPtr(),
+                     std::move(nickname));
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
+                     std::move(set_nickname), std::move(response)));
 }
 
 void Profile::SetProfileNickname(std::string nickname) {
@@ -232,7 +268,15 @@ void Profile::SetProfileNickname(std::string nickname) {
         kLpaRetryDelay);
     return;
   }
-  context_->modem_control()->StoreAndSetActiveSlot(physical_slot_);
+  auto set_nickname_property =
+      base::BindOnce(&Profile::SetNicknameProperty, weak_factory_.GetWeakPtr(),
+                     std::move(nickname));
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&IgnoreErrorRunClosure, std::move(set_nickname_property)));
+}
+
+void Profile::SetNicknameProperty(std::string nickname) {
   context_->lpa()->SetProfileNickname(
       GetIccid(), nickname, context_->executor(), [this](int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
@@ -240,7 +284,26 @@ void Profile::SetProfileNickname(std::string nickname) {
           LOG(ERROR) << "Failed to set profile nickname: "
                      << decoded_error->GetMessage();
         }
-        context_->modem_control()->RestoreActiveSlot();
+        context_->modem_control()->RestoreActiveSlot(base::DoNothing());
+      });
+}
+
+void Profile::SetNicknameMethod(std::string nickname,
+                                std::unique_ptr<DBusResponse<>> response) {
+  LOG(INFO) << __func__ << " Nickname: " << nickname << " "
+            << GetObjectPathForLog(object_path_);
+  context_->lpa()->SetProfileNickname(
+      GetIccid(), nickname, context_->executor(),
+      [this, response{std::shared_ptr<DBusResponse<>>(std::move(response))}](
+          int error) mutable {
+        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+        if (decoded_error) {
+          LOG(ERROR) << "Failed to set profile nickname: "
+                     << decoded_error->GetMessage();
+        }
+        context_->modem_control()->RestoreActiveSlot(
+            base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+                           base::DoNothing(), std::move(response)));
       });
 }
 
