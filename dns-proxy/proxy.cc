@@ -36,6 +36,19 @@ std::string TrimParamTemplate(const std::string& url) {
   }
   return url.substr(0, pos);
 }
+
+Metrics::ProcessType ProcessTypeOf(Proxy::Type t) {
+  switch (t) {
+    case Proxy::Type::kSystem:
+      return Metrics::ProcessType::kProxySystem;
+    case Proxy::Type::kDefault:
+      return Metrics::ProcessType::kProxyDefault;
+    case Proxy::Type::kARC:
+      return Metrics::ProcessType::kProxyARC;
+    default:
+      NOTREACHED();
+  }
+}
 }  // namespace
 
 constexpr base::TimeDelta kShillPropertyAttemptDelay =
@@ -60,6 +73,8 @@ const char* Proxy::TypeToString(Type t) {
       return kDefaultProxyType;
     case Type::kARC:
       return kARCProxyType;
+    default:
+      NOTREACHED();
   }
 }
 
@@ -87,7 +102,8 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
   return stream;
 }
 
-Proxy::Proxy(const Proxy::Options& opts) : opts_(opts) {}
+Proxy::Proxy(const Proxy::Options& opts)
+    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {}
 
 // This ctor is only used for testing.
 Proxy::Proxy(const Options& opts,
@@ -96,7 +112,8 @@ Proxy::Proxy(const Options& opts,
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)),
-      feature_enabled_(true) {}
+      feature_enabled_(true),
+      metrics_proc_type_(ProcessTypeOf(opts_.type)) {}
 
 Proxy::~Proxy() {
   if (bus_)
@@ -129,6 +146,9 @@ void Proxy::Setup() {
     features_ = ChromeFeaturesServiceClient::New(bus_);
 
     if (!features_) {
+      metrics_.RecordProcessEvent(
+          metrics_proc_type_,
+          Metrics::ProcessEvent::kChromeFeaturesNotInitialized);
       LOG(DFATAL) << "Failed to initialize Chrome features client";
       return;
     }
@@ -139,7 +159,11 @@ void Proxy::Setup() {
   if (!patchpanel_)
     patchpanel_ = patchpanel::Client::New();
 
-  CHECK(patchpanel_) << "Failed to initialize patchpanel client";
+  if (!patchpanel_) {
+    metrics_.RecordProcessEvent(
+        metrics_proc_type_, Metrics::ProcessEvent::kPatchpanelNotInitialized);
+    LOG(FATAL) << "Failed to initialize patchpanel client";
+  }
 
   if (!shill_)
     shill_.reset(new shill::Client(bus_));
@@ -154,7 +178,11 @@ void Proxy::Setup() {
 }
 
 void Proxy::OnPatchpanelReady(bool success) {
-  CHECK(success) << "Failed to connect to patchpanel";
+  if (!success) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kPatchpanelNotReady);
+    LOG(FATAL) << "Failed to connect to patchpanel";
+  }
 
   // The default network proxy might actually be carrying Chrome, Crostini or
   // if a VPN is on, even ARC traffic, but we attribute this as as "user"
@@ -178,8 +206,11 @@ void Proxy::OnPatchpanelReady(bool success) {
   auto res = patchpanel_->ConnectNamespace(
       getpid(), opts_.ifname, true /* forward_user_traffic */,
       opts_.type == Type::kDefault /* route_on_vpn */, traffic_source);
-  CHECK(res.first.is_valid())
-      << "Failed to establish private network namespace";
+  if (!res.first.is_valid()) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kPatchpanelNoNamespace);
+    LOG(FATAL) << "Failed to establish private network namespace";
+  }
   ns_fd_ = std::move(res.first);
   ns_ = res.second;
   LOG(INFO) << "Sucessfully connected private network namespace:"
@@ -241,7 +272,11 @@ void Proxy::StartDnsRedirection(
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
   // replaced by the IP address of system proxy. This causes non-system traffic
   // to be routed incorrectly without the redirection rules.
-  CHECK(fd.is_valid()) << "Failed to start DNS redirection for " << opts_.type;
+  if (!fd.is_valid()) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kPatchpanelNoRedirect);
+    LOG(FATAL) << "Failed to start DNS redirection for " << opts_.type;
+  }
   lifeline_fds_.emplace(ifname, std::move(fd));
 }
 
@@ -250,22 +285,35 @@ void Proxy::StopDnsRedirection(const std::string& ifname) {
 }
 
 void Proxy::OnPatchpanelReset(bool reset) {
+  if (reset) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kPatchpanelReset);
+    LOG(WARNING) << "Patchpanel has been reset";
+    return;
+  }
+
   // If patchpanel crashes, the proxy is useless since the connected virtual
   // network is gone. So the best bet is to exit and have the controller restart
   // us. Note if this is the system proxy, it will inform shill on shutdown.
+  metrics_.RecordProcessEvent(metrics_proc_type_,
+                              Metrics::ProcessEvent::kPatchpanelShutdown);
   LOG(ERROR) << "Patchpanel has been shutdown - restarting DNS proxy " << opts_;
   QuitWithExitCode(EX_UNAVAILABLE);
-
-  LOG(WARNING) << "Patchpanel has been reset";
 }
 
 void Proxy::OnShillReady(bool success) {
-  CHECK(success) << "Failed to connect to shill";
+  if (!success) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kShillNotReady);
+    LOG(FATAL) << "Failed to connect to shill";
+  }
   shill_->Init();
 }
 
 void Proxy::OnShillReset(bool reset) {
   if (!reset) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kShillShutdown);
     LOG(WARNING) << "Shill has been shutdown";
     // Watch for it to return.
     shill_->RegisterOnAvailableCallback(
@@ -278,6 +326,8 @@ void Proxy::OnShillReset(bool reset) {
   // have this address and try to use it. This probably redundant though with us
   // rediscovering the default device.
   // TODO(garrick): Remove this if so.
+  metrics_.RecordProcessEvent(metrics_proc_type_,
+                              Metrics::ProcessEvent::kShillReset);
   LOG(WARNING) << "Shill has been reset";
   if (ns_fd_.is_valid())
     SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
@@ -500,11 +550,17 @@ void Proxy::MaybeCreateResolver() {
   addr.sin_addr.s_addr =
       INADDR_ANY;  // Since we're running in the private namespace.
 
-  CHECK(resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr)))
-      << opts_ << " failed to start UDP relay loop";
-  LOG_IF(DFATAL,
-         !resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)))
-      << opts_ << " failed to start TCP relay loop";
+  if (!resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr))) {
+    metrics_.RecordProcessEvent(
+        metrics_proc_type_, Metrics::ProcessEvent::kResolverListenUDPFailure);
+    LOG(FATAL) << opts_ << " failed to start UDP relay loop";
+  }
+
+  if (!resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr))) {
+    metrics_.RecordProcessEvent(
+        metrics_proc_type_, Metrics::ProcessEvent::kResolverListenTCPFailure);
+    LOG(DFATAL) << opts_ << " failed to start TCP relay loop";
+  }
 
   // Fetch the DoH settings.
   brillo::ErrorPtr error;
@@ -555,6 +611,9 @@ void Proxy::SetShillProperty(const std::string& addr,
     return;
 
   if (num_retries == 0) {
+    metrics_.RecordProcessEvent(
+        metrics_proc_type_,
+        Metrics::ProcessEvent::kShillSetProxyAddressRetryExceeded);
     LOG(ERROR) << "Maximum number of retries exceeding attempt to"
                << " set dns-proxy address property on shill";
     CHECK(!die_on_failure);

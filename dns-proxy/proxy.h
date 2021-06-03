@@ -21,6 +21,7 @@
 #include <shill/dbus/client/client.h>
 
 #include "dns-proxy/chrome_features_service_client.h"
+#include "dns-proxy/metrics.h"
 #include "dns-proxy/resolver.h"
 #include "dns-proxy/session_monitor.h"
 
@@ -230,6 +231,10 @@ class Proxy : public brillo::DBusDaemon {
   // For USER DnsRedirectionRequest, the interface name will be empty as it is
   // not needed.
   std::map<std::string, base::ScopedFD> lifeline_fds_;
+
+  Metrics metrics_;
+  const Metrics::ProcessType metrics_proc_type_;
+
   base::WeakPtrFactory<Proxy> weak_factory_{this};
 };
 

@@ -16,6 +16,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <shill/dbus/client/client.h>
 
+#include "dns-proxy/metrics.h"
 #include "dns-proxy/proxy.h"
 
 namespace dns_proxy {
@@ -89,6 +90,8 @@ class Controller : public brillo::DBusDaemon {
 
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
+
+  Metrics metrics_;
 
   base::WeakPtrFactory<Controller> weak_factory_{this};
 };

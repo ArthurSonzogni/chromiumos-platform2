@@ -43,6 +43,8 @@ int Controller::OnInit() {
   // Without the ambient set, file capabilities need to be used.
   if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_NET_BIND_SERVICE, 0, 0) !=
       0) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kCapNetBindServiceError);
     LOG(ERROR) << "Failed to add CAP_NET_BIND_SERVICE to the ambient set";
   }
 
@@ -64,7 +66,12 @@ void Controller::Setup() {
   shill_->Init();
 
   patchpanel_ = patchpanel::Client::New();
-  CHECK(patchpanel_) << "Failed to initialize patchpanel client";
+  if (!patchpanel_) {
+    metrics_.RecordProcessEvent(
+        Metrics::ProcessType::kController,
+        Metrics::ProcessEvent::kPatchpanelNotInitialized);
+    LOG(FATAL) << "Failed to initialize patchpanel client";
+  }
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Controller::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
 
@@ -73,7 +80,11 @@ void Controller::Setup() {
 }
 
 void Controller::OnPatchpanelReady(bool success) {
-  CHECK(success) << "Failed to connect to patchpanel";
+  if (!success) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kPatchpanelNotReady);
+    LOG(FATAL) << "Failed to connect to patchpanel";
+  }
   patchpanel_->RegisterNetworkDeviceChangedSignalHandler(base::BindRepeating(
       &Controller::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
 
@@ -113,10 +124,14 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
 
   pid_t pid;
   if (minijail_run_pid(jail.get(), argv[0], argv.data(), &pid) != 0) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kProxyLaunchFailure);
     LOG(DFATAL) << "Failed to launch process for proxy " << proc;
     return;
   }
   proc.pid = pid;
+  metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                              Metrics::ProcessEvent::kProxyLaunchSuccess);
   LOG(INFO) << "Launched process for proxy " << proc;
 
   if (!process_reaper_.WatchForChild(
@@ -143,8 +158,11 @@ void Controller::Kill(const ProxyProc& proc) {
   EvalProxyExit(proc);
   process_reaper_.ForgetChild(proc.pid);
   int rc = kill(proc.pid, SIGTERM);
-  if (rc < 0 && rc != ESRCH)
+  if (rc < 0 && rc != ESRCH) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kProxyKillFailure);
     LOG(ERROR) << "Failed to kill process for proxy " << proc;
+  }
 }
 
 void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
@@ -163,6 +181,8 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
     }
   }
   if (!found) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kProxyMissing);
     LOG(ERROR) << "Unexpected process (" << pid << ") exit signal received";
     return;
   }
@@ -174,6 +194,8 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
     case CLD_DUMPED:
     case CLD_KILLED:
     case CLD_TRAPPED:
+      metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                  Metrics::ProcessEvent::kProxyKilled);
       LOG(ERROR) << "Process for proxy [" << proc
                  << " was unexpectedly killed (" << siginfo.si_code << ":"
                  << siginfo.si_status << ") - attempting to restart";
@@ -186,11 +208,15 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
       break;
 
     case CLD_STOPPED:
+      metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                  Metrics::ProcessEvent::kProxyStopped);
       LOG(WARNING) << "Process for proxy " << proc
                    << " was unexpectedly stopped";
       break;
 
     case CLD_CONTINUED:
+      metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                  Metrics::ProcessEvent::kProxyContinued);
       LOG(WARNING) << "Process for proxy " << proc << " has continued";
       break;
 
