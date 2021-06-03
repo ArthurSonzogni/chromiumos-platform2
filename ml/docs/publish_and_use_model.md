@@ -49,6 +49,7 @@ CrOS major version:
 | M88             | 2.3.1            |
 | M89             | 2.3.1            |
 | M90             | 2.4.0            |
+| M93             | 2.5.0            |
 
 ## Two methods to publish your models
 
