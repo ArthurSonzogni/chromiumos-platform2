@@ -131,8 +131,20 @@ TPMUtilityImpl::TPMUtilityImpl(const string& srk_auth_data)
       srk_public_loaded_(false),
       default_exponent_("\x1\x0\x1", 3),
       last_handle_(0),
-      is_enabled_(false),
-      is_enabled_ready_(false) {}
+      tpm_manager_utility_(nullptr) {}
+
+TPMUtilityImpl::TPMUtilityImpl(
+    const string& srk_auth_data,
+    tpm_manager::TpmManagerUtility* tpm_manager_utility)
+    : is_initialized_(false),
+      is_srk_ready_(false),
+      default_policy_(0),
+      srk_(0),
+      srk_auth_data_(srk_auth_data),
+      srk_public_loaded_(false),
+      default_exponent_("\x1\x0\x1", 3),
+      last_handle_(0),
+      tpm_manager_utility_(tpm_manager_utility) {}
 
 TPMUtilityImpl::~TPMUtilityImpl() {
   LOG(INFO) << "Unloading keys for all slots.";
@@ -157,6 +169,15 @@ bool TPMUtilityImpl::Init() {
   if (is_initialized_)
     return true;
   VLOG(1) << "TPMUtilityImpl::Init enter";
+
+  if (!tpm_manager_utility_) {
+    tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
+    if (!tpm_manager_utility_) {
+      LOG(ERROR) << __func__ << ": Failed to get TpmManagerUtility singleton!";
+      return false;
+    }
+  }
+
   AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   result = Tspi_Context_Create(tsp_context_.ptr());
@@ -703,7 +724,21 @@ bool TPMUtilityImpl::Sign(int key_handle,
 bool TPMUtilityImpl::IsSRKReady() {
   VLOG(1) << "TPMUtilityImpl::IsSRKReady";
   AutoLock lock(lock_);
-  return InitSRK();
+  if (!tpm_manager_utility_) {
+    LOG(ERROR) << "Accessing invalid tpm_manager utility.";
+    return false;
+  }
+  bool is_enabled = false;
+  bool is_owned = false;
+  bool is_owner_password_present = false;
+  bool has_reset_lock_permissions = false;
+  if (!tpm_manager_utility_->GetTpmNonsensitiveStatus(
+          &is_enabled, &is_owned, &is_owner_password_present,
+          &has_reset_lock_permissions)) {
+    LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
+    return false;
+  }
+  return is_enabled && is_owned && InitSRK();
 }
 
 int TPMUtilityImpl::CreateHandle(int slot,

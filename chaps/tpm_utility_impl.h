@@ -15,6 +15,7 @@
 #include <base/synchronization/lock.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
+#include <tpm_manager/client/tpm_manager_utility.h>
 
 namespace chaps {
 
@@ -25,6 +26,12 @@ class TPMUtilityImpl : public TPMUtility {
   const uint32_t kMaxModulusSize = 256;
 
   explicit TPMUtilityImpl(const std::string& srk_auth_data);
+
+  // This constructor allows us to specify the mock tpm_manager_utility for
+  // testing purpose.
+  TPMUtilityImpl(const std::string& srk_auth_data,
+                 tpm_manager::TpmManagerUtility* tpm_manager_utility);
+
   TPMUtilityImpl(const TPMUtilityImpl&) = delete;
   TPMUtilityImpl& operator=(const TPMUtilityImpl&) = delete;
 
@@ -153,8 +160,7 @@ class TPMUtilityImpl : public TPMUtility {
   std::map<int, KeyInfo> handle_info_;
   base::Lock lock_;
   int last_handle_;
-  bool is_enabled_;
-  bool is_enabled_ready_;
+  tpm_manager::TpmManagerUtility* tpm_manager_utility_;
 };
 
 }  // namespace chaps

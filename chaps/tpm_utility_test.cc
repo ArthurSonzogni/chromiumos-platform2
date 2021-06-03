@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <tpm_manager/client/mock_tpm_manager_utility.h>
 
 #include "chaps/chaps_utility.h"
 
@@ -32,6 +33,7 @@ using std::unique_ptr;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::InvokeWithoutArgs;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
@@ -45,7 +47,7 @@ class TestTPMUtility : public ::testing::Test {
     tpm_.reset(new TPM2UtilityImpl());
 #else
     // Instantiate a TPM1.2 Utility.
-    tpm_.reset(new TPMUtilityImpl(""));
+    tpm_.reset(new TPMUtilityImpl("", &mock_tpm_manager_utility_));
 #endif
   }
 
@@ -90,6 +92,7 @@ class TestTPMUtility : public ::testing::Test {
 
  protected:
   unique_ptr<TPMUtility> tpm_;
+  NiceMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility_;
   int size_;
   string e_;
   brillo::SecureBlob auth_;

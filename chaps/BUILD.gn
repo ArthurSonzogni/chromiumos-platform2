@@ -63,6 +63,8 @@ pkg_config("target_defaults") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
+
+  libs = [ "tpm_manager" ]
 }
 
 proto_library("chaps-protos") {
