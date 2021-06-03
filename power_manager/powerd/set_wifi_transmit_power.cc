@@ -104,7 +104,7 @@ int ValidHandler(struct nl_msg* msg, void* arg) {
   return NL_OK;
 }
 
-enum class WirelessDriver { NONE, MWIFIEX, IWL, ATH10K, RTW };
+enum class WirelessDriver { NONE, MWIFIEX, IWL, ATH10K, RTW, MTK };
 
 enum RealtekVndcmdSARBand {
   REALTEK_VNDCMD_ATTR_SAR_BAND_2g = 0,
@@ -163,6 +163,7 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
       {"mwifiex_sdio", WirelessDriver::MWIFIEX},
       {"rtw_pci", WirelessDriver::RTW},
       {"rtw_8822ce", WirelessDriver::RTW},
+      {"mt7921e", WirelessDriver::MTK},
   };
 
   // .../device/driver symlink should point at the driver's module.
@@ -405,6 +406,127 @@ void FillMessageAth10k(struct nl_msg* msg, bool tablet) {
   CHECK(!nla_nest_end(msg, sar_capa)) << "Failed in nla_nest_end";
 }
 
+// The mt7921 driver configures index 0 for 2g and indexes 1-4 for 5g.  This
+// dependency is a bit fragile and can break if the underlying assumption
+// changes. Since the mt7921 driver already publishes its capabilities (see
+// crrev.com/c/3009850), this could use the driver capability to find the index
+// and frequency band mapping to avoid enums like these (b/172377638).
+enum MtkSARBand {
+  kMtkSarBand2g = 0,
+  kMtkSarBand5g1 = 1,
+  kMtkSarBand5g2 = 2,
+  kMtkSarBand5g3 = 3,
+  kMtkSarBand5g4 = 4,
+};
+
+std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
+    bool tablet, power_manager::WifiRegDomain domain) {
+  std::map<enum MtkSARBand, uint8_t> power_table = {};
+  auto config = std::make_unique<brillo::CrosConfig>();
+  CHECK(config->Init()) << "Could not find config";
+  std::string wifi_power_table_path =
+      tablet ? "/wifi/tablet-mode-power-table-mtk"
+             : "/wifi/non-tablet-mode-power-table-mtk";
+  std::string wifi_geo_power_table_path;
+  switch (domain) {
+    case power_manager::WifiRegDomain::FCC:
+      wifi_geo_power_table_path = "/wifi/fcc-power-table-mtk";
+      break;
+    case power_manager::WifiRegDomain::EU:
+      wifi_geo_power_table_path = "/wifi/eu-power-table-mtk";
+      break;
+    case power_manager::WifiRegDomain::REST_OF_WORLD:
+      wifi_geo_power_table_path = "/wifi/rest-of-world-power-table-mtk";
+      break;
+    case power_manager::WifiRegDomain::NONE:
+      break;
+  }
+
+  int limit_2g = UINT8_MAX, limit_5g = UINT8_MAX, offset_2g = 0, offset_5g = 0;
+  if (domain != power_manager::WifiRegDomain::NONE) {
+    std::string geo_string;
+    if (config->GetString(wifi_geo_power_table_path, "limit-2g", &geo_string)) {
+      limit_2g = std::stoi(geo_string);
+    }
+    if (config->GetString(wifi_geo_power_table_path, "limit-5g", &geo_string)) {
+      limit_5g = std::stoi(geo_string);
+    }
+    if (config->GetString(wifi_geo_power_table_path, "offset-2g",
+                          &geo_string)) {
+      offset_2g = std::stoi(geo_string);
+    }
+    if (config->GetString(wifi_geo_power_table_path, "offset-5g",
+                          &geo_string)) {
+      offset_5g = std::stoi(geo_string);
+    }
+  }
+
+  std::string value;
+  int power_limit = UINT8_MAX;
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-2g", &value))
+      << "Could not get ChromeosConfig power table: " << wifi_power_table_path;
+  power_limit = std::stoi(value) + offset_2g;
+  CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+      << "Invalid power limit configs. Limit value cannot exceed 255.";
+  power_table[kMtkSarBand2g] = std::min(power_limit, limit_2g);
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-1", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+      << "Invalid power limit configs. Limit value cannot exceed 255.";
+  power_table[kMtkSarBand5g1] = std::min(power_limit, limit_5g);
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-2", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+      << "Invalid power limit configs. Limit value cannot exceed 255.";
+  power_table[kMtkSarBand5g2] = std::min(power_limit, limit_5g);
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-3", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+      << "Invalid power limit configs. Limit value cannot exceed 255.";
+  power_table[kMtkSarBand5g3] = std::min(power_limit, limit_5g);
+
+  CHECK(config->GetString(wifi_power_table_path, "limit-5g-4", &value))
+      << "Could not get ChromeosConfig power table.";
+  power_limit = std::stoi(value) + offset_5g;
+  CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+      << "Invalid power limit configs. Limit value cannot exceed 255.";
+  power_table[kMtkSarBand5g4] = std::min(power_limit, limit_5g);
+
+  return power_table;
+}
+
+// Fill in nl80211 message for the mtk driver.
+void FillMessageMTK(struct nl_msg* msg,
+                    bool tablet,
+                    power_manager::WifiRegDomain domain) {
+  struct nlattr* sar_capa =
+      nla_nest_start(msg, NL80211_ATTR_SAR_SPEC | NLA_F_NESTED);
+  nla_put_u32(msg, NL80211_SAR_ATTR_TYPE, NL80211_SAR_TYPE_POWER);
+  struct nlattr* specs =
+      nla_nest_start(msg, NL80211_SAR_ATTR_SPECS | NLA_F_NESTED);
+  int i = 0;
+
+  for (const auto& limit : GetMtkChromeosConfigPowerTable(tablet, domain)) {
+    struct nlattr* sub_freq_range = nla_nest_start(msg, ++i | NLA_F_NESTED);
+    CHECK(sub_freq_range) << "Failed to execute nla_nest_start";
+    CHECK(!nla_put_u32(msg, NL80211_SAR_ATTR_SPECS_RANGE_INDEX, limit.first))
+        << "Failed to put frequency index";
+    CHECK(!nla_put_s32(msg, NL80211_SAR_ATTR_SPECS_POWER, limit.second))
+        << "Failed to put band power";
+    CHECK(!nla_nest_end(msg, sub_freq_range)) << "Failed in nla_nest_end";
+  }
+
+  CHECK(!nla_nest_end(msg, specs)) << "Failed in nla_nest_end";
+  CHECK(!nla_nest_end(msg, sar_capa)) << "Failed in nla_nest_end";
+}
+
 class PowerSetter {
  public:
   PowerSetter() : nl_sock_(nl_socket_alloc()), cb_(nl_cb_alloc(NL_CB_DEFAULT)) {
@@ -444,11 +566,11 @@ class PowerSetter {
     struct nl_msg* msg = nlmsg_alloc();
     CHECK(msg);
 
-    // The command set for Ath10k and other platform (Rtw, Intel) use different
-    // APIs.
+    // The command set for Ath10k and MTK, other platform (Rtw, Intel) use
+    // different APIs.
     // TODO(b/172377638): Use common API for all platforms and fallback to
     // vendor API if common API is not supported.
-    if (driver == WirelessDriver::ATH10K)
+    if (driver == WirelessDriver::ATH10K || driver == WirelessDriver::MTK)
       genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id_, 0, 0,
                   NL80211_CMD_SET_SAR_SPECS, 0);
     else
@@ -471,6 +593,9 @@ class PowerSetter {
         break;
       case WirelessDriver::ATH10K:
         FillMessageAth10k(msg, tablet);
+        break;
+      case WirelessDriver::MTK:
+        FillMessageMTK(msg, tablet, domain);
         break;
       case WirelessDriver::NONE:
         NOTREACHED() << "No driver found";
