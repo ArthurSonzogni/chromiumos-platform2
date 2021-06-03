@@ -165,6 +165,11 @@ void DBusService::RegisterSignalSenders() {
       std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
           &DBusService::SendHardwareWriteProtectionStateSignal,
           base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kWpEnablePhysical,
+      std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
+          &DBusService::SendHardwareWriteProtectionStateSignal,
+          base::Unretained(this))));
 }
 
 bool DBusService::SendErrorSignal(RmadErrorCode error) {
