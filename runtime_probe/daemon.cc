@@ -63,12 +63,14 @@ void Daemon::InitDBus() {
   // Register a handler of the ProbeCategories method.
   CHECK(runtime_probe_exported_object->ExportMethodAndBlock(
       kRuntimeProbeInterfaceName, kProbeCategoriesMethod,
-      base::Bind(&Daemon::ProbeCategories, weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::ProbeCategories,
+                          weak_ptr_factory_.GetWeakPtr())));
 
   // Register a handler of the GetKnownComponents method.
   CHECK(runtime_probe_exported_object->ExportMethodAndBlock(
       kRuntimeProbeInterfaceName, kGetKnownComponentsMethod,
-      base::Bind(&Daemon::GetKnownComponents, weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::GetKnownComponents,
+                          weak_ptr_factory_.GetWeakPtr())));
 
   // Take ownership of the RuntimeProbe service.
   CHECK(bus_->RequestOwnershipAndBlock(kRuntimeProbeServiceName,
@@ -79,7 +81,7 @@ void Daemon::InitDBus() {
 void Daemon::PostQuitTask() {
   bus_->GetOriginTaskRunner()->PostTask(
       FROM_HERE,
-      base::Bind(&Daemon::QuitDaemonInternal, base::Unretained(this)));
+      base::BindOnce(&Daemon::QuitDaemonInternal, base::Unretained(this)));
 }
 
 void Daemon::QuitDaemonInternal() {
