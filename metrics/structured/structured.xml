@@ -193,6 +193,9 @@
     <metric name="QualificationStatusDisplayPanel" type="int">
       <summary>The qualification status of display_panel components.</summary>
     </metric>
+    <metric name="QualificationStatusStorage" type="int">
+      <summary>The qualification status of storage components.</summary>
+    </metric>
   </event>
   <event name="ComponentInfo">
     <summary>
@@ -203,6 +206,9 @@
       hardware categories, e.g. battery, memory, storage, network, it would be
       about 10 events per run.
     </summary>
+    <metric name="ComponentCategory" type="int">
+      <summary>The category of the recorded component.</summary>
+    </metric>
     <metric name="DisplayPanelVendor" type="int">
       <summary>The vendor of the display panel.</summary>
     </metric>
@@ -214,6 +220,27 @@
     </metric>
     <metric name="DisplayPanelWidth" type="int">
       <summary>The width of the display panel.</summary>
+    </metric>
+    <metric name="StorageMmcManfid" type="int">
+      <summary>The manfid of the MMC storage.</summary>
+    </metric>
+    <metric name="StorageMmcHwrev" type="int">
+      <summary>The hwrev of the MMC storage.</summary>
+    </metric>
+    <metric name="StorageMmcOemid" type="int">
+      <summary>The oemid of the MMC storage.</summary>
+    </metric>
+    <metric name="StorageMmcPrv" type="int">
+      <summary>The prv of the MMC storage.</summary>
+    </metric>
+    <metric name="StoragePciVendor" type="int">
+      <summary>The vendor of the PCI (NVMe) storage.</summary>
+    </metric>
+    <metric name="StoragePciDevice" type="int">
+      <summary>The device ID of the PCI (NVMe) storage.</summary>
+    </metric>
+    <metric name="StoragePciClass" type="int">
+      <summary>The device class of the PCI (NVMe) storage.</summary>
     </metric>
   </event>
 </project>
