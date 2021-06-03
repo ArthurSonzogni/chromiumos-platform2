@@ -129,6 +129,8 @@ TEST_F(CrashSenderBaseTest, ParseMetadata) {
   EXPECT_TRUE(ParseMetadata("abcABC012_.-=test.log\n", &metadata));
   EXPECT_TRUE(metadata.GetString("abcABC012_.-", &value));
   EXPECT_EQ("test.log", value);
+  // Invalid upload paths should still be parseable
+  EXPECT_TRUE(ParseMetadata("payload=a.d.dmp\nupload_file_=/\n", &metadata));
 
   // Invalid metadata should be detected.
   EXPECT_FALSE(ParseMetadata("=test.log\n", &metadata));

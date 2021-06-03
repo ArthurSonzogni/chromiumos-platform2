@@ -532,7 +532,7 @@ FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
     } else if (is_upload_text || is_upload_file) {
       base::FilePath value_file(value);
       // Upload only files without path information in them
-      if (value_file != value_file.BaseName()) {
+      if (value_file.value().find('/') != std::string::npos) {
         LOG(ERROR) << "Blocking path file " << value_file.value();
         crash.key_vals.emplace_back("file_blocked_by_path", value_file.value());
       } else {
