@@ -146,6 +146,7 @@ class CellularCapability3gpp : public CellularCapability {
 
   void SetDBusPropertiesProxyForTesting(
       std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy);
+  void FillConnectPropertyMapForTesting(KeyValueStore* properties);
 
   uint32_t access_technologies_for_testing() const {
     return access_technologies_;
@@ -268,7 +269,8 @@ class CellularCapability3gpp : public CellularCapability {
 
   Stringmap ParseScanResult(const ScanResult& result);
 
-  void FillConnectPropertyMap(KeyValueStore* properties);
+  void SetRoamingProperties(KeyValueStore* properties);
+  void SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
 
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
 

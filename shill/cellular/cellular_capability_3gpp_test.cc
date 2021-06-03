@@ -388,7 +388,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void FillConnectPropertyMap(KeyValueStore* properties) {
-    capability_->FillConnectPropertyMap(properties);
+    capability_->FillConnectPropertyMapForTesting(properties);
   }
 
   void StartModem(Error* error) {

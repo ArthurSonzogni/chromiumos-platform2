@@ -667,35 +667,43 @@ void CellularCapability3gpp::OnServiceCreated() {
 }
 
 void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
+  SetRoamingProperties(properties);
   apn_try_list_ = cellular()->BuildApnTryList();
-  FillConnectPropertyMap(properties);
+  if (!apn_try_list_.empty())
+    SetApnProperties(apn_try_list_.front(), properties);
 }
 
-void CellularCapability3gpp::FillConnectPropertyMap(KeyValueStore* properties) {
+void CellularCapability3gpp::SetRoamingProperties(KeyValueStore* properties) {
   properties->Set<bool>(kConnectAllowRoaming, cellular()->IsRoamingAllowed());
+}
 
-  if (apn_try_list_.empty())
+void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
+                                              KeyValueStore* properties) {
+  if (!base::Contains(apn_info, kApnProperty)) {
+    LOG(ERROR) << "Malformed APN entry";
     return;
-
-  // Leave the APN at the front of the list, so that it can be recorded
-  // if the connect attempt succeeds.
-  Stringmap apn_info = apn_try_list_.front();
-  SLOG(this, 2) << __func__ << ": Using APN " << apn_info[kApnProperty];
-  properties->Set<std::string>(kConnectApn, apn_info[kApnProperty]);
-  if (base::Contains(apn_info, kApnUsernameProperty))
-    properties->Set<std::string>(kConnectUser, apn_info[kApnUsernameProperty]);
-  if (base::Contains(apn_info, kApnPasswordProperty))
+  }
+  const std::string& apn = apn_info.at(kApnProperty);
+  SLOG(this, 2) << __func__ << ": Using APN " << apn;
+  properties->Set<std::string>(kConnectApn, apn);
+  if (base::Contains(apn_info, kApnUsernameProperty)) {
+    properties->Set<std::string>(kConnectUser,
+                                 apn_info.at(kApnUsernameProperty));
+  }
+  if (base::Contains(apn_info, kApnPasswordProperty)) {
     properties->Set<std::string>(kConnectPassword,
-                                 apn_info[kApnPasswordProperty]);
+                                 apn_info.at(kApnPasswordProperty));
+  }
   if (base::Contains(apn_info, kApnAuthenticationProperty)) {
     MMBearerAllowedAuth allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
-        apn_info[kApnAuthenticationProperty]);
+        apn_info.at(kApnAuthenticationProperty));
     if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
       properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
   }
   if (base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
-        kConnectIpType, IpTypeToMMBearerIpFamily(apn_info[kApnIpTypeProperty]));
+        kConnectIpType,
+        IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
   }
 }
 
@@ -720,7 +728,9 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
       SLOG(this, 2) << "Connect failed with invalid APN, "
                     << apn_try_list_.size() << " remaining APNs to try";
       KeyValueStore props;
-      FillConnectPropertyMap(&props);
+      SetRoamingProperties(&props);
+      if (!apn_try_list_.empty())
+        SetApnProperties(apn_try_list_.front(), &props);
       Connect(props, callback);
       return;
     }
@@ -1917,6 +1927,13 @@ double CellularCapability3gpp::SignalQualityBounds::GetAsPercentage(
 void CellularCapability3gpp::SetDBusPropertiesProxyForTesting(
     std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy) {
   dbus_properties_proxy_ = std::move(dbus_properties_proxy);
+}
+
+void CellularCapability3gpp::FillConnectPropertyMapForTesting(
+    KeyValueStore* properties) {
+  SetRoamingProperties(properties);
+  if (!apn_try_list_.empty())
+    SetApnProperties(apn_try_list_.front(), properties);
 }
 
 }  // namespace shill
