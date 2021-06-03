@@ -17,6 +17,13 @@
 -->
 
 <!--
+  NOTE: If you update this file, remember to modify the dbus permission
+  configuration file as well, otherwise callers cannot access the new
+  methods.
+  See cryptohome/etc/org.chromium.UserDataAuth.conf.
+-->
+
+<!--
 TODO(b/126307305): We'll need to add documentations of what each methods in this file
 do.
 -->
