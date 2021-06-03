@@ -28,9 +28,11 @@ using ::chromeos::machine_learning::mojom::FinalResultPtr;
 using ::chromeos::machine_learning::mojom::OptionalBool;
 using ::chromeos::machine_learning::mojom::SodaClient;
 using ::chromeos::machine_learning::mojom::SodaConfigPtr;
+using ::chromeos::machine_learning::mojom::SodaRecognitionMode;
 using ::chromeos::machine_learning::mojom::SodaRecognizer;
 using ::chromeos::machine_learning::mojom::SpeechRecognizerEvent;
 using ::chromeos::machine_learning::mojom::SpeechRecognizerEventPtr;
+using ::speech::soda::chrome::ExtendedSodaConfigMsg;
 using ::speech::soda::chrome::SodaResponse;
 
 constexpr char kSodaLibraryName[] = "libsoda.so";
@@ -152,7 +154,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
     return;
   }
 
-  speech::soda::chrome::ExtendedSodaConfigMsg cfg_msg;
+  ExtendedSodaConfigMsg cfg_msg;
   cfg_msg.set_channel_count(spec->channel_count);
   cfg_msg.set_sample_rate(spec->sample_rate);
   cfg_msg.set_language_pack_directory(real_language_dlc_path->value());
@@ -161,6 +163,15 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   if (spec->enable_formatting != OptionalBool::kUnknown) {
     cfg_msg.set_enable_formatting(spec->enable_formatting ==
                                   OptionalBool::kTrue);
+  }
+  if (spec->recognition_mode == SodaRecognitionMode::kCaption) {
+    cfg_msg.set_recognition_mode(ExtendedSodaConfigMsg::CAPTION);
+  } else if (spec->recognition_mode == SodaRecognitionMode::kIme) {
+    cfg_msg.set_recognition_mode(ExtendedSodaConfigMsg::IME);
+  } else {
+    LOG(DFATAL)
+        << "Unknown enum type for recognition mode, setting CAPTION default.";
+    cfg_msg.set_recognition_mode(ExtendedSodaConfigMsg::CAPTION);
   }
   std::string serialized = cfg_msg.SerializeAsString();
 
