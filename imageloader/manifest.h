@@ -21,6 +21,7 @@ enum class BRILLO_EXPORT FileSystem { kExt4, kSquashFS };
 class BRILLO_EXPORT Manifest {
  public:
   Manifest();
+  virtual ~Manifest() = default;
   Manifest(const Manifest&) = delete;
   Manifest& operator=(const Manifest&) = delete;
 
@@ -46,6 +47,7 @@ class BRILLO_EXPORT Manifest {
   bool preload_allowed() const { return preload_allowed_; }
   bool mount_file_required() const { return mount_file_required_; }
   const std::string& used_by() const { return used_by_; }
+  int64_t days_to_purge() const { return days_to_purge_; }
   const std::string& description() const { return description_; }
   const std::map<std::string, std::string> metadata() const {
     return metadata_;
@@ -70,6 +72,7 @@ class BRILLO_EXPORT Manifest {
   bool preload_allowed_;
   bool mount_file_required_;
   std::string used_by_;
+  int64_t days_to_purge_;
   std::string description_;
   std::map<std::string, std::string> metadata_;
 };

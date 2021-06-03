@@ -23,6 +23,7 @@ TEST(ManifestTest, ParseManifest) {
   const std::string size = R"("42")";
   const std::string preload_allowed = R"(true)";
   const std::string used_by = R"("foo-user")";
+  const std::string days_to_purge = R"("3")";
   const std::string mount_file_required = R"(true)";
   const std::string description = R"("foo-description")";
   const std::string manifest_version = R"(1)";
@@ -50,6 +51,8 @@ TEST(ManifestTest, ParseManifest) {
     "table-sha256-hash":)" + table_sha256_hash +
                                    R"(,
     "used-by":)" + used_by + R"(,
+    "days-to-purge":)" + days_to_purge +
+                                   R"(,
     "version":)" + version + R"(
     }
   )";
@@ -69,6 +72,7 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.size(), 42);
   EXPECT_EQ(manifest.preload_allowed(), true);
   EXPECT_EQ(manifest.used_by(), "foo-user");
+  EXPECT_EQ(manifest.days_to_purge(), 3);
   EXPECT_EQ(manifest.mount_file_required(), true);
   EXPECT_EQ(manifest.description(), "foo-description");
 }
@@ -106,6 +110,7 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_EQ(manifest.manifest_version(), 1);
   EXPECT_EQ(manifest.preload_allowed(), false);
   EXPECT_EQ(manifest.used_by(), "");
+  EXPECT_EQ(manifest.days_to_purge(), 0);
   EXPECT_EQ(manifest.description(), "");
 
   // Sizes should default to 0.

@@ -40,6 +40,7 @@ constexpr char kSize[] = "size";
 constexpr char kPreloadAllowed[] = "preload-allowed";
 constexpr char kMountFileRequired[] = "mount-file-required";
 constexpr char kUsedBy[] = "used-by";
+constexpr char kDaysToPurge[] = "days-to-purge";
 constexpr char kDescription[] = "description";
 
 bool GetSHA256FromString(const std::string& hash_str,
@@ -78,7 +79,8 @@ Manifest::Manifest()
       fs_type_(FileSystem::kExt4),
       preallocated_size_(0),
       size_(0),
-      is_removable_(false) {}
+      is_removable_(false),
+      days_to_purge_(0) {}
 
 bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // Now deserialize the manifest json and read out the rest of the component.
@@ -186,6 +188,14 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   const std::string* used_by = manifest_dict.FindStringKey(kUsedBy);
   if (used_by)
     used_by_ = *used_by;
+  const std::string* days_to_purge_str =
+      manifest_dict.FindStringKey(kDaysToPurge);
+  if (days_to_purge_str) {
+    if (!base::StringToInt64(*days_to_purge_str, &days_to_purge_)) {
+      LOG(ERROR) << "Days to purge is malformed: " << *days_to_purge_str;
+      return false;
+    }
+  }
   const std::string* description = manifest_dict.FindStringKey(kDescription);
   if (description)
     description_ = *description;
