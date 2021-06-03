@@ -346,19 +346,21 @@ result_code Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
     return rc;
   }
 
-  if (space_validity != EncStatefulSpaceValidity::kInvalid) {
-    return RESULT_SUCCESS;
-  }
-
-  // We need to take ownership and redefine the space.
-  LOG(INFO) << "Redefining encrypted stateful space.";
-
   bool owned = false;
   rc = tpm_->IsOwned(&owned);
   if (rc != RESULT_SUCCESS) {
     LOG(ERROR) << "Can't determine TPM ownership.";
     return RESULT_FAIL_FATAL;
   }
+
+  // The encryptied stateful space is prepared iff the TPM is owned and has
+  // valid space.
+  if (owned && space_validity != EncStatefulSpaceValidity::kInvalid) {
+    return RESULT_SUCCESS;
+  }
+
+  // We need to take ownership and redefine the space.
+  LOG(INFO) << "Redefining encrypted stateful space.";
 
   if (!owned) {
     result_code rc = PruneOwnershipStateFilesIfNotOwned();
