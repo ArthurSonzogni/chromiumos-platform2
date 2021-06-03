@@ -216,26 +216,21 @@ bool TPMUtilityImpl::Init() {
 }
 
 bool TPMUtilityImpl::IsTPMAvailable() {
-  if (is_enabled_ready_) {
-    return is_enabled_;
+  if (!tpm_manager_utility_) {
+    LOG(ERROR) << "Accessing invalid tpm_manager utility.";
+    return false;
   }
-  // If the TPM works, clearly it's available.
-  if (is_initialized_) {
-    is_enabled_ready_ = true;
-    is_enabled_ = true;
-    return true;
+  bool is_enabled = false;
+  bool is_owned = false;
+  bool is_owner_password_present = false;
+  bool has_reset_lock_permissions = false;
+  if (!tpm_manager_utility_->GetTpmNonsensitiveStatus(
+          &is_enabled, &is_owned, &is_owner_password_present,
+          &has_reset_lock_permissions)) {
+    LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
+    return false;
   }
-  // If the system says there is an enabled TPM, expect to use it.
-  const base::FilePath kMiscEnabledFile("/sys/class/misc/tpm0/device/enabled");
-  const base::FilePath kTpmEnabledFile("/sys/class/tpm/tpm0/device/enabled");
-  string file_content;
-  if ((base::ReadFileToString(kMiscEnabledFile, &file_content) ||
-       base::ReadFileToString(kTpmEnabledFile, &file_content)) &&
-      !file_content.empty() && file_content[0] == '1') {
-    is_enabled_ = true;
-  }
-  is_enabled_ready_ = true;
-  return is_enabled_;
+  return is_enabled;
 }
 
 TPMVersion TPMUtilityImpl::GetTPMVersion() {
