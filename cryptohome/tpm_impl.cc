@@ -794,8 +794,14 @@ bool TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
 
 bool TpmImpl::LoadSrk(TSS_HCONTEXT context_handle,
                       TSS_HKEY* srk_handle,
-                      TSS_RESULT* result) const {
+                      TSS_RESULT* result) {
   *result = TSS_SUCCESS;
+
+  // We shouldn't load the SRK if the TPM have been fully owned.
+  if (!IsOwned()) {
+    *result = TSS_LAYER_TCS | TSS_E_FAIL;
+    return false;
+  }
 
   // Load the Storage Root Key
   TSS_UUID SRK_UUID = TSS_UUID_SRK;
