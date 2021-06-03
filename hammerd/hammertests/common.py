@@ -30,6 +30,7 @@ BASE_TABLE = {
     'kodama': 'magnemite',
     'krane': 'masterball',
     'kakadu': 'moonball',
+    'katsu': 'don',
 }
 
 BOARD_NAME = cros_config('/', 'name')
@@ -79,6 +80,12 @@ elif BASE_NAME == 'zed':
   BASE_PRODUCT_ID = 0x504c
   BASE_USB_PATH = '1-1.4'
   BASE_CONN_GPIO = 'EN_BASE'
+  TP = '/lib/firmware/%s-touch.fw' % BASE_NAME
+elif BASE_NAME == 'don':
+  BASE_VENDOR_ID = 0x18d1
+  BASE_PRODUCT_ID = 0x5050
+  BASE_USB_PATH = '1-1.1'
+  BASE_CONN_GPIO = 'EN_PP3300_POGO'
   TP = '/lib/firmware/%s-touch.fw' % BASE_NAME
 else:
   BASE_VENDOR_ID = int(cros_config('/detachable-base', 'vendor-id'))
