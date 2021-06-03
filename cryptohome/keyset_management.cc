@@ -281,19 +281,13 @@ bool KeysetManagement::AddInitialKeyset(const Credentials& credentials) {
   vk->Initialize(platform_, crypto_);
   vk->CreateRandom();
   vk->SetLegacyIndex(kInitialKeysetIndex);
+  vk->SetKeyData(credentials.key_data());
 
   if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
     vk->SetFlags(vk->GetFlags() |
                  SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
     vk->SetSignatureChallengeInfo(
         credentials.challenge_credentials_keyset_info());
-  }
-
-  // Merge in the key data from credentials using the label() as
-  // the existence test. (All new-format calls must populate the
-  // label on creation.)
-  if (!credentials.key_data().label().empty()) {
-    vk->SetKeyData(credentials.key_data());
   }
 
   if (!vk->Encrypt(passkey, obfuscated_username) ||

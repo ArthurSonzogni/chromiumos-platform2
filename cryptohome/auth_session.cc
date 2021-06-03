@@ -105,7 +105,11 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     auth_factor_ = std::make_unique<PasswordAuthFactor>(keyset_management_);
   }
 
-  auth_factor_->AuthenticateAuthFactor(*credentials, &code);
+  bool authenticated =
+      auth_factor_->AuthenticateAuthFactor(*credentials, &code);
+  if (authenticated) {
+    status_ = AuthStatus::kAuthStatusAuthenticated;
+  }
   return MountErrorToCryptohomeError(code);
 }
 
