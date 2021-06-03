@@ -14,7 +14,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/datapath.h"
-#include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/routing_service.h"
 
 namespace patchpanel {
@@ -65,7 +64,7 @@ class CountersService {
     uint64_t tx_packets = 0;
   };
 
-  CountersService(Datapath* datapath, MinijailedProcessRunner* runner);
+  CountersService(Datapath* datapath);
   ~CountersService() = default;
 
   // Adds accounting rules and jump rules for a new physical device if this is
@@ -100,7 +99,6 @@ class CountersService {
                       const std::string& chain_tag);
 
   Datapath* datapath_;
-  MinijailedProcessRunner* runner_;
 };
 
 TrafficCounter::Source TrafficSourceToProto(TrafficSource source);

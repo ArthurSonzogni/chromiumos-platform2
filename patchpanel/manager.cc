@@ -237,8 +237,7 @@ void Manager::InitialSetup() {
   LOG(INFO) << "DBus service interface ready";
 
   routing_svc_ = std::make_unique<RoutingService>();
-  counters_svc_ =
-      std::make_unique<CountersService>(datapath_.get(), runner_.get());
+  counters_svc_ = std::make_unique<CountersService>(datapath_.get());
 
   // b/162966185: Allow Jetstream to disable:
   //  - the IP forwarding setup used for hosting VMs and containers,

@@ -73,17 +73,15 @@ void SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
     PLOG(ERROR) << "Failed to change ownership of " + sysfs_path;
 }
 
-void OneTimeContainerSetup(const Datapath& datapath, uint32_t pid) {
+void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
   static bool done = false;
   if (done)
     return;
 
-  auto& runner = datapath.runner();
-
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.
   // Expected for all kernels.
-  if (runner.modprobe_all({
+  if (!datapath.ModprobeAll({
           // The netfilter modules needed by netd for iptables commands.
           "ip6table_filter",
           "ip6t_ipv6header",
@@ -91,7 +89,7 @@ void OneTimeContainerSetup(const Datapath& datapath, uint32_t pid) {
           // The ipsec modules for AH and ESP encryption for ipv6.
           "ah6",
           "esp6",
-      }) != 0) {
+      })) {
     LOG(ERROR) << "One or more required kernel modules failed to load."
                << " Some Android functionality may be broken.";
   }
@@ -99,18 +97,18 @@ void OneTimeContainerSetup(const Datapath& datapath, uint32_t pid) {
   int major, minor;
   if (KernelVersion(&major, &minor) &&
       (major < 5 || (major == 5 && minor < 4)) &&
-      runner.modprobe_all({
+      !datapath.ModprobeAll({
           "xfrm4_mode_transport",
           "xfrm4_mode_tunnel",
           "xfrm6_mode_transport",
           "xfrm6_mode_tunnel",
-      }) != 0) {
+      })) {
     LOG(ERROR) << "One or more required kernel modules failed to load."
                << " Some Android functionality may be broken.";
   }
 
   // Optional modules.
-  if (runner.modprobe_all({
+  if (!datapath.ModprobeAll({
           // This module is not available in kernels < 3.18
           "nf_reject_ipv6",
           // These modules are needed for supporting Chrome traffic on Android
@@ -121,7 +119,7 @@ void OneTimeContainerSetup(const Datapath& datapath, uint32_t pid) {
           "nf_nat_tftp",
           // The tun module is needed by the Android 464xlat clatd process.
           "tun",
-      }) != 0) {
+      })) {
     LOG(WARNING) << "One or more optional kernel modules failed to load.";
   }
 

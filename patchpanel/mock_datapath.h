@@ -75,6 +75,11 @@ class MockDatapath : public Datapath {
                void(const std::string& ifname1, const std::string& ifname2));
   MOCK_METHOD3(AddIPv4Route, bool(uint32_t gw, uint32_t dst, uint32_t netmask));
   MOCK_METHOD1(SetConntrackHelpers, bool(const bool enable_helpers));
+  MOCK_METHOD2(SetRouteLocalnet,
+               bool(const std::string& ifname, const bool enable));
+  MOCK_METHOD2(DumpIptables,
+               std::string(IpFamily family, const std::string& table));
+  MOCK_METHOD1(ModprobeAll, bool(const std::vector<std::string>& modules));
 };
 
 }  // namespace patchpanel

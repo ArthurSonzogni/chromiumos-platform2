@@ -50,7 +50,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   RandomProcessRunner runner(&provider);
   Firewall firewall;
   Datapath datapath(&runner, &firewall);
-  CountersService counters_svc(&datapath, &runner);
+  CountersService counters_svc(&datapath);
 
   while (provider.remaining_bytes() > 0) {
     counters_svc.GetCounters({});

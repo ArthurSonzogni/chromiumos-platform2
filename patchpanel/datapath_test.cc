@@ -24,9 +24,11 @@
 #include "patchpanel/net_util.h"
 
 using testing::_;
+using testing::DoAll;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrEq;
 
 namespace patchpanel {
@@ -126,6 +128,8 @@ class MockProcessRunner : public MinijailedProcessRunner {
                    bool log_failures));
   MOCK_METHOD2(ip_netns_delete,
                int(const std::string& netns_name, bool log_failures));
+  MOCK_METHOD2(modprobe_all,
+               int(const std::vector<std::string>& modules, bool log_failures));
 };
 
 void Verify_ip(MockProcessRunner& runner, const std::string& command) {
@@ -1212,6 +1216,26 @@ TEST(DatapathTest, RedirectDnsRules) {
   datapath.RemoveRedirectDnsRule("wlan0");
 }
 
+TEST(DatapathTest, DumpIptables) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  EXPECT_CALL(runner, iptables(StrEq("mangle"),
+                               ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("<iptables output>"), Return(0)));
+  EXPECT_CALL(runner,
+              ip6tables(StrEq("mangle"),
+                        ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("<ip6tables output>"), Return(0)));
+
+  Datapath datapath(&runner, &firewall);
+  EXPECT_EQ("<iptables output>",
+            datapath.DumpIptables(IpFamily::IPv4, "mangle"));
+  EXPECT_EQ("<ip6tables output>",
+            datapath.DumpIptables(IpFamily::IPv6, "mangle"));
+  EXPECT_EQ("", datapath.DumpIptables(IpFamily::Dual, "mangle"));
+}
+
 TEST(DatapathTest, SetVpnLockdown) {
   MockProcessRunner runner;
   MockFirewall firewall;
@@ -1460,6 +1484,30 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   rule.nameservers.emplace_back("1.1.1.1");
   Datapath datapath(&runner, &firewall);
   datapath.StopDnsRedirection(rule);
+}
+
+TEST(DatapathTest, SetRouteLocalnet) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  Verify_sysctl_w(runner, "net.ipv4.conf.eth0.route_localnet", "1");
+  Verify_sysctl_w(runner, "net.ipv4.conf.wlan0.route_localnet", "0");
+
+  Datapath datapath(&runner, &firewall);
+  datapath.SetRouteLocalnet("eth0", true);
+  datapath.SetRouteLocalnet("wlan0", false);
+}
+
+TEST(DatapathTest, ModprobeAll) {
+  MockProcessRunner runner;
+  MockFirewall firewall;
+
+  EXPECT_CALL(runner, modprobe_all(ElementsAre("ip6table_filter", "ah6", "esp6",
+                                               "nf_nat_ftp"),
+                                   _));
+
+  Datapath datapath(&runner, &firewall);
+  datapath.ModprobeAll({"ip6table_filter", "ah6", "esp6", "nf_nat_ftp"});
 }
 
 }  // namespace patchpanel

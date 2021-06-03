@@ -153,9 +153,7 @@ bool ParseOutput(const std::string& output,
 
 }  // namespace
 
-CountersService::CountersService(Datapath* datapath,
-                                 MinijailedProcessRunner* runner)
-    : datapath_(datapath), runner_(runner) {}
+CountersService::CountersService(Datapath* datapath) : datapath_(datapath) {}
 
 std::map<CounterKey, Counter> CountersService::GetCounters(
     const std::set<std::string>& devices) {
@@ -163,10 +161,9 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
 
   // Handles counters for IPv4 and IPv6 separately and returns failure if either
   // of the procession fails, since counters for only IPv4 or IPv6 are biased.
-  std::string iptables_result;
-  int ret = runner_->iptables(kMangleTable, {"-L", "-x", "-v", "-n", "-w"},
-                              true /*log_failures*/, &iptables_result);
-  if (ret != 0 || iptables_result.empty()) {
+  std::string iptables_result =
+      datapath_->DumpIptables(IpFamily::IPv4, kMangleTable);
+  if (iptables_result.empty()) {
     LOG(ERROR) << "Failed to query IPv4 counters";
     return {};
   }
@@ -175,10 +172,9 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
     return {};
   }
 
-  std::string ip6tables_result;
-  ret = runner_->ip6tables(kMangleTable, {"-L", "-x", "-v", "-n", "-w"},
-                           true /*log_failures*/, &ip6tables_result);
-  if (ret != 0 || ip6tables_result.empty()) {
+  std::string ip6tables_result =
+      datapath_->DumpIptables(IpFamily::IPv6, kMangleTable);
+  if (ip6tables_result.empty()) {
     LOG(ERROR) << "Failed to query IPv6 counters";
     return {};
   }

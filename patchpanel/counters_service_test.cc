@@ -14,20 +14,18 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_firewall.h"
 
 namespace patchpanel {
 
 using ::testing::_;
 using ::testing::AnyNumber;
-using ::testing::ContainerEq;
 using ::testing::Contains;
-using ::testing::DoAll;
 using ::testing::Each;
 using ::testing::ElementsAreArray;
 using ::testing::Lt;
 using ::testing::Return;
-using ::testing::SetArgPointee;
 using ::testing::SizeIs;
 
 using Counter = CountersService::Counter;
@@ -282,19 +280,18 @@ class MockProcessRunner : public MinijailedProcessRunner {
 class CountersServiceTest : public testing::Test {
  protected:
   void SetUp() override {
-    datapath_ = std::make_unique<Datapath>(&runner_, &firewall_);
-    counters_svc_ =
-        std::make_unique<CountersService>(datapath_.get(), &runner_);
+    datapath_ = std::make_unique<MockDatapath>(&runner_, &firewall_);
+    counters_svc_ = std::make_unique<CountersService>(datapath_.get());
   }
 
   // Makes `iptables` and `ip6tables` returning |ipv4_output| and
   // |ipv6_output|, respectively. Expects an empty map from GetCounters().
   void TestBadIptablesOutput(const std::string& ipv4_output,
                              const std::string& ipv6_output) {
-    EXPECT_CALL(runner_, iptables(_, _, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<3>(ipv4_output), Return(0)));
-    EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<3>(ipv6_output), Return(0)));
+    EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+        .WillRepeatedly(Return(ipv4_output));
+    EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+        .WillRepeatedly(Return(ipv6_output));
 
     auto actual = counters_svc_->GetCounters({});
     std::map<CounterKey, Counter> expected;
@@ -303,7 +300,7 @@ class CountersServiceTest : public testing::Test {
 
   MockProcessRunner runner_;
   MockFirewall firewall_;
-  std::unique_ptr<Datapath> datapath_;
+  std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<CountersService> counters_svc_;
 };
 
@@ -499,10 +496,10 @@ TEST_F(CountersServiceTest, ChainNameLength) {
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCounters) {
-  EXPECT_CALL(runner_, iptables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(kIptablesOutput), Return(0)));
-  EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(kIp6tablesOutput), Return(0)));
+  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+      .WillOnce(Return(kIptablesOutput));
+  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+      .WillOnce(Return(kIp6tablesOutput));
 
   auto actual = counters_svc_->GetCounters({});
 
@@ -564,10 +561,10 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
-  EXPECT_CALL(runner_, iptables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(kIptablesOutput), Return(0)));
-  EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(kIp6tablesOutput), Return(0)));
+  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+      .WillOnce(Return(kIptablesOutput));
+  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+      .WillOnce(Return(kIp6tablesOutput));
 
   // Only counters for eth0 should be returned. eth1 should be ignored.
   auto actual = counters_svc_->GetCounters({"eth0", "eth1"});
@@ -630,12 +627,10 @@ Chain tx_eth0 (1 references)
     211 13456            all  --  any    any     ::/0             ::/0
 )";
 
-  EXPECT_CALL(runner_, iptables(_, _, _, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<3>(unknown_ipv4_traffic_only), Return(0)));
-  EXPECT_CALL(runner_, ip6tables(_, _, _, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<3>(unknown_ipv6_traffic_only), Return(0)));
+  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+      .WillOnce(Return(unknown_ipv4_traffic_only));
+  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+      .WillOnce(Return(unknown_ipv6_traffic_only));
 
   auto actual = counters_svc_->GetCounters({});
 

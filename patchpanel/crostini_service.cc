@@ -232,8 +232,7 @@ void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
     return;
   }
 
-  if (datapath_->runner().sysctl_w(
-          "net.ipv4.conf." + ifname + ".route_localnet", "1") != 0) {
+  if (!datapath_->SetRouteLocalnet(ifname, true)) {
     LOG(ERROR) << "Failed to set up route localnet for " << ifname;
     return;
   }
@@ -242,6 +241,7 @@ void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
 void CrostiniService::StopAdbPortForwarding(const std::string& ifname) {
   datapath_->DeleteAdbPortForwardRule(ifname);
   datapath_->DeleteAdbPortAccessRule(ifname);
+  datapath_->SetRouteLocalnet(ifname, false);
 }
 
 void CrostiniService::CheckAdbSideloadingStatus() {

@@ -111,10 +111,6 @@ Datapath::Datapath(MinijailedProcessRunner* process_runner,
   CHECK(process_runner_);
 }
 
-MinijailedProcessRunner& Datapath::runner() const {
-  return *process_runner_;
-}
-
 void Datapath::Start() {
   // Restart from a clean iptables state in case of an unordered shutdown.
   ResetIptables();
@@ -1633,6 +1629,29 @@ bool Datapath::ModifyIptables(IpFamily family,
   return success;
 }
 
+std::string Datapath::DumpIptables(IpFamily family, const std::string& table) {
+  std::string result;
+  std::vector<std::string> argv = {"-L", "-x", "-v", "-n", "-w"};
+  switch (family) {
+    case IPv4:
+      if (process_runner_->iptables(table, argv, true /*log_failures*/,
+                                     &result) != 0)
+        LOG(ERROR) << "Could not dump iptables " << table;
+      break;
+    case IPv6:
+      if (process_runner_->ip6tables(table, argv, true /*log_failures*/,
+                                      &result) != 0)
+        LOG(ERROR) << "Could not dump ip6tables " << table;
+      break;
+    case Dual:
+      LOG(ERROR) << "Cannot dump iptables and ip6tables at the same time";
+      break;
+    default:
+      LOG(ERROR) << "Could not dump iptables: incorrect IP family " << family;
+  }
+  return result;
+}
+
 bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
                                  const std::string& ifname2) {
   // Only start Ipv6 forwarding if -C returns false and it had not been
@@ -1768,6 +1787,20 @@ bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
     return false;
   }
   return true;
+}
+
+bool Datapath::SetRouteLocalnet(const std::string& ifname, const bool enable) {
+  if (process_runner_->sysctl_w("net.ipv4.conf." + ifname + ".route_localnet",
+                                enable ? "1" : "0") != 0) {
+    LOG(ERROR) << "Failed to " << (enable ? "enable" : "disable")
+               << " route_localnet on " << ifname;
+    return false;
+  }
+  return true;
+}
+
+bool Datapath::ModprobeAll(const std::vector<std::string>& modules) {
+  return process_runner_->modprobe_all(modules) != 0;
 }
 
 void Datapath::SetIfnameIndex(const std::string& ifname, int ifindex) {
