@@ -54,6 +54,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
 enum Error {
     InvalidArguments(String),
     ServiceNotFound(String),
+    ServiceAlreadyExists(String),
     Internal(String),
 }
 
@@ -63,6 +64,7 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
         [] => Err(Error::InvalidArguments("no command".to_string())),
         ["show"] | ["list"] => wireguard_list(),
         ["show", service_name] => wireguard_show(service_name),
+        ["new", service_name] => wireguard_new(service_name),
         ["del", service_name] => wireguard_del(service_name),
         ["connect", service_name] => wireguard_connect(service_name),
         ["disconnect", service_name] => wireguard_disconnect(service_name),
@@ -72,6 +74,10 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
         Error::InvalidArguments(val) => dispatcher::Error::CommandInvalidArguments(val),
         Error::ServiceNotFound(val) => {
             println!("WireGuard service with name {} does not exist", val);
+            dispatcher::Error::CommandReturnedError
+        }
+        Error::ServiceAlreadyExists(val) => {
+            println!("WireGuard service with name {} already exists", val);
             dispatcher::Error::CommandReturnedError
         }
         Error::Internal(val) => {
@@ -85,6 +91,8 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
 type InputPropMap = HashMap<String, Variant<Box<dyn RefArg>>>;
 // Represents the properties nested as a value of another property in the InputPropMap.
 type InnerPropMap<'a> = HashMap<&'a str, &'a dyn RefArg>;
+// Represents the properties used to configure a service via D-Bus.
+type OutputPropMap = HashMap<&'static str, Variant<Box<dyn RefArg>>>;
 
 // Helper functions for reading a value with a specific type from a property map.
 trait GetPropExt {
@@ -165,6 +173,8 @@ impl GetPropExt for InnerPropMap<'_> {
 // Property names in a service.
 const PROPERTY_TYPE: &str = "Type";
 const PROPERTY_NAME: &str = "Name";
+const PROPERTY_PROVIDER_TYPE: &str = "Provider.Type";
+const PROPERTY_PROVIDER_HOST: &str = "Provider.Host";
 const PROPERTY_WIREGUARD_PUBLIC_KEY: &str = "WireGuard.PublicKey";
 const PROPERTY_WIREGUARD_ADDRESS: &str = "WireGuard.Address";
 const PROPERTY_WIREGUARD_PEERS: &str = "WireGuard.Peers";
@@ -234,6 +244,38 @@ impl WireGuardService {
         };
 
         Ok(ret)
+    }
+
+    fn encode_into_prop_map(&self) -> OutputPropMap {
+        let mut properties: OutputPropMap = HashMap::new();
+        let mut insert_string_field = |k: &'static str, v: &str| {
+            properties.insert(k, Variant(Box::new(v.to_string())));
+        };
+
+        insert_string_field(PROPERTY_TYPE, TYPE_VPN);
+        insert_string_field(PROPERTY_NAME, &self.name);
+        insert_string_field(PROPERTY_PROVIDER_TYPE, TYPE_WIREGUARD);
+        insert_string_field(PROPERTY_PROVIDER_HOST, TYPE_WIREGUARD);
+        insert_string_field(PROPERTY_WIREGUARD_ADDRESS, &self.local_ip);
+
+        let mut peers_buf = Vec::new();
+        for peer in &self.peers {
+            let mut peer_properties = HashMap::new();
+            let mut insert_peer_field = |k: &str, v: &str| {
+                peer_properties.insert(k.to_string(), v.to_string());
+            };
+            insert_peer_field(PROPERTY_PEER_PUBLIC_KEY, &peer.public_key);
+            insert_peer_field(PROPERTY_PEER_ENDPOINT, &peer.endpoint);
+            insert_peer_field(PROPERTY_PEER_ALLOWED_IPS, &peer.allowed_ips);
+            insert_peer_field(
+                PROPERTY_PEER_PERSISTENT_KEEPALIVE,
+                &peer.persistent_keep_alive,
+            );
+            peers_buf.push(peer_properties);
+        }
+        properties.insert(PROPERTY_WIREGUARD_PEERS, Variant(Box::new(peers_buf)));
+
+        properties
     }
 
     fn print(&self) {
@@ -327,6 +369,32 @@ fn wireguard_list() -> Result<(), Error> {
 fn wireguard_show(service_name: &str) -> Result<(), Error> {
     let connection = make_dbus_connection()?;
     get_wireguard_service_by_name(&connection, service_name)?.print();
+    Ok(())
+}
+
+fn wireguard_new(service_name: &str) -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+
+    // Checks if there is already a service with the given name.
+    match get_wireguard_service_by_name(&connection, service_name) {
+        Ok(_) => return Err(Error::ServiceAlreadyExists(service_name.to_string())),
+        Err(Error::ServiceNotFound(_)) => {}
+        Err(err) => return Err(err),
+    };
+
+    let manager_proxy = connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT);
+    let service = WireGuardService {
+        path: None,
+        local_ip: "".to_string(),
+        public_key: "".to_string(),
+        name: service_name.to_string(),
+        peers: Vec::new(),
+    };
+    manager_proxy
+        .configure_service(service.encode_into_prop_map())
+        .map_err(|err| Error::Internal(format!("Failed to configure service: {}", err)))?;
+
+    println!("Service {} created", service_name);
     Ok(())
 }
 
