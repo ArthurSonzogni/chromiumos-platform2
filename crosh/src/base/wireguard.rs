@@ -62,6 +62,10 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
     match args.as_slice() {
         [] => Err(Error::InvalidArguments("no command".to_string())),
         ["show"] | ["list"] => wireguard_list(),
+        ["show", service_name] => wireguard_show(service_name),
+        ["del", service_name] => wireguard_del(service_name),
+        ["connect", service_name] => wireguard_connect(service_name),
+        ["disconnect", service_name] => wireguard_disconnect(service_name),
         [other, ..] => Err(Error::InvalidArguments(other.to_string())),
     }
     .map_err(|err| match err {
@@ -292,6 +296,24 @@ fn get_wireguard_services(connection: &Connection) -> Result<Vec<WireGuardServic
     Ok(wg_services)
 }
 
+fn get_wireguard_service_by_name(
+    connection: &Connection,
+    service_name: &str,
+) -> Result<WireGuardService, Error> {
+    let services: Vec<WireGuardService> = get_wireguard_services(connection)?
+        .into_iter()
+        .filter(|x| x.name == service_name)
+        .collect();
+
+    match services.len() {
+        0 => Err(Error::ServiceNotFound(service_name.to_string())),
+        1 => Ok(services.into_iter().next().unwrap()),
+        _ => Err(Error::Internal(
+            "Found duplicated WireGuard services".to_string(),
+        )),
+    }
+}
+
 fn wireguard_list() -> Result<(), Error> {
     let connection = make_dbus_connection()?;
     let mut services = get_wireguard_services(&connection)?;
@@ -299,5 +321,45 @@ fn wireguard_list() -> Result<(), Error> {
     for service in &services {
         service.print()
     }
+    Ok(())
+}
+
+fn wireguard_show(service_name: &str) -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+    get_wireguard_service_by_name(&connection, service_name)?.print();
+    Ok(())
+}
+
+fn wireguard_connect(service_name: &str) -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+    let service = get_wireguard_service_by_name(&connection, service_name)?;
+    // TODO(b/177877310): Need to check if the service has all fields configured.
+    make_service_proxy(&connection, &service.path.unwrap())
+        .connect()
+        .map_err(|err| Error::Internal(format!("Failed to connect service: {}", err)))?;
+
+    println!("Connecting to {}..", service_name);
+    Ok(())
+}
+
+fn wireguard_disconnect(service_name: &str) -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+    let service = get_wireguard_service_by_name(&connection, service_name)?;
+    make_service_proxy(&connection, &service.path.unwrap())
+        .disconnect()
+        .map_err(|err| Error::Internal(format!("Failed to disconnect service: {}", err)))?;
+
+    println!("Disconnecting from {}..", service_name);
+    Ok(())
+}
+
+fn wireguard_del(service_name: &str) -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+    let service = get_wireguard_service_by_name(&connection, service_name)?;
+    make_service_proxy(&connection, &service.path.unwrap())
+        .remove()
+        .map_err(|err| Error::Internal(format!("Failed to delete service: {}", err)))?;
+
+    println!("Service {} was deleted", service_name);
     Ok(())
 }
