@@ -23,15 +23,15 @@ IioContextImpl::IioContextImpl() {
 
 void IioContextImpl::Reload() {
   // This context will only be destroyed when the entire IioContextImpl goes
-  // out of scope. In practice, there will only be at most two contexts
-  // in existence (i.e. the initial one and the one we create if we need
-  // to initialize the IIO sysfs trigger). This is done in the interest of
-  // not having to invalidate existing iio_device pointers, as their lifetime
-  // is statically bound to the context that created them (and contexts are
-  // themselves static objects that do not update as devices are added
-  // and/or removed at runtime).
+  // out of scope. This is done in the interest of not having to invalidate
+  // existing iio_device pointers, as their lifetime is statically bound to the
+  // context that created them (and contexts are themselves static objects that
+  // do not update as devices are added and/or removed at runtime).
   context_.push_back({iio_create_local_context(), iio_context_destroy});
-  CHECK(GetCurrentContext());
+}
+
+bool IioContextImpl::IsValid() const {
+  return GetCurrentContext() != nullptr;
 }
 
 iio_context* IioContextImpl::GetCurrentContext() const {
@@ -41,6 +41,9 @@ iio_context* IioContextImpl::GetCurrentContext() const {
 }
 
 bool IioContextImpl::SetTimeout(uint32_t timeout) {
+  if (!IsValid())
+    return false;
+
   int error = iio_context_set_timeout(GetCurrentContext(), timeout);
   if (error) {
     char errMsg[kErrorBufferSize];
@@ -82,6 +85,9 @@ std::vector<IioDevice*> IioContextImpl::GetAllTriggers() {
 template <typename T>
 IioDevice* IioContextImpl::GetById(
     int id, std::map<int, std::unique_ptr<T>>* devices_map) {
+  if (!IsValid())
+    return nullptr;
+
   auto it_dev = devices_map->find(id);
   if (it_dev != devices_map->end())
     return it_dev->second.get();
@@ -102,6 +108,9 @@ template <typename T>
 std::vector<IioDevice*> IioContextImpl::GetByName(
     const std::string& name, std::map<int, std::unique_ptr<T>>* devices_map) {
   std::vector<IioDevice*> devices;
+  if (!IsValid())
+    return devices;
+
   iio_context* ctx = GetCurrentContext();
   uint32_t dev_count = iio_context_get_devices_count(ctx);
 
@@ -132,6 +141,9 @@ template <typename T>
 std::vector<IioDevice*> IioContextImpl::GetAll(
     std::map<int, std::unique_ptr<T>>* devices_map) {
   std::vector<IioDevice*> devices;
+  if (!IsValid())
+    return devices;
+
   iio_context* ctx = GetCurrentContext();
   uint32_t dev_count = iio_context_get_devices_count(ctx);
 

@@ -68,6 +68,13 @@ void SensorDeviceImpl::AddReceiver(
     const std::set<cros::mojom::DeviceType>& types) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
+  if (!context_->IsValid()) {
+    LOGF(ERROR) << "No devices in the context. Failed to register to device "
+                   "with iio_device_id: "
+                << iio_device_id;
+    return;
+  }
+
   auto iio_device = context_->GetDeviceById(iio_device_id);
   if (!iio_device) {
     LOGF(ERROR) << "Invalid iio_device_id: " << iio_device_id;

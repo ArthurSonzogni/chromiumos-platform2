@@ -165,6 +165,58 @@ TEST_F(SensorServiceImplTest, OnDeviceAdded) {
       std::vector<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT}));
 }
 
+class SensorServiceImplInvalidContextTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    auto context = std::make_unique<libmems::fakes::FakeIioContext>();
+    context_ = context.get();
+    EXPECT_FALSE(context_->IsValid());
+
+    // Initialize with an invalid context.
+    sensor_service_ = SensorServiceImpl::Create(
+        task_environment_.GetMainThreadTaskRunner(), std::move(context));
+    EXPECT_TRUE(sensor_service_);
+
+    auto accel = std::make_unique<libmems::fakes::FakeIioDevice>(
+        context_, kFakeAccelName, kFakeAccelId);
+
+    accel->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
+        kFakeAccelChnName, true));
+
+    context_->AddDevice(std::move(accel));
+    EXPECT_TRUE(context_->IsValid());
+
+    sensor_service_->OnDeviceAdded(kFakeAccelId);
+  }
+
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  libmems::fakes::FakeIioContext* context_;
+
+  SensorServiceImpl::ScopedSensorServiceImpl sensor_service_ = {
+      nullptr, SensorServiceImpl::SensorServiceImplDeleter};
+};
+
+TEST_F(SensorServiceImplInvalidContextTest, GetAllDeviceIds) {
+  base::RunLoop loop;
+  sensor_service_->GetAllDeviceIds(base::BindOnce(
+      [](base::Closure closure,
+         const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
+             iio_device_ids_types) {
+        EXPECT_EQ(iio_device_ids_types.size(), 1);
+        auto it_accel = iio_device_ids_types.find(kFakeAccelId);
+        EXPECT_TRUE(it_accel != iio_device_ids_types.end());
+        EXPECT_EQ(it_accel->second.size(), 1);
+        EXPECT_EQ(it_accel->second[0], cros::mojom::DeviceType::ACCEL);
+
+        closure.Run();
+      },
+      loop.QuitClosure()));
+  // Wait until the callback is done.
+  loop.Run();
+}
+
 class SensorServiceImplTestDeviceTypesWithParam
     : public ::testing::TestWithParam<
           std::pair<std::vector<std::string>,

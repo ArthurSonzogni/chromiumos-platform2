@@ -35,7 +35,27 @@ constexpr char kDummyChnAttrName2[] = "DummyChnAttr2";
 class SensorDeviceImplTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+        task_environment_.GetMainThreadTaskRunner(),
+        mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+
     context_ = std::make_unique<libmems::fakes::FakeIioContext>();
+    EXPECT_FALSE(context_->IsValid());
+
+    // Initialize with an invalid context.
+    sensor_device_ = SensorDeviceImpl::Create(
+        task_environment_.GetMainThreadTaskRunner(), context_.get());
+    EXPECT_TRUE(sensor_device_);
+
+    // Tried to add an invalid device with an invalid context.
+    sensor_device_->AddReceiver(
+        fakes::kAccelDeviceId, remote_.BindNewPipeAndPassReceiver(),
+        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+    remote_.set_disconnect_handler(
+        base::BindOnce(&SensorDeviceImplTest::OnSensorDeviceDisconnect,
+                       base::Unretained(this)));
+    base::RunLoop().RunUntilIdle();
+    EXPECT_FALSE(remote_.is_bound());
 
     auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
@@ -58,18 +78,12 @@ class SensorDeviceImplTest : public ::testing::Test {
     device_ = device.get();
     context_->AddDevice(std::move(device));
 
-    ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-        task_environment_.GetMainThreadTaskRunner(),
-        mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
-
-    sensor_device_ = SensorDeviceImpl::Create(
-        task_environment_.GetMainThreadTaskRunner(), context_.get());
-    EXPECT_TRUE(sensor_device_);
-
     sensor_device_->AddReceiver(
         fakes::kAccelDeviceId, remote_.BindNewPipeAndPassReceiver(),
         std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
   }
+
+  void OnSensorDeviceDisconnect() { remote_.reset(); }
 
   std::unique_ptr<libmems::fakes::FakeIioContext> context_;
   libmems::fakes::FakeIioDevice* device_;

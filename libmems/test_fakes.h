@@ -289,9 +289,15 @@ class LIBMEMS_EXPORT FakeIioContext : public IioContext {
   void AddDevice(std::unique_ptr<FakeIioDevice> device);
   void AddTrigger(std::unique_ptr<FakeIioDevice> trigger);
 
+  bool IsValid() const override {
+    return !devices_.empty() || !triggers_.empty();
+  }
   iio_context* GetCurrentContext() const override { return nullptr; };
   void Reload() override {}
   bool SetTimeout(uint32_t timeout) override {
+    if (!IsValid())
+      return false;
+
     timeout_ = timeout;
     return true;
   }

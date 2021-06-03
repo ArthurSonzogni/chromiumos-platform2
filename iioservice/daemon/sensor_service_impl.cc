@@ -121,6 +121,11 @@ void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
 
   // Reload to check if there are new devices available.
   context_->Reload();
+  if (!context_->IsValid()) {
+    LOGF(ERROR) << "No devices in the context";
+    return;
+  }
+
   auto device = context_->GetDeviceById(iio_device_id);
   if (!device) {
     LOGF(ERROR) << "Cannot find device by id: " << iio_device_id;
@@ -201,8 +206,10 @@ SensorServiceImpl::SensorServiceImpl(
   if (!sensor_device_)
     LOGF(ERROR) << "Failed to get SensorDevice";
 
-  for (auto device : context_->GetAllDevices())
-    AddDevice(device);
+  if (context_->IsValid()) {
+    for (auto device : context_->GetAllDevices())
+      AddDevice(device);
+  }
 }
 
 void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {

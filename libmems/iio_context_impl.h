@@ -28,6 +28,7 @@ class LIBMEMS_EXPORT IioContextImpl : public IioContext {
 
   ~IioContextImpl() override = default;
 
+  bool IsValid() const override;
   iio_context* GetCurrentContext() const override;
 
   void Reload() override;

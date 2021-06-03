@@ -28,6 +28,11 @@ class LIBMEMS_EXPORT IioContext {
  public:
   virtual ~IioContext() = default;
 
+  // If there's no devices or triggers in the sysfs yet, context cannot be
+  // created.
+  // Returns true if the context is valid and available.
+  virtual bool IsValid() const = 0;
+
   // Returns the iio_context object underlying this object, if any is available.
   // Returns nullptr if no iio_device exists.
   virtual iio_context* GetCurrentContext() const = 0;
