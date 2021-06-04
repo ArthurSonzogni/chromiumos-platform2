@@ -48,6 +48,9 @@ constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
 constexpr char kLpadminCommand[] = "/usr/sbin/lpadmin";
 constexpr char kLpadminSeccompPolicy[] =
     "/usr/share/policy/lpadmin-seccomp.policy";
+constexpr char kLpstatCommand[] = "/usr/bin/lpstat";
+constexpr char kLpstatSeccompPolicy[] =
+    "/usr/share/policy/lpstat-seccomp.policy";
 constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
 constexpr char kTestPPDSeccompPolicy[] =
     "/usr/share/policy/cupstestppd-seccomp.policy";
@@ -205,6 +208,15 @@ int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
                    inherit_usergroups);
 }
 
+// Runs lpstat with the provided |arg_list| and |std_input|.
+int Lpstat(const ProcessWithOutput::ArgList& arg_list, std::string* output) {
+  // Run in lp group so we can read and write /run/cups/cups.sock.
+  return RunAsUser(kLpadminUser, kLpGroup, kLpstatCommand, kLpstatSeccompPolicy,
+                   arg_list,
+                   /*std_input=*/nullptr,
+                   /*inherit_usergroups=*/false, output);
+}
+
 // Translates a return code from lpadmin to a CupsResult value.
 CupsResult LpadminReturnCodeToCupsResult(int return_code, bool autoconf) {
   if (return_code != 0)
@@ -296,6 +308,21 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
 // Invokes lpadmin with -x to delete a printer.
 bool CupsTool::RemovePrinter(const std::string& name) {
   return Lpadmin({"-x", name}) == EXIT_SUCCESS;
+}
+
+// Runs lpstat -l -r -v -a -p -o.
+// -l shows a long listing of printers, classes, or jobs.
+// -r shows whether the CUPS server is running.
+// -v [printer(s)] shows the printers and what device they are attached to. If
+//   no printers are specified then all printers are listed.
+// -a [printer(s)] shows the accepting state of printer queues. If no printers
+//   are specified then all printers are listed.
+// -p [printer(s)] shows the printers and whether they are enabled for printing.
+//   If no printers are specified then all printers are listed.
+// -o [destination(s)] shows the jobs queued on the specified destinations.
+//   If no destinations are specified all jobs are shown.
+bool CupsTool::RunLpstat(std::string* output) {
+  return Lpstat({"-l", "-r", "-v", "-a", "-p", "-o"}, output) == EXIT_SUCCESS;
 }
 
 // Tests a URI's visual similarity with an HTTP URI.

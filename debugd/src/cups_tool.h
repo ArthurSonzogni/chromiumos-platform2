@@ -35,6 +35,9 @@ class CupsTool {
   // Remove a printer from CUPS using lpadmin.
   bool RemovePrinter(const std::string& name);
 
+  // Run lpstat -l -r -v -a -p -o and pass the stdout to output.
+  bool RunLpstat(std::string* output);
+
   // Evaluates true if the |uri| (fed to lpadmin) seems valid.
   // Valid-looking URIs take the form "scheme://host..." for
   // which the trailing port spec is optional. In addition, they must
