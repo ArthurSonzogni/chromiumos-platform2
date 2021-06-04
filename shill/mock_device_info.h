@@ -63,7 +63,7 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_METHOD(bool, CreateTunnelInterface, (LinkReadyCallback), (override));
 
   MOCK_METHOD(bool,
-              CreateWireguardInterface,
+              CreateWireGuardInterface,
               (const std::string&, LinkReadyCallback, base::OnceClosure),
               (override));
   MOCK_METHOD(void,

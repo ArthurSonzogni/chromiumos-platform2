@@ -150,7 +150,7 @@ constexpr char kKindVeth[] = "veth";
 constexpr char kKindRmnet[] = "rmnet";
 // v5.10, drivers/net/wireguard/device.c:254, |device_type.name| is set to
 // KBUILD_MODNAME, which is "wireguard".
-constexpr char kKindWireguard[] = "wireguard";
+constexpr char kKindWireGuard[] = "wireguard";
 
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
@@ -352,7 +352,7 @@ Technology DeviceInfo::GetDeviceTechnology(
     }
   }
 
-  if (kind.has_value() && kind.value() == kKindWireguard) {
+  if (kind.has_value() && kind.value() == kKindWireGuard) {
     SLOG(this, 2) << __func__ << ": device " << iface_name
                   << " is a wireguard device. Treat it as a tunnel.";
     return Technology::kTunnel;
@@ -1146,12 +1146,12 @@ int DeviceInfo::OpenTunnelInterface(const std::string& interface_name) const {
   return fd;
 }
 
-bool DeviceInfo::CreateWireguardInterface(const std::string& interface_name,
+bool DeviceInfo::CreateWireGuardInterface(const std::string& interface_name,
                                           LinkReadyCallback link_ready_callback,
                                           base::OnceClosure failure_callback) {
   if (!rtnl_handler_->AddInterface(
-          interface_name, kKindWireguard,
-          base::BindOnce(&DeviceInfo::OnCreateWireguardInterfaceResponse,
+          interface_name, kKindWireGuard,
+          base::BindOnce(&DeviceInfo::OnCreateWireGuardInterfaceResponse,
                          weak_factory_.GetWeakPtr(), interface_name,
                          std::move(failure_callback)))) {
     return false;
@@ -1161,7 +1161,7 @@ bool DeviceInfo::CreateWireguardInterface(const std::string& interface_name,
   return true;
 }
 
-void DeviceInfo::OnCreateWireguardInterfaceResponse(
+void DeviceInfo::OnCreateWireGuardInterfaceResponse(
     const std::string& interface_name,
     base::OnceClosure failure_callback,
     int32_t error) {

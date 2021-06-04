@@ -234,8 +234,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
         new ThirdPartyVpnDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderArcVpn) {
     driver.reset(new ArcVpnDriver(manager_, ProcessManager::GetInstance()));
-  } else if (type == kProviderWireguard) {
-    driver.reset(new WireguardDriver(manager_, ProcessManager::GetInstance()));
+  } else if (type == kProviderWireGuard) {
+    driver.reset(new WireGuardDriver(manager_, ProcessManager::GetInstance()));
   } else {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           "Unsupported VPN type: " + type);

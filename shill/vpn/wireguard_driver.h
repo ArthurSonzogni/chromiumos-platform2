@@ -16,13 +16,13 @@
 
 namespace shill {
 
-class WireguardDriver : public VPNDriver {
+class WireGuardDriver : public VPNDriver {
  public:
-  WireguardDriver(Manager* manager, ProcessManager* process_manager);
-  WireguardDriver(const WireguardDriver&) = delete;
-  WireguardDriver& operator=(const WireguardDriver&) = delete;
+  WireGuardDriver(Manager* manager, ProcessManager* process_manager);
+  WireGuardDriver(const WireGuardDriver&) = delete;
+  WireGuardDriver& operator=(const WireGuardDriver&) = delete;
 
-  ~WireguardDriver();
+  ~WireGuardDriver();
 
   // Inherited from VPNDriver. During ConnectAsync(), we will try to create the
   // tunnel in the kernel at first. If that fails, then we will try to let the
@@ -34,12 +34,12 @@ class WireguardDriver : public VPNDriver {
   std::string GetProviderType() const override;
 
   // These functions (including GetProvider() below) are overridden for
-  // implementing the "Wireguard.Peers" property in both property store (as an
+  // implementing the "WireGuard.Peers" property in both property store (as an
   // array of dicts) and storage (as an an array of json-encoded strings), and
   // its value is kept in |peers_| in this class. A special property in a peer
   // is "PresharedKey": this property cannot be read via RPC, so we need some
   // special handling during writing. Specifically, in a RPC call for setting
-  // "Wireguard.Peers", the preshared key of a peer will not be cleared if the
+  // "WireGuard.Peers", the preshared key of a peer will not be cleared if the
   // client does not specify a value for it (i.e., the incoming request does not
   // contain this key).
   void InitPropertyStore(PropertyStore* store) override;
@@ -60,19 +60,19 @@ class WireguardDriver : public VPNDriver {
 
  private:
   // Friend class for testing.
-  friend class WireguardDriverTestPeer;
+  friend class WireGuardDriverTestPeer;
 
   static const VPNDriver::Property kProperties[];
 
-  void CreateKernelWireguardInterface();
+  void CreateKernelWireGuardInterface();
 
-  void StartUserspaceWireguardTunnel();
+  void StartUserspaceWireGuardTunnel();
 
   // Spawns the userspace wireguard process, which will setup the tunnel
-  // interface and do the data tunneling. WireguardProcessExited() will be
+  // interface and do the data tunneling. WireGuardProcessExited() will be
   // invoked if that process exits unexpectedly.
-  bool SpawnWireguard();
-  void WireguardProcessExited(int exit_code);
+  bool SpawnWireGuard();
+  void WireGuardProcessExited(int exit_code);
 
   // Generates a config file that will be used by wireguard-tools from the
   // profile and write its content into a temporary file. Writes the path to the
@@ -120,7 +120,7 @@ class WireguardDriver : public VPNDriver {
   base::FilePath config_directory_;
   gid_t vpn_gid_;
 
-  base::WeakPtrFactory<WireguardDriver> weak_factory_{this};
+  base::WeakPtrFactory<WireGuardDriver> weak_factory_{this};
 };
 
 }  // namespace shill

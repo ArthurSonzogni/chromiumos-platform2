@@ -238,7 +238,7 @@ TEST_F(VPNProviderTest, CreateService) {
   static const char kHost[] = "test-vpn-host";
   static const char* const kTypes[] = {kProviderOpenVpn, kProviderL2tpIpsec,
                                        kProviderThirdPartyVpn,
-                                       kProviderWireguard};
+                                       kProviderWireGuard};
   const size_t kTypesCount = base::size(kTypes);
   EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
   for (auto type : kTypes) {

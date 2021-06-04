@@ -293,16 +293,16 @@ const char kExtensionNameProperty[] = "ExtensionName";
 const char kObjectPathSuffixProperty[] = "ObjectPathSuffix";
 
 // WireGuard Service property names.
-const char kWireguardPrivateKey[] = "Wireguard.PrivateKey";
-const char kWireguardPublicKey[] = "Wireguard.PublicKey";
-const char kWireguardAddress[] = "Wireguard.Address";
-const char kWireguardPeers[] = "Wireguard.Peers";
-// Property names of a peer in "Wireguard.Peers"
-const char kWireguardPeerPublicKey[] = "PublicKey";
-const char kWireguardPeerPresharedKey[] = "PresharedKey";
-const char kWireguardPeerEndPoint[] = "EndPoint";
-const char kWireguardPeerAllowedIPs[] = "AllowedIPs";
-const char kWireguardPeerPersistentKeepalive[] = "PersistentKeepalive";
+const char kWireGuardPrivateKey[] = "WireGuard.PrivateKey";
+const char kWireGuardPublicKey[] = "WireGuard.PublicKey";
+const char kWireGuardAddress[] = "WireGuard.Address";
+const char kWireGuardPeers[] = "WireGuard.Peers";
+// Property names of a peer in "WireGuard.Peers"
+const char kWireGuardPeerPublicKey[] = "PublicKey";
+const char kWireGuardPeerPresharedKey[] = "PresharedKey";
+const char kWireGuardPeerEndpoint[] = "Endpoint";
+const char kWireGuardPeerAllowedIPs[] = "AllowedIPs";
+const char kWireGuardPeerPersistentKeepalive[] = "PersistentKeepalive";
 
 // IPConfig property names.
 const char kAcceptedHostnameProperty[] = "AcceptedHostname";
@@ -560,7 +560,7 @@ const char kProviderL2tpIpsec[] = "l2tpipsec";
 const char kProviderOpenVpn[] = "openvpn";
 const char kProviderThirdPartyVpn[] = "thirdpartyvpn";
 const char kProviderArcVpn[] = "arcvpn";
-const char kProviderWireguard[] = "wireguard";
+const char kProviderWireGuard[] = "wireguard";
 
 // Flimflam monitored properties
 const char kMonitorPropertyChanged[] = "PropertyChanged";

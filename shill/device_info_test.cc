@@ -1286,7 +1286,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal2);
 }
 
-TEST_F(DeviceInfoTest, CreateWireguardInterface) {
+TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
   const std::string kIfName = "wg0";
   const std::string kLinkKind = "wireguard";
   int link_ready_calls_num = 0;
@@ -1297,7 +1297,7 @@ TEST_F(DeviceInfoTest, CreateWireguardInterface) {
   RTNLHandler::ResponseCallback registered_response_cb;
 
   auto call_create_wireguard_interface = [&]() {
-    return device_info_.CreateWireguardInterface(
+    return device_info_.CreateWireGuardInterface(
         kIfName, base::BindLambdaForTesting(link_ready_cb),
         base::BindLambdaForTesting(on_failure_cb));
   };

@@ -33,10 +33,10 @@ using testing::Not;
 using testing::Return;
 using testing::SaveArg;
 
-// Expose necessary private members of WireguardDriver for testing.
-class WireguardDriverTestPeer {
+// Expose necessary private members of WireGuardDriver for testing.
+class WireGuardDriverTestPeer {
  public:
-  explicit WireguardDriverTestPeer(WireguardDriver* driver) : driver_(driver) {
+  explicit WireGuardDriverTestPeer(WireGuardDriver* driver) : driver_(driver) {
     // Creates a temp directory for storing the config file.
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     driver_->config_directory_ = scoped_temp_dir_.GetPath();
@@ -46,7 +46,7 @@ class WireguardDriverTestPeer {
   }
 
  private:
-  std::unique_ptr<WireguardDriver> driver_;
+  std::unique_ptr<WireGuardDriver> driver_;
   base::ScopedTempDir scoped_temp_dir_;
 };
 
@@ -59,8 +59,8 @@ bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs) {
 
 namespace {
 
-constexpr pid_t kWireguardPid = 12345;
-constexpr pid_t kWireguardToolsPid = 12346;
+constexpr pid_t kWireGuardPid = 12345;
+constexpr pid_t kWireGuardToolsPid = 12346;
 const char kIfName[] = "wg0";
 constexpr int kIfIndex = 123;
 
@@ -69,26 +69,26 @@ constexpr char kPrivateKey1[] = "gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=";
 constexpr char kPrivateKey2[] = "wARBVZOPBWo7OoyHLfv2mDgFxYJ3S6uc9lIOpRiGqVI=";
 
 // Consistent with the properties set in
-// WireguardDriverTest::InitializePropertyStore().
+// WireGuardDriverTest::InitializePropertyStore().
 const char kExpectedConfigFileContents[] = R"([Interface]
 PrivateKey=gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=
 
 [Peer]
 PublicKey=public-key-1
 PresharedKey=preshared-key-1
-EndPoint=10.0.1.1:12345
+Endpoint=10.0.1.1:12345
 AllowedIPs=192.168.1.2/32,192.168.2.0/24
 PersistentKeepalive=10
 
 [Peer]
 PublicKey=public-key-2
-EndPoint=10.0.1.2:12345
+Endpoint=10.0.1.2:12345
 AllowedIPs=192.168.1.2/32,192.168.3.0/24
 )";
 
-class WireguardDriverTest : public testing::Test {
+class WireGuardDriverTest : public testing::Test {
  public:
-  WireguardDriverTest()
+  WireGuardDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_), device_info_(&manager_) {
     ResetDriver();
     manager_.set_mock_device_info(&device_info_);
@@ -98,28 +98,28 @@ class WireguardDriverTest : public testing::Test {
  protected:
   // Useful in storage-related tests.
   void ResetDriver() {
-    driver_ = new WireguardDriver(&manager_, &process_manager_);
-    driver_test_peer_.reset(new WireguardDriverTestPeer(driver_));
+    driver_ = new WireGuardDriver(&manager_, &process_manager_);
+    driver_test_peer_.reset(new WireGuardDriverTestPeer(driver_));
     property_store_.reset(new PropertyStore());
     driver_->InitPropertyStore(property_store_.get());
   }
 
   void InitializePropertyStore() {
     Error err;
-    property_store_->SetStringProperty(kWireguardPrivateKey, kPrivateKey1,
+    property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey1,
                                        &err);
-    property_store_->SetStringProperty(kWireguardAddress, "192.168.1.2", &err);
+    property_store_->SetStringProperty(kWireGuardAddress, "192.168.1.2", &err);
     property_store_->SetStringmapsProperty(
-        kWireguardPeers,
+        kWireGuardPeers,
         {
-            {{kWireguardPeerPublicKey, "public-key-1"},
-             {kWireguardPeerPresharedKey, "preshared-key-1"},
-             {kWireguardPeerPersistentKeepalive, "10"},
-             {kWireguardPeerEndPoint, "10.0.1.1:12345"},
-             {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
-            {{kWireguardPeerPublicKey, "public-key-2"},
-             {kWireguardPeerEndPoint, "10.0.1.2:12345"},
-             {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+            {{kWireGuardPeerPublicKey, "public-key-1"},
+             {kWireGuardPeerPresharedKey, "preshared-key-1"},
+             {kWireGuardPeerPersistentKeepalive, "10"},
+             {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+             {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+            {{kWireGuardPeerPublicKey, "public-key-2"},
+             {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+             {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
         },
         &err);
   }
@@ -149,7 +149,7 @@ class WireguardDriverTest : public testing::Test {
 
   void InvokeConnectAsyncKernel() {
     driver_->ConnectAsync(&driver_event_handler_);
-    EXPECT_CALL(device_info_, CreateWireguardInterface(kIfName, _, _))
+    EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
         .WillOnce([this](const std::string&,
                          DeviceInfo::LinkReadyCallback link_ready_cb,
                          base::OnceClosure failure_cb) {
@@ -162,7 +162,7 @@ class WireguardDriverTest : public testing::Test {
 
   void InvokeConnectAsyncUserspace() {
     driver_->ConnectAsync(&driver_event_handler_);
-    EXPECT_CALL(device_info_, CreateWireguardInterface(kIfName, _, _))
+    EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
         .WillOnce([this](const std::string&,
                          DeviceInfo::LinkReadyCallback link_ready_cb,
                          base::OnceClosure failure_cb) {
@@ -179,7 +179,7 @@ class WireguardDriverTest : public testing::Test {
         StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
                                CAP_TO_MASK(CAP_NET_ADMIN), true, true, _))
         .WillOnce(DoAll(SaveArg<9>(&wireguard_exit_callback_),
-                        Return(kWireguardPid)));
+                        Return(kWireGuardPid)));
     dispatcher_.DispatchPendingEvents();
     std::move(create_kernel_link_failed_callback_).Run();
   }
@@ -193,7 +193,7 @@ class WireguardDriverTest : public testing::Test {
                                        true, true, _))
         .WillOnce(DoAll(SaveArg<2>(&args),
                         SaveArg<9>(&wireguard_tools_exit_callback_),
-                        Return(kWireguardToolsPid)));
+                        Return(kWireGuardToolsPid)));
     std::move(link_ready_callback_).Run(kIfName, kIfIndex);
 
     EXPECT_EQ(args[0], "setconf");
@@ -211,8 +211,8 @@ class WireguardDriverTest : public testing::Test {
   FakeStore fake_store_;
   std::unique_ptr<PropertyStore> property_store_;
   MockVPNDriverEventHandler driver_event_handler_;
-  WireguardDriver* driver_;  // owned by driver_test_peer_
-  std::unique_ptr<WireguardDriverTestPeer> driver_test_peer_;
+  WireGuardDriver* driver_;  // owned by driver_test_peer_
+  std::unique_ptr<WireGuardDriverTestPeer> driver_test_peer_;
 
   base::RepeatingCallback<void(int)> wireguard_exit_callback_;
   base::RepeatingCallback<void(int)> wireguard_tools_exit_callback_;
@@ -221,7 +221,7 @@ class WireguardDriverTest : public testing::Test {
   base::FilePath config_file_path_;
 };
 
-TEST_F(WireguardDriverTest, ConnectFlowKernel) {
+TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   InitializePropertyStore();
   InvokeConnectAsyncKernel();
   InvokeLinkReady();
@@ -255,7 +255,7 @@ TEST_F(WireguardDriverTest, ConnectFlowKernel) {
   EXPECT_FALSE(base::PathExists(config_file_path_));
 }
 
-TEST_F(WireguardDriverTest, ConnectFlowUserspace) {
+TEST_F(WireGuardDriverTest, ConnectFlowUserspace) {
   InitializePropertyStore();
   InvokeConnectAsyncUserspace();
   InvokeLinkReady();
@@ -272,14 +272,14 @@ TEST_F(WireguardDriverTest, ConnectFlowUserspace) {
   // Skips checks for IPProperties. See ConnectFlowKernel.
 
   // Disconnect.
-  EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
+  EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
   driver_->Disconnect();
 
   // Checks that the config file has been deleted.
   EXPECT_FALSE(base::PathExists(config_file_path_));
 }
 
-TEST_F(WireguardDriverTest, WireguardToolsFailed) {
+TEST_F(WireGuardDriverTest, WireGuardToolsFailed) {
   InitializePropertyStore();
   InvokeConnectAsyncKernel();
   InvokeLinkReady();
@@ -292,7 +292,7 @@ TEST_F(WireguardDriverTest, WireguardToolsFailed) {
   EXPECT_FALSE(base::PathExists(config_file_path_));
 }
 
-TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
+TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   std::string contents;
   Error err;
   InitializePropertyStore();
@@ -313,33 +313,33 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   KeyValueStore provider;
   EXPECT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
                                                         &provider, &err));
-  EXPECT_FALSE(provider.Contains<std::string>(kWireguardPrivateKey));
-  EXPECT_TRUE(provider.Contains<std::string>(kWireguardPublicKey));
-  EXPECT_EQ(provider.Get<std::string>(kWireguardAddress), "192.168.1.2");
-  EXPECT_EQ(provider.Get<Stringmaps>(kWireguardPeers),
+  EXPECT_FALSE(provider.Contains<std::string>(kWireGuardPrivateKey));
+  EXPECT_TRUE(provider.Contains<std::string>(kWireGuardPublicKey));
+  EXPECT_EQ(provider.Get<std::string>(kWireGuardAddress), "192.168.1.2");
+  EXPECT_EQ(provider.Get<Stringmaps>(kWireGuardPeers),
             (Stringmaps{
-                {{kWireguardPeerPublicKey, "public-key-1"},
-                 {kWireguardPeerPersistentKeepalive, "10"},
-                 {kWireguardPeerEndPoint, "10.0.1.1:12345"},
-                 {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
-                {{kWireguardPeerPublicKey, "public-key-2"},
-                 {kWireguardPeerPersistentKeepalive, ""},
-                 {kWireguardPeerEndPoint, "10.0.1.2:12345"},
-                 {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+                {{kWireGuardPeerPublicKey, "public-key-1"},
+                 {kWireGuardPeerPersistentKeepalive, "10"},
+                 {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+                {{kWireGuardPeerPublicKey, "public-key-2"},
+                 {kWireGuardPeerPersistentKeepalive, ""},
+                 {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
             }));
 
   // Setting peers without touching PresharedKey property should leave it
   // unchanged.
   property_store_->SetStringmapsProperty(
-      kWireguardPeers,
+      kWireGuardPeers,
       {
-          {{kWireguardPeerPublicKey, "public-key-1"},
-           {kWireguardPeerPersistentKeepalive, "10"},
-           {kWireguardPeerEndPoint, "10.0.1.1:12345"},
-           {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
-          {{kWireguardPeerPublicKey, "public-key-2"},
-           {kWireguardPeerEndPoint, "10.0.1.2:12345"},
-           {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-2"},
+           {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
       },
       &err);
   InvokeConnectAsyncKernel();
@@ -351,16 +351,16 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   // Setting peers with an empty PresharedKey property should clear the
   // PresharedKey of that peer.
   property_store_->SetStringmapsProperty(
-      kWireguardPeers,
+      kWireGuardPeers,
       {
-          {{kWireguardPeerPublicKey, "public-key-1"},
-           {kWireguardPeerPresharedKey, ""},
-           {kWireguardPeerPersistentKeepalive, "10"},
-           {kWireguardPeerEndPoint, "10.0.1.1:12345"},
-           {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
-          {{kWireguardPeerPublicKey, "public-key-2"},
-           {kWireguardPeerEndPoint, "10.0.1.2:12345"},
-           {kWireguardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPresharedKey, ""},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-2"},
+           {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
       },
       &err);
   InvokeConnectAsyncKernel();
@@ -369,7 +369,7 @@ TEST_F(WireguardDriverTest, PropertyStoreAndConfigFile) {
   EXPECT_THAT(contents, Not(HasSubstr("PresharedKey=")));
 }
 
-TEST_F(WireguardDriverTest, KeyPairGeneration) {
+TEST_F(WireGuardDriverTest, KeyPairGeneration) {
   Error err;
   const std::string kStorageId = "wireguard-test";
 
@@ -377,13 +377,13 @@ TEST_F(WireguardDriverTest, KeyPairGeneration) {
     KeyValueStore provider;
     ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
                                                           &provider, &err));
-    ASSERT_EQ(provider.Get<std::string>(kWireguardPublicKey), key);
+    ASSERT_EQ(provider.Get<std::string>(kWireGuardPublicKey), key);
   };
   auto assert_pubkey_not_empty = [&]() {
     KeyValueStore provider;
     ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
                                                           &provider, &err));
-    ASSERT_FALSE(provider.Get<std::string>(kWireguardPublicKey).empty());
+    ASSERT_FALSE(provider.Get<std::string>(kWireGuardPublicKey).empty());
   };
 
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
@@ -393,22 +393,22 @@ TEST_F(WireguardDriverTest, KeyPairGeneration) {
   driver_->Load(&fake_store_, kStorageId);
   assert_pubkey_not_empty();
 
-  property_store_->SetStringProperty(kWireguardPrivateKey, kPrivateKey1, &err);
+  property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey1, &err);
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
   assert_pubkey_is(kPrivateKey1);
 
-  property_store_->SetStringProperty(kWireguardPrivateKey, "", &err);
+  property_store_->SetStringProperty(kWireGuardPrivateKey, "", &err);
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
   assert_pubkey_not_empty();
 
-  property_store_->SetStringProperty(kWireguardPrivateKey, kPrivateKey2, &err);
+  property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey2, &err);
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
   assert_pubkey_is(kPrivateKey2);
 }
 
-TEST_F(WireguardDriverTest, SpawnWireguardProcessFailed) {
+TEST_F(WireGuardDriverTest, SpawnWireGuardProcessFailed) {
   driver_->ConnectAsync(&driver_event_handler_);
-  EXPECT_CALL(device_info_, CreateWireguardInterface(kIfName, _, _))
+  EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, _, _))
@@ -417,14 +417,14 @@ TEST_F(WireguardDriverTest, SpawnWireguardProcessFailed) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(WireguardDriverTest, WireguardProcessExitedUnexpectedly) {
+TEST_F(WireGuardDriverTest, WireGuardProcessExitedUnexpectedly) {
   InvokeConnectAsyncUserspace();
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
   wireguard_exit_callback_.Run(1);
 }
 
 // Checks interface cleanup on timeout.
-TEST_F(WireguardDriverTest, OnConnectTimeout) {
+TEST_F(WireGuardDriverTest, OnConnectTimeout) {
   InitializePropertyStore();
 
   // Link is not created.
@@ -443,13 +443,13 @@ TEST_F(WireguardDriverTest, OnConnectTimeout) {
   InvokeConnectAsyncUserspace();
   InvokeLinkReady();
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
+  EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
   driver_->OnConnectTimeout();
 }
 
 // Checks interface cleanup on disconnect before connected. Different with
 // OnConnectTimeout, disconnect will not trigger an OnDriverFailure callback.
-TEST_F(WireguardDriverTest, DisconnectBeforeConnected) {
+TEST_F(WireGuardDriverTest, DisconnectBeforeConnected) {
   InitializePropertyStore();
 
   // Link is not created.
@@ -465,7 +465,7 @@ TEST_F(WireguardDriverTest, DisconnectBeforeConnected) {
   // Link is created by userspace process.
   InvokeConnectAsyncUserspace();
   InvokeLinkReady();
-  EXPECT_CALL(process_manager_, StopProcess(kWireguardPid));
+  EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
   driver_->OnConnectTimeout();
 }
 

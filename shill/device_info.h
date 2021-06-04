@@ -144,7 +144,7 @@ class DeviceInfo {
   // |link_ready_callback| will be invoked when the created link is ready,
   // otherwise |failure_callback| will be invoked if the kernel rejects our
   // request.
-  virtual bool CreateWireguardInterface(const std::string& interface_name,
+  virtual bool CreateWireGuardInterface(const std::string& interface_name,
                                         LinkReadyCallback link_ready_callback,
                                         base::OnceClosure failure_callback);
 
@@ -296,10 +296,10 @@ class DeviceInfo {
   void OnNeighborReachabilityEvent(
       const patchpanel::NeighborReachabilityEventSignal& signal);
 
-  // Callback registered in CreateWireguardInterface() and invoked by
+  // Callback registered in CreateWireGuardInterface() and invoked by
   // RTNLHandler, to notify the acknowledgement from the kernel for the adding
   // link request.
-  void OnCreateWireguardInterfaceResponse(const std::string& interface_name,
+  void OnCreateWireGuardInterfaceResponse(const std::string& interface_name,
                                           base::OnceClosure failure_callback,
                                           int32_t error);
 

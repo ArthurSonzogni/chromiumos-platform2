@@ -33,20 +33,20 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const WireguardDriver*) {
+static std::string ObjectID(const WireGuardDriver*) {
   return "(wireguard_driver)";
 }
 }  // namespace Logging
 
 namespace {
 
-const char kWireguardPath[] = "/usr/sbin/wireguard";
-const char kWireguardToolsPath[] = "/usr/sbin/wg";
+const char kWireGuardPath[] = "/usr/sbin/wireguard";
+const char kWireGuardToolsPath[] = "/usr/sbin/wg";
 const char kDefaultInterfaceName[] = "wg0";
 
 // Directory where wireguard configuration files are exported. The owner of this
 // directory is vpn:vpn, so both shill and wireguard client can access it.
-const char kWireguardConfigDir[] = "/run/wireguard";
+const char kWireGuardConfigDir[] = "/run/wireguard";
 
 // Timeout value for spawning the userspace wireguard process and configuring
 // the interface via wireguard-tools.
@@ -70,11 +70,11 @@ struct PeerProperty {
   const bool is_required;
 };
 constexpr PeerProperty kPeerProperties[] = {
-    {kWireguardPeerPublicKey, true},
-    {kWireguardPeerPresharedKey, false},
-    {kWireguardPeerEndPoint, true},
-    {kWireguardPeerAllowedIPs, true},
-    {kWireguardPeerPersistentKeepalive, false},
+    {kWireGuardPeerPublicKey, true},
+    {kWireGuardPeerPresharedKey, false},
+    {kWireGuardPeerEndpoint, true},
+    {kWireGuardPeerAllowedIPs, true},
+    {kWireGuardPeerPersistentKeepalive, false},
 };
 
 std::string GenerateBase64PrivateKey() {
@@ -93,7 +93,7 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
   int stdin_fd = -1;
   int stdout_fd = -1;
   pid_t pid = process_manager->StartProcessInMinijailWithPipes(
-      FROM_HERE, base::FilePath(kWireguardToolsPath), {"pubkey"},
+      FROM_HERE, base::FilePath(kWireGuardToolsPath), {"pubkey"},
       /*environment=*/{}, kVpnUser, kVpnGroup, /*caps=*/0,
       /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
       /*exit_callback=*/base::DoNothing(),
@@ -149,7 +149,7 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
 }  // namespace
 
 // static
-const VPNDriver::Property WireguardDriver::kProperties[] = {
+const VPNDriver::Property WireGuardDriver::kProperties[] = {
     {kProviderHostProperty, 0},
     {kProviderTypeProperty, 0},
 
@@ -157,77 +157,77 @@ const VPNDriver::Property WireguardDriver::kProperties[] = {
     // only support the "client mode".
     // TODO(b/177876632): Consider making this kCredential. Peer.PresharedKey
     // may need some similar handling.
-    {kWireguardPrivateKey, Property::kWriteOnly},
+    {kWireGuardPrivateKey, Property::kWriteOnly},
     // TODO(b/177877860): This field is for software-backed keys only. May need
     // to change this logic when hardware-backed keys come.
-    {kWireguardPublicKey, Property::kReadOnly},
+    {kWireGuardPublicKey, Property::kReadOnly},
     // Address for the wireguard interface.
     // TODO(b/177876632): Support IPv6 (multiple addresses).
     // TODO(b/177876632): Verify that putting other properties for the interface
     // (i.e., DNS and MTU) are in the StaticIPParameters works.
-    {kWireguardAddress, 0},
+    {kWireGuardAddress, 0},
 };
 
-WireguardDriver::WireguardDriver(Manager* manager,
+WireGuardDriver::WireGuardDriver(Manager* manager,
                                  ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
-      config_directory_(kWireguardConfigDir),
+      config_directory_(kWireGuardConfigDir),
       vpn_gid_(kVpnGid) {}
 
-WireguardDriver::~WireguardDriver() {
+WireGuardDriver::~WireGuardDriver() {
   Cleanup();
 }
 
-base::TimeDelta WireguardDriver::ConnectAsync(EventHandler* event_handler) {
+base::TimeDelta WireGuardDriver::ConnectAsync(EventHandler* event_handler) {
   SLOG(this, 2) << __func__;
   event_handler_ = event_handler;
   // To make sure the connect procedure is executed asynchronously.
   dispatcher()->PostTask(
       FROM_HERE,
-      base::BindOnce(&WireguardDriver::CreateKernelWireguardInterface,
+      base::BindOnce(&WireGuardDriver::CreateKernelWireGuardInterface,
                      weak_factory_.GetWeakPtr()));
   return kConnectTimeout;
 }
 
-void WireguardDriver::Disconnect() {
+void WireGuardDriver::Disconnect() {
   SLOG(this, 2) << __func__;
   Cleanup();
   event_handler_ = nullptr;
 }
 
-IPConfig::Properties WireguardDriver::GetIPProperties() const {
+IPConfig::Properties WireGuardDriver::GetIPProperties() const {
   return ip_properties_;
 }
 
-std::string WireguardDriver::GetProviderType() const {
-  return kProviderWireguard;
+std::string WireGuardDriver::GetProviderType() const {
+  return kProviderWireGuard;
 }
 
-void WireguardDriver::OnConnectTimeout() {
+void WireGuardDriver::OnConnectTimeout() {
   FailService(Service::kFailureConnect, "Connect timeout");
 }
 
-void WireguardDriver::InitPropertyStore(PropertyStore* store) {
+void WireGuardDriver::InitPropertyStore(PropertyStore* store) {
   VPNDriver::InitPropertyStore(store);
   store->RegisterDerivedStringmaps(
-      kWireguardPeers,
+      kWireGuardPeers,
       StringmapsAccessor(
-          new CustomWriteOnlyAccessor<WireguardDriver, Stringmaps>(
-              this, &WireguardDriver::UpdatePeers, &WireguardDriver::ClearPeers,
+          new CustomWriteOnlyAccessor<WireGuardDriver, Stringmaps>(
+              this, &WireGuardDriver::UpdatePeers, &WireGuardDriver::ClearPeers,
               nullptr)));
 }
 
-KeyValueStore WireguardDriver::GetProvider(Error* error) {
+KeyValueStore WireGuardDriver::GetProvider(Error* error) {
   KeyValueStore props = VPNDriver::GetProvider(error);
   Stringmaps copied_peers = peers_;
   for (auto& peer : copied_peers) {
-    peer.erase(kWireguardPeerPresharedKey);
+    peer.erase(kWireGuardPeerPresharedKey);
   }
-  props.Set<Stringmaps>(kWireguardPeers, copied_peers);
+  props.Set<Stringmaps>(kWireGuardPeers, copied_peers);
   return props;
 }
 
-bool WireguardDriver::Load(const StoreInterface* storage,
+bool WireGuardDriver::Load(const StoreInterface* storage,
                            const std::string& storage_id) {
   if (!VPNDriver::Load(storage, storage_id)) {
     return false;
@@ -236,8 +236,8 @@ bool WireguardDriver::Load(const StoreInterface* storage,
   peers_.clear();
 
   std::vector<std::string> encoded_peers;
-  if (!storage->GetStringList(storage_id, kWireguardPeers, &encoded_peers)) {
-    LOG(WARNING) << "Profile does not contain the " << kWireguardPeers
+  if (!storage->GetStringList(storage_id, kWireGuardPeers, &encoded_peers)) {
+    LOG(WARNING) << "Profile does not contain the " << kWireGuardPeers
                  << " property";
     return true;
   }
@@ -261,19 +261,19 @@ bool WireguardDriver::Load(const StoreInterface* storage,
     peers_.push_back(peer);
   }
 
-  saved_private_key_ = args()->Lookup<std::string>(kWireguardPrivateKey, "");
+  saved_private_key_ = args()->Lookup<std::string>(kWireGuardPrivateKey, "");
 
   return true;
 }
 
-bool WireguardDriver::Save(StoreInterface* storage,
+bool WireGuardDriver::Save(StoreInterface* storage,
                            const std::string& storage_id,
                            bool save_credentials) {
   // Keys should be processed before calling VPNDriver::Save().
-  auto private_key = args()->Lookup<std::string>(kWireguardPrivateKey, "");
+  auto private_key = args()->Lookup<std::string>(kWireGuardPrivateKey, "");
   if (private_key.empty()) {
     private_key = GenerateBase64PrivateKey();
-    args()->Set<std::string>(kWireguardPrivateKey, private_key);
+    args()->Set<std::string>(kWireGuardPrivateKey, private_key);
   }
   if (private_key != saved_private_key_) {
     std::string public_key =
@@ -282,7 +282,7 @@ bool WireguardDriver::Save(StoreInterface* storage,
       LOG(ERROR) << "Failed to calculate public key in Save().";
       return false;
     }
-    args()->Set<std::string>(kWireguardPublicKey, public_key);
+    args()->Set<std::string>(kWireGuardPublicKey, public_key);
     saved_private_key_ = public_key;
   }
 
@@ -302,8 +302,8 @@ bool WireguardDriver::Save(StoreInterface* storage,
     encoded_peers.push_back(peer_json);
   }
 
-  if (!storage->SetStringList(storage_id, kWireguardPeers, encoded_peers)) {
-    LOG(ERROR) << "Failed to write " << kWireguardPeers
+  if (!storage->SetStringList(storage_id, kWireGuardPeers, encoded_peers)) {
+    LOG(ERROR) << "Failed to write " << kWireGuardPeers
                << " property into profile";
     return false;
   }
@@ -311,21 +311,21 @@ bool WireguardDriver::Save(StoreInterface* storage,
   return VPNDriver::Save(storage, storage_id, save_credentials);
 }
 
-void WireguardDriver::CreateKernelWireguardInterface() {
+void WireGuardDriver::CreateKernelWireGuardInterface() {
   auto link_ready_callback = base::BindOnce(
-      &WireguardDriver::ConfigureInterface, weak_factory_.GetWeakPtr(),
+      &WireGuardDriver::ConfigureInterface, weak_factory_.GetWeakPtr(),
       /*created_in_kernel=*/true);
   auto failure_callback =
-      base::BindOnce(&WireguardDriver::StartUserspaceWireguardTunnel,
+      base::BindOnce(&WireGuardDriver::StartUserspaceWireGuardTunnel,
                      weak_factory_.GetWeakPtr());
-  if (!manager()->device_info()->CreateWireguardInterface(
+  if (!manager()->device_info()->CreateWireGuardInterface(
           kDefaultInterfaceName, std::move(link_ready_callback),
           std::move(failure_callback))) {
-    StartUserspaceWireguardTunnel();
+    StartUserspaceWireGuardTunnel();
   }
 }
 
-void WireguardDriver::StartUserspaceWireguardTunnel() {
+void WireGuardDriver::StartUserspaceWireGuardTunnel() {
   LOG(INFO) << "Failed to create a wireguard interface in the kernel. Fallback "
                "to userspace tunnel.";
 
@@ -337,16 +337,16 @@ void WireguardDriver::StartUserspaceWireguardTunnel() {
   // process at a fixed path: `/var/run/wireguard/wg0.sock`).
   manager()->device_info()->AddVirtualInterfaceReadyCallback(
       kDefaultInterfaceName,
-      base::BindOnce(&WireguardDriver::ConfigureInterface,
+      base::BindOnce(&WireGuardDriver::ConfigureInterface,
                      weak_factory_.GetWeakPtr(),
                      /*created_in_kernel=*/false));
 
-  if (!SpawnWireguard()) {
+  if (!SpawnWireGuard()) {
     FailService(Service::kFailureInternal, "Failed to spawn wireguard process");
   }
 }
 
-bool WireguardDriver::SpawnWireguard() {
+bool WireGuardDriver::SpawnWireGuard() {
   SLOG(this, 2) << __func__;
 
   // TODO(b/177876632): Change this part after we decide the userspace binary to
@@ -359,15 +359,15 @@ bool WireguardDriver::SpawnWireguard() {
   };
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   wireguard_pid_ = process_manager()->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kWireguardPath), args,
+      FROM_HERE, base::FilePath(kWireGuardPath), args,
       /*environment=*/{}, kVpnUser, kVpnGroup, kCapMask,
       /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
-      base::BindRepeating(&WireguardDriver::WireguardProcessExited,
+      base::BindRepeating(&WireGuardDriver::WireGuardProcessExited,
                           weak_factory_.GetWeakPtr()));
   return wireguard_pid_ > -1;
 }
 
-void WireguardDriver::WireguardProcessExited(int exit_code) {
+void WireGuardDriver::WireGuardProcessExited(int exit_code) {
   wireguard_pid_ = -1;
   FailService(
       Service::kFailureInternal,
@@ -375,13 +375,13 @@ void WireguardDriver::WireguardProcessExited(int exit_code) {
                          exit_code));
 }
 
-bool WireguardDriver::GenerateConfigFile() {
+bool WireGuardDriver::GenerateConfigFile() {
   std::vector<std::string> lines;
 
   // [Interface] section
   lines.push_back("[Interface]");
   const std::string private_key =
-      args()->Lookup<std::string>(kWireguardPrivateKey, "");
+      args()->Lookup<std::string>(kWireGuardPrivateKey, "");
   if (private_key.empty()) {
     LOG(ERROR) << "PrivateKey is required but is empty or not set.";
     return false;
@@ -436,7 +436,7 @@ bool WireguardDriver::GenerateConfigFile() {
   return true;
 }
 
-void WireguardDriver::ConfigureInterface(bool created_in_kernel,
+void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
                                          const std::string& interface_name,
                                          int interface_index) {
   LOG(INFO) << "WireGuard interface " << interface_name << " was created "
@@ -461,9 +461,9 @@ void WireguardDriver::ConfigureInterface(bool created_in_kernel,
                                    config_file_.value()};
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   pid_t pid = process_manager()->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kWireguardToolsPath), args,
+      FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
       /*environment=*/{}, kVpnUser, kVpnGroup, kCapMask, true, true,
-      base::BindRepeating(&WireguardDriver::OnConfigurationDone,
+      base::BindRepeating(&WireGuardDriver::OnConfigurationDone,
                           weak_factory_.GetWeakPtr()));
   if (pid == -1) {
     FailService(Service::kFailureInternal, "Failed to run `wg setconf`");
@@ -471,7 +471,7 @@ void WireguardDriver::ConfigureInterface(bool created_in_kernel,
   }
 }
 
-void WireguardDriver::OnConfigurationDone(int exit_code) {
+void WireGuardDriver::OnConfigurationDone(int exit_code) {
   SLOG(this, 2) << __func__ << ": exit_code=" << exit_code;
 
   if (exit_code != 0) {
@@ -489,13 +489,13 @@ void WireguardDriver::OnConfigurationDone(int exit_code) {
   event_handler_->OnDriverConnected(kDefaultInterfaceName, interface_index_);
 }
 
-bool WireguardDriver::PopulateIPProperties() {
+bool WireGuardDriver::PopulateIPProperties() {
   ip_properties_.default_route = false;
 
   const auto address =
-      IPAddress(args()->Lookup<std::string>(kWireguardAddress, ""));
+      IPAddress(args()->Lookup<std::string>(kWireGuardAddress, ""));
   if (!address.IsValid()) {
-    LOG(ERROR) << "WireguardAddress property is not valid";
+    LOG(ERROR) << "WireGuardAddress property is not valid";
     return false;
   }
   ip_properties_.address_family = address.family();
@@ -505,7 +505,7 @@ bool WireguardDriver::PopulateIPProperties() {
   // by wireguard-tools. AllowedIPs is comma-separated list of CIDR-notation
   // addresses (e.g., "10.8.0.1/16,192.168.1.1/24").
   for (auto& peer : peers_) {
-    std::string allowed_ips_str = peer[kWireguardPeerAllowedIPs];
+    std::string allowed_ips_str = peer[kWireGuardPeerAllowedIPs];
     std::vector<std::string> allowed_ip_list = base::SplitString(
         allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     for (const auto& allowed_ip_str : allowed_ip_list) {
@@ -528,7 +528,7 @@ bool WireguardDriver::PopulateIPProperties() {
   return true;
 }
 
-void WireguardDriver::FailService(Service::ConnectFailure failure,
+void WireGuardDriver::FailService(Service::ConnectFailure failure,
                                   const std::string& error_details) {
   LOG(ERROR) << "Driver error: " << error_details;
   Cleanup();
@@ -538,7 +538,7 @@ void WireguardDriver::FailService(Service::ConnectFailure failure,
   }
 }
 
-void WireguardDriver::Cleanup() {
+void WireGuardDriver::Cleanup() {
   if (wireguard_pid_ != -1) {
     process_manager()->StopProcess(wireguard_pid_);
     wireguard_pid_ = -1;
@@ -557,30 +557,30 @@ void WireguardDriver::Cleanup() {
   }
 }
 
-bool WireguardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
+bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
   // If the preshared key of a peer in the new peers is unspecified (the caller
   // doesn't set that key), try to reset it to the old value.
   Stringmap pubkey_to_psk;
   for (auto& peer : peers_) {
-    pubkey_to_psk[peer[kWireguardPeerPublicKey]] =
-        peer[kWireguardPeerPresharedKey];
+    pubkey_to_psk[peer[kWireGuardPeerPublicKey]] =
+        peer[kWireGuardPeerPresharedKey];
   }
 
   peers_ = new_peers;
   for (const auto& [pubkey, psk] : pubkey_to_psk) {
     for (auto& peer : peers_) {
-      if (peer[kWireguardPeerPublicKey] != pubkey ||
-          peer.find(kWireguardPeerPresharedKey) != peer.end()) {
+      if (peer[kWireGuardPeerPublicKey] != pubkey ||
+          peer.find(kWireGuardPeerPresharedKey) != peer.end()) {
         continue;
       }
-      peer[kWireguardPeerPresharedKey] = psk;
+      peer[kWireGuardPeerPresharedKey] = psk;
     }
   }
 
   return true;
 }
 
-void WireguardDriver::ClearPeers(Error* error) {
+void WireGuardDriver::ClearPeers(Error* error) {
   peers_.clear();
 }
 
