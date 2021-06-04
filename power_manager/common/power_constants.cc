@@ -117,6 +117,7 @@ const char kHibernatePowerUaPref[] = "hibernate_power_ua";
 const char kDeferExternalDisplayTimeoutPref[] =
     "defer_external_display_timeout";
 const char kExternalAmbientLightSensorPref[] = "external_ambient_light_sensor";
+const char kExternalBacklightAlsStepsPref[] = "external_backlight_als_steps";
 
 // This pref is incomplete. Prefs based on it are defined by other packages
 // populating them.

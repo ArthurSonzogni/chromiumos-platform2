@@ -350,7 +350,7 @@ void Daemon::Init() {
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
           delegate_->CreateExternalBacklightController(
-              ambient_light_sensor_watcher_.get(),
+              prefs_.get(), ambient_light_sensor_watcher_.get(),
               external_ambient_light_sensor_factory_.get(),
               display_watcher_.get(), display_power_setter_.get(),
               dbus_wrapper_.get());

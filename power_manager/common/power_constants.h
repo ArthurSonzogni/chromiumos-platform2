@@ -302,6 +302,10 @@ extern const char kDeferExternalDisplayTimeoutPref[];
 // adjust the brightness of external displays.
 extern const char kExternalAmbientLightSensorPref[];
 
+// Ambient-light-sensor-derived external backlight brightness steps. See
+// powerd/policy/ambient_light_handler.h for details.
+extern const char kExternalBacklightAlsStepsPref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.

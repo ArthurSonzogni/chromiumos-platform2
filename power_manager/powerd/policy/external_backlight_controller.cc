@@ -16,6 +16,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_file.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
@@ -43,8 +44,6 @@ constexpr int kMinimumAssociationScore = 4;
 
 // Constants used to initialize ExternalAmbientLightHandlers. See
 // AmbientLightHandler::Init for a more detailed explanation of these values.
-constexpr char kExternalAmbientLightHandlerSteps[] =
-    "50.0 -1 600\n75.0 500 5000\n100.0 4500 -1";
 constexpr double kExternalAmbientLightHandlerInitialBrightness = 100.0;
 constexpr double kExternalAmbientLightHandlerSmoothingConstant = 1.0;
 
@@ -62,16 +61,21 @@ ExternalBacklightController::~ExternalBacklightController() {
 }
 
 void ExternalBacklightController::Init(
+    PrefsInterface* prefs,
     system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
     system::ExternalAmbientLightSensorFactoryInterface*
         external_ambient_light_sensor_factory,
     system::DisplayWatcherInterface* display_watcher,
     system::DisplayPowerSetterInterface* display_power_setter,
     system::DBusWrapperInterface* dbus_wrapper) {
+  prefs_ = prefs;
   ambient_light_sensor_watcher_ = ambient_light_sensor_watcher;
   external_ambient_light_sensor_factory_ =
       external_ambient_light_sensor_factory;
   if (ambient_light_sensor_watcher_) {
+    CHECK(prefs_->GetString(kExternalBacklightAlsStepsPref,
+                            &external_backlight_als_steps_))
+        << "Failed to read pref " << kExternalBacklightAlsStepsPref;
     ambient_light_sensor_watcher_->AddObserver(this);
   }
   display_watcher_ = display_watcher;
@@ -365,7 +369,7 @@ void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
           external_ambient_light_sensor_factory_->CreateSensor(als_info.device);
       auto handler = std::make_unique<ExternalAmbientLightHandler>(
           std::move(sensor), best_matching_display, this);
-      handler->Init(kExternalAmbientLightHandlerSteps,
+      handler->Init(external_backlight_als_steps_,
                     kExternalAmbientLightHandlerInitialBrightness,
                     kExternalAmbientLightHandlerSmoothingConstant);
       updated_ambient_light_sensors.emplace(als_info.iio_path,

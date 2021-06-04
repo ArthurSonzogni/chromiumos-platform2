@@ -174,3 +174,6 @@ powerd_prefs: &powerd_prefs
   external-ambient-light-sensor:
     <<: *powerd_prefs_default
     default: "0"
+  external-backlight-als-steps:
+    <<: *powerd_prefs_default
+    default: "5.0 -1 600 100.0 500 -1"

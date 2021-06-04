@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -21,6 +22,8 @@
 #include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager {
+
+class PrefsInterface;
 
 namespace system {
 struct AmbientLightSensorInfo;
@@ -53,6 +56,7 @@ class ExternalBacklightController
 
   // Initializes the object. Ownership of raw pointers remains with the caller.
   void Init(
+      PrefsInterface* prefs,
       system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher,
       system::ExternalAmbientLightSensorFactoryInterface*
           external_ambient_light_sensor_factory,
@@ -138,6 +142,7 @@ class ExternalBacklightController
   void MatchAmbientLightSensorsToDisplays();
 
   // These pointers aren't owned by this class.
+  PrefsInterface* prefs_ = nullptr;
   system::AmbientLightSensorWatcherInterface* ambient_light_sensor_watcher_ =
       nullptr;
   system::ExternalAmbientLightSensorFactoryInterface*
@@ -177,6 +182,8 @@ class ExternalBacklightController
   // Number of times the user has requested that the brightness be changed in
   // the current session.
   int num_brightness_adjustments_in_session_ = 0;
+
+  std::string external_backlight_als_steps_;
 
   base::WeakPtrFactory<ExternalBacklightController> weak_ptr_factory_;
 };

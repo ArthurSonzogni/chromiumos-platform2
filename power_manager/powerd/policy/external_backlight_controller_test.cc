@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/policy/backlight_controller_test_util.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_stub.h"
@@ -34,8 +35,9 @@ namespace policy {
 class ExternalBacklightControllerTest : public ::testing::Test {
  public:
   ExternalBacklightControllerTest() {
+    prefs_.SetString(kExternalBacklightAlsStepsPref, default_als_steps_);
     controller_.AddObserver(&observer_);
-    controller_.Init(&ambient_light_sensor_watcher_,
+    controller_.Init(&prefs_, &ambient_light_sensor_watcher_,
                      &ambient_light_sensor_factory_, &display_watcher_,
                      &display_power_setter_, &dbus_wrapper_);
   }
@@ -78,6 +80,9 @@ class ExternalBacklightControllerTest : public ::testing::Test {
     ambient_light_sensor_watcher_.RemoveSensor(als);
   }
 
+  std::string default_als_steps_ = "5.0 -1 600\n100.0 500 -1";
+
+  FakePrefs prefs_;
   BacklightControllerObserverStub observer_;
   system::AmbientLightSensorWatcherStub ambient_light_sensor_watcher_;
   system::ExternalAmbientLightSensorFactoryStub ambient_light_sensor_factory_;
