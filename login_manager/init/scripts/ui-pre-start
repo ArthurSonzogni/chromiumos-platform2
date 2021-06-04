@@ -110,9 +110,20 @@ fi
 
 # Apply Input boosting
 INPUT_BOOST=/sys/module/cpu_boost/parameters/input_boost_freq_percent
+INPUT_BOOST_DEFAULT=0
+CPUFREQ_CONF=/etc/cpufreq.conf
+
 if [ -f "${INPUT_BOOST}" ]; then
+  # Default value is 75 for platforms using EAS
+  if [ -f "${CPUFREQ_CONF}" ]; then
+    . "${CPUFREQ_CONF}"
+    if [ "${CPUFREQ_GOVERNOR}" = "schedutil" ] || \
+       [ "${CPUFREQ_GOVERNOR}" = "sched" ]; then
+      INPUT_BOOST_DEFAULT=75
+    fi
+  fi
   read_cros_config_int "/scheduler-tune" "input-boost" \
-    "$(cat "${INPUT_BOOST}")" > "${INPUT_BOOST}"
+    "${INPUT_BOOST_DEFAULT}" > "${INPUT_BOOST}"
 fi
 
 # Limit non-urgent tasks to small cores
