@@ -434,6 +434,13 @@ const size_t kChallengeSignatureNonceSize = 20;  // For all TPMs.
 AttestationService::AttestationService(brillo::SecureBlob* abe_data)
     : abe_data_(abe_data), weak_factory_(this) {}
 
+AttestationService::~AttestationService() {
+  // Stop the worker thread before we destruct it.
+  if (worker_thread_) {
+    worker_thread_->Stop();
+  }
+}
+
 bool AttestationService::Initialize() {
   return InitializeWithCallback(base::DoNothing());
 }

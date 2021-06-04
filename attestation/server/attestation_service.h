@@ -85,7 +85,7 @@ class AttestationService : public AttestationInterface {
   AttestationService(const AttestationService&) = delete;
   AttestationService& operator=(const AttestationService&) = delete;
 
-  ~AttestationService() override = default;
+  ~AttestationService() override;
 
   // AttestationInterface methods.
   bool Initialize() override;
@@ -785,16 +785,16 @@ class AttestationService : public AttestationInterface {
   SynchronizedCertificateQueue certificate_queue_{
       kCertificateRequestAliasLimit};
 
-  // All work is done in the background. This serves to serialize requests and
-  // allow synchronous implementation of complex methods. This is intentionally
-  // declared after the thread-owned members.
-  std::unique_ptr<ServiceWorkerThread> worker_thread_;
-
   // The device policy provider, used to get device policy data.
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 
   // Declared last so any weak pointers are destroyed first.
   base::WeakPtrFactory<AttestationService> weak_factory_;
+
+  // All work is done in the background. This serves to serialize requests and
+  // allow synchronous implementation of complex methods. This is intentionally
+  // declared after the thread-owned members.
+  std::unique_ptr<ServiceWorkerThread> worker_thread_;
 };
 
 }  // namespace attestation
