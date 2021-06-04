@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
+#include <unistd.h>
 
 #include <limits>
 #include <utility>
@@ -381,24 +382,31 @@ void Connection::UpdateRoutingPolicy() {
 void Connection::AllowTrafficThrough(uint32_t table_id,
                                      uint32_t base_priority,
                                      bool no_ipv6) {
-  for (const auto& source_address : allowed_srcs_) {
-    if (source_address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
-      continue;
+  // b/189952150: when |no_ipv6| is true and shill must prevent IPv6 traffic on
+  // this connection for applications, it is still necessary to ensure that some
+  // critical system IPv6 traffic can be routed. Example: shill portal detection
+  // probes when the network connection is IPv6 only. For the time being the
+  // only supported case is traffic from shill.
+  uint32_t shill_uid = getuid();
 
-    routing_table_->AddRule(interface_index_,
-                            RoutingPolicyEntry::CreateFromSrc(source_address)
-                                .SetPriority(base_priority)
-                                .SetTable(table_id));
+  for (const auto& source_address : allowed_srcs_) {
+    auto src_addr_rule = RoutingPolicyEntry::CreateFromSrc(source_address)
+                             .SetPriority(base_priority)
+                             .SetTable(table_id);
+    if (source_address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
+      src_addr_rule.SetUid(shill_uid);
+    }
+    routing_table_->AddRule(interface_index_, src_addr_rule);
   }
 
   for (const auto& dst_address : allowed_dsts_) {
-    if (dst_address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
-      continue;
-
-    routing_table_->AddRule(interface_index_,
-                            RoutingPolicyEntry::CreateFromDst(dst_address)
-                                .SetPriority(kDstRulePriority)
-                                .SetTable(table_id));
+    auto dst_addr_rule = RoutingPolicyEntry::CreateFromDst(dst_address)
+                             .SetPriority(kDstRulePriority)
+                             .SetTable(table_id);
+    if (dst_address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
+      dst_addr_rule.SetUid(shill_uid);
+    }
+    routing_table_->AddRule(interface_index_, dst_addr_rule);
   }
 
   // Always set a rule for matching traffic tagged with the fwmark routing tag
@@ -409,10 +417,10 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
           .SetTable(table_id)
           .SetFwMark(GetFwmarkRoutingTag(interface_index_));
   routing_table_->AddRule(interface_index_, fwmark_routing_entry);
-  if (!no_ipv6) {
-    routing_table_->AddRule(interface_index_,
-                            fwmark_routing_entry.FlipFamily());
+  if (no_ipv6) {
+    fwmark_routing_entry.SetUid(shill_uid);
   }
+  routing_table_->AddRule(interface_index_, fwmark_routing_entry.FlipFamily());
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
   // be used without explicitly binding the socket.
@@ -422,9 +430,10 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
           .SetPriority(base_priority)
           .SetOif(interface_name_);
   routing_table_->AddRule(interface_index_, oif_rule);
-  if (!no_ipv6) {
-    routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
+  if (no_ipv6) {
+    oif_rule.SetUid(shill_uid);
   }
+  routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
 
   if (use_if_addrs_) {
     // Select the per-device table if the outgoing packet's src address matches
@@ -433,13 +442,13 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
     // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
     // to provision IPv6 addresses.
     for (const auto& address : device_info_->GetAddresses(interface_index_)) {
-      if (address.family() == IPAddress::kFamilyIPv6 && no_ipv6)
-        continue;
-
-      routing_table_->AddRule(interface_index_,
-                              RoutingPolicyEntry::CreateFromSrc(address)
-                                  .SetTable(table_id)
-                                  .SetPriority(base_priority));
+      auto if_addr_rule = RoutingPolicyEntry::CreateFromSrc(address)
+                              .SetTable(table_id)
+                              .SetPriority(base_priority);
+      if (address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
+        if_addr_rule.SetUid(shill_uid);
+      }
+      routing_table_->AddRule(interface_index_, if_addr_rule);
     }
     auto iif_rule =
         RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
@@ -447,9 +456,10 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
             .SetPriority(base_priority)
             .SetIif(interface_name_);
     routing_table_->AddRule(interface_index_, iif_rule);
-    if (!no_ipv6) {
-      routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
+    if (no_ipv6) {
+      iif_rule.SetUid(shill_uid);
     }
+    routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
   }
 }
 
