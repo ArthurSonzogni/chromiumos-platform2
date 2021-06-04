@@ -14,6 +14,7 @@ pkg_config("libcros_healthd_system_pkg_deps") {
     "libdebugd-client",
     "libmojo",
     "libpci",
+    "libudev",
     "system_api",
   ]
 }
@@ -34,6 +35,7 @@ source_set("libcros_healthd_system") {
     "system_config_constants.cc",
     "system_utilities_constants.cc",
     "system_utilities_impl.cc",
+    "udev_hwdb_impl.cc",
   ]
 }
 
@@ -67,6 +69,7 @@ if (use.test || use.fuzzer) {
       "fake_pci_util.cc",
       "fake_system_config.cc",
       "fake_system_utilities.cc",
+      "fake_udev_hwdb.cc",
       "mock_context.cc",
     ]
   }
