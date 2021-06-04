@@ -1717,6 +1717,12 @@ bool Datapath::ModifyRtentry(ioctl_req_t op, struct rtentry* route) {
     return false;
   }
   if (HANDLE_EINTR(ioctl_(fd.get(), op, route)) != 0) {
+    // b/190119762: Ignore "No such process" errors when deleting a struct
+    // rtentry if some other prior or concurrent operation already resulted in
+    // this route being deleted.
+    if (op == SIOCDELRT && errno == ESRCH) {
+      return true;
+    }
     std::string opname = op == SIOCADDRT ? "add" : "delete";
     PLOG(ERROR) << "Failed to " << opname << " rtentry " << *route;
     return false;
