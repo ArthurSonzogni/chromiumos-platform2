@@ -111,6 +111,8 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
     // The total number of pages to scan for the scan job. If this is nullopt,
     // keep scanning until we get an error.
     base::Optional<int> total_pages;
+    // The image format for scanned images for the scan job.
+    ImageFormat format;
   };
 
   static const char kMetricScanRequested[];

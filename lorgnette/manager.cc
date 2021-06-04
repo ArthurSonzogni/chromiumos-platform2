@@ -20,18 +20,19 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <libusb.h>
-#include <png.h>
 #include <re2/re2.h>
 #include <uuid/uuid.h>
 
+#include "lorgnette/constants.h"
 #include "lorgnette/daemon.h"
 #include "lorgnette/enums.h"
 #include "lorgnette/epson_probe.h"
 #include "lorgnette/firewall_manager.h"
 #include "lorgnette/guess_source.h"
+#include "lorgnette/image_readers/image_reader.h"
+#include "lorgnette/image_readers/png_reader.h"
 #include "lorgnette/ippusb_device.h"
 
-static const char* kDbusDomain = brillo::errors::dbus::kDomain;
 using std::string;
 
 namespace lorgnette {
@@ -41,20 +42,6 @@ namespace {
 constexpr base::TimeDelta kDefaultProgressSignalInterval =
     base::TimeDelta::FromMilliseconds(20);
 constexpr size_t kUUIDStringLength = 37;
-
-// The maximum memory size allowed to be allocated for an image.  At the current
-// maximum resolution and color depth that the frontend will request, this gives
-// 407 sq in, which is more than enough for an 11x17 ledger page or an 8.5x47
-// ADF scan.  This also gives just enough for a 1200-dpi 24-bit scan of a
-// typical letter/A4-sized platen.  This limit will need to be reconsidered if
-// we want to enable full 1200 dpi scanning.
-constexpr size_t kMaximumImageSize = 420 * 1024 * 1024;
-
-// The default libpng config limits images to 1 million pixels in width and
-// height.  Update these constants to match if you add a call to
-// png_set_user_limits that changes the defaults.
-constexpr size_t kMaximiumImageWidth = 1000000;
-constexpr size_t kMaximiumImageHeight = 1000000;
 
 std::string SerializeError(const brillo::ErrorPtr& error_ptr) {
   std::string message;
@@ -68,184 +55,6 @@ std::string SerializeError(const brillo::ErrorPtr& error_ptr) {
     error = error->GetInnerError();
   }
   return message;
-}
-
-// Checks that the scan parameters in |params| are supported by our scanning
-// and PNG conversion logic.
-bool ValidateParams(brillo::ErrorPtr* error, const ScanParameters& params) {
-  if (params.depth != 1 && params.depth != 8 && params.depth != 16) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
-                               kManagerServiceError,
-                               "Invalid scan bit depth %d", params.depth);
-    return false;
-  }
-
-  if (params.depth == 1 && params.format != kGrayscale) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Cannot have bit depth of 1 with non-grayscale scan");
-    return false;
-  }
-
-  if (params.lines < 0) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Cannot handle scanning of files with unknown lengths");
-    return false;
-  }
-
-  if (params.lines == 0) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Cannot scan an image with 0 lines");
-    return false;
-  }
-
-  // PNG IHDR allows a max height of 2^31, but libpng imposes a default limit of
-  // 1 million.  We'll impose the same limit here, since that represents 800+
-  // inches at 1200 dpi.
-  if (params.lines > kMaximiumImageHeight) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Cannot scan an image with invalid height (%d)", params.lines);
-    return false;
-  }
-
-  // PNG IHDR allows a max width of 2^31 and requires a non-zero width.
-  // We follow the default libpng limit of 1 million rather than the true max
-  // because no real scanner can produce an image that wide.
-  if (params.pixels_per_line <= 0 ||
-      params.pixels_per_line > kMaximiumImageWidth) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Cannot scan an image with invalid width (%d)", params.pixels_per_line);
-    return false;
-  }
-
-  // Make sure bytes_per_line is large enough to be plausible for
-  // pixels_per_line.  It is allowed to be bigger in case the device pads up to
-  // a multiple of some internal size.
-  size_t colors_per_pixel = params.format == kRGB ? 3 : 1;
-  uint64_t min_bytes_per_line =
-      (params.pixels_per_line * params.depth * colors_per_pixel + 7) / 8;
-  if (params.bytes_per_line < min_bytes_per_line) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "bytes_per_line (%d) is too small to hold %d pixels with depth %d",
-        params.bytes_per_line, params.pixels_per_line, params.depth);
-    return false;
-  }
-
-  uint64_t needed = params.lines * params.bytes_per_line;
-  if (needed > kMaximumImageSize) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Needed scan buffer size of %" PRIu64 " is too large", needed);
-    return false;
-  }
-
-  return true;
-}
-
-// Wrapper for libpng functions that handles converting the setjmp based
-// exceptions into safe, usable error codes. It is used like so:
-//   brillo::ErrorPtr* error = [...];
-//   png_struct* png = [...];
-//   png_info* info = [...];
-//   int result = LibpngErrorWrap(error, png_write_info, png, info);
-template <typename Fn, typename... Args>
-int LibpngErrorWrap(brillo::ErrorPtr* error,
-                    const Fn& libpng_function,
-                    png_struct* png,
-                    Args... args) {
-  jmp_buf* buf = png_set_longjmp_fn(png, longjmp, sizeof(jmp_buf));
-  if (!buf) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Failed to initialize jmp_buf");
-    return -1;
-  }
-  int result = setjmp(*buf);
-  if (result != 0) {
-    // |libpng_function| failed and longjmp'ed here.
-    return result;
-  }
-  libpng_function(png, args...);
-  // Disable longjmp so that we don't inadvertently longjmp here from another
-  // libpng function.
-  png_set_longjmp_fn(png, nullptr, sizeof(jmp_buf));
-  return 0;
-}
-
-// Initializes libpng, sets up |png_out| and |info_out| to be used for writing
-// PNG image data to |out_file|, and writes the PNG header to |out_file|.
-// Resolution should be provided with units of pixels per inch.
-bool SetupPngHeader(brillo::ErrorPtr* error,
-                    const ScanParameters& params,
-                    base::Optional<int> resolution,
-                    png_struct** png_out,
-                    png_info** info_out,
-                    const base::ScopedFILE& out_file) {
-  if (!png_out || !info_out) {
-    return false;
-  }
-
-  png_struct* png =
-      png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-  if (!png) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Could not initialize PNG write struct");
-    return false;
-  }
-
-  png_info* info = png_create_info_struct(png);
-  if (!info) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Could not initialize PNG info struct");
-    png_destroy_write_struct(&png, nullptr);
-    return false;
-  }
-
-  int width = params.pixels_per_line;
-  int height = params.lines;
-  int color_type =
-      params.format == kGrayscale ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB;
-  png_set_IHDR(png, info, width, height, params.depth, color_type,
-               PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,
-               PNG_FILTER_TYPE_BASE);
-
-  if (resolution.has_value()) {
-    constexpr double inches_per_meter = 39.3701;
-    uint32_t png_resolution = resolution.value() * inches_per_meter;
-    png_set_pHYs(png, info, png_resolution, png_resolution,
-                 PNG_RESOLUTION_METER);
-  }
-
-  png_init_io(png, out_file.get());
-  int ret = LibpngErrorWrap(error, png_write_info, png, info);
-  if (ret != 0) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
-                               kManagerServiceError,
-                               "Writing PNG info failed with result %d", ret);
-    png_destroy_write_struct(&png, &info);
-    return false;
-  }
-
-  // Setup output transformations within libpng so that image data from SANE
-  // can be converted to the correct endianness or values for PNG data.
-  switch (params.depth) {
-    case 1:
-      // Inverts black and white pixels, since monocolor data from SANE has an
-      // inverted representation when compared to PNG.
-      png_set_invert_mono(png);
-      break;
-    case 16:
-      // Transpose byte order, since PNG is big-endian and SANE is endian-native
-      // i.e. little-endian.
-      png_set_swap(png);
-      break;
-  }
-
-  *png_out = png;
-  *info_out = info;
-  return true;
 }
 
 // Create a ScopedFILE which refers to a copy of |fd|.
@@ -584,6 +393,7 @@ std::vector<uint8_t> Manager::StartScan(
   ScanJobState scan_state;
   scan_state.device_name = request.device_name();
   scan_state.device = std::move(device);
+  scan_state.format = request.settings().image_format();
 
   // Set the number of pages based on the source type. If it's ADF, keep
   // scanning until an error is received.
@@ -970,17 +780,15 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
                                ScanJobState* scan_state,
                                base::ScopedFILE out_file,
                                const std::string& scan_uuid) {
+  DCHECK(scan_state);
+
   SaneDevice* device = scan_state->device.get();
   base::Optional<ScanParameters> params = device->GetScanParameters(error);
   if (!params.has_value()) {
     return SCAN_STATE_FAILED;
   }
 
-  if (!ValidateParams(error, params.value())) {
-    return SCAN_STATE_FAILED;
-  }
-
-  // Get resolution value in DPI so that we can record it in the PNG.
+  // Get resolution value in DPI so that we can record it in the image.
   brillo::ErrorPtr resolution_error;
   base::Optional<int> resolution = device->GetScanResolution(&resolution_error);
   if (!resolution.has_value()) {
@@ -988,25 +796,25 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
                  << SerializeError(resolution_error);
   }
 
-  png_struct* png;
-  png_info* info;
-  if (!SetupPngHeader(error, params.value(), resolution, &png, &info,
-                      out_file)) {
-    return SCAN_STATE_FAILED;
+  std::unique_ptr<ImageReader> image_reader;
+  switch (scan_state->format) {
+    case IMAGE_FORMAT_PNG: {
+      image_reader = PngReader::Create(error, params.value(), resolution,
+                                       std::move(out_file));
+      break;
+    }
+    default: {
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, kDbusDomain, kManagerServiceError,
+          "Unrecognized image format: %d", scan_state->format);
+      return SCAN_STATE_FAILED;
+    }
   }
-  base::ScopedClosureRunner cleanup_png(base::BindOnce(
-      [](png_struct** png, png_info** info) {
-        png_destroy_write_struct(png, info);
-      },
-      &png, &info));
 
-  // Sanity check to make sure that we're not consuming more data in
-  // png_write_row than we have available.
-  if (png_get_rowbytes(png, info) > params->bytes_per_line) {
+  if (!image_reader) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "PNG image row requires %zu bytes, but SANE is only providing %d bytes",
-        png_get_rowbytes(png, info), params->bytes_per_line);
+        "Failed to create image reader for format: %d", scan_state->format);
     return SCAN_STATE_FAILED;
   }
 
@@ -1060,12 +868,8 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
     size_t bytes_converted = 0;
     while (bytes_available - bytes_converted >= params->bytes_per_line &&
            rows_written < params->lines) {
-      int ret = LibpngErrorWrap(error, png_write_row, png,
-                                image_buffer.data() + bytes_converted);
-      if (ret != 0) {
-        brillo::Error::AddToPrintf(
-            error, FROM_HERE, kDbusDomain, kManagerServiceError,
-            "Writing PNG row failed with result %d", ret);
+      if (!image_reader->ReadRow(error,
+                                 image_buffer.data() + bytes_converted)) {
         return SCAN_STATE_FAILED;
       }
       bytes_converted += params->bytes_per_line;
@@ -1097,11 +901,7 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
     return SCAN_STATE_FAILED;
   }
 
-  int ret = LibpngErrorWrap(error, png_write_end, png, info);
-  if (ret != 0) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Finalizing PNG write failed with result %d", ret);
+  if (!image_reader->Finalize(error)) {
     return SCAN_STATE_FAILED;
   }
 
