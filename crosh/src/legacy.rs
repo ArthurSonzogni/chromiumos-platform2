@@ -165,7 +165,7 @@ mod tests {
     enum ShellSource {
         Base,
         Dev,
-        USB,
+        Usb,
     }
 
     fn get_shell_path(shell: &ShellSource) -> PathBuf {
@@ -175,7 +175,7 @@ mod tests {
         path.push(match shell {
             ShellSource::Base => BASE_SHELL,
             ShellSource::Dev => DEV_SHELL,
-            ShellSource::USB => USB_SHELL,
+            ShellSource::Usb => USB_SHELL,
         });
         if path.exists() {
             return path;
@@ -197,7 +197,7 @@ mod tests {
         path.push(match shell {
             ShellSource::Base => BASE_SHELL,
             ShellSource::Dev => DEV_SHELL,
-            ShellSource::USB => USB_SHELL,
+            ShellSource::Usb => USB_SHELL,
         });
         path
     }
@@ -213,7 +213,7 @@ mod tests {
                 register_dev_mode_commands(&mut dispatcher);
                 dev::register(&mut dispatcher);
             }
-            ShellSource::USB => {
+            ShellSource::Usb => {
                 register_removable_commands(&mut dispatcher);
             }
         };
@@ -264,9 +264,9 @@ mod tests {
         // Verify all the legacy commands in rust-crosh have an implementation in crosh.sh.
         let mut extra_commands: Vec<&str> = Vec::new();
         for cmd in match shell {
-            ShellSource::Base => &BASE_COMMANDS[..],
-            ShellSource::Dev => &DEV_COMMANDS[..],
-            ShellSource::USB => &USB_COMMANDS[..],
+            ShellSource::Base => BASE_COMMANDS,
+            ShellSource::Dev => DEV_COMMANDS,
+            ShellSource::Usb => USB_COMMANDS,
         } {
             if !available_commands.contains(cmd) && !IGNORE_COMMANDS.contains(&cmd) {
                 extra_commands.push(cmd);
@@ -291,6 +291,6 @@ mod tests {
 
     #[test]
     fn test_all_usb_commands_registered() {
-        verify_shell(&ShellSource::USB)
+        verify_shell(&ShellSource::Usb)
     }
 }

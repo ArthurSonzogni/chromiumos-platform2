@@ -618,9 +618,6 @@ mod tests {
     fn test_handle_command_empty() {
         let dispatcher = default_dispatcher(default_parent_command(default_child_command()));
 
-        let mut tokens: Vec<String> = Vec::new();
-        tokens.push(PARENT_COMMAND_NAME.to_string());
-
         assert!(!dispatcher.handle_command(Vec::new()).is_ok());
     }
 
@@ -632,8 +629,7 @@ mod tests {
                 .set_command_callback(Some(command_callback)),
         );
 
-        let mut tokens: Vec<String> = Vec::new();
-        tokens.push(PARENT_COMMAND_NAME.to_string());
+        let tokens: Vec<String> = vec![PARENT_COMMAND_NAME.to_string()];
 
         assert!(dispatcher.handle_command(tokens).is_ok());
     }
@@ -649,9 +645,10 @@ mod tests {
             .set_flag_callback(Some(flag_callback)),
         );
 
-        let mut tokens: Vec<String> = Vec::new();
-        tokens.push(PARENT_COMMAND_NAME.to_string());
-        tokens.push(CHILD_COMMAND_NAME.to_string());
+        let tokens: Vec<String> = vec![
+            PARENT_COMMAND_NAME.to_string(),
+            CHILD_COMMAND_NAME.to_string(),
+        ];
 
         assert!(dispatcher.handle_command(tokens).is_ok());
     }
@@ -663,9 +660,10 @@ mod tests {
                 .set_flag_callback(Some(false_flag_callback)),
         );
 
-        let mut tokens: Vec<String> = Vec::new();
-        tokens.push(PARENT_COMMAND_NAME.to_string());
-        tokens.push(CHILD_COMMAND_NAME.to_string());
+        let tokens: Vec<String> = vec![
+            PARENT_COMMAND_NAME.to_string(),
+            CHILD_COMMAND_NAME.to_string(),
+        ];
 
         assert!(!dispatcher.handle_command(tokens).is_ok());
     }

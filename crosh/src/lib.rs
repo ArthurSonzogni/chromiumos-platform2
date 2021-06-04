@@ -4,6 +4,8 @@
 
 //! Encapsulate the sub modules of crosh.
 
+#![allow(clippy::unnecessary_wraps)]
+
 pub mod base;
 pub mod dev;
 pub mod dispatcher;
