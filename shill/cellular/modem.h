@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -45,8 +46,10 @@ class Modem {
   const std::string& service() const { return service_; }
   const RpcIdentifier& path() const { return path_; }
 
-  Cellular* device_for_testing() { return device_.get(); }
-  bool has_pending_device_info_for_testing() {
+  base::Optional<int> interface_index_for_testing() const {
+    return interface_index_;
+  }
+  bool has_pending_device_info_for_testing() const {
     return has_pending_device_info_;
   }
 
@@ -72,23 +75,21 @@ class Modem {
   // |properties|.
   void CreateDeviceFromModemProperties(const InterfaceToProperties& properties);
 
-  // Find the |mac_address| and |interface_index| for the kernel
-  // network device with name |link_name|. Returns true iff both
-  // |mac_address| and |interface_index| were found. Modifies
-  // |interface_index| even on failure.
-  bool GetDeviceParams(std::string* mac_address, int* interface_index);
+  // Finds the interface index and MAC address for the kernel network device
+  // with name |link_name_|. If no interface index exists, returns nullopt.
+  // Otherwise sets |mac_address| if available and returns the interface index.
+  base::Optional<int> GetDeviceParams(std::string* mac_address);
 
   InterfaceToProperties initial_properties_;
 
   const std::string service_;
   const RpcIdentifier path_;
 
-  CellularRefPtr device_;
-
   DeviceInfo* device_info_;
+  base::Optional<int> interface_index_;
   std::string link_name_;
   Cellular::Type type_;
-  bool has_pending_device_info_;
+  bool has_pending_device_info_ = false;
   RTNLHandler* rtnl_handler_;
 
   // Serial number used to uniquify fake device names for Cellular

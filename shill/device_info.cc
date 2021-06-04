@@ -833,6 +833,13 @@ CellularRefPtr DeviceInfo::GetCellularDevice(int interface_index,
   RegisterDevice(cellular);
   return cellular;
 }
+
+Cellular* DeviceInfo::GetExistingCellularDevice(int interface_index) const {
+  DeviceRefPtr device = GetDevice(interface_index);
+  if (!device)
+    return nullptr;
+  return static_cast<Cellular*>(device.get());
+}
 #endif
 
 int DeviceInfo::GetIndex(const std::string& interface_name) const {

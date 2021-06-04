@@ -63,23 +63,32 @@ class TestDeviceInfo : public MockDeviceInfo {
   CellularRefPtr GetCellularDevice(int interface_index,
                                    const std::string& mac_address,
                                    Modem* modem) override {
-    CellularRefPtr cellular;
+    interface_index_ = interface_index;
     if (use_mock_) {
-      cellular = new NiceMock<MockCellular>(
+      cellular_ = new NiceMock<MockCellular>(
           manager(), kLinkName, mac_address, interface_index,
           Cellular::kType3gpp, kService, kPath);
     } else {
-      cellular =
+      cellular_ =
           new Cellular(manager(), kLinkName, mac_address, interface_index,
                        modem->type(), modem->service(), modem->path());
     }
-    return cellular;
+    return cellular_;
+  }
+  DeviceRefPtr GetDevice(int interface_index) const override {
+    if (!interface_index_.has_value() ||
+        interface_index_.value() != interface_index) {
+      return nullptr;
+    }
+    return cellular_;
   }
 
   void set_use_mock(bool use_mock) { use_mock_ = use_mock; }
 
  private:
   bool use_mock_ = true;
+  base::Optional<int> interface_index_;
+  CellularRefPtr cellular_;
 };
 
 class ModemTest : public Test {
@@ -133,8 +142,8 @@ class ModemTest : public Test {
     modem_->CreateDeviceFromModemProperties(properties);
   }
 
-  bool GetDeviceParams(std::string* mac_address, int* interface_index) {
-    return modem_->GetDeviceParams(mac_address, interface_index);
+  base::Optional<int> GetDeviceParams(std::string* mac_address) {
+    return modem_->GetDeviceParams(mac_address);
   }
 
   EventDispatcherForTest dispatcher_;
@@ -154,7 +163,7 @@ MATCHER_P2(HasPropertyWithValueU32, key, value, "") {
 }
 
 TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
-  ASSERT_FALSE(modem_->device_for_testing());
+  ASSERT_FALSE(modem_->interface_index_for_testing().has_value());
 
   SetDeviceInfoExpectations();
 
@@ -163,7 +172,6 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(Return(false));
   CreateDeviceFromModemProperties(GetInterfaceProperties());
-  EXPECT_FALSE(modem_->device_for_testing());
   EXPECT_TRUE(modem_->has_pending_device_info_for_testing());
 
   // When OnDeviceInfoAvailable gets called, CreateDeviceFromModemProperties
@@ -172,16 +180,19 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
   modem_->OnDeviceInfoAvailable(kLinkName);
-  EXPECT_TRUE(modem_->device_for_testing());
-  EXPECT_EQ(base::ToLowerASCII(kAddressAsString),
-            modem_->device_for_testing()->mac_address());
+  EXPECT_FALSE(modem_->has_pending_device_info_for_testing());
+  ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
+  int interface_index = modem_->interface_index_for_testing().value();
+  Cellular* device = device_info_.GetExistingCellularDevice(interface_index);
+  ASSERT_TRUE(device);
+  EXPECT_EQ(base::ToLowerASCII(kAddressAsString), device->mac_address());
 }
 
 TEST_F(ModemTest, EarlyDeviceProperties) {
   // OnDeviceInfoAvailable called before CreateDeviceFromModemProperties does
   // nothing
   modem_->OnDeviceInfoAvailable(kLinkName);
-  EXPECT_FALSE(modem_->device_for_testing());
+  EXPECT_FALSE(modem_->interface_index_for_testing().has_value());
 }
 
 TEST_F(ModemTest, CreateDeviceEarlyFailures) {
@@ -189,7 +200,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
   // No modem interface properties:  no device created
   CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_for_testing());
+  EXPECT_FALSE(modem_->interface_index_for_testing().has_value());
 
   properties = GetInterfaceProperties();
 
@@ -197,7 +208,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
       .WillOnce(Return(-1));
   CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_for_testing());
+  EXPECT_FALSE(modem_->interface_index_for_testing().has_value());
 
   // The params are good, but the device is blocked.
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
@@ -207,7 +218,9 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   EXPECT_CALL(device_info_, IsDeviceBlocked(kLinkName))
       .WillRepeatedly(Return(true));
   CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_for_testing());
+  ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
+  EXPECT_FALSE(device_info_.GetExistingCellularDevice(
+      modem_->interface_index_for_testing().value()));
 
   // No link name: see CreateDevicePPP.
 }
@@ -222,40 +235,38 @@ TEST_F(ModemTest, CreateDevicePPP) {
   EXPECT_CALL(device_info_, GetByteCounts(_, _, _))
       .WillRepeatedly(Return(true));
   CreateDeviceFromModemProperties(properties);
-  EXPECT_TRUE(modem_->device_for_testing());
-  EXPECT_EQ(modem_->device_for_testing()->interface_index(),
-            Modem::kFakeDevInterfaceIndex);
-  EXPECT_EQ(modem_->device_for_testing()->mac_address(),
-            Modem::kFakeDevAddress);
+  ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
+  int interface_index = modem_->interface_index_for_testing().value();
+  EXPECT_EQ(interface_index, Modem::kFakeDevInterfaceIndex);
+  Cellular* device = device_info_.GetExistingCellularDevice(interface_index);
+  ASSERT_TRUE(device);
+  EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress);
 }
 
 TEST_F(ModemTest, GetDeviceParams) {
   std::string mac_address;
-  int interface_index = 2;
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
   EXPECT_CALL(device_info_, GetMacAddress(_, _))
       .Times(AnyNumber())
       .WillRepeatedly(Return(false));
-  EXPECT_FALSE(GetDeviceParams(&mac_address, &interface_index));
-  EXPECT_EQ(-1, interface_index);
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
+  EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-2));
-  EXPECT_CALL(device_info_, GetMacAddress(_, _))
-      .Times(AnyNumber())
-      .WillRepeatedly(Return(false));
-  EXPECT_FALSE(GetDeviceParams(&mac_address, &interface_index));
-  EXPECT_EQ(-2, interface_index);
+  EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(1));
   EXPECT_CALL(device_info_, GetMacAddress(_, _)).WillOnce(Return(false));
-  EXPECT_FALSE(GetDeviceParams(&mac_address, &interface_index));
-  EXPECT_EQ(1, interface_index);
+  base::Optional<int> interface_index = GetDeviceParams(&mac_address);
+  EXPECT_TRUE(interface_index.has_value());
+  EXPECT_EQ(1, interface_index.value());
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(2));
   EXPECT_CALL(device_info_, GetMacAddress(2, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
-  EXPECT_TRUE(GetDeviceParams(&mac_address, &interface_index));
-  EXPECT_EQ(2, interface_index);
+  interface_index = GetDeviceParams(&mac_address);
+  EXPECT_TRUE(interface_index.has_value());
+  EXPECT_EQ(2, interface_index.value());
   EXPECT_EQ(kAddressAsString, mac_address);
 }
 
@@ -274,7 +285,9 @@ TEST_F(ModemTest, CreateDevice) {
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
   modem_->CreateDevice(properties);
-  Cellular* device = modem_->device_for_testing();
+  ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
+  int interface_index = modem_->interface_index_for_testing().value();
+  Cellular* device = device_info_.GetExistingCellularDevice(interface_index);
   ASSERT_TRUE(device);
   CellularCapability* capability = device->capability_for_testing();
   ASSERT_TRUE(capability);

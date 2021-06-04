@@ -96,6 +96,9 @@ class DeviceInfo {
   virtual CellularRefPtr GetCellularDevice(int interface_index,
                                            const std::string& mac_address,
                                            Modem* modem);
+
+  // Returns an existing Cellular Device matching |interface_index| or nullptr.
+  Cellular* GetExistingCellularDevice(int interface_index) const;
 #endif
 
   virtual bool GetMacAddress(int interface_index, ByteString* address) const;

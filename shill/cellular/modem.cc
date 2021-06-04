@@ -47,16 +47,14 @@ Modem::Modem(const std::string& service,
       path_(path),
       device_info_(device_info),
       type_(Cellular::kTypeInvalid),
-      has_pending_device_info_(false),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 1) << "Modem() Path: " << path.value();
 }
 
 Modem::~Modem() {
   SLOG(this, 1) << "~Modem() Path: " << path_.value();
-  if (!device_) {
+  if (!interface_index_.has_value())
     return;
-  }
 
   // Note: The Cellular Device |device_| is owned by DeviceInfo. It will not
   // be destroyed here, instead it will be kept around until/unless an RTNL
@@ -64,7 +62,10 @@ Modem::~Modem() {
   // constructed (e.g. after modemmanager restarts), the call to
   // DeviceInfo::GetCellularDevice will return the existing device for the
   // interface.
-  device_->OnModemDestroyed();
+  Cellular* cellular =
+      device_info_->GetExistingCellularDevice(interface_index_.value());
+  if (cellular)
+    cellular->OnModemDestroyed();
 }
 
 void Modem::CreateDevice(const InterfaceToProperties& properties) {
@@ -144,9 +145,6 @@ bool Modem::GetLinkName(const KeyValueStore& modem_props,
 
 void Modem::CreateDeviceFromModemProperties(
     const InterfaceToProperties& properties) {
-  if (device_)
-    return;
-
   SLOG(this, 1) << __func__;
 
   const auto iter = properties.find(std::string(MM_DBUS_INTERFACE_MODEM));
@@ -157,10 +155,9 @@ void Modem::CreateDeviceFromModemProperties(
   const KeyValueStore& modem_props = iter->second;
 
   std::string mac_address;
-  int interface_index = -1;
   if (GetLinkName(modem_props, &link_name_)) {
-    GetDeviceParams(&mac_address, &interface_index);
-    if (interface_index < 0) {
+    interface_index_ = GetDeviceParams(&mac_address);
+    if (!interface_index_.has_value()) {
       LOG(ERROR) << "Unable to create cellular device -- no interface index.";
       return;
     }
@@ -180,7 +177,7 @@ void Modem::CreateDeviceFromModemProperties(
     LOG(INFO) << "Cellular device without link name; assuming PPP dongle.";
     link_name_ = base::StringPrintf(kFakeDevNameFormat, fake_dev_serial_++);
     mac_address = kFakeDevAddress;
-    interface_index = kFakeDevInterfaceIndex;
+    interface_index_ = kFakeDevInterfaceIndex;
   }
 
   if (device_info_->IsDeviceBlocked(link_name_)) {
@@ -189,28 +186,28 @@ void Modem::CreateDeviceFromModemProperties(
     return;
   }
 
-  device_ = device_info_->GetCellularDevice(interface_index, mac_address, this);
-  device_->SetInitialProperties(properties);
+  CellularRefPtr device = device_info_->GetCellularDevice(
+      interface_index_.value(), mac_address, this);
+  device->SetInitialProperties(properties);
 
-  SLOG(this, 1) << "Cellular device created: " << device_->link_name()
-                << " Enabled: " << device_->enabled();
+  SLOG(this, 1) << "Cellular device created: " << device->link_name()
+                << " Enabled: " << device->enabled();
 }
 
-bool Modem::GetDeviceParams(std::string* mac_address, int* interface_index) {
+base::Optional<int> Modem::GetDeviceParams(std::string* mac_address) {
   // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
   // address below.
-  *interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
-  if (*interface_index < 0) {
-    return false;
+  int interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
+  if (interface_index < 0) {
+    return base::nullopt;
   }
 
   ByteString address_bytes;
-  if (!device_info_->GetMacAddress(*interface_index, &address_bytes)) {
-    return false;
+  if (device_info_->GetMacAddress(interface_index, &address_bytes)) {
+    *mac_address = address_bytes.HexEncode();
   }
-  *mac_address = address_bytes.HexEncode();
 
-  return true;
+  return interface_index;
 }
 
 }  // namespace shill
