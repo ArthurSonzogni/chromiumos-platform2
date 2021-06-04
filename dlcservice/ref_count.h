@@ -13,6 +13,7 @@
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <libimageloader/manifest.h>
 
 #include "dlcservice/ref_count.pb.h"
 
@@ -48,7 +49,8 @@ class RefCountInterface {
   virtual ~RefCountInterface() = default;
 
   static std::unique_ptr<RefCountInterface> Create(
-      const std::string& used_by, const base::FilePath& prefs_path);
+      const base::FilePath& prefs_path,
+      std::shared_ptr<imageloader::Manifest> manifest);
 
   // Should be called when a DLC is successfully installed.
   virtual bool InstalledDlc() = 0;
@@ -78,19 +80,16 @@ class RefCountBase : public RefCountInterface {
   bool ShouldPurgeDlc() const override;
 
  protected:
-  explicit RefCountBase(const base::FilePath& prefs_path);
+  explicit RefCountBase(const base::FilePath& prefs_path,
+                        std::shared_ptr<imageloader::Manifest> manifest);
 
   // Returns the current user name that should be used in the ref count.
   virtual std::string GetCurrentUserName() const = 0;
 
-  // Returns the expiration delay for which a DLC should be removed after if
-  // there was no users of it.
-  virtual base::TimeDelta GetExpirationDelay() const {
-    return base::TimeDelta::FromDays(kDefaultExpirationDelayDays);
-  }
-
   std::set<std::string> users_;
   int64_t last_access_time_us_;
+
+  std::shared_ptr<imageloader::Manifest> manifest_;
 
  private:
   friend class RefCountTest;
@@ -103,13 +102,15 @@ class RefCountBase : public RefCountInterface {
   static bool ReadRefCountInfo(const base::FilePath& path, RefCountInfo* info);
 
   base::FilePath ref_count_path_;
+
   RefCountBase(const RefCountBase&) = delete;
   RefCountBase& operator=(const RefCountBase&) = delete;
 };
 
 class UserRefCount : public RefCountBase {
  public:
-  explicit UserRefCount(const base::FilePath& prefs_path);
+  UserRefCount(const base::FilePath& prefs_path,
+               std::shared_ptr<imageloader::Manifest> manifest);
   ~UserRefCount() = default;
 
   // Refreshes the internal cache of the user names we keep.
@@ -137,8 +138,9 @@ class UserRefCount : public RefCountBase {
 
 class SystemRefCount : public RefCountBase {
  public:
-  explicit SystemRefCount(const base::FilePath& prefs_path)
-      : RefCountBase(prefs_path) {}
+  explicit SystemRefCount(const base::FilePath& prefs_path,
+                          std::shared_ptr<imageloader::Manifest> manifest)
+      : RefCountBase(prefs_path, manifest) {}
   ~SystemRefCount() = default;
 
  protected:

@@ -311,15 +311,10 @@ class DlcServiceUtil : public brillo::Daemon {
         dlcservice::JoinPaths(imageloader::kDlcManifestRootpath, id));
   }
 
-  bool GetManifest(const string& id,
-                   const string& package,
-                   imageloader::Manifest* manifest) {
-    if (!dlcservice::GetDlcManifest(FilePath(imageloader::kDlcManifestRootpath),
-                                    id, package, manifest)) {
-      LOG(ERROR) << "Failed to get DLC manifest.";
-      return false;
-    }
-    return true;
+  std::shared_ptr<imageloader::Manifest> GetManifest(const string& id,
+                                                     const string& package) {
+    return dlcservice::GetDlcManifest(
+        FilePath(imageloader::kDlcManifestRootpath), id, package);
   }
 
   // Helper to print to file, or stdout if |path| is empty.
@@ -347,20 +342,20 @@ class DlcServiceUtil : public brillo::Daemon {
         continue;
       Value dlc_info_list(Value::Type::LIST);
       for (const auto& package : packages) {
-        imageloader::Manifest manifest;
-        if (!GetManifest(id, package, &manifest))
+        auto manifest = GetManifest(id, package);
+        if (!manifest)
           return;
         Value dlc_info(Value::Type::DICTIONARY);
-        dlc_info.SetStringKey("name", manifest.name());
-        dlc_info.SetStringKey("id", manifest.id());
-        dlc_info.SetStringKey("package", manifest.package());
-        dlc_info.SetStringKey("version", manifest.version());
+        dlc_info.SetStringKey("name", manifest->name());
+        dlc_info.SetStringKey("id", manifest->id());
+        dlc_info.SetStringKey("package", manifest->package());
+        dlc_info.SetStringKey("version", manifest->version());
         dlc_info.SetStringKey(
             "preallocated_size",
-            base::NumberToString(manifest.preallocated_size()));
-        dlc_info.SetStringKey("size", base::NumberToString(manifest.size()));
-        dlc_info.SetStringKey("image_type", manifest.image_type());
-        switch (manifest.fs_type()) {
+            base::NumberToString(manifest->preallocated_size()));
+        dlc_info.SetStringKey("size", base::NumberToString(manifest->size()));
+        dlc_info.SetStringKey("image_type", manifest->image_type());
+        switch (manifest->fs_type()) {
           case imageloader::FileSystem::kExt4:
             dlc_info.SetStringKey("fs-type", "ext4");
             break;

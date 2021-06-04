@@ -44,8 +44,8 @@ bool DlcBase::Initialize() {
   const auto* system_state = SystemState::Get();
   const auto& manifest_dir = system_state->manifest_dir();
   package_ = *ScanDirectory(manifest_dir.Append(id_)).begin();
-  if (!GetDlcManifest(system_state->manifest_dir(), id_, package_,
-                      &manifest_)) {
+  manifest_ = GetDlcManifest(system_state->manifest_dir(), id_, package_);
+  if (!manifest_) {
     // Failing to read the manifest will be considered a blocker.
     LOG(ERROR) << "Failed to read the manifest of DLC " << id_;
     return false;
@@ -58,14 +58,14 @@ bool DlcBase::Initialize() {
   prefs_package_path_ = JoinPaths(prefs_path_, package_);
   preloaded_image_path_ = JoinPaths(system_state->preloaded_content_dir(), id_,
                                     package_, kDlcImageFileName);
-  ref_count_ = RefCountInterface::Create(manifest_.used_by(), prefs_path_);
+  ref_count_ = RefCountInterface::Create(prefs_path_, manifest_);
 
   state_.set_state(DlcState::NOT_INSTALLED);
   state_.set_id(id_);
   state_.set_progress(0);
   state_.set_last_error_code(kErrorNone);
 
-  if (manifest_.mount_file_required()) {
+  if (manifest_->mount_file_required()) {
     if (!Prefs(prefs_package_path_).Delete(kDlcRootMount))
       LOG(ERROR)
           << "Failed to delete indirect root mount file during Initialization: "
@@ -81,11 +81,11 @@ const DlcId& DlcBase::GetId() const {
 }
 
 const std::string& DlcBase::GetName() const {
-  return manifest_.name();
+  return manifest_->name();
 }
 
 const std::string& DlcBase::GetDescription() const {
-  return manifest_.description();
+  return manifest_->description();
 }
 
 DlcState DlcBase::GetState() const {
@@ -129,7 +129,7 @@ uint64_t DlcBase::GetUsedBytesOnDisk() const {
 }
 
 bool DlcBase::IsPreloadAllowed() const {
-  return manifest_.preload_allowed() &&
+  return manifest_->preload_allowed() &&
          !SystemState::Get()->system_properties()->IsOfficialBuild();
 }
 
@@ -185,16 +185,16 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Creates image A and B.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     FilePath image_path = GetImagePath(slot);
-    if (!CreateFile(image_path, manifest_.size())) {
+    if (!CreateFile(image_path, manifest_->size())) {
       state_.set_last_error_code(kErrorAllocation);
       *err = Error::Create(
           FROM_HERE, state_.last_error_code(),
           base::StringPrintf("Failed to create image file %s for DLC=%s",
                              image_path.value().c_str(), id_.c_str()));
       return false;
-    } else if (!ResizeFile(image_path, manifest_.preallocated_size())) {
+    } else if (!ResizeFile(image_path, manifest_->preallocated_size())) {
       LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                   << manifest_.preallocated_size() << " for DLC=" << id_;
+                   << manifest_->preallocated_size() << " for DLC=" << id_;
     }
   }
 
@@ -217,14 +217,14 @@ bool DlcBase::MakeReadyForUpdate() const {
 
   const FilePath& inactive_image_path =
       GetImagePath(SystemState::Get()->inactive_boot_slot());
-  if (!CreateFile(inactive_image_path, manifest_.size())) {
+  if (!CreateFile(inactive_image_path, manifest_->size())) {
     LOG(ERROR) << "Failed to create inactive image "
                << inactive_image_path.value() << " when making DLC=" << id_
                << " ready for update.";
     return false;
-  } else if (!ResizeFile(inactive_image_path, manifest_.preallocated_size())) {
+  } else if (!ResizeFile(inactive_image_path, manifest_->preallocated_size())) {
     LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                 << manifest_.preallocated_size() << " when making DLC=" << id_
+                 << manifest_->preallocated_size() << " when making DLC=" << id_
                  << " ready for update.";
   }
 
@@ -246,12 +246,12 @@ bool DlcBase::MarkUnverified() {
 bool DlcBase::Verify() {
   auto image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
-  if (!HashFile(image_path, manifest_.size(), &image_sha256)) {
+  if (!HashFile(image_path, manifest_->size(), &image_sha256)) {
     LOG(ERROR) << "Failed to hash image file: " << image_path.value();
     return false;
   }
 
-  const auto& manifest_image_sha256 = manifest_.image_sha256();
+  const auto& manifest_image_sha256 = manifest_->image_sha256();
   if (image_sha256 != manifest_image_sha256) {
     LOG(WARNING) << "Verification failed for image file: " << image_path.value()
                  << ". Expected: "
@@ -277,11 +277,11 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
-  if (preloaded_image_size != manifest_.size()) {
+  if (preloaded_image_size != manifest_->size()) {
     auto err_str = base::StringPrintf(
         "Preloaded DLC (%s) is (%" PRId64 ") different than the size (%" PRId64
         ") in the manifest.",
-        id_.c_str(), preloaded_image_size, manifest_.size());
+        id_.c_str(), preloaded_image_size, manifest_->size());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
@@ -293,7 +293,7 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
   // operation can be a move.
   FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
-  if (!CopyAndHashFile(preloaded_image_path_, image_path, manifest_.size(),
+  if (!CopyAndHashFile(preloaded_image_path_, image_path, manifest_->size(),
                        &image_sha256)) {
     auto err_str =
         base::StringPrintf("Failed to copy preload DLC (%s) into path %s",
@@ -302,7 +302,7 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
     return false;
   }
 
-  auto manifest_image_sha256 = manifest_.image_sha256();
+  auto manifest_image_sha256 = manifest_->image_sha256();
   if (image_sha256 != manifest_image_sha256) {
     auto err_str = base::StringPrintf(
         "Image is corrupted or modified for DLC=%s. Expected: %s Found: %s",
@@ -502,7 +502,7 @@ bool DlcBase::Mount(ErrorPtr* err) {
 
   // Creates a file which holds the root mount path, allowing for indirect
   // access for processes/scripts which can't access DBus.
-  if (manifest_.mount_file_required() &&
+  if (manifest_->mount_file_required() &&
       !Prefs(prefs_package_path_).SetKey(kDlcRootMount, GetRoot().value())) {
     // TODO(kimjae): Test this by injecting |Prefs| class.
     LOG(ERROR) << "Failed to create indirect root mount file: "
@@ -532,7 +532,7 @@ bool DlcBase::Unmount(ErrorPtr* err) {
     return false;
   }
 
-  if (manifest_.mount_file_required()) {
+  if (manifest_->mount_file_required()) {
     if (!Prefs(prefs_package_path_).Delete(kDlcRootMount))
       LOG(ERROR) << "Failed to delete indirect root mount file: "
                  << JoinPaths(prefs_package_path_, kDlcRootMount);

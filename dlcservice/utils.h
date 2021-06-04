@@ -5,6 +5,7 @@
 #ifndef DLCSERVICE_UTILS_H_
 #define DLCSERVICE_UTILS_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -81,10 +82,10 @@ base::FilePath GetDlcImagePath(const base::FilePath& dlc_module_root_path,
                                const std::string& package,
                                BootSlot::Slot current_slot);
 
-bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
-                    const std::string& id,
-                    const std::string& package,
-                    imageloader::Manifest* manifest_out);
+std::shared_ptr<imageloader::Manifest> GetDlcManifest(
+    const base::FilePath& dlc_manifest_path,
+    const std::string& id,
+    const std::string& package);
 
 // Scans a directory and returns all its subdirectory names in a list.
 std::set<std::string> ScanDirectory(const base::FilePath& dir);

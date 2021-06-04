@@ -180,7 +180,7 @@ class DlcBase {
 
   base::FilePath mount_point_;
 
-  imageloader::Manifest manifest_;
+  std::shared_ptr<imageloader::Manifest> manifest_;
 
   // The directories on the stateful partition where the DLC image will reside.
   base::FilePath content_id_path_;

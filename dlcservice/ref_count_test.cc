@@ -62,21 +62,24 @@ class RefCountTest : public BaseTest {
 };
 
 TEST_F(RefCountTest, CreateUserBased) {
-  auto ref_count = RefCountInterface::Create(kUsedByUser, prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kSecondDlc, kPackage);
+  auto ref_count = RefCountInterface::Create(prefs_path_, manifest);
   RefCountInterface& ref_count_ref = *ref_count;
   EXPECT_EQ(typeid(ref_count_ref), typeid(UserRefCount));
 }
 
 TEST_F(RefCountTest, CreateSystem) {
-  auto ref_count = RefCountInterface::Create(kUsedBySystem, prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kFirstDlc, kPackage);
+  auto ref_count = RefCountInterface::Create(prefs_path_, manifest);
   RefCountInterface& ref_count_ref = *ref_count;
   EXPECT_EQ(typeid(ref_count_ref), typeid(SystemRefCount));
 }
 
 // Make sure it can read from the file.
 TEST_F(RefCountTest, Ctor) {
+  auto manifest = GetDlcManifest(manifest_path_, kFirstDlc, kPackage);
   GenerateRefCountInfo({"user-1", "user-2"}, 10);
-  SystemRefCount ref_count(prefs_path_);
+  SystemRefCount ref_count(prefs_path_, manifest);
   // TODO(ahassani): Improve the test so we don't access the private variables
   // like this.
   EXPECT_EQ(ref_count.users_.size(), 2);
@@ -84,7 +87,8 @@ TEST_F(RefCountTest, Ctor) {
 }
 
 TEST_F(RefCountTest, SystemInstalledAndUninstallDlc) {
-  SystemRefCount ref_count(prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kSecondDlc, kPackage);
+  SystemRefCount ref_count(prefs_path_, manifest);
   EXPECT_TRUE(ref_count.InstalledDlc());
   auto info = ReadRefCountInfo();
   EXPECT_EQ(info.users(0).sanitized_username(), "system");
@@ -112,7 +116,8 @@ TEST_F(RefCountTest, UserInstalledAndUninstallDlc) {
       }));
 
   UserRefCount::SessionChanged(kSessionStarted);
-  UserRefCount ref_count(prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kSecondDlc, kPackage);
+  UserRefCount ref_count(prefs_path_, manifest);
   EXPECT_TRUE(ref_count.InstalledDlc());
   auto info = ReadRefCountInfo();
   EXPECT_EQ(info.users_size(), 1);
@@ -154,7 +159,8 @@ TEST_F(RefCountTest, DeleteNotExistingUsers) {
       }));
 
   // Install with both "user-1".
-  UserRefCount ref_count(prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kFirstDlc, kPackage);
+  UserRefCount ref_count(prefs_path_, manifest);
   UserRefCount::SessionChanged(kSessionStarted);
   EXPECT_TRUE(ref_count.InstalledDlc());
 
@@ -168,21 +174,23 @@ TEST_F(RefCountTest, DeleteNotExistingUsers) {
   UserRefCount::SessionChanged(kSessionStarted);
 
   // Uninstall should remove both users after a reboot.
-  UserRefCount ref_count2(prefs_path_);
+  UserRefCount ref_count2(prefs_path_, manifest);
   EXPECT_TRUE(ref_count2.UninstalledDlc());
   auto info = ReadRefCountInfo();
   EXPECT_EQ(info.users_size(), 0);
 }
 
 TEST_F(RefCountTest, ShouldPurgeDlcAfterInitialize) {
-  SystemRefCount ref_count(prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kFirstDlc, kPackage);
+  SystemRefCount ref_count(prefs_path_, manifest);
 
   // If the DLC is not touched yet, it should return false.
   EXPECT_FALSE(ref_count.ShouldPurgeDlc());
 }
 
 TEST_F(RefCountTest, ShouldPurgeDlcHasUser) {
-  SystemRefCount ref_count(prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kFirstDlc, kPackage);
+  SystemRefCount ref_count(prefs_path_, manifest);
   // After this ref count should be persisted.
   EXPECT_TRUE(ref_count.InstalledDlc());
 
@@ -196,7 +204,8 @@ TEST_F(RefCountTest, ShouldPurgeDlcHasUser) {
 }
 
 TEST_F(RefCountTest, ShouldPurgeDlcExpirationDelay) {
-  SystemRefCount ref_count(prefs_path_);
+  auto manifest = GetDlcManifest(manifest_path_, kFirstDlc, kPackage);
+  SystemRefCount ref_count(prefs_path_, manifest);
   // Add a user.
   EXPECT_TRUE(ref_count.InstalledDlc());
   // Move the time a bit.

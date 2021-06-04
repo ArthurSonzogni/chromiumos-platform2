@@ -252,10 +252,10 @@ FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,
 }
 
 // Extract details about a DLC module from its manifest file.
-bool GetDlcManifest(const FilePath& dlc_manifest_path,
-                    const string& id,
-                    const string& package,
-                    imageloader::Manifest* manifest_out) {
+std::shared_ptr<imageloader::Manifest> GetDlcManifest(
+    const FilePath& dlc_manifest_path,
+    const string& id,
+    const string& package) {
   string dlc_json_str;
   FilePath dlc_manifest_file =
       JoinPaths(dlc_manifest_path, id, package, kManifestName);
@@ -263,15 +263,16 @@ bool GetDlcManifest(const FilePath& dlc_manifest_path,
   if (!base::ReadFileToString(dlc_manifest_file, &dlc_json_str)) {
     LOG(ERROR) << "Failed to read DLC manifest file '"
                << dlc_manifest_file.value() << "'.";
-    return false;
+    return nullptr;
   }
 
-  if (!manifest_out->ParseManifest(dlc_json_str)) {
+  auto manifest = std::make_shared<imageloader::Manifest>();
+  if (!manifest->ParseManifest(dlc_json_str)) {
     LOG(ERROR) << "Failed to parse DLC manifest for DLC:" << id << ".";
-    return false;
+    return nullptr;
   }
 
-  return true;
+  return manifest;
 }
 
 set<string> ScanDirectory(const FilePath& dir) {

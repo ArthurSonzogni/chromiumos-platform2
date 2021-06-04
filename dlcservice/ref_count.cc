@@ -12,6 +12,7 @@
 #include <base/notreached.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
+#include <libimageloader/manifest.h>
 
 #include "dlcservice/error.h"
 #include "dlcservice/ref_count.h"
@@ -29,24 +30,27 @@ const char kSessionStarted[] = "started";
 const char kUsedByUser[] = "user";
 const char kUsedBySystem[] = "system";
 
-const int kDefaultExpirationDelayDays = 5;
 const char kSystemUsername[] = "system";
 
 // static
 std::unique_ptr<RefCountInterface> RefCountInterface::Create(
-    const string& used_by, const base::FilePath& prefs_path) {
+    const base::FilePath& prefs_path,
+    std::shared_ptr<imageloader::Manifest> manifest) {
+  auto used_by = manifest->used_by();
   if (used_by == "user") {
-    return std::make_unique<UserRefCount>(prefs_path);
+    return std::make_unique<UserRefCount>(prefs_path, manifest);
   } else if (used_by == "system") {
-    return std::make_unique<SystemRefCount>(prefs_path);
+    return std::make_unique<SystemRefCount>(prefs_path, manifest);
   } else {
     NOTREACHED() << "Invalid 'used_by' attribute in manifest: " << used_by;
   }
   return nullptr;
 }
 
-RefCountBase::RefCountBase(const base::FilePath& prefs_path) {
-  last_access_time_us_ = 0;
+RefCountBase::RefCountBase(const base::FilePath& prefs_path,
+                           std::shared_ptr<imageloader::Manifest> manifest)
+    : last_access_time_us_(0), manifest_(manifest) {
+  DCHECK(manifest_) << "Manifest object is not set properly.";
 
   // Load the ref count proto only if it exists.
   ref_count_path_ = prefs_path.Append(kRefCountFileName);
@@ -126,7 +130,7 @@ bool RefCountBase::ShouldPurgeDlc() const {
       base::TimeDelta::FromMicroseconds(last_access_time_us_));
   base::TimeDelta delta_time =
       SystemState::Get()->clock()->Now() - last_accessed;
-  return delta_time > GetExpirationDelay();
+  return delta_time > base::TimeDelta::FromDays(manifest_->days_to_purge());
 }
 
 bool RefCountBase::Persist() {
@@ -189,8 +193,9 @@ void UserRefCount::OnErrorRetrievePrimarySessionAsync(brillo::Error* err) {
   primary_session_username_.reset();
 }
 
-UserRefCount::UserRefCount(const base::FilePath& prefs_path)
-    : RefCountBase(prefs_path) {
+UserRefCount::UserRefCount(const base::FilePath& prefs_path,
+                           std::shared_ptr<imageloader::Manifest> manifest)
+    : RefCountBase(prefs_path, manifest) {
   // We are only interested in users that exist on the system. Any other user
   // that don't exist in the system, but is included in the ref count should be
   // ignored. We don't necessarily need to delete these dangling users from the

@@ -121,15 +121,13 @@ int64_t GetFileSize(const base::FilePath& path) {
 }
 
 base::FilePath BaseTest::SetUpDlcPreloadedImage(const DlcId& id) {
-  imageloader::Manifest manifest;
-  dlcservice::GetDlcManifest(manifest_path_, id, kPackage, &manifest);
-
+  auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
   base::FilePath image_path =
       JoinPaths(preloaded_content_path_, id, kPackage, kDlcImageFileName);
-  CreateFile(image_path, manifest.size());
+  CreateFile(image_path, manifest->size());
   EXPECT_TRUE(base::PathExists(image_path));
 
-  string data(manifest.size(), '1');
+  string data(manifest->size(), '1');
   WriteToImage(image_path, data);
 
   return image_path;
@@ -137,25 +135,23 @@ base::FilePath BaseTest::SetUpDlcPreloadedImage(const DlcId& id) {
 
 // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
 void BaseTest::SetUpDlcWithSlots(const DlcId& id) {
-  imageloader::Manifest manifest;
-  dlcservice::GetDlcManifest(manifest_path_, id, kPackage, &manifest);
-
+  auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
   // Create DLC content sub-directories and empty images.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     base::FilePath image_path =
         GetDlcImagePath(content_path_, id, kPackage, slot);
-    CreateFile(image_path, manifest.preallocated_size());
+    CreateFile(image_path, manifest->preallocated_size());
+    LOG(INFO) << manifest->preallocated_size();
   }
 }
 
 void BaseTest::InstallWithUpdateEngine(const vector<string>& ids) {
   for (const auto& id : ids) {
-    imageloader::Manifest manifest;
-    dlcservice::GetDlcManifest(manifest_path_, id, kPackage, &manifest);
+    auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
     base::FilePath image_path = GetDlcImagePath(
         content_path_, id, kPackage, SystemState::Get()->active_boot_slot());
 
-    string data(manifest.size(), '1');
+    string data(manifest->size(), '1');
     WriteToImage(image_path, data);
   }
 }
