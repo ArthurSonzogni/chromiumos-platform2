@@ -56,7 +56,8 @@ base::Optional<profile::ProfileClass> LpaProfileClassToHermes(
 std::unique_ptr<Profile> Profile::Create(
     const lpa::proto::ProfileInfo& profile_info,
     const uint32_t physical_slot,
-    const std::string& eid) {
+    const std::string& eid,
+    bool is_pending) {
   CHECK(profile_info.has_iccid());
   auto profile = std::unique_ptr<Profile>(new Profile(
       dbus::ObjectPath(kBasePath + eid + "/" + profile_info.iccid()),
@@ -71,7 +72,9 @@ std::unique_ptr<Profile> Profile::Create(
                        profile_info.profile_owner().mnc());
   }
   profile->SetActivationCode(profile_info.activation_code());
-  auto state = LpaProfileStateToHermes(profile_info.profile_state());
+  base::Optional<profile::State> state;
+  state = is_pending ? profile::kPending
+                     : LpaProfileStateToHermes(profile_info.profile_state());
   if (!state.has_value()) {
     LOG(ERROR) << "Failed to create Profile for iccid " << profile_info.iccid()
                << "; invalid ProfileState " << profile_info.profile_state();

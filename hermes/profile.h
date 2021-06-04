@@ -24,7 +24,8 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
 
   static std::unique_ptr<Profile> Create(const lpa::proto::ProfileInfo& profile,
                                          const uint32_t physical_slot,
-                                         const std::string& eid);
+                                         const std::string& eid,
+                                         bool is_pending);
 
   // org::chromium::Hermes::ProfileInterface overrides.
   void Enable(std::unique_ptr<DBusResponse<>> resp) override;
