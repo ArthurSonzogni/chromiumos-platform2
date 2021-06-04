@@ -43,6 +43,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // Initialize the state. Used when entering or returning to the state.
   virtual RmadErrorCode InitializeState() = 0;
 
+  // Clean up the state. Called when leaving the state.
+  virtual void CleanUpState() {}
+
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition
   // fails, a corresponding RmadErrorCode is set, and |next_state_case| will be

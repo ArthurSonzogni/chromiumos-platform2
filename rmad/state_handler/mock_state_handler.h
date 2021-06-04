@@ -21,6 +21,7 @@ class MockStateHandler : public BaseStateHandler {
   MOCK_METHOD(const RmadState&, GetState, (), (const, override));
   MOCK_METHOD(bool, IsRepeatable, (), (const, override));
   MOCK_METHOD(RmadErrorCode, InitializeState, (), (override));
+  MOCK_METHOD(void, CleanUpState, (), (override));
   MOCK_METHOD(BaseStateHandler::GetNextStateCaseReply,
               GetNextStateCase,
               (const RmadState&),

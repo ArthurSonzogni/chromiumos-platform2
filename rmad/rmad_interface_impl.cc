@@ -145,10 +145,10 @@ void RmadInterfaceImpl::TransitionNextState(
     const GetStateCallback& callback) {
   // TODO(chenghan): Add error replies when failed to write |json_store_|.
   GetStateReply reply;
-  scoped_refptr<BaseStateHandler> state_handler, next_state_handler;
+  scoped_refptr<BaseStateHandler> current_state_handler, next_state_handler;
 
-  if (RmadErrorCode error =
-          GetInitializedStateHandler(current_state_case_, &state_handler);
+  if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
+                                                       &current_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
     callback.Run(reply);
@@ -156,14 +156,14 @@ void RmadInterfaceImpl::TransitionNextState(
   }
 
   auto [next_state_case_error, next_state_case] =
-      state_handler->GetNextStateCase(request.state());
+      current_state_handler->GetNextStateCase(request.state());
   if (next_state_case_error != RMAD_ERROR_OK) {
     LOG(INFO) << "Transitioning to next state rejected by state "
               << current_state_case_;
     CHECK(next_state_case == current_state_case_)
         << "State transition should not happen with errors.";
     reply.set_error(next_state_case_error);
-    reply.set_allocated_state(new RmadState(state_handler->GetState()));
+    reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
     callback.Run(reply);
     return;
@@ -177,7 +177,7 @@ void RmadInterfaceImpl::TransitionNextState(
           GetInitializedStateHandler(next_state_case, &next_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
-    reply.set_allocated_state(new RmadState(state_handler->GetState()));
+    reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
     callback.Run(reply);
     return;
@@ -186,6 +186,7 @@ void RmadInterfaceImpl::TransitionNextState(
   // Transition to next state.
   LOG(INFO) << "Transition to next state succeeded: from "
             << current_state_case_ << " to " << next_state_case;
+  current_state_handler->CleanUpState();
   // Append next state to stack.
   state_history_.push_back(next_state_case);
   if (!StoreStateHistory()) {
@@ -193,7 +194,7 @@ void RmadInterfaceImpl::TransitionNextState(
   }
   // Update state.
   current_state_case_ = next_state_case;
-  if (allow_abort_ && !state_handler->IsRepeatable()) {
+  if (allow_abort_ && !next_state_handler->IsRepeatable()) {
     // This is a one-way transition. |allow_abort| cannot go from false to
     // true, unless we restart the whole RMA process.
     allow_abort_ = false;
@@ -208,10 +209,10 @@ void RmadInterfaceImpl::TransitionNextState(
 void RmadInterfaceImpl::TransitionPreviousState(
     const GetStateCallback& callback) {
   GetStateReply reply;
-  scoped_refptr<BaseStateHandler> state_handler, prev_state_handler;
+  scoped_refptr<BaseStateHandler> current_state_handler, prev_state_handler;
 
-  if (RmadErrorCode error =
-          GetInitializedStateHandler(current_state_case_, &state_handler);
+  if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
+                                                       &current_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
     callback.Run(reply);
@@ -221,7 +222,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
   if (!CanGoBack()) {
     LOG(INFO) << "Not allowed to go back to previous state";
     reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
-    reply.set_allocated_state(new RmadState(state_handler->GetState()));
+    reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
     reply.set_can_go_back(false);
     callback.Run(reply);
     return;
@@ -239,6 +240,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
   // Transition to previous state.
   LOG(INFO) << "Transition to previous state succeeded: from "
             << current_state_case_ << " to " << prev_state_case;
+  current_state_handler->CleanUpState();
   // Remove current state from stack.
   state_history_.pop_back();
   if (!StoreStateHistory()) {

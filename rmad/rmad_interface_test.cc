@@ -281,14 +281,24 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
+  EXPECT_EQ(true, rmad_interface.AllowAbort());
 
   TransitionNextStateRequest request;
-  auto callback = [](const GetStateReply& reply) {
+  auto callback1 = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
   };
-  rmad_interface.TransitionNextState(request, base::Bind(callback));
+  rmad_interface.TransitionNextState(request, base::Bind(callback1));
+  EXPECT_EQ(true, rmad_interface.AllowAbort());
+
+  auto callback2 = [](const GetStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kDeviceDestination, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
+  };
+  rmad_interface.TransitionNextState(request, base::Bind(callback2));
+  EXPECT_EQ(false, rmad_interface.AllowAbort());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
