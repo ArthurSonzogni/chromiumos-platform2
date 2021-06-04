@@ -4,3 +4,6 @@ vapier@chromium.org
 ejcaruso@chromium.org
 
 # COMPONENT: OS>Systems
+
+# Rust owners.
+per-file Cargo.* = file:src/OWNERS
