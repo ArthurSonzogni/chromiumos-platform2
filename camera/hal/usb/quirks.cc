@@ -42,10 +42,6 @@ const QuirksMap& GetQuirksMap() {
       {{"1904", "0001"}, kQuirkReportLeastFpsRanges},
       // Chicony/CNFKH7521003210LH (b/185993364)
       {{"04f2", "b72f"}, kQuirkReportLeastFpsRanges},
-      // Chicony/CNFGH392100335GLH (b/179122288)
-      {{"04f2", "b675"}, kQuirkUserSpaceTimestamp},
-      // Foxlink/FG10FF-579H-4 (b/179122288)
-      {{"05c8", "03d0"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }
