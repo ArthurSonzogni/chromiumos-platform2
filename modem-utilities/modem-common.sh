@@ -145,8 +145,13 @@ esim() {
       esim_install_pending_profile "${euicc}" "$@"
       ;;
     uninstall)
-      poll_for_dbus_service "${HERMES}"
-      esim_uninstall "${euicc}" "$@"
+      if crossystem 'cros_debug?1'; then
+        poll_for_dbus_service "${HERMES}"
+        esim_uninstall "${euicc}" "$@"
+      else
+        error_exit "Cannot uninstall profile. Uninstallation allowed in"\
+          "dev mode only"
+      fi
       ;;
     enable)
       poll_for_dbus_service "${HERMES}"

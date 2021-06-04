@@ -146,7 +146,8 @@ usage() {
     "Install eSIM profile"
   echo "  esim install [-euicc <euicc>] <iccid> [<confirmation>]" \
     "Install an eSIM profile fetched by request_pending_profiles"
-  echo "  esim uninstall [-euicc <euicc>] <iccid>      Uninstall eSIM profile"
+  echo "  esim uninstall [-euicc <euicc>] <iccid>      Uninstall eSIM"\
+    "profile (Dev mode only)"
   echo "  esim enable [-euicc <euicc>] <iccid>         Enable eSIM profile"
   echo "  esim disable [-euicc <euicc>] <iccid>        Disable eSIM profile"
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
