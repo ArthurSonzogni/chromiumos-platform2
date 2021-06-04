@@ -41,7 +41,7 @@ static std::string ObjectID(const WireGuardDriver*) {
 namespace {
 
 const char kWireGuardPath[] = "/usr/sbin/wireguard";
-const char kWireGuardToolsPath[] = "/usr/sbin/wg";
+const char kWireGuardToolsPath[] = "/usr/bin/wg";
 const char kDefaultInterfaceName[] = "wg0";
 
 // Directory where wireguard configuration files are exported. The owner of this

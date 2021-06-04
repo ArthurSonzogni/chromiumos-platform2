@@ -128,7 +128,7 @@ class WireGuardDriverTest : public testing::Test {
   // input back.
   void SetFakeKeyGenerator() {
     EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes(
-                                      _, base::FilePath("/usr/sbin/wg"),
+                                      _, base::FilePath("/usr/bin/wg"),
                                       std::vector<std::string>{"pubkey"}, _,
                                       "vpn", "vpn", 0, true, true, _, _))
         .WillRepeatedly([](const base::Location&, const base::FilePath&,
@@ -188,7 +188,7 @@ class WireGuardDriverTest : public testing::Test {
     // wireguard-tools should be invoked on interface ready.
     std::vector<std::string> args;
     EXPECT_CALL(process_manager_,
-                StartProcessInMinijail(_, base::FilePath("/usr/sbin/wg"), _, _,
+                StartProcessInMinijail(_, base::FilePath("/usr/bin/wg"), _, _,
                                        "vpn", "vpn", CAP_TO_MASK(CAP_NET_ADMIN),
                                        true, true, _))
         .WillOnce(DoAll(SaveArg<2>(&args),
