@@ -13,6 +13,7 @@ pkg_config("libcros_healthd_system_pkg_deps") {
     "libcros_config",
     "libdebugd-client",
     "libmojo",
+    "libpci",
     "system_api",
   ]
 }
@@ -28,6 +29,7 @@ source_set("libcros_healthd_system") {
   ]
   sources = [
     "context.cc",
+    "pci_util_impl.cc",
     "system_config.cc",
     "system_config_constants.cc",
     "system_utilities_constants.cc",
@@ -62,6 +64,7 @@ if (use.test || use.fuzzer) {
       "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter_test_utils",
     ]
     sources = [
+      "fake_pci_util.cc",
       "fake_system_config.cc",
       "fake_system_utilities.cc",
       "mock_context.cc",
