@@ -513,7 +513,7 @@ mod tests {
         let key = manager
             .derive_storage_secret(
                 &app_info,
-                key_version.clone(),
+                key_version,
                 &salt,
                 TEST_DOMAIN,
                 TEST_IDENTIFIER,
@@ -526,12 +526,12 @@ mod tests {
             storage_version_minor: DEFAULT_STORAGE_MINOR_VERSION,
 
             iv: iv.clone(),
-            salt: Some(salt.clone()),
+            salt: Some(salt),
             key_version: Some(key_version),
 
             scope: Some(Scope::Test),
-            domain_hash: Some(domain_hash.clone()),
-            identifier_hash: Some(identifier_hash.clone()),
+            domain_hash: Some(domain_hash),
+            identifier_hash: Some(identifier_hash),
         };
 
         let associated_data = to_vec(aad.clone()).unwrap();
