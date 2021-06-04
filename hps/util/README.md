@@ -21,20 +21,22 @@ The host utilities are contained with a single ```hps``` binary.
 To run the different commands:
 
 ```bash
-hps [ --ftdi | --test | --bus <i2c-bus> ] [ --addr <i2c-addr> ] <command> <command arguments>
+hps [ --mcp | --ftdi | --test | --bus <i2c-bus> ] [ --addr <i2c-addr> ] <command> <command arguments>
 ```
 
 The following arguments configure ```hps``` to connect to the
-physical HPS hardware. Typically for Proto1 hardware, the ```--ftdi``` argument
+physical HPS hardware. Typically for Proto2 hardware, the ```--mcp``` argument
 should be used, so that a USB cable connection from a host is used
-to connect to the module (the FTDI connection at the module uses a I2C
+to connect to the module (the MCP2221A connection at the module uses a I2C
 interface to the hardware).
 The default I2C address of 0x30 is used, or a
 different address may be selected using ```--addr=N```.
+More details about the hardware layers can be found in the [README](../hal/README.md)
 
 The ```--test``` argument selects an internal s/w simulator that does not
 require any hardware to run.
 
+```--mcp``` selects a MCP2221A USB connection to the device.
 ```--ftdi``` selects a FTDI USB connection to the device.
 ```--test``` selects an internal test device.
 ```--bus``` selects direct I2C via this I2C bus device.

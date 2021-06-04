@@ -24,6 +24,7 @@
 #include "hps/hal/fake_dev.h"
 #include "hps/hal/ftdi.h"
 #include "hps/hal/i2c.h"
+#include "hps/hal/mcp.h"
 #include "hps/hal/retry.h"
 #include "hps/hal/uart.h"
 #include "hps/hps.h"
@@ -38,13 +39,14 @@ int main(int argc, char* argv[]) {
   DEFINE_uint32(retries, 0, "Max I2C retries");
   DEFINE_uint32(retry_delay, 10, "Delay in ms between retries");
   DEFINE_bool(ftdi, false, "Use FTDI connection");
+  DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_string(uart, "", "Use UART connection");
-  brillo::FlagHelper::Init(
-      argc, argv,
-      "usage: hps [ --ftdi | --test | --bus <i2c-bus> ] [ --addr <i2c-addr> ]\n"
-      "           <command> <command arguments>\n\n" +
-          Command::GetHelp());
+  brillo::FlagHelper::Init(argc, argv,
+                           "usage: hps [ --mcp | --ftdi | --test | --bus "
+                           "<i2c-bus> ] [ --addr <i2c-addr> ]\n"
+                           "           <command> <command arguments>\n\n" +
+                               Command::GetHelp());
 
   const logging::LoggingSettings ls;
   logging::InitLogging(ls);
@@ -55,7 +57,9 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   std::unique_ptr<hps::DevInterface> dev;
-  if (FLAGS_ftdi) {
+  if (FLAGS_mcp) {
+    dev = hps::Mcp::Create(FLAGS_addr);
+  } else if (FLAGS_ftdi) {
     dev = hps::Ftdi::Create(FLAGS_addr);
   } else if (FLAGS_test) {
     // Initialise the fake device as already booted so that

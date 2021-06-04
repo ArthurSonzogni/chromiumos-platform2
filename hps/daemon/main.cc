@@ -18,12 +18,14 @@
 #include "hps/hal/fake_dev.h"
 #include "hps/hal/ftdi.h"
 #include "hps/hal/i2c.h"
+#include "hps/hal/mcp.h"
 #include "hps/hal/uart.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
   DEFINE_bool(ftdi, false, "Use FTDI connection");
+  DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_string(uart, "", "Use UART connection");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
@@ -40,7 +42,9 @@ int main(int argc, char* argv[]) {
 
   // Determine the hardware connection.
   std::unique_ptr<hps::DevInterface> dev;
-  if (FLAGS_ftdi) {
+  if (FLAGS_mcp) {
+    dev = hps::Mcp::Create(FLAGS_addr);
+  } else if (FLAGS_ftdi) {
     dev = hps::Ftdi::Create(FLAGS_addr);
   } else if (FLAGS_test) {
     // Initialise the fake device as already booted so that

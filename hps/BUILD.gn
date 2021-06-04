@@ -63,6 +63,8 @@ static_library("hal") {
     "hal/ftdi.h",
     "hal/i2c.cc",
     "hal/i2c.h",
+    "hal/mcp.cc",
+    "hal/mcp.h",
     "hal/retry.cc",
     "hal/retry.h",
     "hal/uart.cc",
