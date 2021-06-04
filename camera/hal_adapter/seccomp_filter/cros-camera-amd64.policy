@@ -77,6 +77,7 @@ rt_sigprocmask: 1
 rt_sigreturn: 1
 sched_get_priority_max: 1
 sched_get_priority_min: 1
+sched_getaffinity: 1
 sched_getattr: 1
 sched_setaffinity: 1
 sched_setattr: 1
