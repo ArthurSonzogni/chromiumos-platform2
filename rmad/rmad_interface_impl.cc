@@ -150,8 +150,7 @@ void RmadInterfaceImpl::TransitionNextState(
   if (RmadErrorCode error =
           GetInitializedStateHandler(current_state_case_, &state_handler);
       error != RMAD_ERROR_OK) {
-    // TODO(chenghan): Do we need to provide detailed failure reason |error|?
-    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+    reply.set_error(error);
     callback.Run(reply);
     return;
   }
@@ -163,8 +162,7 @@ void RmadInterfaceImpl::TransitionNextState(
               << current_state_case_;
     CHECK(next_state_case == current_state_case_)
         << "State transition should not happen with errors.";
-    // TODO(chenghan): Log the error message for |next_state_case_error|.
-    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+    reply.set_error(next_state_case_error);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
     callback.Run(reply);
@@ -178,8 +176,7 @@ void RmadInterfaceImpl::TransitionNextState(
   if (RmadErrorCode error =
           GetInitializedStateHandler(next_state_case, &next_state_handler);
       error != RMAD_ERROR_OK) {
-    // TODO(chenghan): Do we need to provide detailed failure reason |error|?
-    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+    reply.set_error(error);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
     callback.Run(reply);
@@ -216,8 +213,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
   if (RmadErrorCode error =
           GetInitializedStateHandler(current_state_case_, &state_handler);
       error != RMAD_ERROR_OK) {
-    // TODO(chenghan): Do we need to provide detailed failure reason |error|?
-    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+    reply.set_error(error);
     callback.Run(reply);
     return;
   }
@@ -235,8 +231,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
   if (RmadErrorCode error =
           GetInitializedStateHandler(prev_state_case, &prev_state_handler);
       error != RMAD_ERROR_OK) {
-    // TODO(chenghan): Do we need to provide detailed failure reason |error|?
-    reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
+    reply.set_error(error);
     callback.Run(reply);
     return;
   }

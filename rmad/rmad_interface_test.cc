@@ -128,7 +128,7 @@ class RmadInterfaceImplTest : public testing::Test {
       scoped_refptr<JsonStore> json_store) {
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
     mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
-                                              RMAD_ERROR_REQUEST_INVALID,
+                                              RMAD_ERROR_MISSING_COMPONENT,
                                               RmadState::kComponentsRepair));
     mock_handlers.push_back(
         CreateMockHandler(json_store, components_repair_proto_, true,
@@ -269,7 +269,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store));
 
   auto callback = [](const GetStateReply& reply) {
-    EXPECT_EQ(RMAD_ERROR_REQUEST_INVALID, reply.error());
+    EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -318,7 +318,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeStateFail) {
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply) {
-    EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
+    EXPECT_EQ(RMAD_ERROR_DEVICE_INFO_INVALID, reply.error());
   };
   rmad_interface.TransitionNextState(request, base::Bind(callback));
 }
@@ -380,7 +380,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_InitializeStateFail) {
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store));
 
   auto callback = [](const GetStateReply& reply) {
-    EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
+    EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
