@@ -81,6 +81,8 @@ int main(int argc, const char** argv) {
   if (!host_client.is_valid())
     LOG(FATAL) << "Unable to accept connection from host";
 
+  // TODO(b/188450841): Receive the CID of the ARCVM instance from Chrome, and
+  // compare that to the CID of the accepted connection below.
   base::Optional<std::string> props = ReadFD(host_client.get());
   if (!props)
     LOG(FATAL) << "Did not receive props from host";
@@ -88,18 +90,29 @@ int main(int argc, const char** argv) {
   LOG(INFO) << "Received " << *props << " from host.";
 
   // Accept connection from ARCVM, then send DATA_READY followed by props.
-  base::ScopedFD vm_client = WaitForClientConnect(vm_fd.get());
-  if (!vm_client.is_valid())
-    return -1;
+  // It is possible, in the case of a Chrome crash or restart during early boot,
+  // that a previous VM client will connect before the current VM client (see
+  // b/188450841). To handle this, keep accept()ing connections until we are
+  // able to write successfully.
+  while (true) {
+    base::ScopedFD vm_client = WaitForClientConnect(vm_fd.get());
+    if (!vm_client.is_valid()) {
+      LOG(ERROR) << "Unable to accept() connection from guest; retrying";
+      continue;
+    }
 
-  LOG(INFO) << "Sending " << kDataReadyCommand << " to VM client.";
-  if (!base::WriteFileDescriptor(vm_client.get(), kDataReadyCommand,
-                                 strlen(kDataReadyCommand))) {
-    PLOG(FATAL) << "Unable to send " << kDataReadyCommand << " to client.";
-  }
-  if (!base::WriteFileDescriptor(vm_client.get(), props->c_str(),
-                                 props->size())) {
-    PLOG(FATAL) << "Unable to send props to client";
+    LOG(INFO) << "Sending " << kDataReadyCommand << " to VM client.";
+    if (!base::WriteFileDescriptor(vm_client.get(), kDataReadyCommand,
+                                   strlen(kDataReadyCommand))) {
+      PLOG(ERROR) << "Unable to send " << kDataReadyCommand << " to client.";
+      continue;
+    }
+    if (!base::WriteFileDescriptor(vm_client.get(), props->c_str(),
+                                   props->size())) {
+      PLOG(ERROR) << "Unable to send props to client";
+      continue;
+    }
+    break;
   }
 
   return 0;
