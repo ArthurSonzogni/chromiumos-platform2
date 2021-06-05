@@ -9,7 +9,7 @@ group("all") {
   if (use.kvm_host) {
     deps += [ "//vm_tools/host" ]
   }
-  if (!use.kvm_host) {
+  if (use.kvm_guest) {
     deps += [ "//vm_tools/guest" ]
   }
 }
