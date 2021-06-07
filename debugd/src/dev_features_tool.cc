@@ -5,6 +5,7 @@
 #include "debugd/src/dev_features_tool.h"
 
 #include <functional>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -187,7 +188,7 @@ struct Query {
   // The callback should launch the query program. If launching fails, return
   // false and set the error. If it succeeds, put the exit status in the
   // integer out-argument.
-  using Function = base::Callback<bool(int*, brillo::ErrorPtr*)>;
+  using Function = base::OnceCallback<bool(int*, brillo::ErrorPtr*)>;
 
   Function function;
   DevFeatureFlag flag;
@@ -199,21 +200,23 @@ bool DevFeaturesTool::QueryDevFeatures(int32_t* flags,
                                        brillo::ErrorPtr* error) const {
   DCHECK(flags);
   Query queries[] = {
-      {base::Bind(&RemoveRootfsVerificationQuery),
+      {base::BindOnce(&RemoveRootfsVerificationQuery),
        DEV_FEATURE_ROOTFS_VERIFICATION_REMOVED},
-      {base::Bind(&EnableBootFromUsbQuery), DEV_FEATURE_BOOT_FROM_USB_ENABLED},
-      {base::Bind(&EnableChromeRemoteDebuggingQuery),
+      {base::BindOnce(&EnableBootFromUsbQuery),
+       DEV_FEATURE_BOOT_FROM_USB_ENABLED},
+      {base::BindOnce(&EnableChromeRemoteDebuggingQuery),
        DEV_FEATURE_CHROME_REMOTE_DEBUGGING_ENABLED},
-      {base::Bind(&ConfigureSshServerQuery), DEV_FEATURE_SSH_SERVER_CONFIGURED},
-      {base::Bind(&SetUserPasswordQuery, "root", /* system = */ false),
+      {base::BindOnce(&ConfigureSshServerQuery),
+       DEV_FEATURE_SSH_SERVER_CONFIGURED},
+      {base::BindOnce(&SetUserPasswordQuery, "root", /* system = */ false),
        DEV_FEATURE_DEV_MODE_ROOT_PASSWORD_SET},
-      {base::Bind(&SetUserPasswordQuery, "root", /* system = */ true),
+      {base::BindOnce(&SetUserPasswordQuery, "root", /* system = */ true),
        DEV_FEATURE_SYSTEM_ROOT_PASSWORD_SET}};
 
   int32_t result_flags = 0;
-  for (const auto& query : queries) {
+  for (auto& query : queries) {
     int exit_status;
-    if (!query.function.Run(&exit_status, error)) {
+    if (!std::move(query.function).Run(&exit_status, error)) {
       // D-Bus is only set up to handle a single error so exit as soon as we
       // hit one.
       return false;
