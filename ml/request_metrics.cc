@@ -81,16 +81,12 @@ void RequestMetrics::FinishRecordingPerformanceMetrics() {
 // Records in MachineLearningService.LoadModelResult rather than a
 // model-specific enum histogram because the model name is unknown.
 void RecordModelSpecificationErrorEvent() {
-  MetricsLibrary().SendEnumToUMA(
-      "MachineLearningService.LoadModelResult",
-      static_cast<int>(LoadModelResult::MODEL_SPEC_ERROR),
-      static_cast<int>(LoadModelResult::kMaxValue) + 1);
+  MetricsLibrary().SendEnumToUMA("MachineLearningService.LoadModelResult",
+                                 LoadModelResult::MODEL_SPEC_ERROR);
 }
 
 void RecordProcessErrorEvent(ProcessError error) {
-  MetricsLibrary().SendEnumToUMA("MachineLearningService.ProcessError",
-                                 static_cast<int>(error),
-                                 static_cast<int>(ProcessError::kMaxValue) + 1);
+  MetricsLibrary().SendEnumToUMA("MachineLearningService.ProcessError", error);
 }
 
 void RecordWorkerProcessExitStatus(int status) {
@@ -108,9 +104,7 @@ void RecordReapWorkerProcessErrno(int error_number) {
     waitpid_error = WaitPidError::kEINVAL;
   }
   MetricsLibrary().SendEnumToUMA(
-      "MachineLearningService.ReapWorkerProcessErrno",
-      static_cast<int>(waitpid_error),
-      static_cast<int>(WaitPidError::kMaxValue) + 1);
+      "MachineLearningService.ReapWorkerProcessErrno", waitpid_error);
 }
 
 }  // namespace ml
