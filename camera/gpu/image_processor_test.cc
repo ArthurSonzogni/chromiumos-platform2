@@ -9,6 +9,9 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <hardware/gralloc.h>
 #include <system/graphics.h>
@@ -17,7 +20,9 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/common.h"
+#include "cros-camera/common_types.h"
 #include "gpu/gles/texture_2d.h"
+#include "gpu/gles/texture_reader.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 #include "gpu/test_support/gl_test_fixture.h"
@@ -28,22 +33,60 @@ namespace cros {
 
 namespace {
 
-constexpr int kWidth = 1920;
-constexpr int kHeight = 1080;
+struct Options {
+  static constexpr const char kInputSizeSwitch[] = "input-size";
+  static constexpr const char kOutputSizeSwitch[] = "output-size";
+  static constexpr const char kDumpBufferSwitch[] = "dump-buffer";
+  static constexpr const char kInputNv12File[] = "input-nv12-file";
+
+  Size input_size{1920, 1080};
+  Size output_size{1920, 1080};
+  bool dump_buffer = false;
+  base::Optional<base::FilePath> input_nv12_file;
+};
+
+Options g_args;
+
 constexpr uint32_t kNV12Format = HAL_PIXEL_FORMAT_YCbCr_420_888;
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
                                   GRALLOC_USAGE_SW_WRITE_OFTEN |
                                   GRALLOC_USAGE_HW_TEXTURE;
 
-// Dumps the input and output buffers in tests for visual inspection.
-constexpr const char kDumpBufferSwitch[] = "dump-buffer";
-bool g_dump_buffer = false;
-
 void ParseCommandLine(int argc, char** argv) {
   base::CommandLine command_line(argc, argv);
-  if (command_line.HasSwitch(kDumpBufferSwitch)) {
-    g_dump_buffer = true;
+  {
+    std::string arg =
+        command_line.GetSwitchValueASCII(Options::kInputSizeSwitch);
+    if (!arg.empty()) {
+      std::vector<std::string> arg_split = base::SplitString(
+          arg, "x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      CHECK_EQ(arg_split.size(), 2);
+      CHECK(base::StringToUint(arg_split[0], &g_args.input_size.width));
+      CHECK(base::StringToUint(arg_split[1], &g_args.input_size.height));
+    }
+  }
+  {
+    std::string arg =
+        command_line.GetSwitchValueASCII(Options::kOutputSizeSwitch);
+    if (!arg.empty()) {
+      std::vector<std::string> arg_split = base::SplitString(
+          arg, "x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      CHECK_EQ(arg_split.size(), 2);
+      CHECK(base::StringToUint(arg_split[0], &g_args.output_size.width));
+      CHECK(base::StringToUint(arg_split[1], &g_args.output_size.height));
+    }
+  }
+  if (command_line.HasSwitch(Options::kDumpBufferSwitch)) {
+    g_args.dump_buffer = true;
+  }
+  {
+    std::string arg = command_line.GetSwitchValueASCII(Options::kInputNv12File);
+    if (!arg.empty()) {
+      base::FilePath path(arg);
+      CHECK(base::PathExists(path)) << ": Input NV12 file does not exist";
+      g_args.input_nv12_file = path;
+    }
   }
 }
 
@@ -54,20 +97,35 @@ class GlImageProcessorTest : public GlTestFixture {
   GlImageProcessorTest() = default;
   ~GlImageProcessorTest() = default;
 
-  void AllocateNV12Input() {
+  void AllocateExternalNV12Input() {
     // NV12 buffer with GL_TEXTURE_EXTERNAL_OES texture.
     input_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        kWidth, kHeight, kNV12Format, kBufferUsage);
+        g_args.input_size.width, g_args.input_size.height, kNV12Format,
+        kBufferUsage);
     input_image_ = SharedImage::CreateFromBuffer(
         *input_buffer_, Texture2D::Target::kTargetExternal);
     ASSERT_TRUE(input_buffer_);
     ASSERT_TRUE(input_image_.texture().IsValid());
   }
 
+  void AllocateNV12Input() {
+    // NV12 buffer with dual GL_TEXTURE_2D textures for Y and UV planes.
+    input_buffer_ = CameraBufferManager::AllocateScopedBuffer(
+        g_args.input_size.width, g_args.input_size.height, kNV12Format,
+        kBufferUsage);
+    input_image_ = SharedImage::CreateFromBuffer(
+        *input_buffer_, Texture2D::Target::kTarget2D,
+        /*separate_yuv_textures=*/true);
+    ASSERT_TRUE(input_buffer_);
+    ASSERT_TRUE(input_image_.y_texture().IsValid());
+    ASSERT_TRUE(input_image_.uv_texture().IsValid());
+  }
+
   void AllocateNV12Output() {
     // NV12 buffer with dual GL_TEXTURE_2D textures for Y and UV planes.
     output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        kWidth, kHeight, kNV12Format, kBufferUsage);
+        g_args.output_size.width, g_args.output_size.height, kNV12Format,
+        kBufferUsage);
     output_image_ = SharedImage::CreateFromBuffer(
         *output_buffer_, Texture2D::Target::kTarget2D,
         /*separate_yuv_textures=*/true);
@@ -79,7 +137,8 @@ class GlImageProcessorTest : public GlTestFixture {
   void AllocateRGBAInput() {
     // RGBA buffer with GL_TEXTURE_2D texture.
     input_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        kWidth, kHeight, kRGBAFormat, kBufferUsage);
+        g_args.output_size.width, g_args.output_size.height, kRGBAFormat,
+        kBufferUsage);
     input_image_ = SharedImage::CreateFromBuffer(*input_buffer_,
                                                  Texture2D::Target::kTarget2D);
     ASSERT_TRUE(input_buffer_);
@@ -89,7 +148,8 @@ class GlImageProcessorTest : public GlTestFixture {
   void AllocateRGBAOutput() {
     // RGBA buffer with GL_TEXTURE_2D texture.
     output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        kWidth, kHeight, kRGBAFormat, kBufferUsage);
+        g_args.output_size.width, g_args.output_size.height, kRGBAFormat,
+        kBufferUsage);
     output_image_ = SharedImage::CreateFromBuffer(*output_buffer_,
                                                   Texture2D::Target::kTarget2D);
     ASSERT_TRUE(output_buffer_);
@@ -97,7 +157,7 @@ class GlImageProcessorTest : public GlTestFixture {
   }
 
   void DumpInputBuffer() {
-    if (!g_dump_buffer) {
+    if (!g_args.dump_buffer) {
       return;
     }
     const testing::TestInfo* const test_info =
@@ -107,7 +167,7 @@ class GlImageProcessorTest : public GlTestFixture {
   }
 
   void DumpOutputBuffer(std::string suffix = "") {
-    if (!g_dump_buffer) {
+    if (!g_args.dump_buffer) {
       return;
     }
     const testing::TestInfo* const test_info =
@@ -142,7 +202,7 @@ TEST_F(GlImageProcessorTest, RGBAToNV12Test) {
 }
 
 TEST_F(GlImageProcessorTest, ExternalYUVToNV12Test) {
-  AllocateNV12Input();
+  AllocateExternalNV12Input();
   FillTestPattern(*input_buffer_);
   DumpInputBuffer();
 
@@ -155,13 +215,39 @@ TEST_F(GlImageProcessorTest, ExternalYUVToNV12Test) {
 }
 
 TEST_F(GlImageProcessorTest, ExternalYUVToRGBATest) {
-  AllocateNV12Input();
+  AllocateExternalNV12Input();
   FillTestPattern(*input_buffer_);
   DumpInputBuffer();
 
   AllocateRGBAOutput();
   EXPECT_TRUE(image_processor_.ExternalYUVToRGBA(input_image_.texture(),
                                                  output_image_.texture()));
+  glFinish();
+  DumpOutputBuffer();
+}
+
+TEST_F(GlImageProcessorTest, NV12ToRGBATest) {
+  AllocateNV12Input();
+  FillTestPattern(*input_buffer_);
+  DumpInputBuffer();
+
+  AllocateRGBAOutput();
+  EXPECT_TRUE(image_processor_.NV12ToRGBA(input_image_.y_texture(),
+                                          input_image_.uv_texture(),
+                                          output_image_.texture()));
+  glFinish();
+  DumpOutputBuffer();
+}
+
+TEST_F(GlImageProcessorTest, NV12ToNV12Test) {
+  AllocateNV12Input();
+  FillTestPattern(*input_buffer_);
+  DumpInputBuffer();
+
+  AllocateNV12Output();
+  EXPECT_TRUE(image_processor_.NV12ToNV12(
+      input_image_.y_texture(), input_image_.uv_texture(),
+      output_image_.y_texture(), output_image_.uv_texture()));
   glFinish();
   DumpOutputBuffer();
 }

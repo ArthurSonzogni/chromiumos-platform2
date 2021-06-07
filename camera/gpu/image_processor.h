@@ -79,6 +79,52 @@ class GpuImageProcessor {
   bool ExternalYUVToRGBA(const Texture2D& external_yuv_input,
                          const Texture2D& rgba_output);
 
+  // Convert the input NV12 |y_input| and |uv_input| textures to RGBA.
+  //
+  // Args:
+  //    |y_input|:
+  //        The input 2D texture for Y plane.  The texture must be of format
+  //        R8.
+  //    |uv_input|:
+  //        The input 2D texture for UV plane.  The texture must be of format
+  //        GR8.  The pixel dimension must be
+  //        (|y_input|.width / 2, |y_input|.height / 2).
+  //    |rgba_output|:
+  //        The output 2D texture.  The texture should have RGBA internal
+  //        format.
+  //
+  // Returns:
+  //    true if GL commands are successfully submitted; false otherwise.
+  bool NV12ToRGBA(const Texture2D& y_input,
+                  const Texture2D& uv_input,
+                  const Texture2D& rgba_output);
+
+  // Convert the input NV12 |y_input| and |uv_input| textures to NV12 with GPU
+  // downsampling.
+  //
+  // Args:
+  //    |y_input|:
+  //        The input 2D texture for Y plane.  The texture must be of format
+  //        R8.
+  //    |uv_input|:
+  //        The input 2D texture for UV plane.  The texture must be of format
+  //        GR8.  The pixel dimension must be
+  //        (|y_input|.width / 2, |y_input|.height / 2).
+  //    |y_output|:
+  //        The output 2D texture for Y plane.  The texture must be of format
+  //        R8.
+  //    |uv_output|:
+  //        The output 2D texture for UV plane.  The texture must be of format
+  //        GR8.  The pixel dimension must be
+  //        (|y_output|.width / 2, |y_output|.height / 2).
+  //
+  // Returns:
+  //    true if GL commands are successfully submitted; false otherwise.
+  bool NV12ToNV12(const Texture2D& y_input,
+                  const Texture2D& uv_input,
+                  const Texture2D& y_output,
+                  const Texture2D& uv_output);
+
   // Apply the Gamma curve: OUT = pow(IN, 1/|gamma_value|) to each of the RGB
   // channels of |rgba_input|.  The results are written to |rgba_output|.
   //
@@ -130,6 +176,8 @@ class GpuImageProcessor {
   ShaderProgram rgba_to_nv12_program_;
   ShaderProgram external_yuv_to_nv12_program_;
   ShaderProgram external_yuv_to_rgba_program_;
+  ShaderProgram nv12_to_rgba_program_;
+  ShaderProgram nv12_to_nv12_program_;
   ShaderProgram gamma_correction_program_;
   ShaderProgram lut_program_;
 

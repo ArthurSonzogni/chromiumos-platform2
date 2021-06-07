@@ -26,6 +26,8 @@ constexpr const char* kVertexShaderFilename =
 constexpr const char* kRgbaToNv12Filename = "rgba_to_nv12.frag";
 constexpr const char* kExternalYuvToNv12Filename = "external_yuv_to_nv12.frag";
 constexpr const char* kExternalYuvToRgbaFilename = "external_yuv_to_rgba.frag";
+constexpr const char* kNv12ToRgbaFilename = "nv12_to_rgba.frag";
+constexpr const char* kNv12ToNv12Filename = "nv12_to_nv12.frag";
 constexpr const char* kGammaCorrectionFilename = "gamma_correction.frag";
 constexpr const char* kLutFilename = "lut.frag";
 
@@ -63,6 +65,20 @@ GpuImageProcessor::GpuImageProcessor()
     CHECK(fragment_shader.IsValid());
     external_yuv_to_rgba_program_ =
         ShaderProgram({&vertex_shader, &fragment_shader});
+  }
+  {
+    base::span<const char> src = gpu_shaders.Get(kNv12ToRgbaFilename);
+    Shader fragment_shader(GL_FRAGMENT_SHADER,
+                           std::string(src.data(), src.size()));
+    CHECK(fragment_shader.IsValid());
+    nv12_to_rgba_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
+  }
+  {
+    base::span<const char> src = gpu_shaders.Get(kNv12ToNv12Filename);
+    Shader fragment_shader(GL_FRAGMENT_SHADER,
+                           std::string(src.data(), src.size()));
+    CHECK(fragment_shader.IsValid());
+    nv12_to_nv12_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
   }
   {
     base::span<const char> src = gpu_shaders.Get(kGammaCorrectionFilename);
@@ -238,6 +254,133 @@ bool GpuImageProcessor::ExternalYUVToRGBA(const Texture2D& external_yuv_input,
   glActiveTexture(GL_TEXTURE0 + kInputBinding);
   external_yuv_input.Unbind();
   Sampler::Unbind(kInputBinding);
+
+  return true;
+}
+
+bool GpuImageProcessor::NV12ToRGBA(const Texture2D& y_input,
+                                   const Texture2D& uv_input,
+                                   const Texture2D& rgba_output) {
+  if ((y_input.width() / 2 != uv_input.width()) ||
+      (y_input.height() / 2 != uv_input.height())) {
+    LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
+                << ") and UV (" << uv_input.width() << ", " << uv_input.height()
+                << ") input dimension";
+    return false;
+  }
+
+  FramebufferGuard fb_guard;
+  ViewportGuard viewport_guard;
+  ProgramGuard program_guard;
+  VertexArrayGuard va_guard;
+
+  rect_.SetAsVertexInput();
+
+  constexpr int kYInputBinding = 0;
+  constexpr int kUvInputBinding = 1;
+  glActiveTexture(GL_TEXTURE0 + kYInputBinding);
+  y_input.Bind();
+  nearest_clamp_to_edge_.Bind(kYInputBinding);
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  uv_input.Bind();
+  nearest_clamp_to_edge_.Bind(kUvInputBinding);
+
+  nv12_to_rgba_program_.UseProgram();
+
+  // Set shader uniforms.
+  std::vector<float> texture_matrix = TextureSpaceFromNdc();
+  GLint uTextureMatrix =
+      nv12_to_rgba_program_.GetUniformLocation("uTextureMatrix");
+  glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
+
+  Framebuffer fb;
+  fb.Bind();
+  fb.Attach(GL_COLOR_ATTACHMENT0, rgba_output);
+  glViewport(0, 0, rgba_output.width(), rgba_output.height());
+  rect_.Draw();
+
+  // Clean up.
+  glActiveTexture(GL_TEXTURE0 + kYInputBinding);
+  y_input.Unbind();
+  Sampler::Unbind(kYInputBinding);
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  uv_input.Unbind();
+  Sampler::Unbind(kUvInputBinding);
+
+  return true;
+}
+
+bool GpuImageProcessor::NV12ToNV12(const Texture2D& y_input,
+                                   const Texture2D& uv_input,
+                                   const Texture2D& y_output,
+                                   const Texture2D& uv_output) {
+  if ((y_input.width() / 2 != uv_input.width()) ||
+      (y_input.height() / 2 != uv_input.height())) {
+    LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
+                << ") and UV (" << uv_input.width() << ", " << uv_input.height()
+                << ") input dimension";
+    return false;
+  }
+  if ((y_output.width() / 2 != uv_output.width()) ||
+      (y_output.height() / 2 != uv_output.height())) {
+    LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
+                << y_output.height() << ") and UV (" << uv_output.width()
+                << ", " << uv_output.height() << ") output dimension";
+    return false;
+  }
+
+  FramebufferGuard fb_guard;
+  ViewportGuard viewport_guard;
+  ProgramGuard program_guard;
+  VertexArrayGuard va_guard;
+
+  rect_.SetAsVertexInput();
+
+  constexpr int kYInputBinding = 0;
+  constexpr int kUvInputBinding = 1;
+  glActiveTexture(GL_TEXTURE0 + kYInputBinding);
+  y_input.Bind();
+  nearest_clamp_to_edge_.Bind(kYInputBinding);
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  uv_input.Bind();
+  nearest_clamp_to_edge_.Bind(kUvInputBinding);
+
+  nv12_to_nv12_program_.UseProgram();
+
+  // Set shader uniforms.
+  std::vector<float> texture_matrix = TextureSpaceFromNdc();
+  GLint uTextureMatrix =
+      nv12_to_nv12_program_.GetUniformLocation("uTextureMatrix");
+  glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
+  GLint uIsYPlane = nv12_to_nv12_program_.GetUniformLocation("uIsYPlane");
+
+  // Y pass.
+  {
+    glUniform1i(uIsYPlane, true);
+    Framebuffer fb;
+    fb.Bind();
+    fb.Attach(GL_COLOR_ATTACHMENT0, y_output);
+    glViewport(0, 0, y_output.width(), y_output.height());
+    rect_.Draw();
+  }
+
+  // UV pass.
+  {
+    glUniform1i(uIsYPlane, false);
+    Framebuffer fb;
+    fb.Bind();
+    fb.Attach(GL_COLOR_ATTACHMENT0, uv_output);
+    glViewport(0, 0, uv_output.width(), uv_output.height());
+    rect_.Draw();
+  }
+
+  // Clean up.
+  glActiveTexture(GL_TEXTURE0 + kYInputBinding);
+  y_input.Unbind();
+  Sampler::Unbind(kYInputBinding);
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  uv_input.Unbind();
+  Sampler::Unbind(kUvInputBinding);
 
   return true;
 }

@@ -24,6 +24,8 @@ cc_embed_data("embedded_gpu_shaders") {
     "//camera/gpu/shaders/fullscreen_rect_highp_320_es.vert",
     "//camera/gpu/shaders/gamma_correction.frag",
     "//camera/gpu/shaders/lut.frag",
+    "//camera/gpu/shaders/nv12_to_nv12.frag",
+    "//camera/gpu/shaders/nv12_to_rgba.frag",
     "//camera/gpu/shaders/rgba_to_nv12.frag",
   ]
 }
