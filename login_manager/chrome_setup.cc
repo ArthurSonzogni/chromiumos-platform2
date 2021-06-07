@@ -19,6 +19,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -162,6 +163,22 @@ void SetUpModemFlag(ChromiumCommandBuilder* builder,
       cros_config->GetString(kModemPath, kModemAttachApnProperty, &required) &&
       required == "true") {
     builder->AddFeatureEnableOverride("CellularUseAttachApn");
+  }
+}
+
+void SetUpOsInstallFlags(ChromiumCommandBuilder* builder) {
+  if (!builder->UseFlagIsSet("os_install_service")) {
+    return;
+  }
+
+  std::string output;
+  if (!base::GetAppOutput({"is_running_from_installer"}, &output)) {
+    LOG(ERROR) << "Failed to run is_running_from_installer";
+    return;
+  }
+
+  if (output == "yes\n") {
+    builder->AddArg("--allow-os-install");
   }
 }
 
@@ -494,6 +511,7 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("ondevice_speech"))
     builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
 
+  SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
 }
 
