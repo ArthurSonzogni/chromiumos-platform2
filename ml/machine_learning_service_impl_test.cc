@@ -1631,7 +1631,7 @@ TEST_F(TextSuggesterTest, LoadModelAndGeneratePredictionCandidate) {
   }
 
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
-  query->text = "how are";
+  query->text = "how are ";
   query->suggestion_mode = TextSuggestionMode::kPrediction;
 
   bool infer_callback_done = false;

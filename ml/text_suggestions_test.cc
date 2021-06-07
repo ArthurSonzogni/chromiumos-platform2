@@ -72,7 +72,7 @@ TEST(TextSuggestionsText, ExamplePredictionRequest) {
   instance->LoadTextSuggester(suggester);
 
   chrome_knowledge::TextSuggesterRequest request;
-  request.set_text("How are");
+  request.set_text("How are ");
   request.set_suggestion_mode(
       chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_PREDICTION);
 
