@@ -13,7 +13,7 @@ error details can be presented.
 
 This service (when included in the OS image) only runs when the OS is
 live booted from an installer image. This is checked in the [upstart
-script](conf/os_install_service.conf)] by running
+script](conf/os_install_service.conf) by running
 `is_running_from_installer`, which compares the sizes of the root-A
 and root-B partitions. If they are the same size, then the OS is
 considered installed, whereas if the sizes are different then the OS
