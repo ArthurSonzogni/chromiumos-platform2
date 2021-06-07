@@ -26,4 +26,12 @@
 #define CRYPTOKI_VERSION_MAJOR 2
 #define CRYPTOKI_VERSION_MINOR 20
 
+// CKM for ECDSA+SHA2 is only available on Cryptoki V3 or above,
+// so we temporarily define them here.
+#ifndef CKM_ECDSA_SHA256
+#define CKM_ECDSA_SHA256 0x1044
+#define CKM_ECDSA_SHA384 0x1045
+#define CKM_ECDSA_SHA512 0x1046
+#endif  // CKM_ECDSA_SHA256
+
 #endif  // CHAPS_PKCS11_CRYPTOKI_H_
