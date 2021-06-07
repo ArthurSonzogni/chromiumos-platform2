@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
+#include <base/no_destructor.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 
@@ -243,8 +244,8 @@ int CameraHal::GetNumberOfCameras() const {
 }
 
 CameraHal& CameraHal::GetInstance() {
-  static CameraHal camera_hal;
-  return camera_hal;
+  static base::NoDestructor<CameraHal> camera_hal;
+  return *camera_hal;
 }
 
 CameraMojoChannelManagerToken* CameraHal::GetMojoManagerToken() {
