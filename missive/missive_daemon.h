@@ -38,7 +38,6 @@ class MissiveDaemon : public brillo::DBusServiceDaemon,
       StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result);
 
   void AsyncStartUpload(
-      Priority priority,
       bool need_encryption_key,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 

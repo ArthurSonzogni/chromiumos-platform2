@@ -115,7 +115,6 @@ class Storage::QueueUploaderInterface : public UploaderInterface {
       Storage* storage,
       UploaderInterfaceResultCb start_uploader_cb) {
     storage->async_start_upload_cb_.Run(
-        priority,
         /*need_encryption_key=*/EncryptionModuleInterface::is_enabled() &&
             storage->encryption_module_->need_encryption_key(),
         base::BindOnce(&QueueUploaderInterface::WrapInstantiatedUploader,
@@ -192,9 +191,8 @@ class Storage::KeyDelivery {
   void EuqueueRequestAndStart(RequestCallback callback) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     const bool first_call = callbacks_.empty();
-    auto new_subscription = callbacks_.Add(std::move(callback));
-    DCHECK(new_subscription);
-    callback_subscriptions_.emplace_back(std::move(new_subscription));
+    callback_subscriptions_.emplace_back(callbacks_.Add(std::move(callback)));
+    DCHECK(callback_subscriptions_.back());
     if (!first_call) {
       // Already started.
       return;
@@ -205,7 +203,6 @@ class Storage::KeyDelivery {
         base::BindOnce(&KeyDelivery::EncryptionKeyReceiverReady,
                        base::Unretained(this));
     async_start_upload_cb_.Run(
-        /*priority=*/MANUAL_BATCH,  // Any priority would do.
         /*need_encryption_key=*/true,
         base::BindOnce(&KeyDelivery::WrapInstantiatedKeyUploader,
                        /*priority=*/MANUAL_BATCH,
@@ -246,9 +243,7 @@ class Storage::KeyDelivery {
 
   // List of all request callbacks (protected by |sequenced_task_runner_|).
   base::OnceCallbackList<void(Status)> callbacks_;
-  std::vector<
-      std::unique_ptr<base::OnceCallbackList<void(Status)>::Subscription>>
-      callback_subscriptions_;
+  std::vector<base::CallbackListSubscription> callback_subscriptions_;
 
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
 

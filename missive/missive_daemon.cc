@@ -80,7 +80,6 @@ void MissiveDaemon::OnStorageModuleConfigured(
 }
 
 void MissiveDaemon::AsyncStartUpload(
-    Priority priority,
     bool need_encryption_key,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK(uploader_result_cb);
