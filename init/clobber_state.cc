@@ -872,14 +872,9 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     stateful_paths.push_back(demo_mode_resources_dir + "manifest.json");
     stateful_paths.push_back(demo_mode_resources_dir + "table");
 
-    // For rollback wipes, we also preserve rollback data. This is an encrypted
-    // proto which contains install attributes, device policy and owner.key
-    // (used to keep the enrollment), also other device-level configurations
-    // e.g. shill configuration to restore network connection after rollback.
-    // We also preserve the attestation DB (needed because we don't do TPM clear
-    // in this case).
+    // For rollback wipes, we preserve additional data as defined in
+    // oobe_config/rollback_data.proto.
     if (args_.rollback_wipe) {
-      stateful_paths.push_back("unencrypted/preserve/attestation.epb");
       stateful_paths.push_back("unencrypted/preserve/rollback_data");
     }
   }
@@ -1097,11 +1092,9 @@ int ClobberState::Run() {
 
   // Most effective means of destroying user data is run at the start: Throwing
   // away the key to encrypted stateful by requesting the TPM to be cleared at
-  // next boot. We shouldn't do this for rollback wipes.
-  if (!args_.rollback_wipe) {
-    if (!cros_system_->SetInt(CrosSystem::kClearTpmOwnerRequest, 1)) {
-      LOG(ERROR) << "Requesting TPM wipe via crossystem failed";
-    }
+  // next boot.
+  if (!cros_system_->SetInt(CrosSystem::kClearTpmOwnerRequest, 1)) {
+    LOG(ERROR) << "Requesting TPM wipe via crossystem failed";
   }
 
   // In cases where biometric sensors are available, reset the internal entropy

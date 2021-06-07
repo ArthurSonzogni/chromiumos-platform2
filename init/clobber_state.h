@@ -31,7 +31,7 @@ class ClobberState {
     bool keepimg = false;
     // Preserve some files and VPD keys.
     bool safe_wipe = false;
-    // Preserve rollback data, attestation DB, and don't clear TPM
+    // Preserve rollback data.
     bool rollback_wipe = false;
     // Preserve initial reason for triggering clobber, if available.
     // Assume that the reason string is already sanitized by session
