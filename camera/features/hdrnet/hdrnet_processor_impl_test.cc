@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -54,12 +53,17 @@ struct Options {
   static constexpr const char kOutputSizeSwitch[] = "output-sizes";
   static constexpr const char kDumpBufferSwitch[] = "dump-buffer";
   static constexpr const char kInputNv12File[] = "input-nv12-file";
+  // Use the default device processor to measure the latency of the core HDRnet
+  // linear RGB pipeline.
+  static constexpr const char kUseDefaultDeviceProcessor[] =
+      "use-default-device-processor";
 
   int benchmark_iterations = 1000;
   Size input_size{1920, 1080};
   std::vector<Size> output_sizes{{1920, 1080}, {1280, 720}};
   bool dump_buffer = false;
   base::Optional<base::FilePath> input_nv12_file;
+  bool use_default_device_processor = false;
 };
 
 Options g_args;
@@ -112,6 +116,9 @@ void ParseCommandLine(int argc, char** argv) {
       g_args.input_nv12_file = path;
     }
   }
+  if (command_line.HasSwitch(Options::kUseDefaultDeviceProcessor)) {
+    g_args.use_default_device_processor = true;
+  }
 }
 
 class HdrNetProcessorTest : public GlTestFixture {
@@ -120,9 +127,13 @@ class HdrNetProcessorTest : public GlTestFixture {
     android::CameraMetadata static_info;
     int32_t max_curve_points = 1024;
     static_info.update(ANDROID_TONEMAP_MAX_CURVE_POINTS, &max_curve_points, 1);
-    std::unique_ptr<HdrNetDeviceProcessor> device_processor =
-        HdrNetDeviceProcessor::GetInstance(static_info.getAndLock(),
-                                           base::ThreadTaskRunnerHandle::Get());
+    std::unique_ptr<HdrNetDeviceProcessor> device_processor;
+    if (g_args.use_default_device_processor) {
+      device_processor = std::make_unique<HdrNetDeviceProcessor>();
+    } else {
+      device_processor = HdrNetDeviceProcessor::GetInstance(
+          static_info.getAndLock(), base::ThreadTaskRunnerHandle::Get());
+    }
     processor_ = std::make_unique<HdrNetProcessorImpl>(
         static_info.getAndLock(), base::ThreadTaskRunnerHandle::Get(),
         std::move(device_processor));

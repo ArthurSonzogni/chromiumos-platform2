@@ -22,6 +22,15 @@ pkg_config("target_defaults") {
   ]
 }
 
+if (use.ipu6ep) {
+  cc_embed_data("embedded_hdrnet_processor_shaders_ipu6") {
+    sources = [
+      "//camera/features/hdrnet/shaders/postprocess_ipu6.frag",
+      "//camera/features/hdrnet/shaders/preprocess_ipu6.frag",
+    ]
+  }
+}
+
 static_library("libhdrnet") {
   sources = [
     "//camera/features/hdrnet/hdrnet_config.cc",
@@ -31,12 +40,22 @@ static_library("libhdrnet") {
   ]
   libs = [ "hdrnet_cros" ]
   public_configs = [ ":target_defaults" ]
+  defines = []
   public_deps = [ "//camera/gpu:gpu_base" ]
   deps = [
     "//camera/gpu:image_processor",
     "//camera/gpu/egl:libegl",
     "//camera/gpu/gles:libgles",
   ]
+
+  if (use.ipu6ep) {
+    sources += [
+      "//camera/features/hdrnet/hdrnet_device_processor_ipu6.cc",
+      "//camera/features/hdrnet/ipu6_gamma.cc",
+    ]
+    defines += [ "IPU6EP" ]
+    deps += [ ":embedded_hdrnet_processor_shaders_ipu6" ]
+  }
 }
 
 pkg_config("test_target_defaults") {

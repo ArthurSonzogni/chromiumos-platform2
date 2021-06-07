@@ -6,13 +6,21 @@
 
 #include "features/hdrnet/hdrnet_device_processor.h"
 
+#if defined(IPU6EP)
+#include "features/hdrnet/hdrnet_device_processor_ipu6.h"
+#endif
+
 namespace cros {
 
 // static
 std::unique_ptr<HdrNetDeviceProcessor> HdrNetDeviceProcessor::GetInstance(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
+#if defined(IPU6EP)
+  return std::make_unique<HdrNetDeviceProcessorIpu6>(static_info, task_runner);
+#else
   return std::make_unique<HdrNetDeviceProcessor>();
+#endif
 }
 
 bool HdrNetDeviceProcessor::Initialize() {
