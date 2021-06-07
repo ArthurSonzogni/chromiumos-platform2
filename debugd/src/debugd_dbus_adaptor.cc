@@ -93,8 +93,8 @@ void DebugdDBusAdaptor::RegisterAsync(
   DCHECK(my_interface);
   my_interface->AddProperty(kCrashSenderTestMode, &crash_sender_test_mode_);
   crash_sender_test_mode_.SetUpdateCallback(
-      base::Bind(&CrashSenderTool::OnTestModeChanged,
-                 base::Unretained(crash_sender_tool_.get())));
+      base::BindRepeating(&CrashSenderTool::OnTestModeChanged,
+                          base::Unretained(crash_sender_tool_.get())));
   crash_sender_test_mode_.SetValue(false);
   crash_sender_test_mode_.SetAccessMode(
       brillo::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
