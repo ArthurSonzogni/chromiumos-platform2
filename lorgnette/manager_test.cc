@@ -111,6 +111,10 @@ class ManagerTest : public testing::Test {
         base::Unretained(&signals_)));
   }
 
+  // TODO(crbug.com/1218246) Change UMA enum name kMetricScanRequested,
+  // kMetricScanSucceeded, and kMetricScanFailed if new enums for
+  // DocumentScanSaneBackend are added to avoid data discontinuity, then use
+  // kMaxValue+1 rather than kMaxValue.
   void ExpectScanRequest(DocumentScanSaneBackend backend) {
     EXPECT_CALL(*metrics_library_,
                 SendEnumToUMA(Manager::kMetricScanRequested, backend,

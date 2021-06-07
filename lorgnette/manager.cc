@@ -916,18 +916,27 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
 
 void Manager::ReportScanRequested(const std::string& device_name) {
   DocumentScanSaneBackend backend = BackendFromDeviceName(device_name);
+  // TODO(crbug.com/1218246) Change UMA enum name kMetricScanRequested if new
+  // enums for DocumentScanSaneBackend are added to avoid data discontinuity,
+  // then use kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
   metrics_library_->SendEnumToUMA(kMetricScanRequested, backend,
                                   DocumentScanSaneBackend::kMaxValue);
 }
 
 void Manager::ReportScanSucceeded(const std::string& device_name) {
   DocumentScanSaneBackend backend = BackendFromDeviceName(device_name);
+  // TODO(crbug.com/1218246) Change UMA enum name kMetricScanSucceeded if new
+  // enums for DocumentScanSaneBackend are added to avoid data discontinuity,
+  // then use kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
   metrics_library_->SendEnumToUMA(kMetricScanSucceeded, backend,
                                   DocumentScanSaneBackend::kMaxValue);
 }
 
 void Manager::ReportScanFailed(const std::string& device_name) {
   DocumentScanSaneBackend backend = BackendFromDeviceName(device_name);
+  // TODO(crbug.com/1218246) Change UMA enum name kMetricScanFailed if new
+  // enums for DocumentScanSaneBackend are added to avoid data discontinuity,
+  // then use kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
   metrics_library_->SendEnumToUMA(kMetricScanFailed, backend,
                                   DocumentScanSaneBackend::kMaxValue);
 }
