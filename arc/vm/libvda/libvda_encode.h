@@ -43,13 +43,22 @@ typedef struct vea_capabilities {
   const vea_profile_t* output_formats;
 } vea_capabilities_t;
 
+// Adapted from Bitrate.
+typedef enum vea_bitrate_mode { VBR, CBR } vea_bitrate_mode_t;
+
+typedef struct vea_bitrate {
+  vea_bitrate_mode_t mode;
+  uint32_t target;
+  uint32_t peak;
+} vea_bitrate_t;
+
 // Adapted from VideoEncodeAcceleratorConfig.
 typedef struct vea_config {
   video_pixel_format_t input_format;
   uint32_t input_visible_width;
   uint32_t input_visible_height;
   video_codec_profile_t output_profile;
-  uint32_t initial_bitrate;
+  vea_bitrate_t bitrate;
   uint32_t initial_framerate;
   uint8_t has_initial_framerate;
   uint8_t h264_output_level;

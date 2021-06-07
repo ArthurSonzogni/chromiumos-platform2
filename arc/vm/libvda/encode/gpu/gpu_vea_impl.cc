@@ -167,9 +167,11 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   mojo_config->input_visible_size->width = config->input_visible_width;
   mojo_config->input_visible_size->height = config->input_visible_height;
 
+  // TODO(b/190336806) Pass bitrate mode and peak bitrate once mojo bindings
+  // have been updated.
   mojo_config->output_profile =
       ConvertCodecProfileToMojoProfile(config->output_profile);
-  mojo_config->initial_bitrate = config->initial_bitrate;
+  mojo_config->initial_bitrate = config->bitrate.target;
   mojo_config->initial_framerate = config->initial_framerate;
   mojo_config->has_initial_framerate = config->has_initial_framerate;
   mojo_config->h264_output_level = config->h264_output_level;
