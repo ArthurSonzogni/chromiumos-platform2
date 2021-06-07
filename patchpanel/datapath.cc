@@ -818,9 +818,9 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
         args.push_back("--mode");
         args.push_back("nth");
         args.push_back("--every");
-        args.push_back(std::to_string(rule.nameservers.size()));
+        args.push_back(std::to_string(i + 1));
         args.push_back("--packet");
-        args.push_back(std::to_string(i));
+        args.push_back("0");
       }
       args.push_back("-j");
       args.push_back("DNAT");
