@@ -61,6 +61,22 @@ bool IsIPv6NDProxyEnabled(ShillClient::Device::Type type) {
   return ndproxy_allowed_types.find(type) != ndproxy_allowed_types.end();
 }
 
+void FillSubnetProto(const Subnet& virtual_subnet,
+                     patchpanel::IPv4Subnet* output) {
+  output->set_base_addr(virtual_subnet.BaseAddress());
+  output->set_prefix_len(virtual_subnet.PrefixLength());
+}
+
+void FillDeviceProto(const Device& virtual_device,
+                     patchpanel::NetworkDevice* output) {
+  // TODO(hugobenichi) Consolidate guest_type in Device class and set
+  // guest_type.
+  output->set_ifname(virtual_device.host_ifname());
+  output->set_phys_ifname(virtual_device.phys_ifname());
+  output->set_ipv4_addr(virtual_device.config().guest_ipv4_addr());
+  output->set_host_ipv4_addr(virtual_device.config().host_ipv4_addr());
+}
+
 }  // namespace
 
 Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
@@ -378,13 +394,9 @@ void Manager::OnDeviceChanged(const Device& device,
                       ? NetworkDeviceChangedSignal::DEVICE_ADDED
                       : NetworkDeviceChangedSignal::DEVICE_REMOVED);
   auto* dev = proto.mutable_device();
-  dev->set_ifname(device.host_ifname());
-  dev->set_phys_ifname(device.phys_ifname());
-  dev->set_ipv4_addr(device.config().guest_ipv4_addr());
+  FillDeviceProto(device, dev);
   if (const auto* subnet = device.config().ipv4_subnet()) {
-    auto* sub = dev->mutable_ipv4_subnet();
-    sub->set_base_addr(subnet->BaseAddress());
-    sub->set_prefix_len(subnet->PrefixLength());
+    FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
   }
   switch (guest_type) {
     case GuestMessage::ARC:
@@ -518,14 +530,10 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
   arc_svc_->ScanDevices(base::BindRepeating(
       [](patchpanel::GetDevicesResponse* resp, const Device& device) {
         auto* dev = resp->add_devices();
-        dev->set_ifname(device.host_ifname());
-        dev->set_phys_ifname(device.phys_ifname());
-        dev->set_ipv4_addr(device.config().guest_ipv4_addr());
+        FillDeviceProto(device, dev);
         dev->set_guest_type(arc_guest_type);
         if (const auto* subnet = device.config().ipv4_subnet()) {
-          auto* sub = dev->mutable_ipv4_subnet();
-          sub->set_base_addr(subnet->BaseAddress());
-          sub->set_prefix_len(subnet->PrefixLength());
+          FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
         }
       },
       &response));
@@ -534,15 +542,11 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
       [](patchpanel::GetDevicesResponse* resp, uint64_t vm_id, bool is_termina,
          const Device& device) {
         auto* dev = resp->add_devices();
-        dev->set_ifname(device.host_ifname());
-        dev->set_phys_ifname(device.phys_ifname());
-        dev->set_ipv4_addr(device.config().guest_ipv4_addr());
+        FillDeviceProto(device, dev);
         dev->set_guest_type(is_termina ? NetworkDevice::TERMINA_VM
                                        : NetworkDevice::PLUGIN_VM);
         if (const auto* subnet = device.config().ipv4_subnet()) {
-          auto* sub = dev->mutable_ipv4_subnet();
-          sub->set_base_addr(subnet->BaseAddress());
-          sub->set_prefix_len(subnet->PrefixLength());
+          FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
         }
       },
       &response));
@@ -632,6 +636,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     if (config->tap_ifname().empty())
       continue;
 
+    // TODO(hugobenichi) Use FillDeviceProto.
     auto* dev = response.add_devices();
     dev->set_ifname(config->tap_ifname());
     dev->set_ipv4_addr(config->guest_ipv4_addr());
@@ -700,27 +705,24 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     return dbus_response;
   }
 
+  const auto* device_subnet = tap->config().ipv4_subnet();
+  if (!device_subnet) {
+    LOG(DFATAL) << "Missing required device IPv4 subnet for {cid: " << cid
+                << "}";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  const auto* lxd_subnet = tap->config().lxd_ipv4_subnet();
+  if (!lxd_subnet) {
+    LOG(DFATAL) << "Missing required lxd IPv4 subnet for {cid: " << cid << "}";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
   auto* dev = response.mutable_device();
-  dev->set_ifname(tap->host_ifname());
   dev->set_guest_type(NetworkDevice::TERMINA_VM);
-  const auto* subnet = tap->config().ipv4_subnet();
-  if (!subnet) {
-    LOG(DFATAL) << "Missing required subnet for {cid: " << cid << "}";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  auto* resp_subnet = dev->mutable_ipv4_subnet();
-  resp_subnet->set_base_addr(subnet->BaseAddress());
-  resp_subnet->set_prefix_len(subnet->PrefixLength());
-  subnet = tap->config().lxd_ipv4_subnet();
-  if (!subnet) {
-    LOG(DFATAL) << "Missing required lxd subnet for {cid: " << cid << "}";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  resp_subnet = response.mutable_container_subnet();
-  resp_subnet->set_base_addr(subnet->BaseAddress());
-  resp_subnet->set_prefix_len(subnet->PrefixLength());
+  FillDeviceProto(*tap, dev);
+  FillSubnetProto(*device_subnet, dev->mutable_ipv4_subnet());
+  FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -784,18 +786,16 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
     return dbus_response;
   }
 
-  auto* dev = response.mutable_device();
-  dev->set_ifname(tap->host_ifname());
-  dev->set_guest_type(NetworkDevice::PLUGIN_VM);
   const auto* subnet = tap->config().ipv4_subnet();
   if (!subnet) {
     LOG(DFATAL) << "Missing required subnet for {cid: " << vm_id << "}";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  auto* resp_subnet = dev->mutable_ipv4_subnet();
-  resp_subnet->set_base_addr(subnet->BaseAddress());
-  resp_subnet->set_prefix_len(subnet->PrefixLength());
+  auto* dev = response.mutable_device();
+  dev->set_guest_type(NetworkDevice::PLUGIN_VM);
+  FillDeviceProto(*tap, dev);
+  FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
