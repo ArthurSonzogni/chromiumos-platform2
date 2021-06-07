@@ -130,10 +130,23 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
     minijail_use_seccomp_filter(jail.get());
   }
 
-  std::string fd_argv = kMojoBootstrapFdSwitchName;
+  // This is the file descriptor used to bootstrap mojo connection between
+  // control and worker processes.
   // Use GetFD instead of TakeFD to non-destructively obtain the fd.
-  fd_argv = GetArgumentForWorkerProcess(
-      channel.remote_endpoint().platform_handle().GetFD().get());
+  auto mojo_bootstrap_fd =
+      channel.remote_endpoint().platform_handle().GetFD().get();
+
+  // Closes the unused FDs in the worker process.
+  // We keep the standard FDs here (should all point to `/dev/null`).
+  // Also we need to keep the FD used in bootstrapping the mojo connection.
+  minijail_preserve_fd(jail.get(), STDIN_FILENO, STDIN_FILENO);
+  minijail_preserve_fd(jail.get(), STDOUT_FILENO, STDOUT_FILENO);
+  minijail_preserve_fd(jail.get(), STDERR_FILENO, STDERR_FILENO);
+  minijail_preserve_fd(jail.get(), mojo_bootstrap_fd, mojo_bootstrap_fd);
+  minijail_close_open_fds(jail.get());
+
+  std::string fd_argv = kMojoBootstrapFdSwitchName;
+  fd_argv = GetArgumentForWorkerProcess(mojo_bootstrap_fd);
   char* const argv[3] = {&ml_service_path_[0], &fd_argv[0], nullptr};
 
   if (minijail_run_pid(jail.get(), &ml_service_path_[0], argv, worker_pid) !=
