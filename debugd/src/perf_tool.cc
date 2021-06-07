@@ -172,7 +172,8 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
 
   process_reaper_.WatchForChild(
       FROM_HERE, quipper_process_->pid(),
-      base::Bind(&PerfTool::OnQuipperProcessExited, base::Unretained(this)));
+      base::BindOnce(&PerfTool::OnQuipperProcessExited,
+                     base::Unretained(this)));
 
   // When GetPerfOutputFd() is used to run the perf tool, the user will read
   // from the read end of |stdout_fd| until the write end is closed.  At that
