@@ -6,20 +6,18 @@
 #define PATCHPANEL_MOCK_DATAPATH_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
 #include "patchpanel/datapath.h"
-#include "patchpanel/firewall.h"
-#include "patchpanel/minijailed_process_runner.h"
 
 namespace patchpanel {
 
 // ARC networking data path configuration utility.
 class MockDatapath : public Datapath {
  public:
-  explicit MockDatapath(MinijailedProcessRunner* runner, Firewall* firewall)
-      : Datapath(runner, firewall) {}
+  explicit MockDatapath() : Datapath(nullptr, nullptr, nullptr) {}
   MockDatapath(const MockDatapath&) = delete;
   MockDatapath& operator=(const MockDatapath&) = delete;
 
@@ -80,6 +78,19 @@ class MockDatapath : public Datapath {
   MOCK_METHOD2(DumpIptables,
                std::string(IpFamily family, const std::string& table));
   MOCK_METHOD1(ModprobeAll, bool(const std::vector<std::string>& modules));
+  MOCK_METHOD1(AddAdbPortAccessRule, bool(const std::string& ifname));
+  MOCK_METHOD1(DeleteAdbPortAccessRule, void(const std::string& ifname));
+  MOCK_METHOD5(ModifyChain,
+               bool(IpFamily family,
+                    const std::string& table,
+                    const std::string& op,
+                    const std::string& chain,
+                    bool log_failures));
+  MOCK_METHOD4(ModifyIptables,
+               bool(IpFamily family,
+                    const std::string& table,
+                    const std::vector<std::string>& argv,
+                    bool log_failures));
 };
 
 }  // namespace patchpanel

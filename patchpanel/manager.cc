@@ -85,8 +85,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
     : adb_proxy_(std::move(adb_proxy)),
       mcast_proxy_(std::move(mcast_proxy)),
       nd_proxy_(std::move(nd_proxy)) {
-  runner_ = std::make_unique<MinijailedProcessRunner>();
-  datapath_ = std::make_unique<Datapath>(runner_.get(), &firewall_);
+  datapath_ = std::make_unique<Datapath>(&firewall_);
 }
 
 std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};

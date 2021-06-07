@@ -214,7 +214,6 @@ class Manager final : public brillo::DBusDaemon {
   // enabled.
   static std::map<const std::string, bool> cached_feature_enabled_;
 
-  std::unique_ptr<MinijailedProcessRunner> runner_;
   std::unique_ptr<Datapath> datapath_;
 
   // TODO(b/174538233) Introduce ForwardingGroup to properly track the state of

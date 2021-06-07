@@ -41,6 +41,10 @@ std::vector<ioctl_req_t> ioctl_reqs;
 std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;
 std::vector<std::pair<std::string, struct ifreq>> ioctl_ifreq_args;
 
+int ioctl_stub(int fd, ioctl_req_t req, ...) {
+  return 0;
+}
+
 // Capture all ioctls and succeed.
 int ioctl_req_cap(int fd, ioctl_req_t req, ...) {
   ioctl_reqs.push_back(req);
@@ -84,8 +88,6 @@ std::vector<std::string> SplitCommand(const std::string& command) {
                            base::WhitespaceHandling::TRIM_WHITESPACE,
                            base::SplitResult::SPLIT_WANT_NONEMPTY);
 }
-
-}  // namespace
 
 using IpFamily::Dual;
 using IpFamily::IPv4;
@@ -193,6 +195,8 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
   EXPECT_CALL(runner, ip_netns_delete(StrEq(netns_name), _));
 }
 
+}  // namespace
+
 TEST(DatapathTest, IpFamily) {
   EXPECT_EQ(Dual, IPv4 | IPv6);
   EXPECT_EQ(Dual & IPv4, IPv4);
@@ -203,13 +207,13 @@ TEST(DatapathTest, IpFamily) {
 }
 
 TEST(DatapathTest, Start) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
   // Asserts for sysctl modifications
-  Verify_sysctl_w(runner, "net.ipv4.ip_forward", "1");
-  Verify_sysctl_w(runner, "net.ipv4.ip_local_port_range", "32768 47103");
-  Verify_sysctl_w(runner, "net.ipv6.conf.all.forwarding", "1");
+  Verify_sysctl_w(*runner, "net.ipv4.ip_forward", "1");
+  Verify_sysctl_w(*runner, "net.ipv4.ip_local_port_range", "32768 47103");
+  Verify_sysctl_w(*runner, "net.ipv6.conf.all.forwarding", "1");
 
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       // Asserts for iptables chain reset.
@@ -383,20 +387,20 @@ TEST(DatapathTest, Start) {
        "redirect_user_dns -w"},
   };
   for (const auto& c : iptables_commands) {
-    Verify_iptables(runner, c.first, c.second);
+    Verify_iptables(*runner, c.first, c.second);
   }
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.Start();
 }
 
 TEST(DatapathTest, Stop) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   // Asserts for sysctl modifications
-  Verify_sysctl_w(runner, "net.ipv4.ip_local_port_range", "32768 61000");
-  Verify_sysctl_w(runner, "net.ipv6.conf.all.forwarding", "0");
-  Verify_sysctl_w(runner, "net.ipv4.ip_forward", "0");
+  Verify_sysctl_w(*runner, "net.ipv4.ip_local_port_range", "32768 61000");
+  Verify_sysctl_w(*runner, "net.ipv6.conf.all.forwarding", "0");
+  Verify_sysctl_w(*runner, "net.ipv4.ip_forward", "0");
   // Asserts for iptables chain reset.
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
@@ -452,17 +456,17 @@ TEST(DatapathTest, Stop) {
       {Dual, "nat -F OUTPUT -w"},
   };
   for (const auto& c : iptables_commands) {
-    Verify_iptables(runner, c.first, c.second);
+    Verify_iptables(*runner, c.first, c.second);
   }
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.Stop();
 }
 
 TEST(DatapathTest, AddTAP) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Datapath datapath(&runner, &firewall, ioctl_req_cap);
+  Datapath datapath(runner, &firewall, ioctl_req_cap);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
   auto addr = subnet.AllocateAtOffset(0);
@@ -477,9 +481,9 @@ TEST(DatapathTest, AddTAP) {
 }
 
 TEST(DatapathTest, AddTAPWithOwner) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Datapath datapath(&runner, &firewall, ioctl_req_cap);
+  Datapath datapath(runner, &firewall, ioctl_req_cap);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
   auto addr = subnet.AllocateAtOffset(0);
@@ -494,9 +498,9 @@ TEST(DatapathTest, AddTAPWithOwner) {
 }
 
 TEST(DatapathTest, AddTAPNoAddrs) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Datapath datapath(&runner, &firewall, ioctl_req_cap);
+  Datapath datapath(runner, &firewall, ioctl_req_cap);
   auto ifname = datapath.AddTAP("foo0", nullptr, nullptr, "");
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
@@ -507,37 +511,37 @@ TEST(DatapathTest, AddTAPNoAddrs) {
 }
 
 TEST(DatapathTest, RemoveTAP) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner, "tuntap del foo0 mode tap");
-  Datapath datapath(&runner, &firewall);
+  Verify_ip(*runner, "tuntap del foo0 mode tap");
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.RemoveTAP("foo0");
 }
 
 TEST(DatapathTest, NetnsAttachName) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip_netns_delete(runner, "netns_foo");
-  Verify_ip_netns_attach(runner, "netns_foo", 1234);
-  Datapath datapath(&runner, &firewall);
+  Verify_ip_netns_delete(*runner, "netns_foo");
+  Verify_ip_netns_attach(*runner, "netns_foo", 1234);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   EXPECT_TRUE(datapath.NetnsAttachName("netns_foo", 1234));
 }
 
 TEST(DatapathTest, NetnsDeleteName) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  EXPECT_CALL(runner, ip_netns_delete(StrEq("netns_foo"), true));
-  Datapath datapath(&runner, &firewall);
+  EXPECT_CALL(*runner, ip_netns_delete(StrEq("netns_foo"), true));
+  Datapath datapath(runner, &firewall, ioctl_stub);
   EXPECT_TRUE(datapath.NetnsDeleteName("netns_foo"));
 }
 
 TEST(DatapathTest, AddBridge) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
-  Verify_ip(runner, "link set br up");
+  Verify_ip(*runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
+  Verify_ip(*runner, "link set br up");
 
-  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
+  Datapath datapath(runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
   datapath.AddBridge("br", Ipv4Addr(1, 1, 1, 1), 30);
 
   EXPECT_EQ(1, ioctl_reqs.size());
@@ -548,11 +552,11 @@ TEST(DatapathTest, AddBridge) {
 }
 
 TEST(DatapathTest, RemoveBridge) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner, "link set br down");
+  Verify_ip(*runner, "link set br down");
 
-  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
+  Datapath datapath(runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
   datapath.RemoveBridge("br");
 
   EXPECT_EQ(1, ioctl_reqs.size());
@@ -563,10 +567,10 @@ TEST(DatapathTest, RemoveBridge) {
 }
 
 TEST(DatapathTest, AddToBridge) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
+  Datapath datapath(runner, &firewall, (ioctl_t)ioctl_ifreq_cap);
   datapath.SetIfnameIndex("vethwlan0", 5);
   datapath.AddToBridge("arcbr0", "vethwlan0");
 
@@ -580,97 +584,97 @@ TEST(DatapathTest, AddToBridge) {
 }
 
 TEST(DatapathTest, ConnectVethPair) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner,
+  Verify_ip(*runner,
             "link add veth_foo type veth peer name peer_foo netns netns_foo");
-  Verify_ip(runner,
+  Verify_ip(*runner,
             "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
-  Verify_ip(runner,
+  Verify_ip(*runner,
             "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
-  Verify_ip(runner, "link set veth_foo up");
-  Datapath datapath(&runner, &firewall);
+  Verify_ip(*runner, "link set veth_foo up");
+  Datapath datapath(runner, &firewall, ioctl_stub);
   EXPECT_TRUE(datapath.ConnectVethPair(kTestPID, "netns_foo", "veth_foo",
                                        "peer_foo", {1, 2, 3, 4, 5, 6},
                                        Ipv4Addr(100, 115, 92, 169), 30, true));
 }
 
 TEST(DatapathTest, AddVirtualInterfacePair) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner,
+  Verify_ip(*runner,
             "link add veth_foo type veth peer name peer_foo netns netns_foo");
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   EXPECT_TRUE(
       datapath.AddVirtualInterfacePair("netns_foo", "veth_foo", "peer_foo"));
 }
 
 TEST(DatapathTest, ToggleInterface) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner, "link set foo up");
-  Verify_ip(runner, "link set bar down");
-  Datapath datapath(&runner, &firewall);
+  Verify_ip(*runner, "link set foo up");
+  Verify_ip(*runner, "link set bar down");
+  Datapath datapath(runner, &firewall, ioctl_stub);
   EXPECT_TRUE(datapath.ToggleInterface("foo", true));
   EXPECT_TRUE(datapath.ToggleInterface("bar", false));
 }
 
 TEST(DatapathTest, ConfigureInterface) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev foo");
-  Verify_ip(runner, "link set dev foo up addr 02:02:02:02:02:02 multicast on");
+  Verify_ip(*runner, "addr add 1.1.1.1/30 brd 1.1.1.3 dev foo");
+  Verify_ip(*runner, "link set dev foo up addr 02:02:02:02:02:02 multicast on");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   MacAddress mac_addr = {2, 2, 2, 2, 2, 2};
   EXPECT_TRUE(datapath.ConfigureInterface("foo", mac_addr, Ipv4Addr(1, 1, 1, 1),
                                           30, true, true));
 }
 
 TEST(DatapathTest, RemoveInterface) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip(runner, "link delete foo");
-  Datapath datapath(&runner, &firewall);
+  Verify_ip(*runner, "link delete foo");
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.RemoveInterface("foo");
 }
 
 TEST(DatapathTest, StartRoutingNamespace) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   MacAddress mac = {1, 2, 3, 4, 5, 6};
 
-  Verify_ip_netns_delete(runner, "netns_foo");
-  Verify_ip_netns_attach(runner, "netns_foo", kTestPID);
-  Verify_ip(runner,
+  Verify_ip_netns_delete(*runner, "netns_foo");
+  Verify_ip_netns_attach(*runner, "netns_foo", kTestPID);
+  Verify_ip(*runner,
             "link add arc_ns0 type veth peer name veth0 netns netns_foo");
-  Verify_ip(runner, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
-  Verify_ip(runner,
+  Verify_ip(*runner, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  Verify_ip(*runner,
             "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
-  Verify_ip(runner, "link set arc_ns0 up");
-  Verify_ip(runner,
+  Verify_ip(*runner, "link set arc_ns0 up");
+  Verify_ip(*runner,
             "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
-  Verify_ip(runner,
+  Verify_ip(*runner,
             "link set dev arc_ns0 up addr 01:02:03:04:05:06 multicast off");
-  Verify_iptables(runner, IPv4, "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual, "mangle -N PREROUTING_arc_ns0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, IPv4, "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000200/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arc_ns0 -j CONNMARK "
                   "--restore-mark --mask 0xffff0000 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "mangle -A PREROUTING_arc_ns0 -s 100.115.92.130 -d "
                   "100.115.92.129 -j ACCEPT -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
   ConnectedNamespace nsinfo = {};
@@ -684,24 +688,24 @@ TEST(DatapathTest, StartRoutingNamespace) {
   nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
                                                 base::DoNothing());
   nsinfo.peer_mac_addr = mac;
-  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
+  Datapath datapath(runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
   datapath.StartRoutingNamespace(nsinfo);
   ioctl_reqs.clear();
   ioctl_rtentry_args.clear();
 }
 
 TEST(DatapathTest, StopRoutingNamespace) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, IPv4, "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4, "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, IPv4, "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4, "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
-  Verify_iptables(runner, Dual, "mangle -X PREROUTING_arc_ns0 -w");
-  Verify_ip_netns_delete(runner, "netns_foo");
-  Verify_ip(runner, "link delete arc_ns0");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(*runner, Dual, "mangle -X PREROUTING_arc_ns0 -w");
+  Verify_ip_netns_delete(*runner, "netns_foo");
+  Verify_ip(*runner, "link delete arc_ns0");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -713,19 +717,19 @@ TEST(DatapathTest, StopRoutingNamespace) {
   nsinfo.peer_ifname = "veth0";
   nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
                                                 base::DoNothing());
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StopRoutingNamespace(nsinfo);
 }
 
 TEST(DatapathTest, StartRoutingNewNamespace) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   MacAddress mac = {1, 2, 3, 4, 5, 6};
 
   // The running may fail at checking ScopedNS.IsValid() in
   // Datapath::ConnectVethPair(), so we only check if `ip netns add` is invoked
   // correctly here.
-  Verify_ip_netns_add(runner, "netns_foo");
+  Verify_ip_netns_add(*runner, "netns_foo");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = ConnectedNamespace::kNewNetnsPid;
@@ -738,323 +742,323 @@ TEST(DatapathTest, StartRoutingNewNamespace) {
   nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
                                                 base::DoNothing());
   nsinfo.peer_mac_addr = mac;
-  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
+  Datapath datapath(runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
   datapath.StartRoutingNamespace(nsinfo);
   ioctl_reqs.clear();
   ioctl_rtentry_args.clear();
 }
 
 TEST(DatapathTest, StartRoutingDevice_Arc) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -A PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -A PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -A FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual, "mangle -N PREROUTING_arc_eth0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arc_eth0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x03ea0000/0xffff0000 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetIfnameIndex("eth0", 2);
   datapath.StartRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
                               TrafficSource::ARC, false);
 }
 
 TEST(DatapathTest, StartRoutingDevice_CrosVM) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_iptables(runner, IPv4, "filter -A FORWARD -o vmtap0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4, "filter -A FORWARD -i vmtap0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual, "mangle -N PREROUTING_vmtap0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, IPv4, "filter -A FORWARD -o vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4, "filter -A FORWARD -i vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_vmtap0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "mangle -A PREROUTING_vmtap0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_vmtap0 -j MARK --set-mark "
                   "0x00002100/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_vmtap0 -j CONNMARK --restore-mark "
                   "--mask 0xffff0000 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_vmtap0 -j skip_apply_vpn_mark -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StartRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
                               TrafficSource::CROSVM, true);
 }
 
 TEST(DatapathTest, StopRoutingDevice_Arc) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
-  Verify_iptables(runner, Dual, "mangle -X PREROUTING_arc_eth0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
+  Verify_iptables(*runner, Dual, "mangle -X PREROUTING_arc_eth0 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StopRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
                              TrafficSource::ARC, true);
 }
 
 TEST(DatapathTest, StopRoutingDevice_CrosVM) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_iptables(runner, IPv4, "filter -D FORWARD -o vmtap0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4, "filter -D FORWARD -i vmtap0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, IPv4, "filter -D FORWARD -o vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4, "filter -D FORWARD -i vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
-  Verify_iptables(runner, Dual, "mangle -X PREROUTING_vmtap0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
+  Verify_iptables(*runner, Dual, "mangle -X PREROUTING_vmtap0 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StopRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
                              TrafficSource::CROSVM, true);
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
   // Setup
-  Verify_iptables(runner, Dual, "mangle -N POSTROUTING_eth0 -w");
-  Verify_iptables(runner, Dual, "mangle -F POSTROUTING_eth0 -w",
+  Verify_iptables(*runner, Dual, "mangle -N POSTROUTING_eth0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_eth0 -w",
                   2 /* Start and Stop */);
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING_eth0 -j CONNMARK --set-mark "
                   "0x03eb0000/0xffff0000 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING_eth0 -j CONNMARK "
                   "--save-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
 
   // Teardown
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -D POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
-  Verify_iptables(runner, Dual, "mangle -X POSTROUTING_eth0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual, "mangle -X POSTROUTING_eth0 -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetIfnameIndex("eth0", 3);
   datapath.StartConnectionPinning("eth0");
   datapath.StopConnectionPinning("eth0");
 }
 
 TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
   // Setup
-  Verify_iptables(runner, Dual, "mangle -N POSTROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual, "mangle -F POSTROUTING_arcbr0 -w",
+  Verify_iptables(*runner, Dual, "mangle -N POSTROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_arcbr0 -w",
                   2 /* Start and Stop */);
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING_arcbr0 -j CONNMARK "
                   "--set-mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(
-      runner, Dual,
+      *runner, Dual,
       "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w");
   Verify_iptables(
-      runner, Dual,
+      *runner, Dual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING_arcbr0 -j CONNMARK "
                   "--save-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i arcbr0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -A POSTROUTING -o arcbr0 -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
 
   // Teardown
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -D POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual, "mangle -X POSTROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual, "mangle -F apply_vpn_mark -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual, "mangle -X POSTROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F apply_vpn_mark -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arcbr0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D POSTROUTING -o arcbr0 -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(runner, Dual, "filter -F vpn_accept -w");
+  Verify_iptables(*runner, Dual, "filter -F vpn_accept -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetIfnameIndex("arcbr0", 5);
   datapath.StartVpnRouting("arcbr0");
   datapath.StopVpnRouting("arcbr0");
 }
 
 TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
   // Setup
-  Verify_iptables(runner, Dual, "mangle -N POSTROUTING_tun0 -w");
-  Verify_iptables(runner, Dual, "mangle -F POSTROUTING_tun0 -w",
+  Verify_iptables(*runner, Dual, "mangle -N POSTROUTING_tun0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_tun0 -w",
                   2 /* Start and Stop */);
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING_tun0 -j CONNMARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   Verify_iptables(
-      runner, Dual,
+      *runner, Dual,
       "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w");
   Verify_iptables(
-      runner, Dual,
+      *runner, Dual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING_tun0 -j CONNMARK "
                   "--save-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, IPv4, "nat -A POSTROUTING -o tun0 -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4, "nat -A POSTROUTING -o tun0 -j MASQUERADE -w");
+  Verify_iptables(*runner, IPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
   // Teardown
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -D POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
-  Verify_iptables(runner, Dual, "mangle -X POSTROUTING_tun0 -w");
-  Verify_iptables(runner, Dual, "mangle -F apply_vpn_mark -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual, "mangle -X POSTROUTING_tun0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F apply_vpn_mark -w");
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(runner, IPv4, "nat -D POSTROUTING -o tun0 -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4, "nat -D POSTROUTING -o tun0 -j MASQUERADE -w");
+  Verify_iptables(*runner, IPv4,
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(runner, Dual, "filter -F vpn_accept -w");
+  Verify_iptables(*runner, Dual, "filter -F vpn_accept -w");
   // Start tun0 <-> arcbr0 routing
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -A FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -A FORWARD -i arcbr0 -o tun0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual, "mangle -N PREROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual, "mangle -F PREROUTING_arcbr0 -w",
+  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arcbr0 -w",
                   2 /* Start and Stop */);
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   // Stop tun0 <-> arcbr0 routing
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -D FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "filter -D FORWARD -i arcbr0 -o tun0 -j ACCEPT -w");
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
-  Verify_iptables(runner, Dual, "mangle -X PREROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual, "mangle -X PREROUTING_arcbr0 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetIfnameIndex("tun0", 5);
   datapath.StartVpnRouting("tun0");
   datapath.StopVpnRouting("tun0");
 }
 
 TEST(DatapathTest, AddInboundIPv4DNAT) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -A PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -A PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.AddInboundIPv4DNAT("eth0", "1.2.3.4");
 }
 
 TEST(DatapathTest, RemoveInboundIPv4DNAT) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.RemoveInboundIPv4DNAT("eth0", "1.2.3.4");
 }
 
 TEST(DatapathTest, MaskInterfaceFlags) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Datapath datapath(&runner, &firewall, ioctl_req_cap);
+  Datapath datapath(runner, &firewall, ioctl_req_cap);
 
   bool result = datapath.MaskInterfaceFlags("foo0", IFF_DEBUG);
   EXPECT_TRUE(result);
@@ -1065,69 +1069,75 @@ TEST(DatapathTest, MaskInterfaceFlags) {
 }
 
 TEST(DatapathTest, AddIPv6Forwarding) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
   // Return 1 on iptables -C to simulate rule not existing case
-  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
-                                ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
-                                            "arc_eth0", "-j", "ACCEPT", "-w"),
-                                false, nullptr))
+  EXPECT_CALL(*runner,
+              ip6tables(StrEq("filter"),
+                        ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
+                                    "arc_eth0", "-j", "ACCEPT", "-w"),
+                        false, nullptr))
       .WillOnce(Return(1));
-  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
-                                ElementsAre("-A", "FORWARD", "-i", "eth0", "-o",
-                                            "arc_eth0", "-j", "ACCEPT", "-w"),
-                                true, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
-                                ElementsAre("-C", "FORWARD", "-i", "arc_eth0",
-                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
-                                false, nullptr))
+  EXPECT_CALL(*runner,
+              ip6tables(StrEq("filter"),
+                        ElementsAre("-A", "FORWARD", "-i", "eth0", "-o",
+                                    "arc_eth0", "-j", "ACCEPT", "-w"),
+                        true, nullptr));
+  EXPECT_CALL(*runner,
+              ip6tables(StrEq("filter"),
+                        ElementsAre("-C", "FORWARD", "-i", "arc_eth0", "-o",
+                                    "eth0", "-j", "ACCEPT", "-w"),
+                        false, nullptr))
       .WillOnce(Return(1));
-  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
-                                ElementsAre("-A", "FORWARD", "-i", "arc_eth0",
-                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
-                                true, nullptr));
-  Datapath datapath(&runner, &firewall);
+  EXPECT_CALL(*runner,
+              ip6tables(StrEq("filter"),
+                        ElementsAre("-A", "FORWARD", "-i", "arc_eth0", "-o",
+                                    "eth0", "-j", "ACCEPT", "-w"),
+                        true, nullptr));
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.AddIPv6Forwarding("eth0", "arc_eth0");
 }
 
 TEST(DatapathTest, AddIPv6ForwardingRuleExists) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
-                                ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
-                                            "arc_eth0", "-j", "ACCEPT", "-w"),
-                                false, nullptr));
-  EXPECT_CALL(runner, ip6tables(StrEq("filter"),
-                                ElementsAre("-C", "FORWARD", "-i", "arc_eth0",
-                                            "-o", "eth0", "-j", "ACCEPT", "-w"),
-                                false, nullptr));
-  Datapath datapath(&runner, &firewall);
+  EXPECT_CALL(*runner,
+              ip6tables(StrEq("filter"),
+                        ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
+                                    "arc_eth0", "-j", "ACCEPT", "-w"),
+                        false, nullptr));
+  EXPECT_CALL(*runner,
+              ip6tables(StrEq("filter"),
+                        ElementsAre("-C", "FORWARD", "-i", "arc_eth0", "-o",
+                                    "eth0", "-j", "ACCEPT", "-w"),
+                        false, nullptr));
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.AddIPv6Forwarding("eth0", "arc_eth0");
 }
 
 TEST(DatapathTest, RemoveIPv6Forwarding) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_iptables(runner, IPv6,
+  Verify_iptables(*runner, IPv6,
                   "filter -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(runner, IPv6,
+  Verify_iptables(*runner, IPv6,
                   "filter -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.RemoveIPv6Forwarding("eth0", "arc_eth0");
 }
 
 TEST(DatapathTest, AddIPv6HostRoute) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Verify_ip6(runner, "route replace 2001:da8:e00::1234/128 dev eth0");
-  Datapath datapath(&runner, &firewall);
+  Verify_ip6(*runner, "route replace 2001:da8:e00::1234/128 dev eth0");
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.AddIPv6HostRoute("eth0", "2001:da8:e00::1234", 128);
 }
 
 TEST(DatapathTest, AddIPv4Route) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
-  Datapath datapath(&runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
+  Datapath datapath(runner, &firewall, (ioctl_t)ioctl_rtentry_cap);
 
   datapath.AddIPv4Route(Ipv4Addr(192, 168, 1, 1), Ipv4Addr(100, 115, 93, 0),
                         Ipv4Addr(255, 255, 255, 0));
@@ -1166,47 +1176,47 @@ TEST(DatapathTest, AddIPv4Route) {
 }
 
 TEST(DatapathTest, RedirectDnsRules) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.RemoveRedirectDnsRule("wlan0");
   datapath.RemoveRedirectDnsRule("unknown");
   datapath.AddRedirectDnsRule("eth0", "192.168.1.1");
@@ -1217,18 +1227,19 @@ TEST(DatapathTest, RedirectDnsRules) {
 }
 
 TEST(DatapathTest, DumpIptables) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  EXPECT_CALL(runner, iptables(StrEq("mangle"),
-                               ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
+  EXPECT_CALL(*runner,
+              iptables(StrEq("mangle"),
+                       ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
       .WillOnce(DoAll(SetArgPointee<3>("<iptables output>"), Return(0)));
-  EXPECT_CALL(runner,
+  EXPECT_CALL(*runner,
               ip6tables(StrEq("mangle"),
                         ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
       .WillOnce(DoAll(SetArgPointee<3>("<ip6tables output>"), Return(0)));
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   EXPECT_EQ("<iptables output>",
             datapath.DumpIptables(IpFamily::IPv4, "mangle"));
   EXPECT_EQ("<ip6tables output>",
@@ -1237,15 +1248,15 @@ TEST(DatapathTest, DumpIptables) {
 }
 
 TEST(DatapathTest, SetVpnLockdown) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, Dual,
+  Verify_iptables(*runner, Dual,
                   "filter -A vpn_lockdown -m mark --mark 0x00008000/0x0000c000 "
                   "-j REJECT -w");
-  Verify_iptables(runner, Dual, "filter -F vpn_lockdown -w");
+  Verify_iptables(*runner, Dual, "filter -F vpn_lockdown -w");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetVpnLockdown(true);
   datapath.SetVpnLockdown(false);
 }
@@ -1271,25 +1282,25 @@ TEST(DatapathTest, ArcBridgeName) {
 }
 
 TEST(DatapathTest, SetConntrackHelpers) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_sysctl_w(runner, "net.netfilter.nf_conntrack_helper", "1");
-  Verify_sysctl_w(runner, "net.netfilter.nf_conntrack_helper", "0");
+  Verify_sysctl_w(*runner, "net.netfilter.nf_conntrack_helper", "1");
+  Verify_sysctl_w(*runner, "net.netfilter.nf_conntrack_helper", "0");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetConntrackHelpers(true);
   datapath.SetConntrackHelpers(false);
 }
 
 TEST(DatapathTest, StartDnsRedirection_Default) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
 
@@ -1297,18 +1308,18 @@ TEST(DatapathTest, StartDnsRedirection_Default) {
   rule.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
   rule.input_ifname = "vmtap0";
   rule.proxy_address = "100.115.92.130";
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StartDnsRedirection(rule);
 }
 
 TEST(DatapathTest, StartDnsRedirection_Arc) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
 
@@ -1316,61 +1327,61 @@ TEST(DatapathTest, StartDnsRedirection_Arc) {
   rule.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
   rule.input_ifname = "arc_eth0";
   rule.proxy_address = "100.115.92.130";
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StartDnsRedirection(rule);
 }
 
 TEST(DatapathTest, StartDnsRedirection_User) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 8.8.8.8:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -I redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 8.8.8.8:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -I redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1:53 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I POSTROUTING -p udp --dport 53 -m owner --uid-owner "
                   "chronos -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -I POSTROUTING -p tcp --dport 53 -m owner --uid-owner "
                   "chronos -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "mangle -A skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
   DnsRedirectionRule rule = {};
@@ -1380,18 +1391,18 @@ TEST(DatapathTest, StartDnsRedirection_User) {
   rule.nameservers.emplace_back("8.8.8.8");
   rule.nameservers.emplace_back("8.4.8.4");
   rule.nameservers.emplace_back("1.1.1.1");
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StartDnsRedirection(rule);
 }
 
 TEST(DatapathTest, StopDnsRedirection_Default) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
 
@@ -1399,18 +1410,18 @@ TEST(DatapathTest, StopDnsRedirection_Default) {
   rule.type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
   rule.input_ifname = "vmtap0";
   rule.proxy_address = "100.115.92.130";
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StopDnsRedirection(rule);
 }
 
 TEST(DatapathTest, StopDnsRedirection_Arc) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_arc_dns -i arc_eth0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_arc_dns -i arc_eth0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
 
@@ -1418,61 +1429,61 @@ TEST(DatapathTest, StopDnsRedirection_Arc) {
   rule.type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
   rule.input_ifname = "arc_eth0";
   rule.proxy_address = "100.115.92.130";
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StopDnsRedirection(rule);
 }
 
 TEST(DatapathTest, StopDnsRedirection_User) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 8.8.8.8:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 8.8.8.8:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4:53 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1:53 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D POSTROUTING -p udp --dport 53 -m owner --uid-owner "
                   "chronos -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D POSTROUTING -p tcp --dport 53 -m owner --uid-owner "
                   "chronos -j MASQUERADE -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
-  Verify_iptables(runner, IPv4,
+  Verify_iptables(*runner, IPv4,
                   "nat -D redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "mangle -D skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
   Verify_iptables(
-      runner, IPv4,
+      *runner, IPv4,
       "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
   DnsRedirectionRule rule = {};
@@ -1482,31 +1493,31 @@ TEST(DatapathTest, StopDnsRedirection_User) {
   rule.nameservers.emplace_back("8.8.8.8");
   rule.nameservers.emplace_back("8.4.8.4");
   rule.nameservers.emplace_back("1.1.1.1");
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.StopDnsRedirection(rule);
 }
 
 TEST(DatapathTest, SetRouteLocalnet) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  Verify_sysctl_w(runner, "net.ipv4.conf.eth0.route_localnet", "1");
-  Verify_sysctl_w(runner, "net.ipv4.conf.wlan0.route_localnet", "0");
+  Verify_sysctl_w(*runner, "net.ipv4.conf.eth0.route_localnet", "1");
+  Verify_sysctl_w(*runner, "net.ipv4.conf.wlan0.route_localnet", "0");
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.SetRouteLocalnet("eth0", true);
   datapath.SetRouteLocalnet("wlan0", false);
 }
 
 TEST(DatapathTest, ModprobeAll) {
-  MockProcessRunner runner;
+  auto runner = new MockProcessRunner();
   MockFirewall firewall;
 
-  EXPECT_CALL(runner, modprobe_all(ElementsAre("ip6table_filter", "ah6", "esp6",
-                                               "nf_nat_ftp"),
-                                   _));
+  EXPECT_CALL(*runner, modprobe_all(ElementsAre("ip6table_filter", "ah6",
+                                                "esp6", "nf_nat_ftp"),
+                                    _));
 
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   datapath.ModprobeAll({"ip6table_filter", "ah6", "esp6", "nf_nat_ftp"});
 }
 

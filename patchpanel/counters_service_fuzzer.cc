@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+#include <vector>
+
 #include <base/at_exit.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
@@ -14,6 +17,11 @@
 namespace patchpanel {
 namespace {
 
+// Always succeeds
+int ioctl_stub(int fd, ioctl_req_t req, ...) {
+  return 0;
+}
+
 class Environment {
  public:
   Environment() {
@@ -22,34 +30,31 @@ class Environment {
   base::AtExitManager at_exit;
 };
 
-class RandomProcessRunner : public MinijailedProcessRunner {
+class FakeProcessRunner : public MinijailedProcessRunner {
  public:
-  explicit RandomProcessRunner(FuzzedDataProvider* data_provider)
-      : data_provider_{data_provider} {}
-  RandomProcessRunner(const RandomProcessRunner&) = delete;
-  RandomProcessRunner& operator=(const RandomProcessRunner&) = delete;
-  ~RandomProcessRunner() = default;
+  FakeProcessRunner() = default;
+  FakeProcessRunner(const FakeProcessRunner&) = delete;
+  FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
+  ~FakeProcessRunner() = default;
+
+  int Run(const std::vector<std::string>& argv, bool log_failures) override {
+    return 0;
+  }
 
   int RunSync(const std::vector<std::string>& argv,
               bool log_failures,
               std::string* output) override {
-    if (output) {
-      *output = data_provider_->ConsumeRandomLengthString(10000);
-    }
-    return data_provider_->ConsumeBool();
+    return 0;
   }
-
- private:
-  FuzzedDataProvider* data_provider_;
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
   FuzzedDataProvider provider(data, size);
-  RandomProcessRunner runner(&provider);
+  auto runner = new FakeProcessRunner();
   Firewall firewall;
-  Datapath datapath(&runner, &firewall);
+  Datapath datapath(runner, &firewall, ioctl_stub);
   CountersService counters_svc(&datapath);
 
   while (provider.remaining_bytes() > 0) {

@@ -27,29 +27,25 @@ int ioctl_stub(int fd, ioctl_req_t req, ...) {
   return 0;
 }
 
-class RandomProcessRunner : public MinijailedProcessRunner {
+namespace {
+
+class FakeProcessRunner : public MinijailedProcessRunner {
  public:
-  explicit RandomProcessRunner(FuzzedDataProvider* data_provider)
-      : data_provider_{data_provider} {}
-  RandomProcessRunner(const RandomProcessRunner&) = delete;
-  RandomProcessRunner& operator=(const RandomProcessRunner&) = delete;
-  ~RandomProcessRunner() = default;
+  FakeProcessRunner() = default;
+  FakeProcessRunner(const FakeProcessRunner&) = delete;
+  FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
+  ~FakeProcessRunner() = default;
 
   int Run(const std::vector<std::string>& argv, bool log_failures) override {
-    return data_provider_->ConsumeBool();
+    return 0;
   }
 
   int RunSync(const std::vector<std::string>& argv,
               bool log_failures,
               std::string* output) override {
-    return data_provider_->ConsumeBool();
+    return 0;
   }
-
- private:
-  FuzzedDataProvider* data_provider_;
 };
-
-namespace {
 
 constexpr pid_t kTestPID = -2;
 
@@ -63,9 +59,7 @@ class Environment {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
-
   FuzzedDataProvider provider(data, size);
-  RandomProcessRunner runner(&provider);
 
   while (provider.remaining_bytes() > 0) {
     uint32_t pid = provider.ConsumeIntegral<uint32_t>();
@@ -102,8 +96,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         std::make_unique<Subnet>(addr, prefix_len, base::DoNothing());
     nsinfo.peer_mac_addr = mac;
 
+    auto runner = new FakeProcessRunner();
     Firewall firewall;
-    Datapath datapath(&runner, &firewall, ioctl_stub);
+    Datapath datapath(runner, &firewall, ioctl_stub);
     datapath.Start();
     datapath.Stop();
     datapath.NetnsAttachName(netns_name, kTestPID);

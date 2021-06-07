@@ -16,10 +16,8 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/address_manager.h"
-#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/fake_shill_client.h"
 #include "patchpanel/mock_datapath.h"
-#include "patchpanel/mock_firewall.h"
 #include "patchpanel/net_util.h"
 
 using testing::_;
@@ -65,9 +63,7 @@ class ArcServiceTest : public testing::Test {
 
  protected:
   void SetUp() override {
-    runner_ = std::make_unique<FakeProcessRunner>();
-    runner_->Capture(false);
-    datapath_ = std::make_unique<MockDatapath>(runner_.get(), &firewall_);
+    datapath_ = std::make_unique<MockDatapath>();
     shill_client_ = std::make_unique<MockShillClient>(shill_helper_.mock_bus());
     addr_mgr_ = std::make_unique<AddressManager>();
     guest_devices_.clear();
@@ -100,8 +96,6 @@ class ArcServiceTest : public testing::Test {
   std::unique_ptr<MockShillClient> shill_client_;
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
-  std::unique_ptr<FakeProcessRunner> runner_;
-  MockFirewall firewall_;
   std::map<std::string, Device::ChangeEvent> guest_devices_;
 };
 

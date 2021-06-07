@@ -101,14 +101,14 @@ std::string ArcBridgeName(const std::string& ifname) {
   return PrefixIfname("arc_", ifname);
 }
 
-Datapath::Datapath(MinijailedProcessRunner* process_runner, Firewall* firewall)
-    : Datapath(process_runner, firewall, ioctl) {}
+Datapath::Datapath(Firewall* firewall)
+    : Datapath(new MinijailedProcessRunner(), firewall, ioctl) {}
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner,
                    Firewall* firewall,
                    ioctl_t ioctl_hook)
-    : process_runner_(process_runner), firewall_(firewall), ioctl_(ioctl_hook) {
-  CHECK(process_runner_);
+    : firewall_(firewall), ioctl_(ioctl_hook) {
+  process_runner_.reset(process_runner);
 }
 
 void Datapath::Start() {

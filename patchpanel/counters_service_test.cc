@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/mock_datapath.h"
-#include "patchpanel/mock_firewall.h"
 
 namespace patchpanel {
 
@@ -256,31 +255,10 @@ bool CompareCounters(std::map<CounterKey, Counter> expected,
   return success;
 }
 
-class MockProcessRunner : public MinijailedProcessRunner {
- public:
-  MockProcessRunner() = default;
-  ~MockProcessRunner() = default;
-
-  MOCK_METHOD(int,
-              iptables,
-              (const std::string& table,
-               const std::vector<std::string>& argv,
-               bool log_failures,
-               std::string* output),
-              (override));
-  MOCK_METHOD(int,
-              ip6tables,
-              (const std::string& table,
-               const std::vector<std::string>& argv,
-               bool log_failures,
-               std::string* output),
-              (override));
-};
-
 class CountersServiceTest : public testing::Test {
  protected:
   void SetUp() override {
-    datapath_ = std::make_unique<MockDatapath>(&runner_, &firewall_);
+    datapath_ = std::make_unique<MockDatapath>();
     counters_svc_ = std::make_unique<CountersService>(datapath_.get());
   }
 
@@ -298,17 +276,19 @@ class CountersServiceTest : public testing::Test {
     EXPECT_TRUE(CompareCounters(expected, actual));
   }
 
-  MockProcessRunner runner_;
-  MockFirewall firewall_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<CountersService> counters_svc_;
 };
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   // The following commands are expected when eth0 comes up.
+  EXPECT_CALL(*datapath_,
+              ModifyChain(IpFamily::Dual, "mangle", "-N", "rx_eth0", _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_,
+              ModifyChain(IpFamily::Dual, "mangle", "-N", "tx_eth0", _))
+      .WillOnce(Return(true));
   const std::vector<std::vector<std::string>> expected_calls{
-      {"-N", "rx_eth0", "-w"},
-      {"-N", "tx_eth0", "-w"},
       {"-A", "INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"},
       {"-A", "FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"},
       {"-A", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
@@ -357,8 +337,8 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
+                                           ElementsAreArray(rule), _));
   }
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
@@ -372,8 +352,8 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
+                                           ElementsAreArray(rule), _));
   }
 
   counters_svc_->OnPhysicalDeviceRemoved("eth0");
@@ -381,9 +361,13 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
 
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
   // The following commands are expected when tun0 comes up.
+  EXPECT_CALL(*datapath_,
+              ModifyChain(IpFamily::Dual, "mangle", "-N", "rx_vpn", _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_,
+              ModifyChain(IpFamily::Dual, "mangle", "-N", "tx_vpn", _))
+      .WillOnce(Return(true));
   const std::vector<std::vector<std::string>> expected_calls{
-      {"-N", "rx_vpn", "-w"},
-      {"-N", "tx_vpn", "-w"},
       {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
        "RETURN", "-w"},
       {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
@@ -432,8 +416,8 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
+                                           ElementsAreArray(rule), _));
   }
 
   counters_svc_->OnVpnDeviceAdded("tun0");
@@ -447,8 +431,8 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
+                                           ElementsAreArray(rule), _));
   }
 
   counters_svc_->OnVpnDeviceRemoved("ppp0");
@@ -457,10 +441,8 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
 TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   // Makes the chain creation commands return false (we already have these
   // rules).
-  EXPECT_CALL(runner_, iptables(_, Contains("-N"), _, _))
-      .WillRepeatedly(Return(1));
-  EXPECT_CALL(runner_, ip6tables(_, Contains("-N"), _, _))
-      .WillRepeatedly(Return(1));
+  EXPECT_CALL(*datapath_, ModifyChain(_, "mangle", "-N", _, _))
+      .WillRepeatedly(Return(false));
 
   // Only the jump rules should be recreated.
   const std::vector<std::vector<std::string>> expected_calls{
@@ -469,13 +451,13 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
       {"-A", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
   };
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(runner_, iptables("mangle", ElementsAreArray(rule), _, _));
-    EXPECT_CALL(runner_, ip6tables("mangle", ElementsAreArray(rule), _, _));
+    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
+                                           ElementsAreArray(rule), _));
   }
 
   // No fwmark matching rule should be created.
-  EXPECT_CALL(runner_, iptables(_, Contains("mark"), _, _)).Times(0);
-  EXPECT_CALL(runner_, ip6tables(_, Contains("mark"), _, _)).Times(0);
+  EXPECT_CALL(*datapath_, ModifyIptables(_, "mangle", Contains("mark"), _))
+      .Times(0);
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
 }
@@ -485,10 +467,8 @@ TEST_F(CountersServiceTest, ChainNameLength) {
   // iptables will reject the request. Uses Each() here for simplicity since no
   // other params could be longer than 29 for now.
   static constexpr int kMaxChainNameLength = 29;
-  EXPECT_CALL(runner_, iptables(_, Each(SizeIs(Lt(kMaxChainNameLength))), _, _))
-      .Times(AnyNumber());
-  EXPECT_CALL(runner_,
-              ip6tables(_, Each(SizeIs(Lt(kMaxChainNameLength))), _, _))
+  EXPECT_CALL(*datapath_,
+              ModifyChain(_, "mangle", _, SizeIs(Lt(kMaxChainNameLength)), _))
       .Times(AnyNumber());
 
   static const std::string kLongInterfaceName(IFNAMSIZ, 'a');

@@ -96,8 +96,8 @@ std::string ArcBridgeName(const std::string& ifname);
 // (not in CIDR representation
 class Datapath {
  public:
-  // |process_runner| and |firewall| must not be null; it is not owned.
-  Datapath(MinijailedProcessRunner* process_runner, Firewall* firewall);
+  // |firewall| must not be null; it is not owned.
+  Datapath(Firewall* firewall);
   // Provided for testing only.
   Datapath(MinijailedProcessRunner* process_runner,
            Firewall* firewall,
@@ -319,16 +319,16 @@ class Datapath {
                   const std::string& table,
                   const std::string& name);
   // Manipulates a chain |chain| in table |table|.
-  bool ModifyChain(IpFamily family,
-                   const std::string& table,
-                   const std::string& op,
-                   const std::string& chain,
-                   bool log_failures = true);
+  virtual bool ModifyChain(IpFamily family,
+                           const std::string& table,
+                           const std::string& op,
+                           const std::string& chain,
+                           bool log_failures = true);
   // Sends an iptables command for table |table|.
-  bool ModifyIptables(IpFamily family,
-                      const std::string& table,
-                      const std::vector<std::string>& argv,
-                      bool log_failures = true);
+  virtual bool ModifyIptables(IpFamily family,
+                              const std::string& table,
+                              const std::vector<std::string>& argv,
+                              bool log_failures = true);
   // Dumps the iptables chains rules for the table |table|. |family| must be
   // either IPv4 or IPv6.
   virtual std::string DumpIptables(IpFamily family, const std::string& table);
@@ -441,7 +441,7 @@ class Datapath {
   // recreated and the older value must be recovered (b/183679000).
   int FindIfIndex(const std::string& ifname);
 
-  MinijailedProcessRunner* process_runner_;
+  std::unique_ptr<MinijailedProcessRunner> process_runner_;
   Firewall* firewall_;
   ioctl_t ioctl_;
 
