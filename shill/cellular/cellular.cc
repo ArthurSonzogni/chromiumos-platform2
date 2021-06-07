@@ -135,6 +135,27 @@ std::string GetStringmapValue(const Stringmap& string_map,
   return string_map.at(key);
 }
 
+bool IsEnabledModemState(Cellular::ModemState state) {
+  switch (state) {
+    case Cellular::kModemStateFailed:
+    case Cellular::kModemStateUnknown:
+    case Cellular::kModemStateDisabled:
+    case Cellular::kModemStateInitializing:
+    case Cellular::kModemStateLocked:
+    case Cellular::kModemStateDisabling:
+    case Cellular::kModemStateEnabling:
+      return false;
+    case Cellular::kModemStateEnabled:
+    case Cellular::kModemStateSearching:
+    case Cellular::kModemStateRegistered:
+    case Cellular::kModemStateDisconnecting:
+    case Cellular::kModemStateConnecting:
+    case Cellular::kModemStateConnected:
+      return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 // static
@@ -474,28 +495,6 @@ void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
 
 bool Cellular::IsUnderlyingDeviceEnabled() const {
   return IsEnabledModemState(modem_state_);
-}
-
-// static
-bool Cellular::IsEnabledModemState(ModemState state) {
-  switch (state) {
-    case kModemStateFailed:
-    case kModemStateUnknown:
-    case kModemStateDisabled:
-    case kModemStateInitializing:
-    case kModemStateLocked:
-    case kModemStateDisabling:
-    case kModemStateEnabling:
-      return false;
-    case kModemStateEnabled:
-    case kModemStateSearching:
-    case kModemStateRegistered:
-    case kModemStateDisconnecting:
-    case kModemStateConnecting:
-    case kModemStateConnected:
-      return true;
-  }
-  return false;
 }
 
 void Cellular::StartModem(Error* error,

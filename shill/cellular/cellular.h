@@ -192,7 +192,6 @@ class Cellular : public Device,
 
   ModemState modem_state() const { return modem_state_; }
   bool IsUnderlyingDeviceEnabled() const override;
-  static bool IsEnabledModemState(ModemState state);
 
   void HandleNewSignalQuality(uint32_t strength);
 
