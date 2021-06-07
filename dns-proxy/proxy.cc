@@ -165,16 +165,10 @@ void Proxy::Setup() {
     LOG(FATAL) << "Failed to initialize patchpanel client";
   }
 
-  if (!shill_)
-    shill_.reset(new shill::Client(bus_));
-
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Proxy::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
   patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
       &Proxy::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
-
-  shill_->RegisterOnAvailableCallback(
-      base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
 }
 
 void Proxy::OnPatchpanelReady(bool success) {
@@ -216,15 +210,8 @@ void Proxy::OnPatchpanelReady(bool success) {
   LOG(INFO) << "Sucessfully connected private network namespace:"
             << ns_.host_ifname() << " <--> " << ns_.peer_ifname();
 
-  // Now it's safe to register these handlers and respond to them.
-  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
-      &Proxy::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
-  shill_->RegisterDeviceChangedHandler(
-      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr()));
-
-  if (opts_.type == Type::kSystem)
-    shill_->RegisterProcessChangedHandler(
-        base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
+  // Now it's safe to connect shill.
+  NewShill();
 
   // Track single-networked guests' start up and shut down for redirecting
   // traffic to the proxy.
@@ -301,36 +288,54 @@ void Proxy::OnPatchpanelReset(bool reset) {
   QuitWithExitCode(EX_UNAVAILABLE);
 }
 
+void Proxy::NewShill() {
+  // shill_ should always be null unless a test has injected a client.
+  if (!shill_)
+    shill_.reset(new shill::Client(bus_));
+
+  shill_props_.reset();
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
+}
+
+void Proxy::InitShill() {
+  shill_->Init();
+  shill_->RegisterProcessChangedHandler(
+      base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
+  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
+      &Proxy::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
+  shill_->RegisterDeviceChangedHandler(
+      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr()));
+}
+
 void Proxy::OnShillReady(bool success) {
   if (!success) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kShillNotReady);
     LOG(FATAL) << "Failed to connect to shill";
   }
-  shill_->Init();
+  InitShill();
 }
 
 void Proxy::OnShillReset(bool reset) {
-  if (!reset) {
+  if (reset) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
-                                Metrics::ProcessEvent::kShillShutdown);
-    LOG(WARNING) << "Shill has been shutdown";
-    // Watch for it to return.
-    shill_->RegisterOnAvailableCallback(
-        base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
+                                Metrics::ProcessEvent::kShillReset);
+    LOG(WARNING) << "Shill has been reset";
+
+    // If applicable, restore the address of the system proxy.
+    if (opts_.type == Type::kSystem && ns_fd_.is_valid())
+      SetShillProperty(
+          patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+
     return;
   }
 
-  // Really this means shill crashed. To be safe, explicitly reset the proxy
-  // address. We don't want to crash on failure here because shill might still
-  // have this address and try to use it. This probably redundant though with us
-  // rediscovering the default device.
-  // TODO(garrick): Remove this if so.
   metrics_.RecordProcessEvent(metrics_proc_type_,
-                              Metrics::ProcessEvent::kShillReset);
-  LOG(WARNING) << "Shill has been reset";
-  if (ns_fd_.is_valid())
-    SetShillProperty(patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()));
+                              Metrics::ProcessEvent::kShillShutdown);
+  LOG(WARNING) << "Shill has been shutdown";
+  shill_.reset();
+  NewShill();
 }
 
 void Proxy::OnSessionStateChanged(bool login) {

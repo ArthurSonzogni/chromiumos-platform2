@@ -63,6 +63,10 @@ class Controller : public brillo::DBusDaemon {
   void Setup();
   void OnPatchpanelReady(bool success);
 
+  void SetupShill();
+  void OnShillReady(bool success);
+  void OnShillReset(bool reset);
+
   void RunProxy(Proxy::Type type, const std::string& ifname = "");
   void KillProxy(Proxy::Type type, const std::string& ifname = "");
   void Kill(const ProxyProc& proc);

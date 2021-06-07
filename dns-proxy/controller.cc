@@ -62,8 +62,7 @@ void Controller::OnShutdown(int*) {
 }
 
 void Controller::Setup() {
-  shill_.reset(new shill::Client(bus_));
-  shill_->Init();
+  SetupShill();
 
   patchpanel_ = patchpanel::Client::New();
   if (!patchpanel_) {
@@ -79,6 +78,12 @@ void Controller::Setup() {
   RunProxy(Proxy::Type::kDefault);
 }
 
+void Controller::SetupShill() {
+  shill_.reset(new shill::Client(bus_));
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Controller::OnShillReady, weak_factory_.GetWeakPtr()));
+}
+
 void Controller::OnPatchpanelReady(bool success) {
   if (!success) {
     metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
@@ -92,6 +97,29 @@ void Controller::OnPatchpanelReady(bool success) {
   // proxy processes.
   for (const auto& d : patchpanel_->GetDevices())
     VirtualDeviceAdded(d);
+}
+
+void Controller::OnShillReady(bool success) {
+  if (!success) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kShillNotReady);
+    LOG(DFATAL) << "Failed to connect to shill";
+    shill_.reset();
+    return;
+  }
+  shill_->Init();
+  shill_->RegisterProcessChangedHandler(base::BindRepeating(
+      &Controller::OnShillReset, weak_factory_.GetWeakPtr()));
+}
+
+void Controller::OnShillReset(bool reset) {
+  if (reset) {
+    LOG(WARNING) << "Shill has been reset";
+    return;
+  }
+
+  LOG(WARNING) << "Shill has been shutdown";
+  SetupShill();
 }
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
@@ -231,7 +259,7 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
 
   // Ensure the system proxy address is cleared from shill.
   brillo::ErrorPtr error;
-  if (!shill_->GetManagerProxy()->SetDNSProxyIPv4Address("", &error))
+  if (!shill_ || !shill_->GetManagerProxy()->SetDNSProxyIPv4Address("", &error))
     LOG(WARNING) << "Failed to clear shill dns-proxy property for " << proc
                  << ": " << error->GetMessage();
 }
