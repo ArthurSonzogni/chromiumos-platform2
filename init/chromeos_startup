@@ -29,6 +29,10 @@ USE_ENCRYPTED_REBOOT_VAULT=1
 # to use the new LVM stateful partition format.
 USE_LVM_STATEFUL_PARTITION=0
 
+# TMPFILES_LOG defines the path that tmpfiles.d errors will be written to for
+# debugging failures.
+TMPFILES_LOG="/run/tmpfiles.log"
+
 # Unmounts the incomplete mount setup during the failure path. Failure to
 # set up mounts in this script result in the entire stateful partition getting
 # wiped using clobber-state.
@@ -45,6 +49,7 @@ cleanup_mounts() {
   chromeos-boot-alert self_repair
   clobber-log -- \
     "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
+  clobber-log --append_logfile "${TMPFILES_LOG}"
   exec clobber-state "fast keepimg"
 }
 
@@ -511,7 +516,7 @@ dev_update_stateful_partition
 
 # Apply /mnt/stateful_partition specific tmpfiles.d configurations.
 /bin/systemd-tmpfiles --create --remove --boot \
-  --prefix /mnt/stateful_partition ||
+  --prefix /mnt/stateful_partition 2>>"${TMPFILES_LOG}" ||
     cleanup_mounts "tmpfiles.d for /mnt/stateful_partition failed"
 
 # Mount /home.  This mount inherits nodev,noexec,nosuid from
@@ -620,7 +625,7 @@ fi
 # Apply /var and /home specific tmpfiles.d configurations.
 /bin/systemd-tmpfiles --create --remove --boot \
   --prefix /home \
-  --prefix /var ||
+  --prefix /var 2>>"${TMPFILES_LOG}" ||
     cleanup_mounts "tmpfiles.d for /home and /var failed"
 
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
@@ -678,7 +683,8 @@ fi
 
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
-/bin/systemd-tmpfiles --create --remove --boot --prefix /media || :
+/bin/systemd-tmpfiles --create --remove --boot --prefix /media \
+  2>>"${TMPFILES_LOG}" || :
 
 # Restore file contexts for /var.
 # TODO(fqj): use type_transition to correctly label directories at creation so
