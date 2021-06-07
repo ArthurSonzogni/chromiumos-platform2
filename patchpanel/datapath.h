@@ -96,8 +96,7 @@ std::string ArcBridgeName(const std::string& ifname);
 // (not in CIDR representation
 class Datapath {
  public:
-  // |firewall| must not be null; it is not owned.
-  Datapath(Firewall* firewall);
+  Datapath();
   // Provided for testing only.
   Datapath(MinijailedProcessRunner* process_runner,
            Firewall* firewall,
@@ -333,6 +332,12 @@ class Datapath {
   // either IPv4 or IPv6.
   virtual std::string DumpIptables(IpFamily family, const std::string& table);
 
+  // Changes firewall rules based on |request|, allowing ingress traffic to a
+  // port, forwarding ingress traffic to a port into ARC or Crostini, or
+  // restricting localhost ports for listen(). This function corresponds to
+  // the ModifyPortRule method of patchpanel DBus API.
+  virtual bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
+
  private:
   // Attempts to flush all built-in iptables chains used by patchpanel, and to
   // delete all additionals chains created by patchpanel for routing. Traffic
@@ -442,7 +447,7 @@ class Datapath {
   int FindIfIndex(const std::string& ifname);
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
-  Firewall* firewall_;
+  std::unique_ptr<Firewall> firewall_;
   ioctl_t ioctl_;
 
   FRIEND_TEST(DatapathTest, AddInboundIPv4DNAT);

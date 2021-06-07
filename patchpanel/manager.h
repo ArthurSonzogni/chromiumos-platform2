@@ -24,7 +24,6 @@
 #include "patchpanel/counters_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/firewall.h"
 #include "patchpanel/helper_process.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
@@ -177,8 +176,6 @@ class Manager final : public brillo::DBusDaemon {
   // found.
   void OnLifelineFdClosed(int client_fd);
 
-  bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
-
   bool RedirectDns(base::ScopedFD client_fd,
                    const patchpanel::SetDnsRedirectionRuleRequest& request);
 
@@ -196,9 +193,6 @@ class Manager final : public brillo::DBusDaemon {
 
   // DBus service.
   dbus::ExportedObject* dbus_svc_path_;  // Owned by |bus_|.
-
-  // Firewall service.
-  Firewall firewall_;
 
   // Other services.
   brillo::ProcessReaper process_reaper_;

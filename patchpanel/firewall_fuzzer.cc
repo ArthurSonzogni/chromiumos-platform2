@@ -7,28 +7,38 @@
 
 #include <fuzzer/FuzzedDataProvider.h>
 #include <set>
+#include <string>
+#include <vector>
 
 #include "base/logging.h"
 
 #include "patchpanel/firewall.h"
+#include "patchpanel/minijailed_process_runner.h"
 
 using patchpanel::ModifyPortRuleRequest;
 using Protocol = patchpanel::ModifyPortRuleRequest::Protocol;
 
 namespace patchpanel {
+namespace {
 
-class FakeFirewall : public Firewall {
+class FakeProcessRunner : public MinijailedProcessRunner {
  public:
-  FakeFirewall() = default;
-  FakeFirewall(const FakeFirewall&) = delete;
-  FakeFirewall& operator=(const FakeFirewall&) = delete;
+  FakeProcessRunner() = default;
+  FakeProcessRunner(const FakeProcessRunner&) = delete;
+  FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
+  ~FakeProcessRunner() = default;
 
-  ~FakeFirewall() = default;
+  int Run(const std::vector<std::string>& argv, bool log_failures) override {
+    return 0;
+  }
 
- private:
-  // The fake's implementation always succeeds.
-  int RunInMinijail(const std::vector<std::string>& argv) override { return 0; }
+  int RunSync(const std::vector<std::string>& argv,
+              bool log_failures,
+              std::string* output) override {
+    return 0;
+  }
 };
+}  // namespace
 
 }  // namespace patchpanel
 
@@ -36,7 +46,7 @@ struct Environment {
   Environment() { logging::SetMinLogLevel(logging::LOGGING_FATAL); }
 };
 
-void FuzzAcceptRules(patchpanel::FakeFirewall* fake_firewall,
+void FuzzAcceptRules(patchpanel::Firewall* firewall,
                      const uint8_t* data,
                      size_t size) {
   FuzzedDataProvider data_provider(data, size);
@@ -47,14 +57,14 @@ void FuzzAcceptRules(patchpanel::FakeFirewall* fake_firewall,
     uint16_t port = data_provider.ConsumeIntegral<uint16_t>();
     std::string iface = data_provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
     if (data_provider.ConsumeBool()) {
-      fake_firewall->AddAcceptRules(proto, port, iface);
+      firewall->AddAcceptRules(proto, port, iface);
     } else {
-      fake_firewall->DeleteAcceptRules(proto, port, iface);
+      firewall->DeleteAcceptRules(proto, port, iface);
     }
   }
 }
 
-void FuzzForwardRules(patchpanel::FakeFirewall* fake_firewall,
+void FuzzForwardRules(patchpanel::Firewall* firewall,
                       const uint8_t* data,
                       size_t size) {
   FuzzedDataProvider data_provider(data, size);
@@ -78,16 +88,16 @@ void FuzzForwardRules(patchpanel::FakeFirewall* fake_firewall,
     std::string dst_ip = dst_buffer;
     std::string iface = data_provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
     if (data_provider.ConsumeBool()) {
-      fake_firewall->AddIpv4ForwardRule(proto, input_ip, forwarded_port, iface,
-                                        dst_ip, dst_port);
+      firewall->AddIpv4ForwardRule(proto, input_ip, forwarded_port, iface,
+                                   dst_ip, dst_port);
     } else {
-      fake_firewall->DeleteIpv4ForwardRule(proto, input_ip, forwarded_port,
-                                           iface, dst_ip, dst_port);
+      firewall->DeleteIpv4ForwardRule(proto, input_ip, forwarded_port, iface,
+                                      dst_ip, dst_port);
     }
   }
 }
 
-void FuzzLoopbackLockdownRules(patchpanel::FakeFirewall* fake_firewall,
+void FuzzLoopbackLockdownRules(patchpanel::Firewall* firewall,
                                const uint8_t* data,
                                size_t size) {
   FuzzedDataProvider data_provider(data, size);
@@ -97,9 +107,9 @@ void FuzzLoopbackLockdownRules(patchpanel::FakeFirewall* fake_firewall,
                                                 : ModifyPortRuleRequest::UDP;
     uint16_t port = data_provider.ConsumeIntegral<uint16_t>();
     if (data_provider.ConsumeBool()) {
-      fake_firewall->AddLoopbackLockdownRules(proto, port);
+      firewall->AddLoopbackLockdownRules(proto, port);
     } else {
-      fake_firewall->DeleteLoopbackLockdownRules(proto, port);
+      firewall->DeleteLoopbackLockdownRules(proto, port);
     }
   }
 }
@@ -107,11 +117,12 @@ void FuzzLoopbackLockdownRules(patchpanel::FakeFirewall* fake_firewall,
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
-  patchpanel::FakeFirewall fake_firewall;
+  auto process_runner = new patchpanel::FakeProcessRunner();
+  patchpanel::Firewall firewall(process_runner);
 
-  FuzzAcceptRules(&fake_firewall, data, size);
-  FuzzForwardRules(&fake_firewall, data, size);
-  FuzzLoopbackLockdownRules(&fake_firewall, data, size);
+  FuzzAcceptRules(&firewall, data, size);
+  FuzzForwardRules(&firewall, data, size);
+  FuzzLoopbackLockdownRules(&firewall, data, size);
 
   return 0;
 }

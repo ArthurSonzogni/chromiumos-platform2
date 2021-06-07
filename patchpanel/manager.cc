@@ -85,7 +85,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
     : adb_proxy_(std::move(adb_proxy)),
       mcast_proxy_(std::move(mcast_proxy)),
       nd_proxy_(std::move(nd_proxy)) {
-  datapath_ = std::make_unique<Datapath>(&firewall_);
+  datapath_ = std::make_unique<Datapath>();
 }
 
 std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
@@ -960,7 +960,7 @@ std::unique_ptr<dbus::Response> Manager::OnModifyPortRule(
     return dbus_response;
   }
 
-  response.set_success(ModifyPortRule(request));
+  response.set_success(datapath_->ModifyPortRule(request));
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -1173,57 +1173,6 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     return;
   }
   LOG(ERROR) << "No client_fd found for " << client_fd;
-}
-
-bool Manager::ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request) {
-  switch (request.proto()) {
-    case patchpanel::ModifyPortRuleRequest::TCP:
-    case patchpanel::ModifyPortRuleRequest::UDP:
-      break;
-    default:
-      LOG(ERROR) << "Unknown protocol " << request.proto();
-      return false;
-  }
-
-  switch (request.op()) {
-    case patchpanel::ModifyPortRuleRequest::CREATE:
-      switch (request.type()) {
-        case patchpanel::ModifyPortRuleRequest::ACCESS:
-          return firewall_.AddAcceptRules(request.proto(),
-                                          request.input_dst_port(),
-                                          request.input_ifname());
-        case patchpanel::ModifyPortRuleRequest::LOCKDOWN:
-          return firewall_.AddLoopbackLockdownRules(request.proto(),
-                                                    request.input_dst_port());
-        case patchpanel::ModifyPortRuleRequest::FORWARDING:
-          return firewall_.AddIpv4ForwardRule(
-              request.proto(), request.input_dst_ip(), request.input_dst_port(),
-              request.input_ifname(), request.dst_ip(), request.dst_port());
-        default:
-          LOG(ERROR) << "Unknown port rule type " << request.type();
-          return false;
-      }
-    case patchpanel::ModifyPortRuleRequest::DELETE:
-      switch (request.type()) {
-        case patchpanel::ModifyPortRuleRequest::ACCESS:
-          return firewall_.DeleteAcceptRules(request.proto(),
-                                             request.input_dst_port(),
-                                             request.input_ifname());
-        case patchpanel::ModifyPortRuleRequest::LOCKDOWN:
-          return firewall_.DeleteLoopbackLockdownRules(
-              request.proto(), request.input_dst_port());
-        case patchpanel::ModifyPortRuleRequest::FORWARDING:
-          return firewall_.DeleteIpv4ForwardRule(
-              request.proto(), request.input_dst_ip(), request.input_dst_port(),
-              request.input_ifname(), request.dst_ip(), request.dst_port());
-        default:
-          LOG(ERROR) << "Unknown port rule type " << request.type();
-          return false;
-      }
-    default:
-      LOG(ERROR) << "Unknown operation " << request.op();
-      return false;
-  }
 }
 
 bool Manager::RedirectDns(

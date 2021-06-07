@@ -97,8 +97,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     nsinfo.peer_mac_addr = mac;
 
     auto runner = new FakeProcessRunner();
-    Firewall firewall;
-    Datapath datapath(runner, &firewall, ioctl_stub);
+    auto firewall = new Firewall();
+    Datapath datapath(runner, firewall, ioctl_stub);
     datapath.Start();
     datapath.Stop();
     datapath.NetnsAttachName(netns_name, kTestPID);

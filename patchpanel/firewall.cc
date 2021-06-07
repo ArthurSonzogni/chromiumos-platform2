@@ -19,7 +19,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/minijail/minijail.h>
 
 #include "patchpanel/net_util.h"
 
@@ -31,6 +30,11 @@ namespace {
 // See
 // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/if.h?h=v4.14#n33
 constexpr size_t kInterfaceNameSize = 16;
+
+// The name of the filter table for iptables and ip6tables commands.
+constexpr char kFilterTable[] = "filter";
+// The name of the nat table for iptables and ip6tables commands.
+constexpr char kNatTable[] = "nat";
 
 // Interface names are passed directly to the 'iptables' command. Rather than
 // auditing 'iptables' source code to see how it handles malformed names,
@@ -59,14 +63,17 @@ bool IsValidInterfaceName(const std::string& iface) {
 
 namespace patchpanel {
 
-const char kIpTablesPath[] = "/sbin/iptables";
-const char kIp6TablesPath[] = "/sbin/ip6tables";
-
 const std::string ProtocolName(Protocol proto) {
   if (proto == ModifyPortRuleRequest::INVALID_PROTOCOL) {
     NOTREACHED() << "Unexpected L4 protocol value";
   }
   return base::ToLowerASCII(ModifyPortRuleRequest::Protocol_Name(proto));
+}
+
+Firewall::Firewall() : Firewall(new MinijailedProcessRunner()) {}
+
+Firewall::Firewall(MinijailedProcessRunner* process_runner) {
+  process_runner_.reset(process_runner);
 }
 
 bool Firewall::AddAcceptRules(Protocol protocol,
@@ -82,15 +89,14 @@ bool Firewall::AddAcceptRules(Protocol protocol,
     return false;
   }
 
-  if (!AddAcceptRule(kIpTablesPath, protocol, port, interface)) {
-    LOG(ERROR) << "Could not add ACCEPT rule using '" << kIpTablesPath << "'";
+  if (!AddAcceptRule(IPv4, protocol, port, interface)) {
+    LOG(ERROR) << "Could not add IPv4 ACCEPT rule";
     return false;
   }
 
-  if (!AddAcceptRule(kIp6TablesPath, protocol, port, interface)) {
-    LOG(ERROR) << "Could not add ACCEPT rule using '" << kIp6TablesPath
-               << "', aborting operation";
-    DeleteAcceptRule(kIpTablesPath, protocol, port, interface);
+  if (!AddAcceptRule(IPv6, protocol, port, interface)) {
+    LOG(ERROR) << "Could not add IPv6 ACCEPT rule";
+    DeleteAcceptRule(IPv4, protocol, port, interface);
     return false;
   }
 
@@ -110,9 +116,8 @@ bool Firewall::DeleteAcceptRules(Protocol protocol,
     return false;
   }
 
-  bool ip4_success = DeleteAcceptRule(kIpTablesPath, protocol, port, interface);
-  bool ip6_success =
-      DeleteAcceptRule(kIp6TablesPath, protocol, port, interface);
+  bool ip4_success = DeleteAcceptRule(IPv4, protocol, port, interface);
+  bool ip6_success = DeleteAcceptRule(IPv6, protocol, port, interface);
   return ip4_success && ip6_success;
 }
 
@@ -193,9 +198,6 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
   }
 
   std::vector<std::string> argv{
-      kIpTablesPath,
-      "-t",
-      "nat",
       operation,
       "PREROUTING",
       "-i",
@@ -214,7 +216,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
   argv.push_back("--to-destination");  // new output destination ip:port
   argv.push_back(dst_ip + ":" + std::to_string(dst_port));
   argv.push_back("-w");  // Wait for xtables lock.
-  return RunInMinijail(argv) == 0;
+  return RunIptables(IPv4, kNatTable, argv);
 }
 
 bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
@@ -244,9 +246,6 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
   }
 
   std::vector<std::string> argv{
-      kIpTablesPath,
-      "-t",
-      "filter",
       operation,
       "FORWARD",
       "-i",
@@ -261,7 +260,7 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
       "ACCEPT",
       "-w",
   };  // Wait for xtables lock.
-  return RunInMinijail(argv) == 0;
+  return RunIptables(IPv4, kFilterTable, argv);
 }
 
 bool Firewall::AddLoopbackLockdownRules(Protocol protocol, uint16_t port) {
@@ -270,16 +269,14 @@ bool Firewall::AddLoopbackLockdownRules(Protocol protocol, uint16_t port) {
     return false;
   }
 
-  if (!AddLoopbackLockdownRule(kIpTablesPath, protocol, port)) {
-    LOG(ERROR) << "Could not add loopback REJECT rule using '" << kIpTablesPath
-               << "'";
+  if (!AddLoopbackLockdownRule(IPv4, protocol, port)) {
+    LOG(ERROR) << "Could not add loopback IPv4 REJECT rule";
     return false;
   }
 
-  if (!AddLoopbackLockdownRule(kIp6TablesPath, protocol, port)) {
-    LOG(ERROR) << "Could not add loopback REJECT rule using '" << kIp6TablesPath
-               << "', aborting operation";
-    DeleteLoopbackLockdownRule(kIpTablesPath, protocol, port);
+  if (!AddLoopbackLockdownRule(IPv6, protocol, port)) {
+    LOG(ERROR) << "Could not add loopback IPv6 REJECT rule";
+    DeleteLoopbackLockdownRule(IPv4, protocol, port);
     return false;
   }
 
@@ -292,17 +289,16 @@ bool Firewall::DeleteLoopbackLockdownRules(Protocol protocol, uint16_t port) {
     return false;
   }
 
-  bool ip4_success = DeleteLoopbackLockdownRule(kIpTablesPath, protocol, port);
-  bool ip6_success = DeleteLoopbackLockdownRule(kIp6TablesPath, protocol, port);
+  bool ip4_success = DeleteLoopbackLockdownRule(IPv4, protocol, port);
+  bool ip6_success = DeleteLoopbackLockdownRule(IPv6, protocol, port);
   return ip4_success && ip6_success;
 }
 
-bool Firewall::AddAcceptRule(const std::string& executable_path,
+bool Firewall::AddAcceptRule(IpFamily ip_family,
                              Protocol protocol,
                              uint16_t port,
                              const std::string& interface) {
   std::vector<std::string> argv{
-      executable_path,
       "-I",  // insert
       "INPUT",
       "-p",  // protocol
@@ -318,15 +314,14 @@ bool Firewall::AddAcceptRule(const std::string& executable_path,
   argv.push_back("ACCEPT");
   argv.push_back("-w");  // Wait for xtables lock.
 
-  return RunInMinijail(argv) == 0;
+  return RunIptables(ip_family, kFilterTable, argv);
 }
 
-bool Firewall::DeleteAcceptRule(const std::string& executable_path,
+bool Firewall::DeleteAcceptRule(IpFamily ip_family,
                                 Protocol protocol,
                                 uint16_t port,
                                 const std::string& interface) {
   std::vector<std::string> argv{
-      executable_path,
       "-D",  // delete
       "INPUT",
       "-p",  // protocol
@@ -342,14 +337,13 @@ bool Firewall::DeleteAcceptRule(const std::string& executable_path,
   argv.push_back("ACCEPT");
   argv.push_back("-w");  // Wait for xtables lock.
 
-  return RunInMinijail(argv) == 0;
+  return RunIptables(ip_family, kFilterTable, argv);
 }
 
-bool Firewall::AddLoopbackLockdownRule(const std::string& executable_path,
+bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
                                        Protocol protocol,
                                        uint16_t port) {
   std::vector<std::string> argv{
-      executable_path,
       "-I",  // insert
       "OUTPUT",
       "-p",  // protocol
@@ -368,14 +362,13 @@ bool Firewall::AddLoopbackLockdownRule(const std::string& executable_path,
       "-w",  // Wait for xtables lock.
   };
 
-  return RunInMinijail(argv) == 0;
+  return RunIptables(ip_family, kFilterTable, argv);
 }
 
-bool Firewall::DeleteLoopbackLockdownRule(const std::string& executable_path,
+bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
                                           Protocol protocol,
                                           uint16_t port) {
   std::vector<std::string> argv{
-      executable_path,
       "-D",  // delete
       "OUTPUT",
       "-p",  // protocol
@@ -394,21 +387,20 @@ bool Firewall::DeleteLoopbackLockdownRule(const std::string& executable_path,
       "-w",  // Wait for xtables lock.
   };
 
-  return RunInMinijail(argv) == 0;
+  // TODO:  add IPv4 or IPv6
+  return RunIptables(ip_family, kFilterTable, argv);
 }
 
-int Firewall::RunInMinijail(const std::vector<std::string>& argv) {
-  brillo::Minijail* m = brillo::Minijail::GetInstance();
-  minijail* jail = m->New();
+bool Firewall::RunIptables(IpFamily ip_family,
+                           const std::string& table,
+                           const std::vector<std::string>& argv) {
+  if (ip_family == IPv4)
+    return process_runner_->iptables(table, argv, false) == 0;
 
-  std::vector<char*> args;
-  for (const auto& arg : argv) {
-    args.push_back(const_cast<char*>(arg.c_str()));
-  }
-  args.push_back(nullptr);
+  if (ip_family == IPv6)
+    return process_runner_->ip6tables(table, argv, false) == 0;
 
-  int status;
-  return m->RunSyncAndDestroy(jail, args, &status) ? status : -1;
+  return false;
 }
 
 }  // namespace patchpanel

@@ -101,14 +101,15 @@ std::string ArcBridgeName(const std::string& ifname) {
   return PrefixIfname("arc_", ifname);
 }
 
-Datapath::Datapath(Firewall* firewall)
-    : Datapath(new MinijailedProcessRunner(), firewall, ioctl) {}
+Datapath::Datapath()
+    : Datapath(new MinijailedProcessRunner(), new Firewall(), ioctl) {}
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner,
                    Firewall* firewall,
                    ioctl_t ioctl_hook)
-    : firewall_(firewall), ioctl_(ioctl_hook) {
+    : ioctl_(ioctl_hook) {
   process_runner_.reset(process_runner);
+  firewall_.reset(firewall);
 }
 
 void Datapath::Start() {
@@ -1635,12 +1636,12 @@ std::string Datapath::DumpIptables(IpFamily family, const std::string& table) {
   switch (family) {
     case IPv4:
       if (process_runner_->iptables(table, argv, true /*log_failures*/,
-                                     &result) != 0)
+                                    &result) != 0)
         LOG(ERROR) << "Could not dump iptables " << table;
       break;
     case IPv6:
       if (process_runner_->ip6tables(table, argv, true /*log_failures*/,
-                                      &result) != 0)
+                                     &result) != 0)
         LOG(ERROR) << "Could not dump ip6tables " << table;
       break;
     case Dual:
@@ -1819,6 +1820,59 @@ int Datapath::FindIfIndex(const std::string& ifname) {
     return it->second;
 
   return 0;
+}
+
+bool Datapath::ModifyPortRule(
+    const patchpanel::ModifyPortRuleRequest& request) {
+  switch (request.proto()) {
+    case patchpanel::ModifyPortRuleRequest::TCP:
+    case patchpanel::ModifyPortRuleRequest::UDP:
+      break;
+    default:
+      LOG(ERROR) << "Unknown protocol " << request.proto();
+      return false;
+  }
+
+  switch (request.op()) {
+    case patchpanel::ModifyPortRuleRequest::CREATE:
+      switch (request.type()) {
+        case patchpanel::ModifyPortRuleRequest::ACCESS: {
+          return firewall_->AddAcceptRules(request.proto(),
+                                           request.input_dst_port(),
+                                           request.input_ifname());
+        }
+        case patchpanel::ModifyPortRuleRequest::LOCKDOWN:
+          return firewall_->AddLoopbackLockdownRules(request.proto(),
+                                                     request.input_dst_port());
+        case patchpanel::ModifyPortRuleRequest::FORWARDING:
+          return firewall_->AddIpv4ForwardRule(
+              request.proto(), request.input_dst_ip(), request.input_dst_port(),
+              request.input_ifname(), request.dst_ip(), request.dst_port());
+        default:
+          LOG(ERROR) << "Unknown port rule type " << request.type();
+          return false;
+      }
+    case patchpanel::ModifyPortRuleRequest::DELETE:
+      switch (request.type()) {
+        case patchpanel::ModifyPortRuleRequest::ACCESS:
+          return firewall_->DeleteAcceptRules(request.proto(),
+                                              request.input_dst_port(),
+                                              request.input_ifname());
+        case patchpanel::ModifyPortRuleRequest::LOCKDOWN:
+          return firewall_->DeleteLoopbackLockdownRules(
+              request.proto(), request.input_dst_port());
+        case patchpanel::ModifyPortRuleRequest::FORWARDING:
+          return firewall_->DeleteIpv4ForwardRule(
+              request.proto(), request.input_dst_ip(), request.input_dst_port(),
+              request.input_ifname(), request.dst_ip(), request.dst_port());
+        default:
+          LOG(ERROR) << "Unknown port rule type " << request.type();
+          return false;
+      }
+    default:
+      LOG(ERROR) << "Unknown operation " << request.op();
+      return false;
+  }
 }
 
 std::ostream& operator<<(std::ostream& stream,

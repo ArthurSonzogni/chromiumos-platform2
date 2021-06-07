@@ -53,8 +53,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   FuzzedDataProvider provider(data, size);
   auto runner = new FakeProcessRunner();
-  Firewall firewall;
-  Datapath datapath(runner, &firewall, ioctl_stub);
+  auto firewall = new Firewall();
+  Datapath datapath(runner, firewall, ioctl_stub);
   CountersService counters_svc(&datapath);
 
   while (provider.remaining_bytes() > 0) {

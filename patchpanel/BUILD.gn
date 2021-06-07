@@ -211,7 +211,6 @@ if (use.test) {
       "firewall_test.cc",
       "mac_address_generator_test.cc",
       "minijailed_process_runner_test.cc",
-      "mock_firewall.cc",
       "ndproxy_test.cc",
       "net_util_test.cc",
       "network_monitor_service_test.cc",
