@@ -18,6 +18,7 @@ namespace cros {
 
 namespace {
 
+constexpr char kDumpBufferKey[] = "dump_buffer";
 constexpr char kEnableKey[] = "enable";
 constexpr char kExpCompKey[] = "exp_comp";
 constexpr char kFaceDetectionEnableKey[] = "face_detection_enable";
@@ -88,6 +89,10 @@ bool HdrNetConfig::ReadConfigFile() {
   if (exp_comp) {
     options_.exp_comp = *exp_comp;
   }
+  auto dump_buffer = json_values->FindBoolKey(kDumpBufferKey);
+  if (dump_buffer) {
+    options_.dump_buffer = *dump_buffer;
+  }
 
   VLOGF(1) << "HDRnet config:"
            << " enable=" << options_.enable
@@ -95,7 +100,8 @@ bool HdrNetConfig::ReadConfigFile() {
            << " gcam_ae_enable=" << options_.gcam_ae_enable
            << " gcam_ae_interval=" << options_.gcam_ae_interval
            << " face_detection_enable=" << options_.face_detection_enable
-           << " exp_comp=" << options_.exp_comp;
+           << " exp_comp=" << options_.exp_comp
+           << " dump_buffer=" << options_.dump_buffer;
 
   return true;
 }

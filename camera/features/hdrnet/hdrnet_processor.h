@@ -17,6 +17,7 @@
 
 #include "cros-camera/common_types.h"
 #include "features/hdrnet/hdrnet_config.h"
+#include "features/hdrnet/hdrnet_device_processor.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 
@@ -47,9 +48,9 @@ class HdrNetProcessor {
                                      const camera_metadata_t* metadata) = 0;
 
   // Runs the HDRnet pipeline for frame |frame_number| with configuration
-  // specified in |options|. |input_external_yuv| is the input YUV buffer
+  // specified in |options|. |input_yuv| is the input YUV buffer
   // produced by the device camera stack and |input_release_fence| is the fence
-  // FD for |input_external_yuv|. The implementation should wait on the fence
+  // FD for |input_yuv|. The implementation should wait on the fence
   // before acquiring the input buffer. The output buffer rendered by the HDRnet
   // pipeline will be scaled and filled the buffers in |output_nv12_buffers|.
   //
@@ -58,7 +59,7 @@ class HdrNetProcessor {
   virtual base::ScopedFD Run(
       int frame_number,
       const HdrNetConfig::Options& options,
-      const SharedImage& input_external_yuv,
+      const SharedImage& input_yuv,
       base::ScopedFD input_release_fence,
       const std::vector<buffer_handle_t>& output_nv12_buffers) = 0;
 };

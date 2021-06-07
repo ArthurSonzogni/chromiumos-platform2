@@ -16,6 +16,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "features/hdrnet/hdrnet_processor_impl.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/egl/utils.h"
 #include "gpu/gles/texture_2d.h"
@@ -64,7 +65,10 @@ void HdrNetStreamManipulator::HdrNetStreamContext::PushBuffer(
 HdrNetStreamManipulator::HdrNetStreamManipulator(
     HdrNetProcessor::Factory hdrnet_processor_factory)
     : gpu_thread_("HdrNetPipelineGpuThread"),
-      hdrnet_processor_factory_(std::move(hdrnet_processor_factory)) {
+      hdrnet_processor_factory_(
+          !hdrnet_processor_factory.is_null()
+              ? std::move(hdrnet_processor_factory)
+              : base::BindRepeating(HdrNetProcessorImpl::GetInstance)) {
   CHECK(gpu_thread_.Start());
 }
 

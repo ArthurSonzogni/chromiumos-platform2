@@ -41,6 +41,9 @@ class HdrNetConfig {
 
     // The manual exposure compensation set to every capture request.
     int32_t exp_comp = 0;
+
+    // Dumps intermediate processing buffers for debugging.
+    bool dump_buffer = false;
   };
 
   explicit HdrNetConfig(const char* config_file_path = kHdrNetConfigFile);

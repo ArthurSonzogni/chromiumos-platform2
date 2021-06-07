@@ -100,6 +100,43 @@ void GlTestFixture::FillTestPattern(buffer_handle_t buffer) {
       }
     }
     ASSERT_EQ(buf_mgr->Unlock(buffer), 0);
+  } else if (hal_format == HAL_PIXEL_FORMAT_YCBCR_P010) {
+    android_ycbcr ycbcr = {};
+    ASSERT_EQ(buf_mgr->LockYCbCr(buffer, 0, 0, 0, width, height, &ycbcr), 0);
+    // Fill Y plane. 2 byte per pixel with dimension w x h.
+    {
+      uint16_t* as_uint16 = reinterpret_cast<uint16_t*>(ycbcr.y);
+      size_t pixel_stride =
+          CameraBufferManager::GetPlaneStride(buffer, 0) / sizeof(uint16_t);
+      int base = 0;
+      for (int y = 0; y < height; ++y) {
+        base = y * pixel_stride;
+        for (int x = 0; x < width; ++x) {
+          as_uint16[base + x] = GetTestYuvColor(x, y, width, height)[0];
+          as_uint16[base + x] <<= 8;
+        }
+      }
+    }
+    // Fill UV plane. 2x2 subsampling with 4 bytes per pixel and dimension
+    // (w / 2) x (h / 2).
+    {
+      uint32_t* as_uint32 = reinterpret_cast<uint32_t*>(ycbcr.cb);
+      size_t pixel_stride =
+          CameraBufferManager::GetPlaneStride(buffer, 1) / sizeof(uint32_t);
+      int base = 0;
+      for (int y = 0; y < height / 2; ++y) {
+        base = y * pixel_stride;
+        for (int x = 0; x < width / 2; ++x) {
+          uint16_t* u = reinterpret_cast<uint16_t*>(as_uint32 + base + x);
+          uint16_t* v = u + 1;
+          *u = GetTestYuvColor(x * 2, y * 2, width, height)[1];
+          *u <<= 8;
+          *v = GetTestYuvColor(x * 2, y * 2, width, height)[2];
+          *v <<= 8;
+        }
+      }
+    }
+    ASSERT_EQ(buf_mgr->Unlock(buffer), 0);
   }
 }
 

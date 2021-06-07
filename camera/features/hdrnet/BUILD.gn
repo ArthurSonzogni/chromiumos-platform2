@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":hdrnet_processor_impl_test",
     ":hdrnet_stream_manipulator_test",
     ":libhdrnet",
   ]
@@ -24,14 +25,37 @@ pkg_config("target_defaults") {
 static_library("libhdrnet") {
   sources = [
     "//camera/features/hdrnet/hdrnet_config.cc",
+    "//camera/features/hdrnet/hdrnet_device_processor.cc",
+    "//camera/features/hdrnet/hdrnet_processor_impl.cc",
     "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",
   ]
+  libs = [ "hdrnet_cros" ]
   public_configs = [ ":target_defaults" ]
+  public_deps = [ "//camera/gpu:gpu_base" ]
+  deps = [
+    "//camera/gpu:image_processor",
+    "//camera/gpu/egl:libegl",
+    "//camera/gpu/gles:libgles",
+  ]
 }
 
 pkg_config("test_target_defaults") {
   configs = [ ":target_defaults" ]
   pkg_deps = [ "libchrome-test" ]
+}
+
+executable("hdrnet_processor_impl_test") {
+  sources = [ "//camera/features/hdrnet/hdrnet_processor_impl_test.cc" ]
+  configs += [
+    ":test_target_defaults",
+    "//common-mk:test",
+  ]
+  deps = [
+    ":libhdrnet",
+    "//camera/gpu:gpu_test_support",
+    "//camera/gpu/egl:libegl",
+    "//camera/gpu/gles:libgles",
+  ]
 }
 
 executable("hdrnet_stream_manipulator_test") {
