@@ -31,11 +31,12 @@ SessionManagerProxy::SessionManagerProxy(scoped_refptr<dbus::Bus> bus)
           login_manager::kSessionManagerServiceName,
           dbus::ObjectPath(login_manager::kSessionManagerServicePath))),
       weak_ptr_factory_(this) {
-  proxy_->ConnectToSignal(login_manager::kSessionManagerInterface,
-                          login_manager::kLoginPromptVisibleSignal,
-                          base::Bind(&SessionManagerProxy::OnLoginPromptVisible,
-                                     weak_ptr_factory_.GetWeakPtr()),
-                          base::Bind(&OnSignalConnected));
+  proxy_->ConnectToSignal(
+      login_manager::kSessionManagerInterface,
+      login_manager::kLoginPromptVisibleSignal,
+      base::BindRepeating(&SessionManagerProxy::OnLoginPromptVisible,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
 }
 
 void SessionManagerProxy::OnLoginPromptVisible(dbus::Signal*) {
