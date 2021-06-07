@@ -95,8 +95,8 @@ int SendStats(char* argv[],
   if (mode == kModeSendSparseSample) {
     metrics_lib.SendSparseToUMA(name, sample);
   } else if (mode == kModeSendEnumSample) {
-    int max = ParseInt(argv[name_index + 2]);
-    metrics_lib.SendEnumToUMA(name, sample, max);
+    int exclusive_max = ParseInt(argv[name_index + 2]);
+    metrics_lib.SendEnumToUMA(name, sample, exclusive_max);
   } else {
     int min = ParseInt(argv[name_index + 2]);
     int max = ParseInt(argv[name_index + 3]);

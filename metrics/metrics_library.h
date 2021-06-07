@@ -24,7 +24,22 @@ class MetricsLibraryInterface {
   virtual bool IsGuestMode() = 0;
   virtual bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets) = 0;
-  virtual bool SendEnumToUMA(const std::string& name, int sample, int max) = 0;
+  template <typename T>
+  bool SendEnumToUMA(const std::string& name, T sample) {
+    static_assert(std::is_enum<T>::value, "T is not an enum.");
+    // This also ensures that an enumeration that doesn't define kMaxValue fails
+    // with a semi-useful error ("no member named 'kMaxValue' in ...").
+    static_assert(static_cast<uintmax_t>(T::kMaxValue) <=
+                      static_cast<uintmax_t>(INT_MAX) - 1,
+                  "Enumeration's kMaxValue is out of range of INT_MAX!");
+    DCHECK_LE(static_cast<uintmax_t>(sample),
+              static_cast<uintmax_t>(T::kMaxValue));
+    return SendEnumToUMA(name, static_cast<int>(sample),
+                         static_cast<int>(T::kMaxValue) + 1);
+  }
+  virtual bool SendEnumToUMA(const std::string& name,
+                             int sample,
+                             int exclusive_max) = 0;
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
@@ -113,16 +128,16 @@ class MetricsLibrary : public MetricsLibraryInterface {
                  int nbuckets) override;
 
   // Sends linear histogram data to Chrome for transport to UMA and
-  // returns true on success. This method results in the equivalent of
+  // returns true on success. These methods result in the equivalent of
   // an asynchronous non-blocking RPC to UMA_HISTOGRAM_ENUMERATION
   // inside Chrome (see base/histogram.h).
   //
-  // |sample| is the sample value to be recorded (0 <= |sample| < |max|).
-  // |max| is the maximum value of the histogram samples.
+  // |sample| is the value to be recorded (0 <= |sample| < |exclusive_max|).
+  // |exclusive_max| should be set to 1 more than the largest enum value.
   // (-infinity, 0) is the implicit underflow bucket.
-  // [|max|,infinity) is the implicit overflow bucket.
+  // [|exclusive_max|,infinity) is the implicit overflow bucket.
   //
-  // An enumeration histogram requires |max| + 1 number of
+  // An enumeration histogram requires |exclusive_max| + 1 number of
   // buckets. Note that the memory allocated in Chrome for each
   // histogram is proportional to the number of buckets. Therefore, it
   // is strongly recommended to keep this number low (e.g., 50 is
@@ -130,7 +145,26 @@ class MetricsLibrary : public MetricsLibraryInterface {
   //
   // The new metric must be documented in
   // //tools/metrics/histograms/histograms.xml in the Chromium repository.
-  bool SendEnumToUMA(const std::string& name, int sample, int max) override;
+  // Sample usage:
+  //   // These values are logged to UMA. Entries should not be renumbered and
+  //   // numeric values should never be reused. Please keep in sync with
+  //   // "MyEnum" in tools/metrics/histograms/enums.xml in the Chromium repo.
+  //   enum class MyEnum {
+  //     kFirstValue = 0,
+  //     kSecondValue = 1,
+  //     ...
+  //     kFinalValue = N,
+  //     kMaxValue = kFinalValue,
+  //   };
+  //   SendEnumToUMA("My.Enumeration", MyEnum::kSomeValue);
+  //   // or
+  //   SendEnumToUMA("My.Enumeration",
+  //                 static_cast<int>(MyEnum::kSomeValue),
+  //                 static_cast<int>(MyEnum::kMaxValue) + 1);
+  using MetricsLibraryInterface::SendEnumToUMA;
+  bool SendEnumToUMA(const std::string& name,
+                     int sample,
+                     int exclusive_max) override;
 
   // Specialization of SendEnumToUMA for boolean values.
   bool SendBoolToUMA(const std::string& name, bool sample) override;

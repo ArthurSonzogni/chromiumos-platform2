@@ -15,6 +15,7 @@
 
 #include "metrics/c_metrics_library.h"
 #include "metrics/metrics_library.h"
+#include "metrics/metrics_library_mock.h"
 
 using base::FilePath;
 using ::testing::_;
@@ -166,6 +167,22 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledFalse) {
 // MetricsEnabled policy set to true -> AreMetricsEnabled returns true.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledTrue) {
   EXPECT_TRUE(lib_.AreMetricsEnabled());
+}
+
+// Template SendEnumToUMA(name, T) correctly sets exclusive_max to kMaxValue+1.
+TEST_F(MetricsLibraryTest, SendEnumToUMAMax) {
+  enum class MyEnum {
+    kFirstValue = 0,
+    kSecondValue = 1,
+    kThirdValue = 2,
+    kMaxValue = kThirdValue,
+  };
+  std::unique_ptr<MetricsLibraryMock> mock =
+      std::make_unique<MetricsLibraryMock>();
+  EXPECT_CALL(*mock, SendEnumToUMA("My.Enumeration", 1, 3)).Times(1);
+  MetricsLibraryInterface* metrics_library =
+      static_cast<MetricsLibraryInterface*>(mock.get());
+  metrics_library->SendEnumToUMA("My.Enumeration", MyEnum::kSecondValue);
 }
 
 void MetricsLibraryTest::VerifyEnabledCacheHit(bool to_value) {
