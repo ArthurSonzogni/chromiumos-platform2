@@ -25,13 +25,13 @@ namespace shill {
 class CertificateFile;
 class ExternalTask;
 
-class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
+class L2TPIPsecDriver : public VPNDriver, public RpcTaskDelegate {
  public:
-  L2TPIPSecDriver(Manager* manager, ProcessManager* process_manager);
-  L2TPIPSecDriver(const L2TPIPSecDriver&) = delete;
-  L2TPIPSecDriver& operator=(const L2TPIPSecDriver&) = delete;
+  L2TPIPsecDriver(Manager* manager, ProcessManager* process_manager);
+  L2TPIPsecDriver(const L2TPIPsecDriver&) = delete;
+  L2TPIPsecDriver& operator=(const L2TPIPsecDriver&) = delete;
 
-  ~L2TPIPSecDriver() override;
+  ~L2TPIPsecDriver() override;
 
   // Inherited from VPNDriver.
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
@@ -48,31 +48,31 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
       DefaultPhysicalServiceEvent event) override;
 
  private:
-  friend class L2TPIPSecDriverTest;
-  FRIEND_TEST(L2TPIPSecDriverTest, AppendFlag);
-  FRIEND_TEST(L2TPIPSecDriverTest, AppendValueOption);
-  FRIEND_TEST(L2TPIPSecDriverTest, Cleanup);
-  FRIEND_TEST(L2TPIPSecDriverTest, Connect);
-  FRIEND_TEST(L2TPIPSecDriverTest, DeleteTemporaryFiles);
-  FRIEND_TEST(L2TPIPSecDriverTest, Disconnect);
-  FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitPEMOptions);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
-  FRIEND_TEST(L2TPIPSecDriverTest, InitXauthOptions);
-  FRIEND_TEST(L2TPIPSecDriverTest, Notify);
-  FRIEND_TEST(L2TPIPSecDriverTest, NotifyWithExistingDevice);
-  FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
-  FRIEND_TEST(L2TPIPSecDriverTest, OnConnectTimeout);
-  FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
-  FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
-  FRIEND_TEST(L2TPIPSecDriverTest, UseLoginPassword);
+  friend class L2TPIPsecDriverTest;
+  FRIEND_TEST(L2TPIPsecDriverTest, AppendFlag);
+  FRIEND_TEST(L2TPIPsecDriverTest, AppendValueOption);
+  FRIEND_TEST(L2TPIPsecDriverTest, Cleanup);
+  FRIEND_TEST(L2TPIPsecDriverTest, Connect);
+  FRIEND_TEST(L2TPIPsecDriverTest, DeleteTemporaryFiles);
+  FRIEND_TEST(L2TPIPsecDriverTest, Disconnect);
+  FRIEND_TEST(L2TPIPsecDriverTest, GetLogin);
+  FRIEND_TEST(L2TPIPsecDriverTest, InitOptions);
+  FRIEND_TEST(L2TPIPsecDriverTest, InitOptionsNoHost);
+  FRIEND_TEST(L2TPIPsecDriverTest, InitPEMOptions);
+  FRIEND_TEST(L2TPIPsecDriverTest, InitPSKOptions);
+  FRIEND_TEST(L2TPIPsecDriverTest, InitXauthOptions);
+  FRIEND_TEST(L2TPIPsecDriverTest, Notify);
+  FRIEND_TEST(L2TPIPsecDriverTest, NotifyWithExistingDevice);
+  FRIEND_TEST(L2TPIPsecDriverTest, NotifyDisconnected);
+  FRIEND_TEST(L2TPIPsecDriverTest, OnConnectTimeout);
+  FRIEND_TEST(L2TPIPsecDriverTest, OnL2TPIPsecVPNDied);
+  FRIEND_TEST(L2TPIPsecDriverTest, SpawnL2TPIPsecVPN);
+  FRIEND_TEST(L2TPIPsecDriverTest, UseLoginPassword);
 
-  static const char kL2TPIPSecVPNPath[];
+  static const char kL2TPIPsecVPNPath[];
   static const Property kProperties[];
 
-  bool SpawnL2TPIPSecVPN(Error* error);
+  bool SpawnL2TPIPsecVPN(Error* error);
 
   bool InitOptions(std::vector<std::string>* options, Error* error);
   bool InitPSKOptions(std::vector<std::string>* options, Error* error);
@@ -105,7 +105,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
                   std::vector<std::string>* options);
 
   // Returns true if neither a PSK nor a client certificate has been provided
-  // for the IPSec phase of the authentication process.
+  // for the IPsec phase of the authentication process.
   bool IsPskRequired() const;
 
   // Inherit from VPNDriver to add custom properties.
@@ -116,7 +116,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
   // Called when the l2tpipsec_vpn process exits.
-  void OnL2TPIPSecVPNDied(pid_t pid, int status);
+  void OnL2TPIPsecVPNDied(pid_t pid, int status);
 
   void OnLinkReady(const std::string& link_name, int interface_index);
 
@@ -131,7 +131,7 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
 
-  base::WeakPtrFactory<L2TPIPSecDriver> weak_factory_{this};
+  base::WeakPtrFactory<L2TPIPsecDriver> weak_factory_{this};
 };
 
 }  // namespace shill

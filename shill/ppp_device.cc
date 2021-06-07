@@ -88,7 +88,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
     } else if (key == kPPPDNS2) {
       properties.dns_servers.push_back(value);
     } else if (key == kPPPLNSAddress) {
-      // This is really a L2TPIPSec property. But it's sent to us by
+      // This is really a L2TPIPsec property. But it's sent to us by
       // our PPP plugin.
       size_t prefix = IPAddress::GetMaxPrefixLength(properties.address_family);
       properties.exclusion_list.push_back(value + "/" +

@@ -543,7 +543,7 @@ class Manager {
   friend class CellularTest;
   friend class DeviceInfoTest;
   friend class DeviceTest;
-  friend class L2TPIPSecDriverTest;
+  friend class L2TPIPsecDriverTest;
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
   friend class ModemInfoTest;

@@ -227,7 +227,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
   if (type == kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
-    driver.reset(new L2TPIPSecDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
     driver.reset(

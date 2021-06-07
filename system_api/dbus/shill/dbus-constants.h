@@ -228,7 +228,7 @@ const char kProviderTypeProperty[] = "Provider.Type";
 // ArcVpn Service property names.
 const char kArcVpnTunnelChromeProperty[] = "ArcVpn.TunnelChrome";
 
-// L2tpIPSec Service property names.
+// L2TPIPsec Service property names.
 const char kL2tpIpsecCaCertPemProperty[] = "L2TPIPsec.CACertPEM";
 const char kL2tpIpsecClientCertIdProperty[] = "L2TPIPsec.ClientCertID";
 const char kL2tpIpsecClientCertSlotProperty[] = "L2TPIPsec.ClientCertSlot";

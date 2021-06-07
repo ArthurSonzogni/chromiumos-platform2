@@ -119,7 +119,7 @@ void PPP::OnConnect(const std::string& ifname) {
   }
   std::string lns_address;
   if (Environment::GetInstance()->GetVariable("LNS_ADDRESS", &lns_address)) {
-    // Really an L2TP/IPSec option rather than a PPP one. But oh well.
+    // Really an L2TP/IPsec option rather than a PPP one. But oh well.
     dict[kPPPLNSAddress] = lns_address;
   }
   if (CreateProxy()) {

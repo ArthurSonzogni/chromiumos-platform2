@@ -62,7 +62,7 @@ class VPNProvider : public ProviderInterface {
 
  private:
   friend class ArcVpnDriverTest;
-  friend class L2TPIPSecDriverTest;
+  friend class L2TPIPsecDriverTest;
   friend class OpenVPNDriverTest;
   friend class VPNProviderTest;
   friend class VPNServiceTest;

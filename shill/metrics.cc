@@ -2033,11 +2033,11 @@ void Metrics::SendServiceFailure(const Service& service) {
     case Service::kFailureHTTPGet:
       error = kNetworkServiceErrorHTTPGet;
       break;
-    case Service::kFailureIPSecCertAuth:
-      error = kNetworkServiceErrorIPSecCertAuth;
+    case Service::kFailureIPsecCertAuth:
+      error = kNetworkServiceErrorIPsecCertAuth;
       break;
-    case Service::kFailureIPSecPSKAuth:
-      error = kNetworkServiceErrorIPSecPSKAuth;
+    case Service::kFailureIPsecPSKAuth:
+      error = kNetworkServiceErrorIPsecPSKAuth;
       break;
     case Service::kFailureInternal:
       error = kNetworkServiceErrorInternal;

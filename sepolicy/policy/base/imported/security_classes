@@ -53,7 +53,7 @@ class netlink_selinux_socket
 class netlink_audit_socket
 class netlink_dnrt_socket
 
-# IPSec association
+# IPsec association
 class association
 
 # Updated Netlink class for KOBJECT_UEVENT family.

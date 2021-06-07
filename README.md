@@ -156,7 +156,7 @@ copies.
 | [verity](./verity/) | Userspace tools for working dm-verity (verified disk images) |
 | [virtual_file_provider](./virtual_file_provider/) ||
 | [vm_tools](./vm_tools/) | Utilities for Virtual Machine (VM) orchestration |
-| [vpn-manager](./vpn-manager/) | Chrome OS Native L2TP/IPSec VPN Daemon |
+| [vpn-manager](./vpn-manager/) | Chrome OS Native L2TP/IPsec VPN Daemon |
 | [webserver](./webserver/) | Small web server with D-Bus client backends |
 | [wifi-testbed](./wifi-testbed/) | Tools for creating a WiFi testbed image |
 

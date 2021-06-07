@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// The term "L2TP / IPSec" refers to a pair of layered protocols used
-// together to establish a tunneled VPN connection.  First, an "IPSec"
+// The term "L2TP/IPsec" refers to a pair of layered protocols used
+// together to establish a tunneled VPN connection.  First, an "IPsec"
 // link is created, which secures a single IP traffic pair between the
 // client and server.  For this link to complete, one or two levels of
 // authentication are performed.  The first, inner mandatory authentication
-// ensures the two parties establishing the IPSec link are correct.  This
+// ensures the two parties establishing the IPsec link are correct.  This
 // can use a certificate exchange or a less secure "shared group key"
-// (PSK) authentication.  An optional outer IPSec authentication can also be
+// (PSK) authentication.  An optional outer IPsec authentication can also be
 // performed, which is not fully supported by shill's implementation.
 // In order to support "tunnel groups" from some vendor VPNs shill supports
 // supplying the authentication realm portion during the outer authentication.
 //
-// When IPSec authentication completes, traffic is tunneled through a
+// When IPsec authentication completes, traffic is tunneled through a
 // layer 2 tunnel, called "L2TP".  Using the secured link, we tunnel a
 // PPP link, through which a second layer of authentication is performed,
 // using the provided "user" and "password" properties.
@@ -50,22 +50,22 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const L2TPIPSecDriver*) {
+static std::string ObjectID(const L2TPIPsecDriver*) {
   return "(l2tp_ipsec_driver)";
 }
 }  // namespace Logging
 
 namespace {
 
-const char kL2TPIPSecIPSecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
-const char kL2TPIPSecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
-const char kL2TPIPSecLengthBitProperty[] = "L2TPIPsec.LengthBit";
-const char kL2TPIPSecPFSProperty[] = "L2TPIPsec.PFS";
-const char kL2TPIPSecRefusePapProperty[] = "L2TPIPsec.RefusePap";
-const char kL2TPIPSecRekeyProperty[] = "L2TPIPsec.Rekey";
-const char kL2TPIPSecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
-const char kL2TPIPSecRequireChapProperty[] = "L2TPIPsec.RequireChap";
-const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
+const char kL2TPIPsecIPsecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
+const char kL2TPIPsecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
+const char kL2TPIPsecLengthBitProperty[] = "L2TPIPsec.LengthBit";
+const char kL2TPIPsecPFSProperty[] = "L2TPIPsec.PFS";
+const char kL2TPIPsecRefusePapProperty[] = "L2TPIPsec.RefusePap";
+const char kL2TPIPsecRekeyProperty[] = "L2TPIPsec.Rekey";
+const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
+const char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
+const char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
 constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromMinutes(1);
 
@@ -83,9 +83,9 @@ Service::ConnectFailure ExitStatusToFailure(int status) {
     case vpn_manager::kServiceErrorPppConnectionFailed:
       return Service::kFailureConnect;
     case vpn_manager::kServiceErrorIpsecPresharedKeyAuthenticationFailed:
-      return Service::kFailureIPSecPSKAuth;
+      return Service::kFailureIPsecPSKAuth;
     case vpn_manager::kServiceErrorIpsecCertificateAuthenticationFailed:
-      return Service::kFailureIPSecCertAuth;
+      return Service::kFailureIPsecCertAuth;
     case vpn_manager::kServiceErrorPppAuthenticationFailed:
       return Service::kFailurePPPAuth;
     default:
@@ -96,9 +96,9 @@ Service::ConnectFailure ExitStatusToFailure(int status) {
 }  // namespace
 
 // static
-const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
+const char L2TPIPsecDriver::kL2TPIPsecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 // static
-const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
+const VPNDriver::Property L2TPIPsecDriver::kProperties[] = {
     {kL2tpIpsecClientCertIdProperty, 0},
     {kL2tpIpsecClientCertSlotProperty, 0},
     {kL2tpIpsecPasswordProperty, Property::kCredential | Property::kWriteOnly},
@@ -110,64 +110,64 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
     {kProviderTypeProperty, 0},
     {kL2tpIpsecCaCertPemProperty, Property::kArray},
     {kL2tpIpsecTunnelGroupProperty, 0},
-    {kL2TPIPSecIPSecTimeoutProperty, 0},
-    {kL2TPIPSecLeftProtoPortProperty, 0},
-    {kL2TPIPSecLengthBitProperty, 0},
-    {kL2TPIPSecPFSProperty, 0},
-    {kL2TPIPSecRefusePapProperty, 0},
-    {kL2TPIPSecRekeyProperty, 0},
-    {kL2TPIPSecRequireAuthProperty, 0},
-    {kL2TPIPSecRequireChapProperty, 0},
-    {kL2TPIPSecRightProtoPortProperty, 0},
+    {kL2TPIPsecIPsecTimeoutProperty, 0},
+    {kL2TPIPsecLeftProtoPortProperty, 0},
+    {kL2TPIPsecLengthBitProperty, 0},
+    {kL2TPIPsecPFSProperty, 0},
+    {kL2TPIPsecRefusePapProperty, 0},
+    {kL2TPIPsecRekeyProperty, 0},
+    {kL2TPIPsecRequireAuthProperty, 0},
+    {kL2TPIPsecRequireChapProperty, 0},
+    {kL2TPIPsecRightProtoPortProperty, 0},
     {kL2tpIpsecXauthUserProperty, Property::kCredential | Property::kWriteOnly},
     {kL2tpIpsecXauthPasswordProperty,
      Property::kCredential | Property::kWriteOnly},
     {kL2tpIpsecLcpEchoDisabledProperty, 0},
 };
 
-L2TPIPSecDriver::L2TPIPSecDriver(Manager* manager,
+L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
                                  ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
       certificate_file_(new CertificateFile()),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()) {}
 
-L2TPIPSecDriver::~L2TPIPSecDriver() {
+L2TPIPsecDriver::~L2TPIPsecDriver() {
   Cleanup();
 }
 
-base::TimeDelta L2TPIPSecDriver::ConnectAsync(EventHandler* handler) {
+base::TimeDelta L2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
   Error error;
-  if (!SpawnL2TPIPSecVPN(&error)) {
+  if (!SpawnL2TPIPsecVPN(&error)) {
     dispatcher()->PostTask(
         FROM_HERE,
-        base::BindOnce(&L2TPIPSecDriver::FailService,
+        base::BindOnce(&L2TPIPsecDriver::FailService,
                        weak_factory_.GetWeakPtr(), Service::kFailureInternal));
     return kTimeoutNone;
   }
   return kConnectTimeout;
 }
 
-void L2TPIPSecDriver::Disconnect() {
+void L2TPIPsecDriver::Disconnect() {
   SLOG(this, 2) << __func__;
   Cleanup();
   event_handler_ = nullptr;
 }
 
-IPConfig::Properties L2TPIPSecDriver::GetIPProperties() const {
+IPConfig::Properties L2TPIPsecDriver::GetIPProperties() const {
   return ip_properties_;
 }
 
-void L2TPIPSecDriver::OnConnectTimeout() {
+void L2TPIPsecDriver::OnConnectTimeout() {
   FailService(Service::kFailureConnect);
 }
 
-std::string L2TPIPSecDriver::GetProviderType() const {
+std::string L2TPIPsecDriver::GetProviderType() const {
   return kProviderL2tpIpsec;
 }
 
-void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
+void L2TPIPsecDriver::FailService(Service::ConnectFailure failure) {
   SLOG(this, 2) << __func__ << "(" << Service::ConnectFailureToString(failure)
                 << ")";
   Cleanup();
@@ -177,19 +177,19 @@ void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
   }
 }
 
-void L2TPIPSecDriver::Cleanup() {
+void L2TPIPsecDriver::Cleanup() {
   DeleteTemporaryFiles();
   external_task_.reset();
 }
 
-void L2TPIPSecDriver::OnBeforeSuspend(const ResultCallback& callback) {
+void L2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
   if (event_handler_) {
     FailService(Service::kFailureDisconnect);
   }
   callback.Run(Error(Error::kSuccess));
 }
 
-void L2TPIPSecDriver::OnDefaultPhysicalServiceEvent(
+void L2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
   if (!event_handler_) {
     return;
@@ -200,23 +200,23 @@ void L2TPIPSecDriver::OnDefaultPhysicalServiceEvent(
   FailService(Service::kFailureDisconnect);
 }
 
-void L2TPIPSecDriver::DeleteTemporaryFile(base::FilePath* temporary_file) {
+void L2TPIPsecDriver::DeleteTemporaryFile(base::FilePath* temporary_file) {
   if (!temporary_file->empty()) {
     base::DeleteFile(*temporary_file);
     temporary_file->clear();
   }
 }
 
-void L2TPIPSecDriver::DeleteTemporaryFiles() {
+void L2TPIPsecDriver::DeleteTemporaryFiles() {
   DeleteTemporaryFile(&psk_file_);
   DeleteTemporaryFile(&xauth_credentials_file_);
 }
 
-bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
+bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local = std::make_unique<ExternalTask>(
       control_interface(), process_manager(), weak_factory_.GetWeakPtr(),
-      base::Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
+      base::Bind(&L2TPIPsecDriver::OnL2TPIPsecVPNDied,
                  weak_factory_.GetWeakPtr()));
 
   std::vector<std::string> options;
@@ -224,14 +224,14 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   if (!InitOptions(&options, error)) {
     return false;
   }
-  LOG(INFO) << "L2TP/IPSec VPN process options: "
+  LOG(INFO) << "L2TP/IPsec VPN process options: "
             << base::JoinString(options, " ");
 
   uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
                      CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                      CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID) |
                      CAP_TO_MASK(CAP_KILL);
-  if (!external_task_local->StartInMinijail(base::FilePath(kL2TPIPSecVPNPath),
+  if (!external_task_local->StartInMinijail(base::FilePath(kL2TPIPsecVPNPath),
                                             &options, "shill", "shill", capmask,
                                             true, true, error)) {
     return false;
@@ -240,7 +240,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   return true;
 }
 
-bool L2TPIPSecDriver::InitOptions(std::vector<std::string>* options,
+bool L2TPIPsecDriver::InitOptions(std::vector<std::string>* options,
                                   Error* error) {
   const auto vpnhost = args()->Lookup<std::string>(kProviderHostProperty, "");
   if (vpnhost.empty()) {
@@ -272,26 +272,26 @@ bool L2TPIPSecDriver::InitOptions(std::vector<std::string>* options,
                     options);
   AppendValueOption(kL2tpIpsecPinProperty, "--user_pin", options);
   AppendValueOption(kL2tpIpsecUserProperty, "--user", options);
-  AppendValueOption(kL2TPIPSecIPSecTimeoutProperty, "--ipsec_timeout", options);
-  AppendValueOption(kL2TPIPSecLeftProtoPortProperty, "--leftprotoport",
+  AppendValueOption(kL2TPIPsecIPsecTimeoutProperty, "--ipsec_timeout", options);
+  AppendValueOption(kL2TPIPsecLeftProtoPortProperty, "--leftprotoport",
                     options);
-  AppendFlag(kL2TPIPSecPFSProperty, "--pfs", "--nopfs", options);
-  AppendFlag(kL2TPIPSecRekeyProperty, "--rekey", "--norekey", options);
-  AppendValueOption(kL2TPIPSecRightProtoPortProperty, "--rightprotoport",
+  AppendFlag(kL2TPIPsecPFSProperty, "--pfs", "--nopfs", options);
+  AppendFlag(kL2TPIPsecRekeyProperty, "--rekey", "--norekey", options);
+  AppendValueOption(kL2TPIPsecRightProtoPortProperty, "--rightprotoport",
                     options);
-  AppendFlag(kL2TPIPSecRequireChapProperty, "--require_chap",
+  AppendFlag(kL2TPIPsecRequireChapProperty, "--require_chap",
              "--norequire_chap", options);
   // b/187984628: When UseLoginPassword is enabled, PAP must be refused to
   // prevent potential password leak to a malicious server.
   if (args()->Lookup<std::string>(kL2tpIpsecUseLoginPasswordProperty, "") ==
       "true") {
-    args()->Set<std::string>(kL2TPIPSecRefusePapProperty, "true");
+    args()->Set<std::string>(kL2TPIPsecRefusePapProperty, "true");
   }
-  AppendFlag(kL2TPIPSecRefusePapProperty, "--refuse_pap", "--norefuse_pap",
+  AppendFlag(kL2TPIPsecRefusePapProperty, "--refuse_pap", "--norefuse_pap",
              options);
-  AppendFlag(kL2TPIPSecRequireAuthProperty, "--require_authentication",
+  AppendFlag(kL2TPIPsecRequireAuthProperty, "--require_authentication",
              "--norequire_authentication", options);
-  AppendFlag(kL2TPIPSecLengthBitProperty, "--length_bit", "--nolength_bit",
+  AppendFlag(kL2TPIPsecLengthBitProperty, "--length_bit", "--nolength_bit",
              options);
   AppendFlag(kL2tpIpsecLcpEchoDisabledProperty, "--noppp_lcp_echo",
              "--ppp_lcp_echo", options);
@@ -303,7 +303,7 @@ bool L2TPIPSecDriver::InitOptions(std::vector<std::string>* options,
   return true;
 }
 
-bool L2TPIPSecDriver::InitPSKOptions(std::vector<std::string>* options,
+bool L2TPIPsecDriver::InitPSKOptions(std::vector<std::string>* options,
                                      Error* error) {
   const auto psk = args()->Lookup<std::string>(kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
@@ -321,7 +321,7 @@ bool L2TPIPSecDriver::InitPSKOptions(std::vector<std::string>* options,
   return true;
 }
 
-bool L2TPIPSecDriver::InitPEMOptions(std::vector<std::string>* options) {
+bool L2TPIPsecDriver::InitPEMOptions(std::vector<std::string>* options) {
   std::vector<std::string> ca_certs;
   if (args()->Contains<Strings>(kL2tpIpsecCaCertPemProperty)) {
     ca_certs = args()->Get<Strings>(kL2tpIpsecCaCertPemProperty);
@@ -339,7 +339,7 @@ bool L2TPIPSecDriver::InitPEMOptions(std::vector<std::string>* options) {
   return true;
 }
 
-bool L2TPIPSecDriver::InitXauthOptions(std::vector<std::string>* options,
+bool L2TPIPsecDriver::InitXauthOptions(std::vector<std::string>* options,
                                        Error* error) {
   const auto user =
       args()->Lookup<std::string>(kL2tpIpsecXauthUserProperty, "");
@@ -370,7 +370,7 @@ bool L2TPIPSecDriver::InitXauthOptions(std::vector<std::string>* options,
   return true;
 }
 
-bool L2TPIPSecDriver::AppendValueOption(const std::string& property,
+bool L2TPIPsecDriver::AppendValueOption(const std::string& property,
                                         const std::string& option,
                                         std::vector<std::string>* options) {
   const auto value = args()->Lookup<std::string>(property, "");
@@ -382,7 +382,7 @@ bool L2TPIPSecDriver::AppendValueOption(const std::string& property,
   return false;
 }
 
-bool L2TPIPSecDriver::AppendFlag(const std::string& property,
+bool L2TPIPsecDriver::AppendFlag(const std::string& property,
                                  const std::string& true_option,
                                  const std::string& false_option,
                                  std::vector<std::string>* options) {
@@ -394,12 +394,12 @@ bool L2TPIPSecDriver::AppendFlag(const std::string& property,
   return false;
 }
 
-void L2TPIPSecDriver::OnL2TPIPSecVPNDied(pid_t /*pid*/, int status) {
+void L2TPIPsecDriver::OnL2TPIPsecVPNDied(pid_t /*pid*/, int status) {
   FailService(ExitStatusToFailure(status));
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
-void L2TPIPSecDriver::GetLogin(std::string* user, std::string* password) {
+void L2TPIPsecDriver::GetLogin(std::string* user, std::string* password) {
   LOG(INFO) << "Login requested.";
   const auto user_property =
       args()->Lookup<std::string>(kL2tpIpsecUserProperty, "");
@@ -430,7 +430,7 @@ void L2TPIPSecDriver::GetLogin(std::string* user, std::string* password) {
   *password = password_property;
 }
 
-void L2TPIPSecDriver::Notify(const std::string& reason,
+void L2TPIPsecDriver::Notify(const std::string& reason,
                              const std::map<std::string, std::string>& dict) {
   LOG(INFO) << "IP configuration received: " << reason;
 
@@ -461,7 +461,7 @@ void L2TPIPSecDriver::Notify(const std::string& reason,
   // TODO(benchan): Generalize this when IPv6 support is added.
   ip_properties_.blackhole_ipv6 = true;
 
-  // Reduce MTU to the minimum viable for IPv6, since the IPSec layer consumes
+  // Reduce MTU to the minimum viable for IPv6, since the IPsec layer consumes
   // some variable portion of the payload.  Although this system does not yet
   // support IPv6, it is a reasonable value to start with, since the minimum
   // IPv6 packet size will plausibly be a size any gateway would support, and
@@ -479,12 +479,12 @@ void L2TPIPSecDriver::Notify(const std::string& reason,
     OnLinkReady(interface_name, interface_index);
   } else {
     manager()->device_info()->AddVirtualInterfaceReadyCallback(
-        interface_name, base::BindOnce(&L2TPIPSecDriver::OnLinkReady,
+        interface_name, base::BindOnce(&L2TPIPsecDriver::OnLinkReady,
                                        weak_factory_.GetWeakPtr()));
   }
 }
 
-void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
+void L2TPIPsecDriver::OnLinkReady(const std::string& link_name,
                                   int interface_index) {
   if (!event_handler_) {
     LOG(ERROR) << "OnLinkReady() triggered in illegal service state";
@@ -493,14 +493,14 @@ void L2TPIPSecDriver::OnLinkReady(const std::string& link_name,
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 
-bool L2TPIPSecDriver::IsPskRequired() const {
+bool L2TPIPsecDriver::IsPskRequired() const {
   return const_args()->Lookup<std::string>(kL2tpIpsecPskProperty, "").empty() &&
          const_args()
              ->Lookup<std::string>(kL2tpIpsecClientCertIdProperty, "")
              .empty();
 }
 
-KeyValueStore L2TPIPSecDriver::GetProvider(Error* error) {
+KeyValueStore L2TPIPsecDriver::GetProvider(Error* error) {
   SLOG(this, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.Set<bool>(
@@ -510,7 +510,7 @@ KeyValueStore L2TPIPSecDriver::GetProvider(Error* error) {
   return props;
 }
 
-void L2TPIPSecDriver::ReportConnectionMetrics() {
+void L2TPIPsecDriver::ReportConnectionMetrics() {
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
                            Metrics::kVpnDriverL2tpIpsec,
                            Metrics::kMetricVpnDriverMax);

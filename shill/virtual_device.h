@@ -18,7 +18,7 @@ namespace shill {
 
 // A VirtualDevice represents a device that doesn't provide its own
 // physical layer. This includes, e.g., tunnel interfaces used for
-// OpenVPN, and PPP devices used for L2TPIPSec and 3G PPP dongles.
+// OpenVPN, and PPP devices used for L2TPIPsec and 3G PPP dongles.
 // (PPP devices are represented via the PPPDevice subclass.)
 class VirtualDevice : public Device {
  public:
@@ -41,7 +41,7 @@ class VirtualDevice : public Device {
   virtual void UpdateIPConfig(const IPConfig::Properties& properties);
 
   // Expose protected device methods to manager of this device.
-  // (E.g. Cellular, L2TPIPSecDriver, OpenVPNDriver.)
+  // (E.g. Cellular, L2TPIPsecDriver, OpenVPNDriver.)
   void DropConnection() override;
   virtual void SelectService(const ServiceRefPtr& service);
   void SetServiceState(Service::ConnectState state) override;

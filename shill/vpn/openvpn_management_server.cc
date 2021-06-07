@@ -381,7 +381,7 @@ bool OpenVPNManagementServer::ProcessStateMessage(const std::string& message) {
         // failed.  Unfortunately OpenVPN doesn't tell us whether it
         // was a local or remote failure.  The UI will say:
         // "Authentication certificate rejected by network"
-        driver_->FailService(Service::kFailureIPSecCertAuth,
+        driver_->FailService(Service::kFailureIPsecCertAuth,
                              Service::kErrorDetailsNone);
       } else {
         OpenVPNDriver::ReconnectReason reconnect_reason =

@@ -460,7 +460,7 @@ class netlink_dnrt_socket
 inherits socket
 
 # Define the access vector interpretation for controlling
-# access to IPSec network data by association
+# access to IPsec network data by association
 #
 class association
 {

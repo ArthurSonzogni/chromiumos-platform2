@@ -8,7 +8,7 @@ representing a virtual interface) may not exist when a Connect is
 requested. Therefore the standard means of a `Service` passing Connect requests
 over to its corresponding `Device` does not work. Also since the `VirtualDevice`
 type is not unique to a particular VPN solution (`PPPDevices`, for example, are
-used for cellular dongles, PPPoE, and L2TP/IPSec VPNs), the VPN-specific logic
+used for cellular dongles, PPPoE, and L2TP/IPsec VPNs), the VPN-specific logic
 cannot be contained within the `VirtualDevice` instance. Note that PPPoE is in a
 similar position but solves this by piggybacking off of the `Ethernet` instance
 that will carry the PPPoE traffic, moving the complexity of PPPoE configuration
@@ -26,7 +26,7 @@ exposed to D-Bus clients.
 
 ChromeOS supports 4 types of VPN solutions:
 *   Android 3rd-party VPN apps in ARC
-*   Built-in L2TP/IPSec VPN
+*   Built-in L2TP/IPsec VPN
 *   Built-in OpenVPN
 *   Chrome Extension VPN App
 
@@ -70,13 +70,13 @@ connects. This triggers `ArcNetHostImpl::AndroidVpnConnected` on the
 Chrome-side, which will Connect the appropriate `VpnService` in Shill, first
 configuring a new `VpnService` in Shill if needed.
 
-### Built-in L2TP/IPSec VPN
+### Built-in L2TP/IPsec VPN
 
-The built-in L2TP/IPSec VPN is implemented with multiple projects, the two Chrome
-OS components being the Shill `L2TPIPSecDriver` and the
+The built-in L2TP/IPsec VPN is implemented with multiple projects, the two Chrome
+OS components being the Shill `L2TPIPsecDriver` and the
 [vpn-manager](../../vpn-manager) project. The vpn-manager project (in particular
-the l2tpipsec_vpn binary) serves to create the L2TP/IPSec nested tunnels that
-define the L2TP/IPSec VPN. l2tpipsec_vpn creates the outer IPSec tunnel using
+the l2tpipsec_vpn binary) serves to create the L2TP/IPsec nested tunnels that
+define the L2TP/IPsec VPN. l2tpipsec_vpn creates the outer IPsec tunnel using
 [strongSwan](https://www.strongswan.org), while the inner L2TP tunnel is created
 by [xl2tpd](https://linux.die.net/man/8/xl2tpd) (which itself uses pppd).
 
@@ -84,21 +84,21 @@ by [xl2tpd](https://linux.die.net/man/8/xl2tpd) (which itself uses pppd).
 >   L2TPv2 and L2TPv3). [RFC 2661] defines L2TPv2, which is a protocol
 >   specifically designed for the tunnelling of PPP traffic. [RFC 3931]
 >   generalizes L2TPv2 such that the assumption of the L2 protocol being PPP is
->   removed. L2TP/IPSec is described in [RFC 3193], which--as the RFC numbers
+>   removed. L2TP/IPsec is described in [RFC 3193], which--as the RFC numbers
 >   might suggest--is based on L2TPv2. In particular, xl2tpd is an
 >   implementation of RFC 2661, and all references to L2TP in Shill and
 >   vpn-manager are specifically referencing L2TPv2.
 
-Upon a Connect request, `L2TPIPSecDriver` spawns an l2tpipsec_vpn process,
+Upon a Connect request, `L2TPIPsecDriver` spawns an l2tpipsec_vpn process,
 passing the proper configuration flags and options given the configuration of
 relevant Service properties. One important configuration option set is the
-"--pppd_plugin" option, which is used so that `L2TPIPSecDriver` can get updates
+"--pppd_plugin" option, which is used so that `L2TPIPsecDriver` can get updates
 from the pppd process created by xl2tpd, which passes messages to
-`L2TPIPSecDriver::Notify`. One use of the `Notify` method is to get information
+`L2TPIPsecDriver::Notify`. One use of the `Notify` method is to get information
 of the PPP interface created by pppd when the PPP connection is established,
 which is used to create the corresponding `PPPDevice` instance. The `Notify`
 method is also used to get information about a disconnection, although
-`L2TPIPSecDriver::OnL2TPIPSecVPNDied` also serves that purpose but receives the
+`L2TPIPsecDriver::OnL2TPIPsecVPNDied` also serves that purpose but receives the
 exit status from l2tpipsec_vpn rather than pppd.
 
 ### Built-in OpenVPN
