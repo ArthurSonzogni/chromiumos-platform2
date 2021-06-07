@@ -79,6 +79,7 @@ TEST(TestInitialize, InitializeWithBadArgs) {
   args.CreateMutex = (CK_CREATEMUTEX)1;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Initialize(&args));
   memset(&args, 0, sizeof(args));
+  args.LibraryParameters = reinterpret_cast<CK_CHAR_PTR*>(1);
   args.pReserved = (CK_VOID_PTR)1;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Initialize(&args));
 }

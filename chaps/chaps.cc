@@ -170,7 +170,9 @@ EXPORT_SPEC CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (pInitArgs) {
     CK_C_INITIALIZE_ARGS_PTR args =
         reinterpret_cast<CK_C_INITIALIZE_ARGS_PTR>(pInitArgs);
-    LOG_CK_RV_AND_RETURN_IF(args->pReserved, CKR_ARGUMENTS_BAD);
+    if (args->LibraryParameters) {
+      LOG_CK_RV_AND_RETURN_IF(args->pReserved, CKR_ARGUMENTS_BAD);
+    }
     // If one of the following is NULL, they all must be NULL.
     if ((!args->CreateMutex || !args->DestroyMutex || !args->LockMutex ||
          !args->UnlockMutex) &&
