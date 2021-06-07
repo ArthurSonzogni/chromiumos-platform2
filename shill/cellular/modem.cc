@@ -60,10 +60,9 @@ Modem::~Modem() {
   // be destroyed here, instead it will be kept around until/unless an RTNL
   // link delete message is received. If/when a new Modem instance is
   // constructed (e.g. after modemmanager restarts), the call to
-  // DeviceInfo::GetCellularDevice will return the existing device for the
+  // GetOrCreateCellularDevice will return the existing device for the
   // interface.
-  Cellular* cellular =
-      device_info_->GetExistingCellularDevice(interface_index_.value());
+  CellularRefPtr cellular = GetExistingCellularDevice(interface_index_.value());
   if (cellular)
     cellular->OnModemDestroyed();
 }
@@ -186,8 +185,8 @@ void Modem::CreateDeviceFromModemProperties(
     return;
   }
 
-  CellularRefPtr device = device_info_->GetCellularDevice(
-      interface_index_.value(), mac_address, this);
+  CellularRefPtr device =
+      GetOrCreateCellularDevice(interface_index_.value(), mac_address);
   device->SetInitialProperties(properties);
 
   SLOG(this, 1) << "Cellular device created: " << device->link_name()
@@ -208,6 +207,42 @@ base::Optional<int> Modem::GetDeviceParams(std::string* mac_address) {
   }
 
   return interface_index;
+}
+
+CellularRefPtr Modem::GetOrCreateCellularDevice(
+    int interface_index, const std::string& mac_address) {
+  LOG(INFO) << __func__ << " Index: " << interface_index;
+  CellularRefPtr cellular = GetExistingCellularDevice(interface_index);
+  if (cellular && cellular->link_name() != link_name_) {
+    SLOG(this, 1) << "Cellular link name changed: " << link_name_;
+    cellular = nullptr;
+    device_info_->DeregisterDevice(interface_index);
+  }
+  if (cellular &&
+      (cellular->type() != type_ || cellular->dbus_service() != service_)) {
+    SLOG(this, 1) << "Cellular service changed: " << service_;
+    cellular = nullptr;
+    device_info_->DeregisterDevice(interface_index);
+  }
+  if (cellular) {
+    LOG(INFO) << "Using existing Cellular Device: " << cellular->enabled();
+    // Update the Cellular dbus path and mac address to match the new Modem.
+    cellular->UpdateModemProperties(path_, mac_address);
+    return cellular;
+  }
+
+  cellular = new Cellular(device_info_->manager(), link_name_, mac_address,
+                          interface_index, type_, service_, path_);
+  device_info_->RegisterDevice(cellular);
+  return cellular;
+}
+
+CellularRefPtr Modem::GetExistingCellularDevice(int interface_index) const {
+  DeviceRefPtr device = device_info_->GetDevice(interface_index);
+  if (!device)
+    return nullptr;
+  DCHECK_EQ(device->technology(), Technology::kCellular);
+  return static_cast<Cellular*>(device.get());
 }
 
 }  // namespace shill

@@ -27,10 +27,6 @@
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
-#if !defined(DISABLE_CELLULAR)
-#include "shill/cellular/cellular.h"
-#endif
-
 namespace shill {
 
 class EventDispatcher;
@@ -46,10 +42,6 @@ class Sockets;
 class NetlinkManager;
 class Nl80211Message;
 #endif  // DISABLE_WIFI
-
-#if !defined(DISABLE_CELLULAR)
-class Modem;
-#endif
 
 class DeviceInfo {
  public:
@@ -81,25 +73,6 @@ class DeviceInfo {
   void DeregisterDevice(int interface_index);
 
   virtual DeviceRefPtr GetDevice(int interface_index) const;
-
-#if !defined(DISABLE_CELLULAR)
-  // Returns a valid Celluar Device as follows:
-  // 1. If no device matching |interface_index| exists, a new device is created.
-  // 2. If a matching device exists and all key |modem| properties match
-  //    (see implementation for details), the existing device is returned.
-  // 3. If a matching Device exists but key |modem| properties do not match,
-  //    the existing device is deregistered and a new device is created.
-  // Once a device is found or created, CreateCapability is called for the
-  // device to create a CellularCapability for |modem|.
-  // NOTE: |mac_address| and modem->path are not required to match. If a
-  // matching device is found, the mac address and modem path will be updated.
-  virtual CellularRefPtr GetCellularDevice(int interface_index,
-                                           const std::string& mac_address,
-                                           Modem* modem);
-
-  // Returns an existing Cellular Device matching |interface_index| or nullptr.
-  Cellular* GetExistingCellularDevice(int interface_index) const;
-#endif
 
   virtual bool GetMacAddress(int interface_index, ByteString* address) const;
 

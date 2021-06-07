@@ -80,6 +80,10 @@ class Modem {
   // Otherwise sets |mac_address| if available and returns the interface index.
   base::Optional<int> GetDeviceParams(std::string* mac_address);
 
+  CellularRefPtr GetOrCreateCellularDevice(int interface_index,
+                                           const std::string& mac_address);
+  CellularRefPtr GetExistingCellularDevice(int interface_index) const;
+
   InterfaceToProperties initial_properties_;
 
   const std::string service_;

@@ -57,7 +57,6 @@
 #include "shill/vpn/vpn_provider.h"
 
 #if !defined(DISABLE_CELLULAR)
-#include "shill/cellular/modem.h"
 #include "shill/cellular/modem_info.h"
 #endif  // DISABLE_CELLULAR
 
@@ -798,49 +797,6 @@ DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
   const Info* info = GetInfo(interface_index);
   return info ? info->device : nullptr;
 }
-
-#if !defined(DISABLE_CELLULAR)
-CellularRefPtr DeviceInfo::GetCellularDevice(int interface_index,
-                                             const std::string& mac_address,
-                                             Modem* modem) {
-  LOG(INFO) << __func__ << " Index: " << interface_index;
-  DeviceRefPtr device = GetDevice(interface_index);
-  if (device && device->link_name() != modem->link_name()) {
-    SLOG(this, 1) << "Cellular link name changed: " << modem->link_name();
-    DeregisterDevice(interface_index);
-    device = nullptr;
-  }
-  CellularRefPtr cellular;
-  if (device) {
-    cellular = static_cast<Cellular*>(device.get());
-    if (cellular->type() != modem->type() ||
-        cellular->dbus_service() != modem->service()) {
-      SLOG(this, 1) << "Cellular service changed: " << modem->service();
-      DeregisterDevice(interface_index);
-      cellular = nullptr;
-    }
-  }
-  if (cellular) {
-    LOG(INFO) << "Using existing Cellular Device: " << cellular->enabled();
-    // Update the Cellular dbus path and mac address to match the new Modem.
-    cellular->UpdateModemProperties(modem->path(), mac_address);
-    return cellular;
-  }
-
-  cellular =
-      new Cellular(manager_, modem->link_name(), mac_address, interface_index,
-                   modem->type(), modem->service(), modem->path());
-  RegisterDevice(cellular);
-  return cellular;
-}
-
-Cellular* DeviceInfo::GetExistingCellularDevice(int interface_index) const {
-  DeviceRefPtr device = GetDevice(interface_index);
-  if (!device)
-    return nullptr;
-  return static_cast<Cellular*>(device.get());
-}
-#endif
 
 int DeviceInfo::GetIndex(const std::string& interface_name) const {
   std::map<std::string, int>::const_iterator it = indices_.find(interface_name);
