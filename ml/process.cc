@@ -17,6 +17,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/process/process_metrics.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/task/post_task.h>
@@ -35,6 +36,8 @@
 namespace ml {
 
 namespace {
+constexpr char kMojoServiceTaskArgv[] = "--task=mojo_service";
+
 constexpr char kMojoBootstrapFdSwitchName[] = "mojo-bootstrap-fd";
 
 constexpr char kInternalMojoPrimordialPipeName[] = "cros_ml";
@@ -55,8 +58,7 @@ std::string GetSeccompPolicyPath(const std::string& model_name) {
 }
 
 std::string GetArgumentForWorkerProcess(int fd) {
-  std::string fd_argv = kMojoBootstrapFdSwitchName;
-  return "--" + fd_argv + "=" + std::to_string(fd);
+  return base::StringPrintf("--%s=%d", kMojoBootstrapFdSwitchName, fd);
 }
 
 }  // namespace
@@ -68,11 +70,14 @@ Process* Process::GetInstance() {
   return instance.get();
 }
 
-int Process::Run(int argc, char* argv[]) {
-  // Parses the command line and determines the process type.
-  base::CommandLine command_line(argc, argv);
+int Process::Run() {
+  // Gets the CommandLine* initialized in main.cc and determines the process
+  // type.
+  DCHECK(base::CommandLine::InitializedForCurrentProcess());
+  const base::CommandLine* command_line =
+      base::CommandLine::ForCurrentProcess();
   std::string mojo_fd_string =
-      command_line.GetSwitchValueASCII(kMojoBootstrapFdSwitchName);
+      command_line->GetSwitchValueASCII(kMojoBootstrapFdSwitchName);
 
   if (mojo_fd_string.empty()) {
     process_type_ = Type::kControl;
@@ -80,9 +85,9 @@ int Process::Run(int argc, char* argv[]) {
     process_type_ = Type::kWorker;
   }
 
-  if (!command_line.GetArgs().empty()) {
+  if (!command_line->GetArgs().empty()) {
     LOG(ERROR) << "Unexpected command line arguments: "
-               << base::JoinString(command_line.GetArgs(), "\t");
+               << base::JoinString(command_line->GetArgs(), "\t");
     return ExitCode::kUnexpectedCommandLine;
   }
 
@@ -145,9 +150,10 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
   minijail_preserve_fd(jail.get(), mojo_bootstrap_fd, mojo_bootstrap_fd);
   minijail_close_open_fds(jail.get());
 
-  std::string fd_argv = kMojoBootstrapFdSwitchName;
-  fd_argv = GetArgumentForWorkerProcess(mojo_bootstrap_fd);
-  char* const argv[3] = {&ml_service_path_[0], &fd_argv[0], nullptr};
+  std::string fd_argv = GetArgumentForWorkerProcess(mojo_bootstrap_fd);
+  std::string task_argv = kMojoServiceTaskArgv;
+  char* const argv[4] = {&ml_service_path_[0], &task_argv[0], &fd_argv[0],
+                         nullptr};
 
   if (minijail_run_pid(jail.get(), &ml_service_path_[0], argv, worker_pid) !=
       0) {

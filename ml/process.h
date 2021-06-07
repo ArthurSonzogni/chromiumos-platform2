@@ -64,7 +64,7 @@ class Process {
 
   static Process* GetInstance();
 
-  int Run(int argc, char* argv[]);
+  int Run();
 
   // Gets the process type of current process.
   Type GetType();
