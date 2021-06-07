@@ -37,7 +37,7 @@ SimpleServiceTool::SimpleServiceTool(const std::string& name,
 
   proxy_ = bus_->GetObjectProxy(dbus_service_name,
                                 dbus::ObjectPath(dbus_service_path));
-  proxy_->SetNameOwnerChangedCallback(base::Bind(
+  proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
       &SimpleServiceTool::HandleNameOwnerChanged, weak_factory_.GetWeakPtr()));
 }
 
