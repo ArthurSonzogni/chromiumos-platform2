@@ -35,8 +35,8 @@ class GpuImageProcessor {
   //        R8.
   //    |uv_output|:
   //        The output 2D texture for UV plane.  The texture must be of format
-  //        R8.  The pixel dimension must be
-  //        (|y_output|.width, |y_output|.height / 2).
+  //        GR88.  The pixel dimension must be
+  //        (|y_output|.width / 2, |y_output|.height / 2).
   //
   // Returns:
   //    true if GL commands are successfully submitted; false otherwise.
@@ -55,8 +55,8 @@ class GpuImageProcessor {
   //        R8.
   //    |uv_output|:
   //        The output 2D texture for UV plane.  The texture must be of format
-  //        R8.  The pixel dimension must be
-  //        (|y_output|.width, |y_output|.height / 2).
+  //        GR8.  The pixel dimension must be
+  //        (|y_output|.width / 2, |y_output|.height / 2).
   //
   // Returns:
   //    true if GL commands are successfully submitted; false otherwise.

@@ -49,7 +49,7 @@ SharedImage SharedImage::CreateFromBuffer(buffer_handle_t buffer,
       return SharedImage();
     }
     egl_images.emplace_back(EglImage::FromBufferPlane(
-        buffer, 1, buffer_width, buffer_height / 2, DRM_FORMAT_R8));
+        buffer, 1, buffer_width / 2, buffer_height / 2, DRM_FORMAT_GR88));
     if (!egl_images[1].IsValid()) {
       LOGF(ERROR) << "Failed to create EGLimage for UV plane";
       return SharedImage();

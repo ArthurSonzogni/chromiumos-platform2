@@ -86,11 +86,11 @@ GpuImageProcessor::~GpuImageProcessor() = default;
 bool GpuImageProcessor::RGBAToNV12(const Texture2D& rgba_input,
                                    const Texture2D& y_output,
                                    const Texture2D& uv_output) {
-  if ((y_output.width() != uv_output.width()) ||
+  if ((y_output.width() / 2 != uv_output.width()) ||
       (y_output.height() / 2 != uv_output.height())) {
     LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
-                << y_output.height() << " and UV (" << uv_output.width() << ", "
-                << uv_output.height() << ") output dimension";
+                << y_output.height() << ") and UV (" << uv_output.width()
+                << ", " << uv_output.height() << ") output dimension";
     return false;
   }
 
@@ -115,8 +115,6 @@ bool GpuImageProcessor::RGBAToNV12(const Texture2D& rgba_input,
       rgba_to_nv12_program_.GetUniformLocation("uTextureMatrix");
   glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
   GLint uIsYPlane = rgba_to_nv12_program_.GetUniformLocation("uIsYPlane");
-  GLint uTexelWidth = rgba_to_nv12_program_.GetUniformLocation("uTexelWidth");
-  glUniform1f(uTexelWidth, y_output.width());
 
   // Y pass.
   {
@@ -149,11 +147,11 @@ bool GpuImageProcessor::RGBAToNV12(const Texture2D& rgba_input,
 bool GpuImageProcessor::ExternalYUVToNV12(const Texture2D& external_yuv_input,
                                           const Texture2D& y_output,
                                           const Texture2D& uv_output) {
-  if ((y_output.width() != uv_output.width()) ||
+  if ((y_output.width() / 2 != uv_output.width()) ||
       (y_output.height() / 2 != uv_output.height())) {
     LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
-                << y_output.height() << " and UV (" << uv_output.width() << ", "
-                << uv_output.height() << ") output dimension";
+                << y_output.height() << ") and UV (" << uv_output.width()
+                << ", " << uv_output.height() << ") output dimension";
     return false;
   }
 
@@ -164,7 +162,7 @@ bool GpuImageProcessor::ExternalYUVToNV12(const Texture2D& external_yuv_input,
 
   rect_.SetAsVertexInput();
 
-  // Set up input P010 texture.
+  // Set up input external YUV texture.
   constexpr int kInputBinding = 0;
   glActiveTexture(GL_TEXTURE0 + kInputBinding);
   external_yuv_input.Bind();
@@ -178,8 +176,6 @@ bool GpuImageProcessor::ExternalYUVToNV12(const Texture2D& external_yuv_input,
       rgba_to_nv12_program_.GetUniformLocation("uTextureMatrix");
   glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
   GLint uIsYPlane = rgba_to_nv12_program_.GetUniformLocation("uIsYPlane");
-  GLint uTexelWidth = rgba_to_nv12_program_.GetUniformLocation("uTexelWidth");
-  glUniform1f(uTexelWidth, y_output.width());
 
   // Y pass.
   {
@@ -218,7 +214,7 @@ bool GpuImageProcessor::ExternalYUVToRGBA(const Texture2D& external_yuv_input,
 
   rect_.SetAsVertexInput();
 
-  // Set up input P010 texture.
+  // Set up input external YUV texture.
   constexpr int kInputBinding = 0;
   glActiveTexture(GL_TEXTURE0 + kInputBinding);
   external_yuv_input.Bind();
