@@ -144,6 +144,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->AllocatePCR(platform_password);
   }
 
+  TPM_RC PrepareForPinWeaver() override {
+    return target_->PrepareForPinWeaver();
+  }
+
   TPM_RC PrepareForOwnership() override {
     return target_->PrepareForOwnership();
   }

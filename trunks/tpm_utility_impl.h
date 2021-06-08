@@ -43,6 +43,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC CheckState() override;
   TPM_RC InitializeTpm() override;
   TPM_RC AllocatePCR(const std::string& platform_password) override;
+  TPM_RC PrepareForPinWeaver() override;
   TPM_RC PrepareForOwnership() override;
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,

@@ -94,6 +94,9 @@ class TRUNKS_EXPORT TpmUtility {
   // NOTE: This command needs platform authorization and PP assertion.
   virtual TPM_RC AllocatePCR(const std::string& platform_password) = 0;
 
+  // Prepares the TPM resources necessary for pinweaver-csme.
+  virtual TPM_RC PrepareForPinWeaver() = 0;
+
   // Performs steps needed for taking ownership, which can be done before
   // a signal that an ownership can be attempted is received.
   // This operation is an optional optimization: if PrepareForOwnership

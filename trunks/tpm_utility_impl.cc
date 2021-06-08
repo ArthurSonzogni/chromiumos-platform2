@@ -316,6 +316,10 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::PrepareForPinWeaver() {
+  return CreateCsmeSaltingKey();
+}
+
 TPM_RC TpmUtilityImpl::PrepareForOwnership() {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   TPM_RC result = tpm_state->Initialize();
