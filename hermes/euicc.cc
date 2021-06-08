@@ -223,13 +223,18 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
                       });
 
   std::unique_ptr<Profile> profile;
+  // Call UpdatePendingProfilesProperty() after UpdateInstalledProfilesProperty,
+  // else Chrome assumes the pending profile was deleted forever.
+  bool update_pending_profiles_property = false;
   if (iter != pending_profiles_.end()) {
     // Remove the profile from pending_profiles_ so that it can become an
     // installed profile
     profile = std::move(*iter);
-    profile->SetState(profile::kActive);
+    // pending profiles are in state kPending. Since the profile is installed
+    // and disabled now, change the state to inactive.
+    profile->SetState(profile::kInactive);
     pending_profiles_.erase(iter);
-    UpdatePendingProfilesProperty();
+    update_pending_profiles_property = true;
   } else {
     profile = Profile::Create(profile_info, physical_slot_, slot_info_.eid(),
                               /*is_pending*/ false);
@@ -244,6 +249,8 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
 
   installed_profiles_.push_back(std::move(profile));
   UpdateInstalledProfilesProperty();
+  if (update_pending_profiles_property)
+    UpdatePendingProfilesProperty();
   // Refresh LPA profile cache
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
