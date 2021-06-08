@@ -444,6 +444,9 @@ void UMALogDeviceAttached(MetricsLibrary* metrics,
     return;
   }
 
+  // TODO(crbug.com/1218246) Change UMA enum names kUmaDeviceAttachedHistogram.*
+  // if new enums for UMAEventTiming are added to avoid data discontinuity, then
+  // use kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
   metrics->SendEnumToUMA(
       base::StringPrintf("%s.%s.%s", kUmaDeviceAttachedHistogram,
                          to_string(recognized).c_str(),

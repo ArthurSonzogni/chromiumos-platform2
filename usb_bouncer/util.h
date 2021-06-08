@@ -53,6 +53,9 @@ enum class UMAEventTiming {
   kLoggedOut = 0,
   kLoggedIn = 1,
   kLocked = 2,
+
+  // TODO(crbug.com/1218246) Change UMA enum names kUmaDeviceAttachedHistogram.*
+  // if new enums are added to avoid data discontinuity.
   kMaxValue = kLocked,
 };
 
