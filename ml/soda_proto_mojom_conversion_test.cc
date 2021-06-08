@@ -11,6 +11,7 @@
 namespace ml {
 
 using speech::soda::chrome::SodaResponse;
+using speech::soda::chrome::TimingMetrics;
 
 TEST(SodaProtoMojomConversionTest, AudioLevelsTest) {
   SodaResponse response;
@@ -46,11 +47,18 @@ TEST(SodaProtoMojomConversionTest, PartialResultsTest) {
   rec->add_hypothesis("first hyp");
   rec->add_hypothesis("second hyp");
   rec->set_result_type(speech::soda::chrome::SodaRecognitionResult::PARTIAL);
+  rec->mutable_timing_metrics()->set_audio_start_epoch_usec(5);
 
   auto expected_rec_mojom =
       chromeos::machine_learning::mojom::PartialResult::New();
   expected_rec_mojom->partial_text.push_back("first hyp");
   expected_rec_mojom->partial_text.push_back("second hyp");
+  auto expected_timing_mojom =
+      chromeos::machine_learning::mojom::TimingInfo::New();
+  expected_timing_mojom->audio_start_epoch =
+      base::Time::FromDeltaSinceWindowsEpoch(
+          base::TimeDelta::FromMicroseconds(5));
+  expected_rec_mojom->timing_event = std::move(expected_timing_mojom);
   auto actual_rec_mojom = internal::PartialResultFromProto(response);
   EXPECT_TRUE(actual_rec_mojom.Equals(expected_rec_mojom));
 
@@ -206,6 +214,33 @@ TEST(SodaProtoMojomConversionTest, BooleanFunctionTest) {
   EXPECT_FALSE(IsStopSodaResponse(response));
   EXPECT_FALSE(IsStartSodaResponse(response));
   EXPECT_TRUE(IsShutdownSodaResponse(response));
+}
+
+TEST(SodaProtoMojomConversionTest, EmptyTimeTest) {
+  TimingMetrics metrics;
+  chromeos::machine_learning::mojom::TimingInfoPtr expected_mojom =
+      chromeos::machine_learning::mojom::TimingInfo::New();
+  auto actual_mojom = internal::TimingInfoFromTimingMetricsProto(metrics);
+  EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
+}
+
+TEST(SodaProtoMojomConversionTest, FilledTimeTest) {
+  TimingMetrics metrics;
+  metrics.set_audio_start_epoch_usec(1);
+  metrics.set_audio_start_time_usec(2);
+  metrics.set_elapsed_wall_time_usec(3);
+  metrics.set_event_end_time_usec(4);
+
+  chromeos::machine_learning::mojom::TimingInfoPtr expected_mojom =
+      chromeos::machine_learning::mojom::TimingInfo::New();
+  expected_mojom->audio_start_epoch = base::Time::FromDeltaSinceWindowsEpoch(
+      base::TimeDelta::FromMicroseconds(1));
+  expected_mojom->audio_start_time = base::TimeDelta::FromMicroseconds(2);
+  expected_mojom->elapsed_wall_time = base::TimeDelta::FromMicroseconds(3);
+  expected_mojom->event_end_time = base::TimeDelta::FromMicroseconds(4);
+
+  auto actual_mojom = internal::TimingInfoFromTimingMetricsProto(metrics);
+  EXPECT_TRUE(actual_mojom.Equals(expected_mojom));
 }
 
 }  // namespace ml

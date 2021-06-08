@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/soda_proto_mojom_conversion.h"
+
 #include <string>
 #include <utility>
-
-#include "ml/soda_proto_mojom_conversion.h"
+#include <base/time/time.h>
 
 using chromeos::machine_learning::mojom::EndpointerType;
 using speech::soda::chrome::SodaEndpointEvent;
@@ -108,6 +109,10 @@ chromeos::machine_learning::mojom::PartialResultPtr PartialResultFromProto(
        soda_response.recognition_result().hypothesis()) {
     partial_result->partial_text.push_back(hyp);
   }
+  if (soda_response.recognition_result().has_timing_metrics()) {
+    partial_result->timing_event = TimingInfoFromTimingMetricsProto(
+        soda_response.recognition_result().timing_metrics());
+  }
   return partial_result;
 }
 
@@ -143,6 +148,11 @@ chromeos::machine_learning::mojom::FinalResultPtr FinalResultFromProto(
   // TODO(robsc): Add endpoint reason when available from
   final_result->endpoint_reason =
       chromeos::machine_learning::mojom::EndpointReason::ENDPOINT_UNKNOWN;
+
+  if (soda_response.recognition_result().has_timing_metrics()) {
+    final_result->timing_event = TimingInfoFromTimingMetricsProto(
+        soda_response.recognition_result().timing_metrics());
+  }
   return final_result;
 }
 
@@ -175,7 +185,35 @@ chromeos::machine_learning::mojom::EndpointerEventPtr EndpointerEventFromProto(
       endpointer_event->endpointer_type = EndpointerType::END_OF_UTTERANCE;
       break;
   }
+  if (soda_response.recognition_result().has_timing_metrics()) {
+    endpointer_event->timing_event = TimingInfoFromTimingMetricsProto(
+        soda_response.recognition_result().timing_metrics());
+  }
   return endpointer_event;
+}
+
+chromeos::machine_learning::mojom::TimingInfoPtr
+TimingInfoFromTimingMetricsProto(
+    const speech::soda::chrome::TimingMetrics& timing_metric) {
+  auto timing_info = chromeos::machine_learning::mojom::TimingInfo::New();
+  if (timing_metric.has_audio_start_epoch_usec()) {
+    timing_info->audio_start_epoch = base::Time::FromDeltaSinceWindowsEpoch(
+        base::TimeDelta::FromMicroseconds(
+            timing_metric.audio_start_epoch_usec()));
+  }
+  if (timing_metric.has_audio_start_time_usec()) {
+    timing_info->audio_start_time = base::TimeDelta::FromMicroseconds(
+        timing_metric.audio_start_time_usec());
+  }
+  if (timing_metric.has_elapsed_wall_time_usec()) {
+    timing_info->elapsed_wall_time = base::TimeDelta::FromMicroseconds(
+        timing_metric.elapsed_wall_time_usec());
+  }
+  if (timing_metric.has_event_end_time_usec()) {
+    timing_info->event_end_time =
+        base::TimeDelta::FromMicroseconds(timing_metric.event_end_time_usec());
+  }
+  return timing_info;
 }
 
 }  // namespace internal

@@ -37,6 +37,11 @@ chromeos::machine_learning::mojom::FinalResultPtr FinalResultFromProto(
 
 chromeos::machine_learning::mojom::EndpointerEventPtr EndpointerEventFromProto(
     const speech::soda::chrome::SodaResponse& soda_response);
+
+chromeos::machine_learning::mojom::TimingInfoPtr
+TimingInfoFromTimingMetricsProto(
+    const speech::soda::chrome::TimingMetrics& timing_metric);
+
 }  // namespace internal
 
 }  // namespace ml
