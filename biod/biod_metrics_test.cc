@@ -119,9 +119,12 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
   const auto reason = updater::UpdateReason::kNone;
   const int overall_ms = 60;
 
+  // TODO(crbug.com/1218246) Change UMA enum names for kUpdaterStatus if new
+  // enums are added to avoid data discontinuity, and then use kMaxValue+1
+  // rather than kMaxValue for 'exclusive_max'.
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kUpdaterStatus, to_utype(status),
-                            Ge(to_utype(status))))
+                            to_utype(BiodMetrics::FwUpdaterStatus::kMaxValue)))
       .Times(1);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
@@ -135,7 +138,7 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kUpdaterReason, to_utype(reason),
-                            Ge(to_utype(reason))))
+                            to_utype(updater::UpdateReason::kMaxValue) + 1))
       .Times(1);
   biod_metrics_.SendFwUpdaterStatus(status, reason, overall_ms);
 }
@@ -148,7 +151,7 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnUpdate) {
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kUpdaterStatus, to_utype(status),
-                            Ge(to_utype(status))))
+                            to_utype(BiodMetrics::FwUpdaterStatus::kMaxValue)))
       .Times(1);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
@@ -162,7 +165,7 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnUpdate) {
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendEnumToUMA(metrics::kUpdaterReason, to_utype(reason),
-                            Ge(to_utype(reason))))
+                            to_utype(updater::UpdateReason::kMaxValue) + 1))
       .Times(1);
   biod_metrics_.SendFwUpdaterStatus(status, reason, overall_ms);
 }

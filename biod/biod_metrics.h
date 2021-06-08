@@ -59,6 +59,8 @@ class BiodMetricsInterface {
     kFailureUpdateRO = 10,
     kFailureUpdateRW = 11,
 
+    // TODO(crbug.com/1218246) Change UMA enum name kUpdaterStatus if new enums
+    // are added to avoid data discontinuity.
     kMaxValue = kFailureUpdateRW,
   };
 
