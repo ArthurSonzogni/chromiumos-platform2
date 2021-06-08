@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":libtrunks",
     ":pinweaver_client",
+    ":tpm_tunneld",
     ":trunks",
     ":trunks_client",
     ":trunks_send",
@@ -189,6 +190,16 @@ executable("trunksd") {
   if (use.tpm2_simulator) {
     libs = [ "tpm2" ]
   }
+}
+
+executable("tpm_tunneld") {
+  sources = [
+    "csme/tpm_tunnel_service.cc",
+    "csme/tpm_tunneld.cc",
+  ]
+  pkg_deps = [ "libminijail" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":trunks" ]
 }
 
 static_library("trunks_test") {
