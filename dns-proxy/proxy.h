@@ -90,6 +90,8 @@ class Proxy : public brillo::DBusDaemon {
 
     void clear();
 
+    void set_metrics(Metrics* metrics);
+
    private:
     void update();
 
@@ -101,6 +103,8 @@ class Proxy : public brillo::DBusDaemon {
     // If non-empty, maps name servers to secure DNS providers, for automatic
     // update.
     std::map<std::string, std::string> auto_providers_;
+
+    Metrics* metrics_{nullptr};
   };
 
   void Setup();

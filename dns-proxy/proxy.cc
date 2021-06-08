@@ -103,7 +103,10 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
 }
 
 Proxy::Proxy(const Proxy::Options& opts)
-    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {}
+    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+  if (opts_.type == Type::kSystem)
+    doh_config_.set_metrics(&metrics_);
+}
 
 // This ctor is only used for testing.
 Proxy::Proxy(const Options& opts,
@@ -571,11 +574,16 @@ void Proxy::MaybeCreateResolver() {
   brillo::ErrorPtr error;
   brillo::VariantDictionary doh_providers;
   if (shill_props()->Get(shill::kDNSProxyDOHProvidersProperty, &doh_providers,
-                         &error))
+                         &error)) {
     OnDoHProvidersChanged(brillo::Any(doh_providers));
-  else
+  } else {
+    // Only log this metric in the system proxy to avoid replicating the data.
+    if (opts_.type == Type::kSystem) {
+      metrics_.RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kUnknown);
+    }
     LOG(ERROR) << opts_ << " failed to obtain DoH configuration from shill: "
                << error->GetMessage();
+  }
 }
 
 void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
@@ -678,6 +686,9 @@ void Proxy::DoHConfig::set_providers(
   auto_providers_.clear();
 
   if (providers.empty()) {
+    if (metrics_) {
+      metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kOff);
+    }
     LOG(INFO) << "DoH: off";
     update();
     return;
@@ -705,9 +716,15 @@ void Proxy::DoHConfig::set_providers(
   // upgrade configuration.
   if (!auto_providers_.empty()) {
     secure_providers_.clear();
+    if (metrics_) {
+      metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kAutomatic);
+    }
     LOG(INFO) << "DoH: automatic";
   }
   if (!secure_providers_.empty()) {
+    if (metrics_) {
+      metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kAlwaysOn);
+    }
     LOG(INFO) << "DoH: always-on";
   }
   update();
@@ -744,6 +761,10 @@ void Proxy::DoHConfig::clear() {
   resolver_ = nullptr;
   secure_providers_.clear();
   auto_providers_.clear();
+}
+
+void Proxy::DoHConfig::set_metrics(Metrics* metrics) {
+  metrics_ = metrics;
 }
 
 void Proxy::OnVirtualDeviceChanged(

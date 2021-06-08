@@ -22,6 +22,8 @@ constexpr int kNameserversCountBuckets = 5;
 
 constexpr char kNameserverTypes[] = "Network.DnsProxy.NameserverTypes";
 
+constexpr char kDnsOverHttpsMode[] = "Network.DnsProxy.DnsOverHttpsMode";
+
 const char* ProcessTypeString(Metrics::ProcessType type) {
   static const std::map<Metrics::ProcessType, const char*> m{
       {Metrics::ProcessType::kController, "Controller"},
@@ -76,6 +78,10 @@ void Metrics::RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6) {
     ns_type = Metrics::NameserverType::kBoth;
 
   metrics_.SendEnumToUMA(kNameserverTypes, ns_type);
+}
+
+void Metrics::RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode mode) {
+  metrics_.SendEnumToUMA(kDnsOverHttpsMode, mode);
 }
 
 }  // namespace dns_proxy

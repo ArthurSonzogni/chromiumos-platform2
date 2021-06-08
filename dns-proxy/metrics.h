@@ -58,6 +58,17 @@ class Metrics {
     kMaxValue = kBoth,
   };
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class DnsOverHttpsMode {
+    kUnknown = 0,
+    kOff = 1,
+    kAutomatic = 2,
+    kAlwaysOn = 3,
+
+    kMaxValue = kAlwaysOn,
+  };
+
   Metrics() = default;
   Metrics(const Metrics&) = delete;
   ~Metrics() = default;
@@ -65,6 +76,7 @@ class Metrics {
 
   void RecordProcessEvent(ProcessType type, ProcessEvent event);
   void RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6);
+  void RecordDnsOverHttpsMode(DnsOverHttpsMode mode);
 
  private:
   MetricsLibrary metrics_;
