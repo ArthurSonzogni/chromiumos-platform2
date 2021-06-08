@@ -58,6 +58,7 @@ _IUSE = [
     'crosvm_virtio_video',
     'crosvm_wl_dmabuf',
     'crypto',
+    'csme_emulator',
     'dbus',
     'device_mapper',
     'dhcpv6',
