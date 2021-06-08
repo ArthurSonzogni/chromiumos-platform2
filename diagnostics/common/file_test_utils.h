@@ -78,6 +78,9 @@ class BaseFileTest : public ::testing::Test {
   void SetTestRoot(const base::FilePath& path);
   // Unsets a file or a directory in the test rootfs.
   void UnsetPath(const PathType& path) const;
+  // Creates a symbolic link at |path| which points to |target|. The parent
+  // directories will be created if they don't exist.
+  void SetSymbolicLink(const PathType& target, const PathType& path);
   // Turns the path into the path under the test rootfs. This should work for
   // both absolute and relative path.
   base::FilePath GetPathUnderRoot(const PathType& path) const;

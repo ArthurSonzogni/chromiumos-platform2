@@ -67,6 +67,7 @@ if (use.test) {
       "battery_fetcher_test.cc",
       "bluetooth_fetcher_test.cc",
       "boot_performance_fetcher_test.cc",
+      "bus_fetcher_test.cc",
       "cpu_fetcher_test.cc",
       "fan_fetcher_test.cc",
       "memory_fetcher_test.cc",

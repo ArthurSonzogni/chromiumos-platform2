@@ -65,6 +65,15 @@ void BaseFileTest::UnsetPath(const PathType& path) const {
   ASSERT_TRUE(base::DeletePathRecursively(GetPathUnderRoot(path)));
 }
 
+void BaseFileTest::SetSymbolicLink(const PathType& target,
+                                   const PathType& path) {
+  auto file = GetPathUnderRoot(path);
+  ASSERT_TRUE(base::CreateDirectory(file.DirName()));
+  auto real_target = target.file_path().IsAbsolute() ? GetPathUnderRoot(target)
+                                                     : target.file_path();
+  ASSERT_TRUE(base::CreateSymbolicLink(real_target, file));
+}
+
 base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
   CHECK(!root_dir_.empty());
   // Check if the path already under the test rootfs.

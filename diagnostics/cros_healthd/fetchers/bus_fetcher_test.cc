@@ -1,0 +1,132 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/strings/stringprintf.h>
+
+#include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/common/mojo_type_utils.h"
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
+#include "diagnostics/cros_healthd/system/mock_context.h"
+
+namespace diagnostics {
+namespace {
+
+constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
+constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
+constexpr char kLinkPciDriver[] = "../../../bus/pci/drivers";
+
+constexpr char kFakePciVendorName[] = "Vendor:12AB";
+constexpr char kFakePciProductName[] = "Device:34CD";
+constexpr uint8_t kFakeClass = 0x0a;
+constexpr uint8_t kFakeSubclass = 0x1b;
+constexpr uint8_t kFakeProg = 0x2c;
+constexpr uint16_t kFakeVendor = 0x12ab;
+constexpr uint16_t kFakeDevice = 0x34cd;
+constexpr char kFakeDriver[] = "driver";
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+std::string ToFixHexStr(uint16_t val) {
+  return base::StringPrintf("%04x", val);
+}
+
+class BusFetcherTest : public BaseFileTest {
+ public:
+  BusFetcherTest() = default;
+  BusFetcherTest(const BusFetcherTest&) = delete;
+  BusFetcherTest& operator=(const BusFetcherTest&) = delete;
+
+  void SetUp() override {
+    ASSERT_TRUE(mock_context_.Initialize());
+    SetTestRoot(mock_context_.root_dir());
+  }
+
+  mojo_ipc::BusDevicePtr& AddExpectedPciDevice() {
+    auto device = mojo_ipc::BusDevice::New();
+    auto pci_info = mojo_ipc::PciBusInfo::New();
+
+    device->vendor_name = kFakePciVendorName;
+    device->product_name = kFakePciProductName;
+    device->device_class = mojo_ipc::BusDeviceClass::kOthers;
+    pci_info->class_id = kFakeClass;
+    pci_info->subclass_id = kFakeSubclass;
+    pci_info->prog_if_id = kFakeProg;
+    pci_info->vendor_id = kFakeVendor;
+    pci_info->device_id = kFakeDevice;
+    pci_info->driver = kFakeDriver;
+
+    device->bus_info = mojo_ipc::BusInfo::NewPciBusInfo(std::move(pci_info));
+    expected_bus_devices_.push_back(std::move(device));
+    return expected_bus_devices_.back();
+  }
+
+  void SetExpectedBusDevices() {
+    for (size_t i = 0; i < expected_bus_devices_.size(); ++i) {
+      const auto& bus_info = expected_bus_devices_[i]->bus_info;
+      switch (bus_info->which()) {
+        case mojo_ipc::BusInfo::Tag::PCI_BUS_INFO:
+          SetPciBusInfo(bus_info->get_pci_bus_info(), i);
+          break;
+        case mojo_ipc::BusInfo::Tag::USB_BUS_INFO:
+          // TODO(chungsheng): Add usb info.
+          break;
+      }
+    }
+  }
+
+  void SetPciBusInfo(const mojo_ipc::PciBusInfoPtr& pci_info, size_t id) {
+    const auto dir = kFakePathPciDevices;
+    const auto dev = base::StringPrintf("0000:00:%02zx.0", id);
+    SetSymbolicLink({kLinkPciDevices, dev}, {kPathSysPci, dev});
+
+    auto class_str =
+        base::StringPrintf("%#02x%02x%02x", pci_info->class_id,
+                           pci_info->subclass_id, pci_info->prog_if_id);
+    SetFile({dir, dev, kFilePciClass}, class_str);
+    SetFile({dir, dev, kFilePciVendor},
+            "0x" + ToFixHexStr(pci_info->vendor_id));
+    SetFile({dir, dev, kFilePciDevice},
+            "0x" + ToFixHexStr(pci_info->device_id));
+    if (pci_info->driver) {
+      SetSymbolicLink({kLinkPciDriver, pci_info->driver.value()},
+                      {dir, dev, kFileDriver});
+    }
+  }
+
+  void FetchBusDevices() {
+    auto res = bus_fetcher_.FetchBusDevices();
+    ASSERT_TRUE(res->is_bus_devices());
+    const auto& bus_devices = res->get_bus_devices();
+    const auto got = Sorted(bus_devices);
+    const auto expected = Sorted(expected_bus_devices_);
+    EXPECT_EQ(got, expected) << GetDiffString(got, expected);
+  }
+
+ protected:
+  std::vector<mojo_ipc::BusDevicePtr> expected_bus_devices_;
+  MockContext mock_context_;
+  BusFetcher bus_fetcher_{&mock_context_};
+};
+
+TEST_F(BusFetcherTest, TestFetchPci) {
+  AddExpectedPciDevice();
+  SetExpectedBusDevices();
+  FetchBusDevices();
+}
+
+TEST_F(BusFetcherTest, TestFetchMultiple) {
+  AddExpectedPciDevice();
+  AddExpectedPciDevice();
+  AddExpectedPciDevice();
+  SetExpectedBusDevices();
+  FetchBusDevices();
+}
+
+}  // namespace
+}  // namespace diagnostics
