@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":libtrunks",
     ":pinweaver_client",
+    ":pinweaver_provision",
     ":tpm_tunneld",
     ":trunks",
     ":trunks_client",
@@ -118,6 +119,15 @@ shared_library("trunks") {
 
 executable("pinweaver_client") {
   sources = [ "pinweaver_client.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":trunks" ]
+}
+
+executable("pinweaver_provision") {
+  sources = [
+    "csme/pinweaver_provision_impl.cc",
+    "csme/pinweaver_provision_main.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [ ":trunks" ]
 }
