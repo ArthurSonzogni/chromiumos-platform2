@@ -270,6 +270,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   uint32_t vendor_id_;
   std::string cached_rsu_device_id_;
 
+  // Creates the CSME salting key and calls `InitOwner()` API of CSME to
+  // initialize the necessary TPM resources for pinweaver-csme. Returns
+  // `TPM_RC_SUCCESS` if the operations succeed; otherwise, return
+  // `TPM_RC_FAILURE`. If the pinweaver is supported natively by GCS (e.g.,
+  // cr50), performs no-ops and return `TPM_RC_SUCCESS`.
+  TPM_RC InitializeOwnerForCsme();
+
   // This methods sets the well-known owner authorization and creates SRK and
   // the salting key with it. Only succeeds if owner authorization was not set
   // yet. These are the common operations done (1) by pre-initialization when
@@ -291,7 +298,11 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // hierarchy.
   TPM_RC CreateSaltingKey(const std::string& owner_password);
 
-  // This method returns a partially filled TPMT_PUBLIC strucutre,
+  // Creates and persists the salting key for CSME. If the key is already
+  // persisted, performs no-ops.
+  TPM_RC CreateCsmeSaltingKey();
+
+  // This method returns a partially filled TPMT_PUBLIC structure,
   // which can then be modified by other methods to create the public
   // template for a key. It takes a valid |key_type| tp construct the
   // parameters.
@@ -435,6 +446,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // Obrains RSU device id from Cr50.
   TPM_RC GetRsuDeviceIdInternal(std::string* device_id);
+
+  // Sends pinweaver command to CSME instead of GSC.
+  TPM_RC PinWeaverCsmeCommand(const std::string& in, std::string* out);
 };
 
 }  // namespace trunks

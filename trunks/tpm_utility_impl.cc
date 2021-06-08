@@ -38,6 +38,10 @@
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
 
+#include "trunks/csme/mei_client_factory.h"
+#include "trunks/csme/pinweaver_core_client.h"
+#include "trunks/csme/pinweaver_provision_client.h"
+
 namespace {
 
 const char kPlatformPassword[] = "cros-platform";
@@ -329,10 +333,43 @@ TPM_RC TpmUtilityImpl::PrepareForOwnership() {
   return result;
 }
 
+TPM_RC TpmUtilityImpl::InitializeOwnerForCsme() {
+  // For cr50 case, we don't have to create salting key for CSME.
+  if (IsCr50()) {
+    return true;
+  }
+  uint8_t protocol_version = 0;
+  TPM_RC result = PinWeaverIsSupported(0, &protocol_version);
+  // If pinweaver is not supported at all, skip the initialization.
+  if (result) {
+    return true;
+  }
+  result = CreateCsmeSaltingKey();
+  if (result) {
+    LOG(WARNING) << __func__ << ": Failed to create CSME Salting Key:"
+                 << GetErrorString(result);
+    return false;
+  }
+  csme::MeiClientFactory mei_client_factory;
+  csme::PinWeaverProvisionClient client(&mei_client_factory);
+  if (!client.InitOwner()) {
+    LOG(WARNING) << "Failed to call `InitOwner()`";
+    return false;
+  }
+  return true;
+}
+
 TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
+  // Perform tasks that have to be done when owner auth is still empty.
+  TPM_RC result = InitializeOwnerForCsme();
+  if (result != TPM_RC_SUCCESS) {
+    // By design, don't hard-fail the TPM initialization flow.
+    LOG(WARNING) << __func__ << ": Failed to initialize owner for csme.";
+  }
+
   // First we set the storage hierarchy authorization to the well know default
   // password.
-  TPM_RC result = SetKnownOwnerPassword(kWellKnownPassword);
+  result = SetKnownOwnerPassword(kWellKnownPassword);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error injecting known password: "
                << GetErrorString(result);
@@ -1923,6 +1960,66 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::CreateCsmeSaltingKey() {
+  bool exists = false;
+  TPM_RC result = DoesPersistentKeyExist(kCsmeSaltingKey, &exists);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Check Peristent CSME Salting Key failed: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (exists) {
+    return TPM_RC_SUCCESS;
+  }
+
+  Tpm* tpm = factory_.GetTpm();
+  TPML_PCR_SELECTION creation_pcrs = {};
+  creation_pcrs.count = 0;
+  TPMS_SENSITIVE_CREATE sensitive;
+  sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPM_HANDLE object_handle;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_digest;
+  TPMT_TK_CREATION creation_ticket;
+  TPM2B_NAME object_name;
+  object_name.size = 0;
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
+  public_area.object_attributes = kFixedTPM | kFixedParent | kDecrypt |
+                                  kSensitiveDataOrigin | kUserWithAuth | kNoDA;
+  TPM2B_PUBLIC tpm2b_public = Make_TPM2B_PUBLIC(public_area);
+
+  std::unique_ptr<AuthorizationDelegate> endorsement_delegate =
+      factory_.GetPasswordAuthorization("");
+  result = tpm->CreatePrimarySync(
+      TPM_RH_ENDORSEMENT, NameFromHandle(TPM_RH_ENDORSEMENT),
+      Make_TPM2B_SENSITIVE_CREATE(sensitive), tpm2b_public, Make_TPM2B_DATA(""),
+      creation_pcrs, &object_handle, &tpm2b_public, &creation_data,
+      &creation_digest, &creation_ticket, &object_name,
+      endorsement_delegate.get());
+  if (result) {
+    LOG(ERROR) << __func__
+               << ": CreatePrimarySync failed: " << GetErrorString(result);
+    return result;
+  }
+
+  ScopedKeyHandle key(factory_, object_handle);
+
+  std::unique_ptr<AuthorizationDelegate> owner_delegate =
+      factory_.GetPasswordAuthorization("");
+  result =
+      tpm->EvictControlSync(TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
+                            object_handle, StringFrom_TPM2B_NAME(object_name),
+                            kCsmeSaltingKey, owner_delegate.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": EvictControlSync failed: " << GetErrorString(result);
+    return result;
+  }
+  LOG(INFO) << __func__ << ": Created CSME Salting Key.";
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
                                          AuthorizationDelegate* delegate,
                                          std::string* key_blob) {
@@ -2762,11 +2859,6 @@ template <typename S, typename P>
 TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
                                         S serialize,
                                         P parse) {
-  if (!IsCr50()) {
-    LOG(ERROR) << tag << ": Called a Cr50 only function without Cr50.";
-    return TPM_RC_FAILURE;
-  }
-
   std::string in;
   TPM_RC rc = serialize(&in);
   if (rc) {
@@ -2776,7 +2868,12 @@ TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
   }
 
   std::string out;
-  rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
+  if (IsCr50()) {
+    rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
+  } else {
+    rc = PinWeaverCsmeCommand(in, &out);
+  }
+
   if (rc != TPM_RC_SUCCESS) {
     LOG(WARNING) << tag << ": command failed: 0x" << std::hex << rc << " "
                  << GetErrorString(rc);
@@ -2921,6 +3018,17 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceId(std::string* device_id) {
     result = GetRsuDeviceIdInternal(&cached_rsu_device_id_);
   *device_id = cached_rsu_device_id_;
   return result;
+}
+
+TPM_RC TpmUtilityImpl::PinWeaverCsmeCommand(const std::string& in,
+                                            std::string* out) {
+  csme::MeiClientFactory mei_client_factory;
+  csme::PinWeaverCoreClient client(&mei_client_factory);
+  if (!client.PinWeaverCommand(in, out)) {
+    LOG(ERROR) << __func__ << ": Failed to call pinweaver-csme.";
+    return TPM_RC_FAILURE;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks
