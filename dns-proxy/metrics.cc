@@ -11,8 +11,16 @@
 
 namespace dns_proxy {
 namespace {
+constexpr char kIPv4[] = "IPv4";
+constexpr char kIPv6[] = "IPv6";
 
 constexpr char kEventTemplate[] = "Network.DnsProxy.$1.Event";
+
+constexpr char kNameserversCountTemplate[] = "Network.DnsProxy.$1Nameservers";
+constexpr int kNameserversCountMax = 6;
+constexpr int kNameserversCountBuckets = 5;
+
+constexpr char kNameserverTypes[] = "Network.DnsProxy.NameserverTypes";
 
 const char* ProcessTypeString(Metrics::ProcessType type) {
   static const std::map<Metrics::ProcessType, const char*> m{
@@ -40,12 +48,34 @@ void Metrics::RecordProcessEvent(Metrics::ProcessType type,
   if (const char* ts = ProcessTypeString(type)) {
     const auto name =
         base::ReplaceStringPlaceholders(kEventTemplate, {ts}, nullptr);
-    metrics_.SendEnumToUMA(name, value_of(event),
-                           value_of(Metrics::ProcessEvent::kMaxValue));
+    metrics_.SendEnumToUMA(name, event);
     return;
   }
 
   LOG(DFATAL) << "Unknown type: " << value_of(type);
+}
+
+void Metrics::RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6) {
+  auto name = base::ReplaceStringPlaceholders(kNameserversCountTemplate,
+                                              {kIPv4}, nullptr);
+  metrics_.SendToUMA(name, num_ipv4, 1, kNameserversCountMax,
+                     kNameserversCountBuckets);
+
+  name = base::ReplaceStringPlaceholders(kNameserversCountTemplate, {kIPv6},
+                                         nullptr);
+  metrics_.SendToUMA(name, num_ipv6, 1, kNameserversCountMax,
+                     kNameserversCountBuckets);
+
+  Metrics::NameserverType ns_type = Metrics::NameserverType::kNone;
+  const auto total = num_ipv4 + num_ipv6;
+  if (total == num_ipv4)
+    ns_type = Metrics::NameserverType::kIPv4;
+  else if (total == num_ipv6)
+    ns_type = Metrics::NameserverType::kIPv6;
+  else if (total != 0)
+    ns_type = Metrics::NameserverType::kBoth;
+
+  metrics_.SendEnumToUMA(kNameserverTypes, ns_type);
 }
 
 }  // namespace dns_proxy

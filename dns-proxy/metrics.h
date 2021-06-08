@@ -47,12 +47,24 @@ class Metrics {
     kMaxValue = kResolverListenTCPFailure,
   };
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class NameserverType {
+    kNone = 0,
+    kIPv4 = 1,
+    kIPv6 = 2,
+    kBoth = 3,
+
+    kMaxValue = kBoth,
+  };
+
   Metrics() = default;
   Metrics(const Metrics&) = delete;
   ~Metrics() = default;
   Metrics& operator=(const Metrics&) = delete;
 
   void RecordProcessEvent(ProcessType type, ProcessEvent event);
+  void RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6);
 
  private:
   MetricsLibrary metrics_;

@@ -586,6 +586,8 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
                      [](const std::string& s) { return s == kIfAddrAny; }),
       ipv4_nameservers.end());
   doh_config_.set_nameservers(ipv4_nameservers, ipconfig.ipv6_dns_addresses);
+  metrics_.RecordNameservers(doh_config_.ipv4_nameservers().size(),
+                             doh_config_.ipv6_nameservers().size());
   LOG(INFO) << opts_ << " applied device DNS configuration";
 }
 
