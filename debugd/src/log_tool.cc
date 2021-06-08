@@ -110,8 +110,6 @@ const std::vector<Log> kCommandLogs {
   // in our own mount namespace (by design).  https://crbug.com/884249
   {kCommand, "CLIENT_ID", "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i",
     kRoot, kDebugfsGroup},
-  // The device type / form factor e.g. CHROMEBOOK, CHROMEBOX, etc.
-  {kCommand, "DEVICETYPE", "cros_config /hardware-properties form-factor"},
   // We consistently use UTC in feedback reports.
   {kCommand, "LOGDATE", "/bin/date --utc; /bin/date"},
   {kFile, "amdgpu_gem_info", "/sys/kernel/debug/dri/0/amdgpu_gem_info",
@@ -528,9 +526,7 @@ void GetLsbReleaseInfo(LogTool::LogMap* map) {
   } else {
     for (const auto& key : store.GetKeys()) {
       // The DEVICETYPE from /etc/lsb-release may not be correct on some
-      // unibuild devices, so filter it out. The correct DEVICETYPE is
-      // logged separately using an entry in kCommandLogs that invokes
-      // `cros_config /hardware-properties form-factor`
+      // unibuild devices, so filter it out.
       if (key != "DEVICETYPE") {
         std::string value;
         store.GetString(key, &value);
