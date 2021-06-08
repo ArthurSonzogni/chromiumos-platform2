@@ -239,6 +239,12 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
   DCHECK_GT(frequency, 0.0);
   DCHECK(samples_observer);
 
+  if (base::Contains(readers_, samples_observer)) {
+    LOGF(ERROR) << "This SamplesObserver is already registered to a device";
+    std::move(callback).Run(false);
+    return;
+  }
+
   if (!HasDeviceInternal(type, location)) {
     if (AreAllDevicesOfTypeInitialized(type)) {
       LOGF(ERROR) << "Invalid DeviceType: " << type
@@ -251,9 +257,20 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
     return;
   }
 
-  std::move(callback).Run(true);
+  int32_t iio_device_id = device_maps_[type][location];
+  DCHECK(devices_[iio_device_id].scale.has_value());
 
-  // TODO(chenghaoyang): Add SensorReader.
+  ReaderData reader_data = {
+      .iio_device_id = iio_device_id,
+      .type = type,
+      .frequency = frequency,
+      .sensor_reader = std::make_unique<SensorReader>(
+          ipc_task_runner_, iio_device_id, type, frequency,
+          devices_[iio_device_id].scale.value(), samples_observer,
+          GetSensorDeviceRemote(iio_device_id))};
+  readers_.emplace(samples_observer, std::move(reader_data));
+
+  std::move(callback).Run(true);
 }
 
 void SensorHalClientImpl::IPCBridge::UnregisterSamplesObserver(
@@ -261,7 +278,7 @@ void SensorHalClientImpl::IPCBridge::UnregisterSamplesObserver(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(samples_observer);
 
-  // TODO(chenghaoyang): Remove SensorReader.
+  readers_.erase(samples_observer);
 }
 
 void SensorHalClientImpl::IPCBridge::SetUpChannel(
@@ -286,6 +303,15 @@ void SensorHalClientImpl::IPCBridge::SetUpChannel(
 
   sensor_service_remote_->GetAllDeviceIds(base::BindOnce(
       &SensorHalClientImpl::IPCBridge::GetAllDeviceIdsCallback, GetWeakPtr()));
+
+  // Re-establish mojo channels for the existing observers with SensorReaders.
+  for (auto& [samples_observer, reader_data] : readers_) {
+    reader_data.sensor_reader = std::make_unique<SensorReader>(
+        ipc_task_runner_, reader_data.iio_device_id, reader_data.type,
+        reader_data.frequency,
+        devices_[reader_data.iio_device_id].scale.value(), samples_observer,
+        GetSensorDeviceRemote(reader_data.iio_device_id));
+  }
 }
 
 void SensorHalClientImpl::IPCBridge::OnNewDeviceAdded(
@@ -539,6 +565,11 @@ void SensorHalClientImpl::IPCBridge::OnServiceMojoChannelError() {
   cancellation_relay_->CancelAllFutures();
   receiver_.reset();
   ResetSensorService();
+
+  for (auto& [samples_observer, reader_data] : readers_) {
+    samples_observer->OnErrorOccurred(
+        SamplesObserver::ErrorType::MOJO_DISCONNECTED);
+  }
 }
 
 void SensorHalClientImpl::IPCBridge::ResetSensorService() {
@@ -554,7 +585,9 @@ void SensorHalClientImpl::IPCBridge::ResetSensorService() {
   new_devices_observer_.reset();
   sensor_service_remote_.reset();
 
-  // TODO(chenghaoyang): reset working devices' remotes.
+  for (auto& [samples_observer, reader_data] : readers_) {
+    reader_data.sensor_reader.reset();
+  }
 }
 
 void SensorHalClientImpl::IPCBridge::OnSensorServiceDisconnect() {
