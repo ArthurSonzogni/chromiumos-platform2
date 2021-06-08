@@ -38,6 +38,9 @@ enum ProbeCategoryEnum {
   kNetwork,
   kAudio,
   kBootPerformance,
+
+  // TODO(b/190459636): Rename it to kSystem after migration.
+  kSystem2 = 0x10000,
 };
 
 // An enumeration of the different categories of errors that can occur when
@@ -470,11 +473,14 @@ struct BluetoothAdapterInfo {
 union SystemResult {
   // Valid SystemInfo.
   SystemInfo system_info;
+  // Valid SystemInfoV2.
+  SystemInfoV2 system_info_v2;
   // The error that occurred attempting to retrieve SystemInfo.
   ProbeError error;
 };
 
 // System Information.
+// DEPRECATED(b/188508561): Use SystemInfoV2 instead.
 struct SystemInfo {
   // The date the device was first activated.
   // Format: YYYY-WW.
@@ -504,6 +510,18 @@ struct SystemInfo {
   string? product_name;
   // The OS version of the system.
   OsVersion os_version;
+};
+
+// System Information.
+// TODO(b/190459636): Rename it to SystemInfo after migration.
+struct SystemInfoV2 {
+  // The info related to the OS.
+  OsInfo os_info;
+  // The info from the VPD cache.
+  VpdInfo? vpd_info;
+  // The info from DMI (x86 only). The info from here should only be used for
+  // logging and debugging.
+  DmiInfo? dmi_info;
 };
 
 // The OS information.
@@ -698,8 +716,8 @@ struct TelemetryInfo {
   // Information about the device's Bluetooth adapters and devices. Only present
   // when kBluetooth was included in the categories input to ProbeTelemetryInfo.
   BluetoothResult? bluetooth_result;
-  // Information about the system. Only present when kSystem was included in the
-  // categories input to ProbeTelemetryInfo.
+  // Information about the system. Only present when kSystem / kSystem2 was
+  // included in the categories input to ProbeTelemetryInfo.
   SystemResult? system_result;
   // Information about the networking devices and associated networks of the
   // system. Only present when kNetwork was included in the categories input to

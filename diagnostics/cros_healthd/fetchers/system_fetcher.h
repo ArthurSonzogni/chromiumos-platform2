@@ -19,7 +19,12 @@ class SystemFetcher final : public BaseFetcher {
 
   // Returns either a structure with the system information or the error that
   // occurred fetching the information.
+  chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfoV2();
+  // DEPRECATED(b/188508561): Use SystemInfoV2 instead.
   chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo();
+  // Converts SystemInfoV2 to SystemInfo
+  static chromeos::cros_healthd::mojom::SystemInfoPtr ConvertToSystemInfo(
+      const chromeos::cros_healthd::mojom::SystemInfoV2Ptr& system_info_v2);
 
  private:
   bool FetchOsInfo(chromeos::cros_healthd::mojom::OsInfoPtr* out_os_info,

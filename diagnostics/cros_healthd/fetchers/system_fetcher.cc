@@ -174,14 +174,14 @@ bool SystemFetcher::FetchOsInfo(mojo_ipc::OsInfoPtr* out_os_info,
   return true;
 }
 
-mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
+mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfoV2() {
   const auto& root_dir = context_->root_dir();
-  auto system_info = mojo_ipc::SystemInfo::New();
+  auto system_info = mojo_ipc::SystemInfoV2::New();
   mojo_ipc::ProbeErrorPtr error;
 
-  mojo_ipc::VpdInfoPtr vpd_info;
-  mojo_ipc::DmiInfoPtr dmi_info;
-  mojo_ipc::OsInfoPtr os_info;
+  auto& vpd_info = system_info->vpd_info;
+  auto& dmi_info = system_info->dmi_info;
+  auto& os_info = system_info->os_info;
   if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
                           &vpd_info, &error) ||
       !FetchDmiInfo(root_dir, &dmi_info, &error) ||
@@ -189,6 +189,17 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
     return mojo_ipc::SystemResult::NewError(std::move(error));
   }
 
+  return mojo_ipc::SystemResult::NewSystemInfoV2(std::move(system_info));
+}
+
+mojo_ipc::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
+    const mojo_ipc::SystemInfoV2Ptr& system_info_v2) {
+  if (system_info_v2.is_null())
+    return nullptr;
+
+  auto system_info = mojo_ipc::SystemInfo::New();
+
+  const auto& vpd_info = system_info_v2->vpd_info;
   if (vpd_info) {
     system_info->first_power_date = vpd_info->activate_date;
     system_info->manufacture_date = vpd_info->mfg_date;
@@ -196,12 +207,14 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
     system_info->product_serial_number = vpd_info->serial_number;
     system_info->product_model_name = vpd_info->model_name;
   }
+  const auto& dmi_info = system_info_v2->dmi_info;
   if (dmi_info) {
     system_info->bios_version = dmi_info->bios_version;
     system_info->board_name = dmi_info->board_name;
     system_info->board_version = dmi_info->board_version;
     system_info->chassis_type = dmi_info->chassis_type.Clone();
   }
+  const auto& os_info = system_info_v2->os_info;
   CHECK(os_info);
   system_info->product_name = os_info->code_name;
   // |marketing_name| is an optional field in cros_confg. Set it to null string
@@ -209,6 +222,15 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
   system_info->marketing_name = os_info->marketing_name.value_or("");
   system_info->os_version = os_info->os_version.Clone();
 
+  return system_info;
+}
+
+mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
+  auto result = FetchSystemInfoV2();
+  if (result->is_error())
+    return result;
+  CHECK(result->is_system_info_v2());
+  auto system_info = ConvertToSystemInfo(result->get_system_info_v2());
   return mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info));
 }
 

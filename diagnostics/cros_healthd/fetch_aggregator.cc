@@ -124,6 +124,11 @@ void FetchAggregator::Run(
                            system_fetcher_->FetchSystemInfo());
         break;
       }
+      case mojo_ipc::ProbeCategoryEnum::kSystem2: {
+        WrapFetchProbeData(category, itr, &info->system_result,
+                           system_fetcher_->FetchSystemInfoV2());
+        break;
+      }
       case mojo_ipc::ProbeCategoryEnum::kNetwork: {
         network_fetcher_->FetchNetworkInfo(base::BindOnce(
             &FetchAggregator::WrapFetchProbeData<mojo_ipc::NetworkResultPtr>,
