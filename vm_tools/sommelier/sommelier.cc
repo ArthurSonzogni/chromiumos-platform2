@@ -4500,7 +4500,13 @@ int main(int argc, char** argv) {
     }
     if (wl_display_flush(ctx.display) < 0)
       return EXIT_FAILURE;
-  } while (wl_event_loop_dispatch(event_loop, -1) != -1);
+
+    if (wl_event_loop_dispatch(event_loop, -1) == -1) {
+      // Ignore EINTR or sommelier will exit when attached by strace or gdb.
+      if (errno != EINTR)
+        return EXIT_FAILURE;
+    }
+  } while (1);
 
   return EXIT_SUCCESS;
 }  // NOLINT(readability/fn_size)
