@@ -14,27 +14,21 @@ constexpr char kWrongConfigurationMetricName[] =
 namespace typecd {
 
 void Metrics::ReportPartnerType(PartnerTypeMetric type) {
-  if (!metrics_library_.SendEnumToUMA(
-          kPartnerTypeMetricName, static_cast<int>(type),
-          static_cast<int>(PartnerTypeMetric::kMaxValue) + 1)) {
+  if (!metrics_library_.SendEnumToUMA(kPartnerTypeMetricName, type)) {
     LOG(WARNING) << "Failed to send partner type sample to UMA, type: "
                  << static_cast<int>(type);
   }
 }
 
 void Metrics::ReportCableSpeed(CableSpeedMetric speed) {
-  if (!metrics_library_.SendEnumToUMA(
-          kCableSpeedMetricName, static_cast<int>(speed),
-          static_cast<int>(CableSpeedMetric::kMaxValue) + 1)) {
+  if (!metrics_library_.SendEnumToUMA(kCableSpeedMetricName, speed)) {
     LOG(WARNING) << "Failed to send cable speed sample to UMA, speed: "
                  << static_cast<int>(speed);
   }
 }
 
 void Metrics::ReportWrongCableError(WrongConfigurationMetric value) {
-  if (!metrics_library_.SendEnumToUMA(
-          kWrongConfigurationMetricName, static_cast<int>(value),
-          static_cast<int>(WrongConfigurationMetric::kMaxValue) + 1)) {
+  if (!metrics_library_.SendEnumToUMA(kWrongConfigurationMetricName, value)) {
     LOG(WARNING) << "Failed to send wrong cable config sample to UMA, value: "
                  << static_cast<int>(value);
   }
