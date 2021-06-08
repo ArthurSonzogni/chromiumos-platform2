@@ -78,6 +78,8 @@ shared_library("trunks") {
     "csme/mei_client_char_device.cc",
     "csme/mei_client_factory.cc",
     "csme/mei_client_socket.cc",
+    "csme/pinweaver_core_client.cc",
+    "csme/pinweaver_provision_client.cc",
     "error_codes.cc",
     "hmac_authorization_delegate.cc",
     "hmac_session_impl.cc",
