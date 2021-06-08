@@ -7,7 +7,6 @@
 #include <string>
 
 #include "oobe_config/load_oobe_config_rollback.h"
-#include "oobe_config/load_oobe_config_usb.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
 
@@ -48,20 +47,9 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   const bool rollback_success = load_oobe_config_rollback.GetOobeConfigJson(
       &chrome_config_json, &unused_enrollment_domain);
   if (rollback_success) {
-    LOG(WARNING) << "Rollback oobe config sent: " << chrome_config_json;
+    LOG(INFO) << "Rollback oobe config sent: " << chrome_config_json;
   } else {
-    LOG(INFO) << "Rollback oobe config not found.";
-
-    // There is no rollback data so attempt USB config.
-    auto config_loader = LoadOobeConfigUsb::CreateInstance();
-
-    const bool usb_config_success = config_loader->GetOobeConfigJson(
-        &chrome_config_json, &unused_enrollment_domain);
-    if (usb_config_success) {
-      LOG(INFO) << "USB oobe config found :) ";
-    } else {
-      LOG(WARNING) << "USB oobe config not found :(";
-    }
+    LOG(INFO) << "No rollback oobe config found.";
   }
 
   oobe_config_proto->set_chrome_config_json(chrome_config_json);

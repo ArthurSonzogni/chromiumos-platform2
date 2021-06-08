@@ -61,10 +61,6 @@ DEFINE_string lab_preserve_logs "" "Path to a file containing logs to be \
 preserved"
 DEFINE_boolean storage_diags "${FLAGS_FALSE}" "Print storage diagnostic \
 information on failure"
-DEFINE_string oobe_pub_key "" "Path to public key for OOBE auto-configuration \
-validation"
-DEFINE_string oobe_priv_key "" "Path to private key for OOBE \
-auto-configuration signing"
 DEFINE_boolean lvm_stateful "${FLAGS_FALSE}" "Create LVM-based stateful \
 partition"
 
@@ -775,26 +771,6 @@ install_stateful() {
     # separate volume), use the parent directory as destination for cp.
     cp -au "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${parent}"
   done
-
-  if [ -n "${FLAGS_oobe_pub_key}" ] && [ -n "${FLAGS_oobe_priv_key}" ]; then
-    echo "Finalizing OOBE auto-config setup..."
-
-    # Start udevd since it might not be running, and finish_oobe_auto_config
-    # needs it for walking /dev/disk/by-id/.
-    udevd --daemon
-    udevadm trigger
-    udevadm settle
-
-    local stateful_device
-    stateful_device="$(cgpt find -l STATE "${FLAGS_payload_image}")"
-
-    finish_oobe_auto_config \
-      --private_key="${FLAGS_oobe_priv_key}" \
-      --public_key="${FLAGS_oobe_pub_key}" \
-      --src_stateful_dev="${stateful_device}" \
-      --src_stateful="${ROOT}/mnt/stateful_partition" \
-      --dst_stateful="${TMPMNT}"
-  fi
 
   if mountpoint -q "${TMPMNT}/dev_image"; then
     umount "${TMPMNT}/dev_image"

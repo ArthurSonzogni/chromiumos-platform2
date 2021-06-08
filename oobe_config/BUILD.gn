@@ -8,16 +8,12 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":finish_oobe_auto_config",
-    ":libload_oobe_config_usb",
     ":liboobeconfig",
     ":librollback_helper",
-    ":libsave_oobe_config_usb",
     ":oobe_config_restore",
     ":oobe_config_save",
     ":rollback_finish_restore",
     ":rollback_prepare_save",
-    ":store_usb_oobe_config",
   ]
   if (use.test) {
     deps += [ ":oobe_config_test" ]
@@ -32,7 +28,6 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libmetrics",
-    "libtpmcrypto",
 
     # system_api depends on protobuf (or protobuf-lite). It must
     # appear before protobuf or the linker flags won't be in the right
@@ -73,47 +68,6 @@ static_library("liboobeconfig") {
   deps = [ ":oobe_config_proto" ]
 }
 
-pkg_config("crypto") {
-  pkg_deps = [
-    "libcrypto",
-    "libtpmcrypto",
-  ]
-}
-
-static_library("libload_oobe_config_usb") {
-  sources = [
-    "load_oobe_config_usb.cc",
-    "usb_utils.cc",
-  ]
-  configs += [
-    ":crypto",
-    ":target_defaults",
-  ]
-}
-
-static_library("libsave_oobe_config_usb") {
-  sources = [
-    "save_oobe_config_usb.cc",
-    "usb_utils.cc",
-  ]
-  configs += [
-    ":crypto",
-    ":target_defaults",
-  ]
-}
-
-executable("finish_oobe_auto_config") {
-  sources = [ "save_oobe_config_usb_main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libsave_oobe_config_usb" ]
-}
-
-executable("store_usb_oobe_config") {
-  sources = [ "store_usb_oobe_config.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libload_oobe_config_usb" ]
-}
-
 executable("oobe_config_save") {
   sources = [ "oobe_config_save_main.cc" ]
   configs += [ ":target_defaults" ]
@@ -127,7 +81,6 @@ executable("oobe_config_restore") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
-    ":libload_oobe_config_usb",
     ":liboobeconfig",
     ":oobe_config_restore_adaptors",
   ]
@@ -177,23 +130,17 @@ if (use.test) {
   executable("oobe_config_test") {
     sources = [
       "load_oobe_config_rollback_test.cc",
-      "load_oobe_config_usb_test.cc",
       "oobe_config_test.cc",
       "rollback_helper_test.cc",
-      "save_oobe_config_usb_test.cc",
-      "usb_utils_test.cc",
     ]
     configs += [
       "//common-mk:test",
-      ":crypto",
       ":target_defaults",
       ":test_config",
     ]
     deps = [
-      ":libload_oobe_config_usb",
       ":liboobeconfig",
       ":librollback_helper",
-      ":libsave_oobe_config_usb",
       "//common-mk/testrunner",
     ]
   }
