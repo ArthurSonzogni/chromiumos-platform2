@@ -75,6 +75,9 @@ shared_library("trunks") {
   sources = [
     "background_command_transceiver.cc",
     "blob_parser.cc",
+    "csme/mei_client_char_device.cc",
+    "csme/mei_client_factory.cc",
+    "csme/mei_client_socket.cc",
     "error_codes.cc",
     "hmac_authorization_delegate.cc",
     "hmac_session_impl.cc",
@@ -94,6 +97,7 @@ shared_library("trunks") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "hwsec-foundation" ]
+  defines = [ "USE_CSME_EMULATOR=${use.csme_emulator}" ]
   if (use.ftdi_tpm) {
     sources += [
       "ftdi/mpsse.c",
@@ -101,7 +105,7 @@ shared_library("trunks") {
       "trunks_ftdi_spi.cc",
     ]
     libs += [ "ftdi1" ]
-    defines = [ "SPI_OVER_FTDI=1" ]
+    defines += [ "SPI_OVER_FTDI=1" ]
   }
   deps = [
     ":interface_proto",
