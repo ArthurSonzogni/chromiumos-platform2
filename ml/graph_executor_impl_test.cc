@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -83,9 +84,12 @@ TEST(GraphExecutorTest, TestOk) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Execute once.
@@ -200,9 +204,12 @@ TEST(GraphExecutorTest, TestNarrowing) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, std::move(interpreter), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, std::move(interpreter),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // We represent bools with int64 tensors.
@@ -245,9 +252,12 @@ TEST(GraphExecutorTest, TestInvalidOutputName) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   base::flat_map<std::string, TensorPtr> inputs;
@@ -278,9 +288,12 @@ TEST(GraphExecutorTest, TestMissingOutputName) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   base::flat_map<std::string, TensorPtr> inputs;
@@ -309,9 +322,12 @@ TEST(GraphExecutorTest, TestDuplicateOutputName) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   base::flat_map<std::string, TensorPtr> inputs;
@@ -342,9 +358,12 @@ TEST(GraphExecutorTest, TestInvalidInputName) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
@@ -375,9 +394,12 @@ TEST(GraphExecutorTest, TestMissingInputName) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
@@ -406,9 +428,12 @@ TEST(GraphExecutorTest, TestWrongInputType) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give an int tensor when a float tensor is expected.
@@ -439,9 +464,12 @@ TEST(GraphExecutorTest, TestWrongInputShape) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a 1x1 tensor when a scalar is expected.
@@ -473,9 +501,12 @@ TEST(GraphExecutorTest, TestInvalidInputFormat) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, IdentityInterpreter(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, IdentityInterpreter(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a tensor with scalar shape but multiple values.
@@ -527,9 +558,12 @@ TEST(GraphExecutorTest, TestInvalidInputNodeType) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, std::move(interpreter), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, std::move(interpreter),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Graph execution should fail before we get to input type checking.
@@ -559,9 +593,13 @@ TEST(GraphExecutorTest, TestExecutionFailure) {
   // Use an uninitialized interpreter, which induces an execution failure.
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> inputs_outputs;
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          inputs_outputs, inputs_outputs,
+          std::make_unique<tflite::Interpreter>(), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      inputs_outputs, inputs_outputs, std::make_unique<tflite::Interpreter>(),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   bool callback_done = false;
@@ -608,9 +646,12 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeType) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, std::move(interpreter), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, std::move(interpreter),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
@@ -663,9 +704,12 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeShape) {
   mojo::Remote<GraphExecutor> graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate =
+      std::make_unique<GraphExecutorDelegate>(
+          input_names, output_names, std::move(interpreter), "TestModel");
   const GraphExecutorImpl graph_executor_impl(
-      input_names, output_names, std::move(interpreter),
-      graph_executor.BindNewPipeAndPassReceiver(), "TestModel");
+      std::move(graph_executor_delegate),
+      graph_executor.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.

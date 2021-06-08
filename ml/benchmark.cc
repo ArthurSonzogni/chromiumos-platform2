@@ -122,10 +122,12 @@ bool ConstructModel(const FlatBufferModelSpecProto& model_proto,
   for (const auto& pair : model_proto.required_outputs()) {
     required_outputs[pair.first] = pair.second.index();
   }
-  ModelImpl::Create(required_inputs, required_outputs,
-                    std::move(flat_buffer_model), std::move(model_data),
-                    model->BindNewPipeAndPassReceiver(),
-                    kMlBenchmarkMetricsName);
+
+  ModelImpl::Create(
+      std::make_unique<ModelDelegate>(
+          required_inputs, required_outputs, std::move(flat_buffer_model),
+          std::move(model_data), kMlBenchmarkMetricsName),
+      model->BindNewPipeAndPassReceiver());
 
   return true;
 }

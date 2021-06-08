@@ -5,7 +5,6 @@
 #ifndef ML_GRAPH_EXECUTOR_IMPL_H_
 #define ML_GRAPH_EXECUTOR_IMPL_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -15,8 +14,8 @@
 #include <base/macros.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-#include <tensorflow/lite/model.h>
 
+#include "ml/graph_executor_delegate.h"
 #include "ml/mojom/graph_executor.mojom.h"
 
 namespace ml {
@@ -30,26 +29,24 @@ namespace ml {
 //
 // A given GraphExecutorImpl may not be used concurrently from different
 // sequences.
+// Example usage:
+//  auto interpreter = std::make_unique<tflite::Interpreter>();
+//  const std::string metrics_model_name = xxx;
+//  mojo::Remote<GraphExecutor> graph_executor;
+//  const GraphExecutorImpl graph_executor_impl(
+//      std::make_unique<GraphExecutorDelegate>(
+//          input_names, output_names, std::move(graph_executor_delegate),
+//          metrics_model_name),
+//      graph_executor.BindNewPipeAndPassReceiver());
 class GraphExecutorImpl
     : public chromeos::machine_learning::mojom::GraphExecutor {
  public:
-  // Creates an instance bound to `receiver`.
-  //
-  // The `required_inputs` and `required_outputs` arguments specify a mapping
-  // from required input / output tensor names to their indices in the TF lite
-  // graph, and must outlive this object.
-  //
-  // UMA metrics will be logged with the specified `metrics_model_name`.
-  //
-  // As is standard, `interpreter` must outlive the model with which it was
-  // constructed.
+  // Takes ownership of `graph_executor_delegate` to do the actual work of
+  // calling TFlite, and creates an instance bound to `receiver`.
   GraphExecutorImpl(
-      const std::map<std::string, int>& required_inputs,
-      const std::map<std::string, int>& required_outputs,
-      std::unique_ptr<tflite::Interpreter> interpreter,
+      std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate,
       mojo::PendingReceiver<chromeos::machine_learning::mojom::GraphExecutor>
-          receiver,
-      const std::string& metrics_model_name);
+          receiver);
   GraphExecutorImpl(const GraphExecutorImpl&) = delete;
   GraphExecutorImpl& operator=(const GraphExecutorImpl&) = delete;
 
@@ -63,15 +60,9 @@ class GraphExecutorImpl
       const std::vector<std::string>& output_names,
       ExecuteCallback callback);
 
-  const std::map<std::string, int>& required_inputs_;
-  const std::map<std::string, int>& required_outputs_;
-
-  const std::unique_ptr<tflite::Interpreter> interpreter_;
-
+  // The delegate that actually runs TFLite graph.
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate_;
   mojo::Receiver<chromeos::machine_learning::mojom::GraphExecutor> receiver_;
-
-  // Model name as it should appear in UMA histogram names.
-  const std::string metrics_model_name_;
 };
 
 }  // namespace ml

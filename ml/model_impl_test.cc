@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -66,8 +67,11 @@ TEST(AlignedModelData, MaybeUnalignedInput) {
 TEST_F(ModelImplTest, TestBadModel) {
   // Pass nullptr instead of a valid model.
   mojo::Remote<Model> model;
-  ModelImpl::Create(model_inputs_, model_outputs_, nullptr /*model*/,
-                    model.BindNewPipeAndPassReceiver(), "TestModel");
+  ModelImpl::Create(
+      std::make_unique<ModelDelegate>(model_inputs_, model_outputs_,
+                                      nullptr /*model*/, "TestModel"),
+      model.BindNewPipeAndPassReceiver());
+
   ASSERT_TRUE(model.is_bound());
 
   // Ensure that creating a graph executor fails.
@@ -96,8 +100,10 @@ TEST_F(ModelImplTest, TestExampleModel) {
 
   // Create model object.
   mojo::Remote<Model> model;
-  ModelImpl::Create(model_inputs_, model_outputs_, std::move(tflite_model),
-                    model.BindNewPipeAndPassReceiver(), "TestModel");
+  ModelImpl::Create(
+      std::make_unique<ModelDelegate>(model_inputs_, model_outputs_,
+                                      std::move(tflite_model), "TestModel"),
+      model.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(model.is_bound());
 
   // Create a graph executor.
@@ -159,9 +165,10 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
 
   // Create model object.
   mojo::Remote<Model> model;
-  const ModelImpl* model_impl =
-      ModelImpl::Create(model_inputs_, model_outputs_, std::move(tflite_model),
-                        model.BindNewPipeAndPassReceiver(), "TestModel");
+  const ModelImpl* model_impl = ModelImpl::Create(
+      std::make_unique<ModelDelegate>(model_inputs_, model_outputs_,
+                                      std::move(tflite_model), "TestModel"),
+      model.BindNewPipeAndPassReceiver());
   ASSERT_TRUE(model.is_bound());
 
   // Create one graph executor.

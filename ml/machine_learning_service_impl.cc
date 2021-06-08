@@ -176,9 +176,10 @@ void MachineLearningServiceImpl::LoadBuiltinModel(
     return;
   }
 
-  ModelImpl::Create(metadata.required_inputs, metadata.required_outputs,
-                    std::move(model), std::move(receiver),
-                    metadata.metrics_model_name);
+  ModelImpl::Create(std::make_unique<ModelDelegate>(
+                        metadata.required_inputs, metadata.required_outputs,
+                        std::move(model), metadata.metrics_model_name),
+                    std::move(receiver));
 
   std::move(callback).Run(LoadModelResult::OK);
 
@@ -195,8 +196,8 @@ void MachineLearningServiceImpl::LoadFlatBufferModel(
   RequestMetrics request_metrics(spec->metrics_model_name, kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
-  // Take the ownership of the content of `model_string` because `ModelImpl` has
-  // to hold the memory.
+  // Take the ownership of the content of `model_string` because `ModelDelegate`
+  // has to hold the memory.
   auto model_data =
       std::make_unique<AlignedModelData>(std::move(spec->model_string));
 
@@ -212,10 +213,12 @@ void MachineLearningServiceImpl::LoadFlatBufferModel(
   }
 
   ModelImpl::Create(
-      std::map<std::string, int>(spec->inputs.begin(), spec->inputs.end()),
-      std::map<std::string, int>(spec->outputs.begin(), spec->outputs.end()),
-      std::move(model), std::move(model_data), std::move(receiver),
-      spec->metrics_model_name);
+      std::make_unique<ModelDelegate>(
+          std::map<std::string, int>(spec->inputs.begin(), spec->inputs.end()),
+          std::map<std::string, int>(spec->outputs.begin(),
+                                     spec->outputs.end()),
+          std::move(model), std::move(model_data), spec->metrics_model_name),
+      std::move(receiver));
 
   std::move(callback).Run(LoadModelResult::OK);
 
