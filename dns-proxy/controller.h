@@ -61,8 +61,9 @@ class Controller : public brillo::DBusDaemon {
   };
 
   void Setup();
+  void SetupPatchpanel();
   void OnPatchpanelReady(bool success);
-
+  void OnPatchpanelReset(bool reset);
   void SetupShill();
   void OnShillReady(bool success);
   void OnShillReset(bool reset);

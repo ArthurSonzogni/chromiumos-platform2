@@ -63,7 +63,12 @@ void Controller::OnShutdown(int*) {
 
 void Controller::Setup() {
   SetupShill();
+  SetupPatchpanel();
+  RunProxy(Proxy::Type::kSystem);
+  RunProxy(Proxy::Type::kDefault);
+}
 
+void Controller::SetupPatchpanel() {
   patchpanel_ = patchpanel::Client::New();
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
@@ -71,11 +76,11 @@ void Controller::Setup() {
         Metrics::ProcessEvent::kPatchpanelNotInitialized);
     LOG(FATAL) << "Failed to initialize patchpanel client";
   }
+
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Controller::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
-
-  RunProxy(Proxy::Type::kSystem);
-  RunProxy(Proxy::Type::kDefault);
+  patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
+      &Controller::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
 }
 
 void Controller::SetupShill() {
@@ -97,6 +102,20 @@ void Controller::OnPatchpanelReady(bool success) {
   // proxy processes.
   for (const auto& d : patchpanel_->GetDevices())
     VirtualDeviceAdded(d);
+}
+
+void Controller::OnPatchpanelReset(bool reset) {
+  if (reset) {
+    LOG(WARNING) << "Patchpanel has been reset";
+    return;
+  }
+
+  // If patchpanel crashes, the proxies will be restarted, so just create a new
+  // client and continue on.
+  metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                              Metrics::ProcessEvent::kPatchpanelShutdown);
+  LOG(ERROR) << "Patchpanel has been shutdown - reconnecting...";
+  SetupPatchpanel();
 }
 
 void Controller::OnShillReady(bool success) {
