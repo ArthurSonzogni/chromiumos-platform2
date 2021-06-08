@@ -7534,6 +7534,7 @@ mno {
       username : "user@au.au-net.ne.jp"
       password : "au"
       authentication : CHAP
+      ip_type: IPV4V6
       is_attach_apn : true
     }
     mobile_apn {
@@ -7544,6 +7545,7 @@ mno {
       username : "685840734641020@uno.au-net.ne.jp"
       password : "KpyrR6BP"
       authentication : CHAP
+      ip_type: IPV4V6
       is_attach_apn : true
     }
   }
