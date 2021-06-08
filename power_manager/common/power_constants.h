@@ -229,6 +229,9 @@ extern const char kSuspendToIdlePref[];
 // The pref for cgroup A will be "|kSuspendFreezerDepsPrefix|A".
 extern const char kSuspendFreezerDepsPrefix[];
 
+// If true, return Far when at least one of the sensors report far.
+extern const char kSetTransmitPowerPreferFarForProximityPref[];
+
 // If true, update wifi transmit power when in tablet vs. clamshell mode.
 extern const char kSetWifiTransmitPowerForTabletModePref[];
 

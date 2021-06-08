@@ -10,6 +10,8 @@
 #include <base/check.h>
 #include <base/logging.h>
 
+#include "power_manager/common/power_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 
@@ -26,11 +28,20 @@ UserProximityHandler::~UserProximityHandler() {
 bool UserProximityHandler::Init(
     system::UserProximityWatcherInterface* user_prox_watcher,
     Delegate* wifi_delegate,
-    Delegate* lte_delegate) {
+    Delegate* lte_delegate,
+    PrefsInterface* prefs) {
   DCHECK(user_prox_watcher);
 
   wifi_delegate_ = wifi_delegate;
   lte_delegate_ = lte_delegate;
+
+  prefs->GetBool(kSetTransmitPowerPreferFarForProximityPref,
+                 &use_prefer_far_for_proximity_);
+
+  wifi_proximity_voting_ =
+      std::make_unique<UserProximityVoting>(use_prefer_far_for_proximity_);
+  lte_proximity_voting_ =
+      std::make_unique<UserProximityVoting>(use_prefer_far_for_proximity_);
 
   user_proximity_watcher_ = user_prox_watcher;
   user_proximity_watcher_->AddObserver(this);
@@ -54,13 +65,13 @@ void UserProximityHandler::OnNewSensor(int id, uint32_t roles) {
   LOG(INFO) << "New proximity sensor with id " << id << ": "
             << (includes_wifi ? " wifi" : "") << (includes_lte ? " lte" : "");
 
-  if (includes_wifi && wifi_delegate_) {
-    wifi_proximity_voting_.Vote(id, default_initial_proximity);
+  if (includes_wifi && wifi_delegate_ && wifi_proximity_voting_) {
+    wifi_proximity_voting_->Vote(id, default_initial_proximity);
     wifi_delegate_->ProximitySensorDetected(default_initial_proximity);
   }
 
-  if (includes_lte && lte_delegate_) {
-    lte_proximity_voting_.Vote(id, default_initial_proximity);
+  if (includes_lte && lte_delegate_ && lte_proximity_voting_) {
+    lte_proximity_voting_->Vote(id, default_initial_proximity);
     lte_delegate_->ProximitySensorDetected(default_initial_proximity);
   }
 
@@ -86,16 +97,22 @@ void UserProximityHandler::OnProximityEvent(int id, UserProximity value) {
        system::UserProximityObserver::SensorRole::SENSOR_ROLE_LTE) != 0;
 
   const bool did_wifi_change =
-      includes_wifi ? wifi_proximity_voting_.Vote(id, value) : false;
+      includes_wifi
+          ? (wifi_proximity_voting_ ? wifi_proximity_voting_->Vote(id, value)
+                                    : false)
+          : false;
   const bool did_lte_change =
-      includes_lte ? lte_proximity_voting_.Vote(id, value) : false;
+      includes_lte
+          ? (lte_proximity_voting_ ? lte_proximity_voting_->Vote(id, value)
+                                   : false)
+          : false;
 
-  if (did_wifi_change && wifi_delegate_) {
-    UserProximity wifi_proximity = wifi_proximity_voting_.GetVote();
+  if (did_wifi_change && wifi_delegate_ && wifi_proximity_voting_) {
+    UserProximity wifi_proximity = wifi_proximity_voting_->GetVote();
     wifi_delegate_->HandleProximityChange(wifi_proximity);
   }
-  if (did_lte_change && lte_delegate_) {
-    UserProximity lte_proximity = lte_proximity_voting_.GetVote();
+  if (did_lte_change && lte_delegate_ && lte_proximity_voting_) {
+    UserProximity lte_proximity = lte_proximity_voting_->GetVote();
     lte_delegate_->HandleProximityChange(lte_proximity);
   }
 }

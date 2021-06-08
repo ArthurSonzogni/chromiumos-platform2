@@ -10,7 +10,17 @@ namespace power_manager {
 namespace policy {
 
 TEST(UserProximityVotingTest, DefaultStates) {
-  UserProximityVoting voting;
+  bool prefer_far = false;
+  UserProximityVoting voting(prefer_far);
+  EXPECT_EQ(voting.GetVote(), UserProximity::UNKNOWN);
+
+  EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::NEAR);
+}
+
+TEST(UserProximityVotingTest, DefaultStatesPreferFar) {
+  bool prefer_far = true;
+  UserProximityVoting voting(prefer_far);
   EXPECT_EQ(voting.GetVote(), UserProximity::UNKNOWN);
 
   EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
@@ -18,7 +28,22 @@ TEST(UserProximityVotingTest, DefaultStates) {
 }
 
 TEST(UserProximityVotingTest, StateChange) {
-  UserProximityVoting voting;
+  bool prefer_far = false;
+  UserProximityVoting voting(prefer_far);
+  EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
+
+  EXPECT_TRUE(voting.Vote(1, UserProximity::FAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::FAR);
+
+  EXPECT_FALSE(voting.Vote(1, UserProximity::FAR));
+
+  EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::NEAR);
+}
+
+TEST(UserProximityVotingTest, StateChangePreferFar) {
+  bool prefer_far = true;
+  UserProximityVoting voting(prefer_far);
   EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
 
   EXPECT_TRUE(voting.Vote(1, UserProximity::FAR));
@@ -31,7 +56,8 @@ TEST(UserProximityVotingTest, StateChange) {
 }
 
 TEST(UserProximityVotingTest, ConsensusChange) {
-  UserProximityVoting voting;
+  bool prefer_far = false;
+  UserProximityVoting voting(prefer_far);
   EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
   EXPECT_FALSE(voting.Vote(2, UserProximity::NEAR));
 
@@ -46,6 +72,23 @@ TEST(UserProximityVotingTest, ConsensusChange) {
 
   EXPECT_TRUE(voting.Vote(2, UserProximity::NEAR));
   EXPECT_EQ(voting.GetVote(), UserProximity::NEAR);
+}
+
+TEST(UserProximityVotingTest, ConsensusChangePreferFar) {
+  bool prefer_far = true;
+  UserProximityVoting voting(prefer_far);
+  EXPECT_TRUE(voting.Vote(1, UserProximity::NEAR));
+  EXPECT_FALSE(voting.Vote(2, UserProximity::NEAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::NEAR);
+
+  EXPECT_TRUE(voting.Vote(1, UserProximity::FAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::FAR);
+
+  EXPECT_FALSE(voting.Vote(2, UserProximity::FAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::FAR);
+
+  EXPECT_FALSE(voting.Vote(2, UserProximity::NEAR));
+  EXPECT_EQ(voting.GetVote(), UserProximity::FAR);
 }
 
 }  // namespace policy

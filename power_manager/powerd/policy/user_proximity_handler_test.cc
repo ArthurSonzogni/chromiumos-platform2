@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/action_recorder.h"
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
@@ -62,21 +63,30 @@ class LteDelegate : public UserProximityHandler::Delegate,
 
 class UserProximityHandlerTest : public ::testing::Test {
  public:
-  UserProximityHandlerTest() {
-    user_proximity_handler_.Init(&user_proximity_watcher_, &wifi_delegate_,
-                                 &lte_delegate_);
-  }
+  UserProximityHandlerTest() = default;
+  UserProximityHandlerTest(const UserProximityHandlerTest&) = delete;
+  UserProximityHandlerTest& operator=(const UserProximityHandlerTest&) = delete;
+
+  ~UserProximityHandlerTest() override = default;
 
  protected:
+  void Init(bool honor_prefer_far) {
+    prefs_.SetInt64(kSetTransmitPowerPreferFarForProximityPref,
+                    honor_prefer_far);
+    user_proximity_handler_.Init(&user_proximity_watcher_, &wifi_delegate_,
+                                 &lte_delegate_, &prefs_);
+  }
   system::UserProximityWatcherStub user_proximity_watcher_;
   WifiDelegate wifi_delegate_;
   LteDelegate lte_delegate_;
+  FakePrefs prefs_;
   UserProximityHandler user_proximity_handler_;
 };
 
 }  // namespace
 
 TEST_F(UserProximityHandlerTest, DetectSensor) {
+  Init(false);
   user_proximity_watcher_.AddSensor(
       1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
   CHECK_EQ(JoinActions(kWifiSensorDetected, nullptr),
@@ -89,6 +99,7 @@ TEST_F(UserProximityHandlerTest, DetectSensor) {
 }
 
 TEST_F(UserProximityHandlerTest, ProximityChange) {
+  Init(false);
   user_proximity_watcher_.AddSensor(
       1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
   user_proximity_watcher_.AddSensor(

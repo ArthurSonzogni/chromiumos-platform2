@@ -10,7 +10,8 @@
 namespace power_manager {
 namespace policy {
 
-UserProximityVoting::UserProximityVoting() = default;
+UserProximityVoting::UserProximityVoting(bool prefer_far)
+    : prefer_far_(prefer_far) {}
 
 UserProximityVoting::~UserProximityVoting() = default;
 
@@ -41,15 +42,18 @@ UserProximity UserProximityVoting::GetVote() const {
 }
 
 UserProximity UserProximityVoting::CalculateVote() const {
+  UserProximity vote_type =
+      prefer_far_ ? UserProximity::FAR : UserProximity::NEAR;
+
   if (votes_.empty())
     return UserProximity::UNKNOWN;
 
   for (const auto& vote : votes_) {
-    if (vote.second == UserProximity::NEAR)
-      return UserProximity::NEAR;
+    if (vote.second == vote_type)
+      return vote_type;
   }
 
-  return UserProximity::FAR;
+  return prefer_far_ ? UserProximity::NEAR : UserProximity::FAR;
 }
 
 }  // namespace policy

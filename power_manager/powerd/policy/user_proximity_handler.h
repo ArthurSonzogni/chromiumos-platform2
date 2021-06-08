@@ -45,7 +45,8 @@ class UserProximityHandler : public system::UserProximityObserver {
   // Delegates may be == nullptr. Ownership remains with the caller.
   bool Init(system::UserProximityWatcherInterface* user_prox_watcher,
             Delegate* wifi_delegate,
-            Delegate* lte_delegate);
+            Delegate* lte_delegate,
+            PrefsInterface* prefs);
 
   // UserProximityObserver implementations:
   void OnNewSensor(int id, uint32_t roles) override;
@@ -57,10 +58,11 @@ class UserProximityHandler : public system::UserProximityObserver {
   // Keeps a correspondence among sensor ID (key) and which subsystems
   // it is sending proximity signal for (value).
   std::unordered_map<int, uint32_t> sensor_roles_;
-  UserProximityVoting wifi_proximity_voting_;
-  UserProximityVoting lte_proximity_voting_;
+  std::unique_ptr<UserProximityVoting> wifi_proximity_voting_;
+  std::unique_ptr<UserProximityVoting> lte_proximity_voting_;
   system::UserProximityWatcherInterface* user_proximity_watcher_ =
       nullptr;  //  Not owned.
+  bool use_prefer_far_for_proximity_ = false;
 };
 
 }  // namespace policy

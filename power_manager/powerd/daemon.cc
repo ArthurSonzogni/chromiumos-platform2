@@ -446,7 +446,7 @@ void Daemon::Init() {
   user_proximity_handler_ = std::make_unique<policy::UserProximityHandler>();
   user_proximity_handler_->Init(user_proximity_watcher_.get(),
                                 wifi_controller_.get(),
-                                cellular_controller_.get());
+                                cellular_controller_.get(), prefs_.get());
 
   arc_timer_manager_->Init(dbus_wrapper_.get());
 

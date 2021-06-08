@@ -18,7 +18,7 @@ namespace policy {
 // proximity to the device.
 class UserProximityVoting {
  public:
-  UserProximityVoting();
+  explicit UserProximityVoting(bool prefer_far);
   UserProximityVoting(const UserProximityVoting&) = delete;
   UserProximityVoting& operator=(const UserProximityVoting&) = delete;
 
@@ -30,8 +30,10 @@ class UserProximityVoting {
   bool Vote(int id, UserProximity vote);
 
   // Returns the current consensus among all the sensors in this voting pool.
-  // NEAR is returned if at least one sensor is claiming proximity, otherwise
-  // FAR is returned. UNKNOWN is returned iff there are no sensors.
+  // If |prefer_far_| is false, then NEAR is returned if at least one sensor is
+  // claiming proximity, otherwise FAR is returned. If |prefer_far_| is true,
+  // then NEAR is returned when all sensors claim proximity, otherwise FAR is
+  // returned. If there are no sensors, then UNKNOWN is returned.
   UserProximity GetVote() const;
 
  private:
@@ -39,6 +41,7 @@ class UserProximityVoting {
 
   std::unordered_map<int, UserProximity> votes_;
   UserProximity consensus_ = UserProximity::UNKNOWN;
+  bool prefer_far_ = false;
 };
 
 }  // namespace policy
