@@ -22,6 +22,7 @@
 #include <brillo/file_utils.h>
 #include <brillo/process/process.h>
 
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
@@ -111,7 +112,7 @@ struct EncStatefulArea {
   }
 
   brillo::SecureBlob DeriveKey(const std::string& label) const {
-    return cryptohome::CryptoLib::HmacSha256(
+    return cryptohome::HmacSha256(
         brillo::SecureBlob(key_material, key_material + sizeof(key_material)),
         brillo::Blob(label.data(), label.data() + label.size()));
   }
@@ -487,9 +488,9 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
   provisional_area->set_flag(EncStatefulArea::Flag::kLockboxMacValid);
   NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
   if (lockbox_space->is_valid()) {
-    brillo::SecureBlob mac = cryptohome::CryptoLib::HmacSha256(
-        provisional_area->DeriveKey(kLabelLockboxMAC),
-        lockbox_space->contents());
+    brillo::SecureBlob mac =
+        cryptohome::HmacSha256(provisional_area->DeriveKey(kLabelLockboxMAC),
+                               lockbox_space->contents());
     memcpy(provisional_area->lockbox_mac, mac.data(), mac.size());
   }
 
@@ -748,7 +749,7 @@ result_code Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
         if (area->test_flag(EncStatefulArea::Flag::kLockboxMacValid)) {
           NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
           if (lockbox_space->is_valid()) {
-            brillo::SecureBlob mac = cryptohome::CryptoLib::HmacSha256(
+            brillo::SecureBlob mac = cryptohome::HmacSha256(
                 area->DeriveKey(kLabelLockboxMAC), lockbox_space->contents());
             *valid = brillo::SecureMemcmp(area->lockbox_mac, mac.data(),
                                           mac.size()) == 0;

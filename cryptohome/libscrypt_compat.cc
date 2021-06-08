@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 
@@ -105,7 +106,7 @@ void GenerateHeader(const brillo::SecureBlob& salt,
                               derived_key.end());
   brillo::Blob data_to_hmac(header_ptr,
                             header_ptr + kLibScryptHeaderBytesToHMAC);
-  brillo::SecureBlob hmac = CryptoLib::HmacSha256(key_hmac, data_to_hmac);
+  brillo::SecureBlob hmac = HmacSha256(key_hmac, data_to_hmac);
   memcpy(&header_struct->signature[0], hmac.data(),
          sizeof(header_struct->signature));
 }
@@ -121,7 +122,7 @@ bool VerifyDerivedKey(const brillo::SecureBlob& encrypted_blob,
                               derived_key.end());
   brillo::Blob data_to_hmac(header_ptr,
                             header_ptr + kLibScryptHeaderBytesToHMAC);
-  brillo::SecureBlob hmac = CryptoLib::HmacSha256(key_hmac, data_to_hmac);
+  brillo::SecureBlob hmac = HmacSha256(key_hmac, data_to_hmac);
   if (brillo::SecureMemcmp(header->signature, hmac.data(),
                            kLibScryptHMACSize) != 0) {
     LOG(ERROR) << "hmac verification failed.";
@@ -169,7 +170,7 @@ bool LibScryptCompat::Encrypt(const brillo::SecureBlob& derived_key,
   brillo::Blob data_to_hmac(
       encrypted_data->begin(),
       encrypted_data->begin() + aes_ciphertext.size() + kLibScryptHeaderSize);
-  brillo::SecureBlob hmac = CryptoLib::HmacSha256(key_hmac, data_to_hmac);
+  brillo::SecureBlob hmac = HmacSha256(key_hmac, data_to_hmac);
 
   memcpy(encrypted_data->data() + sizeof(header_struct) + aes_ciphertext.size(),
          hmac.data(), kLibScryptHMACSize);
@@ -236,7 +237,7 @@ bool LibScryptCompat::Decrypt(const brillo::SecureBlob& encrypted_data,
                               derived_key.end());
   brillo::Blob data_to_hmac(encrypted_data.begin(),
                             encrypted_data.end() - kLibScryptHMACSize);
-  brillo::SecureBlob hmac = CryptoLib::HmacSha256(key_hmac, data_to_hmac);
+  brillo::SecureBlob hmac = HmacSha256(key_hmac, data_to_hmac);
   brillo::SecureBlob hmac_from_blob(encrypted_data.end() - kLibScryptHMACSize,
                                     encrypted_data.end());
   if (brillo::SecureMemcmp(hmac.data(), hmac_from_blob.data(),

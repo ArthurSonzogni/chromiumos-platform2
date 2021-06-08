@@ -17,6 +17,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
@@ -342,9 +343,9 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
   FileSystemKeyset fs_keyset(*vk);
   const std::string message(kWebAuthnSecretHmacMessage);
   auto expected_webauthn_secret = std::make_unique<brillo::SecureBlob>(
-      CryptoLib::HmacSha256(brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
-                                                        fs_keyset.Key().fek),
-                            brillo::Blob(message.cbegin(), message.cend())));
+      HmacSha256(brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
+                                             fs_keyset.Key().fek),
+                 brillo::Blob(message.cbegin(), message.cend())));
   EXPECT_NE(expected_webauthn_secret, nullptr);
 
   // TEST

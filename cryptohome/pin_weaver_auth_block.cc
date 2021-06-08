@@ -17,6 +17,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -159,15 +160,15 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
       CryptoLib::CreateSecureRandomBlob(kDefaultSecretSize);
 
   // Derive the VKK_seed by performing an HMAC on he_secret.
-  brillo::SecureBlob vkk_seed = CryptoLib::HmacSha256(
-      he_secret, brillo::BlobFromString(kHESecretHmacData));
+  brillo::SecureBlob vkk_seed =
+      HmacSha256(he_secret, brillo::BlobFromString(kHESecretHmacData));
 
   // Generate and store random new IVs for file-encryption keys and
   // chaps key encryption.
   const auto fek_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
   const auto chaps_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
 
-  brillo::SecureBlob vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
+  brillo::SecureBlob vkk_key = HmacSha256(kdf_skey, vkk_seed);
 
   key_blobs->vkk_key = vkk_key;
   key_blobs->vkk_iv = fek_iv;
@@ -249,9 +250,9 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     return false;
   }
 
-  brillo::SecureBlob vkk_seed = CryptoLib::HmacSha256(
-      he_secret, brillo::BlobFromString(kHESecretHmacData));
-  key_blobs->vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
+  brillo::SecureBlob vkk_seed =
+      HmacSha256(he_secret, brillo::BlobFromString(kHESecretHmacData));
+  key_blobs->vkk_key = HmacSha256(kdf_skey, vkk_seed);
 
   return true;
 }

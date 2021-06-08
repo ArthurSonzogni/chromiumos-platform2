@@ -83,16 +83,6 @@ class CryptoLib {
   static bool FillRsaPrivateKeyFromSecretPrime(
       const brillo::SecureBlob& secret_prime, RSA* rsa);
 
-  static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
-                                       const brillo::Blob& data);
-  static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
-                                       const brillo::SecureBlob& data);
-
-  static brillo::SecureBlob HmacSha256(const brillo::SecureBlob& key,
-                                       const brillo::Blob& data);
-  static brillo::SecureBlob HmacSha256(const brillo::SecureBlob& key,
-                                       const brillo::SecureBlob& data);
-
   static size_t GetAesBlockSize();
   static bool PasskeyToAesKey(const brillo::SecureBlob& passkey,
                               const brillo::SecureBlob& salt,
@@ -227,13 +217,6 @@ class CryptoLib {
   static void SecureBlobToHexToBuffer(const brillo::SecureBlob& blob,
                                       void* buffer,
                                       size_t buffer_length);
-  // Computes an HMAC over the iv and encrypted_data fields of an EncryptedData
-  // protobuf.
-  // Parameters
-  //   encrypted_data - encrypted data protobuf..
-  //   hmac_key - secret key to use in hmac computation.
-  static std::string ComputeEncryptedDataHMAC(
-      const EncryptedData& encrypted_data, const brillo::SecureBlob& hmac_key);
 
   // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
   //

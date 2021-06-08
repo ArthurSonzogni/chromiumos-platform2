@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "cryptohome/attestation.pb.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
@@ -587,7 +588,7 @@ TEST_F(CryptoTest, GetSha256FipsTest) {
   }
 }
 
-TEST_F(CryptoTest, ComputeEncryptedDataHMAC) {
+TEST_F(CryptoTest, ComputeEncryptedDataHmac) {
   MockPlatform platform;
   Crypto crypto(&platform);
   EncryptedData pb;
@@ -601,13 +602,13 @@ TEST_F(CryptoTest, ComputeEncryptedDataHMAC) {
   CryptoLib::GetSecureRandom(hmac_key.data(), hmac_key.size());
 
   // Perturb iv and data slightly. Verify hashes are all different.
-  std::string hmac1 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  std::string hmac1 = ComputeEncryptedDataHmac(pb, hmac_key);
   data = "iamsoawesomf";
   pb.set_encrypted_data(data.data(), data.size());
-  std::string hmac2 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  std::string hmac2 = ComputeEncryptedDataHmac(pb, hmac_key);
   iv = "123457";
   pb.set_iv(iv.data(), iv.size());
-  std::string hmac3 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  std::string hmac3 = ComputeEncryptedDataHmac(pb, hmac_key);
 
   EXPECT_NE(hmac1, hmac2);
   EXPECT_NE(hmac2, hmac3);
@@ -785,7 +786,7 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
       CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
   pin_vault_keyset_.reset_salt_ =
       CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = CryptoLib::HmacSha256(
+  pin_vault_keyset_.reset_secret_ = HmacSha256(
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
 
   AuthBlockState auth_block_state;
@@ -811,7 +812,7 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
       CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
   pin_vault_keyset_.reset_salt_ =
       CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = CryptoLib::HmacSha256(
+  pin_vault_keyset_.reset_secret_ = HmacSha256(
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
 
   AuthBlockState auth_block_state;

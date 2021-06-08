@@ -14,6 +14,7 @@
 #include <cryptohome/scrypt_verifier.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/storage/mount.h"
 
@@ -154,8 +155,8 @@ void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
   // since they will unlock the vault keyset.
   const std::string message(kWebAuthnSecretHmacMessage);
   webauthn_secret_ = std::make_unique<brillo::SecureBlob>(
-      CryptoLib::HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
-                            brillo::Blob(message.cbegin(), message.cend())));
+      HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
+                 brillo::Blob(message.cbegin(), message.cend())));
   clear_webauthn_secret_timer_.Start(
       FROM_HERE, base::TimeDelta::FromSeconds(5),
       base::BindOnce(&UserSession::ClearWebAuthnSecret,

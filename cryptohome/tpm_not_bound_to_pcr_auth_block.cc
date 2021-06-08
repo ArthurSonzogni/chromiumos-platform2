@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -135,7 +136,7 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
   auth_state->set_tpm_key(tpm_key.data(), tpm_key.size());
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
-  key_blobs->vkk_key = CryptoLib::HmacSha256(kdf_skey, local_blob);
+  key_blobs->vkk_key = HmacSha256(kdf_skey, local_blob);
   // Note that one might expect the IV to be part of the AuthBlockState. But
   // since it's taken from the scrypt output, it's actually created by the auth
   // block, not used to initialize the auth block.
@@ -195,7 +196,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   }
 
   if (tpm_state.scrypt_derived()) {
-    *vkk_key = CryptoLib::HmacSha256(kdf_skey, local_vault_key);
+    *vkk_key = HmacSha256(kdf_skey, local_vault_key);
   } else {
     if (!CryptoLib::PasskeyToAesKey(local_vault_key, salt, rounds, vkk_key,
                                     vkk_iv)) {

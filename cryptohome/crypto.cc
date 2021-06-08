@@ -28,6 +28,7 @@
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/challenge_credential_auth_block.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_key_loader.h"
@@ -613,8 +614,7 @@ bool Crypto::EncryptData(const SecureBlob& data,
   encrypted_pb.set_iv(iv.data(), iv.size());
   encrypted_pb.set_encrypted_data(encrypted_data_blob.data(),
                                   encrypted_data_blob.size());
-  encrypted_pb.set_mac(
-      CryptoLib::ComputeEncryptedDataHMAC(encrypted_pb, aes_key));
+  encrypted_pb.set_mac(ComputeEncryptedDataHmac(encrypted_pb, aes_key));
   if (!encrypted_pb.SerializeToString(encrypted_data)) {
     LOG(ERROR) << "Could not serialize data to string.";
     return false;
@@ -650,7 +650,7 @@ bool Crypto::DecryptData(const std::string& encrypted_data,
                << "protobuf";
     return false;
   }
-  std::string mac = CryptoLib::ComputeEncryptedDataHMAC(encrypted_pb, aes_key);
+  std::string mac = ComputeEncryptedDataHmac(encrypted_pb, aes_key);
   if (mac.length() != encrypted_pb.mac().length()) {
     LOG(ERROR) << "Corrupted data in encrypted pb.";
     return false;
@@ -703,7 +703,7 @@ bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
     return false;
   }
 
-  SecureBlob reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
+  SecureBlob reset_secret = HmacSha256(reset_salt, local_reset_seed);
   int ret = le_manager_->ResetCredential(vk_reset.GetLELabel(), reset_secret);
   if (ret != LE_CRED_SUCCESS) {
     PopulateError(error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET

@@ -155,6 +155,7 @@ static_library("libcrosplatform") {
     "../crypto/elliptic_curve.cc",
     "../crypto/error_util.cc",
     "../crypto/hkdf.cc",
+    "../crypto/hmac.cc",
     "../crypto/recovery_crypto.cc",
     "../crypto/sha.cc",
     "../cryptohome_metrics.cc",

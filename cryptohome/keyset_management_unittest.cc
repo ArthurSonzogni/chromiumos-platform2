@@ -19,6 +19,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
@@ -182,7 +183,7 @@ class KeysetManagementTest : public ::testing::Test {
 
     brillo::SecureBlob hmac_key(signing_key);
     brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
-    brillo::SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
+    brillo::SecureBlob hmac = HmacSha256(hmac_key, hmac_data);
 
     return hmac.to_string();
   }

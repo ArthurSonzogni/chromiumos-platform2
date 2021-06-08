@@ -15,6 +15,7 @@
 
 #include <brillo/file_utils.h>
 
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
@@ -364,8 +365,7 @@ brillo::SecureBlob EncryptionKey::GetDerivedSystemKey(
     const std::string& label) const {
   if (!system_key_.empty() &&
       system_key_status_ == EncryptionKey::SystemKeyStatus::kNVRAMEncstateful) {
-    return cryptohome::CryptoLib::HmacSha256(system_key_,
-                                             brillo::SecureBlob(label));
+    return cryptohome::HmacSha256(system_key_, brillo::SecureBlob(label));
   }
 
   return brillo::SecureBlob();

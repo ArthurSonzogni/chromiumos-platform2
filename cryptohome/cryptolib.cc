@@ -11,7 +11,6 @@
 #include <malloc.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
 #include <openssl/kdf.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -34,27 +33,6 @@
 using brillo::SecureBlob;
 
 namespace {
-
-
-template <class T>
-brillo::SecureBlob HmacSha512Helper(const brillo::SecureBlob& key,
-                                    const T& data) {
-  const int kSha512OutputSize = 64;
-  unsigned char mac[kSha512OutputSize];
-  HMAC(EVP_sha512(), key.data(), key.size(), data.data(), data.size(), mac,
-       NULL);
-  return brillo::SecureBlob(std::begin(mac), std::end(mac));
-}
-
-template <class T>
-brillo::SecureBlob HmacSha256Helper(const brillo::SecureBlob& key,
-                                    const T& data) {
-  const int kSha256OutputSize = 32;
-  unsigned char mac[kSha256OutputSize];
-  HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(), mac,
-       NULL);
-  return brillo::SecureBlob(std::begin(mac), std::end(mac));
-}
 
 template <class T>
 void BlobToHexToBufferHelper(const T& data,
@@ -268,26 +246,6 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(const SecureBlob& secret_prime,
     return false;
   }
   return true;
-}
-
-brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,
-                                         const brillo::Blob& data) {
-  return HmacSha512Helper(key, data);
-}
-
-brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,
-                                         const brillo::SecureBlob& data) {
-  return HmacSha512Helper(key, data);
-}
-
-brillo::SecureBlob CryptoLib::HmacSha256(const brillo::SecureBlob& key,
-                                         const brillo::Blob& data) {
-  return HmacSha256Helper(key, data);
-}
-
-brillo::SecureBlob CryptoLib::HmacSha256(const brillo::SecureBlob& key,
-                                         const brillo::SecureBlob& data) {
-  return HmacSha256Helper(key, data);
 }
 
 size_t CryptoLib::GetAesBlockSize() {
@@ -919,16 +877,6 @@ void CryptoLib::SecureBlobToHexToBuffer(const brillo::SecureBlob& blob,
                                         void* buffer,
                                         size_t buffer_length) {
   BlobToHexToBufferHelper(blob, buffer, buffer_length);
-}
-
-std::string CryptoLib::ComputeEncryptedDataHMAC(
-    const EncryptedData& encrypted_data, const SecureBlob& hmac_key) {
-  SecureBlob blob1(encrypted_data.iv().begin(), encrypted_data.iv().end());
-  SecureBlob blob2(encrypted_data.encrypted_data().begin(),
-                   encrypted_data.encrypted_data().end());
-  SecureBlob result = SecureBlob::Combine(blob1, blob2);
-  SecureBlob hmac = HmacSha512(hmac_key, result);
-  return hmac.to_string();
 }
 
 bool CryptoLib::TpmCompatibleOAEPEncrypt(RSA* key,

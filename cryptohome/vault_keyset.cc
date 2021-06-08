@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_block_state.pb.h"
+#include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key_objects.h"
@@ -487,7 +488,7 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
     }
 
     reset_salt_ = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-    reset_secret_ = CryptoLib::HmacSha256(reset_salt_.value(), reset_seed_);
+    reset_secret_ = HmacSha256(reset_salt_.value(), reset_seed_);
   }
 
   AuthBlockState auth_block_state;
