@@ -56,6 +56,9 @@ U2fResponseAdpu U2fMessageHandler::ProcessMsg(const std::string& req) {
 
   U2fIns ins = adpu->Ins();
 
+  // TODO(crbug.com/1218246) Change UMA enum name kU2fCommand if new enums for
+  // U2fIns are added to avoid data discontinuity, then use <largest-enum>+1
+  // rather than <largest-enum>.
   metrics_->SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
                           static_cast<int>(U2fIns::kU2fVersion));
 

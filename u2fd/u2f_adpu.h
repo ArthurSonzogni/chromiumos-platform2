@@ -23,6 +23,9 @@ enum class U2fIns : uint8_t {
   kU2fRegister = 1,      // U2F_REGISTER
   kU2fAuthenticate = 2,  // U2F_AUTHENTICATE
   kU2fVersion = 3,       // U2F_VERSION
+
+  // TODO(crbug.com/1218246) Change UMA enum name kU2fCommand if new enums are
+  // added to avoid data discontinuity.
   kInsInvalid = 0xff,
 };
 
