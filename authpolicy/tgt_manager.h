@@ -79,10 +79,10 @@ class TgtManager {
   void Reset();
 
   // Acquires a TGT using the password given in the file descriptor
-  // |password_fd|. See AcquiteTgt() for details.
+  // |password_fd|. See AcquireTgt() for details.
   ErrorType AcquireTgtWithPassword(int password_fd) WARN_UNUSED_RESULT;
 
-  // Acquires a TGT using the keytab file at |keytab_path|. See AcquiteTgt() for
+  // Acquires a TGT using the keytab file at |keytab_path|. See AcquireTgt() for
   // details.
   ErrorType AcquireTgtWithKeytab(Path keytab_path) WARN_UNUSED_RESULT;
 

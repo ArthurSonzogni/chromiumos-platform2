@@ -110,7 +110,7 @@ const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
 const char kKeyCannotContactKDC[] = "Cannot contact any KDC";
 const char kKeyCannotFindKDC[] = "Cannot find KDC";
-const char kKeyNoCrentialsCache[] = "No credentials cache found";
+const char kKeyNoCredentialsCache[] = "No credentials cache found";
 const char kKeyTicketExpired[] = "Ticket expired while renewing credentials";
 const char kKeyEncTypeNotSupported[] = "KDC has no support for encryption type";
 
@@ -195,7 +195,7 @@ WARN_UNUSED_RESULT ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
     LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
     return ERROR_NETWORK_PROBLEM;
   }
-  if (Contains(kinit_err, kKeyNoCrentialsCache)) {
+  if (Contains(kinit_err, kKeyNoCredentialsCache)) {
     LOG(ERROR) << "kinit failed - no credentials cache found";
     return ERROR_NO_CREDENTIALS_CACHE_FOUND;
   }
@@ -217,7 +217,7 @@ WARN_UNUSED_RESULT ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
   const std::string& klist_out = klist_cmd.GetStdout();
   const std::string& klist_err = klist_cmd.GetStderr();
 
-  if (Contains(klist_err, kKeyNoCrentialsCache)) {
+  if (Contains(klist_err, kKeyNoCredentialsCache)) {
     LOG(ERROR) << "klist failed - no credentials cache found";
     return ERROR_NO_CREDENTIALS_CACHE_FOUND;
   }
@@ -303,7 +303,7 @@ TgtManager::~TgtManager() {
   base::DeleteFile(base::FilePath(paths_->Get(config_path_)));
   base::DeleteFile(base::FilePath(paths_->Get(credential_cache_path_)));
 
-  // Note that the destuctor of |tgt_renewal_callback_| does not cancel.
+  // Note that the destructor of `tgt_renewal_callback_` does not cancel.
   tgt_renewal_callback_.Cancel();
 }
 
