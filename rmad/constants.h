@@ -12,6 +12,7 @@ constexpr char kStateHistory[] = "state_history";
 constexpr char kStateMap[] = "state_map";
 constexpr char kNetworkConnected[] = "network_connected";
 constexpr char kSameOwner[] = "same_owner";
+constexpr char kCalibrationMap[] = "calibration_map";
 
 }  // namespace rmad
 

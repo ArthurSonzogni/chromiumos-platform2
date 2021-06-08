@@ -127,6 +127,16 @@ void RmadInterfaceImpl::RegisterSignalSender(
   }
 }
 
+void RmadInterfaceImpl::RegisterSignalSender(
+    RmadState::StateCase state_case,
+    std::unique_ptr<base::RepeatingCallback<
+        bool(CheckCalibrationState::CalibrationStatus, double)>> callback) {
+  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
+  if (state_handler) {
+    state_handler->RegisterSignalSender(std::move(callback));
+  }
+}
+
 void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> state_handler;

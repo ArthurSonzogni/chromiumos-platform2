@@ -24,6 +24,11 @@ class RmadInterface {
       RmadState::StateCase state_case,
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) = 0;
 
+  virtual void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<base::RepeatingCallback<bool(
+          CheckCalibrationState::CalibrationStatus, double)>> callback) = 0;
+
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;
 

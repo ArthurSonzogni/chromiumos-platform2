@@ -89,29 +89,32 @@ enum RmadErrorCode {
   // The device info is incorrect.
   RMAD_ERROR_DEVICE_INFO_INVALID = 25;
 
+  // Calibration component is missing.
+  RMAD_ERROR_MISSING_CALIBRATION_COMPONENT = 26;
+
   // Calibration failed for a component.
-  RMAD_ERROR_CALIBRATION_FAILED = 26;
+  RMAD_ERROR_CALIBRATION_FAILED = 27;
 
   // Provisioning failed for the device.
-  RMAD_ERROR_PROVISIONING_FAILED = 27;
+  RMAD_ERROR_PROVISIONING_FAILED = 28;
 
   // Device could not be powerwashed.
-  RMAD_ERROR_POWERWASH_FAILED = 28;
+  RMAD_ERROR_POWERWASH_FAILED = 29;
 
   // Device finalization failed.
-  RMAD_ERROR_FINALIZATION_FAILED = 29;
+  RMAD_ERROR_FINALIZATION_FAILED = 30;
 
   // Logs failed to upload because the server could not be reached.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CANNOT_CONNECT = 30;
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CANNOT_CONNECT = 31;
 
   // Logs failed to upload because the server refused the connection.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CONNECTION_REJECTED = 31;
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CONNECTION_REJECTED = 32;
 
   // Logs failed to upload because the connection was interrupted.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_TRANSFER_FAILED = 32;
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_TRANSFER_FAILED = 33;
 
   // It is not possible to cancel RMA finalization process at this point.
-  RMAD_ERROR_CANNOT_CANCEL_RMA = 33;
+  RMAD_ERROR_CANNOT_CANCEL_RMA = 34;
 }
 
 // Defined Rmad states.
@@ -274,15 +277,39 @@ message UpdateDeviceInfoState {
   uint32 original_sku_index = 8;
 }
 
-// Calibrate devices such as accelerometer.
-message CalibrateComponentsState {
-  // Enum for CalibrationProgress signal.
-  enum CalibrationComponent {
-    RMAD_CALIBRATION_COMPONENT_UNKNOWN = 0;
-    RMAD_CALIBRATION_COMPONENT_ACCELEROMETER = 1;
+message CheckCalibrationState {
+  // Calibration status of each component such as an accelerometer.
+  message CalibrationStatus {
+    enum Component {
+      RMAD_CALIBRATION_COMPONENT_UNKNOWN = 0;
+      RMAD_CALIBRATION_COMPONENT_ACCELEROMETER = 1;
+      RMAD_CALIBRATION_COMPONENT_GYROSCOPE = 2;
+    }
+
+    enum Status {
+      RMAD_CALIBRATE_UNKNOWN = 0;
+      RMAD_CALIBRATE_WAITING = 1;
+      RMAD_CALIBRATE_IN_PROGRESS = 2;
+      RMAD_CALIBRATE_COMPLETE = 3;
+      RMAD_CALIBRATE_FAILED = 4;
+      RMAD_CALIBRATE_SKIP = 5;
+    }
+
+    Component name = 1;
+    Status status = 2;
   }
 
-  // No state. Waits for signal that calibration is complete.
+  repeated CalibrationStatus components = 1;
+}
+
+// Wait for technician to setup device to be ready for calibration.
+message SetupCalibrationState {
+  // No state. Waits for the technician to check the setup.
+}
+
+// Wait for calibration.
+message RunCalibrationState {
+  // No state. Waits for the calibration of the devices.
 }
 
 // Provision the device.
@@ -330,10 +357,12 @@ message RmadState {
     UpdateRoFirmwareState update_ro_firmware = 10;
     RestockState restock = 11;
     UpdateDeviceInfoState update_device_info = 12;
-    CalibrateComponentsState calibrate_components = 13;
-    ProvisionDeviceState provision_device = 14;
-    WriteProtectEnablePhysicalState wp_enable_physical = 15;
-    FinalizeState finalize = 16;
+    CheckCalibrationState check_calibration = 13;
+    SetupCalibrationState setup_calibration = 14;
+    RunCalibrationState run_calibration = 15;
+    ProvisionDeviceState provision_device = 16;
+    WriteProtectEnablePhysicalState wp_enable_physical = 17;
+    FinalizeState finalize = 18;
   }
 }
 

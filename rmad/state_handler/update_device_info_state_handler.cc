@@ -30,7 +30,7 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
 
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kCalibrateComponents};
+          .state_case = RmadState::StateCase::kCheckCalibration};
 }
 
 }  // namespace rmad

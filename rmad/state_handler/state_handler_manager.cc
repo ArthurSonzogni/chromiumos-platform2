@@ -9,13 +9,15 @@
 #include <base/check.h>
 #include <base/memory/scoped_refptr.h>
 
-#include "rmad/state_handler/calibrate_components_state_handler.h"
+#include "rmad/state_handler/check_calibration_state_handler.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/device_destination_state_handler.h"
 #include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/provision_device_state_handler.h"
 #include "rmad/state_handler/restock_state_handler.h"
+#include "rmad/state_handler/run_calibration_state_handler.h"
 #include "rmad/state_handler/select_network_state_handler.h"
+#include "rmad/state_handler/setup_calibration_state_handler.h"
 #include "rmad/state_handler/update_chrome_state_handler.h"
 #include "rmad/state_handler/update_device_info_state_handler.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
@@ -71,7 +73,11 @@ void StateHandlerManager::RegisterStateHandlers() {
   RegisterStateHandler(
       base::MakeRefCounted<UpdateDeviceInfoStateHandler>(json_store_));
   RegisterStateHandler(
-      base::MakeRefCounted<CalibrateComponentsStateHandler>(json_store_));
+      base::MakeRefCounted<CheckCalibrationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<SetupCalibrationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<RunCalibrationStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<ProvisionDeviceStateHandler>(json_store_));
   RegisterStateHandler(

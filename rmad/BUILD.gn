@@ -71,13 +71,15 @@ static_library("libdbus_utils") {
 static_library("libstate_handler") {
   sources = [
     "state_handler/base_state_handler.cc",
-    "state_handler/calibrate_components_state_handler.cc",
+    "state_handler/check_calibration_state_handler.cc",
     "state_handler/components_repair_state_handler.cc",
     "state_handler/device_destination_state_handler.cc",
     "state_handler/finalize_state_handler.cc",
     "state_handler/provision_device_state_handler.cc",
     "state_handler/restock_state_handler.cc",
+    "state_handler/run_calibration_state_handler.cc",
     "state_handler/select_network_state_handler.cc",
+    "state_handler/setup_calibration_state_handler.cc",
     "state_handler/state_handler_manager.cc",
     "state_handler/update_chrome_state_handler.cc",
     "state_handler/update_device_info_state_handler.cc",
