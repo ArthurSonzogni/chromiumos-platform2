@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/tpm.h"
@@ -99,7 +99,7 @@ class LECredentialManagerImplUnitTest : public testing::Test {
     int64_t file_size;
     ASSERT_TRUE(base::GetFileSize(path, &file_size));
     std::vector<uint8_t> random_data(file_size);
-    CryptoLib::GetSecureRandom(random_data.data(), file_size);
+    GetSecureRandom(random_data.data(), file_size);
     ASSERT_EQ(file_size,
               base::WriteFile(path, reinterpret_cast<char*>(random_data.data()),
                               file_size));

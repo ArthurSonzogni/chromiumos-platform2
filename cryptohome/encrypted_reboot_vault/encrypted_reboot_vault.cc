@@ -4,7 +4,6 @@
 
 #include "cryptohome/encrypted_reboot_vault/encrypted_reboot_vault.h"
 
-#include <cryptohome/cryptolib.h>
 #include <cryptohome/dircrypto_util.h>
 #include <cryptohome/platform.h>
 #include <cryptohome/storage/encrypted_container/filesystem_key.h>
@@ -14,6 +13,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/key_value_store.h>
+
+#include "cryptohome/crypto/secure_blob_util.h"
 
 namespace {
 // Pstore-pmsg path.
@@ -47,8 +48,7 @@ bool SaveKey(const cryptohome::FileSystemKey& key) {
   // Do not use store.Save() since it uses WriteFileAtomically() which will
   // fail on /dev/pmsg0.
   brillo::KeyValueStore store;
-  store.SetString(kEncryptionKeyTag,
-                  cryptohome::CryptoLib::SecureBlobToHex(key.fek));
+  store.SetString(kEncryptionKeyTag, cryptohome::SecureBlobToHex(key.fek));
 
   std::string store_contents = store.SaveToString();
   if (store_contents.empty() ||
@@ -113,7 +113,7 @@ bool EncryptedRebootVault::CreateVault() {
   // Generate encryption key.
   cryptohome::FileSystemKey transient_encryption_key;
   transient_encryption_key.fek =
-      cryptohome::CryptoLib::CreateSecureRandomBlob(kEncryptionKeySize);
+      cryptohome::CreateSecureRandomBlob(kEncryptionKeySize);
 
   // Store key into pmsg. If it fails, we bail out.
   if (!SaveKey(transient_encryption_key)) {

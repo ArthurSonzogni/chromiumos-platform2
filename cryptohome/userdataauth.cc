@@ -29,10 +29,10 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
@@ -1938,7 +1938,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::AddDataRestoreKey(
 
   // Generate the data restore key and its associated data.
   const auto data_restore_key =
-      CryptoLib::CreateSecureRandomBlob(kDefaultDataRestoreKeyLength);
+      CreateSecureRandomBlob(kDefaultDataRestoreKeyLength);
   KeyData new_key_data;
   new_key_data.set_label(kDataRestoreKeyLabel);
 

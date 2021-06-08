@@ -23,6 +23,7 @@
 #include <brillo/process/process.h>
 
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
@@ -466,8 +467,7 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
   EncStatefulArea* provisional_area =
       reinterpret_cast<EncStatefulArea*>(provisional_contents_->data());
 
-  const auto key_material =
-      cryptohome::CryptoLib::CreateSecureRandomBlob(DIGEST_LENGTH);
+  const auto key_material = cryptohome::CreateSecureRandomBlob(DIGEST_LENGTH);
   rc = provisional_area->Init(key_material);
   if (rc != RESULT_SUCCESS) {
     return rc;

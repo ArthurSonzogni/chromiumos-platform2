@@ -38,6 +38,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
@@ -417,7 +418,7 @@ bool TpmImpl::CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
     return false;
   }
   auto migration_password =
-      CryptoLib::CreateSecureRandomBlob(kDefaultDiscardableWrapPasswordLength);
+      CreateSecureRandomBlob(kDefaultDiscardableWrapPasswordLength);
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(
                     local_policy, TSS_SECRET_MODE_PLAIN,
                     migration_password.size(), migration_password.data()))) {

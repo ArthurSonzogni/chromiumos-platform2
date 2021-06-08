@@ -6,7 +6,7 @@
 
 #include <base/files/file_path.h>
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
@@ -40,7 +40,7 @@ bool EcryptfsContainer::Setup(const FileSystemKey& encryption_key,
   // Add the File Encryption key (FEK) from the vault keyset.  This is the key
   // that is used to encrypt the file contents when the file is persisted to the
   // lower filesystem by eCryptfs.
-  auto key_signature = CryptoLib::SecureBlobToHex(key_reference_.fek_sig);
+  auto key_signature = SecureBlobToHex(key_reference_.fek_sig);
   if (!platform_->AddEcryptfsAuthToken(encryption_key.fek, key_signature,
                                        encryption_key.fek_salt)) {
     LOG(ERROR) << "Couldn't add eCryptfs file encryption key to keyring.";
@@ -50,8 +50,7 @@ bool EcryptfsContainer::Setup(const FileSystemKey& encryption_key,
   // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
   // key that is used to encrypt the file name when the file is persisted to the
   // lower filesystem by eCryptfs.
-  auto filename_key_signature =
-      CryptoLib::SecureBlobToHex(key_reference_.fnek_sig);
+  auto filename_key_signature = SecureBlobToHex(key_reference_.fnek_sig);
   if (!platform_->AddEcryptfsAuthToken(encryption_key.fnek,
                                        filename_key_signature,
                                        encryption_key.fnek_salt)) {

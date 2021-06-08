@@ -18,6 +18,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -156,8 +157,7 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
   // Create a randomly generated high entropy secret, derive VKKSeed from it,
   // and use that to generate a VKK. The HE secret will be stored in the
   // LECredentialManager, along with the LE secret (which is |le_secret| here).
-  brillo::SecureBlob he_secret =
-      CryptoLib::CreateSecureRandomBlob(kDefaultSecretSize);
+  brillo::SecureBlob he_secret = CreateSecureRandomBlob(kDefaultSecretSize);
 
   // Derive the VKK_seed by performing an HMAC on he_secret.
   brillo::SecureBlob vkk_seed =
@@ -165,8 +165,8 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 
   // Generate and store random new IVs for file-encryption keys and
   // chaps key encryption.
-  const auto fek_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-  const auto chaps_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+  const auto fek_iv = CreateSecureRandomBlob(kAesBlockSize);
+  const auto chaps_iv = CreateSecureRandomBlob(kAesBlockSize);
 
   brillo::SecureBlob vkk_key = HmacSha256(kdf_skey, vkk_seed);
 

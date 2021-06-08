@@ -25,8 +25,8 @@
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
 using base::FilePath;
@@ -206,7 +206,7 @@ void Lockbox::FinalizeMountEncrypted(const brillo::SecureBlob& entropy) const {
 
   // Take hash of entropy and convert to hex string for cmdline.
   SecureBlob hash = Sha256(entropy);
-  hex = CryptoLib::SecureBlobToHex(hash);
+  hex = SecureBlobToHex(hash);
 
   process_->Reset(0);
   process_->AddArg(kMountEncrypted);

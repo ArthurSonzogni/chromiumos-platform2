@@ -26,10 +26,10 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
@@ -151,8 +151,8 @@ class UserDataAuthTestBase : public ::testing::Test {
     // It doesnt matter what key it returns for the purposes of the UserDataAuth
     // test.
     ON_CALL(keyset_management_, GetPublicMountPassKey(_))
-        .WillByDefault(Return(
-            CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH)));
+        .WillByDefault(
+            Return(CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH)));
     // ARC Disk Quota initialization will do nothing.
     ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
     // Low Disk space handler initialization will do nothing.

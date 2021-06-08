@@ -13,6 +13,7 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -98,7 +99,7 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
   if (!cryptohome_key_loader_->HasCryptohomeKey())
     return base::nullopt;
 
-  const auto local_blob = CryptoLib::CreateSecureRandomBlob(kDefaultAesKeySize);
+  const auto local_blob = CreateSecureRandomBlob(kDefaultAesKeySize);
   brillo::SecureBlob tpm_key;
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);

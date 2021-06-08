@@ -14,8 +14,8 @@
 
 #include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 
@@ -116,26 +116,22 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
 }
 
 void VaultKeyset::CreateRandomChapsKey() {
-  chaps_key_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_CHAPS_KEY_LENGTH);
+  chaps_key_ = CreateSecureRandomBlob(CRYPTOHOME_CHAPS_KEY_LENGTH);
 }
 
 void VaultKeyset::CreateRandomResetSeed() {
-  reset_seed_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_RESET_SEED_LENGTH);
+  reset_seed_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SEED_LENGTH);
 }
 
 void VaultKeyset::CreateRandom() {
   CHECK(crypto_);
 
-  fek_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  fek_sig_ =
-      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  fek_salt_ =
-      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  fnek_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  fnek_sig_ =
-      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  fnek_salt_ =
-      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  fek_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
+  fek_sig_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
+  fek_salt_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  fnek_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
+  fnek_sig_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
+  fnek_salt_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
   CreateRandomChapsKey();
   CreateRandomResetSeed();
@@ -471,7 +467,7 @@ void VaultKeyset::SetWrappedKeyMaterial(
 bool VaultKeyset::Encrypt(const SecureBlob& key,
                           const std::string& obfuscated_username) {
   CHECK(crypto_);
-  salt_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  salt_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
   // This generates the reset secret for PinWeaver credentials. Doing it per
   // secret is confusing and difficult to maintain. It's necessary so that
@@ -487,7 +483,7 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
       return false;
     }
 
-    reset_salt_ = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+    reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
     reset_secret_ = HmacSha256(reset_salt_.value(), reset_seed_);
   }
 

@@ -6,6 +6,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
@@ -23,7 +24,7 @@ constexpr int kScryptOutputSize = 256 / CHAR_BIT;
 bool ScryptVerifier::Set(const brillo::SecureBlob& secret) {
   verifier_.clear();
   verifier_.resize(kScryptOutputSize, 0);
-  scrypt_salt_ = CryptoLib::CreateSecureRandomBlob(kScryptSaltSize);
+  scrypt_salt_ = CreateSecureRandomBlob(kScryptSaltSize);
 
   return CryptoLib::Scrypt(secret, scrypt_salt_, kScryptNFactor, kScryptRFactor,
                            kScryptPFactor, &verifier_);

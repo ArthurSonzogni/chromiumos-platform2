@@ -12,7 +12,6 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
-#include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <unistd.h>
 
@@ -27,33 +26,11 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/libscrypt_compat.h"
 #include "cryptohome/platform.h"
 
 using brillo::SecureBlob;
-
-namespace {
-
-template <class T>
-void BlobToHexToBufferHelper(const T& data,
-                             void* buffer,
-                             size_t buffer_length) {
-  static const char table[] = "0123456789abcdef";
-  char* char_buffer = reinterpret_cast<char*>(buffer);
-  char* char_buffer_end = char_buffer + buffer_length;
-  for (uint8_t byte : data) {
-    if (char_buffer == char_buffer_end)
-      break;
-    *char_buffer++ = table[(byte >> 4) & 0x0f];
-    if (char_buffer == char_buffer_end)
-      break;
-    *char_buffer++ = table[byte & 0x0f];
-  }
-  if (char_buffer != char_buffer_end)
-    *char_buffer = '\x00';
-}
-
-}  // namespace
 
 namespace cryptohome {
 
@@ -119,18 +96,6 @@ constexpr ScryptParameters kTestScryptParams = {1024, 8, 1};
 
 // static
 ScryptParameters CryptoLib::gScryptParams = kDefaultScryptParams;
-
-void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
-  // In unlikely situations, such as the random generator lacks enough entropy,
-  // RAND_bytes can fail.
-  CHECK_EQ(1, RAND_bytes(buf, base::checked_cast<int>(length)));
-}
-
-SecureBlob CryptoLib::CreateSecureRandomBlob(size_t length) {
-  SecureBlob blob(length);
-  GetSecureRandom(reinterpret_cast<unsigned char*>(blob.data()), length);
-  return blob;
-}
 
 bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   crypto::ScopedRSA rsa(RSA_new());
@@ -855,30 +820,6 @@ bool CryptoLib::RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
   return true;
 }
 
-std::string CryptoLib::BlobToHex(const brillo::Blob& blob) {
-  std::string buffer(blob.size() * 2, '\x00');
-  BlobToHexToBuffer(blob, &buffer[0], buffer.size());
-  return buffer;
-}
-
-std::string CryptoLib::SecureBlobToHex(const brillo::SecureBlob& blob) {
-  std::string buffer(blob.size() * 2, '\x00');
-  SecureBlobToHexToBuffer(blob, &buffer[0], buffer.size());
-  return buffer;
-}
-
-void CryptoLib::BlobToHexToBuffer(const brillo::Blob& blob,
-                                  void* buffer,
-                                  size_t buffer_length) {
-  BlobToHexToBufferHelper(blob, buffer, buffer_length);
-}
-
-void CryptoLib::SecureBlobToHexToBuffer(const brillo::SecureBlob& blob,
-                                        void* buffer,
-                                        size_t buffer_length) {
-  BlobToHexToBufferHelper(blob, buffer, buffer_length);
-}
-
 bool CryptoLib::TpmCompatibleOAEPEncrypt(RSA* key,
                                          const brillo::SecureBlob& input,
                                          brillo::SecureBlob* output) {
@@ -1010,8 +951,7 @@ bool CryptoLib::DeprecatedEncryptScryptBlob(
     brillo::SecureBlob* wrapped_blob) {
   wrapped_blob->resize(blob.size() + kScryptMetadataSize);
 
-  brillo::SecureBlob salt =
-      CryptoLib::CreateSecureRandomBlob(kLibScryptSaltSize);
+  brillo::SecureBlob salt = CreateSecureRandomBlob(kLibScryptSaltSize);
   brillo::SecureBlob derived_key(kLibScryptDerivedKeySize, '0');
   if (!Scrypt(key_source, salt, gScryptParams.n_factor, gScryptParams.r_factor,
               gScryptParams.p_factor, &derived_key) != 0) {

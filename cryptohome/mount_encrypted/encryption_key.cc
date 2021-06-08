@@ -16,6 +16,7 @@
 #include <brillo/file_utils.h>
 
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
@@ -267,8 +268,7 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
   if (system_key_.empty()) {
     LOG(INFO) << "Attempting to generate fresh NVRAM system key.";
 
-    const auto key_material =
-        cryptohome::CryptoLib::CreateSecureRandomBlob(DIGEST_LENGTH);
+    const auto key_material = cryptohome::CreateSecureRandomBlob(DIGEST_LENGTH);
     result_code rc = loader_->Initialize(key_material, &system_key_);
     if (rc != RESULT_SUCCESS) {
       LOG(ERROR) << "Failed to initialize system key NV space contents.";
@@ -317,8 +317,7 @@ result_code EncryptionKey::LoadEncryptionKey() {
                    GetUselessKey())) {
     // This is a brand new system with no keys, so generate a fresh one.
     LOG(INFO) << "Generating new encryption key.";
-    encryption_key_ =
-        cryptohome::CryptoLib::CreateSecureRandomBlob(DIGEST_LENGTH);
+    encryption_key_ = cryptohome::CreateSecureRandomBlob(DIGEST_LENGTH);
     encryption_key_status_ = EncryptionKeyStatus::kFresh;
   } else {
     encryption_key_status_ = EncryptionKeyStatus::kNeedsFinalization;

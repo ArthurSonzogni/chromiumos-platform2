@@ -12,6 +12,8 @@
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
+
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -44,7 +46,7 @@ TEST(CryptoLibTest, RsaOaepDecrypt) {
   CHECK(e);
   EXPECT_TRUE(BN_set_word(e.get(), kWellKnownExponent));
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), kKeySizeBits, e.get(), nullptr));
-  const auto plaintext = CryptoLib::CreateSecureRandomBlob(kPlaintextSize);
+  const auto plaintext = CreateSecureRandomBlob(kPlaintextSize);
   // Test decryption when a non-empty label is used.
   const SecureBlob kFirstOaepLabel("foo");
   SecureBlob first_padded_data(kKeySizeBytes);
@@ -143,7 +145,7 @@ TEST(CryptoLibTest, AesGcmTestSimple) {
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
 
   EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
 
@@ -168,7 +170,7 @@ TEST(CryptoLibTest, AesGcmTestWrongKey) {
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
 
   EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
 
@@ -177,7 +179,7 @@ TEST(CryptoLibTest, AesGcmTestWrongKey) {
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob wrong_key(kAesGcm256KeySize);
-  CryptoLib::GetSecureRandom(wrong_key.data(), wrong_key.size());
+  GetSecureRandom(wrong_key.data(), wrong_key.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
   EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, tag, wrong_key, iv,
@@ -195,7 +197,7 @@ TEST(CryptoLibTest, AesGcmTestWrongIV) {
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
 
   EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
 
@@ -204,7 +206,7 @@ TEST(CryptoLibTest, AesGcmTestWrongIV) {
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob wrong_iv(kAesGcmIVSize);
-  CryptoLib::GetSecureRandom(wrong_iv.data(), wrong_iv.size());
+  GetSecureRandom(wrong_iv.data(), wrong_iv.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
   EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, tag, key, wrong_iv,
@@ -222,7 +224,7 @@ TEST(CryptoLibTest, AesGcmTestWrongTag) {
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
 
   EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
 
@@ -231,7 +233,7 @@ TEST(CryptoLibTest, AesGcmTestWrongTag) {
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob wrong_tag(kAesGcmTagSize);
-  CryptoLib::GetSecureRandom(wrong_tag.data(), wrong_tag.size());
+  GetSecureRandom(wrong_tag.data(), wrong_tag.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
   EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, wrong_tag, key, iv,
@@ -252,7 +254,7 @@ TEST(CryptoLibTest, AesGcmTestUniqueIVs) {
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
 
   brillo::SecureBlob iv(kAesGcmIVSize);
   EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));

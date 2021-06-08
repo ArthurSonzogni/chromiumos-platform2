@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -47,7 +48,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   if (!cryptohome_key_loader_->HasCryptohomeKey())
     return base::nullopt;
 
-  const auto vkk_key = CryptoLib::CreateSecureRandomBlob(kDefaultAesKeySize);
+  const auto vkk_key = CreateSecureRandomBlob(kDefaultAesKeySize);
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&pass_blob, &vkk_iv}))

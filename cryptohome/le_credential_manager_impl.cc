@@ -12,8 +12,8 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
 
@@ -398,7 +398,7 @@ bool LECredentialManagerImpl::ReplayInsert(uint64_t label,
   // Fill cred_metadata with some random data since LECredentialManager
   // considers empty cred_metadata as a non-existent label.
   std::vector<uint8_t> cred_metadata(mac.size());
-  CryptoLib::GetSecureRandom(cred_metadata.data(), cred_metadata.size());
+  GetSecureRandom(cred_metadata.data(), cred_metadata.size());
   SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
   if (!hash_tree_->StoreLabel(label_obj, mac, cred_metadata, true)) {
     ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);

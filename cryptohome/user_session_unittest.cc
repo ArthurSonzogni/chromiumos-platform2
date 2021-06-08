@@ -18,7 +18,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -401,7 +401,7 @@ class UserSessionReAuthTest : public ::testing::Test {
 
   void SetUp() {
     salt.resize(16);
-    CryptoLib::GetSecureRandom(salt.data(), salt.size());
+    GetSecureRandom(salt.data(), salt.size());
   }
 
  protected:

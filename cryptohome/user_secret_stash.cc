@@ -12,6 +12,7 @@
 #include <string>
 
 #include "cryptohome/aes_gcm_encrypted_uss_generated.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
@@ -72,9 +73,8 @@ void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
 
 void UserSecretStash::InitializeRandom() {
   file_system_key_ =
-      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
-  reset_secret_ =
-      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
+  reset_secret_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
 }
 
 base::Optional<brillo::SecureBlob> UserSecretStash::GetAesGcmEncrypted(

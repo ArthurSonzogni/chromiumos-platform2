@@ -14,8 +14,8 @@
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/hash_tree_leaf_data.pb.h"
 
 namespace cryptohome {
@@ -236,8 +236,8 @@ SignInHashTree::Label SignInHashTree::GetFreeLabel() {
   }
 
   uint64_t new_label;
-  CryptoLib::GetSecureRandom(reinterpret_cast<unsigned char*>(&new_label),
-                             sizeof(new_label));
+  GetSecureRandom(reinterpret_cast<unsigned char*>(&new_label),
+                  sizeof(new_label));
   new_label %= num_free_keys;
   std::sort(used_keys.begin(), used_keys.end());
   for (uint64_t used_key : used_keys) {

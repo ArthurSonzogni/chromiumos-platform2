@@ -22,9 +22,9 @@
 
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
@@ -190,9 +190,9 @@ TEST_F(CryptoTest, EncryptionTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  GetSecureRandom(salt.data(), salt.size());
 
   AuthBlockState auth_block_state;
   WrappedKeyMaterial wrapped_key_material;
@@ -218,9 +218,9 @@ TEST_F(CryptoTest, DecryptionTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  GetSecureRandom(salt.data(), salt.size());
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
@@ -300,7 +300,7 @@ TEST_F(CryptoTest, BlobToHexTest) {
     blob_out[i * 2 + 1] = 0;
   }
 
-  CryptoLib::SecureBlobToHexToBuffer(blob_in, blob_out.data(), blob_out.size());
+  SecureBlobToHexToBuffer(blob_in, blob_out.data(), blob_out.size());
   for (int i = 0; i < 256; i++) {
     std::string digits = base::StringPrintf("%02x", i);
     ASSERT_EQ(digits[0], blob_out[i * 2]);
@@ -339,9 +339,9 @@ TEST_F(CryptoTest, TpmStepTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  GetSecureRandom(salt.data(), salt.size());
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
@@ -417,9 +417,9 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  GetSecureRandom(salt.data(), salt.size());
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
@@ -489,9 +489,9 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  GetSecureRandom(salt.data(), salt.size());
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
@@ -529,9 +529,9 @@ TEST_F(CryptoTest, ScryptStepTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(key.data(), key.size());
+  GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  GetSecureRandom(salt.data(), salt.size());
   vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
@@ -599,7 +599,7 @@ TEST_F(CryptoTest, ComputeEncryptedDataHmac) {
 
   // Create hash key.
   SecureBlob hmac_key(32);
-  CryptoLib::GetSecureRandom(hmac_key.data(), hmac_key.size());
+  GetSecureRandom(hmac_key.data(), hmac_key.size());
 
   // Perturb iv and data slightly. Verify hashes are all different.
   std::string hmac1 = ComputeEncryptedDataHmac(pb, hmac_key);
@@ -782,10 +782,8 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
 
   // This used to happen in Crypto::EncryptVaultKeyset, but now happens in
   // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ =
-      CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ =
-      CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
+  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
   pin_vault_keyset_.reset_secret_ = HmacSha256(
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
 
@@ -808,10 +806,8 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
 
   // This used to happen in Crypto::EncryptVaultKeyset, but now happens in
   // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ =
-      CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ =
-      CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
+  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
   pin_vault_keyset_.reset_secret_ = HmacSha256(
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
 

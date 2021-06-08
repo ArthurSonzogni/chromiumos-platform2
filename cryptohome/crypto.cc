@@ -29,6 +29,7 @@
 #include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/challenge_credential_auth_block.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_key_loader.h"
@@ -211,7 +212,7 @@ bool WrapVaultKeysetWithAesDeprecated(const VaultKeyset& vault_keyset,
 
   // If a reset seed is present, encrypt and store it, else clear the field.
   if (store_reset_seed && vault_keyset.GetResetSeed().size() != 0) {
-    const auto reset_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+    const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
     if (!CryptoLib::AesEncryptDeprecated(vault_keyset.GetResetSeed(),
                                          blobs.vkk_key.value(), reset_iv,
@@ -338,7 +339,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
     LOG(ERROR) << "Creating new salt at " << path.value() << " (" << force
                << ", " << file_len << ")";
     // If this salt doesn't exist, automatically create it.
-    local_salt = CryptoLib::CreateSecureRandomBlob(length);
+    local_salt = CreateSecureRandomBlob(length);
     if (!platform_->WriteSecureBlobToFileAtomicDurable(path, local_salt,
                                                        kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";
@@ -362,7 +363,7 @@ void Crypto::PasswordToPasskey(const char* password,
                                SecureBlob* passkey) {
   CHECK(password);
 
-  std::string ascii_salt = CryptoLib::SecureBlobToHex(salt);
+  std::string ascii_salt = SecureBlobToHex(salt);
   // Convert a raw password to a password hash
   SHA256_CTX sha_context;
   SecureBlob md_value(SHA256_DIGEST_LENGTH);
@@ -374,8 +375,7 @@ void Crypto::PasswordToPasskey(const char* password,
 
   md_value.resize(SHA256_DIGEST_LENGTH / 2);
   SecureBlob local_passkey(SHA256_DIGEST_LENGTH);
-  CryptoLib::SecureBlobToHexToBuffer(md_value, local_passkey.data(),
-                                     local_passkey.size());
+  SecureBlobToHexToBuffer(md_value, local_passkey.data(), local_passkey.size());
   passkey->swap(local_passkey);
 }
 

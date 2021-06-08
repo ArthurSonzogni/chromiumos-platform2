@@ -9,6 +9,7 @@
 
 #include <unistd.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key_objects.h"
@@ -24,7 +25,7 @@ bool CreateScryptHelper(const brillo::SecureBlob& input_key,
                         CryptoError* error) {
   // Because of the implementation peculiarity of libscrypt, the salt MUST be
   // unique for each key, and the same key can never be repurposed.
-  *salt = CryptoLib::CreateSecureRandomBlob(kLibScryptSaltSize);
+  *salt = CreateSecureRandomBlob(kLibScryptSaltSize);
 
   derived_key->resize(kLibScryptDerivedKeySize);
   if (!CryptoLib::Scrypt(input_key, *salt, kDefaultScryptParams.n_factor,

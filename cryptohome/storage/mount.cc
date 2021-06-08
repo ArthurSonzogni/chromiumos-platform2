@@ -36,9 +36,9 @@
 #include <google/protobuf/util/message_differencer.h>
 
 #include "cryptohome/chaps_client_factory.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
@@ -300,9 +300,9 @@ bool Mount::MountCryptohome(const std::string& username,
   }
 
   std::string key_signature =
-      CryptoLib::SecureBlobToHex(file_system_keyset.KeyReference().fek_sig);
+      SecureBlobToHex(file_system_keyset.KeyReference().fek_sig);
   std::string fnek_signature =
-      CryptoLib::SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
+      SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
 
   MountHelper::Options mount_opts = {mount_type_,
                                      mount_args.to_migrate_from_ecryptfs};

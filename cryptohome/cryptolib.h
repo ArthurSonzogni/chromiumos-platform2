@@ -70,9 +70,6 @@ class CryptoLib {
     kCtr = 3,
   };
 
-  static void GetSecureRandom(unsigned char* bytes, size_t len);
-  static brillo::SecureBlob CreateSecureRandomBlob(size_t length);
-
   static bool CreateRsaKey(size_t bits,
                            brillo::SecureBlob* n,
                            brillo::SecureBlob* p);
@@ -198,25 +195,6 @@ class CryptoLib {
                              const brillo::SecureBlob& oaep_label,
                              RSA* key,
                              brillo::SecureBlob* plaintext);
-
-  // Encodes a binary blob to hex-ascii. Similar to base::HexEncode but
-  // produces lowercase letters for hex digits.
-  //
-  // Parameters
-  //   blob - The binary blob to convert
-  static std::string BlobToHex(const brillo::Blob& blob);
-  static std::string SecureBlobToHex(const brillo::SecureBlob& blob);
-
-  // Parameters
-  //   blob - The binary blob to convert
-  //   buffer (IN/OUT) - Where to store the converted blob
-  //   buffer_length - The size of the buffer
-  static void BlobToHexToBuffer(const brillo::Blob& blob,
-                                void* buffer,
-                                size_t buffer_length);
-  static void SecureBlobToHexToBuffer(const brillo::SecureBlob& blob,
-                                      void* buffer,
-                                      size_t buffer_length);
 
   // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
   //
