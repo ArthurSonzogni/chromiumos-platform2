@@ -76,7 +76,7 @@ bool DoRecoveryCryptoCreateAction(
 
   SecureBlob destination_share, dealer_pub_key;
   RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
-  if (!recovery_crypto->GenerateShares(mediator_pub_key, hkdf_info, hkdf_salt,
+  if (!recovery_crypto->GenerateShares(mediator_pub_key,
                                        &encrypted_mediator_share,
                                        &destination_share, &dealer_pub_key)) {
     LOG(ERROR) << "Failed to generate recovery shares.";
@@ -137,8 +137,8 @@ bool DoRecoveryCryptoMediateAction(
       &mediator_priv_key));
 
   SecureBlob mediated_publisher_pub_key;
-  if (!fake_mediator->Mediate(mediator_priv_key, publisher_pub_key, hkdf_info,
-                              hkdf_salt, encrypted_mediator_share,
+  if (!fake_mediator->Mediate(mediator_priv_key, publisher_pub_key,
+                              encrypted_mediator_share,
                               &mediated_publisher_pub_key)) {
     LOG(ERROR) << "Failed to perform recovery mediation.";
     return false;
@@ -152,6 +152,8 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& publisher_pub_key_in_file_path,
     const FilePath& mediated_publisher_pub_key_in_file_path,
     const FilePath& recovery_secret_out_file_path) {
+  SecureBlob hkdf_salt;
+  CHECK(brillo::SecureBlob::HexStringToSecureBlob(kHkdfSaltHex, &hkdf_salt));
   SecureBlob destination_share, publisher_pub_key, mediated_publisher_pub_key;
   if (!ReadFileToSecureBlobLogged(destination_share_in_file_path,
                                   &destination_share) ||

@@ -16,9 +16,24 @@
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
+#include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
+
+namespace {
+
+brillo::SecureBlob GetRecoveryKeyHkdfInfo() {
+  return brillo::SecureBlob("recovery_key");
+}
+
+brillo::SecureBlob GetMediatorShareHkdfInfo() {
+  return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
+}
+
+}  // namespace
+
+const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] = "mediator_share";
 
 const EllipticCurve::CurveType RecoveryCrypto::kCurve =
     EllipticCurve::CurveType::kPrime256;
@@ -40,8 +55,6 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   ~RecoveryCryptoImpl() override;
 
   bool GenerateShares(const brillo::SecureBlob& mediator_pub_key,
-                      const brillo::SecureBlob& hkdf_info,
-                      const brillo::SecureBlob& hkdf_salt,
                       EncryptedMediatorShare* encrypted_mediator_share,
                       brillo::SecureBlob* destination_share,
                       brillo::SecureBlob* dealer_pub_key) const override;
@@ -58,8 +71,6 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   // embedded ephemeral public key, AES-GCM tag and iv. Returns false if error
   // occurred.
   bool EncryptMediatorShare(const brillo::SecureBlob& mediator_pub_key,
-                            const brillo::SecureBlob& hkdf_info,
-                            const brillo::SecureBlob& hkdf_salt,
                             const brillo::SecureBlob& mediator_share,
                             EncryptedMediatorShare* encrypted_ms,
                             BN_CTX* context) const;
@@ -73,8 +84,6 @@ RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;
 
 bool RecoveryCryptoImpl::EncryptMediatorShare(
     const brillo::SecureBlob& mediator_pub_key,
-    const brillo::SecureBlob& hkdf_info,
-    const brillo::SecureBlob& hkdf_salt,
     const brillo::SecureBlob& mediator_share,
     RecoveryCrypto::EncryptedMediatorShare* encrypted_ms,
     BN_CTX* context) const {
@@ -86,10 +95,14 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
   }
 
   brillo::SecureBlob aes_gcm_key;
+  // |hkdf_salt| can be empty here because the input already has a high entropy.
+  // Bruteforce attacks are not an issue here and as we generate an ephemeral
+  // key as input to HKDF the output will already be non-deterministic.
   if (!GenerateEcdhHkdfSenderKey(ec_, mediator_pub_key,
                                  encrypted_ms->ephemeral_pub_key,
-                                 ephemeral_priv_key, hkdf_info, hkdf_salt,
-                                 kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
+                                 ephemeral_priv_key, GetMediatorShareHkdfInfo(),
+                                 /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
+                                 kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
     return false;
   }
@@ -109,8 +122,6 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
 
 bool RecoveryCryptoImpl::GenerateShares(
     const brillo::SecureBlob& mediator_pub_key,
-    const brillo::SecureBlob& hkdf_info,
-    const brillo::SecureBlob& hkdf_salt,
     EncryptedMediatorShare* encrypted_mediator_share,
     brillo::SecureBlob* destination_share,
     brillo::SecureBlob* dealer_pub_key) const {
@@ -166,9 +177,8 @@ bool RecoveryCryptoImpl::GenerateShares(
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
     return false;
   }
-  if (!EncryptMediatorShare(mediator_pub_key, hkdf_info, hkdf_salt,
-                            mediator_share, encrypted_mediator_share,
-                            context.get())) {
+  if (!EncryptMediatorShare(mediator_pub_key, mediator_share,
+                            encrypted_mediator_share, context.get())) {
     LOG(ERROR) << "Failed to encrypt mediator share";
     return false;
   }
@@ -178,7 +188,7 @@ bool RecoveryCryptoImpl::GenerateShares(
 bool RecoveryCryptoImpl::GeneratePublisherKeys(
     const brillo::SecureBlob& dealer_pub_key,
     brillo::SecureBlob* publisher_pub_key,
-    brillo::SecureBlob* publisher_dh) const {
+    brillo::SecureBlob* publisher_recovery_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -212,8 +222,15 @@ bool RecoveryCryptoImpl::GeneratePublisherKeys(
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
     return false;
   }
-  if (!ec_.PointToSecureBlob(*point_dh, publisher_dh, context.get())) {
+  brillo::SecureBlob publisher_dh;
+  if (!ec_.PointToSecureBlob(*point_dh, &publisher_dh, context.get())) {
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+    return false;
+  }
+  // |hkdf_salt| can be empty here because the input already has a high entropy.
+  if (!Hkdf(HkdfHash::kSha256, publisher_dh, GetRecoveryKeyHkdfInfo(),
+            /*salt=*/brillo::SecureBlob(),
+            /*result_len=*/0, publisher_recovery_key)) {
     return false;
   }
   return true;
@@ -223,7 +240,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
     const brillo::SecureBlob& publisher_pub_key,
     const brillo::SecureBlob& destination_share,
     const brillo::SecureBlob& mediated_publisher_pub_key,
-    brillo::SecureBlob* destination_dh) const {
+    brillo::SecureBlob* destination_recovery_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -260,8 +277,15 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to perform point addition";
     return false;
   }
-  if (!ec_.PointToSecureBlob(*point_dest, destination_dh, context.get())) {
+  brillo::SecureBlob destination_dh;
+  if (!ec_.PointToSecureBlob(*point_dest, &destination_dh, context.get())) {
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+    return false;
+  }
+  // |hkdf_salt| can be empty here because the input already has a high entropy.
+  if (!Hkdf(HkdfHash::kSha256, destination_dh, GetRecoveryKeyHkdfInfo(),
+            /*salt=*/brillo::SecureBlob(), /*result_len=*/0,
+            destination_recovery_key)) {
     return false;
   }
   return true;

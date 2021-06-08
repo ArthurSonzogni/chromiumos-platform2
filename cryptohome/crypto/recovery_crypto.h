@@ -39,6 +39,10 @@ class RecoveryCrypto {
     brillo::SecureBlob encrypted_data;
   };
 
+  // Constant value of hkdf_info for mediator share. Must be kept in sync with
+  // the server.
+  static const char kMediatorShareHkdfInfoValue[];
+
   // Elliptic Curve type used by the protocol.
   static const EllipticCurve::CurveType kCurve;
 
@@ -54,11 +58,9 @@ class RecoveryCrypto {
   // Formula:
   //   dealer_pub_key = G * (mediator_share + destination_share (mod order))
   // where G is an elliptic curve group generator.
-  // Encrypts `mediator_share` to `mediator_pub_key` with `hkdf_info` and
-  // `hkdf_salt` and returns as `encrypted_mediator_share`.
+  // Encrypts `mediator_share` to `mediator_pub_key` and returns as
+  // `encrypted_mediator_share`.
   virtual bool GenerateShares(const brillo::SecureBlob& mediator_pub_key,
-                              const brillo::SecureBlob& hkdf_info,
-                              const brillo::SecureBlob& hkdf_salt,
                               EncryptedMediatorShare* encrypted_mediator_share,
                               brillo::SecureBlob* destination_share,
                               brillo::SecureBlob* dealer_pub_key) const = 0;
@@ -66,22 +68,22 @@ class RecoveryCrypto {
   // Generates publisher public keys. Returns false if error occurred.
   // Formula:
   //   publisher_pub_key = G * secret
-  //   publisher_dh = dealer_pub_key * secret
+  //   publisher_recovery_key = HKDF((dealer_pub_key * secret))
   // where G is an elliptic curve group generator.
   virtual bool GeneratePublisherKeys(
       const brillo::SecureBlob& dealer_pub_key,
       brillo::SecureBlob* publisher_pub_key,
-      brillo::SecureBlob* publisher_dh) const = 0;
+      brillo::SecureBlob* publisher_recovery_key) const = 0;
 
   // Recovers destination. Returns false if error occurred.
   // Formula:
-  //   destination_dh = publisher_pub_key * destination_share
-  //     + mediated_publisher_pub_key
+  //   destination_recovery_key = HKDF((publisher_pub_key * destination_share
+  //                                   + mediated_publisher_pub_key))
   virtual bool RecoverDestination(
       const brillo::SecureBlob& publisher_pub_key,
       const brillo::SecureBlob& destination_share,
       const brillo::SecureBlob& mediated_publisher_pub_key,
-      brillo::SecureBlob* destination_dh) const = 0;
+      brillo::SecureBlob* destination_recovery_key) const = 0;
 
   // Serialize `encrypted_mediator_share` by simply concatenating fixed-length
   // blobs into `serialized_blob`. Returns false if error occurred.

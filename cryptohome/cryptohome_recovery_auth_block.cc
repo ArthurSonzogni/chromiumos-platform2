@@ -10,7 +10,6 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -60,28 +59,19 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
   brillo::SecureBlob destination_share;
   brillo::SecureBlob dealer_pub_key;
-  // Note: `hkdf_info` is empty for now, later it will contain metadata like
-  // user id.
-  bool generate_shares_result = recovery->GenerateShares(
-      mediator_pub_key, /*hkdf_info=*/brillo::SecureBlob(), salt,
-      &encrypted_mediator_share, &destination_share, &dealer_pub_key);
+  bool generate_shares_result =
+      recovery->GenerateShares(mediator_pub_key, &encrypted_mediator_share,
+                               &destination_share, &dealer_pub_key);
   if (!generate_shares_result) {
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return base::nullopt;
   }
 
   brillo::SecureBlob publisher_pub_key;
-  brillo::SecureBlob publisher_dh;
+  brillo::SecureBlob publisher_recovery_key;
   bool generate_pub_keys_result = recovery->GeneratePublisherKeys(
-      dealer_pub_key, &publisher_pub_key, &publisher_dh);
+      dealer_pub_key, &publisher_pub_key, &publisher_recovery_key);
   if (!generate_pub_keys_result) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return base::nullopt;
-  }
-
-  brillo::SecureBlob recovery_key;
-  if (!Hkdf(HkdfHash::kSha256, publisher_dh, /*info=*/brillo::SecureBlob(),
-            salt, /*result_len=*/0, &recovery_key)) {
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return base::nullopt;
   }
@@ -90,7 +80,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!CryptoLib::DeriveSecretsScrypt(recovery_key, salt,
+  if (!CryptoLib::DeriveSecretsScrypt(publisher_recovery_key, salt,
                                       {&aes_skey, &vkk_iv})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return base::nullopt;
@@ -138,20 +128,13 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
     return false;
   }
 
-  // TODO(b/184924482): unwrap the destination share (when we stop using using
+  // TODO(b/184924482): unwrap the destination share (when we stop using
   // plaintext_destination_share).
-  brillo::SecureBlob destination_dh;
+  brillo::SecureBlob destination_recovery_key;
   bool result = recovery->RecoverDestination(
       publisher_pub_key, plaintext_destination_share,
-      mediated_publisher_pub_key, &destination_dh);
+      mediated_publisher_pub_key, &destination_recovery_key);
   if (!result) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return false;
-  }
-
-  brillo::SecureBlob recovery_key;
-  if (!Hkdf(HkdfHash::kSha256, destination_dh, /*info=*/brillo::SecureBlob(),
-            salt, /*result_len=*/0, &recovery_key)) {
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return false;
   }
@@ -160,7 +143,7 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!CryptoLib::DeriveSecretsScrypt(recovery_key, salt,
+  if (!CryptoLib::DeriveSecretsScrypt(destination_recovery_key, salt,
                                       {&aes_skey, &vkk_iv})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return false;

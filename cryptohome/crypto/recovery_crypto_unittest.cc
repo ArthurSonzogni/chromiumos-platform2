@@ -19,9 +19,6 @@ TEST(RecoveryCryptoTest, RecoverDestination) {
       FakeRecoveryMediatorCrypto::Create();
   ASSERT_TRUE(mediator);
 
-  const brillo::SecureBlob hkdf_info("test_info");
-  const brillo::SecureBlob hkdf_salt("test_salt");
-
   brillo::SecureBlob mediator_pub_key;
   brillo::SecureBlob mediator_priv_key;
   ASSERT_TRUE(
@@ -32,7 +29,7 @@ TEST(RecoveryCryptoTest, RecoverDestination) {
   RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
   brillo::SecureBlob destination_share;
   brillo::SecureBlob dealer_pub_key;
-  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key, hkdf_info, hkdf_salt,
+  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key,
                                        &encrypted_mediator_share,
                                        &destination_share, &dealer_pub_key));
 
@@ -42,8 +39,8 @@ TEST(RecoveryCryptoTest, RecoverDestination) {
       dealer_pub_key, &publisher_pub_key, &publisher_dh));
 
   brillo::SecureBlob mediated_publisher_pub_key;
-  ASSERT_TRUE(mediator->Mediate(mediator_priv_key, publisher_pub_key, hkdf_info,
-                                hkdf_salt, encrypted_mediator_share,
+  ASSERT_TRUE(mediator->Mediate(mediator_priv_key, publisher_pub_key,
+                                encrypted_mediator_share,
                                 &mediated_publisher_pub_key));
 
   brillo::SecureBlob destination_dh;
@@ -70,9 +67,6 @@ TEST(RecoveryCryptoTest, RecoverDestinationFromInvalidInput) {
   std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
   ASSERT_TRUE(recovery);
 
-  const brillo::SecureBlob hkdf_info("test_info");
-  const brillo::SecureBlob hkdf_salt("test_salt");
-
   brillo::SecureBlob mediator_pub_key;
   brillo::SecureBlob mediator_priv_key;
   ASSERT_TRUE(
@@ -83,7 +77,7 @@ TEST(RecoveryCryptoTest, RecoverDestinationFromInvalidInput) {
   RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
   brillo::SecureBlob destination_share;
   brillo::SecureBlob dealer_pub_key;
-  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key, hkdf_info, hkdf_salt,
+  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key,
                                        &encrypted_mediator_share,
                                        &destination_share, &dealer_pub_key));
 
@@ -111,9 +105,6 @@ TEST(RecoveryCryptoTest, SerializeEncryptedMediatorShare) {
   std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
   ASSERT_TRUE(recovery);
 
-  const brillo::SecureBlob hkdf_info("test_info");
-  const brillo::SecureBlob hkdf_salt("test_salt");
-
   brillo::SecureBlob mediator_pub_key;
   brillo::SecureBlob mediator_priv_key;
   ASSERT_TRUE(
@@ -124,7 +115,7 @@ TEST(RecoveryCryptoTest, SerializeEncryptedMediatorShare) {
   RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
   brillo::SecureBlob destination_share;
   brillo::SecureBlob dealer_pub_key;
-  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key, hkdf_info, hkdf_salt,
+  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key,
                                        &encrypted_mediator_share,
                                        &destination_share, &dealer_pub_key));
 

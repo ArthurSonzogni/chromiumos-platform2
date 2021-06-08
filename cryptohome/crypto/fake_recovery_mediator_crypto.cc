@@ -22,6 +22,13 @@
 #include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
+namespace {
+
+brillo::SecureBlob GetMediatorShareHkdfInfo() {
+  return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
+}
+
+}  // namespace
 
 // Hardcoded fake mediator public and private keys. Do not use them in
 // production! Keys were generated at random using
@@ -73,15 +80,14 @@ bool FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
 
 bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
     const brillo::SecureBlob& mediator_priv_key,
-    const brillo::SecureBlob& hkdf_info,
-    const brillo::SecureBlob& hkdf_salt,
     const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
     brillo::SecureBlob* mediator_share) const {
   brillo::SecureBlob aes_gcm_key;
   if (!GenerateEcdhHkdfRecipientKey(
           ec_, mediator_priv_key, encrypted_mediator_share.ephemeral_pub_key,
-          hkdf_info, hkdf_salt, RecoveryCrypto::kHkdfHash, kAesGcm256KeySize,
-          &aes_gcm_key)) {
+          GetMediatorShareHkdfInfo(),
+          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
+          kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key";
     return false;
   }
@@ -99,8 +105,6 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
 bool FakeRecoveryMediatorCrypto::Mediate(
     const brillo::SecureBlob& mediator_priv_key,
     const brillo::SecureBlob& publisher_pub_key,
-    const brillo::SecureBlob& hkdf_info,
-    const brillo::SecureBlob& hkdf_salt,
     const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
     brillo::SecureBlob* mediated_publisher_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -109,8 +113,8 @@ bool FakeRecoveryMediatorCrypto::Mediate(
     return false;
   }
   brillo::SecureBlob mediator_share;
-  if (!DecryptMediatorShare(mediator_priv_key, hkdf_info, hkdf_salt,
-                            encrypted_mediator_share, &mediator_share)) {
+  if (!DecryptMediatorShare(mediator_priv_key, encrypted_mediator_share,
+                            &mediator_share)) {
     LOG(ERROR) << "Failed to decrypt mediator share";
     return false;
   }

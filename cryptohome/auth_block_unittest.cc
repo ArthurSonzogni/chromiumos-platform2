@@ -672,8 +672,7 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
       &mediator_priv_key));
   brillo::SecureBlob mediated_publisher_pub_key;
   ASSERT_TRUE(mediator->Mediate(
-      mediator_priv_key, publisher_pub_key, /*hkdf_info=*/brillo::SecureBlob(),
-      salt,
+      mediator_priv_key, publisher_pub_key,
       GetEncryptedMediatorShare(
           cryptohome_recovery_state.encrypted_mediator_share()),
       &mediated_publisher_pub_key));
