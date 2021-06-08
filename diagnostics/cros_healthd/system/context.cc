@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
+#include "diagnostics/cros_healthd/system/udev_impl.h"
 
 namespace diagnostics {
 
@@ -71,6 +72,8 @@ bool Context::Initialize() {
   executor_->Connect(std::move(endpoint_));
 
   tick_clock_ = std::make_unique<base::DefaultTickClock>();
+
+  udev_ = std::make_unique<UdevImpl>();
 
   return true;
 }
@@ -129,6 +132,10 @@ SystemUtilities* Context::system_utils() const {
 
 base::TickClock* Context::tick_clock() const {
   return tick_clock_.get();
+}
+
+UdevInterface* Context::udev() const {
+  return udev_.get();
 }
 
 }  // namespace diagnostics

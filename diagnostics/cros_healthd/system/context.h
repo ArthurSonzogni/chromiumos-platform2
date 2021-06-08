@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
+#include "diagnostics/cros_healthd/system/udev_interface.h"
 
 namespace org {
 namespace chromium {
@@ -99,6 +100,8 @@ class Context {
   base::TickClock* tick_clock() const;
   // Return current time.
   virtual const base::Time time() const;
+  // Use the object returned by udev() to access udev related interfaces.
+  UdevInterface* udev() const;
 
  private:
   // Allows MockContext to override the default helper objects.
@@ -129,6 +132,7 @@ class Context {
   std::unique_ptr<ExecutorAdapter> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<base::TickClock> tick_clock_;
+  std::unique_ptr<UdevInterface> udev_;
   base::FilePath root_dir_;
 };
 

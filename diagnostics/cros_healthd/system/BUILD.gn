@@ -36,6 +36,7 @@ source_set("libcros_healthd_system") {
     "system_utilities_constants.cc",
     "system_utilities_impl.cc",
     "udev_hwdb_impl.cc",
+    "udev_impl.cc",
   ]
 }
 
@@ -69,6 +70,7 @@ if (use.test || use.fuzzer) {
       "fake_pci_util.cc",
       "fake_system_config.cc",
       "fake_system_utilities.cc",
+      "fake_udev.cc",
       "fake_udev_hwdb.cc",
       "mock_context.cc",
     ]

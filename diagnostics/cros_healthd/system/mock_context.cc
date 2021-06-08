@@ -32,6 +32,7 @@ bool MockContext::Initialize() {
   system_utils_ = std::make_unique<FakeSystemUtilities>();
   executor_ = std::make_unique<MockExecutorAdapter>();
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
+  udev_ = std::make_unique<FakeUdev>();
 
   if (!temp_dir_.CreateUniqueTempDir())
     return false;
@@ -92,6 +93,10 @@ MockExecutorAdapter* MockContext::mock_executor() const {
 
 base::SimpleTestTickClock* MockContext::mock_tick_clock() const {
   return static_cast<base::SimpleTestTickClock*>(tick_clock_.get());
+}
+
+FakeUdev* MockContext::fake_udev() const {
+  return static_cast<FakeUdev*>(udev_.get());
 }
 
 }  // namespace diagnostics
