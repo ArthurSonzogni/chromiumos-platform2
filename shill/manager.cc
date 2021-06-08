@@ -1994,8 +1994,10 @@ void Manager::UpdateAlwaysOnVpnWith(const ProfileRefPtr& profile) {
   if (profile->GetAlwaysOnVpnSettings(&mode, &service_id)) {
     ServiceRefPtr service = GetServiceWithRpcIdentifier(service_id);
     if (service == nullptr || service->technology() != Technology::kVPN) {
-      LOG(WARNING) << "Invalid VPN service: " << service_id.value()
-                   << ". Always-on is disabled";
+      if (service_id != DBusControl::NullRpcIdentifier()) {
+        LOG(WARNING) << "Invalid VPN service: " << service_id.value()
+                     << ". Always-on is disabled";
+      }
       // The service should be set to null as always-on VPN is disabled.
       SetAlwaysOnVpn(kAlwaysOnVpnModeOff, nullptr);
       return;
