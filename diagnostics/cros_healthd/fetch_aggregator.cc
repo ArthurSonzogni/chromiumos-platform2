@@ -36,7 +36,8 @@ FetchAggregator::FetchAggregator(Context* context)
       memory_fetcher_(std::make_unique<MemoryFetcher>(context)),
       stateful_partition_fetcher_(
           std::make_unique<StatefulPartitionFetcher>(context)),
-      timezone_fetcher_(std::make_unique<TimezoneFetcher>(context)) {
+      timezone_fetcher_(std::make_unique<TimezoneFetcher>(context)),
+      bus_fetcher_(std::make_unique<BusFetcher>(context)) {
   DCHECK(backlight_fetcher_);
   DCHECK(battery_fetcher_);
   DCHECK(bluetooth_fetcher_);
@@ -50,6 +51,7 @@ FetchAggregator::FetchAggregator(Context* context)
   DCHECK(memory_fetcher_);
   DCHECK(stateful_partition_fetcher_);
   DCHECK(timezone_fetcher_);
+  DCHECK(bus_fetcher_);
 }
 
 FetchAggregator::~FetchAggregator() = default;
@@ -102,10 +104,9 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kFan: {
-        fan_fetcher_->FetchFanInfo(
-            base::BindOnce(
-                &FetchAggregator::WrapFetchProbeData<mojo_ipc::FanResultPtr>,
-                weak_factory_.GetWeakPtr(), category, itr, &info->fan_result));
+        fan_fetcher_->FetchFanInfo(base::BindOnce(
+            &FetchAggregator::WrapFetchProbeData<mojo_ipc::FanResultPtr>,
+            weak_factory_.GetWeakPtr(), category, itr, &info->fan_result));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kStatefulPartition: {
@@ -144,6 +145,11 @@ void FetchAggregator::Run(
         WrapFetchProbeData(
             category, itr, &info->boot_performance_result,
             boot_performance_fetcher_->FetchBootPerformanceInfo());
+        break;
+      }
+      case mojo_ipc::ProbeCategoryEnum::kBus: {
+        WrapFetchProbeData(category, itr, &info->bus_result,
+                           bus_fetcher_->FetchBusDevices());
         break;
       }
     }

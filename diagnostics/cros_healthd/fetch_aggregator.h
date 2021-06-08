@@ -19,6 +19,7 @@
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
@@ -103,6 +104,7 @@ class FetchAggregator final {
   std::unique_ptr<StatefulPartitionFetcher> const stateful_partition_fetcher_ =
       nullptr;
   std::unique_ptr<TimezoneFetcher> const timezone_fetcher_ = nullptr;
+  std::unique_ptr<BusFetcher> const bus_fetcher_ = nullptr;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};

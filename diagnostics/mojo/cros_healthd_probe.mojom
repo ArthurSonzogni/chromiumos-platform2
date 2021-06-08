@@ -38,6 +38,7 @@ enum ProbeCategoryEnum {
   kNetwork,
   kAudio,
   kBootPerformance,
+  kBus,
 
   // TODO(b/190459636): Rename it to kSystem after migration.
   kSystem2 = 0x10000,
@@ -679,6 +680,15 @@ struct BootPerformanceInfo {
   string shutdown_reason;
 };
 
+// Bus probe result. Can either be populated with the BusInfo or an error
+// retrieving the information.
+union BusResult {
+  // Valid BusInfo.
+  // TODO(chungsheng): Add BusInfo.
+  // The error that occurred attempting to retrieve the BusInfo.
+  ProbeError error;
+};
+
 // A collection of all the device's telemetry information that cros_healthd is
 // capable of reporting. Note that every field in TelemetryInfo is nullable, and
 // the response for a particular ProbeTelemetryInfo request will only contain
@@ -729,4 +739,7 @@ struct TelemetryInfo {
   // Information about boot performance. Only present when kBootPerformance was
   // included in the categories input to ProbeTelemetryInfo.
   BootPerformanceResult? boot_performance_result;
+  // Information about the bus devices. Only present when kBus was included
+  // in the categories input to ProbeTelemetryInfo.
+  BusResult? bus_result;
 };

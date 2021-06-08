@@ -35,6 +35,7 @@ source_set("libcros_healthd_fetchers") {
     "battery_fetcher.cc",
     "bluetooth_fetcher.cc",
     "boot_performance_fetcher.cc",
+    "bus_fetcher.cc",
     "cpu_fetcher.cc",
     "disk_fetcher.cc",
     "fan_fetcher.cc",
