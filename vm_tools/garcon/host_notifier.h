@@ -51,6 +51,22 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
                          const std::string& allowed_extensions,
                          std::vector<std::string>* files);
 
+  // Sends a gRPC call to the host to request information about what space is
+  // available on the VM disk and how much it could be expanded by.
+  static bool GetDiskInfo(vm_tools::container::GetDiskInfoResponse* response);
+
+  // Sends a gRPC call to the host to request that the disk be expanded by
+  // |space_requested| bytes. Will return the number of bytes that the disk was
+  // expanded by or an error.
+  static bool RequestSpace(uint64_t space_requested,
+                           vm_tools::container::RequestSpaceResponse* response);
+
+  // Sends a gRPC call to the host to notify it that it can shrink the disk by
+  // |space_to_release| bytes. Will return the number of bytes the disk was
+  // shrunk by or an error.
+  static bool ReleaseSpace(uint64_t space_to_release,
+                           vm_tools::container::ReleaseSpaceResponse* response);
+
   ~HostNotifier() override;
 
   // Notifies the host that garcon is ready. This will send the initial update

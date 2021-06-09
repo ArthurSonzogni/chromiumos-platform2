@@ -238,6 +238,82 @@ bool HostNotifier::SelectFile(const std::string& type,
   return true;
 }
 
+bool HostNotifier::GetDiskInfo(
+    vm_tools::container::GetDiskInfoResponse* response) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  grpc::ClientContext ctx;
+  vm_tools::container::GetDiskInfoRequest request;
+  request.set_token(token);
+  grpc::Status status = stub->GetDiskInfo(&ctx, request, response);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to get disk info: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
+bool HostNotifier::RequestSpace(
+    uint64_t space_requested,
+    vm_tools::container::RequestSpaceResponse* response) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  grpc::ClientContext ctx;
+  vm_tools::container::RequestSpaceRequest request;
+  request.set_token(token);
+  request.set_space_requested(space_requested);
+  grpc::Status status = stub->RequestSpace(&ctx, request, response);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to expand the disk: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
+bool HostNotifier::ReleaseSpace(
+    uint64_t space_to_release,
+    vm_tools::container::ReleaseSpaceResponse* response) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  grpc::ClientContext ctx;
+  vm_tools::container::ReleaseSpaceRequest request;
+  request.set_token(token);
+  request.set_space_to_release(space_to_release);
+  grpc::Status status = stub->ReleaseSpace(&ctx, request, response);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to shrink the disk: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
 HostNotifier::HostNotifier(base::Closure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),
