@@ -186,6 +186,10 @@ what it means and how to parse it.
 
 ## mountinfo
 
+File system mount information from the init process's mount namespace. See
+https://www.kernel.org/doc/html/latest/filesystems/sharedsubtree.html for what
+it means.
+
 ## netlog
 
 ## netstat
@@ -292,6 +296,17 @@ what it means and how to parse it.
 
 ## zram block device stat values
 
+block I/O statistics for zram, space-delimited, documented at
+https://www.kernel.org/doc/html/latest/block/stat.html
+
+Useful to know how many I/O happened and how much time was spent using zram
+swap.
+
 ## zram new stats names
 
 ## zram new stats values
+
+Memory management related statistics for zram from /sys/block/zram0/, Documented
+at https://www.kernel.org/doc/html/latest/admin-guide/blockdev/zram.html#stats
+
+Useful to know how much memory is being stored compressed in zram.
