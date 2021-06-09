@@ -38,6 +38,8 @@ const char BrowserJobInterface::kLoginManagerFlag[] = "--login-manager";
 const char BrowserJobInterface::kLoginUserFlag[] = "--login-user=";
 const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
+const char BrowserJobInterface::kBrowserDataMigrationFlag[] =
+    "--browser-data-migration=";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
@@ -392,8 +394,32 @@ void BrowserJob::ClearPid() {
 
 std::vector<std::string> BrowserJob::ExportArgv() const {
   std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
-  to_return.insert(to_return.end(), login_arguments_.begin(),
-                   login_arguments_.end());
+
+  if (browser_data_migration_arguments_.empty()) {
+    to_return.insert(to_return.end(), login_arguments_.begin(),
+                     login_arguments_.end());
+  } else {
+    // Browser data migration for lacros happens in the following steps.
+    // 1. Inside the login flow in ash-chrome, whether migration is required or
+    // not is checked.
+    // 2. If required, ash-chrome calls DBus method to session manager to be
+    // relaunched with specific args for migration.
+    // 3. Ash-chrome terminates itself.
+    // 4. Ash-chrome is relaunched to carry out the migration.
+    // 5. Ash-chrome terminates itself once migration is completed.
+    // 6. Ash-chrome is relaunched to display user's home screen.
+    //
+    // If |browser_data_migration_arguments_| is not empty, it means that
+    // |SetBrowserDataMigrationArgsForUser| was called. With these arguments
+    // present, ash-chrome gets launched to run browser data migration from
+    // ash-chrome to lacros-chrome. Concretely browser data files in
+    // ash-chrome's user data dir will be copied/moved to lacros-chrome's user
+    // data dir. |ClearBrowserDataMigrationArgs()| must be called after
+    // launching ash-chrome for data migration once ash-chrome doesn't get stuck
+    // in migration mode.
+    to_return.insert(to_return.end(), browser_data_migration_arguments_.begin(),
+                     browser_data_migration_arguments_.end());
+  }
 
   if (ShouldDropExtraArguments()) {
     LOG(WARNING) << "Dropping extra arguments and setting safe-mode switch due "
@@ -467,6 +493,18 @@ bool BrowserJob::ShouldDropExtraArguments() const {
   return (start_time_with_extra_args != 0 &&
           system_->time(nullptr) - start_time_with_extra_args <
               kRestartWindowSeconds);
+}
+
+void BrowserJob::SetBrowserDataMigrationArgsForUser(
+    const std::string& userhash) {
+  browser_data_migration_arguments_.clear();
+  browser_data_migration_arguments_.push_back(kBrowserDataMigrationFlag +
+                                              userhash);
+  browser_data_migration_arguments_.push_back(kLoginManagerFlag);
+}
+
+void BrowserJob::ClearBrowserDataMigrationArgs() {
+  browser_data_migration_arguments_.clear();
 }
 
 }  // namespace login_manager

@@ -3305,6 +3305,38 @@ TEST_F(SessionManagerImplTest, QueryAdbSideload) {
   impl_->QueryAdbSideload(capturer.CreateMethodResponse<bool>());
 }
 
+TEST_F(SessionManagerImplTest, StartBrowserDataMigration) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash)).Times(1);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartBrowserDataMigration(&error, kSaneEmail));
+}
+
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonLoggedInUser) {
+  // If session has not been started for user,
+  // |SetBrowserDataMigrationArgsForUser()| does not get called.
+  const std::string userhash = SanitizeUserName(kSaneEmail);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash)).Times(0);
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_->StartBrowserDataMigration(&error, kSaneEmail));
+  EXPECT_EQ(error->GetCode(), dbus_error::kSessionDoesNotExist);
+}
+
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimarynUser) {
+  const std::string second_user_email = "seconduser@gmail.com";
+  ExpectAndRunStartSession(kSaneEmail);
+  ExpectAndRunStartSession(second_user_email);
+
+  // Migration should only happen for primary user.
+  const std::string userhash = SanitizeUserName(second_user_email);
+  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash)).Times(0);
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_->StartBrowserDataMigration(&error, second_user_email));
+  EXPECT_EQ(error->GetCode(), dbus_error::kInvalidAccount);
+}
+
 class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
  public:
   void SetUp() override {

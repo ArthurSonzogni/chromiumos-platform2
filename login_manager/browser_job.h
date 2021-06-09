@@ -95,6 +95,15 @@ class BrowserJobInterface : public ChildJobInterface {
   // Throw away the pid of the currently-tracked browser job.
   virtual void ClearPid() = 0;
 
+  // Sets |kBrowserDataMigrationFlag| and |kLoginManagerFlag| to chrome launch
+  // flags. |userhash| is passed as the value of |kBrowserDataMigrationFlag| to
+  // let chrome know which user data directory to do migration on.
+  virtual void SetBrowserDataMigrationArgsForUser(
+      const std::string& userhash) = 0;
+
+  // Clears values set by |SetBrowserDataMigrationArgsForUser()|.
+  virtual void ClearBrowserDataMigrationArgs() = 0;
+
   // The flag to pass to Chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
 
@@ -110,6 +119,10 @@ class BrowserJobInterface : public ChildJobInterface {
   // The flag to pass to Chrome to tell it that, if it crashes, it should tell
   // crash_reporter to run in crash-loop mode.
   static const char kCrashLoopBeforeFlag[];
+
+  // The flag to pass to chrome to tell it to run migration for the user with
+  // the specified user hash.
+  static const char kBrowserDataMigrationFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
@@ -154,6 +167,8 @@ class BrowserJob : public BrowserJobInterface {
   void SetArguments(const std::vector<std::string>& arguments) override;
   void SetExtraArguments(const std::vector<std::string>& arguments) override;
   void SetFeatureFlags(const std::vector<std::string>& feature_flags) override;
+  void SetBrowserDataMigrationArgsForUser(const std::string& userhash) override;
+  void ClearBrowserDataMigrationArgs() override;
   void SetTestArguments(const std::vector<std::string>& arguments) override;
   void SetAdditionalEnvironmentVariables(
       const std::vector<std::string>& env_vars) override;
@@ -192,6 +207,10 @@ class BrowserJob : public BrowserJobInterface {
 
   // Login-related arguments to pass to exec.  Managed wholly by this class.
   std::vector<std::string> login_arguments_;
+
+  // Lacros related data migration arguments. This is only non-empty if
+  // |SetBrowserDataMigrationArgsForUser| is called.
+  std::vector<std::string> browser_data_migration_arguments_;
 
   // Feature flags to pass to the browser.
   std::vector<std::string> feature_flags_;

@@ -972,6 +972,34 @@ void SessionManagerImpl::HandleLockScreenShown() {
   adaptor_.SendScreenIsLockedSignal();
 }
 
+bool SessionManagerImpl::StartBrowserDataMigration(
+    brillo::ErrorPtr* error, const std::string& in_account_id) {
+  std::string actual_account_id;
+  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
+    DCHECK(*error);
+    return false;
+  }
+
+  auto iter = user_sessions_.find(actual_account_id);
+  // Check if this user already started a session.
+  if (iter == user_sessions_.end()) {
+    *error = CREATE_ERROR_AND_LOG(
+        dbus_error::kSessionDoesNotExist,
+        "Provided user id does not have a session started.");
+    return false;
+  }
+
+  if (actual_account_id != primary_user_account_id_) {
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kInvalidAccount,
+                             "Migration should only happen for primary user.");
+    return false;
+  }
+
+  manager_->SetBrowserDataMigrationArgsForUser(iter->second->userhash);
+  return true;
+}
+
 void SessionManagerImpl::HandleLockScreenDismissed() {
   screen_locked_ = false;
   init_controller_->TriggerImpulse(kScreenUnlockedImpulse, {},

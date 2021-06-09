@@ -702,6 +702,17 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="b" name="reply" direction="out" />
     </method>
+
+    <!--
+        StartBrowserDataMigration:
+        @account_id: Account ID of the user to start data migration for.
+
+        Makes ash-chrome run browser data migration for lacros-chrome on the
+        subsequent ash-chrome run.
+    -->
+    <method name="StartBrowserDataMigration">
+      <arg type="s" name="account_id" direction="in" />
+    </method>
   </interface>
   <!-- ********************************************************************* -->
 </node>

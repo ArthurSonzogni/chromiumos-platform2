@@ -667,4 +667,26 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
             base::JoinString(kExpected, " "));
 }
 
+TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
+  job_->StartSession(kUser, kHash);
+  job_->SetBrowserDataMigrationArgsForUser(kHash);
+
+  // Check that |job_args_1| has args set for data migration.
+  std::vector<std::string> job_args_1 = job_->ExportArgv();
+  ExpectArgsToContainFlag(job_args_1, BrowserJob::kLoginManagerFlag, "");
+  ExpectArgsToContainFlag(job_args_1, BrowserJob::kBrowserDataMigrationFlag,
+                          kHash);
+  ExpectArgsNotToContainFlag(job_args_1, BrowserJob::kLoginUserFlag, kUser);
+
+  job_->ClearBrowserDataMigrationArgs();
+
+  // Check that calling |RunInBackground()| once clears args for data migration
+  // and |job_args_2| has args set to launch chrome for regular user session.
+  std::vector<std::string> job_args_2 = job_->ExportArgv();
+  ExpectArgsToContainFlag(job_args_2, BrowserJob::kLoginUserFlag, kUser);
+  ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kLoginManagerFlag, "");
+  ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kBrowserDataMigrationFlag,
+                             kHash);
+}
+
 }  // namespace login_manager

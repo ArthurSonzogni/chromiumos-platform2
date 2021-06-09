@@ -282,6 +282,10 @@ void SessionManagerService::ScheduleShutdown() {
 
 void SessionManagerService::RunBrowser() {
   browser_->RunInBackground();
+  // Call |ClearBrowserDataMigrationArgs()| here to ensure that the migration
+  // happens only once.
+  browser_->ClearBrowserDataMigrationArgs();
+
   DLOG(INFO) << "Browser is " << browser_->CurrentPid();
   liveness_checker_->Start();
 
@@ -343,6 +347,13 @@ void SessionManagerService::SetFeatureFlagsForUser(
     const std::vector<std::string>& feature_flags) {
   browser_->SetExtraArguments({});
   browser_->SetFeatureFlags(feature_flags);
+}
+
+void SessionManagerService::SetBrowserDataMigrationArgsForUser(
+    const std::string& userhash) {
+  // Setting this to true ensures that |ClearBrowserDataMigrationArgs()| is
+  // called after |BrowserJob::RunInBackground()| is called in |RunBrowser()|.
+  browser_->SetBrowserDataMigrationArgsForUser(userhash);
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {

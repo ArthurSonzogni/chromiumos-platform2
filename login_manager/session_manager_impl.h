@@ -235,6 +235,8 @@ class SessionManagerImpl
                     const std::string& in_unique_identifier) override;
   void StopSession(const std::string& in_unique_identifier) override;
   void StopSessionWithReason(uint32_t reason) override;
+  bool StartBrowserDataMigration(brillo::ErrorPtr* error,
+                                 const std::string& in_account_id) override;
 
   bool LoadShillProfile(brillo::ErrorPtr* error,
                         const std::string& in_account_id) override;

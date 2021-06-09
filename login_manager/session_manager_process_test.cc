@@ -434,4 +434,25 @@ TEST_F(SessionManagerProcessTest, StopAllVms) {
   SimpleRunManager();
 }
 
+TEST_F(SessionManagerProcessTest, SetBrowserDataMigrationArgsForUser) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
+
+  const std::string userhash = "1234abcd";
+  EXPECT_CALL(*job, SetBrowserDataMigrationArgsForUser(userhash)).Times(1);
+  manager_->SetBrowserDataMigrationArgsForUser(userhash);
+}
+
+TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
+  // Check that |SessionManager::RunBrowser()| calls
+  // |ClearBrowserDataMigrationArgs()| after fork/exec if browser data migration
+  // args were set, ensuring that migration is attempted only once.
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
+  const std::string userhash = "1234abcd";
+  manager_->SetBrowserDataMigrationArgsForUser(userhash);
+
+  EXPECT_CALL(*job, ClearBrowserDataMigrationArgs());
+
+  manager_->RunBrowser();
+}
+
 }  // namespace login_manager

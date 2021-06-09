@@ -160,6 +160,7 @@ class SessionManagerService
   void SetFeatureFlagsForUser(
       const std::string& account_id,
       const std::vector<std::string>& feature_flags) override;
+  void SetBrowserDataMigrationArgsForUser(const std::string& userhash) override;
   bool IsBrowser(pid_t pid) override;
   base::TimeTicks GetLastBrowserRestartTime() override;
 
@@ -286,6 +287,12 @@ class SessionManagerService
   // chrome starts and check the 'SessionManaagerLongKillTimeout' feature
   // enabled state via ChromeFeaturesService.
   bool use_long_kill_timeout_ = false;
+
+  // This is set to true when |SetBrowserDataMigrationArgsForUser()| is called.
+  // Inside |RunBrowser()| if the value is true,
+  // |BrowserJob::ClearBrowserDataMigrationArgs()| is called to ensure that
+  // ash-chrome is run with the data migration args only once.
+  bool run_data_migration_ = false;
 };
 }  // namespace login_manager
 
