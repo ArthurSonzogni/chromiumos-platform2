@@ -1,9 +1,10 @@
 # Shill Cellular
+*Updated June 2021*
 
 ## ModemInfo
 
 *   The [ModemInfo class](../cellular/modem_info.h) is a singleton owned by
-    `Manager`. It creates a [DBusObjectManagerProxy] for
+    [Manager]. It creates a [DBusObjectManagerProxy] for
     [org.freedesktop.ModemManager1] to observe the appearance of
     [org.freedesktop.ModemManager1.Modem] objects.
 *   When a `ModemManager1.Modem` object appears, a [Modem](#Modem) class
@@ -17,7 +18,7 @@
 *   The `Modem` class is a helper class for parsing `ModemManager1.Modem`
     `CurrentCapabilities` and `Ports` properties.
 *   When a Modem appears, a [Cellular](#Cellular) class instance is requested
-    from the `DeviceInfo` singleton.
+    from the [DeviceInfo](architecture.md#Device-Info) singleton.
     *   If no `Cellular` Device exists, a new instance is created.
     *   The `Cellular` Device is updated with the new `Modem` properties.
     *   *Note:* The `Cellular` instance may outlive the `Modem` instance
@@ -29,8 +30,8 @@
 ## Cellular
 
 *   The [Cellular class](../cellular/cellular.h) is a `base::RefCounted`
-    `Device` class instance.  Its lifetime is managed by the `DeviceInfo` class.
-*   When a `Cellular` instance is created, it is registered with the `Manager`
+    [Device] class instance.  Its lifetime is managed by the [DeviceInfo] class.
+*   When a `Cellular` instance is created, it is registered with the [Manager]
     class which handles startup, shutdown, policy, power events, and global
     properties.
 *   `Cellular` maintains a state machine tracking the state of the
@@ -74,16 +75,16 @@
 ## CellularServiceProvider
 
 *   The [CellularServiceProvider class](../cellular/cellular_service_provider.h)
-    is a singleton owned by `Manager`.
+    is a [ServiceProvider] singleton owned by [Manager].
 *   `CellularServiceProvider` determines which
     [CellularService](#CellularService) instances to load based on the available
     `SimProperties`.
-*   `Cellular` Service properties are always stored in the **Device** `Profile`.
+*   `Cellular` Service properties are always stored in the **Device** [Profile].
 *   The [Cellular](#Cellular) class provides a vector of `SimProperties`, one
     entry for each active SIM slot, when they become available. At this point
     `CellularServiceProvider` ensures that correct service instances are
     loaded as follows:
-    1.  Matching services in the Device `Profile` are identified for each
+    1.  Matching services in the Device [Profile] are identified for each
         `SimProperties` entry:
         1.  If a `CellularService` instance matching the SIM *ICCID* exists, it
             is updated with the current `Cellular Device` state.
@@ -99,13 +100,13 @@
 ## CellularService
 
 *   The [CellularService class](../cellular/cellular_service.h) is a
-    `base::RefCounted` `Service` class instance.  Its lifetime is managed by
+    `base::RefCounted` [Service] class instance.  Its lifetime is managed by
     the [CellularServiceProvider](#CellularServiceProvider) class.
 *   When a `CellularService` instance is created, it is registered with the
-    `Manager` class which handles startup, shutdown, and `Profile` management.
+    [Manager] class.
 *   `CellularService` uses the *Cellular.ICCID* property to uniquely identify
     service instances.
-*   `CellularService` registers Cellular specific `Service` properties.
+*   `CellularService` registers Cellular specific [Service] properties.
 *   `CellularService` forwards *Connect* and *Disconnect* requests to the
     [Cellular](#Cellular) class.
 
@@ -182,7 +183,12 @@ When a Connect request fails:
 
 *   **TODO(andrewlassalle):** Document Cellular APN
 
-
+[Manager]: architecture.md#Manager
+[DeviceInfo]: architecture.md#DeviceInfo
+[Device]: architecture.md#Device
+[ServiceProvider]: architecture.md#ServiceProvider
+[Service]: architecture.md#Service
+[Profile]: architecture.md#Profile
 [DBusObjectManagerProxy]: ../../modemfwd/dbus_bindings/org.freedesktop.DBus.ObjectManager.xml
 [org.freedesktop.ModemManager1]: ../../../third_party/modemmanager-next/introspection/org.freedesktop.ModemManager1.xml
 [org.freedesktop.ModemManager1.Modem]: ../../../third_party/modemmanager-next/introspection/org.freedesktop.ModemManager1.Modem.xml

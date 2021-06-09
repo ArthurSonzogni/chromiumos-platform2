@@ -1,9 +1,22 @@
 # Shill
+*Updated June 2021*
+
+## Architecture
+
+The [Architecture document](doc/architecture.md) provides an overview of Shill's
+architecture.
+
+## Subsystem Documentation
+
+*   [Cellular](doc/cellular.md)
+*   [Routing subsystem](doc/routing.md)
+*   [VPN subsystem](doc/vpn.md)
 
 ## Overview
 
 Shill is the connection manager for Chrome OS. It is responsible for such
 functionality as:
+
 *   Setting up network interfaces to behave as desired, which involves:
     *   Acquiring link information from the kernel.
     *   Handling different logic for different network interface technologies
@@ -68,16 +81,6 @@ still lives within Shill to some degree based on that initial decision to design
 Shill around Flimflam's D-Bus API, and future design decisions must be evaluated
 with the understanding that the goals and requirements for Shill are not what
 they were in 2012.
-
-## Architecture
-
-The overall architecture of Shill is described in the [Architecture
-document](doc/architecture.md).
-
-## Subsystem Documentation
-
-*   [Routing subsystem](doc/routing.md)
-*   [VPN subsystem](doc/vpn.md)
 
 ## D-Bus Interface Specification
 
