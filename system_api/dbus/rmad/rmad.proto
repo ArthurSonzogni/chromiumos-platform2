@@ -156,13 +156,29 @@ message UpdateChromeState {
 message ComponentRepairState {
   enum Component {
     RMAD_COMPONENT_UNKNOWN = 0;
-    // NOTE: This is a special case.
-    RMAD_COMPONENT_MAINBOARD_REWORK = 1;
-    RMAD_COMPONENT_KEYBOARD = 2;
-    RMAD_COMPONENT_SCREEN = 3;
-    RMAD_COMPONENT_TRACKPAD = 4;
-    RMAD_COMPONENT_POWER_BUTTON = 5;
-    RMAD_COMPONENT_THUMB_READER = 6;
+    // runtime_probe supported components.
+    RMAD_COMPONENT_AUDIO_CODEC = 1;
+    RMAD_COMPONENT_BATTERY = 2;
+    RMAD_COMPONENT_STORAGE = 3;
+    RMAD_COMPONENT_VPD_CACHED = 4;
+    RMAD_COMPONENT_NETWORK = 5;  // Obsolete in M91.
+    RMAD_COMPONENT_CAMERA = 6;
+    RMAD_COMPONENT_STYLUS = 7;
+    RMAD_COMPONENT_TOUCHPAD = 8;
+    RMAD_COMPONENT_TOUCHSCREEN = 9;
+    RMAD_COMPONENT_DRAM = 10;
+    RMAD_COMPONENT_DISPLAY_PANEL = 11;
+    RMAD_COMPONENT_CELLULAR = 12;
+    RMAD_COMPONENT_ETHERNET = 13;
+    RMAD_COMPONENT_WIRELESS = 14;
+    // Reserved for additional runtime_probe supported components.
+    reserved 15 to 32;
+    // Mainboard rework is a special case.
+    RMAD_COMPONENT_MAINBOARD_REWORK = 33;
+    // Irrelevant components.
+    // TODO(chenghan): Do we really need these?
+    RMAD_COMPONENT_KEYBOARD = 34;
+    RMAD_COMPONENT_POWER_BUTTON = 35;
   }
   enum RepairState {
     RMAD_REPAIR_UNKNOWN = 0;

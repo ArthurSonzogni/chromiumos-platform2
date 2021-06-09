@@ -5,33 +5,104 @@
 #include "rmad/state_handler/components_repair_state_handler.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
+#include <dbus/runtime_probe/dbus-constants.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+
+#include "rmad/utils/dbus_utils.h"
+
 namespace rmad {
+
+namespace {
+
+const std::vector<std::pair<ComponentRepairState::Component,
+                            int (runtime_probe::ProbeResult::*)() const>>
+    PROBED_COMPONENT_SIZES = {
+        {ComponentRepairState::RMAD_COMPONENT_AUDIO_CODEC,
+         &runtime_probe::ProbeResult::audio_codec_size},
+        {ComponentRepairState::RMAD_COMPONENT_BATTERY,
+         &runtime_probe::ProbeResult::battery_size},
+        {ComponentRepairState::RMAD_COMPONENT_STORAGE,
+         &runtime_probe::ProbeResult::storage_size},
+        {ComponentRepairState::RMAD_COMPONENT_CAMERA,
+         &runtime_probe::ProbeResult::camera_size},
+        {ComponentRepairState::RMAD_COMPONENT_STYLUS,
+         &runtime_probe::ProbeResult::stylus_size},
+        {ComponentRepairState::RMAD_COMPONENT_TOUCHPAD,
+         &runtime_probe::ProbeResult::touchpad_size},
+        {ComponentRepairState::RMAD_COMPONENT_TOUCHSCREEN,
+         &runtime_probe::ProbeResult::touchscreen_size},
+        {ComponentRepairState::RMAD_COMPONENT_DRAM,
+         &runtime_probe::ProbeResult::dram_size},
+        {ComponentRepairState::RMAD_COMPONENT_DISPLAY_PANEL,
+         &runtime_probe::ProbeResult::display_panel_size},
+        {ComponentRepairState::RMAD_COMPONENT_CELLULAR,
+         &runtime_probe::ProbeResult::cellular_size},
+        {ComponentRepairState::RMAD_COMPONENT_ETHERNET,
+         &runtime_probe::ProbeResult::ethernet_size},
+        {ComponentRepairState::RMAD_COMPONENT_WIRELESS,
+         &runtime_probe::ProbeResult::wireless_size},
+};
+
+const std::vector<ComponentRepairState::Component> OTHER_COMPONENTS = {
+    ComponentRepairState::RMAD_COMPONENT_MAINBOARD_REWORK,
+    ComponentRepairState::RMAD_COMPONENT_KEYBOARD,
+    ComponentRepairState::RMAD_COMPONENT_POWER_BUTTON,
+};
+
+}  // namespace
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
-  // Do not read from storage. Always probe again and update |state_|.
-  auto components_repair = std::make_unique<ComponentsRepairState>();
+  // Call runtime_probe to get all probed components.
+  runtime_probe::ProbeRequest request;
+  request.set_probe_default_category(true);
+  runtime_probe::ProbeResult reply;
+  if (!CallDBusMethod(runtime_probe::kRuntimeProbeServiceName,
+                      runtime_probe::kRuntimeProbeServicePath,
+                      runtime_probe::kRuntimeProbeInterfaceName,
+                      runtime_probe::kProbeCategoriesMethod, request, &reply)) {
+    LOG(ERROR) << "runtime_probe D-Bus call failed";
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
+  if (reply.error() != runtime_probe::RUNTIME_PROBE_ERROR_NOT_SET) {
+    LOG(ERROR) << "runtime_probe return error code " << reply.error();
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
 
-  // TODO(chenghan): This is currently fake.
-  const std::vector<ComponentRepairState::Component> component_name_list{
-      ComponentRepairState::RMAD_COMPONENT_KEYBOARD,
-      ComponentRepairState::RMAD_COMPONENT_SCREEN,
-      ComponentRepairState::RMAD_COMPONENT_TRACKPAD};
-  for (ComponentRepairState::Component name : component_name_list) {
+  // Do not read from storage. Always probe again and update |state_|.
+  // TODO(chenghan): Integrate with RACC to check AVL compliance.
+  auto components_repair = std::make_unique<ComponentsRepairState>();
+  // runtime_probe results.
+  for (auto& [component, probed_component_size] : PROBED_COMPONENT_SIZES) {
     ComponentRepairState* component_repair =
         components_repair->add_components();
-    component_repair->set_name(name);
+    component_repair->set_name(component);
+    // TODO(chenghan): Do we need to return detailed info, e.g. component names?
+    if ((reply.*probed_component_size)() > 0) {
+      component_repair->set_repair_state(
+          ComponentRepairState::RMAD_REPAIR_UNKNOWN);
+    } else {
+      component_repair->set_repair_state(
+          ComponentRepairState::RMAD_REPAIR_MISSING);
+    }
+  }
+  // Other components.
+  for (auto& component : OTHER_COMPONENTS) {
+    ComponentRepairState* component_repair =
+        components_repair->add_components();
+    component_repair->set_name(component);
     component_repair->set_repair_state(
         ComponentRepairState::RMAD_REPAIR_UNKNOWN);
   }
   // TODO(chenghan): Use RetrieveState() to get previous user's selection.
-
   state_.set_allocated_components_repair(components_repair.release());
+
   return RMAD_ERROR_OK;
 }
 
