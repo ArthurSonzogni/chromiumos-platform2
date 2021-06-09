@@ -525,18 +525,22 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
     return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
   }
 
-  if (response.status() != tremplin::SetUpUserResponse::EXISTS &&
-      response.status() != tremplin::SetUpUserResponse::SUCCESS) {
-    LOG(ERROR) << "Failed to set up user: " << response.failure_reason();
-    out_error->assign(response.failure_reason());
-    return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+  out_error->assign(response.failure_reason());
+  switch (response.status()) {
+    case tremplin::SetUpUserResponse::UNKNOWN:
+      LOG(ERROR) << "Failed to set up user: " << response.failure_reason();
+      return VirtualMachine::SetUpLxdContainerUserStatus::UNKNOWN;
+    case tremplin::SetUpUserResponse::SUCCESS:
+      return VirtualMachine::SetUpLxdContainerUserStatus::SUCCESS;
+    case tremplin::SetUpUserResponse::EXISTS:
+      return VirtualMachine::SetUpLxdContainerUserStatus::EXISTS;
+    case tremplin::SetUpUserResponse::FAILED:
+      LOG(ERROR) << "Failed to set up user: " << response.failure_reason();
+      return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
+    default:
+      NOTREACHED();
+      return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
   }
-
-  if (response.status() == tremplin::SetUpUserResponse::EXISTS) {
-    return VirtualMachine::SetUpLxdContainerUserStatus::EXISTS;
-  }
-
-  return VirtualMachine::SetUpLxdContainerUserStatus::SUCCESS;
 }
 
 VirtualMachine::GetLxdContainerInfoStatus VirtualMachine::GetLxdContainerInfo(
