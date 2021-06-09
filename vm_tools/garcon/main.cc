@@ -37,6 +37,7 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include "base/strings/string_number_conversions.h"
 #include <base/synchronization/waitable_event.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/task_runner.h>
@@ -44,6 +45,7 @@ const int kSyslogCritical = LOG_CRIT;
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
 
+#include "google/protobuf/util/json_util.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
 #include "vm_tools/garcon/service_impl.h"
@@ -59,7 +61,10 @@ constexpr char kSelectFileTypeSwitch[] = "type";
 constexpr char kSelectFileTitleSwitch[] = "title";
 constexpr char kSelectFilePathSwitch[] = "path";
 constexpr char kSelectFileExtensionsSwitch[] = "extensions";
-
+constexpr char kDiskSwitch[] = "disk";
+constexpr char kGetDiskInfoArg[] = "get_disk_info";
+constexpr char kRequestSpaceArg[] = "request_space";
+constexpr char kReleaseSpaceArg[] = "release_space";
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
 
@@ -167,14 +172,82 @@ void PrintUsage() {
             << "  --url: opens all arguments as URLs in host browser\n"
             << "  --terminal: opens terminal\n"
             << "  --selectfile: open file dialog and return file: URL list\n"
+            << "  --disk: handles requests relating to disk management\n"
             << "Select File Switches (only with --client --selectfile):\n"
             << "  --type: "
                "open-file|open-multi-file|saveas-file|folder|upload-folder\n"
             << "  --title: title for dialog\n"
             << "  --path: default path (file: URL or path)\n"
             << "  --extensions: comma-separated list of allowed extensions\n"
+            << "Disk args (use with --client --disk):\n"
+            << "  get_disk_info: returns information about the disk\n"
+            << "  request_space <bytes>: tries to expand the disk by <bytes>\n"
+            << "  release_space <bytes>: tries to shrink the disk by <bytes>\n"
             << "Server Switches (only with --server):\n"
             << "  --allow_any_user: allow running as non-default uid\n";
+}
+
+int HandleDiskArgs(std::vector<std::string> args) {
+  std::string output;
+  if (args.empty()) {
+    LOG(ERROR) << "Missing arguments in --disk mode";
+    PrintUsage();
+    return -1;
+  }
+  google::protobuf::util::JsonOptions options;
+  options.always_print_primitive_fields = true;
+  if (args.at(0) == kGetDiskInfoArg) {
+    vm_tools::container::GetDiskInfoResponse response;
+    vm_tools::garcon::HostNotifier::GetDiskInfo(&response);
+    google::protobuf::util::MessageToJsonString(response, &output, options);
+    std::cout << output << std::endl;
+    if (response.error() == 0)
+      return 0;
+    LOG(WARNING) << "Something went wrong when requesting disk info";
+    return -1;
+  }
+  if (args.size() < 2) {
+    LOG(ERROR) << "Missing additional argument for request/release space";
+    PrintUsage();
+    return -1;
+  }
+  uint64_t space_arg;
+  bool arg_conversion = base::StringToUint64(args.at(1), &space_arg);
+  if (args.at(0) == kRequestSpaceArg) {
+    vm_tools::container::RequestSpaceResponse response;
+    if (arg_conversion) {
+      vm_tools::garcon::HostNotifier::RequestSpace(space_arg, &response);
+    } else {
+      LOG(WARNING) << "Couldn't parse requested_bytes (expected Uint64)";
+      PrintUsage();
+      response.set_error(1);
+    }
+    google::protobuf::util::MessageToJsonString(response, &output, options);
+    std::cout << output << std::endl;
+    if (response.error() == 0)
+      return 0;
+    LOG(WARNING) << "Something went wrong when requesting for more space";
+    return -1;
+  }
+  if (args.at(0) == kReleaseSpaceArg) {
+    vm_tools::container::ReleaseSpaceResponse response;
+    if (arg_conversion) {
+      vm_tools::garcon::HostNotifier::ReleaseSpace(space_arg, &response);
+    } else {
+      LOG(WARNING) << "Couldn't parse bytes_to_release (expected Uint64)";
+      PrintUsage();
+      response.set_error(1);
+    }
+    google::protobuf::util::MessageToJsonString(response, &output, options);
+    std::cout << output << std::endl;
+    if (response.error() == 0)
+      return 0;
+    LOG(WARNING) << "Something went wrong when releasing disk space";
+    return -1;
+  }
+  LOG(ERROR) << "Invalid disk request";
+  PrintUsage();
+  return -1;
 }
 
 int main(int argc, char** argv) {
@@ -235,6 +308,8 @@ int main(int argc, char** argv) {
       } else {
         return -1;
       }
+    } else if (cl->HasSwitch(kDiskSwitch)) {
+      return HandleDiskArgs(cl->GetArgs());
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();
