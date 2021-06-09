@@ -126,6 +126,8 @@ class WireGuardDriverTest : public testing::Test {
 
   // Whenever the driver asks for calculating a public key, just echoes the
   // input back.
+  // TODO(jiejiang): Consider returning a different key to avoid missing the
+  // failure that keys are misused.
   void SetFakeKeyGenerator() {
     EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes(
                                       _, base::FilePath("/usr/bin/wg"),
@@ -342,6 +344,48 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
            {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
       },
       &err);
+  InvokeConnectAsyncKernel();
+  InvokeLinkReady();
+  CHECK(base::ReadFileToString(config_file_path_, &contents));
+  EXPECT_EQ(contents, kExpectedConfigFileContents);
+  driver_->Disconnect();
+
+  // Setting peers with an empty PublicKey property should be rejected and the
+  // current peers will not be modified.
+  property_store_->SetStringmapsProperty(
+      kWireGuardPeers,
+      {
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+          {{kWireGuardPeerPublicKey, ""},
+           {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+      },
+      &err);
+  EXPECT_TRUE(err.IsFailure());
+  InvokeConnectAsyncKernel();
+  InvokeLinkReady();
+  CHECK(base::ReadFileToString(config_file_path_, &contents));
+  EXPECT_EQ(contents, kExpectedConfigFileContents);
+  driver_->Disconnect();
+
+  // Setting peers with a duplicated PublicKey property should be rejected and
+  // the current peers will not be modified.
+  property_store_->SetStringmapsProperty(
+      kWireGuardPeers,
+      {
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+      },
+      &err);
+  EXPECT_TRUE(err.IsFailure());
   InvokeConnectAsyncKernel();
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));

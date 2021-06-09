@@ -40,7 +40,14 @@ VPNDriver::VPNDriver(Manager* manager,
     : manager_(manager),
       process_manager_(process_manager),
       properties_(properties),
-      property_count_(property_count) {}
+      property_count_(property_count) {
+  for (size_t i = 0; i < property_count_; i++) {
+    const auto flags = properties_[i].flags;
+    const bool isReadOnly = flags & Property::kReadOnly;
+    const bool isWriteOnly = flags & Property::kWriteOnly;
+    CHECK(!(isReadOnly && isWriteOnly));
+  }
+}
 
 VPNDriver::~VPNDriver() = default;
 

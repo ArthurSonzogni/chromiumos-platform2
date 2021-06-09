@@ -5,6 +5,7 @@
 #include "shill/vpn/wireguard_driver.h"
 
 #include <poll.h>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -52,11 +53,14 @@ const char kWireGuardConfigDir[] = "/run/wireguard";
 // the interface via wireguard-tools.
 constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromSeconds(10);
 
-// User and group we use to run wireguard binaries.
+// User and group we use to run wireguard binaries. Defined in user/vpn and
+// group/vpn in chromiumos/overlays/eclass-overlay/profiles/base/accounts
+// folder.
 const char kVpnUser[] = "vpn";
 const char kVpnGroup[] = "vpn";
 constexpr gid_t kVpnGid = 20174;
 
+// Key length of Curve25519.
 constexpr int kWgKeyLength = 32;
 constexpr int kWgBase64KeyLength = (((kWgKeyLength) + 2) / 3) * 4;
 
@@ -76,6 +80,29 @@ constexpr PeerProperty kPeerProperties[] = {
     {kWireGuardPeerAllowedIPs, true},
     {kWireGuardPeerPersistentKeepalive, false},
 };
+
+// Checks the given peers object is valid for kept by WireguardDriver (it means
+// this peers can be persisted in the storage but may be not ready for
+// connecting). Here we checks whether each peer has a unique and non-empty
+// public key.
+bool ValidatePeersForStorage(const Stringmaps& peers) {
+  std::set<std::string> public_keys;
+  for (auto& peer : peers) {
+    const auto it = peer.find(kWireGuardPeerPublicKey);
+    if (it == peer.end()) {
+      return false;
+    }
+    const std::string& this_pubkey = it->second;
+    if (this_pubkey.empty()) {
+      return false;
+    }
+    if (public_keys.count(this_pubkey) != 0) {
+      return false;
+    }
+    public_keys.insert(this_pubkey);
+  }
+  return true;
+}
 
 std::string GenerateBase64PrivateKey() {
   uint8_t key[kWgKeyLength];
@@ -261,6 +288,13 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
     peers_.push_back(peer);
   }
 
+  if (!ValidatePeersForStorage(peers_)) {
+    LOG(ERROR) << "Failed to load peers: missing PublicKey property or the "
+                  "value is not unique";
+    peers_.clear();
+    return false;
+  }
+
   saved_private_key_ = args()->Lookup<std::string>(kWireGuardPrivateKey, "");
 
   return true;
@@ -283,7 +317,7 @@ bool WireGuardDriver::Save(StoreInterface* storage,
       return false;
     }
     args()->Set<std::string>(kWireGuardPublicKey, public_key);
-    saved_private_key_ = public_key;
+    saved_private_key_ = private_key;
   }
 
   // Handles peers.
@@ -558,6 +592,13 @@ void WireGuardDriver::Cleanup() {
 }
 
 bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
+  if (!ValidatePeersForStorage(new_peers)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidProperty,
+        "Invalid peers: missing PublicKey property or the value is not unique");
+    return false;
+  }
+
   // If the preshared key of a peer in the new peers is unspecified (the caller
   // doesn't set that key), try to reset it to the old value.
   Stringmap pubkey_to_psk;
@@ -567,14 +608,12 @@ bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
   }
 
   peers_ = new_peers;
-  for (const auto& [pubkey, psk] : pubkey_to_psk) {
-    for (auto& peer : peers_) {
-      if (peer[kWireGuardPeerPublicKey] != pubkey ||
-          peer.find(kWireGuardPeerPresharedKey) != peer.end()) {
-        continue;
-      }
-      peer[kWireGuardPeerPresharedKey] = psk;
+  for (auto& peer : peers_) {
+    if (peer.find(kWireGuardPeerPresharedKey) != peer.end()) {
+      continue;
     }
+    peer[kWireGuardPeerPresharedKey] =
+        pubkey_to_psk[peer[kWireGuardPeerPublicKey]];
   }
 
   return true;
