@@ -183,6 +183,8 @@ DEFINE_PROTO_FUZZER(
         action, &test_framework.get_mock_vm_applications_service_proxy());
     SetUpMockObjectProxy(
         action, &test_framework.get_mock_vm_sk_forwarding_service_proxy());
+    SetUpMockObjectProxy(
+        action, &test_framework.get_mock_vm_disk_management_service_proxy());
     SetUpMockObjectProxy(action,
                          &test_framework.get_mock_url_handler_service_proxy());
     SetUpMockObjectProxy(action,
@@ -199,6 +201,9 @@ DEFINE_PROTO_FUZZER(
     vm_tools::tremplin::EmptyMessage tremplin_response;
     vm_tools::cicerone::MetricsConsentResponse metrics_response;
     vm_tools::container::ForwardSecurityKeyMessageResponse forward_sk_response;
+    vm_tools::container::GetDiskInfoResponse get_disk_info_response;
+    vm_tools::container::RequestSpaceResponse request_space_response;
+    vm_tools::container::ReleaseSpaceResponse release_space_response;
 
     switch (action.input_case()) {
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
@@ -367,6 +372,24 @@ DEFINE_PROTO_FUZZER(
         container_listener->ForwardSecurityKeyMessage(
             &context, &action.forward_security_key_message_request(),
             &forward_sk_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kGetDiskInfoRequest:
+        container_listener->GetDiskInfo(
+            &context, &action.get_disk_info_request(), &get_disk_info_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kRequestSpaceRequest:
+        container_listener->RequestSpace(
+            &context, &action.request_space_request(), &request_space_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kReleaseSpaceRequest:
+        container_listener->ReleaseSpace(
+            &context, &action.release_space_request(), &release_space_response);
         break;
 
       default:

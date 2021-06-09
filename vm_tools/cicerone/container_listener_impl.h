@@ -93,6 +93,18 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::SelectFileRequest* request,
       vm_tools::container::SelectFileResponse* response) override;
+  grpc::Status GetDiskInfo(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::GetDiskInfoRequest* request,
+      vm_tools::container::GetDiskInfoResponse* response) override;
+  grpc::Status RequestSpace(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::RequestSpaceRequest* request,
+      vm_tools::container::RequestSpaceResponse* response) override;
+  grpc::Status ReleaseSpace(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ReleaseSpaceRequest* request,
+      vm_tools::container::ReleaseSpaceResponse* response) override;
 
  private:
   // Returns 0 on failure, otherwise the parsed vsock cid from a

@@ -31,6 +31,7 @@
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_sk_forwarding/proto_bindings/sk_forwarding.pb.h>
+#include <vm_disk_management/proto_bindings/disk_management.pb.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "vm_tools/cicerone/container.h"
@@ -374,6 +375,42 @@ class Service final {
           security_key_response,
       base::WaitableEvent* event);
 
+  // Sends a D-Bus message to Chrome to request information about the VM disk,
+  // how much space is available and how much it could be expanded by. It uses
+  // |cid| and |container_token| to identify the source and somewhat verify that
+  // it is borealis (the only VM this method is available for). |result| is
+  // filled with information about the disk, if the request fails, than the
+  // error field will be set to !0. Signals |event| when done.
+  void GetDiskInfo(const std::string& container_token,
+                   const uint32_t cid,
+                   vm_tools::disk_management::GetDiskInfoResponse* result,
+                   base::WaitableEvent* event);
+
+  // Sends a D-Bus message to Chrome to request that the VM disk be expanded by
+  // |space_requested| bytes. It uses |cid| and |container_token| to identify
+  // the source and somewhat verify that it is borealis (the only VM this method
+  // is available for). If a resize occurs, |result| will be filled with the
+  // information of how many bytes the disk was expanded by, if the request
+  // fails, than the error field will be set to !0. Signals |event| when done.
+  void RequestSpace(const std::string& container_token,
+                    const uint32_t cid,
+                    const uint64_t space_requested,
+                    vm_tools::disk_management::RequestSpaceResponse* result,
+                    base::WaitableEvent* event);
+
+  // Sends a D-Bus message to Chrome to notify it that the VM disk can be
+  // shrunk by |space_to_release| bytes. It uses |cid| and |container_token| to
+  // identify the source and somewhat verify that it is borealis (the only VM
+  // this method is available for). If a resize occurs, |result| will be filled
+  // with the information of how many bytes the disk was shrunk by, if the
+  // request fails, than the error field will be set to !0. Signals |event| when
+  // done.
+  void ReleaseSpace(const std::string& container_token,
+                    const uint32_t cid,
+                    const uint64_t space_to_release,
+                    vm_tools::disk_management::ReleaseSpaceResponse* result,
+                    base::WaitableEvent* event);
+
  private:
   // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
   // It will use |cid| to lookup VM and owner, and set these fields on
@@ -433,6 +470,59 @@ class Service final {
     signal_proto->set_owner_id(std::move(owner_id));
     dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*signal_proto);
     exported_object_->SendSignal(&signal);
+    return true;
+  }
+
+  // Sends the disk-related |method_name| D-Bus method with |input_proto| as
+  // its contents. It will use |cid| and |container_token| to lookup VM, owner,
+  // and container name, and set these fields on the |origin| of |input_proto|
+  // before sending it and storing the response in |output_proto|.
+  template <typename I, typename O>
+  bool SendDiskMethod(const std::string& method_name,
+                      const std::string& container_token,
+                      const uint32_t cid,
+                      I* input_proto,
+                      O* output_proto) {
+    DCHECK(sequence_checker_.CalledOnValidSequence());
+    CHECK(output_proto);
+    output_proto->set_error(1);
+    VirtualMachine* vm;
+    std::string owner_id;
+    std::string vm_name;
+
+    if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+      LOG(ERROR) << "Could not get virtual machine for cid";
+      return false;
+    }
+
+    std::string container_name = vm->GetContainerNameForToken(container_token);
+    if (container_name.empty()) {
+      LOG(ERROR) << "Could not get container name for token";
+      return false;
+    }
+
+    vm_tools::disk_management::MessageOrigin* origin =
+        new vm_tools::disk_management::MessageOrigin();
+    origin->set_vm_name(vm_name);
+    origin->set_container_name(container_name);
+    origin->set_owner_id(owner_id);
+    input_proto->set_allocated_origin(origin);
+    dbus::MethodCall method_call(
+        vm_tools::disk_management::kVmDiskManagementServiceInterface,
+        method_name);
+    dbus::MessageWriter(&method_call).AppendProtoAsArrayOfBytes(*input_proto);
+    std::unique_ptr<dbus::Response> dbus_response =
+        vm_disk_management_service_proxy_->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+
+    dbus::MessageReader reader(dbus_response.get());
+    O response;
+    if (!reader.PopArrayOfBytesAsProto(&response)) {
+      LOG(ERROR) << "Unable to parse GetDiskInfoReponse from response";
+      output_proto->set_error(1);
+    } else {
+      *output_proto = response;
+    }
     return true;
   }
 
@@ -649,13 +739,14 @@ class Service final {
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;              // Owned by |bus_|.
-  dbus::ObjectProxy* vm_applications_service_proxy_;   // Owned by |bus_|.
-  dbus::ObjectProxy* url_handler_service_proxy_;       // Owned by |bus_|.
-  dbus::ObjectProxy* chunneld_service_proxy_;          // Owned by |bus_|.
-  dbus::ObjectProxy* crosdns_service_proxy_;           // Owned by |bus_|.
-  dbus::ObjectProxy* concierge_service_proxy_;         // Owned by |bus_|.
-  dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;  // Owned by |bus_|.
+  dbus::ExportedObject* exported_object_;                // Owned by |bus_|.
+  dbus::ObjectProxy* vm_applications_service_proxy_;     // Owned by |bus_|.
+  dbus::ObjectProxy* url_handler_service_proxy_;         // Owned by |bus_|.
+  dbus::ObjectProxy* chunneld_service_proxy_;            // Owned by |bus_|.
+  dbus::ObjectProxy* crosdns_service_proxy_;             // Owned by |bus_|.
+  dbus::ObjectProxy* concierge_service_proxy_;           // Owned by |bus_|.
+  dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;    // Owned by |bus_|.
+  dbus::ObjectProxy* vm_disk_management_service_proxy_;  // Owned by |bus_|.
 
   // The ContainerListener service.
   std::unique_ptr<ContainerListenerImpl> container_listener_;

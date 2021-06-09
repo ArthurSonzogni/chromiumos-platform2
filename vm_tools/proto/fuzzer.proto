@@ -18,7 +18,7 @@ import "vm_crash.proto";
 // This is used for fuzz testing; we get some fuzzed examples of this message
 // and then call the correct rpc handler based on which of the oneof is set.
 message ContainerListenerFuzzerSingleAction {
-  // Next id: 52
+  // Next id: 55
   // Skip [100-109]
   oneof input {
     // Calls to the ContainerListener service.
@@ -36,6 +36,9 @@ message ContainerListenerFuzzerSingleAction {
     LowDiskSpaceTriggeredInfo low_disk_space_triggered_info = 49;
     ForwardSecurityKeyMessageRequest forward_security_key_message_request = 50;
     SelectFileRequest select_file_request = 51;
+    GetDiskInfoRequest get_disk_info_request = 52;
+    RequestSpaceRequest request_space_request = 53;
+    ReleaseSpaceRequest release_space_request = 54;
 
     // Calls to the CrashListener service.
     EmptyMessage metrics_consent_request = 33;
