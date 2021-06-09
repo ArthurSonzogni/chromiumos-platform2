@@ -90,6 +90,10 @@ add them):
     the users of this DLC and show proper UI/confirmations to address these
     issues. Acceptable values are "user" and "system".
     (Default is "system")
+*   `DLC_DAYS_TO_PURGE` - Defines how many days after a DLC has been uninstalled
+    (and the last reference count from it was removed) it needs to be purged
+    from the disk completely.
+    (Default is 5 days)
 
 Within the build file, the implementation should include at least the
 `src_install` function. Within `src_install`, all the DLC content should be
