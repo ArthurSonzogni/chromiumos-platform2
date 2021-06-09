@@ -205,6 +205,11 @@ mode_update_touchpad_firmware() {
   show_assets_message "update_touchpad_firmware"
 }
 
+# Show a message indicating that we're doing a trackpoint firmware update.
+mode_update_trackpoint_firmware() {
+  show_assets_message "update_trackpoint_firmware"
+}
+
 # Show a message indicating that we're doing a touchscreen firmware update.
 mode_update_touchscreen_firmware() {
   show_assets_message "update_touchscreen_firmware"
