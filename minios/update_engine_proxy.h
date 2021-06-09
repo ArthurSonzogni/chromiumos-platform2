@@ -35,12 +35,12 @@ class UpdateEngineProxy {
   };
 
   // Set callbacks to get update engine status updates.
-  void Init();
+  virtual void Init();
 
-  void SetDelegate(UpdaterDelegate* delegate) { delegate_ = delegate; }
+  virtual void SetDelegate(UpdaterDelegate* delegate) { delegate_ = delegate; }
 
   // Calls reboot with a delay of `kTimeTillReboot`.
-  void TriggerReboot();
+  virtual void TriggerReboot();
 
   // Forces an interactive update.
   virtual bool StartUpdate();
