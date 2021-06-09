@@ -583,12 +583,6 @@ constexpr char kBluetoothDebugInterface[] = "org.chromium.Bluetooth.Debug";
 
 // Methods.
 constexpr char kSetLevels[] = "SetLevels";
-
-// Properties.
-constexpr char kDispatcherLevelProperty[] = "DispatcherLevel";
-constexpr char kNewblueLevelProperty[] = "NewblueLevel";
-constexpr char kBluezLevelProperty[] = "BluezLevel";
-constexpr char kKernelLevelProperty[] = "KernelLevel";
 }  // namespace bluetooth_debug
 
 namespace bluetooth_admin_policy {
