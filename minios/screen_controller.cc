@@ -9,18 +9,23 @@
 #include <base/logging.h>
 
 #include "minios/screen_language_dropdown.h"
-#include "minios/screen_network.h"
 #include "minios/screen_welcome.h"
 #include "minios/screens/screen_error.h"
+#include "minios/screens/screen_network.h"
+#include "minios/utils.h"
 
 namespace minios {
 
 ScreenController::ScreenController(
     std::shared_ptr<DrawInterface> draw_utils,
-    std::shared_ptr<NetworkManagerInterface> network_manager)
-    : key_reader_(KeyReader{/*include_usb=*/true}),
-      draw_utils_(draw_utils),
+    std::shared_ptr<NetworkManagerInterface> network_manager,
+    ProcessManagerInterface* process_manager)
+    : draw_utils_(draw_utils),
       network_manager_(network_manager),
+      process_manager_(process_manager),
+      key_reader_(
+          KeyReader{/*include_usb=*/true,
+                    GetVpdRegion(base::FilePath("/"), process_manager_)}),
       key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {}
 
 void ScreenController::Init() {
@@ -48,7 +53,7 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
       return std::make_unique<ScreenWelcome>(draw_utils_, this);
     case ScreenType::kNetworkDropDownScreen:
       return std::make_unique<ScreenNetwork>(draw_utils_, network_manager_,
-                                             this);
+                                             &key_reader_, this);
     case ScreenType::kLanguageDropDownScreen:
       return std::make_unique<ScreenLanguageDropdown>(draw_utils_, this);
     case ScreenType::kDownloadError:
@@ -69,6 +74,8 @@ void ScreenController::OnForward(ScreenInterface* screen) {
     case ScreenType::kWelcomeScreen:
       current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
       break;
+    case ScreenType::kNetworkDropDownScreen:
+      // TODO(vyshu) : Forward to kUserPermissionScreen (not yet implemented).
     case ScreenType::kDownloadError:
     case ScreenType::kNetworkError:
     case ScreenType::kPasswordError:
@@ -86,16 +93,12 @@ void ScreenController::OnForward(ScreenInterface* screen) {
 void ScreenController::OnBackward(ScreenInterface* screen) {
   switch (screen->GetType()) {
     case ScreenType::kWelcomeScreen:
-    case ScreenType::kExpandedNetworkDropDownScreen:
-      // Not moving to a new screen. Just reset the state of the current screen.
-      current_screen_->Reset();
-      break;
     case ScreenType::kNetworkDropDownScreen:
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
     case ScreenType::kPasswordError:
-      // Return to network screen if it was the previous screen otherwise create
-      // a new one.
+      // If the previous screen is `ScreenNetwork` return to that or create a
+      // new one.
       if (previous_screen_ &&
           previous_screen_->GetType() == ScreenType::kNetworkDropDownScreen) {
         current_screen_ = std::move(previous_screen_);

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "minios/screen_network.h"
+#include "minios/screens/screen_network.h"
 
 #include <dbus/shill/dbus-constants.h>
 
@@ -18,11 +18,13 @@ constexpr int kNetworksPerPage = 10;
 ScreenNetwork::ScreenNetwork(
     std::shared_ptr<DrawInterface> draw_utils,
     std::shared_ptr<NetworkManagerInterface> network_manager,
+    KeyReader* key_reader,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
           /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller),
       network_manager_(network_manager),
-      screen_type_(ScreenType::kNetworkDropDownScreen) {
+      key_reader_(key_reader),
+      state_(NetworkState::kDropdownClosed) {
   if (network_manager_) {
     network_manager_->AddObserver(this);
     // Query for networks.
@@ -36,10 +38,21 @@ ScreenNetwork::~ScreenNetwork() {
 }
 
 void ScreenNetwork::Show() {
-  draw_utils_->MessageBaseScreen();
-  draw_utils_->ShowInstructions("title_MiniOS_dropdown");
-  draw_utils_->ShowStepper({"1-done", "2", "3"});
-  ShowButtons();
+  switch (state_) {
+    case NetworkState::kDropdownClosed:
+    case NetworkState::kDropdownOpen:
+      draw_utils_->MessageBaseScreen();
+      draw_utils_->ShowInstructions("title_MiniOS_dropdown");
+      draw_utils_->ShowStepper({"1-done", "2", "3"});
+      // Show screen components based on state.
+      (state_ == NetworkState::kDropdownClosed) ? ShowButtons() : UpdateMenu();
+      return;
+    case NetworkState::kGetPassword:
+      GetPassword();
+      return;
+    default:
+      return;
+  }
 }
 
 void ScreenNetwork::ShowButtons() {
@@ -59,8 +72,11 @@ void ScreenNetwork::UpdateMenu() {
                           draw_utils_->GetDefaultButtonWidth(), false);
 }
 
-bool ScreenNetwork::IsDropDownOpen() {
-  return screen_type_ == ScreenType::kExpandedNetworkDropDownScreen;
+void ScreenNetwork::WaitForConnection() {
+  draw_utils_->MessageBaseScreen();
+  draw_utils_->ShowStepper({"done", "2-done", "3-done"});
+  draw_utils_->ShowLanguageMenu(false);
+  draw_utils_->ShowInstructions("title_MiniOS_wait_for_connection");
 }
 
 void ScreenNetwork::OnKeyPress(int key_changed) {
@@ -68,15 +84,14 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
   UpdateButtonsIndex(key_changed, &enter);
 
   if (enter) {
-    if (!IsDropDownOpen()) {
+    if (state_ == NetworkState::kDropdownClosed) {
       switch (index_) {
         case 0:
           screen_controller_->SwitchLocale(this);
           break;
         case 1:
-          // No need to call screen controller. Just update the internal network
-          // state.
-          screen_type_ = ScreenType::kExpandedNetworkDropDownScreen;
+          // Update internal state from dropdown closed to open.
+          state_ = NetworkState::kDropdownOpen;
           // Update button count for the dropdown items. Add one extra slot for
           // the back button.
           button_count_ = networks_.size() + 1;
@@ -87,14 +102,17 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           screen_controller_->OnBackward(this);
           break;
       }
-    } else {
+    } else if (state_ == NetworkState::kDropdownOpen) {
       if (index_ == networks_.size()) {
-        // Back button.
-        screen_controller_->OnBackward(this);
+        // Back button. Update internal state and re-query for networks.
+        Reset();
+        ShowButtons();
       } else if (0 <= index_ && index_ < networks_.size()) {
         chosen_network_ = networks_[index_];
         LOG(INFO) << "Selected network: " << chosen_network_;
-        screen_controller_->OnForward(this);
+        // Update internal state and get password.
+        state_ = NetworkState::kGetPassword;
+        GetPassword();
       } else {
         LOG(WARNING) << "Selected network index: " << index_
                      << " not valid. Retry";
@@ -103,32 +121,42 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
       }
     }
   } else {
-    if (!IsDropDownOpen()) {
+    // No selection made. Just update the button or menu focuses.
+    if (state_ == NetworkState::kDropdownClosed) {
       ShowButtons();
-    } else {
+    } else if (state_ == NetworkState::kDropdownOpen) {
       UpdateMenu();
     }
   }
 }
 
 void ScreenNetwork::Reset() {
-  if (IsDropDownOpen()) {
+  if (state_ == NetworkState::kDropdownOpen) {
     // Reset from `kExpandedNetworkDropDownScreen` is only called when going
     // back to `kNetworkDropDownScreen`. Re-query for networks and reset
     // `ScreenType`.
     network_manager_->GetNetworks();
-    screen_type_ = ScreenType::kNetworkDropDownScreen;
+    state_ = NetworkState::kDropdownClosed;
   }
   index_ = 1;
   button_count_ = 3;
 }
 
 ScreenType ScreenNetwork::GetType() {
-  return screen_type_;
+  return ScreenType::kNetworkDropDownScreen;
 }
 
 std::string ScreenNetwork::GetName() {
-  return IsDropDownOpen() ? "ScreenExpandedNetwork" : "ScreenNetwork";
+  switch (state_) {
+    case NetworkState::kDropdownClosed:
+      return "ScreenNetwork";
+    case NetworkState::kDropdownOpen:
+      return "ScreenExpandedNetwork";
+    case NetworkState::kGetPassword:
+      return "ScreenPassword";
+    default:
+      return "";
+  }
 }
 
 void ScreenNetwork::OnGetNetworks(const std::vector<std::string>& networks,
@@ -145,11 +173,65 @@ void ScreenNetwork::OnGetNetworks(const std::vector<std::string>& networks,
   networks_ = networks;
 
   // If already waiting on the dropdown screen, refresh.
-  if (IsDropDownOpen()) {
+  if (state_ == NetworkState::kDropdownOpen) {
     button_count_ = networks_.size() + 1;
     index_ = 0;
     UpdateMenu();
   }
+}
+
+void ScreenNetwork::OnConnect(const std::string& ssid, brillo::Error* error) {
+  if (error) {
+    LOG(ERROR) << "Could not connect to " << ssid
+               << ". ErrorCode=" << error->GetCode()
+               << " ErrorMessage=" << error->GetMessage();
+    if (error->GetCode() == shill::kErrorResultInvalidPassphrase) {
+      screen_controller_->OnError(ScreenType::kPasswordError);
+    } else {
+      // General network error.
+      Reset();
+      screen_controller_->OnError(ScreenType::kConnectionError);
+    }
+    return;
+  }
+  LOG(INFO) << "Successfully connected to " << ssid;
+  screen_controller_->OnForward(this);
+}
+
+void ScreenNetwork::GetPassword() {
+  draw_utils_->MessageBaseScreen();
+  draw_utils_->ShowInstructionsWithTitle("MiniOS_password");
+  draw_utils_->ShowStepper({"done", "2-done", "3"});
+
+  const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
+  draw_utils_->ShowButton("Enter your password", kBtnY, false,
+                          draw_utils_->GetDefaultButtonWidth() * 4, true);
+  CHECK(!chosen_network_.empty()) << "Cannot connect to an empty network.";
+  if (!key_reader_ || !key_reader_->InputSetUp()) {
+    LOG(ERROR) << "Unable to set up key reader.";
+    screen_controller_->OnError(ScreenType::kGeneralError);
+    return;
+  }
+
+  bool enter = false;
+  bool show_password = false;
+  std::string input;
+  std::string plain_text_password;
+  key_reader_->StopWatcher();
+  do {
+    if (!key_reader_->GetUserInput(&enter, &show_password, &input))
+      continue;
+    plain_text_password = input;
+    if (!show_password) {
+      input = std::string(input.size(), '*');
+    }
+    draw_utils_->ShowButton(input, kBtnY, false,
+                            draw_utils_->GetDefaultButtonWidth() * 4, true);
+  } while (!enter);
+  key_reader_->StartWatcher();
+  // Wait to connect to network.
+  WaitForConnection();
+  network_manager_->Connect(chosen_network_, plain_text_password);
 }
 
 void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {

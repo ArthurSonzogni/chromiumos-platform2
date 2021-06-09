@@ -110,14 +110,9 @@ bool KeyReader::Init(const std::vector<int>& valid_keys) {
     PLOG(ERROR) << " EpollCreate failed, cannot watch epfd.";
     return false;
   }
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      epfd_.get(),
-      base::BindRepeating(&KeyReader::OnKeyEvent, base::Unretained(this)));
-  if (!watcher_) {
-    LOG(ERROR) << "Failed to watch epoll fd.";
-    return false;
-  }
-  return true;
+
+  // Set the file descriptor watcher.
+  return StartWatcher();
 }
 
 bool KeyReader::SupportsAllKeys(const int fd) {
@@ -265,6 +260,7 @@ bool KeyReader::InputSetUp() {
   if (!SetKeyboardContext()) {
     return false;
   }
+  user_input_.clear();
   return true;
 }
 
@@ -331,6 +327,21 @@ bool KeyReader::GetUserInput(bool* enter,
   }
   *user_input = user_input_;
   return true;
+}
+
+bool KeyReader::StartWatcher() {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      epfd_.get(),
+      base::BindRepeating(&KeyReader::OnKeyEvent, base::Unretained(this)));
+  if (!watcher_) {
+    LOG(ERROR) << "Failed to watch epoll fd.";
+    return false;
+  }
+  return true;
+}
+
+void KeyReader::StopWatcher() {
+  watcher_ = nullptr;
 }
 
 bool KeyReader::MapRegionToKeyboard(std::string* xkb_layout) {

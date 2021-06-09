@@ -7,6 +7,7 @@
 #include "minios/draw_interface.h"
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_network_manager.h"
+#include "minios/mock_process_manager.h"
 #include "minios/mock_screen_interface.h"
 #include "minios/screen_controller.h"
 
@@ -26,7 +27,9 @@ class ScreenControllerTest : public ::testing::Test {
   MockScreenInterface mock_screen_;
   std::shared_ptr<NetworkManagerInterface> mock_network_manager_ =
       std::make_shared<NiceMock<MockNetworkManager>>();
-  ScreenController screen_controller_{draw_interface_, mock_network_manager_};
+  MockProcessManager process_manager_;
+  ScreenController screen_controller_{draw_interface_, mock_network_manager_,
+                                      &process_manager_};
 };
 
 TEST_F(ScreenControllerTest, OnForward) {
@@ -38,6 +41,15 @@ TEST_F(ScreenControllerTest, OnForward) {
 }
 
 TEST_F(ScreenControllerTest, OnBackward) {
+  screen_controller_.SetCurrentScreenForTest(
+      ScreenType::kNetworkDropDownScreen);
+  // Password screen goes back to the first network screen.
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kExpandedNetworkDropDownScreen));
+  screen_controller_.OnBackward(&mock_screen_);
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            screen_controller_.GetCurrentScreen());
+
   EXPECT_CALL(mock_screen_, GetType())
       .WillOnce(testing::Return(ScreenType::kNetworkDropDownScreen));
   screen_controller_.OnBackward(&mock_screen_);

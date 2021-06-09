@@ -74,7 +74,15 @@ class KeyReader {
 
   // Sets 'enter' to true after return key press is recorded. Press tab
   // to toggle between showing and hiding passwords. Returns false on error.
+  // This is a blocking call, and any active watchers must be disabled for the
+  // duration of this function.
   bool GetUserInput(bool* enter, bool* tab_toggle, std::string* user_input);
+
+  // Sets the watcher to the `epfd`, has a callback to `OnKeyEvent`.
+  bool StartWatcher();
+
+  // Stops the watcher.
+  void StopWatcher();
 
   // Get XKB keyboard layout based on the VPD region. Return false on error.
   bool MapRegionToKeyboard(std::string* xkb_layout);

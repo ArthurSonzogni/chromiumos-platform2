@@ -14,9 +14,14 @@ namespace minios {
 enum class ScreenType {
   kWelcomeScreen = 0,
   kNetworkDropDownScreen = 1,
+  // TODO(vyshu): Remove `kExpandedNetworkDropDownScreen` and `kPasswordScreen`
+  // after screens.h is removed. These are internal states of
+  // `kNetworkDropDownScreen`.
   kExpandedNetworkDropDownScreen = 2,
   kPasswordScreen = 3,
   kLanguageDropDownScreen = 4,
+  // TODO(vyshu): Remove `kWaitForConnection` after screens.h is removed. These
+  // are internal states of `kNetworkDropDownScreen`.
   kWaitForConnection = 5,
   kUserPermissionScreen = 6,
   kStartDownload = 7,

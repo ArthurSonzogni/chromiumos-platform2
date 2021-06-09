@@ -22,7 +22,8 @@ class ScreenController : public ScreenControllerInterface,
                          public KeyReader::Delegate {
  public:
   ScreenController(std::shared_ptr<DrawInterface> draw_utils,
-                   std::shared_ptr<NetworkManagerInterface> network_manager);
+                   std::shared_ptr<NetworkManagerInterface> network_manager,
+                   ProcessManagerInterface* process_manager);
   virtual ~ScreenController() = default;
 
   ScreenController(const ScreenController&) = delete;
@@ -65,13 +66,13 @@ class ScreenController : public ScreenControllerInterface,
   // and released.
   void OnKeyPress(int fd_index, int key_changed, bool key_released) override;
 
-  KeyReader key_reader_;
-
-  ProcessManager process_manager_;
-
   std::shared_ptr<DrawInterface> draw_utils_;
 
   std::shared_ptr<NetworkManagerInterface> network_manager_;
+
+  ProcessManagerInterface* process_manager_;
+
+  KeyReader key_reader_;
 
   // Records the key press for each fd and key, where the index of the fd is the
   // row and the key code the column. Resets to false after key is released.

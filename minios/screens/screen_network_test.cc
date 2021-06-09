@@ -8,7 +8,7 @@
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_screen_controller.h"
-#include "minios/screen_network.h"
+#include "minios/screens/screen_network.h"
 
 using ::testing::NiceMock;
 
@@ -22,14 +22,12 @@ class ScreenNetworkTest : public ::testing::Test {
       std::make_shared<NiceMock<MockDrawInterface>>();
   NiceMock<MockScreenControllerInterface> mock_screen_controller_;
   ScreenNetwork screen_network_{mock_draw_interface_, mock_network_manager_,
-                                &mock_screen_controller_};
+                                nullptr, &mock_screen_controller_};
 };
 
 TEST_F(ScreenNetworkTest, InvalidNetwork) {
   // Get to dropdown screen and set list of available networks.
-  screen_network_.OnKeyPress(kKeyEnter);
-  EXPECT_EQ(ScreenType::kExpandedNetworkDropDownScreen,
-            screen_network_.GetType());
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
   screen_network_.OnGetNetworks({"network"}, nullptr);
   screen_network_.SetIndexForTest(2);
 
@@ -51,9 +49,7 @@ TEST_F(ScreenNetworkTest, GetNetworks) {
 }
 
 TEST_F(ScreenNetworkTest, GetNetworksRefresh) {
-  screen_network_.OnKeyPress(kKeyEnter);
-  EXPECT_EQ(ScreenType::kExpandedNetworkDropDownScreen,
-            screen_network_.GetType());
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
   // Menu count is updated amd drop down screen is refreshed.
   screen_network_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
   // Update button when "refreshing" to the expanded dropdown screen.
@@ -72,14 +68,34 @@ TEST_F(ScreenNetworkTest, EnterOnDropDown) {
   // Select dropdown.
   screen_network_.OnKeyPress(kKeyUp);
   screen_network_.OnKeyPress(kKeyEnter);
-  EXPECT_EQ(ScreenType::kExpandedNetworkDropDownScreen,
-            screen_network_.GetType());
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
 
   // Pick second network.
   screen_network_.OnKeyPress(kKeyDown);
   screen_network_.OnKeyPress(kKeyEnter);
 
   EXPECT_EQ(screen_network_.GetIndexForTest(), 1);
+}
+
+TEST_F(ScreenNetworkTest, OnConnectError) {
+  std::string chosen_network = "test-ssid";
+  // Network error, show corresponding screen.
+  brillo::ErrorPtr error_ptr =
+      brillo::Error::Create(FROM_HERE, "HTTP", "404", "Not found", nullptr);
+
+  EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kConnectionError));
+  screen_network_.OnConnect(chosen_network, error_ptr.get());
+}
+
+TEST_F(ScreenNetworkTest, OnPasswordError) {
+  std::string chosen_network = "test-ssid";
+  // Network error, show corresponding screen.
+  brillo::ErrorPtr error_ptr = brillo::Error::Create(
+      FROM_HERE, "Password", "org.chromium.flimflam.Error.InvalidPassphrase",
+      "Invalid passphrase", nullptr);
+
+  EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kPasswordError));
+  screen_network_.OnConnect(chosen_network, error_ptr.get());
 }
 
 }  // namespace minios
