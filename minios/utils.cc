@@ -105,4 +105,24 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
   return {true, content, bytes_read};
 }
 
+std::string GetVpdRegion(const base::FilePath& root,
+                         ProcessManagerInterface* process_manager) {
+  std::string vpd_region;
+  if (ReadFileToString(root.Append("sys/firmware/vpd/ro/region"),
+                       &vpd_region)) {
+    return vpd_region;
+  }
+  LOG(WARNING) << "Could not read vpd region from file. Trying commandline.";
+  int exit_code = 0;
+  std::string error;
+  if (process_manager->RunCommandWithOutput({"/bin/vpd", "-g", "region"},
+                                            &exit_code, &vpd_region, &error) &&
+      !exit_code) {
+    return vpd_region;
+  }
+  PLOG(WARNING) << "Error getting vpd -g region. Exit code " << exit_code
+                << " with error " << error << ". Defaulting to 'us'. ";
+  return "us";
+}
+
 }  // namespace minios

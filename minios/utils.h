@@ -10,6 +10,8 @@
 
 #include <base/files/file_path.h>
 
+#include "minios/process_manager.h"
+
 namespace minios {
 
 // Reads the content of `file_path` from `start_offset` to `end_offset` with
@@ -40,6 +42,11 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
     int64_t offset,
     int num_lines,
     int num_cols);
+
+// Returns the VPD region from RO firmware starting at the `root` path. Returns
+// "us" as the default.
+std::string GetVpdRegion(const base::FilePath& root,
+                         ProcessManagerInterface* process_manager);
 
 }  // namespace minios
 

@@ -627,25 +627,6 @@ bool DrawUtils::IsDetachable() {
   return is_detachable_;
 }
 
-void DrawUtils::GetVpdRegion() {
-  if (ReadFileToString(root_.Append("sys/firmware/vpd/ro/region"),
-                       &vpd_region_)) {
-    return;
-  }
-  LOG(WARNING) << "Could not read vpd region from file. Trying commandline.";
-  int exit_code = 0;
-  std::string error;
-  if (!process_manager_->RunCommandWithOutput(
-          {"/bin/vpd", "-g", "region"}, &exit_code, &vpd_region_, &error) ||
-      exit_code) {
-    vpd_region_ = "us";
-    PLOG(WARNING) << "Error getting vpd -g region. Exit code " << exit_code
-                  << " with error " << error << ". Defaulting to 'us'. ";
-    return;
-  }
-  return;
-}
-
 void DrawUtils::ReadHardwareId() {
   int exit_code = 0;
   std::string output, error;

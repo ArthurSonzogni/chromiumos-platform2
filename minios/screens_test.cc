@@ -17,23 +17,6 @@ using testing::_;
 
 namespace minios {
 
-namespace {
-
-constexpr char kCrosJsonSnippet[] =
-    "{\"au\": {\"region_code\": \"au\", \"confirmed\": true, "
-    "\"description\": \"Australia\", \"keyboards\": [\"xkb:us::eng\"], "
-    "\"time_zones\": [\"Australia/Sydney\"], \"locales\": [\"en-AU\"], "
-    "\"keyboard_mechanical_layout\": \"ANSI\", \"regulatory_domain\": "
-    "\"AU\"}, \"be\": {\"region_code\": \"be\", \"confirmed\": true, "
-    "\"description\": \"Belgium\", \"keyboards\": [\"xkb:be::nld\", "
-    "\"xkb:ca:eng:eng\"], \"time_zones\": [\"Europe/Brussels\"], "
-    "\"locales\": [\"en-GB\"], \"keyboard_mechanical_layout\": \"ISO\", "
-    "\"regulatory_domain\": \"BE\"},  \"he\": {\"keyboards\": [\"xkbbenld\"]}, "
-    "\"us\": {\"region_code\": \"us\", \"confirmed\": true, "
-    "\"description\": \"US\"}}";
-
-}  // namespace
-
 class ScreensTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -64,8 +47,6 @@ class ScreensTest : public ::testing::Test {
         base::FilePath(screens_path_).Append("glyphs").Append("white")));
     ASSERT_TRUE(CreateDirectory(
         base::FilePath(test_root_).Append("sys/firmware/vpd/ro")));
-    ASSERT_TRUE(base::CreateDirectory(
-        base::FilePath(test_root_).Append("usr/share/misc")));
     ASSERT_TRUE(screens_.InitForTest());
   }
 
@@ -80,73 +61,6 @@ class ScreensTest : public ::testing::Test {
   Screens screens_{&mock_process_manager_, nullptr, nullptr, nullptr};
   std::string test_root_;
 };
-
-TEST_F(ScreensTest, MapRegionToKeyboardNoFile) {
-  std::string keyboard;
-  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_TRUE(keyboard.empty());
-}
-
-TEST_F(ScreensTest, MapRegionToKeyboardNotDict) {
-  std::string not_dict =
-      "{ au : { region_code :  au ,  confirmed : true, "
-      " description :  Australia ,  keyboards : [ xkb:us::eng ], "
-      " time_zones : [ Australia/Sydney ],  locales : [ en-AU ], "
-      " keyboard_mechanical_layout ";
-  ASSERT_TRUE(base::WriteFile(
-      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
-      not_dict));
-  std::string keyboard;
-  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_TRUE(keyboard.empty());
-}
-
-TEST_F(ScreensTest, MapRegionToKeyboardNoKeyboard) {
-  ASSERT_TRUE(base::WriteFile(
-      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
-      kCrosJsonSnippet));
-
-  // Find keyboard for region. "us" dict entry does not have a keyboard value.
-  screens_.vpd_region_ = "us";
-  std::string keyboard;
-  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_TRUE(keyboard.empty());
-
-  // Given Vpd region not available at all.
-  screens_.vpd_region_ = "fr";
-  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_TRUE(keyboard.empty());
-}
-
-TEST_F(ScreensTest, MapRegionToKeyboardBadKeyboardFormat) {
-  ASSERT_TRUE(base::WriteFile(
-      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
-      kCrosJsonSnippet));
-
-  // Find keyboard for region. "he" dict entry does not have a correctly
-  // formatted keyboard value.
-  screens_.vpd_region_ = "he";
-  std::string keyboard;
-  EXPECT_FALSE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_TRUE(keyboard.empty());
-}
-
-TEST_F(ScreensTest, MapRegionToKeyboard) {
-  ASSERT_TRUE(base::WriteFile(
-      base::FilePath(test_root_).Append("usr/share/misc/cros-regions.json"),
-      kCrosJsonSnippet));
-
-  // Find keyboard for region.
-  screens_.vpd_region_ = "au";
-  std::string keyboard;
-  EXPECT_TRUE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_EQ(keyboard, "us");
-
-  // Multiple keyboards available.
-  screens_.vpd_region_ = "be";
-  EXPECT_TRUE(screens_.MapRegionToKeyboard(&keyboard));
-  EXPECT_EQ(keyboard, "be");
-}
 
 class MockScreens : public Screens {
  public:

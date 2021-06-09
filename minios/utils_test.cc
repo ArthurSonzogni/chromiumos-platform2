@@ -6,7 +6,10 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "minios/mock_process_manager.h"
 #include "minios/utils.h"
+
+using testing::_;
 
 namespace minios {
 
@@ -17,6 +20,8 @@ class UtilTest : public ::testing::Test {
     file_path_ = tmp_dir_.GetPath().Append("file");
     content_ = "line1\nline2\n" + std::string(100, 'a') + "\nb";
     ASSERT_TRUE(base::WriteFile(file_path_, content_));
+    ASSERT_TRUE(
+        CreateDirectory(tmp_dir_.GetPath().Append("sys/firmware/vpd/ro")));
   }
 
  protected:
@@ -108,6 +113,29 @@ TEST_F(UtilTest, ReadFileContentStartOffset) {
   EXPECT_TRUE(success);
   EXPECT_EQ(content, "a\na\na\n");
   EXPECT_EQ(bytes_read, 3);
+}
+
+TEST_F(UtilTest, GetVpdFromFile) {
+  std::string vpd = "ca";
+  ASSERT_TRUE(base::WriteFile(
+      tmp_dir_.GetPath().Append("sys/firmware/vpd/ro/region"), vpd));
+  EXPECT_EQ(GetVpdRegion(tmp_dir_.GetPath(), nullptr), vpd);
+}
+
+TEST_F(UtilTest, GetVpdFromCommand) {
+  std::string output = "ca";
+  MockProcessManager mock_process_manager_;
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<2>(output),
+                               testing::Return(true)));
+  EXPECT_EQ(GetVpdRegion(tmp_dir_.GetPath(), &mock_process_manager_), output);
+}
+
+TEST_F(UtilTest, GetVpdFromDefault) {
+  MockProcessManager mock_process_manager_;
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::Return(false));
+  EXPECT_EQ(GetVpdRegion(tmp_dir_.GetPath(), &mock_process_manager_), "us");
 }
 
 }  // namespace minios

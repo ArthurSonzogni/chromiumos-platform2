@@ -15,6 +15,7 @@
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/minios.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -32,7 +33,6 @@ constexpr char kLogPath[] = "/var/log/messages";
 bool Screens::Init() {
   DrawUtils::Init();
   IsDetachable();
-  GetVpdRegion();
 
   // Add size of language dropdown menu using the number of locales.
   menu_count_[ScreenType::kLanguageDropDownScreen] = GetSupportedLocalesSize();
@@ -114,14 +114,9 @@ void Screens::ShowMiniOsGetPasswordScreen() {
 }
 
 void Screens::GetPassword() {
-  std::string keyboard_layout;
-  if (!MapRegionToKeyboard(&keyboard_layout)) {
-    LOG(WARNING)
-        << "Could not find xkb layout for given region. Defaulting to US.";
-    keyboard_layout = "us";
-  }
+  ProcessManager process_manager;
   KeyReader password_key_reader =
-      KeyReader(/*include_usb=*/true, keyboard_layout);
+      KeyReader(/*include_usb=*/true, GetVpdRegion(root_, &process_manager));
   password_key_reader.InputSetUp();
 
   constexpr int kBtnY = kTitleY + 58 + kBtnYStep * 2;
@@ -274,49 +269,6 @@ void Screens::ShowNetworkDropdown() {
     }
     offset_y += kItemHeight;
   }
-}
-
-bool Screens::MapRegionToKeyboard(std::string* xkb_keyboard_layout) {
-  std::string cros_region_json;
-  if (!ReadFileToString(root_.Append("usr/share/misc/cros-regions.json"),
-                        &cros_region_json)) {
-    PLOG(ERROR) << "Could not read JSON mapping from cros-regions.json.";
-    return false;
-  }
-
-  base::JSONReader::ValueWithError json_output =
-      base::JSONReader::ReadAndReturnValueWithError(cros_region_json);
-  if (!json_output.value || !json_output.value->is_dict()) {
-    LOG(ERROR) << "Could not read json. " << json_output.error_message;
-    return false;
-  }
-
-  // Look up mapping between vpd region and xkb keyboard layout.
-  const base::Value* kRegionInfo = json_output.value->FindDictKey(vpd_region_);
-  if (!kRegionInfo) {
-    LOG(ERROR) << "Region " << vpd_region_ << " not found.";
-    return false;
-  }
-
-  const base::Value* kKeyboard = kRegionInfo->FindListKey("keyboards");
-  if (!kKeyboard || kKeyboard->GetList().empty()) {
-    LOG(ERROR) << "Could not retrieve keyboards for given region "
-               << vpd_region_
-               << ". Available region information: " << *kRegionInfo;
-    return false;
-  }
-
-  // Always use the first keyboard in the list.
-  std::vector<std::string> keyboard_parts =
-      base::SplitString(kKeyboard->GetList()[0].GetString(), ":",
-                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (keyboard_parts.size() < 2) {
-    LOG(ERROR) << "Could not parse keyboard information for region  "
-               << vpd_region_;
-    return false;
-  }
-  *xkb_keyboard_layout = keyboard_parts[1];
-  return true;
 }
 
 void Screens::OnKeyPress(int fd_index, int key_changed, bool key_released) {

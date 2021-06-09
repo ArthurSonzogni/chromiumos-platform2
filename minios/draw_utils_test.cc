@@ -44,8 +44,6 @@ class DrawUtilsTest : public ::testing::Test {
     ASSERT_TRUE(base::WriteFile(console_, ""));
     ASSERT_TRUE(CreateDirectory(
         base::FilePath(screens_path_).Append("glyphs").Append("white")));
-    ASSERT_TRUE(CreateDirectory(
-        base::FilePath(test_root_).Append("sys/firmware/vpd/ro")));
     ASSERT_TRUE(base::CreateDirectory(
         base::FilePath(test_root_).Append("usr/share/misc")));
   }
@@ -267,30 +265,6 @@ TEST_F(DrawUtilsTest, CheckDetachable) {
       base::FilePath(test_root_).Append("etc/cros-initramfs/is_detachable"));
 
   EXPECT_TRUE(draw_utils_.IsDetachable());
-}
-
-TEST_F(DrawUtilsTest, GetVpdFromFile) {
-  std::string vpd = "ca";
-  ASSERT_TRUE(base::WriteFile(
-      base::FilePath(test_root_).Append("sys/firmware/vpd/ro/region"), vpd));
-  draw_utils_.GetVpdRegion();
-  EXPECT_EQ(draw_utils_.vpd_region_, "ca");
-}
-
-TEST_F(DrawUtilsTest, GetVpdFromCommand) {
-  std::string output = "ca";
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
-      .WillOnce(testing::DoAll(testing::SetArgPointee<2>(output),
-                               testing::Return(true)));
-  draw_utils_.GetVpdRegion();
-  EXPECT_EQ(draw_utils_.vpd_region_, output);
-}
-
-TEST_F(DrawUtilsTest, GetVpdFromDefault) {
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
-      .WillOnce(testing::Return(false));
-  draw_utils_.GetVpdRegion();
-  EXPECT_EQ(draw_utils_.vpd_region_, "us");
 }
 
 TEST_F(DrawUtilsTest, GetHwidFromCommand) {

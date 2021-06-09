@@ -145,9 +145,6 @@ class DrawUtils : public DrawInterface {
   FRIEND_TEST(DrawUtilsTest, GetLangConstsError);
   FRIEND_TEST(DrawUtilsTest, CheckRightToLeft);
   FRIEND_TEST(DrawUtilsTest, CheckDetachable);
-  FRIEND_TEST(DrawUtilsTest, GetVpdFromFile);
-  FRIEND_TEST(DrawUtilsTest, GetVpdFromCommand);
-  FRIEND_TEST(DrawUtilsTest, GetVpdFromDefault);
   FRIEND_TEST(DrawUtilsTest, GetHwidFromCommand);
   FRIEND_TEST(DrawUtilsTest, GetHwidFromDefault);
   FRIEND_TEST(DrawUtilsTest, GetFreconConstFile);
@@ -190,9 +187,6 @@ class DrawUtils : public DrawInterface {
   // updated every time the language changes.
   void CheckRightToLeft();
 
-  // Get region from VPD. Set vpd_region_ to US as default.
-  void GetVpdRegion();
-
   // Get hardware Id from crossystem. Set hwid to `CHROMEBOOK` as default.
   void ReadHardwareId();
 
@@ -225,10 +219,6 @@ class DrawUtils : public DrawInterface {
 
   // Hardware Id read from crossystem.
   std::string hwid_;
-
-  // Region code read from VPD. Used to determine keyboard layout. Does not
-  // change based on selected locale.
-  std::string vpd_region_;
 
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};

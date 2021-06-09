@@ -96,11 +96,6 @@ class Screens : public DrawUtils,
   }
 
  private:
-  FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoFile);
-  FRIEND_TEST(ScreensTest, MapRegionToKeyboardNotDict);
-  FRIEND_TEST(ScreensTest, MapRegionToKeyboardNoKeyboard);
-  FRIEND_TEST(ScreensTest, MapRegionToKeyboardBadKeyboardFormat);
-  FRIEND_TEST(ScreensTest, MapRegionToKeyboard);
   FRIEND_TEST(ScreensTestMocks, OnKeyPress);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineError);
   FRIEND_TEST(ScreensTestMocks, UpdateEngineProgressComplete);
@@ -156,9 +151,6 @@ class Screens : public DrawUtils,
   virtual void ShowMiniOsCompleteScreen();
   void ShowMiniOsDebugOptionsScreen();
   void ShowMiniOsLogScreen();
-
-  // Get XKB keyboard layout based on the VPD region. Return false on error.
-  bool MapRegionToKeyboard(std::string* xkb_keyboard_layout);
 
   // Calls corresponding MiniOs screen based on update engine status. If UE is
   // `DOWNLOADING` then shows a progress bar with percentage.

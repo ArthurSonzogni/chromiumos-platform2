@@ -12,8 +12,11 @@
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <xkbcommon/xkbcommon.h>
+
+#include "minios/process_manager.h"
 
 namespace minios {
 
@@ -38,19 +41,9 @@ extern const int kKeyMax;
 class KeyReader {
  public:
   // Default constructor can only access EvWaitForKeys.
-  explicit KeyReader(bool include_usb)
-      : include_usb_(include_usb),
-        use_only_evwaitkey_(true),
-        delegate_(nullptr) {}
+  explicit KeyReader(bool include_usb);
 
-  KeyReader(bool include_usb, std::string country_code)
-      : backspace_counter_(0),
-        return_pressed_(false),
-        include_usb_(include_usb),
-        country_code_(country_code),
-        use_only_evwaitkey_(false) {
-    user_input_.reserve(kMaxInputLength);
-  }
+  KeyReader(bool include_usb, std::string vpd_region);
 
   ~KeyReader();
 
@@ -83,11 +76,16 @@ class KeyReader {
   // to toggle between showing and hiding passwords. Returns false on error.
   bool GetUserInput(bool* enter, bool* tab_toggle, std::string* user_input);
 
+  // Get XKB keyboard layout based on the VPD region. Return false on error.
+  bool MapRegionToKeyboard(std::string* xkb_layout);
+
   // Wrapper that does not take in tab toggle key. Used for testing.
   bool GetCharForTest(const struct input_event& ev);
 
   // Returns the current key input as a string. Used for testing.
   std::string GetUserInputForTest();
+
+  void SetRootForTest(const base::FilePath& test_root) { root_ = test_root; }
 
  private:
   // Checks whether all the keys in `keys_` are supported by the fd. Returns
@@ -125,11 +123,13 @@ class KeyReader {
   // Whether or not to include USB connections when scanning for events.
   bool include_usb_;
   // Keyboard layout for xkb common;
-  std::string country_code_;
+  std::string vpd_region_;
   // Stores open event connections.
   std::vector<base::ScopedFD> fds_;
   // Stores epoll file descriptor.
   base::ScopedFD epfd_;
+  // Default root directory.
+  base::FilePath root_;
 
   // Watches the epoll file descriptor and calls `OnKeyEvent`.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;

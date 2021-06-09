@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -10,11 +12,37 @@
 using testing::_;
 
 namespace minios {
+namespace {
+constexpr char kCrosJsonSnippet[] =
+    "{\"au\": {\"region_code\": \"au\", \"confirmed\": true, "
+    "\"description\": \"Australia\", \"keyboards\": [\"xkb:us::eng\"], "
+    "\"time_zones\": [\"Australia/Sydney\"], \"locales\": [\"en-AU\"], "
+    "\"keyboard_mechanical_layout\": \"ANSI\", \"regulatory_domain\": "
+    "\"AU\"}, \"be\": {\"region_code\": \"be\", \"confirmed\": true, "
+    "\"description\": \"Belgium\", \"keyboards\": [\"xkb:be::nld\", "
+    "\"xkb:ca:eng:eng\"], \"time_zones\": [\"Europe/Brussels\"], "
+    "\"locales\": [\"en-GB\"], \"keyboard_mechanical_layout\": \"ISO\", "
+    "\"regulatory_domain\": \"BE\"},  \"he\": {\"keyboards\": [\"xkbbenld\"]}, "
+    "\"us\": {\"region_code\": \"us\", \"confirmed\": true, "
+    "\"description\": \"US\"}}";
+
+const char kCrosRegionFile[] = "usr/share/misc/cros-regions.json";
+
+}  // namespace
 
 class KeyReaderTest : public ::testing::Test {
  public:
-  void SetUp() override { ev_.value = 0; }
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    test_root_ = temp_dir_.GetPath();
+    ASSERT_TRUE(base::CreateDirectory(
+        base::FilePath(test_root_).Append("usr/share/misc")));
+    ev_.value = 0;
+  }
   struct input_event ev_;
+  // Test directory.
+  base::ScopedTempDir temp_dir_;
+  base::FilePath test_root_;
 };
 
 class MockKeyReader : public KeyReader {
@@ -415,6 +443,77 @@ TEST_F(KeyReaderTest, InitEpollFailure) {
   EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(true));
   EXPECT_CALL(key_reader, EpollCreate(_)).WillOnce(testing::Return(false));
   EXPECT_FALSE(key_reader.Init({103, 108, 28}));
+}
+
+TEST_F(KeyReaderTest, MapRegionToKeyboardNoFile) {
+  MockKeyReader key_reader(false, "he");
+  std::string keyboard;
+  EXPECT_FALSE(key_reader.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(KeyReaderTest, MapRegionToKeyboardNotDict) {
+  MockKeyReader key_reader(false, "us");
+  key_reader.SetRootForTest(test_root_);
+  std::string not_dict =
+      "{ au : { region_code :  au ,  confirmed : true, "
+      " description :  Australia ,  keyboards : [ xkb:us::eng ], "
+      " time_zones : [ Australia/Sydney ],  locales : [ en-AU ], "
+      " keyboard_mechanical_layout ";
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append(kCrosRegionFile), not_dict));
+  std::string keyboard;
+  EXPECT_FALSE(key_reader.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(KeyReaderTest, MapRegionToKeyboardNoKeyboard) {
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append(kCrosRegionFile), kCrosJsonSnippet));
+
+  // Find keyboard for region. "us" dict entry does not have a keyboard value.
+  std::string keyboard;
+  MockKeyReader key_reader(false, "us");
+  key_reader.SetRootForTest(test_root_);
+  EXPECT_FALSE(key_reader.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+
+  // Given Vpd region not available at all.
+  MockKeyReader key_reader_fr(false, "fr");
+  key_reader_fr.SetRootForTest(test_root_);
+  EXPECT_FALSE(key_reader_fr.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(KeyReaderTest, MapRegionToKeyboardBadKeyboardFormat) {
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append(kCrosRegionFile), kCrosJsonSnippet));
+
+  // Find keyboard for region. "he" dict entry does not have a correctly
+  // formatted keyboard value.
+  MockKeyReader key_reader(false, "he");
+  key_reader.SetRootForTest(test_root_);
+  std::string keyboard;
+  EXPECT_FALSE(key_reader.MapRegionToKeyboard(&keyboard));
+  EXPECT_TRUE(keyboard.empty());
+}
+
+TEST_F(KeyReaderTest, MapRegionToKeyboard) {
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(test_root_).Append(kCrosRegionFile), kCrosJsonSnippet));
+
+  // Find keyboard for region.
+  MockKeyReader key_reader(false, "au");
+  key_reader.SetRootForTest(test_root_);
+  std::string keyboard;
+  EXPECT_TRUE(key_reader.MapRegionToKeyboard(&keyboard));
+  EXPECT_EQ(keyboard, "us");
+
+  // Multiple keyboards available.
+  MockKeyReader key_reader_be(false, "be");
+  key_reader_be.SetRootForTest(test_root_);
+  EXPECT_TRUE(key_reader_be.MapRegionToKeyboard(&keyboard));
+  EXPECT_EQ(keyboard, "be");
 }
 
 }  // namespace minios
