@@ -382,6 +382,14 @@ bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
   std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
 
+  // We get the LE Label from keyset before we resave it. Once the keyset
+  // is re-saved, a new label is generated making the old label obsolete.
+  // It would be safe to delete that from PinWeaver tree after resave.
+  base::Optional<uint64_t> old_le_label;
+  if (keyset->HasLELabel()) {
+    old_le_label = keyset->GetLELabel();
+  }
+
   if (!keyset->Encrypt(credentials.passkey(), obfuscated_username) ||
       !keyset->Save(keyset->GetSourceFile())) {
     LOG(ERROR) << "Failed to encrypt and write the keyset.";
@@ -389,11 +397,12 @@ bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
     return false;
   }
 
-  if ((keyset->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0) {
-    uint64_t label = keyset->GetLELabel();
-    if (!crypto_->RemoveLECredential(label)) {
+  if ((keyset->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0 &&
+      old_le_label.has_value()) {
+    CHECK_NE(old_le_label.value(), keyset->GetLELabel());
+    if (!crypto_->RemoveLECredential(old_le_label.value())) {
       // This is non-fatal error.
-      LOG(ERROR) << "Failed to remove label = " << label;
+      LOG(ERROR) << "Failed to remove label = " << old_le_label.value();
     }
   }
 
