@@ -20,6 +20,7 @@ pkg_config("target_defaults_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libjpeg",
     "libmetrics",
     "libpng",
     "libusb-1.0",
@@ -62,6 +63,7 @@ static_library("liblorgnette") {
     "firewall_manager.cc",
     "guess_source.cc",
     "image_readers/image_reader.cc",
+    "image_readers/jpeg_reader.cc",
     "image_readers/png_reader.cc",
     "ippusb_device.cc",
     "manager.cc",
@@ -92,6 +94,7 @@ executable("lorgnette_cli") {
 if (use.test) {
   executable("lorgnette_unittest") {
     sources = [
+      "image_readers/jpeg_reader_test.cc",
       "image_readers/png_reader_test.cc",
       "ippusb_device_test.cc",
       "manager_test.cc",

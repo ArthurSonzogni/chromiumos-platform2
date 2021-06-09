@@ -30,6 +30,7 @@
 #include "lorgnette/firewall_manager.h"
 #include "lorgnette/guess_source.h"
 #include "lorgnette/image_readers/image_reader.h"
+#include "lorgnette/image_readers/jpeg_reader.h"
 #include "lorgnette/image_readers/png_reader.h"
 #include "lorgnette/ippusb_device.h"
 
@@ -801,6 +802,11 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
     case IMAGE_FORMAT_PNG: {
       image_reader = PngReader::Create(error, params.value(), resolution,
                                        std::move(out_file));
+      break;
+    }
+    case IMAGE_FORMAT_JPEG: {
+      image_reader = JpegReader::Create(error, params.value(), resolution,
+                                        std::move(out_file));
       break;
     }
     default: {

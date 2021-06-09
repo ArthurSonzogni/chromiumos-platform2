@@ -97,7 +97,7 @@ class ManagerTest : public testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    output_path_ = temp_dir_.GetPath().Append("scan_data.png");
+    output_path_ = temp_dir_.GetPath().Append("scan_data");
     base::File scan(output_path_,
                     base::File::FLAG_CREATE | base::File::FLAG_WRITE);
     ASSERT_TRUE(scan.IsValid());
@@ -174,11 +174,13 @@ class ManagerTest : public testing::Test {
 
   StartScanResponse StartScan(const std::string& device_name,
                               ColorMode color_mode,
-                              const std::string& source_name) {
+                              const std::string& source_name,
+                              ImageFormat image_format) {
     StartScanRequest request;
     request.set_device_name(device_name);
     request.mutable_settings()->set_color_mode(color_mode);
     request.mutable_settings()->set_source_name(source_name);
+    request.mutable_settings()->set_image_format(image_format);
 
     std::vector<uint8_t> serialized_response =
         manager_.StartScan(impl::SerializeProto(request));
@@ -214,8 +216,11 @@ class ManagerTest : public testing::Test {
   }
 
   // Run a one-page scan to completion, and verify that it was successful.
-  void RunScanSuccess(const std::string& device_name, ColorMode color_mode) {
-    StartScanResponse response = StartScan(device_name, color_mode, "Flatbed");
+  void RunScanSuccess(const std::string& device_name,
+                      ColorMode color_mode,
+                      ImageFormat image_format) {
+    StartScanResponse response =
+        StartScan(device_name, color_mode, "Flatbed", image_format);
     EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
     EXPECT_NE(response.scan_uuid(), "");
 
@@ -280,7 +285,7 @@ TEST_F(ManagerTest, GetScannerCapabilitiesSuccess) {
   EXPECT_THAT(caps.color_modes(), ElementsAre(MODE_COLOR));
 }
 
-TEST_F(ManagerTest, StartScanBlackAndWhiteSuccess) {
+TEST_F(ManagerTest, StartScanPngBlackAndWhiteSuccess) {
   ScanParameters parameters;
   parameters.format = kGrayscale;
   parameters.bytes_per_line = 11;
@@ -292,11 +297,11 @@ TEST_F(ManagerTest, StartScanBlackAndWhiteSuccess) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanSuccess(kOtherBackend);
-  RunScanSuccess("TestDevice", MODE_LINEART);
+  RunScanSuccess("TestDevice", MODE_LINEART, IMAGE_FORMAT_PNG);
   CompareImages("./test_images/bw.png", output_path_.value());
 }
 
-TEST_F(ManagerTest, StartScanGrayscaleSuccess) {
+TEST_F(ManagerTest, StartScanPngGrayscaleSuccess) {
   ScanParameters parameters;
   parameters.format = kGrayscale;
   parameters.pixels_per_line = 32;
@@ -308,11 +313,11 @@ TEST_F(ManagerTest, StartScanGrayscaleSuccess) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanSuccess(kOtherBackend);
-  RunScanSuccess("TestDevice", MODE_GRAYSCALE);
+  RunScanSuccess("TestDevice", MODE_GRAYSCALE, IMAGE_FORMAT_PNG);
   CompareImages("./test_images/gray.png", output_path_.value());
 }
 
-TEST_F(ManagerTest, StartScanColorSuccess) {
+TEST_F(ManagerTest, StartScanPngColorSuccess) {
   ScanParameters parameters;
   parameters.format = kRGB;
   parameters.bytes_per_line = 98 * 3;
@@ -324,11 +329,11 @@ TEST_F(ManagerTest, StartScanColorSuccess) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanSuccess(kOtherBackend);
-  RunScanSuccess("TestDevice", MODE_COLOR);
+  RunScanSuccess("TestDevice", MODE_COLOR, IMAGE_FORMAT_PNG);
   CompareImages("./test_images/color.png", output_path_.value());
 }
 
-TEST_F(ManagerTest, StartScan16BitColorSuccess) {
+TEST_F(ManagerTest, StartScanPng16BitColorSuccess) {
   ScanParameters parameters;
   parameters.format = kRGB;
   parameters.pixels_per_line = 32;
@@ -344,8 +349,40 @@ TEST_F(ManagerTest, StartScan16BitColorSuccess) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanSuccess(kOtherBackend);
-  RunScanSuccess("TestDevice", MODE_COLOR);
+  RunScanSuccess("TestDevice", MODE_COLOR, IMAGE_FORMAT_PNG);
   CompareImages("./test_images/color16.png", output_path_.value());
+}
+
+TEST_F(ManagerTest, StartScanJpegGrayscaleSuccess) {
+  ScanParameters parameters;
+  parameters.format = kGrayscale;
+  parameters.pixels_per_line = 32;
+  parameters.lines = 32;
+  parameters.depth = 8;
+  parameters.bytes_per_line = parameters.pixels_per_line * parameters.depth / 8;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/gray.pnm")},
+                  parameters);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanSuccess(kOtherBackend);
+  RunScanSuccess("TestDevice", MODE_GRAYSCALE, IMAGE_FORMAT_JPEG);
+  CompareImages("./test_images/gray.jpeg", output_path_.value());
+}
+
+TEST_F(ManagerTest, StartScanJpegColorSuccess) {
+  ScanParameters parameters;
+  parameters.format = kRGB;
+  parameters.bytes_per_line = 98 * 3;
+  parameters.pixels_per_line = 98;
+  parameters.lines = 50;
+  parameters.depth = 8;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/color.pnm")},
+                  parameters);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanSuccess(kOtherBackend);
+  RunScanSuccess("TestDevice", MODE_COLOR, IMAGE_FORMAT_JPEG);
+  CompareImages("./test_images/color.jpeg", output_path_.value());
 }
 
 TEST_F(ManagerTest, StartScanMultiPageColorSuccess) {
@@ -353,7 +390,8 @@ TEST_F(ManagerTest, StartScanMultiPageColorSuccess) {
   ExpectScanRequest(kOtherBackend);
   ExpectScanSuccess(kOtherBackend);
 
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "ADF");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "ADF", IMAGE_FORMAT_PNG);
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
 
@@ -380,7 +418,8 @@ TEST_F(ManagerTest, StartScanCancelledImmediately) {
 
   ExpectScanRequest(kOtherBackend);
   // Set the source to "ADF" so that lorgnette knows to expect multiple pages.
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "ADF");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "ADF", IMAGE_FORMAT_PNG);
   std::string uuid = response.scan_uuid();
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(uuid, "");
@@ -401,7 +440,8 @@ TEST_F(ManagerTest, StartScanCancelledWithNoFurtherOperations) {
 
   ExpectScanRequest(kOtherBackend);
   // Set the source to "ADF" so that lorgnette knows to expect multiple pages.
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "ADF");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "ADF", IMAGE_FORMAT_PNG);
   std::string uuid = response.scan_uuid();
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(uuid, "");
@@ -419,7 +459,8 @@ TEST_F(ManagerTest, StartScanCancelledAfterGettingPage) {
 
   ExpectScanRequest(kOtherBackend);
   // Set the source to "ADF" so that lorgnette knows to expect multiple pages.
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "ADF");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "ADF", IMAGE_FORMAT_PNG);
   std::string uuid = response.scan_uuid();
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(uuid, "");
@@ -439,7 +480,8 @@ TEST_F(ManagerTest, StartScanCancelledAfterGettingPage) {
 }
 
 TEST_F(ManagerTest, StartScanFailNoDevice) {
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
@@ -459,7 +501,8 @@ TEST_F(ManagerTest, StartScanFailToStart) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
@@ -479,7 +522,8 @@ TEST_F(ManagerTest, StartScanDeviceBusy) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
@@ -499,7 +543,8 @@ TEST_F(ManagerTest, StartScanAdfJammed) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
@@ -519,7 +564,8 @@ TEST_F(ManagerTest, StartScanAdfEmpty) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
@@ -539,7 +585,8 @@ TEST_F(ManagerTest, StartScanFlatbedOpen) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_FAILED);
   EXPECT_NE(response.failure_reason(), "");
@@ -559,7 +606,8 @@ TEST_F(ManagerTest, StartScanFailToRead) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
@@ -587,7 +635,8 @@ TEST_F(ManagerTest, GetNextImageDeviceBusy) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
@@ -615,7 +664,8 @@ TEST_F(ManagerTest, GetNextImageAdfJammed) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
@@ -643,7 +693,8 @@ TEST_F(ManagerTest, GetNextImageFlatbedOpen) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
@@ -671,7 +722,8 @@ TEST_F(ManagerTest, GetNextImageIoError) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
@@ -692,7 +744,8 @@ TEST_F(ManagerTest, GetNextImageBadFd) {
                   ScanParameters());
 
   ExpectScanRequest(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
@@ -720,7 +773,8 @@ TEST_F(ManagerTest, GetNextImageScanAlreadyComplete) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanSuccess(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "ADF");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "ADF", IMAGE_FORMAT_PNG);
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_NE(response.scan_uuid(), "");
 
@@ -747,7 +801,8 @@ TEST_F(ManagerTest, GetNextImageNegativeWidth) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
@@ -780,7 +835,8 @@ TEST_F(ManagerTest, GetNextImageExcessWidth) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
@@ -813,7 +869,8 @@ TEST_F(ManagerTest, GetNextImageInvalidHeight) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
@@ -846,7 +903,8 @@ TEST_F(ManagerTest, GetNextImageMismatchedSizes) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
@@ -880,7 +938,8 @@ TEST_F(ManagerTest, GetNextImageTooLarge) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  StartScanResponse response = StartScan("TestDevice", MODE_COLOR, "Flatbed");
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
   EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
   EXPECT_EQ(response.failure_reason(), "");
