@@ -69,6 +69,64 @@ class Metrics {
     kMaxValue = kAlwaysOn,
   };
 
+  // This is not an UMA enum type.
+  enum class QueryType {
+    kPlainText = 0,
+    kDnsOverHttps = 1,
+  };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class QueryResult {
+    kFailure = 0,
+    kSuccess = 1,
+
+    kMaxValue = kSuccess,
+  };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class QueryError {
+    kNone = 0,
+    kDomainNotFound = 1,
+    kNoData = 2,
+    kBadQuery = 3,
+    kQueryRefused = 4,
+    kQueryTimeout = 5,
+    kQueryCanceled = 6,
+    kConnectionRefused = 7,
+    kConnectionFailed = 8,
+    kUnsupportedProtocol = 9,
+    kNotImplemented = 10,
+    kInvalidURL = 11,
+    kBadHost = 12,
+    kTooManyRedirects = 13,
+    kSendError = 14,
+    kReceiveError = 15,
+    kOtherClientError = 16,
+    kOtherServerError = 17,
+
+    kMaxValue = kOtherServerError,
+  };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class HttpError {
+    kNone = 0,
+    kAnyRedirect = 1,
+    kBadRequest = 2,
+    kPayloadTooLarge = 3,
+    kURITooLong = 4,
+    kUnsupportedMediaType = 5,
+    kTooManyRequests = 6,
+    kOtherClientError = 7,
+    kNotImplemented = 8,
+    kBadGateway = 9,
+    kOtherServerError = 10,
+
+    kMaxValue = kOtherServerError,
+  };
+
   Metrics() = default;
   Metrics(const Metrics&) = delete;
   ~Metrics() = default;
@@ -77,6 +135,7 @@ class Metrics {
   void RecordProcessEvent(ProcessType type, ProcessEvent event);
   void RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6);
   void RecordDnsOverHttpsMode(DnsOverHttpsMode mode);
+  void RecordQueryResult(QueryType type, QueryError error, int http_code = -1);
 
  private:
   MetricsLibrary metrics_;

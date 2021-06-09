@@ -24,6 +24,10 @@ constexpr char kNameserverTypes[] = "Network.DnsProxy.NameserverTypes";
 
 constexpr char kDnsOverHttpsMode[] = "Network.DnsProxy.DnsOverHttpsMode";
 
+constexpr char kQueryResultsTemplate[] = "Network.DnsProxy.$1Query.Results";
+constexpr char kQueryErrorsTemplate[] = "Network.DnsProxy.$1Query.Errors";
+constexpr char kHttpErrors[] = "Network.DnsProxy.DnsOverHttpsQuery.HttpErrors";
+
 const char* ProcessTypeString(Metrics::ProcessType type) {
   static const std::map<Metrics::ProcessType, const char*> m{
       {Metrics::ProcessType::kController, "Controller"},
@@ -36,6 +40,45 @@ const char* ProcessTypeString(Metrics::ProcessType type) {
     return it->second;
 
   return nullptr;
+}
+
+const char* QueryTypeString(Metrics::QueryType type) {
+  switch (type) {
+    case Metrics::QueryType::kPlainText:
+      return "PlainText";
+    case Metrics::QueryType::kDnsOverHttps:
+      return "DnsOverHttps";
+    default:
+      return nullptr;
+  }
+}
+
+Metrics::HttpError HttpStatusToError(int status) {
+  if (status < 300)
+    return Metrics::HttpError::kNone;
+
+  if (status < 400)
+    return Metrics::HttpError::kAnyRedirect;
+
+  switch (status) {
+    case 400:
+      return Metrics::HttpError::kBadRequest;
+    case 413:
+      return Metrics::HttpError::kPayloadTooLarge;
+    case 414:
+      return Metrics::HttpError::kURITooLong;
+    case 415:
+      return Metrics::HttpError::kUnsupportedMediaType;
+    case 429:
+      return Metrics::HttpError::kTooManyRequests;
+    case 501:
+      return Metrics::HttpError::kNotImplemented;
+    case 502:
+      return Metrics::HttpError::kBadGateway;
+    default:
+      return (status < 500) ? Metrics::HttpError::kOtherClientError
+                            : Metrics::HttpError::kOtherServerError;
+  }
 }
 
 template <typename T>
@@ -82,6 +125,30 @@ void Metrics::RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6) {
 
 void Metrics::RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode mode) {
   metrics_.SendEnumToUMA(kDnsOverHttpsMode, mode);
+}
+
+void Metrics::RecordQueryResult(Metrics::QueryType type,
+                                Metrics::QueryError error,
+                                int http_code) {
+  const char* qs = QueryTypeString(type);
+  if (!qs)
+    return;
+
+  auto name =
+      base::ReplaceStringPlaceholders(kQueryResultsTemplate, {qs}, nullptr);
+
+  if (error == Metrics::QueryError::kNone) {
+    metrics_.SendEnumToUMA(name, Metrics::QueryResult::kSuccess);
+    return;
+  }
+  metrics_.SendEnumToUMA(name, Metrics::QueryResult::kFailure);
+
+  name = base::ReplaceStringPlaceholders(kQueryErrorsTemplate, {qs}, nullptr);
+  metrics_.SendEnumToUMA(name, error);
+
+  if (http_code >= 300) {
+    metrics_.SendEnumToUMA(kHttpErrors, HttpStatusToError(http_code));
+  }
 }
 
 }  // namespace dns_proxy

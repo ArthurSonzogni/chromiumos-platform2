@@ -18,6 +18,7 @@
 
 #include "dns-proxy/ares_client.h"
 #include "dns-proxy/doh_curl_client.h"
+#include "dns-proxy/metrics.h"
 
 namespace dns_proxy {
 
@@ -180,6 +181,8 @@ class Resolver {
 
   // Curl client to resolve DNS through secure DNS.
   std::unique_ptr<DoHCurlClient> curl_client_;
+
+  Metrics metrics_;
 
   base::WeakPtrFactory<Resolver> weak_factory_{this};
 };

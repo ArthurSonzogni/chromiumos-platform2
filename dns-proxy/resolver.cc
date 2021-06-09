@@ -20,14 +20,83 @@
 // structure available.
 using patchpanel::operator<<;
 
+namespace dns_proxy {
 namespace {
 constexpr uint32_t kMaxClientTcpConn = 16;
 // Retries are delayed by +/- |kRetryDelayJitterMultiplier| times to avoid
 // coordinated spikes.
 constexpr float kRetryDelayJitterMultiplier = 0.15;
-}  // namespace
 
-namespace dns_proxy {
+Metrics::QueryError AresStatusMetric(int status) {
+  switch (status) {
+    case ARES_SUCCESS:
+      return Metrics::QueryError::kNone;
+    case ARES_ENODATA:
+      return Metrics::QueryError::kNoData;
+    case ARES_ENOTFOUND:
+      return Metrics::QueryError::kDomainNotFound;
+    case ARES_ENOTIMP:
+      return Metrics::QueryError::kNotImplemented;
+    case ARES_EREFUSED:
+      return Metrics::QueryError::kQueryRefused;
+    case ARES_EFORMERR:
+    case ARES_EBADQUERY:
+    case ARES_EBADNAME:
+    case ARES_EBADFAMILY:
+      return Metrics::QueryError::kBadQuery;
+    case ARES_ESERVFAIL:
+    case ARES_EBADRESP:
+      return Metrics::QueryError::kOtherServerError;
+    case ARES_ECONNREFUSED:
+      return Metrics::QueryError::kConnectionRefused;
+    case ARES_ETIMEOUT:
+      return Metrics::QueryError::kQueryTimeout;
+    default:
+      return Metrics::QueryError::kOtherClientError;
+  }
+}
+
+Metrics::QueryError CurlCodeMetric(int code) {
+  switch (code) {
+    case CURLE_OK:
+      return Metrics::QueryError::kNone;
+    case CURLE_UNSUPPORTED_PROTOCOL:
+      return Metrics::QueryError::kUnsupportedProtocol;
+    case CURLE_URL_MALFORMAT:
+    case CURLE_BAD_CONTENT_ENCODING:
+      return Metrics::QueryError::kBadQuery;
+    case CURLE_COULDNT_RESOLVE_HOST:
+    case CURLE_COULDNT_RESOLVE_PROXY:
+      return Metrics::QueryError::kBadHost;
+    case CURLE_COULDNT_CONNECT:
+    case CURLE_SSL_CONNECT_ERROR:
+    case CURLE_PEER_FAILED_VERIFICATION:
+      return Metrics::QueryError::kConnectionFailed;
+    case CURLE_REMOTE_ACCESS_DENIED:
+    case CURLE_SSL_CLIENTCERT:
+      return Metrics::QueryError::kConnectionRefused;
+    case CURLE_OPERATION_TIMEDOUT:
+      return Metrics::QueryError::kQueryTimeout;
+    case CURLE_TOO_MANY_REDIRECTS:
+      return Metrics::QueryError::kTooManyRedirects;
+    case CURLE_GOT_NOTHING:
+      return Metrics::QueryError::kNoData;
+    case CURLE_SEND_ERROR:
+    case CURLE_WRITE_ERROR:
+    case CURLE_AGAIN:
+      return Metrics::QueryError::kSendError;
+    case CURLE_RECV_ERROR:
+    case CURLE_READ_ERROR:
+      return Metrics::QueryError::kReceiveError;
+    case CURLE_WEIRD_SERVER_REPLY:
+    case CURLE_RANGE_ERROR:
+      return Metrics::QueryError::kOtherServerError;
+    default:
+      return Metrics::QueryError::kOtherClientError;
+  }
+}
+
+}  // namespace
 
 Resolver::SocketFd::SocketFd(int type, int fd)
     : type(type), fd(fd), num_retries(0) {
@@ -130,6 +199,9 @@ void Resolver::HandleAresResult(void* ctx,
                                 int status,
                                 uint8_t* msg,
                                 size_t len) {
+  metrics_.RecordQueryResult(Metrics::QueryType::kPlainText,
+                             AresStatusMetric(status));
+
   std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
   if (status != ARES_SUCCESS) {
     LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
@@ -142,6 +214,9 @@ void Resolver::HandleCurlResult(void* ctx,
                                 const DoHCurlClient::CurlResult& res,
                                 uint8_t* msg,
                                 size_t len) {
+  metrics_.RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
+                             CurlCodeMetric(res.curl_code), res.http_code);
+
   SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   if (res.curl_code != CURLE_OK) {
     LOG(ERROR) << "DoH resolution failed: "
