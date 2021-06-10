@@ -1599,6 +1599,15 @@ void Cellular::SetInhibitedGetDeviceCallback(bool inhibited,
 
 void Cellular::OnInhibitDevice(bool inhibited, const Error& error) {
   if (!error.IsSuccess()) {
+    if (inhibited &&
+        error.message().find("already inhibited") != std::string::npos) {
+      // If MM returns an "already inhibited" error, Shill might have restarted
+      // or something else caused MM to become inhibited. Either way, set and
+      // emit the local inhibited state and update scanning.
+      LOG(WARNING) << __func__ << " Ignoring error: " << error;
+      SetInhibitedProperty(true);
+      return;
+    }
     LOG(ERROR) << __func__ << " Failed: " << error;
     return;
   }

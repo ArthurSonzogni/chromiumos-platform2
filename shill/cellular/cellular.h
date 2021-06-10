@@ -415,7 +415,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, ScanSuccess);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, SetPolicyAllowRoaming);
-  FRIEND_TEST(CellularTest, SetInhibited);
   FRIEND_TEST(CellularTest, SetUseAttachApn);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StorageIdentifier);

@@ -542,6 +542,9 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   void SetInhibited(bool inhibited) {
+    device_->SetInhibited(inhibited, /*error=*/nullptr);
+  }
+  void SetInhibitedProperty(bool inhibited) {
     device_->SetInhibitedProperty(inhibited);
   }
 
@@ -1269,7 +1272,7 @@ TEST_P(CellularTest, ConnectWhileInhibited) {
   SetCapability3gppModemSimpleProxy();
 
   // Connect while inhibited should fail.
-  SetInhibited(true);
+  SetInhibitedProperty(true);
   Error error;
   device_->Connect(device_->service().get(), &error);
   EXPECT_FALSE(error.IsSuccess());
@@ -1529,10 +1532,49 @@ TEST_P(CellularTest, SetInhibited) {
 
   // Invoke Cellular::StartModemCallback() to simulate the modem starting, which
   // is required before SetInhibit can succeed.
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   CallStartModemCallback(Error(Error::kSuccess));
 
   EXPECT_FALSE(device_->inhibited());
-  device_->SetInhibited(true, /*error=*/nullptr);
+  SetInhibited(true);
+  EXPECT_TRUE(device_->inhibited());
+}
+
+TEST_P(CellularTest, SetInhibitedFails) {
+  PopulateProxies();
+
+  // Cellular takes ownership of mm1_proxy_ on construction, so cast its
+  // mm1_proxy_ to a MockMm1Proxy*.
+  auto* mm1_proxy =
+      static_cast<mm1::MockMm1Proxy*>(device_->mm1_proxy_for_testing());
+
+  // Have MM1.InhibitDevice return an error.
+  EXPECT_CALL(*mm1_proxy, InhibitDevice(kUid, true, _))
+      .WillOnce(
+          Invoke([](const std::string&, bool, const ResultCallback& callback) {
+            callback.Run(Error(Error::kOperationFailed));
+          }));
+
+  // Invoke Cellular::StartModemCallback() to simulate the modem starting, which
+  // is required before SetInhibit can be called.
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  CallStartModemCallback(Error(Error::kSuccess));
+
+  EXPECT_FALSE(device_->inhibited());
+  SetInhibited(true);
+  EXPECT_FALSE(device_->inhibited());
+
+  // Have MM1.InhibitDevice return an "already inhibited" error to test
+  // inhibiting while already inhibited, which should succeed.
+  // See b/190635884 for more info.
+  EXPECT_CALL(*mm1_proxy, InhibitDevice(kUid, true, _))
+      .WillOnce(
+          Invoke([](const std::string&, bool, const ResultCallback& callback) {
+            callback.Run(Error(Error::kOperationFailed,
+                               "Device '/virtual/fake' is already inhibited"));
+          }));
+
+  SetInhibited(true);
   EXPECT_TRUE(device_->inhibited());
 }
 
