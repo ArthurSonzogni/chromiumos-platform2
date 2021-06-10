@@ -7,6 +7,8 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <unordered_map>
+
 namespace rmad {
 
 class ComponentsRepairStateHandler : public BaseStateHandler {
@@ -22,6 +24,9 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
 
  private:
   bool VerifyInput(const RmadState& state) const;
+  std::unordered_map<ComponentRepairState::Component,
+                     ComponentRepairState::RepairState>
+  GetUserSelectionDictionary() const;
 };
 
 }  // namespace rmad

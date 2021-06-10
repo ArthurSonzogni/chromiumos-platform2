@@ -5,6 +5,7 @@
 #include "rmad/state_handler/components_repair_state_handler.h"
 
 #include <memory>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -78,6 +79,9 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // Do not read from storage. Always probe again and update |state_|.
   // TODO(chenghan): Integrate with RACC to check AVL compliance.
   auto components_repair = std::make_unique<ComponentsRepairState>();
+  const std::unordered_map<ComponentRepairState::Component,
+                           ComponentRepairState::RepairState>
+      previous_selection = GetUserSelectionDictionary();
   // runtime_probe results.
   for (auto& [component, probed_component_size] : PROBED_COMPONENT_SIZES) {
     ComponentRepairState* component_repair =
@@ -85,8 +89,12 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
     component_repair->set_name(component);
     // TODO(chenghan): Do we need to return detailed info, e.g. component names?
     if ((reply.*probed_component_size)() > 0) {
-      component_repair->set_repair_state(
-          ComponentRepairState::RMAD_REPAIR_UNKNOWN);
+      if (previous_selection.find(component) != previous_selection.end()) {
+        component_repair->set_repair_state(previous_selection.at(component));
+      } else {
+        component_repair->set_repair_state(
+            ComponentRepairState::RMAD_REPAIR_UNKNOWN);
+      }
     } else {
       component_repair->set_repair_state(
           ComponentRepairState::RMAD_REPAIR_MISSING);
@@ -100,7 +108,6 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
     component_repair->set_repair_state(
         ComponentRepairState::RMAD_REPAIR_UNKNOWN);
   }
-  // TODO(chenghan): Use RetrieveState() to get previous user's selection.
   state_.set_allocated_components_repair(components_repair.release());
 
   return RMAD_ERROR_OK;
@@ -137,7 +144,7 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
-  // Still store the state to storage to keep user's selection.
+  // Store the state to storage to keep user's selection.
   StoreState();
 
   return {.error = RMAD_ERROR_OK,
@@ -148,6 +155,25 @@ bool ComponentsRepairStateHandler::VerifyInput(const RmadState& state) const {
   // TODO(chenghan): Verify if the user selected components are probed on the
   //                 device.
   return true;
+}
+
+std::unordered_map<ComponentRepairState::Component,
+                   ComponentRepairState::RepairState>
+ComponentsRepairStateHandler::GetUserSelectionDictionary() const {
+  std::unordered_map<ComponentRepairState::Component,
+                     ComponentRepairState::RepairState>
+      selection_dict;
+  if (state_.has_components_repair()) {
+    const ComponentsRepairState& components_repair = state_.components_repair();
+    for (int i = 0; i < components_repair.components_size(); ++i) {
+      const ComponentRepairState& component = components_repair.components(i);
+      if (component.repair_state() !=
+          ComponentRepairState::RMAD_REPAIR_UNKNOWN) {
+        selection_dict.insert({component.name(), component.repair_state()});
+      }
+    }
+  }
+  return selection_dict;
 }
 
 }  // namespace rmad
