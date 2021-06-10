@@ -72,6 +72,7 @@ constexpr char kPrivateKey2[] = "wARBVZOPBWo7OoyHLfv2mDgFxYJ3S6uc9lIOpRiGqVI=";
 // WireGuardDriverTest::InitializePropertyStore().
 const char kExpectedConfigFileContents[] = R"([Interface]
 PrivateKey=gOL/kVF88Mdr7rVM2Fz91UgyAW4L8iYogU/M+9hlKmM=
+FwMark=0x4500
 
 [Peer]
 PublicKey=public-key-1

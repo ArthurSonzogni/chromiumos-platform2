@@ -421,7 +421,9 @@ bool WireGuardDriver::GenerateConfigFile() {
     return false;
   }
   lines.push_back(base::StrCat({"PrivateKey", "=", private_key}));
-  // TODO(b/177876632): FwMark can be set here.
+  // 0x4000 for bypass VPN, 0x0500 for source of host VPN.
+  // See patchpanel/routing_service.h for their definitions.
+  lines.push_back("FwMark=0x4500");
 
   lines.push_back("");
 
