@@ -32,6 +32,7 @@
 #include "crash-reporter/arcvm_kernel_collector.h"
 #include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
+#include "crash-reporter/clobber_state_collector.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_reporter_failure_collector.h"
 #include "crash-reporter/ec_collector.h"
@@ -247,6 +248,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
   DEFINE_bool(boot_collect, false, "Run per-boot crash collection tasks");
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
+  DEFINE_bool(clobber_state, false,
+              "Report a run of clobber-state unrelated to a mount failure");
   DEFINE_bool(mount_failure, false, "Report mount failure");
   DEFINE_bool(umount_failure, false, "Report umount failure");
   DEFINE_string(mount_device, "",
@@ -555,6 +558,16 @@ int main(int argc, char* argv[]) {
                // leave cb empty because boot_collect needs multiple collectors.
                // It's handled separately at the end of main.
            }},
+  });
+
+  ClobberStateCollector clobber_state_collector;
+  collectors.push_back({
+      .collector = &clobber_state_collector,
+      .handlers = {{
+          .should_handle = FLAGS_clobber_state,
+          .cb = base::BindRepeating(&ClobberStateCollector::Collect,
+                                    base::Unretained(&clobber_state_collector)),
+      }},
   });
 
   MountFailureCollector mount_failure_collector(

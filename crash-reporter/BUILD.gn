@@ -70,6 +70,7 @@ static_library("libcrash_reporter") {
   sources = [
     "bert_collector.cc",
     "chrome_collector.cc",
+    "clobber_state_collector.cc",
     "crash_collector.cc",
     "crash_reporter_failure_collector.cc",
     "ec_collector.cc",
@@ -359,6 +360,7 @@ if (use.test) {
     sources = [
       "bert_collector_test.cc",
       "chrome_collector_test.cc",
+      "clobber_state_collector_test.cc",
       "crash_collector_test.cc",
       "crash_collector_test.h",
       "crash_reporter_failure_collector_test.cc",
