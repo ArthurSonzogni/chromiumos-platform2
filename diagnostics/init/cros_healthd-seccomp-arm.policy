@@ -99,3 +99,4 @@ rt_sigreturn: 1
 memfd_create: 1
 # Used occasionally by glibc discovered in production use (b/167617776)
 mremap: 1
+eventfd2: 1
