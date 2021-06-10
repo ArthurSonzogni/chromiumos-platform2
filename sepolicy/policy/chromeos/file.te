@@ -81,6 +81,7 @@ type cros_disks_exec, exec_type, file_type, cros_file_type, cros_system_file_typ
 type cros_dlcservice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_easy_unlock_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_esif_ufd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_fwupd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_gdbus_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_getopt_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_grep_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
