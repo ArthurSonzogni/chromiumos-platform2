@@ -114,6 +114,13 @@ class ResourceManager : public CommandTransceiver {
     base::TimeTicks time_of_last_use;
   };
 
+  struct VirtualHandle {
+    // The handle of the virtual handle.
+    TPM_HANDLE handle;
+    // The detail information of the virtual handle.
+    HandleInfo info;
+  };
+
   // Chooses an appropriate session for eviction (or flush) which is not one of
   // |sessions_to_retain| and assigns it to |session_to_evict|. Returns true on
   // success.
@@ -233,12 +240,19 @@ class ResourceManager : public CommandTransceiver {
   // TPM_RC_SUCCESS and ensures |handle_info| holds valid context data.
   TPM_RC SaveContext(const MessageInfo& command_info, HandleInfo* handle_info);
 
+  // Finds the loaded virtual object handle from
+  // |loaded_virtual_object_handles_|.
+  std::vector<VirtualHandle>::iterator FindLoadedVirtualObjectHandle(
+      TPM_HANDLE handle);
+
   const TrunksFactory& factory_;
   CommandTransceiver* next_transceiver_ = nullptr;
   TPM_HANDLE next_virtual_handle_ = TRANSIENT_FIRST;
 
-  // A mapping of known virtual handles to corresponding HandleInfo.
-  std::map<TPM_HANDLE, HandleInfo> virtual_object_handles_;
+  // A mapping of known unloaded virtual handles to corresponding HandleInfo.
+  std::map<TPM_HANDLE, HandleInfo> unloaded_virtual_object_handles_;
+  // A listing of the LRU order for loaded virtual object handles.
+  std::vector<VirtualHandle> loaded_virtual_object_handles_;
   // A mapping of loaded tpm object handles to the corresponding virtual handle.
   std::map<TPM_HANDLE, TPM_HANDLE> tpm_object_handles_;
   // A mapping of known session handles to corresponding HandleInfo.

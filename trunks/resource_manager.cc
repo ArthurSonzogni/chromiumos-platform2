@@ -20,7 +20,7 @@
 
 #define IS_TPM_CC_VENDOR_CMD(c)            \
   (((c) == TPM_CC_VENDOR_SPECIFIC_MASK) || \
-   ((c) == TPM_CC_CR50_EXTENSION_COMMAND))
+   ((c) == TPM_CC_CR50_EXTENSION_COMMAND))  // NOLINT(whitespace/indent)
 
 namespace {
 
@@ -134,6 +134,18 @@ std::string ResourceManager::SendCommandAndWait(const std::string& command) {
   if (command_info.code == TPM_CC_FlushContext) {
     return ProcessFlushContext(command, command_info);
   }
+
+  // Update the virtual handles LRU.
+  for (size_t i = 0; i + 1 < loaded_virtual_object_handles_.size(); i++) {
+    if (std::find(command_info.handles.begin(), command_info.handles.end(),
+                  loaded_virtual_object_handles_[i].handle) !=
+        command_info.handles.end()) {
+      std::rotate(loaded_virtual_object_handles_.begin() + i,
+                  loaded_virtual_object_handles_.begin() + i + 1,
+                  loaded_virtual_object_handles_.end());
+    }
+  }
+
   // Process all the input handles, e.g. map virtual handles.
   std::vector<TPM_HANDLE> updated_handles;
   for (auto handle : command_info.handles) {
@@ -257,10 +269,14 @@ bool ResourceManager::ChooseSessionToEvict(
 void ResourceManager::CleanupFlushedHandle(TPM_HANDLE flushed_handle) {
   if (IsObjectHandle(flushed_handle)) {
     // For transient object handles, remove both the actual and virtual handles.
-    if (virtual_object_handles_.count(flushed_handle) > 0) {
-      tpm_object_handles_.erase(
-          virtual_object_handles_[flushed_handle].tpm_handle);
-      virtual_object_handles_.erase(flushed_handle);
+    if (unloaded_virtual_object_handles_.count(flushed_handle) > 0) {
+      unloaded_virtual_object_handles_.erase(flushed_handle);
+    } else {
+      auto iter = FindLoadedVirtualObjectHandle(flushed_handle);
+      if (iter != loaded_virtual_object_handles_.end()) {
+        tpm_object_handles_.erase(iter->info.tpm_handle);
+        loaded_virtual_object_handles_.erase(iter);
+      }
     }
   } else if (IsSessionHandle(flushed_handle)) {
     auto iter = session_handles_.find(flushed_handle);
@@ -292,7 +308,9 @@ TPM_HANDLE ResourceManager::CreateVirtualHandle() {
     } else {
       ++next_virtual_handle_;
     }
-  } while (virtual_object_handles_.count(handle) > 0);
+  } while (unloaded_virtual_object_handles_.count(handle) > 0 ||
+           FindLoadedVirtualObjectHandle(handle) !=
+               loaded_virtual_object_handles_.end());
   return handle;
 }
 
@@ -319,11 +337,16 @@ TPM_RC ResourceManager::EnsureSessionIsLoaded(const MessageInfo& command_info,
 }
 
 void ResourceManager::EvictObjects(const MessageInfo& command_info) {
-  for (auto& item : virtual_object_handles_) {
-    HandleInfo& info = item.second;
-    if (!info.is_loaded ||
-        std::find(command_info.handles.begin(), command_info.handles.end(),
-                  item.first) != command_info.handles.end()) {
+  size_t evict_num = 0;
+  for (size_t i = 0; i < loaded_virtual_object_handles_.size(); i++) {
+    if (evict_num) {
+      loaded_virtual_object_handles_[i - evict_num] =
+          std::move(loaded_virtual_object_handles_[i]);
+    }
+    auto& item = loaded_virtual_object_handles_[i - evict_num];
+    HandleInfo& info = item.info;
+    if (std::find(command_info.handles.begin(), command_info.handles.end(),
+                  item.handle) != command_info.handles.end()) {
       continue;
     }
     TPM_RC result = SaveContext(command_info, &info);
@@ -338,9 +361,13 @@ void ResourceManager::EvictObjects(const MessageInfo& command_info) {
                    << GetErrorString(result);
       continue;
     }
-    tpm_object_handles_.erase(info.tpm_handle);
     VLOG(1) << "EVICT_OBJECT: " << std::hex << info.tpm_handle;
+    tpm_object_handles_.erase(info.tpm_handle);
+    unloaded_virtual_object_handles_.emplace(item.handle, std::move(item.info));
+    evict_num++;
   }
+  loaded_virtual_object_handles_.resize(loaded_virtual_object_handles_.size() -
+                                        evict_num);
 }
 
 void ResourceManager::EvictSession(const MessageInfo& command_info) {
@@ -769,16 +796,17 @@ std::string ResourceManager::ProcessFlushContext(
   TPM_HANDLE handle = handles[0];
   TPM_HANDLE actual_handle = handle;
   if (IsObjectHandle(handle)) {
-    auto iter = virtual_object_handles_.find(handle);
-    if (iter == virtual_object_handles_.end()) {
-      return CreateErrorResponse(MakeError(TPM_RC_HANDLE, FROM_HERE));
-    }
-    if (!iter->second.is_loaded) {
+    if (unloaded_virtual_object_handles_.find(handle) !=
+        unloaded_virtual_object_handles_.end()) {
       // The handle wasn't loaded so no need to bother the TPM.
       CleanupFlushedHandle(handle);
       return CreateErrorResponse(TPM_RC_SUCCESS);
     }
-    actual_handle = iter->second.tpm_handle;
+    auto iter = FindLoadedVirtualObjectHandle(handle);
+    if (iter == loaded_virtual_object_handles_.end()) {
+      return CreateErrorResponse(MakeError(TPM_RC_HANDLE, FROM_HERE));
+    }
+    actual_handle = iter->info.tpm_handle;
   }
   // Send a command with the original header but with |actual_handle| as the
   // parameter.
@@ -810,22 +838,31 @@ TPM_RC ResourceManager::ProcessInputHandle(const MessageInfo& command_info,
     *actual_handle = virtual_handle;
     return TPM_RC_SUCCESS;
   }
-  auto handle_iter = virtual_object_handles_.find(virtual_handle);
-  if (handle_iter == virtual_object_handles_.end()) {
-    return MakeError(TPM_RC_HANDLE, FROM_HERE);
-  }
-  HandleInfo& handle_info = handle_iter->second;
-  if (!handle_info.is_loaded) {
-    TPM_RC result = LoadContext(command_info, &handle_info);
-    if (result != TPM_RC_SUCCESS) {
-      return result;
+
+  auto loaded_iter = FindLoadedVirtualObjectHandle(virtual_handle);
+  if (loaded_iter != loaded_virtual_object_handles_.end()) {
+    *actual_handle = loaded_iter->info.tpm_handle;
+  } else {
+    auto unloaded_iter = unloaded_virtual_object_handles_.find(virtual_handle);
+    if (unloaded_iter != unloaded_virtual_object_handles_.end()) {
+      HandleInfo& handle_info = unloaded_iter->second;
+      TPM_RC result = LoadContext(command_info, &handle_info);
+      if (result != TPM_RC_SUCCESS) {
+        return result;
+      }
+      tpm_object_handles_[handle_info.tpm_handle] = virtual_handle;
+      loaded_virtual_object_handles_.emplace_back(
+          VirtualHandle{.handle = unloaded_iter->first,
+                        .info = std::move(unloaded_iter->second)});
+      VLOG(1) << "RELOAD_OBJECT: " << std::hex << virtual_handle;
+      *actual_handle = handle_info.tpm_handle;
+      unloaded_virtual_object_handles_.erase(unloaded_iter);
+    } else {
+      return MakeError(TPM_RC_HANDLE, FROM_HERE);
     }
-    tpm_object_handles_[handle_info.tpm_handle] = virtual_handle;
-    VLOG(1) << "RELOAD_OBJECT: " << std::hex << virtual_handle;
   }
   VLOG(1) << "INPUT_HANDLE_REPLACE: " << std::hex << virtual_handle << " -> "
-          << std::hex << handle_info.tpm_handle;
-  *actual_handle = handle_info.tpm_handle;
+          << std::hex << *actual_handle;
   return TPM_RC_SUCCESS;
 }
 
@@ -850,7 +887,8 @@ TPM_HANDLE ResourceManager::ProcessOutputHandle(TPM_HANDLE handle) {
     TPM_HANDLE new_virtual_handle = CreateVirtualHandle();
     HandleInfo new_handle_info;
     new_handle_info.Init(handle);
-    virtual_object_handles_[new_virtual_handle] = new_handle_info;
+    loaded_virtual_object_handles_.emplace_back(VirtualHandle{
+        .handle = new_virtual_handle, .info = std::move(new_handle_info)});
     tpm_object_handles_[handle] = new_virtual_handle;
     VLOG(1) << "OUTPUT_HANDLE_NEW_VIRTUAL: " << std::hex << handle << " -> "
             << std::hex << new_virtual_handle;
@@ -895,6 +933,14 @@ TPM_RC ResourceManager::SaveContext(const MessageInfo& command_info,
   }
   handle_info->is_loaded = false;
   return result;
+}
+
+std::vector<ResourceManager::VirtualHandle>::iterator
+ResourceManager::FindLoadedVirtualObjectHandle(TPM_HANDLE handle) {
+  return std::find_if(
+      loaded_virtual_object_handles_.begin(),
+      loaded_virtual_object_handles_.end(),
+      [handle](const auto& cmp) { return cmp.handle == handle; });
 }
 
 ResourceManager::HandleInfo::HandleInfo() : is_loaded(false), tpm_handle(0) {
