@@ -63,9 +63,7 @@ class OobeConfig {
   bool WriteFile(const base::FilePath& file_path,
                  const std::string& data) const;
 
-  bool CheckFirstStage() const;
-  bool CheckSecondStage() const;
-  bool CheckThirdStage() const;
+  bool ShouldRestoreRollbackData() const;
 
   bool ShouldSaveRollbackData() const;
   bool DeleteRollbackSaveFlagFile() const;

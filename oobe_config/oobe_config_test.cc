@@ -146,42 +146,15 @@ TEST_F(OobeConfigTest, FileExistsNo) {
   EXPECT_FALSE(oobe_config_->FileExists(file_path));
 }
 
-TEST_F(OobeConfigTest, NoStagePending) {
-  EXPECT_FALSE(oobe_config_->CheckFirstStage());
-  EXPECT_FALSE(oobe_config_->CheckSecondStage());
-  EXPECT_FALSE(oobe_config_->CheckThirdStage());
+TEST_F(OobeConfigTest, NoRestorePending) {
+  EXPECT_FALSE(oobe_config_->ShouldRestoreRollbackData());
 }
 
-TEST_F(OobeConfigTest, FirstStagePending) {
+TEST_F(OobeConfigTest, ShouldRestoreRollbackData) {
   std::string content;
   EXPECT_TRUE(
       oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath, content));
-  EXPECT_TRUE(oobe_config_->CheckFirstStage());
-  EXPECT_FALSE(oobe_config_->CheckSecondStage());
-  EXPECT_FALSE(oobe_config_->CheckThirdStage());
-}
-
-TEST_F(OobeConfigTest, SecondStagePending) {
-  std::string content;
-  EXPECT_TRUE(
-      oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath, content));
-  EXPECT_TRUE(
-      oobe_config_->WriteFile(kEncryptedStatefulRollbackDataPath, content));
-  EXPECT_TRUE(oobe_config_->WriteFile(kFirstStageCompletedFile, content));
-  EXPECT_FALSE(oobe_config_->CheckFirstStage());
-  EXPECT_TRUE(oobe_config_->CheckSecondStage());
-  EXPECT_FALSE(oobe_config_->CheckThirdStage());
-}
-
-TEST_F(OobeConfigTest, ThirdStagePending) {
-  std::string content;
-  EXPECT_TRUE(
-      oobe_config_->WriteFile(kEncryptedStatefulRollbackDataPath, content));
-  EXPECT_TRUE(oobe_config_->WriteFile(kFirstStageCompletedFile, content));
-  EXPECT_TRUE(oobe_config_->WriteFile(kSecondStageCompletedFile, content));
-  EXPECT_FALSE(oobe_config_->CheckFirstStage());
-  EXPECT_FALSE(oobe_config_->CheckSecondStage());
-  EXPECT_TRUE(oobe_config_->CheckThirdStage());
+  EXPECT_TRUE(oobe_config_->ShouldRestoreRollbackData());
 }
 
 TEST_F(OobeConfigTest, ShouldSaveRollbackData) {

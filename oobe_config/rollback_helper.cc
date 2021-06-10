@@ -143,45 +143,6 @@ bool PrepareSave(const base::FilePath& root_path,
   return true;
 }
 
-bool FinishRestore(const base::FilePath& root_path,
-                   bool ignore_permissions_for_testing) {
-  OobeConfig oobe_config;
-  if (!root_path.empty()) {
-    oobe_config.set_prefix_path_for_testing(root_path);
-  }
-
-  if (!oobe_config.CheckSecondStage()) {
-    LOG(INFO) << "Finish restore is not in stage 2.";
-    return true;
-  }
-
-  LOG(INFO) << "Starting rollback restore stage 2.";
-  base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
-
-  // Delete all files from the directory except the ones needed
-  // for stage 3.
-  LOG(INFO) << "Cleaning up rollback restore stage 1 and 2 files.";
-  std::set<std::string> excluded_files;
-  excluded_files.emplace(
-      PrefixAbsolutePath(root_path, kFirstStageCompletedFile).value());
-  excluded_files.emplace(
-      PrefixAbsolutePath(root_path, kEncryptedStatefulRollbackDataPath)
-          .value());
-
-  CleanupRestoreFiles(root_path, excluded_files);
-
-  // Indicate that the second stage completed.
-  if (IsSymlink(kSecondStageCompletedFile)) {
-    PLOG(ERROR) << "Couldn't create file " << kSecondStageCompletedFile.value()
-                << " as it exists as a symlink";
-    return false;
-  }
-  oobe_config.WriteFile(kSecondStageCompletedFile, "");
-  LOG(INFO) << "Rollback restore stage 2 completed.";
-
-  return true;
-}
-
 void CleanupRestoreFiles(const base::FilePath& root_path,
                          const std::set<std::string>& excluded_files) {
   // Delete everything except |excluded_files| in the restore directory.

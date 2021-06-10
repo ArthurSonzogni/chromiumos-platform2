@@ -7,9 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
-#include <base/notreached.h>
 #include <base/values.h>
-#include <power_manager-client/power_manager/dbus-constants.h>
 
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
@@ -21,15 +19,9 @@ using std::unique_ptr;
 
 namespace oobe_config {
 
-LoadOobeConfigRollback::LoadOobeConfigRollback(
-    OobeConfig* oobe_config,
-    bool allow_unencrypted,
-    bool skip_reboot_for_testing,
-    org::chromium::PowerManagerProxy* power_manager_proxy)
-    : oobe_config_(oobe_config),
-      allow_unencrypted_(allow_unencrypted),
-      skip_reboot_for_testing_(skip_reboot_for_testing),
-      power_manager_proxy_(power_manager_proxy) {}
+LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config,
+                                               bool allow_unencrypted)
+    : oobe_config_(oobe_config), allow_unencrypted_(allow_unencrypted) {}
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                                                string* enrollment_domain) {
@@ -44,24 +36,10 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     return false;
   }
 
-  if (!(oobe_config_->CheckFirstStage() || oobe_config_->CheckThirdStage())) {
-    // We are not in a valid state to run either stage 1 or stage 3 of rollback
-    // this is either a real error or this is not a rollback.
+  if (oobe_config_->ShouldRestoreRollbackData()) {
+    LOG(INFO) << "Starting rollback restore.";
 
-    if (oobe_config_->CheckSecondStage()) {
-      // This shouldn't happen, the script failed to execute. We fail and return
-      // false.
-      LOG(ERROR) << "Rollback restore is in invalid state (stage 2).";
-      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage2Failure);
-    }
-    return false;
-  }
-
-  if (oobe_config_->CheckFirstStage()) {
-    LOG(INFO) << "Starting rollback restore stage 1.";
-
-    // In the first stage we decrypt the proto from kUnencryptedRollbackDataPath
-    // and save it unencrypted to kEncryptedStatefulRollbackDataPath.
+    // Decrypt the proto from kUnencryptedRollbackDataPath.
     bool restore_result;
     if (allow_unencrypted_) {
       restore_result = oobe_config_->UnencryptedRollbackRestore();
@@ -69,37 +47,11 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       restore_result = oobe_config_->EncryptedRollbackRestore();
     }
 
-    if (restore_result) {
-      oobe_config_->WriteFile(kFirstStageCompletedFile, "");
-    } else {
+    if (!restore_result) {
       LOG(ERROR) << "Failed to restore rollback data";
       metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage1Failure);
-      oobe_config_->WriteFile(kFirstStageErrorFile, "");
+      return false;
     }
-
-    // Reboot.
-    if (power_manager_proxy_) {
-      if (!skip_reboot_for_testing_) {
-        LOG(INFO) << "Rebooting device.";
-        brillo::ErrorPtr error;
-        if (!power_manager_proxy_->RequestRestart(
-                ::power_manager::REQUEST_RESTART_OTHER,
-                "oobe_config: reboot after rollback restore first stage",
-                &error)) {
-          LOG(ERROR) << "Failed to reboot device, error: "
-                     << error->GetMessage();
-          metrics_.RecordRestoreResult(
-              Metrics::OobeRestoreResult::kStage1Failure);
-        }
-      } else {
-        LOG(INFO) << "Skipping reboot for testing";
-      }
-    }
-    exit(0);
-  }
-
-  if (oobe_config_->CheckThirdStage()) {
-    LOG(INFO) << "Starting rollback restore stage 3.";
 
     // We load the proto from kEncryptedStatefulRollbackDataPath.
     string rollback_data_str;
@@ -131,7 +83,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     return true;
   }
 
-  NOTREACHED();
   return false;
 }
 

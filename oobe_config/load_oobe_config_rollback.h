@@ -11,8 +11,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <power_manager-client/power_manager/dbus-proxies.h>
 
 #include "oobe_config/metrics.h"
 
@@ -25,10 +23,7 @@ class RollbackData;
 // file after rollback.
 class LoadOobeConfigRollback : public LoadOobeConfigInterface {
  public:
-  LoadOobeConfigRollback(OobeConfig* oobe_config,
-                         bool allow_unencrypted,
-                         bool skip_reboot_for_testing,
-                         org::chromium::PowerManagerProxy* power_manager_proxy);
+  LoadOobeConfigRollback(OobeConfig* oobe_config, bool allow_unencrypted);
   LoadOobeConfigRollback(const LoadOobeConfigRollback&) = delete;
   LoadOobeConfigRollback& operator=(const LoadOobeConfigRollback&) = delete;
 
@@ -46,8 +41,6 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
 
   OobeConfig* oobe_config_;
   bool allow_unencrypted_ = false;
-  bool skip_reboot_for_testing_ = false;
-  org::chromium::PowerManagerProxy* power_manager_proxy_;
   Metrics metrics_;  // For UMA metrics logging.
 };
 

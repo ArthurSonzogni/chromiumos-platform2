@@ -21,16 +21,6 @@ namespace oobe_config {
 bool PrepareSave(const base::FilePath& root_path,
                  bool ignore_permissions_for_testing);
 
-// Places the files from the temporary directory to their final places after
-// rollback_restore did run.
-// |root_path| specifies a path prefix, used for testing, otherwise empty.
-// |ignore_permissions_for_testing| skips the permission setting steps, use
-// only for testing.
-// Returns true on success. Not being in the correct stage is considered success
-// as well.
-bool FinishRestore(const base::FilePath& root_path,
-                   bool ignore_permissions_for_testing);
-
 // Adds the prefix of the temp directory to the absolute path.
 base::FilePath PrefixAbsolutePath(const base::FilePath& prefix,
                                   const base::FilePath& file_path);

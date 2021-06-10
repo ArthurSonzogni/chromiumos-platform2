@@ -13,7 +13,6 @@
 
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus_adaptors/org.chromium.OobeConfigRestore.h>
-#include <power_manager-client/power_manager/dbus-proxies.h>
 
 namespace oobe_config {
 
@@ -24,8 +23,7 @@ class OobeConfigRestoreService
  public:
   explicit OobeConfigRestoreService(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      bool allow_unencrypted,
-      bool skip_reboot_for_testing);
+      bool allow_unencrypted);
   OobeConfigRestoreService(const OobeConfigRestoreService&) = delete;
   OobeConfigRestoreService& operator=(const OobeConfigRestoreService&) = delete;
 
@@ -43,9 +41,7 @@ class OobeConfigRestoreService
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  std::unique_ptr<org::chromium::PowerManagerProxy> power_manager_proxy_;
   bool allow_unencrypted_;
-  bool skip_reboot_for_testing_;
 };
 
 }  // namespace oobe_config
