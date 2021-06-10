@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/files/file_enumerator.h>
@@ -24,6 +25,21 @@
 #include "metrics/metrics_library.h"
 
 namespace chromeos_metrics {
+
+namespace {
+
+// A string which crosvm's command line for ARCVM always has.
+constexpr char const* kArcVmCommandLine = "androidboot.hardware=bertha";
+
+bool IsArcVmProcess(const ProcessNode& node) {
+  return node.GetCmdlineString().find(kArcVmCommandLine) != std::string::npos;
+}
+
+bool IsNotArcVmProcess(const ProcessNode& node) {
+  return !IsArcVmProcess(node);
+}
+
+}  // namespace
 
 // UMA histogram names for process memory usage, split by process groups and
 // types of memory.  They must match MemoryStatKind and ProcessGroupKind in
@@ -166,10 +182,16 @@ const bool ProcessNode::HasPrefix(const std::string& prefix) const {
   return cmdline_.GetProgram().MaybeAsASCII().find(prefix) == 0;
 }
 
-const void ProcessNode::CollectSubtree(std::vector<ProcessNode*>* processes) {
-  processes->push_back(this);
+void ProcessNode::CollectSubtree(std::vector<ProcessNode*>* processes) {
+  CollectSubtree(processes, CollectSubtreeFilter());
+}
+
+void ProcessNode::CollectSubtree(std::vector<ProcessNode*>* processes,
+                                 const CollectSubtreeFilter& filter) {
+  if (!filter || filter.Run(*this))
+    processes->push_back(this);
   for (const auto& child : children_) {
-    child->CollectSubtree(processes);
+    child->CollectSubtree(processes, filter);
   }
 }
 
@@ -186,8 +208,13 @@ void ProcessInfo::Classify() {
 
   // Find VM processes starting from vm_concierge and seneschal processes.
   ProcessNode* concierge;
-  if (FindProcessWithPrefix("/usr/bin/vm_concierge", process_map_, &concierge))
-    concierge->CollectSubtree(&groups_[PG_VMS]);
+  if (FindProcessWithPrefix("/usr/bin/vm_concierge", process_map_,
+                            &concierge)) {
+    concierge->CollectSubtree(&groups_[PG_ARC],
+                              base::BindRepeating(&IsArcVmProcess));
+    concierge->CollectSubtree(&groups_[PG_VMS],
+                              base::BindRepeating(&IsNotArcVmProcess));
+  }
 
   ProcessNode* seneschal;
   if (FindProcessWithPrefix("/usr/bin/seneschal", process_map_, &seneschal)) {

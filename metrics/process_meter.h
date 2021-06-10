@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -40,7 +41,7 @@ enum ProcessGroupKind {
   PG_GPU,
   PG_RENDERERS,
   PG_ARC,
-  PG_VMS,
+  PG_VMS,  // Except for ARCVM
   PG_DAEMONS,
   PG_KINDS_COUNT
 };
@@ -81,7 +82,13 @@ class ProcessNode {
   const std::string GetCmdlineString() const { return cmdline_string_; }
 
   // Adds to |processes| this node and all its descendants.
-  const void CollectSubtree(std::vector<ProcessNode*>* processes);
+  void CollectSubtree(std::vector<ProcessNode*>* processes);
+
+  // Does the same as CollectSubtree, but only when the |filter| returns true.
+  using CollectSubtreeFilter =
+      base::RepeatingCallback<bool(const ProcessNode&)>;
+  void CollectSubtree(std::vector<ProcessNode*>* processes,
+                      const CollectSubtreeFilter& filter);
 
   // Fills the process node with data from /proc.
   bool RetrieveProcessData(const base::FilePath& procfs_root);

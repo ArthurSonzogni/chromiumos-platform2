@@ -153,6 +153,73 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
   }
 }
 
+// Test that we're classifying VM processes and adding up their sizes correctly.
+TEST_F(ProcessMeterTest, ReportProcessStats_VM) {
+  base::FilePath temp_dir;
+  EXPECT_TRUE(base::CreateNewTempDirectory("", &temp_dir));
+  base::FilePath run_path = temp_dir.Append("run");
+  base::FilePath procfs_path = temp_dir.Append("proc");
+
+  // Create mock /proc.
+  CHECK(CreateDirectory(procfs_path));
+
+  // Fill /proc with entries for a few processes.
+  // clang-format off
+
+  // init.
+  CreateProcEntry(procfs_path, 1, 0, "init", "/sbin/init",
+                  10, 5, 5, 0, 7);
+
+  // vm_concierge
+  CreateProcEntry(procfs_path, 100, 1, "vm_concierge", "/usr/bin/vm_concierge",
+                  10, 5, 5, 0, 1);
+
+  // ARCVM
+  CreateProcEntry(procfs_path, 200, 100, "crosvm",
+                  "/usr/bin/crosvm androidboot.hardware=bertha vmlinux",
+                  100, 50, 50, 10, 10);
+  CreateProcEntry(procfs_path, 201, 100, "crosvm",
+                  "/usr/bin/crosvm androidboot.hardware=bertha vmlinux",
+                  100, 50, 50, 10, 10);
+
+  // Other VMs
+  CreateProcEntry(procfs_path, 300, 100, "crosvm", "/usr/bin/crosvm vmlinux",
+                  10, 5, 5, 0, 1);
+  CreateProcEntry(procfs_path, 301, 100, "crosvm", "/usr/bin/crosvm vmlinux",
+                  10, 5, 5, 0, 1);
+  // clang-format on
+
+  // Get process info from mocked /proc.
+  ProcessInfo info(procfs_path, run_path);
+  info.Collect();
+  info.Classify();
+  const uint64_t mib = 1 << 20;
+  // clang-format off
+  const ProcessMemoryStats expected_stats[PG_KINDS_COUNT] = {
+      // browser
+      {{    0,          0,         0,         0,        0}},
+      // gpu
+      {{    0,          0,         0,         0,        0}},
+      // renderers
+      {{    0,          0,         0,         0,        0}},
+      // arc
+      {{  200 * mib,  100 * mib, 100 * mib,  20 * mib, 20 * mib}},
+      // vms
+      {{   30 * mib,   15 * mib,  15 * mib,   0 * mib,  3 * mib}},
+      // daemons
+      {{   10 * mib,    5 * mib,   5 * mib,   0 * mib,  7 * mib}},
+  };
+  // clang-format on
+  for (int i = 0; i < PG_KINDS_COUNT; i++) {
+    ProcessMemoryStats stats;
+    ProcessGroupKind kind = static_cast<ProcessGroupKind>(i);
+    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), &stats);
+    for (int j = 0; j < MEM_KINDS_COUNT; j++) {
+      EXPECT_EQ(stats.rss_sizes[j], expected_stats[i].rss_sizes[j]);
+    }
+  }
+}
+
 void CheckPG(int pg, const char* field) {
   for (int i = 0; i < MEM_KINDS_COUNT; i++) {
     CHECK(strcasestr(kProcessMemoryUMANames[pg][i], field) != NULL);
