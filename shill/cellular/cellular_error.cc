@@ -28,6 +28,11 @@ const char kErrorGprsUserAuthenticationFailed[] =
 const char kErrorIncorrectPassword[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
 
+// TODO(b/190725498): Replace this error with a `MM_` error when we downstream
+// the error reporting changes made in ModemManager MR!533.
+const char kErrorQmiProtocolCallFailed[] =
+    "org.freedesktop.libqmi.Error.Protocol.CallFailed";
+
 const char kErrorSimPin[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
 
 const char kErrorSimPuk[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
@@ -62,6 +67,8 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
   else if (name == kErrorGprsServiceOptionNotSubscribed)
     type = Error::kInvalidApn;
   else if (name == kErrorGprsUserAuthenticationFailed)
+    type = Error::kInvalidApn;
+  else if (name == kErrorQmiProtocolCallFailed)
     type = Error::kInvalidApn;
   else if (name == kErrorWrongState)
     type = Error::kWrongState;
