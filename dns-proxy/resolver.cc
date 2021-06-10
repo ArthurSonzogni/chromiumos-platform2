@@ -126,14 +126,17 @@ Resolver::Resolver(base::TimeDelta timeout,
       max_num_retries_(max_num_retries),
       ares_client_(
           new AresClient(timeout, max_num_retries, max_concurrent_queries)),
-      curl_client_(new DoHCurlClient(timeout, max_concurrent_queries)) {}
+      curl_client_(new DoHCurlClient(timeout, max_concurrent_queries)),
+      metrics_(new Metrics) {}
 
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
-                   std::unique_ptr<DoHCurlClient> curl_client)
+                   std::unique_ptr<DoHCurlClient> curl_client,
+                   std::unique_ptr<Metrics> metrics)
     : always_on_doh_(false),
       doh_enabled_(false),
       ares_client_(std::move(ares_client)),
-      curl_client_(std::move(curl_client)) {}
+      curl_client_(std::move(curl_client)),
+      metrics_(std::move(metrics)) {}
 
 bool Resolver::ListenTCP(struct sockaddr* addr) {
   auto tcp_src = std::make_unique<patchpanel::Socket>(
@@ -201,8 +204,10 @@ void Resolver::HandleAresResult(void* ctx,
                                 size_t len) {
   std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
-  metrics_.RecordQueryResult(Metrics::QueryType::kPlainText,
-                             AresStatusMetric(status));
+  if (metrics_)
+    metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
+                                AresStatusMetric(status));
+
   if (status != ARES_SUCCESS) {
     LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
     return;
@@ -216,8 +221,9 @@ void Resolver::HandleCurlResult(void* ctx,
                                 size_t len) {
   SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
-  metrics_.RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
-                             CurlCodeMetric(res.curl_code), res.http_code);
+  if (metrics_)
+    metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
+                                CurlCodeMetric(res.curl_code), res.http_code);
 
   if (res.curl_code != CURLE_OK) {
     LOG(ERROR) << "DoH resolution failed: "
@@ -330,7 +336,7 @@ void Resolver::OnDNSQuery(int fd, int type) {
   // it is done being used.
   SocketFd* sock_fd = new SocketFd(type, fd);
   // Metrics will be recorded automatically when this object is deleted.
-  sock_fd->timer.set_metrics(&metrics_);
+  sock_fd->timer.set_metrics(metrics_.get());
 
   size_t buf_size;
   struct sockaddr* src;
