@@ -1576,7 +1576,10 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
   response.set_mount_result((StartVmResponse::MountResult)mount_result);
-  response.set_free_bytes(free_bytes);
+  if (free_bytes >= 0) {
+    response.set_free_bytes(free_bytes);
+    response.set_free_bytes_has_value(true);
+  }
 
   if (!vm_token.empty() &&
       !vm->ConfigureContainerGuest(vm_token, &failure_reason)) {
@@ -2078,7 +2081,9 @@ bool Service::StartTermina(TerminaVm* vm,
   }
 
   *result = response.mount_result();
-  *out_free_bytes = response.free_bytes();
+  if (response.free_bytes_has_value()) {
+    *out_free_bytes = response.free_bytes();
+  }
 
   return true;
 }

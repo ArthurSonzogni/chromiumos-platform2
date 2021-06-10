@@ -323,7 +323,12 @@ message StartVmResponse {
 
   // The amount of free space on the stateful partition in bytes. -1 if unable
   // to calculate the amount of free space (e.g. error mounting the partition).
+  // Only valid when free_bytes_has_value is true.
   int64 free_bytes = 6;
+
+  // Whether the free_bytes field has been filled in. If false, ignore whatever
+  // value is in the field.
+  bool free_bytes_has_value = 7;
 }
 
 // Message used in the signal for when a VM has started.

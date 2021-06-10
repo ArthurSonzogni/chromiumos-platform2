@@ -659,7 +659,6 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
                                        const StartTerminaRequest* request,
                                        StartTerminaResponse* response) {
   LOG(INFO) << "Received StartTermina request";
-  response->set_free_bytes(-1);
 
   if (!request->allow_privileged_containers())
     lxd_env_.emplace("LXD_UNPRIVILEGED_ONLY", "true");
@@ -777,8 +776,12 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     PLOG(ERROR) << "btrfs resize returned non-zero";
   }
 
-  response->set_free_bytes(
-      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful")));
+  int64_t free_bytes =
+      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful"));
+  if (free_bytes >= 0) {
+    response->set_free_bytes(free_bytes);
+    response->set_free_bytes_has_value(true);
+  }
 
   // TODO(davidriley): Replace this #if with StartBorealis.
 #if !USE_VM_BOREALIS
