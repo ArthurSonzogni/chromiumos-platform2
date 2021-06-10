@@ -330,9 +330,9 @@ bool UserDataAuth::Initialize() {
 
   // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
   // scheduled by the callback itself.
-  PostTaskToOriginThread(FROM_HERE,
-                         base::Bind(&UserDataAuth::UploadAlertsDataCallback,
-                                    base::Unretained(this)));
+  PostTaskToMountThread(FROM_HERE,
+                        base::Bind(&UserDataAuth::UploadAlertsDataCallback,
+                                   base::Unretained(this)));
 
   // Do Stateful Recovery if requested.
   auto mountfn =
@@ -3027,7 +3027,7 @@ void UserDataAuth::ResetDictionaryAttackMitigation() {
 }
 
 void UserDataAuth::UploadAlertsDataCallback() {
-  AssertOnOriginThread();
+  AssertOnMountThread();
 
   Tpm::AlertsData alerts;
 
@@ -3035,7 +3035,7 @@ void UserDataAuth::UploadAlertsDataCallback() {
   if (tpm_->GetAlertsData(&alerts)) {
     ReportAlertsData(alerts);
 
-    PostTaskToOriginThread(
+    PostTaskToMountThread(
         FROM_HERE,
         base::Bind(&UserDataAuth::UploadAlertsDataCallback,
                    base::Unretained(this)),
