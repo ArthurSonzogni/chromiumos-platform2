@@ -131,19 +131,17 @@ void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> state_handler;
 
-  if (RmadErrorCode error =
-          GetInitializedStateHandler(current_state_case_, &state_handler);
-      error == RMAD_ERROR_OK) {
+  if (current_state_case_ == RmadState::STATE_NOT_SET) {
+    reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+  } else if (RmadErrorCode error = GetInitializedStateHandler(
+                 current_state_case_, &state_handler);
+             error == RMAD_ERROR_OK) {
     LOG(INFO) << "Get current state succeeded: " << current_state_case_;
     reply.set_error(RMAD_ERROR_OK);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
   } else {
-    if (error == RMAD_ERROR_STATE_HANDLER_MISSING) {
-      reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-    } else {
-      reply.set_error(error);
-    }
+    reply.set_error(error);
   }
 
   callback.Run(reply);

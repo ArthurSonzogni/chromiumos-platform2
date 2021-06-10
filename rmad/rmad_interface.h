@@ -24,11 +24,14 @@ class RmadInterface {
       RmadState::StateCase state_case,
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) = 0;
 
+  // Get the current state_case.
+  virtual RmadState::StateCase GetCurrentStateCase() = 0;
+
   // Callback used by all state functions to return the current state to the
   // dbus service.
   using GetStateCallback = base::Callback<void(const GetStateReply&)>;
 
-  // Get the current RmadState proto.
+  // Get the initialized current RmadState proto.
   virtual void GetCurrentState(const GetStateCallback& callback) = 0;
   // Update the state using the RmadState proto in the request and return the
   // resulting state after all work is done.

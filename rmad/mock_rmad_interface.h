@@ -24,6 +24,7 @@ class MockRmadInterface : public RmadInterface {
                std::unique_ptr<base::RepeatingCallback<bool(bool)>>),
               (override));
 
+  MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
   MOCK_METHOD(void, GetCurrentState, (const GetStateCallback&), (override));
   MOCK_METHOD(void,
               TransitionNextState,

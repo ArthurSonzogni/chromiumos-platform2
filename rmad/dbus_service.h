@@ -96,12 +96,11 @@ class DBusService : public brillo::DBusServiceDaemon {
     response->Return(reply);
 
     // Quit the daemon after sending the reply if RMA is not required.
-    rmad_interface_->GetCurrentState(
-        base::Bind(&DBusService::QuitIfRmaNotRequired, base::Unretained(this)));
+    QuitIfRmaNotRequired();
   }
 
   // If RMA is not required, quit the daemon.
-  void QuitIfRmaNotRequired(const GetStateReply& reply);
+  void QuitIfRmaNotRequired();
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();

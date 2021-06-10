@@ -199,8 +199,8 @@ bool DBusService::SendPowerCableStateSignal(bool plugged_in) {
   return (signal.get() == nullptr) ? false : signal->Send(plugged_in);
 }
 
-void DBusService::QuitIfRmaNotRequired(const GetStateReply& reply) {
-  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
+void DBusService::QuitIfRmaNotRequired() {
+  if (rmad_interface_->GetCurrentStateCase() == RmadState::STATE_NOT_SET) {
     PostQuitTask();
   }
 }

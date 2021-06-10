@@ -34,6 +34,9 @@ class RmadInterfaceImpl final : public RmadInterface {
       RmadState::StateCase state_case,
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override;
 
+  RmadState::StateCase GetCurrentStateCase() override {
+    return current_state_case_;
+  }
   void GetCurrentState(const GetStateCallback& callback) override;
   void TransitionNextState(const TransitionNextStateRequest& request,
                            const GetStateCallback& callback) override;
