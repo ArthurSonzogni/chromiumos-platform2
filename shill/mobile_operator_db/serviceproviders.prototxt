@@ -6069,6 +6069,7 @@ mno {
       password : "vodafone"
       dns : "89.19.64.36"
       dns : "89.19.64.164"
+      is_attach_apn : true
     }
     mobile_apn {
       apn : "isp.vodafone.ie"
@@ -6086,7 +6087,6 @@ mno {
       username : "vodafone"
       password : "vodafone"
       dns : "10.24.59.100"
-      is_attach_apn : true
     }
   }
 }
