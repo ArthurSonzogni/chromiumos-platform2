@@ -23,10 +23,8 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
  private:
-  bool VerifyInput(const RmadState& state) const;
-  std::unordered_map<ComponentRepairState::Component,
-                     ComponentRepairState::RepairState>
-  GetUserSelectionDictionary() const;
+  // Check that the provided state properly updates every component.
+  bool ValidateUserSelection(const RmadState& state) const;
 };
 
 }  // namespace rmad

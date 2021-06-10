@@ -5,6 +5,7 @@
 #include "rmad/state_handler/components_repair_state_handler.h"
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -15,6 +16,9 @@
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
+
+using Component = ComponentRepairState::Component;
+using RepairState = ComponentRepairState::RepairState;
 
 namespace {
 
@@ -47,11 +51,39 @@ const std::vector<std::pair<ComponentRepairState::Component,
          &runtime_probe::ProbeResult::wireless_size},
 };
 
-const std::vector<ComponentRepairState::Component> OTHER_COMPONENTS = {
+const std::vector<Component> OTHER_COMPONENTS = {
     ComponentRepairState::RMAD_COMPONENT_MAINBOARD_REWORK,
     ComponentRepairState::RMAD_COMPONENT_KEYBOARD,
     ComponentRepairState::RMAD_COMPONENT_POWER_BUTTON,
 };
+
+// Convert the list of |ComponentRepairState| to a mapping table of component
+// repair states. Unfortunately protobuf doesn't support enum as map keys so we
+// can only store them in a list in protobuf and convert to a map internally.
+std::unordered_map<Component, RepairState> GetUserSelectionDictionary(
+    const RmadState& state) {
+  std::unordered_map<Component, RepairState> selection_dict;
+  if (state.has_components_repair()) {
+    const ComponentsRepairState& components_repair = state.components_repair();
+    for (int i = 0; i < components_repair.components_size(); ++i) {
+      const ComponentRepairState& component_repair =
+          components_repair.components(i);
+      const Component& component = component_repair.name();
+      const RepairState& repair_state = component_repair.repair_state();
+      if (component == ComponentRepairState::RMAD_COMPONENT_UNKNOWN) {
+        LOG(WARNING) << "RmadState component missing |name| argument.";
+        continue;
+      }
+      if (selection_dict.find(component) != selection_dict.end()) {
+        LOG(WARNING) << "RmadState has duplicate components "
+                     << ComponentRepairState::Component_Name(component);
+        continue;
+      }
+      selection_dict.insert({component, repair_state});
+    }
+  }
+  return selection_dict;
+}
 
 }  // namespace
 
@@ -76,12 +108,11 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
-  // Do not read from storage. Always probe again and update |state_|.
+  // Always probe again and update |state_|.
   // TODO(chenghan): Integrate with RACC to check AVL compliance.
   auto components_repair = std::make_unique<ComponentsRepairState>();
-  const std::unordered_map<ComponentRepairState::Component,
-                           ComponentRepairState::RepairState>
-      previous_selection = GetUserSelectionDictionary();
+  const std::unordered_map<Component, RepairState> previous_selection =
+      GetUserSelectionDictionary(state_);
   // runtime_probe results.
   for (auto& [component, probed_component_size] : PROBED_COMPONENT_SIZES) {
     ComponentRepairState* component_repair =
@@ -115,32 +146,8 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
 
 BaseStateHandler::GetNextStateCaseReply
 ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
-  if (!state.has_components_repair()) {
-    LOG(ERROR) << "RmadState missing |select component| state.";
+  if (!ValidateUserSelection(state)) {
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
-  }
-  const ComponentsRepairState& components_repair = state.components_repair();
-  for (int i = 0; i < components_repair.components_size(); ++i) {
-    const ComponentRepairState& component = components_repair.components(i);
-    if (component.name() == ComponentRepairState::RMAD_COMPONENT_UNKNOWN) {
-      LOG(ERROR) << "RmadState component missing |name| argument.";
-      return {.error = RMAD_ERROR_REQUEST_INVALID,
-              .state_case = GetStateCase()};
-    }
-    if (component.repair_state() == ComponentRepairState::RMAD_REPAIR_UNKNOWN) {
-      LOG(ERROR) << "RmadState component missing |repair_state| argument.";
-      return {.error = RMAD_ERROR_REQUEST_INVALID,
-              .state_case = GetStateCase()};
-    }
-  }
-
-  // Verify if the selected components in the input state matches the probed
-  // components.
-  if (!VerifyInput(state)) {
-    LOG(ERROR) << "Input verification failed.";
-    // TODO(chenghan): Create a more specific error code.
-    return {.error = RMAD_ERROR_TRANSITION_FAILED,
-            .state_case = GetStateCase()};
   }
 
   state_ = state;
@@ -151,29 +158,53 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
           .state_case = RmadState::StateCase::kDeviceDestination};
 }
 
-bool ComponentsRepairStateHandler::VerifyInput(const RmadState& state) const {
-  // TODO(chenghan): Verify if the user selected components are probed on the
-  //                 device.
-  return true;
-}
+bool ComponentsRepairStateHandler::ValidateUserSelection(
+    const RmadState& state) const {
+  if (!state.has_components_repair()) {
+    LOG(ERROR) << "RmadState missing |components repair| state.";
+    return false;
+  }
+  std::unordered_map<Component, RepairState> prev_user_selection =
+      GetUserSelectionDictionary(state_);
+  std::unordered_map<Component, RepairState> user_selection =
+      GetUserSelectionDictionary(state);
 
-std::unordered_map<ComponentRepairState::Component,
-                   ComponentRepairState::RepairState>
-ComponentsRepairStateHandler::GetUserSelectionDictionary() const {
-  std::unordered_map<ComponentRepairState::Component,
-                     ComponentRepairState::RepairState>
-      selection_dict;
-  if (state_.has_components_repair()) {
-    const ComponentsRepairState& components_repair = state_.components_repair();
-    for (int i = 0; i < components_repair.components_size(); ++i) {
-      const ComponentRepairState& component = components_repair.components(i);
-      if (component.repair_state() !=
-          ComponentRepairState::RMAD_REPAIR_UNKNOWN) {
-        selection_dict.insert({component.name(), component.repair_state()});
-      }
+  // Use |user_selection| to update |prev_user_selection|.
+  for (auto [component, repair_state] : user_selection) {
+    const std::string component_name =
+        ComponentRepairState::Component_Name(component);
+    if (prev_user_selection.find(component) == prev_user_selection.end()) {
+      LOG(ERROR) << "New state contains an unknown component "
+                 << component_name;
+      return false;
+    }
+    RepairState prev_repair_state = prev_user_selection[component];
+    if (prev_repair_state == ComponentRepairState::RMAD_REPAIR_MISSING &&
+        repair_state != ComponentRepairState::RMAD_REPAIR_MISSING) {
+      LOG(ERROR) << "New state contains repair state for unprobed component "
+                 << component_name;
+      return false;
+    }
+    if (prev_repair_state != ComponentRepairState::RMAD_REPAIR_MISSING &&
+        repair_state == ComponentRepairState::RMAD_REPAIR_MISSING) {
+      LOG(ERROR) << "New state missing repair state for component "
+                 << component_name;
+      return false;
+    }
+    prev_user_selection[component] = repair_state;
+  }
+  // Check if there are any components that still has UNKNOWN repair state.
+  for (auto [component, updated_repair_state] : prev_user_selection) {
+    const std::string component_name =
+        ComponentRepairState::Component_Name(component);
+    if (updated_repair_state == ComponentRepairState::RMAD_REPAIR_UNKNOWN) {
+      LOG(ERROR) << "Component " << component_name
+                 << " has unknown repair state";
+      return false;
     }
   }
-  return selection_dict;
+
+  return true;
 }
 
 }  // namespace rmad
