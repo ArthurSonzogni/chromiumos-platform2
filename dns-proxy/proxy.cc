@@ -53,7 +53,7 @@ Metrics::ProcessType ProcessTypeOf(Proxy::Type t) {
 
 constexpr base::TimeDelta kShillPropertyAttemptDelay =
     base::TimeDelta::FromMilliseconds(200);
-constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
+constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10);
 constexpr base::TimeDelta kRequestRetryDelay =
     base::TimeDelta::FromMilliseconds(200);
 
