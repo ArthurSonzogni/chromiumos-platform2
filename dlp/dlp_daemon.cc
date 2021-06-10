@@ -30,6 +30,7 @@ void DlpDaemon::RegisterDBusObjectsAsync(
       org::chromium::DlpAdaptor::GetObjectPath());
   DCHECK(!adaptor_);
   adaptor_ = std::make_unique<DlpAdaptor>(std::move(dbus_object));
+  adaptor_->InitDatabaseOnCryptohome();
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }

@@ -59,9 +59,10 @@ class FanotifyWatcherTest : public ::testing::Test,
   FanotifyWatcherTest& operator=(const FanotifyWatcherTest&) = delete;
   ~FanotifyWatcherTest() override = default;
 
-  bool ProcessFileOpenRequest(ino_t inode, int pid) override {
+  void ProcessFileOpenRequest(
+      ino_t inode, int pid, base::OnceCallback<void(bool)> callback) override {
     counter_++;
-    return file_open_allowed_;
+    std::move(callback).Run(file_open_allowed_);
   }
 
   uint32_t counter() const { return counter_; }

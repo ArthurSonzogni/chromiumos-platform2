@@ -6,9 +6,11 @@
 #define DLP_DLP_ADAPTOR_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <brillo/dbus/async_event_sequencer.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <leveldb/db.h>
 
 #include "dlp/dbus-proxies.h"
@@ -34,6 +36,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   DlpAdaptor& operator=(const DlpAdaptor&) = delete;
   virtual ~DlpAdaptor();
 
+  // Initializes the database to be stored in the user's cryptohome.
+  void InitDatabaseOnCryptohome();
+
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -46,8 +51,14 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       const std::vector<uint8_t>& request_blob) override;
 
  private:
+  friend class DlpAdaptorTest;
+  FRIEND_TEST(DlpAdaptorTest, AllowedWithoutDatabase);
+  FRIEND_TEST(DlpAdaptorTest, AllowedWithDatabase);
+  FRIEND_TEST(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed);
+  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed);
+
   // Opens the database |db_| to store files sources.
-  void InitDatabase();
+  void InitDatabase(const base::FilePath database_path);
 
   // Initializes |fanotify_watcher_| if not yet started.
   void EnsureFanotifyWatcherStarted();
@@ -61,6 +72,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                           const std::vector<uint8_t>& response_blob);
   void OnDlpPolicyMatchedError(base::OnceCallback<void(bool)> callback,
                                brillo::Error* error);
+
+  static ino_t GetInodeValue(const std::string& path);
 
   // Can be nullptr if failed to initialize.
   std::unique_ptr<leveldb::DB> db_;

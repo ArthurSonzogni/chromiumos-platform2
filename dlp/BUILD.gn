@@ -82,7 +82,10 @@ if (use.test) {
     ]
   }
   executable("dlp_test") {
-    sources = [ "fanotify_watcher_test.cc" ]
+    sources = [
+      "dlp_adaptor_test.cc",
+      "fanotify_watcher_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":dlp_test_config",

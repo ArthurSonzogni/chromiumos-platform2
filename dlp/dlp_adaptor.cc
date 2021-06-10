@@ -68,15 +68,6 @@ std::string GetSanitizedUsername(brillo::dbus_utils::DBusObject* dbus_object) {
   return sanitized_username;
 }
 
-ino_t GetInodeValue(const std::string& path) {
-  struct stat file_stats;
-  if (stat(path.c_str(), &file_stats) != 0) {
-    PLOG(ERROR) << "Could not access " << path;
-    return 0;
-  }
-  return file_stats.st_ino;
-}
-
 FileEntry ConvertToFileEntryProto(AddFileRequest request) {
   FileEntry result;
   if (request.has_source_url())
@@ -101,10 +92,22 @@ DlpAdaptor::DlpAdaptor(
   dlp_files_policy_service_ =
       std::make_unique<org::chromium::DlpFilesPolicyServiceProxy>(
           dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
-  InitDatabase();
 }
 
 DlpAdaptor::~DlpAdaptor() = default;
+
+void DlpAdaptor::InitDatabaseOnCryptohome() {
+  const std::string sanitized_username =
+      GetSanitizedUsername(dbus_object_.get());
+  if (sanitized_username.empty()) {
+    LOG(ERROR) << "No active user, can't open the database";
+    return;
+  }
+  const base::FilePath database_path = base::FilePath("/run/daemon-store/dlp/")
+                                           .Append(sanitized_username)
+                                           .Append("database");
+  InitDatabase(database_path);
+}
 
 void DlpAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -151,6 +154,11 @@ std::vector<uint8_t> DlpAdaptor::AddFile(
   }
 
   LOG(INFO) << "Adding file to the database: " << request.file_path();
+  if (!db_) {
+    LOG(ERROR) << "Database is not ready";
+    response.set_error_message("Database is not ready");
+    return SerializeProto(response);
+  }
   leveldb::WriteOptions options;
   options.sync = true;
 
@@ -180,17 +188,7 @@ std::vector<uint8_t> DlpAdaptor::AddFile(
   return SerializeProto(response);
 }
 
-void DlpAdaptor::InitDatabase() {
-  const std::string sanitized_username =
-      GetSanitizedUsername(dbus_object_.get());
-  if (sanitized_username.empty()) {
-    LOG(ERROR) << "No active user, can't open the database";
-    return;
-  }
-  const base::FilePath database_path = base::FilePath("/run/daemon-store/dlp/")
-                                           .Append(sanitized_username)
-                                           .Append("database");
-
+void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
   options.create_if_missing = true;
@@ -228,6 +226,12 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
 
 void DlpAdaptor::ProcessFileOpenRequest(
     ino_t inode, int pid, base::OnceCallback<void(bool)> callback) {
+  if (!db_) {
+    LOG(WARNING) << "DLP database is not ready yet. Allowing the file request";
+    std::move(callback).Run(/*allowed=*/true);
+    return;
+  }
+
   const std::string inode_s = base::NumberToString(inode);
   std::string serialized_proto;
   const leveldb::Status get_status =
@@ -272,6 +276,16 @@ void DlpAdaptor::OnDlpPolicyMatchedError(
     base::OnceCallback<void(bool)> callback, brillo::Error* error) {
   LOG(ERROR) << "Failed to check whether file could be restricted";
   std::move(callback).Run(/*allowed=*/false);
+}
+
+// static
+ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
+  struct stat file_stats;
+  if (stat(path.c_str(), &file_stats) != 0) {
+    PLOG(ERROR) << "Could not access " << path;
+    return 0;
+  }
+  return file_stats.st_ino;
 }
 
 }  // namespace dlp
