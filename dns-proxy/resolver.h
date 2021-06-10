@@ -75,6 +75,9 @@ class Resolver {
     // Number of attempted retry. Query should not be retried when reaching
     // a certain threshold.
     int num_retries;
+
+    // Records timings for metrics.
+    Metrics::QueryTimer timer;
   };
 
   Resolver(base::TimeDelta timeout,

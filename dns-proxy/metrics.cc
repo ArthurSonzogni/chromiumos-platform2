@@ -28,6 +28,16 @@ constexpr char kQueryResultsTemplate[] = "Network.DnsProxy.$1Query.Results";
 constexpr char kQueryErrorsTemplate[] = "Network.DnsProxy.$1Query.Errors";
 constexpr char kHttpErrors[] = "Network.DnsProxy.DnsOverHttpsQuery.HttpErrors";
 
+constexpr char kQueryDurationTemplate[] = "Network.DnsProxy.Query.$1$2Duration";
+constexpr char kQueryDurationResolveTemplate[] =
+    "Network.DnsProxy.$1Query.$2ResolveDuration";
+constexpr char kQueryDurationReceive[] = "Receive";
+constexpr char kQueryDurationReply[] = "Reply";
+constexpr char kQueryDurationTotal[] = "Total";
+constexpr char kQueryDurationFailed[] = "Failed";
+constexpr int kQueryDurationMillisecondsMax = 60 * 1000;
+constexpr int kQueryDurationMillisecondsBuckets = 60;
+
 const char* ProcessTypeString(Metrics::ProcessType type) {
   static const std::map<Metrics::ProcessType, const char*> m{
       {Metrics::ProcessType::kController, "Controller"},
@@ -149,6 +159,113 @@ void Metrics::RecordQueryResult(Metrics::QueryType type,
   if (http_code >= 300) {
     metrics_.SendEnumToUMA(kHttpErrors, HttpStatusToError(http_code));
   }
+}
+
+void Metrics::RecordQueryDuration(const char* stage, int64_t ms, bool success) {
+  const char* prefix = !success ? kQueryDurationFailed : "";
+  auto name = base::ReplaceStringPlaceholders(kQueryDurationTemplate,
+                                              {prefix, stage}, nullptr);
+  metrics_.SendToUMA(name, ms, 1, kQueryDurationMillisecondsMax,
+                     kQueryDurationMillisecondsBuckets);
+}
+
+void Metrics::RecordQueryResolveDuration(QueryType type,
+                                         int64_t ms,
+                                         bool success) {
+  const char* qs = QueryTypeString(type);
+  if (!qs)
+    return;
+
+  const char* prefix = !success ? kQueryDurationFailed : "";
+  auto name = base::ReplaceStringPlaceholders(kQueryDurationResolveTemplate,
+                                              {qs, prefix}, nullptr);
+  metrics_.SendToUMA(name, ms, 1, kQueryDurationMillisecondsMax,
+                     kQueryDurationMillisecondsBuckets);
+}
+
+Metrics::QueryTimer::~QueryTimer() {
+  Stop();
+  Record(metrics_);
+}
+
+void Metrics::QueryTimer::StartReceive() {
+  timer_.Start();
+}
+
+void Metrics::QueryTimer::StopReceive(bool success) {
+  timer_.GetElapsedTime(&elapsed_recv_.second);
+  elapsed_recv_.first = success;
+  // Timer is stopped here since no further measurable processing will follow.
+  if (!success)
+    Stop();
+}
+
+void Metrics::QueryTimer::StartResolve(bool is_doh) {
+  resolv_t_ r;
+  r.type = is_doh ? Metrics::QueryType::kDnsOverHttps
+                  : Metrics::QueryType::kPlainText;
+  timer_.GetElapsedTime(&r.elapsed);
+  elapsed_resolve_.emplace_back(r);
+}
+
+void Metrics::QueryTimer::StopResolve(bool success) {
+  // For unit tests.
+  if (elapsed_resolve_.empty())
+    return;
+
+  base::TimeDelta d;
+  timer_.GetElapsedTime(&d);
+  auto& r = elapsed_resolve_.back();
+  r.success = success;
+  r.elapsed = d - r.elapsed;
+}
+
+void Metrics::QueryTimer::StartReply() {
+  elapsed_reply_.first = true;
+  timer_.GetElapsedTime(&elapsed_reply_.second);
+}
+
+void Metrics::QueryTimer::StopReply(bool success) {
+  Stop();
+  elapsed_reply_.first = success;
+  elapsed_reply_.second = elapsed_total_ - elapsed_reply_.second;
+}
+
+void Metrics::QueryTimer::Stop() {
+  if (timer_.HasStarted()) {
+    timer_.GetElapsedTime(&elapsed_total_);
+    timer_.Stop();
+  }
+}
+
+void Metrics::QueryTimer::set_metrics(Metrics* metrics) {
+  metrics_ = metrics;
+}
+
+void Metrics::QueryTimer::Record(Metrics* metrics) {
+  if (!metrics)
+    return;
+
+  metrics->RecordQueryDuration(kQueryDurationReceive,
+                               elapsed_recv_.second.InMilliseconds(),
+                               elapsed_recv_.first);
+  if (!elapsed_recv_.first)
+    return;
+
+  bool overall = false;
+  for (const auto& r : elapsed_resolve_) {
+    overall |= r.success;
+    metrics->RecordQueryResolveDuration(r.type, r.elapsed.InMilliseconds(),
+                                        r.success);
+  }
+
+  metrics->RecordQueryDuration(kQueryDurationReply,
+                               elapsed_reply_.second.InMilliseconds(),
+                               elapsed_reply_.first);
+
+  overall &= elapsed_reply_.first;
+  metrics->RecordQueryDuration(kQueryDurationTotal,
+                               elapsed_total_.InMilliseconds(), overall);
 }
 
 }  // namespace dns_proxy

@@ -199,10 +199,10 @@ void Resolver::HandleAresResult(void* ctx,
                                 int status,
                                 uint8_t* msg,
                                 size_t len) {
+  std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
+  sock_fd->timer.StopResolve(status == ARES_SUCCESS);
   metrics_.RecordQueryResult(Metrics::QueryType::kPlainText,
                              AresStatusMetric(status));
-
-  std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
   if (status != ARES_SUCCESS) {
     LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
     return;
@@ -214,10 +214,11 @@ void Resolver::HandleCurlResult(void* ctx,
                                 const DoHCurlClient::CurlResult& res,
                                 uint8_t* msg,
                                 size_t len) {
+  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
+  sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
   metrics_.RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
                              CurlCodeMetric(res.curl_code), res.http_code);
 
-  SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   if (res.curl_code != CURLE_OK) {
     LOG(ERROR) << "DoH resolution failed: "
                << curl_easy_strerror(res.curl_code);
@@ -279,6 +280,7 @@ void Resolver::HandleCurlResult(void* ctx,
 }
 
 void Resolver::ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len) {
+  sock_fd->timer.StartReply();
   // For TCP, DNS messages have an additional 2-bytes header representing
   // the length of the query. Add the additional header for the reply.
   uint16_t dns_len = htons(len);
@@ -304,7 +306,9 @@ void Resolver::ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len) {
     hdr.msg_name = &sock_fd->src;
     hdr.msg_namelen = sock_fd->socklen;
   }
-  if (sendmsg(sock_fd->fd, &hdr, 0) < 0) {
+  const bool ok = sendmsg(sock_fd->fd, &hdr, 0) >= 0;
+  sock_fd->timer.StopReply(ok);
+  if (!ok) {
     PLOG(ERROR) << "sendmsg() " << sock_fd->fd << " failed";
   }
 }
@@ -323,8 +327,10 @@ void Resolver::SetDoHProviders(const std::vector<std::string>& doh_providers,
 
 void Resolver::OnDNSQuery(int fd, int type) {
   // Initialize SocketFd to carry necessary data. |sock_fd| must be freed when
-  // it is done used.
+  // it is done being used.
   SocketFd* sock_fd = new SocketFd(type, fd);
+  // Metrics will be recorded automatically when this object is deleted.
+  sock_fd->timer.set_metrics(&metrics_);
 
   size_t buf_size;
   struct sockaddr* src;
@@ -345,15 +351,20 @@ void Resolver::OnDNSQuery(int fd, int type) {
       LOG(DFATAL) << "Unexpected socket type: " << type;
       return;
   }
+  sock_fd->timer.StartReceive();
   sock_fd->len =
       recvfrom(fd, sock_fd->msg, buf_size, 0, src, &sock_fd->socklen);
+  // Assume success - on failure, the correct value will be recorded.
+  sock_fd->timer.StopReceive(true);
   if (sock_fd->len < 0) {
+    sock_fd->timer.StopReceive(false);
     PLOG(WARNING) << "recvfrom failed";
     delete sock_fd;
     return;
   }
   // Handle TCP connection closed.
   if (sock_fd->len == 0) {
+    sock_fd->timer.StopReceive(false);
     delete sock_fd;
     tcp_connections_.erase(fd);
     return;
@@ -371,20 +382,25 @@ void Resolver::OnDNSQuery(int fd, int type) {
 
 void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
   if (doh_enabled_ && !fallback) {
+    sock_fd->timer.StartResolve(true);
     if (curl_client_->Resolve(sock_fd->msg, sock_fd->len,
                               base::BindRepeating(&Resolver::HandleCurlResult,
                                                   weak_factory_.GetWeakPtr()),
                               reinterpret_cast<void*>(sock_fd))) {
       return;
     }
+    sock_fd->timer.StopResolve(false);
   }
-  if (!always_on_doh_ &&
-      ares_client_->Resolve(
-          reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
-          base::BindRepeating(&Resolver::HandleAresResult,
-                              weak_factory_.GetWeakPtr()),
-          reinterpret_cast<void*>(sock_fd))) {
-    return;
+  if (!always_on_doh_) {
+    sock_fd->timer.StartResolve();
+    if (ares_client_->Resolve(
+            reinterpret_cast<const unsigned char*>(sock_fd->msg), sock_fd->len,
+            base::BindRepeating(&Resolver::HandleAresResult,
+                                weak_factory_.GetWeakPtr()),
+            reinterpret_cast<void*>(sock_fd))) {
+      return;
+    }
+    sock_fd->timer.StopResolve(false);
   }
 
   // Construct and send a response indicating that there is a failure.

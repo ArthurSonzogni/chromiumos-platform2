@@ -5,7 +5,11 @@
 #ifndef DNS_PROXY_METRICS_H_
 #define DNS_PROXY_METRICS_H_
 
+#include <utility>
+#include <vector>
+
 #include <metrics/metrics_library.h>
+#include <metrics/timer.h>
 
 namespace dns_proxy {
 
@@ -127,6 +131,52 @@ class Metrics {
     kMaxValue = kOtherServerError,
   };
 
+  // Helper class for measuring time elapsed during different stages of the
+  // name resolution process. Accumulates stage timings for later use so that
+  // logging metrics do not impact the time spans with i/o overhead.
+  class QueryTimer {
+   public:
+    QueryTimer() = default;
+    QueryTimer(const QueryTimer&) = delete;
+    QueryTimer& operator=(const QueryTimer&) = delete;
+    ~QueryTimer();
+
+    // Measure time elapsed reading query from client.
+    // This should be called first to begin the internal timer.
+    void StartReceive();
+    void StopReceive(bool success);
+
+    // Measure time elapsed spanning the entire resolution step,
+    // which may include multiple client calls or retries.
+    void StartResolve(bool is_doh = false);
+    void StopResolve(bool success);
+
+    // Measure time elapsed sending the reply to the client.
+    void StartReply();
+    void StopReply(bool success);
+
+    // Records all available metrics.
+    void Record(Metrics* metrics);
+
+    void set_metrics(Metrics* metrics);
+
+   private:
+    struct resolv_t_ {
+      bool success;
+      Metrics::QueryType type;
+      base::TimeDelta elapsed;
+    };
+
+    void Stop();
+
+    Metrics* metrics_;
+    chromeos_metrics::Timer timer_;
+    std::pair<bool, base::TimeDelta> elapsed_recv_;
+    std::vector<resolv_t_> elapsed_resolve_;
+    std::pair<bool, base::TimeDelta> elapsed_reply_;
+    base::TimeDelta elapsed_total_;
+  };
+
   Metrics() = default;
   Metrics(const Metrics&) = delete;
   ~Metrics() = default;
@@ -136,6 +186,10 @@ class Metrics {
   void RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6);
   void RecordDnsOverHttpsMode(DnsOverHttpsMode mode);
   void RecordQueryResult(QueryType type, QueryError error, int http_code = -1);
+  void RecordQueryDuration(const char* stage, int64_t ms, bool success = true);
+  void RecordQueryResolveDuration(QueryType type,
+                                  int64_t ms,
+                                  bool success = true);
 
  private:
   MetricsLibrary metrics_;
