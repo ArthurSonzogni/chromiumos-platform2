@@ -17,6 +17,7 @@ creat: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 exit: 1
 exit_group: 1
 fcntl: 1
@@ -36,6 +37,7 @@ getuid: 1
 listen: 1
 lseek: 1
 madvise: 1
+memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
