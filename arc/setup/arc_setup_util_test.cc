@@ -1008,6 +1008,10 @@ TEST(ArcSetupUtil, TestShouldDeleteAndroidData) {
                                        AndroidSdkVersion::ANDROID_P));
   EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_R,
                                        AndroidSdkVersion::ANDROID_R));
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S,
+                                       AndroidSdkVersion::ANDROID_S));
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S_V2,
+                                       AndroidSdkVersion::ANDROID_S_V2));
 
   // Shouldn't delete data for initial installation.
   EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_M,
@@ -1018,6 +1022,18 @@ TEST(ArcSetupUtil, TestShouldDeleteAndroidData) {
                                        AndroidSdkVersion::UNKNOWN));
   EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_R,
                                        AndroidSdkVersion::UNKNOWN));
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S,
+                                       AndroidSdkVersion::UNKNOWN));
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S_V2,
+                                       AndroidSdkVersion::UNKNOWN));
+
+  // Shouldn't delete data for expected upgrades.
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_N_MR1,
+                                       AndroidSdkVersion::ANDROID_M));
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_P,
+                                       AndroidSdkVersion::ANDROID_N_MR1));
+  EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_R,
+                                       AndroidSdkVersion::ANDROID_P));
 
   // All sorts of downgrades should delete data.
   EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_N_MR1,
@@ -1026,6 +1042,10 @@ TEST(ArcSetupUtil, TestShouldDeleteAndroidData) {
                                       AndroidSdkVersion::ANDROID_N_MR1));
   EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_P,
                                       AndroidSdkVersion::ANDROID_R));
+  EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_R,
+                                      AndroidSdkVersion::ANDROID_S));
+  EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S,
+                                      AndroidSdkVersion::ANDROID_S_V2));
 
   // Explicitly delete data when ARC++ is upgraded from M to >= P.
   EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_P,
@@ -1034,6 +1054,12 @@ TEST(ArcSetupUtil, TestShouldDeleteAndroidData) {
   // Explicitly delete data when ARC++ is upgraded from N to R.
   EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_R,
                                       AndroidSdkVersion::ANDROID_N_MR1));
+
+  // Explicitly delete data when ARC++ is upgraded from P to S or S_V2.
+  EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S,
+                                      AndroidSdkVersion::ANDROID_P));
+  EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_S_V2,
+                                      AndroidSdkVersion::ANDROID_P));
 
   // Delete data for upgrades from a release version to a development version.
   EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_DEVELOPMENT,

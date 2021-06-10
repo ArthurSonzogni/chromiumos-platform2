@@ -890,6 +890,14 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
               << static_cast<int>(system_sdk_version) << ").";
     return true;
   }
+  // Skip-upgraded from P to post-S. (b/187453032)
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_P &&
+      system_sdk_version >= AndroidSdkVersion::ANDROID_S) {
+    LOG(INFO) << "Clearing /data dir because ARC was skip-upgraded from P("
+              << static_cast<int>(data_sdk_version) << ") to post-S("
+              << static_cast<int>(system_sdk_version) << ").";
+    return true;
+  }
   // Upgraded to a development version. (b/195035697)
   if (system_sdk_version == AndroidSdkVersion::ANDROID_DEVELOPMENT &&
       data_sdk_version < system_sdk_version) {
