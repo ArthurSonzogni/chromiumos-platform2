@@ -1310,7 +1310,9 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
 
 #ifndef NDEBUG
 
-using MetricsDeathTest = MetricsTest;
+// We don't need the extra thread inside EventDispatcherForTest, using
+// ::testing::Test here directly.
+using MetricsDeathTest = ::testing::Test;
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumDNSSuccess) {
   PortalDetector::Result result;
