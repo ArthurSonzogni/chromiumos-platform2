@@ -80,6 +80,7 @@ template("generate_mojom_bindings_gen") {
                            "mojo_root",
                            "mojom_bindings_generator",
                            "mojom_parser",
+                           "enabled_features",
                          ])
 
   # Path to the directory which contains mojo template files.
@@ -106,6 +107,10 @@ template("generate_mojom_bindings_gen") {
     mojo_root = "."
   }
   mojo_root = rebase_path(mojo_root)
+
+  if (!defined(enabled_features)) {
+    enabled_features = []
+  }
 
   mojo_templates_dir_action_name = "${target_name}_mojo_templates_dir"
   action(mojo_templates_dir_action_name) {
@@ -165,6 +170,13 @@ template("generate_mojom_bindings_gen") {
       "--input-root",
       ".",
     ]
+    foreach(enabled_feature, enabled_features) {
+      args += [
+        "--enable-feature",
+        enabled_feature,
+      ]
+    }
+
     if (defined(invoker.deps)) {
       deps = invoker.deps
     }
@@ -248,6 +260,7 @@ template("generate_mojom_bindings") {
                              "sources",
                              "disallow_native_types",
                              "disallow_interfaces",
+                             "enabled_features",
                            ])
   }
 
