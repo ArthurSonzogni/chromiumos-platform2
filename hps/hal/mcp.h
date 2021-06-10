@@ -24,16 +24,19 @@ class Mcp : public DevInterface {
   void Close();
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
-  static std::unique_ptr<DevInterface> Create(uint8_t address);
+  static std::unique_ptr<DevInterface> Create(uint8_t address,
+                                              uint32_t speedKHz);
 
  private:
-  explicit Mcp(uint8_t addr) : address_(addr << 1), context_(0), handle_(0) {}
-  bool Init();
+  explicit Mcp(uint8_t addr)
+      : address_(addr << 1), div_(0), context_(0), handle_(0) {}
+  bool Init(uint32_t speedKHz);
   bool PrepareBus();
   bool Cmd();
   void Clear();
 
   uint8_t address_;
+  uint8_t div_;
   libusb_context* context_;
   libusb_device_handle* handle_;
   uint8_t in_[kMcpTransferSize];

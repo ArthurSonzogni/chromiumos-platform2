@@ -26,8 +26,6 @@ namespace {
 
 static const int kTimeoutMS = 500;  // MS timeout
 static const int kResetDelay = 10;  // MS delay after reset.
-// Clock divisor (100KHz)
-static constexpr uint16_t kClockDivisor = (300 / 2 - 1);
 static const int kReadSize = 64;
 static const bool kDebug = false;
 
@@ -86,11 +84,31 @@ void Stop(std::vector<uint8_t>* b) {
   Pins(b, kSclock | kSdata, 0);
 }
 
+/*
+ * Calculate clock divider from bus speed.
+ * See AN 255 for a complete explanation of the clock divider formula.
+ * For 2 phase clock:
+ * speed = 60Mhz / ((1 + divisor) * 2)
+ * For 3 phase clock, final divisor = divisor * 2 / 3;
+ * So:
+ *   speed = 60MHz / (((1 + divisor) * 2 / 3) * 2)
+ *   divisor = 60000 / (speedKHz * 2) - 1
+ *   divisor = divisor * 2 / 3
+ */
+uint16_t ClockDivisor(uint32_t speedKHz) {
+  return (((60 * 1000) / (speedKHz * 2) - 1) * 2) / 3;
+}
+
 }  // namespace
 
 namespace hps {
 
-bool Ftdi::Init() {
+bool Ftdi::Init(uint32_t speedKHz) {
+  // Max is 1MHz, minimum is 10Khz.
+  if (speedKHz > 1000 || speedKHz < 10) {
+    std::cerr << "FTDI illegal speed, max 1MHz, min 10KHz" << std::endl;
+    return false;
+  }
   ftdi_init(&this->context_);
   struct ftdi_device_list* devlist;
 
@@ -172,8 +190,9 @@ bool Ftdi::Init() {
   tx.clear();
   Pins(&tx, kSclock | kSdata, kSclock);
   tx.push_back(0x86);  // Set clock divisor
-  tx.push_back(kClockDivisor & 0xFF);
-  tx.push_back(kClockDivisor >> 8);
+  uint16_t div = ClockDivisor(speedKHz);
+  tx.push_back(div & 0xFF);
+  tx.push_back((div >> 8) & 0xFF);
   if (this->Check(this->PutRaw(tx) != tx.size(), "MPSEE clock setting"))
     return false;
   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
@@ -393,10 +412,10 @@ void Ftdi::Dump() {
 }
 
 // Static factory method.
-std::unique_ptr<DevInterface> Ftdi::Create(uint8_t address) {
+std::unique_ptr<DevInterface> Ftdi::Create(uint8_t address, uint32_t speedKHz) {
   // Use new so that private constructor can be accessed.
   auto dev = std::unique_ptr<Ftdi>(new Ftdi(address));
-  CHECK(dev->Init());
+  CHECK(dev->Init(speedKHz));
   return std::unique_ptr<DevInterface>(std::move(dev));
 }
 

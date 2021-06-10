@@ -30,12 +30,6 @@ static const uint8_t kReadEndpoint = 0x83;   // device to host
 static const int kTimeout = 1000;      // Timeout in milliseconds.
 static const int kRetries = 50;        // Max retries.
 static const int kDelay = 10;          // Milliseconds delay between retries.
-static const int kSpeed = 400 * 1000;  // I2C bus speed in Hz
-/*
- * Clock divider uses 12MHz clock as base, divided by target
- * bus speed in Hz, offset by 2.
- */
-static constexpr uint8_t kClockDivider = (12 * 1000 * 1000) / kSpeed - 2;
 
 // Command byte to send to MCP2221
 enum : uint8_t {
@@ -53,6 +47,13 @@ enum : uint8_t {
 static inline const char* errString(int status) {
   return libusb_strerror(static_cast<libusb_error>(status));
 }
+/*
+ * Clock divider uses 12MHz clock as base, divided by target
+ * bus speed in Hz, offset by 2.
+ */
+static inline uint8_t ClockDivider(uint32_t speedKHz) {
+  return (12 * 1000) / speedKHz - 2;
+}
 
 }  // namespace
 
@@ -67,7 +68,12 @@ Mcp::~Mcp() {
  * Scan the available USB devices until the correct VID/PID is found,
  * and then open that device.
  */
-bool Mcp::Init() {
+bool Mcp::Init(uint32_t speedKHz) {
+  if (speedKHz > 1000 || speedKHz < 50) {
+    LOG(ERROR) << "I2C bus peed must be > 50KHz and < 1000KHz";
+    return false;
+  }
+  this->div_ = ClockDivider(speedKHz);
   int status = libusb_init(&this->context_);
   if (status != 0) {
     this->context_ = nullptr;
@@ -257,7 +263,7 @@ bool Mcp::PrepareBus() {
     // and reset the I2C controller.
     this->out_[2] = (i == 1) ? 0x10 : 0;  // No cancel on first try.
     this->out_[3] = 0x20;                 // Set clock divider.
-    this->out_[4] = kClockDivider;
+    this->out_[4] = this->div_;
     if (!this->Cmd()) {
       LOG(ERROR) << "PrepareBus CMD failed";
       return false;
@@ -319,10 +325,10 @@ void Mcp::Clear() {
 }
 
 // Static factory method.
-std::unique_ptr<DevInterface> Mcp::Create(uint8_t address) {
+std::unique_ptr<DevInterface> Mcp::Create(uint8_t address, uint32_t speedKHz) {
   // Use new so that private constructor can be accessed.
   auto dev = std::unique_ptr<Mcp>(new Mcp(address));
-  CHECK(dev->Init());
+  CHECK(dev->Init(speedKHz));
   return std::unique_ptr<DevInterface>(std::move(dev));
 }
 

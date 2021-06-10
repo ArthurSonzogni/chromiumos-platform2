@@ -24,6 +24,7 @@
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
+  DEFINE_uint32(speed, 400, "I2C bus speed in KHz");
   DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
@@ -43,9 +44,9 @@ int main(int argc, char* argv[]) {
   // Determine the hardware connection.
   std::unique_ptr<hps::DevInterface> dev;
   if (FLAGS_mcp) {
-    dev = hps::Mcp::Create(FLAGS_addr);
+    dev = hps::Mcp::Create(FLAGS_addr, FLAGS_speed);
   } else if (FLAGS_ftdi) {
-    dev = hps::Ftdi::Create(FLAGS_addr);
+    dev = hps::Ftdi::Create(FLAGS_addr, FLAGS_speed);
   } else if (FLAGS_test) {
     // Initialise the fake device as already booted so that
     // features can be enabled/disabled.
