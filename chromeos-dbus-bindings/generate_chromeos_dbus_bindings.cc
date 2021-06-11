@@ -84,39 +84,47 @@ bool LoadConfig(const base::FilePath& path, ServiceConfig* config) {
     return false;
   }
 
-  base::DictionaryValue* dict = nullptr;  // Aliased with |json|.
-  if (!json->GetAsDictionary(&dict)) {
+  if (!json->is_dict()) {
     LOG(ERROR) << "Service configuration was not a dictionary";
     return false;
   }
 
-  dict->GetStringWithoutPathExpansion("service_name", &config->service_name);
+  const std::string* service_name = json->FindStringKey("service_name");
+  if (service_name) {
+    config->service_name = *service_name;
+  }
 
-  base::DictionaryValue* om_dict = nullptr;  // Owned by |dict|.
-  if (dict->GetDictionaryWithoutPathExpansion("object_manager", &om_dict)) {
-    if (!om_dict->GetStringWithoutPathExpansion("name",
-                                                &config->object_manager.name) &&
-        !config->service_name.empty()) {
+  const base::Value* om_dict = json->FindDictKey("object_manager");
+  if (om_dict) {
+    const std::string* object_manager_name = om_dict->FindStringKey("name");
+    if (object_manager_name) {
+      config->object_manager.name = *object_manager_name;
+    } else if (!config->service_name.empty()) {
       config->object_manager.name = config->service_name + ".ObjectManager";
     }
-    om_dict->GetStringWithoutPathExpansion("object_path",
-                                           &config->object_manager.object_path);
+
+    const std::string* object_manager_object_path =
+        om_dict->FindStringKey("object_path");
+    if (object_manager_object_path) {
+      config->object_manager.object_path = *object_manager_object_path;
+    }
+
     if (config->object_manager.name.empty()) {
       LOG(ERROR) << "Object manager name is missing.";
       return false;
     }
   }
 
-  base::ListValue* list = nullptr;  // Owned by |dict|.
-  if (dict->GetListWithoutPathExpansion("ignore_interfaces", &list)) {
-    config->ignore_interfaces.reserve(list->GetSize());
-    for (const base::Value& item : *list) {
-      std::string interface_name;
-      if (!item.GetAsString(&interface_name)) {
+  const base::Value* list = json->FindListKey("ignore_interfaces");
+  if (list) {
+    config->ignore_interfaces.reserve(list->GetList().size());
+    for (const base::Value& item : list->GetList()) {
+      const std::string* interface_name = item.GetIfString();
+      if (!interface_name) {
         LOG(ERROR) << "Invalid interface name in [ignore_interfaces] section";
         return false;
       }
-      config->ignore_interfaces.push_back(interface_name);
+      config->ignore_interfaces.push_back(*interface_name);
     }
   }
 
