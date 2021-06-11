@@ -15,6 +15,7 @@ connect: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 fcntl64: 1
 fstat64: 1
 futex: 1
@@ -46,6 +47,7 @@ getuid32: 1
 # - SNDRV_SEQ_IOCTL_DELETE_PORT
 # - SNDRV_SEQ_IOCTL_QUERY_NEXT_CLIENT
 ioctl: arg1 == 0x5401 || arg1 == 0x80045300 || arg1 == 0x80045301 || arg1 == 0xc0105303 || arg1 == 0xc0bc5310 || arg1 == 0x40bc5311 || arg1 == 0xc0a45320 || arg1 == 0x40505330 || arg1 == 0xc0a45352 || arg1 == 0x40505331 || arg1 == 0x40a45321 || arg1 == 0xc0bc5351
+memfd_create: 1
 # mmap2 should only be allowed in READ mode.
 mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 # mprotect should only be allowed in READ mode.
