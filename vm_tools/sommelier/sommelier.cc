@@ -3877,8 +3877,8 @@ static void sl_print_usage() {
       "  --no-exit-with-child\t\tKeep process alive after child exists\n"
       "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
       "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
-      "  --support-damage-buffer\t"
-      "Support wl_surface::damage_buffer (experimental).\n"
+      "  --no-support-damage-buffer\t"
+      "Disable wl_surface::damage_buffer support.\n"
       "  --virtwl-device=DEVICE\tVirtWL device to use\n"
       "  --drm-device=DEVICE\t\tDRM device to use\n"
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
@@ -3996,8 +3996,8 @@ int main(int argc, char** argv) {
       frame_color = sl_arg_value(arg);
     } else if (strstr(arg, "--dark-frame-color") == arg) {
       dark_frame_color = sl_arg_value(arg);
-    } else if (strstr(arg, "--support-damage-buffer") == arg) {
-      support_damage_buffer = "1";
+    } else if (strstr(arg, "--no-support-damage-buffer") == arg) {
+      support_damage_buffer = "0";
     } else if (strstr(arg, "--glamor") == arg) {
       glamor = "1";
     } else if (strstr(arg, "--fullscreen-mode") == arg) {
@@ -4208,7 +4208,7 @@ int main(int argc, char** argv) {
       ctx.dark_frame_color = 0xff000000 | (r << 16) | (g << 8) | (b << 0);
   }
 
-  ctx.support_damage_buffer = support_damage_buffer != nullptr &&
+  ctx.support_damage_buffer = support_damage_buffer == nullptr ||
                               strcmp(support_damage_buffer, "1") == 0;
 
   if (fullscreen_mode) {
