@@ -295,10 +295,13 @@ void Process::ReapWorkerProcess(pid_t child_pid,
     RecordProcessErrorEvent(
         ProcessError::kReapWorkerProcessMaxNumOfRetrialsExceeded);
     LOG(ERROR) << "Max number of retrials (" << kMaxNumOfWaitPidRetrials
-               << ") exceeded in trying to reap the worker process";
+               << ") exceeded in trying to reap the worker process "
+               << child_pid;
     if (process_type_ == Type::kControlForTest &&
         !reap_worker_process_fail_callback_.is_null()) {
-      reap_worker_process_fail_callback_.Run("Max number of retrials exceeded");
+      reap_worker_process_fail_callback_.Run(
+          "Max number of retrials exceeded in reaping worker process " +
+          std::to_string(child_pid));
     }
     return;
   }
@@ -350,7 +353,16 @@ void Process::ReapWorkerProcess(pid_t child_pid,
 
 void Process::InternalPrimordialMojoPipeDisconnectHandler(pid_t child_pid) {
   // Try our best to ensure the worker process is exiting.
-  kill(child_pid, SIGKILL);
+  auto res = kill(child_pid, SIGKILL);
+  DLOG(INFO) << "SIGKILL sent to the worker process: " << child_pid;
+  if (res != 0) {
+    // This is just an extra attempt to stop the worker process. It is totally
+    // fine that the worker process has already exited at this point so we do
+    // not report the errno to UMA. But we still want to log it for debugging
+    // purposes.
+    DLOG(INFO) << "Sending SIGKILL to worker process " << child_pid
+               << " met error: " << strerror(errno);
+  }
   // Reap the child process. This is (and should be) unblocking.
   ReapWorkerProcess(child_pid, 0, base::Time::Now());
 }
