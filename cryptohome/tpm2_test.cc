@@ -1396,9 +1396,9 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob plaintext;
   EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->UnsealWithAuthorization(handle, sealed_data, auth_blob,
-                                          std::map<uint32_t, std::string>(),
-                                          &plaintext));
+            tpm_->UnsealWithAuthorization(
+                handle, base::nullopt, sealed_data, auth_blob,
+                std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, UnsealWithAuthorizationBadAuthSize) {
@@ -1407,9 +1407,25 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationBadAuthSize) {
   SecureBlob sealed_data(32, 'b');
   SecureBlob plaintext;
   EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->UnsealWithAuthorization(handle, sealed_data, auth_blob,
-                                          std::map<uint32_t, std::string>(),
-                                          &plaintext));
+            tpm_->UnsealWithAuthorization(
+                handle, base::nullopt, sealed_data, auth_blob,
+                std::map<uint32_t, std::string>(), &plaintext));
+}
+
+TEST_F(Tpm2Test, UnsealWithAuthorizationWithPreloadSuccess) {
+  TpmKeyHandle handle = 42;
+  TpmKeyHandle preload_handle = 87;
+  SecureBlob auth_blob(256, 'a');
+  SecureBlob sealed_data(32, 'b');
+  EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(handle, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, UnsealDataWithHandle(preload_handle, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  SecureBlob plaintext;
+  EXPECT_EQ(Tpm::kTpmRetryNone,
+            tpm_->UnsealWithAuthorization(
+                handle, preload_handle, sealed_data, auth_blob,
+                std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, GetPublicKeyHashSuccess) {

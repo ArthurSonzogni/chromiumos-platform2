@@ -47,8 +47,13 @@ class StubTpm : public Tpm {
       SecureBlob* sealed_data) override {
     return kTpmRetryFatal;
   }
+  TpmRetryAction PreloadSealedData(const SecureBlob& sealed_data,
+                                   ScopedKeyHandle* preload_handle) override {
+    return kTpmRetryFatal;
+  }
   TpmRetryAction UnsealWithAuthorization(
       TpmKeyHandle key_handle,
+      base::Optional<TpmKeyHandle> preload_handle,
       const SecureBlob& sealed_data,
       const SecureBlob& auth_blob,
       const std::map<uint32_t, std::string>& pcr_map,

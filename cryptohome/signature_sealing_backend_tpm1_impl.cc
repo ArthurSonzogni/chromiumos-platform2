@@ -1083,9 +1083,9 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
     return false;
   }
   // Unseal the secret value bound to PCRs and the AuthData value.
-  if (tpm_->UnsealWithAuthorization(srk_handle, SecureBlob(pcr_bound_secret_),
-                                    auth_data, {} /* pcr_map */,
-                                    unsealed_value) != Tpm::kTpmRetryNone) {
+  if (tpm_->UnsealWithAuthorization(
+          srk_handle, base::nullopt, SecureBlob(pcr_bound_secret_), auth_data,
+          {} /* pcr_map */, unsealed_value) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to unseal the secret value";
     return false;
   }

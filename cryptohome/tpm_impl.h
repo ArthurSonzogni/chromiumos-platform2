@@ -55,8 +55,11 @@ class TpmImpl : public Tpm {
       const brillo::SecureBlob& auth_blob,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* sealed_data) override;
+  TpmRetryAction PreloadSealedData(const brillo::SecureBlob& sealed_data,
+                                   ScopedKeyHandle* preload_handle) override;
   TpmRetryAction UnsealWithAuthorization(
       TpmKeyHandle key_handle,
+      base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_blob,
       const std::map<uint32_t, std::string>& pcr_map,

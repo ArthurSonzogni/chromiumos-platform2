@@ -246,6 +246,17 @@ class Tpm {
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* sealed_data) = 0;
 
+  // Preload the data for unsealing.
+  // For TPM2.0, |sealed_data| is the data that needs to be load into the TPM.
+  // For TPM1.2, the function has no effect.
+  //
+  // Parameters
+  //   sealed_data - The sealed data.
+  //   preload_handle (OUT) - A handle to the sealed data loaded into the TPM.
+  virtual TpmRetryAction PreloadSealedData(
+      const brillo::SecureBlob& sealed_data,
+      ScopedKeyHandle* preload_handle) = 0;
+
   // Unseal a data blob using the provided |auth_blob| to derive the
   // authorization value. For TPM2.0, |key_handle| is used to decrypt the
   // |auth_blob|, obtaining the authorization value. Also for TPM2.0, the
@@ -254,10 +265,12 @@ class Tpm {
   // decrypt to obtain the auth_value, and we can't afford to add a second
   // operation. This might change in the future if we implement ECC encryption
   // for salted sessions.
-  // For TPM1.2 the |key_handle| is unused. Returns a TpmRetryAction struct.
+  // For TPM1.2 the |key_handle| and |preload_handle| are unused. Returns a
+  // TpmRetryAction struct.
   //
   // Parameters
   //   key_handle - The loaded TPM key handle.
+  //   preload_handle - The handle to the sealed data. (optional)
   //   sealed_data - The sealed data.
   //   auth_blob - The blob used to derive the authorization value.
   //   pcr_map - The map of PCR index -> value bound to the key. This is used
@@ -266,6 +279,7 @@ class Tpm {
   //   plaintext (OUT) - Unsealed blob.
   virtual TpmRetryAction UnsealWithAuthorization(
       TpmKeyHandle key_handle,
+      base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_blob,
       const std::map<uint32_t, std::string>& pcr_map,

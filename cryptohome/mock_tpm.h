@@ -48,8 +48,13 @@ class MockTpm : public Tpm {
                brillo::SecureBlob*),
               (override));
   MOCK_METHOD(TpmRetryAction,
+              PreloadSealedData,
+              (const brillo::SecureBlob&, ScopedKeyHandle*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
               UnsealWithAuthorization,
               (TpmKeyHandle,
+               base::Optional<TpmKeyHandle>,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                (const std::map<uint32_t, std::string>&),

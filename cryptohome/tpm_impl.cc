@@ -726,12 +726,24 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   return kTpmRetryNone;
 }
 
+Tpm::TpmRetryAction TpmImpl::PreloadSealedData(
+    const brillo::SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) {
+  // No effect for TPM 1.2.
+  return kTpmRetryNone;
+}
+
 Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
     TpmKeyHandle key_handle,
+    base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_blob,
     const std::map<uint32_t, std::string>& pcr_map,
     SecureBlob* plaintext) {
+  if (preload_handle) {
+    LOG(DFATAL) << "TPM1.2 doesn't support preload_handle.";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {

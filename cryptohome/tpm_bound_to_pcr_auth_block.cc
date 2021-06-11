@@ -188,8 +188,8 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
     std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
     retry_action = tpm_->UnsealWithAuthorization(
-        cryptohome_key_loader_->GetCryptohomeKey(), tpm_key, pass_blob, pcr_map,
-        vkk_key);
+        cryptohome_key_loader_->GetCryptohomeKey(), base::nullopt, tpm_key,
+        pass_blob, pcr_map, vkk_key);
 
     if (retry_action == Tpm::kTpmRetryNone)
       return true;

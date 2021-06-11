@@ -1053,8 +1053,14 @@ Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
   return Tpm::kTpmRetryNone;
 }
 
+Tpm::TpmRetryAction Tpm2Impl::PreloadSealedData(
+    const brillo::SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) {
+  return LoadWrappedKey(sealed_data, preload_handle);
+}
+
 Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
     TpmKeyHandle key_handle,
+    base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_blob,
     const std::map<uint32_t, std::string>& pcr_map,
@@ -1090,8 +1096,13 @@ Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
   }
   policy_session->SetEntityAuthorizationValue(auth_value);
   std::string unsealed_data;
-  result = trunks->tpm_utility->UnsealData(
-      sealed_data.to_string(), policy_session->GetDelegate(), &unsealed_data);
+  if (preload_handle) {
+    result = trunks->tpm_utility->UnsealDataWithHandle(
+        *preload_handle, policy_session->GetDelegate(), &unsealed_data);
+  } else {
+    result = trunks->tpm_utility->UnsealData(
+        sealed_data.to_string(), policy_session->GetDelegate(), &unsealed_data);
+  }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error unsealing data with authorization: "
                << GetErrorString(result);

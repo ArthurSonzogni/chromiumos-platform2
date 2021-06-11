@@ -395,8 +395,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     return false;
   }
   SecureBlob unsealed_text;
-  if (tpm_->UnsealWithAuthorization(handle.value(), ciphertext, auth_blob,
-                                    pcr_map,
+  if (tpm_->UnsealWithAuthorization(handle.value(), base::nullopt, ciphertext,
+                                    auth_blob, pcr_map,
                                     &unsealed_text) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error unsealing blob.";
     return false;
@@ -408,8 +408,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
 
   // Check that unsealing doesn't work with wrong auth_blob.
   auth_blob.char_data()[255] = 'a';
-  if (tpm_->UnsealWithAuthorization(handle.value(), ciphertext, auth_blob,
-                                    pcr_map,
+  if (tpm_->UnsealWithAuthorization(handle.value(), base::nullopt, ciphertext,
+                                    auth_blob, pcr_map,
                                     &unsealed_text) == Tpm::kTpmRetryNone &&
       plaintext == unsealed_text) {
     LOG(ERROR) << "UnsealWithAuthorization failed to fail.";
