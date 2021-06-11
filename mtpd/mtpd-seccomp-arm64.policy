@@ -80,3 +80,4 @@ unlinkat: 1
 write: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
+fstatfs: 1

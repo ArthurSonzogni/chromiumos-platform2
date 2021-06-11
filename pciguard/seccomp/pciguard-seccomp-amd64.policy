@@ -58,3 +58,4 @@ socket: arg0 == AF_UNIX || arg0 == AF_NETLINK
 stat: 1
 tgkill: 1
 write: 1
+fstatfs: 1

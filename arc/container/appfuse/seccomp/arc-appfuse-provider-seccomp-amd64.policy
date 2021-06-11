@@ -65,3 +65,4 @@ getpid: 1
 access: 1
 sched_getattr: 1
 sched_setattr: 1
+fstatfs: 1

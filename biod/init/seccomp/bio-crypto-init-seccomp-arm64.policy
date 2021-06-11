@@ -48,3 +48,4 @@ munlock: 1
 munmap: 1
 clock_gettime: 1
 futex: 1
+fstatfs: 1

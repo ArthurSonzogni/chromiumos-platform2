@@ -56,3 +56,4 @@ gettimeofday: 1
 # See https://crbug.com/1068277 and https://crrev.com/c/2141246.
 clock_gettime: 1
 clock_gettime64: 1
+fstatfs64: 1

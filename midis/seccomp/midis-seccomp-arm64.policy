@@ -62,3 +62,4 @@ sendmsg: 1
 socket: arg0 == AF_UNIX
 socketpair: 1
 write: 1
+fstatfs: 1

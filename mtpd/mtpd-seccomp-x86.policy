@@ -84,3 +84,4 @@ getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
 readlink: 1
 readlinkat: 1
+fstatfs64: 1

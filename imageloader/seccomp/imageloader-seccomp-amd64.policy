@@ -62,3 +62,4 @@ uname: 1
 unlink: 1
 waitid: 1
 write: 1
+fstatfs: 1

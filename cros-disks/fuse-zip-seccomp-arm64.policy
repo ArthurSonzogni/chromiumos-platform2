@@ -56,3 +56,4 @@ tgkill: arg2 == SIGABRT
 wait4: 1
 write: 1
 writev: 1
+fstatfs: 1

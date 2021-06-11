@@ -48,3 +48,4 @@ symlink: 1
 unlink: 1
 wait4: 1
 write: 1
+fstatfs: 1

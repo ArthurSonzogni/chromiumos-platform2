@@ -59,3 +59,4 @@ socket: arg0 == AF_UNIX
 sysinfo: 1
 uname: 1
 write: 1
+fstatfs: 1

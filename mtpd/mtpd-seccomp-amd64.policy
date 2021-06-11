@@ -88,3 +88,4 @@ prlimit64: arg2 == 0 && arg3 != 0
 readlink: 1
 readlinkat: 1
 lstat: 1
+fstatfs: 1

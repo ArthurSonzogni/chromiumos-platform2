@@ -67,3 +67,4 @@ socket: arg0 == AF_UNIX
 connect: 1
 send: 1
 flock: 1
+fstatfs64: 1

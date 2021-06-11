@@ -59,3 +59,4 @@ sched_getattr: 1
 sched_setattr: 1
 memfd_create: 1
 eventfd2: 1
+fstatfs64: 1

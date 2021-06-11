@@ -101,3 +101,4 @@ bind: 1
 # These calls are attempted but apparently not necessary; return EPERM.
 ioctl: return 1
 prctl: return 1
+fstatfs: 1

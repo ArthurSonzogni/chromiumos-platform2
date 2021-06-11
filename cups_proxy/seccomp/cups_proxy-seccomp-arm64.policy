@@ -63,3 +63,4 @@ socket: arg0 == AF_UNIX
 tgkill: 1
 unlinkat: 1
 write: 1
+fstatfs: 1

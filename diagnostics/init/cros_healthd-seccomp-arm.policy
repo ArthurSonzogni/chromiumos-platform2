@@ -100,3 +100,4 @@ memfd_create: 1
 # Used occasionally by glibc discovered in production use (b/167617776)
 mremap: 1
 eventfd2: 1
+fstatfs64: 1

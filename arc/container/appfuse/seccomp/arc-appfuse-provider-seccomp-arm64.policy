@@ -60,3 +60,4 @@ getpid: 1
 faccessat: 1
 sched_getattr: 1
 sched_setattr: 1
+fstatfs: 1

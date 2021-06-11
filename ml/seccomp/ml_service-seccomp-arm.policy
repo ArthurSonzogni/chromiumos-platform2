@@ -78,3 +78,4 @@ uname: 1
 unshare: 1
 wait4: 1
 write: 1
+fstatfs64: 1

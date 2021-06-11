@@ -86,3 +86,4 @@ waitid:1
 sysinfo: 1
 dup: 1
 flock: 1
+fstatfs: 1

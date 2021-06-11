@@ -66,3 +66,4 @@ stat64: 1
 tgkill: 1
 unlink: 1
 write: 1
+fstatfs64: 1

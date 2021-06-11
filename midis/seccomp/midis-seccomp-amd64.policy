@@ -64,3 +64,4 @@ socket: arg0 == 0x1
 socketpair: 1
 stat: 1
 write: 1
+fstatfs: 1
