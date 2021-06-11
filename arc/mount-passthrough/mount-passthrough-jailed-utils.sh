@@ -44,6 +44,9 @@ run_mount_passthrough_with_minijail0() {
     set -- "$@" --profile=minimalistic-mountns
   fi
 
+  # Enter a new cgroup namespace.
+  set -- "$@" -N
+
   # Enter a new UTS namespace.
   set -- "$@" --uts
 
