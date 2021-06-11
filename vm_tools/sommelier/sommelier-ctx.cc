@@ -5,9 +5,13 @@
 #include "sommelier-ctx.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <wayland-util.h>
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "sommelier.h"                   // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"           // NOLINT(build/include_directory)
 
 // TODO(b/173147612): Use container_token rather than this name.
 #define DEFAULT_VM_NAME "termina"
@@ -115,6 +119,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->wm_fd = -1;
   ctx->virtwl_ctx_fd = -1;
   ctx->virtwl_socket_fd = -1;
+  ctx->virtwl_display_fd = -1;
   ctx->virtwl_ctx_event_source = NULL;
   ctx->virtwl_socket_event_source = NULL;
   ctx->vm_id = DEFAULT_VM_NAME;
@@ -168,4 +173,182 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->timing = NULL;
   ctx->trace_filename = NULL;
   ctx->trace_system = false;
+
+  wl_list_init(&ctx->accelerators);
+  wl_list_init(&ctx->registries);
+  wl_list_init(&ctx->globals);
+  wl_list_init(&ctx->outputs);
+  wl_list_init(&ctx->seats);
+  wl_list_init(&ctx->windows);
+  wl_list_init(&ctx->unpaired_windows);
+  wl_list_init(&ctx->host_outputs);
+  wl_list_init(&ctx->selection_data_source_send_pending);
+#ifdef GAMEPAD_SUPPORT
+  wl_list_init(&ctx->gamepads);
+#endif
+}
+
+static int sl_handle_virtwl_ctx_event(int fd, uint32_t mask, void* data) {
+  TRACE_EVENT("surface", "sl_handle_virtwl_ctx_event");
+  struct sl_context* ctx = (struct sl_context*)data;
+  struct WaylandSendReceive receive = {0};
+
+  char fd_buffer[CMSG_LEN(sizeof(int) * WAYLAND_MAX_FDs)];
+  struct msghdr msg = {0};
+  struct iovec buffer_iov;
+  ssize_t bytes;
+  int rv;
+
+  if (!(mask & WL_EVENT_READABLE)) {
+    fprintf(stderr,
+            "Got error or hangup on virtwl ctx fd"
+            " (mask %d), exiting\n",
+            mask);
+    exit(EXIT_SUCCESS);
+  }
+
+  receive.socket_fd = fd;
+  rv = ctx->channel->receive(receive);
+  if (rv) {
+    close(ctx->virtwl_socket_fd);
+    ctx->virtwl_socket_fd = -1;
+    return 0;
+  }
+
+  buffer_iov.iov_base = receive.data;
+  buffer_iov.iov_len = receive.data_size;
+
+  msg.msg_iov = &buffer_iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = fd_buffer;
+
+  if (receive.num_fds) {
+    struct cmsghdr* cmsg;
+
+    // Need to set msg_controllen so CMSG_FIRSTHDR will return the first
+    // cmsghdr. We copy every fd we just received from the ioctl into this
+    // cmsghdr.
+    msg.msg_controllen = sizeof(fd_buffer);
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(receive.num_fds * sizeof(int));
+    memcpy(CMSG_DATA(cmsg), receive.fds, receive.num_fds * sizeof(int));
+    msg.msg_controllen = cmsg->cmsg_len;
+  }
+
+  bytes = sendmsg(ctx->virtwl_socket_fd, &msg, MSG_NOSIGNAL);
+  errno_assert(bytes == static_cast<ssize_t>(receive.data_size));
+
+  while (receive.num_fds--)
+    close(receive.fds[receive.num_fds]);
+
+  if (receive.data)
+    free(receive.data);
+
+  return 1;
+}
+
+static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
+  TRACE_EVENT("surface", "sl_handle_virtwl_socket_event");
+  struct sl_context* ctx = (struct sl_context*)data;
+  struct WaylandSendReceive send = {0};
+  char fd_buffer[CMSG_LEN(sizeof(int) * WAYLAND_MAX_FDs)];
+  uint8_t data_buffer[4096];
+
+  struct iovec buffer_iov;
+  struct msghdr msg = {0};
+  struct cmsghdr* cmsg;
+  ssize_t bytes;
+  int rv;
+
+  if (!(mask & WL_EVENT_READABLE)) {
+    fprintf(stderr,
+            "Got error or hangup on virtwl socket"
+            " (mask %d), exiting\n",
+            mask);
+    exit(EXIT_SUCCESS);
+  }
+
+  buffer_iov.iov_base = data_buffer;
+  buffer_iov.iov_len = sizeof(data_buffer);
+
+  msg.msg_iov = &buffer_iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = fd_buffer;
+  msg.msg_controllen = sizeof(fd_buffer);
+
+  bytes = recvmsg(ctx->virtwl_socket_fd, &msg, 0);
+  errno_assert(bytes > 0);
+
+  // If there were any FDs recv'd by recvmsg, there will be some data in the
+  // msg_control buffer. To get the FDs out we iterate all cmsghdr's within and
+  // unpack the FDs if the cmsghdr type is SCM_RIGHTS.
+  for (cmsg = msg.msg_controllen != 0 ? CMSG_FIRSTHDR(&msg) : NULL; cmsg;
+       cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+    size_t cmsg_fd_count;
+
+    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
+      continue;
+
+    cmsg_fd_count = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+
+    // fd_count will never exceed WAYLAND_MAX_FDs because the
+    // control message buffer only allocates enough space for that many FDs.
+    memcpy(&send.fds[send.num_fds], CMSG_DATA(cmsg),
+           cmsg_fd_count * sizeof(int));
+    send.num_fds += cmsg_fd_count;
+  }
+
+  send.socket_fd = ctx->virtwl_ctx_fd;
+  send.data = data_buffer;
+  send.data_size = bytes;
+
+  rv = ctx->channel->send(send);
+  errno_assert(!rv);
+
+  while (send.num_fds--)
+    close(send.fds[send.num_fds]);
+
+  return 1;
+}
+
+bool sl_context_init_virtwl(struct sl_context* ctx,
+                            struct wl_event_loop* event_loop,
+                            bool display) {
+  int rv = ctx->channel->init();
+  if (rv) {
+    fprintf(stderr, "error: could not initialize wayland channel: %s\n",
+            strerror(-rv));
+    return false;
+  }
+  if (!display) {
+    // We use a wayland virtual context unless display was explicitly specified.
+    // WARNING: It's critical that we never call wl_display_roundtrip
+    // as we're not spawning a new thread to handle forwarding. Calling
+    // wl_display_roundtrip will cause a deadlock.
+    int vws[2];
+
+    // Connection to virtwl channel.
+    rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, vws);
+    errno_assert(!rv);
+
+    ctx->virtwl_socket_fd = vws[0];
+    ctx->virtwl_display_fd = vws[1];
+
+    rv = ctx->channel->create_context(&ctx->virtwl_ctx_fd);
+    if (rv) {
+      fprintf(stderr, "error: failed to create virtwl context: %s\n",
+              strerror(-rv));
+      return false;
+    }
+
+    ctx->virtwl_socket_event_source = wl_event_loop_add_fd(
+        event_loop, ctx->virtwl_socket_fd, WL_EVENT_READABLE,
+        sl_handle_virtwl_socket_event, ctx);
+    ctx->virtwl_ctx_event_source =
+        wl_event_loop_add_fd(event_loop, ctx->virtwl_ctx_fd, WL_EVENT_READABLE,
+                             sl_handle_virtwl_ctx_event, ctx);
+  }
+  return true;
 }

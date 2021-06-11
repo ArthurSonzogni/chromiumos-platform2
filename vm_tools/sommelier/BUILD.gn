@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/pkg_config.gni")
 import("wayland_protocol.gni")
 
 group("all") {
@@ -36,6 +37,7 @@ wayland_protocol_library("sommelier-protocol") {
   sources = [
     "protocol/aura-shell.xml",
     "protocol/drm.xml",
+    "protocol/gaming-input-unstable-v2.xml",
     "protocol/gtk-shell.xml",
     "protocol/keyboard-extension-unstable-v1.xml",
     "protocol/linux-dmabuf-unstable-v1.xml",
@@ -48,16 +50,66 @@ wayland_protocol_library("sommelier-protocol") {
   ]
 }
 
+gaming_defines = [ "GAMEPAD_SUPPORT" ]
+gaming_deps = [ ":libgaming" ]
+
+tracing_defines = [ "PERFETTO_TRACING" ]
+tracing_deps = [ ":libperfetto" ]
+tracing_includes = [ "perfetto/sdk" ]
+
 sommelier_defines = [
-  "_GNU_SOURCE",
-  "WL_HIDE_DEPRECATED",
-  "XWAYLAND_PATH=${xwayland_path}",
-  "XWAYLAND_GL_DRIVER_PATH=${xwayland_gl_driver_path}",
-  "FRAME_COLOR=${frame_color}",
-  "DARK_FRAME_COLOR=${dark_frame_color}",
-]
+                      "_GNU_SOURCE",
+                      "WL_HIDE_DEPRECATED",
+                      "XWAYLAND_PATH=${xwayland_path}",
+                      "XWAYLAND_GL_DRIVER_PATH=${xwayland_gl_driver_path}",
+                      "FRAME_COLOR=${frame_color}",
+                      "DARK_FRAME_COLOR=${dark_frame_color}",
+                    ] + gaming_defines + tracing_defines
+
+static_library("libperfetto") {
+  sources = [ "perfetto/sdk/perfetto.cc" ]
+  include_dirs = tracing_includes
+  defines = tracing_defines
+  libs = [ "pthread" ]
+}
+
+static_library("libgaming") {
+  sources = [ "sommelier-gaming.cc" ]
+  defines = gaming_defines
+  pkg_deps = [ "libevdev" ]
+  deps = [ ":sommelier-protocol" ]
+}
 
 static_library("libsommelier") {
+  sources = [
+    "sommelier-compositor.cc",
+    "sommelier-ctx.cc",
+    "sommelier-data-device-manager.cc",
+    "sommelier-display.cc",
+    "sommelier-drm.cc",
+    "sommelier-global.cc",
+    "sommelier-gtk-shell.cc",
+    "sommelier-mmap.cc",
+    "sommelier-output.cc",
+    "sommelier-pointer-constraints.cc",
+    "sommelier-relative-pointer-manager.cc",
+    "sommelier-seat.cc",
+    "sommelier-shell.cc",
+    "sommelier-shm.cc",
+    "sommelier-subcompositor.cc",
+    "sommelier-text-input.cc",
+    "sommelier-timing.cc",
+    "sommelier-tracing.cc",
+    "sommelier-util.cc",
+    "sommelier-viewporter.cc",
+    "sommelier-window.cc",
+    "sommelier-xdg-shell.cc",
+    "sommelier.cc",
+    "virtualization/virtgpu_channel.cc",
+    "virtualization/virtwl_channel.cc",
+  ]
+  include_dirs = tracing_includes
+  defines = sommelier_defines
   pkg_deps = [
     "gbm",
     "libdrm",
@@ -69,33 +121,8 @@ static_library("libsommelier") {
     "xcb-xfixes",
     "xkbcommon",
   ]
-
-  sources = [
-    "sommelier-compositor.cc",
-    "sommelier-ctx.cc",
-    "sommelier-data-device-manager.cc",
-    "sommelier-display.cc",
-    "sommelier-drm.cc",
-    "sommelier-gtk-shell.cc",
-    "sommelier-output.cc",
-    "sommelier-pointer-constraints.cc",
-    "sommelier-relative-pointer-manager.cc",
-    "sommelier-seat.cc",
-    "sommelier-shell.cc",
-    "sommelier-shm.cc",
-    "sommelier-subcompositor.cc",
-    "sommelier-text-input.cc",
-    "sommelier-timing.cc",
-    "sommelier-tracing.cc",
-    "sommelier-viewporter.cc",
-    "sommelier-xdg-shell.cc",
-    "sommelier.cc",
-    "virtualization/virtgpu_channel.cc",
-    "virtualization/virtwl_channel.cc",
-  ]
-  defines = sommelier_defines
   libs = [ "m" ]
-  deps = [ ":sommelier-protocol" ]
+  deps = [ ":sommelier-protocol" ] + gaming_deps + tracing_deps
 }
 
 executable("sommelier") {

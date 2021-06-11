@@ -43,15 +43,6 @@
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-unstable-v6-client-protocol.h"  // NOLINT(build/include_directory)
 
-#define errno_assert(rv)                                          \
-  {                                                               \
-    int macro_private_assert_value = (rv);                        \
-    if (!macro_private_assert_value) {                            \
-      fprintf(stderr, "Unexpected error: %s\n", strerror(errno)); \
-      assert(false);                                              \
-    }                                                             \
-  }
-
 // Check that required macro definitions exist.
 #ifndef XWAYLAND_PATH
 #error XWAYLAND_PATH must be defined
@@ -71,94 +62,6 @@ struct sl_data_source {
   struct wl_data_source* internal;
 };
 
-enum {
-  PROPERTY_WM_NAME,
-  PROPERTY_WM_CLASS,
-  PROPERTY_WM_TRANSIENT_FOR,
-  PROPERTY_WM_NORMAL_HINTS,
-  PROPERTY_WM_CLIENT_LEADER,
-  PROPERTY_WM_PROTOCOLS,
-  PROPERTY_MOTIF_WM_HINTS,
-  PROPERTY_NET_STARTUP_ID,
-  PROPERTY_NET_WM_STATE,
-  PROPERTY_GTK_THEME_VARIANT,
-  PROPERTY_XWAYLAND_RANDR_EMU_MONITOR_RECTS,
-};
-
-// WM_HINTS is defined at: https://tronche.com/gui/x/icccm/sec-4.html
-
-#define WM_HINTS_FLAG_INPUT (1L << 0)
-#define WM_HINTS_FLAG_STATE (1L << 1)
-#define WM_HINTS_FLAG_ICON_PIXMAP (1L << 2)
-#define WM_HINTS_FLAG_ICON_WINDOW (1L << 3)
-#define WM_HINTS_FLAG_ICON_POSITION (1L << 4)
-#define WM_HINTS_FLAG_ICON_MASK (1L << 5)
-#define WM_HINTS_FLAG_WINDOW_GROUP (1L << 6)
-#define WM_HINTS_FLAG_MESSAGE (1L << 7)
-#define WM_HINTS_FLAG_URGENCY (1L << 8)
-
-struct sl_wm_hints {
-  uint32_t flags;
-  uint32_t input;
-  uint32_t initiali_state;
-  xcb_pixmap_t icon_pixmap;
-  xcb_window_t icon_window;
-  int32_t icon_x;
-  int32_t icon_y;
-  xcb_pixmap_t icon_mask;
-};
-
-#define MWM_HINTS_FUNCTIONS (1L << 0)
-#define MWM_HINTS_DECORATIONS (1L << 1)
-#define MWM_HINTS_INPUT_MODE (1L << 2)
-#define MWM_HINTS_STATUS (1L << 3)
-
-#define MWM_DECOR_ALL (1L << 0)
-#define MWM_DECOR_BORDER (1L << 1)
-#define MWM_DECOR_RESIZEH (1L << 2)
-#define MWM_DECOR_TITLE (1L << 3)
-#define MWM_DECOR_MENU (1L << 4)
-#define MWM_DECOR_MINIMIZE (1L << 5)
-#define MWM_DECOR_MAXIMIZE (1L << 6)
-
-struct sl_mwm_hints {
-  uint32_t flags;
-  uint32_t functions;
-  uint32_t decorations;
-  int32_t input_mode;
-  uint32_t status;
-};
-
-#define NET_WM_MOVERESIZE_SIZE_TOPLEFT 0
-#define NET_WM_MOVERESIZE_SIZE_TOP 1
-#define NET_WM_MOVERESIZE_SIZE_TOPRIGHT 2
-#define NET_WM_MOVERESIZE_SIZE_RIGHT 3
-#define NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT 4
-#define NET_WM_MOVERESIZE_SIZE_BOTTOM 5
-#define NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT 6
-#define NET_WM_MOVERESIZE_SIZE_LEFT 7
-#define NET_WM_MOVERESIZE_MOVE 8
-
-#define NET_WM_STATE_REMOVE 0
-#define NET_WM_STATE_ADD 1
-#define NET_WM_STATE_TOGGLE 2
-
-const char* net_wm_state_to_string(int i) {
-  switch (i) {
-    case NET_WM_STATE_REMOVE:
-      return "NET_WM_STATE_REMOVE";
-    case NET_WM_STATE_ADD:
-      return "NET_WM_STATE_ADD";
-    case NET_WM_STATE_TOGGLE:
-      return "NET_WM_STATE_TOGGLE";
-  }
-  return "<unknown NET_WM_STATE>";
-}
-
-#define WM_STATE_WITHDRAWN 0
-#define WM_STATE_NORMAL 1
-#define WM_STATE_ICONIC 3
-
 #define SEND_EVENT_MASK 0x80
 
 #define MIN_SCALE 0.1
@@ -176,79 +79,19 @@ const char* net_wm_state_to_string(int i) {
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIXLEN 5
 
-#define APPLICATION_ID_FORMAT_PREFIX "org.chromium.%s"
-#define XID_APPLICATION_ID_FORMAT APPLICATION_ID_FORMAT_PREFIX ".xid.%d"
-#define WM_CLIENT_LEADER_APPLICATION_ID_FORMAT \
-  APPLICATION_ID_FORMAT_PREFIX ".wmclientleader.%d"
-#define WM_CLASS_APPLICATION_ID_FORMAT \
-  APPLICATION_ID_FORMAT_PREFIX ".wmclass.%s"
-
 #define MIN_AURA_SHELL_VERSION 6
 #define MAX_AURA_SHELL_VERSION 10
 
-// Performs an asprintf operation and checks the result for validity and calls
-// abort() if there's a failure. Returns a newly allocated string rather than
-// taking a double pointer argument like asprintf.
-__attribute__((__format__(__printf__, 1, 0))) static char* sl_xasprintf(
-    const char* fmt, ...) {
-  char* str;
-  va_list args;
-  va_start(args, fmt);
-  int rv = vasprintf(&str, fmt, args);
-  assert(rv >= 0);
-  UNUSED(rv);
-  va_end(args);
-  return str;
-}
-
-struct sl_mmap* sl_mmap_create(int fd,
-                               size_t size,
-                               size_t bpp,
-                               size_t num_planes,
-                               size_t offset0,
-                               size_t stride0,
-                               size_t offset1,
-                               size_t stride1,
-                               size_t y_ss0,
-                               size_t y_ss1) {
-  TRACE_EVENT("shm", "sl_mmap_create");
-  struct sl_mmap* map = static_cast<sl_mmap*>(malloc(sizeof(*map)));
-  assert(map);
-  map->refcount = 1;
-  map->fd = fd;
-  map->size = size;
-  map->num_planes = num_planes;
-  map->bpp = bpp;
-  map->offset[0] = offset0;
-  map->stride[0] = stride0;
-  map->offset[1] = offset1;
-  map->stride[1] = stride1;
-  map->y_ss[0] = y_ss0;
-  map->y_ss[1] = y_ss1;
-  map->begin_write = NULL;
-  map->end_write = NULL;
-  map->buffer_resource = NULL;
-  map->addr =
-      mmap(NULL, size + offset0, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  errno_assert(map->addr != MAP_FAILED);
-
-  return map;
-}
-
-struct sl_mmap* sl_mmap_ref(struct sl_mmap* map) {
-  TRACE_EVENT("shm", "sl_mmap_ref");
-  map->refcount++;
-  return map;
-}
-
-void sl_mmap_unref(struct sl_mmap* map) {
-  TRACE_EVENT("shm", "sl_mmap_unref");
-  if (map->refcount-- == 1) {
-    munmap(map->addr, map->size + map->offset[0]);
-    if (map->fd != -1)
-      close(map->fd);
-    free(map);
+const char* net_wm_state_to_string(int i) {
+  switch (i) {
+    case NET_WM_STATE_REMOVE:
+      return "NET_WM_STATE_REMOVE";
+    case NET_WM_STATE_ADD:
+      return "NET_WM_STATE_ADD";
+    case NET_WM_STATE_TOGGLE:
+      return "NET_WM_STATE_TOGGLE";
   }
+  return "<unknown NET_WM_STATE>";
 }
 
 struct sl_sync_point* sl_sync_point_create(int fd) {
@@ -278,26 +121,6 @@ static void sl_internal_xdg_shell_ping(void* data,
 static const struct zxdg_shell_v6_listener sl_internal_xdg_shell_listener = {
     sl_internal_xdg_shell_ping};
 
-static void sl_send_configure_notify(struct sl_window* window) {
-  xcb_configure_notify_event_t event = {};
-  event.response_type = XCB_CONFIGURE_NOTIFY;
-  event.pad0 = 0;
-  event.event = window->id;
-  event.window = window->id;
-  event.above_sibling = XCB_WINDOW_NONE;
-  event.x = static_cast<int16_t>(window->x);
-  event.y = static_cast<int16_t>(window->y);
-  event.width = static_cast<uint16_t>(window->width);
-  event.height = static_cast<uint16_t>(window->height);
-  event.border_width = static_cast<uint16_t>(window->border_width);
-  event.override_redirect = 0;
-  event.pad1 = 0;
-
-  xcb_send_event(window->ctx->connection, 0, window->id,
-                 XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                 reinterpret_cast<char*>(&event));
-}
-
 static void sl_adjust_window_size_for_screen_size(struct sl_window* window) {
   TRACE_EVENT("surface", "sl_adjust_window_size_for_screen_size", "id",
               window->id);
@@ -317,62 +140,7 @@ static void sl_adjust_window_position_for_screen_size(
   window->y = ctx->screen->height_in_pixels / 2 - window->height / 2;
 }
 
-static void sl_configure_window(struct sl_window* window) {
-  TRACE_EVENT("surface", "sl_configure_window", "id", window->id);
-  assert(!window->pending_config.serial);
 
-  if (window->next_config.mask) {
-    int values[5];
-    int x = window->x;
-    int y = window->y;
-    int i = 0;
-
-    xcb_configure_window(window->ctx->connection, window->frame_id,
-                         window->next_config.mask, window->next_config.values);
-
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_X)
-      x = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_Y)
-      y = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_WIDTH)
-      window->width = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_HEIGHT)
-      window->height = window->next_config.values[i++];
-    if (window->next_config.mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
-      window->border_width = window->next_config.values[i++];
-
-    // Set x/y to origin in case window gravity is not northwest as expected.
-    assert(window->managed);
-    values[0] = 0;
-    values[1] = 0;
-    values[2] = window->width;
-    values[3] = window->height;
-    values[4] = window->border_width;
-    xcb_configure_window(
-        window->ctx->connection, window->id,
-        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
-            XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
-        values);
-
-    if (x != window->x || y != window->y) {
-      window->x = x;
-      window->y = y;
-      sl_send_configure_notify(window);
-    }
-  }
-
-  if (window->managed) {
-    xcb_change_property(window->ctx->connection, XCB_PROP_MODE_REPLACE,
-                        window->id, window->ctx->atoms[ATOM_NET_WM_STATE].value,
-                        XCB_ATOM_ATOM, 32, window->next_config.states_length,
-                        window->next_config.states);
-  }
-
-  window->pending_config = window->next_config;
-  window->next_config.serial = 0;
-  window->next_config.mask = 0;
-  window->next_config.states_length = 0;
-}
 
 static void sl_set_input_focus(struct sl_context* ctx,
                                struct sl_window* window) {
@@ -425,178 +193,6 @@ void sl_roundtrip(struct sl_context* ctx) {
                                  xcb_get_input_focus(ctx->connection), NULL));
 }
 
-int sl_process_pending_configure_acks(struct sl_window* window,
-                                      struct sl_host_surface* host_surface) {
-  if (!window->pending_config.serial)
-    return 0;
-
-#ifdef COMMIT_LOOP_FIX
-  // Do not commit/ack if there is nothing to change.
-  //
-  // TODO(b/181077580): we should never do this, but avoiding it requires a
-  // more systemic fix
-  if (!window->pending_config.mask && window->pending_config.states_length == 0)
-    return 0;
-#endif
-
-  if (window->managed && host_surface) {
-    uint32_t width = window->width + window->border_width * 2;
-    uint32_t height = window->height + window->border_width * 2;
-    // Early out if we expect contents to match window size at some point in
-    // the future.
-    if (width != host_surface->contents_width ||
-        height != host_surface->contents_height) {
-      return 0;
-    }
-  }
-
-  if (window->xdg_surface) {
-    zxdg_surface_v6_ack_configure(window->xdg_surface,
-                                  window->pending_config.serial);
-  }
-  window->pending_config.serial = 0;
-
-  if (window->next_config.serial)
-    sl_configure_window(window);
-
-  return 1;
-}
-
-void sl_commit(struct sl_window* window, struct sl_host_surface* host_surface) {
-  if (sl_process_pending_configure_acks(window, host_surface)) {
-    if (host_surface)
-      wl_surface_commit(host_surface->proxy);
-  }
-}
-
-static void sl_internal_xdg_surface_configure(
-    void* data, struct zxdg_surface_v6* xdg_surface, uint32_t serial) {
-  TRACE_EVENT("surface", "sl_internal_xdg_surface_configure");
-  struct sl_window* window =
-      static_cast<sl_window*>(zxdg_surface_v6_get_user_data(xdg_surface));
-
-  window->next_config.serial = serial;
-  if (!window->pending_config.serial) {
-    struct wl_resource* host_resource;
-    struct sl_host_surface* host_surface = NULL;
-
-    host_resource =
-        wl_client_get_object(window->ctx->client, window->host_surface_id);
-    if (host_resource)
-      host_surface = static_cast<sl_host_surface*>(
-          wl_resource_get_user_data(host_resource));
-
-    sl_configure_window(window);
-    sl_commit(window, host_surface);
-  }
-}
-
-static const struct zxdg_surface_v6_listener sl_internal_xdg_surface_listener =
-    {sl_internal_xdg_surface_configure};
-
-static void sl_internal_xdg_toplevel_configure(
-    void* data,
-    struct zxdg_toplevel_v6* xdg_toplevel,
-    int32_t width,
-    int32_t height,
-    struct wl_array* states) {
-  TRACE_EVENT("other", "sl_internal_xdg_toplevel_configure");
-  struct sl_window* window =
-      static_cast<sl_window*>(zxdg_toplevel_v6_get_user_data(xdg_toplevel));
-  int activated = 0;
-  uint32_t* state;
-  int i = 0;
-
-  if (!window->managed)
-    return;
-
-  if (width && height) {
-    int32_t width_in_pixels = width * window->ctx->scale;
-    int32_t height_in_pixels = height * window->ctx->scale;
-    int i = 0;
-
-    window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
-                               XCB_CONFIG_WINDOW_HEIGHT |
-                               XCB_CONFIG_WINDOW_BORDER_WIDTH;
-    if (!(window->size_flags & (US_POSITION | P_POSITION))) {
-      window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      window->next_config.values[i++] =
-          window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
-      window->next_config.values[i++] =
-          window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
-    }
-    window->next_config.values[i++] = width_in_pixels;
-    window->next_config.values[i++] = height_in_pixels;
-    window->next_config.values[i++] = 0;
-  }
-
-  window->allow_resize = 1;
-  sl_array_for_each(state, states) {
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN) {
-      window->allow_resize = 0;
-      window->next_config.states[i++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
-    }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED) {
-      window->allow_resize = 0;
-      window->next_config.states[i++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
-      window->next_config.states[i++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
-    }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_ACTIVATED) {
-      activated = 1;
-      window->next_config.states[i++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
-    }
-    if (*state == ZXDG_TOPLEVEL_V6_STATE_RESIZING)
-      window->allow_resize = 0;
-  }
-
-  if (activated != window->activated) {
-    if (activated != (window->ctx->host_focus_window == window)) {
-      window->ctx->host_focus_window = activated ? window : NULL;
-      window->ctx->needs_set_input_focus = 1;
-    }
-    window->activated = activated;
-  }
-
-  window->next_config.states_length = i;
-}
-
-static void sl_internal_xdg_toplevel_close(
-    void* data, struct zxdg_toplevel_v6* xdg_toplevel) {
-  TRACE_EVENT("other", "sl_internal_xdg_toplevel_close");
-  struct sl_window* window =
-      static_cast<sl_window*>(zxdg_toplevel_v6_get_user_data(xdg_toplevel));
-  xcb_client_message_event_t event = {};
-  event.response_type = XCB_CLIENT_MESSAGE;
-  event.format = 32;
-  event.window = window->id;
-  event.type = window->ctx->atoms[ATOM_WM_PROTOCOLS].value;
-  event.data.data32[0] = window->ctx->atoms[ATOM_WM_DELETE_WINDOW].value;
-  event.data.data32[1] = XCB_CURRENT_TIME;
-
-  xcb_send_event(window->ctx->connection, 0, window->id,
-                 XCB_EVENT_MASK_NO_EVENT, (const char*)&event);
-}
-
-static const struct zxdg_toplevel_v6_listener
-    sl_internal_xdg_toplevel_listener = {sl_internal_xdg_toplevel_configure,
-                                         sl_internal_xdg_toplevel_close};
-
-static void sl_internal_xdg_popup_configure(void* data,
-                                            struct zxdg_popup_v6* xdg_popup,
-                                            int32_t x,
-                                            int32_t y,
-                                            int32_t width,
-                                            int32_t height) {}
-
-static void sl_internal_xdg_popup_done(void* data,
-                                       struct zxdg_popup_v6* zxdg_popup_v6) {}
-
-static const struct zxdg_popup_v6_listener sl_internal_xdg_popup_listener = {
-    sl_internal_xdg_popup_configure, sl_internal_xdg_popup_done};
 
 static void sl_window_set_wm_state(struct sl_window* window, int state) {
   TRACE_EVENT("surface", "sl_window_set_wm_state", "id", window->id);
@@ -611,247 +207,6 @@ static void sl_window_set_wm_state(struct sl_window* window, int state) {
                       ctx->atoms[ATOM_WM_STATE].value, 32, 2, values);
 }
 
-void sl_update_application_id(struct sl_context* ctx,
-                              struct sl_window* window) {
-  TRACE_EVENT("other", "sl_update_application_id");
-  if (!window->aura_surface)
-    return;
-  if (ctx->application_id) {
-    zaura_surface_set_application_id(window->aura_surface, ctx->application_id);
-    return;
-  }
-  // Don't set application id for X11 override redirect. This prevents
-  // aura shell from thinking that these are regular application windows
-  // that should appear in application lists.
-  if (!ctx->xwayland || window->managed) {
-    char* application_id_str;
-    if (window->clazz) {
-      application_id_str = sl_xasprintf(WM_CLASS_APPLICATION_ID_FORMAT,
-                                        ctx->vm_id, window->clazz);
-    } else if (window->client_leader != XCB_WINDOW_NONE) {
-      application_id_str = sl_xasprintf(WM_CLIENT_LEADER_APPLICATION_ID_FORMAT,
-                                        ctx->vm_id, window->client_leader);
-    } else {
-      application_id_str =
-          sl_xasprintf(XID_APPLICATION_ID_FORMAT, ctx->vm_id, window->id);
-    }
-
-    zaura_surface_set_application_id(window->aura_surface, application_id_str);
-    free(application_id_str);
-  }
-}
-
-void sl_window_update(struct sl_window* window) {
-  TRACE_EVENT("surface", "sl_window_update", "id", window->id);
-  struct wl_resource* host_resource = NULL;
-  struct sl_host_surface* host_surface;
-  struct sl_context* ctx = window->ctx;
-  struct sl_window* parent = NULL;
-
-  if (window->host_surface_id) {
-    host_resource = wl_client_get_object(ctx->client, window->host_surface_id);
-    if (host_resource && window->unpaired) {
-      wl_list_remove(&window->link);
-      wl_list_insert(&ctx->windows, &window->link);
-      window->unpaired = 0;
-    }
-  } else if (!window->unpaired) {
-    wl_list_remove(&window->link);
-    wl_list_insert(&ctx->unpaired_windows, &window->link);
-    window->unpaired = 1;
-  }
-
-  if (!host_resource) {
-    if (window->aura_surface) {
-      zaura_surface_destroy(window->aura_surface);
-      window->aura_surface = NULL;
-    }
-    if (window->xdg_toplevel) {
-      zxdg_toplevel_v6_destroy(window->xdg_toplevel);
-      window->xdg_toplevel = NULL;
-    }
-    if (window->xdg_popup) {
-      zxdg_popup_v6_destroy(window->xdg_popup);
-      window->xdg_popup = NULL;
-    }
-    if (window->xdg_surface) {
-      zxdg_surface_v6_destroy(window->xdg_surface);
-      window->xdg_surface = NULL;
-    }
-    window->realized = 0;
-    return;
-  }
-
-  host_surface =
-      static_cast<sl_host_surface*>(wl_resource_get_user_data(host_resource));
-  assert(host_surface);
-  assert(!host_surface->has_role);
-
-  assert(ctx->xdg_shell);
-  assert(ctx->xdg_shell->internal);
-
-  if (window->managed) {
-    if (window->transient_for != XCB_WINDOW_NONE) {
-      struct sl_window* sibling;
-
-      wl_list_for_each(sibling, &ctx->windows, link) {
-        if (sibling->id == window->transient_for) {
-          if (sibling->xdg_toplevel)
-            parent = sibling;
-          break;
-        }
-      }
-    }
-  }
-
-  // If we have a transient parent, but could not find it in the list of
-  // realized windows, then pick the window that had the last event for the
-  // parent.  We update this again when we gain focus, so if we picked the wrong
-  // one it can get corrected at that point (but it's also possible the parent
-  // will never be realized, which is why selecting one here is important).
-  if (!window->managed ||
-      (!parent && window->transient_for != XCB_WINDOW_NONE)) {
-    struct sl_window* sibling;
-    uint32_t parent_last_event_serial = 0;
-
-    wl_list_for_each(sibling, &ctx->windows, link) {
-      struct wl_resource* sibling_host_resource;
-      struct sl_host_surface* sibling_host_surface;
-
-      if (!sibling->realized)
-        continue;
-
-      sibling_host_resource =
-          wl_client_get_object(ctx->client, sibling->host_surface_id);
-      if (!sibling_host_resource)
-        continue;
-
-      // Any parent will do but prefer last event window.
-      sibling_host_surface = static_cast<sl_host_surface*>(
-          wl_resource_get_user_data(sibling_host_resource));
-      if (parent_last_event_serial > sibling_host_surface->last_event_serial)
-        continue;
-
-      // Do not use ourselves as the parent.
-      if (sibling->host_surface_id == window->host_surface_id)
-        continue;
-
-      parent = sibling;
-      parent_last_event_serial = sibling_host_surface->last_event_serial;
-    }
-  }
-
-  if (!window->depth) {
-    xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
-        ctx->connection, xcb_get_geometry(ctx->connection, window->id), NULL);
-    if (geometry_reply) {
-      window->depth = geometry_reply->depth;
-      free(geometry_reply);
-    }
-  }
-
-  if (!window->xdg_surface) {
-    window->xdg_surface = zxdg_shell_v6_get_xdg_surface(
-        ctx->xdg_shell->internal, host_surface->proxy);
-    zxdg_surface_v6_set_user_data(window->xdg_surface, window);
-    zxdg_surface_v6_add_listener(window->xdg_surface,
-                                 &sl_internal_xdg_surface_listener, window);
-  }
-
-  if (ctx->aura_shell) {
-    uint32_t frame_color;
-
-    if (!window->aura_surface) {
-      window->aura_surface = zaura_shell_get_aura_surface(
-          ctx->aura_shell->internal, host_surface->proxy);
-    }
-
-    zaura_surface_set_frame(window->aura_surface,
-                            window->decorated
-                                ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
-                                : window->depth == 32
-                                      ? ZAURA_SURFACE_FRAME_TYPE_NONE
-                                      : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
-
-    frame_color = window->dark_frame ? ctx->dark_frame_color : ctx->frame_color;
-    zaura_surface_set_frame_colors(window->aura_surface, frame_color,
-                                   frame_color);
-    zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
-    sl_update_application_id(ctx, window);
-
-    if (ctx->aura_shell->version >=
-        ZAURA_SURFACE_SET_FULLSCREEN_MODE_SINCE_VERSION) {
-      zaura_surface_set_fullscreen_mode(window->aura_surface,
-                                        ctx->fullscreen_mode);
-    }
-  }
-
-  // Always use top-level surface for X11 windows as we can't control when the
-  // window is closed.
-  if (ctx->xwayland || !parent) {
-    if (!window->xdg_toplevel) {
-      window->xdg_toplevel = zxdg_surface_v6_get_toplevel(window->xdg_surface);
-      zxdg_toplevel_v6_set_user_data(window->xdg_toplevel, window);
-      zxdg_toplevel_v6_add_listener(window->xdg_toplevel,
-                                    &sl_internal_xdg_toplevel_listener, window);
-    }
-    if (parent)
-      zxdg_toplevel_v6_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
-    if (window->name)
-      zxdg_toplevel_v6_set_title(window->xdg_toplevel, window->name);
-    if (window->size_flags & P_MIN_SIZE) {
-      zxdg_toplevel_v6_set_min_size(window->xdg_toplevel,
-                                    window->min_width / ctx->scale,
-                                    window->min_height / ctx->scale);
-    }
-    if (window->size_flags & P_MAX_SIZE) {
-      zxdg_toplevel_v6_set_max_size(window->xdg_toplevel,
-                                    window->max_width / ctx->scale,
-                                    window->max_height / ctx->scale);
-    }
-    if (window->maximized) {
-      zxdg_toplevel_v6_set_maximized(window->xdg_toplevel);
-    }
-  } else if (!window->xdg_popup) {
-    struct zxdg_positioner_v6* positioner;
-
-    positioner = zxdg_shell_v6_create_positioner(ctx->xdg_shell->internal);
-    assert(positioner);
-    zxdg_positioner_v6_set_anchor(
-        positioner,
-        ZXDG_POSITIONER_V6_ANCHOR_TOP | ZXDG_POSITIONER_V6_ANCHOR_LEFT);
-    zxdg_positioner_v6_set_gravity(
-        positioner,
-        ZXDG_POSITIONER_V6_GRAVITY_BOTTOM | ZXDG_POSITIONER_V6_GRAVITY_RIGHT);
-    zxdg_positioner_v6_set_anchor_rect(
-        positioner, (window->x - parent->x) / ctx->scale,
-        (window->y - parent->y) / ctx->scale, 1, 1);
-
-    window->xdg_popup = zxdg_surface_v6_get_popup(
-        window->xdg_surface, parent->xdg_surface, positioner);
-    zxdg_popup_v6_set_user_data(window->xdg_popup, window);
-    zxdg_popup_v6_add_listener(window->xdg_popup,
-                               &sl_internal_xdg_popup_listener, window);
-
-    zxdg_positioner_v6_destroy(positioner);
-  }
-
-  if ((window->size_flags & (US_POSITION | P_POSITION)) && parent &&
-      ctx->aura_shell) {
-    zaura_surface_set_parent(window->aura_surface, parent->aura_surface,
-                             (window->x - parent->x) / ctx->scale,
-                             (window->y - parent->y) / ctx->scale);
-  }
-
-#ifdef COMMIT_LOOP_FIX
-  sl_commit(window, host_surface);
-#else
-  wl_surface_commit(host_surface->proxy);
-#endif
-
-  if (host_surface->contents_width && host_surface->contents_height)
-    window->realized = 1;
-}
 
 static void sl_host_buffer_destroy(struct wl_client* client,
                                    struct wl_resource* resource) {
@@ -1086,35 +441,6 @@ void sl_host_seat_removed(struct sl_host_seat* host) {
     host->seat->ctx->default_seat = NULL;
 }
 
-struct sl_global* sl_global_create(struct sl_context* ctx,
-                                   const struct wl_interface* interface,
-                                   int version,
-                                   void* data,
-                                   wl_global_bind_func_t bind) {
-  TRACE_EVENT("other", "sl_global_create");
-  struct sl_host_registry* registry;
-
-  assert(version > 0);
-  assert(version <= interface->version);
-
-  struct sl_global* global = static_cast<sl_global*>(malloc(sizeof *global));
-  assert(global);
-
-  global->ctx = ctx;
-  global->name = ctx->next_global_id++;
-  global->interface = interface;
-  global->version = version;
-  global->data = data;
-  global->bind = bind;
-  wl_list_insert(ctx->globals.prev, &global->link);
-
-  wl_list_for_each(registry, &ctx->registries, link) {
-    wl_resource_post_event(registry->resource, WL_REGISTRY_GLOBAL, global->name,
-                           global->interface->name, global->version);
-  }
-
-  return global;
-}
 
 static void sl_global_destroy(struct sl_global* global) {
   TRACE_EVENT("other", "sl_global_destroy");
@@ -1140,17 +466,7 @@ static void sl_registry_handler(void* data,
 
   TRACE_EVENT("other", "sl_registry_handler", "id", id);
   if (strcmp(interface, "wl_compositor") == 0) {
-    struct sl_compositor* compositor =
-        static_cast<sl_compositor*>(malloc(sizeof(struct sl_compositor)));
-    assert(compositor);
-    compositor->ctx = ctx;
-    compositor->id = id;
-    assert(version >= kMinHostWlCompositorVersion);
-    compositor->internal = static_cast<wl_compositor*>(wl_registry_bind(
-        registry, id, &wl_compositor_interface, kMinHostWlCompositorVersion));
-    assert(!ctx->compositor);
-    ctx->compositor = compositor;
-    compositor->host_global = sl_compositor_global_create(ctx);
+    sl_compositor_init_context(ctx, registry, id, version);
   } else if (strcmp(interface, "wl_subcompositor") == 0) {
     struct sl_subcompositor* subcompositor =
         static_cast<sl_subcompositor*>(malloc(sizeof(struct sl_subcompositor)));
@@ -3596,132 +2912,6 @@ static void sl_client_destroy_notify(struct wl_listener* listener, void* data) {
   exit(0);
 }
 
-static int sl_handle_virtwl_ctx_event(int fd, uint32_t mask, void* data) {
-  TRACE_EVENT("surface", "sl_handle_virtwl_ctx_event");
-  struct sl_context* ctx = (struct sl_context*)data;
-  struct WaylandSendReceive receive = {0};
-
-  char fd_buffer[CMSG_LEN(sizeof(int) * WAYLAND_MAX_FDs)];
-  struct msghdr msg = {0};
-  struct iovec buffer_iov;
-  ssize_t bytes;
-  int rv;
-
-  if (!(mask & WL_EVENT_READABLE)) {
-    fprintf(stderr,
-            "Got error or hangup on virtwl ctx fd"
-            " (mask %d), exiting\n",
-            mask);
-    exit(EXIT_SUCCESS);
-  }
-
-  receive.socket_fd = fd;
-  rv = ctx->channel->receive(receive);
-  if (rv) {
-    close(ctx->virtwl_socket_fd);
-    ctx->virtwl_socket_fd = -1;
-    return 0;
-  }
-
-  buffer_iov.iov_base = receive.data;
-  buffer_iov.iov_len = receive.data_size;
-
-  msg.msg_iov = &buffer_iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = fd_buffer;
-
-  if (receive.num_fds) {
-    struct cmsghdr* cmsg;
-
-    // Need to set msg_controllen so CMSG_FIRSTHDR will return the first
-    // cmsghdr. We copy every fd we just received from the ioctl into this
-    // cmsghdr.
-    msg.msg_controllen = sizeof(fd_buffer);
-    cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(receive.num_fds * sizeof(int));
-    memcpy(CMSG_DATA(cmsg), receive.fds, receive.num_fds * sizeof(int));
-    msg.msg_controllen = cmsg->cmsg_len;
-  }
-
-  bytes = sendmsg(ctx->virtwl_socket_fd, &msg, MSG_NOSIGNAL);
-  errno_assert(bytes == static_cast<ssize_t>(receive.data_size));
-
-  while (receive.num_fds--)
-    close(receive.fds[receive.num_fds]);
-
-  if (receive.data)
-    free(receive.data);
-
-  return 1;
-}
-
-static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
-  TRACE_EVENT("surface", "sl_handle_virtwl_socket_event");
-  struct sl_context* ctx = (struct sl_context*)data;
-  struct WaylandSendReceive send = {0};
-  char fd_buffer[CMSG_LEN(sizeof(int) * WAYLAND_MAX_FDs)];
-  uint8_t data_buffer[4096];
-
-  struct iovec buffer_iov;
-  struct msghdr msg = {0};
-  struct cmsghdr* cmsg;
-  ssize_t bytes;
-  int rv;
-
-  if (!(mask & WL_EVENT_READABLE)) {
-    fprintf(stderr,
-            "Got error or hangup on virtwl socket"
-            " (mask %d), exiting\n",
-            mask);
-    exit(EXIT_SUCCESS);
-  }
-
-  buffer_iov.iov_base = data_buffer;
-  buffer_iov.iov_len = sizeof(data_buffer);
-
-  msg.msg_iov = &buffer_iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = fd_buffer;
-  msg.msg_controllen = sizeof(fd_buffer);
-
-  bytes = recvmsg(ctx->virtwl_socket_fd, &msg, 0);
-  errno_assert(bytes > 0);
-
-  // If there were any FDs recv'd by recvmsg, there will be some data in the
-  // msg_control buffer. To get the FDs out we iterate all cmsghdr's within and
-  // unpack the FDs if the cmsghdr type is SCM_RIGHTS.
-  for (cmsg = msg.msg_controllen != 0 ? CMSG_FIRSTHDR(&msg) : NULL; cmsg;
-       cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-    size_t cmsg_fd_count;
-
-    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
-      continue;
-
-    cmsg_fd_count = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
-
-    // fd_count will never exceed WAYLAND_MAX_FDs because the
-    // control message buffer only allocates enough space for that many FDs.
-    memcpy(&send.fds[send.num_fds], CMSG_DATA(cmsg),
-           cmsg_fd_count * sizeof(int));
-    send.num_fds += cmsg_fd_count;
-  }
-
-  send.socket_fd = ctx->virtwl_ctx_fd;
-  send.data = data_buffer;
-  send.data_size = bytes;
-
-  rv = ctx->channel->send(send);
-  errno_assert(!rv);
-
-  while (send.num_fds--) {
-    close(send.fds[send.num_fds]);
-  }
-
-  return 1;
-}
-
 // Break |str| into a sequence of zero or more nonempty arguments. No more
 // than |argc| arguments will be added to |argv|. Returns the total number of
 // argments found in |str|.
@@ -3835,7 +3025,6 @@ int real_main(int argc, char** argv) {
   client_destroy_listener.notify = sl_client_destroy_notify;
   int sv[2];
   pid_t pid;
-  int virtwl_display_fd = -1;
   int xdisplay = -1;
   int parent = 0;
   int client_fd = -1;
@@ -4137,44 +3326,10 @@ int real_main(int argc, char** argv) {
 
   ctx.host_display = wl_display_create();
   assert(ctx.host_display);
-
-  event_loop = wl_display_get_event_loop(ctx.host_display);
-
   ctx.channel = new VirtWaylandChannel();
-  rv = ctx.channel->init();
-  if (rv) {
-    fprintf(stderr, "error: could not initialize wayland channel: %s\n",
-            strerror(-rv));
+  event_loop = wl_display_get_event_loop(ctx.host_display);
+  if (!sl_context_init_virtwl(&ctx, event_loop, display)) {
     return EXIT_FAILURE;
-  }
-
-  // We use a wayland virtual context unless display was explicitly specified.
-  // WARNING: It's critical that we never call wl_display_roundtrip
-  // as we're not spawning a new thread to handle forwarding. Calling
-  // wl_display_roundtrip will cause a deadlock.
-  if (!display) {
-    int vws[2];
-
-    // Connection to virtwl channel.
-    rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, vws);
-    errno_assert(!rv);
-
-    ctx.virtwl_socket_fd = vws[0];
-    virtwl_display_fd = vws[1];
-
-    rv = ctx.channel->create_context(&ctx.virtwl_ctx_fd);
-    if (rv) {
-      fprintf(stderr, "error: failed to create virtwl context: %s\n",
-              strerror(-rv));
-      return EXIT_FAILURE;
-    }
-
-    ctx.virtwl_socket_event_source = wl_event_loop_add_fd(
-        event_loop, ctx.virtwl_socket_fd, WL_EVENT_READABLE,
-        sl_handle_virtwl_socket_event, &ctx);
-    ctx.virtwl_ctx_event_source =
-        wl_event_loop_add_fd(event_loop, ctx.virtwl_ctx_fd, WL_EVENT_READABLE,
-                             sl_handle_virtwl_ctx_event, &ctx);
   }
 
   char* drm_device = NULL;
@@ -4219,8 +3374,8 @@ int real_main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  if (virtwl_display_fd != -1) {
-    ctx.display = wl_display_connect_to_fd(virtwl_display_fd);
+  if (ctx.virtwl_display_fd != -1) {
+    ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
   } else {
     if (display == NULL)
       display = getenv("WAYLAND_DISPLAY");
@@ -4234,19 +3389,6 @@ int real_main(int argc, char** argv) {
     fprintf(stderr, "error: failed to connect to %s\n", display);
     return EXIT_FAILURE;
   }
-
-  wl_list_init(&ctx.accelerators);
-  wl_list_init(&ctx.registries);
-  wl_list_init(&ctx.globals);
-  wl_list_init(&ctx.outputs);
-  wl_list_init(&ctx.seats);
-  wl_list_init(&ctx.windows);
-  wl_list_init(&ctx.unpaired_windows);
-  wl_list_init(&ctx.host_outputs);
-  wl_list_init(&ctx.selection_data_source_send_pending);
-#ifdef GAMEPAD_SUPPORT
-  wl_list_init(&ctx.gamepads);
-#endif
 
   // Parse the list of accelerators that should be reserved by the
   // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
