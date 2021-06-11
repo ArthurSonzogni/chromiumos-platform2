@@ -1867,13 +1867,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 				Microsoft nor Epigram identifiers (the former
 				two are used for platform-neutral information).
 
-		string WireGuard.Address [writeonly]
-
-			(VPN services of type WireGuard only) The overlay IPv4
-			address for the WireGuard interface on this device.
-			The current value of this property is readable in the
-			"Provider" property of this service.
-
 		array{dict} WireGuard.Peers [writeonly]
 
 			(VPN services of type WireGuard only) The list of peers

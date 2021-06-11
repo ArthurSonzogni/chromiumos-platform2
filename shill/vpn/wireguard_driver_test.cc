@@ -109,7 +109,6 @@ class WireGuardDriverTest : public testing::Test {
     Error err;
     property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey1,
                                        &err);
-    property_store_->SetStringProperty(kWireGuardAddress, "192.168.1.2", &err);
     property_store_->SetStringmapsProperty(
         kWireGuardPeers,
         {
@@ -240,8 +239,6 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
 
   // Checks IPProperties.
   const auto& ip_properties = driver_->GetIPProperties();
-  EXPECT_EQ(ip_properties.address_family, shill::IPAddress::kFamilyIPv4);
-  EXPECT_EQ(ip_properties.address, "192.168.1.2");
   EXPECT_THAT(ip_properties.routes,
               testing::UnorderedElementsAre(
                   // We do not dedup so this entry appears twice.
@@ -318,7 +315,6 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
                                                         &provider, &err));
   EXPECT_FALSE(provider.Contains<std::string>(kWireGuardPrivateKey));
   EXPECT_TRUE(provider.Contains<std::string>(kWireGuardPublicKey));
-  EXPECT_EQ(provider.Get<std::string>(kWireGuardAddress), "192.168.1.2");
   EXPECT_EQ(provider.Get<Stringmaps>(kWireGuardPeers),
             (Stringmaps{
                 {{kWireGuardPeerPublicKey, "public-key-1"},

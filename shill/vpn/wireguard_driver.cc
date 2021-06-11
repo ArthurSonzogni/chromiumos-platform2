@@ -181,18 +181,14 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
     {kProviderTypeProperty, 0},
 
     // Properties for the interface. ListenPort is not here since we current
-    // only support the "client mode".
+    // only support the "client mode". Local overlay addresses on the interface,
+    // DNS servers, and MTU will be set via StaticIPConfig.
     // TODO(b/177876632): Consider making this kCredential. Peer.PresharedKey
     // may need some similar handling.
     {kWireGuardPrivateKey, Property::kWriteOnly},
     // TODO(b/177877860): This field is for software-backed keys only. May need
     // to change this logic when hardware-backed keys come.
     {kWireGuardPublicKey, Property::kReadOnly},
-    // Address for the wireguard interface.
-    // TODO(b/177876632): Support IPv6 (multiple addresses).
-    // TODO(b/177876632): Verify that putting other properties for the interface
-    // (i.e., DNS and MTU) are in the StaticIPParameters works.
-    {kWireGuardAddress, 0},
 };
 
 WireGuardDriver::WireGuardDriver(Manager* manager,
@@ -527,15 +523,6 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
 
 bool WireGuardDriver::PopulateIPProperties() {
   ip_properties_.default_route = false;
-
-  const auto address =
-      IPAddress(args()->Lookup<std::string>(kWireGuardAddress, ""));
-  if (!address.IsValid()) {
-    LOG(ERROR) << "WireGuardAddress property is not valid";
-    return false;
-  }
-  ip_properties_.address_family = address.family();
-  ip_properties_.address = address.ToString();
 
   // When we arrive here, the value of AllowedIPs has already been validated
   // by wireguard-tools. AllowedIPs is comma-separated list of CIDR-notation
