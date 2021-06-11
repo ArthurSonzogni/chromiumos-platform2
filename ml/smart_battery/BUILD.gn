@@ -1,0 +1,33 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+generate_dbus_adaptors("dbus-adaptors") {
+  dbus_service_config =
+      "../dbus_bindings/smart-battery-dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+  sources = [ "../dbus_bindings/org.chromium.MachineLearningSmartBattery.xml" ]
+}
+
+static_library("core") {
+  sources = [
+    "smart_battery_daemon.cc",
+    "smart_battery_service.cc",
+  ]
+
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "system_api",
+  ]
+
+  deps = [
+    ":dbus-adaptors",
+    "//ml:example_preprocessor",
+    "//ml:ml_assist_ranker_proto",
+    "//ml:ml_mojo_bindings_lib",
+  ]
+}

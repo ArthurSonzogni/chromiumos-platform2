@@ -254,7 +254,10 @@ static_library("ml_cmdline_common") {
 
 executable("ml_service") {
   sources = [ "main.cc" ]
-  deps = [ ":ml_common" ]
+  deps = [
+    ":ml_common",
+    "//ml/smart_battery:core",
+  ]
 }
 
 executable("ml_cmdline") {
@@ -302,6 +305,7 @@ if (use.test) {
       ":ml_service",
       ":ml_text_suggester_proto",
       "//common-mk/testrunner:testrunner",
+      "//ml/smart_battery:core",
     ]
     if (use.ondevice_speech && !use.asan) {
       sources += [

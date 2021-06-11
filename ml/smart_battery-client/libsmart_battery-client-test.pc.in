@@ -1,0 +1,6 @@
+include_dir=@INCLUDE_DIR@
+
+Name: libsmart_battery-client-test
+Version: 1.0
+Description: smart_battery client interface mock library
+Cflags: -I${include_dir}
