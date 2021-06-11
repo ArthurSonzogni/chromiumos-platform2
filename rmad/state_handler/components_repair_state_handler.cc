@@ -13,7 +13,7 @@
 #include <dbus/runtime_probe/dbus-constants.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
-#include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/dbus_utils_impl.h"
 
 namespace rmad {
 
@@ -89,17 +89,24 @@ std::unordered_map<Component, RepairState> GetUserSelectionDictionary(
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  dbus_utils_ = std::make_unique<DBusUtilsImpl>();
+}
+
+ComponentsRepairStateHandler::ComponentsRepairStateHandler(
+    scoped_refptr<JsonStore> json_store, std::unique_ptr<DBusUtils> dbus_utils)
+    : BaseStateHandler(json_store), dbus_utils_(std::move(dbus_utils)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // Call runtime_probe to get all probed components.
   runtime_probe::ProbeRequest request;
   request.set_probe_default_category(true);
   runtime_probe::ProbeResult reply;
-  if (!CallDBusMethod(runtime_probe::kRuntimeProbeServiceName,
-                      runtime_probe::kRuntimeProbeServicePath,
-                      runtime_probe::kRuntimeProbeInterfaceName,
-                      runtime_probe::kProbeCategoriesMethod, request, &reply)) {
+  if (!dbus_utils_->CallDBusMethod(runtime_probe::kRuntimeProbeServiceName,
+                                   runtime_probe::kRuntimeProbeServicePath,
+                                   runtime_probe::kRuntimeProbeInterfaceName,
+                                   runtime_probe::kProbeCategoriesMethod,
+                                   request, &reply)) {
     LOG(ERROR) << "runtime_probe D-Bus call failed";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }

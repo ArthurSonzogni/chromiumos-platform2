@@ -7,13 +7,19 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
 #include <unordered_map>
+
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
 class ComponentsRepairStateHandler : public BaseStateHandler {
  public:
   explicit ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mocked |dbus_utils_| for testing.
+  ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store,
+                               std::unique_ptr<DBusUtils> dbus_utils);
   ~ComponentsRepairStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
@@ -25,6 +31,8 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
  private:
   // Check that the provided state properly updates every component.
   bool ValidateUserSelection(const RmadState& state) const;
+
+  std::unique_ptr<DBusUtils> dbus_utils_;
 };
 
 }  // namespace rmad
