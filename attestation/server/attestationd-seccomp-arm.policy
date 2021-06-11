@@ -54,8 +54,10 @@ inotify_rm_watch: 1
 _newselect: 1
 
 fstat64: 1
+fstatat64: 1
 stat64: 1
 lstat64: 1
+statx: 1
 _llseek: 1
 fcntl64: 1
 access: 1
