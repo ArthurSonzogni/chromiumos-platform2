@@ -13380,6 +13380,13 @@ mno {
     mccmnc : "310950"
     mccmnc : "310980"
     mccmnc : "311180"
+    mccmnc : "312670"
+    mccmnc : "313100"
+    mccmnc : "313110"
+    mccmnc : "313120"
+    mccmnc : "313130"
+    mccmnc : "313140"
+    mccmnc : "313790"
     mobile_apn {
       apn : "broadband"
       localized_name {
@@ -13488,6 +13495,66 @@ mno {
         apn : "tfdata"
       }
       mtu : 1430
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Cricket"
+    }
+    data {
+      uuid : "996e2e3f-f8ea-415d-ba58-34b07b306612"
+      country : "us"
+      localized_name {
+        name : "Cricket"
+      }
+      mccmnc : "310150"
+      mobile_apn {
+        apn : "mht"
+        is_attach_apn : true
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "firstnet"
+    }
+    data {
+      uuid : "81cd6912-a9de-4a0a-b39c-5a3d965c79cc"
+      country : "us"
+      localized_name {
+        name : "firstnet"
+      }
+      mccmnc : "312670"
+      mccmnc : "313100"
+      mccmnc : "313110"
+      mccmnc : "313120"
+      mccmnc : "313130"
+      mccmnc : "313140"
+      mobile_apn {
+        apn : "firstnet-broadband"
+        is_attach_apn : true
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    uuid : "47d7f9cd-27c2-47bb-8f2a-826b1202409a"
+    country : "mx"
+    localized_name {
+      name : "AT&T"
+    }
+    mccmnc : "334050"
+    mccmnc : "334090"
+    mobile_apn {
+      apn : "broadband"
+      localized_name {
+        name : "LaptopConnect (data cards)"
+      }
+      is_attach_apn : true
     }
   }
 }
@@ -13804,27 +13871,6 @@ mno {
     mobile_apn {
       apn : "wap.gocbw.com"
       username : "cbw"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "996e2e3f-f8ea-415d-ba58-34b07b306612"
-    country : "us"
-    localized_name {
-      name : "Cricket Communications"
-    }
-    mccmnc : "310000"
-  }
-}
-
-mno {
-  data {
-    uuid : "e731b84c-0d3a-441b-b8ed-4d3fcbab608c"
-    country : "us"
-    localized_name {
-      name : "Cricket Communications"
     }
   }
 }
