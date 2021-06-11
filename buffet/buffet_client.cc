@@ -62,7 +62,7 @@ brillo::Any GetJsonValue(const base::Value& json,
 }
 
 template <typename T>
-brillo::Any GetJsonList(const base::ListValue& list);  // Prototype.
+brillo::Any GetJsonList(const base::Value& list);  // Prototype.
 
 // Converts a JSON value into an Any so it can be sent over D-Bus using
 // UpdateState D-Bus method from Buffet.
@@ -100,28 +100,27 @@ brillo::Any JsonToAny(const base::Value& json) {
       break;
     }
     case base::Value::Type::LIST: {
-      const base::ListValue* list = nullptr;  // Still owned by |json|.
-      CHECK(json.GetAsList(&list));
-      CHECK(!list->empty()) << "Unable to deduce the type of list elements.";
-      switch (list->begin()->type()) {
+      CHECK(!json.GetList().empty())
+          << "Unable to deduce the type of list elements.";
+      switch (json.GetList()[0].type()) {
         case base::Value::Type::BOOLEAN:
-          prop_value = GetJsonList<bool>(*list);
+          prop_value = GetJsonList<bool>(json);
           break;
         case base::Value::Type::INTEGER:
-          prop_value = GetJsonList<int>(*list);
+          prop_value = GetJsonList<int>(json);
           break;
         case base::Value::Type::DOUBLE:
-          prop_value = GetJsonList<double>(*list);
+          prop_value = GetJsonList<double>(json);
           break;
         case base::Value::Type::STRING:
-          prop_value = GetJsonList<std::string>(*list);
+          prop_value = GetJsonList<std::string>(json);
           break;
         case base::Value::Type::DICTIONARY:
-          prop_value = GetJsonList<brillo::VariantDictionary>(*list);
+          prop_value = GetJsonList<brillo::VariantDictionary>(json);
           break;
         default:
           LOG(FATAL) << "Unsupported JSON value type for list element: "
-                     << list->begin()->type();
+                     << json.GetList()[0].type();
       }
       break;
     }
@@ -133,10 +132,11 @@ brillo::Any JsonToAny(const base::Value& json) {
 }
 
 template <typename T>
-brillo::Any GetJsonList(const base::ListValue& list) {
+brillo::Any GetJsonList(const base::Value& list) {
+  CHECK(list.is_list());
   std::vector<T> val;
-  val.reserve(list.GetSize());
-  for (const base::Value& v : list)
+  val.reserve(list.GetList().size());
+  for (const base::Value& v : list.GetList())
     val.push_back(JsonToAny(v).Get<T>());
   return val;
 }

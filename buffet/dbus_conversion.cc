@@ -29,11 +29,12 @@ brillo::Any ValueToAny(const base::Value& json,
 brillo::Any ValueToAny(const base::Value& json);
 
 template <typename T>
-brillo::Any ListToAny(const base::ListValue& list,
+brillo::Any ListToAny(const base::Value& list,
                       bool (base::Value::*fnc)(T*) const) {
+  CHECK(list.is_list());
   std::vector<T> result;
-  result.reserve(list.GetSize());
-  for (const base::Value& v : list) {
+  result.reserve(list.GetList().size());
+  for (const base::Value& v : list.GetList()) {
     T val;
     CHECK((v.*fnc)(&val));
     result.push_back(val);
@@ -41,10 +42,11 @@ brillo::Any ListToAny(const base::ListValue& list,
   return result;
 }
 
-brillo::Any DictListToAny(const base::ListValue& list) {
+brillo::Any DictListToAny(const base::Value& list) {
+  CHECK(list.is_list());
   std::vector<brillo::VariantDictionary> result;
-  result.reserve(list.GetSize());
-  for (const base::Value& v : list) {
+  result.reserve(list.GetList().size());
+  for (const base::Value& v : list.GetList()) {
     const base::DictionaryValue* dict = nullptr;
     CHECK(v.GetAsDictionary(&dict));
     result.push_back(DictionaryToDBusVariantDictionary(*dict));
@@ -52,10 +54,11 @@ brillo::Any DictListToAny(const base::ListValue& list) {
   return result;
 }
 
-brillo::Any ListListToAny(const base::ListValue& list) {
+brillo::Any ListListToAny(const base::Value& list) {
+  CHECK(list.is_list());
   std::vector<brillo::Any> result;
-  result.reserve(list.GetSize());
-  for (const base::Value& v : list)
+  result.reserve(list.GetList().size());
+  for (const base::Value& v : list.GetList())
     result.push_back(ValueToAny(v));
   return result;
 }
@@ -84,43 +87,41 @@ brillo::Any ValueToAny(const base::Value& json) {
       break;
     }
     case base::Value::Type::LIST: {
-      const base::ListValue* list = nullptr;
-      CHECK(json.GetAsList(&list));
-      if (list->empty()) {
+      if (json.GetList().empty()) {
         // We don't know type of objects this list intended for, so we just use
         // vector<brillo::Any>.
-        prop_value = ListListToAny(*list);
+        prop_value = ListListToAny(json);
         break;
       }
-      auto type = list->begin()->type();
-      for (const base::Value& v : *list)
+      auto type = json.GetList()[0].type();
+      for (const base::Value& v : json.GetList())
         CHECK_EQ(v.type(), type) << "Unsupported different type elements";
 
       switch (type) {
         case base::Value::Type::BOOLEAN:
-          prop_value = ListToAny<bool>(*list, &base::Value::GetAsBoolean);
+          prop_value = ListToAny<bool>(json, &base::Value::GetAsBoolean);
           break;
         case base::Value::Type::INTEGER:
-          prop_value = ListToAny<int>(*list, &base::Value::GetAsInteger);
+          prop_value = ListToAny<int>(json, &base::Value::GetAsInteger);
           break;
         case base::Value::Type::DOUBLE:
-          prop_value = ListToAny<double>(*list, &base::Value::GetAsDouble);
+          prop_value = ListToAny<double>(json, &base::Value::GetAsDouble);
           break;
         case base::Value::Type::STRING:
-          prop_value = ListToAny<std::string>(*list, &base::Value::GetAsString);
+          prop_value = ListToAny<std::string>(json, &base::Value::GetAsString);
           break;
         case base::Value::Type::DICTIONARY:
-          prop_value = DictListToAny(*list);
+          prop_value = DictListToAny(json);
           break;
         case base::Value::Type::LIST:
           // We can't support Any{vector<vector<>>} as the type is only known
           // in runtime when we need to instantiate templates in compile time.
           // We can use Any{vector<Any>} instead.
-          prop_value = ListListToAny(*list);
+          prop_value = ListListToAny(json);
           break;
         default:
           LOG(FATAL) << "Unsupported JSON value type for list element: "
-                     << list->begin()->type();
+                     << json.GetList()[0].type();
       }
       break;
     }
