@@ -35,6 +35,8 @@ const char kGetNetworksForGeolocation[] = "GetNetworksForGeolocation";
 const char kGetServiceFunction[] = "GetService";
 const char kRequestScanFunction[] = "RequestScan";
 const char kSetNetworkThrottlingFunction[] = "SetNetworkThrottlingStatus";
+const char kSetDNSProxyDOHProvidersFunction[] = "SetDNSProxyDOHProviders";
+// TODO(garrick): Remove this once this patch makes it over to Chrome.
 const char kSetDNSProxyDOHProvidersProperty[] = "SetDNSProxyDOHProviders";
 
 // Service function names.
