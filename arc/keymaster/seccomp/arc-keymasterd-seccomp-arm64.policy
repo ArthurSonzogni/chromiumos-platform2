@@ -54,3 +54,5 @@ madvise: 1
 faccessat: 1
 sched_getattr: 1
 sched_setattr: 1
+memfd_create: 1
+eventfd2: 1
