@@ -13,7 +13,11 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "sommelier-ctx.h"     // NOLINT(build/include_directory)
+#include "sommelier-global.h"  // NOLINT(build/include_directory)
+#include "sommelier-mmap.h"    // NOLINT(build/include_directory)
 #include "sommelier-timing.h"  // NOLINT(build/include_directory)
+#include "sommelier-util.h"    // NOLINT(build/include_directory)
+#include "sommelier-window.h"  // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"
 
 #define SOMMELIER_VERSION "0.20"
@@ -22,8 +26,6 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-
-#define UNUSED(x) ((void)(x))
 
 #define CONTROL_MASK (1 << 0)
 #define ALT_MASK (1 << 1)
@@ -125,6 +127,7 @@ struct sl_context {
   int wm_fd;
   int virtwl_ctx_fd;
   int virtwl_socket_fd;
+  int virtwl_display_fd;
   struct wl_event_source* virtwl_ctx_event_source;
   struct wl_event_source* virtwl_socket_event_source;
   const char* vm_id;
@@ -452,22 +455,6 @@ struct sl_host_registry {
   struct wl_list link;
 };
 
-typedef void (*sl_begin_end_access_func_t)(int fd, struct sl_context* ctx);
-
-struct sl_mmap {
-  int refcount;
-  int fd;
-  void* addr;
-  size_t size;
-  size_t bpp;
-  size_t num_planes;
-  size_t offset[2];
-  size_t stride[2];
-  size_t y_ss[2];
-  sl_begin_end_access_func_t begin_write;
-  sl_begin_end_access_func_t end_write;
-  struct wl_resource* buffer_resource;
-};
 
 typedef void (*sl_sync_func_t)(struct sl_context* ctx,
                                struct sl_sync_point* sync_point);
@@ -475,53 +462,6 @@ typedef void (*sl_sync_func_t)(struct sl_context* ctx,
 struct sl_sync_point {
   int fd;
   sl_sync_func_t sync;
-};
-
-struct sl_config {
-  uint32_t serial;
-  uint32_t mask;
-  uint32_t values[5];
-  uint32_t states_length;
-  uint32_t states[3];
-};
-
-struct sl_window {
-  struct sl_context* ctx;
-  xcb_window_t id;
-  xcb_window_t frame_id;
-  uint32_t host_surface_id;
-  int unpaired;
-  int x;
-  int y;
-  int width;
-  int height;
-  int border_width;
-  int depth;
-  int managed;
-  int realized;
-  int activated;
-  int maximized;
-  int allow_resize;
-  xcb_window_t transient_for;
-  xcb_window_t client_leader;
-  int decorated;
-  char* name;
-  char* clazz;
-  char* startup_id;
-  int dark_frame;
-  uint32_t size_flags;
-  int focus_model_take_focus;
-  int min_width;
-  int min_height;
-  int max_width;
-  int max_height;
-  struct sl_config next_config;
-  struct sl_config pending_config;
-  struct zxdg_surface_v6* xdg_surface;
-  struct zxdg_toplevel_v6* xdg_toplevel;
-  struct zxdg_popup_v6* xdg_popup;
-  struct zaura_surface* aura_surface;
-  struct wl_list link;
 };
 
 #ifdef GAMEPAD_SUPPORT
@@ -542,13 +482,12 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
                                              int32_t width,
                                              int32_t height);
 
-struct sl_global* sl_global_create(struct sl_context* ctx,
-                                   const struct wl_interface* interface,
-                                   int version,
-                                   void* data,
-                                   wl_global_bind_func_t bind);
 
 struct sl_global* sl_compositor_global_create(struct sl_context* ctx);
+void sl_compositor_init_context(struct sl_context* ctx,
+                                struct wl_registry* registry,
+                                uint32_t id,
+                                uint32_t version);
 
 size_t sl_shm_bpp_for_shm_format(uint32_t format);
 
@@ -587,18 +526,6 @@ struct sl_global* sl_pointer_constraints_global_create(struct sl_context* ctx);
 
 void sl_set_display_implementation(struct sl_context* ctx);
 
-struct sl_mmap* sl_mmap_create(int fd,
-                               size_t size,
-                               size_t bpp,
-                               size_t num_planes,
-                               size_t offset0,
-                               size_t stride0,
-                               size_t offset1,
-                               size_t stride1,
-                               size_t y_ss0,
-                               size_t y_ss1);
-struct sl_mmap* sl_mmap_ref(struct sl_mmap* map);
-void sl_mmap_unref(struct sl_mmap* map);
 
 struct sl_sync_point* sl_sync_point_create(int fd);
 void sl_sync_point_destroy(struct sl_sync_point* sync_point);
@@ -610,10 +537,6 @@ void sl_restack_windows(struct sl_context* ctx, uint32_t focus_resource_id);
 
 void sl_roundtrip(struct sl_context* ctx);
 
-int sl_process_pending_configure_acks(struct sl_window* window,
-                                      struct sl_host_surface* host_surface);
-
-void sl_window_update(struct sl_window* window);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);
