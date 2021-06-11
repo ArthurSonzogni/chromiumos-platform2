@@ -715,6 +715,33 @@ TEST_F(MetricsDaemonTest, UpdateUsageStats) {
   daemon_.UpdateStats(end, base::Time::Now());
 }
 
+TEST_F(MetricsDaemonTest, UpdateUsageStatsTooBig) {
+  // Ignore most calls to SendToUMA.
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, _, _, _, _)).Times(AnyNumber());
+
+  // Add an arbitrary amount to the test start.
+  const int elapsed_seconds = 1'000'000'000;
+  base::TimeTicks end =
+      test_start_ + base::TimeDelta::FromSeconds(elapsed_seconds);
+
+  EXPECT_CALL(metrics_lib_,
+              SendToUMA("Platform.UnaggregatedUsageTime", _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(metrics_lib_, SendToUMA("Platform.UnaggregatedUsageTimeTooBig",
+                                      Le(elapsed_seconds), 7200, 1 << 31, 50));
+
+  // Allow these calls since we're using strict mocks
+  EXPECT_CALL(*daily_active_use_mock_, GetAndClear()).Times(AnyNumber());
+  EXPECT_CALL(*daily_active_use_mock_, Add(Le(elapsed_seconds)))
+      .Times(AnyNumber());
+  EXPECT_CALL(*kernel_crash_interval_mock_, Add(Le(elapsed_seconds)))
+      .Times(AnyNumber());
+  EXPECT_CALL(*user_crash_interval_mock_, Add(Le(elapsed_seconds)))
+      .Times(AnyNumber());
+
+  daemon_.UpdateStats(end, base::Time::Now());
+}
+
 TEST_F(MetricsDaemonTest, RoundsDailyUseIfJustOverOneDay) {
   // Should round down daily use within 5 minutes of 24 hours...
   const int kSecondsPerDay = 24 * 60 * 60;

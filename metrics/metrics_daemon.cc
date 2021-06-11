@@ -79,6 +79,10 @@ const uint32_t kInitialUpdateStatsIntervalMs = 60'000;  // one minute
 // Interval between calls to UpdateStats().
 const uint32_t kUpdateStatsIntervalMs = 300'000;  // five minutes
 
+// Don't accept any individual usage time samples of more than 2 hours
+const uint32_t kMaxAcceptableUnaggregatedUsageTime =
+    2 * kMinutesPerHour * kSecondsPerMinute;
+
 // Maximum amount of system memory that will be reported without overflow.
 const int kMaximumMemorySizeInKB = 128 * 1024 * 1024;
 
@@ -109,6 +113,8 @@ const int kMemuseIntervals[] = {
 
 constexpr char kDailyUseTimeName[] = "Platform.DailyUseTime";
 constexpr char kUnaggregatedUseTimeName[] = "Platform.UnaggregatedUsageTime";
+constexpr char kUnaggregatedUseTimeOverflowName[] =
+    "Platform.UnaggregatedUsageTimeTooBig";
 constexpr char kCumulativeUseTimeName[] = "Platform.CumulativeUseTime";
 constexpr char kCumulativeCpuTimeName[] = "Platform.CumulativeCpuTime";
 constexpr char kKernelCrashIntervalName[] = "Platform.KernelCrashInterval";
@@ -1623,19 +1629,31 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
   user_crash_interval_->Add(elapsed_seconds);
   kernel_crash_interval_->Add(elapsed_seconds);
   version_cumulative_cpu_use_->Add(GetIncrementalCpuUse().InMilliseconds());
-  last_update_stats_time_ = now_ticks;
 
   const TimeDelta since_epoch = now_wall_time - Time::UnixEpoch();
   const int day = since_epoch.InDays();
   const int week = day / 7;
 
-  // Allow some slack time above the expected max of 5 minutes.
-  const int max_time =
-      kUpdateStatsIntervalMs / kMillisPerSecond + kSecondsPerMinute;
-  SendSample(kUnaggregatedUseTimeName, elapsed_seconds,
-             1,         // value of first bucket
-             max_time,  // value of last bucket
-             50);       // number of buckets
+  if (elapsed_seconds > kMaxAcceptableUnaggregatedUsageTime) {
+    LOG(ERROR) << "Unexpectedly large elapsed_seconds. "
+               << "now_ticks: " << now_ticks
+               << " elapsed_seconds: " << elapsed_seconds
+               << " last_update_stats_time_: " << last_update_stats_time_;
+    SendSample(kUnaggregatedUseTimeOverflowName, elapsed_seconds,
+               kMaxAcceptableUnaggregatedUsageTime,  // value of first bucket
+               1 << 31,                              // value of last bucket
+               50);                                  // number of buckets
+  } else {
+    // Allow some slack time above the expected max of 5 minutes.
+    const int max_time =
+        kUpdateStatsIntervalMs / kMillisPerSecond + kSecondsPerMinute;
+    SendSample(kUnaggregatedUseTimeName, elapsed_seconds,
+               1,         // value of first bucket
+               max_time,  // value of last bucket
+               50);       // number of buckets
+  }
+
+  last_update_stats_time_ = now_ticks;
 
   if (daily_cycle_->Get() != day) {
     daily_cycle_->Set(day);
