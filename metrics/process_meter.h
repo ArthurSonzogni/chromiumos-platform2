@@ -41,8 +41,8 @@ enum ProcessGroupKind {
   PG_GPU,
   PG_RENDERERS,
   PG_ARC,
-  PG_VMS,  // Except for ARCVM
-  PG_DAEMONS,
+  PG_VMS,      // Except for ARCVM
+  PG_DAEMONS,  // Everything that's not in one of the other categories.
   PG_KINDS_COUNT
 };
 

@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/optional.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -30,7 +31,7 @@ void CreateFile(const base::FilePath& path, std::string content) {
 
 void CreateProcEntry(const base::FilePath& procfs_path,
                      int pid,
-                     int ppid,
+                     base::Optional<int> ppid,
                      const char* name,
                      const char* cmdline,
                      int total_mib,
@@ -40,11 +41,24 @@ void CreateProcEntry(const base::FilePath& procfs_path,
                      int swap_mib) {
   base::FilePath proc_pid_path(
       procfs_path.Append(base::StringPrintf("%d", pid)));
+  CHECK(CreateDirectory(proc_pid_path));
+  if (cmdline != nullptr) {
+    base::FilePath cmdline_path(proc_pid_path.Append("cmdline"));
+    CreateFile(cmdline_path, std::string(cmdline));
+  }
+  if (name != nullptr) {
+    base::FilePath stat_path(proc_pid_path.Append("stat"));
+    std::string stat_content;
+    if (ppid) {
+      stat_content = base::StringPrintf("%d (%s) R %d 33 44 blah blah \n", pid,
+                                        name, *ppid);
+    } else {
+      stat_content =
+          base::StringPrintf("%d (%s) R Q 33 44 blah blah \n", pid, name);
+    }
+    CreateFile(stat_path, stat_content);
+  }
   base::FilePath totmaps_path(proc_pid_path.Append("totmaps"));
-  base::FilePath stat_path(proc_pid_path.Append("stat"));
-  base::FilePath cmdline_path(proc_pid_path.Append("cmdline"));
-  std::string stat_content =
-      base::StringPrintf("%d (%s) R %d 33 44 blah blah \n", pid, name, ppid);
   bool is_kdaemon = total_mib == 0;
   std::string totmaps_content =
       is_kdaemon ? "blah\nblah\nblah"
@@ -59,10 +73,7 @@ void CreateProcEntry(const base::FilePath& procfs_path,
                        "blah\nblah\nblah\n",
                        total_mib * 1024, anon_mib * 1024, file_mib * 1024,
                        shmem_mib * 1024, swap_mib * 1024);
-  CHECK(CreateDirectory(proc_pid_path));
-  CreateFile(stat_path, stat_content);
   CreateFile(totmaps_path, totmaps_content);
-  CreateFile(cmdline_path, std::string(cmdline));
 }
 
 // Test that we're classifying processes and adding up their sizes correctly.
@@ -106,6 +117,16 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
   CreateProcEntry(procfs_path, 101, 100, "chrome",
                   "/opt/google/chrome/chrome --type=broker",
                   5, 4, 3, 2, 1);
+  // Other spawned-from-chrome processes with a ) in the name. The Regular
+  // Expression parser will backtrack and find the correct ) to match on.
+  // Anything spawned from the Chrome browser process will count under browser
+  // if it doesn't count under one of the other categories.
+  CreateProcEntry(procfs_path, 102, 100, "bash (stuff)",
+                  "/bin/bash /usr/bin/somescript",
+                  400, 50, 245, 100, 5);
+  CreateProcEntry(procfs_path, 103, 100, "corrupt )))) R Q",
+                  "/bin/bash /usr/bin/somescript",
+                  100, 33, 33, 33, 1);
   // GPU.
   CreateProcEntry(procfs_path, 110, 100, "chrome",
                   "/opt/google/chrome/chrome --type=gpu-process",
@@ -120,6 +141,24 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
   // Daemons.
   CreateProcEntry(procfs_path, 200, 1, "shill", "/usr/bin/shill",
                   100, 30, 70, 0, 0);
+  // 4 bad entries. Since they cannot be parsed, they'll be put in the
+  // "daemons" category, which is really a catch-all for non-Chrome, despite
+  // looking a bit like a Chrome process:
+  // Name not UTF-8.
+  CreateProcEntry(procfs_path, 213, 100, "p\xb9Q\xc8",
+                  "/opt/google/chrome/chrome --type=renderer",
+                  113, 33, 80, 0, 0);
+  // Unparsable ppid
+  CreateProcEntry(procfs_path, 214, base::nullopt, "chrome",
+                  "/opt/google/chrome/chrome --type=renderer",
+                  213, 133, 80, 0, 0);
+  // Missing cmdline.
+  CreateProcEntry(procfs_path, 215, 100, "chrome", nullptr,
+                  313, 133, 180, 0, 0);
+  // Missing stat.
+  CreateProcEntry(procfs_path, 216, 100, nullptr,
+                  "/opt/google/chrome/chrome --type=renderer",
+                  413, 183, 180, 50, 0);
   // clang-format on
 
   // Get process info from mocked /proc.
@@ -130,17 +169,17 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
   // clang-format off
   const ProcessMemoryStats expected_stats[PG_KINDS_COUNT] = {
       // browser
-      {{ 305 * mib, 204 * mib, 93 * mib,  12 * mib,  3 * mib}},
+      {{ 805 * mib, 287 * mib, 371 * mib, 145 * mib,  9 * mib}},
       // gpu
-      {{ 400 * mib,  70 * mib, 30 * mib, 300 * mib,  3 * mib}},
+      {{ 400 * mib,  70 * mib,  30 * mib, 300 * mib,  3 * mib}},
       // renderers
-      {{1000 * mib, 900 * mib, 60 * mib,  40 * mib, 26 * mib}},
+      {{1000 * mib, 900 * mib,  60 * mib,  40 * mib, 26 * mib}},
       // arc
-      {{  10 * mib,   5 * mib,  5 * mib,  0,         1 * mib}},
+      {{  10 * mib,   5 * mib,   5 * mib,         0,  1 * mib}},
       // vms
-      {{   0,         0,        0,        0,         0}},
+      {{         0,         0,         0,         0,        0}},
       // daemons
-      {{110 * mib,   35 * mib, 75 * mib,  0,         7 * mib}},
+      {{1162 * mib, 517 * mib, 595 * mib,  50 * mib,  7 * mib}},
   };
   // clang-format on
   for (int i = 0; i < PG_KINDS_COUNT; i++) {
@@ -148,7 +187,8 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
     ProcessGroupKind kind = static_cast<ProcessGroupKind>(i);
     AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), &stats);
     for (int j = 0; j < MEM_KINDS_COUNT; j++) {
-      EXPECT_EQ(stats.rss_sizes[j], expected_stats[i].rss_sizes[j]);
+      EXPECT_EQ(stats.rss_sizes[j], expected_stats[i].rss_sizes[j])
+          << "for expected_stats[" << i << "].rss_sizes[" << j << "]";
     }
   }
 }

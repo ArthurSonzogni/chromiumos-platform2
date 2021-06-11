@@ -297,8 +297,12 @@ bool ProcessNode::RetrieveProcessData(const base::FilePath& procfs_root) {
   // stat: pid (comm) run_state ppid etc. The only parentheses in the file
   // are around <comm>.
   RE2 re(R"(.*\((.*)\) \w+ (\d+)(.|\n)*)");
-  if (!RE2::FullMatch(file_content, re, &name_, &ppid_))
-    LOG(FATAL) << "cannot parse /proc/pid/stat: " << file_content;
+  if (!RE2::FullMatch(file_content, re, &name_, &ppid_)) {
+    // Since there's no guarantees about a processes name -- it might not
+    // be UTF-8, for example -- this is just a warning.
+    LOG(WARNING) << "cannot parse /proc/pid/stat: " << file_content;
+    return false;
+  }
 
   // Get command line from /proc/#/cmdline and parse it.
   const std::string cmdline_name = base::StringPrintf("%d/cmdline", pid_);
