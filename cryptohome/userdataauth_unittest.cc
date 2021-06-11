@@ -22,7 +22,6 @@
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
-#include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
@@ -126,7 +125,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
-    userdataauth_->set_boot_lockbox(&lockbox_);
     userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
@@ -199,10 +197,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock InstallAttributes object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockInstallAttributes> attrs_;
-
-  // Mock BootLockBox object, will be passed to UserDataAuth for its internal
-  // use.
-  NiceMock<MockBootLockbox> lockbox_;
 
   // Mock Platform object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockPlatform> platform_;
@@ -1917,7 +1911,6 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   InitializeUserDataAuth();
 
-  EXPECT_CALL(lockbox_, FinalizeBoot());
   EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
@@ -2020,7 +2013,6 @@ TEST_F(UserDataAuthTest,
 
   InitializeUserDataAuth();
 
-  EXPECT_CALL(lockbox_, FinalizeBoot());
   EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
@@ -2532,7 +2524,6 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
 
   mount_req_->mutable_account()->set_account_id(kUser);
   mount_req_->set_public_mount(true);
-  EXPECT_CALL(lockbox_, FinalizeBoot());
 
   bool called = false;
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));

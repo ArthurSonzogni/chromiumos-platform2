@@ -202,7 +202,6 @@ pkg_config("libcrostpm_dependent_config") {
 static_library("libcrostpm") {
   sources = [
     "../auth_session.cc",
-    "../bootlockbox/boot_lockbox.cc",
     "../challenge_credential_auth_block.cc",
     "../crc8.c",
     "../crypto.cc",
@@ -305,7 +304,6 @@ pkg_config("libcryptohome_dependent_config") {
 
 static_library("libcryptohome") {
   sources = [
-    "../bootlockbox/boot_attributes.cc",
     "../challenge_credentials/challenge_credentials_constants.cc",
     "../challenge_credentials/challenge_credentials_decrypt_operation.cc",
     "../challenge_credentials/challenge_credentials_generate_new_operation.cc",

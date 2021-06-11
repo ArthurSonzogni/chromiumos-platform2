@@ -35,7 +35,6 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
-#include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"

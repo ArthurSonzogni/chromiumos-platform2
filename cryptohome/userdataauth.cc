@@ -23,7 +23,6 @@
 #include <chaps/token_manager_client.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cleanup/disk_cleanup.h"
@@ -162,8 +161,6 @@ UserDataAuth::UserDataAuth()
       firmware_management_parameters_(nullptr),
       default_fingerprint_manager_(),
       fingerprint_manager_(nullptr),
-      default_boot_lockbox_(),
-      boot_lockbox_(nullptr),
       upload_alerts_period_ms_(kUploadAlertsPeriodMS),
       ownership_callback_has_run_(false),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
@@ -228,11 +225,6 @@ bool UserDataAuth::Initialize() {
     default_cryptohome_key_loader_.reset(
         new CryptohomeKeyLoader(tpm_, platform_));
     cryptohome_key_loader_ = default_cryptohome_key_loader_.get();
-  }
-
-  if (!boot_lockbox_) {
-    default_boot_lockbox_.reset(new BootLockbox(tpm_, platform_, crypto_));
-    boot_lockbox_ = default_boot_lockbox_.get();
   }
 
   // Initialize Firmware Management Parameters
@@ -1176,10 +1168,6 @@ scoped_refptr<Mount> UserDataAuth::CreateMount(const std::string& username) {
 
 void UserDataAuth::EnsureBootLockboxFinalized() {
   AssertOnMountThread();
-  if (boot_lockbox_ && !boot_lockbox_->FinalizeBoot()) {
-    LOG(WARNING) << "Failed to finalize boot lockbox when mounting guest "
-                    "cryptohome";
-  }
 #if USE_TPM2
   // Lock NVRamBootLockbox
   auto nvram_boot_lockbox_client = BootLockboxClient::CreateBootLockboxClient();

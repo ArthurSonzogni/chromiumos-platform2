@@ -23,7 +23,6 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/auth_session.h"
-#include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/credentials.h"
@@ -586,11 +585,6 @@ class UserDataAuth {
     return current_thread_id_for_test_;
   }
 
-  // Override |boot_lockbox_| for testing purpose
-  void set_boot_lockbox(BootLockbox* boot_lockbox) {
-    boot_lockbox_ = boot_lockbox;
-  }
-
   // Override |low_disk_space_handler_| for testing purpose
   void set_low_disk_space_handler(LowDiskSpaceHandler* low_disk_space_handler) {
     low_disk_space_handler_ = low_disk_space_handler;
@@ -997,13 +991,6 @@ class UserDataAuth {
   // The actual Fingerprint Manager object that is used by this class, but
   // can be overridden for testing.
   FingerprintManager* fingerprint_manager_;
-
-  // The default BootLockbox object for finalizing it.
-  std::unique_ptr<BootLockbox> default_boot_lockbox_;
-
-  // The actual BootLockbox object for finalizing it, but can be overridden
-  // for testing.
-  BootLockbox* boot_lockbox_;
 
   // The amount of time in between each run of UploadAlertsDataCallback()
   int upload_alerts_period_ms_;
