@@ -161,8 +161,6 @@ void FetchAggregator::WrapFetchProbeData(
 
   *response_data = std::move(fetched_data);
 
-  base::AutoLock auto_lock(lock_);
-
   auto& remaining_categories = state->remaining_categories;
   remaining_categories.erase(category);
   // Check for any unfetched categories - if one exists, we can't run the

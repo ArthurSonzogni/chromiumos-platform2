@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/synchronization/lock.h>
 
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
@@ -83,13 +82,6 @@ class FetchAggregator final {
  private:
   // The set to keep the instances of |ProbeState|.
   std::set<std::unique_ptr<ProbeState>> probe_states_;
-
-  // Protects against one fetcher setting the last bit of a |fetched_data| map
-  // to true while another fetcher reads it. Without the lock, the reading
-  // fetcher would then take ownership of the callback and run it, then the
-  // setting fetcher would later attempt to run the invalid callback a second
-  // time.
-  base::Lock lock_;
 
   AudioFetcher audio_fetcher_;
   BacklightFetcher backlight_fetcher_;
