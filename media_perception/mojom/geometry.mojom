@@ -33,6 +33,7 @@ struct SizeF {
   float height;
 };
 
+[Stable]
 struct Rect {
   int32 x;
   int32 y;
@@ -47,6 +48,7 @@ struct RectF {
   float height;
 };
 
+[Stable]
 struct Insets {
   int32 top;
   int32 left;

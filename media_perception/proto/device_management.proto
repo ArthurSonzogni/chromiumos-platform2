@@ -13,6 +13,7 @@ enum PixelFormat {
   FORMAT_UNKNOWN = 0;
   I420 = 1;
   MJPEG = 2;
+  NV12 = 3;
 }
 
 message VideoStreamParams {

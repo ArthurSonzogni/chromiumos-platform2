@@ -372,7 +372,6 @@ struct VideoFrame {
 union VideoFrameData {
   EosVideoFrameData eos_data;
   SharedBufferVideoFrameData shared_buffer_data;
-  DmabufVideoFrameData dmabuf_data;
   GpuMemoryBufferVideoFrameData gpu_memory_buffer_data;
   MailboxVideoFrameData mailbox_data;
 };
@@ -391,12 +390,6 @@ struct SharedBufferVideoFrameData {
   // of |frame_data|.
   array<int32> strides;
   array<uint32> offsets;
-};
-
-// This defines video frame data stored in dmabuf.
-struct DmabufVideoFrameData {
-  // Size depends on media::VideoFrame::NumPlanes with frame format.
-  array<handle<platform>> dmabuf_fds;
 };
 
 struct GpuMemoryBufferVideoFrameData {
@@ -477,4 +470,11 @@ enum MediaStreamType {
   kLocalDisplayCapture = 4, // The source is a local display capture.
   kRemote = 5, // The source is a remote peer connection.
   kNone = 6, // Not a media stream.
+};
+
+// Error codes propagated by Input media streams OnError methods to indicate the
+// reason for an error.
+enum InputStreamErrorCode {
+  kUnknown = 0,
+  kSystemPermissions = 1,
 };

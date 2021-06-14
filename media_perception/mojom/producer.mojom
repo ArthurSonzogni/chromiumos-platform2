@@ -4,6 +4,7 @@
 
 module video_capture.mojom;
 
+import "mojom/video_capture_buffer.mojom";
 import "mojom/video_capture_types.mojom";
 
 // An interface for providing buffer info updates to the producer of

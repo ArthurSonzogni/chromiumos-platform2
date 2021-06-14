@@ -24,6 +24,8 @@ PixelFormat ToMojom(mri::PixelFormat format) {
       return PixelFormat::I420;
     case mri::PixelFormat::MJPEG:
       return PixelFormat::MJPEG;
+    case mri::PixelFormat::NV12:
+      return PixelFormat::NV12;
     case mri::PixelFormat::FORMAT_UNKNOWN:
       return PixelFormat::FORMAT_UNKNOWN;
   }
@@ -333,6 +335,8 @@ PixelFormat ToProto(chromeos::media_perception::mojom::PixelFormat format) {
       return PixelFormat::I420;
     case chromeos::media_perception::mojom::PixelFormat::MJPEG:
       return PixelFormat::MJPEG;
+    case chromeos::media_perception::mojom::PixelFormat::NV12:
+      return PixelFormat::NV12;
     case chromeos::media_perception::mojom::PixelFormat::FORMAT_UNKNOWN:
       return PixelFormat::FORMAT_UNKNOWN;
   }

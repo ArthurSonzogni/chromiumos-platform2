@@ -71,6 +71,7 @@ generate_mojom_bindings("media_perception_mojo_bindings") {
     "mojom/time.mojom",
     "mojom/unguessable_token.mojom",
     "mojom/values.mojom",
+    "mojom/video_capture_buffer.mojom",
     "mojom/video_capture_types.mojom",
     "mojom/video_frame_handler.mojom",
     "mojom/video_source.mojom",

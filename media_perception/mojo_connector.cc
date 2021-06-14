@@ -43,6 +43,8 @@ PixelFormat GetPixelFormatFromVideoCapturePixelFormat(
       return PixelFormat::I420;
     case media::mojom::VideoCapturePixelFormat::MJPEG:
       return PixelFormat::MJPEG;
+    case media::mojom::VideoCapturePixelFormat::NV12:
+      return PixelFormat::NV12;
     default:
       return PixelFormat::FORMAT_UNKNOWN;
   }
@@ -55,6 +57,8 @@ media::mojom::VideoCapturePixelFormat GetVideoCapturePixelFormatFromPixelFormat(
       return media::mojom::VideoCapturePixelFormat::I420;
     case PixelFormat::MJPEG:
       return media::mojom::VideoCapturePixelFormat::MJPEG;
+    case PixelFormat::NV12:
+      return media::mojom::VideoCapturePixelFormat::NV12;
     default:
       return media::mojom::VideoCapturePixelFormat::UNKNOWN;
   }
