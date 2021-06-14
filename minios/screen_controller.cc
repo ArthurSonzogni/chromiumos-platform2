@@ -8,19 +8,24 @@
 
 #include <base/logging.h>
 
+#include "minios/recovery_installer.h"
 #include "minios/screen_language_dropdown.h"
 #include "minios/screen_welcome.h"
+#include "minios/screens/screen_download.h"
 #include "minios/screens/screen_error.h"
 #include "minios/screens/screen_network.h"
+#include "minios/screens/screen_permission.h"
 #include "minios/utils.h"
 
 namespace minios {
 
 ScreenController::ScreenController(
     std::shared_ptr<DrawInterface> draw_utils,
+    std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     std::shared_ptr<NetworkManagerInterface> network_manager,
     ProcessManagerInterface* process_manager)
     : draw_utils_(draw_utils),
+      update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
       process_manager_(process_manager),
       key_reader_(
@@ -33,6 +38,7 @@ void ScreenController::Init() {
       << "Screen drawing utility not available. Cannot continue.";
 
   draw_utils_->Init();
+  update_engine_proxy_->Init();
 
   std::vector<int> wait_keys = {kKeyUp, kKeyDown, kKeyEnter};
   if (draw_utils_->IsDetachable())
@@ -56,6 +62,12 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
                                              &key_reader_, this);
     case ScreenType::kLanguageDropDownScreen:
       return std::make_unique<ScreenLanguageDropdown>(draw_utils_, this);
+    case ScreenType::kUserPermissionScreen:
+      return std::make_unique<ScreenPermission>(draw_utils_, this);
+    case ScreenType::kStartDownload:
+      return std::make_unique<ScreenDownload>(
+          std::make_unique<RecoveryInstaller>(process_manager_),
+          update_engine_proxy_, draw_utils_, this);
     case ScreenType::kDownloadError:
     case ScreenType::kNetworkError:
     case ScreenType::kPasswordError:
@@ -75,7 +87,11 @@ void ScreenController::OnForward(ScreenInterface* screen) {
       current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
       break;
     case ScreenType::kNetworkDropDownScreen:
-      // TODO(vyshu) : Forward to kUserPermissionScreen (not yet implemented).
+      current_screen_ = CreateScreen(ScreenType::kUserPermissionScreen);
+      break;
+    case ScreenType::kUserPermissionScreen:
+      current_screen_ = CreateScreen(ScreenType::kStartDownload);
+      break;
     case ScreenType::kDownloadError:
     case ScreenType::kNetworkError:
     case ScreenType::kPasswordError:
@@ -94,6 +110,7 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
   switch (screen->GetType()) {
     case ScreenType::kWelcomeScreen:
     case ScreenType::kNetworkDropDownScreen:
+    case ScreenType::kUserPermissionScreen:
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
     case ScreenType::kPasswordError:

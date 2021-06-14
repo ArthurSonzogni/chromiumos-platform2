@@ -28,8 +28,8 @@ class ScreenControllerTest : public ::testing::Test {
   std::shared_ptr<NetworkManagerInterface> mock_network_manager_ =
       std::make_shared<NiceMock<MockNetworkManager>>();
   MockProcessManager process_manager_;
-  ScreenController screen_controller_{draw_interface_, mock_network_manager_,
-                                      &process_manager_};
+  ScreenController screen_controller_{draw_interface_, nullptr,
+                                      mock_network_manager_, &process_manager_};
 };
 
 TEST_F(ScreenControllerTest, OnForward) {
@@ -38,9 +38,22 @@ TEST_F(ScreenControllerTest, OnForward) {
   screen_controller_.OnForward(&mock_screen_);
   EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
             screen_controller_.GetCurrentScreen());
+
+  // Go ask for user permission after getting network info.
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kNetworkDropDownScreen));
+  screen_controller_.OnForward(&mock_screen_);
+  EXPECT_EQ(ScreenType::kUserPermissionScreen,
+            screen_controller_.GetCurrentScreen());
 }
 
 TEST_F(ScreenControllerTest, OnBackward) {
+  // Permission denied goes back to the start screen.
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kUserPermissionScreen));
+  screen_controller_.OnBackward(&mock_screen_);
+  EXPECT_EQ(ScreenType::kWelcomeScreen, screen_controller_.GetCurrentScreen());
+
   screen_controller_.SetCurrentScreenForTest(
       ScreenType::kNetworkDropDownScreen);
   // Password screen goes back to the first network screen.

@@ -62,6 +62,7 @@ class MockDrawInterface : public DrawInterface {
   MOCK_METHOD(int, FindLocaleIndex, (int current_index));
   MOCK_METHOD(void, ShowLanguageMenu, (bool is_selected));
   MOCK_METHOD(void, LocaleChange, (int selected_locale));
+  MOCK_METHOD(void, ShowProgressPercentage, (double progress));
   MOCK_METHOD(int, GetSupportedLocalesSize, ());
   MOCK_METHOD(int, GetDefaultButtonWidth, ());
   MOCK_METHOD(int, GetFreconCanvasSize, ());

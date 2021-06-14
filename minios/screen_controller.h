@@ -15,6 +15,7 @@
 #include "minios/process_manager.h"
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
+#include "minios/update_engine_proxy.h"
 
 namespace minios {
 
@@ -22,8 +23,10 @@ class ScreenController : public ScreenControllerInterface,
                          public KeyReader::Delegate {
  public:
   ScreenController(std::shared_ptr<DrawInterface> draw_utils,
+                   std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                    std::shared_ptr<NetworkManagerInterface> network_manager,
                    ProcessManagerInterface* process_manager);
+
   virtual ~ScreenController() = default;
 
   ScreenController(const ScreenController&) = delete;
@@ -67,6 +70,8 @@ class ScreenController : public ScreenControllerInterface,
   void OnKeyPress(int fd_index, int key_changed, bool key_released) override;
 
   std::shared_ptr<DrawInterface> draw_utils_;
+
+  std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
 
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 

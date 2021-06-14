@@ -112,6 +112,8 @@ class DrawUtils : public DrawInterface {
 
   void LocaleChange(int selected_locale) override;
 
+  void ShowProgressPercentage(double progress) override;
+
   int GetSupportedLocalesSize() override { return supported_locales_.size(); }
 
   int GetDefaultButtonWidth() override { return default_button_width_; }
@@ -151,9 +153,6 @@ class DrawUtils : public DrawInterface {
   FRIEND_TEST(DrawUtilsTest, GetFreconConstNoInt);
   FRIEND_TEST(DrawUtilsTest, GetFreconConstNoFile);
   FRIEND_TEST(DrawUtilsTestMocks, ShowFooter);
-
-  // Show progress bar at percentage given.
-  void ShowProgressPercentage(double progress);
 
   // Clears full screen except the footer.
   void ClearMainArea();

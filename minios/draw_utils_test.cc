@@ -529,4 +529,14 @@ TEST_F(DrawUtilsTestMocks, ShowFooter) {
   mock_draw_utils_.ShowFooter();
 }
 
+TEST_F(DrawUtilsTestMocks, ShowProgressPercentage) {
+  // Invalid progress percentage doesn't show anything.
+  mock_draw_utils_.ShowProgressPercentage(1.1);
+
+  // Otherwise will show box.
+  EXPECT_CALL(mock_draw_utils_, ShowBox(_, _, _, _, _))
+      .WillOnce(testing::Return(true));
+  mock_draw_utils_.ShowProgressPercentage(.5);
+}
+
 }  // namespace minios
