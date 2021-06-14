@@ -10,12 +10,9 @@
 #include <vector>
 
 #include <base/macros.h>
+
 #if USE_CELLULAR
-#include <modemmanager/dbus-proxies.h>
-#endif
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-#include <upstart/dbus-proxies.h>
+#include "modemmanager/dbus-proxies.h"
 #endif
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/user_proximity_handler.h"
@@ -25,6 +22,10 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
+#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
+              // into modemmanager.
+#include "upstart/dbus-proxies.h"
+#endif
 
 namespace power_manager {
 

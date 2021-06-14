@@ -261,8 +261,11 @@ static_library("libpolicy") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "m" ]
+  if (use.cellular) {
+    deps = [ ":generate_modemmanager_proxies" ]
+  }
   if (use.qrtr) {
-    deps = [ ":generate_upstart_proxies" ]
+    deps += [ ":generate_upstart_proxies" ]
   }
 }
 
