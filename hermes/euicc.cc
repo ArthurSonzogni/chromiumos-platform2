@@ -230,9 +230,6 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
     // Remove the profile from pending_profiles_ so that it can become an
     // installed profile
     profile = std::move(*iter);
-    // pending profiles are in state kPending. Since the profile is installed
-    // and disabled now, change the state to inactive.
-    profile->SetState(profile::kInactive);
     pending_profiles_.erase(iter);
     update_pending_profiles_property = true;
   } else {
@@ -249,8 +246,10 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
 
   installed_profiles_.push_back(std::move(profile));
   UpdateInstalledProfilesProperty();
-  if (update_pending_profiles_property)
+  if (update_pending_profiles_property) {
     UpdatePendingProfilesProperty();
+    installed_profiles_.back()->SetState(profile::kInactive);
+  }
   // Refresh LPA profile cache
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
