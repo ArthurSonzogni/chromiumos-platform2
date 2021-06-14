@@ -144,6 +144,7 @@ type cros_rmtfs_exec, exec_type, file_type, cros_file_type, cros_system_file_typ
 type cros_rootdev_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_run_oci_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_secanomalyd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_seneschal_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_session_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
