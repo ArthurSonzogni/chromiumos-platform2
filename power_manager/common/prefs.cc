@@ -212,6 +212,10 @@ void Prefs::SetDouble(const std::string& name, double value) {
   ScheduleWrite();
 }
 
+void Prefs::SetBool(const std::string& name, bool value) {
+  SetInt64(name, static_cast<int64_t>(value));
+}
+
 void Prefs::ScheduleWrite() {
   base::TimeDelta time_since_last_write =
       base::TimeTicks::Now() - last_write_time_;

@@ -153,6 +153,9 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     prefs_->SetInt64(kUnpluggedOffMsPref, 360000);
     prefs_->SetInt64(kUnpluggedDimMsPref, 300000);
 
+    // This pref is required by policy::ShutdownFromSuspend.
+    prefs_->SetBool(kDisableHibernatePref, false);
+
     daemon_.reset(new Daemon(this, run_dir_.GetPath()));
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);

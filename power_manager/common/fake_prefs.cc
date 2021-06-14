@@ -79,4 +79,8 @@ void FakePrefs::SetDouble(const std::string& name, double value) {
   double_prefs_[name] = value;
 }
 
+void FakePrefs::SetBool(const std::string& name, bool value) {
+  SetInt64(name, static_cast<int64_t>(value));
+}
+
 }  // namespace power_manager

@@ -37,37 +37,40 @@ void ShutdownFromSuspend::Init(PrefsInterface* prefs,
       dark_resume_disable;
 
   int64_t shutdown_after_sec = 0;
-  enabled_ =
+  global_enabled_ =
       !dark_resume_disable &&
       prefs->GetInt64(kShutdownFromSuspendSecPref, &shutdown_after_sec) &&
       shutdown_after_sec > 0;
 
-  if (enabled_) {
+  // Hibernate only works if shutdown-after-x works.
+  bool disable_hibernate = true;
+
+  CHECK(prefs->GetBool(kDisableHibernatePref, &disable_hibernate))
+      << "Failed to read pref " << kDisableHibernatePref;
+
+  hibernate_enabled_ = global_enabled_ && !disable_hibernate;
+  if (global_enabled_) {
     shutdown_delay_ = base::TimeDelta::FromSeconds(shutdown_after_sec);
     prefs->GetDouble(kLowBatteryShutdownPercentPref,
                      &low_battery_shutdown_percent_);
-    LOG(INFO) << "Shutdown from suspend is configured to "
+    LOG(INFO) << (hibernate_enabled_ ? "Hibernate" : "Shutdown")
+              << " from suspend is configured to "
               << util::TimeDeltaToString(shutdown_delay_)
               << ". low_battery_shutdown_percent is "
               << low_battery_shutdown_percent_;
   } else {
-    LOG(INFO) << "Shutdown from suspend is disabled";
+    LOG(INFO) << "Shutdown/Hibernate from suspend is disabled";
   }
 }
 
-bool ShutdownFromSuspend::ShouldShutdown() {
-  if (timer_fired_) {
-    LOG(INFO) << "Timer expired. Device should shut down.";
-    return true;
-  }
-
+bool ShutdownFromSuspend::IsBatteryLow() {
   if (power_supply_->RefreshImmediately()) {
     const double percent = power_supply_->GetPowerStatus().battery_percentage;
     if (0 <= percent && percent <= low_battery_shutdown_percent_) {
       LOG(INFO) << "Battery percentage " << base::StringPrintf("%0.2f", percent)
                 << "% <= low_battery_shutdown_percent ("
                 << base::StringPrintf("%0.2f", low_battery_shutdown_percent_)
-                << "%). Device should shut down.";
+                << "%).";
       return true;
     }
   } else {
@@ -77,9 +80,45 @@ bool ShutdownFromSuspend::ShouldShutdown() {
   return false;
 }
 
+bool ShutdownFromSuspend::ShouldHibernate() {
+  if (!hibernate_enabled_) {
+    return false;
+  }
+
+  if (ShutdownFromSuspend::IsBatteryLow()) {
+    LOG(INFO) << "Hibernate due to low battery";
+    return true;
+  }
+
+  if (!timer_fired_) {
+    LOG(INFO) << "Don't hibernate, timer hasn't fired";
+    return false;
+  }
+
+  return true;
+}
+
+bool ShutdownFromSuspend::ShouldShutdown() {
+  if (timer_fired_) {
+    LOG(INFO) << "Timer expired. Device should shut down";
+    return true;
+  }
+
+  if (ShutdownFromSuspend::IsBatteryLow()) {
+    LOG(INFO) << "Shut down due to low battery";
+    return true;
+  }
+
+  return false;
+}
+
 ShutdownFromSuspend::Action ShutdownFromSuspend::PrepareForSuspendAttempt() {
-  if (!enabled_)
+  if (!global_enabled_)
     return ShutdownFromSuspend::Action::SUSPEND;
+
+  if (in_dark_resume_ && ShutdownFromSuspend::ShouldHibernate()) {
+    return ShutdownFromSuspend::Action::HIBERNATE;
+  }
 
   // TODO(crbug.com/964510): If the timer is gonna expire in next few minutes,
   // shutdown.

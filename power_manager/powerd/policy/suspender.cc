@@ -575,6 +575,10 @@ Suspender::State Suspender::Suspend() {
       delegate_->ShutDownFromSuspend();
       return State::SHUTTING_DOWN;
 
+    case policy::ShutdownFromSuspendInterface::Action::HIBERNATE:
+      hibernate = true;
+      FALLTHROUGH;
+
     case policy::ShutdownFromSuspendInterface::Action::SUSPEND:
       if (suspend_duration_ != base::TimeDelta()) {
         LOG(INFO) << (hibernate ? "Hibernating" : "Suspending") << " for "

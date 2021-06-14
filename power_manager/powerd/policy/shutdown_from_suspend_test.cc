@@ -29,9 +29,12 @@ class ShutdownFromSuspendTest : public ::testing::Test {
   ~ShutdownFromSuspendTest() override = default;
 
  protected:
-  void Init(bool enable_dark_resume, int64_t shutdown_after_secs) {
+  void Init(bool enable_dark_resume,
+            bool enable_hibernate,
+            int64_t shutdown_after_secs) {
     prefs_.SetInt64(kShutdownFromSuspendSecPref, shutdown_after_secs);
     prefs_.SetInt64(kDisableDarkResumePref, enable_dark_resume ? 0 : 1);
+    prefs_.SetInt64(kDisableHibernatePref, enable_hibernate ? 0 : 1);
     shutdown_from_suspend_.Init(&prefs_, &power_supply_);
   }
 
@@ -47,34 +50,50 @@ class ShutdownFromSuspendTest : public ::testing::Test {
   TestMainLoopRunner runner_;
 };
 
-// Test that ShutdownFromSuspend is enabled when
+// Test that ShutdownFromSuspend is enabled and hibernate is disabled when
 //  1. Dark resume is enabled
-//  2. |kShutdownFromSuspendSecPref| value is set to positive integer.
-TEST_F(ShutdownFromSuspendTest, TestEnable) {
-  Init(true, 1);
+//  2. Hibernate is disabled
+//  3. |kShutdownFromSuspendSecPref| value is set to positive integer.
+TEST_F(ShutdownFromSuspendTest, TestShutdownEnable) {
+  Init(true, false, 1);
   EXPECT_TRUE(shutdown_from_suspend_.enabled_for_testing());
+  EXPECT_FALSE(shutdown_from_suspend_.hibernate_enabled_for_testing());
 }
 
-// Test that ShutdownFromSuspend is disabled when dark resume is disabled.
+// Test that ShutdownFromSuspend and hibernate are enabled when
+//  1. Dark resume is enabled
+//  2. Hibernate is enabled
+//  3. |kShutdownFromSuspendSecPref| value is set to positive integer.
+TEST_F(ShutdownFromSuspendTest, TestHibernateEnable) {
+  Init(true, true, 1);
+  EXPECT_TRUE(shutdown_from_suspend_.enabled_for_testing());
+  EXPECT_TRUE(shutdown_from_suspend_.hibernate_enabled_for_testing());
+}
+
+// Test that ShutdownFromSuspend and hibernate are disabled when dark resume
+// is disabled (even if hibernate is otherwise enabled).
 TEST_F(ShutdownFromSuspendTest, TestDarkResumeDisabled) {
-  Init(false, 1);
+  Init(false, true, 1);
   EXPECT_FALSE(shutdown_from_suspend_.enabled_for_testing());
+  EXPECT_FALSE(shutdown_from_suspend_.hibernate_enabled_for_testing());
 }
 
-// Test that ShutdownFromSuspend is disabled when
+// Test that ShutdownFromSuspend and hibernate are disabled when
 // |kShutdownFromSuspendSecPref| value is set to 0.
 TEST_F(ShutdownFromSuspendTest, TestkShutdownFromSuspendSecPref0) {
-  Init(false, 1);
+  Init(true, true, 0);
   EXPECT_FALSE(shutdown_from_suspend_.enabled_for_testing());
+  EXPECT_FALSE(shutdown_from_suspend_.hibernate_enabled_for_testing());
 }
 
 // Test that ShutdownFromSuspend asks the system to shut down when
 // 1. ShutdownFromSuspend is enabled
-// 2. Device has spent |kShutdownFromSuspendSecPref| in suspend
-// 3. Device is not on line power when dark resumed.
+// 2. Hibernate is disabled
+// 3. Device has spent |kShutdownFromSuspendSecPref| in suspend
+// 4. Device is not on line power when dark resumed.
 TEST_F(ShutdownFromSuspendTest, TestShutdownPath) {
   int kShutdownAfterSecs = 1;
-  Init(true, kShutdownAfterSecs);
+  Init(true, false, kShutdownAfterSecs);
   // First |PrepareForSuspendAttempt| after boot should always return
   // Action::SUSPEND
   EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
@@ -84,16 +103,35 @@ TEST_F(ShutdownFromSuspendTest, TestShutdownPath) {
   runner_.StartLoop(run_loop_for);
   // Fake a dark resume.
   shutdown_from_suspend_.HandleDarkResume();
-  // Now |PrepareForSuspendAttempt| should return Action::SHUT_DOWN
   EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
             ShutdownFromSuspend::Action::SHUT_DOWN);
 }
 
+// Test that ShutdownFromSuspend asks the system to hibernate when
+// 1. ShutdownFromSuspend is enabled
+// 2. Hibernate is enabled
+// 3. Device has spent |kShutdownFromSuspendSecPref| in suspend
+TEST_F(ShutdownFromSuspendTest, TestHibernatePath) {
+  int kShutdownAfterSecs = 1;
+  Init(true, true, kShutdownAfterSecs);
+  // First |PrepareForSuspendAttempt| after boot should always return
+  // Action::SUSPEND
+  EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
+            ShutdownFromSuspend::Action::SUSPEND);
+  base::TimeDelta run_loop_for =
+      base::TimeDelta::FromSeconds(kShutdownAfterSecs) + kRunLoopDelay;
+  runner_.StartLoop(run_loop_for);
+  // Fake a dark resume.
+  shutdown_from_suspend_.HandleDarkResume();
+  EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
+            ShutdownFromSuspend::Action::HIBERNATE);
+}
+
 // Test that ShutdownFromSuspend asks the system to suspend if the device is on
-// line power.
+// line power and hibernate is disabled.
 TEST_F(ShutdownFromSuspendTest, TestOnLinePower) {
   int kShutdownAfterSecs = 1;
-  Init(true, kShutdownAfterSecs);
+  Init(true, false, kShutdownAfterSecs);
   shutdown_from_suspend_.PrepareForSuspendAttempt();
   base::TimeDelta run_loop_for =
       base::TimeDelta::FromSeconds(kShutdownAfterSecs) + kRunLoopDelay;
@@ -117,7 +155,7 @@ TEST_F(ShutdownFromSuspendTest, TestOnLinePower) {
 // resume.
 TEST_F(ShutdownFromSuspendTest, TestFullResume) {
   int kShutdownAfterSecs = 1;
-  Init(true, kShutdownAfterSecs);
+  Init(true, true, kShutdownAfterSecs);
   shutdown_from_suspend_.PrepareForSuspendAttempt();
   base::TimeDelta run_loop_for =
       base::TimeDelta::FromSeconds(kShutdownAfterSecs) + kRunLoopDelay;

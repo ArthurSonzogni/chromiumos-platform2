@@ -43,6 +43,7 @@ class FakePrefs : public PrefsInterface {
   void SetString(const std::string& name, const std::string& value) override;
   void SetInt64(const std::string& name, int64_t value) override;
   void SetDouble(const std::string& name, double value) override;
+  void SetBool(const std::string& name, bool value) override;
 
  private:
   base::ObserverList<PrefsObserver> observers_;

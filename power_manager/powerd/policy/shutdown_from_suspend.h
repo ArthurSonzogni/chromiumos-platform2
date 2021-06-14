@@ -32,7 +32,8 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
 
   void Init(PrefsInterface* prefs, system::PowerSupplyInterface* power_supply);
 
-  bool enabled_for_testing() const { return enabled_; }
+  bool enabled_for_testing() const { return global_enabled_; }
+  bool hibernate_enabled_for_testing() const { return hibernate_enabled_; }
 
   // ShutdownFromSuspendInterface implementation.
   Action PrepareForSuspendAttempt() override;
@@ -49,10 +50,17 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   // Invoked by |alarm_timer_| after spending |shutdown_delay_| in suspend.
   void OnTimerWake();
 
+  // Helper function to determine if the battery is below a certain threshold.
+  bool IsBatteryLow();
+  // Called to decide whether or not we should hibernate right now.
+  bool ShouldHibernate();
+  // Called to decide whether or not to shut down right now.
   bool ShouldShutdown();
 
-  // Is shutdown after x enabled ?
-  bool enabled_ = false;
+  // Is shutdown or hibernate after x enabled ?
+  bool global_enabled_ = false;
+  // Is hibernate after x enabled ?
+  bool hibernate_enabled_ = false;
   // Time in suspend after which the device wakes up to shut down.
   base::TimeDelta shutdown_delay_;
   // Is the device in dark resume currently ?

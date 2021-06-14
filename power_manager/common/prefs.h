@@ -42,6 +42,7 @@ class PrefsInterface {
   virtual void SetString(const std::string& name, const std::string& value) = 0;
   virtual void SetInt64(const std::string& name, int64_t value) = 0;
   virtual void SetDouble(const std::string& name, double value) = 0;
+  virtual void SetBool(const std::string& name, bool value) = 0;
 };
 
 class PrefsSourceInterface;
@@ -141,6 +142,7 @@ class Prefs : public PrefsInterface {
   void SetString(const std::string& name, const std::string& value) override;
   void SetInt64(const std::string& name, int64_t value) override;
   void SetDouble(const std::string& name, double value) override;
+  void SetBool(const std::string& name, bool value) override;
 
  private:
   // Handle changes to pref values in |pref_store_|.

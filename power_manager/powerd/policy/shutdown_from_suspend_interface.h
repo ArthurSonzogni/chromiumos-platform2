@@ -8,14 +8,16 @@
 namespace power_manager {
 namespace policy {
 
-// Holds the logic to shut down the device after prolonged non use.
+// Holds the logic to shut down or hibernate the device after prolonged non
+// use.
 //
-// Responsible for setting an alarm for |kShutdownAfterSecPref| before every
-// suspend if one is not already running.
-// On dark resume this code will shut down the device instead of re-suspending
-// if following conditions hold true:
-//   1. Device has spent |kShutdownAfterSecPref| in suspend or in dark resume
-//      without a full resume.
+// Responsible for setting an alarm for |kShutdownFromSuspendSecPref| before
+// every suspend if one is not already running.
+// On dark resume this code will shut down or hibernate the device instead
+// of re-suspending if all of the following conditions hold true:
+//   1. Device has spent |kShutdownFromSuspendSecPref| in suspend or in
+//      dark resume without a full resume, OR the battery is below
+//      |kLowBatteryShutdownPercentPref|.
 //   2. Device is not connected to line power.
 // On full resume, the alarm is stopped and the state is reset.
 class ShutdownFromSuspendInterface {
@@ -23,6 +25,8 @@ class ShutdownFromSuspendInterface {
   enum class Action {
     // Suspend the system.
     SUSPEND = 0,
+    // Hibernate the system.
+    HIBERNATE,
     // Shut the system down immediately.
     SHUT_DOWN,
   };
