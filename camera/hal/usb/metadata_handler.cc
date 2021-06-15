@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/no_destructor.h>
 
 #include <chromeos-config/libcros_config/cros_config.h>
@@ -130,14 +131,14 @@ class MetadataUpdater {
 
   template <typename T>
   std::enable_if_t<std::is_enum<T>::value> operator()(int tag, const T& data) {
-    static const std::set<int> kInt32EnumTags = {
+    static constexpr auto kInt32EnumTags = base::MakeFixedFlatSet<int>({
         ANDROID_DEPTH_AVAILABLE_DEPTH_STREAM_CONFIGURATIONS,
         ANDROID_SCALER_AVAILABLE_FORMATS,
         ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
         ANDROID_SENSOR_TEST_PATTERN_MODE,
         ANDROID_SYNC_MAX_LATENCY,
-    };
-    if (kInt32EnumTags.find(tag) != kInt32EnumTags.end()) {
+    });
+    if (kInt32EnumTags.contains(tag)) {
       operator()(tag, std::vector<int32_t>{static_cast<int32_t>(data)});
     } else {
       operator()(tag, std::vector<uint8_t>{base::checked_cast<uint8_t>(data)});
