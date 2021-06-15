@@ -124,12 +124,22 @@ executable("rmad") {
 }
 
 if (use.test) {
+  static_library("libstate_handler_test_common") {
+    sources = [ "state_handler/state_handler_test_common.cc" ]
+    configs += [ ":target_defaults" ]
+  }
+
   executable("rmad_test") {
     sources = [
       "dbus_service_test.cc",
       "rmad_interface_test.cc",
       "state_handler/components_repair_state_handler_test.cc",
+      "state_handler/device_destination_state_handler_test.cc",
+      "state_handler/select_network_state_handler_test.cc",
       "state_handler/state_handler_manager_test.cc",
+      "state_handler/update_chrome_state_handler_test.cc",
+      "state_handler/welcome_screen_state_handler_test.cc",
+      "state_handler/write_protect_disable_method_state_handler_test.cc",
       "utils/fake_cbi_utils.cc",
       "utils/fake_crossystem_utils.cc",
       "utils/fake_vpd_utils.cc",
@@ -144,6 +154,7 @@ if (use.test) {
       ":libjson_store",
       ":librmad_interface",
       ":libstate_handler",
+      ":libstate_handler_test_common",
       "//common-mk/testrunner",
     ]
   }
