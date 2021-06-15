@@ -157,6 +157,25 @@ retry it later. Files in this directory are created by various programs
 including `flashrom` and `battery_tool`. There are additional details on the
 [flashrom] page.
 
+## External display timeout deferral
+
+On certain platforms, external displays may undergo momentary disconnects. For
+example, when a display is connected to a Thunderbolt 3 dock, an alternate mode
+switch occurs during session state changes like while logging in, which causes
+a switch from DisplayPort alternate mode to tunneled DisplayPort.
+
+When in docked mode i.e with the lid closed, the system make take the momentary
+disconnection to be an opportunity to enter system suspend. That may have
+unwanted outcomes; in the case outlined above, it will result in the system
+landing up on a lock screen immediately after entering in the login credentials.
+
+To avoid this, we use a preference termed `defer-external-display-timeout` which
+extends the amount of time `powerd` waits after a display disconnect before
+triggering a system suspend, thus allowing momentarily disconnected external
+displays to get re-connected.
+
+The value is specified in seconds, and its default is 0 (which disables it).
+
 [suspend delays]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/power_manager/suspend.proto
 [/sys/power/wakeup_count]: https://lwn.net/Articles/393314/
 [flashrom]: https://dev.chromium.org/chromium-os/packages/cros-flashrom
