@@ -12,6 +12,7 @@
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <brillo/userdb_utils.h>
 #include <fcntl.h>
 #include <libminijail.h>
 #include <linux/vtpm_proxy.h>
@@ -32,6 +33,7 @@ constexpr char kSimulatorSeccompPath[] =
     "/usr/share/policy/tpm2-simulator.policy";
 constexpr char kVtpmxPath[] = "/dev/vtpmx";
 constexpr char kDevTpmPathPrefix[] = "/dev/tpm";
+constexpr char kNVChipPath[] = "NVChip";
 constexpr size_t kMaxCommandSize = 4096;
 constexpr size_t kHeaderSize = 10;
 
@@ -78,10 +80,20 @@ int SimulatorDaemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
   tpm_executor_->InitializeVTPM();
+  uid_t uid;
+  gid_t gid;
+  if (!brillo::userdb::GetUserInfo(kSimulatorUser, &uid, &gid)) {
+    LOG(ERROR) << "Failed to lookup the user name.";
+    return EX_OSERR;
+  }
+  if (HANDLE_EINTR(chown(kNVChipPath, uid, gid)) < 0) {
+    PLOG(ERROR) << "Failed to chown the NVChip.";
+    return EX_OSERR;
+  }
   base::FilePath tpm_path;
   command_fd_ = RegisterVTPM(&tpm_path);
   if (!command_fd_.is_valid()) {
-    LOG(ERROR) << "Failed to register vTPM";
+    LOG(ERROR) << "Failed to register vTPM.";
     return EX_OSERR;
   }
   command_fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(
