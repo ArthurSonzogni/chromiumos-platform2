@@ -56,6 +56,14 @@ bool SubprocessTool::RecordProcess(std::unique_ptr<ProcessWithId> process) {
 }
 
 bool SubprocessTool::Stop(const std::string& handle, brillo::ErrorPtr* error) {
+  if (handle.empty()) {
+    for (auto const& process : processes_) {
+      ProcessWithId* process_ptr = process.second.get();
+      process_ptr->KillProcessGroup();
+    }
+    processes_.clear();
+    return true;
+  }
   if (processes_.count(handle) != 1) {
     DEBUGD_ADD_ERROR(error, kErrorNoSuchProcess, handle.c_str());
     return false;
