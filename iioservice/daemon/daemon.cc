@@ -90,7 +90,7 @@ void Daemon::OnServerReceived(
     mojo::PendingReceiver<cros::mojom::SensorHalServer> server) {
   sensor_hal_server_ = SensorHalServerImpl::Create(
       base::ThreadTaskRunnerHandle::Get(), std::move(server),
-      base::Bind(&Daemon::OnMojoDisconnect, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&Daemon::OnMojoDisconnect, weak_factory_.GetWeakPtr()));
 }
 
 void Daemon::OnMojoDisconnect() {
