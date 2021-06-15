@@ -29,6 +29,33 @@
 #define ALT_MASK (1 << 1)
 #define SHIFT_MASK (1 << 2)
 
+// TODO(cpelling,nverne): Move to sommelier-window.h post-refactor
+#define US_POSITION (1L << 0)
+#define US_SIZE (1L << 1)
+#define P_POSITION (1L << 2)
+#define P_SIZE (1L << 3)
+#define P_MIN_SIZE (1L << 4)
+#define P_MAX_SIZE (1L << 5)
+#define P_RESIZE_INC (1L << 6)
+#define P_ASPECT (1L << 7)
+#define P_BASE_SIZE (1L << 8)
+#define P_WIN_GRAVITY (1L << 9)
+
+struct sl_wm_size_hints {
+  uint32_t flags;
+  int32_t x, y;
+  int32_t width, height;
+  int32_t min_width, min_height;
+  int32_t max_width, max_height;
+  int32_t width_inc, height_inc;
+  struct {
+    int32_t x;
+    int32_t y;
+  } min_aspect, max_aspect;
+  int32_t base_width, base_height;
+  int32_t win_gravity;
+};
+
 struct sl_global;
 struct sl_compositor;
 struct sl_shm;
@@ -56,40 +83,6 @@ struct zcr_gaming_input_v2;
 #endif
 
 class WaylandChannel;
-
-enum {
-  ATOM_WM_S0,
-  ATOM_WM_PROTOCOLS,
-  ATOM_WM_STATE,
-  ATOM_WM_CHANGE_STATE,
-  ATOM_WM_DELETE_WINDOW,
-  ATOM_WM_TAKE_FOCUS,
-  ATOM_WM_CLIENT_LEADER,
-  ATOM_WL_SURFACE_ID,
-  ATOM_UTF8_STRING,
-  ATOM_MOTIF_WM_HINTS,
-  ATOM_NET_ACTIVE_WINDOW,
-  ATOM_NET_FRAME_EXTENTS,
-  ATOM_NET_STARTUP_ID,
-  ATOM_NET_SUPPORTED,
-  ATOM_NET_SUPPORTING_WM_CHECK,
-  ATOM_NET_WM_NAME,
-  ATOM_NET_WM_MOVERESIZE,
-  ATOM_NET_WM_STATE,
-  ATOM_NET_WM_STATE_FULLSCREEN,
-  ATOM_NET_WM_STATE_MAXIMIZED_VERT,
-  ATOM_NET_WM_STATE_MAXIMIZED_HORZ,
-  ATOM_NET_WM_STATE_FOCUSED,
-  ATOM_CLIPBOARD,
-  ATOM_CLIPBOARD_MANAGER,
-  ATOM_TARGETS,
-  ATOM_TIMESTAMP,
-  ATOM_TEXT,
-  ATOM_INCR,
-  ATOM_WL_SELECTION,
-  ATOM_GTK_THEME_VARIANT,
-  ATOM_LAST = ATOM_GTK_THEME_VARIANT,
-};
 
 struct sl_context {
   char** runprog;
@@ -614,6 +607,9 @@ int sl_process_pending_configure_acks(struct sl_window* window,
                                       struct sl_host_surface* host_surface);
 
 void sl_window_update(struct sl_window* window);
+
+struct sl_window* sl_lookup_window(struct sl_context* ctx, xcb_window_t id);
+int sl_is_our_window(struct sl_context* ctx, xcb_window_t id);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);

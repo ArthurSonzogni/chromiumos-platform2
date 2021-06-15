@@ -7,6 +7,7 @@
 
 #if defined(PERFETTO_TRACING)
 #include <perfetto.h>
+#include <xcb/xcb.h>
 
 PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category("surface").SetDescription(
@@ -24,12 +25,22 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category("gaming").SetDescription("Events for Gaming"),
     perfetto::Category("other").SetDescription("Uncategorized Wayland calls."));
 
-void perfetto_annotate_xcb_atom(const perfetto::EventContext& event,
-                                const char* name,
-                                uint32_t atom);
+void perfetto_annotate_atom(struct sl_context* ctx,
+                            const perfetto::EventContext& perfetto,
+                            const char* event_name,
+                            xcb_atom_t atom);
 void perfetto_annotate_xcb_property_state(const perfetto::EventContext& event,
                                           const char* name,
                                           uint32_t state);
+void perfetto_annotate_window(struct sl_context* ctx,
+                              const perfetto::EventContext& perfetto,
+                              const char* event_name,
+                              xcb_window_t window_id);
+void perfetto_annotate_size_hints(const perfetto::EventContext& perfetto,
+                                  const struct sl_wm_size_hints& size_hints);
+void perfetto_annotate_cardinal_list(const perfetto::EventContext& perfetto,
+                                     const char* event_name,
+                                     xcb_get_property_reply_t* reply);
 
 #else
 #define TRACE_EVENT(category, name, ...)

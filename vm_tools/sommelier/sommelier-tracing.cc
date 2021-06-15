@@ -7,11 +7,15 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <vector>
 #include <xcb/xproto.h>
+
+#include "sommelier.h"      // NOLINT(build/include_directory)
+#include "sommelier-ctx.h"  // NOLINT(build/include_directory)
 
 #if defined(PERFETTO_TRACING)
 PERFETTO_TRACK_EVENT_STATIC_STORAGE();
@@ -221,18 +225,41 @@ static const char* xcb_atom_to_string(uint32_t atom) {
   }
 }
 
-void perfetto_annotate_xcb_atom(const perfetto::EventContext& event,
-                                const char* name,
-                                xcb_atom_t atom_int) {
-  auto* dbg = event.event()->add_debug_annotations();
-  dbg->set_name(name);
-  const char* atom = xcb_atom_to_string(atom_int);
-  if (atom) {
-    dbg->set_string_value(atom, strlen(atom));
-  } else {
-    std::string unknown("<unknown atom #" + std::to_string(atom_int) + ">");
-    dbg->set_string_value(unknown);
+// Annotate with the string representation of an atom.
+//
+// Supports well-known XCB atoms, and the fetched sl_context::atoms list. (To
+// add an atom you're interested in debugging, modify |sl_context_atom_name|.)
+void perfetto_annotate_atom(struct sl_context* ctx,
+                            const perfetto::EventContext& perfetto,
+                            const char* event_name,
+                            xcb_atom_t atom) {
+  auto* dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name(event_name);
+
+  // Quickest option is to look up the XCB atoms, which have static values.
+  const char* atom_str = xcb_atom_to_string(atom);
+  if (atom_str) {
+    dbg->set_string_value(atom_str, strlen(atom_str));
+    return;
   }
+
+  // Failing that, check if we've fetched this atom.
+  for (unsigned i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
+    if (atom == ctx->atoms[i].value) {
+      const char* name = sl_context_atom_name(i);
+      if (name != nullptr) {
+        dbg->set_string_value(name, strlen(name));
+        return;
+      }
+    }
+  }
+
+  // If we reach here, we didn't find the atom name.
+  // We could ask the X server but that would require a round-trip.
+  std::string unknown("<unknown atom #");
+  unknown += std::to_string(atom);
+  unknown += '>';
+  dbg->set_string_value(unknown);
 }
 
 void perfetto_annotate_xcb_property_state(const perfetto::EventContext& event,
@@ -250,6 +277,148 @@ void perfetto_annotate_xcb_property_state(const perfetto::EventContext& event,
     static const std::string unknown("<unknown>");
     dbg->set_string_value(unknown);
   }
+}
+
+// Annotate the given Perfetto EventContext with the name (if known) and the ID
+// of the given window.
+//
+// Slow (iterates a linked list); only intended to be called if tracing is
+// enabled.
+void perfetto_annotate_window(struct sl_context* ctx,
+                              const perfetto::EventContext& perfetto,
+                              const char* event_name,
+                              xcb_window_t window_id) {
+  auto* dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name(event_name);
+  struct sl_window* window = sl_lookup_window(ctx, window_id);
+  std::ostringstream value;
+  if (window != NULL && window->name != NULL) {
+    value << window->name << " <window #";
+  } else {
+    value << "<unknown window #";
+  }
+  // Always append the ID so we can track windows across their lifecycle.
+  value << window_id << '>';
+  dbg->set_string_value(value.str());
+}
+
+void perfetto_annotate_size_hints(const perfetto::EventContext& perfetto,
+                                  const sl_wm_size_hints& size_hints) {
+  auto* dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.flags");
+  std::string flags;
+  if (size_hints.flags & US_POSITION)
+    flags += "US_POSITION|";
+  if (size_hints.flags & US_SIZE)
+    flags += "US_SIZE|";
+  if (size_hints.flags & P_POSITION)
+    flags += "P_POSITION|";
+  if (size_hints.flags & P_SIZE)
+    flags += "P_SIZE|";
+  if (size_hints.flags & P_MIN_SIZE)
+    flags += "P_MIN_SIZE|";
+  if (size_hints.flags & P_MAX_SIZE)
+    flags += "P_MAX_SIZE|";
+  if (size_hints.flags & P_RESIZE_INC)
+    flags += "P_RESIZE_INC|";
+  if (size_hints.flags & P_ASPECT)
+    flags += "P_ASPECT|";
+  if (size_hints.flags & P_BASE_SIZE)
+    flags += "P_BASE_SIZE|";
+  if (size_hints.flags & P_WIN_GRAVITY)
+    flags += "P_WIN_GRAVITY|";
+  if (!flags.empty())
+    flags.pop_back();  // remove trailing '|'
+  dbg->set_string_value(flags);
+
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.x");
+  dbg->set_int_value(size_hints.x);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.y");
+  dbg->set_int_value(size_hints.y);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.width");
+  dbg->set_int_value(size_hints.width);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.height");
+  dbg->set_int_value(size_hints.height);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.min_width");
+  dbg->set_int_value(size_hints.min_width);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.min_height");
+  dbg->set_int_value(size_hints.min_height);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.max_width");
+  dbg->set_int_value(size_hints.max_width);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.max_height");
+  dbg->set_int_value(size_hints.max_height);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.width_inc");
+  dbg->set_int_value(size_hints.width_inc);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.height_inc");
+  dbg->set_int_value(size_hints.height_inc);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.min_aspect.x");
+  dbg->set_int_value(size_hints.min_aspect.x);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.min_aspect.y");
+  dbg->set_int_value(size_hints.min_aspect.y);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.max_aspect.x");
+  dbg->set_int_value(size_hints.max_aspect.x);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.max_aspect.y");
+  dbg->set_int_value(size_hints.max_aspect.y);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.base_width");
+  dbg->set_int_value(size_hints.base_width);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.base_height");
+  dbg->set_int_value(size_hints.base_height);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("size_hints.win_gravity");
+  dbg->set_int_value(size_hints.win_gravity);
+}
+
+// Add a Perfetto annotation for an X property storing a list of cardinals.
+void perfetto_annotate_cardinal_list(const perfetto::EventContext& perfetto,
+                                     const char* event_name,
+                                     xcb_get_property_reply_t* reply) {
+  auto* dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name(event_name);
+
+  if (reply == nullptr) {
+    static const std::string null_str("<null>");
+    dbg->set_string_value(null_str);
+    return;
+  }
+
+  uint32_t length = xcb_get_property_value_length(reply);
+  if (length % sizeof(uint32_t) != 0) {
+    static const std::string invalid("<invalid>");
+    dbg->set_string_value(invalid);
+    return;
+  }
+
+  uint32_t* val = static_cast<uint32_t*>(xcb_get_property_value(reply));
+  uint32_t items = length / sizeof(uint32_t);
+  if (items == 0) {
+    static const std::string empty("<empty>");
+    dbg->set_string_value(empty);
+    return;
+  }
+
+  std::ostringstream str;
+  str << '[' << val[0];
+  for (uint32_t i = 1; i < items; ++i) {
+    str << ", " << val[i];
+  }
+  str << ']';
+  dbg->set_string_value(str.str());
 }
 
 #else

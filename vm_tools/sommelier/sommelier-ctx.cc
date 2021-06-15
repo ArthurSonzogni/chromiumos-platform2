@@ -82,6 +82,8 @@ const char* sl_context_atom_name(int atom_enum) {
       return "_WL_SELECTION";
     case ATOM_GTK_THEME_VARIANT:
       return "_GTK_THEME_VARIANT";
+    case ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS:
+      return "_XWAYLAND_RANDR_EMU_MONITOR_RECTS";
   }
   return NULL;
 }
