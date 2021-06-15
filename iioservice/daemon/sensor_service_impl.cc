@@ -224,7 +224,7 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
   std::vector<cros::mojom::DeviceType> types;
   for (int32_t i = static_cast<int32_t>(cros::mojom::DeviceType::ACCEL);
-       i < static_cast<int32_t>(cros::mojom::DeviceType::MAX); ++i) {
+       i <= static_cast<int32_t>(cros::mojom::DeviceType::kMaxValue); ++i) {
     auto type = static_cast<cros::mojom::DeviceType>(i);
     if (DeviceHasType(device, type))
       types.push_back(type);
