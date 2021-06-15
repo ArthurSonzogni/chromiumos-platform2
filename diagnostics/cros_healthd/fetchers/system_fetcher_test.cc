@@ -86,13 +86,13 @@ class SystemUtilsTest : public BaseFileTest {
     mock_context_.fake_system_config()->SetProductName(
         system_info->product_name.value());
 
-    SetMockFile({kRelativeDmiInfoPath, kBiosVersionFileName},
+    SetMockFile({kRelativePathDmiInfo, kFileNameBiosVersion},
                 system_info->bios_version);
-    SetMockFile({kRelativeDmiInfoPath, kBoardNameFileName},
+    SetMockFile({kRelativePathDmiInfo, kFileNameBoardName},
                 system_info->board_name);
-    SetMockFile({kRelativeDmiInfoPath, kBoardVersionFileName},
+    SetMockFile({kRelativePathDmiInfo, kFileNameBoardVersion},
                 system_info->board_version);
-    SetMockFile({kRelativeDmiInfoPath, kChassisTypeFileName},
+    SetMockFile({kRelativePathDmiInfo, kFileNameChassisType},
                 system_info->chassis_type);
     SetOsVersion(system_info->os_version);
   }
@@ -214,15 +214,15 @@ TEST_F(SystemUtilsTest, TestNoProductModelName) {
   ExpectFetchSystemInfo();
 }
 
-// Test that no DMI fields are populated when |kRelativeDmiInfoPath| doesn't
+// Test that no DMI fields are populated when |kRelativePathDmiInfo| doesn't
 // exist.
 TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
   expected_system_info_->bios_version = base::nullopt;
   expected_system_info_->board_name = base::nullopt;
   expected_system_info_->board_version = base::nullopt;
   expected_system_info_->chassis_type = nullptr;
-  // Delete the whole directory |kRelativeDmiInfoPath|.
-  UnsetPath(kRelativeDmiInfoPath);
+  // Delete the whole directory |kRelativePathDmiInfo|.
+  UnsetPath(kRelativePathDmiInfo);
   ExpectFetchSystemInfo();
 }
 
@@ -260,7 +260,7 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
   // Overwrite the contents of |kChassisTypeFileName| with a chassis_type value
   // that cannot be parsed into an unsigned integer.
   std::string bad_chassis_type = "bad chassis type";
-  SetMockFile({kRelativeDmiInfoPath, kChassisTypeFileName}, bad_chassis_type);
+  SetMockFile({kRelativePathDmiInfo, kFileNameChassisType}, bad_chassis_type);
   ExpectFetchProbeError(mojo_ipc::ErrorType::kParseError);
 }
 

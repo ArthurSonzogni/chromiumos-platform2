@@ -543,6 +543,35 @@ struct VpdInfo {
   string? model_name;
 };
 
+// DMI (a.k.a. SMBIOS) is only supported on x86 platform. These info can be used
+// to identify the hardware.
+struct DmiInfo {
+  // The BIOS vendor.
+  string? bios_vendor;
+  // The BIOS version.
+  string? bios_version;
+  // The product name of the motherboard.
+  string? board_name;
+  // The vendor of the motherboard.
+  string? board_vender;
+  // The version of the motherboard.
+  string? board_version;
+  // The vendor of the chassis.
+  string? chassis_vendor;
+  // The chassis type of the device. The values reported by chassis type are
+  // mapped in
+  // www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.0.0.pdf.
+  NullableUint64? chassis_type;
+  // The product family name.
+  string? product_family;
+  // The product name (model) of the system.
+  string? product_name;
+  // The product version.
+  string? product_version;
+  // The system vendor name.
+  string? sys_vendor;
+};
+
 // Network probe result. Can either be populated with the NetworkHealthSnapshot
 // or an error retrieving the information.
 union NetworkResult {

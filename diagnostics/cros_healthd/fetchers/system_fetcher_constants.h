@@ -19,6 +19,22 @@ inline constexpr char kFileNameRegion[] = "region";
 inline constexpr char kFileNameSerialNumber[] = "serial_number";
 inline constexpr char kFileNameSkuNumber[] = "sku_number";
 
+// Relative path to DMI information.
+inline constexpr char kRelativePathDmiInfo[] = "sys/class/dmi/id";
+
+// Files related to DMI information.
+inline constexpr char kFileNameBiosVendor[] = "bios_vendor";
+inline constexpr char kFileNameBiosVersion[] = "bios_version";
+inline constexpr char kFileNameBoardName[] = "board_name";
+inline constexpr char kFileNameBoardVendor[] = "board_vendor";
+inline constexpr char kFileNameBoardVersion[] = "board_version";
+inline constexpr char kFileNameChassisType[] = "chassis_type";
+inline constexpr char kFileNameChassisVendor[] = "chassis_vendor";
+inline constexpr char kFileNameProductFamily[] = "product_family";
+inline constexpr char kFileNameProductName[] = "product_name";
+inline constexpr char kFileNameProductVersion[] = "product_version";
+inline constexpr char kFileNameSysVendor[] = "sys_vendor";
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_FETCHERS_SYSTEM_FETCHER_CONSTANTS_H_

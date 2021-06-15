@@ -22,13 +22,6 @@
 
 namespace diagnostics {
 
-constexpr char kRelativeDmiInfoPath[] = "sys/class/dmi/id";
-
-constexpr char kBiosVersionFileName[] = "bios_version";
-constexpr char kBoardNameFileName[] = "board_name";
-constexpr char kBoardVersionFileName[] = "board_version";
-constexpr char kChassisTypeFileName[] = "chassis_type";
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -38,43 +31,48 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 // result, a missing DMI file does not indicate a ProbeError. A ProbeError is
 // reported when the "chassis_type" field cannot be successfully parsed into an
 // unsigned integer.
-base::Optional<mojo_ipc::ProbeErrorPtr> FetchDmiInfo(
-    const base::FilePath& root_dir, mojo_ipc::SystemInfo* output_info) {
-  const base::FilePath& relative_dmi_info_path =
-      root_dir.Append(kRelativeDmiInfoPath);
-  std::string bios_version;
-  if (ReadAndTrimString(relative_dmi_info_path, kBiosVersionFileName,
-                        &bios_version)) {
-    output_info->bios_version = bios_version;
+bool FetchDmiInfo(const base::FilePath& root_dir,
+                  mojo_ipc::DmiInfoPtr* out_dmi_info,
+                  mojo_ipc::ProbeErrorPtr* out_error) {
+  const auto& dmi_path = root_dir.Append(kRelativePathDmiInfo);
+  // If dmi path doesn't exist, the device doesn't support dmi at all. It is
+  // considered as successful.
+  if (!base::DirectoryExists(dmi_path)) {
+    *out_dmi_info = nullptr;
+    return true;
   }
 
-  std::string board_name;
-  if (ReadAndTrimString(relative_dmi_info_path, kBoardNameFileName,
-                        &board_name)) {
-    output_info->board_name = board_name;
-  }
-
-  std::string board_version;
-  if (ReadAndTrimString(relative_dmi_info_path, kBoardVersionFileName,
-                        &board_version)) {
-    output_info->board_version = board_version;
-  }
+  auto dmi_info = mojo_ipc::DmiInfo::New();
+  ReadAndTrimString(dmi_path, kFileNameBiosVendor, &dmi_info->bios_vendor);
+  ReadAndTrimString(dmi_path, kFileNameBiosVersion, &dmi_info->bios_version);
+  ReadAndTrimString(dmi_path, kFileNameBoardName, &dmi_info->board_name);
+  ReadAndTrimString(dmi_path, kFileNameBoardVendor, &dmi_info->board_vender);
+  ReadAndTrimString(dmi_path, kFileNameBoardVersion, &dmi_info->board_version);
+  ReadAndTrimString(dmi_path, kFileNameChassisVendor,
+                    &dmi_info->chassis_vendor);
+  ReadAndTrimString(dmi_path, kFileNameProductFamily,
+                    &dmi_info->product_family);
+  ReadAndTrimString(dmi_path, kFileNameProductName, &dmi_info->product_name);
+  ReadAndTrimString(dmi_path, kFileNameProductVersion,
+                    &dmi_info->product_version);
+  ReadAndTrimString(dmi_path, kFileNameSysVendor, &dmi_info->sys_vendor);
 
   std::string chassis_type_str;
-  if (ReadAndTrimString(relative_dmi_info_path, kChassisTypeFileName,
-                        &chassis_type_str)) {
+  if (ReadAndTrimString(dmi_path, kFileNameChassisType, &chassis_type_str)) {
     uint64_t chassis_type;
     if (base::StringToUint64(chassis_type_str, &chassis_type)) {
-      output_info->chassis_type = mojo_ipc::NullableUint64::New(chassis_type);
+      dmi_info->chassis_type = mojo_ipc::NullableUint64::New(chassis_type);
     } else {
-      return CreateAndLogProbeError(
+      *out_error = CreateAndLogProbeError(
           mojo_ipc::ErrorType::kParseError,
           base::StringPrintf("Failed to convert chassis_type: %s",
                              chassis_type_str.c_str()));
+      return false;
     }
   }
 
-  return base::nullopt;
+  *out_dmi_info = std::move(dmi_info);
+  return true;
 }
 
 bool FetchCachedVpdInfo(const base::FilePath& root_dir,
@@ -166,8 +164,10 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
   mojo_ipc::ProbeErrorPtr error;
 
   mojo_ipc::VpdInfoPtr vpd_info;
+  mojo_ipc::DmiInfoPtr dmi_info;
   if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
-                          &vpd_info, &error)) {
+                          &vpd_info, &error) ||
+      !FetchDmiInfo(root_dir, &dmi_info, &error)) {
     return mojo_ipc::SystemResult::NewError(std::move(error));
   }
 
@@ -178,13 +178,16 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
     system_info->product_serial_number = vpd_info->serial_number;
     system_info->product_model_name = vpd_info->model_name;
   }
+  if (dmi_info) {
+    system_info->bios_version = dmi_info->bios_version;
+    system_info->board_name = dmi_info->board_name;
+    system_info->board_version = dmi_info->board_version;
+    system_info->chassis_type = dmi_info->chassis_type.Clone();
+  }
 
   base::Optional<mojo_ipc::ProbeErrorPtr> error_opt;
 
   FetchMasterConfigInfo(system_info.get());
-  error_opt = FetchDmiInfo(context_->root_dir(), system_info.get());
-  if (error_opt.has_value())
-    return mojo_ipc::SystemResult::NewError(std::move(error_opt.value()));
 
   system_info->os_version = mojo_ipc::OsVersion::New();
   error_opt = FetchOsVersion(system_info->os_version.get());

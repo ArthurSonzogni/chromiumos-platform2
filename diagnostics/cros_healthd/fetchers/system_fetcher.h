@@ -13,15 +13,6 @@
 
 namespace diagnostics {
 
-// Relative path to DMI information.
-extern const char kRelativeDmiInfoPath[];
-
-// Files related to DMI information.
-extern const char kBiosVersionFileName[];
-extern const char kBoardNameFileName[];
-extern const char kBoardVersionFileName[];
-extern const char kChassisTypeFileName[];
-
 class SystemFetcher final : public BaseFetcher {
  public:
   using BaseFetcher::BaseFetcher;

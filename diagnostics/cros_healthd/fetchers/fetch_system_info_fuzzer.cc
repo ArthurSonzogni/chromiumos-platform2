@@ -33,6 +33,18 @@ const std::vector<std::pair<std::string, std::string>> kFiles{
     {kRelativePathVpdRo, kFileNameRegion},
     {kRelativePathVpdRo, kFileNameSerialNumber},
     {kRelativePathVpdRo, kFileNameSkuNumber},
+    // DMI files
+    {kRelativePathDmiInfo, kFileNameBiosVendor},
+    {kRelativePathDmiInfo, kFileNameBiosVersion},
+    {kRelativePathDmiInfo, kFileNameBoardName},
+    {kRelativePathDmiInfo, kFileNameBoardVendor},
+    {kRelativePathDmiInfo, kFileNameBoardVersion},
+    {kRelativePathDmiInfo, kFileNameChassisType},
+    {kRelativePathDmiInfo, kFileNameChassisVendor},
+    {kRelativePathDmiInfo, kFileNameProductFamily},
+    {kRelativePathDmiInfo, kFileNameProductName},
+    {kRelativePathDmiInfo, kFileNameProductVersion},
+    {kRelativePathDmiInfo, kFileNameSysVendor},
 };
 
 void SetUpSystemFiles(const base::FilePath& root_dir,
@@ -41,20 +53,6 @@ void SetUpSystemFiles(const base::FilePath& root_dir,
     CHECK(WriteFileAndCreateParentDirs(root_dir.Append(dir).Append(file),
                                        provider->ConsumeRandomLengthString()));
   }
-  // Populate fake DMI values.
-  base::FilePath relative_dmi_info_path = root_dir.Append(kRelativeDmiInfoPath);
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_dmi_info_path.Append(kBiosVersionFileName),
-      provider->ConsumeRandomLengthString()));
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_dmi_info_path.Append(kBoardNameFileName),
-      provider->ConsumeRandomLengthString()));
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_dmi_info_path.Append(kBoardVersionFileName),
-      provider->ConsumeRandomLengthString()));
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_dmi_info_path.Append(kChassisTypeFileName),
-      provider->ConsumeRandomLengthString()));
 }
 
 }  // namespace
