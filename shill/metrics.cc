@@ -274,6 +274,8 @@ const uint16_t Metrics::kWiFiFrequency5500 = 5500;
 const uint16_t Metrics::kWiFiFrequency5700 = 5700;
 const uint16_t Metrics::kWiFiFrequency5745 = 5745;
 const uint16_t Metrics::kWiFiFrequency5825 = 5825;
+const uint16_t Metrics::kWiFiFrequency5955 = 5955;
+const uint16_t Metrics::kWiFiFrequency7115 = 7115;
 
 // static
 const char Metrics::kMetricPowerManagerKey[] = "metrics";
@@ -528,6 +530,12 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
       channel = static_cast<WiFiChannel>(kWiFiChannel5745 +
                                          (frequency - kWiFiFrequency5745) /
                                              kWiFiBandwidth20MHz);
+  } else if (kWiFiFrequency5955 <= frequency &&
+             frequency <= kWiFiFrequency7115) {
+    if (((frequency - kWiFiFrequency5955) % kWiFiBandwidth20MHz) == 0)
+      channel = static_cast<WiFiChannel>(kWiFiChannel5955 +
+                                         (frequency - kWiFiFrequency5955) /
+                                             kWiFiBandwidth20MHz);
   }
   CHECK(kWiFiChannelUndef <= channel && channel < kWiFiChannelMax);
 
@@ -547,6 +555,8 @@ Metrics::WiFiFrequencyRange Metrics::WiFiChannelToFrequencyRange(
     return kWiFiFrequencyRange24;
   } else if (channel >= kWiFiChannelMin5 && channel <= kWiFiChannelMax5) {
     return kWiFiFrequencyRange5;
+  } else if (channel >= kWiFiChannelMin6 && channel <= kWiFiChannelMax6) {
+    return kWiFiFrequencyRange6;
   } else {
     return kWiFiFrequencyRangeUndef;
   }

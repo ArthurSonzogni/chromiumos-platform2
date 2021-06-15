@@ -289,6 +289,10 @@ TEST_F(MetricsTest, FrequencyToChannel) {
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(5746));
   EXPECT_EQ(Metrics::kWiFiChannel5825, metrics_.WiFiFrequencyToChannel(5825));
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(5826));
+  EXPECT_EQ(Metrics::kWiFiChannel5955, metrics_.WiFiFrequencyToChannel(5955));
+  EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(5956));
+  EXPECT_EQ(Metrics::kWiFiChannel7115, metrics_.WiFiFrequencyToChannel(7115));
+  EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(7116));
 }
 
 TEST_F(MetricsTest, ChannelToFrequencyRange) {
@@ -298,6 +302,8 @@ TEST_F(MetricsTest, ChannelToFrequencyRange) {
             metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannel2484));
   EXPECT_EQ(Metrics::kWiFiFrequencyRange5,
             metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannel5620));
+  EXPECT_EQ(Metrics::kWiFiFrequencyRange6,
+            metrics_.WiFiChannelToFrequencyRange(Metrics::kWiFiChannel6255));
 }
 
 TEST_F(MetricsTest, TimeOnlineTimeToDrop) {

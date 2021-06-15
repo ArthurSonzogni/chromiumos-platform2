@@ -84,6 +84,68 @@ class Metrics : public DefaultServiceObserver {
     kWiFiChannel5230 = 42,
     kWiFiChannelMax5 = kWiFiChannel5230,
 
+    kWiFiChannel5955 = 43,
+    kWiFiChannelMin6 = kWiFiChannel5955,
+    kWiFiChannel5975 = 44,
+    kWiFiChannel5995 = 45,
+    kWiFiChannel6015 = 46,
+    kWiFiChannel6035 = 47,
+    kWiFiChannel6055 = 48,
+    kWiFiChannel6075 = 49,
+    kWiFiChannel6095 = 50,
+    kWiFiChannel6115 = 51,
+    kWiFiChannel6135 = 52,
+    kWiFiChannel6155 = 53,
+    kWiFiChannel6175 = 54,
+    kWiFiChannel6195 = 55,
+    kWiFiChannel6215 = 56,
+    kWiFiChannel6235 = 57,
+    kWiFiChannel6255 = 58,
+    kWiFiChannel6275 = 59,
+    kWiFiChannel6295 = 60,
+    kWiFiChannel6315 = 61,
+    kWiFiChannel6335 = 62,
+    kWiFiChannel6355 = 63,
+    kWiFiChannel6375 = 64,
+    kWiFiChannel6395 = 65,
+    kWiFiChannel6415 = 66,
+    kWiFiChannel6435 = 67,
+    kWiFiChannel6455 = 68,
+    kWiFiChannel6475 = 69,
+    kWiFiChannel6495 = 70,
+    kWiFiChannel6515 = 71,
+    kWiFiChannel6535 = 72,
+    kWiFiChannel6555 = 73,
+    kWiFiChannel6575 = 74,
+    kWiFiChannel6595 = 75,
+    kWiFiChannel6615 = 76,
+    kWiFiChannel6635 = 77,
+    kWiFiChannel6655 = 78,
+    kWiFiChannel6675 = 79,
+    kWiFiChannel6695 = 80,
+    kWiFiChannel6715 = 81,
+    kWiFiChannel6735 = 82,
+    kWiFiChannel6755 = 83,
+    kWiFiChannel6775 = 84,
+    kWiFiChannel6795 = 85,
+    kWiFiChannel6815 = 86,
+    kWiFiChannel6835 = 87,
+    kWiFiChannel6855 = 88,
+    kWiFiChannel6875 = 89,
+    kWiFiChannel6895 = 90,
+    kWiFiChannel6915 = 91,
+    kWiFiChannel6935 = 92,
+    kWiFiChannel6955 = 93,
+    kWiFiChannel6975 = 94,
+    kWiFiChannel6995 = 95,
+    kWiFiChannel7015 = 96,
+    kWiFiChannel7035 = 97,
+    kWiFiChannel7055 = 98,
+    kWiFiChannel7075 = 99,
+    kWiFiChannel7095 = 100,
+    kWiFiChannel7115 = 101,
+    kWiFiChannelMax6 = kWiFiChannel7115,
+
     /* NB: ignore old 11b bands 2312..2372 and 2512..2532 */
     /* NB: ignore regulated bands 4920..4980 and 5020..5160 */
     kWiFiChannelMax
@@ -93,6 +155,7 @@ class Metrics : public DefaultServiceObserver {
     kWiFiFrequencyRangeUndef = 0,
     kWiFiFrequencyRange24 = 1,
     kWiFiFrequencyRange5 = 2,
+    kWiFiFrequencyRange6 = 3,
 
     kWiFiFrequencyRangeMax
   };
@@ -1301,6 +1364,8 @@ class Metrics : public DefaultServiceObserver {
   static const uint16_t kWiFiFrequency5700;
   static const uint16_t kWiFiFrequency5745;
   static const uint16_t kWiFiFrequency5825;
+  static const uint16_t kWiFiFrequency5955;
+  static const uint16_t kWiFiFrequency7115;
 
   void InitializeCommonServiceMetrics(const Service& service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics* service_metrics,
