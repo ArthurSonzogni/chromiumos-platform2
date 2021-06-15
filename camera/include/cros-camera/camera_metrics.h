@@ -18,6 +18,20 @@ enum class JpegProcessType { kDecode, kEncode };
 
 enum class JpegProcessMethod { kHardware, kSoftware };
 
+enum class FaceAeFunction {
+  // Doesn't support ROI control.
+  kUnsupported,
+  // Supports ROI control, but doesn't enable face AE.
+  kNotEnabled,
+  // Supports ROI control and enabled face AE.
+  kEnabled,
+  // Supports ROI control and enabled face AE from app, but forcedly disabled by
+  // user.
+  kForceDisabled,
+  // For SendEnumToUMA() usage.
+  kMaxValue = kForceDisabled,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -57,6 +71,12 @@ class CROS_CAMERA_EXPORT CameraMetrics {
 
   // Records the duration of the closing session.
   virtual void SendSessionDuration(base::TimeDelta duration) = 0;
+
+  // Records the face AE function.
+  virtual void SendFaceAeFunction(FaceAeFunction function) = 0;
+
+  // Records the max number of detected faces in a camera session
+  virtual void SendFaceAeMaxDetectedFaces(int number) = 0;
 };
 
 }  // namespace cros

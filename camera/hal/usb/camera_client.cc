@@ -47,7 +47,8 @@ CameraClient::CameraClient(int id,
       static_metadata_(clone_camera_metadata(&static_metadata)),
       device_(new V4L2CameraDevice(device_info, privacy_switch_monitor)),
       callback_ops_(nullptr),
-      request_thread_("Capture request thread") {
+      request_thread_("Capture request thread"),
+      camera_metrics_(CameraMetrics::New()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
   camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_5;
@@ -107,6 +108,10 @@ int CameraClient::CloseDevice() {
   VLOGFID(1, id_);
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
+  if (device_info_.enable_face_detection) {
+    camera_metrics_->SendFaceAeMaxDetectedFaces(
+        request_handler_->GetMaxNumDetectedFaces());
+  }
   StreamOff();
   device_->Disconnect();
   return 0;
@@ -540,7 +545,8 @@ CameraClient::RequestHandler::RequestHandler(
       current_buffer_timestamp_in_v4l2_(0),
       current_buffer_timestamp_in_user_(0),
       flush_started_(false),
-      is_video_recording_(false) {
+      is_video_recording_(false),
+      max_num_detected_faces_(0) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ =
@@ -761,6 +767,10 @@ void CameraClient::RequestHandler::HandleFlush(
                                     base::Unretained(this), callback));
 }
 
+int CameraClient::RequestHandler::GetMaxNumDetectedFaces() {
+  return max_num_detected_faces_;
+}
+
 void CameraClient::RequestHandler::DiscardOutdatedBuffers() {
   int filled_count = 0;
   for (size_t i = 0; i < input_buffers_.size(); i++) {
@@ -943,6 +953,8 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
     EnqueueV4L2Buffer();
     return ret;
   }
+  max_num_detected_faces_ =
+      std::max(max_num_detected_faces_, detected_faces_.size());
 
   for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
     camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(

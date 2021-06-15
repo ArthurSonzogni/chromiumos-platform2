@@ -66,6 +66,12 @@ constexpr base::TimeDelta kMaxCameraSessionDuration =
     base::TimeDelta::FromDays(1);
 constexpr int kBucketCameraSessionDuration = 100;
 
+constexpr char kCameraFaceAeFunction[] = "ChromeOS.Camera.FaceAe.Function";
+// max number of faces detected times in a camera session
+constexpr char kCameraFaceAeMaxDetectedFaces[] =
+    "ChromeOS.Camera.FaceAe.MaxDetectedFaces";
+constexpr int kMaxNumFaces = 10;
+
 }  // namespace
 
 // static
@@ -178,6 +184,18 @@ void CameraMetricsImpl::SendSessionDuration(base::TimeDelta duration) {
                           kMinCameraSessionDuration.InSeconds(),
                           kMaxCameraSessionDuration.InSeconds(),
                           kBucketCameraSessionDuration);
+}
+
+void CameraMetricsImpl::SendFaceAeFunction(FaceAeFunction function) {
+  metrics_lib_->SendEnumToUMA(kCameraFaceAeFunction, function);
+}
+
+void CameraMetricsImpl::SendFaceAeMaxDetectedFaces(int number) {
+  if (number > kMaxNumFaces) {
+    number = kMaxNumFaces;
+  }
+  metrics_lib_->SendEnumToUMA(kCameraFaceAeMaxDetectedFaces, number,
+                              kMaxNumFaces + 1);
 }
 
 }  // namespace cros

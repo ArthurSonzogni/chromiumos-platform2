@@ -17,6 +17,7 @@
 #include <base/threading/thread_checker.h>
 #include <hardware/camera_common.h>
 
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/future.h"
@@ -133,6 +134,9 @@ class CameraHal : public UdevWatcher::Observer {
 
   // Mojo manager token which is used for Mojo communication.
   CameraMojoChannelManagerToken* mojo_manager_token_;
+
+  // Metrics that used to record face ae metrics.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 };
 
 // Callback for camera_device.common.close().

@@ -231,7 +231,8 @@ std::string GetModelId(const DeviceInfo& info) {
 CameraHal::CameraHal()
     : task_runner_(nullptr),
       udev_watcher_(std::make_unique<UdevWatcher>(this, "video4linux")),
-      cros_device_config_(CrosDeviceConfig::Create()) {
+      cros_device_config_(CrosDeviceConfig::Create()),
+      camera_metrics_(CameraMetrics::New()) {
   thread_checker_.DetachFromThread();
 }
 
@@ -589,6 +590,18 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   info.region_of_interest_supported =
       V4L2CameraDevice::IsRegionOfInterestSupported(path, &roi_control);
 
+  if (info.region_of_interest_supported) {
+    if (!info.enable_face_detection) {
+      camera_metrics_->SendFaceAeFunction(FaceAeFunction::kNotEnabled);
+    } else if (base::PathExists(
+                   base::FilePath(constants::kForceDisableFaceAePath))) {
+      camera_metrics_->SendFaceAeFunction(FaceAeFunction::kForceDisabled);
+    } else {
+      camera_metrics_->SendFaceAeFunction(FaceAeFunction::kEnabled);
+    }
+  } else {
+    camera_metrics_->SendFaceAeFunction(FaceAeFunction::kUnsupported);
+  }
   // The force control path is managed by chrome flag, there should be only one
   // file.
   if (base::PathExists(base::FilePath(constants::kForceEnableFaceAePath))) {

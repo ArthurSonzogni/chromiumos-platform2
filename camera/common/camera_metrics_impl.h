@@ -41,6 +41,8 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendError(int error_code) override;
   void SendCameraFacing(int facing) override;
   void SendSessionDuration(base::TimeDelta duration) override;
+  void SendFaceAeFunction(FaceAeFunction function) override;
+  void SendFaceAeMaxDetectedFaces(int number) override;
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;

@@ -21,6 +21,7 @@
 #include <hardware/hardware.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/face_detector_client_cros_wrapper.h"
 #include "cros-camera/future.h"
 #include "hal/usb/cached_frame.h"
@@ -191,6 +192,9 @@ class CameraClient {
     // Handle flush request. This function can be called on any thread.
     void HandleFlush(const base::Callback<void(int)>& callback);
 
+    // Get the maximum number of detected faces.
+    int GetMaxNumDetectedFaces();
+
    private:
     // Start streaming implementation.
     int StreamOnImpl(Size stream_on_resolution,
@@ -328,6 +332,9 @@ class CameraClient {
 
     // Used to guard |flush_started_|.
     base::Lock flush_lock_;
+
+    // The maximum number of detected faces in the camera opening session.
+    size_t max_num_detected_faces_;
   };
 
   std::unique_ptr<RequestHandler> request_handler_;
@@ -337,6 +344,9 @@ class CameraClient {
 
   // Task runner for request thread.
   scoped_refptr<base::SingleThreadTaskRunner> request_task_runner_;
+
+  // Metrics that used to record face ae metrics.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 };
 
 }  // namespace cros
