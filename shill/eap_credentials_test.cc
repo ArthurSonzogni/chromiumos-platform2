@@ -532,6 +532,32 @@ TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
   }
 }
 
+TEST_F(EapCredentialsTest, GetPassword) {
+  const std::string kPassword("foo");
+  Error error;
+  EXPECT_TRUE(SetEapPassword(kPassword, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  std::string set_password = eap_.GetEapPassword(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kPassword, set_password);
+}
+
+TEST_F(EapCredentialsTest, GetEmptyPassword) {
+  Error error;
+  std::string set_password = eap_.GetEapPassword(&error);
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_TRUE(set_password.empty());
+}
+
+TEST_F(EapCredentialsTest, GetPasswordEmptyForLoginPassword) {
+  SetUseLoginPassword(true);
+  Error error;
+  std::string password = eap_.GetEapPassword(&error);
+  EXPECT_TRUE(password.empty());
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_TRUE(password.empty());
+}
+
 TEST_F(EapCredentialsTest, TestUseLoginPassword) {
   const std::string kPasswordStr("thepassword");
   SaveLoginPassword(kPasswordStr);

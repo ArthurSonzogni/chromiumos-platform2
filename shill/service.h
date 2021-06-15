@@ -488,6 +488,7 @@ class Service : public base::RefCounted<Service> {
   mockable const EapCredentials* eap() const { return eap_.get(); }
   void SetEapCredentials(EapCredentials* eap);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  std::string GetEapPassphrase(Error* error);
 
   bool save_credentials() const { return save_credentials_; }
   void set_save_credentials(bool save) { save_credentials_ = save; }

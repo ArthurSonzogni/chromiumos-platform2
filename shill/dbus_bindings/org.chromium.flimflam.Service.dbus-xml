@@ -33,6 +33,9 @@
 		<method name="GetWiFiPassphrase">
 			<arg type="s" direction="out"/>
 		</method>
+		<method name="GetEapPassphrase">
+			<arg type="s" direction="out"/>
+		</method>
 		<method name="RequestTrafficCounters">
 			<arg type="aa{sv}" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

@@ -21,6 +21,7 @@
 #include <libpasswordprovider/password_provider.h>
 
 #include "shill/certificate_file.h"
+#include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
@@ -543,6 +544,15 @@ EapCredentials::TranslateSubjectAlternativeNameMatch(
     entries.push_back(translated_entry);
   }
   return base::JoinString(entries, ";");
+}
+
+std::string EapCredentials::GetEapPassword(Error* error) const {
+  if (use_login_password_ || password_.empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "EAP config has no password.");
+    return std::string();
+  }
+  return password_;
 }
 
 }  // namespace shill

@@ -201,6 +201,20 @@ bool ServiceDBusAdaptor::GetWiFiPassphrase(brillo::ErrorPtr* error,
   return true;
 }
 
+bool ServiceDBusAdaptor::GetEapPassphrase(brillo::ErrorPtr* error,
+                                          std::string* out_passphrase) {
+  SLOG(this, 2) << __func__;
+
+  Error e;
+  const auto passphrase = service_->GetEapPassphrase(&e);
+  if (!e.IsSuccess()) {
+    return !e.ToChromeosError(error);
+  }
+
+  *out_passphrase = passphrase;
+  return true;
+}
+
 void ServiceDBusAdaptor::RequestTrafficCounters(
     DBusMethodResponsePtr<VariantDictionaries> response) {
   SLOG(this, 2) << __func__;

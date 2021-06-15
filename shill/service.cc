@@ -1111,6 +1111,17 @@ void Service::SetEapCredentials(EapCredentials* eap) {
 }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
+std::string Service::GetEapPassphrase(Error* error) {
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  if (eap()) {
+    return eap()->GetEapPassword(error);
+  }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                        "Cannot retrieve EAP passphrase from non-EAP network.");
+  return std::string();
+}
+
 bool Service::HasStaticIPAddress() const {
   return static_ip_parameters().ContainsAddress();
 }

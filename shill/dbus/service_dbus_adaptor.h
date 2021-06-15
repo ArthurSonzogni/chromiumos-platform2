@@ -77,6 +77,8 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::ServiceAdaptor,
       std::map<dbus::ObjectPath, std::string>* entries) override;
   bool GetWiFiPassphrase(brillo::ErrorPtr* error,
                          std::string* out_passphrase) override;
+  bool GetEapPassphrase(brillo::ErrorPtr* error,
+                        std::string* out_passphrase) override;
   void RequestTrafficCounters(
       DBusMethodResponsePtr<VariantDictionaries> response) override;
   bool ResetTrafficCounters(brillo::ErrorPtr* error) override;

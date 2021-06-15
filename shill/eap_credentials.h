@@ -89,6 +89,8 @@ class EapCredentials {
   static base::Optional<std::string> TranslateSubjectAlternativeNameMatch(
       const std::vector<std::string>& subject_alternative_name_match_list);
 
+  std::string GetEapPassword(Error* error) const;
+
   // Getters and setters.
   virtual const std::string& identity() const { return identity_; }
   void set_identity(const std::string& identity) { identity_ = identity; }

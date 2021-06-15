@@ -181,7 +181,19 @@ Methods		dict GetProperties()
 			called on a Service which is not WiFi, or if there is
 			no saved passphrase.  This is included as a separate
 			method instead of a property to help ensure that the
-			passpharse isn't accidentally leaked to the UI or
+			passphrase isn't accidentally leaked to the UI or
+			included in logs.
+
+			Possible Errors: [service].Error.NotSupported
+
+		string GetEapPassphrase()
+
+			Return the passphrase for a given EAP network if it
+			has one.  This will return a NotSupported error if
+			called on a Service which has no EAP config, or if there
+			is no saved passphrase.  This is included as a separate
+			method instead of a property to help ensure that the
+			passphrase isn't accidentally leaked to the UI or
 			included in logs.
 
 			Possible Errors: [service].Error.NotSupported

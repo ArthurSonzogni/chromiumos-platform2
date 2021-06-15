@@ -531,6 +531,24 @@ TEST_F(ServiceTest, LoadEap) {
   // has_ever_connected_ is unaffected when loading eap credentials.
   EXPECT_TRUE(service2_->has_ever_connected());
 }
+
+TEST_F(ServiceTest, GetEapPassphrase) {
+  std::string kPassword = "random-string";
+  auto* eap = new EapCredentials();
+  eap->set_password(kPassword);
+  service2_->SetEapCredentials(eap);
+
+  Error error;
+  std::string password = service2_->GetEapPassphrase(&error);
+  EXPECT_EQ(password, kPassword);
+}
+
+TEST_F(ServiceTest, GetEapPassphraseNonEap) {
+  Error error;
+  std::string password = service_->GetEapPassphrase(&error);
+  EXPECT_TRUE(password.empty());
+  EXPECT_FALSE(error.IsSuccess());
+}
 #endif
 
 TEST_F(ServiceTest, LoadFail) {

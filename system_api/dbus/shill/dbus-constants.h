@@ -47,6 +47,7 @@ const char kConnectFunction[] = "Connect";
 const char kDisconnectFunction[] = "Disconnect";
 const char kGetLoadableProfileEntriesFunction[] = "GetLoadableProfileEntries";
 const char kGetWiFiPassphraseFunction[] = "GetWiFiPassphrase";
+const char kGetEapPassphraseFunction[] = "GetEapPassphrase";
 const char kRemoveServiceFunction[] = "Remove";
 const char kRequestTrafficCountersFunction[] = "RequestTrafficCounters";
 const char kResetTrafficCountersFunction[] = "ResetTrafficCounters";
