@@ -18,7 +18,7 @@ allow cros_rootdev {
 allow cros_rootdev device:blk_file getattr;
 allow cros_rootdev sysfs:dir read;
 allow cros_rootdev sysfs:file read;
-allow cros_rootdev sysfs_dm:dir search;
+allow cros_rootdev sysfs_dm:dir r_dir_perms;
 allow cros_rootdev sysfs_dm:file read;
 allow cros_rootdev sysfs_loop:dir search;
 allow cros_rootdev sysfs_loop:file read;
