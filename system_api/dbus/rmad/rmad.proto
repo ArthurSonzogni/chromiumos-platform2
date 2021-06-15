@@ -149,50 +149,45 @@ message UpdateChromeState {
   UpdateState update = 1;
 }
 
-// Component data
-// TODO(gavindodd): Platform should query all components to check if they are
-// missing before they are selected as replacements.
-// This information can be displayed to the tech to validate expected hardware.
-message ComponentRepairState {
-  enum Component {
-    RMAD_COMPONENT_UNKNOWN = 0;
-    // runtime_probe supported components.
-    RMAD_COMPONENT_AUDIO_CODEC = 1;
-    RMAD_COMPONENT_BATTERY = 2;
-    RMAD_COMPONENT_STORAGE = 3;
-    RMAD_COMPONENT_VPD_CACHED = 4;
-    RMAD_COMPONENT_NETWORK = 5;  // Obsolete in M91.
-    RMAD_COMPONENT_CAMERA = 6;
-    RMAD_COMPONENT_STYLUS = 7;
-    RMAD_COMPONENT_TOUCHPAD = 8;
-    RMAD_COMPONENT_TOUCHSCREEN = 9;
-    RMAD_COMPONENT_DRAM = 10;
-    RMAD_COMPONENT_DISPLAY_PANEL = 11;
-    RMAD_COMPONENT_CELLULAR = 12;
-    RMAD_COMPONENT_ETHERNET = 13;
-    RMAD_COMPONENT_WIRELESS = 14;
-    // Reserved for additional runtime_probe supported components.
-    reserved 15 to 32;
-    // Mainboard rework is a special case.
-    RMAD_COMPONENT_MAINBOARD_REWORK = 33;
-    // Irrelevant components.
-    // TODO(chenghan): Do we really need these?
-    RMAD_COMPONENT_KEYBOARD = 34;
-    RMAD_COMPONENT_POWER_BUTTON = 35;
-  }
-  enum RepairState {
-    RMAD_REPAIR_UNKNOWN = 0;
-    RMAD_REPAIR_ORIGINAL = 1;
-    RMAD_REPAIR_REPLACED = 2;
-    RMAD_REPAIR_MISSING = 3;
-  }
-  Component name = 1;
-  RepairState repair_state = 2;
-}
-
 // Select components that have been repaired.
 message ComponentsRepairState {
-  repeated ComponentRepairState components = 1;
+  message ComponentRepairStatus {
+    enum Component {
+      RMAD_COMPONENT_UNKNOWN = 0;
+      // runtime_probe supported components.
+      RMAD_COMPONENT_AUDIO_CODEC = 1;
+      RMAD_COMPONENT_BATTERY = 2;
+      RMAD_COMPONENT_STORAGE = 3;
+      RMAD_COMPONENT_VPD_CACHED = 4;
+      RMAD_COMPONENT_NETWORK = 5;  // Obsolete in M91.
+      RMAD_COMPONENT_CAMERA = 6;
+      RMAD_COMPONENT_STYLUS = 7;
+      RMAD_COMPONENT_TOUCHPAD = 8;
+      RMAD_COMPONENT_TOUCHSCREEN = 9;
+      RMAD_COMPONENT_DRAM = 10;
+      RMAD_COMPONENT_DISPLAY_PANEL = 11;
+      RMAD_COMPONENT_CELLULAR = 12;
+      RMAD_COMPONENT_ETHERNET = 13;
+      RMAD_COMPONENT_WIRELESS = 14;
+      // Reserved for additional runtime_probe supported components.
+      reserved 15 to 32;
+      // Mainboard rework is a special case.
+      RMAD_COMPONENT_MAINBOARD_REWORK = 33;
+      // Irrelevant components.
+      // TODO(chenghan): Do we really need these?
+      RMAD_COMPONENT_KEYBOARD = 34;
+      RMAD_COMPONENT_POWER_BUTTON = 35;
+    }
+    enum RepairStatus {
+      RMAD_REPAIR_UNKNOWN = 0;
+      RMAD_REPAIR_ORIGINAL = 1;
+      RMAD_REPAIR_REPLACED = 2;
+      RMAD_REPAIR_MISSING = 3;
+    }
+    Component component = 1;
+    RepairStatus repair_status = 2;
+  }
+  repeated ComponentRepairStatus components = 1;
 }
 
 // Select whether the device is returning to original owner or being wiped for
