@@ -355,9 +355,10 @@ void DisplayAudioInfo(const AudioResultPtr& audio_result, const bool beauty) {
       "underruns",     "severe_underruns"};
   const std::vector<std::vector<std::string>> values = {
       {std::to_string(audio->output_mute), std::to_string(audio->input_mute),
-       audio->output_device_name, std::to_string(audio->output_volume),
-       audio->input_device_name, std::to_string(audio->input_gain),
-       std::to_string(audio->underruns),
+       "\"" + audio->output_device_name + "\"",
+       std::to_string(audio->output_volume),
+       "\"" + audio->input_device_name + "\"",
+       std::to_string(audio->input_gain), std::to_string(audio->underruns),
        std::to_string(audio->severe_underruns)}};
 
   OutputData(headers, values, beauty);
