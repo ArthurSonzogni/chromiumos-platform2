@@ -11,6 +11,7 @@
 #include "ml/request_metrics.h"
 
 #include <base/check.h>
+#include <brillo/message_loops/message_loop.h>
 
 namespace ml {
 namespace {
@@ -29,13 +30,15 @@ bool HandwritingRecognizerImpl::Create(
   auto recognizer_impl =
       new HandwritingRecognizerImpl(std::move(spec), std::move(receiver));
 
-  // Set the disconnection handler to strongly bind `recognizer_impl` to delete
-  // `recognizer_impl` when the connection is gone.
-  recognizer_impl->receiver_.set_disconnect_handler(base::Bind(
-      [](const HandwritingRecognizerImpl* const recognizer_impl) {
-        delete recognizer_impl;
-      },
-      base::Unretained(recognizer_impl)));
+  // Set the disconnection handler to quit the message loop (i.e. exit the
+  // process) when the connection is gone, because this model is always run in
+  // a dedicated process.
+  // base::Unretained is safe here because the caller does not outlive the
+  // message loop. HandwritingRecognizerImpl runs in its own worker process,
+  // and if the message loop quits, the disconnect handler is not run.
+  recognizer_impl->receiver_.set_disconnect_handler(
+      base::BindOnce(&brillo::MessageLoop::BreakLoop,
+                     base::Unretained(brillo::MessageLoop::current())));
 
   return recognizer_impl->successfully_loaded_;
 }

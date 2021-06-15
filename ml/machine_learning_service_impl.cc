@@ -319,10 +319,52 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
     mojo::PendingReceiver<
         chromeos::machine_learning::mojom::HandwritingRecognizer> receiver,
     LoadHandwritingModelCallback callback) {
+  constexpr bool is_handwriting_enabled =
+      ml::HandwritingLibrary::IsUseLibHandwritingEnabled();
+  constexpr bool is_language_packs_enabled =
+      ml::HandwritingLibrary::IsUseLanguagePacksEnabled();
+  constexpr bool is_handwriting_dlc_enabled =
+      ml::HandwritingLibrary::IsUseLibHandwritingDlcEnabled();
+
+  if (!is_handwriting_enabled && !is_language_packs_enabled &&
+      !is_handwriting_dlc_enabled) {
+    // If:
+    //  1) handwriting is not on rootfs and
+    //  2) handwriting is not in DLC and
+    //  3) language packs is not enabled
+    // then this function should not be called because the client side should
+    // also be guarded by the same flags.
+    LOG(ERROR) << "Clients should not call LoadHandwritingModel without "
+                  "Handwriting enabled.";
+    std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+    return;
+  }
+
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "HandwritingModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics has already been reported in `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+      brillo::MessageLoop::current()->BreakLoop();
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadHandwritingModel(std::move(spec), std::move(receiver),
+                               std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
+
   // TODO(claudiomagni): When Language Packs is complete, deprecate the first
   // case and only use Language Packs.
-  if (ml::HandwritingLibrary::IsUseLibHandwritingEnabled() ||
-      ml::HandwritingLibrary::IsUseLanguagePacksEnabled()) {
+  if (is_handwriting_enabled || is_language_packs_enabled) {
     LoadHandwritingLibAndRecognizer<HandwritingRecognizer>(
         std::move(spec), std::move(receiver), std::move(callback),
         ml::HandwritingLibrary::kHandwritingDefaultInstallDir);
@@ -331,7 +373,7 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
 
   // If handwriting is installed as DLC, get the dir and subsequently load it
   // from there.
-  if (ml::HandwritingLibrary::IsUseLibHandwritingDlcEnabled()) {
+  if (is_handwriting_dlc_enabled) {
     dlcservice_client_->GetDlcRootPath(
         "libhandwriting",
         base::BindOnce(&LoadHandwritingLibAndRecognizer<HandwritingRecognizer>,
@@ -340,11 +382,7 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
     return;
   }
 
-  // If handwriting is not on rootfs and not in DLC, this function should not
-  // be called.
-  LOG(ERROR) << "Calling LoadHandwritingModel without Handwriting enabled "
-                "should never happen.";
-  std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
+  NOTREACHED();
 }
 
 void MachineLearningServiceImpl::LoadHandwritingModelWithSpec(
@@ -536,17 +574,17 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
         chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>
         receiver,
     LoadWebPlatformHandwritingModelCallback callback) {
-  constexpr bool is_rootfs_enabled =
+  constexpr bool is_handwriting_enabled =
       ml::HandwritingLibrary::IsUseLibHandwritingEnabled();
-  constexpr bool is_dlc_enabled =
+  constexpr bool is_handwriting_dlc_enabled =
       ml::HandwritingLibrary::IsUseLibHandwritingDlcEnabled();
 
-  if (!is_rootfs_enabled && !is_dlc_enabled) {
+  if (!is_handwriting_enabled && !is_handwriting_dlc_enabled) {
     // If handwriting is not on rootfs and not in DLC, this function should not
     // be called because the client side should also be guarded by the same
     // flags.
-    LOG(ERROR) << "Calling LoadWebPlatformHandwritingModel without Handwriting "
-                  "enabled should never happen.";
+    LOG(ERROR) << "Clients should not call LoadHandwritingModel without "
+                  "Handwriting enabled.";
     std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
     return;
   }
@@ -575,7 +613,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
   DCHECK(Process::GetInstance()->IsWorkerProcess());
 
   // If handwriting is installed on rootfs, load it from there.
-  if (is_rootfs_enabled) {
+  if (is_handwriting_enabled) {
     LoadHandwritingLibAndRecognizer<
         chromeos::machine_learning::web_platform::mojom::HandwritingRecognizer>(
         std::move(constraint), std::move(receiver), std::move(callback),
@@ -585,7 +623,7 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
 
   // If handwriting is installed as DLC, get the dir and subsequently load it
   // from there.
-  if (is_dlc_enabled) {
+  if (is_handwriting_dlc_enabled) {
     dlcservice_client_->GetDlcRootPath(
         "libhandwriting",
         base::BindOnce(&LoadHandwritingLibAndRecognizer<

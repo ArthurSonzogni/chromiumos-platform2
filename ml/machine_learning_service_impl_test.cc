@@ -1233,6 +1233,10 @@ TEST_F(HandwritingRecognizerTest, LoadHandwritingModel) {
     return;
   }
 
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   // Load Recognizer successfully.
   LoadRecognizerWithLanguage("en", true);
 
