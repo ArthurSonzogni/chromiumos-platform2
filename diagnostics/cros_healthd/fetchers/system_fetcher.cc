@@ -16,24 +16,18 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
 
+#include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
 
 constexpr char kRelativeDmiInfoPath[] = "sys/class/dmi/id";
-constexpr char kRelativeVpdRoPath[] = "sys/firmware/vpd/ro/";
-constexpr char kRelativeVpdRwPath[] = "sys/firmware/vpd/rw/";
 
-constexpr char kFirstPowerDateFileName[] = "ActivateDate";
-constexpr char kManufactureDateFileName[] = "mfg_date";
-constexpr char kSkuNumberFileName[] = "sku_number";
-constexpr char kProductSerialNumberFileName[] = "serial_number";
 constexpr char kBiosVersionFileName[] = "bios_version";
 constexpr char kBoardNameFileName[] = "board_name";
 constexpr char kBoardVersionFileName[] = "board_version";
 constexpr char kChassisTypeFileName[] = "chassis_type";
-constexpr char kProductModelNameFileName[] = "model_name";
 
 namespace {
 
@@ -83,50 +77,41 @@ base::Optional<mojo_ipc::ProbeErrorPtr> FetchDmiInfo(
   return base::nullopt;
 }
 
-}  // namespace
+bool FetchCachedVpdInfo(const base::FilePath& root_dir,
+                        bool has_sku_number,
+                        mojo_ipc::VpdInfoPtr* out_vpd_info,
+                        mojo_ipc::ProbeErrorPtr* out_error) {
+  auto vpd_info = mojo_ipc::VpdInfo::New();
 
-base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchCachedVpdInfo(
-    const base::FilePath& root_dir, mojo_ipc::SystemInfo* output_info) {
-  std::string first_power_date;
-  if (ReadAndTrimString(root_dir.Append(kRelativeVpdRwPath),
-                        kFirstPowerDateFileName, &first_power_date)) {
-    output_info->first_power_date = first_power_date;
+  const auto ro_path = root_dir.Append(kRelativePathVpdRo);
+  ReadAndTrimString(ro_path, kFileNameMfgDate, &vpd_info->mfg_date);
+  ReadAndTrimString(ro_path, kFileNameModelName, &vpd_info->model_name);
+  ReadAndTrimString(ro_path, kFileNameRegion, &vpd_info->region);
+  ReadAndTrimString(ro_path, kFileNameSerialNumber, &vpd_info->serial_number);
+  if (has_sku_number &&
+      !ReadAndTrimString(ro_path, kFileNameSkuNumber, &vpd_info->sku_number)) {
+    *out_error = CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kFileReadError,
+        base::StringPrintf("Unable to read VPD file \"%s\" at path: %s",
+                           kFileNameSkuNumber, ro_path.value().c_str()));
+    return false;
   }
 
-  const base::FilePath relative_vpd_ro_dir =
-      root_dir.Append(kRelativeVpdRoPath);
-  std::string manufacture_date;
-  if (ReadAndTrimString(relative_vpd_ro_dir, kManufactureDateFileName,
-                        &manufacture_date)) {
-    output_info->manufacture_date = manufacture_date;
-  }
+  const auto rw_path = root_dir.Append(kRelativePathVpdRw);
+  ReadAndTrimString(rw_path, kFileNameActivateDate, &vpd_info->activate_date);
 
-  if (context_->system_config()->HasSkuNumber()) {
-    std::string sku_number;
-    if (!ReadAndTrimString(relative_vpd_ro_dir, kSkuNumberFileName,
-                           &sku_number)) {
-      return CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kFileReadError,
-          "Unable to read VPD file " + std::string(kSkuNumberFileName) +
-              " at path " + relative_vpd_ro_dir.value().c_str());
-    }
-    output_info->product_sku_number = sku_number;
+  if (!base::DirectoryExists(ro_path) && !base::DirectoryExists(rw_path)) {
+    // If both the ro and rw path don't exist, sets the whole vpd_info to
+    // nullptr. This indicates that the vpd doesn't exist on this platform. It
+    // is considered as successful.
+    *out_vpd_info = nullptr;
+  } else {
+    *out_vpd_info = std::move(vpd_info);
   }
-
-  std::string product_serial_number;
-  if (ReadAndTrimString(relative_vpd_ro_dir, kProductSerialNumberFileName,
-                        &product_serial_number)) {
-    output_info->product_serial_number = product_serial_number;
-  }
-
-  std::string product_model_name;
-  if (ReadAndTrimString(relative_vpd_ro_dir, kProductModelNameFileName,
-                        &product_model_name)) {
-    output_info->product_model_name = product_model_name;
-  }
-
-  return base::nullopt;
+  return true;
 }
+
+}  // namespace
 
 void SystemFetcher::FetchMasterConfigInfo(mojo_ipc::SystemInfo* output_info) {
   output_info->marketing_name = context_->system_config()->GetMarketingName();
@@ -176,25 +161,38 @@ base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchOsVersion(
 }
 
 mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
-  mojo_ipc::SystemInfo system_info;
+  const auto& root_dir = context_->root_dir();
+  auto system_info = mojo_ipc::SystemInfo::New();
+  mojo_ipc::ProbeErrorPtr error;
 
-  base::Optional<mojo_ipc::ProbeErrorPtr> error =
-      FetchCachedVpdInfo(context_->root_dir(), &system_info);
-  if (error.has_value())
-    return mojo_ipc::SystemResult::NewError(std::move(error.value()));
-
-  FetchMasterConfigInfo(&system_info);
-  error = FetchDmiInfo(context_->root_dir(), &system_info);
-  if (error.has_value())
-    return mojo_ipc::SystemResult::NewError(std::move(error.value()));
-
-  system_info.os_version = mojo_ipc::OsVersion::New();
-  error = FetchOsVersion(system_info.os_version.get());
-  if (error.has_value()) {
-    return mojo_ipc::SystemResult::NewError(std::move(error.value()));
+  mojo_ipc::VpdInfoPtr vpd_info;
+  if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
+                          &vpd_info, &error)) {
+    return mojo_ipc::SystemResult::NewError(std::move(error));
   }
 
-  return mojo_ipc::SystemResult::NewSystemInfo(system_info.Clone());
+  if (vpd_info) {
+    system_info->first_power_date = vpd_info->activate_date;
+    system_info->manufacture_date = vpd_info->mfg_date;
+    system_info->product_sku_number = vpd_info->sku_number;
+    system_info->product_serial_number = vpd_info->serial_number;
+    system_info->product_model_name = vpd_info->model_name;
+  }
+
+  base::Optional<mojo_ipc::ProbeErrorPtr> error_opt;
+
+  FetchMasterConfigInfo(system_info.get());
+  error_opt = FetchDmiInfo(context_->root_dir(), system_info.get());
+  if (error_opt.has_value())
+    return mojo_ipc::SystemResult::NewError(std::move(error_opt.value()));
+
+  system_info->os_version = mojo_ipc::OsVersion::New();
+  error_opt = FetchOsVersion(system_info->os_version.get());
+  if (error_opt.has_value()) {
+    return mojo_ipc::SystemResult::NewError(std::move(error_opt.value()));
+  }
+
+  return mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info));
 }
 
 }  // namespace diagnostics

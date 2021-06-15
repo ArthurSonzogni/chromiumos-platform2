@@ -520,6 +520,29 @@ struct SystemInfo {
   OsVersion os_version;
 };
 
+// The list of VPD fields are available in the ChromeOS Partner Site document
+// "VPD Field Requirements":
+//    https://chromeos.google.com/partner/dlm/docs/factory/vpd.html
+// Note that all the fields (include required fields) are not guaranteed to be
+// exist in some situation. (e.g. in a early stage device)
+struct VpdInfo {
+  // A unique identifier of the device. (Required RO VPD field)
+  string? serial_number;
+  // Defines a market region where devices share a particular configuration of
+  // keyboard layout, language, and timezone. (Required VPD field)
+  string? region;
+  // The date the device was manufactured. (Required RO VPD field)
+  // Format: YYYY-MM-DD.
+  string? mfg_date;
+  // The date the device was first activated. (Runtime RW VPD field)
+  // Format: YYYY-WW.
+  string? activate_date;
+  // The product SKU number. (Optional RO VPD field. b/35512367)
+  string? sku_number;
+  // The product model name. (Optional RO VPD field. b/35512367)
+  string? model_name;
+};
+
 // Network probe result. Can either be populated with the NetworkHealthSnapshot
 // or an error retrieving the information.
 union NetworkResult {

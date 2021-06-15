@@ -15,6 +15,7 @@
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
@@ -68,15 +69,15 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void SetSystemInfo(const mojo_ipc::SystemInfoPtr& system_info) {
-    SetMockFile({kRelativeVpdRwPath, kFirstPowerDateFileName},
+    SetMockFile({kRelativePathVpdRw, kFileNameActivateDate},
                 system_info->first_power_date);
-    SetMockFile({kRelativeVpdRoPath, kManufactureDateFileName},
+    SetMockFile({kRelativePathVpdRo, kFileNameMfgDate},
                 system_info->manufacture_date);
-    SetMockFile({kRelativeVpdRoPath, kSkuNumberFileName},
+    SetMockFile({kRelativePathVpdRo, kFileNameSkuNumber},
                 system_info->product_sku_number);
-    SetMockFile({kRelativeVpdRoPath, kProductSerialNumberFileName},
+    SetMockFile({kRelativePathVpdRo, kFileNameSerialNumber},
                 system_info->product_serial_number);
-    SetMockFile({kRelativeVpdRoPath, kProductModelNameFileName},
+    SetMockFile({kRelativePathVpdRo, kFileNameModelName},
                 system_info->product_model_name);
     // Currently, cros_config never returns base::nullopt.
     mock_context_.fake_system_config()->SetMarketingName(
@@ -184,13 +185,16 @@ TEST_F(SystemUtilsTest, TestSkuNumberError) {
   ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
 }
 
-// Test that no product_sku_number is returned when the device does not have
-// |kSkuNumberFileName|.
 TEST_F(SystemUtilsTest, TestNoSkuNumber) {
-  expected_system_info_->product_sku_number = base::nullopt;
+  // Sku number file exists.
   SetSystemInfo(expected_system_info_);
-  // Ensure that there is no sku number.
+  // Ensure that there is no sku number returned even if sku number exists.
   SetHasSkuNumber(false);
+  expected_system_info_->product_sku_number = base::nullopt;
+  ExpectFetchSystemInfo();
+
+  // Sku number file doesn't exist.
+  SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }
 

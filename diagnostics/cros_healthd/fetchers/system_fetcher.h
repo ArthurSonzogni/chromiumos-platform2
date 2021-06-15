@@ -22,17 +22,6 @@ extern const char kBoardNameFileName[];
 extern const char kBoardVersionFileName[];
 extern const char kChassisTypeFileName[];
 
-// Relative paths to cached VPD information.
-extern const char kRelativeVpdRoPath[];
-extern const char kRelativeVpdRwPath[];
-
-// Files related to cached VPD information.
-extern const char kFirstPowerDateFileName[];
-extern const char kManufactureDateFileName[];
-extern const char kSkuNumberFileName[];
-extern const char kProductSerialNumberFileName[];
-extern const char kProductModelNameFileName[];
-
 class SystemFetcher final : public BaseFetcher {
  public:
   using BaseFetcher::BaseFetcher;
@@ -42,14 +31,6 @@ class SystemFetcher final : public BaseFetcher {
   chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo();
 
  private:
-  // Fetches information from cached VPD. On success, populates |output_info|
-  // with the fetched information and returns base::nullopt. When an error
-  // occurs, a ProbeError is returned and |output_info| does not contain valid
-  // information.
-  base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>
-  FetchCachedVpdInfo(const base::FilePath& root_dir,
-                     chromeos::cros_healthd::mojom::SystemInfo* output_info);
-
   // Fetches information from the master configuration using CrosConfig. Since
   // this function does not read from a file, it does not check for errors.
   void FetchMasterConfigInfo(

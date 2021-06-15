@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -16,26 +18,29 @@
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
 
 namespace {
 
+const std::vector<std::pair<std::string, std::string>> kFiles{
+    // VPD files
+    {kRelativePathVpdRw, kFileNameActivateDate},
+    {kRelativePathVpdRo, kFileNameMfgDate},
+    {kRelativePathVpdRo, kFileNameModelName},
+    {kRelativePathVpdRo, kFileNameRegion},
+    {kRelativePathVpdRo, kFileNameSerialNumber},
+    {kRelativePathVpdRo, kFileNameSkuNumber},
+};
+
 void SetUpSystemFiles(const base::FilePath& root_dir,
                       FuzzedDataProvider* provider) {
-  // Populate fake cached VPD values.
-  base::FilePath relative_vpd_rw_dir = root_dir.Append(kRelativeVpdRwPath);
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_vpd_rw_dir.Append(kFirstPowerDateFileName),
-      provider->ConsumeRandomLengthString()));
-  base::FilePath relative_vpd_ro_dir = root_dir.Append(kRelativeVpdRoPath);
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_vpd_ro_dir.Append(kManufactureDateFileName),
-      provider->ConsumeRandomLengthString()));
-  CHECK(WriteFileAndCreateParentDirs(
-      relative_vpd_ro_dir.Append(kSkuNumberFileName),
-      provider->ConsumeRandomLengthString()));
+  for (const auto& [dir, file] : kFiles) {
+    CHECK(WriteFileAndCreateParentDirs(root_dir.Append(dir).Append(file),
+                                       provider->ConsumeRandomLengthString()));
+  }
   // Populate fake DMI values.
   base::FilePath relative_dmi_info_path = root_dir.Append(kRelativeDmiInfoPath);
   CHECK(WriteFileAndCreateParentDirs(
