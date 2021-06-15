@@ -33,3 +33,4 @@ write: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg0 == 0 && arg1 == TCGETS
+fstatfs64: 1
