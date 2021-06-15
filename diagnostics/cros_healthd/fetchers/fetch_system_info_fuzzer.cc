@@ -45,7 +45,8 @@ const std::vector<std::pair<std::string, std::string>> kFiles{
     {kRelativePathDmiInfo, kFileNameProductName},
     {kRelativePathDmiInfo, kFileNameProductVersion},
     {kRelativePathDmiInfo, kFileNameSysVendor},
-};
+    // OS info files
+    {base::FilePath::kCurrentDirectory, kFilePathProcCmdline}};
 
 void SetUpSystemFiles(const base::FilePath& root_dir,
                       FuzzedDataProvider* provider) {

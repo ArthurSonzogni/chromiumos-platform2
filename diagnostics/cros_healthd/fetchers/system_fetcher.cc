@@ -12,8 +12,9 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/optional.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
@@ -109,54 +110,68 @@ bool FetchCachedVpdInfo(const base::FilePath& root_dir,
   return true;
 }
 
-}  // namespace
+bool GetLsbReleaseValue(const std::string& field,
+                        std::string* out_str,
+                        mojo_ipc::ProbeErrorPtr* out_error) {
+  if (base::SysInfo::GetLsbReleaseValue(field, out_str))
+    return true;
 
-void SystemFetcher::FetchMasterConfigInfo(mojo_ipc::SystemInfo* output_info) {
-  output_info->marketing_name =
-      context_->system_config()->GetMarketingName().value_or("");
-  output_info->product_name = context_->system_config()->GetCodeName();
+  *out_error = CreateAndLogProbeError(
+      mojo_ipc::ErrorType::kFileReadError,
+      base::StringPrintf("Unable to read %s from /etc/lsb-release",
+                         field.c_str()));
+  return false;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> SystemFetcher::FetchOsVersion(
-    mojo_ipc::OsVersion* os_version) {
-  std::string milestone;
-  std::string build;
-  std::string patch;
-  std::string release_channel;
+bool FetchOsVersion(mojo_ipc::OsVersionPtr* out_os_version,
+                    mojo_ipc::ProbeErrorPtr* out_error) {
+  auto os_version = mojo_ipc::OsVersion::New();
+  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
+                          &os_version->release_milestone, out_error))
+    return false;
+  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_NUMBER",
+                          &os_version->build_number, out_error))
+    return false;
+  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_PATCH_NUMBER",
+                          &os_version->patch_number, out_error))
+    return false;
+  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
+                          &os_version->release_channel, out_error))
+    return false;
+  *out_os_version = std::move(os_version);
+  return true;
+}
 
-  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
-                                         &milestone)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read OS milestone from /etc/lsb-release");
+mojo_ipc::BootMode FetchBootMode(const base::FilePath& root_dir) {
+  std::string cmdline;
+  const auto path = root_dir.Append(kFilePathProcCmdline);
+  if (!ReadAndTrimString(path, &cmdline))
+    return mojo_ipc::BootMode::kUnknown;
+  auto tokens = base::SplitString(cmdline, " ", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY);
+  for (const auto& token : tokens) {
+    if (token == "cros_secure")
+      return mojo_ipc::BootMode::kCrosSecure;
+    if (token == "cros_efi")
+      return mojo_ipc::BootMode::kCrosEfi;
+    if (token == "cros_legacy")
+      return mojo_ipc::BootMode::kCrosLegacy;
   }
+  return mojo_ipc::BootMode::kUnknown;
+}
 
-  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_NUMBER",
-                                         &build)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read OS build number from /etc/lsb-release");
-  }
+}  // namespace
 
-  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_PATCH_NUMBER",
-                                         &patch)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read OS patch number from /etc/lsb-release");
-  }
-
-  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
-                                         &release_channel)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read OS release track from /etc/lsb-release");
-  }
-
-  os_version->release_milestone = milestone;
-  os_version->build_number = build;
-  os_version->patch_number = patch;
-  os_version->release_channel = release_channel;
-  return base::nullopt;
+bool SystemFetcher::FetchOsInfo(mojo_ipc::OsInfoPtr* out_os_info,
+                                mojo_ipc::ProbeErrorPtr* out_error) {
+  auto os_info = mojo_ipc::OsInfo::New();
+  os_info->code_name = context_->system_config()->GetCodeName();
+  os_info->marketing_name = context_->system_config()->GetMarketingName();
+  if (!FetchOsVersion(&os_info->os_version, out_error))
+    return false;
+  os_info->boot_mode = FetchBootMode(context_->root_dir());
+  *out_os_info = std::move(os_info);
+  return true;
 }
 
 mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
@@ -166,9 +181,11 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
 
   mojo_ipc::VpdInfoPtr vpd_info;
   mojo_ipc::DmiInfoPtr dmi_info;
+  mojo_ipc::OsInfoPtr os_info;
   if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
                           &vpd_info, &error) ||
-      !FetchDmiInfo(root_dir, &dmi_info, &error)) {
+      !FetchDmiInfo(root_dir, &dmi_info, &error) ||
+      !FetchOsInfo(&os_info, &error)) {
     return mojo_ipc::SystemResult::NewError(std::move(error));
   }
 
@@ -185,16 +202,12 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
     system_info->board_version = dmi_info->board_version;
     system_info->chassis_type = dmi_info->chassis_type.Clone();
   }
-
-  base::Optional<mojo_ipc::ProbeErrorPtr> error_opt;
-
-  FetchMasterConfigInfo(system_info.get());
-
-  system_info->os_version = mojo_ipc::OsVersion::New();
-  error_opt = FetchOsVersion(system_info->os_version.get());
-  if (error_opt.has_value()) {
-    return mojo_ipc::SystemResult::NewError(std::move(error_opt.value()));
-  }
+  CHECK(os_info);
+  system_info->product_name = os_info->code_name;
+  // |marketing_name| is an optional field in cros_confg. Set it to null string
+  // if it is missed.
+  system_info->marketing_name = os_info->marketing_name.value_or("");
+  system_info->os_version = os_info->os_version.Clone();
 
   return mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info));
 }

@@ -35,6 +35,9 @@ inline constexpr char kFileNameProductName[] = "product_name";
 inline constexpr char kFileNameProductVersion[] = "product_version";
 inline constexpr char kFileNameSysVendor[] = "sys_vendor";
 
+// Files for boot mode information.
+inline constexpr char kFilePathProcCmdline[] = "proc/cmdline";
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_FETCHERS_SYSTEM_FETCHER_CONSTANTS_H_

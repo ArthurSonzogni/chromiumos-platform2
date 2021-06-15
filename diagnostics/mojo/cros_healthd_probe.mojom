@@ -474,20 +474,6 @@ union SystemResult {
   ProbeError error;
 };
 
-// Structure containing information about the operating system version of the
-// device. This structure decomposes a full version string into its parts:
-// (87.13544.59.0).
-struct OsVersion {
-  // The OS version release milestone (87).
-  string release_milestone;
-  // The OS version build number (13544).
-  string build_number;
-  // The OS version patch number (59.0).
-  string patch_number;
-  // The OS release channel (stable-channel).
-  string release_channel;
-};
-
 // System Information.
 struct SystemInfo {
   // The date the device was first activated.
@@ -518,6 +504,47 @@ struct SystemInfo {
   string? product_name;
   // The OS version of the system.
   OsVersion os_version;
+};
+
+// The OS information.
+struct OsInfo {
+  // Google code name for the given model. While it is OK to use this string for
+  // human-display purposes (such as in a debug log or help dialog), or for a
+  // searchable-key in metrics collection, it is not recommended to use this
+  // property for creating model-specific behaviors.
+  string code_name;
+  // Contents of CrosConfig in /arc/build-properties/marketing-name.
+  string? marketing_name;
+  // The OS version of the system.
+  OsVersion os_version;
+  // The boot flow used by the current boot.
+  BootMode boot_mode;
+};
+
+// Structure containing information about the operating system version of the
+// device. This structure decomposes a full version string
+// (e.g. "87.13544.59.0") into its parts:
+struct OsVersion {
+  // The OS version release milestone (e.g. "87").
+  string release_milestone;
+  // The OS version build number (e.g. "13544").
+  string build_number;
+  // The OS version patch number (e.g. "59.0").
+  string patch_number;
+  // The OS release channel (e.g. "stable-channel").
+  string release_channel;
+};
+
+// The boot mode of the current os.
+[Extensible]
+enum BootMode {
+  kUnknown = 0,
+  // Boot with Chrome OS firmware.
+  kCrosSecure,
+  // Boot with EFI
+  kCrosEfi,
+  // Boot with Legacy BIOS.
+  kCrosLegacy,
 };
 
 // The list of VPD fields are available in the ChromeOS Partner Site document

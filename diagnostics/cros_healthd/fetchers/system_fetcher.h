@@ -22,15 +22,8 @@ class SystemFetcher final : public BaseFetcher {
   chromeos::cros_healthd::mojom::SystemResultPtr FetchSystemInfo();
 
  private:
-  // Fetches information from the master configuration using CrosConfig. Since
-  // this function does not read from a file, it does not check for errors.
-  void FetchMasterConfigInfo(
-      chromeos::cros_healthd::mojom::SystemInfo* output_info);
-
-  // Fetches the operating system version and populates the |output_info|
-  // structure.
-  base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> FetchOsVersion(
-      chromeos::cros_healthd::mojom::OsVersion* os_version);
+  bool FetchOsInfo(chromeos::cros_healthd::mojom::OsInfoPtr* out_os_info,
+                   chromeos::cros_healthd::mojom::ProbeErrorPtr* out_error);
 };
 
 }  // namespace diagnostics
