@@ -86,7 +86,7 @@ class Resolver {
            int max_concurrent_queries = kDefaultMaxConcurrentQueries);
   // Provided for testing only.
   Resolver(std::unique_ptr<AresClient> ares_client,
-           std::unique_ptr<DoHCurlClient> curl_client,
+           std::unique_ptr<DoHCurlClientInterface> curl_client,
            std::unique_ptr<Metrics> metrics = nullptr);
   virtual ~Resolver() = default;
 
@@ -184,7 +184,7 @@ class Resolver {
   std::unique_ptr<AresClient> ares_client_;
 
   // Curl client to resolve DNS through secure DNS.
-  std::unique_ptr<DoHCurlClient> curl_client_;
+  std::unique_ptr<DoHCurlClientInterface> curl_client_;
 
   std::unique_ptr<Metrics> metrics_;
 

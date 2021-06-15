@@ -22,12 +22,7 @@ namespace dns_proxy {
 constexpr int64_t kHTTPOk = 200;
 constexpr int64_t kHTTPTooManyRequests = 429;
 
-// DoHCurlClient receives a wire-format DNS query and re-send it using secure
-// DNS (DNS-over-HTTPS). The caller of DoHCurlClient will get a wire-format
-// response done through CURL. Given multiple DoH servers, DoHCurlClient will
-// query each servers concurrently. It will return only the first successful
-// response OR the last failing response.
-class DoHCurlClient {
+class DoHCurlClientInterface {
  public:
   // Struct to be returned on a curl request.
   struct CurlResult {
@@ -51,9 +46,7 @@ class DoHCurlClient {
   using QueryCallback = base::RepeatingCallback<void(
       void* ctx, const CurlResult& res, uint8_t* msg, size_t len)>;
 
-  DoHCurlClient(base::TimeDelta timeout, int max_concurrent_queries);
-  explicit DoHCurlClient(base::TimeDelta timeout);
-  virtual ~DoHCurlClient();
+  virtual ~DoHCurlClientInterface() = default;
 
   // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
   // |len|. |callback| will be called with |ctx| as its parameter upon query
@@ -64,11 +57,41 @@ class DoHCurlClient {
   virtual bool Resolve(const char* msg,
                        int len,
                        const QueryCallback& callback,
-                       void* ctx);
+                       void* ctx) = 0;
 
   // Set standard DNS and DoH servers for running `Resolve(...)`.
-  virtual void SetNameServers(const std::vector<std::string>& name_servers);
-  virtual void SetDoHProviders(const std::vector<std::string>& doh_providers);
+  virtual void SetNameServers(const std::vector<std::string>& name_servers) = 0;
+  virtual void SetDoHProviders(
+      const std::vector<std::string>& doh_providers) = 0;
+};
+
+// DoHCurlClient receives a wire-format DNS query and re-send it using secure
+// DNS (DNS-over-HTTPS). The caller of DoHCurlClient will get a wire-format
+// response done through CURL. Given multiple DoH servers, DoHCurlClient will
+// query each servers concurrently. It will return only the first successful
+// response OR the last failing response.
+class DoHCurlClient : public DoHCurlClientInterface {
+ public:
+  DoHCurlClient(base::TimeDelta timeout, int max_concurrent_queries);
+  explicit DoHCurlClient(base::TimeDelta timeout);
+  DoHCurlClient(const DoHCurlClient&) = delete;
+  DoHCurlClient& operator=(const DoHCurlClient&) = delete;
+  virtual ~DoHCurlClient();
+
+  // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
+  // |len|. |callback| will be called with |ctx| as its parameter upon query
+  // completion. `SetNameServers(...)` and SetDoHProviders(...)` must be called
+  // before calling this function.
+  // |msg| and |ctx| is owned by the caller of this function. The caller is
+  // responsible for their lifecycle.
+  bool Resolve(const char* msg,
+               int len,
+               const DoHCurlClientInterface::QueryCallback& callback,
+               void* ctx) override;
+
+  // Set standard DNS and DoH servers for running `Resolve(...)`.
+  void SetNameServers(const std::vector<std::string>& name_servers) override;
+  void SetDoHProviders(const std::vector<std::string>& doh_providers) override;
 
  private:
   // State of an individual query.

@@ -130,7 +130,7 @@ Resolver::Resolver(base::TimeDelta timeout,
       metrics_(new Metrics) {}
 
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
-                   std::unique_ptr<DoHCurlClient> curl_client,
+                   std::unique_ptr<DoHCurlClientInterface> curl_client,
                    std::unique_ptr<Metrics> metrics)
     : always_on_doh_(false),
       doh_enabled_(false),
