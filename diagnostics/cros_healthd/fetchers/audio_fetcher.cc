@@ -66,9 +66,11 @@ base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
         "Failed retrieving node info from cras: " + error->GetMessage());
   }
 
-  // There might be no active output device such as Chromebox.
+  // There might be no active output / input device such as Chromebox.
   info->output_device_name = std::string("No active output device");
   info->output_volume = 0;
+  info->input_device_name = std::string("No active input device");
+  info->input_gain = 0;
   info->underruns = 0;
   info->severe_underruns = 0;
 
