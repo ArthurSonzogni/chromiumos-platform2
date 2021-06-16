@@ -87,6 +87,8 @@ bool RunHelperProcess(const HelperInfo& helper_info,
     helper.RedirectOutput(output_path.value());
   }
 
+  helper.SetPgid(0);
+
   int exit_code = helper.Run();
 
   // Collect output if requested. Note that we only collect 1024 bytes of
