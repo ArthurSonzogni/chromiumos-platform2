@@ -24,7 +24,8 @@ class TextSuggesterImpl
   // destroyed. Returns whether the object is created successfully.
   static bool Create(
       mojo::PendingReceiver<chromeos::machine_learning::mojom::TextSuggester>
-          receiver);
+          receiver,
+      chromeos::machine_learning::mojom::TextSuggesterSpecPtr spec);
 
   // Called when mojom connection is destroyed.
   ~TextSuggesterImpl();
@@ -36,7 +37,8 @@ class TextSuggesterImpl
 
   TextSuggesterImpl(
       mojo::PendingReceiver<chromeos::machine_learning::mojom::TextSuggester>
-          receiver);
+          receiver,
+      chromeos::machine_learning::mojom::TextSuggesterSpecPtr spec);
   TextSuggesterImpl(const TextSuggesterImpl&) = delete;
   TextSuggesterImpl& operator=(const TextSuggesterImpl&) = delete;
 

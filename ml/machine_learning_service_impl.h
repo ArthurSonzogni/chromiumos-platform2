@@ -89,6 +89,7 @@ class MachineLearningServiceImpl
   void LoadTextSuggester(
       mojo::PendingReceiver<chromeos::machine_learning::mojom::TextSuggester>
           receiver,
+      chromeos::machine_learning::mojom::TextSuggesterSpecPtr spec,
       LoadTextSuggesterCallback callback) override;
   void LoadWebPlatformHandwritingModel(
       chromeos::machine_learning::web_platform::mojom::

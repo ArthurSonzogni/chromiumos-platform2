@@ -60,7 +60,9 @@ class TextSuggestions {
   // Load the text suggester models.
   // Returns true if TextSuggester is correctly loaded and initialized.
   // Returns false otherwise.
-  bool LoadTextSuggester(TextSuggester suggester) const;
+  bool LoadTextSuggester(
+      TextSuggester suggester,
+      const chrome_knowledge::MultiWordExperiment& experiment) const;
 
   // Sends the specified `request` to `suggester`. If the call is successful,
   // `result` (which should not be null) is populated with the text suggester

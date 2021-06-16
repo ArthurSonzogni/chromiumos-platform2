@@ -215,6 +215,7 @@ using ::chromeos::machine_learning::mojom::LoadHandwritingModelResult;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::MachineLearningService;
 using ::chromeos::machine_learning::mojom::Model;
+using ::chromeos::machine_learning::mojom::MultiWordExperimentGroup;
 using ::chromeos::machine_learning::mojom::SodaClient;
 using ::chromeos::machine_learning::mojom::SodaConfig;
 using ::chromeos::machine_learning::mojom::SodaRecognizer;
@@ -229,6 +230,7 @@ using ::chromeos::machine_learning::mojom::TextSuggesterQuery;
 using ::chromeos::machine_learning::mojom::TextSuggesterQueryPtr;
 using ::chromeos::machine_learning::mojom::TextSuggesterResult;
 using ::chromeos::machine_learning::mojom::TextSuggesterResultPtr;
+using ::chromeos::machine_learning::mojom::TextSuggesterSpec;
 using ::chromeos::machine_learning::mojom::TextSuggestionMode;
 using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequest;
 using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequestPtr;
@@ -1561,7 +1563,7 @@ bool TextSuggesterNotSupportedOnDevice() {
 
 class TextSuggesterTest : public ::testing::Test {
  public:
-  void SetUp() {
+  void ConnectTextSuggester(MultiWordExperimentGroup experiment_group) {
     if (TextSuggesterNotSupportedOnDevice()) {
       return;
     }
@@ -1574,6 +1576,7 @@ class TextSuggesterTest : public ::testing::Test {
     bool model_callback_done = false;
     ml_service->LoadTextSuggester(
         suggester_.BindNewPipeAndPassReceiver(),
+        TextSuggesterSpec::New(experiment_group),
         base::Bind(
             [](bool* model_callback_done, const LoadModelResult result) {
               ASSERT_EQ(result, LoadModelResult::OK);
@@ -1594,6 +1597,8 @@ TEST_F(TextSuggesterTest, LoadModelAndGenerateCompletionCandidate) {
   if (TextSuggesterNotSupportedOnDevice()) {
     return;
   }
+
+  ConnectTextSuggester(MultiWordExperimentGroup::kDefault);
 
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are y";
@@ -1630,6 +1635,8 @@ TEST_F(TextSuggesterTest, LoadModelAndGeneratePredictionCandidate) {
     return;
   }
 
+  ConnectTextSuggester(MultiWordExperimentGroup::kDefault);
+
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
   query->text = "how are ";
   query->suggestion_mode = TextSuggestionMode::kPrediction;
@@ -1647,6 +1654,80 @@ TEST_F(TextSuggesterTest, LoadModelAndGeneratePredictionCandidate) {
             EXPECT_EQ(
                 result->candidates.at(0)->get_multi_word()->normalized_score,
                 -0.8141749f);
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+// The default experiment group should show a suggestion with the preceding
+// text "how are" -> "how are you". The Gboard experiment group does not
+// show such a suggestion. Let's make sure that the experiment group given
+// to a TextSuggester instance is honoured, and does not show unexpected
+// suggestions.
+TEST_F(TextSuggesterTest,
+       GboardExperimentGroupDoesNotTriggerDefaultSuggestions) {
+  if (TextSuggesterNotSupportedOnDevice()) {
+    return;
+  }
+
+  ConnectTextSuggester(MultiWordExperimentGroup::kGboard);
+
+  TextSuggesterQueryPtr query = TextSuggesterQuery::New();
+  query->text = "how are y";
+  query->suggestion_mode = TextSuggestionMode::kCompletion;
+
+  NextWordCompletionCandidatePtr candidate_one =
+      NextWordCompletionCandidate::New();
+  candidate_one->text = "you";
+  candidate_one->normalized_score = -1.0f;
+  query->next_word_candidates.push_back(std::move(candidate_one));
+
+  bool infer_callback_done = false;
+  suggester_->Suggest(
+      std::move(query),
+      base::Bind(
+          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+            EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
+            ASSERT_EQ(result->candidates.size(), 0);
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+TEST_F(TextSuggesterTest, GboardExperimentGroupTriggersExpectedSuggestions) {
+  if (TextSuggesterNotSupportedOnDevice()) {
+    return;
+  }
+
+  ConnectTextSuggester(MultiWordExperimentGroup::kGboard);
+
+  TextSuggesterQueryPtr query = TextSuggesterQuery::New();
+  query->text = "why ar";
+  query->suggestion_mode = TextSuggestionMode::kCompletion;
+
+  NextWordCompletionCandidatePtr candidate_one =
+      NextWordCompletionCandidate::New();
+  candidate_one->text = "aren\'t";
+  candidate_one->normalized_score = -1.0f;
+  query->next_word_candidates.push_back(std::move(candidate_one));
+
+  bool infer_callback_done = false;
+  suggester_->Suggest(
+      std::move(query),
+      base::Bind(
+          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+            EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
+            ASSERT_EQ(result->candidates.size(), 1);
+            ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
+            EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
+                      "aren\'t you");
+            EXPECT_EQ(
+                result->candidates.at(0)->get_multi_word()->normalized_score,
+                -0.13418171f);
             *infer_callback_done = true;
           },
           &infer_callback_done));

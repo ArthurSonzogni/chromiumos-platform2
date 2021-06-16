@@ -11,6 +11,7 @@
 namespace ml {
 namespace {
 
+using ::chromeos::machine_learning::mojom::MultiWordExperimentGroup;
 using ::chromeos::machine_learning::mojom::NextWordCompletionCandidate;
 using ::chromeos::machine_learning::mojom::NextWordCompletionCandidatePtr;
 using ::chromeos::machine_learning::mojom::TextSuggesterQuery;
@@ -104,6 +105,15 @@ TEST(TextSuggesterMojomConversionTest, ResultProtoToResultMojom) {
   EXPECT_TRUE(result->candidates[1]->is_multi_word());
   EXPECT_EQ(result->candidates[1]->get_multi_word()->text, "you going");
   EXPECT_EQ(result->candidates[1]->get_multi_word()->normalized_score, 0.35f);
+}
+
+TEST(TextSuggesterMojomConversionTest, ExperimentGroupToCorrectProto) {
+  EXPECT_EQ(
+      MultiWordExperimentGroupToProto(MultiWordExperimentGroup::kGboard),
+      chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_GBOARD);
+  EXPECT_EQ(
+      MultiWordExperimentGroupToProto(MultiWordExperimentGroup::kDefault),
+      chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_UNSPECIFIED);
 }
 
 }  // namespace

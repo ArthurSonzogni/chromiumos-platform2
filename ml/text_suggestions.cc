@@ -83,17 +83,27 @@ TextSuggester TextSuggestions::CreateTextSuggester() const {
   return (*create_text_suggester_)();
 }
 
-bool TextSuggestions::LoadTextSuggester(TextSuggester const suggester) const {
+bool TextSuggestions::LoadTextSuggester(
+    TextSuggester const suggester,
+    const chrome_knowledge::MultiWordExperiment& experiment) const {
   DCHECK(status_ == Status::kOk);
   chrome_knowledge::TextSuggesterSettings settings;
-  settings.set_multi_word_model_path(
+
+  chrome_knowledge::MultiWordSettings* multi_word_settings =
+      settings.mutable_multi_word_settings();
+  multi_word_settings->set_model_path(
       base::FilePath(kTextSuggesterFilesPath)
           .Append(kTextSuggesterModelRelativePath)
           .value());
-  settings.set_multi_word_syms_path(
+  multi_word_settings->set_syms_path(
       base::FilePath(kTextSuggesterFilesPath)
           .Append(kTextSuggesterSymbolsRelativePath)
           .value());
+
+  chrome_knowledge::FeatureSettings* feature_settings =
+      settings.mutable_feature_settings();
+  feature_settings->set_multi_word_experiment(experiment);
+
   const std::string settings_pb = settings.SerializeAsString();
   return (*load_text_suggester_)(suggester, settings_pb.data(),
                                  settings_pb.size());

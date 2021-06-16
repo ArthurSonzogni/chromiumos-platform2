@@ -488,6 +488,7 @@ void MachineLearningServiceImpl::LoadGrammarChecker(
 void MachineLearningServiceImpl::LoadTextSuggester(
     mojo::PendingReceiver<chromeos::machine_learning::mojom::TextSuggester>
         receiver,
+    chromeos::machine_learning::mojom::TextSuggesterSpecPtr spec,
     LoadTextSuggesterCallback callback) {
   RequestMetrics request_metrics("TextSuggester", kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
@@ -516,7 +517,7 @@ void MachineLearningServiceImpl::LoadTextSuggester(
   }
 
   // Create TextSuggester.
-  if (!TextSuggesterImpl::Create(std::move(receiver))) {
+  if (!TextSuggesterImpl::Create(std::move(receiver), std::move(spec))) {
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
     return;

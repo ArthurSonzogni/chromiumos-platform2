@@ -21,6 +21,11 @@ chromeos::machine_learning::mojom::TextSuggesterResultPtr
 TextSuggesterResultFromProto(
     const chrome_knowledge::TextSuggesterResult& result_proto);
 
+// Converts mojom::MultiWordExperimentGroup into
+// chrome_knowledge::MultiWordExperiment proto.
+chrome_knowledge::MultiWordExperiment MultiWordExperimentGroupToProto(
+    chromeos::machine_learning::mojom::MultiWordExperimentGroup experiment);
+
 }  // namespace ml
 
 #endif  // ML_TEXT_SUGGESTER_PROTO_MOJOM_CONVERSION_H_

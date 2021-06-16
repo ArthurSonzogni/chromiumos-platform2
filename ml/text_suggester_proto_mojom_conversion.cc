@@ -9,6 +9,7 @@
 namespace ml {
 namespace {
 
+using ::chromeos::machine_learning::mojom::MultiWordExperimentGroup;
 using ::chromeos::machine_learning::mojom::MultiWordSuggestionCandidate;
 using ::chromeos::machine_learning::mojom::MultiWordSuggestionCandidatePtr;
 using ::chromeos::machine_learning::mojom::TextSuggesterQuery;
@@ -78,6 +79,19 @@ TextSuggesterResultPtr TextSuggesterResultFromProto(
   }
 
   return result;
+}
+
+chrome_knowledge::MultiWordExperiment MultiWordExperimentGroupToProto(
+    MultiWordExperimentGroup experiment) {
+  switch (experiment) {
+    case MultiWordExperimentGroup::kGboard:
+      return chrome_knowledge::MultiWordExperiment::
+          MULTI_WORD_EXPERIMENT_GBOARD;
+    case MultiWordExperimentGroup::kDefault:
+    default:
+      return chrome_knowledge::MultiWordExperiment::
+          MULTI_WORD_EXPERIMENT_UNSPECIFIED;
+  }
 }
 
 }  // namespace ml

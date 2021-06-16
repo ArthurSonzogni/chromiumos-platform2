@@ -27,7 +27,7 @@ TEST(TextSuggestionsTest, CanLoadLibrary) {
   }
 }
 
-TEST(TextSuggestionsText, ExampleCompletionRequest) {
+TEST(TextSuggestionsText, ExampleCompletionRequestWithDefaultSettings) {
   auto* const instance = ml::TextSuggestions::GetInstance();
   if (instance->GetStatus() == ml::TextSuggestions::Status::kNotSupported) {
     return;
@@ -36,7 +36,9 @@ TEST(TextSuggestionsText, ExampleCompletionRequest) {
   ASSERT_EQ(instance->GetStatus(), TextSuggestions::Status::kOk);
 
   TextSuggester const suggester = instance->CreateTextSuggester();
-  instance->LoadTextSuggester(suggester);
+  instance->LoadTextSuggester(
+      suggester,
+      chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_UNSPECIFIED);
 
   chrome_knowledge::TextSuggesterRequest request;
   request.set_text("How are y");
@@ -60,7 +62,7 @@ TEST(TextSuggestionsText, ExampleCompletionRequest) {
   instance->DestroyTextSuggester(suggester);
 }
 
-TEST(TextSuggestionsText, ExamplePredictionRequest) {
+TEST(TextSuggestionsText, ExamplePredictionRequestWithDefaultSettings) {
   auto* const instance = ml::TextSuggestions::GetInstance();
   if (instance->GetStatus() == ml::TextSuggestions::Status::kNotSupported) {
     return;
@@ -69,7 +71,9 @@ TEST(TextSuggestionsText, ExamplePredictionRequest) {
   ASSERT_EQ(instance->GetStatus(), TextSuggestions::Status::kOk);
 
   TextSuggester const suggester = instance->CreateTextSuggester();
-  instance->LoadTextSuggester(suggester);
+  instance->LoadTextSuggester(
+      suggester,
+      chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_UNSPECIFIED);
 
   chrome_knowledge::TextSuggesterRequest request;
   request.set_text("How are ");
@@ -84,6 +88,69 @@ TEST(TextSuggestionsText, ExamplePredictionRequest) {
   EXPECT_EQ(result.candidates(0).multi_word().text(), "you doing");
   EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
                   -0.8141749f);
+
+  instance->DestroyTextSuggester(suggester);
+}
+
+TEST(TextSuggestionsText,
+     GboardExperimentGroupIsSetAndDoesntTriggerForDefaultExample) {
+  auto* const instance = ml::TextSuggestions::GetInstance();
+  if (instance->GetStatus() == ml::TextSuggestions::Status::kNotSupported) {
+    return;
+  }
+
+  ASSERT_EQ(instance->GetStatus(), TextSuggestions::Status::kOk);
+
+  TextSuggester const suggester = instance->CreateTextSuggester();
+  instance->LoadTextSuggester(
+      suggester,
+      chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_GBOARD);
+
+  chrome_knowledge::TextSuggesterRequest request;
+  request.set_text("How are ");
+  request.set_suggestion_mode(
+      chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_PREDICTION);
+
+  chrome_knowledge::TextSuggesterResult result;
+  instance->GenerateSuggestions(suggester, request, &result);
+
+  ASSERT_EQ(result.candidates_size(), 0);
+
+  instance->DestroyTextSuggester(suggester);
+}
+
+TEST(TextSuggestionsText,
+     GboardExperimentGroupIsSetAndTriggersExpectedSuggestions) {
+  auto* const instance = ml::TextSuggestions::GetInstance();
+  if (instance->GetStatus() == ml::TextSuggestions::Status::kNotSupported) {
+    return;
+  }
+
+  ASSERT_EQ(instance->GetStatus(), TextSuggestions::Status::kOk);
+
+  TextSuggester const suggester = instance->CreateTextSuggester();
+  instance->LoadTextSuggester(
+      suggester,
+      chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_GBOARD);
+
+  chrome_knowledge::TextSuggesterRequest request;
+  request.set_text("why a");
+  request.set_suggestion_mode(
+      chrome_knowledge::RequestSuggestionMode::SUGGESTION_MODE_COMPLETION);
+
+  chrome_knowledge::NextWordCompletionCandidate* candidate =
+      request.add_next_word_candidates();
+  candidate->set_text("aren\'t");
+  candidate->set_normalized_score(-1.0f);
+
+  chrome_knowledge::TextSuggesterResult result;
+  instance->GenerateSuggestions(suggester, request, &result);
+
+  ASSERT_GT(result.candidates_size(), 0);
+  EXPECT_EQ(result.candidates(0).has_multi_word(), true);
+  EXPECT_EQ(result.candidates(0).multi_word().text(), "aren\'t you");
+  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
+                  -0.13418171f);
 
   instance->DestroyTextSuggester(suggester);
 }

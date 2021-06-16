@@ -20,8 +20,11 @@ using ::chromeos::machine_learning::mojom::TextSuggestionCandidatePtr;
 
 }  // namespace
 
-bool TextSuggesterImpl::Create(mojo::PendingReceiver<TextSuggester> receiver) {
-  auto suggester_impl = new TextSuggesterImpl(std::move(receiver));
+bool TextSuggesterImpl::Create(
+    mojo::PendingReceiver<TextSuggester> receiver,
+    chromeos::machine_learning::mojom::TextSuggesterSpecPtr spec) {
+  auto suggester_impl =
+      new TextSuggesterImpl(std::move(receiver), std::move(spec));
 
   // Set the disconnection handler to strongly bind `checker_impl` to delete
   // `suggester_impl` when the connection is gone.
@@ -35,15 +38,22 @@ bool TextSuggesterImpl::Create(mojo::PendingReceiver<TextSuggester> receiver) {
 }
 
 TextSuggesterImpl::TextSuggesterImpl(
-    mojo::PendingReceiver<TextSuggester> receiver)
+    mojo::PendingReceiver<TextSuggester> receiver,
+    chromeos::machine_learning::mojom::TextSuggesterSpecPtr spec)
     : library_(ml::TextSuggestions::GetInstance()),
       receiver_(this, std::move(receiver)) {
   DCHECK(library_->GetStatus() == ml::TextSuggestions::Status::kOk)
       << "TextSuggesterImpl should be created only if TextSuggestions is "
          "initialized successfully.";
 
+  chrome_knowledge::MultiWordExperiment experiment =
+      !spec.is_null()
+          ? MultiWordExperimentGroupToProto(spec->multi_word_experiment)
+          : chrome_knowledge::MultiWordExperiment::
+                MULTI_WORD_EXPERIMENT_UNSPECIFIED;
+
   suggester_ = library_->CreateTextSuggester();
-  successfully_loaded_ = library_->LoadTextSuggester(suggester_);
+  successfully_loaded_ = library_->LoadTextSuggester(suggester_, experiment);
 }
 
 TextSuggesterImpl::~TextSuggesterImpl() {
