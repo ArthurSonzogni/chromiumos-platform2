@@ -25,8 +25,8 @@ constexpr char kLogToStderr[] = "log_to_stderr";
 }  // namespace switches
 
 constexpr uid_t kRootUID = 0;
-constexpr char kTpmTunnelUser[] = "tpm_tunnel";
-constexpr char kTpmTunnelGroup[] = "tpm_tunnel";
+constexpr char kTpmTunnelUser[] = "tpm_tunneld";
+constexpr char kTpmTunnelGroup[] = "tpm_tunneld";
 constexpr char kTpmTunnelSeccompPath[] =
     "/usr/share/policy/tpm_tunneld-seccomp.policy";
 
