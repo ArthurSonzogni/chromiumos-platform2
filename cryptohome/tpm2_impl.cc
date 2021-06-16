@@ -847,6 +847,12 @@ bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const Blob& extension) {
     LOG(ERROR) << "Error extending PCR: " << GetErrorString(result);
     return false;
   }
+  result =
+      trunks->tpm_utility->ExtendPCRForCSME(pcr_index, BlobToString(extension));
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error extending PCR for CSME: " << GetErrorString(result);
+    return false;
+  }
   return true;
 }
 

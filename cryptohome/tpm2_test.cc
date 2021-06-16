@@ -1143,21 +1143,33 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
 }
 
 TEST_F(Tpm2Test, ExtendPCRSuccess) {
-  uint32_t index = 5;
-  const Blob extension = BlobFromString("extension");
-  std::string pcr_value;
-  EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&pcr_value), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(tpm_->ExtendPCR(index, extension));
-  EXPECT_EQ(pcr_value, BlobToString(extension));
+  const uint32_t index = 5;
+  const std::string extension = "extension";
+  EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, extension, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, ExtendPCRForCSME(index, extension))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(tpm_->ExtendPCR(index, BlobFromString(extension)));
 }
 
-TEST_F(Tpm2Test, ExtendPCRFailure) {
+TEST_F(Tpm2Test, ExtendPCRFailureTPM) {
   uint32_t index = 5;
-  const Blob extension = BlobFromString("extension");
-  EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, _, _))
+  const std::string extension = "extension";
+  EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, extension, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->ExtendPCR(index, extension));
+  EXPECT_CALL(mock_tpm_utility_, ExtendPCRForCSME(index, extension))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_FALSE(tpm_->ExtendPCR(index, BlobFromString(extension)));
+}
+
+TEST_F(Tpm2Test, ExtendPCRFailureCSME) {
+  uint32_t index = 5;
+  const std::string extension = "extension";
+  EXPECT_CALL(mock_tpm_utility_, ExtendPCR(index, extension, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, ExtendPCRForCSME(index, extension))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->ExtendPCR(index, BlobFromString(extension)));
 }
 
 TEST_F(Tpm2Test, ReadPCRSuccess) {
