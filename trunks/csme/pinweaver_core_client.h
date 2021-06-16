@@ -18,14 +18,22 @@ namespace csme {
 class PinWeaverCoreClient {
  public:
   explicit PinWeaverCoreClient(MeiClientFactory* mei_client_factory);
+  bool ExtendPcr(uint32_t pcr_index,
+                 uint32_t hash_alg,
+                 const std::string& extension);
+  bool ReadPcr(uint32_t pcr_index_in,
+               uint32_t hash_alg_in,
+               uint32_t* pcr_index_out,
+               uint32_t* hash_alg_out,
+               std::string* pcr_value);
   bool PinWeaverCommand(const std::string& pinweaver_request,
                         std::string* pinweaver_response);
 
  private:
   MeiClient* GetMeiClient();
-  bool UnpackFromResponse(const pw_heci_header_req& req_header,
-                          const std::string& response,
-                          std::string* payload);
+  bool UnpackStringFromResponse(const pw_heci_header_req& req_header,
+                                const std::string& response,
+                                std::string* payload);
 
   MeiClientFactory* const mei_client_factory_;
   std::unique_ptr<MeiClient> mei_client_;

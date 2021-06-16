@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 
+#include "trunks/csme/pinweaver_client_utils.h"
 #include "trunks/csme/pinweaver_csme_types.h"
 
 namespace trunks {
@@ -18,6 +19,58 @@ namespace csme {
 PinWeaverCoreClient::PinWeaverCoreClient(MeiClientFactory* mei_client_factory)
     : mei_client_factory_(mei_client_factory) {
   CHECK(mei_client_factory_);
+}
+
+bool PinWeaverCoreClient::ExtendPcr(uint32_t pcr_index,
+                                    uint32_t hash_alg,
+                                    const std::string& extension) {
+  pw_pcr_extend_request req;
+  BuildFixedSizedRequest(PW_PCR_EXTEND, seq_++, &req);
+  req.pcr_index = pcr_index;
+  req.hash_alg = hash_alg;
+  // Only fixed-sized extension is supported.
+  if (extension.size() != sizeof(req.buffer)) {
+    LOG(ERROR) << __func__
+               << ": Mismatched extension size: " << extension.size()
+               << "; expecting " << sizeof(req.buffer) << ".";
+    return false;
+  }
+  std::copy(extension.begin(), extension.end(), req.buffer);
+  const std::string request = SerializeToString(req);
+  std::string response;
+  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+    LOG(ERROR) << __func__ << ": Failed to send request.";
+    return false;
+  }
+
+  if (!UnpackFromResponse(req.header, response)) {
+    LOG(ERROR) << __func__ << ": failed to unpack response.";
+    return false;
+  }
+  return true;
+}
+bool PinWeaverCoreClient::ReadPcr(uint32_t pcr_index_in,
+                                  uint32_t hash_alg_in,
+                                  uint32_t* pcr_index_out,
+                                  uint32_t* hash_alg_out,
+                                  std::string* pcr_value) {
+  pw_pcr_read_request req;
+  BuildFixedSizedRequest(PW_PCR_READ, seq_++, &req);
+  req.pcr_index = pcr_index_in;
+  req.hash_alg = hash_alg_in;
+  const std::string request = SerializeToString(req);
+  std::string response;
+  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+    LOG(ERROR) << __func__ << ": Failed to send request.";
+    return false;
+  }
+
+  if (!UnpackFromResponse(req.header, response, pcr_index_out, hash_alg_out,
+                          pcr_value)) {
+    LOG(ERROR) << __func__ << ": failed to unpack response.";
+    return false;
+  }
+  return true;
 }
 
 bool PinWeaverCoreClient::PinWeaverCommand(const std::string& pinweaver_request,
@@ -40,7 +93,7 @@ bool PinWeaverCoreClient::PinWeaverCommand(const std::string& pinweaver_request,
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
-  if (!UnpackFromResponse(req.header, response, pinweaver_response)) {
+  if (!UnpackStringFromResponse(req.header, response, pinweaver_response)) {
     LOG(ERROR) << __func__ << ": Failed to unpack response.";
   }
   return true;
@@ -53,7 +106,7 @@ MeiClient* PinWeaverCoreClient::GetMeiClient() {
   return mei_client_.get();
 }
 
-bool PinWeaverCoreClient::UnpackFromResponse(
+bool PinWeaverCoreClient::UnpackStringFromResponse(
     const pw_heci_header_req& req_header,
     const std::string& response,
     std::string* payload) {
