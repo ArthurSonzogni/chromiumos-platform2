@@ -143,6 +143,7 @@ if (use.test) {
       "state_handler/welcome_screen_state_handler_test.cc",
       "state_handler/write_protect_disable_method_state_handler_test.cc",
       "state_handler/write_protect_disable_physical_state_handler_test.cc",
+      "state_handler/write_protect_disable_rsu_state_handler_test.cc",
       "state_handler/write_protect_enable_physical_state_handler_test.cc",
       "utils/fake_cbi_utils.cc",
       "utils/fake_vpd_utils.cc",

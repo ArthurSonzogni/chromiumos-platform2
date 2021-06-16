@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "rmad/utils/cr50_utils_impl.h"
 
@@ -13,14 +14,19 @@ namespace rmad {
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+}
+
+WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
+    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
+    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
   if (!state_.has_wp_disable_rsu() && !RetrieveState()) {
     auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
-    Cr50UtilsImpl cr50_utils;
     if (std::string challenge_code;
-        cr50_utils.GetRsuChallengeCode(&challenge_code)) {
+        cr50_utils_->GetRsuChallengeCode(&challenge_code)) {
       wp_disable_rsu->set_challenge_code(challenge_code);
     } else {
       return RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE;
@@ -45,8 +51,7 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   // Do RSU.
-  Cr50UtilsImpl cr50_utils;
-  if (!cr50_utils.PerformRsu(wp_disable_rsu.unlock_code())) {
+  if (!cr50_utils_->PerformRsu(wp_disable_rsu.unlock_code())) {
     LOG(ERROR) << "Incorrect unlock code.";
     return {.error = RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID,
             .state_case = GetStateCase()};
