@@ -110,12 +110,12 @@ TEST_F(SensorServiceImplTest, GetDeviceIds) {
   sensor_service_->GetDeviceIds(
       cros::mojom::DeviceType::ACCEL,
       base::BindOnce(
-          [](base::Closure closure,
+          [](base::OnceClosure closure,
              const std::vector<int32_t>& iio_device_ids) {
             EXPECT_EQ(iio_device_ids.size(), 1);
             EXPECT_EQ(iio_device_ids[0], kFakeAccelId);
 
-            closure.Run();
+            std::move(closure).Run();
           },
           loop.QuitClosure()));
   // Wait until the callback is done.
@@ -125,7 +125,7 @@ TEST_F(SensorServiceImplTest, GetDeviceIds) {
 TEST_F(SensorServiceImplTest, GetAllDeviceIds) {
   base::RunLoop loop;
   sensor_service_->GetAllDeviceIds(base::BindOnce(
-      [](base::Closure closure,
+      [](base::OnceClosure closure,
          const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
              iio_device_ids_types) {
         EXPECT_EQ(iio_device_ids_types.size(), 2);
@@ -139,7 +139,7 @@ TEST_F(SensorServiceImplTest, GetAllDeviceIds) {
         EXPECT_EQ(it_gyro->second.size(), 1);
         EXPECT_EQ(it_gyro->second[0], cros::mojom::DeviceType::ANGLVEL);
 
-        closure.Run();
+        std::move(closure).Run();
       },
       loop.QuitClosure()));
   // Wait until the callback is done.
@@ -201,7 +201,7 @@ class SensorServiceImplInvalidContextTest : public ::testing::Test {
 TEST_F(SensorServiceImplInvalidContextTest, GetAllDeviceIds) {
   base::RunLoop loop;
   sensor_service_->GetAllDeviceIds(base::BindOnce(
-      [](base::Closure closure,
+      [](base::OnceClosure closure,
          const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
              iio_device_ids_types) {
         EXPECT_EQ(iio_device_ids_types.size(), 1);
@@ -210,7 +210,7 @@ TEST_F(SensorServiceImplInvalidContextTest, GetAllDeviceIds) {
         EXPECT_EQ(it_accel->second.size(), 1);
         EXPECT_EQ(it_accel->second[0], cros::mojom::DeviceType::ACCEL);
 
-        closure.Run();
+        std::move(closure).Run();
       },
       loop.QuitClosure()));
   // Wait until the callback is done.
@@ -251,7 +251,7 @@ class SensorServiceImplTestDeviceTypesWithParam
 TEST_P(SensorServiceImplTestDeviceTypesWithParam, DeviceTypes) {
   base::RunLoop loop;
   sensor_service_->GetAllDeviceIds(base::BindOnce(
-      [](base::Closure closure,
+      [](base::OnceClosure closure,
          const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
              iio_device_ids_types) {
         EXPECT_EQ(iio_device_ids_types.size(), 1);
@@ -261,7 +261,7 @@ TEST_P(SensorServiceImplTestDeviceTypesWithParam, DeviceTypes) {
         for (size_t i = 0; i < it->second.size(); ++i)
           EXPECT_EQ(it->second[i], GetParam().second[i]);
 
-        closure.Run();
+        std::move(closure).Run();
       },
       loop.QuitClosure()));
   // Wait until the callback is done.
