@@ -11,7 +11,10 @@ group("all") {
     ":libdnsproxy",
   ]
   if (use.fuzzer) {
-    deps += [ ":resolver_fuzzer" ]
+    deps += [
+      ":ares_client_fuzzer",
+      ":resolver_fuzzer",
+    ]
   }
   if (use.test) {
     deps += [ ":dns-proxy_test" ]
@@ -68,6 +71,17 @@ executable("dnsproxyd") {
 if (use.fuzzer) {
   pkg_config("dns-proxy_fuzz_config") {
     pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("ares_client_fuzzer") {
+    sources = [ "ares_client_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":dns-proxy_fuzz_config",
+    ]
+    all_dependent_pkg_deps = [ "libcares" ]
+    deps = [ ":libdnsproxy" ]
   }
 
   executable("resolver_fuzzer") {
