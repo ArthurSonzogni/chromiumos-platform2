@@ -309,7 +309,14 @@ if saw_wakeup_event; then
 
   result="${RESULT_CANCELED_EARLY}"
 else
-  # Before suspending, power down this problematic modem.
+  # Before suspending, power down problematic modems if necessary.
+  # `modem_shutdown` (along with `modem_startup`) exists only if board-specific
+  # overlays provide one. Future project should re-use the script name when
+  # powering down modems before suspending is required.
+  # See https://crrev.com/c/2963943 as an example.
+  if [ -x "/usr/sbin/modem_shutdown" ]; then
+    /usr/sbin/modem_shutdown
+  fi
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem off
   fi
@@ -388,9 +395,16 @@ else
 
   bind_igb_devices
 
-  # Power back on the Huawei modem if it was powered off before suspend.
+  # Power back on modems if they were powered off before suspend.
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem on
+  fi
+  # `modem_startup` (along with `modem_shutdown`) exists only if board-specific
+  # overlays provide one. Future project should re-use the script name when
+  # powering back on modems after suspending is required.
+  # See https://crrev.com/c/2963943 as an example.
+  if [ -x "/usr/sbin/modem_startup" ]; then
+    /usr/sbin/modem_startup
   fi
 
   bt_exit_sniff
