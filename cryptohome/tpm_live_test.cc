@@ -391,21 +391,21 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   SecureBlob plaintext(32, 'a');
   SecureBlob pass_blob(256, 'b');
   SecureBlob ciphertext;
-  SecureBlob auth_value;
-  if (!tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value.";
+  brillo::SecureBlob auth_value;
+  if (TPMErrorBase err =
+          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value: " << *err;
     return false;
   }
-  if (tpm_->SealToPcrWithAuthorization(plaintext, auth_value, pcr_map,
-                                       &ciphertext) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error sealing the blob.";
+  if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
+          plaintext, auth_value, pcr_map, &ciphertext)) {
+    LOG(ERROR) << "Error sealing the blob: " << *err;
     return false;
   }
   SecureBlob unsealed_text;
-  if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
-                                    pcr_map,
-                                    &unsealed_text) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error unsealing blob.";
+  if (TPMErrorBase err = tpm_->UnsealWithAuthorization(
+          base::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text)) {
+    LOG(ERROR) << "Error unsealing blob: " << *err;
     return false;
   }
   if (plaintext != unsealed_text) {
@@ -415,13 +415,13 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
 
   // Check that unsealing doesn't work with wrong pass_blob.
   pass_blob.char_data()[255] = 'a';
-  if (!tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value.";
+  if (TPMErrorBase err =
+          tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value: " << *err;
     return false;
   }
   if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
-                                    pcr_map,
-                                    &unsealed_text) == Tpm::kTpmRetryNone &&
+                                    pcr_map, &unsealed_text) == nullptr &&
       plaintext == unsealed_text) {
     LOG(ERROR) << "UnsealWithAuthorization failed to fail.";
     return false;

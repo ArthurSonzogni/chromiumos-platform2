@@ -216,7 +216,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
       .Times(2)  // Once for each valid PCR state.
-      .WillRepeatedly(DoAll(SaveArg<0>(&vkk_key), Return(Tpm::kTpmRetryNone)));
+      .WillRepeatedly(DoAll(SaveArg<0>(&vkk_key), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -255,7 +255,7 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), Return(Tpm::kTpmRetryNone)));
+      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), ReturnError<TPMErrorBase>()));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -401,7 +401,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   // UnsealWithAuthorization operation will fail.
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
-      .WillOnce(Return(Tpm::kTpmRetryFatal));
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   ASSERT_FALSE(vault_keyset.DecryptVaultKeyset(
       key, false /* locked_to_single_user */, &crypto_error));

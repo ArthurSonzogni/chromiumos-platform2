@@ -225,7 +225,8 @@ class Tpm {
       brillo::SecureBlob* plaintext) = 0;
 
   // Seals a data blob to provided PCR data, while assigning a authorization
-  // value derived from provided |auth_value|. Returns a TpmRetryAction struct.
+  // value derived from provided |auth_value|. Returns a
+  // hwsec::error::TPMErrorBase.
   //
   // Parameters
   //   plaintext - The data blob to be sealed.
@@ -233,7 +234,7 @@ class Tpm {
   //   pcr_map - The map of PCR index -> expected value when Unseal will be
   //             used.
   //   sealed_data (OUT) - Sealed blob.
-  virtual TpmRetryAction SealToPcrWithAuthorization(
+  virtual hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
@@ -246,7 +247,7 @@ class Tpm {
   // Parameters
   //   sealed_data - The sealed data.
   //   preload_handle (OUT) - A handle to the sealed data loaded into the TPM.
-  virtual TpmRetryAction PreloadSealedData(
+  virtual hwsec::error::TPMErrorBase PreloadSealedData(
       const brillo::SecureBlob& sealed_data,
       ScopedKeyHandle* preload_handle) = 0;
 
@@ -256,8 +257,8 @@ class Tpm {
   // because it uses one expensive operation in decrypt to obtain the
   // auth_value, and we can't afford to add a second operation. This might
   // change in the future if we implement ECC encryption for salted sessions.
-  // For TPM1.2 the |preload_handle| are unused. Returns a TpmRetryAction
-  // struct.
+  // For TPM1.2 the |preload_handle| are unused. Returns a
+  // hwsec::error::TPMErrorBase struct.
   //
   // Parameters
   //   preload_handle - The handle to the sealed data. (optional)
@@ -267,7 +268,7 @@ class Tpm {
   //             only for TPM 2.0. For TPM 1.2 this parameter is ignored, even
   //             so an empty map can be used.
   //   plaintext (OUT) - Unsealed blob.
-  virtual TpmRetryAction UnsealWithAuthorization(
+  virtual hwsec::error::TPMErrorBase UnsealWithAuthorization(
       base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_value,
@@ -657,9 +658,10 @@ class Tpm {
   // The input |pass_blob| must have 256 bytes. For TPM2.0, |key_handle| is used
   // to decrypt the |pass_blob|, obtaining the authorization value. For TPM1.2
   // the |key_handle| is unused.
-  virtual bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
-                            const brillo::SecureBlob& pass_blob,
-                            brillo::SecureBlob* auth_value) = 0;
+  virtual hwsec::error::TPMErrorBase GetAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) = 0;
 
  private:
   static Tpm* singleton_;

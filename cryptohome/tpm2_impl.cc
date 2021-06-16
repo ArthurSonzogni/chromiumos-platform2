@@ -972,14 +972,15 @@ TPMErrorBase Tpm2Impl::DecryptBlob(
   return nullptr;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
+TPMErrorBase Tpm2Impl::SealToPcrWithAuthorization(
     const SecureBlob& plaintext,
     const SecureBlob& auth_value,
     const std::map<uint32_t, std::string>& pcr_map,
     SecureBlob* sealed_data) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
 
   // Get the policy digest for PCR.
@@ -987,40 +988,40 @@ Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
   if (auto err = CreateError<TPM2Error>(
           trunks->tpm_utility->GetPolicyDigestForPcrValues(
               pcr_map, true /* use_auth_value */, &policy_digest))) {
-    LOG(ERROR) << "Error getting policy digest: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error getting policy digest");
   }
 
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
   if (auto err =
           CreateError<TPM2Error>(session->StartUnboundSession(true, true))) {
-    LOG(ERROR) << "Error starting hmac session: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error starting hmac session");
   }
 
   std::string sealed_str;
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->SealData(
           plaintext.to_string(), policy_digest, auth_value.to_string(),
           session->GetDelegate(), &sealed_str))) {
-    LOG(ERROR) << "Error sealing data to PCR with authorization: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(
+        std::move(err), "Error sealing data to PCR with authorization");
   }
   sealed_data->assign(sealed_str.begin(), sealed_str.end());
 
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::PreloadSealedData(
-    const brillo::SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) {
+TPMErrorBase Tpm2Impl::PreloadSealedData(const brillo::SecureBlob& sealed_data,
+                                         ScopedKeyHandle* preload_handle) {
   if (TPMErrorBase err = LoadWrappedKey(sealed_data, preload_handle)) {
-    LOG(ERROR) << "Failed to load sealed data: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to load sealed data");
   }
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
+TPMErrorBase Tpm2Impl::UnsealWithAuthorization(
     base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
@@ -1028,7 +1029,8 @@ Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
     SecureBlob* plaintext) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
 
   std::unique_ptr<trunks::PolicySession> policy_session =
@@ -1036,17 +1038,15 @@ Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
   // Use unsalted session here, to unseal faster.
   if (auto err = CreateError<TPM2Error>(
           policy_session->StartUnboundSession(false, false))) {
-    LOG(ERROR) << "Error starting policy session: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error starting policy session");
   }
   if (auto err = CreateError<TPM2Error>(policy_session->PolicyAuthValue())) {
-    LOG(ERROR) << __func__
-               << ": Error setting session to use auth_value: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error setting session to use auth_value");
   }
   if (auto err = CreateError<TPM2Error>(policy_session->PolicyPCR(pcr_map))) {
-    LOG(ERROR) << "Error in PolicyPCR: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err), "Error in PolicyPCR");
   }
   policy_session->SetEntityAuthorizationValue(auth_value.to_string());
   std::string unsealed_data;
@@ -1055,20 +1055,20 @@ Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
             CreateError<TPM2Error>(trunks->tpm_utility->UnsealDataWithHandle(
                 *preload_handle, policy_session->GetDelegate(),
                 &unsealed_data))) {
-      LOG(ERROR) << "Error unsealing data with authorization: " << *err;
-      return TPM2ErrorToRetryAction(err);
+      return CreateErrorWrap<TPMError>(
+          std::move(err), "Error unsealing data with authorization");
     }
   } else {
     if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->UnsealData(
             sealed_data.to_string(), policy_session->GetDelegate(),
             &unsealed_data))) {
-      LOG(ERROR) << "Error unsealing data with authorization: " << *err;
-      return TPM2ErrorToRetryAction(err);
+      return CreateErrorWrap<TPMError>(
+          std::move(err), "Error unsealing data with authorization");
     }
   }
   plaintext->assign(unsealed_data.begin(), unsealed_data.end());
 
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
@@ -1300,20 +1300,24 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
   return true;
 }
 
-bool Tpm2Impl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
-                            const SecureBlob& pass_blob,
-                            SecureBlob* auth_value) {
+TPMErrorBase Tpm2Impl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                                    const SecureBlob& pass_blob,
+                                    SecureBlob* auth_value) {
   if (!key_handle) {
     LOG(DFATAL) << "TPM2.0 needs a key_handle to get auth value.";
-    return false;
+    return CreateError<TPMError>("TPM2.0 needs a key_handle to get auth value",
+                                 TPMRetryAction::kNoRetry);
   }
   if (pass_blob.size() != kDefaultTpmRsaModulusSize / 8) {
-    return false;
+    return CreateError<TPMError>(
+        "Unexpected pass_blob size: " + std::to_string(pass_blob.size()),
+        TPMRetryAction::kNoRetry);
   }
 
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return false;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
 
   // To guarantee that pass_blob is lower that public key modulus, just set the
@@ -1326,12 +1330,12 @@ bool Tpm2Impl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
           key_handle.value(), trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
           value_to_decrypt, delegate.get(), &decrypted_value))) {
-    LOG(ERROR) << "Error decrypting pass_blob: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(
+        std::move(err), "Error decrypting pass_blob", TPMRetryAction::kNoRetry);
   }
   *auth_value = Sha256(SecureBlob(decrypted_value));
 
-  return true;
+  return nullptr;
 }
 
 bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {

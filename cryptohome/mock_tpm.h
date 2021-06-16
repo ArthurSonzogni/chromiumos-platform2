@@ -39,18 +39,18 @@ class MockTpm : public Tpm {
                (const std::map<uint32_t, std::string>&),
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               SealToPcrWithAuthorization,
               (const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                (const std::map<uint32_t, std::string>&),
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               PreloadSealedData,
               (const brillo::SecureBlob&, ScopedKeyHandle*),
               (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               UnsealWithAuthorization,
               (base::Optional<TpmKeyHandle>,
                const brillo::SecureBlob&,
@@ -187,7 +187,7 @@ class MockTpm : public Tpm {
               GetPcrMap,
               (const std::string&, bool),
               (const override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               GetAuthValue,
               (base::Optional<TpmKeyHandle> key_handle,
                const brillo::SecureBlob& pass_blob,

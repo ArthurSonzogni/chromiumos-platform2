@@ -75,14 +75,15 @@ class Tpm2Impl : public Tpm {
       const brillo::SecureBlob& key,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* plaintext) override;
-  TpmRetryAction SealToPcrWithAuthorization(
+  hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* sealed_data) override;
-  TpmRetryAction PreloadSealedData(const brillo::SecureBlob& sealed_data,
-                                   ScopedKeyHandle* preload_handle) override;
-  TpmRetryAction UnsealWithAuthorization(
+  hwsec::error::TPMErrorBase PreloadSealedData(
+      const brillo::SecureBlob& sealed_data,
+      ScopedKeyHandle* preload_handle) override;
+  hwsec::error::TPMErrorBase UnsealWithAuthorization(
       base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_value,
@@ -192,9 +193,10 @@ class Tpm2Impl : public Tpm {
   // Derives the |auth_value| by decrypting the |pass_blob| using |key_handle|
   // and hashing the result. The input |pass_blob| must have 256 bytes, the
   // size of cryptohome key modulus.
-  bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
-                    const brillo::SecureBlob& pass_blob,
-                    brillo::SecureBlob* auth_value) override;
+  hwsec::error::TPMErrorBase GetAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.

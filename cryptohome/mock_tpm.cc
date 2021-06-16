@@ -6,6 +6,10 @@
 
 #include <string>
 
+#include <libhwsec-foundation/error/testing_helper.h>
+
+using hwsec::error::TPMErrorBase;
+using hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::DoAll;
 using testing::Invoke;
@@ -40,10 +44,11 @@ MockTpm::MockTpm() {
   ON_CALL(*this, GetLECredentialBackend()).WillByDefault(Return(nullptr));
   ON_CALL(*this, GetDelegate(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, PreloadSealedData(_, _))
-      .WillByDefault(Return(Tpm::kTpmRetryNone));
+      .WillByDefault(ReturnError<TPMErrorBase>());
   ON_CALL(*this, UnsealWithAuthorization(_, _, _, _, _))
-      .WillByDefault(Return(Tpm::kTpmRetryNone));
-  ON_CALL(*this, GetAuthValue(_, _, _)).WillByDefault(Return(true));
+      .WillByDefault(ReturnError<TPMErrorBase>());
+  ON_CALL(*this, GetAuthValue(_, _, _))
+      .WillByDefault(ReturnError<TPMErrorBase>());
 }
 
 MockTpm::~MockTpm() {}

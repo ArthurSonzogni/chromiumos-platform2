@@ -635,7 +635,7 @@ bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
   return true;
 }
 
-Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
+TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
     const SecureBlob& plaintext,
     const SecureBlob& auth_value,
     const std::map<uint32_t, std::string>& pcr_map,
@@ -643,14 +643,14 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Failed to connect to the TPM.";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to connect to the TPM",
+                                 TPMRetryAction::kCommunication);
   }
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
-    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK",
+                                     TPMRetryAction::kNoRetry);
   }
 
   // Create a PCRS object.
@@ -658,8 +658,9 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   if (auto err = CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
                                     TSS_PCRS_STRUCT_INFO, pcrs_handle.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *err;
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Context_CreateObject",
+                                     TPMRetryAction::kNoRetry);
   }
 
   // Process the data from pcr_map.
@@ -671,8 +672,8 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
       ScopedTssMemory pcr_value(context_handle);
       if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
               tpm_handle, pcr_index, &pcr_len, pcr_value.ptr()))) {
-        LOG(ERROR) << "Could not read PCR value: " << *err;
-        return TPM1ErrorToRetryAction(err);
+        return CreateErrorWrap<TPMError>(std::move(err),
+                                         "Could not read PCR value");
       }
       Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, pcr_len,
                                     pcr_value.value());
@@ -686,15 +687,17 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   ScopedTssKey enc_handle(context_handle);
   if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_value)) {
     context_handle.reset();
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to SetAuthValue",
+                                 TPMRetryAction::kNoRetry);
   }
 
   // Seal the given value with the SRK.
   if (auto err = CreateError<TPM1Error>(
           Tspi_Data_Seal(enc_handle, srk_handle, plaintext.size(),
                          const_cast<BYTE*>(plaintext.data()), pcrs_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Data_Seal: " << *err;
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Data_Seal",
+                                     TPMRetryAction::kNoRetry);
   }
 
   // Extract the sealed value.
@@ -703,21 +706,22 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   if (auto err = CreateError<TPM1Error>(Tspi_GetAttribData(
           enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
           TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length, enc_data.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_GetAttribData: " << *err;
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_GetAttribData",
+                                     TPMRetryAction::kNoRetry);
   }
   sealed_data->assign(&enc_data.value()[0], &enc_data.value()[enc_data_length]);
 
-  return kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction TpmImpl::PreloadSealedData(
-    const brillo::SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) {
+TPMErrorBase TpmImpl::PreloadSealedData(const brillo::SecureBlob& sealed_data,
+                                        ScopedKeyHandle* preload_handle) {
   // No effect for TPM 1.2.
-  return kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
+TPMErrorBase TpmImpl::UnsealWithAuthorization(
     base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
@@ -725,35 +729,37 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
     SecureBlob* plaintext) {
   if (preload_handle) {
     LOG(DFATAL) << "TPM1.2 doesn't support preload_handle.";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("TPM1.2 doesn't support preload_handle",
+                                 TPMRetryAction::kNoRetry);
   }
 
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Failed to connect to the TPM.";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to connect to the TPM",
+                                 TPMRetryAction::kCommunication);
   }
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
-    LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK",
+                                     TPMRetryAction::kNoRetry);
   }
 
   // Create an ENCDATA object with the sealed value.
   ScopedTssKey enc_handle(context_handle);
   if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_value)) {
     context_handle.reset();
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to SetAuthValue",
+                                 TPMRetryAction::kNoRetry);
   }
 
   if (auto err = CreateError<TPM1Error>(
           Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_data.size(),
                              const_cast<BYTE*>(sealed_data.data())))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribData: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_SetAttribData");
   }
 
   // Unseal using the SRK.
@@ -761,13 +767,13 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
   UINT32 dec_data_length = 0;
   if (auto err = CreateError<TPM1Error>(Tspi_Data_Unseal(
           enc_handle, srk_handle, &dec_data_length, dec_data.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_Data_Unseal: " << *err;
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error calling Tspi_Data_Unseal");
   }
   plaintext->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
   brillo::SecureClearBytes(dec_data.value(), dec_data_length);
 
-  return kTpmRetryNone;
+  return nullptr;
 }
 
 TPM1Error TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
@@ -2255,12 +2261,12 @@ bool TpmImpl::SetDelegateDataFromTpmManager() {
   return has_set_delegate_data_;
 }
 
-bool TpmImpl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
-                           const SecureBlob& pass_blob,
-                           SecureBlob* auth_value) {
+TPMErrorBase TpmImpl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                                   const SecureBlob& pass_blob,
+                                   SecureBlob* auth_value) {
   // For TPM1.2, the |auth_value| should be the same as |pass_blob|.
   *auth_value = pass_blob;
-  return true;
+  return nullptr;
 }
 
 }  // namespace cryptohome

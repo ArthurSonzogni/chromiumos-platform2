@@ -26,6 +26,10 @@
 #include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
+using hwsec_foundation::error::CreateErrorWrap;
+
 namespace cryptohome {
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
@@ -78,23 +82,23 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // which are stored in the serialized vault keyset.
   TpmKeyHandle cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
   brillo::SecureBlob auth_value;
-  if (!tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value.";
+  if (TPMErrorBase err =
+          tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value: " << *err;
     return base::nullopt;
   }
 
   brillo::SecureBlob tpm_key;
-  if (tpm_->SealToPcrWithAuthorization(vkk_key, auth_value, default_pcr_map,
-                                       &tpm_key) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to wrap vkk with creds.";
+  if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
+          vkk_key, auth_value, default_pcr_map, &tpm_key)) {
+    LOG(ERROR) << "Failed to wrap vkk with creds: " << *err;
     return base::nullopt;
   }
 
   brillo::SecureBlob extended_tpm_key;
-  if (tpm_->SealToPcrWithAuthorization(vkk_key, auth_value, extended_pcr_map,
-                                       &extended_tpm_key) !=
-      Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR.";
+  if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
+          vkk_key, auth_value, extended_pcr_map, &extended_tpm_key)) {
+    LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR: " << *err;
     return base::nullopt;
   }
 
@@ -221,12 +225,13 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
 
   // Preload the sealed data while deriving secrets in scrypt.
   ScopedKeyHandle preload_handle;
-  Tpm::TpmRetryAction retry_action;
+  TPMErrorBase err;
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
-    retry_action = tpm_->PreloadSealedData(tpm_key, &preload_handle);
-    if (retry_action == Tpm::kTpmRetryNone)
+    err = tpm_->PreloadSealedData(tpm_key, &preload_handle);
+    if (err == nullptr)
       break;
-    if (!TpmAuthBlockUtils::TpmErrorIsRetriable(retry_action))
+
+    if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err))
       break;
   }
 
@@ -238,8 +243,8 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     return false;
   }
 
-  if (retry_action != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to preload the sealed data";
+  if (err) {
+    LOG(ERROR) << "Failed to preload the sealed data: " << *err;
     return false;
   }
 
@@ -252,24 +257,24 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   }
 
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
-    retry_action = Tpm::kTpmRetryNone;
     TpmKeyHandle cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
     brillo::SecureBlob auth_value;
-    if (!tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
-      LOG(ERROR) << "Failed to get auth value.";
-      retry_action = Tpm::kTpmRetryFailNoRetry;
+    if (TPMErrorBase auth_err =
+            tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
+      err = CreateErrorWrap<TPMError>(std::move(auth_err),
+                                      "Failed to get auth value");
       // TODO(yich): Reload cryptohome key might be a better choice.
       break;
     }
 
     std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
-    retry_action = tpm_->UnsealWithAuthorization(handle, tpm_key, auth_value,
-                                                 pcr_map, vkk_key);
+    err = tpm_->UnsealWithAuthorization(handle, tpm_key, auth_value, pcr_map,
+                                        vkk_key);
 
-    if (retry_action == Tpm::kTpmRetryNone)
+    if (err == nullptr)
       return true;
 
-    if (!TpmAuthBlockUtils::TpmErrorIsRetriable(retry_action))
+    if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err))
       break;
 
     // If the error is retriable, reload the key first.
@@ -278,9 +283,10 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
       break;
     }
   }
-
-  LOG(ERROR) << "Failed to unwrap VKK with creds.";
-  *error = TpmAuthBlockUtils::TpmErrorToCrypto(retry_action);
+  if (err) {
+    LOG(ERROR) << "Failed to unwrap VKK with creds: " << *err;
+  }
+  *error = TpmAuthBlockUtils::TPMErrorToCrypto(err);
   return false;
 }
 

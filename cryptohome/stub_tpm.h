@@ -42,30 +42,35 @@ class StubTpm : public Tpm {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
         "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
-                    const brillo::SecureBlob& pass_blob,
-                    brillo::SecureBlob* auth_value) override {
-    return false;
+  hwsec::error::TPMErrorBase GetAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
 
-  TpmRetryAction SealToPcrWithAuthorization(
+  hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
       const SecureBlob& plaintext,
       const SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       SecureBlob* sealed_data) override {
-    return kTpmRetryFatal;
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  TpmRetryAction PreloadSealedData(const SecureBlob& sealed_data,
-                                   ScopedKeyHandle* preload_handle) override {
-    return kTpmRetryFatal;
+  hwsec::error::TPMErrorBase PreloadSealedData(
+      const SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  TpmRetryAction UnsealWithAuthorization(
+  hwsec::error::TPMErrorBase UnsealWithAuthorization(
       base::Optional<TpmKeyHandle> preload_handle,
       const SecureBlob& sealed_data,
       const SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       SecureBlob* plaintext) override {
-    return kTpmRetryFatal;
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   SecureBlob* hash) override {

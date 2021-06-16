@@ -81,11 +81,12 @@ TEST(TpmBoundToPcrTest, CreateTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(tpm, GetAuthValue(_, scrypt_derived_key, _))
-      .WillOnce(DoAll(SetArgPointee<2>(auth_value), Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
       .Times(Exactly(2));
   ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
-      .WillByDefault(Return(Tpm::kTpmRetryNone));
+      .WillByDefault(ReturnError<TPMErrorBase>());
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/base::nullopt, salt,
@@ -115,7 +116,7 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
 
   ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
-      .WillByDefault(Return(Tpm::kTpmRetryFatal));
+      .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/base::nullopt, salt,
@@ -344,11 +345,12 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
       .WillOnce(Invoke(
           [&](const brillo::SecureBlob&, ScopedKeyHandle* preload_handle) {
             preload_handle->reset(&tpm, 5566);
-            return Tpm::kTpmRetryNone;
+            return nullptr;
           }));
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(tpm, GetAuthValue(_, pass_blob, _))
-      .WillOnce(DoAll(SetArgPointee<2>(auth_value), Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(tpm, UnsealWithAuthorization(base::Optional<TpmKeyHandle>(5566),
                                            _, auth_value, _, _))
       .Times(Exactly(1));
@@ -375,10 +377,11 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   ScopedKeyHandle handle;
   EXPECT_CALL(tpm, PreloadSealedData(_, _))
-      .WillOnce(Return(Tpm::kTpmRetryNone));
+      .WillOnce(ReturnError<TPMErrorBase>());
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(tpm, GetAuthValue(_, pass_blob, _))
-      .WillOnce(DoAll(SetArgPointee<2>(auth_value), Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
   base::Optional<TpmKeyHandle> nullopt;
   EXPECT_CALL(tpm, UnsealWithAuthorization(nullopt, _, auth_value, _, _))
       .Times(Exactly(1));

@@ -37,6 +37,7 @@ using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using hwsec::error::TPM1Error;
+using hwsec::error::TPMErrorBase;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -1082,14 +1083,15 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
   }
   // Unseal the secret value bound to PCRs and the AuthData value.
   brillo::SecureBlob auth_value;
-  if (!tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value.";
+  if (TPMErrorBase err =
+          tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value: " << *err;
     return false;
   }
-  if (tpm_->UnsealWithAuthorization(
+  if (TPMErrorBase err = tpm_->UnsealWithAuthorization(
           base::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
-          {} /* pcr_map */, unsealed_value) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to unseal the secret value";
+          {} /* pcr_map */, unsealed_value)) {
+    LOG(ERROR) << "Failed to unseal the secret value: " << *err;
     return false;
   }
   return true;
@@ -1212,15 +1214,17 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     }
 
     brillo::SecureBlob auth_value;
-    if (!tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-      LOG(ERROR) << "Failed to get auth value.";
+    if (TPMErrorBase err =
+            tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+      LOG(ERROR) << "Failed to get auth value: " << *err;
       return false;
     }
-    if (tpm_->SealToPcrWithAuthorization(
+    if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
             *secret_value, auth_data, pcr_values_strings,
-            &pcr_bound_secret_value) != Tpm::kTpmRetryNone) {
+            &pcr_bound_secret_value)) {
       LOG(ERROR)
-          << "Error binding the secret value to PCRs and authorization data";
+          << "Error binding the secret value to PCRs and authorization data: "
+          << *err;
       return false;
     }
     pcr_bound_secret_values.push_back(

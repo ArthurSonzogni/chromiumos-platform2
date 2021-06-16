@@ -1390,16 +1390,16 @@ TEST_F(Tpm2Test, GetAuthValueSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
-  EXPECT_EQ(true, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
-                                     pass_blob, &auth_value));
+  EXPECT_EQ(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                        pass_blob, &auth_value));
 }
 
 TEST_F(Tpm2Test, GetAuthValueFailedWithAuthorizationBadAuthSize) {
   TpmKeyHandle handle = 42;
   SecureBlob pass_blob(128, 'a');
   SecureBlob auth_value;
-  EXPECT_EQ(false, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
-                                      pass_blob, &auth_value));
+  EXPECT_NE(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                        pass_blob, &auth_value));
 }
 
 TEST_F(Tpm2Test, GetAuthValueFailed) {
@@ -1408,8 +1408,8 @@ TEST_F(Tpm2Test, GetAuthValueFailed) {
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
-  EXPECT_EQ(false, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
-                                      pass_blob, &auth_value));
+  EXPECT_NE(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                        pass_blob, &auth_value));
 }
 
 TEST_F(Tpm2Test, SealToPcrWithAuthorizationSuccess) {
@@ -1418,10 +1418,9 @@ TEST_F(Tpm2Test, SealToPcrWithAuthorizationSuccess) {
   EXPECT_CALL(mock_tpm_utility_, SealData(plaintext.to_string(), _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob sealed_data;
-  EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->SealToPcrWithAuthorization(plaintext, auth_value,
-                                             std::map<uint32_t, std::string>(),
-                                             &sealed_data));
+  EXPECT_EQ(nullptr, tpm_->SealToPcrWithAuthorization(
+                         plaintext, auth_value,
+                         std::map<uint32_t, std::string>(), &sealed_data));
 }
 
 TEST_F(Tpm2Test, UnsealWithAuthorizationSuccess) {
@@ -1430,10 +1429,9 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationSuccess) {
   EXPECT_CALL(mock_tpm_utility_, UnsealData(sealed_data.to_string(), _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob plaintext;
-  EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->UnsealWithAuthorization(
-                base::nullopt, sealed_data, auth_value,
-                std::map<uint32_t, std::string>(), &plaintext));
+  EXPECT_EQ(nullptr, tpm_->UnsealWithAuthorization(
+                         base::nullopt, sealed_data, auth_value,
+                         std::map<uint32_t, std::string>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, UnsealWithAuthorizationWithPreloadSuccess) {
@@ -1443,10 +1441,10 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationWithPreloadSuccess) {
   EXPECT_CALL(mock_tpm_utility_, UnsealDataWithHandle(preload_handle, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob plaintext;
-  EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->UnsealWithAuthorization(
-                preload_handle, sealed_data, auth_value,
-                std::map<uint32_t, std::string>(), &plaintext));
+  TPMErrorBase err = tpm_->UnsealWithAuthorization(
+      preload_handle, sealed_data, auth_value,
+      std::map<uint32_t, std::string>(), &plaintext);
+  EXPECT_EQ(nullptr, err);
 }
 
 TEST_F(Tpm2Test, GetPublicKeyHashSuccess) {
