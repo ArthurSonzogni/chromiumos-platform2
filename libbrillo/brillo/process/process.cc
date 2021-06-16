@@ -71,6 +71,7 @@ ProcessImpl::ProcessImpl()
     : pid_(0),
       uid_(-1),
       gid_(-1),
+      pgid_(-1),
       pre_exec_(base::BindOnce(&ReturnTrue)),
       search_path_(false),
       inherit_parent_signal_mask_(false),
@@ -186,6 +187,10 @@ void ProcessImpl::SetUid(uid_t uid) {
 
 void ProcessImpl::SetGid(gid_t gid) {
   gid_ = gid;
+}
+
+void ProcessImpl::SetPgid(pid_t pgid) {
+  pgid_ = pgid;
 }
 
 void ProcessImpl::SetCapabilities(uint64_t /*capmask*/) {
@@ -453,6 +458,10 @@ bool ProcessImpl::Start() {
     }
     if (uid_ != static_cast<uid_t>(-1) && setresuid(uid_, uid_, uid_) < 0) {
       PLOG(ERROR) << "Unable to set UID to " << uid_;
+      _exit(kErrorExitStatus);
+    }
+    if (pgid_ != static_cast<pid_t>(-1) && setpgid(0, pgid_) < 0) {
+      PLOG(ERROR) << "Unable to set PGID to " << pgid_;
       _exit(kErrorExitStatus);
     }
     if (!std::move(pre_exec_).Run()) {

@@ -30,6 +30,7 @@ class ProcessMock : public Process {
   MOCK_METHOD(void, BindFd, (int, int), (override));
   MOCK_METHOD(void, SetUid, (uid_t), (override));
   MOCK_METHOD(void, SetGid, (gid_t), (override));
+  MOCK_METHOD(void, SetPgid, (pid_t), (override));
   MOCK_METHOD(void, SetCapabilities, (uint64_t), (override));
   MOCK_METHOD(void, ApplySyscallFilter, (const std::string&), (override));
   MOCK_METHOD(void, EnterNewPidNamespace, (), (override));

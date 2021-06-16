@@ -94,6 +94,11 @@ class BRILLO_EXPORT Process {
   // Set the real/effective/saved group ID of the child process.
   virtual void SetGid(gid_t gid) = 0;
 
+  // Set the process group ID of the child process. If the argument is 0,
+  // then it will be set to the pid of the child process, which will be a
+  // new group initially only containing itself.
+  virtual void SetPgid(pid_t pgid) = 0;
+
   // Set the capabilities assigned to the child process.
   // NOTE: |capmask| is indeed a mask and should be passed in as the result of
   // the CAP_TO_MASK(capability) macro, e.g.
@@ -202,6 +207,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual void SetCloseUnusedFileDescriptors(bool close_unused_fds);
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
+  virtual void SetPgid(pid_t pgid);
   virtual void SetCapabilities(uint64_t capmask);
   virtual void ApplySyscallFilter(const std::string& path);
   virtual void EnterNewPidNamespace();
@@ -278,6 +284,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   StandardFileDescriptorInfo stdin_, stdout_, stderr_;
   uid_t uid_;
   gid_t gid_;
+  pid_t pgid_;
   PreExecCallback pre_exec_;
   bool search_path_;
   // Flag indicating to inherit signal mask from the parent process. It
