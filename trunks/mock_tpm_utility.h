@@ -38,7 +38,9 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD1(GetAlertsData, TPM_RC(TpmAlertsData*));
   MOCK_METHOD3(ExtendPCR,
                TPM_RC(int, const std::string&, AuthorizationDelegate*));
+  MOCK_METHOD2(ExtendPCRForCSME, TPM_RC(int, const std::string&));
   MOCK_METHOD2(ReadPCR, TPM_RC(int, std::string*));
+  MOCK_METHOD2(ReadPCRFromCSME, TPM_RC(int, std::string*));
   MOCK_METHOD6(AsymmetricEncrypt,
                TPM_RC(TPM_HANDLE,
                       TPM_ALG_ID,

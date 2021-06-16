@@ -129,9 +129,14 @@ class TRUNKS_EXPORT TpmUtility {
                            const std::string& extend_data,
                            AuthorizationDelegate* delegate) = 0;
 
+  virtual TPM_RC ExtendPCRForCSME(int pcr_index,
+                                  const std::string& extend_data) = 0;
+
   // This method reads the pcr specified by |pcr_index| and returns its value
   // in |pcr_value|. NOTE: it assumes we are using SHA256 as our hash alg.
   virtual TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) = 0;
+
+  virtual TPM_RC ReadPCRFromCSME(int pcr_index, std::string* pcr_value) = 0;
 
   // This method performs an encryption operation using a LOADED RSA key
   // referrenced by its handle |key_handle|. The |plaintext| is then encrypted

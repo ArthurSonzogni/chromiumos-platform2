@@ -56,7 +56,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC ExtendPCR(int pcr_index,
                    const std::string& extend_data,
                    AuthorizationDelegate* delegate) override;
+  TPM_RC ExtendPCRForCSME(int pcr_index,
+                          const std::string& extend_data) override;
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override;
+  TPM_RC ReadPCRFromCSME(int pcr_index, std::string* pcr_value) override;
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
@@ -275,6 +278,14 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   std::string cached_rsu_device_id_;
   size_t max_nv_chunk_size_ = 0;
 
+  enum class PinWeaverBackendType {
+    kUnknown,
+    kNotSupported,
+    kCr50,
+    kCsme,
+  };
+  PinWeaverBackendType pinweaver_backend_type_ = PinWeaverBackendType::kUnknown;
+
   // Creates the CSME salting key and calls `InitOwner()` API of CSME to
   // initialize the necessary TPM resources for pinweaver-csme. Returns
   // `TPM_RC_SUCCESS` if the operations succeed; otherwise, return
@@ -454,6 +465,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // Sends pinweaver command to CSME instead of GSC.
   TPM_RC PinWeaverCsmeCommand(const std::string& in, std::string* out);
+
+  PinWeaverBackendType GetPinwWeaverBackendType();
 
   // Obtains max supported size of NV_Read/Write buffer.
   TPM_RC GetMaxNVChunkSize(size_t* size);
