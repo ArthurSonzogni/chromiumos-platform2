@@ -32,6 +32,7 @@
 
 using ::testing::_;
 using ::testing::Exactly;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 
@@ -326,7 +327,43 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, pass_blob, _, _))
+  ScopedKeyHandle handle;
+  EXPECT_CALL(tpm, PreloadSealedData(_, _))
+      .WillOnce(Invoke(
+          [&](const brillo::SecureBlob&, ScopedKeyHandle* preload_handle) {
+            preload_handle->reset(&tpm, 5566);
+            return Tpm::kTpmRetryNone;
+          }));
+  EXPECT_CALL(tpm,
+              UnsealWithAuthorization(_, base::Optional<TpmKeyHandle>(5566), _,
+                                      pass_blob, _, _))
+      .Times(Exactly(1));
+
+  CryptoError error = CryptoError::CE_NONE;
+  TpmBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_key_loader);
+  EXPECT_TRUE(tpm_auth_block.DecryptTpmBoundToPcr(vault_key, tpm_key, salt,
+                                                  &error, &vkk_iv, &vkk_key));
+  EXPECT_EQ(CryptoError::CE_NONE, error);
+}
+
+TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob tpm_key(20, 'B');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+
+  brillo::SecureBlob vkk_iv(kDefaultAesKeySize);
+  brillo::SecureBlob vkk_key;
+
+  brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&pass_blob}));
+
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  ScopedKeyHandle handle;
+  EXPECT_CALL(tpm, PreloadSealedData(_, _))
+      .WillOnce(Return(Tpm::kTpmRetryNone));
+  base::Optional<TpmKeyHandle> nullopt;
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, nullopt, _, pass_blob, _, _))
       .Times(Exactly(1));
 
   CryptoError error = CryptoError::CE_NONE;
@@ -379,6 +416,7 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
+  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(Exactly(1));
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _)).Times(Exactly(1));
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);

@@ -5,7 +5,10 @@
 #include "cryptohome/tpm_bound_to_pcr_auth_block.h"
 
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/optional.h>
@@ -32,6 +35,14 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
       utils_(tpm, cryptohome_key_loader) {
   CHECK(tpm != nullptr);
   CHECK(cryptohome_key_loader != nullptr);
+
+  // Create the scrypt thread.
+  // TODO(yich): Create another thread in userdataauth and passing it to here.
+  base::Thread::Options options;
+  options.message_pump_type = base::MessagePumpType::IO;
+  scrypt_thread_ = std::make_unique<base::Thread>("scrypt_thread");
+  scrypt_thread_->StartWithOptions(options);
+  scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 
 base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
@@ -179,17 +190,64 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     brillo::SecureBlob* vkk_iv,
     brillo::SecureBlob* vkk_key) const {
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-  if (!DeriveSecretsScrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
+
+  // Prepare the parameters for scrypt.
+  std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob, vkk_iv};
+  bool derive_result = false;
+
+  base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
+                           base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  // Derive secrets on scrypt task runner.
+  scrypt_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](const brillo::SecureBlob& passkey, const brillo::SecureBlob& salt,
+             std::vector<brillo::SecureBlob*> gen_secrets, bool* result,
+             base::WaitableEvent* done) {
+            *result =
+                DeriveSecretsScrypt(passkey, salt, std::move(gen_secrets));
+            done->Signal();
+          },
+          vault_key, salt, gen_secrets, &derive_result, &done));
+
+  // Preload the sealed data while deriving secrets in scrypt.
+  ScopedKeyHandle preload_handle;
+  Tpm::TpmRetryAction retry_action;
+  for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
+    retry_action = tpm_->PreloadSealedData(tpm_key, &preload_handle);
+    if (retry_action == Tpm::kTpmRetryNone)
+      break;
+    if (!TpmAuthBlockUtils::TpmErrorIsRetriable(retry_action))
+      break;
+  }
+
+  // Wait for the scrypt finished.
+  done.Wait();
+
+  if (!derive_result) {
     LOG(ERROR) << "scrypt derivation failed";
     return false;
   }
 
-  Tpm::TpmRetryAction retry_action;
+  if (retry_action != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Failed to preload the sealed data";
+    return false;
+  }
+
+  // On TPM1.2 devices, preloading sealed data is meaningless and
+  // UnsealWithAuthorization will check the preload_handle not containing any
+  // value.
+  base::Optional<TpmKeyHandle> handle;
+  if (preload_handle.value() != kInvalidKeyHandle) {
+    handle = preload_handle.value();
+  }
+
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
     std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
     retry_action = tpm_->UnsealWithAuthorization(
-        cryptohome_key_loader_->GetCryptohomeKey(), base::nullopt, tpm_key,
-        pass_blob, pcr_map, vkk_key);
+        cryptohome_key_loader_->GetCryptohomeKey(), handle, tpm_key, pass_blob,
+        pcr_map, vkk_key);
 
     if (retry_action == Tpm::kTpmRetryNone)
       return true;
