@@ -1009,8 +1009,7 @@ TEST_F(ResourceManagerTest, SuspendBlocksCommands) {
       .WillOnce(Return(no_handles.response));
   EXPECT_CALL(transceiver_, SendCommandAndWait(output_handles.command))
       .WillOnce(Return(output_handles.response));
-  EXPECT_CALL(transceiver_, SendCommandAndWait(input_handles.command))
-      .WillOnce(Return(input_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(input_handles.command)).Times(0);
   EXPECT_CALL(transceiver_, SendCommandAndWait(all_handles.command))
       .WillOnce(Return(all_handles.response));
   EXPECT_TRUE(CommandReturnsSuccess(no_handles.command));

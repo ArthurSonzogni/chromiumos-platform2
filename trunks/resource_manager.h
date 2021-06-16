@@ -265,6 +265,8 @@ class ResourceManager : public CommandTransceiver {
   std::map<std::string, std::string> external_context_to_actual_;
   // A mapping of actual context blobs to external context blobs.
   std::map<std::string, std::string> actual_context_to_external_;
+  // A mapping of command handle to public area cache.
+  std::map<TPM_HANDLE, std::string> public_area_cache_;
 
   // The set of warnings already handled in the context of a FixWarnings() call.
   // Tracking this allows us to avoid re-entrance.

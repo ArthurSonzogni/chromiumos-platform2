@@ -146,6 +146,18 @@ std::string ResourceManager::SendCommandAndWait(const std::string& command) {
     }
   }
 
+  if (command_info.code == TPM_CC_ReadPublic) {
+    // Only reading the public area cache if the command didn't need
+    // authorization.
+    if (command_info.handles.size() == 1 &&
+        command_info.auth_session_handles.size() == 0) {
+      auto iter = public_area_cache_.find(command_info.handles[0]);
+      if (iter != public_area_cache_.end()) {
+        return iter->second;
+      }
+    }
+  }
+
   // Process all the input handles, e.g. map virtual handles.
   std::vector<TPM_HANDLE> updated_handles;
   for (auto handle : command_info.handles) {
@@ -221,6 +233,14 @@ std::string ResourceManager::SendCommandAndWait(const std::string& command) {
       virtual_handles.push_back(ProcessOutputHandle(handle));
     }
     response = ReplaceHandles(response, virtual_handles);
+    if (command_info.code == TPM_CC_ReadPublic) {
+      // Only caching the public area cache if the command didn't need
+      // authorization.
+      if (command_info.handles.size() == 1 &&
+          command_info.auth_session_handles.size() == 0) {
+        public_area_cache_[command_info.handles[0]] = response;
+      }
+    }
   }
   return response;
 }
@@ -271,11 +291,13 @@ void ResourceManager::CleanupFlushedHandle(TPM_HANDLE flushed_handle) {
     // For transient object handles, remove both the actual and virtual handles.
     if (unloaded_virtual_object_handles_.count(flushed_handle) > 0) {
       unloaded_virtual_object_handles_.erase(flushed_handle);
+      public_area_cache_.erase(flushed_handle);
     } else {
       auto iter = FindLoadedVirtualObjectHandle(flushed_handle);
       if (iter != loaded_virtual_object_handles_.end()) {
         tpm_object_handles_.erase(iter->info.tpm_handle);
         loaded_virtual_object_handles_.erase(iter);
+        public_area_cache_.erase(flushed_handle);
       }
     }
   } else if (IsSessionHandle(flushed_handle)) {
