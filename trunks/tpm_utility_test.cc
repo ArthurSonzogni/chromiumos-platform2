@@ -21,6 +21,7 @@
 #include "trunks/mock_tpm_cache.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/tpm_constants.h"
+#include "trunks/tpm_utility.h"
 #include "trunks/tpm_utility_impl.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -3050,7 +3051,7 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_NoDataInNvram) {
 }
 
 TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_EmptyNvram) {
-  uint32_t nv_index = 29360128;
+  uint32_t nv_index = kRsaEndorsementCertificateIndex;
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   nvram_data_buffer.size = 0;
 
@@ -3073,7 +3074,7 @@ TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_EmptyNvram) {
 }
 
 TEST_F(TpmUtilityTest, GetPublicRSAEndorsementKeyModulus_InvalidDataInNvram) {
-  uint32_t nv_index = 29360128;
+  uint32_t nv_index = kRsaEndorsementCertificateIndex;
   std::vector<unsigned char> cert = {1, 2, 3, 4};
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   nvram_data_buffer.size = cert.size();
@@ -3132,7 +3133,7 @@ TEST_F(TpmUtilityTest,
 
   ASSERT_TRUE(cert.size() <= MAX_NV_BUFFER_SIZE);
 
-  uint32_t nv_index = 29360128;
+  uint32_t nv_index = kRsaEndorsementCertificateIndex;
   TPM2B_MAX_NV_BUFFER nvram_data_buffer;
   nvram_data_buffer.size = cert.size();
   memcpy(nvram_data_buffer.buffer, cert.data(), cert.size());
