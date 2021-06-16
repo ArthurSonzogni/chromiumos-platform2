@@ -2123,6 +2123,58 @@ TEST_F(TpmUtilityTest, UnsealObjectFailure) {
                                 &unsealed_data));
 }
 
+TEST_F(TpmUtilityTest, UnsealDataWithHandleSuccess) {
+  std::string tpm_unsealed_data("password");
+  std::string unsealed_data;
+  TPM_HANDLE object_handle = 42;
+  TPM2B_PUBLIC public_data = kTpm2bPublic;
+  public_data.public_area.type = TPM_ALG_RSA;
+  public_data.public_area.object_attributes = kDecrypt;
+  public_data.public_area.auth_policy.size = 0;
+  public_data.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_data), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(object_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_data), Return(TPM_RC_SUCCESS)));
+  TPM2B_SENSITIVE_DATA out_data = Make_TPM2B_SENSITIVE_DATA(tpm_unsealed_data);
+  EXPECT_CALL(mock_tpm_, UnsealSync(object_handle, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(out_data), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.UnsealDataWithHandle(
+                object_handle, &mock_authorization_delegate_, &unsealed_data));
+  EXPECT_EQ(unsealed_data, tpm_unsealed_data);
+}
+
+TEST_F(TpmUtilityTest, UnsealDataWithHandleBadDelegate) {
+  TPM_HANDLE object_handle = 42;
+  std::string unsealed_data;
+  EXPECT_EQ(
+      SAPI_RC_INVALID_SESSIONS,
+      utility_.UnsealDataWithHandle(object_handle, nullptr, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealDataWithHandleBadKeyName) {
+  TPM_HANDLE object_handle = 42;
+  std::string unsealed_data;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.UnsealDataWithHandle(
+                object_handle, &mock_authorization_delegate_, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealDataWithHandleObjectFailure) {
+  TPM_HANDLE object_handle = 42;
+  std::string unsealed_data;
+  EXPECT_CALL(mock_tpm_, UnsealSync(_, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.UnsealDataWithHandle(
+                object_handle, &mock_authorization_delegate_, &unsealed_data));
+}
+
 TEST_F(TpmUtilityTest, StartSessionSuccess) {
   EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_SUCCESS));

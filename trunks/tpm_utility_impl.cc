@@ -1451,16 +1451,33 @@ TPM_RC TpmUtilityImpl::UnsealData(const std::string& sealed_data,
     return result;
   }
   ScopedKeyHandle sealed_object(factory_, object_handle);
+
+  return UnsealDataWithHandle(sealed_object.get(), delegate, unsealed_data);
+}
+
+TPM_RC TpmUtilityImpl::UnsealDataWithHandle(TPM_HANDLE object_handle,
+                                            AuthorizationDelegate* delegate,
+                                            std::string* unsealed_data) {
+  CHECK(unsealed_data);
+  TPM_RC result;
+  if (delegate == nullptr) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << __func__
+               << ": This method needs a valid authorization delegate: "
+               << GetErrorString(result);
+    return result;
+  }
+
   std::string object_name;
-  result = GetKeyName(sealed_object.get(), &object_name);
+  result = GetKeyName(object_handle, &object_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error getting object name: " << GetErrorString(result);
     return result;
   }
   TPM2B_SENSITIVE_DATA out_data;
-  result = factory_.GetTpm()->UnsealSync(sealed_object.get(), object_name,
-                                         &out_data, delegate);
+  result = factory_.GetTpm()->UnsealSync(object_handle, object_name, &out_data,
+                                         delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error unsealing object: " << GetErrorString(result);

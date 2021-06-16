@@ -347,6 +347,13 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->UnsealData(sealed_data, delegate, unsealed_data);
   }
 
+  TPM_RC UnsealDataWithHandle(TPM_HANDLE object_handle,
+                              AuthorizationDelegate* delegate,
+                              std::string* unsealed_data) override {
+    return target_->UnsealDataWithHandle(object_handle, delegate,
+                                         unsealed_data);
+  }
+
   TPM_RC StartSession(HmacSession* session) override {
     return target_->StartSession(session);
   }

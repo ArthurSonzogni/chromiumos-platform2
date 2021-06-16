@@ -362,6 +362,10 @@ class TRUNKS_EXPORT TpmUtility {
                             AuthorizationDelegate* delegate,
                             std::string* unsealed_data) = 0;
 
+  virtual TPM_RC UnsealDataWithHandle(TPM_HANDLE object_handle,
+                                      AuthorizationDelegate* delegate,
+                                      std::string* unsealed_data) = 0;
+
   // This method sets up a given HmacSession with parameter encryption set to
   // true. Returns an TPM_RC_SUCCESS on success.
   virtual TPM_RC StartSession(HmacSession* session) = 0;

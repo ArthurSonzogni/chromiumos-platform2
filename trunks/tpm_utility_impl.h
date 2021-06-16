@@ -151,6 +151,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC UnsealData(const std::string& sealed_data,
                     AuthorizationDelegate* delegate,
                     std::string* unsealed_data) override;
+  TPM_RC UnsealDataWithHandle(TPM_HANDLE object_handle,
+                              AuthorizationDelegate* delegate,
+                              std::string* unsealed_data) override;
   TPM_RC StartSession(HmacSession* session) override;
   TPM_RC GetPolicyDigestForPcrValues(
       const std::map<uint32_t, std::string>& pcr_map,

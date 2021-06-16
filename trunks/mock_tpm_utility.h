@@ -152,6 +152,10 @@ class MockTpmUtility : public TpmUtility {
                TPM_RC(const std::string&,
                       AuthorizationDelegate*,
                       std::string*));
+  MOCK_METHOD3(UnsealDataWithHandle,
+               TPM_RC(TPM_HANDLE object_handle,
+                      AuthorizationDelegate*,
+                      std::string*));
   MOCK_METHOD1(StartSession, TPM_RC(HmacSession*));
   MOCK_METHOD3(GetPolicyDigestForPcrValues,
                TPM_RC(const std::map<uint32_t, std::string>&,
