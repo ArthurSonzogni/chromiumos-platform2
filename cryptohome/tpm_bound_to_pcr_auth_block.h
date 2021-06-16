@@ -7,10 +7,12 @@
 
 #include "cryptohome/auth_block.h"
 
+#include <memory>
 #include <string>
 
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
+#include <base/threading/thread.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_key_loader.h"
@@ -48,6 +50,11 @@ class TpmBoundToPcrAuthBlock : public AuthBlock {
   Tpm* tpm_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;
+
+  // The thread for performing scrypt operations.
+  std::unique_ptr<base::Thread> scrypt_thread_;
+  // The task runner that belongs to the scrypt thread.
+  scoped_refptr<base::SingleThreadTaskRunner> scrypt_task_runner_;
 
   FRIEND_TEST_ALL_PREFIXES(TPMAuthBlockTest, DecryptBoundToPcrTest);
 };
