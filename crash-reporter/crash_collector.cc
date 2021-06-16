@@ -340,8 +340,7 @@ bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
   base::File f(fd);
   base::File::Info info;
   if (!f.GetInfo(&info)) {
-    LOG(ERROR) << "Failed to get file info: "
-               << base::File::ErrorToString(f.GetLastFileError());
+    PLOG(ERROR) << "Failed to get file info";
     return false;
   }
   int64_t size = info.size;
@@ -354,8 +353,7 @@ bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
   std::vector<uint8_t> data(size);
   // Then, read the file in to memory.
   if (!f.ReadAtCurrentPosAndCheck(data)) {
-    LOG(ERROR) << "Failed to read variant file: "
-               << base::File::ErrorToString(f.GetLastFileError());
+    PLOG(ERROR) << "Failed to read variant file";
     return false;
   }
   contents->append(data.begin(), data.end());
