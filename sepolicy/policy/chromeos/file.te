@@ -112,6 +112,7 @@ type cros_metrics_daemon_exec, exec_type, file_type, cros_file_type, cros_system
 type cros_midis_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mimo_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_minijail_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_missived_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mke2fs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ml_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mmdata_mgr_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

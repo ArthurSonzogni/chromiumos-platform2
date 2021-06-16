@@ -98,6 +98,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/metrics_client         u:object_r:cros_metrics_client_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
+/usr/bin/missived               u:object_r:cros_missived_exec:s0
 /usr/bin/ml_service             u:object_r:cros_ml_service_exec:s0
 /usr/bin/mmdata_mgr             u:object_r:cros_mmdata_mgr_exec:s0
 /usr/bin/modemfwd               u:object_r:cros_modemfwd_exec:s0
