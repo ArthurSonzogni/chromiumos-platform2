@@ -193,8 +193,9 @@ and a per-user Profile when a user is logged in.
         *   In addition to the regular `Profile` behavior of persisting
             `Service` properties, a `DefaultProfile` will also persist `Device`
             properties and a subset of `Manager` properties.
-    *   On user login, the [`shill_login_user`](../bin/shill_login_user) script
-        is run.
+    *   On user login, specifically when Chrome instructs session_manager to
+        emit the load-shill-profile upstart event, the
+        [`shill_login_user`](../bin/shill_login_user) script is run.
         *   This creates a `Profile` for the user  and pushes that `Profile`
             onto the `Profile` stack.
     *   On user logout, [`shill_logout_user`](../bin/shill_logout_user) removes
