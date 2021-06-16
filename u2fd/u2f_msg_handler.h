@@ -16,7 +16,7 @@
 
 #include "u2fd/allowlisting_util.h"
 #include "u2fd/tpm_vendor_cmd.h"
-#include "u2fd/u2f_adpu.h"
+#include "u2fd/u2f_apdu.h"
 #include "u2fd/user_state.h"
 
 namespace u2f {
@@ -34,16 +34,16 @@ class U2fMessageHandler {
                     bool allow_legacy_kh_sign,
                     bool allow_g2f_attestation);
 
-  // Processes the ADPU and builds a response locally, making using of cr50
+  // Processes the APDU and builds a response locally, making using of cr50
   // vendor commands where necessary.
-  U2fResponseAdpu ProcessMsg(const std::string& request);
+  U2fResponseApdu ProcessMsg(const std::string& request);
 
  private:
-  // Process a U2F_REGISTER ADPU.
-  U2fResponseAdpu ProcessU2fRegister(const U2fRegisterRequestAdpu& request);
-  // Process a U2F_AUTHENTICATE ADPU.
-  U2fResponseAdpu ProcessU2fAuthenticate(
-      const U2fAuthenticateRequestAdpu& request);
+  // Process a U2F_REGISTER APDU.
+  U2fResponseApdu ProcessU2fRegister(const U2fRegisterRequestApdu& request);
+  // Process a U2F_AUTHENTICATE APDU.
+  U2fResponseApdu ProcessU2fAuthenticate(
+      const U2fAuthenticateRequestApdu& request);
 
   // Status for execution of a cr50 command. Includes status of preparation
   // of the request, actual execution of the cr50 command, and any processing
@@ -79,11 +79,11 @@ class U2fMessageHandler {
                             std::vector<uint8_t>* sig_out);
 
   // Builds an empty U2F response with the specified status code.
-  U2fResponseAdpu BuildEmptyResponse(uint16_t sw);
+  U2fResponseApdu BuildEmptyResponse(uint16_t sw);
 
   // Builds an empty U2F response with a U2F status code corresponding to the
   // specified cr50 status.
-  U2fResponseAdpu BuildErrorResponse(Cr50CmdStatus status);
+  U2fResponseApdu BuildErrorResponse(Cr50CmdStatus status);
 
   std::unique_ptr<AllowlistingUtil> allowlisting_util_;
   std::function<void()> request_user_presence_;

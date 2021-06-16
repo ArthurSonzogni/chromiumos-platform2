@@ -16,7 +16,7 @@
 #include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/hid_interface.h"
-#include "u2fd/u2f_adpu.h"
+#include "u2fd/u2f_apdu.h"
 #include "u2fd/u2f_msg_handler.h"
 #include "u2fd/user_state.h"
 

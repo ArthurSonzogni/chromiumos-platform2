@@ -10,15 +10,15 @@
 #include <base/strings/string_number_conversions.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/u2f_adpu.h"
+#include "u2fd/u2f_apdu.h"
 #include "u2fd/util.h"
 
 namespace u2f {
 
 namespace {
 
-// All U2F ADPUs have a CLA value of 0.
-constexpr uint8_t kAdpuCla = 0;
+// All U2F APDUs have a CLA value of 0.
+constexpr uint8_t kApduCla = 0;
 
 // Chrome sends a REGISTER message with the following bogus app ID
 // and challenge parameters to cause USB devices to flash their
@@ -37,35 +37,35 @@ const std::array<uint8_t, 32> kChromeBogusChallenge = {
 }  // namespace
 
 //
-// U2fCommandAdpu Implementation.
+// U2fCommandApdu Implementation.
 //
 //////////////////////////////////////////////////////////////////////
 
-// Parses raw ADPU strings.
-class U2fCommandAdpu::Parser {
+// Parses raw APDU strings.
+class U2fCommandApdu::Parser {
  public:
-  explicit Parser(const std::string& adpu_raw)
-      : adpu_raw_(adpu_raw), pos_(adpu_raw.cbegin()) {}
+  explicit Parser(const std::string& apdu_raw)
+      : apdu_raw_(apdu_raw), pos_(apdu_raw.cbegin()) {}
 
-  base::Optional<U2fCommandAdpu> Parse(uint16_t* u2f_status) {
+  base::Optional<U2fCommandApdu> Parse(uint16_t* u2f_status) {
     if (ParseHeader(u2f_status) && ParseLc() && ParseBody() && ParseLe()) {
-      return adpu_;
+      return apdu_;
     } else {
-      VLOG(2) << "Failed to parse ADPU: "
-              << base::HexEncode(adpu_raw_.data(), adpu_raw_.size());
+      VLOG(2) << "Failed to parse APDU: "
+              << base::HexEncode(apdu_raw_.data(), apdu_raw_.size());
       return base::nullopt;
     }
   }
 
  private:
   bool ParseHeader(uint16_t* u2f_status) {
-    static constexpr uint8_t kAdpuHeaderSize = 4;
+    static constexpr uint8_t kApduHeaderSize = 4;
 
-    if (Remaining() < kAdpuHeaderSize) {
+    if (Remaining() < kApduHeaderSize) {
       return false;
     }
 
-    if (Consume() != kAdpuCla) {
+    if (Consume() != kApduCla) {
       if (u2f_status) {
         *u2f_status = U2F_SW_CLA_NOT_SUPPORTED;
       }
@@ -73,9 +73,9 @@ class U2fCommandAdpu::Parser {
     }
 
     // We checked we have enough data left, so these will not fail.
-    adpu_.header_.ins_ = static_cast<U2fIns>(Consume());
-    adpu_.header_.p1_ = Consume();
-    adpu_.header_.p2_ = Consume();
+    apdu_.header_.ins_ = static_cast<U2fIns>(Consume());
+    apdu_.header_.p1_ = Consume();
+    apdu_.header_.p2_ = Consume();
 
     return true;
   }
@@ -105,7 +105,7 @@ class U2fCommandAdpu::Parser {
     if (Remaining() < lc_)
       return false;
 
-    adpu_.data_.append(pos_, pos_ + lc_);
+    apdu_.data_.append(pos_, pos_ + lc_);
     pos_ += lc_;
 
     return true;
@@ -113,16 +113,16 @@ class U2fCommandAdpu::Parser {
 
   bool ParseLe() {
     if (Remaining() == 0) {
-      adpu_.max_response_length_ = 0;
+      apdu_.max_response_length_ = 0;
       return true;
     }
 
-    adpu_.max_response_length_ = Consume();
+    apdu_.max_response_length_ = Consume();
 
     if (Remaining() > 0) {
-      adpu_.max_response_length_ = adpu_.max_response_length_ << 8 | Consume();
-      if (adpu_.max_response_length_ == 0)
-        adpu_.max_response_length_ = 65536;
+      apdu_.max_response_length_ = apdu_.max_response_length_ << 8 | Consume();
+      if (apdu_.max_response_length_ == 0)
+        apdu_.max_response_length_ = 65536;
     }
 
     return true;
@@ -134,87 +134,87 @@ class U2fCommandAdpu::Parser {
     return val;
   }
 
-  size_t Remaining() { return adpu_raw_.cend() - pos_; }
+  size_t Remaining() { return apdu_raw_.cend() - pos_; }
 
-  const std::string& adpu_raw_;
+  const std::string& apdu_raw_;
   std::string::const_iterator pos_;
 
   uint16_t lc_;
 
-  U2fCommandAdpu adpu_;
+  U2fCommandApdu apdu_;
 };
 
-base::Optional<U2fCommandAdpu> U2fCommandAdpu::ParseFromString(
-    const std::string& adpu_raw, uint16_t* u2f_status) {
+base::Optional<U2fCommandApdu> U2fCommandApdu::ParseFromString(
+    const std::string& apdu_raw, uint16_t* u2f_status) {
   *u2f_status = 0;
-  return U2fCommandAdpu::Parser(adpu_raw).Parse(u2f_status);
+  return U2fCommandApdu::Parser(apdu_raw).Parse(u2f_status);
 }
 
-U2fCommandAdpu U2fCommandAdpu::CreateForU2fIns(U2fIns ins) {
-  U2fCommandAdpu adpu;
-  adpu.header_.ins_ = ins;
-  return adpu;
+U2fCommandApdu U2fCommandApdu::CreateForU2fIns(U2fIns ins) {
+  U2fCommandApdu apdu;
+  apdu.header_.ins_ = ins;
+  return apdu;
 }
 
 namespace {
 
-void AppendLc(std::string* adpu, size_t lc) {
+void AppendLc(std::string* apdu, size_t lc) {
   if (lc == 0)
     return;
 
   if (lc < 256) {
-    adpu->append(1, lc);
+    apdu->append(1, lc);
   } else {
-    adpu->append(1, lc >> 8);
-    adpu->append(1, lc & 0xff);
+    apdu->append(1, lc >> 8);
+    apdu->append(1, lc & 0xff);
   }
 }
 
-void AppendLe(std::string* adpu, size_t lc, size_t le) {
+void AppendLe(std::string* apdu, size_t lc, size_t le) {
   if (le == 0)
     return;
 
   if (le < 256) {
-    adpu->append(1, le);
+    apdu->append(1, le);
   } else if (le == 256) {
-    adpu->append(1, 0);
+    apdu->append(1, 0);
   } else {
     if (lc == 0)
-      adpu->append(1, 0);
+      apdu->append(1, 0);
 
     if (le == 65536)
       le = 0;
 
-    adpu->append(1, le >> 8);
-    adpu->append(1, le & 0xff);
+    apdu->append(1, le >> 8);
+    apdu->append(1, le & 0xff);
   }
 }
 
 }  // namespace
 
-std::string U2fCommandAdpu::ToString() const {
-  std::string adpu;
+std::string U2fCommandApdu::ToString() const {
+  std::string apdu;
 
-  adpu.push_back(kAdpuCla);
-  adpu.push_back(static_cast<uint8_t>(header_.ins_));
-  adpu.push_back(header_.p1_);
-  adpu.push_back(header_.p2_);
+  apdu.push_back(kApduCla);
+  apdu.push_back(static_cast<uint8_t>(header_.ins_));
+  apdu.push_back(header_.p1_);
+  apdu.push_back(header_.p2_);
 
-  AppendLc(&adpu, data_.size());
+  AppendLc(&apdu, data_.size());
 
-  adpu.append(data_);
+  apdu.append(data_);
 
-  AppendLe(&adpu, data_.size(), max_response_length_);
+  AppendLe(&apdu, data_.size(), max_response_length_);
 
-  return adpu;
+  return apdu;
 }
 
 //
-// Helper for parsing U2F command ADPU request body.
+// Helper for parsing U2F command APDU request body.
 //
 //////////////////////////////////////////////////////////////////////
 
-bool ParseAdpuBody(
+bool ParseApduBody(
     const std::string& body,
     std::map<std::pair<int, int>, std::vector<uint8_t>*> fields) {
   for (const auto& field : fields) {
@@ -231,13 +231,13 @@ bool ParseAdpuBody(
 }
 
 //
-// U2fRegisterRequestAdpu Implementation.
+// U2fRegisterRequestApdu Implementation.
 //
 //////////////////////////////////////////////////////////////////////
 
-base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
-    const U2fCommandAdpu& adpu, uint16_t* u2f_status) {
-  // Request body for U2F_REGISTER ADPUs are in the following format:
+base::Optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
+    const U2fCommandApdu& apdu, uint16_t* u2f_status) {
+  // Request body for U2F_REGISTER APDUs are in the following format:
   //
   // Byte(s)  | Description
   // --------------------------
@@ -246,11 +246,11 @@ base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
 
   *u2f_status = 0;
 
-  U2fRegisterRequestAdpu reg_adpu;
-  if (!ParseAdpuBody(adpu.Body(), {{{0, 32}, &reg_adpu.challenge_},
-                                   {{32, 32}, &reg_adpu.app_id_}})) {
-    LOG(INFO) << "Received invalid U2F_REGISTER ADPU: "
-              << base::HexEncode(adpu.Body().data(), adpu.Body().size());
+  U2fRegisterRequestApdu reg_apdu;
+  if (!ParseApduBody(apdu.Body(), {{{0, 32}, &reg_apdu.challenge_},
+                                   {{32, 32}, &reg_apdu.app_id_}})) {
+    LOG(INFO) << "Received invalid U2F_REGISTER APDU: "
+              << base::HexEncode(apdu.Body().data(), apdu.Body().size());
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
@@ -260,18 +260,18 @@ base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
   // We require that P1 be set to 0x03 (though may optionally have the
   // G2F_ATTEST bit set), implying a test of user presence, and that presence
   // should be consumed.
-  if ((adpu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
+  if ((apdu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
     LOG(INFO) << "Received register APDU with invalid P1 value: " << std::hex
-              << adpu.P1();
+              << apdu.P1();
     return base::nullopt;
   }
 
-  reg_adpu.g2f_attestation_ = adpu.P1() & G2F_ATTEST;
+  reg_apdu.g2f_attestation_ = apdu.P1() & G2F_ATTEST;
 
-  return reg_adpu;
+  return reg_apdu;
 }
 
-bool U2fRegisterRequestAdpu::IsChromeDummyWinkRequest() const {
+bool U2fRegisterRequestApdu::IsChromeDummyWinkRequest() const {
   return std::equal(app_id_.begin(), app_id_.end(), kChromeBogusAppId.begin(),
                     kChromeBogusAppId.end()) &&
          std::equal(challenge_.begin(), challenge_.end(),
@@ -283,8 +283,8 @@ bool U2fRegisterRequestAdpu::IsChromeDummyWinkRequest() const {
 //
 //////////////////////////////////////////////////////////////////////
 
-base::Optional<U2fAuthenticateRequestAdpu>
-U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu,
+base::Optional<U2fAuthenticateRequestApdu>
+U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
                                             uint16_t* u2f_status) {
   *u2f_status = 0;
 
@@ -293,13 +293,13 @@ U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu,
   // merely trying to determine whether the key handle is owned by this U2F
   // device, in which case no user presence is required and authentication
   // should not be performed.
-  if (adpu.P1() != U2F_AUTH_ENFORCE && adpu.P1() != U2F_AUTH_CHECK_ONLY) {
+  if (apdu.P1() != U2F_AUTH_ENFORCE && apdu.P1() != U2F_AUTH_CHECK_ONLY) {
     LOG(INFO) << "Received authenticate APDU with invalid P1 value: "
-              << std::hex << adpu.P1();
+              << std::hex << apdu.P1();
     return base::nullopt;
   }
 
-  // Request body for U2F_AUTHENTICATE ADPUs are in the following format:
+  // Request body for U2F_AUTHENTICATE APDUs are in the following format:
   //
   // Byte(s)  | Description
   // --------------------------
@@ -308,35 +308,35 @@ U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu,
   // 64       | Key Handle Length
   // 65 - end | Key Handle
   //
-  constexpr int kAdpuFixedFieldsSize = 65;
-  int body_size = adpu.Body().size();
-  int kh_length = body_size - kAdpuFixedFieldsSize;
+  constexpr int kApduFixedFieldsSize = 65;
+  int body_size = apdu.Body().size();
+  int kh_length = body_size - kApduFixedFieldsSize;
 
-  U2fAuthenticateRequestAdpu auth_adpu;
-  if (body_size < kAdpuFixedFieldsSize || kh_length != adpu.Body()[64] ||
-      !ParseAdpuBody(adpu.Body(),
-                     {{{0, 32}, &auth_adpu.challenge_},
-                      {{32, 32}, &auth_adpu.app_id_},
-                      {{65, kh_length}, &auth_adpu.key_handle_}})) {
-    LOG(INFO) << "Received invalid U2F_AUTHENTICATE ADPU: "
-              << base::HexEncode(adpu.Body().data(), adpu.Body().size());
+  U2fAuthenticateRequestApdu auth_apdu;
+  if (body_size < kApduFixedFieldsSize || kh_length != apdu.Body()[64] ||
+      !ParseApduBody(apdu.Body(),
+                     {{{0, 32}, &auth_apdu.challenge_},
+                      {{32, 32}, &auth_apdu.app_id_},
+                      {{65, kh_length}, &auth_apdu.key_handle_}})) {
+    LOG(INFO) << "Received invalid U2F_AUTHENTICATE APDU: "
+              << base::HexEncode(apdu.Body().data(), apdu.Body().size());
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
     return base::nullopt;
   }
 
-  auth_adpu.auth_check_only_ = adpu.P1() == U2F_AUTH_CHECK_ONLY;
+  auth_apdu.auth_check_only_ = apdu.P1() == U2F_AUTH_CHECK_ONLY;
 
-  return auth_adpu;
+  return auth_apdu;
 }
 
 //
-// U2fResponseAdpu Implementation.
+// U2fResponseApdu Implementation.
 //
 //////////////////////////////////////////////////////////////////////
 
-bool U2fResponseAdpu::ToString(std::string* out) const {
+bool U2fResponseApdu::ToString(std::string* out) const {
   out->append(data_.begin(), data_.end());
   out->push_back(sw1_);
   out->push_back(sw2_);

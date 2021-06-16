@@ -44,17 +44,17 @@ U2fMessageHandler::U2fMessageHandler(
       allow_legacy_kh_sign_(allow_legacy_kh_sign),
       allow_g2f_attestation_(allow_g2f_attestation) {}
 
-U2fResponseAdpu U2fMessageHandler::ProcessMsg(const std::string& req) {
+U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
   uint16_t u2f_status = 0;
 
-  base::Optional<U2fCommandAdpu> adpu =
-      U2fCommandAdpu::ParseFromString(req, &u2f_status);
+  base::Optional<U2fCommandApdu> apdu =
+      U2fCommandApdu::ParseFromString(req, &u2f_status);
 
-  if (!adpu.has_value()) {
+  if (!apdu.has_value()) {
     return BuildEmptyResponse(u2f_status ?: U2F_SW_WTF);
   }
 
-  U2fIns ins = adpu->Ins();
+  U2fIns ins = apdu->Ins();
 
   // TODO(crbug.com/1218246) Change UMA enum name kU2fCommand if new enums for
   // U2fIns are added to avoid data discontinuity, then use <largest-enum>+1
@@ -66,35 +66,35 @@ U2fResponseAdpu U2fMessageHandler::ProcessMsg(const std::string& req) {
 
   switch (ins) {
     case U2fIns::kU2fRegister: {
-      base::Optional<U2fRegisterRequestAdpu> reg_adpu =
-          U2fRegisterRequestAdpu::FromCommandAdpu(*adpu, &u2f_status);
+      base::Optional<U2fRegisterRequestApdu> reg_apdu =
+          U2fRegisterRequestApdu::FromCommandApdu(*apdu, &u2f_status);
       // Chrome may send a dummy register request, which is designed to
       // cause a USB device to flash it's LED. We should simply ignore
       // these.
-      if (reg_adpu.has_value()) {
-        if (reg_adpu->IsChromeDummyWinkRequest()) {
+      if (reg_apdu.has_value()) {
+        if (reg_apdu->IsChromeDummyWinkRequest()) {
           return BuildEmptyResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
         } else {
-          return ProcessU2fRegister(*reg_adpu);
+          return ProcessU2fRegister(*reg_apdu);
         }
       }
       break;  // Handle error.
     }
     case U2fIns::kU2fAuthenticate: {
-      base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
-          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu, &u2f_status);
-      if (auth_adpu.has_value()) {
-        return ProcessU2fAuthenticate(*auth_adpu);
+      base::Optional<U2fAuthenticateRequestApdu> auth_apdu =
+          U2fAuthenticateRequestApdu::FromCommandApdu(*apdu, &u2f_status);
+      if (auth_apdu.has_value()) {
+        return ProcessU2fAuthenticate(*auth_apdu);
       }
       break;  // Handle error.
     }
     case U2fIns::kU2fVersion: {
-      if (!adpu->Body().empty()) {
+      if (!apdu->Body().empty()) {
         u2f_status = U2F_SW_WRONG_LENGTH;
         break;
       }
 
-      U2fResponseAdpu response;
+      U2fResponseApdu response;
       response.AppendString(kSupportedU2fVersion);
       response.SetStatus(U2F_SW_NO_ERROR);
       return response;
@@ -107,8 +107,8 @@ U2fResponseAdpu U2fMessageHandler::ProcessMsg(const std::string& req) {
   return BuildEmptyResponse(u2f_status ?: U2F_SW_WTF);
 }
 
-U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
-    const U2fRegisterRequestAdpu& request) {
+U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
+    const U2fRegisterRequestApdu& request) {
   std::vector<uint8_t> pub_key;
   std::vector<uint8_t> key_handle;
 
@@ -157,7 +157,7 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
   }
 
   // Prepare response, as specified by "U2F Raw Message Formats".
-  U2fResponseAdpu register_resp;
+  U2fResponseApdu register_resp;
   register_resp.AppendByte(kU2fVer2Prefix);
   register_resp.AppendBytes(pub_key);
   register_resp.AppendByte(key_handle.size());
@@ -187,8 +187,8 @@ std::vector<uint8_t> BuildU2fAuthenticateResponseSignedData(
 
 }  // namespace
 
-U2fResponseAdpu U2fMessageHandler::ProcessU2fAuthenticate(
-    const U2fAuthenticateRequestAdpu& request) {
+U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
+    const U2fAuthenticateRequestApdu& request) {
   if (request.IsAuthenticateCheckOnly()) {
     // The authenticate only version of this command always returns an error (on
     // success, returns an error requesting presence).
@@ -234,7 +234,7 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fAuthenticate(
   // Everything succeeded; build response.
 
   // Prepare response, as specified by "U2F Raw Message Formats".
-  U2fResponseAdpu auth_resp;
+  U2fResponseApdu auth_resp;
   auth_resp.AppendByte(U2F_AUTH_FLAG_TUP);
   auth_resp.AppendBytes(*counter);
   auth_resp.AppendBytes(signature);
@@ -415,13 +415,13 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoG2fAttest(
   return Cr50CmdStatus::kSuccess;
 }
 
-U2fResponseAdpu U2fMessageHandler::BuildEmptyResponse(uint16_t sw) {
-  U2fResponseAdpu resp_adpu;
-  resp_adpu.SetStatus(sw);
-  return resp_adpu;
+U2fResponseApdu U2fMessageHandler::BuildEmptyResponse(uint16_t sw) {
+  U2fResponseApdu resp_apdu;
+  resp_apdu.SetStatus(sw);
+  return resp_apdu;
 }
 
-U2fResponseAdpu U2fMessageHandler::BuildErrorResponse(Cr50CmdStatus status) {
+U2fResponseApdu U2fMessageHandler::BuildErrorResponse(Cr50CmdStatus status) {
   uint16_t sw;
 
   switch (status) {

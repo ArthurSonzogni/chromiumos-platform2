@@ -33,10 +33,10 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
-std::string AdpuToHexString(const U2fResponseAdpu& adpu) {
-  std::string adpu_str;
-  adpu.ToString(&adpu_str);
-  return base::HexEncode(adpu_str.c_str(), adpu_str.size());
+std::string ApduToHexString(const U2fResponseApdu& apdu) {
+  std::string apdu_str;
+  apdu.ToString(&apdu_str);
+  return base::HexEncode(apdu_str.c_str(), apdu_str.size());
 }
 
 brillo::SecureBlob ArrayToSecureBlob(const char* array) {
@@ -46,7 +46,7 @@ brillo::SecureBlob ArrayToSecureBlob(const char* array) {
 }
 
 MATCHER_P(MsgEqStr, expected, "") {
-  std::string match_hex = AdpuToHexString(arg);
+  std::string match_hex = ApduToHexString(arg);
 
   if (match_hex == expected) {
     return true;
@@ -136,14 +136,14 @@ class U2fMessageHandlerTest : public ::testing::Test {
     EXPECT_CALL(mock_user_state_, IncrementCounter()).WillOnce(Return(false));
   }
 
-  U2fResponseAdpu ProcessMsg(const std::string& hex) {
+  U2fResponseApdu ProcessMsg(const std::string& hex) {
     std::vector<uint8_t> bytes;
     CHECK(base::HexStringToBytes(hex, &bytes));
 
     return handler_->ProcessMsg(std::string(bytes.begin(), bytes.end()));
   }
 
-  U2fResponseAdpu ProcessMsg(const std::string& hex,
+  U2fResponseApdu ProcessMsg(const std::string& hex,
                              const std::string& hex2,
                              const std::string& hex3,
                              const std::string& hex4) {
@@ -223,7 +223,7 @@ TEST_F(U2fMessageHandlerTest, RegisterSuccess) {
                               Matcher<u2f_generate_resp*>(_)))
       .WillOnce(DoAll(SetArgPointee<1>(cr50_response), Return(kCr50Success)));
 
-  std::string adpu_response = AdpuToHexString(
+  std::string apdu_response = ApduToHexString(
       ProcessMsg(kRequestRegisterPrefix, kChallenge, kAppId, kMaxResponseSize));
 
   // See U2F Raw Message Formats Spec
@@ -236,7 +236,7 @@ TEST_F(U2fMessageHandlerTest, RegisterSuccess) {
 
   // Just a basic sanity check, the correctness of message contents is tested by
   // integration tests.
-  EXPECT_THAT(adpu_response, MatchesRegex(expected_response_regex));
+  EXPECT_THAT(apdu_response, MatchesRegex(expected_response_regex));
 }
 
 // Errors detected during parsing; should not read user state or call cr50.
@@ -357,7 +357,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fWhenDisabledSuccess) {
                               Matcher<u2f_generate_resp*>(_)))
       .WillOnce(DoAll(SetArgPointee<1>(kCr50GenResp), Return(kCr50Success)));
 
-  std::string adpu_response = AdpuToHexString(ProcessMsg(
+  std::string apdu_response = ApduToHexString(ProcessMsg(
       kRequestRegisterG2fPrefix, kChallenge, kAppId, kMaxResponseSize));
 
   // See U2F Raw Message Formats Spec
@@ -370,7 +370,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fWhenDisabledSuccess) {
 
   // Just a basic sanity check, the correctness of message contents is tested by
   // integration tests.
-  EXPECT_THAT(adpu_response, MatchesRegex(expected_response_regex));
+  EXPECT_THAT(apdu_response, MatchesRegex(expected_response_regex));
 }
 
 TEST_F(U2fMessageHandlerTest, RegisterG2fSuccess) {
@@ -407,7 +407,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fSuccess) {
       .WillOnce(
           DoAll(SetArgPointee<1>(cr50_attest_resp), Return(kCr50Success)));
 
-  std::string adpu_response = AdpuToHexString(ProcessMsg(
+  std::string apdu_response = ApduToHexString(ProcessMsg(
       kRequestRegisterG2fPrefix, kChallenge, kAppId, kMaxResponseSize));
 
   // See U2F Raw Message Formats Spec
@@ -420,7 +420,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fSuccess) {
 
   // Just a basic sanity check, the correctness of message contents is tested by
   // integration tests.
-  EXPECT_THAT(adpu_response, MatchesRegex(expected_response_regex));
+  EXPECT_THAT(apdu_response, MatchesRegex(expected_response_regex));
 }
 
 // Error from cr50
@@ -516,8 +516,8 @@ TEST_F(U2fMessageHandlerTest, AuthenticateSuccess) {
 
   ExpectIncrementCounter();
 
-  std::string adpu_response =
-      AdpuToHexString(ProcessMsg(kRequestAuthenticatePrefix, kChallenge, kAppId,
+  std::string apdu_response =
+      ApduToHexString(ProcessMsg(kRequestAuthenticatePrefix, kChallenge, kAppId,
                                  kRequestAuthenticateKeyHandle));
 
   // Just basic sanity check, validity of the message is tested in integration
@@ -530,7 +530,7 @@ TEST_F(U2fMessageHandlerTest, AuthenticateSuccess) {
       "(55){32}"  // sig_s
       "9000";     // U2F_SW_NO_ERRROR
 
-  EXPECT_THAT(adpu_response, MatchesRegex(expected_response_regex));
+  EXPECT_THAT(apdu_response, MatchesRegex(expected_response_regex));
 }
 
 TEST_F(U2fMessageHandlerTest, AuthenticateWithFallbackSuccess) {
@@ -557,12 +557,12 @@ TEST_F(U2fMessageHandlerTest, AuthenticateWithFallbackSuccess) {
 
   ExpectIncrementCounter();
 
-  std::string adpu_response =
-      AdpuToHexString(ProcessMsg(kRequestAuthenticatePrefix, kChallenge, kAppId,
+  std::string apdu_response =
+      ApduToHexString(ProcessMsg(kRequestAuthenticatePrefix, kChallenge, kAppId,
                                  kRequestAuthenticateKeyHandle));
 
   // Just check that is succeeds; the rest is tested in the previous test case.
-  EXPECT_THAT(adpu_response, MatchesRegex(".*9000"));
+  EXPECT_THAT(apdu_response, MatchesRegex(".*9000"));
 }
 
 // Errors reading state, should not call cr50.

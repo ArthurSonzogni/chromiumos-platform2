@@ -16,7 +16,7 @@
 #include <openssl/ecdsa.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/u2f_adpu.h"
+#include "u2fd/u2f_apdu.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/user_state.h"
 #include "u2fd/util.h"
@@ -327,7 +327,7 @@ int U2fHid::CmdSysInfo(std::string* resp) {
 }
 
 int U2fHid::CmdMsg(std::string* resp) {
-  U2fResponseAdpu r = msg_handler_->ProcessMsg(transaction_->payload);
+  U2fResponseApdu r = msg_handler_->ProcessMsg(transaction_->payload);
 
   r.ToString(resp);
 

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_U2F_ADPU_H_
-#define U2FD_U2F_ADPU_H_
+#ifndef U2FD_U2F_APDU_H_
+#define U2FD_U2F_APDU_H_
 
 #include <stdint.h>
 #include <string>
@@ -13,12 +13,12 @@
 
 #include "u2fd/util.h"
 
-// Classes for dealing with command and response ADPUs, as described in the "U2F
+// Classes for dealing with command and response APDUs, as described in the "U2F
 // Raw Message Formats" specification.
 
 namespace u2f {
 
-// INS codes used in U2F Command ADPUs.
+// INS codes used in U2F Command APDUs.
 enum class U2fIns : uint8_t {
   kU2fRegister = 1,      // U2F_REGISTER
   kU2fAuthenticate = 2,  // U2F_AUTHENTICATE
@@ -29,36 +29,36 @@ enum class U2fIns : uint8_t {
   kInsInvalid = 0xff,
 };
 
-// Represents a command ADPU.
-class U2fCommandAdpu {
+// Represents a command APDU.
+class U2fCommandApdu {
  public:
-  // Fixed-size header of a command ADPU.
+  // Fixed-size header of a command APDU.
   struct Header {
     U2fIns ins_;
     uint8_t p1_;
     uint8_t p2_;
   };
 
-  // Attempts to parse the specified string as an ADPU, and returns a valid
-  // U2fCommandAdpu if successful, or base::nullopt otherwise. If unsuccessful,
+  // Attempts to parse the specified string as an APDU, and returns a valid
+  // U2fCommandApdu if successful, or base::nullopt otherwise. If unsuccessful,
   // and u2f_status is not null, populates it with a U2F status code indicating
   // the type of failure, if an appropriate code is available, or 0 otherwise.
-  static base::Optional<U2fCommandAdpu> ParseFromString(
-      const std::string& adpu_raw, uint16_t* u2f_status);
+  static base::Optional<U2fCommandApdu> ParseFromString(
+      const std::string& apdu_raw, uint16_t* u2f_status);
 
-  // Creates an 'empty' ADPU for the command with the specified INS command
+  // Creates an 'empty' APDU for the command with the specified INS command
   // code.
-  static U2fCommandAdpu CreateForU2fIns(U2fIns ins);
+  static U2fCommandApdu CreateForU2fIns(U2fIns ins);
 
-  // Returns the INS command code for this ADPU.
+  // Returns the INS command code for this APDU.
   U2fIns Ins() const { return header_.ins_; }
-  // Returns the P1 parameter for this ADPU.
+  // Returns the P1 parameter for this APDU.
   uint8_t P1() const { return header_.p1_; }
-  // Returns the request body for this ADPU.
+  // Returns the request body for this APDU.
   const std::string& Body() const { return data_; }
-  // Returns the max response length for this ADPU.
+  // Returns the max response length for this APDU.
   uint32_t MaxResponseLength() const { return max_response_length_; }
-  // Serializes this ADPU to a string.
+  // Serializes this APDU to a string.
   std::string ToString() const;
 
  protected:
@@ -68,22 +68,22 @@ class U2fCommandAdpu {
 
  private:
   // Private constructor, use factory methods above.
-  U2fCommandAdpu() = default;
+  U2fCommandApdu() = default;
   // Internal parser class called by ParseFromString().
   class Parser;
   friend class Parser;
 };
 
-// Represents an ADPU for a U2F_REGISTER request.
-class U2fRegisterRequestAdpu {
+// Represents an APDU for a U2F_REGISTER request.
+class U2fRegisterRequestApdu {
  public:
-  // Attempt to parse the body of the specified ADPU as a U2F_REGISTER request.
-  // Returns a valid U2fRegisterRequestAdpu if successful, or base::nullopt
+  // Attempt to parse the body of the specified APDU as a U2F_REGISTER request.
+  // Returns a valid U2fRegisterRequestApdu if successful, or base::nullopt
   // otherwise. If unsuccessful, and u2f_status is not null, populates it with
   // a U2F status code indicating the type of failure, if an appropriate code
   // is available, or 0 otherwise.
-  static base::Optional<U2fRegisterRequestAdpu> FromCommandAdpu(
-      const U2fCommandAdpu& adpu, uint16_t* u2f_status);
+  static base::Optional<U2fRegisterRequestApdu> FromCommandApdu(
+      const U2fCommandApdu& apdu, uint16_t* u2f_status);
 
   // Whether the request response should use the G2F attestation certificate (if
   // available).
@@ -103,17 +103,17 @@ class U2fRegisterRequestAdpu {
   std::vector<uint8_t> challenge_;
 };
 
-class U2fAuthenticateRequestAdpu {
+class U2fAuthenticateRequestApdu {
  public:
-  // Attempt to parse the body of the specified ADPU as a U2F_AUTHENTICATE
-  // request. Returns a valid U2fRegisterRequestAdpu if successful, or
+  // Attempt to parse the body of the specified APDU as a U2F_AUTHENTICATE
+  // request. Returns a valid U2fRegisterRequestApdu if successful, or
   // base::nullopt otherwise. If unsuccessful, and u2f_status is not null,
   // populates it with a U2F status code indicating the type of failure,
   // if an appropriate code is available, or 0 otherwise.
-  static base::Optional<U2fAuthenticateRequestAdpu> FromCommandAdpu(
-      const U2fCommandAdpu& adpu, uint16_t* u2f_status);
+  static base::Optional<U2fAuthenticateRequestApdu> FromCommandApdu(
+      const U2fCommandApdu& apdu, uint16_t* u2f_status);
 
-  // Returns true if the ADPU is for a U2F_AUTHENTICATE check-only
+  // Returns true if the APDU is for a U2F_AUTHENTICATE check-only
   // request. Check-only requests should verify whether the specified key handle
   // is owned by this U2F device, but not perform any authentication.
   bool IsAuthenticateCheckOnly() const { return auth_check_only_; }
@@ -130,12 +130,12 @@ class U2fAuthenticateRequestAdpu {
   std::vector<uint8_t> key_handle_;
 };
 
-// Represents a response ADPU. Provides methods for building and serializing a
+// Represents a response APDU. Provides methods for building  nd serializing a
 // response.
-class U2fResponseAdpu {
+class U2fResponseApdu {
  public:
   // Constructs an empty response.
-  U2fResponseAdpu() = default;
+  U2fResponseApdu() = default;
 
   // Serialize the response to the specified string.
   bool ToString(std::string* out) const;
@@ -167,4 +167,4 @@ class U2fResponseAdpu {
 
 }  // namespace u2f
 
-#endif  // U2FD_U2F_ADPU_H_
+#endif  // U2FD_U2F_APDU_H_
