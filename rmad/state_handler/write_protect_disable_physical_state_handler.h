@@ -14,10 +14,20 @@
 
 namespace rmad {
 
+class CrosSystemUtils;
+
 class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  public:
+  // Poll every 2 seconds.
+  static constexpr base::TimeDelta kPollInterval =
+      base::TimeDelta::FromSeconds(2);
+
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |crossystem_utils_| for testing.
+  WriteProtectDisablePhysicalStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils);
   ~WriteProtectDisablePhysicalStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
@@ -36,6 +46,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   void PollUntilWriteProtectOff();
   void CheckWriteProtectOffTask();
 
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<base::RepeatingCallback<bool(bool)>>
       write_protect_signal_sender_;
   base::RepeatingTimer timer_;

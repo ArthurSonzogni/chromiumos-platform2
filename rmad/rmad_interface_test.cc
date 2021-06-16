@@ -18,11 +18,9 @@
 #include "rmad/utils/json_store.h"
 
 using testing::_;
-using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgPointee;
 
 namespace rmad {
 
