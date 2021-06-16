@@ -9,6 +9,7 @@
 #include <linux/mei.h>
 #include <linux/uuid.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 #include <cstring>
@@ -17,9 +18,16 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 namespace trunks {
 namespace csme {
+
+namespace {
+
+constexpr base::TimeDelta kSelectTimeout = base::TimeDelta::FromSeconds(20);
+
+};
 
 MeiClientCharDevice::MeiClientCharDevice(const std::string& mei_path,
                                          const uuid_le& guid)
@@ -69,6 +77,10 @@ bool MeiClientCharDevice::Send(const std::string& data) {
     LOG(ERROR) << __func__ << ": Bad written size of payload: " << wsize;
     return false;
   }
+  if (!EnsureWriteSuccess()) {
+    return false;
+  }
+
   return true;
 }
 
@@ -77,6 +89,7 @@ bool MeiClientCharDevice::Receive(std::string* data) {
     LOG(ERROR) << __func__ << ": Not initialized.";
     return false;
   }
+
   ssize_t rsize = read(fd_, message_buffer_.data(), max_message_size_);
   if (rsize < 0) {
     LOG(ERROR) << ": Error calling `read()`: " << errno;
@@ -110,6 +123,27 @@ bool MeiClientCharDevice::InitializeInternal() {
   max_message_size_ = data.out_client_properties.max_msg_length;
   message_buffer_.resize(max_message_size_);
 
+  return true;
+}
+
+bool MeiClientCharDevice::EnsureWriteSuccess() {
+  struct timeval tv = {
+      .tv_sec = kSelectTimeout.InSeconds(),
+  };
+  fd_set set;
+  FD_ZERO(&set);
+  FD_SET(fd_, &set);
+  const int rc = select(fd_ + 1, &set, NULL, NULL, &tv);
+
+  if (rc == 0) {
+    LOG(ERROR) << __func__ << ": Timeout.";
+    return false;
+  }
+  if (rc < 0) {
+    LOG(ERROR) << __func__ << ": Error calling `select()`: " << errno;
+    return false;
+  }
+  // Since only `fd_` is checked, rc > 0 means `fd_` must be ready.
   return true;
 }
 

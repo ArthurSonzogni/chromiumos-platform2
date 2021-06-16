@@ -32,6 +32,8 @@ class TRUNKS_EXPORT MeiClientCharDevice : public MeiClient {
   bool InitializeInternal();
   // Closes `fd_` if necessary, and set the status as "uninitialized".
   void Uninitialize();
+  // Checks the write operation succeeds.
+  bool EnsureWriteSuccess();
 
   // The device driver path.
   const std::string mei_path_;
