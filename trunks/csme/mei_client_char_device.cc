@@ -36,6 +36,13 @@ MeiClientCharDevice::MeiClientCharDevice(const std::string& mei_path,
   memcpy(&guid_, &guid, sizeof(guid));
 }
 
+MeiClientCharDevice::MeiClientCharDevice(const std::string& mei_path,
+                                         const uuid_le& guid,
+                                         hwsec_foundation::Syscaller* syscaller)
+    : MeiClientCharDevice(mei_path, guid) {
+  syscaller_ = syscaller;
+}
+
 MeiClientCharDevice::~MeiClientCharDevice() {
   Uninitialize();
 }
@@ -58,7 +65,7 @@ bool MeiClientCharDevice::Initialize() {
 
 void MeiClientCharDevice::Uninitialize() {
   if (fd_ != -1) {
-    close(fd_);
+    syscaller_->Close(fd_);
     fd_ = -1;
   }
 }
@@ -72,7 +79,7 @@ bool MeiClientCharDevice::Send(const std::string& data) {
     LOG(WARNING) << __func__ << ": Data size too large: " << data.size()
                  << ", shoud be less than " << max_message_size_;
   }
-  ssize_t wsize = write(fd_, data.data(), data.size());
+  ssize_t wsize = syscaller_->Write(fd_, data.data(), data.size());
   if (wsize != data.size()) {
     LOG(ERROR) << __func__ << ": Bad written size of payload: " << wsize;
     return false;
@@ -90,9 +97,11 @@ bool MeiClientCharDevice::Receive(std::string* data) {
     return false;
   }
 
-  ssize_t rsize = read(fd_, message_buffer_.data(), max_message_size_);
+  ssize_t rsize =
+      syscaller_->Read(fd_, message_buffer_.data(), max_message_size_);
   if (rsize < 0) {
     LOG(ERROR) << ": Error calling `read()`: " << errno;
+    return false;
   }
   data->assign(message_buffer_.begin(), message_buffer_.begin() + rsize);
   return true;
@@ -101,7 +110,7 @@ bool MeiClientCharDevice::Receive(std::string* data) {
 bool MeiClientCharDevice::InitializeInternal() {
   DCHECK_EQ(fd_, -1);
 
-  fd_ = open(mei_path_.c_str(), O_RDWR);
+  fd_ = syscaller_->Open(mei_path_.c_str(), O_RDWR);
   if (fd_ == -1) {
     LOG(ERROR) << __func__ << ": Error calling `open()`: " << errno;
     return false;
@@ -109,7 +118,7 @@ bool MeiClientCharDevice::InitializeInternal() {
   struct mei_connect_client_data data = {};
   memcpy(&data.in_client_uuid, &guid_, sizeof(guid_));
 
-  int result = ioctl(fd_, IOCTL_MEI_CONNECT_CLIENT, &data);
+  int result = syscaller_->Ioctl(fd_, IOCTL_MEI_CONNECT_CLIENT, &data);
   if (result) {
     LOG(ERROR) << __func__ << ": Error calling `ioctl()`: " << errno;
     Uninitialize();
@@ -133,7 +142,7 @@ bool MeiClientCharDevice::EnsureWriteSuccess() {
   fd_set set;
   FD_ZERO(&set);
   FD_SET(fd_, &set);
-  const int rc = select(fd_ + 1, &set, NULL, NULL, &tv);
+  const int rc = syscaller_->Select(fd_ + 1, &set, nullptr, nullptr, &tv);
 
   if (rc == 0) {
     LOG(ERROR) << __func__ << ": Timeout.";

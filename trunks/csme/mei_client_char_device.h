@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 
+#include <libhwsec-foundation/syscaller/syscaller.h>
+#include <libhwsec-foundation/syscaller/syscaller_impl.h>
+
 #include "trunks/trunks_export.h"
 
 namespace trunks {
@@ -21,6 +24,9 @@ namespace csme {
 class TRUNKS_EXPORT MeiClientCharDevice : public MeiClient {
  public:
   MeiClientCharDevice(const std::string& mei_path, const uuid_le& guid);
+  MeiClientCharDevice(const std::string& mei_path,
+                      const uuid_le& guid,
+                      hwsec_foundation::Syscaller* syscaller);
   ~MeiClientCharDevice() override;
   bool Initialize() override;
   // TODO(b/190621192): Avoid indefinite timeout for `Send()` and `Receive()`.
@@ -35,6 +41,8 @@ class TRUNKS_EXPORT MeiClientCharDevice : public MeiClient {
   // Checks the write operation succeeds.
   bool EnsureWriteSuccess();
 
+  hwsec_foundation::SyscallerImpl default_syscaller_;
+  hwsec_foundation::Syscaller* syscaller_ = &default_syscaller_;
   // The device driver path.
   const std::string mei_path_;
   // The GUID of the MEI.

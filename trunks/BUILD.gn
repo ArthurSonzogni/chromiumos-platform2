@@ -244,6 +244,7 @@ if (use.test) {
   executable("trunks_testrunner") {
     sources = [
       "background_command_transceiver_test.cc",
+      "csme/mei_client_char_device_test.cc",
       "hmac_authorization_delegate_test.cc",
       "hmac_session_test.cc",
       "openssl_utility_test.cc",
