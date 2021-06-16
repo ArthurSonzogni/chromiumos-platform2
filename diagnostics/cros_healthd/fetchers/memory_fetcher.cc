@@ -126,8 +126,8 @@ OptionalProbeErrorPtr MemoryFetcher::ParseProcVmStat(
   bool pgfault_found = false;
   for (int i = 0; i < keyVals.size(); i++) {
     if (keyVals[i].first == "pgfault") {
-      int num_page_faults;
-      if (base::StringToInt(keyVals[i].second, &num_page_faults)) {
+      uint64_t num_page_faults;
+      if (base::StringToUint64(keyVals[i].second, &num_page_faults)) {
         info->page_faults_since_last_boot = num_page_faults;
         pgfault_found = true;
         break;
