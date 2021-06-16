@@ -25,8 +25,6 @@ class TRUNKS_EXPORT PinWeaverProvisionClient {
 
  private:
   MeiClient* GetMeiClient();
-  template <typename Type>
-  void BuildFixedSizedRequest(int cmd, Type* req);
 
   MeiClientFactory* const mei_client_factory_;
   std::unique_ptr<MeiClient> mei_client_;
