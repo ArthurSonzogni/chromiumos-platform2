@@ -14,6 +14,8 @@
 #include <base/memory/free_deleter.h>
 #include <base/optional.h>
 #include <base/strings/string_util.h>
+#include <brillo/message_loops/message_loop.h>
+
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "ml/request_metrics.h"
 #include "ml/soda.h"
@@ -63,13 +65,11 @@ bool SodaRecognizerImpl::Create(
     mojo::PendingReceiver<SodaRecognizer> soda_recognizer) {
   auto recognizer_impl = new SodaRecognizerImpl(
       std::move(spec), std::move(soda_client), std::move(soda_recognizer));
-  // Set the disconnection handler to strongly bind `recognizer_impl` to delete
-  // `recognizer_impl` when the connection is gone.
-  recognizer_impl->receiver_.set_disconnect_handler(base::Bind(
-      [](const SodaRecognizerImpl* const recognizer_impl) {
-        delete recognizer_impl;
-      },
-      base::Unretained(recognizer_impl)));
+  //  Set the disconnection handler to quit the message loop (i.e. exit the
+  //  process) when the connection is gone, because this model is always run in
+  //  a dedicated process.
+  recognizer_impl->receiver_.set_disconnect_handler(
+      base::BindOnce([]() { brillo::MessageLoop::current()->BreakLoop(); }));
   return recognizer_impl->successfully_loaded_;
 }
 

@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/notreached.h>
+#include <brillo/message_loops/message_loop.h>
 #include <tensorflow/lite/model.h>
 #include <unicode/putil.h>
 #include <unicode/udata.h>
@@ -395,6 +396,31 @@ void MachineLearningServiceImpl::LoadSpeechRecognizer(
     mojo::PendingRemote<SodaClient> soda_client,
     mojo::PendingReceiver<SodaRecognizer> soda_recognizer,
     LoadSpeechRecognizerCallback callback) {
+  // TODO(crbug.com/1222888): Perform validation prior to spawning worker
+  // process.
+
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "SodaModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics has already been reported in `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadSpeechRecognizer(std::move(config), std::move(soda_client),
+                               std::move(soda_recognizer), std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
+
   RequestMetrics request_metrics("Soda", kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
@@ -407,7 +433,7 @@ void MachineLearningServiceImpl::LoadSpeechRecognizer(
     // Mojo API, we may revisit this return value.
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
-    return;
+    brillo::MessageLoop::current()->BreakLoop();
   }
 
   std::move(callback).Run(LoadModelResult::OK);
