@@ -13,6 +13,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":ares_client_fuzzer",
+      ":doh_curl_client_fuzzer",
       ":resolver_fuzzer",
     ]
   }
@@ -81,6 +82,17 @@ if (use.fuzzer) {
       ":dns-proxy_fuzz_config",
     ]
     all_dependent_pkg_deps = [ "libcares" ]
+    deps = [ ":libdnsproxy" ]
+  }
+
+  executable("doh_curl_client_fuzzer") {
+    sources = [ "doh_curl_client_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":dns-proxy_fuzz_config",
+    ]
+    all_dependent_pkg_deps = [ "libcurl" ]
     deps = [ ":libdnsproxy" ]
   }
 

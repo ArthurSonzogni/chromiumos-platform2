@@ -84,6 +84,7 @@ DoHCurlClient::~DoHCurlClient() {
   for (const auto& requests : requests_) {
     CancelRequest(requests.second);
   }
+  curl_multi_cleanup(curlm_);
   curl_global_cleanup();
 }
 
