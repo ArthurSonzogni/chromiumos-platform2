@@ -222,9 +222,17 @@ void Datapath::Start() {
                << " mangle chain";
   if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "OUTPUT",
                       kApplyLocalSourceMarkChain, "" /*iif*/, "" /*oif*/))
-
     LOG(ERROR) << "Failed to attach " << kApplyLocalSourceMarkChain
                << " to mangle OUTPUT";
+  // Add a rule for skipping this chain if the packet already has a source mark
+  // (e.g., packets from a wireguard socket in the kernel).
+  // TODO(b/190683881): This will also skip setting VPN policy bits on the
+  // packet. Currently this rule will only be triggered for wireguard sockets so
+  // it has no side effect now. We may need to revisit this later.
+  ModifyIptables(
+      IpFamily::Dual, "mangle",
+      {"-A", kApplyLocalSourceMarkChain, "-m", "mark", "!", "--mark",
+       "0x0/" + kFwmarkAllSourcesMask.ToString(), "-j", "RETURN", "-w"});
   // Create rules for tagging local sources with the source tag and the vpn
   // policy tag.
   for (const auto& source : kLocalSourceTypes) {

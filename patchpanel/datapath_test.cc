@@ -313,6 +313,9 @@ TEST(DatapathTest, Start) {
       {Dual, "mangle -N apply_local_source_mark -w"},
       {Dual, "mangle -A OUTPUT -j apply_local_source_mark -w"},
       {Dual,
+       "mangle -A apply_local_source_mark -m mark ! --mark 0x0/0x00003f00 -j "
+       "RETURN -w"},
+      {Dual,
        "mangle -A apply_local_source_mark -m owner --uid-owner chronos -j MARK "
        "--set-mark 0x00008100/0x0000ff00 -w"},
       {Dual,
