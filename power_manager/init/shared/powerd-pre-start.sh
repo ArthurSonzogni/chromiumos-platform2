@@ -44,6 +44,7 @@ for FILE in \
     /sys/class/power_supply/*/charge_control_limit_max \
     /sys/module/printk/parameters/console_suspend \
     /sys/power/mem_sleep \
+    /dev/snapshot \
     $(find /sys/devices/ -name "dark_resume_active" -o \
                          -name "dark_resume_source" -o \
                          -name "wakeup_type" -o \

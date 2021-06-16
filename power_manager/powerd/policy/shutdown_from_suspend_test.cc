@@ -11,6 +11,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
+#include "power_manager/powerd/system/suspend_configurator_stub.h"
 
 namespace power_manager {
 namespace policy {
@@ -35,7 +36,7 @@ class ShutdownFromSuspendTest : public ::testing::Test {
     prefs_.SetInt64(kShutdownFromSuspendSecPref, shutdown_after_secs);
     prefs_.SetInt64(kDisableDarkResumePref, enable_dark_resume ? 0 : 1);
     prefs_.SetInt64(kDisableHibernatePref, enable_hibernate ? 0 : 1);
-    shutdown_from_suspend_.Init(&prefs_, &power_supply_);
+    shutdown_from_suspend_.Init(&prefs_, &power_supply_, &configurator_stub);
   }
 
   void SetLinePower(bool line_power) {
@@ -47,6 +48,7 @@ class ShutdownFromSuspendTest : public ::testing::Test {
   ShutdownFromSuspend shutdown_from_suspend_;
   FakePrefs prefs_;
   system::PowerSupplyStub power_supply_;
+  system::SuspendConfiguratorStub configurator_stub;
   TestMainLoopRunner runner_;
 };
 
@@ -83,6 +85,15 @@ TEST_F(ShutdownFromSuspendTest, TestDarkResumeDisabled) {
 TEST_F(ShutdownFromSuspendTest, TestkShutdownFromSuspendSecPref0) {
   Init(true, true, 0);
   EXPECT_FALSE(shutdown_from_suspend_.enabled_for_testing());
+  EXPECT_FALSE(shutdown_from_suspend_.hibernate_enabled_for_testing());
+}
+
+// Test that ShutdownFromSuspend is enabled but hibernate is disabled
+// if hibernate is reported as unavailable by the configurator.
+TEST_F(ShutdownFromSuspendTest, TestHibernateNotAvailable) {
+  configurator_stub.force_hibernate_unavailable_for_testing();
+  Init(true, true, 1);
+  EXPECT_TRUE(shutdown_from_suspend_.enabled_for_testing());
   EXPECT_FALSE(shutdown_from_suspend_.hibernate_enabled_for_testing());
 }
 

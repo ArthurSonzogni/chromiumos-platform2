@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_H_
 
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
+#include "power_manager/powerd/system/suspend_configurator.h"
 
 #include <memory>
 
@@ -30,7 +31,9 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   ShutdownFromSuspend();
   ~ShutdownFromSuspend() override;
 
-  void Init(PrefsInterface* prefs, system::PowerSupplyInterface* power_supply);
+  void Init(PrefsInterface* prefs,
+            system::PowerSupplyInterface* power_supply,
+            system::SuspendConfiguratorInterface* suspend_configurator);
 
   bool enabled_for_testing() const { return global_enabled_; }
   bool hibernate_enabled_for_testing() const { return hibernate_enabled_; }

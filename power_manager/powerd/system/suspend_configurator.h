@@ -36,6 +36,8 @@ class SuspendConfiguratorInterface {
   // Do post-suspend work just after resuming from suspend. Returns false if the
   // last suspend was a failure. Returns true otherwise.
   virtual bool UndoPrepareForSuspend() = 0;
+  // Check the system to see if hibernate is set up and enabled.
+  virtual bool IsHibernateAvailable() = 0;
 };
 
 class SuspendConfigurator : public SuspendConfiguratorInterface {
@@ -54,6 +56,7 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // SuspendConfiguratorInterface implementation.
   void PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
   bool UndoPrepareForSuspend() override;
+  bool IsHibernateAvailable() override;
 
   // Sets a prefix path which is used as file system root when testing.
   // Setting to an empty path removes the prefix.

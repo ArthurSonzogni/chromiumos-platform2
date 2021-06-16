@@ -14,6 +14,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/suspend_configurator.h"
 
 namespace power_manager {
 namespace policy {
@@ -25,8 +26,10 @@ ShutdownFromSuspend::ShutdownFromSuspend(
     : alarm_timer_(std::move(alarm_timer)) {}
 ShutdownFromSuspend::~ShutdownFromSuspend() = default;
 
-void ShutdownFromSuspend::Init(PrefsInterface* prefs,
-                               system::PowerSupplyInterface* power_supply) {
+void ShutdownFromSuspend::Init(
+    PrefsInterface* prefs,
+    system::PowerSupplyInterface* power_supply,
+    system::SuspendConfiguratorInterface* suspend_configurator) {
   DCHECK(prefs);
   DCHECK(power_supply);
 
@@ -42,13 +45,16 @@ void ShutdownFromSuspend::Init(PrefsInterface* prefs,
       prefs->GetInt64(kShutdownFromSuspendSecPref, &shutdown_after_sec) &&
       shutdown_after_sec > 0;
 
-  // Hibernate only works if shutdown-after-x works.
+  // Hibernate only works if the system supports it, and
+  // shutdown-after-x works.
   bool disable_hibernate = true;
 
   CHECK(prefs->GetBool(kDisableHibernatePref, &disable_hibernate))
       << "Failed to read pref " << kDisableHibernatePref;
 
-  hibernate_enabled_ = global_enabled_ && !disable_hibernate;
+  hibernate_enabled_ = global_enabled_ &&
+                       suspend_configurator->IsHibernateAvailable() &&
+                       !disable_hibernate;
   if (global_enabled_) {
     shutdown_delay_ = base::TimeDelta::FromSeconds(shutdown_after_sec);
     prefs->GetDouble(kLowBatteryShutdownPercentPref,

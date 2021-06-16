@@ -23,6 +23,10 @@ namespace {
 // Path to write to configure system suspend mode.
 static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
 
+// Path to read to figure out the hibernation resume device.
+// This file is absent on kernels without hibernation support.
+static constexpr char kSnapshotDevicePath[] = "/dev/snapshot";
+
 // suspend to idle (S0iX) suspend mode
 static constexpr char kSuspendModeFreeze[] = "s2idle";
 
@@ -93,6 +97,21 @@ bool SuspendConfigurator::UndoPrepareForSuspend() {
     return false;
   }
   return true;
+}
+
+bool SuspendConfigurator::IsHibernateAvailable() {
+  base::FilePath snapshot_device_path =
+      GetPrefixedFilePath(base::FilePath(kSnapshotDevicePath));
+
+  // Use the existence of the snapshot device as evidence that the kernel
+  // is capable of doing suspend to disk.
+  if (base::PathExists(snapshot_device_path)) {
+    LOG(INFO) << "Hibernate is available";
+    return true;
+  }
+
+  LOG(INFO) << "Hibernate is not available on this machine";
+  return false;
 }
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {
