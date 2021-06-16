@@ -16,21 +16,22 @@
 #define MAX(A,B) (((A) > (B)) ? (A) : (B))
 #endif
 
-
-#define PW_MAX_HECI_BUF_SIZE 4096
+#define PW_MAX_HECI_BUF_SIZE 4096 /* size of allocated buffer per client. */
+#define PW_MAX_HECI_HEADER_SIZE \
+    MAX(sizeof(struct pw_heci_header_req), sizeof(struct pw_heci_header_res))
 #define PW_SHA_256_DIGEST_SIZE BITS_TO_BYTES(256)
 #define PW_MAX_DIGEST_SIZE PW_SHA_256_DIGEST_SIZE
-#define PW_MAX_HECI_PAYLOAD_SIZE                                               \
-  (PW_MAX_HECI_BUF_SIZE -                                                      \
-  MAX(sizeof(struct pw_heci_header_req), sizeof(struct pw_heci_header_res)))
+#define PW_MAX_HECI_PAYLOAD_SIZE \
+            (PW_MAX_HECI_BUF_SIZE - PW_MAX_HECI_HEADER_SIZE)
 
 #pragma pack(push, 1)
 
 // == common enums 
 enum pcr_alg_t {
-    PW_PCR_ALG_SHA_256 = 0xb,
+    PW_PCR_ALG_SHA_256 = 0xb, // TPM_ALG_SHA256
 } ;
 
+#define PW_MAX_HECI_BUFFER_PROV_CLIENT 100 /* currently largest command/response is pw_prov_salting_key_hash_get_response */
 
 /*
 4 clients:
@@ -80,8 +81,8 @@ struct pw_heci_header_req {
 struct pw_heci_header_res {
     uint8_t pw_heci_cmd; // one of pw_tpm_tunnel_cmd_t / pw_dyn_core_cmd_t / pw_dyn_core_cmd_t / pw_tpm_prov_cmd_t
     uint8_t pw_heci_seq; // sequencial counter to be copied from command to response by the processing entity
-    uint8_t pw_heci_rc;  // protocol response code
     uint16_t total_length; //  total length of following message not including header 
+    uint32_t pw_heci_rc;  // protocol / operation response code
 } ;
 
 
@@ -93,24 +94,26 @@ struct pw_prov_salting_key_hash_set_request{
     struct pw_heci_header_req header;
     uint8_t buffer[PW_SHA_256_DIGEST_SIZE];
 } ;
+static_assert(sizeof(struct pw_prov_salting_key_hash_set_request) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 struct pw_prov_salting_key_hash_set_response{
     struct pw_heci_header_res header;
-    uint32_t rc;              // response code
 } ;
+static_assert(sizeof(struct pw_prov_salting_key_hash_set_response) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 // dynamic tpm provisioning client
 // PW_PROV_SALTING_KEY_HASH_GET
 struct pw_prov_salting_key_hash_get_request{
     struct pw_heci_header_req header;
 } ;
+static_assert(sizeof(struct pw_prov_salting_key_hash_get_request) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 struct pw_prov_salting_key_hash_get_response{
     struct pw_heci_header_res header;
-    uint32_t rc;              // response code
     uint8_t committed;
     uint8_t buffer[PW_SHA_256_DIGEST_SIZE];
 } ;
+static_assert(sizeof(struct pw_prov_salting_key_hash_get_response) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 
 // dynamic tpm provisioning client
@@ -118,11 +121,12 @@ struct pw_prov_salting_key_hash_get_response{
 struct pw_prov_salting_key_hash_commit_request{
     struct pw_heci_header_req header;
 } ;
+static_assert(sizeof(struct pw_prov_salting_key_hash_commit_request) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 struct pw_prov_salting_key_hash_commit_response{
     struct pw_heci_header_res header;
-    uint32_t rc;              // commit operation response code
 } ;
+static_assert(sizeof(struct pw_prov_salting_key_hash_commit_response) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 
 // dynamic tpm provisioning client
@@ -130,11 +134,12 @@ struct pw_prov_salting_key_hash_commit_response{
 struct pw_prov_initialize_owner_request{
     struct pw_heci_header_req header;
 } ;
+static_assert(sizeof(struct pw_prov_initialize_owner_request) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 struct pw_prov_initialize_owner_response{
     struct pw_heci_header_res header;
-    uint32_t rc;              // operation response code
 } ;
+static_assert(sizeof(struct pw_prov_initialize_owner_response) <= PW_MAX_HECI_BUFFER_PROV_CLIENT);
 
 
 // Fixed Coreboot client AND
@@ -150,7 +155,6 @@ struct pw_pcr_extend_request{
 
 struct pw_pcr_extend_response{
     struct pw_heci_header_res header;
-    uint32_t rc;              // operation response code
 } ;
 
 
@@ -165,12 +169,10 @@ struct pw_pcr_read_request {
 
 struct pw_pcr_read_response{
     struct pw_heci_header_res header;
-    uint32_t rc;
     uint32_t pcr_index;
     uint32_t hash_alg;      // support only 0xb == TPM_ALG_SHA256
     uint8_t digest[PW_MAX_DIGEST_SIZE];
 } ;
-
 
 // dynamic core pinweaver client
 // PW_CORE_PINWEAVER_CMD
@@ -198,4 +200,4 @@ struct pw_tpm_command_response{
 } ;
 #pragma pack(pop)
 
-#endif // TRUNKS_CSME_PINWEAVER_CSME_TYPES_H_
+#endif // _PINWEAVER_CSME_TYPES_H_
