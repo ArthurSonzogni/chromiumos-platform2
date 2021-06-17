@@ -108,11 +108,22 @@ trait GetPropExt {
         Ok(self.get_str(key)?.to_string())
     }
 
-    fn get_strs(&self, key: &str) -> Result<Vec<&str>, Error> {
+    fn get_i32(&self, key: &str) -> Result<i32, Error> {
+        self.get_arg(key)?
+            .as_i64()
+            .map(|x| x as i32)
+            .ok_or_else(|| get_prop_error(key, "i32"))
+    }
+
+    fn get_strings(&self, key: &str) -> Result<Vec<String>, Error> {
         self.get_arg(key)?
             .as_iter()
             .ok_or_else(|| get_prop_error(key, "vec"))?
-            .map(|arg| arg.as_str().ok_or_else(|| get_prop_error(key, "str")))
+            .map(|arg| {
+                arg.as_str()
+                    .ok_or_else(|| get_prop_error(key, "str"))
+                    .map(|x| x.to_string())
+            })
             .collect()
     }
 
@@ -176,14 +187,19 @@ const PROPERTY_NAME: &str = "Name";
 const PROPERTY_PROVIDER_TYPE: &str = "Provider.Type";
 const PROPERTY_PROVIDER_HOST: &str = "Provider.Host";
 const PROPERTY_WIREGUARD_PUBLIC_KEY: &str = "WireGuard.PublicKey";
-const PROPERTY_WIREGUARD_ADDRESS: &str = "WireGuard.Address";
 const PROPERTY_WIREGUARD_PEERS: &str = "WireGuard.Peers";
+const PROPERTY_STATIC_IP_CONFIG: &str = "StaticIPConfig";
 
 // Property names for WireGuard in "WireGuard.Peers".
 const PROPERTY_PEER_PUBLIC_KEY: &str = "PublicKey";
 const PROPERTY_PEER_ENDPOINT: &str = "Endpoint";
 const PROPERTY_PEER_ALLOWED_IPS: &str = "AllowedIPs";
 const PROPERTY_PEER_PERSISTENT_KEEPALIVE: &str = "PersistentKeepalive";
+
+// Property names in "StaticIPConfig"
+const PROPERTY_ADDRESS: &str = "Address";
+const PROPERTY_NAME_SERVERS: &str = "NameServers";
+const PROPERTY_MTU: &str = "Mtu";
 
 // Property values.
 const TYPE_VPN: &str = "vpn";
@@ -193,8 +209,10 @@ const TYPE_WIREGUARD: &str = "wireguard";
 struct WireGuardService {
     path: Option<String>,
     name: String,
-    local_ip: String,
+    local_ip: Option<String>,
     public_key: String,
+    mtu: Option<i32>,
+    name_servers: Option<Vec<String>>,
     peers: Vec<WireGuardPeer>,
 }
 
@@ -217,6 +235,19 @@ impl WireGuardService {
             return Err(not_wg_service_err);
         }
 
+        // Reads address, dns servers, and mtu from StaticIPConfig. This property and all the
+        // sub-properties could be empty.
+        let mut local_ip = None;
+        let mut mtu = None;
+        let mut name_servers = None;
+        if let Ok(props) = service_properties.get_inner_prop_map(PROPERTY_STATIC_IP_CONFIG) {
+            // Note that the ok() below may potentially ignore some real parsing failures. It
+            // should not happen if shill is working correctly so we use ok() here for simplicity.
+            local_ip = props.get_string(PROPERTY_ADDRESS).ok();
+            name_servers = props.get_strings(PROPERTY_NAME_SERVERS).ok();
+            mtu = props.get_i32(PROPERTY_MTU).ok();
+        }
+
         // The value of the "Provider" property is a map. Translates it into a HashMap at first.
         let provider_properties = service_properties.get_inner_prop_map("Provider")?;
 
@@ -227,8 +258,10 @@ impl WireGuardService {
         let ret = WireGuardService {
             path: None,
             name: service_name.to_string(),
-            local_ip: provider_properties.get_string(PROPERTY_WIREGUARD_ADDRESS)?,
+            local_ip,
             public_key: provider_properties.get_string(PROPERTY_WIREGUARD_PUBLIC_KEY)?,
+            mtu,
+            name_servers,
             peers: provider_properties
                 .get_inner_prop_maps(PROPERTY_WIREGUARD_PEERS)?
                 .into_iter()
@@ -256,7 +289,26 @@ impl WireGuardService {
         insert_string_field(PROPERTY_NAME, &self.name);
         insert_string_field(PROPERTY_PROVIDER_TYPE, TYPE_WIREGUARD);
         insert_string_field(PROPERTY_PROVIDER_HOST, TYPE_WIREGUARD);
-        insert_string_field(PROPERTY_WIREGUARD_ADDRESS, &self.local_ip);
+
+        let mut static_ip_properties = HashMap::new();
+        let mut insert_ip_field = |k: &str, v: Box<dyn RefArg>| {
+            static_ip_properties.insert(k.to_string(), Variant(v));
+        };
+        if let Some(local_ip) = &self.local_ip {
+            insert_ip_field(PROPERTY_ADDRESS, Box::new(local_ip.clone()));
+        }
+        if let Some(name_servers) = &self.name_servers {
+            insert_ip_field(PROPERTY_NAME_SERVERS, Box::new(name_servers.clone()));
+        }
+        if let Some(mtu) = self.mtu {
+            insert_ip_field(PROPERTY_MTU, Box::new(mtu));
+        }
+        if !static_ip_properties.is_empty() {
+            properties.insert(
+                PROPERTY_STATIC_IP_CONFIG,
+                Variant(Box::new(static_ip_properties)),
+            );
+        }
 
         let mut peers_buf = Vec::new();
         for peer in &self.peers {
@@ -281,14 +333,24 @@ impl WireGuardService {
     fn print(&self) {
         // TODO(b/177877310): Print the connection state.
         println!("name: {}", self.name);
-        println!("  local ip: {}", self.local_ip);
+        // Always shows local ip since it's mandatory.
+        println!(
+            "  local ip: {}",
+            self.local_ip.as_ref().unwrap_or(&"".to_string())
+        );
         println!("  public key: {}", self.public_key);
         println!("  private key: (hidden)");
+        if let Some(dns) = &self.name_servers {
+            println!("  name servers: {}", dns.join(", "));
+        }
+        if let Some(mtu) = self.mtu {
+            println!("  mtu: {}", mtu);
+        }
         println!();
         for p in &self.peers {
             println!("  peer: {}", p.public_key);
             println!("    public key: {}", p.public_key);
-            println!("    pershared key: (hidden)");
+            println!("    preshared key: (hidden or not set)");
             println!("    endpoint: {}", p.endpoint);
             println!("    allowed ips: {}", p.allowed_ips);
             println!("    persistent keepalive: {}", p.persistent_keep_alive);
@@ -320,9 +382,9 @@ fn get_wireguard_services(connection: &Connection) -> Result<Vec<WireGuardServic
 
     // The "Services" property should contain a list of D-Bus paths.
     const PROPERTY_SERVICES: &str = "Services";
-    let services = manager_properties.get_strs(PROPERTY_SERVICES)?;
+    let services = manager_properties.get_strings(PROPERTY_SERVICES)?;
     for path in services {
-        let proxy = make_service_proxy(connection, path);
+        let proxy = make_service_proxy(connection, &path);
         let service_properties = OrgChromiumFlimflamService::get_properties(&proxy)
             .map_err(|err| Error::Internal(format!("Failed to get service properties: {}", err)))?;
         match WireGuardService::parse_from_prop_map(&service_properties) {
@@ -385,9 +447,11 @@ fn wireguard_new(service_name: &str) -> Result<(), Error> {
     let manager_proxy = connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT);
     let service = WireGuardService {
         path: None,
-        local_ip: "".to_string(),
-        public_key: "".to_string(),
         name: service_name.to_string(),
+        local_ip: None,
+        public_key: "".to_string(),
+        name_servers: None,
+        mtu: None,
         peers: Vec::new(),
     };
     manager_proxy
