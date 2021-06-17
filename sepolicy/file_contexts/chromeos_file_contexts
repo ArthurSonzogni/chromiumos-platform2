@@ -320,6 +320,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run                            u:object_r:cros_run:s0
 /run/arc/debugfs                u:object_r:debugfs:s0
 /run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
+/run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
 /run/daemon-store               u:object_r:cros_run_daemon_store:s0

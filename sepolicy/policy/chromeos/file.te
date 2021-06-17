@@ -418,6 +418,7 @@ type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible 
 type cras_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type cros_run, file_type, cros_file_type, cros_run_file_type;
 type cros_run_avahi_daemon, file_type, cros_file_type, cros_run_file_type;
+type cros_run_camera_tokens, file_type, cros_file_type, cros_run_file_type;
 type cros_run_containers, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;
 type cros_run_cryptohome, file_type, cros_file_type, cros_run_file_type;
