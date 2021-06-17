@@ -49,17 +49,33 @@ int CameraHal::OpenDevice(int id,
                           const hw_module_t* module,
                           hw_device_t** hw_device) {
   base::AutoLock l(camera_map_lock_);
+
   if (cameras_.find(id) == cameras_.end()) {
     LOGF(ERROR) << "Camera " << id << " is invalid";
     return -EINVAL;
   }
 
-  if (cameras_[id]->IsOpen()) {
+  if (open_cameras_.find(id) != open_cameras_.end()) {
     LOGF(ERROR) << "Camera " << id << " is already open";
     return -EBUSY;
   }
 
+  open_cameras_[id] = cameras_[id];
   cameras_[id]->Open(module, hw_device);
+
+  return 0;
+}
+
+int CameraHal::CloseDevice(int id) {
+  base::AutoLock l(camera_map_lock_);
+
+  if (open_cameras_.find(id) == open_cameras_.end()) {
+    LOGF(ERROR) << "Camera " << id << " is not open";
+    return -EINVAL;
+  }
+
+  open_cameras_[id]->Close();
+  open_cameras_.erase(id);
 
   return 0;
 }
@@ -192,7 +208,7 @@ void CameraHal::OnDeviceConnected(
     base::AutoLock l(camera_map_lock_);
     id = next_camera_id_;
 
-    auto device = std::make_unique<CameraDevice>(id);
+    auto device = std::make_shared<CameraDevice>(id);
     if (device->Init(std::move(device_remote), ip, name, std::move(streams))) {
       LOGF(ERROR) << "Error creating camera device";
       return;
@@ -226,8 +242,8 @@ void CameraHal::OnDeviceDisconnected(const std::string& ip) {
       return;
     }
 
-    if (cameras_[id]->IsOpen()) {
-      cameras_[id]->Close();
+    if (open_cameras_.find(id) != open_cameras_.end()) {
+      cameras_[id]->Flush();
     }
   }
 

@@ -48,6 +48,8 @@ class CameraHal : public mojom::IpCameraConnectionListener {
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
   int Init();
 
+  int CloseDevice(int id);
+
   // Implementations for cros_camera_hal_t.
   void SetUp(CameraMojoChannelManagerToken* token);
   void TearDown();
@@ -74,7 +76,8 @@ class CameraHal : public mojom::IpCameraConnectionListener {
   base::Lock camera_map_lock_;
   // Maps from IP to HAL camera id
   std::map<const std::string, int> ip_to_id_;
-  std::map<int, std::unique_ptr<CameraDevice>> cameras_;
+  std::map<int, std::shared_ptr<CameraDevice>> cameras_;
+  std::map<int, std::shared_ptr<CameraDevice>> open_cameras_;
   int next_camera_id_;
 
   // Any calls to OnDeviceConnected/OnDeviceDisconnected will block until

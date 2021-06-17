@@ -96,8 +96,8 @@ static int camera_device_close(struct hw_device_t* hw_device) {
     return -EIO;
   }
 
-  device->Close();
-  return 0;
+  dev->priv = nullptr;
+  return CameraHal::GetInstance().CloseDevice(device->GetId());
 }
 
 CameraDevice::CameraDevice(int id)
@@ -189,29 +189,41 @@ int CameraDevice::Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
 }
 
 void CameraDevice::Open(const hw_module_t* module, hw_device_t** hw_device) {
+  camera3_device_.priv = this;
   camera3_device_.common.module = const_cast<hw_module_t*>(module);
   *hw_device = &camera3_device_.common;
   open_ = true;
 }
 
 CameraDevice::~CameraDevice() {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
   if (jpeg_thread_.IsRunning()) {
     jpeg_thread_.Stop();
   }
   jda_.reset();
 
-  ip_device_.reset();
-  receiver_.reset();
+  auto return_val = Future<void>::Create(nullptr);
+  if (!ipc_task_runner_->RunsTasksInCurrentSequence()) {
+    ipc_task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&CameraDevice::DestroyOnIpcThread,
+                                  base::Unretained(this), return_val));
+  } else {
+    DestroyOnIpcThread(return_val);
+  }
+  return_val->Wait(-1);
 }
 
-bool CameraDevice::IsOpen() {
-  return open_;
+void CameraDevice::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
+  ip_device_.reset();
+  receiver_.reset();
+  return_val->Set();
 }
 
 android::CameraMetadata* CameraDevice::GetStaticMetadata() {
   return &static_metadata_;
+}
+
+int CameraDevice::GetId() {
+  return id_;
 }
 
 int CameraDevice::Initialize(const camera3_callback_ops_t* callback_ops) {

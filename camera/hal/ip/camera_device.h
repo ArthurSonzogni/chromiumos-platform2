@@ -42,8 +42,8 @@ class CameraDevice : public mojom::IpCameraFrameListener {
            std::vector<mojom::IpCameraStreamPtr> streams);
   void Open(const hw_module_t* module, hw_device_t** hw_device);
   void Close();
-  bool IsOpen();
   android::CameraMetadata* GetStaticMetadata();
+  int GetId();
 
   // Implementations of camera3_device_ops_t
   int Initialize(const camera3_callback_ops_t* callback_ops);
@@ -68,6 +68,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
                   int32_t id,
                   uint32_t size);
   void ReturnBufferOnIpcThread(int32_t id);
+  void DestroyOnIpcThread(scoped_refptr<Future<void>> return_val);
 
   std::atomic<bool> open_;
   const int id_;
