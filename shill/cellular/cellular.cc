@@ -260,23 +260,9 @@ Cellular::Cellular(Manager* manager,
       dbus_service_(service),
       dbus_path_(path),
       dbus_path_str_(path.value()),
-      scanning_supported_(false),
-      scanning_(false),
-      polling_location_(false),
-      scan_interval_(0),
-      sim_present_(false),
       type_(type),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
-      process_manager_(ProcessManager::GetInstance()),
-      allow_roaming_(false),
-      policy_allow_roaming_(true),
-      provider_requires_roaming_(false),
-      use_attach_apn_(false),
-      inhibited_(false),
-      proposed_scan_in_progress_(false),
-      explicit_disconnect_(false),
-      is_ppp_authenticating_(false),
-      weak_ptr_factory_(this) {
+      process_manager_(ProcessManager::GetInstance()) {
   RegisterProperties();
 
   // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the

@@ -613,7 +613,7 @@ class Cellular : public Device,
 
   Stringmap home_provider_;
 
-  bool scanning_supported_;
+  bool scanning_supported_ = false;
   std::string equipment_id_;
   std::string esn_;
   std::string firmware_revision_;
@@ -626,22 +626,22 @@ class Cellular : public Device,
   std::string min_;
   std::string model_id_;
   std::string mm_plugin_;
-  bool scanning_;
-  bool polling_location_;
+  bool scanning_ = false;
+  bool polling_location_ = false;
   base::CancelableClosure poll_location_task_;
 
   // GSM only properties.
   // They are always exposed but are non empty only for GSM technology modems.
   std::string selected_network_;
   Stringmaps found_networks_;
-  uint16_t scan_interval_;
+  uint16_t scan_interval_ = 0;
   Stringmaps apn_list_;
 
   // Primary SIM properties.
   std::string eid_;  // SIM eID, aka eUICCID
   std::string iccid_;
   std::string imsi_;
-  bool sim_present_;
+  bool sim_present_ = false;
 
   // vector of SimProperties, ordered by slot.
   std::vector<SimProperties> sim_slot_properties_;
@@ -672,30 +672,30 @@ class Cellular : public Device,
 
   // User preference to allow or disallow roaming before M92. Used as a default
   // until Chrome ties its roaming toggle to Service.AllowRoaming (b/184375691)
-  bool allow_roaming_;
+  bool allow_roaming_ = false;
 
   // If an operator has no home network, then set this flag. This overrides
   // all other roaming preferences, and allows roaming unconditionally.
-  bool policy_allow_roaming_;
+  bool policy_allow_roaming_ = true;
 
-  bool provider_requires_roaming_;
+  bool provider_requires_roaming_ = false;
 
   // Chrome flags to enable setting the attach APN from the host
-  bool use_attach_apn_;
+  bool use_attach_apn_ = false;
 
   // Reflects the Device property indicating that the modem is inhibted. The
   // property is not persisted and is reset to false when the modem starts.
-  bool inhibited_;
+  bool inhibited_ = false;
 
   // Track whether a user initiated scan is in prgoress (initiated via ::Scan)
-  bool proposed_scan_in_progress_;
+  bool proposed_scan_in_progress_ = false;
 
   // Flag indicating that a disconnect has been explicitly requested.
-  bool explicit_disconnect_;
+  bool explicit_disconnect_ = false;
 
   std::unique_ptr<ExternalTask> ppp_task_;
   PPPDeviceRefPtr ppp_device_;
-  bool is_ppp_authenticating_;
+  bool is_ppp_authenticating_ = false;
 
   std::unique_ptr<NetlinkSockDiag> socket_destroyer_;
 
@@ -714,7 +714,7 @@ class Cellular : public Device,
   // Legacy device storage identifier, used for removing legacy entry.
   std::string legacy_storage_id_;
 
-  base::WeakPtrFactory<Cellular> weak_ptr_factory_;
+  base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };
 
 }  // namespace shill
