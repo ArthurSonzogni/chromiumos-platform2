@@ -17,12 +17,14 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/values.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -240,6 +242,14 @@ void OutputData(const std::vector<std::string>& headers,
   }
 }
 
+void OutputJson(const base::Value& output) {
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+
+  std::cout << json << std::endl;
+}
+
 void DisplayProcessInfo(const ProcessResultPtr& process_result,
                         const bool beauty) {
   if (process_result.is_null())
@@ -337,7 +347,7 @@ void DisplayBatteryInfo(const BatteryResultPtr& battery_result,
   OutputData(headers, values, beauty);
 }
 
-void DisplayAudioInfo(const AudioResultPtr& audio_result, const bool beauty) {
+void DisplayAudioInfo(const AudioResultPtr& audio_result) {
   if (audio_result->is_error()) {
     DisplayError(audio_result->get_error());
     return;
@@ -349,19 +359,17 @@ void DisplayAudioInfo(const AudioResultPtr& audio_result, const bool beauty) {
     return;
   }
 
-  const std::vector<std::string> headers = {
-      "output_mute",   "input_mute",        "output_device_name",
-      "output_volume", "input_device_name", "input_gain",
-      "underruns",     "severe_underruns"};
-  const std::vector<std::vector<std::string>> values = {
-      {std::to_string(audio->output_mute), std::to_string(audio->input_mute),
-       "\"" + audio->output_device_name + "\"",
-       std::to_string(audio->output_volume),
-       "\"" + audio->input_device_name + "\"",
-       std::to_string(audio->input_gain), std::to_string(audio->underruns),
-       std::to_string(audio->severe_underruns)}};
+  base::Value output{base::Value::Type::DICTIONARY};
+  output.SetStringKey("input_device_name", audio->input_device_name);
+  output.SetStringKey("output_device_name", audio->output_device_name);
+  output.SetBoolKey("input_mute", audio->input_mute);
+  output.SetBoolKey("output_mute", audio->output_mute);
+  output.SetIntKey("input_gain", audio->input_gain);
+  output.SetIntKey("output_volume", audio->output_volume);
+  output.SetIntKey("severe_underruns", audio->severe_underruns);
+  output.SetIntKey("underruns", audio->underruns);
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayBootPerformanceInfo(
@@ -764,7 +772,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& audio_result = info->audio_result;
   if (audio_result)
-    DisplayAudioInfo(audio_result, beauty);
+    DisplayAudioInfo(audio_result);
 
   const auto& boot_performance_result = info->boot_performance_result;
   if (boot_performance_result)
