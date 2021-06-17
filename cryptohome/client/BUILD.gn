@@ -14,6 +14,17 @@ generate_dbus_proxies("libcryptohome-client-headers") {
   sources = [ "../dbus_bindings/org.chromium.CryptohomeInterface.xml" ]
 }
 
+generate_dbus_proxies("userdataauth-client-headers") {
+  dbus_service_config = "../dbus_bindings/dbus-service-config-UserDataAuth.json"
+  proxy_output_file = "include/user_data_auth/dbus-proxies.h"
+  mock_output_file = "include/user_data_auth/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "user_data_auth/dbus-proxies.h"
+  sources = [ "../dbus_bindings/org.chromium.UserDataAuth.xml" ]
+}
+
 group("all") {
-  deps = [ ":libcryptohome-client-headers" ]
+  deps = [
+    ":libcryptohome-client-headers",
+    ":userdataauth-client-headers",
+  ]
 }

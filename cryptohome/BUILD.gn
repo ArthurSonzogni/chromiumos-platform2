@@ -81,6 +81,7 @@ executable("cryptohome") {
     "libchrome",
     "libecryptfs",
     "libmetrics",
+    "libuser_data_auth-client",
     "openssl",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -184,7 +185,6 @@ executable("cryptohome-proxy") {
     "libs:cryptohome-proto-external",
     "libs:cryptohome_adaptors",
     "libs:libcryptohome",
-    "libs:userdataauth-client-headers",
   ]
 
   # NOSORT
@@ -195,6 +195,7 @@ executable("cryptohome-proxy") {
     "libchrome",
     "libmetrics",
     "libtpm_manager-client",
+    "libuser_data_auth-client",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
@@ -531,6 +532,8 @@ if (use.test) {
       "libmetrics",
       "libtpm_manager-client",
       "libtpm_manager-client-test",
+      "libuser_data_auth-client",
+      "libuser_data_auth-client-test",
       "openssl",
 
       # system_api depends on protobuf (or protobuf-lite). It must appear
