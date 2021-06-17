@@ -276,7 +276,10 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
     return kWiFiSecurityWep;
   } else if (security == kSecurityWpa) {
     return kWiFiSecurityWpa;
-  } else if (security == kSecurityRsn) {
+  } else if (security == kSecurityWpa2) {
+    // Note: kSecurityWpa2 denotes both pure WPA2 mode and WPA2 mixed modes so
+    // we cannot use new metric values yet (see crrev.com/c/3634379). First
+    // shill needs to start differentiate between pure and mixed WPA2 modes.
     return kWiFiSecurityRsn;
   } else if (security == kSecurity8021x) {
     return kWiFiSecurity8021x;

@@ -795,7 +795,7 @@ TEST_F(WiFiProviderTest, GetServiceJustLongEnoughSSID) {
 TEST_F(WiFiProviderTest, GetServiceBadSecurityClass) {
   Error error;
   EXPECT_FALSE(
-      GetService("foo", kModeManaged, kSecurityRsn, false, false, &error)
+      GetService("foo", kModeManaged, kSecurityWpa2, false, false, &error)
           .get());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("invalid security class", error.message());
@@ -885,7 +885,7 @@ TEST_F(WiFiProviderTest, GetServiceUnexpectedSecurityProperty) {
   KeyValueStore args;
   args.Set<std::string>(kTypeProperty, kTypeWifi);
   args.Set<std::string>(kSSIDProperty, kSSID);
-  args.Set<std::string>(kSecurityProperty, kSecurityRsn);
+  args.Set<std::string>(kSecurityProperty, kSecurityWpa2);
   args.Set<bool>(kWifiHiddenSsid, false);
 
   Error error;
@@ -919,7 +919,7 @@ TEST_F(WiFiProviderTest, GetServiceNonSecurityClass) {
   args.Set<std::string>(kTypeProperty, kTypeWifi);
   args.Set<std::string>(kSSIDProperty, kSSID);
   // Using a non-class as a class should be rejected.
-  args.Set<std::string>(kSecurityClassProperty, kSecurityRsn);
+  args.Set<std::string>(kSecurityClassProperty, kSecurityWpa2);
   args.Set<bool>(kWifiHiddenSsid, false);
 
   Error error;
@@ -1004,7 +1004,7 @@ TEST_F(WiFiProviderTest, FindServicePSK) {
       FindService(ssid_bytes, kModeManaged, kSecurityWpa));
   EXPECT_EQ(service, wpa_service);
   WiFiServiceRefPtr rsn_service(
-      FindService(ssid_bytes, kModeManaged, kSecurityRsn));
+      FindService(ssid_bytes, kModeManaged, kSecurityWpa2));
   EXPECT_EQ(service, rsn_service);
   WiFiServiceRefPtr psk_service(
       FindService(ssid_bytes, kModeManaged, kSecurityPsk));
@@ -1096,7 +1096,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
       FindService(ssid0_bytes, kModeManaged, kSecurityWpa));
   EXPECT_NE(nullptr, service0);
   EXPECT_TRUE(service0->HasEndpoints());
-  EXPECT_EQ(kSecurityRsn, service0->security());
+  EXPECT_EQ(kSecurityWpa2, service0->security());
 
   WiFiEndpoint::SecurityFlags wpa_flags;
   wpa_flags.wpa_psk = true;
@@ -1120,7 +1120,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   EXPECT_EQ(2, GetServices().size());
 
   WiFiServiceRefPtr service1(
-      FindService(ssid1_bytes, kModeManaged, kSecurityRsn));
+      FindService(ssid1_bytes, kModeManaged, kSecurityWpa2));
   EXPECT_NE(nullptr, service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_EQ(kSecurityWpa, service1->security());
@@ -1147,7 +1147,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
       FindService(ssid0_bytes, kModeManaged, kSecurityWpa));
   EXPECT_NE(nullptr, service0);
   EXPECT_TRUE(service0->HasEndpoints());
-  EXPECT_EQ(kSecurityRsn, service0->security());
+  EXPECT_EQ(kSecurityWpa2, service0->security());
 
   WiFiEndpoint::SecurityFlags none_flags;
   WiFiEndpointRefPtr endpoint1 =
@@ -1163,7 +1163,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
   EXPECT_NE(nullptr, service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_EQ(kSecurityNone, service1->security());
-  EXPECT_EQ(kSecurityRsn, service0->security());
+  EXPECT_EQ(kSecurityWpa2, service0->security());
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAddedWhileStopped) {
@@ -1360,7 +1360,7 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   EXPECT_CALL(*rsn_service, AddEndpoint(RefPtrMatch(endpoint)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(rsn_service)));
-  endpoint->set_security_mode(kSecurityRsn);
+  endpoint->set_security_mode(kSecurityWpa2);
   provider_.OnEndpointUpdated(endpoint);
 }
 

@@ -232,7 +232,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     WiFiEndpoint::SecurityFlags flags;
     if (security == kSecurityWpa) {
       flags.wpa_psk = true;
-    } else if (security == kSecurityRsn) {
+    } else if (security == kSecurityWpa2) {
       flags.rsn_psk = true;
     } else if (security == kSecurityWpa3) {
       flags.rsn_sae = true;
@@ -817,7 +817,7 @@ TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
 
 TEST_F(WiFiServiceSecurityTest, WPAMapping) {
   TestSecurityMapping(kSecurityWpa3, kSecurityPsk);
-  TestSecurityMapping(kSecurityRsn, kSecurityPsk);
+  TestSecurityMapping(kSecurityWpa2, kSecurityPsk);
   TestSecurityMapping(kSecurityWpa, kSecurityPsk);
   TestSecurityMapping(kSecurityPsk, kSecurityPsk);
   TestSecurityMapping(kSecurityWep, kSecurityWep);
@@ -827,7 +827,7 @@ TEST_F(WiFiServiceSecurityTest, WPAMapping) {
 
 TEST_F(WiFiServiceSecurityTest, LoadMapping) {
   EXPECT_TRUE(TestLoadMapping(kSecurityWpa3, kSecurityPsk, true));
-  EXPECT_TRUE(TestLoadMapping(kSecurityRsn, kSecurityPsk, true));
+  EXPECT_TRUE(TestLoadMapping(kSecurityWpa2, kSecurityPsk, true));
   EXPECT_TRUE(TestLoadMapping(kSecurityWpa, kSecurityPsk, true));
   EXPECT_TRUE(TestLoadMapping(kSecurityWep, kSecurityWep, true));
   EXPECT_TRUE(TestLoadMapping(kSecurityWep, kSecurityPsk, false));
@@ -840,7 +840,7 @@ TEST_F(WiFiServiceSecurityTest, EndpointsDisappear) {
   WiFiEndpointRefPtr endpoint =
       MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
   service->AddEndpoint(endpoint);
-  EXPECT_EQ(kSecurityRsn, service->security());
+  EXPECT_EQ(kSecurityWpa2, service->security());
   EXPECT_EQ(kSecurityPsk, service->security_class());
 
   service->RemoveEndpoint(endpoint);
@@ -1231,7 +1231,7 @@ TEST_F(WiFiServiceTest, PreferWPA2OverWPA) {
   service0->AddEndpoint(rsn_endpoint);
   service1->AddEndpoint(wpa_endpoint);
 
-  EXPECT_EQ(kSecurityRsn, service0->security());
+  EXPECT_EQ(kSecurityWpa2, service0->security());
   EXPECT_EQ(kSecurityWpa, service1->security());
 
   const auto& ret =
@@ -1622,7 +1622,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(kSecurityRsn, service->security());
+    EXPECT_EQ(kSecurityWpa2, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -2587,7 +2587,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(ep);
     Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
-    EXPECT_EQ(Metrics::WiFiSecurityStringToEnum(kSecurityRsn), info.security);
+    EXPECT_EQ(Metrics::WiFiSecurityStringToEnum(kSecurityWpa2), info.security);
   }
 }
 

@@ -412,7 +412,7 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
   } else if (flags->rsn_sae) {
     return kSecurityWpa3;
   } else if (flags->rsn_psk) {
-    return kSecurityRsn;
+    return kSecurityWpa2;
   } else if (flags->wpa_psk) {
     return kSecurityWpa;
   } else if (flags->privacy) {

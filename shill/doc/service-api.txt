@@ -1367,7 +1367,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			If the service type is "wifi", then this property
 			holds a passphrase used in setting up services of
-			type "wep", "wpa", "rsn", "wpa3", "psk", or a private
+			type "wep", "wpa", "wpa2", "wpa3", "psk", or a private
 			key password used in setting up services of
 			type "802_1x".
 

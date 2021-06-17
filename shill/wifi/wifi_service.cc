@@ -367,7 +367,7 @@ bool WiFiService::SetPassphrase(const std::string& passphrase, Error* error) {
   if (security_ == kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
   } else if (security_ == kSecurityPsk || security_ == kSecurityWpa ||
-             security_ == kSecurityRsn || security_ == kSecurityWpa3) {
+             security_ == kSecurityWpa2 || security_ == kSecurityWpa3) {
     ValidateWPAPassphrase(passphrase, error);
   } else {
     error->Populate(Error::kIllegalOperation);
@@ -976,7 +976,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   if (Is8021x()) {
     eap()->PopulateSupplicantProperties(certificate_file_.get(), &params);
   } else if (security_ == kSecurityPsk || security_ == kSecurityWpa3 ||
-             security_ == kSecurityRsn || security_ == kSecurityWpa) {
+             security_ == kSecurityWpa2 || security_ == kSecurityWpa) {
     // NB: WPA3-SAE uses RSN protocol.
     const std::string psk_proto =
         base::StringPrintf("%s %s", WPASupplicant::kSecurityModeWPA,
@@ -1143,7 +1143,7 @@ void WiFiService::UpdateConnectable() {
   } else if (Is8021x()) {
     is_connectable = Is8021xConnectable();
   } else if (security_ == kSecurityWep || security_ == kSecurityWpa ||
-             security_ == kSecurityPsk || security_ == kSecurityRsn ||
+             security_ == kSecurityPsk || security_ == kSecurityWpa2 ||
              security_ == kSecurityWpa3) {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
@@ -1277,7 +1277,7 @@ void WiFiService::UpdateSecurity() {
     algorithm = kCryptoRc4;
     key_rotation = true;
     endpoint_auth = false;
-  } else if (security_ == kSecurityRsn || security_ == kSecurityWpa3) {
+  } else if (security_ == kSecurityWpa2 || security_ == kSecurityWpa3) {
     // TODO(crbug.com/942973): weigh WPA3 more highly?
     algorithm = kCryptoAes;
     key_rotation = true;
@@ -1462,7 +1462,7 @@ bool WiFiService::CheckWEPPrefix(const std::string& passphrase, Error* error) {
 
 // static
 std::string WiFiService::ComputeSecurityClass(const std::string& security) {
-  if (security == kSecurityRsn || security == kSecurityWpa ||
+  if (security == kSecurityWpa2 || security == kSecurityWpa ||
       security == kSecurityWpa3) {
     return kSecurityPsk;
   } else {
@@ -1492,7 +1492,7 @@ bool WiFiService::IsValidMode(const std::string& mode) {
 bool WiFiService::IsValidSecurityMethod(const std::string& method) {
   return method == kSecurityNone || method == kSecurityWep ||
          method == kSecurityPsk || method == kSecurityWpa ||
-         method == kSecurityRsn || method == kSecurityWpa3 ||
+         method == kSecurityWpa2 || method == kSecurityWpa3 ||
          method == kSecurity8021x;
 }
 

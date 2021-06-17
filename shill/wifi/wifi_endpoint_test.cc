@@ -244,7 +244,7 @@ TEST_F(WiFiEndpointTest, ParseSecurityRSNSAE) {
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {
-  EXPECT_STREQ(kSecurityRsn,
+  EXPECT_STREQ(kSecurityWpa2,
                ParseSecurity(MakeSecurityArgs("RSN", "something-psk")));
 }
 
