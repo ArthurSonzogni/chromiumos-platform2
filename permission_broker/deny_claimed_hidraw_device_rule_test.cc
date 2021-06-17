@@ -92,8 +92,9 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
         if (!other_usb_interface) {
           continue;
         }
-        base::StringPiece devnode(udev_device_get_devnode(other_device.get()));
-        if (base::StartsWith(devnode, "/dev/input/js",
+        const char* devnode = udev_device_get_devnode(other_device.get());
+        if (devnode != nullptr &&
+            base::StartsWith(devnode, "/dev/input/js",
                              base::CompareCase::SENSITIVE)) {
           is_gamepad = true;
         }

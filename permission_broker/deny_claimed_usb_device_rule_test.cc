@@ -10,8 +10,8 @@
 #include <set>
 #include <string>
 
+#include "base/containers/contains.h"
 #include "base/logging.h"
-#include "base/stl_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "permission_broker/rule_test.h"
 #include "permission_broker/udev_scopers.h"
