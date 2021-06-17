@@ -167,6 +167,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
   FRIEND_TEST(CellularServiceTest, SetAllowRoaming);
 
+  // Used in CellularServiceTest
   static const char kAutoConnActivating[];
   static const char kAutoConnSimUnselected[];
   static const char kAutoConnBadPPPCredentials[];
@@ -174,9 +175,6 @@ class CellularService : public Service {
   static const char kAutoConnNotRegistered[];
   static const char kAutoConnOutOfCredits[];
   static const char kAutoConnConnectFailed[];
-
-  KeyValueStore GetStorageProperties() const;
-  std::string GetDefaultStorageIdentifier() const;
 
   void HelpRegisterDerivedString(
       const std::string& name,
@@ -190,37 +188,15 @@ class CellularService : public Service {
                                bool (CellularService::*get)(Error* error),
                                bool (CellularService::*set)(const bool&,
                                                             Error*));
-
   std::set<std::string> GetStorageGroupsWithProperty(
       const StoreInterface& storage,
       const std::string& key,
       const std::string& value) const;
-
   std::string CalculateActivationType(Error* error);
-
   Stringmap GetApn(Error* error);
   bool SetApn(const Stringmap& value, Error* error);
-  static void LoadApn(const StoreInterface* storage,
-                      const std::string& storage_group,
-                      const std::string& keytag,
-                      const Stringmaps& apn_list,
-                      Stringmap* apn_info);
-  static bool LoadApnField(const StoreInterface* storage,
-                           const std::string& storage_group,
-                           const std::string& keytag,
-                           const std::string& apntag,
-                           Stringmap* apn_info);
-  static void SaveApn(StoreInterface* storage,
-                      const std::string& storage_group,
-                      const Stringmap* apn_info,
-                      const std::string& keytag);
-  static void SaveApnField(StoreInterface* storage,
-                           const std::string& storage_group,
-                           const Stringmap* apn_info,
-                           const std::string& keytag,
-                           const std::string& apntag);
-  static void FetchDetailsFromApnList(const Stringmaps& apn_list,
-                                      Stringmap* apn_info);
+  KeyValueStore GetStorageProperties() const;
+  std::string GetDefaultStorageIdentifier() const;
   bool IsOutOfCredits(Error* /*error*/);
   bool GetAllowRoaming(Error* /*error*/);
   bool SetAllowRoaming(const bool& value, Error* error);

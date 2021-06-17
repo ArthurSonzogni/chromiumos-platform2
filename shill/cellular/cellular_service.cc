@@ -73,6 +73,87 @@ bool GetNonEmptyField(const Stringmap& stringmap,
   return false;
 }
 
+void FetchDetailsFromApnList(const Stringmaps& apn_list, Stringmap* apn_info) {
+  DCHECK(apn_info);
+  std::string apn;
+  for (const Stringmap& list_apn_info : apn_list) {
+    if (GetNonEmptyField(list_apn_info, kApnProperty, &apn) &&
+        (*apn_info)[kApnProperty] == apn) {
+      *apn_info = list_apn_info;
+      return;
+    }
+  }
+}
+
+bool LoadApnField(const StoreInterface* storage,
+                  const std::string& storage_group,
+                  const std::string& keytag,
+                  const std::string& apntag,
+                  Stringmap* apn_info) {
+  std::string value;
+  if (storage->GetString(storage_group, keytag + "." + apntag, &value) &&
+      !value.empty()) {
+    (*apn_info)[apntag] = value;
+    return true;
+  }
+  return false;
+}
+
+void LoadApn(const StoreInterface* storage,
+             const std::string& storage_group,
+             const std::string& keytag,
+             const Stringmaps& apn_list,
+             Stringmap* apn_info) {
+  if (keytag == kStorageLastGoodAPN) {
+    // Ignore LastGoodAPN that is too old.
+    int version;
+    if (!LoadApnField(storage, storage_group, keytag, kApnVersionProperty,
+                      apn_info) ||
+        !base::StringToInt((*apn_info)[kApnVersionProperty], &version) ||
+        version < kCurrentApnCacheVersion) {
+      return;
+    }
+  }
+
+  if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info))
+    return;
+  if (keytag == kStorageAPN)
+    FetchDetailsFromApnList(apn_list, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnPasswordProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnAuthenticationProperty,
+               apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnIpTypeProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
+}
+
+void SaveApnField(StoreInterface* storage,
+                  const std::string& storage_group,
+                  const Stringmap* apn_info,
+                  const std::string& keytag,
+                  const std::string& apntag) {
+  const std::string key = keytag + "." + apntag;
+  std::string str;
+  if (apn_info && GetNonEmptyField(*apn_info, apntag, &str))
+    storage->SetString(storage_group, key, str);
+  else
+    storage->DeleteKey(storage_group, key);
+}
+
+void SaveApn(StoreInterface* storage,
+             const std::string& storage_group,
+             const Stringmap* apn_info,
+             const std::string& keytag) {
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnUsernameProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnPasswordProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag,
+               kApnAuthenticationProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnIpTypeProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnAttachProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag, kApnVersionProperty);
+}
+
 }  // namespace
 
 CellularService::CellularService(Manager* manager,
@@ -664,88 +745,6 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   }
   Connect(error, __func__);
   return error->IsSuccess();
-}
-
-void CellularService::LoadApn(const StoreInterface* storage,
-                              const std::string& storage_group,
-                              const std::string& keytag,
-                              const Stringmaps& apn_list,
-                              Stringmap* apn_info) {
-  if (keytag == kStorageLastGoodAPN) {
-    // Ignore LastGoodAPN that is too old.
-    int version;
-    if (!LoadApnField(storage, storage_group, keytag, kApnVersionProperty,
-                      apn_info) ||
-        !base::StringToInt((*apn_info)[kApnVersionProperty], &version) ||
-        version < kCurrentApnCacheVersion) {
-      return;
-    }
-  }
-
-  if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info))
-    return;
-  if (keytag == kStorageAPN)
-    FetchDetailsFromApnList(apn_list, apn_info);
-  LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);
-  LoadApnField(storage, storage_group, keytag, kApnPasswordProperty, apn_info);
-  LoadApnField(storage, storage_group, keytag, kApnAuthenticationProperty,
-               apn_info);
-  LoadApnField(storage, storage_group, keytag, kApnIpTypeProperty, apn_info);
-  LoadApnField(storage, storage_group, keytag, kApnAttachProperty, apn_info);
-}
-
-bool CellularService::LoadApnField(const StoreInterface* storage,
-                                   const std::string& storage_group,
-                                   const std::string& keytag,
-                                   const std::string& apntag,
-                                   Stringmap* apn_info) {
-  std::string value;
-  if (storage->GetString(storage_group, keytag + "." + apntag, &value) &&
-      !value.empty()) {
-    (*apn_info)[apntag] = value;
-    return true;
-  }
-  return false;
-}
-
-void CellularService::SaveApn(StoreInterface* storage,
-                              const std::string& storage_group,
-                              const Stringmap* apn_info,
-                              const std::string& keytag) {
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnUsernameProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnPasswordProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag,
-               kApnAuthenticationProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnIpTypeProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnAttachProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnVersionProperty);
-}
-
-void CellularService::SaveApnField(StoreInterface* storage,
-                                   const std::string& storage_group,
-                                   const Stringmap* apn_info,
-                                   const std::string& keytag,
-                                   const std::string& apntag) {
-  const std::string key = keytag + "." + apntag;
-  std::string str;
-  if (apn_info && GetNonEmptyField(*apn_info, apntag, &str))
-    storage->SetString(storage_group, key, str);
-  else
-    storage->DeleteKey(storage_group, key);
-}
-
-void CellularService::FetchDetailsFromApnList(const Stringmaps& apn_list,
-                                              Stringmap* apn_info) {
-  DCHECK(apn_info);
-  std::string apn;
-  for (const Stringmap& list_apn_info : apn_list) {
-    if (GetNonEmptyField(list_apn_info, kApnProperty, &apn) &&
-        (*apn_info)[kApnProperty] == apn) {
-      *apn_info = list_apn_info;
-      return;
-    }
-  }
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {
