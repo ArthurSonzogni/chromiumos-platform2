@@ -637,6 +637,61 @@ std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
 
 }  // namespace
 
+// Reads first field from the file and convert it into int64_t.
+static base::Optional<int64_t> ReadFileToInt64(const std::string& filename) {
+  std::string s;
+  if (!base::ReadFileToString(base::FilePath(filename), &s)) {
+    LOG(ERROR) << "Failed to read " << filename;
+    return base::nullopt;
+  }
+  std::vector<std::string> splitted =
+      base::SplitString(s, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
+  int64_t value;
+  if (splitted.size() < 1 || !base::StringToInt64(splitted[0], &value)) {
+    LOG(ERROR) << "Failed to parse " << filename;
+    return base::nullopt;
+  }
+  // margin is reported in MiB so converts it into bytes.
+  return value;
+}
+
+// Runs balloon policy against each VM to balance memory.
+// This will be called periodically by balloon_resizing_timer_.
+void Service::RunBalloonPolicy() {
+  auto critical_host_available_mib =
+      ReadFileToInt64("/sys/kernel/mm/chromeos-low_mem/margin");
+  if (!critical_host_available_mib.has_value()) {
+    return;
+  }
+  auto host_available_mib =
+      ReadFileToInt64("/sys/kernel/mm/chromeos-low_mem/available");
+  if (!host_available_mib.has_value()) {
+    return;
+  }
+  for (auto& vm_entry : vms_) {
+    auto& vm = vm_entry.second;
+    if (vm->IsSuspended()) {
+      // Skip suspended VMs since there is no effect.
+      continue;
+    }
+    auto stats_opt = vm->GetBalloonStats();
+    if (!stats_opt) {
+      // Stats not available. Skip running policies.
+      continue;
+    }
+    BalloonStats stats = *stats_opt;
+    // bias is tuned for ARCVM on 4/8G hatch devices with
+    // multivm.Lifecycle tests.
+    // TODO(hikalium): remove this bias once the balloon policy is updated.
+    const int64_t bias = vm_entry.first.name() == "arcvm" ? 48 * MIB : 0;
+    BalloonPolicyParams params = BalloonPolicyParams::FromBalloonStats(
+        stats, *critical_host_available_mib * MIB, bias,
+        *host_available_mib * MIB);
+    vm->RunBalloonPolicy(params);
+  }
+}
+
 bool Service::ListVmDisksInLocation(const string& cryptohome_id,
                                     StorageLocation location,
                                     const string& lookup_name,
@@ -1016,6 +1071,9 @@ bool Service::Init() {
     LOG(ERROR) << "Failed to start memory reclaim thread";
     return false;
   }
+
+  balloon_resizing_timer_.Start(FROM_HERE, base::TimeDelta::FromSeconds(1),
+                                this, &Service::RunBalloonPolicy);
 
   return true;
 }

@@ -24,6 +24,7 @@
 #include <base/sequence_checker.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
+#include <base/timer/timer.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -283,6 +284,8 @@ class Service final {
   VmMap::iterator FindVm(const std::string& owner_id,
                          const std::string& vm_name);
 
+  void RunBalloonPolicy();
+
   bool ListVmDisksInLocation(const std::string& cryptohome_id,
                              StorageLocation location,
                              const std::string& lookup_name,
@@ -387,6 +390,9 @@ class Service final {
 
   // Thread on which memory reclaim operations are performed.
   base::Thread reclaim_thread_{"memory reclaim thread"};
+
+  // The timer which invokes the balloon resizing logic.
+  base::RepeatingTimer balloon_resizing_timer_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

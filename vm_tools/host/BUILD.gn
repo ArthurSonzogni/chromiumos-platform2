@@ -128,6 +128,7 @@ executable("vsh") {
 static_library("libconcierge") {
   sources = [
     "../concierge/arc_vm.cc",
+    "../concierge/balloon_policy.cc",
     "../concierge/disk_image.cc",
     "../concierge/dlc_helper.cc",
     "../concierge/plugin_vm.cc",

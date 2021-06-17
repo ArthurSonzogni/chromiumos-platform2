@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <brillo/process/process.h>
 #include <vm_tools/concierge/usb_control.h>
+#include <vm_tools/concierge/balloon_policy.h>
 
 namespace base {
 class FilePath;
@@ -99,7 +100,11 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout);
 bool CheckProcessExists(pid_t pid);
 
 // Runs a crosvm subcommand.
+void RunCrosvmCommand(std::initializer_list<std::string> args);
 void RunCrosvmCommand(std::string command, std::string socket_path);
+
+// Returns balloon stats info retrieved from virtio-balloon device.
+base::Optional<BalloonStats> GetBalloonStats(std::string socket_path);
 
 // Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an
 // opened |fd|.

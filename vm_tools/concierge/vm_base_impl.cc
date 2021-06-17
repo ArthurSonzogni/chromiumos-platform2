@@ -39,6 +39,36 @@ VmBaseImpl::VmBaseImpl(
   CHECK(runtime_dir_.Set(runtime_dir));
 }
 
+base::Optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
+  return vm_tools::concierge::GetBalloonStats(GetVmSocketPath());
+}
+
+void VmBaseImpl::SetBalloonSize(int64_t byte_size) {
+  if (byte_size < 0) {
+    LOG(ERROR) << "Skipping setting a negative balloon size: " << byte_size;
+  }
+  vm_tools::concierge::RunCrosvmCommand(
+      {"balloon", std::to_string(byte_size), GetVmSocketPath()});
+}
+
+void VmBaseImpl::RunBalloonPolicy(const BalloonPolicyParams& params) {
+  int64_t delta = balloon_policy_.ComputeBalloonDelta(params);
+  if (delta == 0) {
+    return;
+  }
+  LOG(INFO) << "BalloonTrace: { "
+            << "\"actual_balloon_size\": " << params.actual_balloon_size << ", "
+            << "\"critical_host_available\": " << params.critical_host_available
+            << ", "
+            << "\"guest_available_bias\": " << params.guest_available_bias
+            << ", "
+            << "\"guest_cached\": " << params.guest_cached << ", "
+            << "\"guest_free\": " << params.guest_free << ", "
+            << "\"host_available\": " << params.host_available << ", "
+            << "\"delta\": " << delta << " }";
+  SetBalloonSize(params.actual_balloon_size + delta);
+}
+
 bool VmBaseImpl::AttachUsbDevice(uint8_t bus,
                                  uint8_t addr,
                                  uint16_t vid,

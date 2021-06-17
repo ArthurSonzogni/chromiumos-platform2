@@ -13,6 +13,9 @@
 
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
+#include <base/optional.h>
+
+#include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/usb_control.h"
 
 namespace vm_tools {
@@ -80,6 +83,15 @@ class VmInterface {
 
   // Information about the VM.
   virtual Info GetInfo() = 0;
+
+  // Returns balloon stats info retrieved from virtio-balloon device.
+  virtual base::Optional<BalloonStats> GetBalloonStats() = 0;
+
+  // Resize the balloon size.
+  virtual void SetBalloonSize(int64_t byte_size) = 0;
+
+  // Runs memory balloon policy and resize the ballon accordingly.
+  virtual void RunBalloonPolicy(const BalloonPolicyParams& params) = 0;
 
   // Attach an usb device at host bus:addr, with vid, pid and an opened fd.
   virtual bool AttachUsbDevice(uint8_t bus,
