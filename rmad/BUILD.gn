@@ -5,17 +5,7 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [
-    ":libcbi_utils",
-    ":libcrossystem_utils",
-    ":libdbus_service",
-    ":libdbus_utils",
-    ":libjson_store",
-    ":librmad_interface",
-    ":libstate_handler",
-    ":libvpd_utils",
-    ":rmad",
-  ]
+  deps = [ ":rmad" ]
   if (use.test) {
     deps += [ ":rmad_test" ]
   }
@@ -38,33 +28,15 @@ pkg_config("target_defaults") {
   ]
 }
 
-static_library("libjson_store") {
-  sources = [ "utils/json_store.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libcrossystem_utils") {
-  sources = [ "utils/crossystem_utils_impl.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libvpd_utils") {
-  sources = [ "utils/vpd_utils_impl.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libcr50_utils") {
-  sources = [ "utils/cr50_utils_impl.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libcbi_utils") {
-  sources = [ "utils/cbi_utils_impl.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("libdbus_utils") {
-  sources = [ "utils/dbus_utils_impl.cc" ]
+static_library("libutils") {
+  sources = [
+    "utils/cbi_utils_impl.cc",
+    "utils/cr50_utils_impl.cc",
+    "utils/crossystem_utils_impl.cc",
+    "utils/dbus_utils_impl.cc",
+    "utils/json_store.cc",
+    "utils/vpd_utils_impl.cc",
+  ]
   configs += [ ":target_defaults" ]
 }
 
@@ -92,45 +64,28 @@ static_library("libstate_handler") {
     "state_handler/write_protect_enable_physical_state_handler.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libcr50_utils",
-    ":libcrossystem_utils",
-    ":libdbus_utils",
-    ":libjson_store",
+  deps = [ ":libutils" ]
+}
+
+static_library("librmad") {
+  sources = [
+    "dbus_service.cc",
+    "rmad_interface_impl.cc",
   ]
-}
-
-static_library("libdbus_service") {
-  sources = [ "dbus_service.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("librmad_interface") {
-  sources = [ "rmad_interface_impl.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
-    ":libcr50_utils",
-    ":libjson_store",
     ":libstate_handler",
+    ":libutils",
   ]
 }
 
 executable("rmad") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libcrossystem_utils",
-    ":libdbus_service",
-    ":librmad_interface",
-  ]
+  deps = [ ":librmad" ]
 }
 
 if (use.test) {
-  static_library("libstate_handler_test_common") {
-    sources = [ "state_handler/state_handler_test_common.cc" ]
-    configs += [ ":target_defaults" ]
-  }
-
   executable("rmad_test") {
     sources = [
       "dbus_service_test.cc",
@@ -139,6 +94,7 @@ if (use.test) {
       "state_handler/device_destination_state_handler_test.cc",
       "state_handler/select_network_state_handler_test.cc",
       "state_handler/state_handler_manager_test.cc",
+      "state_handler/state_handler_test_common.cc",
       "state_handler/update_chrome_state_handler_test.cc",
       "state_handler/welcome_screen_state_handler_test.cc",
       "state_handler/write_protect_disable_method_state_handler_test.cc",
@@ -154,11 +110,7 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      ":libdbus_service",
-      ":libjson_store",
-      ":librmad_interface",
-      ":libstate_handler",
-      ":libstate_handler_test_common",
+      ":librmad",
       "//common-mk/testrunner",
     ]
   }
