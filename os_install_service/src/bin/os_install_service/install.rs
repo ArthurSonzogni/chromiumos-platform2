@@ -15,13 +15,13 @@ pub enum Error {
     #[error("not running from installer")]
     NotRunningFromInstaller,
 
-    #[error("failed to enumerate disks")]
+    #[error("failed to enumerate disks: {0}")]
     DiskEnumerationFailed(anyhow::Error),
 
     #[error("no valid destination disk found")]
     NoDestinationDeviceFound,
 
-    #[error("failed to run process")]
+    #[error("failed to run process: {0}")]
     ProcessError(util::ProcessError),
 }
 
@@ -167,7 +167,7 @@ pub fn install() -> Result {
     let dest = choose_destination_device_path(disks).ok_or(Error::NoDestinationDeviceFound)?;
 
     if let Err(err) = install_to_device(&dest) {
-        error!("installation failed: {:?}", err);
+        error!("installation failed: {}", err);
 
         // If install fails, reset the GPT table. This ensures that
         // the user won't accidentally boot into a not-quite-completed
