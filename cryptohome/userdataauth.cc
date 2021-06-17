@@ -382,6 +382,8 @@ bool UserDataAuth::StatefulRecoveryMount(const std::string& username,
         scoped_refptr<UserSession> user_session = uda->GetUserSession(username);
         if (!user_session || !user_session->GetMount()->IsMounted()) {
           LOG(ERROR) << "Failed to get mount in stateful recovery.";
+          *mount_path_retrieved = false;
+          return;
         }
         *out_home_path = user_session->GetMount()->mount_point();
         *mount_path_retrieved = true;
