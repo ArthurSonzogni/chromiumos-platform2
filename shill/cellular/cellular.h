@@ -138,72 +138,17 @@ class Cellular : public Device,
   // Save configuration for the device to |storage|.
   bool Save(StoreInterface* storage) override;
 
-  // Returns true if |service| is connectable.
-  bool GetConnectable(CellularService* service) const;
+  // Returns the Capability type if |capability_| has been created.
+  std::string GetTechnologyFamily(Error* error);
 
-  // Asynchronously connects the modem to |service|. Changes the primary slot if
-  // required. Populates |error| on failure, leaves it unchanged otherwise.
-  virtual void Connect(CellularService* service, Error* error);
-
-  // Asynchronously disconnects the modem from the current network and populates
-  // |error| on failure, leaves it unchanged otherwise.
-  virtual void Disconnect(Error* error, const char* reason);
-
-  // Asynchronously detach then re-attach the network.
-  virtual void ReAttach();
-
-  // Cancel any pending connect request.
-  void CancelPendingConnect();
-
-  // Performs the necessary steps to bring the service to the activated state,
-  // once an online payment has been done.
-  void CompleteActivation(Error* error);
-
-  const CellularServiceRefPtr& service() const { return service_; }
-  MobileOperatorInfo* home_provider_info() const {
-    return home_provider_info_.get();
-  }
-  MobileOperatorInfo* serving_operator_info() const {
-    return serving_operator_info_.get();
-  }
-
-  // Called when the associated Modem object is destroyed.
-  void OnModemDestroyed();
-
-  // Update the home provider from the information in |operator_info|. This
-  // information may be from the SIM / received OTA.
-  void UpdateHomeProvider(const MobileOperatorInfo* operator_info);
-  // Update the serving operator using information in |operator_info|.
-  // Additionally, if |home_provider_info| is not nullptr, use it to come up
-  // with a better name.
-  void UpdateServingOperator(const MobileOperatorInfo* operator_info,
-                             const MobileOperatorInfo* home_provider_info);
-
-  State state() const { return state_; }
-
-  ModemState modem_state() const { return modem_state_; }
-  bool IsUnderlyingDeviceEnabled() const override;
-
-  void HandleNewSignalQuality(uint32_t strength);
-
-  // Processes a change in the modem registration state, possibly creating,
-  // destroying or updating the CellularService.
-  void HandleNewRegistrationState();
-
-  // Asynchronously queries capability for cellular location.
-  void PollLocation();
-
-  // Starts and stops scheduled location polls
-  void StartLocationPolling();
-  void StopLocationPolling();
-
-  // Called when the Modem object is created to set the initial properties.
-  void SetInitialProperties(const InterfaceToProperties& properties);
+  // Returns the device id as a string if it has been set.
+  std::string GetDeviceId(Error* error);
 
   // Inherited from Device.
   void Start(Error* error,
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
+  bool IsUnderlyingDeviceEnabled() const override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
   void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
@@ -233,25 +178,83 @@ class Cellular : public Device,
   void OnAfterResume() override;
   std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
-  // Implements MobileOperatorInfo::Observer:
-  void OnOperatorChanged() override;
+  // Performs the necessary steps to bring the service to the activated state,
+  // once an online payment has been done.
+  void CompleteActivation(Error* error);
 
-  std::string GetTechnologyFamily(Error* error);
-  std::string GetDeviceId(Error* error);
-  void OnModemStateChanged(ModemState new_state);
+  // Asynchronously detach then re-attach the network.
+  virtual void ReAttach();
+
+  // Cancel any pending connect request.
+  void CancelPendingConnect();
+
   void OnScanReply(const Stringmaps& found_networks, const Error& error);
+
+  // Asynchronously queries capability for cellular location.
+  void PollLocation();
+
+  void HandleNewSignalQuality(uint32_t strength);
+
+  // Processes a change in the modem registration state, possibly creating,
+  // destroying or updating the CellularService.
+  void HandleNewRegistrationState();
+
+  // Called when the associated Modem object is destroyed.
+  void OnModemDestroyed();
+
+  // Returns true if |service| is connectable.
+  bool GetConnectable(CellularService* service) const;
+
+  // Asynchronously connects the modem to |service|. Changes the primary slot if
+  // required. Populates |error| on failure, leaves it unchanged otherwise.
+  virtual void Connect(CellularService* service, Error* error);
+
+  // Asynchronously disconnects the modem from the current network and populates
+  // |error| on failure, leaves it unchanged otherwise.
+  virtual void Disconnect(Error* error, const char* reason);
+
+  // Called when the Modem object is created to set the initial properties.
+  void SetInitialProperties(const InterfaceToProperties& properties);
+
+  void OnModemStateChanged(ModemState new_state);
 
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
+
+  // Starts and stops scheduled location polls
+  void StartLocationPolling();
+  void StopLocationPolling();
 
   // Initiate PPP link. Called from capabilities.
   virtual void StartPPP(const std::string& serial_device);
   // Callback for |ppp_task_|.
   virtual void OnPPPDied(pid_t pid, int exit);
+
   // Implements RpcTaskDelegate, for |ppp_task_|.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
+
+  // Register DBus Properties exposed by the Device interface of shill.
+  void RegisterProperties();
+
+  // |dbus_path| and |mac_address| may change if the associated Modem restarts.
+  void UpdateModemProperties(const RpcIdentifier& dbus_path,
+                             const std::string& mac_address);
+
+  // Returns a unique identifier for a SIM Card. For physical cards this will be
+  // the ICCID and there should only be one matching service. For eSIM cards,
+  // this will be the eUICCID (eID) and there may be multiple services
+  // associated with the card.
+  const std::string& GetSimCardId() const;
+
+  // Returns true if |sim_card_id| matches any available SIM cards.
+  bool HasSimCardId(const std::string& sim_card_id) const;
+
+  // Sets the SIM properties and the primary SIM, and updates services and
+  // state accordingly.
+  void SetSimProperties(const std::vector<SimProperties>& slot_properties,
+                        size_t primary_slot);
 
   // Returns a list of APNs to try, in the following order:
   // - the last APN that resulted in a successful connection attempt on the
@@ -262,15 +265,31 @@ class Cellular : public Device,
   //   home provider associated with the current SIM
   std::deque<Stringmap> BuildApnTryList() const;
 
-  // ///////////////////////////////////////////////////////////////////////////
-  // DBus Properties exposed by the Device interface of shill.
-  void RegisterProperties();
+  // Update the home provider from the information in |operator_info|. This
+  // information may be from the SIM / received OTA.
+  void UpdateHomeProvider(const MobileOperatorInfo* operator_info);
 
-  // |dbus_path| and |mac_address| may change if the associated Modem restarts.
-  void UpdateModemProperties(const RpcIdentifier& dbus_path,
-                             const std::string& mac_address);
+  // Update the serving operator using information in |operator_info|.
+  // Additionally, if |home_provider_info| is not nullptr, use it to come up
+  // with a better name.
+  void UpdateServingOperator(const MobileOperatorInfo* operator_info,
+                             const MobileOperatorInfo* home_provider_info);
 
-  // getters
+  // Implements MobileOperatorInfo::Observer:
+  void OnOperatorChanged() override;
+
+  const CellularServiceRefPtr& service() const { return service_; }
+  MobileOperatorInfo* home_provider_info() const {
+    return home_provider_info_.get();
+  }
+  MobileOperatorInfo* serving_operator_info() const {
+    return serving_operator_info_.get();
+  }
+  State state() const { return state_; }
+  ModemState modem_state() const { return modem_state_; }
+  bool allow_roaming_property() const { return allow_roaming_; }
+
+  // DBus property getters
   const std::string& dbus_service() const { return dbus_service_; }
   const RpcIdentifier& dbus_path() const { return dbus_path_; }
   const Stringmap& home_provider() const { return home_provider_; }
@@ -305,20 +324,6 @@ class Cellular : public Device,
   const std::string& connect_pending_iccid() const {
     return connect_pending_iccid_;
   }
-
-  // Returns a unique identifier for a SIM Card. For physical cards this will be
-  // the ICCID and there should only be one matching service. For eSIM cards,
-  // this will be the eUICCID (eID) and there may be multiple services
-  // associated with the card.
-  const std::string& GetSimCardId() const;
-
-  // Returns true if |sim_card_id| matches any available SIM cards.
-  bool HasSimCardId(const std::string& sim_card_id) const;
-
-  // Sets the SIM properties and the primary SIM, and updates services and
-  // state accordingly.
-  void SetSimProperties(const std::vector<SimProperties>& slot_properties,
-                        size_t primary_slot);
 
   // Property setters. TODO(b/176904580): Rename SetFoo and alphabetize.
   void SetScanningSupported(bool scanning_supported);
