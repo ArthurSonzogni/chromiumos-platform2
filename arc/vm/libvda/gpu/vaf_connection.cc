@@ -34,6 +34,7 @@
 #include <sys/eventfd.h>
 
 #include "arc/vm/libvda/gpu/mojom/video_decode_accelerator.mojom.h"
+#include "arc/vm/libvda/gpu/mojom/video_decoder.mojom.h"
 #include "arc/vm/libvda/gpu/mojom/video_encode_accelerator.mojom.h"
 
 namespace arc {
@@ -187,6 +188,7 @@ scoped_refptr<base::SingleThreadTaskRunner> VafConnection::GetIpcTaskRunner() {
 mojo::Remote<arc::mojom::VideoDecodeAccelerator>
 VafConnection::CreateDecodeAccelerator() {
   mojo::Remote<arc::mojom::VideoDecodeAccelerator> remote_vda;
+  // Using Unretained is safe here as the IPC thread is owned by this class.
   RunTaskOnThread(
       ipc_thread_.task_runner(),
       base::BindOnce(&VafConnection::CreateDecodeAcceleratorOnIpcThread,
@@ -200,9 +202,24 @@ void VafConnection::CreateDecodeAcceleratorOnIpcThread(
       remote_vda->BindNewPipeAndPassReceiver());
 }
 
+mojo::Remote<arc::mojom::VideoDecoder> VafConnection::CreateVideoDecoder() {
+  mojo::Remote<arc::mojom::VideoDecoder> remote_vd;
+  // Using Unretained is safe here as the IPC thread is owned by this class.
+  RunTaskOnThread(ipc_thread_.task_runner(),
+                  base::BindOnce(&VafConnection::CreateVideoDecoderOnIpcThread,
+                                 base::Unretained(this), &remote_vd));
+  return remote_vd;
+}
+
+void VafConnection::CreateVideoDecoderOnIpcThread(
+    mojo::Remote<arc::mojom::VideoDecoder>* remote_vd) {
+  remote_factory_->CreateVideoDecoder(remote_vd->BindNewPipeAndPassReceiver());
+}
+
 mojo::Remote<arc::mojom::VideoEncodeAccelerator>
 VafConnection::CreateEncodeAccelerator() {
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea;
+  // Using Unretained is safe here as the IPC thread is owned by this class.
   RunTaskOnThread(
       ipc_thread_.task_runner(),
       base::BindOnce(&VafConnection::CreateEncodeAcceleratorOnIpcThread,

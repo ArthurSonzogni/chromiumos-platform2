@@ -43,7 +43,9 @@ generate_mojom_bindings("video_mojo_bindings") {
     "gpu/mojom/video.mojom",
     "gpu/mojom/video_common.mojom",
     "gpu/mojom/video_decode_accelerator.mojom",
+    "gpu/mojom/video_decoder.mojom",
     "gpu/mojom/video_encode_accelerator.mojom",
+    "gpu/mojom/video_frame_pool.mojom",
     "gpu/mojom/video_protected_buffer_allocator.mojom",
   ]
 }
@@ -57,6 +59,7 @@ source_set("libvda_source_set") {
   sources = [
     "decode/fake/fake_vda_impl.cc",
     "decode/gpu/decode_helpers.cc",
+    "decode/gpu/gpu_vd_impl.cc",
     "decode/gpu/gpu_vda_impl.cc",
     "decode_wrapper.cc",
     "encode/fake/fake_vea_impl.cc",

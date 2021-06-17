@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next MinVersion: 8
+// Next MinVersion: 9
 
 module arc.mojom;
 
 import "arc/vm/libvda/gpu/mojom/video_decode_accelerator.mojom";
+import "arc/vm/libvda/gpu/mojom/video_decoder.mojom";
 import "arc/vm/libvda/gpu/mojom/video_encode_accelerator.mojom";
 import "arc/vm/libvda/gpu/mojom/video_protected_buffer_allocator.mojom";
 
@@ -31,7 +32,7 @@ interface VideoInstance {
 };
 
 // Deprecated method IDs: 0
-// Next method ID: 4
+// Next method ID: 5
 interface VideoAcceleratorFactory {
   [MinVersion=1]
   CreateEncodeAccelerator@1(
@@ -40,6 +41,11 @@ interface VideoAcceleratorFactory {
   [MinVersion=6]
   CreateDecodeAccelerator@2(
       pending_receiver<VideoDecodeAccelerator> video_decoder);
+
+  // Create a new |video_decoder| instance.
+  [MinVersion=8]
+  CreateVideoDecoder@4(
+      pending_receiver<VideoDecoder> video_decoder);
 
   [Minversion=7]
   CreateProtectedBufferAllocator@3(

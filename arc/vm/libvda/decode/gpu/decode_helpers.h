@@ -28,6 +28,13 @@ arc::mojom::HalPixelFormat ConvertPixelFormatToHalPixelFormat(
 // Check whether the specified |num_planes| is valid for the |format|.
 bool CheckValidOutputFormat(vda_pixel_format_t format, size_t num_planes);
 
+// Convert the specified mojo decoder |status| to a VD decoder status.
+vd_decoder_status_t ConvertDecoderStatus(arc::mojom::DecoderStatus status);
+
+// Convert the specified VD decoder |status| to a VDA result.
+// TODO(b/189278506): Remove once we move to VD-based event pipe.
+vda_result_t ToVDAResult(vd_decoder_status_t status);
+
 }  // namespace arc
 
 #endif  // ARC_VM_LIBVDA_DECODE_GPU_DECODE_HELPERS_H_

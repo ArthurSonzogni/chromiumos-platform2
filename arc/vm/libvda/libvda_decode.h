@@ -20,7 +20,9 @@ typedef enum vda_impl_type {
   // A fake implementation for testing.
   FAKE,
   // A GpuArcVideoDecodeAccelerator-backed implementation.
-  GAVDA
+  GAVDA,
+  // A GpuArcVideoDecoder-backed implementation.
+  GAVD
 } vda_impl_type_t;
 
 // Copy of VideoDecodeAccelerator::Result.
@@ -33,6 +35,15 @@ typedef enum vda_result {
   INSUFFICIENT_RESOURCES,
   CANCELLED
 } vda_result_t;
+
+// Based on media::DecoderStatus.
+typedef enum vd_decoder_status {
+  OK,
+  ABORTED,
+  FAILED,
+  INVALID_ARGUMENT_VD,
+  CREATION_FAILED
+} vd_decoder_status_t;
 
 typedef video_codec_profile_t vda_profile_t;
 

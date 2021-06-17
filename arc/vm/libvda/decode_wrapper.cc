@@ -9,6 +9,7 @@
 #include <base/logging.h>
 
 #include "arc/vm/libvda/decode/fake/fake_vda_impl.h"
+#include "arc/vm/libvda/decode/gpu/gpu_vd_impl.h"
 #include "arc/vm/libvda/decode/gpu/gpu_vda_impl.h"
 #include "arc/vm/libvda/gpu/vaf_connection.h"
 
@@ -119,6 +120,14 @@ void* initialize(vda_impl_type_t impl_type) {
         return nullptr;
       }
       return arc::GpuVdaImpl::Create(conn);
+    }
+    case GAVD: {
+      arc::VafConnection* conn = arc::VafConnection::Get();
+      if (conn == nullptr) {
+        LOG(ERROR) << "Failed to retrieve VAF connection.";
+        return nullptr;
+      }
+      return arc::GpuVdImpl::Create(conn);
     }
     default:
       LOG(ERROR) << "Unknown impl type " << impl_type;
