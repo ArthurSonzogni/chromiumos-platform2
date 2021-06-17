@@ -470,9 +470,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (!builder->UseFlagIsSet("compupdates"))
     builder->AddArg("--disable-component-update");
 
-  if (builder->UseFlagIsSet("smartdim"))
-    builder->AddFeatureEnableOverride("SmartDim");
-
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
@@ -490,20 +487,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   // Some platforms have SMT enabled by default.
   if (builder->UseFlagIsSet("scheduler_configuration_performance"))
     builder->AddArg("--scheduler-configuration-default=performance");
-
-  if (builder->UseFlagIsSet("enable_neural_palm_detection_filter"))
-    builder->AddFeatureEnableOverride("EnableNeuralPalmDetectionFilter");
-
-  if (builder->UseFlagIsSet("enable_heuristic_palm_detection_filter"))
-    builder->AddFeatureEnableOverride("EnableHeuristicPalmDetectionFilter");
-
-  if (builder->UseFlagIsSet("ondevice_handwriting"))
-    builder->AddArg("--ondevice_handwriting=use_rootfs");
-  else if (builder->UseFlagIsSet("ondevice_handwriting_dlc"))
-    builder->AddArg("--ondevice_handwriting=use_dlc");
-
-  if (builder->UseFlagIsSet("ondevice_speech"))
-    builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
 
   SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
@@ -614,7 +597,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpAutoNightLightFlag(builder, cros_config);
   SetUpAllowAmbientEQFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
-  SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
   SetUpModemFlag(builder, cros_config);
 }
 
@@ -889,6 +871,30 @@ void AddCrashHandlerFlag(ChromiumCommandBuilder* builder) {
                       : kEnableCrashpadFlag);
 }
 
+// Adds flags related to machine learning features that are enabled only on a
+// supported subset of devices.
+void AddMlFlags(ChromiumCommandBuilder* builder,
+                brillo::CrosConfigInterface* cros_config) {
+  if (builder->UseFlagIsSet("smartdim"))
+    builder->AddFeatureEnableOverride("SmartDim");
+
+  if (builder->UseFlagIsSet("enable_neural_palm_detection_filter"))
+    builder->AddFeatureEnableOverride("EnableNeuralPalmDetectionFilter");
+
+  if (builder->UseFlagIsSet("enable_heuristic_palm_detection_filter"))
+    builder->AddFeatureEnableOverride("EnableHeuristicPalmDetectionFilter");
+
+  if (builder->UseFlagIsSet("ondevice_handwriting"))
+    builder->AddArg("--ondevice_handwriting=use_rootfs");
+  else if (builder->UseFlagIsSet("ondevice_handwriting_dlc"))
+    builder->AddArg("--ondevice_handwriting=use_dlc");
+
+  if (builder->UseFlagIsSet("ondevice_speech"))
+    builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
+
+  SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
+}
+
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
                         bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
@@ -919,6 +925,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddEnterpriseFlags(&builder);
   AddVmodulePatterns(&builder);
   AddCrashHandlerFlag(&builder);
+  AddMlFlags(&builder, cros_config);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
