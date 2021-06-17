@@ -5,6 +5,7 @@
 #ifndef ARC_KEYMASTER_CONTEXT_CONTEXT_ADAPTOR_H_
 #define ARC_KEYMASTER_CONTEXT_CONTEXT_ADAPTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/memory/scoped_refptr.h>
@@ -12,7 +13,9 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <chaps/pkcs11/cryptoki.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 namespace arc {
 namespace keymaster {
@@ -62,6 +65,10 @@ class ContextAdaptor {
   base::Optional<std::string> cached_email_;
   // Initially nullopt, then populated in the corresponding setter.
   base::Optional<brillo::SecureBlob> cached_encryption_key_;
+
+  // DBus proxy for contacting cryptohome.
+  std::unique_ptr<org::chromium::CryptohomePkcs11InterfaceProxyInterface>
+      pkcs11_proxy_;
 
   // Must be last member to ensure weak pointers are invalidated first.
   base::WeakPtrFactory<ContextAdaptor> weak_ptr_factory_;

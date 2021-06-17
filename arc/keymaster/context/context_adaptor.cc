@@ -74,37 +74,26 @@ base::Optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlot() {
   if (!user_email.has_value())
     return base::nullopt;
 
-  // Create a dbus proxy.
-  dbus::ObjectProxy* cryptohome_proxy = GetBus()->GetObjectProxy(
-      cryptohome::kCryptohomeServiceName,
-      dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
+  // Create the dbus proxy if it's not created.
+  if (!pkcs11_proxy_) {
+    pkcs11_proxy_.reset(
+        new org::chromium::CryptohomePkcs11InterfaceProxy(GetBus()));
+  }
 
-  // Prepare a dbus method call.
-  dbus::MethodCall method_call(
-      cryptohome::kCryptohomeInterface,
-      cryptohome::kCryptohomePkcs11GetTpmTokenInfoForUser);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(user_email.value());
-
-  // Make dbus call.
-  std::unique_ptr<dbus::Response> response =
-      cryptohome_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!response)
+  user_data_auth::Pkcs11GetTpmTokenInfoRequest request;
+  request.set_username(user_email.value());
+  user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
+  brillo::ErrorPtr error;
+  bool success = pkcs11_proxy_->Pkcs11GetTpmTokenInfo(request, &reply, &error);
+  if (!success || error) {
+    // Error is logged when it is created, so we don't need to log it again.
+    LOG(ERROR) << "Could not fetch user slot from cryptohome.";
     return base::nullopt;
-
-  // Parse response.
-  dbus::MessageReader reader(response.get());
-  std::string label;
-  std::string user_pin;
-  int32_t slot;
-  reader.PopString(&label);
-  reader.PopString(&user_pin);
-  reader.PopInt32(&slot);
+  }
 
   // Cache and return result.
-  cached_slot_ = slot;
-  return slot;
+  cached_slot_ = reply.token_info().slot();
+  return cached_slot_;
 }
 
 }  // namespace context
