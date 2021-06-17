@@ -27,6 +27,10 @@
 namespace {
 
 constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(30);
+// Per Platform.DailyUseTime histogram this interval should ensure that enough
+// users run the reporting.
+constexpr base::TimeDelta kReportWXMountCountInterval =
+    base::TimeDelta::FromHours(2);
 
 constexpr char kProcSelfMountsPath[] = "/proc/self/mounts";
 
@@ -70,6 +74,7 @@ bool ReportMount(const MountEntry& e, bool report_in_dev_mode) {
 
 int Daemon::OnEventLoopStarted() {
   CheckWXMounts();
+  ReportWXMountCount();
 
   return 0;
 }
@@ -80,9 +85,19 @@ void Daemon::CheckWXMounts() {
   DoWXMountCheck();
 
   brillo::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE,
-      base::BindRepeating(&Daemon::CheckWXMounts, base::Unretained(this)),
+      FROM_HERE, base::BindOnce(&Daemon::CheckWXMounts, base::Unretained(this)),
       kCheckInterval);
+}
+
+void Daemon::ReportWXMountCount() {
+  VLOG(1) << "Reporting W+X mount count";
+
+  DoWXMountCountReporting();
+
+  brillo::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Daemon::ReportWXMountCount, base::Unretained(this)),
+      kReportWXMountCountInterval);
 }
 
 void Daemon::DoWXMountCheck() {
@@ -144,6 +159,14 @@ void Daemon::DoWXMountCheck() {
           ReportMount(e, dev_);
         }
       }
+    }
+  }
+}
+
+void Daemon::DoWXMountCountReporting() {
+  if (ShouldReport(dev_)) {
+    if (!SendWXMountCountToUMA(wx_mounts_.size())) {
+      LOG(WARNING) << "Could not upload W+X mount count";
     }
   }
 }

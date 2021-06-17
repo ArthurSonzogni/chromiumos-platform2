@@ -18,4 +18,6 @@ enum class SecurityAnomaly {
 
 bool SendSecurityAnomalyToUMA(SecurityAnomaly secanomaly);
 
+bool SendWXMountCountToUMA(size_t wx_mount_count);
+
 #endif  // SECANOMALYD_METRICS_H_

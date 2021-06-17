@@ -25,6 +25,9 @@ class Daemon : public brillo::Daemon {
   void CheckWXMounts();
   void DoWXMountCheck();
 
+  void ReportWXMountCount();
+  void DoWXMountCountReporting();
+
   bool generate_reports_ = false;
   bool dev_ = false;
 
