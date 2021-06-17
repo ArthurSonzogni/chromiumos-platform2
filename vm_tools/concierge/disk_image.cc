@@ -34,8 +34,9 @@ constexpr gid_t kPluginVmGid = 20128;
 namespace vm_tools {
 namespace concierge {
 
-DiskImageOperation::DiskImageOperation()
+DiskImageOperation::DiskImageOperation(const VmId vm_id)
     : uuid_(base::GenerateGUID()),
+      vm_id_(std::move(vm_id)),
       status_(DISK_STATUS_FAILED),
       source_size_(0),
       processed_size_(0) {
@@ -82,7 +83,7 @@ PluginVmCreateOperation::PluginVmCreateOperation(
     uint64_t source_size,
     const VmId vm_id,
     const std::vector<std::string> params)
-    : vm_id_(std::move(vm_id)),
+    : DiskImageOperation(std::move(vm_id)),
       params_(std::move(params)),
       in_fd_(std::move(in_fd)) {
   set_source_size(source_size);
@@ -120,7 +121,7 @@ void PluginVmCreateOperation::MarkFailed(const char* msg, int error_code) {
     set_failure_reason(msg);
   }
 
-  LOG(ERROR) << vm_id_.name()
+  LOG(ERROR) << vm_id().name()
              << " PluginVm create operation failed: " << failure_reason();
 
   in_fd_.reset();
@@ -164,20 +165,20 @@ void PluginVmCreateOperation::Finalize() {
   in_fd_.reset();
   out_fd_.reset();
 
-  if (!pvm::helper::CreateVm(vm_id_, std::move(params_))) {
+  if (!pvm::helper::CreateVm(vm_id(), std::move(params_))) {
     MarkFailed("Failed to create Plugin VM", 0);
     return;
   }
 
-  if (!pvm::helper::AttachIso(vm_id_, "cdrom0", "/iso/install.iso")) {
+  if (!pvm::helper::AttachIso(vm_id(), "cdrom0", "/iso/install.iso")) {
     MarkFailed("Failed to attach install ISO to Plugin VM", 0);
-    pvm::helper::DeleteVm(vm_id_);
+    pvm::helper::DeleteVm(vm_id());
     return;
   }
 
-  if (!pvm::helper::CreateCdromDevice(vm_id_, "/opt/pita/tools/tools.iso")) {
+  if (!pvm::helper::CreateCdromDevice(vm_id(), "/opt/pita/tools/tools.iso")) {
     MarkFailed("Failed to attach tools ISO to Plugin VM", 0);
-    pvm::helper::DeleteVm(vm_id_);
+    pvm::helper::DeleteVm(vm_id());
     return;
   }
 
@@ -210,7 +211,7 @@ VmExportOperation::VmExportOperation(const VmId vm_id,
                                      base::ScopedFD out_fd,
                                      base::ScopedFD out_digest_fd,
                                      ArchiveFormat out_fmt)
-    : vm_id_(std::move(vm_id)),
+    : DiskImageOperation(std::move(vm_id)),
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
       out_digest_fd_(std::move(out_digest_fd)),
@@ -393,7 +394,7 @@ bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
 
         // Strip the leading directory data as we want relative path,
         // and replace it with <vm_name>.pvm prefix.
-        base::FilePath dest_path(vm_id_.name() + ".pvm");
+        base::FilePath dest_path(vm_id().name() + ".pvm");
         if (!src_image_path_.AppendRelativePath(path, &dest_path)) {
           MarkFailed("failed to transform archive entry name", NULL);
           break;
@@ -519,8 +520,8 @@ PluginVmImportOperation::PluginVmImportOperation(
     const VmId vm_id,
     scoped_refptr<dbus::Bus> bus,
     dbus::ObjectProxy* vmplugin_service_proxy)
-    : dest_image_path_(std::move(disk_path)),
-      vm_id_(std::move(vm_id)),
+    : DiskImageOperation(std::move(vm_id)),
+      dest_image_path_(std::move(disk_path)),
       bus_(std::move(bus)),
       vmplugin_service_proxy_(vmplugin_service_proxy),
       in_fd_(std::move(in_fd)),
@@ -779,7 +780,7 @@ void PluginVmImportOperation::Finalize() {
   // image.
   output_dir_.Take();
 
-  if (!pvm::dispatcher::RegisterVm(bus_, vmplugin_service_proxy_, vm_id_,
+  if (!pvm::dispatcher::RegisterVm(bus_, vmplugin_service_proxy_, vm_id(),
                                    dest_image_path_)) {
     MarkFailed("Unable to register imported VM image", NULL);
     DeletePathRecursively(dest_image_path_);
@@ -816,8 +817,8 @@ VmResizeOperation::VmResizeOperation(const VmId vm_id,
                                      const base::FilePath disk_path,
                                      uint64_t disk_size,
                                      ResizeCallback process_resize_cb)
-    : process_resize_cb_(std::move(process_resize_cb)),
-      vm_id_(std::move(vm_id)),
+    : DiskImageOperation(std::move(vm_id)),
+      process_resize_cb_(std::move(process_resize_cb)),
       location_(std::move(location)),
       disk_path_(std::move(disk_path)),
       target_size_(std::move(disk_size)) {}
@@ -825,7 +826,7 @@ VmResizeOperation::VmResizeOperation(const VmId vm_id,
 bool VmResizeOperation::ExecuteIo(uint64_t io_limit) {
   DiskImageStatus status = DiskImageStatus::DISK_STATUS_UNKNOWN;
   std::string failure_reason;
-  process_resize_cb_.Run(vm_id_.owner_id(), vm_id_.name(), location_,
+  process_resize_cb_.Run(vm_id().owner_id(), vm_id().name(), location_,
                          target_size_, &status, &failure_reason);
 
   set_status(status);

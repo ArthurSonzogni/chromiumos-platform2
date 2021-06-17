@@ -39,12 +39,13 @@ class DiskImageOperation {
   int GetProgress() const;
 
   const std::string& uuid() const { return uuid_; }
+  const VmId& vm_id() const { return vm_id_; }
   DiskImageStatus status() const { return status_; }
   const std::string& failure_reason() const { return failure_reason_; }
   int64_t processed_size() const { return processed_size_; }
 
  protected:
-  DiskImageOperation();
+  explicit DiskImageOperation(const VmId vm_id);
   DiskImageOperation(const DiskImageOperation&) = delete;
   DiskImageOperation& operator=(const DiskImageOperation&) = delete;
 
@@ -65,6 +66,9 @@ class DiskImageOperation {
  private:
   // UUID assigned to the operation.
   const std::string uuid_;
+
+  // VM owner and name on which behalf the operation is executing.
+  const VmId vm_id_;
 
   // Status of the operation.
   DiskImageStatus status_;
@@ -103,10 +107,6 @@ class PluginVmCreateOperation : public DiskImageOperation {
   bool PrepareOutput(const base::FilePath& iso_dir);
 
   void MarkFailed(const char* msg, int error_code);
-
-  // VM owner and name. Used when registering imported image with the
-  // dispatcher.
-  const VmId vm_id_;
 
   // Parameters that need to be passed to the Plugin VM helper when
   // creating the VM.
@@ -178,9 +178,6 @@ class VmExportOperation : public DiskImageOperation {
   // Returns number of bytes read.
   uint64_t CopyEntry(uint64_t io_limit);
 
-  // VM owner and name.
-  const VmId vm_id_;
-
   // Path to the directory containing source image.
   const base::FilePath src_image_path_;
 
@@ -250,10 +247,6 @@ class PluginVmImportOperation : public DiskImageOperation {
   // Path to the directory that will contain the imported image.
   const base::FilePath dest_image_path_;
 
-  // VM owner and name. Used when registering imported image with the
-  // dispatcher.
-  const VmId vm_id_;
-
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
 
@@ -309,9 +302,6 @@ class VmResizeOperation : public DiskImageOperation {
   VmResizeOperation& operator=(const VmResizeOperation&) = delete;
 
   ResizeCallback process_resize_cb_;
-
-  // VM owner and name.
-  const VmId vm_id_;
 
   StorageLocation location_;
 
