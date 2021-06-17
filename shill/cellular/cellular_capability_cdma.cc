@@ -273,9 +273,9 @@ void CellularCapabilityCdma::OnActivationStateChangedSignal(
 
   std::string value;
   if (status_changes.Contains<std::string>("mdn"))
-    cellular()->set_mdn(status_changes.Get<std::string>("mdn"));
+    cellular()->SetMdn(status_changes.Get<std::string>("mdn"));
   if (status_changes.Contains<std::string>("min"))
-    cellular()->set_min(status_changes.Get<std::string>("min"));
+    cellular()->SetMin(status_changes.Get<std::string>("min"));
   SLOG(this, 2) << "Activation state: "
                 << GetActivationStateString(activation_state_);
 
@@ -423,11 +423,11 @@ void CellularCapabilityCdma::OnModemCdmaPropertiesChanged(
   SLOG(this, 2) << __func__;
   std::string str_value;
   if (properties.Contains<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID)) {
-    cellular()->set_meid(
+    cellular()->SetMeid(
         properties.Get<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID));
   }
   if (properties.Contains<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN)) {
-    cellular()->set_esn(
+    cellular()->SetEsn(
         properties.Get<std::string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN));
   }
 

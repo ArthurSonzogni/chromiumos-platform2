@@ -287,7 +287,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     serving_operator[kOperatorNameKey] = kOperatorName;
     serving_operator[kOperatorCountryKey] = kOperatorCountry;
     service->SetServingOperator(serving_operator);
-    cellular_->set_home_provider(serving_operator);
+    cellular_->set_home_provider_for_testing(serving_operator);
     cellular_->SetServiceForTesting(service);
   }
 
@@ -355,8 +355,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "ServingOperator");
     mock_home_provider_info_->Init();
     mock_serving_operator_info_->Init();
-    cellular_->set_home_provider_info(mock_home_provider_info_);
-    cellular_->set_serving_operator_info(mock_serving_operator_info_);
+    cellular_->set_home_provider_info_for_testing(mock_home_provider_info_);
+    cellular_->set_serving_operator_info_for_testing(
+        mock_serving_operator_info_);
   }
 
   void ReleaseCapabilityProxies() {
@@ -1574,14 +1575,14 @@ TEST_F(CellularCapability3gppTest, GetMdnForOLP) {
   EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kVzwUUID));
   capability_->subscription_state_ = SubscriptionState::kUnknown;
 
-  cellular_->set_mdn("");
+  cellular_->SetMdn("");
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(&mock_operator_info));
-  cellular_->set_mdn("0123456789");
+  cellular_->SetMdn("0123456789");
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(&mock_operator_info));
-  cellular_->set_mdn("10123456789");
+  cellular_->SetMdn("10123456789");
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(&mock_operator_info));
 
-  cellular_->set_mdn("1021232333");
+  cellular_->SetMdn("1021232333");
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(&mock_operator_info));
   Mock::VerifyAndClearExpectations(&mock_operator_info);
@@ -1590,11 +1591,11 @@ TEST_F(CellularCapability3gppTest, GetMdnForOLP) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kFooUUID));
 
-  cellular_->set_mdn("");
+  cellular_->SetMdn("");
   EXPECT_EQ("", capability_->GetMdnForOLP(&mock_operator_info));
-  cellular_->set_mdn("0123456789");
+  cellular_->SetMdn("0123456789");
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(&mock_operator_info));
-  cellular_->set_mdn("10123456789");
+  cellular_->SetMdn("10123456789");
   EXPECT_EQ("10123456789", capability_->GetMdnForOLP(&mock_operator_info));
 }
 
@@ -1611,8 +1612,8 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
   sim_properties.iccid = "6";
   sim_properties.imsi = "2";
   SetCellularSimProperties(sim_properties);
-  cellular_->set_mdn("10123456789");
-  cellular_->set_min("5");
+  cellular_->SetMdn("10123456789");
+  cellular_->SetMin("5");
 
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
@@ -1646,13 +1647,13 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
 }
 
 TEST_F(CellularCapability3gppTest, IsMdnValid) {
-  cellular_->set_mdn("");
+  cellular_->SetMdn("");
   EXPECT_FALSE(capability_->IsMdnValid());
-  cellular_->set_mdn("0000000");
+  cellular_->SetMdn("0000000");
   EXPECT_FALSE(capability_->IsMdnValid());
-  cellular_->set_mdn("0000001");
+  cellular_->SetMdn("0000001");
   EXPECT_TRUE(capability_->IsMdnValid());
-  cellular_->set_mdn("1231223");
+  cellular_->SetMdn("1231223");
   EXPECT_TRUE(capability_->IsMdnValid());
 }
 
@@ -1686,7 +1687,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
 
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
   ClearCellularSimProperties();
-  cellular_->set_mdn("0000000000");
+  cellular_->SetMdn("0000000000");
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
@@ -1697,14 +1698,14 @@ TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
 
-  cellular_->set_mdn("1231231122");
+  cellular_->SetMdn("1231231122");
   capability_->subscription_state_ = SubscriptionState::kUnknown;
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
 
-  cellular_->set_mdn("0000000000");
+  cellular_->SetMdn("0000000000");
   SetDefaultCellularSimProperties();
   EXPECT_CALL(
       *modem_info_.mock_pending_activation_store(),
@@ -1734,7 +1735,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
 
   // SubscriptionStateUnprovisioned overrides valid MDN.
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
-  cellular_->set_mdn("1231231122");
+  cellular_->SetMdn("1231231122");
   ClearCellularSimProperties();
   EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
       .Times(1);
@@ -1743,7 +1744,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
 
   // SubscriptionStateProvisioned overrides invalid MDN.
   capability_->subscription_state_ = SubscriptionState::kProvisioned;
-  cellular_->set_mdn("0000000000");
+  cellular_->SetMdn("0000000000");
   ClearCellularSimProperties();
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
       .Times(1);
@@ -1756,7 +1757,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
 
   // No MDN, no ICCID.
-  cellular_->set_mdn("0000000");
+  cellular_->SetMdn("0000000");
   capability_->subscription_state_ = SubscriptionState::kUnknown;
   ClearCellularSimProperties();
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -1766,7 +1767,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   VerifyAndSetActivationExpectations();
 
   // Valid MDN, but subsciption_state_ Unprovisioned
-  cellular_->set_mdn("1234567");
+  cellular_->SetMdn("1234567");
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
   ClearCellularSimProperties();
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -1840,7 +1841,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
   cellular_->set_state_for_testing(Cellular::kStateRegistered);
-  cellular_->set_mdn("1020304");
+  cellular_->SetMdn("1020304");
   capability_->subscription_state_ = SubscriptionState::kUnknown;
   capability_->UpdatePendingActivationState();
   VerifyAndSetActivationExpectations();
@@ -1856,7 +1857,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
   cellular_->set_state_for_testing(Cellular::kStateRegistered);
-  cellular_->set_mdn("0000000");
+  cellular_->SetMdn("0000000");
   capability_->subscription_state_ = SubscriptionState::kProvisioned;
   capability_->UpdatePendingActivationState();
   VerifyAndSetActivationExpectations();
@@ -1874,7 +1875,7 @@ TEST_F(CellularCapability3gppTest, IsServiceActivationRequired) {
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 
   capability_->subscription_state_ = SubscriptionState::kUnknown;
-  cellular_->set_mdn("0000000000");
+  cellular_->SetMdn("0000000000");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
@@ -1895,11 +1896,11 @@ TEST_F(CellularCapability3gppTest, IsServiceActivationRequired) {
   EXPECT_CALL(*mock_home_provider_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));
 
-  cellular_->set_mdn("");
+  cellular_->SetMdn("");
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
-  cellular_->set_mdn("1234567890");
+  cellular_->SetMdn("1234567890");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
-  cellular_->set_mdn("0000000000");
+  cellular_->SetMdn("0000000000");
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 
   SetDefaultCellularSimProperties();

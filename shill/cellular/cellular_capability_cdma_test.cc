@@ -62,9 +62,7 @@ class CellularCapabilityCdmaTest : public testing::Test {
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
 
-  ~CellularCapabilityCdmaTest() override {
-    device_adaptor_ = nullptr;
-  }
+  ~CellularCapabilityCdmaTest() override { device_adaptor_ = nullptr; }
 
   void SetUp() override {
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
@@ -100,8 +98,9 @@ class CellularCapabilityCdmaTest : public testing::Test {
         new MockMobileOperatorInfo(dispatcher_, "HomeProvider");
     mock_serving_operator_info_ =
         new MockMobileOperatorInfo(dispatcher_, "ServingOperator");
-    cellular_->set_home_provider_info(mock_home_provider_info_);
-    cellular_->set_serving_operator_info(mock_serving_operator_info_);
+    cellular_->set_home_provider_info_for_testing(mock_home_provider_info_);
+    cellular_->set_serving_operator_info_for_testing(
+        mock_serving_operator_info_);
   }
 
   void SetupConnectProperties(KeyValueStore* properties) {
@@ -262,9 +261,9 @@ TEST_F(CellularCapabilityCdmaMainTest, UpdateServiceOLP) {
   const std::string kUuidFoo = "foo";
 
   SetMockMobileOperatorInfoObjects();
-  cellular_->set_esn("0");
-  cellular_->set_mdn("10123456789");
-  cellular_->set_meid("4");
+  cellular_->SetEsn("0");
+  cellular_->SetMdn("10123456789");
+  cellular_->SetMeid("4");
 
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));

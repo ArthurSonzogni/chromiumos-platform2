@@ -233,6 +233,9 @@ class Cellular : public Device,
   void OnAfterResume() override;
   std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
+  // Implements MobileOperatorInfo::Observer:
+  void OnOperatorChanged() override;
+
   std::string GetTechnologyFamily(Error* error);
   std::string GetDeviceId(Error* error);
   void OnModemStateChanged(ModemState new_state);
@@ -318,45 +321,45 @@ class Cellular : public Device,
                         size_t primary_slot);
 
   // Property setters. TODO(b/176904580): Rename SetFoo and alphabetize.
-  void set_home_provider(const Stringmap& home_provider);
-  void set_carrier(const std::string& carrier);
   void SetScanningSupported(bool scanning_supported);
-  void set_equipment_id(const std::string& equipment_id);
-  void set_esn(const std::string& esn);
-  void set_firmware_revision(const std::string& firmware_revision);
-  void set_hardware_revision(const std::string& hardware_revision);
-  void set_device_id(std::unique_ptr<DeviceId> device_id);
+  void SetEquipmentId(const std::string& equipment_id);
+  void SetEsn(const std::string& esn);
+  void SetFirmwareRevision(const std::string& firmware_revision);
+  void SetHardwareRevision(const std::string& hardware_revision);
+  void SetDeviceId(std::unique_ptr<DeviceId> device_id);
   void SetImei(const std::string& imei);
-  void set_mdn(const std::string& mdn);
-  void set_meid(const std::string& meid);
-  void set_min(const std::string& min);
-  void set_manufacturer(const std::string& manufacturer);
-  void set_model_id(const std::string& model_id);
-  void set_mm_plugin(const std::string& mm_plugin);
+  void SetMdn(const std::string& mdn);
+  void SetMeid(const std::string& meid);
+  void SetMin(const std::string& min);
+  void SetManufacturer(const std::string& manufacturer);
+  void SetModelId(const std::string& model_id);
+  void SetMMPlugin(const std::string& mm_plugin);
 
-  void set_selected_network(const std::string& selected_network);
-  void clear_found_networks();
-  void set_found_networks(const Stringmaps& found_networks);
-  void set_provider_requires_roaming(bool provider_requires_roaming);
+  void SetSelectedNetwork(const std::string& selected_network);
+  void SetFoundNetworks(const Stringmaps& found_networks);
+  void SetProviderRequiresRoaming(bool provider_requires_roaming);
   bool IsRoamingAllowed();
   void SetApnList(const Stringmaps& apn_list);
-
-  // Takes ownership.
-  void set_home_provider_info(MobileOperatorInfo* home_provider_info);
-  // Takes ownership.
-  void set_serving_operator_info(MobileOperatorInfo* serving_operator_info);
-
-  // Implements MobileOperatorInfo::Observer:
-  void OnOperatorChanged() override;
-
-  CellularCapability* capability_for_testing() { return capability_.get(); }
-  mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
-  const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
 
   // Sets a Service for testing. When set, Cellular does not create or destroy
   // the associated Service.
   void SetServiceForTesting(CellularServiceRefPtr service);
 
+  void set_home_provider_for_testing(const Stringmap& home_provider) {
+    home_provider_ = home_provider;
+  }
+  void set_home_provider_info_for_testing(
+      MobileOperatorInfo* home_provider_info) {
+    home_provider_info_.reset(home_provider_info);
+  }
+  void set_serving_operator_info_for_testing(
+      MobileOperatorInfo* serving_operator_info) {
+    serving_operator_info_.reset(serving_operator_info);
+  }
+  void clear_found_networks_for_testing() { found_networks_.clear(); }
+  CellularCapability* capability_for_testing() { return capability_.get(); }
+  mm1::Mm1ProxyInterface* mm1_proxy_for_testing() { return mm1_proxy_.get(); }
+  const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
   void set_capability_state_for_testing(CapabilityState state) {
     capability_state_ = state;
   }

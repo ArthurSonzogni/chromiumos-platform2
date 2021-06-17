@@ -222,12 +222,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     mock_home_provider_info_ =
         new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "HomeProvider");
     // Takes ownership.
-    device_->set_home_provider_info(mock_home_provider_info_);
+    device_->set_home_provider_info_for_testing(mock_home_provider_info_);
 
     mock_serving_operator_info_ =
         new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "ServingOperator");
     // Takes ownership.
-    device_->set_serving_operator_info(mock_serving_operator_info_);
+    device_->set_serving_operator_info_for_testing(mock_serving_operator_info_);
   }
 
   void InvokeEnable(bool enable,
@@ -729,7 +729,7 @@ TEST_P(CellularTest, StartConnected) {
       .WillOnce(Return(true));
 
   device_->set_modem_state_for_testing(Cellular::kModemStateConnected);
-  device_->set_meid(kMEID);
+  device_->SetMeid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   Error error;
   device_->Start(
@@ -747,7 +747,7 @@ TEST_P(CellularTest, StartLinked) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   device_->set_modem_state_for_testing(Cellular::kModemStateConnected);
-  device_->set_meid(kMEID);
+  device_->SetMeid(kMEID);
   ExpectCdmaStartModem(kNetworkTechnologyEvdo);
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
@@ -2210,7 +2210,7 @@ TEST_P(CellularTest, ScanImmediateFailure) {
   }
 
   Error error;
-  device_->set_found_networks(kTestNetworksCellular);
+  device_->SetFoundNetworks(kTestNetworksCellular);
   EXPECT_FALSE(device_->scanning_);
   // |InitProxies| must be called before calling any functions on the
   // Capability*, to set up the modem proxies.
@@ -2231,7 +2231,7 @@ TEST_P(CellularTest, ScanAsynchronousFailure) {
   Error error;
   ScanResultsCallback results_callback;
 
-  device_->set_found_networks(kTestNetworksCellular);
+  device_->SetFoundNetworks(kTestNetworksCellular);
   EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
       .WillOnce(DoAll(SetErrorTypeInArgument<0>(Error::kOperationInitiated),
                       SaveArg<1>(&results_callback)));
@@ -2260,7 +2260,7 @@ TEST_P(CellularTest, ScanSuccess) {
   Error error;
   ScanResultsCallback results_callback;
 
-  device_->clear_found_networks();
+  device_->clear_found_networks_for_testing();
   EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
       .WillOnce(DoAll(SetErrorTypeInArgument<0>(Error::kOperationInitiated),
                       SaveArg<1>(&results_callback)));

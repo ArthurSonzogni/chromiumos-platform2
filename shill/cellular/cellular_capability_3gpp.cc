@@ -968,7 +968,7 @@ void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
   SLOG(this, 3) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
-    cellular()->set_selected_network(desired_network_);
+    cellular()->SetSelectedNetwork(desired_network_);
     desired_network_.clear();
     callback.Run(error);
     return;
@@ -977,7 +977,7 @@ void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
   // try to register on the home network.
   if (!desired_network_.empty()) {
     desired_network_.clear();
-    cellular()->set_selected_network("");
+    cellular()->SetSelectedNetwork(std::string());
     LOG(INFO) << "Couldn't register on selected network, trying home network";
     Register(callback);
     return;
@@ -1331,31 +1331,31 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
         properties.Get<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_MANUFACTURER)) {
-    cellular()->set_manufacturer(
+    cellular()->SetManufacturer(
         properties.Get<std::string>(MM_MODEM_PROPERTY_MANUFACTURER));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_MODEL)) {
-    cellular()->set_model_id(
+    cellular()->SetModelId(
         properties.Get<std::string>(MM_MODEM_PROPERTY_MODEL));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_PLUGIN)) {
-    cellular()->set_mm_plugin(
+    cellular()->SetMMPlugin(
         properties.Get<std::string>(MM_MODEM_PROPERTY_PLUGIN));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_REVISION)) {
-    cellular()->set_firmware_revision(
+    cellular()->SetFirmwareRevision(
         properties.Get<std::string>(MM_MODEM_PROPERTY_REVISION));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
-    cellular()->set_hardware_revision(
+    cellular()->SetHardwareRevision(
         properties.Get<std::string>(MM_MODEM_PROPERTY_HARDWAREREVISION));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_DEVICE)) {
     std::string path = properties.Get<std::string>(MM_MODEM_PROPERTY_DEVICE);
-    cellular()->set_device_id(DeviceId::CreateFromSysfs(base::FilePath(path)));
+    cellular()->SetDeviceId(DeviceId::CreateFromSysfs(base::FilePath(path)));
   }
   if (properties.Contains<std::string>(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
-    cellular()->set_equipment_id(
+    cellular()->SetEquipmentId(
         properties.Get<std::string>(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER));
   }
 
@@ -1544,7 +1544,7 @@ void CellularCapability3gpp::OnMdnChanged(const std::string& mdn) {
     return;
 
   SLOG(this, 2) << __func__ << ": " << normalized_mdn;
-  cellular()->set_mdn(normalized_mdn);
+  cellular()->SetMdn(normalized_mdn);
   UpdateServiceActivationState();
   UpdatePendingActivationState();
 }

@@ -856,11 +856,12 @@ void Cellular::OnScanReply(const Stringmaps& found_networks,
   // TODO(jglasgow): fix error handling.
   // At present, there is no way of notifying user of this asynchronous error.
   if (error.IsFailure()) {
-    clear_found_networks();
+    if (!found_networks_.empty())
+      SetFoundNetworks(Stringmaps());
     return;
   }
 
-  set_found_networks(found_networks);
+  SetFoundNetworks(found_networks);
 }
 
 // Called from an asyc D-Bus function
@@ -2125,14 +2126,6 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
   return apn_try_list;
 }
 
-void Cellular::set_home_provider(const Stringmap& home_provider) {
-  if (home_provider_ == home_provider)
-    return;
-
-  home_provider_ = home_provider;
-  adaptor()->EmitStringmapChanged(kHomeProviderProperty, home_provider_);
-}
-
 void Cellular::SetScanningSupported(bool scanning_supported) {
   if (scanning_supported_ == scanning_supported)
     return;
@@ -2141,7 +2134,7 @@ void Cellular::SetScanningSupported(bool scanning_supported) {
   adaptor()->EmitBoolChanged(kSupportNetworkScanProperty, scanning_supported_);
 }
 
-void Cellular::set_equipment_id(const std::string& equipment_id) {
+void Cellular::SetEquipmentId(const std::string& equipment_id) {
   if (equipment_id_ == equipment_id)
     return;
 
@@ -2149,7 +2142,7 @@ void Cellular::set_equipment_id(const std::string& equipment_id) {
   adaptor()->EmitStringChanged(kEquipmentIdProperty, equipment_id_);
 }
 
-void Cellular::set_esn(const std::string& esn) {
+void Cellular::SetEsn(const std::string& esn) {
   if (esn_ == esn)
     return;
 
@@ -2157,7 +2150,7 @@ void Cellular::set_esn(const std::string& esn) {
   adaptor()->EmitStringChanged(kEsnProperty, esn_);
 }
 
-void Cellular::set_firmware_revision(const std::string& firmware_revision) {
+void Cellular::SetFirmwareRevision(const std::string& firmware_revision) {
   if (firmware_revision_ == firmware_revision)
     return;
 
@@ -2165,7 +2158,7 @@ void Cellular::set_firmware_revision(const std::string& firmware_revision) {
   adaptor()->EmitStringChanged(kFirmwareRevisionProperty, firmware_revision_);
 }
 
-void Cellular::set_hardware_revision(const std::string& hardware_revision) {
+void Cellular::SetHardwareRevision(const std::string& hardware_revision) {
   if (hardware_revision_ == hardware_revision)
     return;
 
@@ -2173,7 +2166,7 @@ void Cellular::set_hardware_revision(const std::string& hardware_revision) {
   adaptor()->EmitStringChanged(kHardwareRevisionProperty, hardware_revision_);
 }
 
-void Cellular::set_device_id(std::unique_ptr<DeviceId> device_id) {
+void Cellular::SetDeviceId(std::unique_ptr<DeviceId> device_id) {
   device_id_ = std::move(device_id);
 }
 
@@ -2251,7 +2244,7 @@ void Cellular::SetSimSlotProperties(
   adaptor()->EmitKeyValueStoresChanged(kSIMSlotInfoProperty, sim_slot_info_);
 }
 
-void Cellular::set_mdn(const std::string& mdn) {
+void Cellular::SetMdn(const std::string& mdn) {
   if (mdn_ == mdn)
     return;
 
@@ -2259,7 +2252,7 @@ void Cellular::set_mdn(const std::string& mdn) {
   adaptor()->EmitStringChanged(kMdnProperty, mdn_);
 }
 
-void Cellular::set_meid(const std::string& meid) {
+void Cellular::SetMeid(const std::string& meid) {
   if (meid_ == meid)
     return;
 
@@ -2267,7 +2260,7 @@ void Cellular::set_meid(const std::string& meid) {
   adaptor()->EmitStringChanged(kMeidProperty, meid_);
 }
 
-void Cellular::set_min(const std::string& min) {
+void Cellular::SetMin(const std::string& min) {
   if (min_ == min)
     return;
 
@@ -2275,7 +2268,7 @@ void Cellular::set_min(const std::string& min) {
   adaptor()->EmitStringChanged(kMinProperty, min_);
 }
 
-void Cellular::set_manufacturer(const std::string& manufacturer) {
+void Cellular::SetManufacturer(const std::string& manufacturer) {
   if (manufacturer_ == manufacturer)
     return;
 
@@ -2283,7 +2276,7 @@ void Cellular::set_manufacturer(const std::string& manufacturer) {
   adaptor()->EmitStringChanged(kManufacturerProperty, manufacturer_);
 }
 
-void Cellular::set_model_id(const std::string& model_id) {
+void Cellular::SetModelId(const std::string& model_id) {
   if (model_id_ == model_id)
     return;
 
@@ -2291,7 +2284,7 @@ void Cellular::set_model_id(const std::string& model_id) {
   adaptor()->EmitStringChanged(kModelIdProperty, model_id_);
 }
 
-void Cellular::set_mm_plugin(const std::string& mm_plugin) {
+void Cellular::SetMMPlugin(const std::string& mm_plugin) {
   mm_plugin_ = mm_plugin;
 }
 
@@ -2368,7 +2361,7 @@ void Cellular::SetScanningProperty(bool scanning) {
     ConnectToPending();
 }
 
-void Cellular::set_selected_network(const std::string& selected_network) {
+void Cellular::SetSelectedNetwork(const std::string& selected_network) {
   if (selected_network_ == selected_network)
     return;
 
@@ -2376,22 +2369,14 @@ void Cellular::set_selected_network(const std::string& selected_network) {
   adaptor()->EmitStringChanged(kSelectedNetworkProperty, selected_network_);
 }
 
-void Cellular::set_found_networks(const Stringmaps& found_networks) {
+void Cellular::SetFoundNetworks(const Stringmaps& found_networks) {
   // There is no canonical form of a Stringmaps value.
   // So don't check for redundant updates.
   found_networks_ = found_networks;
   adaptor()->EmitStringmapsChanged(kFoundNetworksProperty, found_networks_);
 }
 
-void Cellular::clear_found_networks() {
-  if (found_networks_.empty())
-    return;
-
-  found_networks_.clear();
-  adaptor()->EmitStringmapsChanged(kFoundNetworksProperty, found_networks_);
-}
-
-void Cellular::set_provider_requires_roaming(bool provider_requires_roaming) {
+void Cellular::SetProviderRequiresRoaming(bool provider_requires_roaming) {
   if (provider_requires_roaming_ == provider_requires_roaming)
     return;
 
@@ -2409,15 +2394,6 @@ void Cellular::SetApnList(const Stringmaps& apn_list) {
   // redundant updates.
   apn_list_ = apn_list;
   adaptor()->EmitStringmapsChanged(kCellularApnListProperty, apn_list_);
-}
-
-void Cellular::set_home_provider_info(MobileOperatorInfo* home_provider_info) {
-  home_provider_info_.reset(home_provider_info);
-}
-
-void Cellular::set_serving_operator_info(
-    MobileOperatorInfo* serving_operator_info) {
-  serving_operator_info_.reset(serving_operator_info);
 }
 
 void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
@@ -2442,7 +2418,10 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   if (!operator_info->uuid().empty()) {
     home_provider[kOperatorUuidKey] = operator_info->uuid();
   }
-  set_home_provider(home_provider);
+  if (home_provider != home_provider_) {
+    home_provider_ = home_provider;
+    adaptor()->EmitStringmapChanged(kHomeProviderProperty, home_provider_);
+  }
 
   ApnList apn_list;
   // TODO(b:180004055): remove this when we have captive portal checks that
@@ -2452,7 +2431,7 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   apn_list.AddApns(operator_info->apn_list());
   SetApnList(apn_list.GetList());
 
-  set_provider_requires_roaming(operator_info->requires_roaming());
+  SetProviderRequiresRoaming(operator_info->requires_roaming());
 }
 
 void Cellular::UpdateServingOperator(
