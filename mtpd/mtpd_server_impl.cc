@@ -4,10 +4,10 @@
 
 #include "mtpd/mtpd_server_impl.h"
 
+#include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
