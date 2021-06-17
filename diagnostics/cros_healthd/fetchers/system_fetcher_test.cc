@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -35,6 +36,19 @@ base::Optional<std::string> GetMockValue(
   return base::nullopt;
 }
 
+base::Optional<std::string> GetMockValue(const mojo_ipc::BootMode& boot_mode) {
+  switch (boot_mode) {
+    case mojo_ipc::BootMode::kCrosSecure:
+      return "Foo Bar=1 cros_secure Foo Bar=1";
+    case mojo_ipc::BootMode::kCrosEfi:
+      return "Foo Bar=1 cros_efi Foo Bar=1";
+    case mojo_ipc::BootMode::kCrosLegacy:
+      return "Foo Bar=1 cros_legacy Foo Bar=1";
+    default:
+      return "Foo Bar=1 Foo Bar=1";
+  }
+}
+
 class SystemUtilsTest : public BaseFileTest {
  protected:
   SystemUtilsTest() = default;
@@ -45,56 +59,92 @@ class SystemUtilsTest : public BaseFileTest {
     ASSERT_TRUE(mock_context_.Initialize());
     SetTestRoot(mock_context_.root_dir());
 
-    expected_system_info_ = mojo_ipc::SystemInfo::New();
-    expected_system_info_->first_power_date = "2020-40";
-    expected_system_info_->manufacture_date = "2019-01-01";
-    expected_system_info_->product_sku_number = "ABCD&^A";
-    expected_system_info_->product_serial_number = "8607G03EDF";
-    expected_system_info_->product_model_name = "XX ModelName 007 XY";
-    expected_system_info_->marketing_name =
-        "Latitude 1234 Chromebook Enterprise";
-    expected_system_info_->bios_version = "Google_BoardName.12200.68.0";
-    expected_system_info_->board_name = "BoardName";
-    expected_system_info_->board_version = "rev1234";
-    expected_system_info_->chassis_type = mojo_ipc::NullableUint64::New(9);
-    expected_system_info_->product_name = "ProductName";
-    expected_system_info_->os_version = mojo_ipc::OsVersion::New();
-    expected_system_info_->os_version->release_milestone = "87";
-    expected_system_info_->os_version->build_number = "13544";
-    expected_system_info_->os_version->patch_number = "59.0";
-    expected_system_info_->os_version->release_channel = "stable-channel";
+    expected_system_info_ = mojo_ipc::SystemInfoV2::New();
+    auto& vpd_info = expected_system_info_->vpd_info;
+    vpd_info = mojo_ipc::VpdInfo::New();
+    vpd_info->activate_date = "2020-40";
+    vpd_info->mfg_date = "2019-01-01";
+    vpd_info->model_name = "XX ModelName 007 XY";
+    vpd_info->region = "us";
+    vpd_info->serial_number = "8607G03EDF";
+    vpd_info->sku_number = "ABCD&^A";
+    auto& dmi_info = expected_system_info_->dmi_info;
+    dmi_info = mojo_ipc::DmiInfo::New();
+    dmi_info->bios_vendor = "Google";
+    dmi_info->bios_version = "Google_BoardName.12200.68.0";
+    dmi_info->board_name = "BoardName";
+    dmi_info->board_vender = "Google";
+    dmi_info->board_version = "rev1234";
+    dmi_info->chassis_vendor = "Google";
+    dmi_info->chassis_type = mojo_ipc::NullableUint64::New(9);
+    dmi_info->product_family = "FooFamily";
+    dmi_info->product_name = "BarProductName";
+    dmi_info->product_version = "rev1234";
+    dmi_info->sys_vendor = "Google";
+    auto& os_info = expected_system_info_->os_info;
+    os_info = mojo_ipc::OsInfo::New();
+    os_info->code_name = "CodeName";
+    os_info->marketing_name = "Latitude 1234 Chromebook Enterprise";
+    os_info->boot_mode = mojo_ipc::BootMode::kCrosSecure;
+    auto& os_version = os_info->os_version;
+    os_version = mojo_ipc::OsVersion::New();
+    os_version->release_milestone = "87";
+    os_version->build_number = "13544";
+    os_version->patch_number = "59.0";
+    os_version->release_channel = "stable-channel";
 
     SetSystemInfo(expected_system_info_);
     SetHasSkuNumber(true);
   }
 
-  void SetSystemInfo(const mojo_ipc::SystemInfoPtr& system_info) {
-    SetMockFile({kRelativePathVpdRw, kFileNameActivateDate},
-                system_info->first_power_date);
-    SetMockFile({kRelativePathVpdRo, kFileNameMfgDate},
-                system_info->manufacture_date);
-    SetMockFile({kRelativePathVpdRo, kFileNameSkuNumber},
-                system_info->product_sku_number);
-    SetMockFile({kRelativePathVpdRo, kFileNameSerialNumber},
-                system_info->product_serial_number);
-    SetMockFile({kRelativePathVpdRo, kFileNameModelName},
-                system_info->product_model_name);
-    // Currently, cros_config never returns base::nullopt.
-    mock_context_.fake_system_config()->SetMarketingName(
-        system_info->marketing_name);
-    ASSERT_TRUE(system_info->product_name.has_value());
-    mock_context_.fake_system_config()->SetCodeName(
-        system_info->product_name.value());
+  void SetSystemInfo(const mojo_ipc::SystemInfoV2Ptr& system_info) {
+    SetVpdInfo(system_info->vpd_info);
+    SetDmiInfo(system_info->dmi_info);
+    SetOsInfo(system_info->os_info);
+  }
 
-    SetMockFile({kRelativePathDmiInfo, kFileNameBiosVersion},
-                system_info->bios_version);
-    SetMockFile({kRelativePathDmiInfo, kFileNameBoardName},
-                system_info->board_name);
-    SetMockFile({kRelativePathDmiInfo, kFileNameBoardVersion},
-                system_info->board_version);
-    SetMockFile({kRelativePathDmiInfo, kFileNameChassisType},
-                system_info->chassis_type);
-    SetOsVersion(system_info->os_version);
+  void SetVpdInfo(const mojo_ipc::VpdInfoPtr& vpd_info) {
+    const auto& ro = kRelativePathVpdRo;
+    const auto& rw = kRelativePathVpdRw;
+    if (vpd_info.is_null()) {
+      // Delete the whole vpd dir.
+      UnsetPath(base::FilePath(ro).DirName());
+      return;
+    }
+    SetMockFile({rw, kFileNameActivateDate}, vpd_info->activate_date);
+    SetMockFile({ro, kFileNameMfgDate}, vpd_info->mfg_date);
+    SetMockFile({ro, kFileNameModelName}, vpd_info->model_name);
+    SetMockFile({ro, kFileNameRegion}, vpd_info->region);
+    SetMockFile({ro, kFileNameSerialNumber}, vpd_info->serial_number);
+    SetMockFile({ro, kFileNameSkuNumber}, vpd_info->sku_number);
+  }
+
+  void SetDmiInfo(const mojo_ipc::DmiInfoPtr& dmi_info) {
+    const auto& dmi = kRelativePathDmiInfo;
+    if (dmi_info.is_null()) {
+      UnsetPath(dmi);
+      return;
+    }
+    SetMockFile({dmi, kFileNameBiosVendor}, dmi_info->bios_vendor);
+    SetMockFile({dmi, kFileNameBiosVersion}, dmi_info->bios_version);
+    SetMockFile({dmi, kFileNameBoardName}, dmi_info->board_name);
+    SetMockFile({dmi, kFileNameBoardVendor}, dmi_info->board_vender);
+    SetMockFile({dmi, kFileNameBoardVersion}, dmi_info->board_version);
+    SetMockFile({dmi, kFileNameChassisVendor}, dmi_info->chassis_vendor);
+    SetMockFile({dmi, kFileNameChassisType}, dmi_info->chassis_type);
+    SetMockFile({dmi, kFileNameProductFamily}, dmi_info->product_family);
+    SetMockFile({dmi, kFileNameProductName}, dmi_info->product_name);
+    SetMockFile({dmi, kFileNameProductVersion}, dmi_info->product_version);
+    SetMockFile({dmi, kFileNameSysVendor}, dmi_info->sys_vendor);
+  }
+
+  void SetOsInfo(const mojo_ipc::OsInfoPtr& os_info) {
+    ASSERT_FALSE(os_info.is_null());
+    mock_context_.fake_system_config()->SetMarketingName(
+        os_info->marketing_name);
+    mock_context_.fake_system_config()->SetCodeName(os_info->code_name);
+    SetOsVersion(os_info->os_version);
+    SetMockFile(kFilePathProcCmdline, os_info->boot_mode);
   }
 
   void SetOsVersion(const mojo_ipc::OsVersionPtr& os_version) {
@@ -132,9 +182,19 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void ExpectFetchSystemInfo() {
-    auto system_result = system_fetcher_.FetchSystemInfo();
-    ASSERT_TRUE(system_result->is_system_info());
-    EXPECT_EQ(system_result->get_system_info(), expected_system_info_);
+    auto system_result = system_fetcher_.FetchSystemInfoV2();
+    ASSERT_FALSE(system_result.is_null());
+    ASSERT_FALSE(system_result->is_error());
+    ASSERT_TRUE(system_result->is_system_info_v2());
+    auto res = std::move(system_result->get_system_info_v2());
+    EXPECT_EQ(res, expected_system_info_);
+
+    auto system_result_old = system_fetcher_.FetchSystemInfo();
+    ASSERT_FALSE(system_result_old.is_null());
+    ASSERT_FALSE(system_result_old->is_error());
+    ASSERT_TRUE(system_result_old->is_system_info());
+    EXPECT_EQ(system_result_old->get_system_info(),
+              SystemFetcher::ConvertToSystemInfo(expected_system_info_));
   }
 
   void ExpectFetchProbeError(const mojo_ipc::ErrorType& expected) {
@@ -144,7 +204,7 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
  protected:
-  mojo_ipc::SystemInfoPtr expected_system_info_;
+  mojo_ipc::SystemInfoV2Ptr expected_system_info_;
 
  private:
   MockContext mock_context_;
@@ -155,34 +215,26 @@ class SystemUtilsTest : public BaseFileTest {
   std::unique_ptr<base::test::ScopedChromeOSVersionInfo> chromeos_version_;
 };
 
-// Test that we can read the system info, when it exists.
+// Template for testing the missing field of vpd/dmi.
+#define TEST_MISSING_FIELD(info, field)                 \
+  TEST_F(SystemUtilsTest, TestNo_##info##_##field) {    \
+    expected_system_info_->info->field = base::nullopt; \
+    SetSystemInfo(expected_system_info_);               \
+    ExpectFetchSystemInfo();                            \
+  }
+
 TEST_F(SystemUtilsTest, TestFetchSystemInfo) {
   ExpectFetchSystemInfo();
 }
 
-// Test that no first_power_date is reported when |kFirstPowerDateFileName| is
-// not found.
-TEST_F(SystemUtilsTest, TestNoFirstPowerDate) {
-  expected_system_info_->first_power_date = base::nullopt;
+TEST_F(SystemUtilsTest, TestNoVpdDir) {
+  expected_system_info_->vpd_info = nullptr;
   SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
-
-// Test that no manufacture_date is reported when |kManufactureDateFileName| is
-// not found.
-TEST_F(SystemUtilsTest, TestNoManufactureDate) {
-  expected_system_info_->manufacture_date = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
-
-// Test that reading system info that does not have |kSkuNumberFileName| (when
-// it should) reports an error.
-TEST_F(SystemUtilsTest, TestSkuNumberError) {
-  expected_system_info_->product_sku_number = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  // Confirm that an error is obtained.
+  SetHasSkuNumber(true);
   ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
+
+  SetHasSkuNumber(false);
+  ExpectFetchSystemInfo();
 }
 
 TEST_F(SystemUtilsTest, TestNoSkuNumber) {
@@ -190,72 +242,48 @@ TEST_F(SystemUtilsTest, TestNoSkuNumber) {
   SetSystemInfo(expected_system_info_);
   // Ensure that there is no sku number returned even if sku number exists.
   SetHasSkuNumber(false);
-  expected_system_info_->product_sku_number = base::nullopt;
+  expected_system_info_->vpd_info->sku_number = base::nullopt;
   ExpectFetchSystemInfo();
 
   // Sku number file doesn't exist.
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
+
+  // Sku number file doesn't exist but should have.
+  SetHasSkuNumber(true);
+  ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
 }
 
-// Test that no product_serial_number is returned when the device does not have
-// |kProductSerialNumberFileName|.
-TEST_F(SystemUtilsTest, TestNoProductSerialNumber) {
-  expected_system_info_->product_serial_number = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
+TEST_MISSING_FIELD(vpd_info, activate_date);
+TEST_MISSING_FIELD(vpd_info, region);
+TEST_MISSING_FIELD(vpd_info, mfg_date);
+TEST_MISSING_FIELD(vpd_info, serial_number);
+TEST_MISSING_FIELD(vpd_info, model_name);
 
-// Test that no product_model_name is returned when the device does not have
-// |kProductModelNameFileName|.
-TEST_F(SystemUtilsTest, TestNoProductModelName) {
-  expected_system_info_->product_model_name = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
-
-// Test that no DMI fields are populated when |kRelativePathDmiInfo| doesn't
-// exist.
 TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
-  expected_system_info_->bios_version = base::nullopt;
-  expected_system_info_->board_name = base::nullopt;
-  expected_system_info_->board_version = base::nullopt;
-  expected_system_info_->chassis_type = nullptr;
+  expected_system_info_->dmi_info = nullptr;
   // Delete the whole directory |kRelativePathDmiInfo|.
   UnsetPath(kRelativePathDmiInfo);
   ExpectFetchSystemInfo();
 }
 
-// Test that there is no bios_version when |kBiosVersionFileName| is missing.
-TEST_F(SystemUtilsTest, TestNoBiosVersion) {
-  expected_system_info_->bios_version = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
+TEST_MISSING_FIELD(dmi_info, bios_vendor);
+TEST_MISSING_FIELD(dmi_info, bios_version);
+TEST_MISSING_FIELD(dmi_info, board_name);
+TEST_MISSING_FIELD(dmi_info, board_vender);
+TEST_MISSING_FIELD(dmi_info, board_version);
+TEST_MISSING_FIELD(dmi_info, chassis_vendor);
+TEST_MISSING_FIELD(dmi_info, product_family);
+TEST_MISSING_FIELD(dmi_info, product_name);
+TEST_MISSING_FIELD(dmi_info, product_version);
+TEST_MISSING_FIELD(dmi_info, sys_vendor);
 
-// Test that there is no board_name when |kBoardNameFileName| is missing.
-TEST_F(SystemUtilsTest, TestNoBoardName) {
-  expected_system_info_->board_name = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
-
-// Test that there is no board_version when |kBoardVersionFileName| is missing.
-TEST_F(SystemUtilsTest, TestNoBoardVersion) {
-  expected_system_info_->board_version = base::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
-}
-
-// Test that there is no chassis_type when |kChassisTypeFileName| is missing.
 TEST_F(SystemUtilsTest, TestNoChassisType) {
-  expected_system_info_->chassis_type = nullptr;
+  expected_system_info_->dmi_info->chassis_type = nullptr;
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }
 
-// Test that reading a chassis_type that cannot be converted to an unsigned
-// integer reports an error.
 TEST_F(SystemUtilsTest, TestBadChassisType) {
   // Overwrite the contents of |kChassisTypeFileName| with a chassis_type value
   // that cannot be parsed into an unsigned integer.
@@ -264,14 +292,11 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
   ExpectFetchProbeError(mojo_ipc::ErrorType::kParseError);
 }
 
-// Tests that an error is returned if there is no OS version information
-// populated in lsb-release.
 TEST_F(SystemUtilsTest, TestNoOsVersion) {
   PopulateLsbRelease("");
   ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
 }
 
-// Tests that an error is returned if the lsb-release file is malformed.
 TEST_F(SystemUtilsTest, TestBadOsVersion) {
   PopulateLsbRelease(
       "Milestone\n"
@@ -279,6 +304,24 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
       "CHROMEOS_RELEASE_PATCH_NUMBER=2\n"
       "CHROMEOS_RELEASE_TRACK=3\n");
   ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
+}
+
+TEST_F(SystemUtilsTest, TestBootMode) {
+  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosSecure;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosEfi;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosLegacy;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kUnknown;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
 }
 
 }  // namespace
