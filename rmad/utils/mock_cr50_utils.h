@@ -21,6 +21,7 @@ class MockCr50Utils : public Cr50Utils {
   MOCK_METHOD(bool, RoVerificationKeyPressed, (), (const, override));
   MOCK_METHOD(bool, GetRsuChallengeCode, (std::string*), (const, override));
   MOCK_METHOD(bool, PerformRsu, (const std::string&), (const, override));
+  MOCK_METHOD(bool, IsFactoryModeEnabled, (), (const, override));
 };
 
 }  // namespace rmad

@@ -221,6 +221,11 @@ message WriteProtectDisableRsuState {
   string unlock_code = 2;
 }
 
+// Verify if RSU succeeds.
+message VerifyRsuState {
+  bool success = 1;
+}
+
 // Wait for tech to physically disable HWWP.
 message WriteProtectDisablePhysicalState {
   // No state. Waits for signal that write protection is disabled.
@@ -352,17 +357,18 @@ message RmadState {
     DeviceDestinationState device_destination = 5;
     WriteProtectDisableMethodState wp_disable_method = 6;
     WriteProtectDisableRsuState wp_disable_rsu = 7;
-    WriteProtectDisablePhysicalState wp_disable_physical = 8;
-    WriteProtectDisableCompleteState wp_disable_complete = 9;
-    UpdateRoFirmwareState update_ro_firmware = 10;
-    RestockState restock = 11;
-    UpdateDeviceInfoState update_device_info = 12;
-    CheckCalibrationState check_calibration = 13;
-    SetupCalibrationState setup_calibration = 14;
-    RunCalibrationState run_calibration = 15;
-    ProvisionDeviceState provision_device = 16;
-    WriteProtectEnablePhysicalState wp_enable_physical = 17;
-    FinalizeState finalize = 18;
+    VerifyRsuState verify_rsu = 8;
+    WriteProtectDisablePhysicalState wp_disable_physical = 9;
+    WriteProtectDisableCompleteState wp_disable_complete = 10;
+    UpdateRoFirmwareState update_ro_firmware = 11;
+    RestockState restock = 12;
+    UpdateDeviceInfoState update_device_info = 13;
+    CheckCalibrationState check_calibration = 14;
+    SetupCalibrationState setup_calibration = 15;
+    RunCalibrationState run_calibration = 16;
+    ProvisionDeviceState provision_device = 17;
+    WriteProtectEnablePhysicalState wp_enable_physical = 18;
+    FinalizeState finalize = 19;
   }
 }
 

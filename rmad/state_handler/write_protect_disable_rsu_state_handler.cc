@@ -61,7 +61,7 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   StoreState();
 
   return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kWpDisableComplete};
+          .state_case = RmadState::StateCase::kVerifyRsu};
 }
 
 }  // namespace rmad

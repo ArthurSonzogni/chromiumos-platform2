@@ -14,7 +14,9 @@
 namespace rmad {
 
 constexpr char kGsctoolCmd[] = "gsctool";
+constexpr char kFactoryModeMatchStr[] = "Capabilities are modified.";
 const std::vector<std::string> kRsuArgv{kGsctoolCmd, "-a", "-r"};
+const std::vector<std::string> kCcdInfoArgv{kGsctoolCmd, "-a", "-I"};
 
 bool Cr50UtilsImpl::RoVerificationKeyPressed() const {
   // TODO(b/181000999): Send a D-Bus query to tpm_managerd when API is ready.
@@ -45,6 +47,12 @@ bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
   LOG(INFO) << "RSU failed.";
   LOG(ERROR) << output;
   return false;
+}
+
+bool Cr50UtilsImpl::IsFactoryModeEnabled() const {
+  std::string output;
+  base::GetAppOutput(kCcdInfoArgv, &output);
+  return output.find(kFactoryModeMatchStr) != std::string::npos;
 }
 
 }  // namespace rmad

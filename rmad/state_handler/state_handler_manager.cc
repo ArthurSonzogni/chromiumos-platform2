@@ -21,6 +21,7 @@
 #include "rmad/state_handler/update_chrome_state_handler.h"
 #include "rmad/state_handler/update_device_info_state_handler.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
+#include "rmad/state_handler/verify_rsu_state_handler.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
@@ -61,6 +62,8 @@ void StateHandlerManager::RegisterStateHandlers() {
       base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<VerifyRsuStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
           json_store_));

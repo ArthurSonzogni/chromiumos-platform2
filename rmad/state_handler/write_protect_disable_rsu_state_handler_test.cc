@@ -69,7 +69,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
+  EXPECT_EQ(state_case, RmadState::StateCase::kVerifyRsu);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {

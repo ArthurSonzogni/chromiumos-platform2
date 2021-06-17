@@ -25,6 +25,9 @@ class Cr50Utils {
   // Use the unlock code to perform RSU. Return true if the unlock code is
   // correct, false if the unlock code is rejected.
   virtual bool PerformRsu(const std::string& unlock_code) const = 0;
+
+  // Check if cr50 factory mode is enabled.
+  virtual bool IsFactoryModeEnabled() const = 0;
 };
 
 }  // namespace rmad
