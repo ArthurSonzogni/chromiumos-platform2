@@ -664,36 +664,57 @@ std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
 
 }  // namespace
 
-// Reads first field from the file and convert it into int64_t.
-static base::Optional<int64_t> ReadFileToInt64(const std::string& filename) {
-  std::string s;
-  if (!base::ReadFileToString(base::FilePath(filename), &s)) {
-    LOG(ERROR) << "Failed to read " << filename;
+base::Optional<int64_t> Service::GetAvailableMemory() {
+  dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
+                               resource_manager::kGetAvailableMemoryKBMethod);
+  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
+      bus_, resource_manager_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to get available memory size from resourced";
     return base::nullopt;
   }
-  std::vector<std::string> splitted =
-      base::SplitString(s, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY);
-  int64_t value;
-  if (splitted.size() < 1 || !base::StringToInt64(splitted[0], &value)) {
-    LOG(ERROR) << "Failed to parse " << filename;
+  dbus::MessageReader reader(dbus_response.get());
+  uint64_t available_kb;
+  if (!reader.PopUint64(&available_kb)) {
+    LOG(ERROR)
+        << "Failed to read available memory size from the D-Bus response";
     return base::nullopt;
   }
-  // margin is reported in MiB so converts it into bytes.
-  return value;
+  return available_kb * KIB;
+}
+
+base::Optional<int64_t> Service::GetCriticalMargin() {
+  dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
+                               resource_manager::kGetMemoryMarginsKBMethod);
+  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
+      bus_, resource_manager_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to get critical margin size from resourced";
+    return base::nullopt;
+  }
+  dbus::MessageReader reader(dbus_response.get());
+  uint64_t critical_margin_kb;
+  if (!reader.PopUint64(&critical_margin_kb)) {
+    LOG(ERROR)
+        << "Failed to read available critical margin from the D-Bus response";
+    return base::nullopt;
+  }
+  return critical_margin_kb * KIB;
 }
 
 // Runs balloon policy against each VM to balance memory.
 // This will be called periodically by balloon_resizing_timer_.
 void Service::RunBalloonPolicy() {
-  auto critical_host_available_mib =
-      ReadFileToInt64("/sys/kernel/mm/chromeos-low_mem/margin");
-  if (!critical_host_available_mib.has_value()) {
+  // TODO(b/191946183): Design and migrate to a new D-Bus API
+  // that is less chatty for implementing balloon logic.
+  const auto available_memory = GetAvailableMemory();
+  if (!available_memory.has_value()) {
     return;
   }
-  auto host_available_mib =
-      ReadFileToInt64("/sys/kernel/mm/chromeos-low_mem/available");
-  if (!host_available_mib.has_value()) {
+  const auto critical_margin = GetCriticalMargin();
+  if (!critical_margin.has_value()) {
     return;
   }
   for (auto& vm_entry : vms_) {
@@ -713,8 +734,7 @@ void Service::RunBalloonPolicy() {
     // TODO(hikalium): remove this bias once the balloon policy is updated.
     const int64_t bias = vm_entry.first.name() == "arcvm" ? 48 * MIB : 0;
     BalloonPolicyParams params = BalloonPolicyParams::FromBalloonStats(
-        stats, *critical_host_available_mib * MIB, bias,
-        *host_available_mib * MIB);
+        stats, *critical_margin, bias, *available_memory);
     vm->RunBalloonPolicy(params);
   }
 }
@@ -1083,6 +1103,16 @@ bool Service::Init() {
       base::Bind(&Service::OnVmToolsStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&Service::OnSignalConnected, weak_ptr_factory_.GetWeakPtr()));
+
+  // Get the D-Bus proxy for communicating with resource manager.
+  resource_manager_service_proxy_ = bus_->GetObjectProxy(
+      resource_manager::kResourceManagerServiceName,
+      dbus::ObjectPath(resource_manager::kResourceManagerServicePath));
+  if (!resource_manager_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << resource_manager::kResourceManagerServiceName;
+    return false;
+  }
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(

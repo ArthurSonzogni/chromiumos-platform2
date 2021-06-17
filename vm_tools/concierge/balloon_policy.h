@@ -9,6 +9,7 @@
 namespace vm_tools {
 namespace concierge {
 
+constexpr int64_t KIB = 1024;
 constexpr int64_t MIB = 1024 * 1024;
 
 struct BalloonStats {

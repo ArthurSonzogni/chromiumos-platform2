@@ -286,6 +286,8 @@ class Service final {
   VmMap::iterator FindVm(const std::string& owner_id,
                          const std::string& vm_name);
 
+  base::Optional<int64_t> GetAvailableMemory();
+  base::Optional<int64_t> GetCriticalMargin();
   void RunBalloonPolicy();
 
   bool ListVmDisksInLocation(const std::string& cryptohome_id,
@@ -330,11 +332,12 @@ class Service final {
   // Connection to the system bus.
   base::Thread dbus_thread_{"dbus thread"};
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;           // Owned by |bus_|.
-  dbus::ObjectProxy* cicerone_service_proxy_;       // Owned by |bus_|.
-  dbus::ObjectProxy* seneschal_service_proxy_;      // Owned by |bus_|.
-  dbus::ObjectProxy* vm_permission_service_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* vmplugin_service_proxy_;       // Owned by |bus_|.
+  dbus::ExportedObject* exported_object_;              // Owned by |bus_|.
+  dbus::ObjectProxy* cicerone_service_proxy_;          // Owned by |bus_|.
+  dbus::ObjectProxy* seneschal_service_proxy_;         // Owned by |bus_|.
+  dbus::ObjectProxy* vm_permission_service_proxy_;     // Owned by |bus_|.
+  dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
+  dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;
