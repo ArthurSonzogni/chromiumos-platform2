@@ -135,6 +135,24 @@ pub fn is_removable() -> Result<bool> {
     }
 }
 
+pub fn is_consumer_device() -> Result<bool> {
+    let output = Command::new("/usr/sbin/cryptohome")
+        .arg("--action=install_attributes_get")
+        .arg("--name=enterprise.mode")
+        .output()?;
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // If the attribute is not set, cryptohome will treat it as an error, return 1 and output
+    // nothing.
+    match output.status.code() {
+        Some(0) => Ok(!stdout.contains("enterprise")),
+        Some(1) if stdout.is_empty() => Ok(true),
+        None => Err(Error::WrappedError("failed to get exit code".to_string())),
+        _ => Err(Error::WrappedError(stdout)),
+    }
+}
+
 pub fn set_dev_commands_included(value: bool) {
     INCLUDE_DEV.store(value, Ordering::Release);
 }

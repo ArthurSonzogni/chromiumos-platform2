@@ -11,6 +11,7 @@ mod packet_capture;
 mod set_time;
 mod verify_ro;
 mod vmc;
+mod wireguard;
 
 use crate::dispatcher::Dispatcher;
 
@@ -22,4 +23,5 @@ pub fn register(dispatcher: &mut Dispatcher) {
     set_time::register(dispatcher);
     verify_ro::register(dispatcher);
     vmc::register(dispatcher);
+    wireguard::register(dispatcher);
 }

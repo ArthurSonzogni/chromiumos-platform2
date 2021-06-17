@@ -16,8 +16,10 @@ use sys_util::error;
 use system_api::client::OrgChromiumFlimflamManager;
 use system_api::client::OrgChromiumFlimflamService;
 
-use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-use crate::util::DEFAULT_DBUS_TIMEOUT;
+use crate::{
+    dispatcher::{self, Arguments, Command, Dispatcher},
+    util::{is_consumer_device, DEFAULT_DBUS_TIMEOUT},
+};
 
 const USAGE: &str = r#"wireguard <cmd> [<args>]
 
@@ -55,17 +57,17 @@ disconnect <name>
     Disconnect from the configured WireGuard service with name <name>.
 "#;
 
-// TODO(b/177877310): Call this function in mod.rs to enable the command after we have the chrome
-// flag.
 pub fn register(dispatcher: &mut Dispatcher) {
-    dispatcher.register_command(
-        Command::new(
-            "wireguard".to_string(),
-            USAGE.to_string(),
-            "Utility to configure and control a WireGuard VPN service".to_string(),
-        )
-        .set_command_callback(Some(execute_wireguard)),
-    );
+    if let Ok(true) = is_consumer_device() {
+        dispatcher.register_command(
+            Command::new(
+                "wireguard".to_string(),
+                USAGE.to_string(),
+                "Utility to configure and control a WireGuard VPN service".to_string(),
+            )
+            .set_command_callback(Some(execute_wireguard)),
+        );
+    }
 }
 
 #[derive(Debug)]
@@ -77,23 +79,13 @@ enum Error {
         service_name: String,
         reason: String,
     },
+    VpnDisabled,
+    WireGuardUnavailable,
     Internal(String),
 }
 
 fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
-    let args: Vec<&str> = args.get_args().iter().map(String::as_str).collect();
-    match args.as_slice() {
-        [] => Err(Error::InvalidArguments("no command".to_string())),
-        ["show"] | ["list"] => wireguard_list(),
-        ["show", service_name] => wireguard_show(service_name),
-        ["new", service_name] => wireguard_new(service_name),
-        ["del", service_name] => wireguard_del(service_name),
-        ["set", service_name, remaining @ ..] => wireguard_set(service_name, remaining),
-        ["connect", service_name] => wireguard_connect(service_name),
-        ["disconnect", service_name] => wireguard_disconnect(service_name),
-        [other, ..] => Err(Error::InvalidArguments(other.to_string())),
-    }
-    .map_err(|err| match err {
+    let convert_err = |err: Error| match err {
         Error::InvalidArguments(val) => dispatcher::Error::CommandInvalidArguments(val),
         Error::ServiceNotFound(val) => {
             println!("WireGuard service with name {} does not exist", val);
@@ -113,11 +105,35 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
             );
             dispatcher::Error::CommandReturnedError
         }
+        Error::VpnDisabled => {
+            println!("VPN is disabled on this device");
+            dispatcher::Error::CommandReturnedError
+        }
+        Error::WireGuardUnavailable => {
+            println!("WireGuard is not available on this device");
+            dispatcher::Error::CommandReturnedError
+        }
         Error::Internal(val) => {
             error!("ERROR: {}", val);
             dispatcher::Error::CommandReturnedError
         }
-    })
+    };
+
+    check_wireguard_support().map_err(convert_err)?;
+
+    let args: Vec<&str> = args.get_args().iter().map(String::as_str).collect();
+    match args.as_slice() {
+        [] => Err(Error::InvalidArguments("no command".to_string())),
+        ["show"] | ["list"] => wireguard_list(),
+        ["show", service_name] => wireguard_show(service_name),
+        ["new", service_name] => wireguard_new(service_name),
+        ["del", service_name] => wireguard_del(service_name),
+        ["set", service_name, remaining @ ..] => wireguard_set(service_name, remaining),
+        ["connect", service_name] => wireguard_connect(service_name),
+        ["disconnect", service_name] => wireguard_disconnect(service_name),
+        [other, ..] => Err(Error::InvalidArguments(other.to_string())),
+    }
+    .map_err(convert_err)
 }
 
 // Represents the properties returned by GetProperties method from D-Bus.
@@ -213,8 +229,14 @@ impl GetPropExt for InnerPropMap<'_> {
 }
 
 // The following constants are defined in system_api/dbus/shill/dbus-constants.h.
-// Also see shill/doc/service-api.txt for their meanings.
-// Property names in a service.
+// Also see shill/doc/manager-api.txt and shill/doc/service-api.txt for their meanings.
+
+// Property names for manager.
+const PROPERTY_PROHIBITED_TECHNOLOGIES: &str = "ProhibitedTechnologies";
+const PROPERTY_SERVICES: &str = "Services";
+const PROPERTY_SUPPORTED_VPN_TYPES: &str = "SupportedVPNTypes";
+
+// Property names for service.
 const PROPERTY_TYPE: &str = "Type";
 const PROPERTY_NAME: &str = "Name";
 const PROPERTY_PROVIDER_TYPE: &str = "Provider.Type";
@@ -723,6 +745,10 @@ fn make_dbus_connection() -> Result<Connection, Error> {
         .map_err(|err| Error::Internal(format!("Failed to get D-Bus connection: {}", err)))
 }
 
+fn make_manager_proxy(connection: &Connection) -> dbus::blocking::Proxy<&Connection> {
+    connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT)
+}
+
 fn make_service_proxy<'a>(
     connection: &'a Connection,
     service_path: &'a str,
@@ -732,7 +758,7 @@ fn make_service_proxy<'a>(
 
 // Queries Shill to get all configured WireGuard services.
 fn get_wireguard_services(connection: &Connection) -> Result<Vec<WireGuardService>, Error> {
-    let manager_proxy = connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT);
+    let manager_proxy = make_manager_proxy(connection);
     let manager_properties: InputPropMap =
         OrgChromiumFlimflamManager::get_properties(&manager_proxy)
             .map_err(|err| Error::Internal(format!("Failed to get Manager properties: {}", err)))?;
@@ -740,7 +766,6 @@ fn get_wireguard_services(connection: &Connection) -> Result<Vec<WireGuardServic
     let mut wg_services = Vec::new();
 
     // The "Services" property should contain a list of D-Bus paths.
-    const PROPERTY_SERVICES: &str = "Services";
     let services = manager_properties.get_strings(PROPERTY_SERVICES)?;
     for path in services {
         let proxy = make_service_proxy(connection, &path);
@@ -777,6 +802,26 @@ fn get_wireguard_service_by_name(
     }
 }
 
+fn check_wireguard_support() -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+    let manager_proxy = make_manager_proxy(&connection);
+    let manager_properties: InputPropMap =
+        OrgChromiumFlimflamManager::get_properties(&manager_proxy)
+            .map_err(|err| Error::Internal(format!("Failed to get Manager properties: {}", err)))?;
+
+    let prohibited_techs = manager_properties.get_string(PROPERTY_PROHIBITED_TECHNOLOGIES)?;
+    if prohibited_techs.split(',').any(|x| x == TYPE_VPN) {
+        return Err(Error::VpnDisabled);
+    }
+
+    let supported_vpns = manager_properties.get_string(PROPERTY_SUPPORTED_VPN_TYPES)?;
+    if !supported_vpns.split(',').any(|x| x == TYPE_WIREGUARD) {
+        return Err(Error::WireGuardUnavailable);
+    }
+
+    Ok(())
+}
+
 fn wireguard_list() -> Result<(), Error> {
     let connection = make_dbus_connection()?;
     let mut services = get_wireguard_services(&connection)?;
@@ -803,7 +848,7 @@ fn wireguard_new(service_name: &str) -> Result<(), Error> {
         Err(err) => return Err(err),
     };
 
-    let manager_proxy = connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT);
+    let manager_proxy = make_manager_proxy(&connection);
     let service = WireGuardService {
         path: None,
         name: service_name.to_string(),
@@ -826,7 +871,7 @@ fn wireguard_set(service_name: &str, args: &[&str]) -> Result<(), Error> {
     let connection = make_dbus_connection()?;
     let mut wg_service = get_wireguard_service_by_name(&connection, service_name)?;
     wg_service.update_from_args(args, io::stdin().lock())?;
-    let manager_proxy = connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT);
+    let manager_proxy = make_manager_proxy(&connection);
     let properties = wg_service.encode_into_prop_map();
     manager_proxy.configure_service(properties).map_err(|err| {
         error!("ERROR: Failed to configure service: {}", err);
