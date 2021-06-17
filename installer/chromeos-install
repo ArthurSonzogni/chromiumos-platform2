@@ -1000,9 +1000,6 @@ do_post_install() {
   if [ -n "${FLAGS_target_bios}" ]; then
     set -- "$@" --bios "${FLAGS_target_bios}"
   fi
-  if [ "${FLAGS_debug}" -eq "${FLAGS_TRUE}" ]; then
-    set -- "$@" --debug
-  fi
   local dst_rootfs_dev=""
 
   # Now run the postinstall script on one new rootfs. Note that even though
