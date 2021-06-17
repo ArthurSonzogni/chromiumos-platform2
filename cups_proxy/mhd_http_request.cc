@@ -6,6 +6,9 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
+
+#include <base/strings/string_piece.h>
 
 namespace cups_proxy {
 
@@ -14,9 +17,9 @@ MHDHttpRequest::MHDHttpRequest() : chunked_(false) {}
 void MHDHttpRequest::SetStatusLine(base::StringPiece method,
                                    base::StringPiece url,
                                    base::StringPiece version) {
-  method_ = method.as_string();
-  url_ = url.as_string();
-  version_ = version.as_string();
+  method_ = std::string(method);
+  url_ = std::string(url);
+  version_ = std::string(version);
 }
 
 void MHDHttpRequest::AddHeader(base::StringPiece key, base::StringPiece value) {
@@ -31,7 +34,7 @@ void MHDHttpRequest::AddHeader(base::StringPiece key, base::StringPiece value) {
     return;
   }
 
-  headers_[key.as_string()] = value.as_string();
+  headers_[std::string(key)] = std::string(value);
 }
 
 void MHDHttpRequest::Finalize() {
