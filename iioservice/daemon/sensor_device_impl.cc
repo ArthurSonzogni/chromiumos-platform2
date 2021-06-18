@@ -104,8 +104,13 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run(std::vector<base::Optional<std::string>>(
+        attr_names.size(), base::nullopt));
     return;
+  }
+
   ClientData& client = it->second;
 
   std::vector<base::Optional<std::string>> values;
@@ -131,8 +136,12 @@ void SensorDeviceImpl::SetFrequency(double frequency,
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run(-1.0);
     return;
+  }
+
   ClientData& client = it->second;
 
   auto it_handler = samples_handlers_.find(client.iio_device);
@@ -152,8 +161,11 @@ void SensorDeviceImpl::StartReadingSamples(
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
     return;
+  }
+
   ClientData& client = it->second;
 
   if (samples_handlers_.find(client.iio_device) == samples_handlers_.end()) {
@@ -188,8 +200,12 @@ void SensorDeviceImpl::GetAllChannelIds(GetAllChannelIdsCallback callback) {
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run({});
     return;
+  }
+
   auto iio_device = it->second.iio_device;
   std::vector<std::string> chn_ids;
   for (auto iio_channel : iio_device->GetAllChannels())
@@ -206,8 +222,12 @@ void SensorDeviceImpl::SetChannelsEnabled(
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run(iio_chn_indices);
     return;
+  }
+
   ClientData& client = it->second;
 
   auto it_handler = samples_handlers_.find(client.iio_device);
@@ -235,8 +255,12 @@ void SensorDeviceImpl::GetChannelsEnabled(
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run({});
     return;
+  }
+
   ClientData& client = it->second;
 
   auto it_handler = samples_handlers_.find(client.iio_device);
@@ -246,7 +270,7 @@ void SensorDeviceImpl::GetChannelsEnabled(
     return;
   }
 
-  // List of channels failed to enabled.
+  // List of channels enabled.
   std::vector<bool> enabled;
 
   for (int32_t chn_index : iio_chn_indices) {
@@ -265,8 +289,13 @@ void SensorDeviceImpl::GetChannelsAttributes(
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run(std::vector<base::Optional<std::string>>(
+        iio_chn_indices.size(), base::nullopt));
     return;
+  }
+
   ClientData& client = it->second;
   auto iio_device = client.iio_device;
 
@@ -333,8 +362,10 @@ void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
+    LOGF(ERROR) << "Failed to find clients with id: " << id;
     return;
+  }
 
   ClientData& client = it->second;
 
