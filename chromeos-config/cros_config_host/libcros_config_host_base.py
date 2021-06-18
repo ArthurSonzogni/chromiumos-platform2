@@ -287,6 +287,14 @@ class DeviceConfig(object):
             by this device.
         """
 
+    def GetProximitySensorFiles(self):
+        """Get a list of proximity sensor configuration files
+
+        Returns:
+            List of BaseFile objects representing the configuration files for
+            this device proximity sensors, especially the semtech ones.
+        """
+
     def GetIntelWifiSarFiles(self):
         """Get a list of intel wifi sar files
 
@@ -377,6 +385,7 @@ class CrosConfigBaseImpl(object):
         result["GetCameraFiles"] = self.GetCameraFiles()
         result["GetThermalFiles"] = self.GetThermalFiles()
         result["GetIntelWifiSarFiles"] = self.GetIntelWifiSarFiles()
+        result["GetProximitySensorFiles"] = self.GetProximitySensorFiles()
         result["GetFirmwareInfo"] = self.GetFirmwareInfo()
         for target in ["coreboot", "ec"]:
             result[
@@ -635,6 +644,15 @@ class CrosConfigBaseImpl(object):
             referenced by all devices
         """
         return self._GetFiles("GetThermalFiles")
+
+    def GetProximitySensorFiles(self):
+        """Get a list of unique proximity sensor files for all models
+
+        Returns:
+            List of BaseFile objects representing all the proximity sensor files
+            referenced by all devices
+        """
+        return self._GetFiles("GetProximitySensorFiles")
 
     def GetIntelWifiSarFiles(self):
         """Get a list of unique intel wifi sar files for all models

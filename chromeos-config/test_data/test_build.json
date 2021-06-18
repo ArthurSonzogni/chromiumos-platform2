@@ -401,6 +401,17 @@
           "suspend-to-idle": "0",
           "touchpad-wakeup": "1"
         },
+        "proximity-sensor": {
+          "semtech-config": [
+            {
+              "file": {
+                "build-path": "build_path/config_project_right.json",
+                "system-path": "/usr/share/chromeos-assets/proximity-sensor/wifi/config_project_right.json"
+              },
+              "location": "wifi_right"
+            }
+          ]
+        },
         "thermal": {
           "files": [
             {
@@ -548,6 +559,17 @@
           "smart-discharge-to-zero-hr": "-1",
           "suspend-to-idle": "0",
           "touchpad-wakeup": "1"
+        },
+        "proximity-sensor": {
+          "semtech-config": [
+            {
+              "file": {
+                "build-path": "build_path/config_project_right.json",
+                "system-path": "/usr/share/chromeos-assets/proximity-sensor/wifi/config_project_right.json"
+              },
+              "location": "wifi_right"
+            }
+          ]
         },
         "thermal": {
           "files": [
@@ -884,6 +906,17 @@
           "platform-name": "Some"
         },
         "name": "another",
+        "proximity-sensor": {
+          "semtech-config": [
+            {
+              "file": {
+                "build-path": "build_path/config_project_left.json",
+                "system-path": "/usr/share/chromeos-assets/proximity-sensor/wifi/config_project_left.json"
+              },
+              "location": "wifi_left"
+            }
+          ]
+        },
         "thermal": {
           "files": [
             {

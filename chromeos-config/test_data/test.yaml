@@ -191,6 +191,12 @@ chromeos:
               sar-file:
                 build-path: "build-path/wifi_sar_2.hex"
                 system-path: "/firmware/cbfs-rw-raw/proj/wifi_sar_2.hex"
+            proximity-sensor:
+              semtech-config:
+                - location: "wifi_right"
+                  file:
+                    build-path: "build_path/config_project_right.json"
+                    system-path: "/usr/share/chromeos-assets/proximity-sensor/wifi/config_project_right.json"
     - $name: "some2"
       products:
         - $key-id: "SOME"
@@ -278,6 +284,12 @@ chromeos:
                 - source: "{{$some_touchscreen}}"
                   destination: "{{$fw_dest}}/{{$some_touchscreen}}"
                   symlink: "{{$fw_root}}/some_touch_vendorts_i2c_some-pid.bin"
+            proximity-sensor:
+              semtech-config:
+                - location: "wifi_left"
+                  file:
+                    build-path: "build_path/config_project_left.json"
+                    system-path: "/usr/share/chromeos-assets/proximity-sensor/wifi/config_project_left.json"
             thermal:
               files:
                 - source: "another/dptf.dv"

@@ -23,6 +23,7 @@ import sys
 # pylint: disable=import-error
 from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_pb2
+from chromiumos.config.api import proximity_config_pb2
 from chromiumos.config.api import topology_pb2
 from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import ui_config_pb2
@@ -60,6 +61,7 @@ ConfigFiles = namedtuple(
         "dptf_map",
         "camera_map",
         "wifi_sar_map",
+        "proximity_map",
     ],
 )
 
@@ -71,6 +73,8 @@ CAMERA_CONFIG_SOURCE_PATH_TEMPLATE = (
 DTD_FILE = "media_profiles.dtd"
 DPTF_PATH = "sw_build_config/platform/chromeos-config/thermal"
 DPTF_FILE = "dptf.dv"
+
+PROXIMITY_SEMTECH_CONFIG_TEMPLATE = "semtech_config_{}.json"
 
 TOUCH_PATH = "sw_build_config/platform/chromeos-config/touch"
 WALLPAPER_BASE_PATH = "/usr/share/chromeos-assets/wallpaper"
@@ -420,7 +424,27 @@ def _build_derived_connectivity_power_prefs(config: Config) -> dict:
     present = topology_pb2.HardwareFeatures.PRESENT
     hw_features = config.hw_design_config.hardware_features
     form_factor = hw_features.form_factor.form_factor
+    radio_type = proximity_config_pb2.ProximityConfig.Location.RadioType
     result = {}
+
+    for radio in [radio_type.WIFI, radio_type.CELLULAR]:
+        if radio == radio_type.WIFI:
+            radio_string = "set-wifi-transmit-power-for"
+        else:
+            radio_string = "set-cellular-transmit-power-for"
+
+        proximity = "-".join([radio_string, "proximity"])
+        activity_proximity = "-".join([radio_string, "activity-proximity"])
+
+        result[proximity] = False
+        result[activity_proximity] = False
+        if hw_features.HasField("proximity"):
+            for sensor in hw_features.proximity.configs:
+                for location in sensor.location:
+                    if location.radio_type == radio:
+                        result[proximity] = True
+                        if sensor.WhichOneof("config") == "activity_config":
+                            result[activity_proximity] = True
 
     if (
         hw_features.cellular.present == present
@@ -449,6 +473,7 @@ def _build_derived_connectivity_power_prefs(config: Config) -> dict:
         if (
             result["set-cellular-transmit-power-for-tablet-mode"]
             or result["set-cellular-transmit-power-for-proximity"]
+            or result["set-cellular-transmit-power-for-activity-proximity"]
         ):
             if dpr_config.HasField("gpio"):
                 result[
@@ -1255,6 +1280,21 @@ def _build_branding(config: Config):
     if config.device_brand:
         _upsert(config.device_brand.brand_name, result, "marketing-name")
     return result
+
+
+def _build_proximity(config, config_files):
+    """Builds the proximity sensors configuration.
+
+    Args:
+        config: Config namedtuple
+        config_files: Map to look up the generated config files.
+
+    Returns:
+        proximity sensors configuration.
+    """
+    design_name = config.hw_design.name.lower()
+    design_config_id = config.hw_design_config.id.value.lower()
+    return config_files.proximity_map.get((design_name, design_config_id))
 
 
 def _build_fingerprint(hw_topology):
@@ -2096,7 +2136,7 @@ def _is_whitelabel(brand_configs, device_brands):
 
 
 def _transform_build_configs(
-    config, config_files=ConfigFiles({}, {}, {}, {}, {}, {})
+    config, config_files=ConfigFiles({}, {}, {}, {}, {}, {}, {})
 ):
     # pylint: disable=too-many-locals,too-many-branches
     partners = {x.id.value: x for x in config.partner_list}
@@ -2210,6 +2250,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_wifi(config, config_files), result, "wifi")
     _upsert(_build_health(config), result, "cros-healthd")
     _upsert(_build_nnpalm(config), result, "nnpalm")
+    _upsert(_build_proximity(config, config_files), result, "proximity-sensor")
     _upsert(_build_branding(config), result, "branding")
     _upsert(config.brand_config.wallpaper, result, "wallpaper")
     _upsert(config.brand_config.regulatory_label, result, "regulatory-label")
@@ -2822,6 +2863,86 @@ def _dptf_map(project_name):
     return result
 
 
+def _proximity_map(configs, project_name, output_dir, build_root_dir):
+    """Constructs a map from design name to proximity config for that design.
+
+    For Semtech sensors, produce a JSON file that will be used to setup the
+    sensor.
+
+    Args:
+        configs: Source ConfigBundle to process.
+        project_name: Name of project processing for.
+        output_dir: Path to the generated output.
+        build_root_dir: Path to the config file from portage's perspective.
+
+    Returns:
+        dict that maps the design name onto the wifi config for that design.
+    """
+    # pylint: disable=too-many-locals,too-many-nested-blocks
+    result = {}
+    prox_config = proximity_config_pb2.ProximityConfig
+    for hw_design in configs.design_list:
+        design_name = hw_design.name.lower()
+        for hw_design_config in hw_design.configs:
+            design_config_id = hw_design_config.id.value.lower()
+            for (
+                proximity_config
+            ) in hw_design_config.hardware_features.proximity.configs:
+                if proximity_config.HasField("semtech_config"):
+                    # aggregate the locations into a single string:
+                    locations_list = []
+                    for location in proximity_config.location:
+                        loc = prox_config.Location.RadioType.Name(
+                            location.radio_type
+                        )
+                        if location.modifier:
+                            loc += f"-{location.modifier}"
+                        locations_list.append(loc)
+                    loc_name = "_".join(locations_list)
+
+                    semtech_file_content = json_format.MessageToJson(
+                        proximity_config.semtech_config,
+                        sort_keys=True,
+                        use_integers_for_enums=True,
+                    )
+                    output_path = os.path.join(
+                        output_dir, "proximity-sensor", design_name
+                    )
+                    os.makedirs(output_path, exist_ok=True)
+                    filename = PROXIMITY_SEMTECH_CONFIG_TEMPLATE.format(
+                        loc_name.lower()
+                    )
+                    output_path = os.path.join(output_path, filename)
+                    build_path = os.path.join(
+                        build_root_dir,
+                        "proximity-sensor",
+                        design_name,
+                        filename,
+                    )
+                    if os.path.exists(output_path):
+                        with open(output_path) as f:
+                            if f.read() != semtech_file_content:
+                                raise Exception(
+                                    f"Project {project_name} has conflicting"
+                                    f"proximity file content under {filename}"
+                                )
+                    else:
+                        with open(output_path, "w") as f:
+                            f.write(semtech_file_content)
+                    system_path = (
+                        "/usr/share/chromeos-assets"
+                        "/proximity-sensor"
+                        f"/{design_name}/{filename}"
+                    )
+                    config = {}
+                    config["location"] = loc_name.lower()
+                    config["file"] = _file_v2(build_path, system_path)
+                    result.setdefault(
+                        (design_name, design_config_id), {}
+                    ).setdefault("semtech-config", []).append(config)
+    return result
+
+
 def _wifi_sar_map(configs, output_dir, build_root_dir):
     """Constructs a map from (design name, sar ID) to wifi sar config.
 
@@ -3376,6 +3497,7 @@ def Main(
     camera_map = {}
     dptf_map = {}
     wifi_sar_map = {}
+    proximity_map = {}
     output_dir = os.path.dirname(output)
     build_root_dir = output_dir
     if "sw_build_config" in output_dir:
@@ -3394,6 +3516,9 @@ def Main(
 
         camera_map = _camera_map(configs, project_name)
         dptf_map = _dptf_map(project_name)
+        proximity_map = _proximity_map(
+            configs, project_name, output_dir, build_root_dir
+        )
 
     wifi_sar_map = _wifi_sar_map(configs, output_dir, build_root_dir)
     if os.path.exists(TOUCH_PATH):
@@ -3414,6 +3539,7 @@ def Main(
         dptf_map=dptf_map,
         camera_map=camera_map,
         wifi_sar_map=wifi_sar_map,
+        proximity_map=proximity_map,
     )
     write_output(_transform_build_configs(configs, config_files), output)
 

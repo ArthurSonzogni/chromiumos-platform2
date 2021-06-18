@@ -178,6 +178,25 @@ class CrosConfigHostTest(unittest.TestCase):
         )
         del os.environ["FW_NAME"]
 
+    def testGetProximitySensorFiles(self):
+        config = CrosConfig(self.filepath)
+        proximity_files = config.GetProximitySensorFiles()
+        self.assertEqual(
+            proximity_files,
+            [
+                BaseFile(
+                    "build_path/config_project_left.json",
+                    "/usr/share/chromeos-assets/proximity-sensor/wifi/"
+                    "config_project_left.json",
+                ),
+                BaseFile(
+                    "build_path/config_project_right.json",
+                    "/usr/share/chromeos-assets/proximity-sensor/wifi/"
+                    "config_project_right.json",
+                ),
+            ],
+        )
+
     def testFileTree(self):
         """Test that we can obtain a file tree"""
         config = CrosConfig(self.filepath)

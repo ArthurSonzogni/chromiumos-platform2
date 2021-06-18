@@ -967,48 +967,19 @@ In the tables below,
 ### proximity-sensor
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| lte | [lte](#lte) |  | False |  | False |  |
-| wifi | [wifi](#wifi) |  | False |  | False |  |
-| wifi-lte | [wifi-lte](#wifi_lte) |  | False |  | False |  |
+| semtech-config | array - [semtech-config](#semtech_config) |  | False |  | False |  |
 
-### lte
+### semtech-config
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| channel | string | ```^[a-zA-Z0-9_]+$``` | False |  | False | Proximity sensor channel. |
-| hardwaregain | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor hardware gain. |
-| sampling-frequency | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor sampling frequency. |
-| thresh-falling | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling threshold. |
-| thresh-falling-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling hysteresis. |
-| thresh-falling-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling threshold period (debounce). |
-| thresh-rising | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold. |
-| thresh-rising-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising hysteresis. |
-| thresh-rising-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold period (debounce). |
+| file | [file](#file) |  | True |  | False |  |
+| location | string |  | True |  | False |  |
 
-### wifi
+### file
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| channel | string | ```^[a-zA-Z0-9_]+$``` | False |  | False | Proximity sensor channel. |
-| hardwaregain | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor hardware gain. |
-| sampling-frequency | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor sampling frequency. |
-| thresh-falling | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling threshold. |
-| thresh-falling-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling hysteresis. |
-| thresh-falling-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling threshold period (debounce). |
-| thresh-rising | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold. |
-| thresh-rising-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising hysteresis. |
-| thresh-rising-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold period (debounce). |
-
-### wifi-lte
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| channel | string | ```^[a-zA-Z0-9_]+$``` | False |  | False | Proximity sensor channel. |
-| hardwaregain | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor hardware gain. |
-| sampling-frequency | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor sampling frequency. |
-| thresh-falling | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling threshold. |
-| thresh-falling-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling hysteresis. |
-| thresh-falling-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor falling threshold period (debounce). |
-| thresh-rising | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold. |
-| thresh-rising-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising hysteresis. |
-| thresh-rising-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold period (debounce). |
+| build-path | string |  | True |  | True | Source of the file relative to the build system. |
+| system-path | string |  | True |  | False | Installation path for the file on the system image. |
 
 ### resource
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

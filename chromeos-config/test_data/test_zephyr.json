@@ -292,6 +292,17 @@
           "platform-name": "Some"
         },
         "name": "another",
+        "proximity-sensor": {
+          "semtech-config": [
+            {
+              "file": {
+                "build-path": "build_path/config_project_left.json",
+                "system-path": "/usr/share/chromeos-assets/proximity-sensor/wifi/config_project_left.json"
+              },
+              "location": "wifi_left"
+            }
+          ]
+        },
         "thermal": {
           "files": [
             {

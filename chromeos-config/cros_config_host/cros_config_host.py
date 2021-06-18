@@ -242,6 +242,23 @@ def GetIntelWifiSarFiles(config):
         print(files.dest)
 
 
+def GetProximitySensorFiles(config):
+    """Print a list of proximity sensor configuration files across all models
+
+    The output is one line for the source file
+    and one line for the install file, e.g.:
+
+        villager/sw_build_config/.../semtech_config_wifi_cellular-1.json
+        /usr/share/chromeos-assets/.../semtech_config_wifi_cellular-1.json
+
+    Args:
+        config: A CrosConfig instance
+    """
+    for files in config.GetProximitySensorFiles():
+        print(files.source)
+        print(files.dest)
+
+
 def FileTree(config, root):
     """Print a tree showing all files installed for this config
 
@@ -479,6 +496,13 @@ def GetParser(description):
         help="Lists pairs of intel wifi sar files in sequence: first line is "
         "the relative source file, second line is the full install pathname",
     )
+    # Parser: get-proximity-sensor-files
+    subparsers.add_parser(
+        "get-proximity-sensor-files",
+        help="Lists pairs of proximity sensor configuration files in sequence: "
+        "first line is the relative source file, "
+        "second line is the full install pathname",
+    )
     # Parser: file-tree
     file_tree_parser = subparsers.add_parser(
         "file-tree",
@@ -634,6 +658,8 @@ def main(argv=None):
         GetThermalFiles(config)
     elif opts.subcommand == "get-intel-wifi-sar-files":
         GetIntelWifiSarFiles(config)
+    elif opts.subcommand == "get-proximity-sensor-files":
+        GetProximitySensorFiles(config)
     elif opts.subcommand == "file-tree":
         FileTree(config, opts.root)
     elif opts.subcommand == "get-firmware-build-combinations":

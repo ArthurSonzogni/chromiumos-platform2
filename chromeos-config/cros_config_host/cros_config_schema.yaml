@@ -14,46 +14,6 @@ typeDefs:
     type: string
     description: Build target that will be considered dirty when building/testing
       locally.
-  proximity-sensor-items: &proximity_sensor_items
-    type: object
-    properties:
-      channel:
-        description: Proximity sensor channel.
-        type: string
-        pattern: "^[a-zA-Z0-9_]+$"
-      hardwaregain:
-        description: Proximity sensor hardware gain.
-        type: string
-        pattern: "^[0-9.]+$"
-      sampling-frequency:
-        description: Proximity sensor sampling frequency.
-        type: string
-        pattern: "^[0-9.]+$"
-      thresh-rising:
-        description: Proximity sensor rising threshold.
-        type: string
-        pattern: "^[0-9.]+$"
-      thresh-falling:
-        description: Proximity sensor falling threshold.
-        type: string
-        pattern: "^[0-9.]+$"
-      thresh-falling-period:
-        description: Proximity sensor falling threshold period (debounce).
-        type: string
-        pattern: "^[0-9.]+$"
-      thresh-rising-period:
-        description: Proximity sensor rising threshold period (debounce).
-        type: string
-        pattern: "^[0-9.]+$"
-      thresh-falling-hysteresis:
-        description: Proximity sensor falling hysteresis.
-        type: string
-        pattern: "^[0-9.]+$"
-      thresh-rising-hysteresis:
-        description: Proximity sensor rising hysteresis.
-        type: string
-        pattern: "^[0-9.]+$"
-    additionalProperties: false
   rounded-corner: &rounded_corner
     type: integer
     minimum: 0
@@ -922,9 +882,18 @@ properties:
               description: Defines the proximity sensor settings for devices such as /dev/proximity-wifi and /dev/proximity-wifi-lte typically used for SAR.
               type: object
               properties:
-                lte: *proximity_sensor_items
-                wifi: *proximity_sensor_items
-                wifi-lte: *proximity_sensor_items
+                semtech-config:
+                  description: Configurtion files for semtech sensors.
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      location:
+                        type: string
+                      file: *system_file_v2
+                    required:
+                      - location
+                      - file
               additionalProperties: false
             resource:
               description: Defines settings that configure resourced.

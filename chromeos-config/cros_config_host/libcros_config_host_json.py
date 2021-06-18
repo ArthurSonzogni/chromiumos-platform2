@@ -159,6 +159,14 @@ class DeviceConfigJson(DeviceConfig):
             result.add(wallpaper)
         return result
 
+    def GetProximitySensorFiles(self):
+        files = []
+        configs = self.GetProperties("/proximity-sensor/semtech-config")
+        for config in configs:
+            item = config["file"]
+            files.append(BaseFile(item["build-path"], item["system-path"]))
+        return files
+
     def GetAutobrightnessFiles(self):
         return self._GetSystemFileV2("/power/autobrightness/config-file")
 

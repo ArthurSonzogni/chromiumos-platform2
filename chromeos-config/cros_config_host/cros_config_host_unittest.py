@@ -145,6 +145,10 @@ class CrosConfigHostTest(unittest.TestCase):
         output = self._check_output("get-intel-wifi-sar-files")
         self.CheckManyLines(output, 1)
 
+    def testGetProximitySensorFiles(self):
+        output = self._check_output("get-proximity-sensor-files")
+        self.CheckManyLines(output, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
