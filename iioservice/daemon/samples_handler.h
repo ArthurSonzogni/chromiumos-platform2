@@ -35,11 +35,6 @@ class SamplesHandler {
   using ScopedSamplesHandler =
       std::unique_ptr<SamplesHandler, decltype(&SamplesHandlerDeleter)>;
 
-  using OnSampleUpdatedCallback = base::RepeatingCallback<void(
-      mojo::ReceiverId, libmems::IioDevice::IioSample)>;
-  using OnErrorOccurredCallback = base::RepeatingCallback<void(
-      mojo::ReceiverId, cros::mojom::ObserverErrorType)>;
-
   static bool DisableBufferAndEnableChannels(libmems::IioDevice* iio_device);
   static ScopedSamplesHandler Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
