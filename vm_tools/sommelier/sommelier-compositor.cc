@@ -1028,7 +1028,6 @@ static void sl_bind_host_compositor(struct wl_client* client,
 }
 
 struct sl_global* sl_compositor_global_create(struct sl_context* ctx) {
-  assert(ctx->compositor);
   // Compute the compositor version to advertise to clients, depending on the
   // --support-damage-buffer flag (see explanation above).
   int compositorVersion = ctx->support_damage_buffer
@@ -1036,21 +1035,4 @@ struct sl_global* sl_compositor_global_create(struct sl_context* ctx) {
                               : kMinHostWlCompositorVersion;
   return sl_global_create(ctx, &wl_compositor_interface, compositorVersion, ctx,
                           sl_bind_host_compositor);
-}
-
-void sl_compositor_init_context(struct sl_context* ctx,
-                                struct wl_registry* registry,
-                                uint32_t id,
-                                uint32_t version) {
-  struct sl_compositor* compositor =
-      static_cast<sl_compositor*>(malloc(sizeof(struct sl_compositor)));
-  assert(compositor);
-  compositor->ctx = ctx;
-  compositor->id = id;
-  assert(version >= kMinHostWlCompositorVersion);
-  compositor->internal = static_cast<wl_compositor*>(wl_registry_bind(
-      registry, id, &wl_compositor_interface, kMinHostWlCompositorVersion));
-  assert(!ctx->compositor);
-  ctx->compositor = compositor;
-  compositor->host_global = sl_compositor_global_create(ctx);
 }
