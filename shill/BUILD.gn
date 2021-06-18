@@ -33,10 +33,7 @@ group("all") {
     ]
   }
   if (use.test) {
-    deps += [
-      ":shill_setup_wifi",
-      ":shill_unittest",
-    ]
+    deps += [ ":shill_unittest" ]
   }
 }
 
@@ -746,13 +743,5 @@ if (use.test) {
         "ethernet/mock_ethernet_eap_provider.cc",
       ]
     }
-  }
-
-  executable("shill_setup_wifi") {
-    sources = [ "setup_wifi/main.cc" ]
-    configs += [
-      ":openvpn-script_config",
-      ":target_defaults",
-    ]
   }
 }
