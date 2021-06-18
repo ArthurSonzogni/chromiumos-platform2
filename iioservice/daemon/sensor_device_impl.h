@@ -78,6 +78,9 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   mojo::ReceiverSet<cros::mojom::SensorDevice> receiver_set_;
   std::unique_ptr<base::Thread> sample_thread_;
 
+  // As |clients_| contain some data that should only be used in
+  // |sample_thread_|, make sure |sample_thread_| is stopped before destructing
+  // |clients_|.
   std::map<mojo::ReceiverId, ClientData> clients_;
 
   std::map<libmems::IioDevice*, SamplesHandler::ScopedSamplesHandler>

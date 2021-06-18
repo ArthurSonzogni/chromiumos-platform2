@@ -128,9 +128,6 @@ class SamplesHandler {
   // First is the active client, second is its data.
   std::map<ClientData*, SampleData> clients_map_;
 
-  std::map<ClientData*, mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>>
-      observers_;
-
   // Requested frequencies from clients.
   std::multiset<double> frequencies_;
   // Max frequency among |frequencies_|.

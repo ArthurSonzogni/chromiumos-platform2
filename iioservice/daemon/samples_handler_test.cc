@@ -171,6 +171,9 @@ class SamplesHandlerTestBase : cros::mojom::SensorDeviceSamplesObserver {
 
     base::RunLoop().RunUntilIdle();
 
+    // ClientData should be valid until |handler_| is destructed.
+    clients_data_.clear();
+
     EXPECT_EQ(device_->ReadDoubleAttribute(libmems::kSamplingFrequencyAttr)
                   .value_or(-1),
               0.0);
@@ -210,9 +213,12 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  ClientData client_data(
+  // ClientData should be valid until |handler_| is destructed.
+  clients_data_.emplace_back(ClientData(
       0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+  ClientData& client_data = clients_data_[0];
+
   client_data.frequency = kFooFrequency;
   client_data.enabled_chn_indices.emplace(3);  // timestamp
 
@@ -578,9 +584,11 @@ class SamplesHandlerWithTriggerTest : public ::testing::Test,
 };
 
 TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
-  ClientData client_data(
+  // ClientData should be valid until |handler_| is destructed.
+  clients_data_.emplace_back(ClientData(
       0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+  ClientData& client_data = clients_data_[0];
 
   double frequency = kMaxFrequency;
 
@@ -618,9 +626,11 @@ TEST_F(SamplesHandlerLightTest, CrosECLight) {
   // values.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  ClientData client_data(
+  // ClientData should be valid until |handler_| is destructed.
+  clients_data_.emplace_back(ClientData(
       0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT}));
+  ClientData& client_data = clients_data_[0];
 
   client_data.enabled_chn_indices.emplace(0);  // illuminance
   client_data.enabled_chn_indices.emplace(1);  // illuminance_green
@@ -660,9 +670,11 @@ TEST_F(SamplesHandlerLightTest, AcpiAls) {
   // values.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
-  ClientData client_data(
+  // ClientData should be valid until |handler_| is destructed.
+  clients_data_.emplace_back(ClientData(
       0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT}));
+  ClientData& client_data = clients_data_[0];
 
   client_data.enabled_chn_indices.emplace(0);  // illuminance
   client_data.enabled_chn_indices.emplace(1);  // timestamp
