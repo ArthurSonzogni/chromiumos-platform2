@@ -15,6 +15,7 @@ pkg_config("arcvm_boot_notification_server_config") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "re2",
   ]
 }
 
@@ -32,6 +33,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome",
       "libchrome-test",
+      "re2",
     ]
   }
   executable("arcvm_boot_notification_server_testrunner") {

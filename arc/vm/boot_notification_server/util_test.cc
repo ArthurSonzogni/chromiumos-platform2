@@ -102,8 +102,37 @@ TEST_F(BootNotificationServerTest, ReadFD) {
   // Read from read_fd and check that strings are identical.
   base::Optional<std::string> result = ReadFD(read_fd.get());
   ASSERT_TRUE(result);
-  ASSERT_EQ(result, original);
+  EXPECT_EQ(result, original);
 }
+
+// Checks that ExtractCidValue reads the CID value from a string only when it
+// is the first line in the string.
+TEST_F(BootNotificationServerTest, ExtractCidValue) {
+  std::string props = "ro.boot.prop1=value\nro.boot.prop2\n";
+  std::string cid_line = "CID=123\n";
+  std::string props_with_cid = cid_line + props;
+  std::string props_wrong_cid = props + cid_line;
+
+  std::string result_props;
+  unsigned int result_cid;
+  base::Optional<std::pair<unsigned int, std::string>> result1 =
+      ExtractCidValue(props_with_cid);
+  ASSERT_TRUE(result1);
+  std::tie(result_cid, result_props) = *result1;
+  EXPECT_EQ(result_cid, 123);
+  EXPECT_EQ(result_props, props);
+
+  base::Optional<std::pair<unsigned int, std::string>> result2 =
+      ExtractCidValue(props);
+  EXPECT_FALSE(result2);
+
+  base::Optional<std::pair<unsigned int, std::string>> result3 =
+      ExtractCidValue(props_wrong_cid);
+  EXPECT_FALSE(result3);
+}
+
+// TODO(wvk): Add a test for GetPeerCid once vsock loopback address is available
+// (Linux 5.6).
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);

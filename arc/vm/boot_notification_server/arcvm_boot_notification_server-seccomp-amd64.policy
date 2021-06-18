@@ -40,3 +40,4 @@ rt_sigreturn: 1
 clock_gettime: 1
 futex: 1
 tgkill: 1
+getpeername: 1

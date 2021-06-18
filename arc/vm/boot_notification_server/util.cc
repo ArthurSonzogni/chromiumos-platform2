@@ -12,6 +12,8 @@
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
+#include <re2/re2.h>
 
 constexpr size_t kChunkSize = 256;
 
@@ -83,4 +85,29 @@ base::Optional<std::string> ReadFD(int fd) {
     return base::nullopt;
 
   return out;
+}
+
+base::Optional<std::pair<unsigned int, std::string>> ExtractCidValue(
+    const std::string& props) {
+  // Pattern to extract CID from props string. `(?s)` flag is needed to let `.`
+  // match newlines.
+  static const re2::RE2& pattern = *new re2::RE2("(?s)^CID=(\\d+)\n(.*)$");
+  unsigned int cid;
+  std::string tail;
+  if (!re2::RE2::FullMatch(props, pattern, &cid, &tail)) {
+    LOG(ERROR) << "The input '" << props
+               << "' did not match the expected pattern";
+    return base::nullopt;
+  }
+  return std::make_pair(cid, tail);
+}
+
+base::Optional<unsigned int> GetPeerCid(int fd) {
+  sockaddr_vm addr;
+  socklen_t len = sizeof(sockaddr_vm);
+  if (getpeername(fd, reinterpret_cast<sockaddr*>(&addr), &len) == -1) {
+    PLOG(ERROR) << "Unable to get peer address from socket fd " << fd;
+    return base::nullopt;
+  }
+  return addr.svm_cid;
 }
