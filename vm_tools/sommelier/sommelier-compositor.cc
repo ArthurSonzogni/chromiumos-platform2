@@ -605,7 +605,6 @@ static void sl_host_surface_commit(struct wl_client* client,
     host->ctx->timing->UpdateLastCommit(resource_id);
   }
   struct sl_viewport* viewport = NULL;
-  struct sl_window* window;
 
   if (!wl_list_empty(&host->contents_viewport))
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
@@ -701,8 +700,8 @@ static void sl_host_surface_commit(struct wl_client* client,
   // No need to defer client commits if surface has a role. E.g. is a cursor
   // or shell surface.
   if (host->has_role) {
-    TRACE_EVENT("surface", "sl_host_surface_commit: wl_surface_commit", "id",
-                window->id, "has_role", host->has_role);
+    TRACE_EVENT("surface", "sl_host_surface_commit: wl_surface_commit",
+                "resource_id", resource_id, "has_role", host->has_role);
     wl_surface_commit(host->proxy);
 
     // GTK determines the scale based on the output the surface has entered.
@@ -721,10 +720,11 @@ static void sl_host_surface_commit(struct wl_client* client,
       }
     }
   } else {
-    TRACE_EVENT("surface", "sl_host_surface_commit: wl_surface_commit", "id",
-                window->id, "has_role", host->has_role);
+    TRACE_EVENT("surface", "sl_host_surface_commit: wl_surface_commit",
+                "resource_id", resource_id, "has_role", host->has_role);
     // Commit if surface is associated with a window. Otherwise, defer
     // commit until window is created.
+    struct sl_window* window;
     wl_list_for_each(window, &host->ctx->windows, link) {
       if (window->host_surface_id == wl_resource_get_id(resource)) {
         if (window->xdg_surface) {
