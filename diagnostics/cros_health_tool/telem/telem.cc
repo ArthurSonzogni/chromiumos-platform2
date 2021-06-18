@@ -112,11 +112,6 @@ std::string ErrorTypeToString(ErrorType type) {
   }
 }
 
-void DisplayError(const ProbeErrorPtr& error) {
-  std::cout << ErrorTypeToString(error->type) << ": " << error->msg
-            << std::endl;
-}
-
 std::string GetArchitectureString(CpuArchitectureEnum architecture) {
   switch (architecture) {
     case CpuArchitectureEnum::kUnknown:
@@ -250,6 +245,14 @@ void OutputJson(const base::Value& output) {
   std::cout << json << std::endl;
 }
 
+void DisplayError(const ProbeErrorPtr& error) {
+  base::Value output{base::Value::Type::DICTIONARY};
+  output.SetStringKey("error_type", ErrorTypeToString(error->type));
+  output.SetStringKey("error_msg", error->msg);
+
+  OutputJson(output);
+}
+
 void DisplayProcessInfo(const ProcessResultPtr& process_result,
                         const bool beauty) {
   if (process_result.is_null())
@@ -372,32 +375,23 @@ void DisplayAudioInfo(const AudioResultPtr& audio_result) {
   OutputJson(output);
 }
 
-void DisplayBootPerformanceInfo(
-    const BootPerformanceResultPtr& boot_performance_result,
-    const bool beauty) {
-  if (boot_performance_result->is_error()) {
-    DisplayError(boot_performance_result->get_error());
+void DisplayBootPerformanceInfo(const BootPerformanceResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& boot_performance =
-      boot_performance_result->get_boot_performance_info();
-  if (boot_performance.is_null()) {
-    std::cout << "Device does not have boot_performance info" << std::endl;
-    return;
-  }
+  const auto& info = result->get_boot_performance_info();
+  CHECK(!info.is_null());
 
-  const std::vector<std::string> headers = {
-      "boot_up_seconds", "boot_up_timestamp", "shutdown_seconds",
-      "shutdown_timestamp", "shutdown_reason"};
-  const std::vector<std::vector<std::string>> values = {
-      {std::to_string(boot_performance->boot_up_seconds),
-       std::to_string(boot_performance->boot_up_timestamp),
-       std::to_string(boot_performance->shutdown_seconds),
-       std::to_string(boot_performance->shutdown_timestamp),
-       boot_performance->shutdown_reason}};
+  base::Value output{base::Value::Type::DICTIONARY};
+  output.SetStringKey("shutdown_reason", info->shutdown_reason);
+  output.SetDoubleKey("boot_up_seconds", info->boot_up_seconds);
+  output.SetDoubleKey("boot_up_timestamp", info->boot_up_timestamp);
+  output.SetDoubleKey("shutdown_seconds", info->shutdown_seconds);
+  output.SetDoubleKey("shutdown_timestamp", info->shutdown_timestamp);
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayBlockDeviceInfo(
@@ -776,7 +770,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& boot_performance_result = info->boot_performance_result;
   if (boot_performance_result)
-    DisplayBootPerformanceInfo(boot_performance_result, beauty);
+    DisplayBootPerformanceInfo(boot_performance_result);
 }
 
 // Create a stringified list of the category names for use in help.
