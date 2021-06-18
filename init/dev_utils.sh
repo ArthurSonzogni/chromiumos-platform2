@@ -14,6 +14,7 @@ PATHS_TO_PRESERVE=""
 PATHS_TO_PRESERVE="${PATHS_TO_PRESERVE} /var/lib/servod"
 PATHS_TO_PRESERVE="${PATHS_TO_PRESERVE} /usr/local/servod"
 PATHS_TO_PRESERVE="${PATHS_TO_PRESERVE} /var/lib/device_health_profile"
+PATHS_TO_PRESERVE="${PATHS_TO_PRESERVE} /usr/local/etc/wifi_creds"
 
 # Returns if we are running on a debug build.
 dev_is_debug_build() {
