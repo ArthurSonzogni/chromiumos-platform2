@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -14,6 +16,7 @@
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/stringprintf.h>
 
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
@@ -34,6 +37,7 @@ bool HexToUInt(base::BasicStringPiece<std::string> in, T* out) {
   return true;
 }
 
+const auto& HexToU8 = HexToUInt<uint8_t>;
 const auto& HexToU16 = HexToUInt<uint16_t>;
 
 std::vector<base::FilePath> ListDirectory(const base::FilePath& path) {
@@ -94,6 +98,77 @@ mojo_ipc::BusDevicePtr FetchPciDevice(
   return device;
 }
 
+mojo_ipc::UsbBusInterfaceInfoPtr FetchUsbBusInterfaceInfo(
+    const base::FilePath& path) {
+  auto info = mojo_ipc::UsbBusInterfaceInfo::New();
+  if (!ReadInteger(path, kFileUsbIFNumber, &HexToU8, &info->interface_number) ||
+      !ReadInteger(path, kFileUsbIFClass, &HexToU8, &info->class_id) ||
+      !ReadInteger(path, kFileUsbIFSubclass, &HexToU8, &info->subclass_id) ||
+      !ReadInteger(path, kFileUsbIFProtocol, &HexToU8, &info->protocol_id))
+    return nullptr;
+  info->driver = GetDriver(path);
+  return info;
+}
+
+mojo_ipc::UsbBusInfoPtr FetchUsbBusInfo(const base::FilePath& path) {
+  auto info = mojo_ipc::UsbBusInfo::New();
+  if (!ReadInteger(path, kFileUsbDevClass, &HexToU8, &info->class_id) ||
+      !ReadInteger(path, kFileUsbDevSubclass, &HexToU8, &info->subclass_id) ||
+      !ReadInteger(path, kFileUsbDevProtocol, &HexToU8, &info->protocol_id) ||
+      !ReadInteger(path, kFileUsbVendor, &HexToU16, &info->vendor_id) ||
+      !ReadInteger(path, kFileUsbProduct, &HexToU16, &info->product_id))
+    return nullptr;
+  for (const auto& if_path : ListDirectory(path)) {
+    auto if_info = FetchUsbBusInterfaceInfo(if_path);
+    if (if_info) {
+      info->interfaces.push_back(std::move(if_info));
+    }
+  }
+  sort(info->interfaces.begin(), info->interfaces.end(),
+       [](const mojo_ipc::UsbBusInterfaceInfoPtr& a,
+          const mojo_ipc::UsbBusInterfaceInfoPtr& b) {
+         return a->interface_number < b->interface_number;
+       });
+  return info;
+}
+
+std::tuple<std::string, std::string> GetUsbNames(
+    const base::FilePath& path,
+    const mojo_ipc::UsbBusInfoPtr& info,
+    const std::unique_ptr<UdevHwdb>& hwdb) {
+  CHECK(info);
+  auto modalias =
+      base::StringPrintf("usb:v%04Xp%04X", info->vendor_id, info->product_id);
+  auto propertie = hwdb->GetProperties(modalias);
+  auto product = propertie[kPropertieProduct];
+  if (product == "") {
+    // Product has not registered. Try to read the product name from sysfs.
+    ReadAndTrimString(path, kFileUsbProductName, &product);
+  }
+  return std::make_tuple(propertie[kPropertieVendor], product);
+}
+
+mojo_ipc::BusDeviceClass GetUsbDeviceClass(
+    const mojo_ipc::UsbBusInfoPtr& info) {
+  CHECK(info);
+  // TODO(chungsheng): Implement this.
+  return mojo_ipc::BusDeviceClass::kOthers;
+}
+
+mojo_ipc::BusDevicePtr FetchUsbDevice(const base::FilePath& path,
+                                      const std::unique_ptr<UdevHwdb>& hwdb) {
+  auto usb_info = FetchUsbBusInfo(path);
+  if (usb_info.is_null())
+    return nullptr;
+  auto device = mojo_ipc::BusDevice::New();
+  std::tie(device->vendor_name, device->product_name) =
+      GetUsbNames(path, usb_info, hwdb);
+  device->device_class = GetUsbDeviceClass(usb_info);
+
+  device->bus_info = mojo_ipc::BusInfo::NewUsbBusInfo(std::move(usb_info));
+  return device;
+}
+
 }  // namespace
 
 mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
@@ -103,6 +178,13 @@ mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
   auto pci_util = context_->udev()->CreatePciUtil();
   for (const auto& path : ListDirectory(root.Append(kPathSysPci))) {
     auto device = FetchPciDevice(path, pci_util);
+    if (device) {
+      res.push_back(std::move(device));
+    }
+  }
+  auto hwdb = context_->udev()->CreateHwdb();
+  for (const auto& path : ListDirectory(root.Append(kPathSysUsb))) {
+    auto device = FetchUsbDevice(path, hwdb);
     if (device) {
       res.push_back(std::move(device));
     }

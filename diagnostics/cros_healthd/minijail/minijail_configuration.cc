@@ -113,6 +113,11 @@ void ConfigureAndEnterMinijail() {
       base::FilePath("/sys/bus/pci"));  // Files related to the
                                         // PCI information.
 
+  BindMountIfPathExists(
+      jail.get(),
+      base::FilePath("/sys/bus/usb"));  // Files related to the
+                                        // USB information.
+
   // Create a new tmpfs filesystem for /var and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, "");
   minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone",

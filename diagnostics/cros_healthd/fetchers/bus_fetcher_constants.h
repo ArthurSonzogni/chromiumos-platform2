@@ -8,6 +8,7 @@
 namespace diagnostics {
 
 inline constexpr char kPathSysPci[] = "sys/bus/pci/devices/";
+inline constexpr char kPathSysUsb[] = "sys/bus/usb/devices/";
 
 inline constexpr char kFileDriver[] = "driver";
 
@@ -19,6 +20,19 @@ inline constexpr char kFilePciVendor[] = "vendor";
 #define GET_PCI_CLASS(val) GET_BYTE_(val, 2)
 #define GET_PCI_SUBCLASS(val) GET_BYTE_(val, 1)
 #define GET_PCI_PROG_IF(val) GET_BYTE_(val, 0)
+
+inline constexpr char kFileUsbDevClass[] = "bDeviceClass";
+inline constexpr char kFileUsbDevSubclass[] = "bDeviceSubClass";
+inline constexpr char kFileUsbDevProtocol[] = "bDeviceProtocol";
+inline constexpr char kFileUsbIFNumber[] = "bInterfaceNumber";
+inline constexpr char kFileUsbIFClass[] = "bInterfaceClass";
+inline constexpr char kFileUsbIFSubclass[] = "bInterfaceSubClass";
+inline constexpr char kFileUsbIFProtocol[] = "bInterfaceProtocol";
+inline constexpr char kFileUsbVendor[] = "idVendor";
+inline constexpr char kFileUsbProduct[] = "idProduct";
+inline constexpr char kFileUsbProductName[] = "product";
+inline constexpr char kPropertieVendor[] = "ID_VENDOR_FROM_DATABASE";
+inline constexpr char kPropertieProduct[] = "ID_MODEL_FROM_DATABASE";
 
 }  // namespace diagnostics
 
