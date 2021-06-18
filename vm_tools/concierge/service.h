@@ -25,6 +25,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
+#include <chromeos/dbus/resource_manager/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -287,7 +288,9 @@ class Service final {
                          const std::string& vm_name);
 
   base::Optional<int64_t> GetAvailableMemory();
+  base::Optional<int64_t> GetForegroundAvailableMemory();
   base::Optional<int64_t> GetCriticalMargin();
+  base::Optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
 
   bool ListVmDisksInLocation(const std::string& cryptohome_id,

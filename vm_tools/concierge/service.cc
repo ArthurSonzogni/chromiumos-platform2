@@ -684,6 +684,28 @@ base::Optional<int64_t> Service::GetAvailableMemory() {
   return available_kb * KIB;
 }
 
+base::Optional<int64_t> Service::GetForegroundAvailableMemory() {
+  dbus::MethodCall method_call(
+      resource_manager::kResourceManagerInterface,
+      resource_manager::kGetForegroundAvailableMemoryKBMethod);
+  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
+      bus_, resource_manager_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR)
+        << "Failed to get foreground available memory size from resourced";
+    return base::nullopt;
+  }
+  dbus::MessageReader reader(dbus_response.get());
+  uint64_t available_kb;
+  if (!reader.PopUint64(&available_kb)) {
+    LOG(ERROR) << "Failed to read foreground available memory size from the "
+                  "D-Bus response";
+    return base::nullopt;
+  }
+  return available_kb * KIB;
+}
+
 base::Optional<int64_t> Service::GetCriticalMargin() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetMemoryMarginsKBMethod);
@@ -704,6 +726,38 @@ base::Optional<int64_t> Service::GetCriticalMargin() {
   return critical_margin_kb * KIB;
 }
 
+base::Optional<resource_manager::GameMode> Service::GetGameMode() {
+  dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
+                               resource_manager::kGetGameModeMethod);
+  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
+      bus_, resource_manager_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to get geme mode from resourced";
+    return base::nullopt;
+  }
+  dbus::MessageReader reader(dbus_response.get());
+  uint8_t game_mode;
+  if (!reader.PopByte(&game_mode)) {
+    LOG(ERROR) << "Failed to read game mode from the D-Bus response";
+    return base::nullopt;
+  }
+  return static_cast<resource_manager::GameMode>(game_mode);
+}
+
+static base::Optional<std::string> GameModeToForegroundVmName(
+    resource_manager::GameMode game_mode) {
+  using resource_manager::GameMode;
+  if (game_mode == GameMode::BOREALIS) {
+    return "borealis";
+  }
+  if (game_mode == GameMode::OFF) {
+    return base::nullopt;
+  }
+  LOG(ERROR) << "Unexpected game mode value " << static_cast<int>(game_mode);
+  return base::nullopt;
+}
+
 // Runs balloon policy against each VM to balance memory.
 // This will be called periodically by balloon_resizing_timer_.
 void Service::RunBalloonPolicy() {
@@ -717,12 +771,31 @@ void Service::RunBalloonPolicy() {
   if (!critical_margin.has_value()) {
     return;
   }
+  const auto game_mode = GetGameMode();
+  if (!game_mode.has_value()) {
+    return;
+  }
+  base::Optional<int64_t> foreground_available_memory;
+  if (*game_mode != resource_manager::GameMode::OFF) {
+    // foreground_available_memory is only used when the game mode is enabled.
+    foreground_available_memory = GetForegroundAvailableMemory();
+    if (!foreground_available_memory.has_value()) {
+      return;
+    }
+  }
+  const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
     if (vm->IsSuspended()) {
       // Skip suspended VMs since there is no effect.
       continue;
     }
+    // Switch available memory for this VM based on the current game mode.
+    const int64_t available_memory_for_vm =
+        (foreground_vm_name.has_value() &&
+         vm_entry.first.name() == foreground_vm_name)
+            ? *foreground_available_memory
+            : *available_memory;
     auto stats_opt = vm->GetBalloonStats();
     if (!stats_opt) {
       // Stats not available. Skip running policies.
@@ -734,7 +807,7 @@ void Service::RunBalloonPolicy() {
     // TODO(hikalium): remove this bias once the balloon policy is updated.
     const int64_t bias = vm_entry.first.name() == "arcvm" ? 48 * MIB : 0;
     BalloonPolicyParams params = BalloonPolicyParams::FromBalloonStats(
-        stats, *critical_margin, bias, *available_memory);
+        stats, *critical_margin, bias, available_memory_for_vm);
     vm->RunBalloonPolicy(params);
   }
 }
