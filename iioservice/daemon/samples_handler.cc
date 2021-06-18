@@ -251,8 +251,7 @@ void SamplesHandler::StopSampleWatcherOnThread() {
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
   DCHECK_EQ(client_data->iio_device, iio_device_);
-  DCHECK_GE(client_data->frequency, libmems::kFrequencyEpsilon);
-  DCHECK(!client_data->enabled_chn_indices.empty());
+  DCHECK(client_data->IsActive());
   DCHECK(inactive_clients_.find(client_data) == inactive_clients_.end());
   DCHECK(clients_map_.find(client_data) == clients_map_.end());
 
@@ -310,28 +309,26 @@ void SamplesHandler::AddClientOnThread(
 
   SensorMetrics::GetInstance()->SendSensorObserverOpened();
 
-  bool active = true;
-
   client_data->frequency = FixFrequency(client_data->frequency);
-  if (client_data->frequency == 0.0) {
+
+  if (client_data->IsActive()) {
+    AddActiveClientOnThread(client_data);
+    return;
+  }
+
+  // Adding an inactive client.
+  inactive_clients_.emplace(client_data);
+
+  if (client_data->frequency < libmems::kFrequencyEpsilon) {
     LOGF(ERROR) << "Added an inactive client: Invalid frequency.";
     observers_[client_data]->OnErrorOccurred(
         cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
-    active = false;
   }
   if (client_data->enabled_chn_indices.empty()) {
     LOGF(ERROR) << "Added an inactive client: No enabled channels.";
     observers_[client_data]->OnErrorOccurred(
         cros::mojom::ObserverErrorType::NO_ENABLED_CHANNELS);
-    active = false;
   }
-
-  if (!active) {
-    inactive_clients_.emplace(client_data);
-    return;
-  }
-
-  AddActiveClientOnThread(client_data);
 }
 
 void SamplesHandler::OnSamplesObserverDisconnect(ClientData* client_data) {
@@ -415,8 +412,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
-    if (client_data->frequency > 0.0 &&
-        !client_data->enabled_chn_indices.empty()) {
+    if (client_data->IsActive()) {
       // The client is now active.
       inactive_clients_.erase(it);
       AddActiveClientOnThread(client_data);
@@ -428,7 +424,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
   if (clients_map_.find(client_data) == clients_map_.end())
     return;
 
-  if (client_data->frequency == 0.0) {
+  if (!client_data->IsActive()) {
     // The client is now inactive
     RemoveActiveClientOnThread(client_data, orig_freq);
     inactive_clients_.emplace(client_data);
@@ -555,8 +551,7 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
-    if (client_data->frequency > 0.0 &&
-        !client_data->enabled_chn_indices.empty()) {
+    if (client_data->IsActive()) {
       // The client is now active.
       inactive_clients_.erase(it);
       AddActiveClientOnThread(client_data);
@@ -568,7 +563,7 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
   if (clients_map_.find(client_data) == clients_map_.end())
     return;
 
-  if (!client_data->enabled_chn_indices.empty()) {
+  if (client_data->IsActive()) {
     // The client remains active
     return;
   }
@@ -643,8 +638,7 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
   }
 
   for (auto& client : clients_map_) {
-    DCHECK(client.first->frequency >= libmems::kFrequencyEpsilon);
-    DCHECK(!client.first->enabled_chn_indices.empty());
+    DCHECK(client.first->IsActive());
     DCHECK(observers_[client.first].is_bound());
 
     int step =

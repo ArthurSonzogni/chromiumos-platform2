@@ -67,13 +67,6 @@ class SamplesHandler {
       cros::mojom::SensorDevice::GetChannelsEnabledCallback callback);
 
  protected:
-  struct SampleData {
-    // The starting index of the next sample.
-    uint64_t sample_index = 0;
-    // Moving averages of channels except for channels that have no batch mode
-    std::map<int32_t, int64_t> chns;
-  };
-
   static const uint32_t kNumReadFailedLogsBeforeGivingUp = 100;
   static const uint32_t kNumReadFailedLogsRecovery = 10000;
 

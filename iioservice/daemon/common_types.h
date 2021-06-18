@@ -5,8 +5,8 @@
 #ifndef IIOSERVICE_DAEMON_COMMON_TYPES_H_
 #define IIOSERVICE_DAEMON_COMMON_TYPES_H_
 
+#include <map>
 #include <set>
-#include <string>
 
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -22,6 +22,8 @@ class ClientData {
              libmems::IioDevice* const iio_device,
              const std::set<cros::mojom::DeviceType>& types);
 
+  bool IsActive() const;
+
   const mojo::ReceiverId id;
   libmems::IioDevice* const iio_device;
   const std::set<cros::mojom::DeviceType> types;
@@ -29,6 +31,13 @@ class ClientData {
   std::set<int32_t> enabled_chn_indices;
   double frequency = -1;    // Hz
   uint32_t timeout = 5000;  // millisecond
+};
+
+struct SampleData {
+  // The starting index of the next sample.
+  uint64_t sample_index = 0;
+  // Moving averages of channels except for channels that have no batch mode
+  std::map<int32_t, int64_t> chns;
 };
 
 constexpr char kInputAttr[] = "input";
