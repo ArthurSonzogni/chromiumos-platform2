@@ -3900,7 +3900,7 @@ static const char* sl_arg_value(const char* arg) {
   return s + 1;
 }
 
-int main(int argc, char** argv) {
+int real_main(int argc, char** argv) {
   struct sl_context ctx;
   sl_context_init_default(&ctx);
 

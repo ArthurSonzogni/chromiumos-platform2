@@ -89,6 +89,7 @@ static_library("libsommelier") {
     "sommelier-tracing.cc",
     "sommelier-viewporter.cc",
     "sommelier-xdg-shell.cc",
+    "sommelier.cc",
     "virtualization/virtgpu_channel.cc",
     "virtualization/virtwl_channel.cc",
   ]
@@ -98,7 +99,7 @@ static_library("libsommelier") {
 }
 
 executable("sommelier") {
-  sources = [ "sommelier.cc" ]
+  sources = [ "sommelier-main.cc" ]
 
   defines = sommelier_defines
 
