@@ -268,7 +268,7 @@ int dm_bht_initialize_entries(struct dm_bht* bht) {
    * depth=-1 and the block layer level is depth=bht->depth
    */
   unsigned int last_index =
-      base::bits::Align(bht->block_count, bht->node_count) - 1;
+      base::bits::AlignUp(bht->block_count, bht->node_count) - 1;
   unsigned int total_entries = 0;
   struct dm_bht_level* level = NULL;
   int depth;
