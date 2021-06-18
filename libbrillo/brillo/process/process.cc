@@ -269,8 +269,7 @@ bool ProcessImpl::PopulatePipeMap() {
   for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
     struct stat stat_buffer;
     if (fstat(i->first, &stat_buffer) < 0) {
-      int saved_errno = errno;
-      LOG(ERROR) << "Unable to fstat fd " << i->first << ": " << saved_errno;
+      PLOG(ERROR) << "Unable to fstat fd " << i->first;
       return false;
     }
   }
@@ -282,8 +281,7 @@ bool ProcessImpl::PopulatePipeMap() {
     }
     int pipefds[2];
     if (pipe(pipefds) < 0) {
-      int saved_errno = errno;
-      LOG(ERROR) << "pipe call failed with: " << saved_errno;
+      PLOG(ERROR) << "pipe call failed";
       return false;
     }
     if (i->second.is_input_) {
@@ -354,9 +352,8 @@ bool ProcessImpl::Start() {
   }
 
   pid_t pid = fork();
-  int saved_errno = errno;
   if (pid < 0) {
-    LOG(ERROR) << "Fork failed: " << saved_errno;
+    PLOG(ERROR) << "Fork failed";
     Reset(0);
     return false;
   }
@@ -441,13 +438,11 @@ bool ProcessImpl::Start() {
     }
 
     if (gid_ != static_cast<gid_t>(-1) && setresgid(gid_, gid_, gid_) < 0) {
-      int saved_errno = errno;
-      LOG(ERROR) << "Unable to set GID to " << gid_ << ": " << saved_errno;
+      PLOG(ERROR) << "Unable to set GID to " << gid_;
       _exit(kErrorExitStatus);
     }
     if (uid_ != static_cast<uid_t>(-1) && setresuid(uid_, uid_, uid_) < 0) {
-      int saved_errno = errno;
-      LOG(ERROR) << "Unable to set UID to " << uid_ << ": " << saved_errno;
+      PLOG(ERROR) << "Unable to set UID to " << uid_;
       _exit(kErrorExitStatus);
     }
     if (!pre_exec_.Run()) {
@@ -489,8 +484,7 @@ int ProcessImpl::Wait() {
     return -1;
   }
   if (HANDLE_EINTR(waitpid(pid_, &status, 0)) < 0) {
-    int saved_errno = errno;
-    LOG(ERROR) << "Problem waiting for pid " << pid_ << ": " << saved_errno;
+    PLOG(ERROR) << "Problem waiting for pid " << pid_;
     return -1;
   }
   pid_t old_pid = pid_;
