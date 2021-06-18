@@ -179,6 +179,8 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 
   PeripheralBatteryWatcher battery_;
   MockBluezBatteryProvider* bluez_battery_provider_;
+
+  TestMainLoopRunner loop_runner_;
 };
 
 TEST_F(PeripheralBatteryWatcherTest, Basic) {
@@ -207,8 +209,13 @@ TEST_F(PeripheralBatteryWatcherTest, Bluetooth) {
   // Bluetooth battery update should not sent any signal, but update to BlueZ.
   EXPECT_CALL(*bluez_battery_provider_,
               UpdateDeviceBattery("11:22:33:aa:bb:cc", 80));
+  ON_CALL(*bluez_battery_provider_,
+          UpdateDeviceBattery("11:22:33:aa:bb:cc", 80))
+      .WillByDefault([this](const std::string& address, int level) {
+        this->loop_runner_.StopLoop();
+      });
   battery_.Init(&test_wrapper_, &udev_);
-  ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
+  ASSERT_TRUE(loop_runner_.StartLoop(kUpdateTimeout));
   EXPECT_EQ(0, test_wrapper_.num_sent_signals());
 }
 
@@ -236,8 +243,13 @@ TEST_F(PeripheralBatteryWatcherTest, WacomWithBluetooth) {
   // Bluetooth battery update should not sent any signal, but update to BlueZ.
   EXPECT_CALL(*bluez_battery_provider_,
               UpdateDeviceBattery("aa:aa:aa:aa:aa:aa", 70));
+  ON_CALL(*bluez_battery_provider_,
+          UpdateDeviceBattery("aa:aa:aa:aa:aa:aa", 70))
+      .WillByDefault([this](const std::string& address, int level) {
+        this->loop_runner_.StopLoop();
+      });
   battery_.Init(&test_wrapper_, &udev_);
-  ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
+  ASSERT_TRUE(loop_runner_.StartLoop(kUpdateTimeout));
   EXPECT_EQ(0, test_wrapper_.num_sent_signals());
 }
 
