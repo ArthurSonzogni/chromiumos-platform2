@@ -71,6 +71,14 @@ bool ExtractBluetoothAddress(const base::FilePath& path, std::string* address) {
           RE2::PartialMatch(uevent, "HID_UNIQ=(.+)", address));
 }
 
+bool IsSysfsBatteryBlocked(const std::string& model_name) {
+  // Keychron keyboards don't send reliable battery values (b/177593938).
+  if (model_name.find("Keychron") != std::string::npos)
+    return true;
+
+  return false;
+}
+
 }  // namespace
 
 const char PeripheralBatteryWatcher::kScopeFile[] = "scope";
@@ -236,6 +244,9 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
   std::string model_name;
   if (!IsPeripheralChargerDevice(path) &&
       !ReadStringFromFile(path.Append(kModelNameFile), &model_name))
+    return;
+
+  if (IsSysfsBatteryBlocked(model_name))
     return;
 
   int status;
