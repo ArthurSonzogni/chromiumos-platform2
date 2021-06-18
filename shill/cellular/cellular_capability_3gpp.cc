@@ -1436,14 +1436,15 @@ void CellularCapability3gpp::UpdateSims() {
   sim_properties_.clear();
   pending_sim_requests_.clear();
 
-  // Ensure |sim_slots_| has a SIM (use |sim_path_| if slots property is empty).
-  if (sim_slots_.empty()) {
-    if (!IsValidSimPath(sim_path_)) {
+  // MM always provides Modem.SimSlots on QMI platforms. On MBIM platforms,
+  // Modem.SimSlots (and therefore sim_slots_) will be empty. If sim_path_
+  // is not empty, use it to populate sim_slots_ on MBIM platforms.The
+  // empty slot could represent an empty pSIM slot or an eSIM with no
+  // active profile. Chrome will determine which it is based on Hermes state.
+  // TODO(b/185479169): Remove this hack once MBIM platforms expose sim_slots_.
+  if (sim_slots_.empty() && !sim_path_.value().empty()) {
+    if (!IsValidSimPath(sim_path_))
       LOG(WARNING) << "No valid SIM path or SIMSLOTS";
-      OnAllSimPropertiesReceived();
-      return;
-    }
-    // No SIMSLOTS property, use SIM path only.
     sim_slots_.push_back(sim_path_);
   }
 
