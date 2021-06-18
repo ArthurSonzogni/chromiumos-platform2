@@ -197,7 +197,7 @@ struct U2fHid::Transaction {
 };
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
-               U2fMessageHandler* msg_handler)
+               U2fMessageHandlerInterface* msg_handler)
     : hid_(std::move(hid)),
       free_cid_(1),
       locked_cid_(0),

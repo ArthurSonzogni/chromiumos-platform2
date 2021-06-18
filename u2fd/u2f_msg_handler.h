@@ -17,12 +17,13 @@
 #include "u2fd/allowlisting_util.h"
 #include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_apdu.h"
+#include "u2fd/u2f_msg_handler_interface.h"
 #include "u2fd/user_state.h"
 
 namespace u2f {
 
 // Processes incoming U2F messages, and produces corresponding responses.
-class U2fMessageHandler {
+class U2fMessageHandler : public U2fMessageHandlerInterface {
  public:
   // Constructs a new message handler. Does not take ownership of proxy or
   // metrics, both of which must outlive this instance.
@@ -36,7 +37,7 @@ class U2fMessageHandler {
 
   // Processes the APDU and builds a response locally, making using of cr50
   // vendor commands where necessary.
-  U2fResponseApdu ProcessMsg(const std::string& request);
+  U2fResponseApdu ProcessMsg(const std::string& request) override;
 
  private:
   // Process a U2F_REGISTER APDU.
