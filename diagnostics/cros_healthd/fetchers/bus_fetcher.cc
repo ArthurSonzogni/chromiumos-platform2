@@ -75,8 +75,26 @@ mojo_ipc::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
   return info;
 }
 
+// Some devices cannot be identified by their class id. Try to identify them by
+// checking the sysfs structure.
+mojo_ipc::BusDeviceClass GetDeviceClassBySysfs(const base::FilePath& path) {
+  if (PathExists(path.Append("bluetooth")))
+    return mojo_ipc::BusDeviceClass::kBluetoothAdapter;
+  const auto net = path.Append("net");
+  if (PathExists(net)) {
+    for (const auto& nic_path : ListDirectory(net)) {
+      const auto name = nic_path.BaseName().value();
+      if (name.find("eth") == 0)
+        return mojo_ipc::BusDeviceClass::kEthernetController;
+      if (name.find("wlan") == 0)
+        return mojo_ipc::BusDeviceClass::kWirelessController;
+    }
+  }
+  return mojo_ipc::BusDeviceClass::kOthers;
+}
+
 mojo_ipc::BusDeviceClass GetPciDeviceClass(
-    const mojo_ipc::PciBusInfoPtr& info) {
+    const base::FilePath& path, const mojo_ipc::PciBusInfoPtr& info) {
   CHECK(info);
   if (info->class_id == pci_ids::display::kId)
     return mojo_ipc::BusDeviceClass::kDisplayController;
@@ -86,7 +104,7 @@ mojo_ipc::BusDeviceClass GetPciDeviceClass(
     if (info->subclass_id == pci_ids::network::network::kId)
       return mojo_ipc::BusDeviceClass::kWirelessController;
   }
-  return mojo_ipc::BusDeviceClass::kOthers;
+  return GetDeviceClassBySysfs(path);
 }
 
 mojo_ipc::BusDevicePtr FetchPciDevice(
@@ -99,7 +117,7 @@ mojo_ipc::BusDevicePtr FetchPciDevice(
   device->vendor_name = pci_util->GetVendorName(pci_info->vendor_id);
   device->product_name =
       pci_util->GetDeviceName(pci_info->vendor_id, pci_info->device_id);
-  device->device_class = GetPciDeviceClass(pci_info);
+  device->device_class = GetPciDeviceClass(path, pci_info);
 
   device->bus_info = mojo_ipc::BusInfo::NewPciBusInfo(std::move(pci_info));
   return device;
@@ -156,12 +174,21 @@ std::tuple<std::string, std::string> GetUsbNames(
 }
 
 mojo_ipc::BusDeviceClass GetUsbDeviceClass(
-    const mojo_ipc::UsbBusInfoPtr& info) {
+    const base::FilePath& path, const mojo_ipc::UsbBusInfoPtr& info) {
   CHECK(info);
   if (info->class_id == usb_ids::wireless::kId &&
       info->subclass_id == usb_ids::wireless::radio_frequency::kId &&
       info->protocol_id == usb_ids::wireless::radio_frequency::bluetooth::kId) {
     return mojo_ipc::BusDeviceClass::kBluetoothAdapter;
+  }
+  // Try to get the type by checking the type of each interface.
+  for (const auto& if_path : ListDirectory(path)) {
+    // |if_path| is an interface if and only if |kFileUsbIFNumber| exist.
+    if (!PathExists(if_path.Append(kFileUsbIFNumber)))
+      continue;
+    auto type = GetDeviceClassBySysfs(if_path);
+    if (type != mojo_ipc::BusDeviceClass::kOthers)
+      return type;
   }
   return mojo_ipc::BusDeviceClass::kOthers;
 }
@@ -174,7 +201,7 @@ mojo_ipc::BusDevicePtr FetchUsbDevice(const base::FilePath& path,
   auto device = mojo_ipc::BusDevice::New();
   std::tie(device->vendor_name, device->product_name) =
       GetUsbNames(path, usb_info, hwdb);
-  device->device_class = GetUsbDeviceClass(usb_info);
+  device->device_class = GetUsbDeviceClass(path, usb_info);
 
   device->bus_info = mojo_ipc::BusInfo::NewUsbBusInfo(std::move(usb_info));
   return device;
