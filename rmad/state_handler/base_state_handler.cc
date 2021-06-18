@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 
+#include <base/base64.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
@@ -21,10 +22,11 @@ bool BaseStateHandler::StoreState() {
   json_store_->GetValue(kStateMap, &state_map);
 
   std::string key = base::NumberToString(GetStateCase());
-  std::string serialized_string;
+  std::string serialized_string, serialized_string_base64;
   state_.SerializeToString(&serialized_string);
+  base::Base64Encode(serialized_string, &serialized_string_base64);
 
-  state_map.insert({key, serialized_string});
+  state_map.insert({key, serialized_string_base64});
   return json_store_->SetValue(kStateMap, state_map);
 }
 
@@ -34,7 +36,9 @@ bool BaseStateHandler::RetrieveState() {
     std::string key = base::NumberToString(GetStateCase());
     auto it = state_map.find(key);
     if (it != state_map.end()) {
-      return state_.ParseFromString(it->second);
+      std::string serialized_string;
+      DCHECK(base::Base64Decode(it->second, &serialized_string));
+      return state_.ParseFromString(serialized_string);
     }
   }
   return false;
