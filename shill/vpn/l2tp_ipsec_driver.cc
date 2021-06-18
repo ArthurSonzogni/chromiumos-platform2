@@ -229,11 +229,10 @@ bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
 
   uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
                      CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
-                     CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID) |
-                     CAP_TO_MASK(CAP_KILL);
+                     CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
   if (!external_task_local->StartInMinijail(base::FilePath(kL2TPIPsecVPNPath),
-                                            &options, "shill", "shill", capmask,
-                                            true, true, error)) {
+                                            &options, kVpnUser, kVpnGroup,
+                                            capmask, true, true, error)) {
     return false;
   }
   external_task_ = std::move(external_task_local);
@@ -308,7 +307,7 @@ bool L2TPIPsecDriver::InitPSKOptions(std::vector<std::string>* options,
   const auto psk = args()->Lookup<std::string>(kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
     if (!base::CreateTemporaryFileInDir(manager()->run_path(), &psk_file_) ||
-        chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
+        chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR | S_IRGRP) ||
         base::WriteFile(psk_file_, psk.data(), psk.size()) !=
             static_cast<int>(psk.size())) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
@@ -357,7 +356,8 @@ bool L2TPIPsecDriver::InitXauthOptions(std::vector<std::string>* options,
   const std::string xauth_credentials = user + "\n" + password + "\n";
   if (!base::CreateTemporaryFileInDir(manager()->run_path(),
                                       &xauth_credentials_file_) ||
-      chmod(xauth_credentials_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
+      chmod(xauth_credentials_file_.value().c_str(),
+            S_IRUSR | S_IWUSR | S_IRGRP) ||
       base::WriteFile(xauth_credentials_file_, xauth_credentials.data(),
                       xauth_credentials.size()) !=
           static_cast<int>(xauth_credentials.size())) {

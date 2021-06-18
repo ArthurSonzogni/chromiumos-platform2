@@ -12,13 +12,13 @@ chmod 0755 /run/shill
 
 # Create state directory for IPsec
 mkdir -p /run/ipsec
-chown -R shill:shill /run/ipsec
+chown -R vpn:vpn /run/ipsec
 chmod 0770 /run/ipsec
 
 # Create state directory for entire L2TP/IPsec subtree
 mkdir -p /run/l2tpipsec_vpn
-chown -R shill:shill /run/l2tpipsec_vpn
-chmod 0750 /run/l2tpipsec_vpn
+chown -R vpn:vpn /run/l2tpipsec_vpn
+chmod 0770 /run/l2tpipsec_vpn
 
 # Create state directory for wireguard
 mkdir -p /run/wireguard

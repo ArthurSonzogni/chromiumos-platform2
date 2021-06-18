@@ -93,7 +93,6 @@ class IpsecManagerTest : public ::testing::Test {
                          persistent_path_));         // persistent_path
     ipsec_->starter_daemon_.reset(starter_daemon_);  // Passes ownership.
     ipsec_->charon_daemon_.reset(charon_daemon_);    // Passes ownership.
-    ipsec_->ipsec_group_ = getgid();
     ipsec_->ipsec_up_file_ = ipsec_up_file_;
     ipsec_->force_local_address_ = "5.6.7.8";
   }

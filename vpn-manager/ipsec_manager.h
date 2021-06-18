@@ -100,7 +100,6 @@ class IpsecManager : public ServiceManager {
   std::string FormatStrongswanConfigFile();
   std::string FormatStarterConfigFile();
   bool StartStarter();
-  bool SetIpsecGroup(const base::FilePath& file_path);
 
   // Command line flags.
   std::string esp_;
@@ -119,9 +118,6 @@ class IpsecManager : public ServiceManager {
   int output_fd_;
   // IKE key exchange version to use.
   int ike_version_;
-  // Group id of the "ipsec" group on this machine.  This is the group
-  // that we expect the underlying IKE daemons to run as.
-  gid_t ipsec_group_;
   // Writeable directory that the root filesystem has symbolic links to for
   // all VPN configuration files we care about.
   base::FilePath persistent_path_;

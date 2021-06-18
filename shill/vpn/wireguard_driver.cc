@@ -53,13 +53,6 @@ const char kWireGuardConfigDir[] = "/run/wireguard";
 // the interface via wireguard-tools.
 constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromSeconds(10);
 
-// User and group we use to run wireguard binaries. Defined in user/vpn and
-// group/vpn in chromiumos/overlays/eclass-overlay/profiles/base/accounts
-// folder.
-const char kVpnUser[] = "vpn";
-const char kVpnGroup[] = "vpn";
-constexpr gid_t kVpnGid = 20174;
-
 // Key length of Curve25519.
 constexpr int kWgKeyLength = 32;
 constexpr int kWgBase64KeyLength = (((kWgKeyLength) + 2) / 3) * 4;
@@ -128,7 +121,7 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
   int stdout_fd = -1;
   pid_t pid = process_manager->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), {"pubkey"},
-      /*environment=*/{}, kVpnUser, kVpnGroup, /*caps=*/0,
+      /*environment=*/{}, VPNDriver::kVpnUser, VPNDriver::kVpnGroup, /*caps=*/0,
       /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
       /*exit_callback=*/base::DoNothing(),
       {.stdin_fd = &stdin_fd, .stdout_fd = &stdout_fd});

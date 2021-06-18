@@ -39,7 +39,6 @@ const char kDefaultCertSlot[] = "0";
 const char kIpsecCaCertsName[] = "cacert.der";
 const char kIpsecStarterConfName[] = "ipsec.conf";
 const char kIpsecSecretsName[] = "ipsec.secrets";
-const char kIpsecGroupName[] = "ipsec";
 const char kIpsecUpFile[] = "/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
 const char kStrongswanConfName[] = "strongswan.conf";
@@ -111,7 +110,6 @@ IpsecManager::IpsecManager(const std::string& esp,
       force_local_address_(nullptr),
       output_fd_(-1),
       ike_version_(0),
-      ipsec_group_(0),
       persistent_path_(persistent_path),
       ipsec_up_file_(kIpsecUpFile),
       starter_daemon_(new Daemon(kStarterPidFile)),
@@ -464,12 +462,6 @@ std::string IpsecManager::FormatStarterConfigFile() {
   return config;
 }
 
-// Even without root privs or CAP_CHOWN, we can still chgrp() to a group that
-// the 'shill' user is a member of -- in this case the 'ipsec' group.
-bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
-  return chown(file_path.value().c_str(), -1, ipsec_group_) == 0;
-}
-
 bool IpsecManager::WriteConfigFile(const std::string& output_name,
                                    const std::string& contents) {
   FilePath temp_file = temp_path().Append(output_name);
@@ -478,11 +470,9 @@ bool IpsecManager::WriteConfigFile(const std::string& output_name,
     LOG(ERROR) << "Unable to remove existing file " << temp_file.value();
     return false;
   }
-  // Dir in temp_path must be accessible to both 'shill' and 'ipsec' users
-  // so this code (running as 'shill') can create config files which can be
-  // accessed by user/group 'ipsec'.
-  if (!base::WriteFile(temp_file, contents.c_str(), contents.length()) ||
-      !SetIpsecGroup(temp_file)) {
+  // Dir in temp_path are created as user/group 'vpn' so config files are
+  // accessible by both 'shill' and 'vpn' user.
+  if (!base::WriteFile(temp_file, contents.c_str(), contents.length())) {
     LOG(ERROR) << "Unable to write " << output_name << " file "
                << temp_file.value();
     return false;
@@ -543,16 +533,6 @@ bool IpsecManager::WriteConfigFiles() {
 }
 
 bool IpsecManager::Start() {
-  if (!ipsec_group_) {
-    gid_t gid;
-    if (!brillo::userdb::GetGroupInfo(kIpsecGroupName, &gid)) {
-      LOG(ERROR) << "Cannot find group id for " << kIpsecGroupName;
-      RegisterError(kServiceErrorInternal);
-      return false;
-    }
-    ipsec_group_ = gid;
-    DLOG(INFO) << "Using ipsec group " << ipsec_group_;
-  }
   if (!WriteConfigFiles() || !StartStarter()) {
     RegisterError(kServiceErrorInternal);
     return false;

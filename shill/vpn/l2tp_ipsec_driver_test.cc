@@ -346,7 +346,7 @@ TEST_F(L2TPIPsecDriverTest, InitPSKOptions) {
   EXPECT_EQ(kPSK, contents);
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->psk_file_.value().c_str(), &buf));
-  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, buf.st_mode);
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP, buf.st_mode);
 }
 
 TEST_F(L2TPIPsecDriverTest, InitPEMOptions) {
@@ -425,7 +425,7 @@ TEST_F(L2TPIPsecDriverTest, InitXauthOptions) {
   EXPECT_EQ(expected_contents, contents);
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->xauth_credentials_file_.value().c_str(), &buf));
-  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, buf.st_mode);
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP, buf.st_mode);
 }
 
 TEST_F(L2TPIPsecDriverTest, AppendValueOption) {

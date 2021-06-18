@@ -78,6 +78,14 @@ class VPNDriver {
   static constexpr base::TimeDelta kTimeoutNone =
       base::TimeDelta::FromSeconds(0);
 
+  // User and group we use to run external binaries. Defined in user/vpn and
+  // group/vpn in chromiumos/overlays/eclass-overlay/profiles/base/accounts
+  // folder.
+  static constexpr char kVpnUser[] = "vpn";
+  static constexpr char kVpnGroup[] = "vpn";
+  // TODO(191627520): gid should ideally be looked up at runtime.
+  static constexpr gid_t kVpnGid = 20174;
+
   virtual ~VPNDriver();
 
   // When this function is called, a VPNDriver is responsible for 1) creating
