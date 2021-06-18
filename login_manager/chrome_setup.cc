@@ -889,8 +889,16 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
   else if (builder->UseFlagIsSet("ondevice_handwriting_dlc"))
     builder->AddArg("--ondevice_handwriting=use_dlc");
 
-  if (builder->UseFlagIsSet("ondevice_speech"))
-    builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
+  if (builder->UseFlagIsSet("ondevice_speech")) {
+    // libsoda is supported on devices with 4GB+ of physical RAM. base::SysInfo
+    // reports total RAM minus some reserved stuff e.g. the kernel, so in
+    // practice, we compare against 3GiB not 4GiB.
+    // Theoretically: this will match devices with RAM > (3GiB + something).
+    // In practice:   all such devices have 4GB+.
+    constexpr int kSodaLibraryMinRamMB = 3072;
+    if (base::SysInfo::AmountOfPhysicalMemoryMB() >= kSodaLibraryMinRamMB)
+      builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
+  }
 
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
 }
