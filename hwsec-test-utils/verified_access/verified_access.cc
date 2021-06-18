@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 

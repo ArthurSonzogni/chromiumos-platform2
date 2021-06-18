@@ -6,6 +6,8 @@
 
 #include <openssl/x509.h>
 
+#include <base/logging.h>
+
 #include "hwsec-test-utils/common/openssl_utility.h"
 #include "hwsec-test-utils/well_known_key_pairs/well_known_key_pairs.h"
 
