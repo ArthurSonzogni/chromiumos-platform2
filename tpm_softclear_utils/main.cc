@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
 #include "tpm_softclear_utils/tpm.h"
