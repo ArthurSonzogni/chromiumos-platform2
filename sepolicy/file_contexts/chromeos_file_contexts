@@ -122,6 +122,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/timberslide            u:object_r:cros_timberslide_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 /usr/bin/tpm2-simulator         u:object_r:cros_tpm2_simulator_exec:s0
+/usr/bin/traced                 u:object_r:cros_traced_exec:s0
+/usr/bin/traced_probes          u:object_r:cros_traced_probes_exec:s0
 /usr/bin/typecd                 u:object_r:cros_typecd_exec:s0
 /usr/bin/u2fd                   u:object_r:cros_u2fd_exec:s0
 /usr/bin/virtual-file-provider  u:object_r:cros_virtual_file_provider_exec:s0
