@@ -695,6 +695,10 @@ union BusResult {
 enum BusDeviceClass {
   // For the devices which cannot be classified.
   kOthers = 0,
+  kDisplayController,
+  kEthernetController,
+  kWirelessController,
+  kBluetoothAdapter,
 };
 
 // The bus device info.

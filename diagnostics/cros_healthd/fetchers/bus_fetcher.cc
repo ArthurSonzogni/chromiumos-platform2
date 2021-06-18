@@ -78,7 +78,14 @@ mojo_ipc::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
 mojo_ipc::BusDeviceClass GetPciDeviceClass(
     const mojo_ipc::PciBusInfoPtr& info) {
   CHECK(info);
-  // TODO(chungsheng): Implement this.
+  if (info->class_id == pci_ids::display::kId)
+    return mojo_ipc::BusDeviceClass::kDisplayController;
+  if (info->class_id == pci_ids::network::kId) {
+    if (info->subclass_id == pci_ids::network::ethernet::kId)
+      return mojo_ipc::BusDeviceClass::kEthernetController;
+    if (info->subclass_id == pci_ids::network::network::kId)
+      return mojo_ipc::BusDeviceClass::kWirelessController;
+  }
   return mojo_ipc::BusDeviceClass::kOthers;
 }
 
@@ -151,7 +158,11 @@ std::tuple<std::string, std::string> GetUsbNames(
 mojo_ipc::BusDeviceClass GetUsbDeviceClass(
     const mojo_ipc::UsbBusInfoPtr& info) {
   CHECK(info);
-  // TODO(chungsheng): Implement this.
+  if (info->class_id == usb_ids::wireless::kId &&
+      info->subclass_id == usb_ids::wireless::radio_frequency::kId &&
+      info->protocol_id == usb_ids::wireless::radio_frequency::bluetooth::kId) {
+    return mojo_ipc::BusDeviceClass::kBluetoothAdapter;
+  }
   return mojo_ipc::BusDeviceClass::kOthers;
 }
 
