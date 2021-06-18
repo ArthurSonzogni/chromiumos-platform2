@@ -590,24 +590,20 @@ void DisplayNetworkInfo(const NetworkResultPtr& network_result,
   OutputData(headers, values, beauty);
 }
 
-void DisplayTimezoneInfo(const TimezoneResultPtr& timezone_result,
-                         const bool beauty) {
-  if (timezone_result->is_error()) {
-    DisplayError(timezone_result->get_error());
+void DisplayTimezoneInfo(const TimezoneResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& timezone = timezone_result->get_timezone_info();
-  // Replace commas in POSIX timezone before printing CSVs.
-  std::string csv_posix_timezone;
-  base::ReplaceChars(timezone->posix, ",", " ", &csv_posix_timezone);
+  const auto& info = result->get_timezone_info();
+  CHECK(!info.is_null());
 
-  const std::vector<std::string> headers = {"posix_timezone",
-                                            "timezone_region"};
-  const std::vector<std::vector<std::string>> values = {
-      {csv_posix_timezone, timezone->region}};
+  base::Value output{base::Value::Type::DICTIONARY};
+  output.SetStringKey("posix", info->posix);
+  output.SetStringKey("region", info->region);
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayMemoryInfo(const MemoryResultPtr& memory_result,
@@ -734,7 +730,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& timezone_result = info->timezone_result;
   if (timezone_result)
-    DisplayTimezoneInfo(timezone_result, beauty);
+    DisplayTimezoneInfo(timezone_result);
 
   const auto& memory_result = info->memory_result;
   if (memory_result)
