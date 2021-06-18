@@ -680,13 +680,55 @@ struct BootPerformanceInfo {
   string shutdown_reason;
 };
 
-// Bus probe result. Can either be populated with the BusInfo or an error
+// Bus probe result. Can either be populated with the BusDevice or an error
 // retrieving the information.
 union BusResult {
-  // Valid BusInfo.
-  // TODO(chungsheng): Add BusInfo.
-  // The error that occurred attempting to retrieve the BusInfo.
+  // Valid BusDevice.
+  array<BusDevice> bus_devices;
+  // The error that occurred attempting to retrieve the BusDevice.
   ProbeError error;
+};
+
+// The classes of the bus devices. Can be used to group the devices by their
+// use.
+[Extensible]
+enum BusDeviceClass {
+  // For the devices which cannot be classified.
+  kOthers = 0,
+};
+
+// The bus device info.
+struct BusDevice {
+  // The vendor / product name of the device. These are extracted from the
+  // databases on the system and should only be used for showing / logging.
+  // Don't use these to identify the devices.
+  string vendor_name;
+  string product_name;
+  // The class of the device.
+  BusDeviceClass device_class;
+  // The info related to specific bus type.
+  BusInfo bus_info;
+};
+
+// The info related to specific bus type.
+union BusInfo {
+  // The info related to pci.
+  PciBusInfo pci_bus_info;
+};
+
+// The info related to pci.
+struct PciBusInfo {
+  // These fields can be used to classify / identify the pci devices. See the
+  // pci.ids database for the values. (https://github.com/gentoo/hwids)
+  uint8 class_id;
+  uint8 subclass_id;
+  uint8 prog_if_id;
+  uint16 vendor_id;
+  uint16 device_id;
+  // The driver used by the device. This is the name of the matched driver which
+  // is registered in the kernel. See "{kernel root}/drivers/". for the list of
+  // the built in drivers.
+  string? driver;
 };
 
 // A collection of all the device's telemetry information that cros_healthd is

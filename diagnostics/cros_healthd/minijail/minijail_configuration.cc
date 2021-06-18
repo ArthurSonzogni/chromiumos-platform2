@@ -108,6 +108,11 @@ void ConfigureAndEnterMinijail() {
       base::FilePath("/sys/class/dmi/id"));  // Files related to the
                                              // system's DMI information.
 
+  BindMountIfPathExists(
+      jail.get(),
+      base::FilePath("/sys/bus/pci"));  // Files related to the
+                                        // PCI information.
+
   // Create a new tmpfs filesystem for /var and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, "");
   minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone",
