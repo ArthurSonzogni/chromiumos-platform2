@@ -118,31 +118,28 @@ std::unique_ptr<brillo::Process> ProcessLauncher::StartProcess(
 }
 
 // This function forks a new process and executes |script| in it. |input_fd| and
-// |output_fd| are standard input/output streams for the new process. |open_fds|
-// is a set with currently open file descriptors; it may contain a special value
-// -1 (incorrect descriptor). This set is used to determine which file
-// descriptors must be closed in the forked (child) process. The function
-// returns PID of the forked process or -1 in case on an error.
+// |output_fd| are standard input/output streams for the new process. All file
+// descriptors > 2 and different than |input_fd| and |output_fd| are closed in
+// the forked (child) process. The function returns PID of the forked process or
+// -1 in case on an error.
 pid_t ProcessLauncher::StartSubshell(const Script& script,
                                      int input_fd,
-                                     int output_fd,
-                                     std::set<int> open_fds) {
-  // Remove descriptors that must stay open.
-  open_fds.erase(input_fd);
-  open_fds.erase(output_fd);
-  open_fds.erase(0);  // stdin
-  open_fds.erase(1);  // stdout
-  open_fds.erase(2);  // stderr
-  // Incorrect descriptors use -1, we have to remove this value.
-  open_fds.erase(-1);
-
+                                     int output_fd) {
   pid_t pid = fork();
   if (pid == 0) {
     // Inside the child process.
+    // Get the maximum number of file descriptor.
+    rlimit file_desc_limit;
+    if (getrlimit(RLIMIT_NOFILE, &file_desc_limit)) {
+      perror("getrlimit(RLIMIT_NOFILE,...) failed");
+      return false;
+    }
     // Close all unused file descriptors.
-    for (int fd : open_fds) {
-      if (close(fd) != 0)
-        perror("close(fd) failed");
+    for (int fd = 3; fd < file_desc_limit.rlim_cur; ++fd) {
+      if (fd != input_fd && fd != output_fd) {
+        if (close(fd) != 0)
+          perror("close(fd) failed");
+      }
     }
     // Run |script| and exit.
     const int exit_code = RunScript(script, input_fd, output_fd);
@@ -211,8 +208,7 @@ int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
       }
     } else {
       // The current segment is a subshell.
-      const std::set<int> open_fds = {input_fd, output_fd, next_fd_in};
-      pid_t pid = StartSubshell(*pipe_segment.script, fd_in, fd_out, open_fds);
+      pid_t pid = StartSubshell(*pipe_segment.script, fd_in, fd_out);
       if (pid != (pid_t)-1) {
         // Success. Save the new process.
         processes.emplace_back(pid);

@@ -4,6 +4,7 @@
 
 #include "foomatic_shell/shell.h"
 
+#include <stdio.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -14,6 +15,8 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -39,39 +42,28 @@ void PrintErrorMessage(const std::string& source,
 
 // Sets the position in the given file descriptor |fd| to the beginning and
 // reads everything from it. Read content is saved to |out|. If the function
-// succeeds the file descriptor is closed and true is returned. In case of an
-// error, the content of |out| is replaced by an error message and the function
-// returns false. |out| must not be nullptr; its initial content is always
-// deleted at the beginning. The function also fails if the length of the
-// content is larger than |kMaxSourceSize|.
-bool ReadAndCloseFd(int fd, std::string* out) {
+// succeeds a true value is returned. In case of an error, the content of |out|
+// is replaced by an error message and the function returns false. |out| must
+// not be nullptr; its initial content is always deleted at the beginning. The
+// function also fails if the length of the content is larger than
+// |kMaxSourceSize|.
+bool ReadFromTheBeginning(int fd, std::string* out) {
   DCHECK(out != nullptr);
   out->clear();
-  if (lseek(fd, 0, SEEK_SET) < 0) {
-    *out = "lseek failed: ";
+  FILE* file = fdopen(fd, "r");
+  if (file == NULL) {
+    *out = "fdopen failed: ";
     *out += strerror(errno);
     return false;
   }
-  char buf[1024];
-  while (true) {
-    const ssize_t length = read(fd, buf, sizeof(buf));
-    if (length < 0) {
-      // Error occurred.
-      *out = "read failed: ";
-      *out += strerror(errno);
-      return false;
-    } else if (length == 0) {
-      // End of stream was reached.
-      break;
-    }
-    // Success. Add read data to the output string.
-    out->append(buf, length);
-    if (out->size() > kMaxSourceSize) {
+  if (!base::ReadStreamToStringWithMaxSize(file, kMaxSourceSize, out)) {
+    if (out->size() < kMaxSourceSize) {
+      *out = "base::ReadStreamToStringWithMaxSize(...) failed";
+    } else {
       *out = "Generated script is too long";
-      return false;
     }
+    return false;
   }
-  close(fd);
   return true;
 }
 
@@ -93,26 +85,34 @@ bool ExecuteEmbeddedShellScript(const std::string& source,
     return false;
   }
 
-  // Generate temporary file descriptor storing data in memory. The name is
-  // set to "foomatic_shell_level_" + |recursion_level|.
-  const std::string temp_name =
-      "foomatic_shell_level_" + base::NumberToString(recursion_level);
-  int temp_fd = memfd_create(temp_name.c_str(), 0);
-  if (temp_fd == -1) {
-    *output = std::string("memfd_create failed: ") + strerror(errno);
+  // Generate temporary file descriptor to store data.
+  base::FilePath temp_dir;
+  if (!base::GetTempDir(&temp_dir)) {
+    *output = "GetTempDir(...) failed";
+    return false;
+  }
+  base::FilePath temp_file;
+  base::ScopedFD temp_fd;
+  temp_fd = CreateAndOpenFdForTemporaryFileInDir(temp_dir, &temp_file);
+  if (!temp_fd.is_valid()) {
+    *output = "Error when executing CreateAndOpenFdForTemporaryFileInDir(...)";
     return false;
   }
 
   // Execute the script.
-  if (ExecuteShellScript(source, temp_fd, verbose_mode, verify_mode,
+  if (ExecuteShellScript(source, temp_fd.get(), verbose_mode, verify_mode,
                          recursion_level + 1)) {
     *output = "Error when executing `...` operator";
     return false;
   }
 
   // Read the generated output to |out|.
-  if (!ReadAndCloseFd(temp_fd, output))
+  if (!ReadFromTheBeginning(temp_fd.get(), output))
     return false;
+
+  // Delete the temporary file.
+  temp_fd.reset();
+  DeleteFile(temp_file);
 
   // The trailing end-of-line character is skipped - shell is suppose to
   // work this way.

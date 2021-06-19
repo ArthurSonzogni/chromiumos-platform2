@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <string>
 
-#include "base/environment.h"
+#include <base/environment.h>
 
 #include "foomatic_shell/shell.h"
 

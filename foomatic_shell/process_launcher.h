@@ -48,10 +48,7 @@ class ProcessLauncher {
   std::unique_ptr<brillo::Process> StartProcess(const Command& command,
                                                 int input_fd,
                                                 int output_fd);
-  pid_t StartSubshell(const Script& script,
-                      int input_fd,
-                      int output_fd,
-                      std::set<int> open_fds);
+  pid_t StartSubshell(const Script& script, int input_fd, int output_fd);
 
   // This field holds the reference to the script's source provided in the
   // constructor.
