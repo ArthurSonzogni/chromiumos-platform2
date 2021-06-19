@@ -221,8 +221,8 @@ TEST_F(DBusServiceTest, SignalError) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "Error");
         dbus::MessageReader reader(signal);
-        uint32_t error;
-        EXPECT_TRUE(reader.PopUint32(&error));
+        int error;
+        EXPECT_TRUE(reader.PopInt32(&error));
         EXPECT_EQ(error, RMAD_ERROR_RMA_NOT_REQUIRED);
       }));
   EXPECT_TRUE(SignalError(RMAD_ERROR_RMA_NOT_REQUIRED));
@@ -262,9 +262,9 @@ TEST_F(DBusServiceTest, SignalProvisioning) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "ProvisioningProgress");
         dbus::MessageReader reader(signal);
-        uint32_t step;
+        int step;
         double progress;
-        EXPECT_TRUE(reader.PopUint32(&step));
+        EXPECT_TRUE(reader.PopInt32(&step));
         EXPECT_TRUE(reader.PopDouble(&progress));
         EXPECT_EQ(step,
                   ProvisionDeviceState::RMAD_PROVISIONING_STEP_IN_PROGRESS);

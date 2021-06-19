@@ -24,15 +24,15 @@ using rmad::RmadErrorCode;
 template <>
 struct DBusType<RmadErrorCode> {
   inline static std::string GetSignature() {
-    return DBusType<uint32_t>::GetSignature();
+    return DBusType<int>::GetSignature();
   }
   inline static void Write(dbus::MessageWriter* writer,
                            const RmadErrorCode value) {
-    DBusType<uint32_t>::Write(writer, static_cast<uint32_t>(value));
+    DBusType<int>::Write(writer, static_cast<int>(value));
   }
   inline static bool Read(dbus::MessageReader* reader, RmadErrorCode* value) {
-    uint32_t v;
-    if (DBusType<uint32_t>::Read(reader, &v)) {
+    int v;
+    if (DBusType<int>::Read(reader, &v)) {
       *value = static_cast<rmad::RmadErrorCode>(v);
       return true;
     } else {
@@ -93,16 +93,16 @@ struct DBusType<CheckCalibrationState::CalibrationStatus> {
 template <>
 struct DBusType<ProvisionDeviceState::ProvisioningStep> {
   inline static std::string GetSignature() {
-    return DBusType<uint32_t>::GetSignature();
+    return DBusType<int>::GetSignature();
   }
   inline static void Write(dbus::MessageWriter* writer,
                            const ProvisionDeviceState::ProvisioningStep value) {
-    DBusType<uint32_t>::Write(writer, static_cast<uint32_t>(value));
+    DBusType<int>::Write(writer, static_cast<int>(value));
   }
   inline static bool Read(dbus::MessageReader* reader,
                           ProvisionDeviceState::ProvisioningStep* value) {
-    uint32_t v;
-    if (DBusType<uint32_t>::Read(reader, &v)) {
+    int v;
+    if (DBusType<int>::Read(reader, &v)) {
       *value = static_cast<ProvisionDeviceState::ProvisioningStep>(v);
       return true;
     } else {
