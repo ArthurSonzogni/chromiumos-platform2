@@ -133,6 +133,7 @@ Service::StartVmHelper(dbus::MethodCall* method_call,
     LOG(INFO) << "A disk operation for the VM is in progress";
 
     response.set_status(VM_STATUS_DISK_OP_IN_PROGRESS);
+    response.set_failure_reason("A disk operation for the VM is in progress");
     response.set_success(false);
 
     writer->AppendProtoAsArrayOfBytes(response);
