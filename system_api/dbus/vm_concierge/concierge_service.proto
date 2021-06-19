@@ -284,6 +284,9 @@ enum VmStatus {
 
   // The VM failed to startup.
   VM_STATUS_FAILURE = 3;
+
+  // The VM can't start because its disk/image is being manipulated.
+  VM_STATUS_DISK_OP_IN_PROGRESS = 4;
 }
 
 // Information sent back by vm_concierge in response to a StartVm dbus message.
