@@ -123,6 +123,22 @@ Service::StartVmHelper(dbus::MethodCall* method_call,
     return base::nullopt;
   }
 
+  VmId vm_id(request.owner_id(), request.name());
+  auto op_iter = std::find_if(
+      disk_image_ops_.begin(), disk_image_ops_.end(), [&vm_id](auto& info) {
+        return info.op->vm_id() == vm_id &&
+               info.op->status() == DISK_STATUS_IN_PROGRESS;
+      });
+  if (op_iter != disk_image_ops_.end()) {
+    LOG(INFO) << "A disk operation for the VM is in progress";
+
+    response.set_status(VM_STATUS_DISK_OP_IN_PROGRESS);
+    response.set_success(false);
+
+    writer->AppendProtoAsArrayOfBytes(response);
+    return base::nullopt;
+  }
+
   return std::make_tuple(request, response);
 }
 
