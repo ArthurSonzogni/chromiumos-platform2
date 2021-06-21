@@ -36,7 +36,7 @@ TEST(WebPlatformHandwritingProtoMojoConversionTest,
   strokes.push_back(std::move(stroke1));
   strokes.push_back(std::move(stroke2));
 
-  auto hints = HandwritingHints::New("text", "mouse", "context", 100u);
+  auto hints = HandwritingHints::New("text", "mouse", "", 100u, "context");
 
   const auto proto = WebPlatformHandwritingStrokesAndHintsToProto(
       std::move(strokes), std::move(hints));

@@ -35,11 +35,10 @@ WebPlatformHandwritingStrokesAndHintsToProto(
   request.set_return_segmentation(true);
   request.set_max_num_results(hints->alternatives);
 
-  // Always set the pre_context.
-  // TODO(https://crbug.com/1196204): we should change `hints->text_context`
-  // to be optional too.
   auto& context_proto = *request.mutable_context();
-  context_proto.set_pre_context(hints->text_context);
+  if (hints->text_context.has_value()) {
+    context_proto.set_pre_context(hints->text_context.value());
+  }
   // The web platform does not support writing guide for the moment.
 
   // For ink;
