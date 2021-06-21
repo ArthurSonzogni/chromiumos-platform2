@@ -72,6 +72,11 @@ class SambaInterface : public TgtManager::Delegate {
   // Sets the interface to Cryptohome.
   void SetCryptohomeClient(std::unique_ptr<CryptohomeClient> cryptohome_client);
 
+  // Gets the cryptohome client for testing.
+  CryptohomeClient* get_cryptohome_client_for_testing() {
+    return cryptohome_client_.get();
+  }
+
   // Cleans all persistent state files. Returns true if all files were cleared.
   static bool CleanState(const PathService* path_service);
 

@@ -22,6 +22,7 @@
 #include <brillo/asan.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/file_utils.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -35,8 +36,10 @@
 #include <gtest/gtest.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <policy/device_policy_impl.h>
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
 #include "authpolicy/anonymizer.h"
+#include "authpolicy/cryptohome_client.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/policy/preg_policy_writer.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
@@ -59,10 +62,12 @@ using dbus::Response;
 using login_manager::PolicyDescriptor;
 using testing::_;
 using testing::AnyNumber;
+using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
+using testing::SetArgPointee;
 
 namespace em = enterprise_management;
 
@@ -490,25 +495,36 @@ class AuthPolicyTest : public testing::Test {
           return RespondWithString(method_call, kSessionStopped);
         }));
 
-    // Set up mock object proxy for Cryptohome called from authpolicy.
-    mock_cryptohome_proxy_ = new NiceMock<MockObjectProxy>(
-        mock_bus_.get(), cryptohome::kCryptohomeServiceName,
-        dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
+    // Setup expectation for cryptohome UserDataAuth dbus proxies so it doesn't
+    // fail.
+    scoped_refptr<MockObjectProxy> mock_user_data_auth_proxy =
+        new MockObjectProxy(
+            mock_bus_.get(), user_data_auth::kUserDataAuthServiceName,
+            dbus::ObjectPath(user_data_auth::kUserDataAuthServicePath));
     EXPECT_CALL(*mock_bus_,
-                GetObjectProxy(cryptohome::kCryptohomeServiceName, _))
-        .WillOnce(Return(mock_cryptohome_proxy_.get()));
-
-    // Make Cryptohome's GetSanitizedUsername call return kSanitizedUsername.
-    ON_CALL(*mock_cryptohome_proxy_, CallMethodAndBlock(_, _))
-        .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout) {
-          return RespondWithString(method_call, kSanitizedUsername);
-        }));
+                GetObjectProxy(user_data_auth::kUserDataAuthServiceName, _))
+        .WillOnce(Return(mock_user_data_auth_proxy.get()));
 
     // Create AuthPolicy instance. Do this AFTER creating the proxy mocks since
     // they might be accessed during initialization.
     authpolicy_ = std::make_unique<AuthPolicy>(metrics_.get(), paths_.get());
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
     authpolicy_->RegisterAsync(std::move(dbus_object), base::Bind(&DoNothing));
+
+    // Setup the cryptohome dbus mock.
+    std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyMock>
+        cryptohome_misc_proxy =
+            std::make_unique<org::chromium::CryptohomeMiscInterfaceProxyMock>();
+    cryptohome_misc_proxy_ = cryptohome_misc_proxy.get();
+    samba()
+        .get_cryptohome_client_for_testing()
+        ->set_cryptohome_misc_proxy_for_testing(
+            std::move(cryptohome_misc_proxy));
+
+    sanitized_username_reply_.set_sanitized_username(kSanitizedUsername);
+    ON_CALL(*cryptohome_misc_proxy_, GetSanitizedUsername(_, _, _, _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(sanitized_username_reply_), Return(true)));
 
     // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
     samba().DisableRetrySleepForTesting();
@@ -1001,7 +1017,8 @@ class AuthPolicyTest : public testing::Test {
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
   scoped_refptr<MockExportedObject> mock_exported_object_;
   scoped_refptr<MockObjectProxy> mock_session_manager_proxy_;
-  scoped_refptr<MockObjectProxy> mock_cryptohome_proxy_;
+  org::chromium::CryptohomeMiscInterfaceProxyMock* cryptohome_misc_proxy_;
+  user_data_auth::GetSanitizedUsernameReply sanitized_username_reply_;
 
   // Notifies authpolicy that the session state changed (e.g. "started").
   base::Callback<void(dbus::Signal* signal)> session_state_changed_callback_;

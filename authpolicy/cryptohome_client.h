@@ -5,9 +5,13 @@
 #ifndef AUTHPOLICY_CRYPTOHOME_CLIENT_H_
 #define AUTHPOLICY_CRYPTOHOME_CLIENT_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 namespace dbus {
 class ObjectProxy;
@@ -35,8 +39,17 @@ class CryptohomeClient {
   // error.
   std::string GetSanitizedUsername(const std::string& account_id_key);
 
+  // Testing method for overriding the dbus proxy.
+  void set_cryptohome_misc_proxy_for_testing(
+      std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
+          proxy) {
+    cryptohome_misc_proxy_ = std::move(proxy);
+  }
+
  private:
-  dbus::ObjectProxy* cryptohome_proxy_ = nullptr;  // Not owned.
+  // DBus proxy for contacting cryptohome.
+  std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
+      cryptohome_misc_proxy_;
 };
 
 }  // namespace authpolicy
