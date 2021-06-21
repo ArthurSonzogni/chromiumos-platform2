@@ -13,6 +13,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -49,6 +50,7 @@ using chromeos::cros_healthd::mojom::FanResultPtr;
 using chromeos::cros_healthd::mojom::MemoryResultPtr;
 using chromeos::cros_healthd::mojom::NetworkResultPtr;
 using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
+using chromeos::cros_healthd::mojom::NullableUint64Ptr;
 using chromeos::cros_healthd::mojom::ProbeCategoryEnum;
 using chromeos::cros_healthd::mojom::ProbeErrorPtr;
 using chromeos::cros_healthd::mojom::ProcessResultPtr;
@@ -60,6 +62,7 @@ using chromeos::cros_healthd::mojom::TimezoneResultPtr;
 using chromeos::network_config::mojom::NetworkType;
 using chromeos::network_config::mojom::PortalState;
 using chromeos::network_health::mojom::NetworkState;
+using chromeos::network_health::mojom::UInt32ValuePtr;
 
 // Value printed for optional fields when they aren't populated.
 constexpr char kNotApplicableString[] = "N/A";
@@ -80,7 +83,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"boot_performance", ProbeCategoryEnum::kBootPerformance},
 };
 
-std::string ProcessStateToString(ProcessState state) {
+std::string EnumToString(ProcessState state) {
   switch (state) {
     case ProcessState::kRunning:
       return "Running";
@@ -99,7 +102,7 @@ std::string ProcessStateToString(ProcessState state) {
   }
 }
 
-std::string ErrorTypeToString(ErrorType type) {
+std::string EnumToString(ErrorType type) {
   switch (type) {
     case ErrorType::kFileReadError:
       return "File Read Error";
@@ -112,7 +115,7 @@ std::string ErrorTypeToString(ErrorType type) {
   }
 }
 
-std::string GetArchitectureString(CpuArchitectureEnum architecture) {
+std::string EnumToString(CpuArchitectureEnum architecture) {
   switch (architecture) {
     case CpuArchitectureEnum::kUnknown:
       return "unknown";
@@ -125,7 +128,7 @@ std::string GetArchitectureString(CpuArchitectureEnum architecture) {
   }
 }
 
-std::string NetworkTypeToString(NetworkType type) {
+std::string EnumToString(NetworkType type) {
   switch (type) {
     case NetworkType::kAll:
       return "Unknown";
@@ -146,7 +149,7 @@ std::string NetworkTypeToString(NetworkType type) {
   }
 }
 
-std::string NetworkStateToString(NetworkState state) {
+std::string EnumToString(NetworkState state) {
   switch (state) {
     case NetworkState::kUninitialized:
       return "Uninitialized";
@@ -167,7 +170,7 @@ std::string NetworkStateToString(NetworkState state) {
   }
 }
 
-std::string PortalStateToString(PortalState state) {
+std::string EnumToString(PortalState state) {
   switch (state) {
     case PortalState::kUnknown:
       return "Unknown";
@@ -181,6 +184,33 @@ std::string PortalStateToString(PortalState state) {
       return "Proxy Auth Required";
     case PortalState::kNoInternet:
       return "No Internet";
+  }
+}
+
+#define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
+
+template <typename T>
+void SetJsonDictValue(const std::string& key,
+                      const T& value,
+                      base::Value* output) {
+  if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, int64_t> ||
+                std::is_same_v<T, uint64_t>) {
+    // |base::Value| doesn't support these types, we need to convert them to
+    // string.
+    SetJsonDictValue(key, std::to_string(value), output);
+  } else if constexpr (std::is_same_v<T, base::Optional<std::string>>) {
+    if (value.has_value())
+      SetJsonDictValue(key, value.value(), output);
+  } else if constexpr (std::is_same_v<T, NullableUint64Ptr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
+  } else if constexpr (std::is_same_v<T, UInt32ValuePtr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
+  } else if constexpr (std::is_enum_v<T>) {
+    SetJsonDictValue(key, EnumToString(value), output);
+  } else {
+    output->SetKey(key, base::Value(value));
   }
 }
 
@@ -247,8 +277,8 @@ void OutputJson(const base::Value& output) {
 
 void DisplayError(const ProbeErrorPtr& error) {
   base::Value output{base::Value::Type::DICTIONARY};
-  output.SetStringKey("error_type", ErrorTypeToString(error->type));
-  output.SetStringKey("error_msg", error->msg);
+  SET_DICT(type, error, &output);
+  SET_DICT(msg, error, &output);
 
   OutputJson(output);
 }
@@ -291,8 +321,7 @@ void DisplayProcessInfo(const ProcessResultPtr& process_result,
        std::to_string(process->user_id),
        std::to_string(static_cast<int>(process->priority)),
        std::to_string(static_cast<int>(process->nice)),
-       std::to_string(process->uptime_ticks),
-       static_cast<std::string>(ProcessStateToString(process->state)),
+       std::to_string(process->uptime_ticks), EnumToString(process->state),
        std::to_string(process->total_memory_kib),
        std::to_string(process->resident_memory_kib),
        std::to_string(process->free_memory_kib),
@@ -500,7 +529,7 @@ void DisplayCpuInfo(const CpuResultPtr& cpu_result) {
   const auto& cpu_info = cpu_result->get_cpu_info();
   std::cout << "num_total_threads,architecture" << std::endl;
   std::cout << cpu_info->num_total_threads << ","
-            << GetArchitectureString(cpu_info->architecture) << std::endl;
+            << EnumToString(cpu_info->architecture) << std::endl;
   for (const auto& physical_cpu : cpu_info->physical_cpus) {
     std::cout << "Physical CPU:" << std::endl;
     std::cout << "\tmodel_name" << std::endl;
@@ -574,9 +603,8 @@ void DisplayNetworkInfo(const NetworkResultPtr& network_result,
     auto signal_strength = network->signal_strength
                                ? std::to_string(network->signal_strength->value)
                                : kNotApplicableString;
-    values.push_back({NetworkTypeToString(network->type),
-                      NetworkStateToString(network->state),
-                      PortalStateToString(network->portal_state),
+    values.push_back({EnumToString(network->type), EnumToString(network->state),
+                      EnumToString(network->portal_state),
                       network->guid.value_or(kNotApplicableString),
                       network->name.value_or(kNotApplicableString),
                       signal_strength,
@@ -606,24 +634,22 @@ void DisplayTimezoneInfo(const TimezoneResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayMemoryInfo(const MemoryResultPtr& memory_result,
-                       const bool beauty) {
-  if (memory_result->is_error()) {
-    DisplayError(memory_result->get_error());
+void DisplayMemoryInfo(const MemoryResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& memory = memory_result->get_memory_info();
-  const std::vector<std::string> headers = {
-      "total_memory_kib", "free_memory_kib", "available_memory_kib",
-      "page_faults_since_last_boot"};
-  const std::vector<std::vector<std::string>> values = {
-      {std::to_string(memory->total_memory_kib),
-       std::to_string(memory->free_memory_kib),
-       std::to_string(memory->available_memory_kib),
-       std::to_string(memory->page_faults_since_last_boot)}};
+  const auto& info = result->get_memory_info();
+  CHECK(!info.is_null());
 
-  OutputData(headers, values, beauty);
+  base::Value output{base::Value::Type::DICTIONARY};
+  SET_DICT(available_memory_kib, info, &output);
+  SET_DICT(free_memory_kib, info, &output);
+  SET_DICT(page_faults_since_last_boot, info, &output);
+  SET_DICT(total_memory_kib, info, &output);
+
+  OutputJson(output);
 }
 
 void DisplayBacklightInfo(const BacklightResultPtr& backlight_result,
@@ -734,7 +760,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& memory_result = info->memory_result;
   if (memory_result)
-    DisplayMemoryInfo(memory_result, beauty);
+    DisplayMemoryInfo(memory_result);
 
   const auto& backlight_result = info->backlight_result;
   if (backlight_result)
