@@ -107,6 +107,13 @@ bool ValidatePeersForStorage(const Stringmaps& peers) {
 std::string GenerateBase64PrivateKey() {
   uint8_t key[kWgKeyLength];
   crypto::RandBytes(key, kWgKeyLength);
+
+  // Converts the random bytes into a Curve25519 key, as per
+  // https://cr.yp.to/ecdh.html
+  key[0] &= 248;
+  key[31] &= 127;
+  key[31] |= 64;
+
   return base::Base64Encode(base::span<uint8_t>(key, kWgKeyLength));
 }
 
