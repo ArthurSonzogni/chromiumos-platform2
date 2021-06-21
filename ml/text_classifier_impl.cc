@@ -8,7 +8,9 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/debug/leak_annotations.h>
 #include <base/logging.h>
+#include <brillo/message_loops/message_loop.h>
 #include <lang_id/lang-id-wrapper.h>
 #include <utils/utf8/unicodetext.h>
 
@@ -39,12 +41,6 @@ constexpr char kLanguageIdentificationModelFilePath[] =
     "/opt/google/chrome/ml_models/"
     "mlservice-model-language_identification-20190924.smfb";
 
-// To avoid passing a lambda as a base::OnceClosure.
-void DeleteTextClassifierImpl(
-    const TextClassifierImpl* const text_classifier_impl) {
-  delete text_classifier_impl;
-}
-
 }  // namespace
 
 bool TextClassifierImpl::Create(
@@ -67,10 +63,18 @@ bool TextClassifierImpl::Create(
     return false;
   }
 
-  // Use a disconnection handler to strongly bind `text_classifier_impl` to
-  // `receiver`.
-  text_classifier_impl->SetDisconnectionHandler(base::BindOnce(
-      &DeleteTextClassifierImpl, base::Unretained(text_classifier_impl)));
+  // In production, `text_classifier_impl` is intentionally leaked, because this
+  // model runs in its own process and the model's memory is freed when the
+  // process exits. However, when being tested with ASAN, this memory leak
+  // causes an error. Therefore, we annotate it as an intentional leak.
+  ANNOTATE_LEAKING_OBJECT_PTR(text_classifier_impl);
+
+  //  Set the disconnection handler to quit the message loop (i.e. exit the
+  //  process) when the connection is gone, because this model is always run in
+  //  a dedicated process.
+  text_classifier_impl->receiver_.set_disconnect_handler(
+      base::BindOnce(&brillo::MessageLoop::BreakLoop,
+                     base::Unretained(brillo::MessageLoop::current())));
   return true;
 }
 
@@ -83,11 +87,6 @@ TextClassifierImpl::TextClassifierImpl(
       language_identifier_(
           libtextclassifier3::langid::LoadFromPath(langid_model_path)),
       receiver_(this, std::move(receiver)) {}
-
-void TextClassifierImpl::SetDisconnectionHandler(
-    base::OnceClosure disconnect_handler) {
-  receiver_.set_disconnect_handler(std::move(disconnect_handler));
-}
 
 void TextClassifierImpl::Annotate(TextAnnotationRequestPtr request,
                                   AnnotateCallback callback) {

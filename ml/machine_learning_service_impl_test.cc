@@ -921,6 +921,10 @@ TEST(DownloadableModelInferenceTest, SmartDim20210201) {
 
 // Tests loading text classifier only.
 TEST(LoadTextClassifierTest, NoInference) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -941,6 +945,10 @@ TEST(LoadTextClassifierTest, NoInference) {
 
 // Tests text classifier annotator for empty string.
 TEST(TextClassifierAnnotateTest, EmptyString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -975,6 +983,10 @@ TEST(TextClassifierAnnotateTest, EmptyString) {
 
 // Tests text classifier annotator for a complex string.
 TEST(TextClassifierAnnotateTest, ComplexString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -1041,6 +1053,10 @@ TEST(TextClassifierAnnotateTest, ComplexString) {
 // Tests text classifier selection suggestion for an empty string.
 // In this situation, text classifier will return the input span.
 TEST(TextClassifierSelectionTest, EmptyString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -1079,6 +1095,10 @@ TEST(TextClassifierSelectionTest, EmptyString) {
 
 // Tests text classifier selection suggestion for a complex string.
 TEST(TextClassifierSelectionTest, ComplexString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -1118,6 +1138,10 @@ TEST(TextClassifierSelectionTest, ComplexString) {
 // Tests text classifier selection suggestion with wrong inputs.
 // In this situation, text classifier will return the input span.
 TEST(TextClassifierSelectionTest, WrongInput) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -1156,6 +1180,10 @@ TEST(TextClassifierSelectionTest, WrongInput) {
 
 // Tests text classifier language identification with some valid inputs.
 TEST(TextClassifierLangIdTest, ValidInput) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -1190,6 +1218,10 @@ TEST(TextClassifierLangIdTest, ValidInput) {
 // Tests text classifier language identification with empty input.
 // Empty input should produce empty result.
 TEST(TextClassifierLangIdTest, EmptyInput) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());

@@ -315,6 +315,28 @@ void MachineLearningServiceImpl::LoadFlatBufferModel(
 void MachineLearningServiceImpl::LoadTextClassifier(
     mojo::PendingReceiver<TextClassifier> receiver,
     LoadTextClassifierCallback callback) {
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "TextClassifierModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics have already been reported in
+      // `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadTextClassifier(std::move(receiver), std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
+
   RequestMetrics request_metrics("TextClassifier", kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
@@ -323,6 +345,7 @@ void MachineLearningServiceImpl::LoadTextClassifier(
     LOG(ERROR) << "Failed to create TextClassifierImpl object.";
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    brillo::MessageLoop::current()->BreakLoop();
     return;
   }
 
