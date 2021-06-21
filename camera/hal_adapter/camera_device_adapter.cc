@@ -82,9 +82,13 @@ void CameraMonitor::Kick() {
   base::AutoLock l(lock_);
   is_kicked_ = true;
   // Resume the monitor timer if it timed out before.
-  thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&CameraMonitor::MaybeResumeMonitorOnThread,
-                                base::Unretained(this)));
+  // Need to check IsRunning() because the monitor may be detached during close
+  // device.
+  if (thread_.IsRunning()) {
+    thread_.task_runner()->PostTask(
+        FROM_HERE, base::BindOnce(&CameraMonitor::MaybeResumeMonitorOnThread,
+                                  base::Unretained(this)));
+  }
 }
 
 void CameraMonitor::Attach() {
