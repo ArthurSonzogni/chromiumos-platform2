@@ -87,7 +87,7 @@ impl Inner {
         );
 
         let line = format_time_and_record(Local::now(), record);
-        let _ = self.file_log.write(line.as_bytes());
+        let _ = self.file_log.write_all(line.as_bytes());
     }
 
     /// Flush the log file.
