@@ -3,10 +3,11 @@
 // found in the LICENSE file.
 
 use std::fmt;
-use std::io;
-use std::process::{Command, Output};
+use std::io::{self, BufRead};
+use std::os::unix::process::CommandExt;
+use std::process::{Command, Output, Stdio};
 
-use log::debug;
+use log::{debug, info};
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -74,6 +75,67 @@ pub fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError>
         });
     }
     Ok(output.stdout)
+}
+
+/// Run a command and log its output (both stdout and stderr) at the
+/// info level. An error is returned if the process fails to launch,
+/// or if it exits non-zero.
+pub fn run_command_log_output(mut command: Command) -> Result<(), ProcessError> {
+    let cmd_str = command_to_string(&command);
+    info!("running command: {}", cmd_str);
+
+    // This function dups stdout to stderr so that writes to stderr
+    // are sent to stdout. It's passed to Command::pre_exec, so it
+    // runs after forking the child process but before execing the
+    // child executable.
+    fn pre_exec() -> io::Result<()> {
+        nix::unistd::dup2(1, 2).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        Ok(())
+    }
+    unsafe {
+        command.pre_exec(pre_exec);
+    }
+
+    // Spawn the child with its output piped so that it can be logged.
+    let mut child = command
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|err| ProcessError {
+            command: cmd_str.clone(),
+            kind: ErrorKind::LaunchProcess(err),
+        })?;
+    // OK to unwrap because stdout is captured above.
+    let output = child.stdout.take().unwrap();
+
+    // Read each line as it comes in and log it at the info
+    // level. Each line is prefixed with ">>> " to clearly indicate
+    // it's coming from a separate executable. This loop will end when
+    // the output pipe is broken, probably when the child exits.
+    let reader = io::BufReader::new(output);
+    reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .for_each(|line| info!(">>> {}", line));
+
+    // Wait for the child process to exit completely.
+    let status = child.wait().map_err(|err| ProcessError {
+        command: cmd_str.clone(),
+        kind: ErrorKind::LaunchProcess(err),
+    })?;
+
+    // Check the status to return an error if needed.
+    if !status.success() {
+        return Err(ProcessError {
+            command: cmd_str,
+            kind: ErrorKind::ExitedNonZero(Output {
+                status,
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+            }),
+        });
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

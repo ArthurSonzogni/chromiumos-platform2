@@ -131,8 +131,7 @@ fn run_chromeos_install(dest: &Path, boot_mode: BootMode) -> Result {
         cmd.args(&["--target_bios", "efi"]);
     }
 
-    let output = util::get_command_output(cmd).map_err(Error::ProcessError)?;
-    info!("{}", String::from_utf8_lossy(&output));
+    util::run_command_log_output(cmd).map_err(Error::ProcessError)?;
 
     Ok(())
 }
