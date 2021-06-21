@@ -89,18 +89,15 @@ int main(int argc, const char** argv) {
 
   LOG(INFO) << "Received " << *props << " from host.";
 
-  unsigned int expected_cid = VMADDR_CID_ANY;
-  std::string send_props;
   base::Optional<std::pair<unsigned int, std::string>> extracted =
       ExtractCidValue(*props);
-  if (!extracted) {
-    // TODO(wvk): make this LOG(FATAL) once the Chrome change lands.
-    LOG(WARNING) << "The received props did not contain 'CID=<CID>' line";
-    send_props = *props;
-  } else {
-    std::tie(expected_cid, send_props) = *extracted;
-    LOG(INFO) << "Waiting for connection from ARCVM(" << expected_cid << ").";
-  }
+  if (!extracted)
+    LOG(FATAL) << "The received props did not contain 'CID=<CID>' line";
+
+  unsigned int expected_cid;
+  std::string send_props;
+  std::tie(expected_cid, send_props) = *extracted;
+  LOG(INFO) << "Waiting for connection from ARCVM(" << expected_cid << ").";
 
   // Accept connection from ARCVM, then send DATA_READY followed by props.
   // It is possible, in the case of a Chrome crash or restart during early boot,
@@ -121,9 +118,7 @@ int main(int argc, const char** argv) {
       continue;
     }
 
-    // TODO(wvk): Remove `expected_cid != VMADDR_CID_ANY` condition once
-    // Chrome is updated and the CID line is required.
-    if (expected_cid != VMADDR_CID_ANY && expected_cid != *peer_cid) {
+    if (expected_cid != *peer_cid) {
       LOG(ERROR) << "Received connection from ARCVM(" << *peer_cid
                  << "), expected connection from ARCVM(" << expected_cid
                  << "); retrying.";
@@ -132,17 +127,13 @@ int main(int argc, const char** argv) {
 
     LOG(INFO) << "Sending " << kDataReadyCommand << " to ARCVM(" << *peer_cid
               << ").";
-    // TODO(wvk): once the Chrome change lands, change the following PLOG()s to
-    // FATAL.
     if (!base::WriteFileDescriptor(vm_client.get(), kDataReadyCommand,
                                    strlen(kDataReadyCommand))) {
-      PLOG(ERROR) << "Unable to send " << kDataReadyCommand << " to client.";
-      continue;
+      PLOG(FATAL) << "Unable to send " << kDataReadyCommand << " to client.";
     }
     if (!base::WriteFileDescriptor(vm_client.get(), send_props.c_str(),
                                    send_props.size())) {
-      PLOG(ERROR) << "Unable to send props to client";
-      continue;
+      PLOG(FATAL) << "Unable to send props to client";
     }
     break;
   }
