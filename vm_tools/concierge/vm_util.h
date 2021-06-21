@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -143,6 +144,47 @@ std::string CreateSharedDataParam(const base::FilePath& data_dir,
                                   const std::string& tag,
                                   bool enable_caches,
                                   bool ascii_casefold);
+
+class ArcVmCPUTopology {
+ public:
+  ArcVmCPUTopology();
+  ~ArcVmCPUTopology() = default;
+
+  ArcVmCPUTopology(const ArcVmCPUTopology&) = delete;
+  ArcVmCPUTopology& operator=(const ArcVmCPUTopology&) = delete;
+
+  void CreateCPUAffinity(uint32_t num_cpus, uint32_t num_rt_cpus);
+
+  uint32_t NumCPUs();
+  uint32_t NumRTCPUs();
+  const std::string& AffinityMask();
+  const std::string& RTCPUMask();
+  const std::string& CPUMask();
+
+  // Unit Testing crud
+  void AddCpuToCapacityGroupForTesting(uint32_t cpu, uint32_t capacity);
+  void CreateCPUAffinityForTesting(uint32_t num_cpus, uint32_t num_rt_cpus);
+
+ private:
+  void CreateTopology();
+  void CreateStaticTopology();
+  void CreateAffinity();
+
+  // Total number of CPUs VM will be configured with
+  uint32_t num_cpus_;
+  // Number of RT CPUs
+  uint32_t num_rt_cpus_;
+  // CPU mask for RT CPUs
+  std::string rt_cpu_mask_;
+  // CPU mask for non-RT CPUs
+  std::string cpu_mask_;
+  // CPU affinity
+  std::string affinity_mask_;
+  // A set of RT CPUs
+  std::set<uint32_t> rt_cpus_;
+  // CPU capacity grouping
+  std::map<uint32_t, std::vector<uint32_t>> capacity_;
+};
 
 }  // namespace concierge
 }  // namespace vm_tools
