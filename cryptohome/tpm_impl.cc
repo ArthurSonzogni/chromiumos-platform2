@@ -38,6 +38,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -345,7 +346,7 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle, TpmStatusInfo* status) {
     memset(salt.data(), 'C', salt.size());
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob key;
-    CryptoLib::PasskeyToAesKey(password, salt, 13, &key, NULL);
+    PasskeyToAesKey(password, salt, 13, &key, NULL);
     if (EncryptBlob(key_handle, data, key, &data_out) != kTpmRetryNone) {
       return;
     }

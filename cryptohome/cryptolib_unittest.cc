@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
+#include "cryptohome/crypto/aes.h"
 
 #include "cryptohome/crypto/secure_blob_util.h"
 
@@ -134,143 +135,6 @@ TEST(CryptoLibTest, TestRocaVulnerable) {
   EXPECT_FALSE(CryptoLib::TestRocaVulnerable(good_modulus_bn.get()));
 }
 
-// This is not a known vector but a very simple test against the API.
-TEST(CryptoLibTest, AesGcmTestSimple) {
-  brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
-
-  brillo::SecureBlob ciphertext(4096, '\0');
-
-  std::string message = "I am encrypting this message.";
-  brillo::SecureBlob plaintext(message.begin(), message.end());
-
-  GetSecureRandom(key.data(), key.size());
-
-  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
-
-  // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
-  EXPECT_EQ(ciphertext.size(), plaintext.size());
-
-  brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_TRUE(
-      CryptoLib::AesGcmDecrypt(ciphertext, tag, key, iv, &decrypted_plaintext));
-
-  EXPECT_EQ(plaintext, decrypted_plaintext);
-}
-
-TEST(CryptoLibTest, AesGcmTestWrongKey) {
-  brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
-
-  brillo::SecureBlob ciphertext(4096, '\0');
-
-  std::string message = "I am encrypting this message.";
-  brillo::SecureBlob plaintext(message.begin(), message.end());
-
-  GetSecureRandom(key.data(), key.size());
-
-  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
-
-  // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
-  EXPECT_EQ(ciphertext.size(), plaintext.size());
-
-  brillo::SecureBlob wrong_key(kAesGcm256KeySize);
-  GetSecureRandom(wrong_key.data(), wrong_key.size());
-
-  brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, tag, wrong_key, iv,
-                                        &decrypted_plaintext));
-  EXPECT_NE(plaintext, decrypted_plaintext);
-}
-
-TEST(CryptoLibTest, AesGcmTestWrongIV) {
-  brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
-
-  brillo::SecureBlob ciphertext(4096, '\0');
-
-  std::string message = "I am encrypting this message.";
-  brillo::SecureBlob plaintext(message.begin(), message.end());
-
-  GetSecureRandom(key.data(), key.size());
-
-  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
-
-  // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
-  EXPECT_EQ(ciphertext.size(), plaintext.size());
-
-  brillo::SecureBlob wrong_iv(kAesGcmIVSize);
-  GetSecureRandom(wrong_iv.data(), wrong_iv.size());
-
-  brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, tag, key, wrong_iv,
-                                        &decrypted_plaintext));
-  EXPECT_NE(plaintext, decrypted_plaintext);
-}
-
-TEST(CryptoLibTest, AesGcmTestWrongTag) {
-  brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
-
-  brillo::SecureBlob ciphertext(4096, '\0');
-
-  std::string message = "I am encrypting this message.";
-  brillo::SecureBlob plaintext(message.begin(), message.end());
-
-  GetSecureRandom(key.data(), key.size());
-
-  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
-
-  // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
-  EXPECT_EQ(ciphertext.size(), plaintext.size());
-
-  brillo::SecureBlob wrong_tag(kAesGcmTagSize);
-  GetSecureRandom(wrong_tag.data(), wrong_tag.size());
-
-  brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, wrong_tag, key, iv,
-                                        &decrypted_plaintext));
-}
-
-// This tests that AesGcmEncrypt produces a different IV on subsequent runs.
-// Note that this is in no way a mathematical test of secure randomness. It
-// makes sure nobody in the future, for some reason, changes AesGcmEncrypt to
-// use a fixed IV without tests failing, at which point they will find this
-// test, and see that AesGcmEncrypt *must* return random IVs.
-TEST(CryptoLibTest, AesGcmTestUniqueIVs) {
-  brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
-
-  brillo::SecureBlob ciphertext(4096, '\0');
-
-  std::string message = "I am encrypting this message.";
-  brillo::SecureBlob plaintext(message.begin(), message.end());
-
-  GetSecureRandom(key.data(), key.size());
-
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
-
-  brillo::SecureBlob iv2(kAesGcmIVSize);
-  EXPECT_TRUE(
-      CryptoLib::AesGcmEncrypt(plaintext, key, &iv2, &tag, &ciphertext));
-
-  brillo::SecureBlob iv3(kAesGcmIVSize);
-  EXPECT_TRUE(
-      CryptoLib::AesGcmEncrypt(plaintext, key, &iv3, &tag, &ciphertext));
-
-  EXPECT_NE(iv, iv2);
-  EXPECT_NE(iv, iv3);
-}
-
 // These tests check that DeprecatedEncryptScryptBlob and
 // DeprecatedDecryptScryptBlob continue to perform the same function, and
 // interoperate correctly, as they are re-written and re-factored. These do not
@@ -313,14 +177,14 @@ TEST(CryptoLibTest, SimpleAesCtrEncryption) {
   brillo::SecureBlob iv(16, 'B');
   brillo::SecureBlob ciphertext;
 
-  EXPECT_TRUE(CryptoLib::AesEncryptSpecifyBlockMode(
+  EXPECT_TRUE(AesEncryptSpecifyBlockMode(
       brillo::SecureBlob(message.begin(), message.end()), 0, message.size(),
-      key, iv, CryptoLib::kPaddingStandard, CryptoLib::kCtr, &ciphertext));
+      key, iv, PaddingScheme::kPaddingStandard, BlockMode::kCtr, &ciphertext));
 
   brillo::SecureBlob decrypted;
-  EXPECT_TRUE(CryptoLib::AesDecryptSpecifyBlockMode(
-      ciphertext, 0, ciphertext.size(), key, iv, CryptoLib::kPaddingStandard,
-      CryptoLib::kCtr, &decrypted));
+  EXPECT_TRUE(AesDecryptSpecifyBlockMode(ciphertext, 0, ciphertext.size(), key,
+                                         iv, PaddingScheme::kPaddingStandard,
+                                         BlockMode::kCtr, &decrypted));
 
   std::string decrypted_str(decrypted.begin(), decrypted.end());
   EXPECT_EQ(message, decrypted_str);
@@ -348,16 +212,16 @@ TEST(CryptoLibTest, AesCTRKnownVector1) {
   };
   brillo::SecureBlob ciphertext;
 
-  EXPECT_TRUE(CryptoLib::AesEncryptSpecifyBlockMode(
-      plaintext, 0, plaintext.size(), key, iv, CryptoLib::kPaddingStandard,
-      CryptoLib::kCtr, &ciphertext));
+  EXPECT_TRUE(AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key,
+                                         iv, PaddingScheme::kPaddingStandard,
+                                         BlockMode::kCtr, &ciphertext));
 
   EXPECT_EQ(expected_ciphertext, ciphertext);
 
   brillo::SecureBlob resulting_plaintext;
-  EXPECT_TRUE(CryptoLib::AesDecryptSpecifyBlockMode(
+  EXPECT_TRUE(AesDecryptSpecifyBlockMode(
       expected_ciphertext, 0, expected_ciphertext.size(), key, iv,
-      CryptoLib::kPaddingStandard, CryptoLib::kCtr, &resulting_plaintext));
+      PaddingScheme::kPaddingStandard, BlockMode::kCtr, &resulting_plaintext));
   EXPECT_EQ(plaintext, resulting_plaintext);
 }
 
@@ -383,16 +247,16 @@ TEST(CryptoLibTest, AesCTRKnownVector2) {
   };
   brillo::SecureBlob ciphertext;
 
-  EXPECT_TRUE(CryptoLib::AesEncryptSpecifyBlockMode(
-      plaintext, 0, plaintext.size(), key, iv, CryptoLib::kPaddingStandard,
-      CryptoLib::kCtr, &ciphertext));
+  EXPECT_TRUE(AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key,
+                                         iv, PaddingScheme::kPaddingStandard,
+                                         BlockMode::kCtr, &ciphertext));
 
   EXPECT_EQ(expected_ciphertext, ciphertext);
 
   brillo::SecureBlob resulting_plaintext;
-  EXPECT_TRUE(CryptoLib::AesDecryptSpecifyBlockMode(
+  EXPECT_TRUE(AesDecryptSpecifyBlockMode(
       expected_ciphertext, 0, expected_ciphertext.size(), key, iv,
-      CryptoLib::kPaddingStandard, CryptoLib::kCtr, &resulting_plaintext));
+      PaddingScheme::kPaddingStandard, BlockMode::kCtr, &resulting_plaintext));
   EXPECT_EQ(plaintext, resulting_plaintext);
 }
 
@@ -418,16 +282,16 @@ TEST(CryptoLibTest, AesCTRKnownVector3) {
   };
   brillo::SecureBlob ciphertext;
 
-  EXPECT_TRUE(CryptoLib::AesEncryptSpecifyBlockMode(
-      plaintext, 0, plaintext.size(), key, iv, CryptoLib::kPaddingStandard,
-      CryptoLib::kCtr, &ciphertext));
+  EXPECT_TRUE(AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key,
+                                         iv, PaddingScheme::kPaddingStandard,
+                                         BlockMode::kCtr, &ciphertext));
 
   EXPECT_EQ(expected_ciphertext, ciphertext);
 
   brillo::SecureBlob resulting_plaintext;
-  EXPECT_TRUE(CryptoLib::AesDecryptSpecifyBlockMode(
+  EXPECT_TRUE(AesDecryptSpecifyBlockMode(
       expected_ciphertext, 0, expected_ciphertext.size(), key, iv,
-      CryptoLib::kPaddingStandard, CryptoLib::kCtr, &resulting_plaintext));
+      PaddingScheme::kPaddingStandard, BlockMode::kCtr, &resulting_plaintext));
   EXPECT_EQ(plaintext, resulting_plaintext);
 }
 

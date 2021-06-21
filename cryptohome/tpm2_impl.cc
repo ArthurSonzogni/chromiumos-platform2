@@ -35,6 +35,7 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptolib.h"
 
@@ -1156,7 +1157,7 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
     memset(salt.data(), 'C', salt.size());
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob aes_key;
-    CryptoLib::PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
+    PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
     if (EncryptBlob(key, data, aes_key, &data_out) != kTpmRetryNone) {
       return;
     }

@@ -18,13 +18,13 @@
 
 #include "cryptohome/auth_block_state.pb.h"
 #include "cryptohome/challenge_credential_auth_block.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
@@ -287,8 +287,8 @@ bool VaultKeyset::UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
                                     serialized.wrapped_keyset().end());
   SecureBlob plain_text;
 
-  if (!CryptoLib::AesDecryptDeprecated(local_encrypted_keyset, vkk_key, vkk_iv,
-                                       &plain_text)) {
+  if (!AesDecryptDeprecated(local_encrypted_keyset, vkk_key, vkk_iv,
+                            &plain_text)) {
     LOG(ERROR) << "AES decryption failed for vault keyset.";
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return false;
@@ -305,8 +305,8 @@ bool VaultKeyset::UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
     SecureBlob local_wrapped_chaps_key(serialized.wrapped_chaps_key());
     SecureBlob unwrapped_chaps_key;
 
-    if (!CryptoLib::AesDecryptDeprecated(local_wrapped_chaps_key, vkk_key,
-                                         chaps_iv, &unwrapped_chaps_key)) {
+    if (!AesDecryptDeprecated(local_wrapped_chaps_key, vkk_key, chaps_iv,
+                              &unwrapped_chaps_key)) {
       LOG(ERROR) << "AES decryption failed for chaps key.";
       PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
       return false;
@@ -323,9 +323,8 @@ bool VaultKeyset::UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
         SecureBlob(serialized.wrapped_reset_seed());
     SecureBlob local_reset_iv = SecureBlob(serialized.reset_iv());
 
-    if (!CryptoLib::AesDecryptDeprecated(local_wrapped_reset_seed, vkk_key,
-                                         local_reset_iv,
-                                         &unwrapped_reset_seed)) {
+    if (!AesDecryptDeprecated(local_wrapped_reset_seed, vkk_key, local_reset_iv,
+                              &unwrapped_reset_seed)) {
       LOG(ERROR) << "AES decryption failed for reset seed.";
       PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
       return false;
@@ -401,9 +400,8 @@ bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
   }
 
   SecureBlob vault_cipher_text;
-  if (!CryptoLib::AesEncryptDeprecated(vault_blob, blobs.vkk_key.value(),
-                                       blobs.vkk_iv.value(),
-                                       &vault_cipher_text)) {
+  if (!AesEncryptDeprecated(vault_blob, blobs.vkk_key.value(),
+                            blobs.vkk_iv.value(), &vault_cipher_text)) {
     return false;
   }
   wrapped_keyset_ = vault_cipher_text;
@@ -411,9 +409,8 @@ bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
 
   if (GetChapsKey().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
     SecureBlob wrapped_chaps_key;
-    if (!CryptoLib::AesEncryptDeprecated(GetChapsKey(), blobs.vkk_key.value(),
-                                         blobs.chaps_iv.value(),
-                                         &wrapped_chaps_key)) {
+    if (!AesEncryptDeprecated(GetChapsKey(), blobs.vkk_key.value(),
+                              blobs.chaps_iv.value(), &wrapped_chaps_key)) {
       return false;
     }
     wrapped_chaps_key_ = wrapped_chaps_key;
@@ -424,8 +421,8 @@ bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
   if (store_reset_seed && GetResetSeed().size() != 0) {
     const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
-    if (!CryptoLib::AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(),
-                                         reset_iv, &wrapped_reset_seed)) {
+    if (!AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(), reset_iv,
+                              &wrapped_reset_seed)) {
       LOG(ERROR) << "AES encryption of Reset seed failed.";
       return false;
     }

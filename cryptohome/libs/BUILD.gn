@@ -150,6 +150,7 @@ pkg_config("libcrosplatform_dependent_config") {
 # Common objects.
 static_library("libcrosplatform") {
   sources = [
+    "../crypto/aes.cc",
     "../crypto/big_num_util.cc",
     "../crypto/ecdh_hkdf.cc",
     "../crypto/elliptic_curve.cc",

@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
@@ -169,7 +170,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
       return false;
     }
   } else {
-    CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL);
+    PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL);
   }
 
   for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
@@ -199,8 +200,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   if (tpm_state.scrypt_derived()) {
     *vkk_key = HmacSha256(kdf_skey, local_vault_key);
   } else {
-    if (!CryptoLib::PasskeyToAesKey(local_vault_key, salt, rounds, vkk_key,
-                                    vkk_iv)) {
+    if (!PasskeyToAesKey(local_vault_key, salt, rounds, vkk_key, vkk_iv)) {
       LOG(ERROR) << "Failure converting IVKK to VKK.";
       PopulateError(error, CryptoError::CE_OTHER_FATAL);
       return false;

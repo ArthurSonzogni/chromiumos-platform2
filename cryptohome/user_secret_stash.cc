@@ -12,9 +12,9 @@
 #include <string>
 
 #include "cryptohome/aes_gcm_encrypted_uss_generated.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
 #include "cryptohome/user_secret_stash_generated.h"
 
@@ -101,8 +101,7 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetAesGcmEncrypted(
       builder.GetBufferPointer() + builder.GetSize());
 
   brillo::SecureBlob tag, iv, ciphertext;
-  if (!CryptoLib::AesGcmEncrypt(serialized_uss, main_key, &iv, &tag,
-                                &ciphertext)) {
+  if (!AesGcmEncrypt(serialized_uss, main_key, &iv, &tag, &ciphertext)) {
     LOG(ERROR) << "Failed to encrypt UserSecretStash";
     return base::nullopt;
   }
@@ -143,8 +142,7 @@ bool UserSecretStash::FromAesGcmEncrypted(const brillo::SecureBlob& flatbuffer,
   }
 
   brillo::SecureBlob serialized_uss;
-  if (!CryptoLib::AesGcmDecrypt(ciphertext, tag, main_key, iv,
-                                &serialized_uss)) {
+  if (!AesGcmDecrypt(ciphertext, tag, main_key, iv, &serialized_uss)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash";
     return false;
   }

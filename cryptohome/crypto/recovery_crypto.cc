@@ -12,12 +12,11 @@
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
-#include "cryptohome/crypto/hkdf.h"
-#include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
 
@@ -110,9 +109,8 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
   // Dispose private key.
   ephemeral_priv_key.clear();
 
-  if (!CryptoLib::AesGcmEncrypt(mediator_share, aes_gcm_key, &encrypted_ms->iv,
-                                &encrypted_ms->tag,
-                                &encrypted_ms->encrypted_data)) {
+  if (!AesGcmEncrypt(mediator_share, aes_gcm_key, &encrypted_ms->iv,
+                     &encrypted_ms->tag, &encrypted_ms->encrypted_data)) {
     LOG(ERROR) << "Failed to perform AES-GCM encryption";
     return false;
   }

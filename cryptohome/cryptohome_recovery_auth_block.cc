@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"

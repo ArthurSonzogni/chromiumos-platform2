@@ -15,10 +15,10 @@
 
 #include <brillo/file_utils.h>
 
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
@@ -50,11 +50,11 @@ bool ReadKeyFile(const base::FilePath& path,
     return false;
   }
 
-  if (!cryptohome::CryptoLib::AesDecryptSpecifyBlockMode(
+  if (!cryptohome::AesDecryptSpecifyBlockMode(
           brillo::SecureBlob(ciphertext), 0, ciphertext.size(), encryption_key,
           brillo::SecureBlob(cryptohome::kAesBlockSize),
-          cryptohome::CryptoLib::kPaddingStandard, cryptohome::CryptoLib::kCbc,
-          plaintext)) {
+          cryptohome::PaddingScheme::kPaddingStandard,
+          cryptohome::BlockMode::kCbc, plaintext)) {
     LOG(ERROR) << "Decryption failed for data from " << path;
     return false;
   }
@@ -88,11 +88,11 @@ bool WriteKeyFile(const base::FilePath& path,
   // switching over to the safer scheme would have to be done in a
   // backwards-compatible way, so for now it isn't worth it.
   brillo::SecureBlob ciphertext;
-  if (!cryptohome::CryptoLib::AesEncryptSpecifyBlockMode(
+  if (!cryptohome::AesEncryptSpecifyBlockMode(
           plaintext, 0, plaintext.size(), encryption_key,
           brillo::SecureBlob(cryptohome::kAesBlockSize),
-          cryptohome::CryptoLib::kPaddingStandard, cryptohome::CryptoLib::kCbc,
-          &ciphertext)) {
+          cryptohome::PaddingScheme::kPaddingStandard,
+          cryptohome::BlockMode::kCbc, &ciphertext)) {
     LOG(ERROR) << "Encryption failed for " << path;
     return false;
   }

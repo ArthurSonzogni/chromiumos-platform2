@@ -23,11 +23,6 @@ namespace cryptohome {
 
 extern const unsigned int kDefaultPasswordRounds;
 extern const unsigned int kWellKnownExponent;
-extern const unsigned int kAesBlockSize;
-extern const unsigned int kAesGcmTagSize;
-extern const unsigned int kAesGcmIVSize;
-extern const unsigned int kAesGcm256KeySize;
-extern const unsigned int kDefaultAesKeySize;
 extern const unsigned int kDefaultLegacyPasswordRounds;
 extern const unsigned int kDefaultPassBlobSize;
 extern const unsigned int kScryptMetadataSize;
@@ -56,20 +51,6 @@ class CryptoLib {
   CryptoLib();
   ~CryptoLib();
 
-  enum PaddingScheme {
-    kPaddingNone = 0,
-    // Also called PKCS padding.
-    // See http://tools.ietf.org/html/rfc5652#section-6.3.
-    kPaddingStandard = 1,
-    kPaddingCryptohomeDefaultDeprecated = 2,
-  };
-
-  enum BlockMode {
-    kEcb = 1,
-    kCbc = 2,
-    kCtr = 3,
-  };
-
   static bool CreateRsaKey(size_t bits,
                            brillo::SecureBlob* n,
                            brillo::SecureBlob* p);
@@ -79,90 +60,6 @@ class CryptoLib {
   // |secret_prime|.
   static bool FillRsaPrivateKeyFromSecretPrime(
       const brillo::SecureBlob& secret_prime, RSA* rsa);
-
-  static size_t GetAesBlockSize();
-  static bool PasskeyToAesKey(const brillo::SecureBlob& passkey,
-                              const brillo::SecureBlob& salt,
-                              unsigned int rounds,
-                              brillo::SecureBlob* key,
-                              brillo::SecureBlob* iv);
-
-  // Decrypts data encrypted with AesEncrypt.
-  //
-  // Parameters
-  //   wrapped - The blob containing the encrypted data
-  //   key - The AES key to use in decryption
-  //   iv - The initialization vector to use
-  //   plaintext - The unwrapped (decrypted) data
-  static bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
-                                   const brillo::SecureBlob& key,
-                                   const brillo::SecureBlob& iv,
-                                   brillo::SecureBlob* plaintext);
-
-  // AES encrypts the plain text data using the specified key and IV.  This
-  // method uses custom padding and is not inter-operable with other crypto
-  // systems.  The encrypted data can be decrypted with AesDecrypt.
-  //
-  // Parameters
-  //   plaintext - The plain text data to encrypt
-  //   key - The AES key to use
-  //   iv - The initialization vector to use
-  //   ciphertext - On success, the encrypted data
-  static bool AesEncryptDeprecated(const brillo::SecureBlob& plaintext,
-                                   const brillo::SecureBlob& key,
-                                   const brillo::SecureBlob& iv,
-                                   brillo::SecureBlob* ciphertext);
-
-  // AES-GCM decrypts the |ciphertext| using the |key| and |iv|. |key| must be
-  // 256-bits and |iv| must be 96-bits.
-  //
-  // Parameters:
-  //   ciphertext - The encrypted data.
-  //   tag - The integrity check of the data.
-  //   key - The key to decrypt with.
-  //   iv - The IV to decrypt with.
-  //   plaintext - On success, the decrypted data.
-  static bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
-                            const brillo::SecureBlob& tag,
-                            const brillo::SecureBlob& key,
-                            const brillo::SecureBlob& iv,
-                            brillo::SecureBlob* plaintext);
-
-  // AES-GCM encrypts the |plaintext| using the |key|. A random initialization
-  // vector is created and retuned in |iv|. The encrypted data can be decrypted
-  // with AesGcmDecrypt. |key| must be 256-bits.
-  //
-  // Parameters:
-  //   plaintext - The plain text data to encrypt.
-  //   key - The AES key to use.
-  //   iv - The initialization vector generated randomly.
-  //   tag - On success, the integrity tag of the data.
-  //   ciphertext - On success, the encrypted data.
-  static bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
-                            const brillo::SecureBlob& key,
-                            brillo::SecureBlob* iv,
-                            brillo::SecureBlob* tag,
-                            brillo::SecureBlob* ciphertext);
-
-  // Same as AesDecrypt, but allows using either CBC or ECB
-  static bool AesDecryptSpecifyBlockMode(const brillo::SecureBlob& ciphertext,
-                                         unsigned int start,
-                                         unsigned int count,
-                                         const brillo::SecureBlob& key,
-                                         const brillo::SecureBlob& iv,
-                                         PaddingScheme padding,
-                                         BlockMode mode,
-                                         brillo::SecureBlob* plaintext);
-
-  // Same as AesEncrypt, but allows using either CBC or ECB
-  static bool AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plaintext,
-                                         unsigned int start,
-                                         unsigned int count,
-                                         const brillo::SecureBlob& key,
-                                         const brillo::SecureBlob& iv,
-                                         PaddingScheme padding,
-                                         BlockMode mode,
-                                         brillo::SecureBlob* ciphertext);
 
   // Obscure an RSA message by encrypting part of it.
   // The TPM could _in theory_ produce an RSA message (as a response from Bind)

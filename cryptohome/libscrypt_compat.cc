@@ -13,9 +13,9 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
 
@@ -156,9 +156,9 @@ bool LibScryptCompat::Encrypt(const brillo::SecureBlob& derived_key,
   brillo::SecureBlob iv(kLibScryptIVSize, 0);
   brillo::SecureBlob aes_ciphertext;
 
-  if (!CryptoLib::AesEncryptSpecifyBlockMode(
-          data_to_encrypt, 0, data_to_encrypt.size(), aes_key, iv,
-          CryptoLib::kPaddingStandard, CryptoLib::kCtr, &aes_ciphertext)) {
+  if (!AesEncryptSpecifyBlockMode(data_to_encrypt, 0, data_to_encrypt.size(),
+                                  aes_key, iv, PaddingScheme::kPaddingStandard,
+                                  BlockMode::kCtr, &aes_ciphertext)) {
     LOG(ERROR) << "AesEncryptSpecifyBlockMode failed.";
     return false;
   }
@@ -255,9 +255,9 @@ bool LibScryptCompat::Decrypt(const brillo::SecureBlob& encrypted_data,
       encrypted_data.begin() + kLibScryptHeaderSize,
       encrypted_data.end() - kLibScryptHMACSize);
 
-  if (!CryptoLib::AesDecryptSpecifyBlockMode(
-          data_to_decrypt, 0, data_to_decrypt.size(), aes_key, iv,
-          CryptoLib::kPaddingStandard, CryptoLib::kCtr, decrypted_data)) {
+  if (!AesDecryptSpecifyBlockMode(data_to_decrypt, 0, data_to_decrypt.size(),
+                                  aes_key, iv, PaddingScheme::kPaddingStandard,
+                                  BlockMode::kCtr, decrypted_data)) {
     LOG(ERROR) << "AesDecryptSpecifyBlockMode failed.";
     return false;
   }

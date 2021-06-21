@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "cryptohome/attestation.pb.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"

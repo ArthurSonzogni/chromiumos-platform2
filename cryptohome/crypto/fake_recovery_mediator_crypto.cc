@@ -14,12 +14,12 @@
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
 #include "cryptohome/crypto/recovery_crypto.h"
-#include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
 namespace {
@@ -92,9 +92,9 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
     return false;
   }
 
-  if (!CryptoLib::AesGcmDecrypt(encrypted_mediator_share.encrypted_data,
-                                encrypted_mediator_share.tag, aes_gcm_key,
-                                encrypted_mediator_share.iv, mediator_share)) {
+  if (!AesGcmDecrypt(encrypted_mediator_share.encrypted_data,
+                     encrypted_mediator_share.tag, aes_gcm_key,
+                     encrypted_mediator_share.iv, mediator_share)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption";
     return false;
   }

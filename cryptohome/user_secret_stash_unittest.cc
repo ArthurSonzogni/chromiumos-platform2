@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/aes.h"
 
 namespace cryptohome {
 

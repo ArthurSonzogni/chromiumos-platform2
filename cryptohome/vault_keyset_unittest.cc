@@ -18,11 +18,11 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"

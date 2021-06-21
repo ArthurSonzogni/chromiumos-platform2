@@ -26,6 +26,7 @@
 #include <openssl/sha.h>
 
 #include "cryptohome/attestation.pb.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
@@ -247,9 +248,9 @@ bool Crypto::EncryptData(const SecureBlob& data,
     return false;
   }
   SecureBlob encrypted_data_blob;
-  if (!CryptoLib::AesEncryptSpecifyBlockMode(
-          data, 0, data.size(), aes_key, iv, CryptoLib::kPaddingStandard,
-          CryptoLib::kCbc, &encrypted_data_blob)) {
+  if (!AesEncryptSpecifyBlockMode(data, 0, data.size(), aes_key, iv,
+                                  PaddingScheme::kPaddingStandard,
+                                  BlockMode::kCbc, &encrypted_data_blob)) {
     LOG(ERROR) << "Failed to encrypt serial data.";
     return false;
   }
@@ -307,9 +308,9 @@ bool Crypto::DecryptData(const std::string& encrypted_data,
   SecureBlob iv(encrypted_pb.iv().begin(), encrypted_pb.iv().end());
   SecureBlob encrypted_data_blob(encrypted_pb.encrypted_data().begin(),
                                  encrypted_pb.encrypted_data().end());
-  if (!CryptoLib::AesDecryptSpecifyBlockMode(
+  if (!AesDecryptSpecifyBlockMode(
           encrypted_data_blob, 0, encrypted_data_blob.size(), aes_key, iv,
-          CryptoLib::kPaddingStandard, CryptoLib::kCbc, data)) {
+          PaddingScheme::kPaddingStandard, BlockMode::kCbc, data)) {
     LOG(ERROR) << "Failed to decrypt encrypted data.";
     return false;
   }

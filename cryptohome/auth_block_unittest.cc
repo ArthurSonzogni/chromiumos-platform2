@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
 #include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto_error.h"

@@ -434,6 +434,7 @@ if (use.test) {
       "crc32_unittest.cc",
       "credential_verifier_unittest.cc",
       "credentials_unittest.cc",
+      "crypto/aes_unittest.cc",
       "crypto/big_num_util_unittest.cc",
       "crypto/ecdh_hkdf_unittest.cc",
       "crypto/elliptic_curve_unittest.cc",
