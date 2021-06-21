@@ -52,34 +52,37 @@ class FetchAggregator final {
                ProbeTelemetryInfoCallback callback);
 
  private:
-  // Holds all state related to a single call to Run().
+  // Each call of |Run()| creates a |ProbeState| and its lifecycle is bonded to
+  // |FetchAggregator|. This allows a single |FetchAggregator| instance to have
+  // multiple pending asynchronous fetches corresponding to distinct Run()
+  // calls.
   struct ProbeState {
     // Contains requested categories which have not been fetched yet.
     std::set<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
         remaining_categories;
-    // Callback which will be run once all requested categories have been
-    // fetched.
+    chromeos::cros_healthd::mojom::TelemetryInfoPtr result;
+    // The callback to return the result.
     chromeos::cros_healthd::mojom::CrosHealthdProbeService::
         ProbeTelemetryInfoCallback callback;
-    // Holds all fetched data.
-    chromeos::cros_healthd::mojom::TelemetryInfo fetched_data;
   };
+
+  const std::unique_ptr<ProbeState>& CreateProbeState(
+      const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
+          categories_to_probe,
+      chromeos::cros_healthd::mojom::CrosHealthdProbeService::
+          ProbeTelemetryInfoCallback callback);
 
   // Wraps a fetch operation from either a synchronous or asynchronous fetcher.
   template <class T>
   void WrapFetchProbeData(
       chromeos::cros_healthd::mojom::ProbeCategoryEnum category,
-      std::map<uint32_t, std::unique_ptr<ProbeState>>::iterator itr,
+      const std::unique_ptr<ProbeState>& state,
       T* response_data,
       T fetched_data);
 
-  // Returns the next available key in |pending_calls_|.
-  uint32_t GetNextAvailableKey();
-
-  // Maps call state to individual calls to Run(). This allows a single
-  // FetchAggregator instance to have multiple pending asychronous fetches
-  // corresponding to distinct Run() calls.
-  std::map<uint32_t, std::unique_ptr<ProbeState>> pending_calls_;
+ private:
+  // The set to keep the instances of |ProbeState|.
+  std::set<std::unique_ptr<ProbeState>> probe_states_;
 
   // Protects against one fetcher setting the last bit of a |fetched_data| map
   // to true while another fetcher reads it. Without the lock, the reading
