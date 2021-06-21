@@ -19,7 +19,8 @@ use system_api::client::OrgChromiumFlimflamService;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
 
-// TODO(b/177877310): Add "set" command.
+// TODO(b/177877310): Add private-key and preshared-key for set command.
+// TODO(b/177877310): Consider default values.
 const USAGE: &str = r#"wireguard <cmd> [<args>]
 
 Available subcommands:
@@ -32,6 +33,12 @@ new <name>
     Create a new WireGuard service with name <name>.
 del <name>
     Delete the configured WireGuard service with name <name>.
+set <name> [local-ip <ip>] [mtu <mtu>] [dns <ip1>[,<ip2>]...]
+    Configure properties for the WireGuard service with name <name>. Most options should
+    have the same meaning and usage as in `wireguard-tools` (and `wg-quick`). Exceptions
+    are:
+    - Only IPv4 is supported for the VPN overlay, so `local-ip` and `dns` should be set
+      to IPv4 address(es).
 connect <name>
     Connect to the configured WireGuard service with name <name>.
 disconnect <name>
@@ -51,6 +58,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     );
 }
 
+#[derive(Debug)]
 enum Error {
     InvalidArguments(String),
     ServiceNotFound(String),
@@ -66,6 +74,7 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
         ["show", service_name] => wireguard_show(service_name),
         ["new", service_name] => wireguard_new(service_name),
         ["del", service_name] => wireguard_del(service_name),
+        ["set", service_name, remaining @ ..] => wireguard_set(service_name, remaining),
         ["connect", service_name] => wireguard_connect(service_name),
         ["disconnect", service_name] => wireguard_disconnect(service_name),
         [other, ..] => Err(Error::InvalidArguments(other.to_string())),
@@ -207,6 +216,7 @@ const TYPE_VPN: &str = "vpn";
 const TYPE_WIREGUARD: &str = "wireguard";
 
 // Represents a WireGuard service in Shill.
+#[derive(Clone, Debug, PartialEq)]
 struct WireGuardService {
     path: Option<String>,
     name: String,
@@ -217,11 +227,12 @@ struct WireGuardService {
     peers: Vec<WireGuardPeer>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct WireGuardPeer {
     public_key: String,
     endpoint: String,
     allowed_ips: String,
-    persistent_keep_alive: String,
+    persistent_keepalive: String,
 }
 
 impl WireGuardService {
@@ -271,7 +282,7 @@ impl WireGuardService {
                         public_key: p.get_string(PROPERTY_PEER_PUBLIC_KEY)?,
                         endpoint: p.get_string(PROPERTY_PEER_ENDPOINT)?,
                         allowed_ips: p.get_string(PROPERTY_PEER_ALLOWED_IPS)?,
-                        persistent_keep_alive: p.get_string(PROPERTY_PEER_PERSISTENT_KEEPALIVE)?,
+                        persistent_keepalive: p.get_string(PROPERTY_PEER_PERSISTENT_KEEPALIVE)?,
                     })
                 })
                 .collect::<Result<Vec<WireGuardPeer>, Error>>()?,
@@ -322,7 +333,7 @@ impl WireGuardService {
             insert_peer_field(PROPERTY_PEER_ALLOWED_IPS, &peer.allowed_ips);
             insert_peer_field(
                 PROPERTY_PEER_PERSISTENT_KEEPALIVE,
-                &peer.persistent_keep_alive,
+                &peer.persistent_keepalive,
             );
             peers_buf.push(peer_properties);
         }
@@ -332,6 +343,32 @@ impl WireGuardService {
         properties.insert(PROPERTY_SAVE_CREDENTIALS, Variant(Box::new(true)));
 
         properties
+    }
+
+    fn update_from_args(&mut self, args: &[&str]) -> Result<(), Error> {
+        use option_util::*;
+
+        let mut iter = args.iter();
+        while let Some(key) = iter.next() {
+            // Forwards the iterator to read the value for the currently processing option.
+            let mut get_next_as_val = || {
+                iter.next().ok_or_else(|| {
+                    Error::InvalidArguments(format!(
+                        "Option '{}' expects one parameter but none is given",
+                        key
+                    ))
+                })
+            };
+
+            match *key {
+                "local-ip" => self.local_ip = Some(parse_local_ip(get_next_as_val()?)?),
+                "dns" => self.name_servers = Some(parse_dns(get_next_as_val()?)?),
+                "mtu" => self.mtu = Some(parse_mtu(get_next_as_val()?)?),
+                _ => return Err(Error::InvalidArguments(format!("Unknown option `{}`", key))),
+            }
+        }
+
+        Ok(())
     }
 
     fn print(&self) {
@@ -353,12 +390,52 @@ impl WireGuardService {
         println!();
         for p in &self.peers {
             println!("  peer: {}", p.public_key);
-            println!("    public key: {}", p.public_key);
             println!("    preshared key: (hidden or not set)");
             println!("    endpoint: {}", p.endpoint);
             println!("    allowed ips: {}", p.allowed_ips);
-            println!("    persistent keepalive: {}", p.persistent_keep_alive);
+            println!("    persistent keepalive: {}", p.persistent_keepalive);
             println!();
+        }
+    }
+}
+
+mod option_util {
+    use std::net::Ipv4Addr;
+
+    use super::Error;
+
+    pub(super) fn parse_local_ip(val: &str) -> Result<String, Error> {
+        val.parse::<Ipv4Addr>()
+            .map(|ip| ip.to_string())
+            .map_err(|_| {
+                Error::InvalidArguments(format!(
+                    "'local-ip' should contain a valid IPv4 address, but got '{}'",
+                    val
+                ))
+            })
+    }
+
+    pub(super) fn parse_dns(val: &str) -> Result<Vec<String>, Error> {
+        val.split(',')
+            .map(|x| x.parse::<Ipv4Addr>())
+            .map(|x| x.map(|y| y.to_string()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| {
+                Error::InvalidArguments(format!(
+                    "'dns' should be a comma-separated list of valid IPv4 addresses, but got '{}'",
+                    val
+                ))
+            })
+    }
+
+    pub(super) fn parse_mtu(val: &str) -> Result<i32, Error> {
+        match val.parse::<i32>() {
+            // [576, 65536) as per wireguard-tools.
+            Ok(x) if (576..65536).contains(&x) => Ok(x),
+            _ => Err(Error::InvalidArguments(format!(
+                "'mtu' should be in range from 576 to 65535, but got '{}'",
+                val
+            ))),
         }
     }
 }
@@ -466,6 +543,21 @@ fn wireguard_new(service_name: &str) -> Result<(), Error> {
     Ok(())
 }
 
+fn wireguard_set(service_name: &str, args: &[&str]) -> Result<(), Error> {
+    let connection = make_dbus_connection()?;
+    let mut wg_service = get_wireguard_service_by_name(&connection, service_name)?;
+    wg_service.update_from_args(args)?;
+    let manager_proxy = connection.with_proxy("org.chromium.flimflam", "/", DEFAULT_DBUS_TIMEOUT);
+    let properties = wg_service.encode_into_prop_map();
+    manager_proxy.configure_service(properties).map_err(|err| {
+        error!("ERROR: Failed to configure service: {}", err);
+        Error::Internal("".to_string())
+    })?;
+
+    println!("Service {} updated", service_name);
+    Ok(())
+}
+
 fn wireguard_connect(service_name: &str) -> Result<(), Error> {
     let connection = make_dbus_connection()?;
     let service = get_wireguard_service_by_name(&connection, service_name)?;
@@ -498,4 +590,114 @@ fn wireguard_del(service_name: &str) -> Result<(), Error> {
 
     println!("Service {} was deleted", service_name);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Length of base64-encoded keys for WireGuard (Curve25519).
+    const WG_BASE64_KEYLEN: usize = 44;
+
+    struct TestVars {
+        service: WireGuardService,
+    }
+
+    impl TestVars {
+        fn new() -> Self {
+            let public_key_a: String = ['A'; WG_BASE64_KEYLEN].iter().collect();
+            let public_key_b: String = ['B'; WG_BASE64_KEYLEN].iter().collect();
+            let peer_a = WireGuardPeer {
+                public_key: public_key_a.clone(),
+                endpoint: "10.0.8.1:13579".to_string(),
+                allowed_ips: "0.0.0.0/0".to_string(),
+                persistent_keepalive: "".to_string(),
+            };
+            let peer_b = WireGuardPeer {
+                public_key: public_key_b.clone(),
+                endpoint: "10.0.10.1:24680".to_string(),
+                allowed_ips: "10.8.0.0/16,192.168.100.0/24".to_string(),
+                persistent_keepalive: "3".to_string(),
+            };
+            let service = WireGuardService {
+                path: None,
+                name: "wg_test".to_string(),
+                local_ip: Some("192.168.1.2".to_string()),
+                public_key: "".to_string(),
+                name_servers: None,
+                mtu: None,
+                peers: vec![peer_a.clone(), peer_b.clone()],
+            };
+            TestVars { service }
+        }
+    }
+
+    #[test]
+    fn test_update_local_ip() {
+        let vars = TestVars::new();
+        let cases = ["192.168.1.1", "10.8.0.3"];
+        for c in cases.iter() {
+            let mut expected = vars.service.clone();
+            expected.local_ip = Some(c.to_string());
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["local-ip", c]).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_update_local_ip_invalid() {
+        let vars = TestVars::new();
+        let cases = ["", "192.168.1", "abcdabcd", "fe80::1", "1.2.3.4,1.2.3.5"];
+        for c in cases.iter() {
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["local-ip", c]).unwrap_err();
+        }
+    }
+
+    #[test]
+    fn test_update_dns() {
+        let vars = TestVars::new();
+        let cases = ["8.8.8.8,1.2.3.4", "8.8.8.8"];
+        for c in cases.iter() {
+            let mut expected = vars.service.clone();
+            expected.name_servers = Some(c.split(',').map(|x| x.to_string()).collect());
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["dns", c]).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_update_dns_invalid() {
+        let vars = TestVars::new();
+        let cases = ["", "192.168.1", "abcdabcd", "fe80::1", "8.8.8.8,abc"];
+        for c in cases.iter() {
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["dns", c]).unwrap_err();
+        }
+    }
+
+    #[test]
+    fn test_update_mtu() {
+        let vars = TestVars::new();
+        let cases = ["576", "1000", "65535"];
+        for c in cases.iter() {
+            let mut expected = vars.service.clone();
+            expected.mtu = Some(c.parse::<i32>().unwrap());
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["mtu", c]).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_update_mtu_invalid() {
+        let vars = TestVars::new();
+        let cases = ["", "-1", "0", "575", "1000.0", "65536", "abcde"];
+        for c in cases.iter() {
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["mtu", c]).unwrap_err();
+        }
+    }
 }
