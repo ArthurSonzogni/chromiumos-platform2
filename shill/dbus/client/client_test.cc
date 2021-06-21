@@ -82,9 +82,11 @@ class FakeClient : public Client {
     device_mocks_[device_path.value()] = mock;
     // We need to keep these objects around all the way until the client is
     // destructed.
-    static std::vector<dbus::ObjectPath> paths;
-    paths.emplace_back(device_path);
-    EXPECT_CALL(*mock, GetObjectPath).WillRepeatedly(ReturnRef(paths.back()));
+    static std::vector<std::unique_ptr<dbus::ObjectPath>> paths;
+    auto path = std::make_unique<dbus::ObjectPath>(device_path.value());
+    paths.emplace_back(std::move(path));
+    EXPECT_CALL(*mock, GetObjectPath)
+        .WillRepeatedly(ReturnRef(*paths.back().get()));
     return mock;
   }
 
@@ -93,9 +95,11 @@ class FakeClient : public Client {
     service_mocks_[service_path.value()] = mock;
     // We need to keep these objects around all the way until the client is
     // destructed.
-    static std::vector<dbus::ObjectPath> paths;
-    paths.emplace_back(service_path);
-    EXPECT_CALL(*mock, GetObjectPath).WillRepeatedly(ReturnRef(paths.back()));
+    static std::vector<std::unique_ptr<dbus::ObjectPath>> paths;
+    auto path = std::make_unique<dbus::ObjectPath>(service_path.value());
+    paths.emplace_back(std::move(path));
+    EXPECT_CALL(*mock, GetObjectPath)
+        .WillRepeatedly(ReturnRef(*paths.back().get()));
     return mock;
   }
 
@@ -184,6 +188,8 @@ class ClientTest : public testing::Test {
                 DoRegisterPropertyChangedSignalHandler(_, _));
     client_->Init();
   }
+
+  void TearDown() override { client_.reset(); }
 
   void DefaultServiceHandler(const std::string& type) {
     default_service_type_ = type;
