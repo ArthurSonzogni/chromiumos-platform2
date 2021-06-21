@@ -22,37 +22,20 @@ namespace mojo_ipc = chromeos::cros_healthd::mojom;
 }  // namespace
 
 FetchAggregator::FetchAggregator(Context* context)
-    : backlight_fetcher_(std::make_unique<BacklightFetcher>(context)),
-      battery_fetcher_(std::make_unique<BatteryFetcher>(context)),
-      bluetooth_fetcher_(std::make_unique<BluetoothFetcher>(context)),
-      cpu_fetcher_(std::make_unique<CpuFetcher>(context)),
-      disk_fetcher_(std::make_unique<DiskFetcher>(context)),
-      fan_fetcher_(std::make_unique<FanFetcher>(context)),
-      system_fetcher_(std::make_unique<SystemFetcher>(context)),
-      network_fetcher_(std::make_unique<NetworkFetcher>(context)),
-      audio_fetcher_(std::make_unique<AudioFetcher>(context)),
-      boot_performance_fetcher_(
-          std::make_unique<BootPerformanceFetcher>(context)),
-      memory_fetcher_(std::make_unique<MemoryFetcher>(context)),
-      stateful_partition_fetcher_(
-          std::make_unique<StatefulPartitionFetcher>(context)),
-      timezone_fetcher_(std::make_unique<TimezoneFetcher>(context)),
-      bus_fetcher_(std::make_unique<BusFetcher>(context)) {
-  DCHECK(backlight_fetcher_);
-  DCHECK(battery_fetcher_);
-  DCHECK(bluetooth_fetcher_);
-  DCHECK(cpu_fetcher_);
-  DCHECK(disk_fetcher_);
-  DCHECK(fan_fetcher_);
-  DCHECK(system_fetcher_);
-  DCHECK(network_fetcher_);
-  DCHECK(audio_fetcher_);
-  DCHECK(boot_performance_fetcher_);
-  DCHECK(memory_fetcher_);
-  DCHECK(stateful_partition_fetcher_);
-  DCHECK(timezone_fetcher_);
-  DCHECK(bus_fetcher_);
-}
+    : audio_fetcher_(context),
+      backlight_fetcher_(context),
+      battery_fetcher_(context),
+      bluetooth_fetcher_(context),
+      boot_performance_fetcher_(context),
+      bus_fetcher_(context),
+      cpu_fetcher_(context),
+      disk_fetcher_(context),
+      fan_fetcher_(context),
+      memory_fetcher_(context),
+      network_fetcher_(context),
+      stateful_partition_fetcher_(context),
+      system_fetcher_(context),
+      timezone_fetcher_(context) {}
 
 FetchAggregator::~FetchAggregator() = default;
 
@@ -75,36 +58,36 @@ void FetchAggregator::Run(
     switch (category) {
       case mojo_ipc::ProbeCategoryEnum::kBattery: {
         WrapFetchProbeData(category, itr, &info->battery_result,
-                           battery_fetcher_->FetchBatteryInfo());
+                           battery_fetcher_.FetchBatteryInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kCpu: {
         WrapFetchProbeData(category, itr, &info->cpu_result,
-                           cpu_fetcher_->FetchCpuInfo());
+                           cpu_fetcher_.FetchCpuInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kNonRemovableBlockDevices: {
         WrapFetchProbeData(category, itr, &info->block_device_result,
-                           disk_fetcher_->FetchNonRemovableBlockDevicesInfo());
+                           disk_fetcher_.FetchNonRemovableBlockDevicesInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kTimezone: {
         WrapFetchProbeData(category, itr, &info->timezone_result,
-                           timezone_fetcher_->FetchTimezoneInfo());
+                           timezone_fetcher_.FetchTimezoneInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kMemory: {
         WrapFetchProbeData(category, itr, &info->memory_result,
-                           memory_fetcher_->FetchMemoryInfo());
+                           memory_fetcher_.FetchMemoryInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBacklight: {
         WrapFetchProbeData(category, itr, &info->backlight_result,
-                           backlight_fetcher_->FetchBacklightInfo());
+                           backlight_fetcher_.FetchBacklightInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kFan: {
-        fan_fetcher_->FetchFanInfo(base::BindOnce(
+        fan_fetcher_.FetchFanInfo(base::BindOnce(
             &FetchAggregator::WrapFetchProbeData<mojo_ipc::FanResultPtr>,
             weak_factory_.GetWeakPtr(), category, itr, &info->fan_result));
         break;
@@ -112,44 +95,44 @@ void FetchAggregator::Run(
       case mojo_ipc::ProbeCategoryEnum::kStatefulPartition: {
         WrapFetchProbeData(
             category, itr, &info->stateful_partition_result,
-            stateful_partition_fetcher_->FetchStatefulPartitionInfo());
+            stateful_partition_fetcher_.FetchStatefulPartitionInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBluetooth: {
         WrapFetchProbeData(category, itr, &info->bluetooth_result,
-                           bluetooth_fetcher_->FetchBluetoothInfo());
+                           bluetooth_fetcher_.FetchBluetoothInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kSystem: {
         WrapFetchProbeData(category, itr, &info->system_result,
-                           system_fetcher_->FetchSystemInfo());
+                           system_fetcher_.FetchSystemInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kSystem2: {
         WrapFetchProbeData(category, itr, &info->system_result_v2,
-                           system_fetcher_->FetchSystemInfoV2());
+                           system_fetcher_.FetchSystemInfoV2());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kNetwork: {
-        network_fetcher_->FetchNetworkInfo(base::BindOnce(
+        network_fetcher_.FetchNetworkInfo(base::BindOnce(
             &FetchAggregator::WrapFetchProbeData<mojo_ipc::NetworkResultPtr>,
             weak_factory_.GetWeakPtr(), category, itr, &info->network_result));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kAudio: {
         WrapFetchProbeData(category, itr, &info->audio_result,
-                           audio_fetcher_->FetchAudioInfo());
+                           audio_fetcher_.FetchAudioInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBootPerformance: {
         WrapFetchProbeData(
             category, itr, &info->boot_performance_result,
-            boot_performance_fetcher_->FetchBootPerformanceInfo());
+            boot_performance_fetcher_.FetchBootPerformanceInfo());
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBus: {
         WrapFetchProbeData(category, itr, &info->bus_result,
-                           bus_fetcher_->FetchBusDevices());
+                           bus_fetcher_.FetchBusDevices());
         break;
       }
     }

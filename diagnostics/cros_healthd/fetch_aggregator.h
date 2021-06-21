@@ -88,23 +88,20 @@ class FetchAggregator final {
   // time.
   base::Lock lock_;
 
-  // Unowned. The following fetchers should outlive this instance.
-  std::unique_ptr<BacklightFetcher> const backlight_fetcher_ = nullptr;
-  std::unique_ptr<BatteryFetcher> const battery_fetcher_ = nullptr;
-  std::unique_ptr<BluetoothFetcher> const bluetooth_fetcher_ = nullptr;
-  std::unique_ptr<CpuFetcher> const cpu_fetcher_ = nullptr;
-  std::unique_ptr<DiskFetcher> const disk_fetcher_ = nullptr;
-  std::unique_ptr<FanFetcher> const fan_fetcher_ = nullptr;
-  std::unique_ptr<SystemFetcher> const system_fetcher_ = nullptr;
-  std::unique_ptr<NetworkFetcher> const network_fetcher_ = nullptr;
-  std::unique_ptr<AudioFetcher> const audio_fetcher_ = nullptr;
-  std::unique_ptr<BootPerformanceFetcher> const boot_performance_fetcher_ =
-      nullptr;
-  std::unique_ptr<MemoryFetcher> const memory_fetcher_ = nullptr;
-  std::unique_ptr<StatefulPartitionFetcher> const stateful_partition_fetcher_ =
-      nullptr;
-  std::unique_ptr<TimezoneFetcher> const timezone_fetcher_ = nullptr;
-  std::unique_ptr<BusFetcher> const bus_fetcher_ = nullptr;
+  AudioFetcher audio_fetcher_;
+  BacklightFetcher backlight_fetcher_;
+  BatteryFetcher battery_fetcher_;
+  BluetoothFetcher bluetooth_fetcher_;
+  BootPerformanceFetcher boot_performance_fetcher_;
+  BusFetcher bus_fetcher_;
+  CpuFetcher cpu_fetcher_;
+  DiskFetcher disk_fetcher_;
+  FanFetcher fan_fetcher_;
+  MemoryFetcher memory_fetcher_;
+  NetworkFetcher network_fetcher_;
+  StatefulPartitionFetcher stateful_partition_fetcher_;
+  SystemFetcher system_fetcher_;
+  TimezoneFetcher timezone_fetcher_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};
