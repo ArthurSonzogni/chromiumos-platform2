@@ -26,8 +26,8 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/signature_sealing_backend.h"
 
 #if !USE_TPM2
@@ -325,7 +325,7 @@ bool TpmLiveTest::DecryptionKeyTest() {
   SecureBlob n;
   SecureBlob p;
   uint32_t tpm_key_bits = 2048;
-  if (!CryptoLib::CreateRsaKey(tpm_key_bits, &n, &p)) {
+  if (!CreateRsaKey(tpm_key_bits, &n, &p)) {
     LOG(ERROR) << "Error creating RSA key.";
     return false;
   }
@@ -367,7 +367,7 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   SecureBlob n;
   SecureBlob p;
   uint32_t tpm_key_bits = 2048;
-  if (!CryptoLib::CreateRsaKey(tpm_key_bits, &n, &p)) {
+  if (!CreateRsaKey(tpm_key_bits, &n, &p)) {
     LOG(ERROR) << "Error creating RSA key.";
     return false;
   }

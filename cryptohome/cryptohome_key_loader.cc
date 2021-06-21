@@ -4,7 +4,7 @@
 
 #include "cryptohome/cryptohome_key_loader.h"
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/platform.h"
 
 using base::FilePath;
@@ -32,7 +32,7 @@ bool CryptohomeKeyLoader::CreateCryptohomeKey() {
   }
   SecureBlob n;
   SecureBlob p;
-  if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
+  if (!CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
     LOG(ERROR) << "Error creating RSA key";
     return false;
   }

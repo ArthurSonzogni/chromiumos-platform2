@@ -24,8 +24,8 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/tpm1_static_utils.h"
@@ -1076,9 +1076,9 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
   }
   // Decrypt the AuthData value.
   SecureBlob auth_data;
-  if (!CryptoLib::RsaOaepDecrypt(SecureBlob(cmk_wrapped_auth_data_),
-                                 SecureBlob() /* oaep_label */,
-                                 cmk_private_key.get(), &auth_data)) {
+  if (!RsaOaepDecrypt(SecureBlob(cmk_wrapped_auth_data_),
+                      SecureBlob() /* oaep_label */, cmk_private_key.get(),
+                      &auth_data)) {
     LOG(ERROR) << "Failed to decrypt the authorization data";
     return false;
   }
@@ -1188,8 +1188,7 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     return false;
   }
   Blob cmk_wrapped_auth_data;
-  if (!CryptoLib::RsaOaepEncrypt(auth_data, cmk_rsa.get(),
-                                 &cmk_wrapped_auth_data)) {
+  if (!RsaOaepEncrypt(auth_data, cmk_rsa.get(), &cmk_wrapped_auth_data)) {
     LOG(ERROR) << "Failed to encrypt authorization data";
     return false;
   }
@@ -1382,7 +1381,7 @@ crypto::ScopedRSA ExtractCmkPrivateKeyFromMigratedBlob(
   // Perform the RSA OAEP decryption of the encrypted TPM_MIGRATE_ASYMKEY blob,
   // using the custom OAEP label parameter as prescribed by the TPM 1.2 specs.
   SecureBlob decrypted_tpm_migrate_asymkey_blob;
-  if (!CryptoLib::RsaOaepDecrypt(
+  if (!RsaOaepDecrypt(
           SecureBlob(encrypted_tpm_migrate_asymkey_blob),
           SecureBlob(std::begin(kTpmRsaOaepLabel), std::end(kTpmRsaOaepLabel)),
           migration_destination_rsa, &decrypted_tpm_migrate_asymkey_blob)) {
@@ -1444,8 +1443,7 @@ crypto::ScopedRSA ExtractCmkPrivateKeyFromMigratedBlob(
                   "certified migratable key";
     return nullptr;
   }
-  if (!CryptoLib::FillRsaPrivateKeyFromSecretPrime(cmk_secret_prime,
-                                                   cmk_rsa.get())) {
+  if (!FillRsaPrivateKeyFromSecretPrime(cmk_secret_prime, cmk_rsa.get())) {
     LOG(ERROR) << "Failed to create OpenSSL private key object for the "
                   "certified migratable key";
     return nullptr;

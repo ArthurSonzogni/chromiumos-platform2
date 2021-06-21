@@ -36,8 +36,8 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -945,8 +945,7 @@ Tpm::TpmRetryAction Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
     LOG(ERROR) << "Error encrypting plaintext: " << GetErrorString(result);
     return ResultToRetryAction(result);
   }
-  if (!CryptoLib::ObscureRSAMessage(SecureBlob(tpm_ciphertext), key,
-                                    ciphertext)) {
+  if (!ObscureRsaMessage(SecureBlob(tpm_ciphertext), key, ciphertext)) {
     LOG(ERROR) << "Error obscuring tpm encrypted blob.";
     return Tpm::kTpmRetryFailNoRetry;
   }
@@ -965,7 +964,7 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(
     return Tpm::kTpmRetryFailNoRetry;
   }
   SecureBlob local_data;
-  if (!CryptoLib::UnobscureRSAMessage(ciphertext, key, &local_data)) {
+  if (!UnobscureRsaMessage(ciphertext, key, &local_data)) {
     LOG(ERROR) << "Error unobscureing message.";
     return Tpm::kTpmRetryFailNoRetry;
   }

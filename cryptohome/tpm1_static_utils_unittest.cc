@@ -14,7 +14,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/tpm1_static_utils.h"
 
 using brillo::Blob;

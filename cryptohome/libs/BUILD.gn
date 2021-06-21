@@ -158,6 +158,7 @@ static_library("libcrosplatform") {
     "../crypto/hkdf.cc",
     "../crypto/hmac.cc",
     "../crypto/recovery_crypto.cc",
+    "../crypto/rsa.cc",
     "../crypto/secure_blob_util.cc",
     "../crypto/sha.cc",
     "../cryptohome_metrics.cc",

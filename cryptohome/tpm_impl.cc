@@ -39,10 +39,10 @@
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
 #include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm1_static_utils.h"
 #include "cryptohome/tpm_metrics.h"
 
@@ -326,7 +326,7 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle, TpmStatusInfo* status) {
   if (public_srk) {
     const BIGNUM* n;
     RSA_get0_key(public_srk.get(), &n, nullptr, nullptr);
-    status->srk_vulnerable_roca = CryptoLib::TestRocaVulnerable(n);
+    status->srk_vulnerable_roca = TestRocaVulnerable(n);
   } else {
     status->srk_vulnerable_roca = false;
   }
@@ -383,7 +383,7 @@ base::Optional<bool> TpmImpl::IsSrkRocaVulnerable() {
 
   const BIGNUM* n = nullptr;
   RSA_get0_key(public_srk.get(), &n, nullptr, nullptr);
-  return CryptoLib::TestRocaVulnerable(n);
+  return TestRocaVulnerable(n);
 }
 
 bool TpmImpl::GetDictionaryAttackInfo(int* counter,
@@ -559,7 +559,7 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
     LOG(ERROR) << __func__ << ": Failed to read encrypted blob.";
     return action;
   }
-  if (!CryptoLib::ObscureRSAMessage(enc_data_blob, key, ciphertext)) {
+  if (!ObscureRsaMessage(enc_data_blob, key, ciphertext)) {
     LOG(ERROR) << "Error obscuring message.";
     return kTpmRetryFailNoRetry;
   }
@@ -574,7 +574,7 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(
     SecureBlob* plaintext) {
   TSS_RESULT result = TSS_SUCCESS;
   SecureBlob local_data;
-  if (!CryptoLib::UnobscureRSAMessage(ciphertext, key, &local_data)) {
+  if (!UnobscureRsaMessage(ciphertext, key, &local_data)) {
     LOG(ERROR) << "Error unobscureing message.";
     return kTpmRetryFailNoRetry;
   }

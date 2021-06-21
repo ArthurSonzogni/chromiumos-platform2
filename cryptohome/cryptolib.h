@@ -10,7 +10,6 @@
 
 #include <openssl/bn.h>
 #include <openssl/evp.h>
-#include <openssl/rsa.h>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -22,7 +21,6 @@
 namespace cryptohome {
 
 extern const unsigned int kDefaultPasswordRounds;
-extern const unsigned int kWellKnownExponent;
 extern const unsigned int kDefaultLegacyPasswordRounds;
 extern const unsigned int kDefaultPassBlobSize;
 extern const unsigned int kScryptMetadataSize;
@@ -50,63 +48,6 @@ class CryptoLib {
  public:
   CryptoLib();
   ~CryptoLib();
-
-  static bool CreateRsaKey(size_t bits,
-                           brillo::SecureBlob* n,
-                           brillo::SecureBlob* p);
-
-  // Fills out all fields related to the RSA private key information, given the
-  // public key information provided via |rsa| and the secret prime via
-  // |secret_prime|.
-  static bool FillRsaPrivateKeyFromSecretPrime(
-      const brillo::SecureBlob& secret_prime, RSA* rsa);
-
-  // Obscure an RSA message by encrypting part of it.
-  // The TPM could _in theory_ produce an RSA message (as a response from Bind)
-  // that contains a header of a known format. If it did, and we encrypted the
-  // whole message with a passphrase-derived AES key, then one could test
-  // passphrase correctness by trial-decrypting the header. Instead, encrypt
-  // only part of the message, and hope the part we encrypt is part of the RSA
-  // message.
-  //
-  // In practice, this never makes any difference, because no TPM does that; the
-  // result is always a bare PKCS1.5-padded RSA-encrypted message, which is
-  // (as far as the author knows, although no proof is known) indistinguishable
-  // from random data, and hence the attack this would protect against is
-  // infeasible.
-  static bool ObscureRSAMessage(const brillo::SecureBlob& plaintext,
-                                const brillo::SecureBlob& key,
-                                brillo::SecureBlob* ciphertext);
-  static bool UnobscureRSAMessage(const brillo::SecureBlob& ciphertext,
-                                  const brillo::SecureBlob& key,
-                                  brillo::SecureBlob* plaintext);
-
-  // Encrypts data using the RSA OAEP scheme with the SHA-1 hash function, the
-  // MGF1 mask function, and an empty label parameter.
-  static bool RsaOaepEncrypt(const brillo::SecureBlob& plaintext,
-                             RSA* key,
-                             brillo::Blob* ciphertext);
-  // Decrypts the data encrypted with RSA OAEP with the SHA-1 hash function, the
-  // MGF1 mask function, and the label parameter equal to |oaep_label|.
-  static bool RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
-                             const brillo::SecureBlob& oaep_label,
-                             RSA* key,
-                             brillo::SecureBlob* plaintext);
-
-  // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
-  //
-  // Parameters
-  //   key - The RSA public key.
-  //   input - The data to be encrypted.
-  //   output - The encrypted data.
-  static bool TpmCompatibleOAEPEncrypt(RSA* key,
-                                       const brillo::SecureBlob& input,
-                                       brillo::SecureBlob* output);
-
-  // Checks an RSA key modulus for the ROCA fingerprint (i.e. whether the RSA
-  // modulus has a discrete logarithm modulus small primes). See research paper
-  // for details: https://crocs.fi.muni.cz/public/papers/rsa_ccs17
-  static bool TestRocaVulnerable(const BIGNUM* rsa_modulus);
 
   // Derives secrets and other values from User Passkey.
   //

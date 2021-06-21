@@ -440,6 +440,7 @@ if (use.test) {
       "crypto/fake_recovery_mediator_crypto.cc",
       "crypto/hkdf_unittest.cc",
       "crypto/recovery_crypto_unittest.cc",
+      "crypto/rsa_unittest.cc",
       "crypto_unittest.cc",
       "cryptohome_key_loader_unittest.cc",
       "cryptolib_unittest.cc",

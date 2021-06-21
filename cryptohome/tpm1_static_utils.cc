@@ -14,7 +14,7 @@
 #include <openssl/rsa.h>
 #include <trousers/trousers.h>
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/rsa.h"
 
 using brillo::Blob;
 
