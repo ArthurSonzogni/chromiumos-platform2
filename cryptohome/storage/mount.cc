@@ -576,7 +576,7 @@ bool Mount::MigrateToDircrypto(
       GetUserTemporaryMountDirectory(obfuscated_username);
   if (!IsMounted() || mount_type_ != MountType::DIR_CRYPTO ||
       !platform_->DirectoryExists(temporary_mount) ||
-      !mounter_->IsPathMounted(temporary_mount)) {
+      !OwnsMountPoint(temporary_mount)) {
     LOG(ERROR) << "Not mounted for eCryptfs->dircrypto migration.";
     return false;
   }
@@ -594,9 +594,18 @@ bool Mount::MigrateToDircrypto(
     active_dircrypto_migrator_ = &migrator;
   }
   bool success = migrator.Migrate(callback);
-  // This closure will be run immediately so |mounter_| will be valid.
-  UnmountAndDropKeys(base::BindOnce(&MountHelper::TearDownNonEphemeralMount,
-                                    base::Unretained(mounter_.get())));
+  // This closure will be run immediately so |mounter_|/
+  // |out_of_process_mounter_| will be valid.
+  MountHelperInterface* helper;
+  if (mount_non_ephemeral_session_out_of_process_) {
+    helper = out_of_process_mounter_.get();
+  } else {
+    helper = mounter_.get();
+  }
+
+  UnmountAndDropKeys(
+      base::BindOnce(&MountHelperInterface::TearDownNonEphemeralMount,
+                     base::Unretained(helper)));
   {  // Signal the waiting thread.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     active_dircrypto_migrator_ = nullptr;
