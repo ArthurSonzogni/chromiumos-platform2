@@ -468,25 +468,28 @@ void DisplayBlockDeviceInfo(
   OutputData(headers, values, beauty);
 }
 
-void DisplayBluetoothInfo(const BluetoothResultPtr& bluetooth_result,
-                          const bool beauty) {
-  if (bluetooth_result->is_error()) {
-    DisplayError(bluetooth_result->get_error());
+void DisplayBluetoothInfo(const BluetoothResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const std::vector<std::string> headers = {"name", "address", "powered",
-                                            "num_connected_devices"};
+  const auto& infos = result->get_bluetooth_adapter_info();
 
-  const auto& adapters = bluetooth_result->get_bluetooth_adapter_info();
-  std::vector<std::vector<std::string>> values;
-  for (const auto& adapter : adapters) {
-    values.push_back({adapter->name, adapter->address,
-                      (adapter->powered ? "true" : "false"),
-                      std::to_string(adapter->num_connected_devices)});
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* adapters =
+      output.SetKey("adapters", base::Value{base::Value::Type::LIST});
+  for (const auto& info : infos) {
+    base::Value data{base::Value::Type::DICTIONARY};
+    SET_DICT(address, info, &data);
+    SET_DICT(name, info, &data);
+    SET_DICT(num_connected_devices, info, &data);
+    SET_DICT(powered, info, &data);
+
+    adapters->Append(std::move(data));
   }
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayCpuInfo(const CpuResultPtr& cpu_result) {
@@ -776,7 +779,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& bluetooth_result = info->bluetooth_result;
   if (bluetooth_result)
-    DisplayBluetoothInfo(bluetooth_result, beauty);
+    DisplayBluetoothInfo(bluetooth_result);
 
   const auto& system_result = info->system_result;
   if (system_result)
