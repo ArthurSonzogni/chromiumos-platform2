@@ -71,6 +71,7 @@ static_library("libruntime_probe") {
     "system_property_impl.cc",
     "utils/edid.cc",
     "utils/file_utils.cc",
+    "utils/input_device.cc",
     "utils/pipe_utils.cc",
     "utils/type_utils.cc",
     "utils/value_utils.cc",

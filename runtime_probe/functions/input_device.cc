@@ -18,12 +18,12 @@
 #include <base/strings/stringprintf.h>
 
 #include "runtime_probe/utils/file_utils.h"
+#include "runtime_probe/utils/input_device.h"
 
 namespace runtime_probe {
 
 namespace {
 constexpr auto kInputDevicesPath = "/proc/bus/input/devices";
-const pcrecpp::RE kEventPatternRe(R"(event[\d]+)");
 
 using FieldType = std::pair<std::string, std::string>;
 
@@ -31,89 +31,6 @@ const std::vector<FieldType> kTouchscreenI2cFields = {
     {"name", "name"}, {"product", "hw_version"}, {"fw_version", "fw_version"}};
 const std::map<std::string, std::string> kTouchscreenI2cDriverToVid = {
     {"elants_i2c", "04f3"}, {"raydium_ts", "27a3"}, {"atmel_ext_ts", "03eb"}};
-
-void AppendInputDevice(InputDeviceFunction::DataType* list_value,
-                       base::Value&& value) {
-  const auto* sysfs = value.FindStringKey("sysfs");
-  if (sysfs) {
-    const auto path = base::StringPrintf("/sys%s", sysfs->c_str());
-    value.RemoveKey("sysfs");
-    value.SetStringKey("path", path);
-  }
-  list_value->push_back(std::move(value));
-}
-
-InputDeviceFunction::DataType LoadInputDevices() {
-  InputDeviceFunction::DataType results{};
-  std::string input_devices_str;
-  if (!base::ReadFileToString(base::FilePath(kInputDevicesPath),
-                              &input_devices_str)) {
-    LOG(ERROR) << "Failed to read " << kInputDevicesPath << ".";
-    return {};
-  }
-
-  base::Value data;
-  auto input_devices_lines = base::SplitStringPiece(
-      input_devices_str, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (const auto& line : input_devices_lines) {
-    if (line.length() < 3) {
-      DCHECK_EQ(line.length(), 0);
-      continue;
-    }
-    const auto& content = line.substr(3);
-    base::StringPairs keyVals;
-    switch (const auto prefix = line[0]; prefix) {
-      case 'I': {
-        if (data.is_dict() && !data.DictEmpty()) {
-          AppendInputDevice(&results, std::move(data));
-        }
-        if (!base::SplitStringIntoKeyValuePairs(content, '=', ' ', &keyVals)) {
-          LOG(ERROR) << "Failed to parse input devices (I).";
-          return {};
-        }
-        data = base::Value(base::Value::Type::DICTIONARY);
-        for (const auto& [key, value] : keyVals) {
-          data.SetStringKey(base::ToLowerASCII(key), value);
-        }
-        break;
-      }
-      case 'N':
-      case 'S': {
-        if (!base::SplitStringIntoKeyValuePairs(content, '=', '\n', &keyVals)) {
-          LOG(ERROR) << "Failed to parse input devices (N/S).";
-          return {};
-        }
-        const auto& [key, value] = keyVals[0];
-        data.SetStringKey(base::ToLowerASCII(key),
-                          base::TrimString(value, "\"", base::TRIM_ALL));
-        break;
-      }
-      case 'H': {
-        if (!base::SplitStringIntoKeyValuePairs(content, '=', '\n', &keyVals)) {
-          LOG(ERROR) << "Failed to parse input devices (H).";
-          return {};
-        }
-        const auto& value = keyVals[0].second;
-        const auto& handlers = base::SplitStringPiece(
-            value, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-        for (const auto& handler : handlers) {
-          if (kEventPatternRe.FullMatch(handler.as_string())) {
-            data.SetStringKey("event", handler);
-            break;
-          }
-        }
-        break;
-      }
-      default: {
-        break;
-      }
-    }
-  }
-  if (!data.DictEmpty()) {
-    AppendInputDevice(&results, std::move(data));
-  }
-  return results;
-}
 
 std::string GetDriverName(const base::FilePath& node_path) {
   const auto driver_path = node_path.Append("driver");
@@ -124,39 +41,89 @@ std::string GetDriverName(const base::FilePath& node_path) {
   return driver_name;
 }
 
-void FixTouchscreenI2cDevices(InputDeviceFunction::DataType* devices) {
-  for (auto& device : *devices) {
-    const auto* path = device.FindStringKey("path");
-    if (!path)
-      continue;
+void FixTouchscreenI2cDevice(base::Value* device) {
+  const auto* path = device->FindStringKey("path");
+  if (!path)
+    return;
 
-    if (const auto* vid_old = device.FindStringKey("vendor");
-        vid_old && *vid_old != "0000")
-      continue;
+  const auto* vid_old = device->FindStringKey("vendor");
+  if (vid_old && *vid_old != "0000")
+    return;
 
-    const auto node_path = base::FilePath{*path}.Append("device");
-    const auto driver_name = GetDriverName(node_path);
-    const auto entry = kTouchscreenI2cDriverToVid.find(driver_name);
-    if (entry == kTouchscreenI2cDriverToVid.end())
-      continue;
+  const auto node_path = base::FilePath{*path}.Append("device");
+  const auto driver_name = GetDriverName(node_path);
+  const auto entry = kTouchscreenI2cDriverToVid.find(driver_name);
+  if (entry == kTouchscreenI2cDriverToVid.end())
+    return;
 
-    auto dict_value = MapFilesToDict(node_path, kTouchscreenI2cFields, {});
-    if (!dict_value) {
-      DVLOG(1) << "touchscreen_i2c-specific fields do not exist on node \""
-               << node_path << "\"";
-      continue;
-    }
-
-    device.SetStringKey("vendor", entry->second);
-    device.MergeDictionary(&*dict_value);
+  // Refer to http://crrev.com/c/1825942.
+  auto dict_value = MapFilesToDict(node_path, kTouchscreenI2cFields, {});
+  if (!dict_value) {
+    DVLOG(1) << "touchscreen_i2c-specific fields do not exist on node \""
+             << node_path << "\"";
+    return;
   }
+
+  device->SetStringKey("vendor", entry->second);
+  device->MergeDictionary(&*dict_value);
+  return;
+}
+
+void AppendInputDevice(InputDeviceFunction::DataType* list_value,
+                       std::unique_ptr<InputDeviceImpl> input_device,
+                       const std::string& device_type_filter) {
+  std::string device_type = input_device->type();
+  if (!device_type_filter.empty() && device_type_filter != device_type)
+    return;
+  base::Value value(base::Value::Type::DICTIONARY);
+  value.SetStringKey("bus", input_device->bus);
+  value.SetStringKey("event", input_device->event);
+  value.SetStringKey("name", input_device->name);
+  value.SetStringKey("product", input_device->product);
+  value.SetStringKey("vendor", input_device->vendor);
+  value.SetStringKey("version", input_device->version);
+  value.SetStringKey("path",
+                     base::StringPrintf("/sys%s", input_device->sysfs.c_str()));
+  value.SetStringKey("device_type", device_type);
+  FixTouchscreenI2cDevice(&value);
+  list_value->push_back(std::move(value));
 }
 
 }  // namespace
 
+std::unique_ptr<InputDeviceFunction> InputDeviceFunction::FromKwargsValue(
+    const base::Value& dict_value) {
+  PARSE_BEGIN(InputDeviceFunction);
+  PARSE_ARGUMENT(device_type, std::string(""));
+  PARSE_END();
+}
+
 InputDeviceFunction::DataType InputDeviceFunction::EvalImpl() const {
-  auto results = LoadInputDevices();
-  FixTouchscreenI2cDevices(&results);
+  InputDeviceFunction::DataType results{};
+  std::string input_devices_str;
+  if (!base::ReadFileToString(base::FilePath(kInputDevicesPath),
+                              &input_devices_str)) {
+    LOG(ERROR) << "Failed to read " << kInputDevicesPath << ".";
+    return {};
+  }
+
+  auto lines = base::SplitString(input_devices_str, "\n", base::TRIM_WHITESPACE,
+                                 base::SPLIT_WANT_ALL);
+  auto begin_iter = lines.cbegin();
+  while (true) {
+    auto end_iter = begin_iter;
+    while (end_iter != lines.cend() && !end_iter->empty())
+      ++end_iter;
+    if (begin_iter != end_iter) {
+      AppendInputDevice(
+          &results,
+          InputDeviceImpl::From(std::vector<std::string>(begin_iter, end_iter)),
+          device_type_);
+    }
+    if (end_iter == lines.cend())
+      break;
+    begin_iter = std::next(end_iter);
+  }
   return results;
 }
 
