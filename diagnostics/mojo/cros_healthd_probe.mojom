@@ -471,9 +471,17 @@ struct BluetoothAdapterInfo {
 
 // System probe result. Can either be populated with the SystemInfo or an error
 // retrieving the information.
+// DEPRECATED(b/188508561): Use SystemResultV2 instead.
 union SystemResult {
   // Valid SystemInfo.
   SystemInfo system_info;
+  // The error that occurred attempting to retrieve SystemInfo.
+  ProbeError error;
+};
+
+// System probe result. Can either be populated with the SystemInfoV2 or an
+// error retrieving the information.
+union SystemResultV2 {
   // Valid SystemInfoV2.
   SystemInfoV2 system_info_v2;
   // The error that occurred attempting to retrieve SystemInfo.
@@ -805,8 +813,9 @@ struct TelemetryInfo {
   // Information about the device's Bluetooth adapters and devices. Only present
   // when kBluetooth was included in the categories input to ProbeTelemetryInfo.
   BluetoothResult? bluetooth_result;
-  // Information about the system. Only present when kSystem / kSystem2 was
-  // included in the categories input to ProbeTelemetryInfo.
+  // Information about the system. Only present when kSystem was included in
+  // the categories input to ProbeTelemetryInfo.
+  // DEPRECATED(b/188508561): Use system_result_v2 instead.
   SystemResult? system_result;
   // Information about the networking devices and associated networks of the
   // system. Only present when kNetwork was included in the categories input to
@@ -821,4 +830,7 @@ struct TelemetryInfo {
   // Information about the bus devices. Only present when kBus was included
   // in the categories input to ProbeTelemetryInfo.
   BusResult? bus_result;
+  // Information about the system. Only present when kSystem2 was included in
+  // the categories input to ProbeTelemetryInfo.
+  SystemResultV2? system_result_v2;
 };

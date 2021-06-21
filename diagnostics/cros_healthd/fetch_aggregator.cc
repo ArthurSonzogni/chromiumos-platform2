@@ -126,7 +126,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kSystem2: {
-        WrapFetchProbeData(category, itr, &info->system_result,
+        WrapFetchProbeData(category, itr, &info->system_result_v2,
                            system_fetcher_->FetchSystemInfoV2());
         break;
       }

@@ -174,7 +174,7 @@ bool SystemFetcher::FetchOsInfo(mojo_ipc::OsInfoPtr* out_os_info,
   return true;
 }
 
-mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfoV2() {
+mojo_ipc::SystemResultV2Ptr SystemFetcher::FetchSystemInfoV2() {
   const auto& root_dir = context_->root_dir();
   auto system_info = mojo_ipc::SystemInfoV2::New();
   mojo_ipc::ProbeErrorPtr error;
@@ -186,10 +186,10 @@ mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfoV2() {
                           &vpd_info, &error) ||
       !FetchDmiInfo(root_dir, &dmi_info, &error) ||
       !FetchOsInfo(&os_info, &error)) {
-    return mojo_ipc::SystemResult::NewError(std::move(error));
+    return mojo_ipc::SystemResultV2::NewError(std::move(error));
   }
 
-  return mojo_ipc::SystemResult::NewSystemInfoV2(std::move(system_info));
+  return mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info));
 }
 
 mojo_ipc::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
@@ -228,7 +228,7 @@ mojo_ipc::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
 mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
   auto result = FetchSystemInfoV2();
   if (result->is_error())
-    return result;
+    return mojo_ipc::SystemResult::NewError(result->get_error()->Clone());
   CHECK(result->is_system_info_v2());
   auto system_info = ConvertToSystemInfo(result->get_system_info_v2());
   return mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info));
