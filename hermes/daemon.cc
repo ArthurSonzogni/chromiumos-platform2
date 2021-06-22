@@ -25,6 +25,8 @@ Daemon::Daemon()
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  static_assert(USE_QRTR, "Only QRTR modems are supported");
+
   modem_ =
       ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_, &executor_);
 
