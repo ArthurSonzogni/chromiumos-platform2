@@ -68,7 +68,16 @@ generate_dbus_adaptors("debugd-adaptors") {
 }
 
 pkg_config("libdebugd_dependent_config") {
-  pkg_deps = [ "libshill-client" ]
+  # NOSORT
+  pkg_deps = [
+    "libshill-client",
+    "libuser_data_auth-client",
+
+    # system_api depends on protobuf. It must appear before protobuf here so the
+    # linker flags are in the right order.
+    "system_api",
+    "protobuf",
+  ]
 }
 
 static_library("libdebugd") {

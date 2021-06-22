@@ -9,11 +9,13 @@
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <google/protobuf/message_lite.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
@@ -43,24 +45,17 @@ const char kOwnerQueryErrorString[] =
 // |reply| will be filled if a response was received regardless of extension,
 // but the function will only return true if reply is filled and has the
 // correct GetLoginStatusReply extension.
-bool CryptohomeGetLoginStatus(dbus::Bus* bus, cryptohome::BaseReply* reply) {
-  cryptohome::GetLoginStatusRequest request;
-
-  dbus::ObjectProxy* proxy =
-      bus->GetObjectProxy(cryptohome::kCryptohomeServiceName,
-                          dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
-  dbus::MethodCall method_call(cryptohome::kCryptohomeInterface,
-                               cryptohome::kCryptohomeGetLoginStatus);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendProtoAsArrayOfBytes(request);
-  std::unique_ptr<dbus::Response> response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-
-  if (!response)
+bool CryptohomeGetLoginStatus(dbus::Bus* bus,
+                              user_data_auth::GetLoginStatusReply* reply) {
+  org::chromium::CryptohomeMiscInterfaceProxy proxy(bus);
+  user_data_auth::GetLoginStatusRequest request;
+  brillo::ErrorPtr error;
+  bool success = proxy.GetLoginStatus(request, reply, &error);
+  if (!success || error) {
     return false;
+  }
 
-  dbus::MessageReader reader(response.get());
-  return reader.PopArrayOfBytesAsProto(reply);
+  return true;
 }
 
 }  // namespace
@@ -116,15 +111,14 @@ bool DevModeNoOwnerRestriction::InDevMode() const {
 // and |boot_lockbox_finalized| are updated.
 bool DevModeNoOwnerRestriction::GetOwnerAndLockboxStatus(
     bool* owner_user_exists, bool* boot_lockbox_finalized) {
-  cryptohome::BaseReply base_reply;
-  if (CryptohomeGetLoginStatus(bus_.get(), &base_reply)) {
-    cryptohome::GetLoginStatusReply reply =
-        base_reply.GetExtension(cryptohome::GetLoginStatusReply::reply);
-    if (reply.has_owner_user_exists() && reply.has_boot_lockbox_finalized()) {
-      *owner_user_exists = reply.owner_user_exists();
-      *boot_lockbox_finalized = reply.boot_lockbox_finalized();
-      return true;
-    }
+  user_data_auth::GetLoginStatusReply reply;
+  if (CryptohomeGetLoginStatus(bus_.get(), &reply)) {
+    *owner_user_exists = reply.owner_user_exists();
+    // boot_lockbox_finalized is deprecated and always sets to false.
+    // See definition of user_data_auth::GetLoginStatusReply for more
+    // information.
+    *boot_lockbox_finalized = false;
+    return true;
   }
   return false;
 }
