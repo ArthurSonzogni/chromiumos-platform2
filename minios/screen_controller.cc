@@ -11,8 +11,10 @@
 #include "minios/recovery_installer.h"
 #include "minios/screen_language_dropdown.h"
 #include "minios/screen_welcome.h"
+#include "minios/screens/screen_debug_options.h"
 #include "minios/screens/screen_download.h"
 #include "minios/screens/screen_error.h"
+#include "minios/screens/screen_log.h"
 #include "minios/screens/screen_network.h"
 #include "minios/screens/screen_permission.h"
 #include "minios/utils.h"
@@ -74,9 +76,12 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
     case ScreenType::kConnectionError:
     case ScreenType::kGeneralError:
       return std::make_unique<ScreenError>(screen_type, draw_utils_, this);
+    case ScreenType::kDebugOptionsScreen:
+      return std::make_unique<ScreenDebugOptions>(draw_utils_, this);
+    case ScreenType::kLogScreen:
+      return std::make_unique<ScreenLog>(draw_utils_, this);
     default:
-      // TODO(vyshu) : Other screens not yet implemented. Once all screens are
-      // done, this should never return nullptr.
+      LOG(FATAL) << "Invalid screen.";
       return nullptr;
   }
 }
@@ -97,11 +102,16 @@ void ScreenController::OnForward(ScreenInterface* screen) {
     case ScreenType::kPasswordError:
     case ScreenType::kConnectionError:
     case ScreenType::kGeneralError:
-    // Show debug options and log screen.
-    // TODO(vyshu) : kDebugOptionsScreen not yet implemented.
-    default:
-      // TODO(vyshu) : Other screens not yet implemented.
+      // Show debug options and log screen. Save error screen to return to from
+      // `kDebugOptionsScreen`.
+      previous_screen_ = std::move(current_screen_);
+      current_screen_ = CreateScreen(ScreenType::kDebugOptionsScreen);
       break;
+    case ScreenType::kDebugOptionsScreen:
+      current_screen_ = CreateScreen(ScreenType::kLogScreen);
+      break;
+    default:
+      LOG(FATAL) << "Invalid screen.";
   }
   current_screen_->Show();
 }
@@ -133,9 +143,24 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
       // Return to beginning of the flow.
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
-    default:
-      // TODO(vyshu) : Other screens not yet implemented.
+    case ScreenType::kDebugOptionsScreen:
+      // Back to original error screen, reset index.
+      if (previous_screen_ &&
+          dynamic_cast<ScreenError*>(previous_screen_.get())) {
+        current_screen_ = std::move(previous_screen_);
+        current_screen_->Reset();
+      } else {
+        // No error screen saved. Go back to beginning.
+        previous_screen_ = nullptr;
+        current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
+      }
       break;
+    case ScreenType::kLogScreen:
+      // Back to debug options screen.
+      current_screen_ = CreateScreen(ScreenType::kDebugOptionsScreen);
+      break;
+    default:
+      LOG(FATAL) << "Invalid screen.";
   }
   current_screen_->Show();
 }

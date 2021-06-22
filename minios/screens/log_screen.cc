@@ -7,6 +7,17 @@
 #include "minios/utils.h"
 
 namespace minios {
+namespace {
+// Dimension Constants for Logging
+const int kLogCharPerLine = 111;
+const int kLogLinesPerPage = 20;
+const int kLogAreaWidth = kMonospaceGlyphWidth * kLogCharPerLine;
+const int kLogAreaHeight = kMonospaceGlyphHeight * kLogLinesPerPage;
+// y-coord of the upper edge of the log area, 16px below title.
+const int kLogAreaY = 196;
+}  // namespace
+
+// TODO(vyshu): Delete this screen once screens.h is deprecated.
 
 void Screens::ShowMiniOsLogScreen() {
   MessageBaseScreen();

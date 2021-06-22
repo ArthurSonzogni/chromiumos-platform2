@@ -33,13 +33,7 @@ extern const int kButtonMargin;
 extern const int kDefaultMessageWidth;
 extern const int kMonospaceGlyphHeight;
 extern const int kMonospaceGlyphWidth;
-
-// Dimension Constants for Logging
-extern const int kLogAreaHeight;
-extern const int kLogAreaWidth;
-extern const int kLogAreaY;
-extern const int kLogCharPerLine;
-extern const int kLogLinesPerPage;
+extern const int kDefaultButtonWidth;
 
 // Frecon constants
 extern const char kScreens[];

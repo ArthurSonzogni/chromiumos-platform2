@@ -88,7 +88,6 @@ void ScreenError::OnKeyPress(int key_changed) {
 
 void ScreenError::Reset() {
   index_ = 1;
-  error_screen_ = ScreenType::kGeneralError;
 }
 
 ScreenType ScreenError::GetType() {

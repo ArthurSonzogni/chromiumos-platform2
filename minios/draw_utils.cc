@@ -27,14 +27,7 @@ const int kButtonMargin = 8;
 const int kDefaultMessageWidth = 720;
 const int kMonospaceGlyphHeight = 20;
 const int kMonospaceGlyphWidth = 10;
-
-// Dimension Constants for Logging
-const int kLogAreaWidth = kMonospaceGlyphWidth * kLogCharPerLine;
-const int kLogAreaHeight = kMonospaceGlyphHeight * kLogLinesPerPage;
-// y-coord of the upper edge of the log area, 16px below title.
-const int kLogAreaY = 196;
-const int kLogCharPerLine = 111;
-const int kLogLinesPerPage = 20;
+const int kDefaultButtonWidth = 80;
 
 // Frecon constants
 constexpr char kScreens[] = "etc/screens";
@@ -45,7 +38,6 @@ namespace {
 constexpr char kConsole0[] = "dev/pts/0";
 
 // Dimensions and spacing.
-constexpr int kDefaultButtonWidth = 80;
 constexpr int kNewLineChar = 10;
 
 constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
