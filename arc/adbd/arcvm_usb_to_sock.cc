@@ -65,7 +65,8 @@ void ArcVmUsbToSock::Run() {
       // to restart the service.
       break;
     }
-    if (ret && !base::WriteFileDescriptor(sock_fd_, data, ret)) {
+    if (ret &&
+        !base::WriteFileDescriptor(sock_fd_, base::StringPiece(data, ret))) {
       PLOG(ERROR) << "failed to write to socket";
       break;
     }

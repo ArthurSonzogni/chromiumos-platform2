@@ -336,22 +336,15 @@ base::ScopedFD SetupFunctionFS(const std::string& udc_driver_name) {
     PLOG(ERROR) << "Failed to open control file";
     return base::ScopedFD();
   }
-  if (!base::WriteFileDescriptor(
-          control_file.get(), reinterpret_cast<const char*>(kControlPayloadV2),
-          sizeof(kControlPayloadV2))) {
+  if (!base::WriteFileDescriptor(control_file.get(), kControlPayloadV2)) {
     PLOG(WARNING) << "Failed to write the V2 control payload, "
                      "trying to write the V1 control payload";
-    if (!base::WriteFileDescriptor(
-            control_file.get(),
-            reinterpret_cast<const char*>(kControlPayloadV1),
-            sizeof(kControlPayloadV1))) {
+    if (!base::WriteFileDescriptor(control_file.get(), kControlPayloadV1)) {
       PLOG(ERROR) << "Failed to write the V1 control payload";
       return base::ScopedFD();
     }
   }
-  if (!base::WriteFileDescriptor(control_file.get(),
-                                 reinterpret_cast<const char*>(kControlStrings),
-                                 sizeof(kControlStrings))) {
+  if (!base::WriteFileDescriptor(control_file.get(), kControlStrings)) {
     PLOG(ERROR) << "Failed to write the control strings";
     return base::ScopedFD();
   }

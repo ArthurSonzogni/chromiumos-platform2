@@ -59,7 +59,8 @@ void ArcVmSockToUsb::Run() {
     EXIT_IF(!base::ReadFromFD(sock_fd_, data, kAmessageSize),
             "failed to read adb message from socket");
 
-    EXIT_IF(!base::WriteFileDescriptor(usb_fd_, data, kAmessageSize),
+    EXIT_IF(!base::WriteFileDescriptor(usb_fd_,
+                                       base::StringPiece(data, kAmessageSize)),
             "failed to write adb message to usb");
 
     // The ADB design of USB transport splits the header and the optional
@@ -82,7 +83,8 @@ void ArcVmSockToUsb::Run() {
     if (payload_len > 0) {
       EXIT_IF(!base::ReadFromFD(sock_fd_, data, payload_len),
               "failed to read adb payload from socket");
-      EXIT_IF(!base::WriteFileDescriptor(usb_fd_, data, payload_len),
+      EXIT_IF(!base::WriteFileDescriptor(usb_fd_,
+                                         base::StringPiece(data, payload_len)),
               "failed to write adb payload to usb");
     }
   }
