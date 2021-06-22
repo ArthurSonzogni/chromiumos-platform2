@@ -494,7 +494,7 @@ void SerializeLogsAsJSON(const base::Value& dictionary,
   string logs_json;
   base::JSONWriter::WriteWithOptions(
       dictionary, base::JSONWriter::OPTIONS_PRETTY_PRINT, &logs_json);
-  base::WriteFileDescriptor(fd.get(), logs_json.c_str(), logs_json.size());
+  base::WriteFileDescriptor(fd.get(), logs_json);
 }
 
 bool GetNamedLogFrom(const string& name,
@@ -1055,7 +1055,7 @@ void LogTool::GetJournalLog(const base::ScopedFD& fd) {
   Log journal(kCommand, "journal.export", "journalctl -n 10000 -o export",
               "syslog", "syslog", 10 * 1024 * 1024, LogTool::Encoding::kBinary);
   std::string output = journal.GetLogData();
-  base::WriteFileDescriptor(fd.get(), output.data(), output.size());
+  base::WriteFileDescriptor(fd.get(), output);
 }
 
 // static

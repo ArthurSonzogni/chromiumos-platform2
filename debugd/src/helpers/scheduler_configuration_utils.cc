@@ -51,7 +51,7 @@ bool SchedulerConfigurationUtils::WriteFlagToCPUControlFile(
     const base::ScopedFD& fd, const std::string& flag) {
   // WriteFileDescriptor returns true iff |size| bytes of |data| were written to
   // |fd|.
-  return base::WriteFileDescriptor(fd.get(), flag.c_str(), flag.size());
+  return base::WriteFileDescriptor(fd.get(), flag);
 }
 
 // static
@@ -345,8 +345,7 @@ bool SchedulerConfigurationUtils::UpdateAllCPUSets() {
 
   for (const auto& scoped_fd : cpusets_fds_) {
     // This is a best effort, so if it fails, continue on.
-    base::WriteFileDescriptor(scoped_fd.get(), online_cpus_str.data(),
-                              online_cpus_str.size());
+    base::WriteFileDescriptor(scoped_fd.get(), online_cpus_str);
   }
 
   return true;

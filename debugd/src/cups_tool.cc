@@ -92,15 +92,6 @@ int RunAsUser(const std::string& user,
     process.AddArg(arg);
   }
 
-  // Prepares a buffer with standard input.
-  std::vector<char> buf;
-  if (std_input != nullptr) {
-    buf.reserve(std_input->size());
-    for (uint8_t byte : *std_input) {
-      buf.push_back(static_cast<char>(byte));
-    }
-  }
-
   // Starts a process, writes data from the buffer to its standard input and
   // waits for the process to finish.
   int result = ProcessWithOutput::kRunError;
@@ -123,8 +114,11 @@ int RunAsUser(const std::string& user,
         },
         old_sa));
     int stdin_fd = process.GetPipe(STDIN_FILENO);
+
     // Kill the process if writing to or closing the pipe fails.
-    if (!base::WriteFileDescriptor(stdin_fd, buf.data(), buf.size()) ||
+    if (!base::WriteFileDescriptor(stdin_fd, std_input != nullptr
+                                                 ? *std_input
+                                                 : std::vector<uint8_t>()) ||
         IGNORE_EINTR(close(stdin_fd)) < 0) {
       process.Kill(SIGKILL, 0);
     }

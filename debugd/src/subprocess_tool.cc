@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 
 #include "debugd/src/error_utils.h"
 
