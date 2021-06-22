@@ -230,6 +230,13 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
+  const uint32_t memory_mib = request.memory_mib();
+  if (memory_mib > 0) {
+    vm_builder.SetMemory(std::to_string(memory_mib));
+  } else {
+    vm_builder.SetMemory(GetVmMemoryMiB());
+  }
+
   auto vm =
       ArcVm::Create(std::move(kernel), vsock_cid, std::move(network_client),
                     std::move(server_proxy), std::move(runtime_dir), features,

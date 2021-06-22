@@ -270,6 +270,9 @@ message StartArcVmRequest {
 
   // Whether Huge Pages should be used.
   bool use_hugepages = 11;
+
+  // How much memory to give ARCVM, in MiB. Optional.
+  uint32 memory_mib = 12;
 }
 
 enum VmStatus {

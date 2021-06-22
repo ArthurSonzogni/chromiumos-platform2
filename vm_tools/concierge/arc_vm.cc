@@ -253,7 +253,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       CreateSharedDataParam(fonts_dir, kFontsSharedDirTag, true, false);
 
   vm_builder
-      .SetMemory(GetVmMemoryMiB())
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
       .SetBalloonBias("48")
       .SetVsockCid(vsock_cid_)
