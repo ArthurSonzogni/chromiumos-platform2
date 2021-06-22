@@ -108,28 +108,6 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
   return true;
 }
 
-// Straight pass through.
-Tpm::TpmRetryAction TpmPassthroughSealWithAuthorization(
-    uint32_t _key,
-    const SecureBlob& plaintext,
-    Unused,
-    Unused,
-    SecureBlob* ciphertext) {
-  ciphertext->resize(plaintext.size());
-  memcpy(ciphertext->data(), plaintext.data(), plaintext.size());
-  return Tpm::kTpmRetryNone;
-}
-
-Tpm::TpmRetryAction TpmPassthroughDecrypt(uint32_t _key,
-                                          const SecureBlob& ciphertext,
-                                          Unused,
-                                          Unused,
-                                          SecureBlob* plaintext) {
-  plaintext->resize(ciphertext.size());
-  memcpy(plaintext->data(), ciphertext.data(), ciphertext.size());
-  return Tpm::kTpmRetryNone;
-}
-
 std::string HexDecode(const std::string& hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
