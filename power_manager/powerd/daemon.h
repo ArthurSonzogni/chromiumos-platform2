@@ -21,6 +21,8 @@
 #if USE_IIOSERVICE
 #include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
 #endif  // USE_IIOSERVICE
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/cellular_controller.h"
@@ -228,11 +230,13 @@ class Daemon :
 
   // Handles other D-Bus services just becoming initially available (i.e.
   // restarts are ignored).
-  void HandleCryptohomedAvailable(bool available);
+  void HandleTpmManagerdAvailable(bool available);
 
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
-  void HandleGetTpmStatusResponse(dbus::Response* response);
+  void HandleGetDictionaryAttackInfoSuccess(
+      const tpm_manager::GetDictionaryAttackInfoReply& da_reply);
+  void HandleGetDictionaryAttackInfoFailed(brillo::Error* err);
   std::unique_ptr<dbus::Response> HandleRequestShutdownMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleRequestRestartMethod(
@@ -264,7 +268,7 @@ class Daemon :
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
 
-  // Asynchronously asks |cryptohomed_dbus_proxy| (which must be non-null) to
+  // Asynchronously asks |tpm_manager_proxy_| (which must be non-null) to
   // return the TPM status, which is handled by HandleGetTpmStatusResponse().
   void RequestTpmStatus();
 
@@ -290,10 +294,11 @@ class Daemon :
 
   std::unique_ptr<system::DBusWrapperInterface> dbus_wrapper_;
 
-  // ObjectProxy objects are owned by |dbus_wrapper_|.
+  // The |session_manager_dbus_proxy_| is owned by |dbus_wrapper_|
   dbus::ObjectProxy* session_manager_dbus_proxy_ = nullptr;
-  // May be null if the TPM status is not needed.
-  dbus::ObjectProxy* cryptohomed_dbus_proxy_ = nullptr;
+  // DBus proxy for contacting tpm_managerd. May be null if the TPM status is
+  // not needed.
+  std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
 
   std::unique_ptr<BatteryPercentageConverter> battery_percentage_converter_;
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
@@ -374,7 +379,7 @@ class Daemon :
   base::RepeatingTimer retry_shutdown_for_lockfile_timer_;
 
   // Timer that periodically calls RequestTpmStatus() if
-  // |cryptohome_dbus_proxy_| is non-null.
+  // |tpm_manager_proxy_| is non-null.
   base::RepeatingTimer tpm_status_timer_;
 
   // Delay with which |tpm_status_timer_| should fire.

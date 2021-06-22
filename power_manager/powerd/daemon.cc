@@ -28,7 +28,6 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include "cryptohome/proto_bindings/rpc.pb.h"
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/metrics_sender.h"
@@ -120,7 +119,8 @@ constexpr base::TimeDelta kShutdownLockfileRetryInterval =
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
 const int kSessionManagerDBusTimeoutMs = 3000;
-const int kCryptohomedDBusTimeoutMs = 2 * 60 * 1000;  // Two minutes.
+constexpr base::TimeDelta kTpmManagerdDBusTimeout =
+    base::TimeDelta::FromMinutes(2);
 
 // Interval between log messages while user, audio, or video activity is
 // ongoing, in seconds.
@@ -943,20 +943,6 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  int64_t tpm_threshold = 0;
-  prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
-  if (tpm_threshold > 0) {
-    cryptohomed_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
-        cryptohome::kCryptohomeServiceName, cryptohome::kCryptohomeServicePath);
-    dbus_wrapper_->RegisterForServiceAvailability(
-        cryptohomed_dbus_proxy_, base::Bind(&Daemon::HandleCryptohomedAvailable,
-                                            weak_ptr_factory_.GetWeakPtr()));
-
-    int64_t tpm_status_sec = 0;
-    prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
-    tpm_status_interval_ = base::TimeDelta::FromSeconds(tpm_status_sec);
-  }
-
   // Export Daemon's D-Bus method calls.
   typedef std::unique_ptr<dbus::Response> (Daemon::*DaemonMethod)(
       dbus::MethodCall*);
@@ -987,6 +973,19 @@ void Daemon::InitDBus() {
   // There's no underlying dbus::Bus object when we're being tested.
   if (!bus)
     return;
+
+  int64_t tpm_threshold = 0;
+  prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
+  if (tpm_threshold > 0) {
+    tpm_manager_proxy_.reset(new org::chromium::TpmManagerProxy(bus));
+    tpm_manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+        base::Bind(&Daemon::HandleTpmManagerdAvailable,
+                   weak_ptr_factory_.GetWeakPtr()));
+
+    int64_t tpm_status_sec = 0;
+    prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
+    tpm_status_interval_ = base::TimeDelta::FromSeconds(tpm_status_sec);
+  }
 
 #if USE_BUFFET
   buffet::InitCommandHandlers(
@@ -1048,12 +1047,12 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
   OnSessionStateChange(state);
 }
 
-void Daemon::HandleCryptohomedAvailable(bool available) {
+void Daemon::HandleTpmManagerdAvailable(bool available) {
   if (!available) {
-    LOG(ERROR) << "Failed waiting for cryptohomed to become available";
+    LOG(ERROR) << "Failed waiting for tpm_manager to become available";
     return;
   }
-  if (!cryptohomed_dbus_proxy_)
+  if (!tpm_manager_proxy_)
     return;
 
   RequestTpmStatus();
@@ -1074,36 +1073,24 @@ void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
   }
 }
 
-void Daemon::HandleGetTpmStatusResponse(dbus::Response* response) {
-  if (!response) {
-    LOG(ERROR) << cryptohome::kCryptohomeGetTpmStatus << " call failed";
+void Daemon::HandleGetDictionaryAttackInfoFailed(brillo::Error* err) {
+  LOG(ERROR) << "GetDictionaryAttackInfo call failed";
+  return;
+}
+
+void Daemon::HandleGetDictionaryAttackInfoSuccess(
+    const tpm_manager::GetDictionaryAttackInfoReply& reply) {
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << "GetDictionaryAttackInfo response contains error status code "
+               << reply.status();
     return;
   }
 
-  cryptohome::BaseReply base_reply;
-  dbus::MessageReader reader(response);
-  if (!reader.PopArrayOfBytesAsProto(&base_reply)) {
-    LOG(ERROR) << "Unable to parse " << cryptohome::kCryptohomeGetTpmStatus
-               << "response";
-    return;
-  }
-  if (base_reply.has_error()) {
-    LOG(ERROR) << cryptohome::kCryptohomeGetTpmStatus << " response contains "
-               << "error code " << base_reply.error();
-    return;
-  }
-  if (!base_reply.HasExtension(cryptohome::GetTpmStatusReply::reply)) {
-    LOG(ERROR) << cryptohome::kCryptohomeGetTpmStatus << " response doesn't "
-               << "contain nested reply";
-    return;
-  }
-
-  cryptohome::GetTpmStatusReply tpm_reply =
-      base_reply.GetExtension(cryptohome::GetTpmStatusReply::reply);
-  LOG(INFO) << "Received " << cryptohome::kCryptohomeGetTpmStatus
-            << " response with dictionary attack count "
-            << tpm_reply.dictionary_attack_counter();
-  state_controller_->HandleTpmStatus(tpm_reply.dictionary_attack_counter());
+  const int da_count = reply.dictionary_attack_counter();
+  LOG(INFO) << "Received GetDictionaryAttackInfo response with dictionary "
+               "attack count "
+            << da_count;
+  state_controller_->HandleTpmStatus(da_count);
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
@@ -1363,16 +1350,15 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
 }
 
 void Daemon::RequestTpmStatus() {
-  DCHECK(cryptohomed_dbus_proxy_);
-  dbus::MethodCall method_call(cryptohome::kCryptohomeInterface,
-                               cryptohome::kCryptohomeGetTpmStatus);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendProtoAsArrayOfBytes(cryptohome::GetTpmStatusRequest());
-  dbus_wrapper_->CallMethodAsync(
-      cryptohomed_dbus_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kCryptohomedDBusTimeoutMs),
-      base::Bind(&Daemon::HandleGetTpmStatusResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
+  DCHECK(tpm_manager_proxy_);
+  tpm_manager::GetDictionaryAttackInfoRequest request;
+  tpm_manager_proxy_->GetDictionaryAttackInfoAsync(
+      request,
+      base::Bind(&Daemon::HandleGetDictionaryAttackInfoSuccess,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Daemon::HandleGetDictionaryAttackInfoFailed,
+                 weak_ptr_factory_.GetWeakPtr()),
+      kTpmManagerdDBusTimeout.InMilliseconds());
 }
 
 void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
