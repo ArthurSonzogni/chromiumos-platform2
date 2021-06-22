@@ -107,12 +107,19 @@ class DBusService : public brillo::DBusServiceDaemon {
                  const ReplyType& reply) {
     response->Return(reply);
 
-    // Quit the daemon after sending the reply if RMA is not required.
-    QuitIfRmaNotRequired();
+    // Quit the daemon under some conditions.
+    // TODO(chenghan): This is now determined by state. Maybe it's better to
+    //                 decide this in the state transition, e.g. pass an
+    //                 additional boolean in the |rmad_interface_| callback.
+    ConditionallyQuit();
   }
 
-  // If RMA is not required, quit the daemon.
-  void QuitIfRmaNotRequired();
+  // Quit the daemon if current state is:
+  //   - STATE_NOT_SET: RMA is not required. Quit the daemon to release
+  //                    resources.
+  //   - kWpDisableComplete: Need to restart the daemon after disabling hardware
+  //                         write protection to get more minijail permissions.
+  void ConditionallyQuit();
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();

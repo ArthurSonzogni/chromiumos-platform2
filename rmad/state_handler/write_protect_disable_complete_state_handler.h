@@ -15,6 +15,8 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store);
   ~WriteProtectDisableCompleteStateHandler() override = default;
 
+  // This state is not repeatable. Must go through the rest of the RMA flow
+  // after disabling write protection.
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
 
   RmadErrorCode InitializeState() override;
