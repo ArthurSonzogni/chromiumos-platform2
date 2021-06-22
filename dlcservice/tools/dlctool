@@ -35,6 +35,8 @@ readonly FLAGS_HELP="Usage:
 "
 DEFINE_string "id" "" "ID name of the DLC to pack"
 DEFINE_boolean "unpack" false "To unpack the DLC passed to --id" "u"
+DEFINE_boolean "compress" true \
+    "Compress the image. Slower to pack but creates smaller images"
 
 # Parse command line.
 FLAGS "$@" || exit "$?"
@@ -133,7 +135,12 @@ check_dlc_requirements() {
 
 # Creates a squashfs image conforming to DLC requirements.
 create_squashfs_image() {
-  mksquashfs "${DIR_NAME}" "${DLC_IMG_FILE}" -4k-align -noappend
+  local args=""
+  if [ "${FLAGS_compress}" -ne "${FLAGS_TRUE}" ]; then
+    echo "Not compressing image"
+    args="-noI -noD -noF -noX -no-duplicates"
+  fi
+  mksquashfs "${DIR_NAME}" "${DLC_IMG_FILE}" -4k-align -noappend ${args}
 }
 
 # Gets the size of a file in bytes.
