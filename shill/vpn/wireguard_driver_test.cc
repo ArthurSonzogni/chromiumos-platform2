@@ -45,6 +45,8 @@ class WireGuardDriverTestPeer {
     driver_->vpn_gid_ = -1;
   }
 
+  const Stringmaps& peers() { return driver_->peers_; }
+
  private:
   std::unique_ptr<WireGuardDriver> driver_;
   base::ScopedTempDir scoped_temp_dir_;
@@ -408,6 +410,25 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_THAT(contents, Not(HasSubstr("PresharedKey=")));
+}
+
+TEST_F(WireGuardDriverTest, UnloadCredentials) {
+  InitializePropertyStore();
+  driver_->UnloadCredentials();
+  const auto args = driver_->const_args();
+  EXPECT_FALSE(args->Contains<std::string>(kWireGuardPrivateKey));
+  EXPECT_EQ(driver_test_peer_->peers(),
+            (Stringmaps{
+                {{kWireGuardPeerPublicKey, "public-key-1"},
+                 {kWireGuardPeerPresharedKey, ""},
+                 {kWireGuardPeerPersistentKeepalive, "10"},
+                 {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+                {{kWireGuardPeerPublicKey, "public-key-2"},
+                 {kWireGuardPeerPresharedKey, ""},
+                 {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+            }));
 }
 
 TEST_F(WireGuardDriverTest, KeyPairGeneration) {

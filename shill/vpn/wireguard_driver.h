@@ -54,6 +54,8 @@ class WireGuardDriver : public VPNDriver {
   bool Save(StoreInterface* storage,
             const std::string& storage_id,
             bool save_credentials) override;
+  // Resets credential fields (PrivateKey and PresharedKey) from the service.
+  void UnloadCredentials() override;
 
  protected:
   KeyValueStore GetProvider(Error* error) override;

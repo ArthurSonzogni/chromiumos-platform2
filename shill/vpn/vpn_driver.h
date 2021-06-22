@@ -115,7 +115,7 @@ class VPNDriver {
   virtual bool Save(StoreInterface* storage,
                     const std::string& storage_id,
                     bool save_credentials);
-  mockable void UnloadCredentials();
+  virtual void UnloadCredentials();
 
   // Power management events.
   virtual void OnBeforeSuspend(const ResultCallback& callback);

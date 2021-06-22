@@ -190,9 +190,7 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
     // Properties for the interface. ListenPort is not here since we current
     // only support the "client mode". Local overlay addresses on the interface,
     // DNS servers, and MTU will be set via StaticIPConfig.
-    // TODO(b/177876632): Consider making this kCredential. Peer.PresharedKey
-    // may need some similar handling.
-    {kWireGuardPrivateKey, Property::kWriteOnly},
+    {kWireGuardPrivateKey, Property::kCredential | Property::kWriteOnly},
     // TODO(b/177877860): This field is for software-backed keys only. May need
     // to change this logic when hardware-backed keys come.
     {kWireGuardPublicKey, Property::kReadOnly},
@@ -306,6 +304,10 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
 bool WireGuardDriver::Save(StoreInterface* storage,
                            const std::string& storage_id,
                            bool save_credentials) {
+  if (!save_credentials) {
+    LOG(WARNING) << "save_credentials is false when saving to the storage.";
+  }
+
   // Keys should be processed before calling VPNDriver::Save().
   auto private_key = args()->Lookup<std::string>(kWireGuardPrivateKey, "");
   if (private_key.empty()) {
@@ -346,6 +348,15 @@ bool WireGuardDriver::Save(StoreInterface* storage,
   }
 
   return VPNDriver::Save(storage, storage_id, save_credentials);
+}
+
+void WireGuardDriver::UnloadCredentials() {
+  VPNDriver::UnloadCredentials();
+  for (auto& peer : peers_) {
+    // For a peer loaded by Load(), all properties should exist even if they are
+    // empty, so we only clear the value here, instead of erasing the key.
+    peer[kWireGuardPeerPresharedKey] = "";
+  }
 }
 
 void WireGuardDriver::CreateKernelWireGuardInterface() {
