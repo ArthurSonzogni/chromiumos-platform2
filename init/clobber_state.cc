@@ -184,8 +184,7 @@ void AppendFileToLog(const base::FilePath& file) {
     PLOG(ERROR) << "Reading from temporary file failed: " << file.value();
   }
 
-  if (!base::AppendToFile(base::FilePath(kClobberLogPath),
-                          file_contents.c_str(), file_contents.size())) {
+  if (!base::AppendToFile(base::FilePath(kClobberLogPath), file_contents)) {
     PLOG(ERROR) << "Appending " << file.value()
                 << " to clobber-state log failed";
   }
@@ -695,7 +694,7 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   // update progress as we go. Round up the chunk size to a multiple of 128MiB.
   // BLKZEROOUT requires that its arguments are aligned to at least 512 bytes.
   const uint64_t zero_block_size =
-      base::bits::Align(to_write / 20, 128 * 1024 * 1024);
+      base::bits::AlignUp(to_write / 20, 128 * 1024 * 1024);
   while (total_written < to_write) {
     uint64_t write_size = std::min(zero_block_size, to_write - total_written);
     uint64_t range[2] = {total_written, write_size};
