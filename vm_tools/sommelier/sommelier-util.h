@@ -6,6 +6,9 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_
 
 #include <assert.h>
+#include <memory>
+
+#include <wayland-server.h>
 
 #define errno_assert(rv)                                          \
   {                                                               \
@@ -23,5 +26,15 @@
 // taking a double pointer argument like asprintf.
 __attribute__((__format__(__printf__, 1, 0))) char* sl_xasprintf(
     const char* fmt, ...);
+
+#define DEFAULT_DELETER_FDECL(TypeName) \
+  namespace std {                       \
+  template <>                           \
+  struct default_delete<TypeName> {     \
+    void operator()(TypeName* ptr);     \
+  };                                    \
+  }
+
+DEFAULT_DELETER_FDECL(struct wl_event_source);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_

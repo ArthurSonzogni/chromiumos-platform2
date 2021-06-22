@@ -812,8 +812,8 @@ static void sl_registry_remover(void* data,
   assert(0);
 }
 
-static const struct wl_registry_listener sl_registry_listener = {
-    sl_registry_handler, sl_registry_remover};
+const struct wl_registry_listener sl_registry_listener = {sl_registry_handler,
+                                                          sl_registry_remover};
 
 static int sl_handle_event(int fd, uint32_t mask, void* data) {
   TRACE_EVENT("other", "sl_handle_event");
@@ -1762,8 +1762,7 @@ static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
   free(ctx->selection_property_reply);
   ctx->selection_property_reply = NULL;
   if (ctx->selection_send_event_source) {
-    wl_event_source_remove(ctx->selection_send_event_source);
-    ctx->selection_send_event_source = NULL;
+    ctx->selection_send_event_source.reset();
   }
   if (fd < 0) {
     ctx->selection_data_source_send_fd = -1;
@@ -1783,10 +1782,10 @@ static void sl_write_selection_property(struct sl_context* ctx,
     return;
 
   assert(!ctx->selection_send_event_source);
-  ctx->selection_send_event_source = wl_event_loop_add_fd(
+  ctx->selection_send_event_source.reset(wl_event_loop_add_fd(
       wl_display_get_event_loop(ctx->host_display),
       ctx->selection_data_source_send_fd, WL_EVENT_WRITABLE,
-      sl_handle_selection_fd_writable, ctx);
+      sl_handle_selection_fd_writable, ctx));
 }
 
 static void sl_send_selection_notify(struct sl_context* ctx,
@@ -1880,8 +1879,7 @@ static int sl_handle_selection_fd_readable(int fd, uint32_t mask, void* data) {
     }
   }
 
-  wl_event_source_remove(ctx->selection_event_source);
-  ctx->selection_event_source = NULL;
+  ctx->selection_event_source.reset();
   return 1;
 }
 
@@ -2137,10 +2135,10 @@ static void sl_handle_property_notify(struct sl_context* ctx,
           sl_send_selection_data(ctx);
 
         if (!ctx->selection_event_source) {
-          ctx->selection_event_source = wl_event_loop_add_fd(
+          ctx->selection_event_source.reset(wl_event_loop_add_fd(
               wl_display_get_event_loop(ctx->host_display),
               ctx->selection_data_offer_receive_fd, WL_EVENT_READABLE,
-              sl_handle_selection_fd_readable, ctx);
+              sl_handle_selection_fd_readable, ctx));
         }
         return;
       }
@@ -2383,10 +2381,10 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
     free(atom_name_reply);
     free(name);
 
-    ctx->selection_event_source = wl_event_loop_add_fd(
+    ctx->selection_event_source.reset(wl_event_loop_add_fd(
         wl_display_get_event_loop(ctx->host_display),
         ctx->selection_data_offer_receive_fd, WL_EVENT_READABLE,
-        sl_handle_selection_fd_readable, ctx);
+        sl_handle_selection_fd_readable, ctx));
   } else {
     // If getting the atom name failed, notify the requestor that there won't be
     // any data, and close our end of the pipe.
@@ -2608,10 +2606,10 @@ static void sl_connect(struct sl_context* ctx) {
   change_attributes_cookie = xcb_change_window_attributes(
       ctx->connection, ctx->screen->root, XCB_CW_EVENT_MASK, values);
 
-  ctx->connection_event_source = wl_event_loop_add_fd(
+  ctx->connection_event_source.reset(wl_event_loop_add_fd(
       wl_display_get_event_loop(ctx->host_display),
       xcb_get_file_descriptor(ctx->connection), WL_EVENT_READABLE,
-      &sl_handle_x_connection_event, ctx);
+      &sl_handle_x_connection_event, ctx));
 
   ctx->xfixes_extension =
       xcb_get_extension_data(ctx->connection, &xcb_xfixes_id);
@@ -2878,8 +2876,7 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
 
   sl_connect(ctx);
 
-  wl_event_source_remove(ctx->display_ready_event_source);
-  ctx->display_ready_event_source = NULL;
+  ctx->display_ready_event_source.reset();
   close(fd);
 
   // Calculate scale now that the default scale factor is known. This also
@@ -3437,9 +3434,9 @@ int real_main(int argc, char** argv) {
     }
   }
 
-  ctx.display_event_source =
+  ctx.display_event_source.reset(
       wl_event_loop_add_fd(event_loop, wl_display_get_fd(ctx.display),
-                           WL_EVENT_READABLE, sl_handle_event, &ctx);
+                           WL_EVENT_READABLE, sl_handle_event, &ctx));
 
   wl_registry_add_listener(wl_display_get_registry(ctx.display),
                            &sl_registry_listener, &ctx);
@@ -3451,8 +3448,8 @@ int real_main(int argc, char** argv) {
   sl_set_display_implementation(&ctx);
 
   if (ctx.runprog || ctx.xwayland) {
-    ctx.sigchld_event_source =
-        wl_event_loop_add_signal(event_loop, SIGCHLD, sl_handle_sigchld, &ctx);
+    ctx.sigchld_event_source.reset(
+        wl_event_loop_add_signal(event_loop, SIGCHLD, sl_handle_sigchld, &ctx));
 
     // Unset DISPLAY to prevent X clients from connecting to an existing X
     // server when X forwarding is not enabled.
@@ -3470,9 +3467,9 @@ int real_main(int argc, char** argv) {
       rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, ds);
       errno_assert(!rv);
 
-      ctx.display_ready_event_source =
+      ctx.display_ready_event_source.reset(
           wl_event_loop_add_fd(event_loop, ds[0], WL_EVENT_READABLE,
-                               sl_handle_display_ready_event, &ctx);
+                               sl_handle_display_ready_event, &ctx));
 
       // X connection to Xwayland.
       rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wm);
@@ -3567,8 +3564,8 @@ int real_main(int argc, char** argv) {
   if (ctx.trace_filename || ctx.trace_system) {
     initialize_tracing(ctx.trace_filename, ctx.trace_system);
     enable_tracing(!ctx.trace_system);
-    ctx.sigusr1_event_source =
-        wl_event_loop_add_signal(event_loop, SIGUSR1, sl_handle_sigusr1, &ctx);
+    ctx.sigusr1_event_source.reset(
+        wl_event_loop_add_signal(event_loop, SIGUSR1, sl_handle_sigusr1, &ctx));
   }
 
   wl_client_add_destroy_listener(ctx.client, &client_destroy_listener);

@@ -10,6 +10,9 @@ group("all") {
     ":sommelier",
     ":sommelier_test",
   ]
+  if (use.fuzzer) {
+    deps += [ ":sommelier_wayland_fuzzer" ]
+  }
 }
 
 # Set this to the Xwayland path.
@@ -142,5 +145,15 @@ executable("sommelier_test") {
     "gtest",
   ]
   defines = sommelier_defines
+  deps = [ ":libsommelier" ]
+}
+
+executable("sommelier_wayland_fuzzer") {
+  sources = [ "sommelier-wayland-fuzzer.cc" ]
+
+  configs += [ "//common-mk/common_fuzzer" ]
+
+  defines = sommelier_defines
+
   deps = [ ":libsommelier" ]
 }

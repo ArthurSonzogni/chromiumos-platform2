@@ -6,6 +6,7 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_H_
 
 #include <linux/types.h>
+#include <memory>
 #include <sys/types.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
@@ -60,6 +61,8 @@ struct zcr_gaming_input_v2;
 
 class WaylandChannel;
 
+extern const struct wl_registry_listener sl_registry_listener;
+
 struct sl_context {
   char** runprog;
   struct wl_display* display;
@@ -84,10 +87,10 @@ struct sl_context {
   struct sl_pointer_constraints* pointer_constraints;
   struct wl_list outputs;
   struct wl_list seats;
-  struct wl_event_source* display_event_source;
-  struct wl_event_source* display_ready_event_source;
-  struct wl_event_source* sigchld_event_source;
-  struct wl_event_source* sigusr1_event_source;
+  std::unique_ptr<struct wl_event_source> display_event_source;
+  std::unique_ptr<struct wl_event_source> display_ready_event_source;
+  std::unique_ptr<struct wl_event_source> sigchld_event_source;
+  std::unique_ptr<struct wl_event_source> sigusr1_event_source;
   struct wl_array dpi;
   int shm_driver;
   int data_driver;
@@ -95,8 +98,8 @@ struct sl_context {
   int virtwl_ctx_fd;
   int virtwl_socket_fd;
   int virtwl_display_fd;
-  struct wl_event_source* virtwl_ctx_event_source;
-  struct wl_event_source* virtwl_socket_event_source;
+  std::unique_ptr<struct wl_event_source> virtwl_ctx_event_source;
+  std::unique_ptr<struct wl_event_source> virtwl_socket_event_source;
   const char* vm_id;
   const char* drm_device;
   struct gbm_device* gbm;
@@ -111,7 +114,7 @@ struct sl_context {
   struct wl_list host_outputs;
   int next_global_id;
   xcb_connection_t* connection;
-  struct wl_event_source* connection_event_source;
+  std::unique_ptr<struct wl_event_source> connection_event_source;
   const xcb_query_extension_reply_t* xfixes_extension;
   xcb_screen_t* screen;
   xcb_window_t window;
@@ -142,10 +145,10 @@ struct sl_context {
   struct sl_data_source* selection_data_source;
   int selection_data_source_send_fd;
   struct wl_list selection_data_source_send_pending;
-  struct wl_event_source* selection_send_event_source;
+  std::unique_ptr<struct wl_event_source> selection_send_event_source;
   xcb_get_property_reply_t* selection_property_reply;
   int selection_property_offset;
-  struct wl_event_source* selection_event_source;
+  std::unique_ptr<struct wl_event_source> selection_event_source;
   xcb_atom_t selection_data_type;
   struct wl_array selection_data;
   int selection_data_offer_receive_fd;

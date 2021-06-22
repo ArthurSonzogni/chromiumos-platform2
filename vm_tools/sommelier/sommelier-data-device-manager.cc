@@ -43,15 +43,13 @@ struct sl_data_transfer {
   size_t offset;
   size_t bytes_left;
   uint8_t data[4096];
-  struct wl_event_source* read_event_source;
-  struct wl_event_source* write_event_source;
+  std::unique_ptr<struct wl_event_source> read_event_source;
+  std::unique_ptr<struct wl_event_source> write_event_source;
 };
 
 static void sl_data_transfer_destroy(struct sl_data_transfer* transfer) {
-  assert(transfer->read_event_source);
-  wl_event_source_remove(transfer->read_event_source);
-  assert(transfer->write_event_source);
-  wl_event_source_remove(transfer->write_event_source);
+  transfer->read_event_source.reset();
+  transfer->write_event_source.reset();
   close(transfer->read_fd);
   close(transfer->write_fd);
   free(transfer);
@@ -87,8 +85,9 @@ static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
     transfer->offset = 0;
     // There may still be data to read from the event source, but we have no
     // room in our buffer so move to the writing state.
-    wl_event_source_fd_update(transfer->read_event_source, 0);
-    wl_event_source_fd_update(transfer->write_event_source, WL_EVENT_WRITABLE);
+    wl_event_source_fd_update(transfer->read_event_source.get(), 0);
+    wl_event_source_fd_update(transfer->write_event_source.get(),
+                              WL_EVENT_WRITABLE);
   } else {
     // On a read error or EOF, end the transfer.
     sl_data_transfer_destroy(transfer);
@@ -127,8 +126,9 @@ static int sl_handle_data_transfer_write(int fd, uint32_t mask, void* data) {
 
   if (!transfer->bytes_left) {
     // If all data has been written, move back to the reading state.
-    wl_event_source_fd_update(transfer->write_event_source, 0);
-    wl_event_source_fd_update(transfer->read_event_source, WL_EVENT_READABLE);
+    wl_event_source_fd_update(transfer->write_event_source.get(), 0);
+    wl_event_source_fd_update(transfer->read_event_source.get(),
+                              WL_EVENT_READABLE);
   }
 
   // If there is still data left, continue in the writing state.
@@ -154,11 +154,11 @@ static void sl_data_transfer_create(struct wl_event_loop* event_loop,
   transfer->write_fd = write_fd;
   transfer->offset = 0;
   transfer->bytes_left = 0;
-  transfer->read_event_source =
+  transfer->read_event_source.reset(
       wl_event_loop_add_fd(event_loop, read_fd, WL_EVENT_READABLE,
-                           sl_handle_data_transfer_read, transfer);
-  transfer->write_event_source = wl_event_loop_add_fd(
-      event_loop, write_fd, 0, sl_handle_data_transfer_write, transfer);
+                           sl_handle_data_transfer_read, transfer));
+  transfer->write_event_source.reset(wl_event_loop_add_fd(
+      event_loop, write_fd, 0, sl_handle_data_transfer_write, transfer));
 }
 
 static void sl_data_offer_accept(struct wl_client* client,

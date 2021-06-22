@@ -21,3 +21,12 @@ __attribute__((__format__(__printf__, 1, 0))) char* sl_xasprintf(
   va_end(args);
   return str;
 }
+
+#define DEFAULT_DELETER(TypeName, DeleteFunction)            \
+  namespace std {                                            \
+  void default_delete<TypeName>::operator()(TypeName* ptr) { \
+    DeleteFunction(ptr);                                     \
+  }                                                          \
+  }
+
+DEFAULT_DELETER(struct wl_event_source, wl_event_source_remove);

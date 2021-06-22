@@ -343,12 +343,12 @@ bool sl_context_init_virtwl(struct sl_context* ctx,
       return false;
     }
 
-    ctx->virtwl_socket_event_source = wl_event_loop_add_fd(
+    ctx->virtwl_socket_event_source.reset(wl_event_loop_add_fd(
         event_loop, ctx->virtwl_socket_fd, WL_EVENT_READABLE,
-        sl_handle_virtwl_socket_event, ctx);
-    ctx->virtwl_ctx_event_source =
+        sl_handle_virtwl_socket_event, ctx));
+    ctx->virtwl_ctx_event_source.reset(
         wl_event_loop_add_fd(event_loop, ctx->virtwl_ctx_fd, WL_EVENT_READABLE,
-                             sl_handle_virtwl_ctx_event, ctx);
+                             sl_handle_virtwl_ctx_event, ctx));
   }
   return true;
 }
