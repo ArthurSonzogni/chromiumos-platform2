@@ -12,7 +12,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/stringprintf.h>
 
 #include "cros-disks/disk.h"

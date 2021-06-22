@@ -16,7 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>

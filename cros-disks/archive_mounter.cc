@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/containers/contains.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <brillo/scoped_mount_namespace.h>

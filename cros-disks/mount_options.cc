@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include <base/containers/adapters.h>
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/strings/strcat.h>
 

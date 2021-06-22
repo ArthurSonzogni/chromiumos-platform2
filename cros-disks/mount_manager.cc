@@ -17,7 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 
 #include "cros-disks/error_logger.h"

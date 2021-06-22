@@ -86,7 +86,7 @@ class StreamMerger {
       remaining.clear();
     }
 
-    remaining = last_line.as_string();
+    remaining = std::string(last_line);
   }
 
  private:
