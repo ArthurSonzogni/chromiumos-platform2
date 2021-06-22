@@ -5,11 +5,11 @@
 #include "authpolicy/policy/preg_policy_writer.h"
 
 #include <limits>
+#include <string>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/stl_util.h>
-#include <base/strings/string16.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
@@ -21,10 +21,10 @@ namespace {
 const char kActionTriggerDelVals[] = "**delvals";
 
 // Constants for PReg file delimiters.
-const base::char16 kDelimBracketOpen = L'[';
-const base::char16 kDelimBracketClose = L']';
-const base::char16 kDelimSemicolon = L';';
-const base::char16 kDelimNull = L'\0';
+const char16_t kDelimBracketOpen = u'[';
+const char16_t kDelimBracketClose = u']';
+const char16_t kDelimSemicolon = u';';
+const char16_t kDelimNull = u'\0';
 
 // Registry data type constants. Values have to match REG_* constants on
 // Windows. Does not check data types or whether a policy can be recommended or
@@ -196,7 +196,7 @@ void PRegPolicyWriter::EndEntry() {
 
 void PRegPolicyWriter::AppendNullTerminatedString(const std::string& str) {
   for (char ch : str)
-    AppendChar16(static_cast<base::char16>(ch));
+    AppendChar16(static_cast<char16_t>(ch));
   AppendChar16(kDelimNull);
 }
 
@@ -205,7 +205,7 @@ void PRegPolicyWriter::AppendUnsignedInt(uint32_t value) {
   AppendChar16(value >> 16);
 }
 
-void PRegPolicyWriter::AppendChar16(base::char16 ch) {
+void PRegPolicyWriter::AppendChar16(char16_t ch) {
   buffer_.append(1, ch & 0xff);
   buffer_.append(1, ch >> 8);
 }

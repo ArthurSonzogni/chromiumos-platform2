@@ -12,7 +12,6 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/strings/utf_string_conversions.h>
 #include <base/values.h>
 #include <components/policy/core/common/policy_load_status.h>
 #include <components/policy/core/common/registry_dict.h>
@@ -110,9 +109,8 @@ TEST(PRegParserTest, TestParseFile) {
   // Run the parser.
   base::FilePath test_file(GetTestDataPath("registry.pol"));
   PolicyLoadStatusSampler status;
-  ASSERT_TRUE(preg_parser::ReadFile(
-      test_file, base::ASCIIToUTF16("SOFTWARE\\Policies\\Chromium"), &dict,
-      &status));
+  ASSERT_TRUE(preg_parser::ReadFile(test_file, u"SOFTWARE\\Policies\\Chromium",
+                                    &dict, &status));
 
   // Build the expected output dictionary.
   RegistryDict expected;
@@ -143,9 +141,8 @@ TEST(PRegParserTest, LoadStatusSampling) {
   base::FilePath test_file(GetTestDataPath("does_not_exist.pol"));
   PolicyLoadStatusSampler status;
   RegistryDict dict;
-  ASSERT_FALSE(preg_parser::ReadFile(
-      test_file, base::ASCIIToUTF16("SOFTWARE\\Policies\\Chromium"), &dict,
-      &status));
+  ASSERT_FALSE(preg_parser::ReadFile(test_file, u"SOFTWARE\\Policies\\Chromium",
+                                     &dict, &status));
 
   // Tests load status sampling.
   PolicyLoadStatusSampler::StatusSet expected_status_set;

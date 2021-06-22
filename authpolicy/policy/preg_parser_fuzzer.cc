@@ -4,8 +4,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string>
 
-#include <base/strings/string16.h>
 #include <base/strings/utf_string_conversions.h>
 #include <components/policy/core/common/policy_load_status.h>
 #include <components/policy/core/common/registry_dict.h>
@@ -27,7 +27,7 @@ struct Environment {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
   }
 
-  const base::string16 root;
+  const std::u16string root;
 };
 
 Environment* env = new Environment();

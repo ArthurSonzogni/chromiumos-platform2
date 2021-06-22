@@ -154,7 +154,7 @@ void PushGpo(const GpoEntry& gpo,
 // Prints |str| to stdout for the caller of this tool. Returns an exit code that
 // indicates success or failure.
 int OutputForCaller(const std::string& str) {
-  if (!base::WriteFileDescriptor(STDOUT_FILENO, str.c_str(), str.size())) {
+  if (!base::WriteFileDescriptor(STDOUT_FILENO, str)) {
     LOG(ERROR) << "Failed to write output for caller";
     return EXIT_CODE_WRITE_OUTPUT_FAILED;
   }

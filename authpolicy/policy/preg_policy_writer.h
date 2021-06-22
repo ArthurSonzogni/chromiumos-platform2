@@ -98,7 +98,7 @@ class PRegPolicyWriter {
   void AppendUnsignedInt(uint32_t value);
 
   // Appends a char16 to the internal buffer.
-  void AppendChar16(base::char16 ch);
+  void AppendChar16(char16_t ch);
 
   // Returns the registry key that belongs to the given |level|.
   const std::string& GetKey(PolicyLevel level);
