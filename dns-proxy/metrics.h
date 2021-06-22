@@ -169,7 +169,7 @@ class Metrics {
 
     void Stop();
 
-    Metrics* metrics_;
+    Metrics* metrics_{nullptr};
     chromeos_metrics::Timer timer_;
     std::pair<bool, base::TimeDelta> elapsed_recv_;
     std::vector<resolv_t_> elapsed_resolve_;
