@@ -189,6 +189,7 @@ const PROPERTY_PROVIDER_HOST: &str = "Provider.Host";
 const PROPERTY_WIREGUARD_PUBLIC_KEY: &str = "WireGuard.PublicKey";
 const PROPERTY_WIREGUARD_PEERS: &str = "WireGuard.Peers";
 const PROPERTY_STATIC_IP_CONFIG: &str = "StaticIPConfig";
+const PROPERTY_SAVE_CREDENTIALS: &str = "SaveCredentials";
 
 // Property names for WireGuard in "WireGuard.Peers".
 const PROPERTY_PEER_PUBLIC_KEY: &str = "PublicKey";
@@ -326,6 +327,9 @@ impl WireGuardService {
             peers_buf.push(peer_properties);
         }
         properties.insert(PROPERTY_WIREGUARD_PEERS, Variant(Box::new(peers_buf)));
+
+        // Always persists keys.
+        properties.insert(PROPERTY_SAVE_CREDENTIALS, Variant(Box::new(true)));
 
         properties
     }
