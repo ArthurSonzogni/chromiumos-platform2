@@ -14145,6 +14145,7 @@ mno {
     mccmnc : "310580"
     mccmnc : "310660"
     mccmnc : "310800"
+    mccmnc : "312250"
     mobile_apn {
       apn : "fast.t-mobile.com"
       localized_name {
