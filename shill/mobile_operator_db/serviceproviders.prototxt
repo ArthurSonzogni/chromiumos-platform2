@@ -13698,31 +13698,6 @@ mno {
 
 mno {
   data {
-    uuid : "a074dfe8-81de-4291-b441-ecd79b25ddf9"
-    country : "us"
-    localized_name {
-      name : "MetroPCS"
-    }
-    sid : "4269"
-    sid : "4273"
-    sid : "4387"
-    sid : "4531"
-    sid : "4533"
-    sid : "4547"
-    sid : "4815"
-    sid : "4855"
-    sid : "5007"
-    sid : "5023"
-    sid : "5037"
-    sid : "5097"
-    sid : "5167"
-    sid : "5199"
-    sid : "21580"
-  }
-}
-
-mno {
-  data {
     uuid : "113aa731-e27f-442d-a197-ed999da87b3b"
     country : "us"
     localized_name {
@@ -13968,6 +13943,107 @@ mno {
       }
       mobile_apn {
         apn : "wholesale"
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      range {
+        start: 310240106000000
+        end:   310240106999999
+      }
+      range {
+        start: 310260005100556
+        end:   310260006100555
+      }
+      range {
+        start: 310260006935556
+        end:   310260007085555
+      }
+      range {
+        start: 310260030000000
+        end:   310260031999999
+      }
+      range {
+        start: 310260032000000
+        end:   310260039999999
+      }
+      range {
+        start: 310260040000000
+        end:   310260049999999
+      }
+      range {
+        start: 310260050000000
+        end:   310260059999999
+      }
+      range {
+        start: 310260060000000
+        end:   310260069999999
+      }
+      range {
+        start: 310260070000000
+        end:   310260079999999
+      }
+      range {
+        start: 310260080000000
+        end:   310260089999999
+      }
+      range {
+        start: 310260269955936
+        end:   310260269956135
+      }
+      range {
+        start: 310260320000000
+        end:   310260329999999
+      }
+      range {
+        start: 310260330000000
+        end:   310260339999999
+      }
+      range {
+        start: 310260340000000
+        end:   310260349999999
+      }
+      range {
+        start: 310260350000000
+        end:   310260359999999
+      }
+      range {
+        start: 310260470000000
+        end:   310260479999999
+      }
+      range {
+        start: 310260630000000
+        end:   310260639999999
+      }
+      range {
+        start: 310260660000000
+        end:   310260669999999
+      }
+      range {
+        start: 310260670000000
+        end:   310260679999999
+      }
+      range {
+        start: 310260680000000
+        end:   310260689999999
+      }
+      range {
+        start: 310260790000000
+        end:   310260799999999
+      }
+    }
+    data {
+      uuid : "3d69e58d-cadd-4ba2-96ad-965313762268"
+      country : "us"
+      localized_name {
+        name : "MetroPCS"
+      }
+      mccmnc : "310240"
+      mccmnc : "310260"
+      mobile_apn {
+        apn : "fast.metropcs.com"
       }
     }
   }
