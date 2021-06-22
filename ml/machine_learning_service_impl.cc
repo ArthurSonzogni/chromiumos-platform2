@@ -17,11 +17,14 @@
 #include <base/files/memory_mapped_file.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
+#include <mojo/public/cpp/bindings/self_owned_receiver.h>
 #include <tensorflow/lite/model.h>
 #include <unicode/putil.h>
 #include <unicode/udata.h>
 #include <utils/memory/mmap.h>
 
+#include "ml/document_scanner_impl.h"
+#include "ml/document_scanner_library.h"
 #include "ml/grammar_checker_impl.h"
 #include "ml/grammar_library.h"
 #include "ml/handwriting.h"
@@ -113,6 +116,41 @@ struct RecognizerTraits<
   using Impl = WebPlatformHandwritingRecognizerImpl;
   static constexpr char kModelName[] = "WebPlatformHandwritingModel";
 };
+
+void LoadDocumentScannerFromPath(
+    mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
+        receiver,
+    MachineLearningServiceImpl::LoadDocumentScannerCallback callback,
+    const std::string& root_path) {
+  RequestMetrics request_metrics("DocumentScanner", kMetricsRequestName);
+  request_metrics.StartRecordingPerformanceMetrics();
+
+  // Load DocumentScannerLibrary.
+  auto* const document_scanner_library =
+      ml::DocumentScannerLibrary::GetInstance();
+  if (!document_scanner_library->IsInitialized()) {
+    auto result = document_scanner_library->Initialize(
+        {.root_dir = base::FilePath(root_path)});
+
+    if (result != ml::DocumentScannerLibrary::InitializeResult::kOk) {
+      LOG(ERROR) << "Initialize ml::DocumentScannerLibrary with error "
+                 << static_cast<int>(result);
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+  }
+
+  // Create DocumentScanner.
+  mojo::MakeSelfOwnedReceiver(
+      std::make_unique<DocumentScannerImpl>(
+          document_scanner_library->CreateDocumentScanner()),
+      std::move(receiver));
+  std::move(callback).Run(LoadModelResult::OK);
+
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(LoadModelResult::OK);
+}
 
 }  // namespace
 
@@ -635,6 +673,21 @@ void MachineLearningServiceImpl::LoadWebPlatformHandwritingModel(
   }
 
   NOTREACHED();
+}
+
+void MachineLearningServiceImpl::LoadDocumentScanner(
+    mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
+        receiver,
+    LoadDocumentScannerCallback callback) {
+  // TODO(b/180564352): Make it run on separate worker process.
+  if (!ml::DocumentScannerLibrary::IsSupported()) {
+    LOG(ERROR) << "Document scanner library is not supported";
+    std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
+    return;
+  }
+
+  LoadDocumentScannerFromPath(std::move(receiver), std::move(callback),
+                              ml::kLibDocumentScannerDefaultDir);
 }
 
 }  // namespace ml

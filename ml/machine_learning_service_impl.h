@@ -97,6 +97,10 @@ class MachineLearningServiceImpl
       mojo::PendingReceiver<chromeos::machine_learning::web_platform::mojom::
                                 HandwritingRecognizer> receiver,
       LoadWebPlatformHandwritingModelCallback callback) override;
+  void LoadDocumentScanner(
+      mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
+          receiver,
+      LoadDocumentScannerCallback callback) override;
 
   // Metadata required to load builtin models. Initialized at construction.
   const std::map<chromeos::machine_learning::mojom::BuiltinModelId,

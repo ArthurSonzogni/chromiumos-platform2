@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next MinVersion: 4
+// Next MinVersion: 5
 
 // Top-level API of the Machine Learning Service: loading models for inference.
 
@@ -20,6 +20,7 @@ module chromeos.machine_learning.mojom;
 
 // NOTE: The base directory for 'import' statements is expected to differ
 //       between Chromium and Chrome OS versions of this file.
+import "ml/mojom/document_scanner.mojom";
 import "ml/mojom/grammar_checker.mojom";
 import "ml/mojom/handwriting_recognizer.mojom";
 import "ml/mojom/model.mojom";
@@ -40,7 +41,7 @@ enum LoadModelResult {
 };
 
 // Top-level interface between Chromium browser process and the ML Service daemon.
-// Next ordinal: 10
+// Next ordinal: 11
 [Stable, Uuid="9e5e4750-40cc-4eda-ac09-3457d06a45ab"]
 interface MachineLearningService {
   // Binds another pipe to this instance.
@@ -94,4 +95,8 @@ interface MachineLearningService {
       chromeos.machine_learning.web_platform.mojom.HandwritingRecognizer>
       receiver)
       => (LoadHandwritingModelResult result);
+  // Create and initialize a document scanner.
+  [MinVersion=4] LoadDocumentScanner@10(
+            pending_receiver<DocumentScanner> receiver)
+      => (LoadModelResult result);
 };

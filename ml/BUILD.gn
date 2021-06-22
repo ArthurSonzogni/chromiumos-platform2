@@ -35,12 +35,14 @@ generate_mojom_bindings("ml_mojo_bindings") {
     use_pic = true
   }
   sources = [
+    "mojom/document_scanner.mojom",
     "mojom/geometry.mojom",
     "mojom/grammar_checker.mojom",
     "mojom/graph_executor.mojom",
     "mojom/handwriting_recognizer.mojom",
     "mojom/machine_learning_service.mojom",
     "mojom/model.mojom",
+    "mojom/shared_memory.mojom",
     "mojom/soda.mojom",
     "mojom/tensor.mojom",
     "mojom/text_classifier.mojom",
@@ -120,6 +122,8 @@ static_library("ml_common") {
   sources = [
     "daemon.cc",
     "dlcservice_client.cc",
+    "document_scanner_impl.cc",
+    "document_scanner_library.cc",
     "grammar_checker_impl.cc",
     "grammar_library.cc",
     "grammar_proto_mojom_conversion.cc",
@@ -163,6 +167,7 @@ static_library("ml_common") {
   pkg_deps = [ "protobuf" ]
   all_dependent_configs = [ ":ml_common_pkg_deps" ]
   defines = [
+    "USE_ONDEVICE_DOCUMENT_SCANNER=${use.ondevice_document_scanner}",
     "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
     "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     "TC3_VOCAB_ANNOTATOR_IMPL",
@@ -262,6 +267,7 @@ if (use.test) {
   executable("ml_service_test") {
     sources = [
       "dlcservice_client_test.cc",
+      "document_scanner_library_test.cc",
       "example_preprocessor/example_preprocessing_test.cc",
       "example_preprocessor/ranker_example_util_test.cc",
       "grammar_library_test.cc",
@@ -282,6 +288,7 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
     defines = [
+      "USE_ONDEVICE_DOCUMENT_SCANNER=${use.ondevice_document_scanner}",
       "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
       "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
       "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",

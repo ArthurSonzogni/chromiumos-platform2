@@ -902,6 +902,9 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
       builder->AddFeatureEnableOverride("OnDeviceSpeechRecognition");
   }
 
+  if (builder->UseFlagIsSet("ondevice_document_scanner"))
+    builder->AddArg("--ondevice_document_scanner=use_rootfs");
+
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
 }
 

@@ -16,7 +16,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
+#include "ml/document_scanner_library.h"
 #include "ml/grammar_library.h"
 #include "ml/grammar_proto_mojom_conversion.h"
 #include "ml/handwriting.h"
@@ -186,6 +188,52 @@ constexpr float kHandwritingTestPoints[23][2] = {
     {1.98, 1.178},  {1.976, 1.303}, {1.984, 1.415},
 };
 
+// A fake 16x16 black jpg image.
+constexpr uint8_t kFakeJpgData[] = {
+    255, 216, 255, 224, 0,   16,  74,  70,  73,  70,  0,   1,   1,   0,   0,
+    1,   0,   1,   0,   0,   255, 219, 0,   67,  0,   2,   1,   1,   1,   1,
+    1,   2,   1,   1,   1,   2,   2,   2,   2,   2,   4,   3,   2,   2,   2,
+    2,   5,   4,   4,   3,   4,   6,   5,   6,   6,   6,   5,   6,   6,   6,
+    7,   9,   8,   6,   7,   9,   7,   6,   6,   8,   11,  8,   9,   10,  10,
+    10,  10,  10,  6,   8,   11,  12,  11,  10,  12,  9,   10,  10,  10,  255,
+    219, 0,   67,  1,   2,   2,   2,   2,   2,   2,   5,   3,   3,   5,   10,
+    7,   6,   7,   10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,
+    10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,
+    10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,
+    10,  10,  10,  10,  10,  10,  10,  10,  255, 192, 0,   17,  8,   0,   16,
+    0,   16,  3,   1,   34,  0,   2,   17,  1,   3,   17,  1,   255, 196, 0,
+    31,  0,   0,   1,   5,   1,   1,   1,   1,   1,   1,   0,   0,   0,   0,
+    0,   0,   0,   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,
+    255, 196, 0,   181, 16,  0,   2,   1,   3,   3,   2,   4,   3,   5,   5,
+    4,   4,   0,   0,   1,   125, 1,   2,   3,   0,   4,   17,  5,   18,  33,
+    49,  65,  6,   19,  81,  97,  7,   34,  113, 20,  50,  129, 145, 161, 8,
+    35,  66,  177, 193, 21,  82,  209, 240, 36,  51,  98,  114, 130, 9,   10,
+    22,  23,  24,  25,  26,  37,  38,  39,  40,  41,  42,  52,  53,  54,  55,
+    56,  57,  58,  67,  68,  69,  70,  71,  72,  73,  74,  83,  84,  85,  86,
+    87,  88,  89,  90,  99,  100, 101, 102, 103, 104, 105, 106, 115, 116, 117,
+    118, 119, 120, 121, 122, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147,
+    148, 149, 150, 151, 152, 153, 154, 162, 163, 164, 165, 166, 167, 168, 169,
+    170, 178, 179, 180, 181, 182, 183, 184, 185, 186, 194, 195, 196, 197, 198,
+    199, 200, 201, 202, 210, 211, 212, 213, 214, 215, 216, 217, 218, 225, 226,
+    227, 228, 229, 230, 231, 232, 233, 234, 241, 242, 243, 244, 245, 246, 247,
+    248, 249, 250, 255, 196, 0,   31,  1,   0,   3,   1,   1,   1,   1,   1,
+    1,   1,   1,   1,   0,   0,   0,   0,   0,   0,   1,   2,   3,   4,   5,
+    6,   7,   8,   9,   10,  11,  255, 196, 0,   181, 17,  0,   2,   1,   2,
+    4,   4,   3,   4,   7,   5,   4,   4,   0,   1,   2,   119, 0,   1,   2,
+    3,   17,  4,   5,   33,  49,  6,   18,  65,  81,  7,   97,  113, 19,  34,
+    50,  129, 8,   20,  66,  145, 161, 177, 193, 9,   35,  51,  82,  240, 21,
+    98,  114, 209, 10,  22,  36,  52,  225, 37,  241, 23,  24,  25,  26,  38,
+    39,  40,  41,  42,  53,  54,  55,  56,  57,  58,  67,  68,  69,  70,  71,
+    72,  73,  74,  83,  84,  85,  86,  87,  88,  89,  90,  99,  100, 101, 102,
+    103, 104, 105, 106, 115, 116, 117, 118, 119, 120, 121, 122, 130, 131, 132,
+    133, 134, 135, 136, 137, 138, 146, 147, 148, 149, 150, 151, 152, 153, 154,
+    162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181, 182, 183,
+    184, 185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212,
+    213, 214, 215, 216, 217, 218, 226, 227, 228, 229, 230, 231, 232, 233, 234,
+    242, 243, 244, 245, 246, 247, 248, 249, 250, 255, 218, 0,   12,  3,   1,
+    0,   2,   17,  3,   17,  0,   63,  0,   254, 127, 232, 162, 138, 0,   255,
+    217};
+
 // The words "unknownword" and "a.bcd" should not be detected by the new
 // vocabulary based dictionary annotator.
 constexpr char kTextClassifierTestInput[] =
@@ -198,6 +246,10 @@ using ::chromeos::machine_learning::mojom::BuiltinModelSpecPtr;
 using ::chromeos::machine_learning::mojom::CodepointSpan;
 using ::chromeos::machine_learning::mojom::CodepointSpanPtr;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
+using ::chromeos::machine_learning::mojom::DetectCornersResultPtr;
+using ::chromeos::machine_learning::mojom::DocumentScanner;
+using ::chromeos::machine_learning::mojom::DocumentScannerResultStatus;
+using ::chromeos::machine_learning::mojom::DoPostProcessingResultPtr;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::FlatBufferModelSpec;
 using ::chromeos::machine_learning::mojom::FlatBufferModelSpecPtr;
@@ -237,6 +289,12 @@ using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequestPtr;
 
 using ::chromeos::machine_learning::mojom::NextWordCompletionCandidate;
 using ::chromeos::machine_learning::mojom::NextWordCompletionCandidatePtr;
+
+using ::gfx::mojom::PointF;
+using ::gfx::mojom::PointFPtr;
+
+using ::mojo_base::mojom::ReadOnlySharedMemoryRegion;
+using ::mojo_base::mojom::ReadOnlySharedMemoryRegionPtr;
 
 using ::testing::DoubleEq;
 using ::testing::DoubleNear;
@@ -1735,6 +1793,133 @@ TEST_F(TextSuggesterTest, GboardExperimentGroupTriggersExpectedSuggestions) {
             *infer_callback_done = true;
           },
           &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+ReadOnlySharedMemoryRegionPtr ToSharedMemory(const std::vector<uint8_t>& data) {
+  base::MappedReadOnlyRegion mapped_region =
+      base::ReadOnlySharedMemoryRegion::Create(data.size());
+  memcpy(mapped_region.mapping.memory(), data.data(), data.size());
+  auto image = mojo_base::mojom::ReadOnlySharedMemoryRegion::New();
+  image->buffer =
+      mojo::WrapReadOnlySharedMemoryRegion(std::move(mapped_region.region));
+  return image;
+}
+
+class DocumentScannerTest : public ::testing::Test {
+ public:
+  bool IsDocumentScannerSupported() {
+    return ml::DocumentScannerLibrary::GetInstance()->IsSupported();
+  }
+
+  void ConnectDocumentScanner() {
+    mojo::Remote<MachineLearningService> ml_service;
+    const MachineLearningServiceImplForTesting ml_service_impl(
+        ml_service.BindNewPipeAndPassReceiver());
+
+    bool model_callback_done = false;
+    ml_service->LoadDocumentScanner(
+        scanner_.BindNewPipeAndPassReceiver(),
+        base::BindOnce(
+            [](bool* model_callback_done, const LoadModelResult result) {
+              ASSERT_EQ(result, LoadModelResult::OK);
+              *model_callback_done = true;
+            },
+            &model_callback_done));
+
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(model_callback_done);
+    ASSERT_TRUE(scanner_.is_bound());
+  }
+
+ protected:
+  mojo::Remote<DocumentScanner> scanner_;
+};
+
+TEST_F(DocumentScannerTest, DetectFromNV12Image) {
+  if (!IsDocumentScannerSupported()) {
+    return;
+  }
+  ConnectDocumentScanner();
+
+  constexpr int kNv12ImageSize = 256 * 256;
+  std::vector<uint8_t> fake_nv12_data(kNv12ImageSize, 0);
+
+  bool infer_callback_done = false;
+  scanner_->DetectCornersFromNV12Image(
+      ToSharedMemory(std::move(fake_nv12_data)),
+      base::BindOnce(
+          [](bool* infer_callback_done, DetectCornersResultPtr result) {
+            EXPECT_EQ(result->status, DocumentScannerResultStatus::OK);
+            EXPECT_TRUE(result->corners.size() == 0 ||
+                        result->corners.size() == 4);
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+TEST_F(DocumentScannerTest, DetectFromJPEGImage) {
+  if (!IsDocumentScannerSupported()) {
+    return;
+  }
+  ConnectDocumentScanner();
+
+  size_t jpeg_size = sizeof(kFakeJpgData) / sizeof(kFakeJpgData[0]);
+  std::vector<uint8_t> fake_jpeg_image(kFakeJpgData, kFakeJpgData + jpeg_size);
+
+  bool infer_callback_done = false;
+  scanner_->DetectCornersFromJPEGImage(
+      ToSharedMemory(std::move(fake_jpeg_image)),
+      base::BindOnce(
+          [](bool* infer_callback_done, DetectCornersResultPtr result) {
+            EXPECT_EQ(result->status, DocumentScannerResultStatus::OK);
+            EXPECT_TRUE(result->corners.size() == 0 ||
+                        result->corners.size() == 4);
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+TEST_F(DocumentScannerTest, PostProcessing) {
+  if (!IsDocumentScannerSupported()) {
+    return;
+  }
+  ConnectDocumentScanner();
+
+  size_t jpeg_size = sizeof(kFakeJpgData) / sizeof(kFakeJpgData[0]);
+  std::vector<uint8_t> fake_jpeg_image(kFakeJpgData, kFakeJpgData + jpeg_size);
+
+  auto to_pointf_ptr = [](float x, float y) -> PointFPtr {
+    auto pt = PointF::New();
+    pt->x = x;
+    pt->y = y;
+    return pt;
+  };
+
+  std::vector<PointFPtr> fake_corners;
+  fake_corners.push_back(to_pointf_ptr(0.0, 0.0));
+  fake_corners.push_back(to_pointf_ptr(0.0, 1.0));
+  fake_corners.push_back(to_pointf_ptr(1.0, 1.0));
+  fake_corners.push_back(to_pointf_ptr(1.0, 0.0));
+
+  bool infer_callback_done = false;
+  scanner_->DoPostProcessing(
+      ToSharedMemory(std::move(fake_jpeg_image)), std::move(fake_corners),
+      base::BindOnce(
+          [](bool* infer_callback_done, DoPostProcessingResultPtr result) {
+            EXPECT_EQ(result->status, DocumentScannerResultStatus::OK);
+            EXPECT_GT(result->processed_jpeg_image.size(), 0);
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
