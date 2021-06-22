@@ -133,6 +133,13 @@ add_clobber_crash_report() {
   sync
 }
 
+# Make sure our clock is somewhat up-to-date.  We don't need any resources
+# mounted below, so do this early on.
+check_clock
+
+# bootstat writes timings to tmpfs.
+bootstat pre-startup
+
 mount -n -i -c -t debugfs \
   -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
   debugfs /sys/kernel/debug
@@ -147,9 +154,6 @@ mount -n -i -c -t debugfs \
 if [ -e /sys/kernel/debug/tracing/tracing_on ]; then
   echo 0 > /sys/kernel/debug/tracing/tracing_on
 fi
-
-# bootstat writes timings to tmpfs.
-bootstat pre-startup
 
 # Some startup functions are split into a separate library which may be
 # different for different targets (e.g., regular Chrome OS vs. embedded).
@@ -259,9 +263,6 @@ string_contains() {
 # Configure chromiumos LSM security policies for process management.
 . /usr/share/cros/config_process_mgmt_utils.sh
 configure_process_mgmt_security
-
-# Make sure our clock is somewhat up-to-date.
-check_clock
 
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
