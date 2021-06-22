@@ -42,7 +42,7 @@ r_dir_file(cros_chromeos_install sysfs_loop);
 allow cros_chromeos_install cros_dev_image_files:dir create_dir_perms;
 allow cros_chromeos_install cros_dev_image_files:file create_file_perms;
 allow cros_chromeos_install cros_run:dir w_dir_perms;
-allow cros_chromeos_install cros_run_udev:dir r_dir_perms;
+allow cros_chromeos_install cros_run_udev:dir { r_dir_perms watch };
 allow cros_chromeos_install cros_run_udev:sock_file write;
 allow cros_chromeos_install cros_stateful_partition:dir r_dir_perms;
 allow cros_chromeos_install cros_stateful_partition_unencrypted:file unlink;

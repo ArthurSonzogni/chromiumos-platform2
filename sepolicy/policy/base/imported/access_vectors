@@ -27,6 +27,7 @@ common file
 	execute
 	quotaon
 	mounton
+	watch
 }
 
 
