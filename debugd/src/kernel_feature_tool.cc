@@ -2,14 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <utility>
 
-#include "base/files/file.h"
-#include "base/files/file_enumerator.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/files/scoped_file.h"
-#include "base/files/scoped_temp_dir.h"
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -17,8 +14,14 @@
 #include <brillo/errors/error_codes.h>
 #include <build/build_config.h>
 #include <build/buildflag.h>
-#include <unordered_map>
-#include <utility>
+
+#include "base/files/file.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_file.h"
+#include "base/files/scoped_temp_dir.h"
+
 #include "debugd/src/error_utils.h"
 #include "debugd/src/kernel_feature_tool.h"
 
@@ -155,10 +158,11 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
                                           KernelFeature& kern_feat) {
   std::string feat_name;
   if (!GetStringFromKey(feature_obj, "name", &feat_name)) {
-    kern_feat.SetName(feat_name);
     *err_str = "debugd: features conf contains empty names";
     return false;
   }
+
+  kern_feat.SetName(feat_name);
 
   // Commands for querying if device is supported
   base::Value* support_cmd_list_obj =
@@ -317,7 +321,7 @@ bool KernelFeatureTool::KernelFeatureEnable(brillo::ErrorPtr* error,
   /* On success, return the feature name to debugd for context. */
   *err_str = name;
   *result = true;
-  LOG(INFO) << "debugd: KernelFeatureEnable: Feature " << name << " enabled";
+  VLOG(1) << "debugd: KernelFeatureEnable: Feature " << name << " enabled";
   return true;
 }
 
@@ -338,9 +342,8 @@ bool KernelFeatureTool::KernelFeatureList(brillo::ErrorPtr* error,
     out->append(err_str);
     DEBUGD_ADD_ERROR(error, kErrorPath, err_str);
   } else {
-    LOG(INFO) << "debugd: KernelFeatureList: " << csv;
-    out->append("csv:");
-    out->append(csv);
+    VLOG(1) << "debugd: KernelFeatureList: " << csv;
+    *out = csv;
   }
   return *result;
 }
