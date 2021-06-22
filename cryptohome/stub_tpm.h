@@ -72,9 +72,9 @@ class StubTpm : public Tpm {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
         "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
-                                  SecureBlob* hash) override {
-    return kTpmRetryNone;
+  hwsec::error::TPMErrorBase GetPublicKeyHash(TpmKeyHandle key_handle,
+                                              SecureBlob* hash) override {
+    return nullptr;
   }
   bool IsEnabled() override { return false; }
   bool IsOwned() override { return false; }

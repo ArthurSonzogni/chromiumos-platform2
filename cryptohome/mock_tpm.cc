@@ -24,7 +24,8 @@ MockTpm::MockTpm() {
       .WillByDefault(Invoke(this, &MockTpm::Xor));
   ON_CALL(*this, DecryptBlob(_, _, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::XorDecrypt));
-  ON_CALL(*this, GetPublicKeyHash(_, _)).WillByDefault(Return(kTpmRetryNone));
+  ON_CALL(*this, GetPublicKeyHash(_, _))
+      .WillByDefault(ReturnError<TPMErrorBase>());
   ON_CALL(*this, SealToPCR0(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, Unseal(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetRandomDataBlob(_, _))

@@ -1456,8 +1456,7 @@ TEST_F(Tpm2Test, GetPublicKeyHashSuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(handle, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
   SecureBlob public_key_hash;
-  EXPECT_EQ(Tpm::kTpmRetryNone,
-            tpm_->GetPublicKeyHash(handle, &public_key_hash));
+  EXPECT_EQ(nullptr, tpm_->GetPublicKeyHash(handle, &public_key_hash));
   SecureBlob expected_key_hash = Sha256(public_key);
   EXPECT_EQ(expected_key_hash, public_key_hash);
 }
@@ -1467,8 +1466,9 @@ TEST_F(Tpm2Test, GetPublicKeyHashFailure) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(handle, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob public_key_hash;
-  EXPECT_EQ(Tpm::kTpmRetryFailNoRetry,
-            tpm_->GetPublicKeyHash(handle, &public_key_hash));
+  TPMErrorBase err = tpm_->GetPublicKeyHash(handle, &public_key_hash);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, DeclareTpmFirmwareStable) {

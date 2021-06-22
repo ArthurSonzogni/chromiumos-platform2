@@ -92,48 +92,6 @@ const unsigned char kSha256DigestInfo[] = {
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0,
                                            0,          0, {0, 9, 8, 1, 0, 3}};
 
-Tpm::TpmRetryAction TPM1ErrorToRetryAction(const TPM1Error& err) {
-  if (!err) {
-    return Tpm::kTpmRetryNone;
-  }
-  Tpm::TpmRetryAction status = Tpm::kTpmRetryFatal;
-  // TODO(b/174816474): We should report this in libhwsec.
-  ReportTpmResult(GetTpmResultSample(err->ErrorCode()));
-  switch (err->ToTPMRetryAction()) {
-    case TPMRetryAction::kNone:
-      status = Tpm::kTpmRetryNone;
-      break;
-    case TPMRetryAction::kCommunication:
-      LOG(ERROR) << "Communications failure with the TPM.";
-      ReportCryptohomeError(kTssCommunicationFailure);
-      status = Tpm::kTpmRetryCommFailure;
-      break;
-    case TPMRetryAction::kLater:
-      LOG(ERROR) << "Should retry the TPM action later.";
-      ReportCryptohomeError(kTcsKeyLoadFailed);
-      status = Tpm::kTpmRetryLater;
-      break;
-    case TPMRetryAction::kReboot:
-      LOG(ERROR) << "TPM require a reboot. Maybe it's out of memory, or in an "
-                    "error state";
-      ReportCryptohomeError(kTpmFail);
-      status = Tpm::kTpmRetryReboot;
-      break;
-    case TPMRetryAction::kDefend:
-      LOG(ERROR) << "The TPM is defending itself against possible dictionary "
-                 << "attacks.";
-      ReportCryptohomeError(kTpmDefendLockRunning);
-      status = Tpm::kTpmRetryDefendLock;
-      break;
-    case TPMRetryAction::kNoRetry:
-    default:
-      status = Tpm::kTpmRetryFailNoRetry;
-      LOG(ERROR) << "Retrying will not help: " << *err;
-      break;
-  }
-  return status;
-}
-
 // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
 //
 // Parameters
@@ -510,15 +468,16 @@ TPM1Error TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle) {
   return nullptr;
 }
 
-Tpm::TpmRetryAction TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
-                                              SecureBlob* hash) {
+TPMErrorBase TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
+                                       SecureBlob* hash) {
   SecureBlob pubkey;
   if (TPM1Error err =
           GetPublicKeyBlob(tpm_context_.value(), key_handle, &pubkey)) {
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to get TPM public key hash");
   }
   *hash = Sha1(pubkey);
-  return kTpmRetryNone;
+  return nullptr;
 }
 
 TPMErrorBase TpmImpl::EncryptBlob(TpmKeyHandle key_handle,

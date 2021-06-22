@@ -228,7 +228,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
       .WillRepeatedly(
-          DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
+          DoAll(SetArgPointee<1>(blob), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
 
   crypto.Init(&tpm, &cryptohome_keys_manager);
@@ -304,7 +304,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
       .WillRepeatedly(
-          DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
+          DoAll(SetArgPointee<1>(blob), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
 
   crypto.Init(&tpm, &cryptohome_keys_manager);
@@ -374,7 +374,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
       .WillRepeatedly(
-          DoAll(SetArgPointee<1>(blob), Return(Tpm::kTpmRetryNone)));
+          DoAll(SetArgPointee<1>(blob), ReturnError<TPMErrorBase>()));
   EXPECT_CALL(tpm, IsOwned()).WillRepeatedly(Return(true));
   crypto.Init(&tpm, &cryptohome_keys_manager);
 

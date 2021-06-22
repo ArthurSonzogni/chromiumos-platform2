@@ -15,6 +15,8 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using hwsec::error::TPMErrorBase;
+
 namespace cryptohome {
 
 TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
@@ -80,24 +82,28 @@ bool TpmAuthBlockUtils::TPMErrorIsRetriable(
 bool TpmAuthBlockUtils::IsTPMPubkeyHash(const brillo::SecureBlob& hash,
                                         CryptoError* error) const {
   brillo::SecureBlob pub_key_hash;
-  Tpm::TpmRetryAction retry_action = tpm_->GetPublicKeyHash(
-      cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash);
-  if (retry_action == Tpm::kTpmRetryLoadFail ||
-      retry_action == Tpm::kTpmRetryInvalidHandle) {
-    if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
-      LOG(ERROR) << "Unable to reload key.";
-      retry_action = Tpm::kTpmRetryFailNoRetry;
-    } else {
-      retry_action = tpm_->GetPublicKeyHash(
-          cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash);
+  if (TPMErrorBase err = tpm_->GetPublicKeyHash(
+          cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash)) {
+    if (TPMErrorIsRetriable(err)) {
+      if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
+        LOG(ERROR) << "Unable to reload key.";
+        ReportCryptohomeError(kCannotReadTpmPublicKey);
+        PopulateError(error, CryptoError::CE_NO_PUBLIC_KEY_HASH);
+        return false;
+      } else {
+        err = tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
+                                     &pub_key_hash);
+      }
+    }
+    if (err) {
+      LOG(ERROR) << "Unable to get the cryptohome public key from the TPM: "
+                 << *err;
+      ReportCryptohomeError(kCannotReadTpmPublicKey);
+      PopulateError(error, TPMErrorToCrypto(err));
+      return false;
     }
   }
-  if (retry_action != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
-    ReportCryptohomeError(kCannotReadTpmPublicKey);
-    PopulateError(error, TpmErrorToCrypto(retry_action));
-    return false;
-  }
+
   if ((hash.size() != pub_key_hash.size()) ||
       (brillo::SecureMemcmp(hash.data(), pub_key_hash.data(),
                             pub_key_hash.size()))) {

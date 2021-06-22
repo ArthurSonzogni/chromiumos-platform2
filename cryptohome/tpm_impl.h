@@ -64,8 +64,8 @@ class TpmImpl : public Tpm {
       const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* plaintext) override;
-  TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
-                                  brillo::SecureBlob* hash) override;
+  hwsec::error::TPMErrorBase GetPublicKeyHash(
+      TpmKeyHandle key_handle, brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override;
   bool IsOwned() override;

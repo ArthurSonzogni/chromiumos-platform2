@@ -58,7 +58,7 @@ class MockTpm : public Tpm {
                (const std::map<uint32_t, std::string>&),
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               GetPublicKeyHash,
               (TpmKeyHandle, brillo::SecureBlob*),
               (override));

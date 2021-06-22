@@ -1071,23 +1071,24 @@ TPMErrorBase Tpm2Impl::UnsealWithAuthorization(
   return nullptr;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
-                                               SecureBlob* hash) {
+TPMErrorBase Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
+                                        SecureBlob* hash) {
   CHECK(hash);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
   trunks::TPMT_PUBLIC public_data;
   if (auto err = CreateError<TPM2Error>(
           trunks->tpm_utility->GetKeyPublicArea(key_handle, &public_data))) {
-    LOG(ERROR) << "Error getting key public area: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error getting key public area");
   }
   std::string public_modulus =
       trunks::StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa);
   *hash = Sha256(SecureBlob(public_modulus));
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 void Tpm2Impl::GetStatus(base::Optional<TpmKeyHandle> key,

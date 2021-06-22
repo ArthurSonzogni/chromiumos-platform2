@@ -276,8 +276,8 @@ class Tpm {
       brillo::SecureBlob* plaintext) = 0;
 
   // Retrieves the sha1sum of the public key component of the RSA key
-  virtual TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
-                                          brillo::SecureBlob* hash) = 0;
+  virtual hwsec::error::TPMErrorBase GetPublicKeyHash(
+      TpmKeyHandle key_handle, brillo::SecureBlob* hash) = 0;
 
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE

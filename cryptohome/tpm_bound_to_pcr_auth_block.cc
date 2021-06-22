@@ -110,12 +110,12 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
   brillo::SecureBlob pub_key_hash;
-  if (tpm_->GetPublicKeyHash(cryptohome_key, &pub_key_hash) ==
-      Tpm::kTpmRetryNone) {
+  if (TPMErrorBase err =
+          tpm_->GetPublicKeyHash(cryptohome_key, &pub_key_hash)) {
+    LOG(ERROR) << "Failed to get the TPM public key hash: " << *err;
+  } else {
     auth_state->set_tpm_public_key_hash(pub_key_hash.data(),
                                         pub_key_hash.size());
-  } else {
-    LOG(ERROR) << "Failed to get the TPM public key hash";
   }
 
   auth_state->set_scrypt_derived(true);
