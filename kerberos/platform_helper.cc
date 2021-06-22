@@ -53,8 +53,7 @@ base::ScopedFD WriteStringToPipe(const std::string& str) {
   }
   base::ScopedFD pipe_read_end(pipe_fd[0]);
   base::ScopedFD pipe_write_end(pipe_fd[1]);
-  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.data(),
-                                 str.size())) {
+  if (!base::WriteFileDescriptor(pipe_write_end.get(), str)) {
     LOG(ERROR) << "Failed to write string to pipe";
     return base::ScopedFD();
   }

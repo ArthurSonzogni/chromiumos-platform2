@@ -9,9 +9,9 @@
 
 #include <base/base64.h>
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>

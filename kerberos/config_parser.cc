@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 
 namespace kerberos {

@@ -207,8 +207,9 @@ ConfigErrorInfo MinijailForker::Parent_ReadErrorInfo() {
 
 void MinijailForker::Child_Write(const void* data, size_t data_size) {
   DCHECK(IsChild());
-  if (!base::WriteFileDescriptor(pipe_write_end_.get(),
-                                 static_cast<const char*>(data), data_size)) {
+  if (!base::WriteFileDescriptor(
+          pipe_write_end_.get(),
+          base::make_span(static_cast<const uint8_t*>(data), data_size))) {
     LOG(ERROR) << "Failed to write " << data_size << " bytes";
     error_ = true;
   }
