@@ -115,11 +115,13 @@ int RunAsUser(const std::string& user,
         old_sa));
     int stdin_fd = process.GetPipe(STDIN_FILENO);
 
+    bool succeeded = true;
+    if (std_input) {
+      succeeded &= base::WriteFileDescriptor(stdin_fd, *std_input);
+    }
+    succeeded &= IGNORE_EINTR(close(stdin_fd)) == 0;
     // Kill the process if writing to or closing the pipe fails.
-    if (!base::WriteFileDescriptor(stdin_fd, std_input != nullptr
-                                                 ? *std_input
-                                                 : std::vector<uint8_t>()) ||
-        IGNORE_EINTR(close(stdin_fd)) < 0) {
+    if (!succeeded) {
       process.Kill(SIGKILL, 0);
     }
     result = process.Wait();
