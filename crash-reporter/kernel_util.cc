@@ -269,7 +269,7 @@ std::string WatchdogSignature(const std::string& console_ramoops) {
                     ? StringPiece::npos
                     : std::min(newline_pos, kMaxHumanStringLength));
   return StringPrintf("%s-(WATCHDOG)-%s-%08X", kKernelExecName,
-                      line.substr(0, end).as_string().c_str(),
+                      std::string(line.substr(0, end)).c_str(),
                       util::HashString(line));
 }
 

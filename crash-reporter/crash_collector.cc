@@ -485,7 +485,7 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
     return -1;
   }
 
-  if (!base::WriteFileDescriptor(fd.get(), data, size)) {
+  if (!base::WriteFileDescriptor(fd.get(), base::StringPiece(data, size))) {
     base::ScopedClearLastError restore_error;
     fd.reset();
     return -1;

@@ -756,8 +756,8 @@ TEST_F(CrashReporterParserTest, LogsAreCapturedAtMissTime) {
   auto parser = MakeParser(std::move(metrics));
   ParserTest("TEST_CHROME_CRASH_MATCH.txt", {missed_call}, parser.get());
 
-  EXPECT_TRUE(base::AppendToFile(paths::Get(paths::kProcFileNr), "more", 4));
-  EXPECT_TRUE(base::AppendToFile(paths::Get(paths::kProcMeminfo), "more", 4));
+  EXPECT_TRUE(base::AppendToFile(paths::Get(paths::kProcFileNr), "more"));
+  EXPECT_TRUE(base::AppendToFile(paths::Get(paths::kProcMeminfo), "more"));
   EXPECT_TRUE(base::DeleteFile(paths::Get(paths::kMessageLogPath)));
   EXPECT_TRUE(base::DeleteFile(paths::Get(paths::kSystemChromeLogDirectory)
                                    .Append("chrome_20190720-150000")));

@@ -39,7 +39,7 @@ void RunCrashReporter(const std::vector<std::string>& flags,
   cmd.RedirectUsingPipe(STDIN_FILENO, true);
   CHECK(cmd.Start());
   int stdin_fd = cmd.GetPipe(STDIN_FILENO);
-  CHECK(base::WriteFileDescriptor(stdin_fd, input.data(), input.length()));
+  CHECK(base::WriteFileDescriptor(stdin_fd, input));
   CHECK_GE(close(stdin_fd), 0);
   CHECK_EQ(0, cmd.Wait());
 }

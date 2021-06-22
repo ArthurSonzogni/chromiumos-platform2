@@ -116,7 +116,8 @@ bool ArcvmCxxCollector::DumpFdToFile(base::ScopedFD src_fd,
       return false;
     if (bytes_written == 0)
       return true;
-    if (!base::WriteFileDescriptor(dst_fd.get(), buffer, bytes_written))
+    if (!base::WriteFileDescriptor(dst_fd.get(),
+                                   base::StringPiece(buffer, bytes_written)))
       return false;
   }
 }

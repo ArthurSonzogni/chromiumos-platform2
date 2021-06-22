@@ -260,7 +260,7 @@ bool Serializer::WriteFetchCrashesResponse(
     return false;
   }
 
-  if (!base::AppendToFile(out_, buf.data(), buf.size())) {
+  if (!base::AppendToFile(out_, buf)) {
     PLOG(ERROR) << "Failed to append";
     return false;
   }
