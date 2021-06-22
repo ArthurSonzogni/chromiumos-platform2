@@ -140,7 +140,7 @@ class MockTpm : public Tpm {
                const brillo::SecureBlob&,
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(TpmRetryAction,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               LoadWrappedKey,
               (const brillo::SecureBlob&, ScopedKeyHandle*),
               (override));

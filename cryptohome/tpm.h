@@ -539,8 +539,8 @@ class Tpm {
   // Parameters
   //   wrapped_key - The blob (as produced by WrapRsaKey).
   //   key_handle (OUT) - A handle to the key loaded into the TPM.
-  virtual TpmRetryAction LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
-                                        ScopedKeyHandle* key_handle) = 0;
+  virtual hwsec::error::TPMErrorBase LoadWrappedKey(
+      const brillo::SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) = 0;
 
   // Loads the Cryptohome Key using a pre-defined UUID. This method does
   // nothing when using TPM2.0

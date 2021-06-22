@@ -556,7 +556,6 @@ TPMErrorBase TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   }
   return nullptr;
 }
-
 TPMErrorBase TpmImpl::DecryptBlob(
     TpmKeyHandle key_handle,
     const SecureBlob& ciphertext,
@@ -1899,17 +1898,16 @@ TPM1Error TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
   return nullptr;
 }
 
-Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
-    const brillo::SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) {
+TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
+                                     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
   if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
     if (err->ErrorCode() != kKeyNotFoundError) {
-      LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
       ReportCryptohomeError(kCannotLoadTpmSrk);
     }
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK");
   }
 
   // Make sure we can get the public key for the SRK.  If not, then the TPM
@@ -1918,21 +1916,21 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
     SecureBlob pubkey;
     if (TPM1Error err =
             GetPublicKeyBlob(tpm_context_.value(), srk_handle, &pubkey)) {
-      LOG(ERROR) << __func__ << ": Cannot load SRK public key: " << *err;
       ReportCryptohomeError(kCannotReadTpmSrkPublic);
-      return TPM1ErrorToRetryAction(err);
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Cannot load SRK public key");
     }
   }
   TpmKeyHandle local_key_handle;
   if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
           tpm_context_.value(), srk_handle, wrapped_key.size(),
           const_cast<BYTE*>(wrapped_key.data()), &local_key_handle))) {
-    LOG(ERROR) << __func__ << ": Cannot load key from blob: " << *err;
     ReportCryptohomeError(kCannotLoadTpmKey);
     if (err->ErrorCode() == TPM_E_BAD_KEY_PROPERTY) {
       ReportCryptohomeError(kTpmBadKeyProperty);
     }
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Cannot load key from blob");
   }
 
   SecureBlob pub_key;
@@ -1941,10 +1939,11 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
           GetPublicKeyBlob(tpm_context_.value(), local_key_handle, &pub_key)) {
     ReportCryptohomeError(kCannotReadTpmPublicKey);
     Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
-    return TPM1ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Cannot get public key from blob");
   }
   key_handle->reset(this, local_key_handle);
-  return kTpmRetryNone;
+  return nullptr;
 }
 
 bool TpmImpl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,

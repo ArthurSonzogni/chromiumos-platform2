@@ -1218,7 +1218,7 @@ TEST_F(Tpm2Test, LoadWrappedKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillOnce(DoAll(SaveArg<0>(&loaded_key), SetArgPointee<2>(handle),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle), Tpm::kTpmRetryNone);
+  EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle), nullptr);
   EXPECT_EQ(handle, key_handle.value());
   EXPECT_EQ(loaded_key, wrapped_key.to_string());
 }
@@ -1228,8 +1228,9 @@ TEST_F(Tpm2Test, LoadWrappedKeyFailure) {
   ScopedKeyHandle key_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-            Tpm::kTpmRetryFailNoRetry);
+  TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, LoadWrappedKeyTransientDevWriteFailure) {
@@ -1237,9 +1238,9 @@ TEST_F(Tpm2Test, LoadWrappedKeyTransientDevWriteFailure) {
   ScopedKeyHandle key_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillOnce(Return(trunks::TRUNKS_RC_WRITE_ERROR));
-  EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-            Tpm::kTpmRetryCommFailure);
-  EXPECT_TRUE(tpm_->IsTransient(Tpm::kTpmRetryCommFailure));
+  TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kCommunication, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
@@ -1254,10 +1255,12 @@ TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
         .WillOnce(Return(error_code_fmt0 | layer_code))
         .WillOnce(Return(error_code_fmt1 | layer_code))
         .RetiresOnSaturation();
-    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-              Tpm::kTpmRetryLater);
-    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-              Tpm::kTpmRetryLater);
+    TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+    EXPECT_NE(nullptr, err);
+    EXPECT_EQ(TPMRetryAction::kLater, err->ToTPMRetryAction());
+    err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+    EXPECT_NE(nullptr, err);
+    EXPECT_EQ(TPMRetryAction::kLater, err->ToTPMRetryAction());
   }
   // For response codes produced by other layers (e.g. trunks, SAPI), should
   // always return FailNoRetry, even if lower 12 bits match hardware TPM errors.
@@ -1266,10 +1269,12 @@ TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
         .WillOnce(Return(error_code_fmt0 | layer_code))
         .WillOnce(Return(error_code_fmt1 | layer_code))
         .RetiresOnSaturation();
-    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-              Tpm::kTpmRetryFailNoRetry);
-    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
-              Tpm::kTpmRetryFailNoRetry);
+    TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+    EXPECT_NE(nullptr, err);
+    EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
+    err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+    EXPECT_NE(nullptr, err);
+    EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
   }
 }
 

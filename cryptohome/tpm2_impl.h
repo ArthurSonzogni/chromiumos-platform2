@@ -139,8 +139,9 @@ class Tpm2Impl : public Tpm {
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;
-  TpmRetryAction LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
-                                ScopedKeyHandle* key_handle) override;
+  hwsec::error::TPMErrorBase LoadWrappedKey(
+      const brillo::SecureBlob& wrapped_key,
+      ScopedKeyHandle* key_handle) override;
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                brillo::SecureBlob* key_blob) override;
   void CloseHandle(TpmKeyHandle key_handle) override;

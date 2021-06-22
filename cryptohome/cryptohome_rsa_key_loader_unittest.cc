@@ -9,10 +9,15 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMErrorBase;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::NiceMock;
@@ -226,7 +231,7 @@ ACTION_P(GenerateWrappedKey, wrapped_key) {
 
 ACTION_P2(LoadWrappedKeyToHandle, tpm, handle) {
   arg1->reset(tpm, handle);
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeySuccess) {
@@ -243,7 +248,7 @@ TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeyTransientFailure) {
   // old key.
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
-      .WillOnce(Return(Tpm::kTpmRetryCommFailure))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kCommunication))
       .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _)).Times(0);
   cryptohome_key_loader_.Init();
@@ -259,7 +264,7 @@ TEST_F(CryptohomeRsaKeyLoaderTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   SetIsTpmOwned(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
-      .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry))
       .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
       .WillOnce(GenerateWrappedKey("new-key"));
@@ -275,7 +280,7 @@ TEST_F(CryptohomeRsaKeyLoaderTest,
   SetIsTpmOwned(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
-      .WillOnce(Return(Tpm::kTpmRetryFailNoRetry));
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _)).WillOnce(Return(false));
   cryptohome_key_loader_.Init();
   EXPECT_THAT(&cryptohome_key_loader_, HasNoLoadedCryptohomeKey());
@@ -290,8 +295,8 @@ TEST_F(CryptohomeRsaKeyLoaderTest,
   SetIsTpmOwned(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
-      .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
-      .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry))
       .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
       .WillOnce(GenerateWrappedKey("new-key"));

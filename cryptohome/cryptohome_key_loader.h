@@ -39,7 +39,7 @@ class CryptohomeKeyLoader {
  private:
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
-  Tpm::TpmRetryAction LoadCryptohomeKey(ScopedKeyHandle* key_handle);
+  hwsec::error::TPMErrorBase LoadCryptohomeKey(ScopedKeyHandle* key_handle);
 
   bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
 

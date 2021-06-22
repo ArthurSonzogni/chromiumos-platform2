@@ -58,35 +58,6 @@ namespace cryptohome {
 
 namespace {
 
-Tpm::TpmRetryAction TPM2ErrorToRetryAction(const TPM2Error& err) {
-  if (!err) {
-    return Tpm::kTpmRetryNone;
-  }
-  Tpm::TpmRetryAction action;
-  switch (err->ToTPMRetryAction()) {
-    case TPMRetryAction::kNone:
-      action = Tpm::kTpmRetryNone;
-      break;
-    case TPMRetryAction::kCommunication:
-      action = Tpm::kTpmRetryCommFailure;
-      break;
-    case TPMRetryAction::kLater:
-      action = Tpm::kTpmRetryLater;
-      break;
-    case TPMRetryAction::kReboot:
-      action = Tpm::kTpmRetryReboot;
-      break;
-    case TPMRetryAction::kDefend:
-      action = Tpm::kTpmRetryDefendLock;
-      break;
-    case TPMRetryAction::kNoRetry:
-    default:
-      action = Tpm::kTpmRetryFailNoRetry;
-      break;
-  }
-  return action;
-}
-
 // Returns the total number of bits set in the first |size| elements from
 // |array|.
 int CountSetBits(const uint8_t* array, size_t size) {
@@ -649,9 +620,8 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   }
 
   ScopedKeyHandle handle;
-  TpmRetryAction retry = LoadWrappedKey(key_blob, &handle);
-  if (retry != kTpmRetryNone) {
-    LOG(ERROR) << "Error loading pcr bound key.";
+  if (TPMErrorBase err = LoadWrappedKey(key_blob, &handle)) {
+    LOG(ERROR) << "Error loading pcr bound key: " << *err;
     return false;
   }
   std::string tpm_signature;
@@ -778,7 +748,8 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
   // Then we certify that the key was created by the TPM.
   ScopedKeyHandle scoped_handle;
-  if (LoadWrappedKey(key_blob, &scoped_handle) != Tpm::kTpmRetryNone) {
+  if (TPMErrorBase err = LoadWrappedKey(key_blob, &scoped_handle)) {
+    LOG(ERROR) << "Failed to load wrapped key: " << *err;
     return false;
   }
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->CertifyCreation(
@@ -884,23 +855,24 @@ bool Tpm2Impl::WrapRsaKey(const SecureBlob& public_modulus,
   return true;
 }
 
-Tpm::TpmRetryAction Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
-                                             ScopedKeyHandle* key_handle) {
+TPMErrorBase Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
+                                      ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
   trunks::TPM_HANDLE handle;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->LoadKey(
           wrapped_key.to_string(), delegate.get(), &handle))) {
-    LOG(ERROR) << "Error loading SRK wrapped key: " << *err;
-    return TPM2ErrorToRetryAction(err);
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error loading SRK wrapped key");
   }
   key_handle->reset(this, handle);
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 bool Tpm2Impl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
@@ -1041,7 +1013,11 @@ Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
 
 Tpm::TpmRetryAction Tpm2Impl::PreloadSealedData(
     const brillo::SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) {
-  return LoadWrappedKey(sealed_data, preload_handle);
+  if (TPMErrorBase err = LoadWrappedKey(sealed_data, preload_handle)) {
+    LOG(ERROR) << "Failed to load sealed data: " << *err;
+    return TPM2ErrorToRetryAction(err);
+  }
+  return Tpm::kTpmRetryNone;
 }
 
 Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(

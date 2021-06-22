@@ -108,8 +108,8 @@ bool TpmLiveTest::EncryptAndDecryptData(
     const SecureBlob& pcr_bound_key,
     const std::map<uint32_t, std::string>& pcr_map) {
   ScopedKeyHandle handle;
-  if (tpm_->LoadWrappedKey(pcr_bound_key, &handle) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error loading wrapped key.";
+  if (TPMErrorBase err = tpm_->LoadWrappedKey(pcr_bound_key, &handle)) {
+    LOG(ERROR) << "Error loading wrapped key: " << *err;
     return false;
   }
   SecureBlob aes_key(32, 'a');
@@ -255,8 +255,8 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (tpm_->LoadWrappedKey(pcr_bound_key, &handle) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error loading wrapped key.";
+  if (TPMErrorBase err = tpm_->LoadWrappedKey(pcr_bound_key, &handle)) {
+    LOG(ERROR) << "Error loading wrapped key: " << *err;
     return false;
   }
   SecureBlob aes_key(32, 'a');
@@ -338,8 +338,8 @@ bool TpmLiveTest::DecryptionKeyTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (tpm_->LoadWrappedKey(wrapped_key, &handle) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error loading key.";
+  if (TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &handle)) {
+    LOG(ERROR) << "Error loading key: " << *err;
     return false;
   }
   SecureBlob aes_key(32, 'a');
@@ -380,8 +380,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (tpm_->LoadWrappedKey(wrapped_key, &handle) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error loading key.";
+  if (TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &handle)) {
+    LOG(ERROR) << "Error loading key: " << *err;
     return false;
   }
 

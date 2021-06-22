@@ -149,9 +149,10 @@ class StubTpm : public Tpm {
                   SecureBlob* wrapped_key) override {
     return false;
   }
-  TpmRetryAction LoadWrappedKey(const SecureBlob& wrapped_key,
-                                ScopedKeyHandle* key_handle) override {
-    return kTpmRetryFatal;
+  hwsec::error::TPMErrorBase LoadWrappedKey(
+      const SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                SecureBlob* key_blob) override {

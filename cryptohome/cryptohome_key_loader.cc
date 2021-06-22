@@ -4,10 +4,16 @@
 
 #include "cryptohome/cryptohome_key_loader.h"
 
+#include <utility>
+
 #include <base/logging.h>
 
 using brillo::SecureBlob;
-
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
+using hwsec::error::TPMRetryAction;
+using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 namespace cryptohome {
 
 CryptohomeKeyLoader::CryptohomeKeyLoader(Tpm* tpm,
@@ -24,55 +30,63 @@ bool CryptohomeKeyLoader::SaveCryptohomeKey(const SecureBlob& wrapped_key) {
   return ok;
 }
 
-Tpm::TpmRetryAction CryptohomeKeyLoader::LoadCryptohomeKey(
+TPMErrorBase CryptohomeKeyLoader::LoadCryptohomeKey(
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // First, try loading the key from the key file.
-  {
-    SecureBlob raw_key;
-    if (platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
-      Tpm::TpmRetryAction retry_action =
-          tpm_->LoadWrappedKey(raw_key, key_handle);
-      if (retry_action == Tpm::kTpmRetryNone ||
-          tpm_->IsTransient(retry_action)) {
-        return retry_action;
-      }
-    }
-  }
-
-  // Then try loading the key by the UUID (this is a legacy upgrade path).
   SecureBlob raw_key;
-  if (!tpm_->LegacyLoadCryptohomeKey(key_handle, &raw_key)) {
-    return Tpm::kTpmRetryFailNoRetry;
+  if (platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
+    if (TPMErrorBase err = tpm_->LoadWrappedKey(raw_key, key_handle)) {
+      if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
+        LOG(INFO) << "Using legacy upgrade path: " << *err;
+        goto legacy_upgrade_path;
+      }
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Failed to load wrapped key");
+    }
+    return nullptr;
   }
 
-  // Save the cryptohome key to the well-known location.
-  if (!SaveCryptohomeKey(raw_key)) {
-    LOG(ERROR) << "Couldn't save cryptohome key";
-    return Tpm::kTpmRetryFailNoRetry;
+legacy_upgrade_path:
+  // Then try loading the key by the UUID (this is a legacy upgrade path).
+  if (!tpm_->LegacyLoadCryptohomeKey(key_handle, &raw_key)) {
+    return CreateError<TPMError>("Failed to load legacy cryptohome key",
+                                 TPMRetryAction::kNoRetry);
   }
-  return Tpm::kTpmRetryNone;
+
+  // Save the legacy cryptohome key to the well-known location.
+  if (!SaveCryptohomeKey(raw_key)) {
+    return CreateError<TPMError>("Couldn't save legacy cryptohome key",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  return nullptr;
 }
 
 bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // Try to load the cryptohome key.
-  Tpm::TpmRetryAction retry_action = LoadCryptohomeKey(key_handle);
-  if (retry_action != Tpm::kTpmRetryNone && !tpm_->IsTransient(retry_action)) {
-    // The key couldn't be loaded, and it wasn't due to a transient error,
-    // so we must create the key.
-    SecureBlob wrapped_key;
-    if (CreateCryptohomeKey(&wrapped_key)) {
-      if (!SaveCryptohomeKey(wrapped_key)) {
-        LOG(ERROR) << "Couldn't save cryptohome key";
-        return false;
+  if (TPMErrorBase err = LoadCryptohomeKey(key_handle)) {
+    if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
+      // The key couldn't be loaded, and it wasn't due to a transient error,
+      // so we must create the key.
+      SecureBlob wrapped_key;
+      if (CreateCryptohomeKey(&wrapped_key)) {
+        if (!SaveCryptohomeKey(wrapped_key)) {
+          LOG(ERROR) << "Couldn't save cryptohome key";
+          return false;
+        }
+        LOG(INFO) << "Created new cryptohome key.";
+        err = LoadCryptohomeKey(key_handle);
       }
-      LOG(INFO) << "Created new cryptohome key.";
-      retry_action = LoadCryptohomeKey(key_handle);
+    }
+    if (err) {
+      LOG(ERROR) << "Failed to load or create cryptohome key: " << *err;
+      return false;
     }
   }
-  return retry_action == Tpm::kTpmRetryNone;
+  return true;
 }
 
 bool CryptohomeKeyLoader::HasCryptohomeKey() {
@@ -92,8 +106,8 @@ bool CryptohomeKeyLoader::ReloadCryptohomeKey() {
   // TODO(crbug.com/687330): change to closing the handle and ignoring errors
   // once checking for stale virtual handles is implemented in trunksd.
   cryptohome_key_.release();
-  if (LoadCryptohomeKey(&cryptohome_key_) != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Error reloading Cryptohome key.";
+  if (TPMErrorBase err = LoadCryptohomeKey(&cryptohome_key_)) {
+    LOG(ERROR) << "Error reloading Cryptohome key: " << *err;
     return false;
   }
   return true;
