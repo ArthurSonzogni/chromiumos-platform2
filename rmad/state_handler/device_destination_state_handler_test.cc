@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/memory/scoped_refptr.h>
 #include <gtest/gtest.h>
@@ -14,6 +15,9 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 
 namespace rmad {
+
+using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
+using Component = ComponentsRepairState::ComponentRepairStatus::Component;
 
 class DeviceDestinationStateHandlerTest : public StateHandlerTest {
  public:
@@ -27,9 +31,15 @@ TEST_F(DeviceDestinationStateHandlerTest, InitializeState_Success) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
-TEST_F(DeviceDestinationStateHandlerTest, GetNextStateCase_Success_Same) {
+TEST_F(DeviceDestinationStateHandlerTest,
+       GetNextStateCase_Success_Same_NeedCalibration) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<Component>{
+          ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -46,9 +56,65 @@ TEST_F(DeviceDestinationStateHandlerTest, GetNextStateCase_Success_Same) {
   EXPECT_TRUE(same_owner);
 }
 
-TEST_F(DeviceDestinationStateHandlerTest, GetNextStateCase_Success_Different) {
+TEST_F(DeviceDestinationStateHandlerTest,
+       GetNextStateCase_Success_Same_NoCalibration) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<std::string>{ComponentRepairStatus::Component_Name(
+          ComponentRepairStatus::RMAD_COMPONENT_BATTERY)});
+
+  auto device_destination = std::make_unique<DeviceDestinationState>();
+  device_destination->set_destination(
+      DeviceDestinationState::RMAD_DESTINATION_SAME);
+  RmadState state;
+  state.set_allocated_device_destination(device_destination.release());
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+
+  bool same_owner;
+  EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
+  EXPECT_TRUE(same_owner);
+}
+
+TEST_F(DeviceDestinationStateHandlerTest,
+       GetNextStateCase_Success_Different_NeedCalibration) {
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<std::string>{ComponentRepairStatus::Component_Name(
+          ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK)});
+
+  auto device_destination = std::make_unique<DeviceDestinationState>();
+  device_destination->set_destination(
+      DeviceDestinationState::RMAD_DESTINATION_DIFFERENT);
+  RmadState state;
+  state.set_allocated_device_destination(device_destination.release());
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableMethod);
+
+  bool same_owner;
+  EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
+  EXPECT_FALSE(same_owner);
+}
+
+TEST_F(DeviceDestinationStateHandlerTest,
+       GetNextStateCase_Success_Different_NoCalibration) {
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<std::string>{ComponentRepairStatus::Component_Name(
+          ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(

@@ -5,14 +5,40 @@
 #ifndef RMAD_CONSTANTS_H_
 #define RMAD_CONSTANTS_H_
 
+#include <array>
+
+#include "rmad/proto_bindings/rmad.pb.h"
+
 namespace rmad {
 
 // JsonStore rmad_interface keys.
-constexpr char kStateHistory[] = "state_history";
-constexpr char kStateMap[] = "state_map";
-constexpr char kNetworkConnected[] = "network_connected";
-constexpr char kSameOwner[] = "same_owner";
-constexpr char kCalibrationMap[] = "calibration_map";
+inline constexpr char kStateHistory[] = "state_history";
+inline constexpr char kStateMap[] = "state_map";
+inline constexpr char kNetworkConnected[] = "network_connected";
+inline constexpr char kReplacedComponentNames[] = "replaced_component_names";
+inline constexpr char kSameOwner[] = "same_owner";
+inline constexpr char kCalibrationMap[] = "calibration_map";
+
+// Component traits.
+inline constexpr std::array<
+    ComponentsRepairState::ComponentRepairStatus::Component,
+    3>
+    components_need_manual_calibration = {
+        ComponentsRepairState::ComponentRepairStatus::RMAD_COMPONENT_GYROSCOPE,
+        ComponentsRepairState::ComponentRepairStatus::
+            RMAD_COMPONENT_ACCELEROMETER,
+        ComponentsRepairState::ComponentRepairStatus::
+            RMAD_COMPONENT_MAINBOARD_REWORK};
+inline constexpr std::
+    array<ComponentsRepairState::ComponentRepairStatus::Component, 3>
+        components_need_auto_calibration = {
+            ComponentsRepairState::ComponentRepairStatus::
+                RMAD_COMPONENT_AUDIO_CODEC,
+            ComponentsRepairState::ComponentRepairStatus::
+                RMAD_COMPONENT_TOUCHSCREEN,
+            ComponentsRepairState::ComponentRepairStatus::
+                RMAD_COMPONENT_MAINBOARD_REWORK,
+};
 
 }  // namespace rmad
 

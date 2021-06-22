@@ -23,6 +23,7 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
  private:
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
+  bool CanSkipHwwp() const;
 };
 
 }  // namespace rmad

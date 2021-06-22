@@ -13,6 +13,7 @@
 #include <dbus/runtime_probe/dbus-constants.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
+#include "rmad/constants.h"
 #include "rmad/utils/dbus_utils_impl.h"
 
 namespace rmad {
@@ -161,6 +162,7 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   // Store the state to storage to keep user's selection.
   StoreState();
+  StoreVars();
 
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kDeviceDestination};
@@ -213,6 +215,20 @@ bool ComponentsRepairStateHandler::ValidateUserSelection(
   }
 
   return true;
+}
+
+bool ComponentsRepairStateHandler::StoreVars() const {
+  std::vector<std::string> replaced_components;
+  const std::unordered_map<Component, RepairStatus> user_selection =
+      GetUserSelectionDictionary(state_);
+
+  for (auto [component, repair_status] : user_selection) {
+    if (repair_status == ComponentRepairStatus::RMAD_REPAIR_REPLACED) {
+      replaced_components.push_back(
+          ComponentRepairStatus::Component_Name(component));
+    }
+  }
+  return json_store_->SetValue(kReplacedComponentNames, replaced_components);
 }
 
 }  // namespace rmad

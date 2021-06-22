@@ -172,8 +172,12 @@ message ComponentsRepairState {
       RMAD_COMPONENT_CELLULAR = 12;
       RMAD_COMPONENT_ETHERNET = 13;
       RMAD_COMPONENT_WIRELESS = 14;
+      // Additional rmad components.
+      RMAD_COMPONENT_GYROSCOPE = 15;
+      RMAD_COMPONENT_ACCELEROMETER = 16;
+      RMAD_COMPONENT_SCREEN = 17;
       // Reserved for additional runtime_probe supported components.
-      reserved 15 to 32;
+      reserved 18 to 32;
       // Mainboard rework is a special case.
       RMAD_COMPONENT_MAINBOARD_REWORK = 33;
       // Irrelevant components.

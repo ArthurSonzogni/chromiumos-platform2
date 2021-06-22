@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
+#include "rmad/constants.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/mock_dbus_utils.h"
@@ -95,13 +96,20 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_ORIGINAL);
+      ComponentRepairStatus::RMAD_REPAIR_REPLACED);
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kDeviceDestination);
+
+  std::vector<std::string> replaced_components;
+  EXPECT_TRUE(
+      json_store_->GetValue(kReplacedComponentNames, &replaced_components));
+  EXPECT_EQ(replaced_components,
+            std::vector<std::string>{ComponentRepairStatus::Component_Name(
+                ComponentRepairStatus::RMAD_COMPONENT_BATTERY)});
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {

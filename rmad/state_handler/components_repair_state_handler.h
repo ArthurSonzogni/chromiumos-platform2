@@ -31,6 +31,8 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
  private:
   // Check that the provided state properly updates every component.
   bool ValidateUserSelection(const RmadState& state) const;
+  // Store variables that can be used by other state handlers to make decisions.
+  bool StoreVars() const;
 
   std::unique_ptr<DBusUtils> dbus_utils_;
 };

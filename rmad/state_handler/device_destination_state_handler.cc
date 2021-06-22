@@ -4,9 +4,17 @@
 
 #include "rmad/state_handler/device_destination_state_handler.h"
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
+
+using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
+using Component = ComponentsRepairState::ComponentRepairStatus::Component;
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -37,6 +45,13 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   StoreState();
   StoreVars();
 
+  // Check if conditions are met to skip disabling write protection and directly
+  // go to finalize step.
+  if (CanSkipHwwp()) {
+    return {.error = RMAD_ERROR_OK,
+            .state_case = RmadState::StateCase::kFinalize};
+  }
+
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kWpDisableMethod};
 }
@@ -45,6 +60,41 @@ bool DeviceDestinationStateHandler::StoreVars() const {
   return json_store_->SetValue(
       kSameOwner, state_.device_destination().destination() ==
                       DeviceDestinationState::RMAD_DESTINATION_SAME);
+}
+
+bool DeviceDestinationStateHandler::CanSkipHwwp() const {
+  // Device should go to the same owner, and no replaced component needs
+  // calibration.
+  bool same_owner;
+  if (!json_store_->GetValue(kSameOwner, &same_owner) || !same_owner) {
+    return false;
+  }
+
+  std::vector<std::string> replaced_component_names;
+  if (!json_store_->GetValue(kReplacedComponentNames,
+                             &replaced_component_names)) {
+    return false;
+  }
+
+  // Using set union/intersection is faster, but since the number of components
+  // is small, we keep it simple by using linear searches for each replaced
+  // component. It shouldn't affect performance a lot.
+  for (const std::string& component_name : replaced_component_names) {
+    Component component;
+    DCHECK(ComponentRepairStatus::Component_Parse(component_name, &component));
+    if (std::find(components_need_manual_calibration.begin(),
+                  components_need_manual_calibration.end(),
+                  component) != components_need_manual_calibration.end()) {
+      return false;
+    }
+    if (std::find(components_need_auto_calibration.begin(),
+                  components_need_auto_calibration.end(),
+                  component) != components_need_auto_calibration.end()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace rmad
