@@ -582,7 +582,7 @@ bool WriteToFile(const base::FilePath& file_path,
 
   // Note: WriteFileDescriptor() makes a best effort to write all data.
   // While-loop for handling partial-write is not needed here.
-  return base::WriteFileDescriptor(fd.get(), content.c_str(), content.size());
+  return base::WriteFileDescriptor(fd.get(), content);
 }
 
 bool GetPropertyFromFile(const base::FilePath& prop_file_path,

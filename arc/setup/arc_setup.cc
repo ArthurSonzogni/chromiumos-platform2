@@ -892,8 +892,7 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
                                            0644 /*permissions*/,
                                            kHostArcCameraUid, kHostArcCameraGid)
                                  .first);
-      EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), content->c_str(),
-                                         content->size()));
+      EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), *content));
     }
   }
 

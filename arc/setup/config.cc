@@ -46,8 +46,7 @@ Config::~Config() = default;
 
 bool Config::GetString(base::StringPiece name, std::string* out) const {
   base::Value* config = FindConfig(name);
-  return config ? config->GetAsString(out)
-                : env_->GetVar(name.as_string().c_str(), out);
+  return config ? config->GetAsString(out) : env_->GetVar(name, out);
 }
 
 bool Config::GetInt(base::StringPiece name, int* out) const {
@@ -55,8 +54,7 @@ bool Config::GetInt(base::StringPiece name, int* out) const {
   if (config)
     return config->GetAsInteger(out);
   std::string env_str;
-  return env_->GetVar(name.as_string().c_str(), &env_str) &&
-         base::StringToInt(env_str, out);
+  return env_->GetVar(name, &env_str) && base::StringToInt(env_str, out);
 }
 
 bool Config::GetBool(base::StringPiece name, bool* out) const {
@@ -64,8 +62,7 @@ bool Config::GetBool(base::StringPiece name, bool* out) const {
   if (config)
     return config->GetAsBoolean(out);
   std::string env_str;
-  return env_->GetVar(name.as_string().c_str(), &env_str) &&
-         StringToBool(env_str, out);
+  return env_->GetVar(name, &env_str) && StringToBool(env_str, out);
 }
 
 std::string Config::GetStringOrDie(base::StringPiece name) const {
@@ -119,7 +116,7 @@ bool Config::ParseJsonFile(const base::FilePath& config_json) {
 }
 
 base::Value* Config::FindConfig(base::StringPiece name) const {
-  auto it = json_.find(name.as_string());
+  auto it = json_.find(name);
   if (it == json_.end())
     return nullptr;
   return it->second.get();

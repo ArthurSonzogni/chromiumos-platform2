@@ -5,6 +5,7 @@
 #ifndef ARC_SETUP_CONFIG_H_
 #define ARC_SETUP_CONFIG_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -58,7 +59,7 @@ class Config {
   bool ParseJsonFile(const base::FilePath& config_json);
   base::Value* FindConfig(base::StringPiece name) const;
 
-  std::map<std::string, std::unique_ptr<base::Value>> json_;
+  std::map<std::string, std::unique_ptr<base::Value>, std::less<>> json_;
   std::unique_ptr<base::Environment> env_;
 };
 

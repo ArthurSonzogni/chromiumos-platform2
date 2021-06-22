@@ -314,7 +314,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
     return false;
   }
   if (append && base::PathExists(output)) {
-    if (!base::AppendToFile(output, expanded.data(), expanded.size())) {
+    if (!base::AppendToFile(output, expanded)) {
       PLOG(ERROR) << "Failed to append to " << output;
       return false;
     }
