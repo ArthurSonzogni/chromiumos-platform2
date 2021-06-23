@@ -38,16 +38,14 @@ bool VmCollector::Collect(pid_t pid) {
       GetCrashPath(crash_path, basename, constants::kMinidumpExtension);
 
   int bytes = crash_report.process_tree().size();
-  if (WriteNewFile(proc_log_path, crash_report.process_tree().data(), bytes) <
-      bytes) {
+  if (WriteNewFile(proc_log_path, crash_report.process_tree()) < bytes) {
     LOG(ERROR) << "Failed to write out process tree";
     return false;
   }
   AddCrashMetaUploadFile("process_tree", proc_log_path.BaseName().value());
 
   bytes = crash_report.minidump().size();
-  if (WriteNewFile(minidump_path, crash_report.minidump().data(), bytes) <
-      bytes) {
+  if (WriteNewFile(minidump_path, crash_report.minidump()) < bytes) {
     LOG(ERROR) << "Failed to write out minidump";
     return false;
   }
@@ -60,6 +58,6 @@ bool VmCollector::Collect(pid_t pid) {
   // We don't need the data collection code in CrashCollector::FinishCrash (that
   // was already done inside the VM), so just write out the metadata file
   // ourselves.
-  WriteNewFile(meta_path, extra_metadata_.data(), extra_metadata_.size());
+  WriteNewFile(meta_path, extra_metadata_);
   return true;
 }

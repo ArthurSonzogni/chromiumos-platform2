@@ -120,7 +120,7 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
   const FilePath log_path = GetCrashPath(crash_dir, basename, "log");
 
   const int size = static_cast<int>(log.size());
-  if (WriteNewFile(log_path, log.c_str(), size) != size) {
+  if (WriteNewFile(log_path, log) != size) {
     PLOG(ERROR) << "Failed to write log";
     return false;
   }
@@ -154,7 +154,7 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
     const FilePath info_path = GetCrashPath(crash_dir, basename, "info");
     const int size = static_cast<int>(exception_info.size());
 
-    if (WriteNewFile(info_path, exception_info.c_str(), size) != size) {
+    if (WriteNewFile(info_path, exception_info) != size) {
       PLOG(ERROR) << "Failed to write exception info";
       return false;
     }

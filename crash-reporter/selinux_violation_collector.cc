@@ -128,8 +128,7 @@ bool SELinuxViolationCollector::Collect() {
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
 
-  if (WriteNewFile(log_path, content.data(), content.length()) !=
-      static_cast<int>(content.length())) {
+  if (WriteNewFile(log_path, content) != static_cast<int>(content.length())) {
     PLOG(WARNING) << "Failed to write audit message to " << log_path.value();
     return true;
   }

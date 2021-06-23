@@ -99,10 +99,9 @@ class CrashCollectorTest : public ::testing::Test {
 TEST_F(CrashCollectorTest, WriteNewFile) {
   FilePath test_file = test_dir_.Append("test_new");
   const char kBuffer[] = "buffer";
-  EXPECT_EQ(strlen(kBuffer),
-            collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(strlen(kBuffer), collector_.WriteNewFile(test_file, kBuffer));
   EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
-  EXPECT_LT(collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)), 0);
+  EXPECT_LT(collector_.WriteNewFile(test_file, kBuffer), 0);
   EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
 }
 
@@ -115,8 +114,7 @@ TEST_F(CrashCollectorTest,
 
   const char kBuffer[] = "Hello, this is buffer";
   const FilePath kPath = test_dir_.Append("buffer.txt");
-  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
-            strlen(kBuffer));
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer), strlen(kBuffer));
 
   auto result = collector.get_in_memory_files_for_test();
   ASSERT_EQ(result.size(), 1);
@@ -143,18 +141,15 @@ TEST_F(CrashCollectorTest,
 
   const char kBuffer1[] = "Hello, this is buffer";
   const FilePath kPath1 = test_dir_.Append("buffer1.txt");
-  EXPECT_EQ(collector.WriteNewFile(kPath1, kBuffer1, strlen(kBuffer1)),
-            strlen(kBuffer1));
+  EXPECT_EQ(collector.WriteNewFile(kPath1, kBuffer1), strlen(kBuffer1));
 
   const char kBuffer2[] = "Another buffer";
   const FilePath kPath2 = test_dir_.Append("buffer2.txt");
-  EXPECT_EQ(collector.WriteNewFile(kPath2, kBuffer2, strlen(kBuffer2)),
-            strlen(kBuffer2));
+  EXPECT_EQ(collector.WriteNewFile(kPath2, kBuffer2), strlen(kBuffer2));
 
   const char kBuffer3[] = "Funny meme-ish text here";
   const FilePath kPath3 = test_dir_.Append("buffer3.txt");
-  EXPECT_EQ(collector.WriteNewFile(kPath3, kBuffer3, strlen(kBuffer3)),
-            strlen(kBuffer3));
+  EXPECT_EQ(collector.WriteNewFile(kPath3, kBuffer3), strlen(kBuffer3));
 
   auto result = collector.get_in_memory_files_for_test();
   EXPECT_EQ(result.size(), 3);
@@ -205,12 +200,11 @@ TEST_F(CrashCollectorTest,
   const FilePath kPath = test_dir_.Append("buffer.txt");
   const char kBuffer[] = "Hello, this is buffer";
   // First should succeed.
-  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
-            strlen(kBuffer));
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer), strlen(kBuffer));
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
 
   // Second should fail.
-  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)), -1);
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer), -1);
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
 
   ASSERT_EQ(collector.get_in_memory_files_for_test().size(), 1);
@@ -322,8 +316,7 @@ TEST_F(CrashCollectorTest,
 TEST_F(CrashCollectorTest, RemoveNewFileRemovesNormalFiles) {
   const FilePath kPath = test_dir_.Append("buffer.txt");
   const char kBuffer[] = "Hello, this is buffer";
-  EXPECT_EQ(strlen(kBuffer),
-            collector_.WriteNewFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(strlen(kBuffer), collector_.WriteNewFile(kPath, kBuffer));
   EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
   EXPECT_TRUE(base::PathExists(kPath));
 
@@ -361,8 +354,7 @@ TEST_F(CrashCollectorTest,
 
   const FilePath kPath = test_dir_.Append("buffer.txt");
   const char kBuffer[] = "Hello, this is buffer";
-  EXPECT_EQ(strlen(kBuffer),
-            collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(strlen(kBuffer), collector.WriteNewFile(kPath, kBuffer));
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
 
   EXPECT_TRUE(collector.RemoveNewFile(kPath));
@@ -380,14 +372,12 @@ TEST_F(CrashCollectorTest,
 
   const FilePath kPath1 = test_dir_.Append("buffer1.txt");
   const char kBuffer1[] = "Hello, this is buffer";
-  EXPECT_EQ(strlen(kBuffer1),
-            collector.WriteNewFile(kPath1, kBuffer1, strlen(kBuffer1)));
+  EXPECT_EQ(strlen(kBuffer1), collector.WriteNewFile(kPath1, kBuffer1));
   const FilePath kPath2 = test_dir_.Append("buffer2.txt");
   const char kBuffer2[] =
       "And if you gaze long into an abyss, you may become the domain expert on "
       "the abyss";
-  EXPECT_EQ(strlen(kBuffer2),
-            collector.WriteNewFile(kPath2, kBuffer2, strlen(kBuffer2)));
+  EXPECT_EQ(strlen(kBuffer2), collector.WriteNewFile(kPath2, kBuffer2));
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer1) + strlen(kBuffer2));
 
   EXPECT_TRUE(collector.RemoveNewFile(kPath1));
@@ -1753,8 +1743,7 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
 
   collector.Initialize(false);
 
-  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
-            strlen(kBuffer));
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer), strlen(kBuffer));
   EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
   collector.FinishCrash(kMetaFilePath, "kernel", kPath.BaseName().value());
   EXPECT_GT(collector.get_bytes_written(), strlen(kBuffer));

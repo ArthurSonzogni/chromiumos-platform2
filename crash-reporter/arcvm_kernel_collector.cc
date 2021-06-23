@@ -78,8 +78,7 @@ bool ArcvmKernelCollector::HandleCrashWithRamoopsStreamAndTimestamp(
       FormatDumpBasename(kKernelExecName, timestamp, kKernelPid);
   const base::FilePath ramoops_path =
       GetCrashPath(crash_dir, basename_without_ext, kRamoopsExtension);
-  if (!WriteNewFile(ramoops_path, ramoops_content.c_str(),
-                    ramoops_content.size())) {
+  if (!WriteNewFile(ramoops_path, ramoops_content)) {
     LOG(ERROR) << "Failed to write ramoops to file: " << ramoops_path;
     return false;
   }

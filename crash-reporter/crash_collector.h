@@ -251,10 +251,10 @@ class CrashCollector {
   // Creates a new file and returns a file descriptor to it.
   base::ScopedFD GetNewFileHandle(const base::FilePath& filename);
 
-  // Writes |data| of |size| to |filename|, which must be a new file.
+  // Writes |data| to |filename|, which must be a new file.
   // If the file already exists or writing fails, return a negative value.
   // Otherwise returns the number of bytes written.
-  int WriteNewFile(const base::FilePath& filename, const char* data, int size);
+  int WriteNewFile(const base::FilePath& filename, base::StringPiece data);
 
   // Writes |data| of |size| to |filename|, which must be a new file ending in
   // ".gz". File will be a gzip-compressed file. Returns true on success,

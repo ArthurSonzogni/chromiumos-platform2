@@ -478,14 +478,13 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
 }
 
 int CrashCollector::WriteNewFile(const FilePath& filename,
-                                 const char* data,
-                                 int size) {
+                                 base::StringPiece data) {
   base::ScopedFD fd = GetNewFileHandle(filename);
   if (!fd.is_valid()) {
     return -1;
   }
 
-  if (!base::WriteFileDescriptor(fd.get(), base::StringPiece(data, size))) {
+  if (!base::WriteFileDescriptor(fd.get(), data)) {
     base::ScopedClearLastError restore_error;
     fd.reset();
     return -1;
@@ -501,6 +500,8 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
     }
     in_memory_files_.emplace_back(filename.BaseName().value(), std::move(fd));
   }
+
+  int size = data.size();
   bytes_written_ += size;
   return size;
 }
@@ -1108,8 +1109,7 @@ bool CrashCollector::GetMultipleLogContents(
       return false;
     }
   } else {
-    if (WriteNewFile(output_file, collated_log_contents.data(),
-                     collated_log_contents.size()) !=
+    if (WriteNewFile(output_file, collated_log_contents) !=
         static_cast<int>(collated_log_contents.length())) {
       PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
       return false;
@@ -1171,8 +1171,7 @@ bool CrashCollector::GetProcessTree(pid_t pid,
   std::string log = stream.str();
   StripSensitiveData(&log);
 
-  if (WriteNewFile(output_file, log.data(), log.size()) !=
-      static_cast<int>(log.size())) {
+  if (WriteNewFile(output_file, log) != static_cast<int>(log.size())) {
     PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
     return false;
   }
@@ -1424,7 +1423,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(meta_path, meta_data.c_str(), meta_data.size()) < 0) {
+  if (WriteNewFile(meta_path, meta_data) < 0) {
     PLOG(ERROR) << "Unable to write " << meta_path.value();
   }
 
@@ -1650,7 +1649,7 @@ void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
   // We must use WriteNewFile instead of base::WriteFile as we do
   // not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(log_path, error_log.data(), error_log.length()) < 0) {
+  if (WriteNewFile(log_path, error_log) < 0) {
     LOG(ERROR) << "Error writing new file " << log_path.value();
     return;
   }

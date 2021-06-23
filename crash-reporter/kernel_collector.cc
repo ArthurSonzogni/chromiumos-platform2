@@ -492,15 +492,14 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(kernel_crash_path, kernel_dump.data(),
-                   kernel_dump.length()) !=
+  if (WriteNewFile(kernel_crash_path, kernel_dump) !=
       static_cast<int>(kernel_dump.length())) {
     LOG(INFO) << "Failed to write kernel dump to "
               << kernel_crash_path.value().c_str();
     return true;
   }
   if (!bios_dump.empty()) {
-    if (WriteNewFile(bios_dump_path, bios_dump.data(), bios_dump.length()) !=
+    if (WriteNewFile(bios_dump_path, bios_dump) !=
         static_cast<int>(bios_dump.length())) {
       PLOG(WARNING) << "Failed to write BIOS log to " << bios_dump_path.value()
                     << " (ignoring)";

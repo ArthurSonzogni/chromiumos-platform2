@@ -101,8 +101,7 @@ bool ECCollector::Collect() {
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(ec_crash_path, output.c_str(), output.size()) !=
-      static_cast<int>(output.size())) {
+  if (WriteNewFile(ec_crash_path, output) != static_cast<int>(output.size())) {
     PLOG(ERROR) << "Failed to write EC dump to "
                 << ec_crash_path.value().c_str();
     return true;

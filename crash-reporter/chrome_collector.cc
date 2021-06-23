@@ -206,8 +206,7 @@ bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
   *payload_path =
       GetCrashPath(dir, dump_basename, constants::kJavaScriptStackExtension);
   constexpr char kNoStackPayload[] = "No Stack\n";
-  if (WriteNewFile(*payload_path, kNoStackPayload, strlen(kNoStackPayload)) !=
-      strlen(kNoStackPayload)) {
+  if (WriteNewFile(*payload_path, kNoStackPayload) != strlen(kNoStackPayload)) {
     // Can't send a crash report without a payload, so just fail.
     LOG(ERROR) << "Failed to write lack-of-js-stack message to "
                << payload_path->value();
@@ -318,7 +317,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
           return false;
         }
         *payload = GetCrashPath(dir, basename, constants::kMinidumpExtension);
-        if (WriteNewFile(*payload, data.c_str() + at, size) != size) {
+        if (WriteNewFile(*payload,
+                         base::StringPiece(data.c_str() + at, size)) != size) {
           // Can't send a crash report without a payload, so just fail.
           LOG(ERROR) << "Failed to write minidump to " << payload->value();
           return false;
@@ -337,7 +337,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         }
         *payload =
             GetCrashPath(dir, basename, constants::kJavaScriptStackExtension);
-        if (WriteNewFile(*payload, data.c_str() + at, size) != size) {
+        if (WriteNewFile(*payload,
+                         base::StringPiece(data.c_str() + at, size)) != size) {
           // Can't send a crash report without a payload, so just fail.
           LOG(ERROR) << "Failed to write js stack to " << payload->value();
           return false;
@@ -346,7 +347,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         // Some other file.
         FilePath path =
             GetCrashPath(dir, basename + "-" + Sanitize(filename), "other");
-        if (WriteNewFile(path, data.c_str() + at, size) >= 0) {
+        if (WriteNewFile(path, base::StringPiece(data.c_str() + at, size)) >=
+            0) {
           AddCrashMetaUploadFile(desc, path.BaseName().value());
         }
         // else keep going and upload what we have.
@@ -492,8 +494,7 @@ bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  int written = WriteNewFile(error_state_path, decoded_error_state.c_str(),
-                             decoded_error_state.length());
+  int written = WriteNewFile(error_state_path, decoded_error_state);
   if (written < 0 ||
       static_cast<size_t>(written) != decoded_error_state.length()) {
     PLOG(ERROR) << "Could not write file " << error_state_path.value()

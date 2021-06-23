@@ -327,8 +327,7 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
-  if (WriteNewFile(kernel_crash_path, kernel_warning.data(),
-                   kernel_warning.length()) !=
+  if (WriteNewFile(kernel_crash_path, kernel_warning) !=
       static_cast<int>(kernel_warning.length())) {
     LOG(INFO) << "Failed to write kernel warning to "
               << kernel_crash_path.value().c_str();
