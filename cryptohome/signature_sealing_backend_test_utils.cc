@@ -60,7 +60,8 @@ void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
                                  pcr_restrictions_, delegate_blob_,
                                  delegate_secret_, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(SecureBlob(secret_value_)),
-                      SetArgPointee<6>(sealed_data_to_return), Return(true)));
+                      SetArgPointee<6>(sealed_data_to_return),
+                      ReturnError<TPMErrorBase>()));
 }
 
 void SignatureSealedCreationMocker::SetUpFailingMock() {
@@ -68,7 +69,7 @@ void SignatureSealedCreationMocker::SetUpFailingMock() {
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
                                  pcr_restrictions_, delegate_blob_,
                                  delegate_secret_, _, _))
-      .WillOnce(Return(false));
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 }
 
 SignatureSealedUnsealingMocker::SignatureSealedUnsealingMocker(

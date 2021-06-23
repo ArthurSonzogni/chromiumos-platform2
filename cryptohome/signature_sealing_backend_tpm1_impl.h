@@ -38,7 +38,7 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
   ~SignatureSealingBackendTpm1Impl() override;
 
   // SignatureSealingBackend:
-  bool CreateSealedSecret(
+  hwsec::error::TPMErrorBase CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,

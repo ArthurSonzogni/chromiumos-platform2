@@ -262,7 +262,7 @@ SignatureSealingBackendTpm2Impl::SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm)
 
 SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 
-bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
+TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
@@ -285,44 +285,42 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     }
   }
   if (scheme == TPM_ALG_NULL) {
-    LOG(ERROR) << "Error choosing the signature algorithm";
-    return false;
+    return CreateError<TPMError>("Error choosing the signature algorithm",
+                                 TPMRetryAction::kNoRetry);
   }
   // Start a TPM authorization session.
   Tpm2Impl::TrunksClientContext* trunks = nullptr;
   if (!tpm_->GetTrunksContext(&trunks)) {
-    LOG(ERROR) << "Error getting trunks context";
-    return false;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
-  TPM_RC tpm_result = trunks->tpm_utility->StartSession(session.get());
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session";
-    return false;
+  if (auto err = CreateError<TPM2Error>(
+          trunks->tpm_utility->StartSession(session.get()))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error starting hmac session");
   }
   // Load the protection public key onto the TPM.
   ScopedKeyHandle key_handle;
   if (!tpm_->LoadPublicKeyFromSpki(
           public_key_spki_der, AsymmetricKeyUsage::kSignKey, scheme, hash_alg,
           session->GetDelegate(), &key_handle)) {
-    LOG(ERROR) << "Error loading protection key";
-    return false;
+    return CreateError<TPMError>("Error loading protection key",
+                                 TPMRetryAction::kNoRetry);
   }
   std::string key_name;
-  tpm_result = trunks->tpm_utility->GetKeyName(key_handle.value(), &key_name);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to get key name";
-    return false;
+  if (auto err = CreateError<TPM2Error>(
+          trunks->tpm_utility->GetKeyName(key_handle.value(), &key_name))) {
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to get key name");
   }
   // Start a trial policy session for sealing the secret value.
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetTrialSession();
-  tpm_result = policy_session->StartUnboundSession(true, false);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a trial session: "
-               << GetErrorString(tpm_result);
-    return false;
+  if (auto err = CreateError<TPM2Error>(
+          policy_session->StartUnboundSession(true, false))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error starting a trial session");
   }
   // Calculate policy digests for each of the sets of PCR restrictions
   // separately. Rewind each time the policy session back to the initial state,
@@ -338,39 +336,35 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
       pcr_values_strings[pcr_index_and_value.first] =
           BlobToString(pcr_index_and_value.second);
     }
-    tpm_result = policy_session->PolicyPCR(pcr_values_strings);
-    if (tpm_result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error restricting policy to PCRs: "
-                 << GetErrorString(tpm_result);
-      return false;
+    if (auto err = CreateError<TPM2Error>(
+            policy_session->PolicyPCR(pcr_values_strings))) {
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Error restricting policy to PCRs");
     }
     // Remember the policy digest for the current PCR set.
     std::string pcr_policy_digest;
-    tpm_result = policy_session->GetDigest(&pcr_policy_digest);
-    if (tpm_result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error getting policy digest: "
-                 << GetErrorString(tpm_result);
-      return false;
+    if (auto err = CreateError<TPM2Error>(
+            policy_session->GetDigest(&pcr_policy_digest))) {
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Error getting policy digest");
     }
     pcr_policy_digests.push_back(pcr_policy_digest);
     // Restart the policy session when necessary.
     if (pcr_restrictions.size() > 1) {
-      tpm_result = policy_session->PolicyRestart();
-      if (tpm_result != TPM_RC_SUCCESS) {
-        LOG(ERROR) << "Error restarting the policy session: "
-                   << GetErrorString(tpm_result);
-        return false;
+      if (auto err = CreateError<TPM2Error>(policy_session->PolicyRestart())) {
+        return CreateErrorWrap<TPMError>(std::move(err),
+                                         "Error restarting the policy session");
       }
     }
   }
   // If necessary, apply PolicyOR for restricting to the disjunction of the
   // specified sets of PCR restrictions.
   if (pcr_restrictions.size() > 1) {
-    tpm_result = policy_session->PolicyOR(pcr_policy_digests);
-    if (tpm_result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error restricting policy to logical disjunction of PCRs: "
-                 << GetErrorString(tpm_result);
-      return false;
+    if (auto err = CreateError<TPM2Error>(
+            policy_session->PolicyOR(pcr_policy_digests))) {
+      return CreateErrorWrap<TPMError>(
+          std::move(err),
+          "Error restricting policy to logical disjunction of PCRs");
     }
   }
   // Update the policy with an empty signature that refers to the public key.
@@ -380,40 +374,38 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   signature.signature.rsassa.hash = hash_alg;
   signature.signature.rsassa.sig =
       trunks::Make_TPM2B_PUBLIC_KEY_RSA(std::string());
-  tpm_result = policy_session->PolicySigned(
-      key_handle.value(), key_name, std::string() /* nonce */,
-      std::string() /* cp_hash */, std::string() /* policy_ref */,
-      0 /* expiration */, signature, session->GetDelegate());
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting policy to signature with the public key: "
-               << GetErrorString(tpm_result);
-    return false;
+  if (auto err = CreateError<TPM2Error>(policy_session->PolicySigned(
+          key_handle.value(), key_name, std::string() /* nonce */,
+          std::string() /* cp_hash */, std::string() /* policy_ref */,
+          0 /* expiration */, signature, session->GetDelegate()))) {
+    return CreateErrorWrap<TPMError>(
+        std::move(err),
+        "Error restricting policy to signature with the public key");
   }
   // Obtain the resulting policy digest.
   std::string policy_digest;
-  tpm_result = policy_session->GetDigest(&policy_digest);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(tpm_result);
-    return false;
+  if (auto err =
+          CreateError<TPM2Error>(policy_session->GetDigest(&policy_digest))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error getting policy digest");
   }
   if (policy_digest.size() != SHA256_DIGEST_SIZE) {
-    LOG(ERROR) << "Unexpected policy digest size";
-    return false;
+    return CreateError<TPMError>("Unexpected policy digest size",
+                                 TPMRetryAction::kNoRetry);
   }
   // Generate the secret value randomly.
   if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
-    LOG(ERROR) << "Error generating random secret";
-    return false;
+    return CreateError<TPMError>("Error generating random secret",
+                                 TPMRetryAction::kNoRetry);
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Seal the secret value.
   std::string sealed_value;
-  tpm_result =
-      trunks->tpm_utility->SealData(secret_value->to_string(), policy_digest,
-                                    "", session->GetDelegate(), &sealed_value);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error sealing secret data: " << GetErrorString(tpm_result);
-    return false;
+  if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->SealData(
+          secret_value->to_string(), policy_digest, "", session->GetDelegate(),
+          &sealed_value))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error sealing secret data");
   }
   // Fill the resulting proto with data required for unsealing.
   sealed_secret_data->Clear();
@@ -437,7 +429,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     pcr_restriction_proto->set_policy_digest(
         pcr_policy_digests[restriction_index]);
   }
-  return true;
+  return nullptr;
 }
 
 TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(

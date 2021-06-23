@@ -24,7 +24,7 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
   MockSignatureSealingBackend();
   ~MockSignatureSealingBackend() override;
 
-  MOCK_METHOD(bool,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               CreateSealedSecret,
               (const brillo::Blob&,
                const std::vector<ChallengeSignatureAlgorithm>&,

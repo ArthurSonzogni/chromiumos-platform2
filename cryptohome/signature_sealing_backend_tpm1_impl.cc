@@ -1109,7 +1109,7 @@ SignatureSealingBackendTpm1Impl::SignatureSealingBackendTpm1Impl(TpmImpl* tpm)
 
 SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 
-bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
+TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
@@ -1122,16 +1122,17 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
                 CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) == key_algorithms.end()) {
-    LOG(ERROR) << "The key doesn't support RSASSA-PKCS1-v1_5 with SHA-1";
-    return false;
+    return CreateError<TPMError>(
+        "The key doesn't support RSASSA-PKCS1-v1_5 with SHA-1",
+        TPMRetryAction::kNoRetry);
   }
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
   if (!tpm_->ConnectContextAsDelegate(delegate_blob, delegate_secret,
                                       tpm_context.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Failed to connect to the TPM";
-    return false;
+    return CreateError<TPMError>("Failed to connect to the TPM",
+                                 TPMRetryAction::kCommunication);
   }
   // Load the protection public key into Trousers. Obtain its TPM_PUBKEY blob
   // and build the blob of the TPM_MSA_COMPOSITE structure containing a sole
@@ -1141,15 +1142,15 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   if (!ParseAndLoadProtectionKey(tpm_, tpm_context, public_key_spki_der,
                                  &protection_key_size_bits,
                                  protection_key_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the protection public key";
-    return false;
+    return CreateError<TPMError>("Failed to load the protection public key",
+                                 TPMRetryAction::kNoRetry);
   }
   SecureBlob protection_key_pubkey;
   if (tpm_->GetDataAttribute(
           tpm_context, protection_key_handle, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey)) {
-    LOG(ERROR) << "Failed to read the protection public key";
-    return false;
+    return CreateError<TPMError>("Failed to load the protection public key",
+                                 TPMRetryAction::kLater);
   }
   const Blob protection_key_pubkey_digest =
       Sha1(Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()));
@@ -1160,14 +1161,14 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   Blob ma_approval_ticket;
   if (!ObtainMaApprovalTicket(tpm_, tpm_context, tpm_handle,
                               msa_composite_digest, &ma_approval_ticket)) {
-    LOG(ERROR) << "Failed to obtain the migration authority approval ticket";
-    return false;
+    return CreateError<TPMError>(
+        "Failed to obtain the migration authority approval ticket",
+        TPMRetryAction::kNoRetry);
   }
   // Load the SRK.
   ScopedTssKey srk_handle(tpm_context);
   if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the SRK: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load the SRK");
   }
   // Generate the Certified Migratable Key, associated with the protection
   // public key (via the TPM_MSA_COMPOSITE digest). Obtain the resulting wrapped
@@ -1177,32 +1178,34 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   if (!GenerateCmk(tpm_, tpm_context, tpm_handle, srk_handle,
                    msa_composite_digest, ma_approval_ticket, &cmk_pubkey,
                    &srk_wrapped_cmk)) {
-    LOG(ERROR) << "Failed to generate the certified migratable key";
-    return false;
+    return CreateError<TPMError>(
+        "Failed to generate the certified migratable key",
+        TPMRetryAction::kNoRetry);
   }
   // Generate the AuthData value randomly.
   SecureBlob auth_data;
   if (!tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data)) {
-    LOG(ERROR) << "Failed to generate the authorization data";
-    return false;
+    return CreateError<TPMError>("Failed to generate the authorization data",
+                                 TPMRetryAction::kNoRetry);
   }
   DCHECK_EQ(auth_data.size(), kAuthDataSizeBytes);
   // Encrypt the AuthData value.
   crypto::ScopedRSA cmk_rsa = ParseRsaFromTpmPubkeyBlob(cmk_pubkey);
   if (!cmk_rsa) {
-    LOG(ERROR) << "Failed to create OpenSSL public key object for the "
-                  "certified migratable key";
-    return false;
+    return CreateError<TPMError>(
+        "Failed to create OpenSSL public key object for the certified "
+        "migratable key",
+        TPMRetryAction::kNoRetry);
   }
   Blob cmk_wrapped_auth_data;
   if (!RsaOaepEncrypt(auth_data, cmk_rsa.get(), &cmk_wrapped_auth_data)) {
-    LOG(ERROR) << "Failed to encrypt authorization data";
-    return false;
+    return CreateError<TPMError>("Failed to encrypt authorization data",
+                                 TPMRetryAction::kNoRetry);
   }
   // Generate the secret value randomly.
   if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
-    LOG(ERROR) << "Error generating random secret";
-    return false;
+    return CreateError<TPMError>("Error generating random secret",
+                                 TPMRetryAction::kNoRetry);
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Bind the secret value to each of the specified sets of PCR restrictions.
@@ -1221,16 +1224,15 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     brillo::SecureBlob auth_value;
     if (TPMErrorBase err =
             tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-      LOG(ERROR) << "Failed to get auth value: " << *err;
-      return false;
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Failed to get auth value");
     }
     if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
             *secret_value, auth_data, pcr_values_strings,
             &pcr_bound_secret_value)) {
-      LOG(ERROR)
-          << "Error binding the secret value to PCRs and authorization data: "
-          << *err;
-      return false;
+      return CreateErrorWrap<TPMError>(
+          std::move(err),
+          "Error binding the secret value to PCRs and authorization data");
     }
     pcr_bound_secret_values.push_back(
         Blob(pcr_bound_secret_value.begin(), pcr_bound_secret_value.end()));
@@ -1258,7 +1260,7 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     pcr_bound_item_proto->set_bound_secret(
         BlobToString(pcr_bound_secret_values[restriction_index]));
   }
-  return true;
+  return nullptr;
 }
 
 TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(

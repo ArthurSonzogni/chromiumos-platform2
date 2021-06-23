@@ -809,11 +809,11 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error reading PCR values";
       return false;
     }
-    if (!backend()->CreateSealedSecret(
+    if (TPMErrorBase err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms,
             {pcr_values, pcr_values}, delegate_blob_, delegate_secret_,
             secret_value, sealed_secret_data)) {
-      LOG(ERROR) << "Error creating signature-sealed secret";
+      LOG(ERROR) << "Error creating signature-sealed secret: " << *err;
       return false;
     }
     return true;
@@ -827,11 +827,11 @@ class SignatureSealedSecretTestCase final {
     }
     SecureBlob secret_value;
     SignatureSealedData sealed_secret_data;
-    if (backend()->CreateSealedSecret(key_spki_der_,
-                                      param_.supported_algorithms, {pcr_values},
-                                      delegate_blob_, delegate_secret_,
-                                      &secret_value, &sealed_secret_data)) {
-      LOG(ERROR) << "Error: secret creation completed unexpectedly";
+    if (TPMErrorBase err = backend()->CreateSealedSecret(
+            key_spki_der_, param_.supported_algorithms, {pcr_values},
+            delegate_blob_, delegate_secret_, &secret_value,
+            &sealed_secret_data)) {
+      LOG(ERROR) << "Error: secret creation completed unexpectedly: " << *err;
       return false;
     }
     return true;

@@ -76,7 +76,7 @@ class SignatureSealingBackend {
   //   delegate_secret - The delegate secret for the delegate blob.
   //   secret_value - The created secret value.
   //   sealed_secret_data - Securely sealed representation of the secret value.
-  virtual bool CreateSealedSecret(
+  virtual hwsec::error::TPMErrorBase CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,

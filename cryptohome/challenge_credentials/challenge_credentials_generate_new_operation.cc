@@ -22,6 +22,7 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
+using hwsec::error::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -170,12 +171,12 @@ bool ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
 
 bool ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
   SecureBlob local_tpm_protected_secret_value;
-  if (!signature_sealing_backend_->CreateSealedSecret(
+  if (TPMErrorBase err = signature_sealing_backend_->CreateSealedSecret(
           BlobFromString(public_key_info_.public_key_spki_der()),
           GetSealingAlgorithms(public_key_info_), pcr_restrictions_,
           delegate_blob_, delegate_secret_, &local_tpm_protected_secret_value,
           &tpm_sealed_secret_data_)) {
-    LOG(ERROR) << "Failed to create TPM-protected secret";
+    LOG(ERROR) << "Failed to create TPM-protected secret: " << *err;
     return false;
   }
   DCHECK(local_tpm_protected_secret_value.size());
