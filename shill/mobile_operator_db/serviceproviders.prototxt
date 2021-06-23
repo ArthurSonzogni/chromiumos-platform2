@@ -9270,6 +9270,60 @@ mno {
 
 mno {
   data {
+    uuid : "057b073f-18cf-453f-88d6-c5851f693d46"
+    country : "my"
+    localized_name {
+      name : "unifi"
+    }
+    mccmnc : "502153"
+    mobile_apn {
+      apn : "unifi"
+      localized_name {
+        name : "unifi"
+      }
+    }
+  }
+}
+
+mno {
+  data {
+    uuid : "40d54699-c3e2-4fbd-ac47-4b63c60e01c9"
+    country : "my"
+    localized_name {
+      name : "U Mobile"
+    }
+    mccmnc : "50218"
+    mobile_apn {
+      apn : "my3g"
+      username: "vodafone"
+      localized_name {
+        name : "U Mobile"
+      }
+      ip_type: IPV4V6
+    }
+  }
+}
+
+mno {
+  data {
+    uuid : "ab48866a-1e96-496a-a2ac-92125a470655"
+    country : "my"
+    localized_name {
+      name : "Yes"
+    }
+    mccmnc : "502152"
+    mobile_apn {
+      apn : "yesnet"
+      localized_name {
+        name : "yesnet"
+      }
+      ip_type: IPV4V6
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "891ac591-82f5-43a1-bc48-5342cffbc905"
     country : "mz"
     localized_name {
