@@ -61,14 +61,16 @@ is_arc_vm(`
   allow cros_chromeos_install labeledfs:filesystem mount;
   allow cros_chromeos_install device:chr_file rw_file_perms;
   # TODO(b/187204745): properly label these files.
-  allow cros_chromeos_install unlabeled:{ dir file lnk_file } create;
+  create_dir_file(cros_chromeos_install unlabeled);
+  allow cros_chromeos_install unlabeled:file link;
   allow cros_chromeos_install self:capability { dac_override setfcap };
   allow cros_chromeos_install cros_dev_image_exec:{file lnk_file} { create_file_perms link };
 ',`arc_cts_fails_release(`
   allow cros_chromeos_install labeledfs:filesystem mount;
   allow cros_chromeos_install device:chr_file rw_file_perms;
   # TODO(b/187204745): properly label these files.
-  allow cros_chromeos_install unlabeled:{ dir file lnk_file } create;
+  create_dir_file(cros_chromeos_install unlabeled);
+  allow cros_chromeos_install unlabeled:file link;
   allow cros_chromeos_install self:capability { dac_override setfcap };
   allow cros_chromeos_install cros_dev_image_exec:{file lnk_file} { create_file_perms link };
   ', (`cros_chromeos_install'));
