@@ -1770,8 +1770,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
 
   // Trigger the unsealing.
   SecureBlob unsealed_secret_value;
-  EXPECT_TRUE(unsealing_session->Unseal(BlobFromString(kSignatureValue),
-                                        &unsealed_secret_value));
+  EXPECT_EQ(nullptr, unsealing_session->Unseal(BlobFromString(kSignatureValue),
+                                               &unsealed_secret_value));
   EXPECT_EQ(kSecretValue, unsealed_secret_value.to_string());
 
   // Validate values passed to mocks.

@@ -196,11 +196,12 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     return;
   }
   SecureBlob unsealed_secret;
-  if (!unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
+  if (TPMErrorBase err =
+          unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
-    Resolve(CreateError<TPMError>("Failed to unseal the secret",
-                                  TPMRetryAction::kLater),
+    Resolve(CreateErrorWrap<TPMError>(std::move(err),
+                                      "Failed to unseal the secret"),
             nullptr /* credentials */);
     // |this| can be already destroyed at this point.
     return;

@@ -56,7 +56,7 @@ class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {
               (),
               (override));
   MOCK_METHOD(brillo::Blob, GetChallengeValue, (), (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               Unseal,
               (const brillo::Blob&, brillo::SecureBlob*),
               (override));

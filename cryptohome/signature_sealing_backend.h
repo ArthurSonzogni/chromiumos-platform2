@@ -50,8 +50,9 @@ class SignatureSealingBackend {
     //                            GetChallengeValue() using the algorithm as
     //                            returned by GetChallengeAlgorithm().
     //   unsealed_value - The unsealed value, if the function returned true.
-    virtual bool Unseal(const brillo::Blob& signed_challenge_value,
-                        brillo::SecureBlob* unsealed_value) = 0;
+    virtual hwsec::error::TPMErrorBase Unseal(
+        const brillo::Blob& signed_challenge_value,
+        brillo::SecureBlob* unsealed_value) = 0;
   };
 
   virtual ~SignatureSealingBackend() = default;

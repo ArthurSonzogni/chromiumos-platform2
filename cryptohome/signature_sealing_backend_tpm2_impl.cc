@@ -78,8 +78,8 @@ class UnsealingSessionTpm2Impl final
   // UnsealingSession:
   ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
-  bool Unseal(const Blob& signed_challenge_value,
-              SecureBlob* unsealed_value) override;
+  TPMErrorBase Unseal(const Blob& signed_challenge_value,
+                      SecureBlob* unsealed_value) override;
 
  private:
   // Unowned.
@@ -194,30 +194,29 @@ Blob UnsealingSessionTpm2Impl::GetChallengeValue() {
   return CombineBlobs({policy_session_tpm_nonce_, expiration_blob});
 }
 
-bool UnsealingSessionTpm2Impl::Unseal(const Blob& signed_challenge_value,
-                                      SecureBlob* unsealed_value) {
+TPMErrorBase UnsealingSessionTpm2Impl::Unseal(
+    const Blob& signed_challenge_value, SecureBlob* unsealed_value) {
   DCHECK(thread_checker_.CalledOnValidThread());
   // Start a TPM authorization session.
   std::unique_ptr<trunks::HmacSession> session =
       trunks_->factory->GetHmacSession();
-  TPM_RC tpm_result = trunks_->tpm_utility->StartSession(session.get());
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session.";
-    return false;
+  if (auto err = CreateError<TPM2Error>(
+          trunks_->tpm_utility->StartSession(session.get()))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error starting hmac session");
   }
   // Load the protection public key onto the TPM.
   ScopedKeyHandle key_handle;
   if (!tpm_->LoadPublicKeyFromSpki(
           public_key_spki_der_, AsymmetricKeyUsage::kSignKey, scheme_,
           hash_alg_, session->GetDelegate(), &key_handle)) {
-    LOG(ERROR) << "Error loading protection key";
-    return false;
+    return CreateError<TPMError>("Error loading protection key",
+                                 TPMRetryAction::kNoRetry);
   }
   std::string key_name;
-  tpm_result = trunks_->tpm_utility->GetKeyName(key_handle.value(), &key_name);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to get key name";
-    return false;
+  if (auto err = CreateError<TPM2Error>(
+          trunks_->tpm_utility->GetKeyName(key_handle.value(), &key_name))) {
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to get key name");
   }
   // Update the policy with the signature.
   trunks::TPMT_SIGNATURE signature;
@@ -226,33 +225,30 @@ bool UnsealingSessionTpm2Impl::Unseal(const Blob& signed_challenge_value,
   signature.signature.rsassa.hash = hash_alg_;
   signature.signature.rsassa.sig =
       trunks::Make_TPM2B_PUBLIC_KEY_RSA(BlobToString(signed_challenge_value));
-  tpm_result = policy_session_->PolicySigned(
-      key_handle.value(), key_name, BlobToString(policy_session_tpm_nonce_),
-      std::string() /* cp_hash */, std::string() /* policy_ref */,
-      0 /* expiration */, signature, session->GetDelegate());
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting policy to signature with the public key: "
-               << GetErrorString(tpm_result);
-    return false;
+  if (auto err = CreateError<TPM2Error>(policy_session_->PolicySigned(
+          key_handle.value(), key_name, BlobToString(policy_session_tpm_nonce_),
+          std::string() /* cp_hash */, std::string() /* policy_ref */,
+          0 /* expiration */, signature, session->GetDelegate()))) {
+    return CreateErrorWrap<TPMError>(
+        std::move(err),
+        "Error restricting policy to signature with the public key");
   }
   // Obtain the resulting policy digest.
   std::string policy_digest;
-  tpm_result = policy_session_->GetDigest(&policy_digest);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(tpm_result);
-    return false;
+  if (auto err =
+          CreateError<TPM2Error>(policy_session_->GetDigest(&policy_digest))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error getting policy digest");
   }
   // Unseal the secret value.
   std::string unsealed_value_string;
-  tpm_result = trunks_->tpm_utility->UnsealData(
-      BlobToString(srk_wrapped_secret_), policy_session_->GetDelegate(),
-      &unsealed_value_string);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error unsealing object: " << GetErrorString(tpm_result);
-    return false;
+  if (auto err = CreateError<TPM2Error>(trunks_->tpm_utility->UnsealData(
+          BlobToString(srk_wrapped_secret_), policy_session_->GetDelegate(),
+          &unsealed_value_string))) {
+    return CreateErrorWrap<TPMError>(std::move(err), "Error unsealing object");
   }
   *unsealed_value = SecureBlob(unsealed_value_string);
-  return true;
+  return nullptr;
 }
 
 }  // namespace

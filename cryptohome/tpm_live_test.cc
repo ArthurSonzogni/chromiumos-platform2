@@ -873,8 +873,9 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
-    if (!unsealing_session->Unseal(*challenge_signature, unsealed_value)) {
-      LOG(ERROR) << "Error unsealing the secret";
+    if (TPMErrorBase err =
+            unsealing_session->Unseal(*challenge_signature, unsealed_value)) {
+      LOG(ERROR) << "Error unsealing the secret: " << *err;
       return false;
     }
     if (unsealed_value->empty()) {
@@ -895,7 +896,8 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value)) {
+    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
+        nullptr) {
       LOG(ERROR)
           << "Error: unsealing completed with an old challenge signature";
       return false;
@@ -921,7 +923,8 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value)) {
+    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
+        nullptr) {
       LOG(ERROR) << "Error: unsealing completed with a wrong signature";
       return false;
     }
@@ -945,7 +948,8 @@ class SignatureSealedSecretTestCase final {
     }
     challenge_signature.front() ^= 1;
     SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value)) {
+    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
+        nullptr) {
       LOG(ERROR) << "Error: unsealing completed with a wrong signature";
       return false;
     }
@@ -982,7 +986,7 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, *unsealing_session)) {
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
       LOG(ERROR)
           << "Error: unsealing session creation completed with a wrong key: "
           << *err;
@@ -1013,7 +1017,8 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     SecureBlob unsealed_value;
-    if (unsealing_session->Unseal(challenge_signature, &unsealed_value)) {
+    if (unsealing_session->Unseal(challenge_signature, &unsealed_value) ==
+        nullptr) {
       LOG(ERROR) << "Error: unsealing completed with changed PCRs";
       return false;
     }

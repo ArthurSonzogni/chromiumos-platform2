@@ -154,8 +154,8 @@ class UnsealingSessionTpm1Impl final
   // UnsealingSession:
   ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
-  bool Unseal(const Blob& signed_challenge_value,
-              SecureBlob* unsealed_value) override;
+  TPMErrorBase Unseal(const Blob& signed_challenge_value,
+                      SecureBlob* unsealed_value) override;
 
  private:
   // Unowned.
@@ -1004,49 +1004,48 @@ Blob UnsealingSessionTpm1Impl::GetChallengeValue() {
                        cmk_pubkey_digest_});
 }
 
-bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
-                                      SecureBlob* unsealed_value) {
+TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
+    const Blob& signed_challenge_value, SecureBlob* unsealed_value) {
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
   if (!tpm_->ConnectContextAsDelegate(delegate_blob_, delegate_secret_,
                                       tpm_context.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Failed to connect to the TPM";
-    return false;
+    return CreateError<TPMError>("Failed to connect to the TPM",
+                                 TPMRetryAction::kNoRetry);
   }
   // Load the required keys into Trousers.
   ScopedTssKey srk_handle(tpm_context);
   if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the SRK: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load the SRK");
   }
   int protection_key_size_bits = 0;
   ScopedTssKey protection_key_handle(tpm_context);
   if (!ParseAndLoadProtectionKey(tpm_, tpm_context, public_key_spki_der_,
                                  &protection_key_size_bits,
                                  protection_key_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the protection public key";
-    return false;
+    return CreateError<TPMError>("Failed to load the protection public key",
+                                 TPMRetryAction::kNoRetry);
   }
   ScopedTssKey migration_destination_key_handle(tpm_context);
   if (!LoadMigrationDestinationPublicKey(
           tpm_, tpm_context, *migration_destination_rsa_,
           migration_destination_key_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the migration destination key";
-    return false;
+    return CreateError<TPMError>("Failed to load the migration destination key",
+                                 TPMRetryAction::kNoRetry);
   }
   // Validity check the received signature blob.
   if (signed_challenge_value.size() != protection_key_size_bits / 8) {
-    LOG(ERROR) << "Wrong size of challenge signature blob";
-    return false;
+    return CreateError<TPMError>("Wrong size of challenge signature blob",
+                                 TPMRetryAction::kNoRetry);
   }
   // Obtain the migration authorization blob for the migration destination key.
   Blob migration_authorization_blob;
   if (!ObtainMigrationAuthorization(tpm_context, tpm_handle,
                                     migration_destination_key_handle,
                                     &migration_authorization_blob)) {
-    LOG(ERROR) << "Failed to obtain the migration authorization";
-    return false;
+    return CreateError<TPMError>("Failed to obtain the migration authorization",
+                                 TPMRetryAction::kNoRetry);
   }
   // Obtain the CMK migration signature ticket for the signed challenge blob.
   Blob cmk_migration_signature_ticket;
@@ -1055,8 +1054,9 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
           migration_destination_key_pubkey_, cmk_pubkey_,
           protection_key_pubkey_, signed_challenge_value,
           &cmk_migration_signature_ticket)) {
-    LOG(ERROR) << "Failed to obtain the CMK migration signature ticket";
-    return false;
+    return CreateError<TPMError>(
+        "Failed to obtain the CMK migration signature ticket",
+        TPMRetryAction::kNoRetry);
   }
   // Perform the migration of the CMK onto the migration destination key.
   Blob migrated_cmk_key12_blob;
@@ -1066,8 +1066,9 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
                   protection_key_pubkey_, migration_authorization_blob,
                   cmk_migration_signature_ticket, &migrated_cmk_key12_blob,
                   &migration_random_blob)) {
-    LOG(ERROR) << "Failed to migrate the certified migratable key";
-    return false;
+    return CreateError<TPMError>(
+        "Failed to migrate the certified migratable key",
+        TPMRetryAction::kNoRetry);
   }
   // Decrypt and decode the CMK private key.
   crypto::ScopedRSA cmk_private_key = ExtractCmkPrivateKeyFromMigratedBlob(
@@ -1075,31 +1076,32 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
       cmk_pubkey_digest_, msa_composite_digest_,
       migration_destination_rsa_.get());
   if (!cmk_private_key) {
-    LOG(ERROR) << "Failed to extract the certified migratable private key";
-    return false;
+    return CreateError<TPMError>(
+        "Failed to extract the certified migratable private key",
+        TPMRetryAction::kNoRetry);
   }
   // Decrypt the AuthData value.
   SecureBlob auth_data;
   if (!RsaOaepDecrypt(SecureBlob(cmk_wrapped_auth_data_),
                       SecureBlob() /* oaep_label */, cmk_private_key.get(),
                       &auth_data)) {
-    LOG(ERROR) << "Failed to decrypt the authorization data";
-    return false;
+    return CreateError<TPMError>("Failed to decrypt the authorization data",
+                                 TPMRetryAction::kNoRetry);
   }
   // Unseal the secret value bound to PCRs and the AuthData value.
   brillo::SecureBlob auth_value;
   if (TPMErrorBase err =
           tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to get auth value");
   }
   if (TPMErrorBase err = tpm_->UnsealWithAuthorization(
           base::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
           {} /* pcr_map */, unsealed_value)) {
-    LOG(ERROR) << "Failed to unseal the secret value: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to unseal the secret value");
   }
-  return true;
+  return nullptr;
 }
 
 }  // namespace

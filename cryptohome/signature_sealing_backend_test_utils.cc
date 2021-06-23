@@ -81,8 +81,8 @@ SignatureSealedUnsealingMocker::~SignatureSealedUnsealingMocker() = default;
 void SignatureSealedUnsealingMocker::SetUpSuccessfulMock() {
   MockUnsealingSession* mock_unsealing_session = AddSessionCreationMock();
   EXPECT_CALL(*mock_unsealing_session, Unseal(challenge_signature_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(SecureBlob(secret_value_)), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(SecureBlob(secret_value_)),
+                      ReturnError<TPMErrorBase>()));
 }
 
 void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
@@ -105,7 +105,7 @@ void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
 void SignatureSealedUnsealingMocker::SetUpUsealingFailingMock() {
   MockUnsealingSession* mock_unsealing_session = AddSessionCreationMock();
   EXPECT_CALL(*mock_unsealing_session, Unseal(challenge_signature_, _))
-      .WillOnce(Return(false));
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kLater));
 }
 
 void SignatureSealedUnsealingMocker::SetUpUnsealingNotCalledMock() {
