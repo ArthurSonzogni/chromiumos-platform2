@@ -362,6 +362,8 @@ has_arc(`
 /dev/log                        u:object_r:logger_device:s0
 /dev/null                       u:object_r:null_device:s0
 /dev/ptmx                       u:object_r:ptmx_device:s0
+# This needs to match arc++. See: device/google/bertha/sepolicy/file_contexts.
+/dev/pts(/.*)?                  u:object_r:devpts:s0
 /dev/random                     u:object_r:random_device:s0
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
 /dev/snd(/.*)?                  u:object_r:audio_device:s0
