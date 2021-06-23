@@ -491,51 +491,91 @@ std::string CreateSharedDataParam(const base::FilePath& data_dir,
 }
 
 void ArcVmCPUTopology::CreateAffinity(void) {
-  std::vector<std::string> non_rt_cpus;
-  std::vector<std::string> rt_cpus;
-  std::vector<std::string> affinities;
-  std::vector<std::string> capacities;
   uint32_t rt_cpus_needed = num_rt_cpus_;
+  std::vector<std::string> cpu_list;
+  std::vector<std::string> affinities;
 
   // Start with the lowest CPU capacity group and pick CPUs for RT, but
   // never assign boot CPU (CPU0) to RT.
   for (const auto& cap : capacity_) {
-    const auto& cpu_list = cap.second;
-    for (const auto cpu : cpu_list) {
+    for (const auto cpu : cap.second) {
       if (cap.first)
-        capacities.push_back(base::StringPrintf("%d=%d", cpu, cap.first));
+        cpu_list.push_back(base::StringPrintf("%d=%d", cpu, cap.first));
 
-      if (cpu == 0 || rt_cpus_needed == 0) {
-        non_rt_cpus.emplace_back(std::to_string(cpu));
-      } else {
-        rt_cpus_needed--;
-        rt_cpus.emplace_back(std::to_string(cpu));
-        rt_cpus_.insert(cpu);
+      if (cpu == 0 || rt_cpus_needed == 0)
+        continue;
+      rt_cpus_needed--;
+      rt_cpus_.insert(cpu);
+    }
+  }
+
+  capacity_mask_ = base::JoinString(cpu_list, ",");
+  cpu_list.clear();
+
+  for (const auto& pkg : package_) {
+    for (auto cpu : pkg.second) {
+      cpu_list.push_back(std::to_string(cpu));
+    }
+    package_mask_.push_back(base::JoinString(cpu_list, ","));
+    cpu_list.clear();
+  }
+
+  // Create RT cpu mask, which will be used as RT affinity mask and
+  // as a VM kernel parameter.
+  for (auto cpu : rt_cpus_) {
+    cpu_list.push_back(std::to_string(cpu));
+  }
+
+  rt_cpu_mask_ = base::JoinString(cpu_list, ",");
+  cpu_list.clear();
+
+  // Try to group VCPUs based on physical CPUs topology.
+  if (package_.size() > 1) {
+    for (const auto& pkg : package_) {
+      for (auto cpu : pkg.second) {
+        if (rt_cpus_.find(cpu) == rt_cpus_.end())
+          cpu_list.push_back(std::to_string(cpu));
+      }
+
+      std::string cpu_mask = base::JoinString(cpu_list, ",");
+      cpu_list.clear();
+      for (auto cpu : pkg.second) {
+        if (rt_cpus_.find(cpu) == rt_cpus_.end()) {
+          affinities.push_back(
+              base::StringPrintf("%d=%s", cpu, cpu_mask.c_str()));
+        } else {
+          affinities.push_back(
+              base::StringPrintf("%d=%s", cpu, rt_cpu_mask_.c_str()));
+        }
+      }
+    }
+  } else {
+    // Try to group VCPUs based on physical CPUs capacity values.
+    for (const auto& cap : capacity_) {
+      for (auto cpu : cap.second) {
+        if (rt_cpus_.find(cpu) == rt_cpus_.end())
+          cpu_list.push_back(std::to_string(cpu));
+      }
+
+      std::string cpu_mask = base::JoinString(cpu_list, ",");
+      cpu_list.clear();
+      for (auto cpu : cap.second) {
+        if (rt_cpus_.find(cpu) == rt_cpus_.end()) {
+          affinities.push_back(
+              base::StringPrintf("%d=%s", cpu, cpu_mask.c_str()));
+        } else {
+          affinities.push_back(
+              base::StringPrintf("%d=%s", cpu, rt_cpu_mask_.c_str()));
+        }
       }
     }
   }
 
-  rt_cpu_mask_ = base::JoinString(rt_cpus, ",");
-  cpu_mask_ = base::JoinString(non_rt_cpus, ",");
-
-  for (uint32_t cpu = 0; cpu < num_cpus_; cpu++) {
-    if (rt_cpus_.find(cpu) == rt_cpus_.end()) {
-      affinities.emplace_back(
-          base::StringPrintf("%d=%s", cpu, cpu_mask_.c_str()));
-    } else {
-      affinities.emplace_back(
-          base::StringPrintf("%d=%s", cpu, rt_cpu_mask_.c_str()));
-    }
-  }
-
   affinity_mask_ = base::JoinString(affinities, ":");
-  capacity_mask_ = base::JoinString(capacities, ",");
 }
 
 // Creates CPU grouping by cpu_capacity.
 void ArcVmCPUTopology::CreateTopology(void) {
-  std::map<uint32_t, std::vector<std::string>> cluster;
-
   for (uint32_t cpu = 0; cpu < num_cpus_; cpu++) {
     auto capacity = GetCpuCapacity(cpu);
     auto package = GetCpuPackageId(cpu);
@@ -548,13 +588,9 @@ void ArcVmCPUTopology::CreateTopology(void) {
 
     // Ditto.
     if (!package)
-      cluster[0].push_back(std::to_string(cpu));
+      package_[0].push_back(cpu);
     else
-      cluster[*package].push_back(std::to_string(cpu));
-  }
-
-  for (auto& cpu_list : cluster) {
-    package_mask_.push_back(base::JoinString(cpu_list.second, ","));
+      package_[*package].push_back(cpu);
   }
 }
 
@@ -590,6 +626,11 @@ void ArcVmCPUTopology::AddCpuToCapacityGroupForTesting(uint32_t cpu,
   capacity_[capacity].push_back(cpu);
 }
 
+void ArcVmCPUTopology::AddCpuToPackageGroupForTesting(uint32_t cpu,
+                                                      uint32_t package) {
+  package_[package].push_back(cpu);
+}
+
 void ArcVmCPUTopology::CreateCPUAffinityForTesting(uint32_t num_cpus,
                                                    uint32_t num_rt_cpus) {
   num_cpus_ = num_cpus;
@@ -615,10 +656,6 @@ const std::string& ArcVmCPUTopology::AffinityMask() {
 
 const std::string& ArcVmCPUTopology::RTCPUMask() {
   return rt_cpu_mask_;
-}
-
-const std::string& ArcVmCPUTopology::CPUMask() {
-  return cpu_mask_;
 }
 
 const std::string& ArcVmCPUTopology::CapacityMask() {

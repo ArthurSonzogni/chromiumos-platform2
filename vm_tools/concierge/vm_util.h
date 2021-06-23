@@ -159,12 +159,12 @@ class ArcVmCPUTopology {
   uint32_t NumRTCPUs();
   const std::string& AffinityMask();
   const std::string& RTCPUMask();
-  const std::string& CPUMask();
   const std::string& CapacityMask();
   const std::vector<std::string>& PackageMask();
 
   // Unit Testing crud
   void AddCpuToCapacityGroupForTesting(uint32_t cpu, uint32_t capacity);
+  void AddCpuToPackageGroupForTesting(uint32_t cpu, uint32_t package);
   void CreateCPUAffinityForTesting(uint32_t num_cpus, uint32_t num_rt_cpus);
 
  private:
@@ -178,14 +178,14 @@ class ArcVmCPUTopology {
   uint32_t num_rt_cpus_;
   // CPU mask for RT CPUs
   std::string rt_cpu_mask_;
-  // CPU mask for non-RT CPUs
-  std::string cpu_mask_;
   // CPU affinity
   std::string affinity_mask_;
   // A set of RT CPUs
   std::set<uint32_t> rt_cpus_;
   // CPU capacity grouping
   std::map<uint32_t, std::vector<uint32_t>> capacity_;
+  // CPU package grouping
+  std::map<uint32_t, std::vector<uint32_t>> package_;
   // CPU capacity mask
   std::string capacity_mask_;
   // CPU package mask

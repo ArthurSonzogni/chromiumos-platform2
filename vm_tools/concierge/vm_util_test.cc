@@ -167,7 +167,7 @@ TEST(VMUtilTest, GetCpuAffinityFromClustersBothPresent) {
 }
 
 // CPU0-CPU1 LITTLE cores, CPU2-CPU3 big cores
-TEST(VMUtilTest, CreateArcVMCpuAffinityTwoClusters) {
+TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClusters) {
   ArcVmCPUTopology topology;
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
@@ -179,13 +179,78 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityTwoClusters) {
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "1");
-  EXPECT_EQ(topology.CPUMask(), "0,2,3");
-  EXPECT_EQ(topology.AffinityMask(), "0=0,2,3:1=1:2=0,2,3:3=0,2,3");
+  EXPECT_EQ(topology.AffinityMask(), "0=0:1=1:2=2,3:3=2,3");
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=128,3=128");
 }
 
+TEST(VMUtilTest, CreateArcVMAffinityTwoGroups) {
+  ArcVmCPUTopology topology;
+
+  topology.AddCpuToCapacityGroupForTesting(0, 42);
+  topology.AddCpuToCapacityGroupForTesting(1, 42);
+  topology.AddCpuToCapacityGroupForTesting(2, 128);
+  topology.AddCpuToCapacityGroupForTesting(3, 128);
+  topology.CreateCPUAffinityForTesting(4, 1);
+
+  topology.AddCpuToPackageGroupForTesting(0, 0);
+  topology.AddCpuToPackageGroupForTesting(1, 0);
+  topology.AddCpuToPackageGroupForTesting(2, 1);
+  topology.AddCpuToPackageGroupForTesting(3, 1);
+  topology.CreateCPUAffinityForTesting(4, 1);
+
+  EXPECT_EQ(topology.NumCPUs(), 4);
+  EXPECT_EQ(topology.NumRTCPUs(), 1);
+  EXPECT_EQ(topology.RTCPUMask(), "1");
+  EXPECT_EQ(topology.AffinityMask(), "0=0:1=1:2=2,3:3=2,3");
+  EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=128,3=128");
+}
+
+TEST(VMUtilTest, CreateArcVMAffinityOnePackage) {
+  ArcVmCPUTopology topology;
+
+  topology.AddCpuToCapacityGroupForTesting(0, 42);
+  topology.AddCpuToCapacityGroupForTesting(1, 42);
+  topology.AddCpuToCapacityGroupForTesting(2, 128);
+  topology.AddCpuToCapacityGroupForTesting(3, 128);
+  topology.CreateCPUAffinityForTesting(4, 1);
+
+  topology.AddCpuToPackageGroupForTesting(0, 0);
+  topology.AddCpuToPackageGroupForTesting(1, 0);
+  topology.AddCpuToPackageGroupForTesting(2, 0);
+  topology.AddCpuToPackageGroupForTesting(3, 0);
+  topology.CreateCPUAffinityForTesting(4, 1);
+
+  EXPECT_EQ(topology.NumCPUs(), 4);
+  EXPECT_EQ(topology.NumRTCPUs(), 1);
+  EXPECT_EQ(topology.RTCPUMask(), "1");
+  EXPECT_EQ(topology.AffinityMask(), "0=0:1=1:2=2,3:3=2,3");
+  EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=128,3=128");
+}
+
+TEST(VMUtilTest, CreateArcVMAffinityOnePackageOneCapacity) {
+  ArcVmCPUTopology topology;
+
+  topology.AddCpuToCapacityGroupForTesting(0, 42);
+  topology.AddCpuToCapacityGroupForTesting(1, 42);
+  topology.AddCpuToCapacityGroupForTesting(2, 42);
+  topology.AddCpuToCapacityGroupForTesting(3, 42);
+  topology.CreateCPUAffinityForTesting(4, 1);
+
+  topology.AddCpuToPackageGroupForTesting(0, 0);
+  topology.AddCpuToPackageGroupForTesting(1, 0);
+  topology.AddCpuToPackageGroupForTesting(2, 0);
+  topology.AddCpuToPackageGroupForTesting(3, 0);
+  topology.CreateCPUAffinityForTesting(4, 1);
+
+  EXPECT_EQ(topology.NumCPUs(), 4);
+  EXPECT_EQ(topology.NumRTCPUs(), 1);
+  EXPECT_EQ(topology.RTCPUMask(), "1");
+  EXPECT_EQ(topology.AffinityMask(), "0=0,2,3:1=1:2=0,2,3:3=0,2,3");
+  EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42");
+}
+
 // CPU2-CPU3 LITTLE cores, CPU0-CPU1 big cores
-TEST(VMUtilTest, CreateArcVMCpuAffinityTwoClustersReverse) {
+TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClustersReverse) {
   ArcVmCPUTopology topology;
 
   topology.AddCpuToCapacityGroupForTesting(2, 42);
@@ -197,13 +262,12 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityTwoClustersReverse) {
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "2");
-  EXPECT_EQ(topology.CPUMask(), "3,0,1");
-  EXPECT_EQ(topology.AffinityMask(), "0=3,0,1:1=3,0,1:2=2:3=3,0,1");
+  EXPECT_EQ(topology.AffinityMask(), "2=2:3=3:0=0,1:1=0,1");
   EXPECT_EQ(topology.CapacityMask(), "2=42,3=42,0=128,1=128");
 }
 
 // All cores are in the same capacity group
-TEST(VMUtilTest, CreateArcVMCpuAffinityOneCluster) {
+TEST(VMUtilTest, CreateArcVMAffinityOneCapacityCluster) {
   ArcVmCPUTopology topology;
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
@@ -215,13 +279,12 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityOneCluster) {
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "1");
-  EXPECT_EQ(topology.CPUMask(), "0,2,3");
   EXPECT_EQ(topology.AffinityMask(), "0=0,2,3:1=1:2=0,2,3:3=0,2,3");
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42");
 }
 
 // No RT CPU requested
-TEST(VMUtilTest, CreateArcVMCpuAffinityNoRT) {
+TEST(VMUtilTest, CreateArcVMAffinityOneCapacityClusterNoRT) {
   ArcVmCPUTopology topology;
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
@@ -233,20 +296,18 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityNoRT) {
   ASSERT_EQ(topology.RTCPUMask().size(), 0);
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 0);
-  EXPECT_EQ(topology.CPUMask(), "0,1,2,3");
   EXPECT_EQ(topology.AffinityMask(), "0=0,1,2,3:1=0,1,2,3:2=0,1,2,3:3=0,1,2,3");
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42");
 }
 
 // Static ARCVM CPU topologu
-TEST(VMUtilTest, CreateStaticArcVMCpuAffinity) {
+TEST(VMUtilTest, CreateStaticArcVMAffinity) {
   ArcVmCPUTopology topology;
 
   topology.CreateCPUAffinityForTesting(2, 1);
 
   EXPECT_EQ(topology.NumCPUs(), 3);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
-  ASSERT_EQ(topology.CPUMask().size(), 0);
   ASSERT_EQ(topology.AffinityMask().size(), 0);
   ASSERT_EQ(topology.RTCPUMask(), "2");
   ASSERT_EQ(topology.CapacityMask().size(), 0);
