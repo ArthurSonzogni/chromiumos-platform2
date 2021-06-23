@@ -72,7 +72,7 @@ collect_shutdown_umount_failure_logs() {
     # Get a list of processes with files open. lsof is verbose: keep it at the
     # end of the log.
     echo "Processes with files open:"
-    lsof -n
+    lsof -n /mnt/stateful_partition /var /home/chronos
   ) >/run/shutdown_umount_failure.log 2>&1
 }
 
