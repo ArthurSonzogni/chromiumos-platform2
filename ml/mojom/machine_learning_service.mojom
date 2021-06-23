@@ -39,7 +39,7 @@ enum LoadModelResult {
   LANGUAGE_NOT_SUPPORTED_ERROR = 4,
 };
 
-// Top-level interface between Chromium and the ML Service daemon.
+// Top-level interface between Chromium browser process and the ML Service daemon.
 // Next ordinal: 10
 [Stable, Uuid="9e5e4750-40cc-4eda-ac09-3457d06a45ab"]
 interface MachineLearningService {
@@ -82,9 +82,16 @@ interface MachineLearningService {
       [MinVersion=3] TextSuggesterSpec? spec)
       => (LoadModelResult result);
   // Create a handwriting recognizer for web platform API.
-  LoadWebPlatformHandwritingModel@9(
-      chromeos.machine_learning.web_platform.mojom.HandwritingModelConstraint constraint,
-      pending_receiver<chromeos.machine_learning.web_platform.mojom.HandwritingRecognizer>
-        receiver)
+  // This API shares the same HWR engine with `LoadHandwritingModel` and
+  // `LoadHandwritingModelWithSpec` but with a different interface. This API is
+  // as identical to the Web Platform HWR API as possible so that we do not
+  // need to convert the input/output in the browser process. This is required
+  // for security reasons.
+  [MinVersion=1] LoadWebPlatformHandwritingModel@9(
+    chromeos.machine_learning.web_platform.mojom.HandwritingModelConstraint
+      constraint,
+    pending_receiver<
+      chromeos.machine_learning.web_platform.mojom.HandwritingRecognizer>
+      receiver)
       => (LoadHandwritingModelResult result);
 };
