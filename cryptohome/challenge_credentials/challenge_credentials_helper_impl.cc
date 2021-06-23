@@ -20,16 +20,20 @@
 #include "cryptohome/signature_sealing_backend.h"
 
 using brillo::Blob;
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
+using hwsec::error::TPMRetryAction;
+using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 
 namespace cryptohome {
 
 namespace {
 
-bool IsOperationFailureTransient(Tpm::TpmRetryAction retry_action) {
-  return retry_action == Tpm::kTpmRetryCommFailure ||
-         retry_action == Tpm::kTpmRetryInvalidHandle ||
-         retry_action == Tpm::kTpmRetryLoadFail ||
-         retry_action == Tpm::kTpmRetryLater;
+bool IsOperationFailureTransient(const TPMErrorBase& error) {
+  TPMRetryAction action = error->ToTPMRetryAction();
+  return action == TPMRetryAction::kCommunication ||
+         action == TPMRetryAction::kLater;
 }
 
 }  // namespace
@@ -142,18 +146,21 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback original_callback,
-    Tpm::TpmRetryAction retry_action,
+    TPMErrorBase error,
     std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DCHECK_EQ(credentials == nullptr, retry_action != Tpm::kTpmRetryNone);
+  DCHECK_EQ(credentials == nullptr, error != nullptr);
   CancelRunningOperation();
-  if (retry_action != Tpm::kTpmRetryNone &&
-      IsOperationFailureTransient(retry_action) &&
+  if (error && IsOperationFailureTransient(error) &&
       attempt_number < kRetryAttemptCount) {
-    LOG(WARNING) << "Retrying the decryption operation after transient error";
+    LOG(WARNING) << "Retrying the decryption operation after transient error: "
+                 << *error;
     StartDecryptOperation(account_id, key_data, keyset_challenge_info,
                           attempt_number + 1, std::move(original_callback));
   } else {
+    if (error) {
+      LOG(ERROR) << "Decryption completed with error: " << *error;
+    }
     std::move(original_callback).Run(std::move(credentials));
   }
 }

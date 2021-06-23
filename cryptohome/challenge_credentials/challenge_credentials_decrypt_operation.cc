@@ -20,6 +20,11 @@
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
+using hwsec::error::TPMRetryAction;
+using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 
 namespace cryptohome {
 
@@ -63,57 +68,57 @@ ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
 
 void ChallengeCredentialsDecryptOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  Tpm::TpmRetryAction retry_action = StartProcessing();
-  if (retry_action != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to start the decryption operation";
-    Resolve(retry_action, nullptr /* credentials */);
+  if (TPMErrorBase err = StartProcessing()) {
+    Resolve(CreateErrorWrap<TPMError>(
+                std::move(err), "Failed to start the decryption operation"),
+            nullptr /* credentials */);
     // |this| can be already destroyed at this point.
   }
 }
 
 void ChallengeCredentialsDecryptOperation::Abort() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  Resolve(Tpm::kTpmRetryFailNoRetry, nullptr /* credentials */);
+  Resolve(CreateError<TPMError>("aborted", TPMRetryAction::kNoRetry),
+          nullptr /* credentials */);
   // |this| can be already destroyed at this point.
 }
 
-Tpm::TpmRetryAction ChallengeCredentialsDecryptOperation::StartProcessing() {
+TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
   if (!signature_sealing_backend_) {
-    LOG(ERROR) << "Signature sealing is disabled";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Signature sealing is disabled",
+                                 TPMRetryAction::kNoRetry);
   }
   if (!key_data_.challenge_response_key_size()) {
-    LOG(ERROR) << "Missing challenge-response key information";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Missing challenge-response key information",
+                                 TPMRetryAction::kNoRetry);
   }
   if (key_data_.challenge_response_key_size() > 1) {
-    LOG(ERROR)
-        << "Using multiple challenge-response keys at once is unsupported";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>(
+        "Using multiple challenge-response keys at once is unsupported",
+        TPMRetryAction::kNoRetry);
   }
   public_key_info_ = key_data_.challenge_response_key(0);
   if (!public_key_info_.signature_algorithm_size()) {
-    LOG(ERROR) << "The key does not support any signature algorithm";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>(
+        "The key does not support any signature algorithm",
+        TPMRetryAction::kNoRetry);
   }
   if (public_key_info_.public_key_spki_der() !=
       keyset_challenge_info_.public_key_spki_der()) {
-    LOG(ERROR) << "Wrong public key";
-    return Tpm::kTpmRetryFailNoRetry;
+    return CreateError<TPMError>("Wrong public key", TPMRetryAction::kNoRetry);
   }
-  Tpm::TpmRetryAction retry_action = StartProcessingSalt();
-  if (retry_action != Tpm::kTpmRetryNone)
-    return retry_action;
+  if (TPMErrorBase err = StartProcessingSalt()) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to start processing salt");
+  }
   // TODO(crbug.com/842791): This is buggy: |this| may be already deleted by
   // that point, in case when the salt's challenge request failed synchronously.
   return StartProcessingSealedSecret();
 }
 
-Tpm::TpmRetryAction
-ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
+TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (!keyset_challenge_info_.has_salt()) {
-    LOG(ERROR) << "Missing salt";
-    return Tpm::kTpmRetryFatal;
+    return CreateError<TPMError>("Missing salt", TPMRetryAction::kNoRetry);
   }
   const Blob salt = BlobFromString(keyset_challenge_info_.salt());
   // IMPORTANT: Verify that the salt is correctly prefixed. See the comment on
@@ -125,26 +130,26 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (salt.size() <= salt_constant_prefix.size() ||
       !std::equal(salt_constant_prefix.begin(), salt_constant_prefix.end(),
                   salt.begin())) {
-    LOG(ERROR) << "Bad salt: not correctly prefixed";
-    return Tpm::kTpmRetryFatal;
+    return CreateError<TPMError>("Bad salt: not correctly prefixed",
+                                 TPMRetryAction::kNoRetry);
   }
   if (!keyset_challenge_info_.has_salt_signature_algorithm()) {
-    LOG(ERROR) << "Missing signature algorithm for salt";
-    return Tpm::kTpmRetryFatal;
+    return CreateError<TPMError>("Missing signature algorithm for salt",
+                                 TPMRetryAction::kNoRetry);
   }
   MakeKeySignatureChallenge(
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()), salt,
       keyset_challenge_info_.salt_signature_algorithm(),
       base::Bind(&ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
                  weak_ptr_factory_.GetWeakPtr()));
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
-Tpm::TpmRetryAction
+TPMErrorBase
 ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   if (!keyset_challenge_info_.has_sealed_secret()) {
-    LOG(ERROR) << "Missing sealed secret";
-    return Tpm::kTpmRetryFatal;
+    return CreateError<TPMError>("Missing sealed secret",
+                                 TPMRetryAction::kNoRetry);
   }
   const std::vector<ChallengeSignatureAlgorithm> key_sealing_algorithms =
       GetSealingAlgorithms(public_key_info_);
@@ -153,10 +158,8 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
           BlobFromString(public_key_info_.public_key_spki_der()),
           key_sealing_algorithms, delegate_blob_, delegate_secret_,
           &unsealing_session_)) {
-    LOG(ERROR) << "Failed to start unsealing session for the secret: " << *err;
-    // TODO(crbug.com/842791): Determine the retry action based on the type of
-    // the error.
-    return Tpm::kTpmRetryLater;
+    return CreateErrorWrap<TPMError>(
+        std::move(err), "Failed to start unsealing session for the secret");
   }
   MakeKeySignatureChallenge(
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
@@ -165,15 +168,16 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
       base::Bind(
           &ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
-  return Tpm::kTpmRetryNone;
+  return nullptr;
 }
 
 void ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse(
     std::unique_ptr<Blob> salt_signature) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!salt_signature) {
-    LOG(ERROR) << "Salt signature challenge failed";
-    Resolve(Tpm::kTpmRetryFailNoRetry, nullptr /* credentials */);
+    Resolve(CreateError<TPMError>("Salt signature challenge failed",
+                                  TPMRetryAction::kNoRetry),
+            nullptr /* credentials */);
     // |this| can be already destroyed at this point.
     return;
   }
@@ -185,17 +189,19 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     std::unique_ptr<Blob> challenge_signature) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!challenge_signature) {
-    LOG(ERROR) << "Unsealing signature challenge failed";
-    Resolve(Tpm::kTpmRetryFailNoRetry, nullptr /* credentials */);
+    Resolve(CreateError<TPMError>("Unsealing signature challenge failed",
+                                  TPMRetryAction::kNoRetry),
+            nullptr /* credentials */);
     // |this| can be already destroyed at this point.
     return;
   }
   SecureBlob unsealed_secret;
   if (!unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
-    LOG(ERROR) << "Failed to unseal the secret";
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
-    Resolve(Tpm::kTpmRetryLater, nullptr /* credentials */);
+    Resolve(CreateError<TPMError>("Failed to unseal the secret",
+                                  TPMRetryAction::kLater),
+            nullptr /* credentials */);
     // |this| can be already destroyed at this point.
     return;
   }
@@ -209,13 +215,12 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
   auto credentials = std::make_unique<Credentials>(
       account_id_, ConstructPasskey(*unsealed_secret_, *salt_signature_));
   credentials->set_key_data(key_data_);
-  Resolve(Tpm::kTpmRetryNone, std::move(credentials));
+  Resolve(nullptr, std::move(credentials));
   // |this| can be already destroyed at this point.
 }
 
 void ChallengeCredentialsDecryptOperation::Resolve(
-    Tpm::TpmRetryAction retry_action,
-    std::unique_ptr<Credentials> credentials) {
+    TPMErrorBase error, std::unique_ptr<Credentials> credentials) {
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our
   // abortion (in case |this| doesn't get destroyed immediately).
@@ -225,7 +230,7 @@ void ChallengeCredentialsDecryptOperation::Resolve(
   // cancellation is not supported by the challenges IPC API currently, neither
   // it is supported by the API for smart card drivers in Chrome OS.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  Complete(&completion_callback_, retry_action, std::move(credentials));
+  Complete(&completion_callback_, std::move(error), std::move(credentials));
 }
 
 }  // namespace cryptohome

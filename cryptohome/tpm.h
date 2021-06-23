@@ -69,27 +69,6 @@ class Tpm {
     TPM_2_0 = 2,
   };
 
-  enum TpmRetryAction {
-    // Action succeeded - no retry needed.
-    kTpmRetryNone,
-    // Action failed - retrying won't change the outcome, so don't retry.
-    kTpmRetryFailNoRetry,
-    // Action failed - TPM communication failure.
-    kTpmRetryCommFailure,
-    // Action failed - TPM is in dictionary attack defense mode.
-    kTpmRetryDefendLock,
-    // Action failed - fatal error.
-    kTpmRetryFatal,
-    // Action failed - target key/object handle is invalid.
-    kTpmRetryInvalidHandle,
-    // Action failed - can't load a key or other object.
-    kTpmRetryLoadFail,
-    // Action failed - TPM is in the state that requires reboot.
-    kTpmRetryReboot,
-    // Action failed - TPM requested retrying the action later.
-    kTpmRetryLater,
-  };
-
   enum TpmNvramFlags {
     // NVRAM space is write-once; lock by writing 0 bytes
     kTpmNvramWriteDefine = (1 << 0),
@@ -515,15 +494,6 @@ class Tpm {
   //                       times out, which it may occasionally do
   virtual bool TakeOwnership(int max_timeout_tries,
                              const brillo::SecureBlob& owner_password) = 0;
-
-  // Returns true if |retry_action| represents a transient error.
-  //
-  // Parameters
-  //   retry_action - The result of a performed action.
-  static bool IsTransient(TpmRetryAction retry_action) {
-    return !(retry_action == kTpmRetryNone ||
-             retry_action == kTpmRetryFailNoRetry);
-  }
 
   // Wrapps a provided RSA key with the TPM's Storage Root Key.
   //

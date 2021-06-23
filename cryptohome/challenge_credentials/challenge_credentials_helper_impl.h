@@ -93,7 +93,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       const KeysetSignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback original_callback,
-      Tpm::TpmRetryAction retry_action,
+      hwsec::error::TPMErrorBase retry_action,
       std::unique_ptr<Credentials> credentials);
 
   // Wrapper for the completion callback of VerifyKey(). Cleans up resources
