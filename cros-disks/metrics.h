@@ -76,18 +76,31 @@ class Metrics {
 
   // Mapping from an archive type to its corresponding metric value.
   const std::unordered_map<std::string, ArchiveType> archive_type_map_{
-      {"rar", kArchiveRar},          {"tar", kArchiveTar},
-      {"tar.bz2", kArchiveTarBzip2}, {"tbz", kArchiveTarBzip2},
-      {"tbz2", kArchiveTarBzip2},    {"tar.gz", kArchiveTarGzip},
-      {"tgz", kArchiveTarGzip},      {"zip", kArchiveZip}};
+      // The empty // comments make clang-format place one entry per line.
+      {"rar", kArchiveRar},           //
+      {"tar", kArchiveTar},           //
+      {"tar.bz2", kArchiveTarBzip2},  //
+      {"tbz", kArchiveTarBzip2},      //
+      {"tbz2", kArchiveTarBzip2},     //
+      {"tar.gz", kArchiveTarGzip},    //
+      {"tgz", kArchiveTarGzip},       //
+      {"zip", kArchiveZip},           //
+  };
 
   // Mapping from a filesystem type to its corresponding metric value.
   const std::unordered_map<std::string, FilesystemType> filesystem_type_map_{
-      {"", kFilesystemUnknown},        {"exfat", kFilesystemExFAT},
-      {"ext2", kFilesystemExt2},       {"ext3", kFilesystemExt3},
-      {"ext4", kFilesystemExt4},       {"hfsplus", kFilesystemHFSPlus},
-      {"iso9660", kFilesystemISO9660}, {"ntfs", kFilesystemNTFS},
-      {"udf", kFilesystemUDF},         {"vfat", kFilesystemVFAT}};
+      // The empty // comments make clang-format place one entry per line.
+      {"", kFilesystemUnknown},         //
+      {"exfat", kFilesystemExFAT},      //
+      {"ext2", kFilesystemExt2},        //
+      {"ext3", kFilesystemExt3},        //
+      {"ext4", kFilesystemExt4},        //
+      {"hfsplus", kFilesystemHFSPlus},  //
+      {"iso9660", kFilesystemISO9660},  //
+      {"ntfs", kFilesystemNTFS},        //
+      {"udf", kFilesystemUDF},          //
+      {"vfat", kFilesystemVFAT},        //
+  };
 
   FRIEND_TEST(MetricsTest, GetArchiveType);
   FRIEND_TEST(MetricsTest, GetFilesystemType);
