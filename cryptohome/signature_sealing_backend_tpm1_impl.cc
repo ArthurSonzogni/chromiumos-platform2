@@ -16,6 +16,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/error/tpm1_error.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -37,7 +38,11 @@ using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using hwsec::error::TPM1Error;
+using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
+using hwsec::error::TPMRetryAction;
+using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -1256,45 +1261,48 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   return true;
 }
 
-std::unique_ptr<SignatureSealingBackend::UnsealingSession>
-SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
+TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& delegate_blob,
-    const Blob& delegate_secret) {
+    const Blob& delegate_secret,
+    std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
+        unsealing_session) {
   // Validate the parameters.
   if (!sealed_secret_data.has_tpm12_certified_migratable_key_data()) {
-    LOG(ERROR) << "Sealed data is empty or uses unexpected method";
-    return nullptr;
+    return CreateError<TPMError>(
+        "Sealed data is empty or uses unexpected method",
+        TPMRetryAction::kNoRetry);
   }
   const SignatureSealedData_Tpm12CertifiedMigratableKeyData& data_proto =
       sealed_secret_data.tpm12_certified_migratable_key_data();
   if (data_proto.public_key_spki_der() != BlobToString(public_key_spki_der)) {
-    LOG(ERROR) << "Wrong subject public key info";
-    return nullptr;
+    return CreateError<TPMError>("Wrong subject public key info",
+                                 TPMRetryAction::kNoRetry);
   }
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
                 CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) == key_algorithms.end()) {
-    LOG(ERROR) << "Failed to choose the algorithm: the key doesn't support "
-                  "RSASSA-PKCS1-v1_5 with SHA-1";
-    return nullptr;
+    return CreateError<TPMError>(
+        "Failed to choose the algorithm: the key doesn't support "
+        "RSASSA-PKCS1-v1_5 with SHA-1",
+        TPMRetryAction::kNoRetry);
   }
   // Determine the satisfied set of PCR restrictions.
   const SignatureSealedData_Tpm12PcrBoundItem* const
       satisfied_pcr_bound_item_proto =
           GetSatisfiedPcrRestriction(data_proto.pcr_bound_items(), tpm_);
   if (!satisfied_pcr_bound_item_proto) {
-    LOG(ERROR) << "None of PCR restrictions is satisfied";
-    return nullptr;
+    return CreateError<TPMError>("None of PCR restrictions is satisfied",
+                                 TPMRetryAction::kNoRetry);
   }
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
   if (!tpm_->ConnectContextAsDelegate(delegate_blob, delegate_secret,
                                       tpm_context.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "Failed to connect to the TPM";
-    return nullptr;
+    return CreateError<TPMError>("Failed to connect to the TPM",
+                                 TPMRetryAction::kNoRetry);
   }
   // Obtain the TPM_PUBKEY blob for the protection key.
   int protection_key_size_bits = 0;
@@ -1302,15 +1310,15 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   if (!ParseAndLoadProtectionKey(tpm_, tpm_context, public_key_spki_der,
                                  &protection_key_size_bits,
                                  protection_key_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the protection public key";
-    return nullptr;
+    return CreateError<TPMError>("Failed to load the protection public key",
+                                 TPMRetryAction::kNoRetry);
   }
   SecureBlob protection_key_pubkey;
   if (tpm_->GetDataAttribute(
           tpm_context, protection_key_handle, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey)) {
-    LOG(ERROR) << "Failed to read the protection public key";
-    return nullptr;
+    return CreateError<TPMError>("Failed to read the protection public key",
+                                 TPMRetryAction::kNoRetry);
   }
   // Generate the migration destination RSA key. Onto this key the CMK private
   // key will be migrated; to complete the unsealing, the decryption operation
@@ -1322,33 +1330,36 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   crypto::ScopedRSA migration_destination_rsa(RSA_new());
   crypto::ScopedBIGNUM e(BN_new());
   if (!migration_destination_rsa || !e) {
-    LOG(ERROR) << "Failed to allocate the migration destination key";
-    return nullptr;
+    return CreateError<TPMError>(
+        "Failed to allocate the migration destination key",
+        TPMRetryAction::kNoRetry);
   }
   if (!BN_set_word(e.get(), kWellKnownExponent) ||
       !RSA_generate_key_ex(migration_destination_rsa.get(),
                            kMigrationDestinationKeySizeBits, e.get(),
                            nullptr)) {
-    LOG(ERROR) << "Failed to generate the migration destination key";
-    return nullptr;
+    return CreateError<TPMError>(
+        "Failed to generate the migration destination key",
+        TPMRetryAction::kNoRetry);
   }
   // Obtain the TPM_PUBKEY blob for the migration destination key.
   ScopedTssKey migration_destination_key_handle(tpm_context);
   if (!LoadMigrationDestinationPublicKey(
           tpm_, tpm_context, *migration_destination_rsa,
           migration_destination_key_handle.ptr())) {
-    LOG(ERROR) << "Failed to load the migration destination key";
-    return nullptr;
+    return CreateError<TPMError>("Failed to load the migration destination key",
+                                 TPMRetryAction::kNoRetry);
   }
   SecureBlob migration_destination_key_pubkey;
   if (tpm_->GetDataAttribute(tpm_context, migration_destination_key_handle,
                              TSS_TSPATTRIB_KEY_BLOB,
                              TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
                              &migration_destination_key_pubkey)) {
-    LOG(ERROR) << "Failed to read the migration destination public key";
-    return nullptr;
+    return CreateError<TPMError>(
+        "Failed to read the migration destination public key",
+        TPMRetryAction::kNoRetry);
   }
-  return std::make_unique<UnsealingSessionTpm1Impl>(
+  *unsealing_session = std::make_unique<UnsealingSessionTpm1Impl>(
       tpm_, BlobFromString(data_proto.srk_wrapped_cmk()),
       BlobFromString(data_proto.cmk_wrapped_auth_data()),
       BlobFromString(satisfied_pcr_bound_item_proto->bound_secret()),
@@ -1358,6 +1369,7 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
       std::move(migration_destination_rsa),
       Blob(migration_destination_key_pubkey.begin(),
            migration_destination_key_pubkey.end()));
+  return nullptr;
 }
 
 crypto::ScopedRSA ExtractCmkPrivateKeyFromMigratedBlob(

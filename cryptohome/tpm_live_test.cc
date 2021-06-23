@@ -851,12 +851,11 @@ class SignatureSealedSecretTestCase final {
               Blob* challenge_value,
               Blob* challenge_signature,
               SecureBlob* unsealed_value) {
-    std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          param_.supported_algorithms,
-                                          delegate_blob_, delegate_secret_));
-    if (!unsealing_session) {
-      LOG(ERROR) << "Error starting the unsealing session";
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
+      LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
     if (unsealing_session->GetChallengeAlgorithm() !=
@@ -888,12 +887,11 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithOldSignature(
       const SignatureSealedData& sealed_secret_data,
       const Blob& challenge_signature) {
-    std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          param_.supported_algorithms,
-                                          delegate_blob_, delegate_secret_));
-    if (!unsealing_session) {
-      LOG(ERROR) << "Error starting the unsealing session";
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
+      LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
     SecureBlob unsealed_value;
@@ -907,12 +905,11 @@ class SignatureSealedSecretTestCase final {
 
   bool CheckUnsealingFailsWithBadAlgorithmSignature(
       const SignatureSealedData& sealed_secret_data) {
-    std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          param_.supported_algorithms,
-                                          delegate_blob_, delegate_secret_));
-    if (!unsealing_session) {
-      LOG(ERROR) << "Error starting the unsealing session";
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
+      LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
     const int wrong_openssl_algorithm_nid =
@@ -933,12 +930,11 @@ class SignatureSealedSecretTestCase final {
 
   bool CheckUnsealingFailsWithBadSignature(
       const SignatureSealedData& sealed_secret_data) {
-    std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          param_.supported_algorithms,
-                                          delegate_blob_, delegate_secret_));
-    if (!unsealing_session) {
-      LOG(ERROR) << "Error starting the unsealing session";
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
+      LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
     Blob challenge_signature;
@@ -962,11 +958,13 @@ class SignatureSealedSecretTestCase final {
         *param_.expected_algorithm == CHALLENGE_RSASSA_PKCS1_V1_5_SHA1
             ? CHALLENGE_RSASSA_PKCS1_V1_5_SHA256
             : CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
-    if (backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          {wrong_algorithm}, delegate_blob_,
-                                          delegate_secret_)) {
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, {wrong_algorithm},
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
       LOG(ERROR) << "Error: unsealing session creation completed with a "
-                    "wrong algorithm";
+                    "wrong algorithm: "
+                 << *err;
       return false;
     }
     return true;
@@ -981,11 +979,13 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error generating the other RSA key";
       return false;
     }
-    if (backend()->CreateUnsealingSession(
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_)) {
+            delegate_blob_, delegate_secret_, *unsealing_session)) {
       LOG(ERROR)
-          << "Error: unsealing session creation completed with a wrong key";
+          << "Error: unsealing session creation completed with a wrong key: "
+          << *err;
       return false;
     }
     return true;
@@ -998,14 +998,12 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error extending PCR";
       return false;
     }
-    std::unique_ptr<UnsealingSession> unsealing_session(
-        backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
-                                          param_.supported_algorithms,
-                                          delegate_blob_, delegate_secret_));
-    if (!unsealing_session) {
-      // Unsealing expectedly failed, so the test is passed. (Whether it fails
-      // here or below after Unseal() depends on the specific
-      // SignatureSealingBackend implementation.)
+    std::unique_ptr<UnsealingSession> unsealing_session;
+    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+            sealed_secret_data, key_spki_der_, param_.supported_algorithms,
+            delegate_blob_, delegate_secret_, &unsealing_session)) {
+      // TODO(yich): check the error message is expected.
+      LOG(INFO) << "Failed to starting the unsealing session: " << *err;
       return true;
     }
     Blob challenge_signature;

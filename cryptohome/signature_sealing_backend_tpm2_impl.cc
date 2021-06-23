@@ -19,6 +19,7 @@
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
+#include <libhwsec/error/tpm2_error.h>
 #include <trunks/error_codes.h>
 #include <trunks/policy_session.h>
 #include <trunks/tpm_generated.h>
@@ -36,6 +37,12 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
+using hwsec::error::TPM2Error;
+using hwsec::error::TPMError;
+using hwsec::error::TPMErrorBase;
+using hwsec::error::TPMRetryAction;
+using hwsec_foundation::error::CreateError;
+using hwsec_foundation::error::CreateErrorWrap;
 using trunks::GetErrorString;
 using trunks::TPM_ALG_ID;
 using trunks::TPM_ALG_NULL;
@@ -433,32 +440,34 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   return true;
 }
 
-std::unique_ptr<SignatureSealingBackend::UnsealingSession>
-SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
+TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& /* delegate_blob */,
-    const Blob& /* delegate_secret */) {
+    const Blob& /* delegate_secret */,
+    std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
+        unsealing_session) {
   // Validate the parameters.
   if (!sealed_secret_data.has_tpm2_policy_signed_data()) {
-    LOG(ERROR) << "Error: sealed data is empty or uses unexpected method";
-    return nullptr;
+    return CreateError<TPMError>(
+        "Sealed data is empty or uses unexpected method",
+        TPMRetryAction::kNoRetry);
   }
   const SignatureSealedData_Tpm2PolicySignedData& data_proto =
       sealed_secret_data.tpm2_policy_signed_data();
   if (data_proto.public_key_spki_der() != BlobToString(public_key_spki_der)) {
-    LOG(ERROR) << "Error: wrong subject public key info";
-    return nullptr;
+    return CreateError<TPMError>("Wrong subject public key info",
+                                 TPMRetryAction::kNoRetry);
   }
   if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data_proto.scheme())) {
-    LOG(ERROR) << "Error parsing signature scheme";
-    return nullptr;
+    return CreateError<TPMError>("Error parsing signature scheme",
+                                 TPMRetryAction::kNoRetry);
   }
   const TPM_ALG_ID scheme = static_cast<TPM_ALG_ID>(data_proto.scheme());
   if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data_proto.hash_alg())) {
-    LOG(ERROR) << "Error parsing signature hash algorithm";
-    return nullptr;
+    return CreateError<TPMError>("Error parsing signature hash algorithm",
+                                 TPMRetryAction::kNoRetry);
   }
   const TPM_ALG_ID hash_alg = static_cast<TPM_ALG_ID>(data_proto.hash_alg());
   base::Optional<ChallengeSignatureAlgorithm> chosen_algorithm;
@@ -472,22 +481,23 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     }
   }
   if (!chosen_algorithm) {
-    LOG(ERROR) << "Error: key doesn't support required algorithm";
-    return nullptr;
+    return CreateError<TPMError>("Key doesn't support required algorithm",
+                                 TPMRetryAction::kNoRetry);
   }
   // Obtain the trunks context to be used for the whole unsealing session.
   Tpm2Impl::TrunksClientContext* trunks = nullptr;
-  if (!tpm_->GetTrunksContext(&trunks))
-    return nullptr;
+  if (!tpm_->GetTrunksContext(&trunks)) {
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
+  }
   // Start a policy session that will be used for obtaining the TPM nonce and
   // unsealing the secret value.
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetPolicySession();
-  TPM_RC tpm_result = policy_session->StartUnboundSession(true, false);
-  if (tpm_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a policy session: "
-               << GetErrorString(tpm_result);
-    return nullptr;
+  if (auto err = CreateError<TPM2Error>(
+          policy_session->StartUnboundSession(true, false))) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error starting a policy session");
   }
   // If PCR restrictions were applied, update the policy correspondingly.
   if (data_proto.pcr_restrictions_size()) {
@@ -497,19 +507,19 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
         satisfied_pcr_restriction_proto =
             GetSatisfiedPcrRestriction(data_proto.pcr_restrictions(), tpm_);
     if (!satisfied_pcr_restriction_proto) {
-      LOG(ERROR) << "None of PCR restrictions is satisfied";
-      return nullptr;
+      return CreateError<TPMError>("None of PCR restrictions is satisfied",
+                                   TPMRetryAction::kNoRetry);
     }
     std::map<uint32_t, std::string> pcrs_to_apply;
     for (const auto& pcr_value_proto :
          satisfied_pcr_restriction_proto->pcr_values()) {
       pcrs_to_apply.emplace(pcr_value_proto.pcr_index(), std::string());
     }
-    tpm_result = policy_session->PolicyPCR(pcrs_to_apply);
-    if (tpm_result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error restricting policy to PCRs: "
-                 << GetErrorString(tpm_result);
-      return nullptr;
+
+    if (auto err =
+            CreateError<TPM2Error>(policy_session->PolicyPCR(pcrs_to_apply))) {
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Error restricting policy to PCRs");
     }
     // If more than one set of PCR restrictions was originally specified, update
     // the policy with the disjunction of their policy digests.
@@ -518,31 +528,31 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
       for (const auto& pcr_restriction_proto : data_proto.pcr_restrictions()) {
         if (pcr_restriction_proto.policy_digest().size() !=
             SHA256_DIGEST_SIZE) {
-          LOG(ERROR) << "Invalid policy digest size";
-          return nullptr;
+          return CreateError<TPMError>("Invalid policy digest size",
+                                       TPMRetryAction::kNoRetry);
         }
         pcr_policy_digests.push_back(pcr_restriction_proto.policy_digest());
       }
-      tpm_result = policy_session->PolicyOR(pcr_policy_digests);
-      if (tpm_result != TPM_RC_SUCCESS) {
-        LOG(ERROR)
-            << "Error restricting policy to logical disjunction of PCRs: "
-            << GetErrorString(tpm_result);
-        return nullptr;
+      if (auto err = CreateError<TPM2Error>(
+              policy_session->PolicyOR(pcr_policy_digests))) {
+        return CreateErrorWrap<TPMError>(
+            std::move(err),
+            "Error restricting policy to logical disjunction of PCRs");
       }
     }
   }
   // Obtain the TPM nonce.
   std::string tpm_nonce;
   if (!policy_session->GetDelegate()->GetTpmNonce(&tpm_nonce)) {
-    LOG(ERROR) << "Error obtaining TPM nonce";
-    return nullptr;
+    return CreateError<TPMError>("Error obtaining TPM nonce",
+                                 TPMRetryAction::kNoRetry);
   }
   // Create the unsealing session that will keep the required state.
-  return std::make_unique<UnsealingSessionTpm2Impl>(
+  *unsealing_session = std::make_unique<UnsealingSessionTpm2Impl>(
       tpm_, trunks, BlobFromString(data_proto.srk_wrapped_secret()),
       public_key_spki_der, *chosen_algorithm, scheme, hash_alg,
       std::move(policy_session), BlobFromString(tpm_nonce));
+  return nullptr;
 }
 
 }  // namespace cryptohome

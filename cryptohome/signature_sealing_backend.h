@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec/error/tpm_error.h>
 
 #include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
@@ -99,12 +100,13 @@ class SignatureSealingBackend {
   //                    permitted to ignore this order.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
-  virtual std::unique_ptr<UnsealingSession> CreateUnsealingSession(
+  virtual hwsec::error::TPMErrorBase CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) = 0;
+      const brillo::Blob& delegate_secret,
+      std::unique_ptr<UnsealingSession>* unsealing_session) = 0;
 };
 
 }  // namespace cryptohome

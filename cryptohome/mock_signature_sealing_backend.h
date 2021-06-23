@@ -35,22 +35,15 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
                SignatureSealedData*),
               (override));
 
-  // Wrap a mockable method to workaround gmock's issue with noncopyable types.
-  std::unique_ptr<UnsealingSession> CreateUnsealingSession(
-      const SignatureSealedData& sealed_secret_data,
-      const brillo::Blob& public_key_spki_der,
-      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
-      const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override;
-  // Equivalent of CreateUnsealingSession(), but returns result via a raw owned
-  // pointer.
-  MOCK_METHOD(UnsealingSession*,
-              CreateUnsealingSessionImpl,
-              (const SignatureSealedData&,
-               const brillo::Blob&,
-               const std::vector<ChallengeSignatureAlgorithm>&,
-               const brillo::Blob&,
-               const brillo::Blob&));
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
+              CreateUnsealingSession,
+              (const SignatureSealedData& sealed_secret_data,
+               const brillo::Blob& public_key_spki_der,
+               const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+               const brillo::Blob& delegate_blob,
+               const brillo::Blob& delegate_secret,
+               std::unique_ptr<UnsealingSession>* unsealing_session),
+              (override));
 };
 
 class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {

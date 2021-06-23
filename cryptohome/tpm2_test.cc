@@ -1736,10 +1736,11 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
       .WillOnce(Return(TPM_RC_SUCCESS));
 
   // Trigger the challenge generation.
-  std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session(
-      signature_sealing_backend()->CreateUnsealingSession(
-          sealed_data, key_spki_der_, supported_algorithms(),
-          Blob() /* delegate_blob */, Blob() /* delegate_secret */));
+  std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session;
+  EXPECT_EQ(nullptr, signature_sealing_backend()->CreateUnsealingSession(
+                         sealed_data, key_spki_der_, supported_algorithms(),
+                         Blob() /* delegate_blob */,
+                         Blob() /* delegate_secret */, &unsealing_session));
   ASSERT_TRUE(unsealing_session);
   EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());
   EXPECT_EQ(BlobFromString(kChallengeValue),

@@ -148,12 +148,12 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   }
   const std::vector<ChallengeSignatureAlgorithm> key_sealing_algorithms =
       GetSealingAlgorithms(public_key_info_);
-  unsealing_session_ = signature_sealing_backend_->CreateUnsealingSession(
-      keyset_challenge_info_.sealed_secret(),
-      BlobFromString(public_key_info_.public_key_spki_der()),
-      key_sealing_algorithms, delegate_blob_, delegate_secret_);
-  if (!unsealing_session_) {
-    LOG(ERROR) << "Failed to start unsealing session for the secret";
+  if (TPMErrorBase err = signature_sealing_backend_->CreateUnsealingSession(
+          keyset_challenge_info_.sealed_secret(),
+          BlobFromString(public_key_info_.public_key_spki_der()),
+          key_sealing_algorithms, delegate_blob_, delegate_secret_,
+          &unsealing_session_)) {
+    LOG(ERROR) << "Failed to start unsealing session for the secret: " << *err;
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
     return Tpm::kTpmRetryLater;

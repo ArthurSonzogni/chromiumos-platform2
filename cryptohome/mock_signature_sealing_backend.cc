@@ -4,25 +4,22 @@
 
 #include "cryptohome/mock_signature_sealing_backend.h"
 
+#include <libhwsec-foundation/error/testing_helper.h>
+
 using brillo::Blob;
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
+using testing::_;
 
 namespace cryptohome {
 
-MockSignatureSealingBackend::MockSignatureSealingBackend() = default;
+MockSignatureSealingBackend::MockSignatureSealingBackend() {
+  ON_CALL(*this, CreateUnsealingSession(_, _, _, _, _, _))
+      .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+}
 
 MockSignatureSealingBackend::~MockSignatureSealingBackend() = default;
-
-std::unique_ptr<SignatureSealingBackend::UnsealingSession>
-MockSignatureSealingBackend::CreateUnsealingSession(
-    const SignatureSealedData& sealed_secret_data,
-    const Blob& public_key_spki_der,
-    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
-    const Blob& delegate_blob,
-    const Blob& delegate_secret) {
-  return std::unique_ptr<UnsealingSession>(CreateUnsealingSessionImpl(
-      sealed_secret_data, public_key_spki_der, key_algorithms, delegate_blob,
-      delegate_secret));
-}
 
 MockUnsealingSession::MockUnsealingSession() = default;
 

@@ -46,12 +46,13 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
       const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,
       SignatureSealedData* sealed_secret_data) override;
-  std::unique_ptr<UnsealingSession> CreateUnsealingSession(
+  hwsec::error::TPMErrorBase CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const brillo::Blob& delegate_blob,
-      const brillo::Blob& delegate_secret) override;
+      const brillo::Blob& delegate_secret,
+      std::unique_ptr<UnsealingSession>* unsealing_session) override;
 
  private:
   // Unowned.
