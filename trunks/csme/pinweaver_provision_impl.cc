@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include <base/check.h>
 #include <crypto/sha2.h>
 
 #include "trunks/csme/mei_client.h"

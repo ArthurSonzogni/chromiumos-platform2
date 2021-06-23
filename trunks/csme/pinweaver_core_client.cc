@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <string>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include "trunks/csme/pinweaver_csme_types.h"
