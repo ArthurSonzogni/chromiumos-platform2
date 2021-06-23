@@ -1149,9 +1149,10 @@ void Tpm2Impl::GetStatus(base::Optional<TpmKeyHandle> key,
   }
 }
 
-base::Optional<bool> Tpm2Impl::IsSrkRocaVulnerable() {
+hwsec::error::TPMErrorBase Tpm2Impl::IsSrkRocaVulnerable(bool* result) {
   // This doesn't apply to devices with TPM 2.0.
-  return false;
+  *result = false;
+  return nullptr;
 }
 
 bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
@@ -1450,8 +1451,9 @@ bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,
   return true;
 }
 
-base::Optional<bool> Tpm2Impl::IsDelegateBoundToPcr() {
-  return false;
+TPMErrorBase Tpm2Impl::IsDelegateBoundToPcr(bool* result) {
+  *result = false;
+  return nullptr;
 }
 
 bool Tpm2Impl::DelegateCanResetDACounter() {

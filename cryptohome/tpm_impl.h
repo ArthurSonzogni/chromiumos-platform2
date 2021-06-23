@@ -123,7 +123,7 @@ class TpmImpl : public Tpm {
   void CloseHandle(TpmKeyHandle key_handle) override;
   void GetStatus(base::Optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override;
-  base::Optional<bool> IsSrkRocaVulnerable() override;
+  hwsec::error::TPMErrorBase IsSrkRocaVulnerable(bool* result) override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -142,7 +142,7 @@ class TpmImpl : public Tpm {
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
-  base::Optional<bool> IsDelegateBoundToPcr() override;
+  hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) override;
   bool DelegateCanResetDACounter() override;
   // Returns the map with expected PCR values for the user.
   std::map<uint32_t, std::string> GetPcrMap(

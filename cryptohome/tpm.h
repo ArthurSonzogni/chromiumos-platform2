@@ -544,7 +544,7 @@ class Tpm {
   // Returns whether the TPM SRK is vulnerable to the ROCA vulnerability.
   // An empty optional is returned when the result is unknown due to an error.
   // This method always returns |false| when using TPM 2.0.
-  virtual base::Optional<bool> IsSrkRocaVulnerable() = 0;
+  virtual hwsec::error::TPMErrorBase IsSrkRocaVulnerable(bool* result) = 0;
 
   // Gets the current state of the dictionary attack logic. Returns false on
   // failure.
@@ -618,7 +618,7 @@ class Tpm {
                            bool* has_reset_lock_permissions) = 0;
 
   // Returns whether the owner auth delegate set by is bound to PCR.
-  virtual base::Optional<bool> IsDelegateBoundToPcr() = 0;
+  virtual hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) = 0;
 
   // Returns whether the owner auth delegate set by has reset lock permissions.
   virtual bool DelegateCanResetDACounter() = 0;

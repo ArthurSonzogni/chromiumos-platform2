@@ -41,6 +41,7 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using hwsec::error::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -283,9 +284,16 @@ bool Crypto::CanUnsealWithUserAuth() const {
     return true;
   if (!tpm_->DelegateCanResetDACounter())
     return false;
-  base::Optional<bool> is_pcr_bound = tpm_->IsDelegateBoundToPcr();
-  if (is_pcr_bound.has_value() && !is_pcr_bound.value())
-    return true;
+
+  bool is_pcr_bound;
+  if (TPMErrorBase err = tpm_->IsDelegateBoundToPcr(&is_pcr_bound)) {
+    LOG(ERROR) << "Failed to check the status of delegate bound to pcr: "
+               << *err;
+  } else {
+    if (!is_pcr_bound) {
+      return true;
+    }
+  }
 
 #if USE_DOUBLE_EXTEND_PCR_ISSUE
   return false;

@@ -153,7 +153,10 @@ class MockTpm : public Tpm {
               GetStatus,
               (base::Optional<TpmKeyHandle>, TpmStatusInfo*),
               (override));
-  MOCK_METHOD(base::Optional<bool>, IsSrkRocaVulnerable, (), (override));
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
+              IsSrkRocaVulnerable,
+              (bool*),
+              (override));
   MOCK_METHOD(bool,
               GetDictionaryAttackInfo,
               (int*, int*, bool*, int*),
@@ -181,7 +184,10 @@ class MockTpm : public Tpm {
               (brillo::Blob*, brillo::Blob*, bool*),
               (override));
   MOCK_METHOD2(SetDelegateData, void(const std::string&, bool));
-  MOCK_METHOD0(IsDelegateBoundToPcr, base::Optional<bool>());
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
+              IsDelegateBoundToPcr,
+              (bool*),
+              (override));
   MOCK_METHOD0(DelegateCanResetDACounter, bool());
   MOCK_METHOD((std::map<uint32_t, std::string>),
               GetPcrMap,

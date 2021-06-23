@@ -49,6 +49,7 @@ using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
+using hwsec::error::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -1454,15 +1455,15 @@ bool UserDataAuth::InitForChallengeResponseAuth(
   }
 
   // Fail if the TPM is known to be vulnerable and we're not in a test image.
-  const base::Optional<bool> is_srk_roca_vulnerable =
-      tpm_->IsSrkRocaVulnerable();
-  if (!is_srk_roca_vulnerable.has_value()) {
+  bool is_srk_roca_vulnerable;
+  if (TPMErrorBase err = tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable)) {
     LOG(ERROR) << "Cannot do challenge-response mount: Failed to check for "
-                  "ROCA vulnerability";
+                  "ROCA vulnerability: "
+               << *err;
     *error_code = user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
     return false;
   }
-  if (is_srk_roca_vulnerable.value()) {
+  if (is_srk_roca_vulnerable) {
     if (!IsOsTestImage()) {
       LOG(ERROR)
           << "Cannot do challenge-response mount: TPM is ROCA vulnerable";

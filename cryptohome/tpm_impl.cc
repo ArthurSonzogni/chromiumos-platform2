@@ -327,28 +327,32 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
   }
 }
 
-base::Optional<bool> TpmImpl::IsSrkRocaVulnerable() {
-  if (!tpm_context_)
-    return base::nullopt;
+TPMErrorBase TpmImpl::IsSrkRocaVulnerable(bool* result) {
+  if (!tpm_context_) {
+    return CreateError<TPMError>("No TPM context", TPMRetryAction::kNoRetry);
+  }
   ScopedTssKey srk_handle(tpm_context_);
   if (TPM1Error err = LoadSrk(tpm_context_, srk_handle.ptr())) {
-    return base::nullopt;
+    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK");
   }
   unsigned public_srk_size;
   ScopedTssMemory public_srk_bytes(tpm_context_);
   if (auto err = CreateError<TPM1Error>(Tspi_Key_GetPubKey(
           srk_handle, &public_srk_size, public_srk_bytes.ptr()))) {
-    LOG(ERROR) << "Failed to get public key: " << *err;
-    return base::nullopt;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Failed to get SRK public key");
   }
   crypto::ScopedRSA public_srk = ParseRsaFromTpmPubkeyBlob(Blob(
       public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
-  if (!public_srk)
-    return base::nullopt;
+  if (!public_srk) {
+    return CreateError<TPMError>("Failed to parse RSA public key",
+                                 TPMRetryAction::kNoRetry);
+  }
 
   const BIGNUM* n = nullptr;
   RSA_get0_key(public_srk.get(), &n, nullptr, nullptr);
-  return TestRocaVulnerable(n);
+  *result = TestRocaVulnerable(n);
+  return nullptr;
 }
 
 bool TpmImpl::GetDictionaryAttackInfo(int* counter,
@@ -2090,12 +2094,13 @@ bool TpmImpl::SetDelegateData(const brillo::Blob& delegate_blob,
   return true;
 }
 
-base::Optional<bool> TpmImpl::IsDelegateBoundToPcr() {
+TPMErrorBase TpmImpl::IsDelegateBoundToPcr(bool* result) {
   if (!SetDelegateDataFromTpmManager()) {
     LOG(WARNING) << __func__
                  << ": failed to call |SetDelegateDataFromTpmManager|.";
   }
-  return is_delegate_bound_to_pcr_;
+  *result = is_delegate_bound_to_pcr_;
+  return nullptr;
 }
 
 bool TpmImpl::DelegateCanResetDACounter() {

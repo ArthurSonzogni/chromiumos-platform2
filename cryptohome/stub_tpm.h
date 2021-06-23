@@ -191,7 +191,10 @@ class StubTpm : public Tpm {
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
-  base::Optional<bool> IsDelegateBoundToPcr() override { return true; }
+  hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) override {
+    *result = true;
+    return nullptr;
+  }
   bool DelegateCanResetDACounter() override { return true; }
   bool IsOwnerPasswordPresent() override { return false; }
   bool HasResetLockPermissions() override { return false; }
@@ -199,7 +202,10 @@ class StubTpm : public Tpm {
                        const brillo::SecureBlob& blob) override {
     return false;
   }
-  base::Optional<bool> IsSrkRocaVulnerable() override { return false; }
+  hwsec::error::TPMErrorBase IsSrkRocaVulnerable(bool*) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  }
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override {

@@ -148,7 +148,7 @@ class Tpm2Impl : public Tpm {
   void CloseHandle(TpmKeyHandle key_handle) override;
   void GetStatus(base::Optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override;
-  base::Optional<bool> IsSrkRocaVulnerable() override;
+  hwsec::error::TPMErrorBase IsSrkRocaVulnerable(bool* result) override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -184,7 +184,7 @@ class Tpm2Impl : public Tpm {
                              trunks::AuthorizationDelegate* session_delegate,
                              ScopedKeyHandle* key_handle);
 
-  base::Optional<bool> IsDelegateBoundToPcr() override;
+  hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) override;
   bool DelegateCanResetDACounter() override;
   std::map<uint32_t, std::string> GetPcrMap(
       const std::string& obfuscated_username,
