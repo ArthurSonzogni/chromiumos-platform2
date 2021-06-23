@@ -9167,7 +9167,15 @@ mno {
       name : "Celcom"
     }
     mccmnc : "50213"
+    mccmnc : "502145"
+    mccmnc : "502148"
     mccmnc : "50219"
+    mobile_apn {
+      apn : "celcom4g"
+      localized_name {
+        name : "Celcom Internet"
+      }
+    }
     mobile_apn {
       apn : "celcom.net.my"
       localized_name {
@@ -9190,11 +9198,14 @@ mno {
     localized_name {
       name : "DiGi"
     }
+    mccmnc : "50210"
+    mccmnc : "502143"
+    mccmnc : "502146"
     mccmnc : "50216"
     mobile_apn {
       apn : "diginet"
       localized_name {
-        name : "Mobile Internet"
+        name : "DiGi Internet"
       }
       dns : "203.92.128.131"
       dns : "203.92.128.132"
@@ -9216,7 +9227,18 @@ mno {
       name : "Maxis"
     }
     mccmnc : "50212"
+    mccmnc : "502142"
+    mccmnc : "502147"
     mccmnc : "50217"
+    mobile_apn {
+      apn : "max4g"
+      localized_name {
+        name : "Maxis Internet"
+      }
+      username : "maxis"
+      password : "wap"
+      authentication : PAP
+    }
     mobile_apn {
       apn : "maxisbb"
       localized_name {
