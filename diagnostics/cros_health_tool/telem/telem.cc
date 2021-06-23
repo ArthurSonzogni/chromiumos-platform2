@@ -676,25 +676,22 @@ void DisplayBacklightInfo(const BacklightResultPtr& backlight_result,
   OutputData(headers, values, beauty);
 }
 
-void DisplayStatefulPartitionInfo(
-    const StatefulPartitionResultPtr& stateful_partition_result,
-    const bool beauty) {
-  if (stateful_partition_result->is_error()) {
-    DisplayError(stateful_partition_result->get_error());
+void DisplayStatefulPartitionInfo(const StatefulPartitionResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& stateful_partition_info =
-      stateful_partition_result->get_partition_info();
-  const std::vector<std::string> headers = {"available_space", "total_space",
-                                            "filesystem", "mount_source"};
-  const std::vector<std::vector<std::string>> values = {
-      {std::to_string(stateful_partition_info->available_space),
-       std::to_string(stateful_partition_info->total_space),
-       stateful_partition_info->filesystem,
-       stateful_partition_info->mount_source}};
+  const auto& info = result->get_partition_info();
+  CHECK(!info.is_null());
 
-  OutputData(headers, values, beauty);
+  base::Value output{base::Value::Type::DICTIONARY};
+  SET_DICT(available_space, info, &output);
+  SET_DICT(filesystem, info, &output);
+  SET_DICT(mount_source, info, &output);
+  SET_DICT(total_space, info, &output);
+
+  OutputJson(output);
 }
 
 void DisplaySystemInfo(const SystemResultPtr& system_result,
@@ -775,7 +772,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& stateful_partition_result = info->stateful_partition_result;
   if (stateful_partition_result)
-    DisplayStatefulPartitionInfo(stateful_partition_result, beauty);
+    DisplayStatefulPartitionInfo(stateful_partition_result);
 
   const auto& bluetooth_result = info->bluetooth_result;
   if (bluetooth_result)
