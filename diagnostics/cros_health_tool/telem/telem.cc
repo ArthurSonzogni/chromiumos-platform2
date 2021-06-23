@@ -655,25 +655,27 @@ void DisplayMemoryInfo(const MemoryResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBacklightInfo(const BacklightResultPtr& backlight_result,
-                          const bool beauty) {
-  if (backlight_result->is_error()) {
-    DisplayError(backlight_result->get_error());
+void DisplayBacklightInfo(const BacklightResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const std::vector<std::string> headers = {"path", "max_brightness",
-                                            "brightness"};
+  const auto& infos = result->get_backlight_info();
 
-  const auto& backlights = backlight_result->get_backlight_info();
-  std::vector<std::vector<std::string>> values;
-  for (const auto& backlight : backlights) {
-    values.push_back({backlight->path,
-                      std::to_string(backlight->max_brightness),
-                      std::to_string(backlight->brightness)});
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* backlights =
+      output.SetKey("backlights", base::Value{base::Value::Type::LIST});
+  for (const auto& info : infos) {
+    base::Value data{base::Value::Type::DICTIONARY};
+    SET_DICT(brightness, info, &data);
+    SET_DICT(max_brightness, info, &data);
+    SET_DICT(path, info, &data);
+
+    backlights->Append(std::move(data));
   }
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayStatefulPartitionInfo(const StatefulPartitionResultPtr& result) {
@@ -764,7 +766,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& backlight_result = info->backlight_result;
   if (backlight_result)
-    DisplayBacklightInfo(backlight_result, beauty);
+    DisplayBacklightInfo(backlight_result);
 
   const auto& fan_result = info->fan_result;
   if (fan_result)
