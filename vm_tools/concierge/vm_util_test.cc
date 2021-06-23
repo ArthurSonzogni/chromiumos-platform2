@@ -181,6 +181,7 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityTwoClusters) {
   EXPECT_EQ(topology.RTCPUMask(), "1");
   EXPECT_EQ(topology.CPUMask(), "0,2,3");
   EXPECT_EQ(topology.AffinityMask(), "0=0,2,3:1=1:2=0,2,3:3=0,2,3");
+  EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=128,3=128");
 }
 
 // CPU2-CPU3 LITTLE cores, CPU0-CPU1 big cores
@@ -198,6 +199,7 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityTwoClustersReverse) {
   EXPECT_EQ(topology.RTCPUMask(), "2");
   EXPECT_EQ(topology.CPUMask(), "3,0,1");
   EXPECT_EQ(topology.AffinityMask(), "0=3,0,1:1=3,0,1:2=2:3=3,0,1");
+  EXPECT_EQ(topology.CapacityMask(), "2=42,3=42,0=128,1=128");
 }
 
 // All cores are in the same capacity group
@@ -215,6 +217,7 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityOneCluster) {
   EXPECT_EQ(topology.RTCPUMask(), "1");
   EXPECT_EQ(topology.CPUMask(), "0,2,3");
   EXPECT_EQ(topology.AffinityMask(), "0=0,2,3:1=1:2=0,2,3:3=0,2,3");
+  EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42");
 }
 
 // No RT CPU requested
@@ -232,6 +235,7 @@ TEST(VMUtilTest, CreateArcVMCpuAffinityNoRT) {
   EXPECT_EQ(topology.NumRTCPUs(), 0);
   EXPECT_EQ(topology.CPUMask(), "0,1,2,3");
   EXPECT_EQ(topology.AffinityMask(), "0=0,1,2,3:1=0,1,2,3:2=0,1,2,3:3=0,1,2,3");
+  EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42");
 }
 
 // Static ARCVM CPU topologu
@@ -245,6 +249,7 @@ TEST(VMUtilTest, CreateStaticArcVMCpuAffinity) {
   ASSERT_EQ(topology.CPUMask().size(), 0);
   ASSERT_EQ(topology.AffinityMask().size(), 0);
   ASSERT_EQ(topology.RTCPUMask(), "2");
+  ASSERT_EQ(topology.CapacityMask().size(), 0);
 }
 
 }  // namespace concierge

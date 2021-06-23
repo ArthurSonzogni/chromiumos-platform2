@@ -213,6 +213,16 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       vm_builder.AppendCustomParam("--cpu-affinity", topology.AffinityMask());
   }
 
+  if (!topology.CapacityMask().empty()) {
+    vm_builder.AppendCustomParam("--cpu-capacity", topology.CapacityMask());
+  }
+
+  if (!topology.PackageMask().empty()) {
+    for (auto& package : topology.PackageMask()) {
+      vm_builder.AppendCustomParam("--cpu-cluster", package);
+    }
+  }
+
   if (request.use_hugepages()) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }

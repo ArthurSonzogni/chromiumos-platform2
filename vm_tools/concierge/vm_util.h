@@ -160,6 +160,8 @@ class ArcVmCPUTopology {
   const std::string& AffinityMask();
   const std::string& RTCPUMask();
   const std::string& CPUMask();
+  const std::string& CapacityMask();
+  const std::vector<std::string>& PackageMask();
 
   // Unit Testing crud
   void AddCpuToCapacityGroupForTesting(uint32_t cpu, uint32_t capacity);
@@ -184,6 +186,10 @@ class ArcVmCPUTopology {
   std::set<uint32_t> rt_cpus_;
   // CPU capacity grouping
   std::map<uint32_t, std::vector<uint32_t>> capacity_;
+  // CPU capacity mask
+  std::string capacity_mask_;
+  // CPU package mask
+  std::vector<std::string> package_mask_;
 };
 
 }  // namespace concierge

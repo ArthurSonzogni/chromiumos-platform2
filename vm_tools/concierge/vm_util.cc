@@ -494,6 +494,7 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   std::vector<std::string> non_rt_cpus;
   std::vector<std::string> rt_cpus;
   std::vector<std::string> affinities;
+  std::vector<std::string> capacities;
   uint32_t rt_cpus_needed = num_rt_cpus_;
 
   // Start with the lowest CPU capacity group and pick CPUs for RT, but
@@ -501,6 +502,9 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   for (const auto& cap : capacity_) {
     const auto& cpu_list = cap.second;
     for (const auto cpu : cpu_list) {
+      if (cap.first)
+        capacities.push_back(base::StringPrintf("%d=%d", cpu, cap.first));
+
       if (cpu == 0 || rt_cpus_needed == 0) {
         non_rt_cpus.emplace_back(std::to_string(cpu));
       } else {
@@ -525,18 +529,32 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   }
 
   affinity_mask_ = base::JoinString(affinities, ":");
+  capacity_mask_ = base::JoinString(capacities, ",");
 }
 
 // Creates CPU grouping by cpu_capacity.
 void ArcVmCPUTopology::CreateTopology(void) {
+  std::map<uint32_t, std::vector<std::string>> cluster;
+
   for (uint32_t cpu = 0; cpu < num_cpus_; cpu++) {
     auto capacity = GetCpuCapacity(cpu);
+    auto package = GetCpuPackageId(cpu);
 
     // Do not fail, carry on, but use an aritifical capacity group.
     if (!capacity)
       capacity_[0].push_back(cpu);
     else
       capacity_[*capacity].push_back(cpu);
+
+    // Ditto.
+    if (!package)
+      cluster[0].push_back(std::to_string(cpu));
+    else
+      cluster[*package].push_back(std::to_string(cpu));
+  }
+
+  for (auto& cpu_list : cluster) {
+    package_mask_.push_back(base::JoinString(cpu_list.second, ","));
   }
 }
 
@@ -601,6 +619,14 @@ const std::string& ArcVmCPUTopology::RTCPUMask() {
 
 const std::string& ArcVmCPUTopology::CPUMask() {
   return cpu_mask_;
+}
+
+const std::string& ArcVmCPUTopology::CapacityMask() {
+  return capacity_mask_;
+}
+
+const std::vector<std::string>& ArcVmCPUTopology::PackageMask() {
+  return package_mask_;
 }
 
 ArcVmCPUTopology::ArcVmCPUTopology(void) {
