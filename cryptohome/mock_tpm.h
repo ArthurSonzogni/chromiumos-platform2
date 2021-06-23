@@ -66,12 +66,18 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, IsOwned, (), (override));
   MOCK_METHOD(bool, IsOwnerPasswordPresent, (), (override));
   MOCK_METHOD(bool, HasResetLockPermissions, (), (override));
-  MOCK_METHOD(bool, GetRandomDataBlob, (size_t, brillo::Blob*), (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
+              GetRandomDataBlob,
+              (size_t, brillo::Blob*),
+              (override));
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
               GetRandomDataSecureBlob,
               (size_t, brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(bool, GetAlertsData, (Tpm::AlertsData*), (override));
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
+              GetAlertsData,
+              (Tpm::AlertsData*),
+              (override));
   MOCK_METHOD(bool, DefineNvram, (uint32_t, size_t, uint32_t), (override));
   MOCK_METHOD(bool,
               WriteNvram,
@@ -219,15 +225,16 @@ class MockTpm : public Tpm {
     return nullptr;
   }
 
-  bool FakeGetRandomDataBlob(size_t num_bytes, brillo::Blob* blob) {
+  hwsec::error::TPMErrorBase FakeGetRandomDataBlob(size_t num_bytes,
+                                                   brillo::Blob* blob) {
     blob->resize(num_bytes);
-    return true;
+    return nullptr;
   }
 
-  bool FakeGetRandomDataSecureBlob(size_t num_bytes,
-                                   brillo::SecureBlob* sblob) {
+  hwsec::error::TPMErrorBase FakeGetRandomDataSecureBlob(
+      size_t num_bytes, brillo::SecureBlob* sblob) {
     sblob->resize(num_bytes);
-    return true;
+    return nullptr;
   }
 
   bool FakeExtendPCR(uint32_t index, const brillo::Blob& value) {

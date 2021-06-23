@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -36,6 +37,10 @@ using brillo::Blob;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMErrorBase;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
@@ -264,14 +269,15 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   void SetSuccessfulSaltGenerationMock() {
     EXPECT_CALL(tpm_,
                 GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kSaltRandomPart), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(kSaltRandomPart),
+                        ReturnError<TPMErrorBase>()));
   }
 
   // Sets up a mock for the failure during salt generation.
   void SetFailingSaltGenerationMock() {
     EXPECT_CALL(tpm_,
                 GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount, _))
-        .WillOnce(Return(false));
+        .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   }
 
  protected:

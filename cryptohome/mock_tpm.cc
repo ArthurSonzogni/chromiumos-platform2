@@ -32,7 +32,7 @@ MockTpm::MockTpm() {
       .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomDataBlob));
   ON_CALL(*this, GetRandomDataSecureBlob(_, _))
       .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomDataSecureBlob));
-  ON_CALL(*this, GetAlertsData(_)).WillByDefault(Return(true));
+  ON_CALL(*this, GetAlertsData(_)).WillByDefault(ReturnError<TPMErrorBase>());
   ON_CALL(*this, CreateDelegate(_, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, Sign(_, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, CreatePCRBoundKey(_, _, _, _, _)).WillByDefault(Return(true));

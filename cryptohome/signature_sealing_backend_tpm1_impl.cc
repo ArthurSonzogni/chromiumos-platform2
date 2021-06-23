@@ -1186,9 +1186,10 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Generate the AuthData value randomly.
   SecureBlob auth_data;
-  if (!tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data)) {
-    return CreateError<TPMError>("Failed to generate the authorization data",
-                                 TPMRetryAction::kNoRetry);
+  if (TPMErrorBase err =
+          tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data)) {
+    return CreateErrorWrap<TPMError>(
+        std::move(err), "Failed to generate the authorization data");
   }
   DCHECK_EQ(auth_data.size(), kAuthDataSizeBytes);
   // Encrypt the AuthData value.
@@ -1205,9 +1206,10 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
                                  TPMRetryAction::kNoRetry);
   }
   // Generate the secret value randomly.
-  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
-    return CreateError<TPMError>("Error generating random secret",
-                                 TPMRetryAction::kNoRetry);
+  if (TPMErrorBase err =
+          tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error generating random secret");
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Bind the secret value to each of the specified sets of PCR restrictions.

@@ -3043,7 +3043,12 @@ void UserDataAuth::UploadAlertsDataCallback() {
   Tpm::AlertsData alerts;
 
   CHECK(tpm_);
-  if (tpm_->GetAlertsData(&alerts)) {
+  if (TPMErrorBase err = tpm_->GetAlertsData(&alerts)) {
+    // TODO(b/141294469): Change the code to retry even when it fails.
+    LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
+                 "UploadAlertsData task: "
+              << *err;
+  } else {
     ReportAlertsData(alerts);
 
     PostTaskToMountThread(
@@ -3051,10 +3056,6 @@ void UserDataAuth::UploadAlertsDataCallback() {
         base::Bind(&UserDataAuth::UploadAlertsDataCallback,
                    base::Unretained(this)),
         base::TimeDelta::FromMilliseconds(upload_alerts_period_ms_));
-  } else {
-    // TODO(b/141294469): Change the code to retry even when it fails.
-    LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
-                 "UploadAlertsData task.";
   }
 }
 
@@ -3062,8 +3063,9 @@ void UserDataAuth::SeedUrandom() {
   AssertOnOriginThread();
 
   brillo::Blob random;
-  if (!tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
-    LOG(ERROR) << "Could not get random data from the TPM";
+  if (TPMErrorBase err =
+          tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
+    LOG(ERROR) << "Could not get random data from the TPM " << *err;
   }
   if (!platform_->WriteFile(FilePath(kDefaultEntropySourcePath), random)) {
     LOG(ERROR) << "Error writing data to " << kDefaultEntropySourcePath;

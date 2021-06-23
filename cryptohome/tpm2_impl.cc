@@ -6,6 +6,7 @@
 
 #include "cryptohome/tpm2_impl.h"
 
+#include <cinttypes>
 #include <map>
 #include <memory>
 #include <string>
@@ -18,6 +19,7 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/notreached.h>
 #include <base/numerics/safe_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/error/tpm2_error.h>
@@ -283,59 +285,66 @@ bool Tpm2Impl::HasResetLockPermissions() {
   return has_reset_lock_permissions;
 }
 
-bool Tpm2Impl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
+hwsec::error::TPMErrorBase Tpm2Impl::GetRandomDataBlob(size_t length,
+                                                       brillo::Blob* data) {
   brillo::SecureBlob blob(length);
-  if (!this->GetRandomDataSecureBlob(length, &blob)) {
-    LOG(ERROR) << "GetRandomDataBlob failed";
-    return false;
+  if (TPMErrorBase err = GetRandomDataSecureBlob(length, &blob)) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "GetRandomDataBlob failed");
   }
   data->assign(blob.begin(), blob.end());
-  return true;
+  return nullptr;
 }
 
-bool Tpm2Impl::GetRandomDataSecureBlob(size_t length,
-                                       brillo::SecureBlob* data) {
+hwsec::error::TPMErrorBase Tpm2Impl::GetRandomDataSecureBlob(
+    size_t length, brillo::SecureBlob* data) {
   CHECK(data);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return false;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
   std::string random_data;
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->GenerateRandom(
           length, /* delegate */ nullptr, &random_data))) {
-    LOG(ERROR) << "Error getting random data: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error getting random data");
   }
   if (random_data.size() != length) {
-    LOG(ERROR) << "Error getting random data: requested length " << length
-               << ", received length " << random_data.size();
-    return false;
+    return CreateError<TPMError>(
+        base::StringPrintf("Error getting random data: requested length %zu"
+                           ", received length %zu",
+                           length, random_data.size()),
+        TPMRetryAction::kNoRetry);
   }
   data->assign(random_data.begin(), random_data.end());
-  return true;
+  return nullptr;
 }
 
-bool Tpm2Impl::GetAlertsData(Tpm::AlertsData* alerts) {
+hwsec::error::TPMErrorBase Tpm2Impl::GetAlertsData(Tpm::AlertsData* alerts) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
-    return true;
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kNoRetry);
   }
 
   trunks::TpmAlertsData trunks_alerts;
   if (auto err = CreateError<TPM2Error>(
           trunks->tpm_utility->GetAlertsData(&trunks_alerts))) {
     if (err->ErrorCode() == trunks::TPM_RC_NO_SUCH_COMMAND) {
-      LOG(INFO) << "TPM GetAlertsData vendor command is not implemented";
-      return false;
+      return CreateErrorWrap<TPMError>(
+          std::move(err), "TPM GetAlertsData vendor command is not implemented",
+          TPMRetryAction::kNoRetry);
     } else {
-      LOG(ERROR) << "Error getting alerts data: " << *err;
       memset(alerts, 0, sizeof(Tpm::AlertsData));
-      return true;
+      return CreateErrorWrap<TPMError>(std::move(err),
+                                       "Error getting alerts data");
     }
   } else if (trunks_alerts.chip_family != trunks::kFamilyH1) {
     // Currently we support only H1 alerts
-    LOG(ERROR) << "Unknown alerts family: " << trunks_alerts.chip_family;
-    return false;
+    return CreateError<TPMError>(
+        "Unknown alerts family: " + std::to_string(trunks_alerts.chip_family),
+        TPMRetryAction::kNoRetry);
   }
 
   memset(alerts, 0, sizeof(Tpm::AlertsData));
@@ -349,7 +358,7 @@ bool Tpm2Impl::GetAlertsData(Tpm::AlertsData* alerts) {
     }
   }
 
-  return true;
+  return nullptr;
 }
 
 bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {

@@ -138,9 +138,9 @@ bool ChallengeCredentialsGenerateNewOperation::StartProcessing() {
 
 bool ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
   Blob salt_random_bytes;
-  if (!tpm_->GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount,
-                               &salt_random_bytes)) {
-    LOG(ERROR) << "Failed to generate random bytes for the salt";
+  if (TPMErrorBase err = tpm_->GetRandomDataBlob(
+          kChallengeCredentialsSaltRandomByteCount, &salt_random_bytes)) {
+    LOG(ERROR) << "Failed to generate random bytes for the salt: " << *err;
     return false;
   }
   DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount, salt_random_bytes.size());

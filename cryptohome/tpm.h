@@ -285,7 +285,8 @@ class Tpm {
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  virtual bool GetRandomDataBlob(size_t length, brillo::Blob* data) = 0;
+  virtual hwsec::error::TPMErrorBase GetRandomDataBlob(size_t length,
+                                                       brillo::Blob* data) = 0;
 
   // Gets random bytes from the TPM, returns them in a SecureBlob.
   // brillo::SecureBlob intentionally does not inherit from brillo::Blob.
@@ -293,15 +294,15 @@ class Tpm {
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  virtual bool GetRandomDataSecureBlob(size_t length,
-                                       brillo::SecureBlob* data) = 0;
+  virtual hwsec::error::TPMErrorBase GetRandomDataSecureBlob(
+      size_t length, brillo::SecureBlob* data) = 0;
 
   // Gets alerts data the TPM
   //
   // Parameters
   //   alerts (OUT) - Struct that contains TPM alerts information
   // Returns true is hardware supports Alerts reporting, false otherwise
-  virtual bool GetAlertsData(Tpm::AlertsData* alerts) = 0;
+  virtual hwsec::error::TPMErrorBase GetAlertsData(Tpm::AlertsData* alerts) = 0;
 
   // Creates a NVRAM space in the TPM
   //

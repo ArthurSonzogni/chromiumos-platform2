@@ -82,14 +82,20 @@ class StubTpm : public Tpm {
   bool IsNvramDefined(uint32_t index) override { return false; }
   bool IsNvramLocked(uint32_t index) override { return false; }
   unsigned int GetNvramSize(uint32_t index) override { return 0; }
-  bool GetRandomDataBlob(size_t length, brillo::Blob* data) override {
-    return false;
+  hwsec::error::TPMErrorBase GetRandomDataBlob(size_t length,
+                                               brillo::Blob* data) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  bool GetRandomDataSecureBlob(size_t length,
-                               brillo::SecureBlob* data) override {
-    return false;
+  hwsec::error::TPMErrorBase GetRandomDataSecureBlob(
+      size_t length, brillo::SecureBlob* data) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
-  bool GetAlertsData(Tpm::AlertsData* alerts) override { return false; }
+  hwsec::error::TPMErrorBase GetAlertsData(Tpm::AlertsData* alerts) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  }
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override {
     return false;
   }

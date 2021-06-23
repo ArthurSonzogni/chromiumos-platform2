@@ -364,7 +364,7 @@ TEST_F(Tpm2Test, GetRandomDataSuccess) {
   brillo::Blob data;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(random_data), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(tpm_->GetRandomDataBlob(num_bytes, &data));
+  EXPECT_EQ(nullptr, tpm_->GetRandomDataBlob(num_bytes, &data));
   EXPECT_EQ(data.size(), num_bytes);
   std::string tpm_data(data.begin(), data.end());
   EXPECT_EQ(tpm_data, random_data);
@@ -375,7 +375,9 @@ TEST_F(Tpm2Test, GetRandomDataFailure) {
   size_t num_bytes = 5;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->GetRandomDataBlob(num_bytes, &data));
+  TPMErrorBase err = tpm_->GetRandomDataBlob(num_bytes, &data);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, GetRandomDataBadLength) {
@@ -384,7 +386,9 @@ TEST_F(Tpm2Test, GetRandomDataBadLength) {
   size_t num_bytes = random_data.size() + 1;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(random_data), Return(TPM_RC_SUCCESS)));
-  EXPECT_FALSE(tpm_->GetRandomDataBlob(num_bytes, &data));
+  TPMErrorBase err = tpm_->GetRandomDataBlob(num_bytes, &data);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, DefineNvramSuccess) {

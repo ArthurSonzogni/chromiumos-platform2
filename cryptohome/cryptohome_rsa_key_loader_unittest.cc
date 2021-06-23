@@ -43,13 +43,14 @@ class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
   // For TPM-related flags: enabled is always true, other flags are settable.
   bool IsTpmOwned() const { return is_tpm_owned_; }
   void SetIsTpmOwned(bool is_tpm_owned) { is_tpm_owned_ = is_tpm_owned; }
-  bool GetRandomDataBlob(size_t length, brillo::Blob* data) const {
+  TPMErrorBase GetRandomDataBlob(size_t length, brillo::Blob* data) const {
     data->resize(length, 0);
-    return true;
+    return nullptr;
   }
-  bool GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) const {
+  TPMErrorBase GetRandomDataSecureBlob(size_t length,
+                                       brillo::SecureBlob* data) const {
     data->resize(length, 0);
-    return true;
+    return nullptr;
   }
 
   // Default mock implementations for |platform_| methods.

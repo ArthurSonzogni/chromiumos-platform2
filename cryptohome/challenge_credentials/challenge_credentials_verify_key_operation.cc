@@ -19,6 +19,7 @@
 
 using brillo::Blob;
 using brillo::BlobFromString;
+using hwsec::error::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -156,9 +157,11 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     return;
   }
   Blob challenge;
-  if (!tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge)) {
+  if (TPMErrorBase err =
+          tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge)) {
     LOG(ERROR)
-        << "Failed to generate random bytes for the verification challenge";
+        << "Failed to generate random bytes for the verification challenge: "
+        << *err;
     Complete(&completion_callback_, /*is_key_valid=*/false);
     return;
   }

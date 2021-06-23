@@ -947,44 +947,45 @@ TPMErrorBase TpmImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   return nullptr;
 }
 
-bool TpmImpl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
+TPMErrorBase TpmImpl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
   brillo::SecureBlob blob(length);
-  if (!this->GetRandomDataSecureBlob(length, &blob)) {
-    LOG(ERROR) << "GetRandomDataBlob failed";
-    return false;
+  if (TPMErrorBase err = GetRandomDataSecureBlob(length, &blob)) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "GetRandomDataBlob failed");
   }
   data->assign(blob.begin(), blob.end());
-  return true;
+  return nullptr;
 }
 
-bool TpmImpl::GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) {
+TPMErrorBase TpmImpl::GetRandomDataSecureBlob(size_t length,
+                                              brillo::SecureBlob* data) {
   ScopedTssContext context_handle;
   if ((*(context_handle.ptr()) = ConnectContext()) == 0) {
-    LOG(ERROR) << "Could not open the TPM";
-    return false;
+    return CreateError<TPMError>("Could not open the TPM",
+                                 TPMRetryAction::kNoRetry);
   }
 
   TSS_HTPM tpm_handle;
   if (!GetTpm(context_handle, &tpm_handle)) {
-    LOG(ERROR) << "Could not get a handle to the TPM";
-    return false;
+    return CreateError<TPMError>("Could not get a handle to the TPM",
+                                 TPMRetryAction::kNoRetry);
   }
 
   SecureBlob random(length);
   ScopedTssMemory tpm_data(context_handle);
   if (auto err = CreateError<TPM1Error>(
           Tspi_TPM_GetRandom(tpm_handle, random.size(), tpm_data.ptr()))) {
-    LOG(ERROR) << "Could not get random data from the TP1: " << *err;
-    return false;
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Could not get random data from the TPM");
   }
   memcpy(random.data(), tpm_data.value(), random.size());
   brillo::SecureClearBytes(tpm_data.value(), random.size());
   data->swap(random);
-  return true;
+  return nullptr;
 }
 
-bool TpmImpl::GetAlertsData(Tpm::AlertsData* alerts) {
-  return false;
+TPMErrorBase TpmImpl::GetAlertsData(Tpm::AlertsData* alerts) {
+  return CreateError<TPMError>("Not supported", TPMRetryAction::kNoRetry);
 }
 
 bool TpmImpl::DestroyNvram(uint32_t index) {
@@ -1230,7 +1231,9 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   }
 
   // Generate a delegate secret.
-  if (!GetRandomDataBlob(kDelegateSecretSize, delegate_secret)) {
+  if (TPMErrorBase err =
+          GetRandomDataBlob(kDelegateSecretSize, delegate_secret)) {
+    LOG(ERROR) << __func__ << ": Failed to get random data blob: " << *err;
     return false;
   }
 

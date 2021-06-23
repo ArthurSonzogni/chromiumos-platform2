@@ -12,6 +12,7 @@
 #include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
@@ -21,6 +22,10 @@
 
 namespace cryptohome {
 using brillo::SecureBlob;
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMErrorBase;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;
@@ -196,7 +201,8 @@ TEST_P(LockboxTest, StoreOk) {
         .WillOnce(
             Return(LockboxContents::GetNvramSize(NvramVersion::kDefault)));
     EXPECT_CALL(tpm_, GetRandomDataSecureBlob(key_material.size(), _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(key_material), Return(true)));
+        .WillRepeatedly(
+            DoAll(SetArgPointee<1>(key_material), ReturnError<TPMErrorBase>()));
     EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, _)).WillOnce(Return(true));
     EXPECT_CALL(tpm_, WriteLockNvram(0xdeadbeef)).WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef)).WillOnce(Return(true));

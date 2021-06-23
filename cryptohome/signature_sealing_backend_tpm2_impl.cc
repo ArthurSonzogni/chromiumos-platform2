@@ -390,9 +390,10 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
                                  TPMRetryAction::kNoRetry);
   }
   // Generate the secret value randomly.
-  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
-    return CreateError<TPMError>("Error generating random secret",
-                                 TPMRetryAction::kNoRetry);
+  if (auto err =
+          tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
+    return CreateErrorWrap<TPMError>(std::move(err),
+                                     "Error generating random secret");
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Seal the secret value.

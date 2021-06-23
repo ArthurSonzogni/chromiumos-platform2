@@ -18,6 +18,7 @@
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
 #include <dbus/mock_bus.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
@@ -56,6 +57,10 @@ using base::FilePath;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
+using ::hwsec::error::TPMError;
+using ::hwsec::error::TPMErrorBase;
+using ::hwsec::error::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::ByMove;
@@ -1280,7 +1285,7 @@ TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   // Should Get Random from TPM
   EXPECT_CALL(tpm_, GetRandomDataBlob(kDefaultRandomSeedLength, _))
-      .WillOnce(Return(true));
+      .WillOnce(ReturnError<TPMErrorBase>());
 
   EXPECT_CALL(platform_, WriteFile(FilePath(kDefaultEntropySourcePath), _))
       .WillOnce(Return(true));
@@ -3615,7 +3620,8 @@ TEST_F(UserDataAuthTestTasked, UploadAlertsCallback) {
 
   // Checks that GetAlertsData is called during/after initialization.
   EXPECT_CALL(tpm_, GetAlertsData(_))
-      .WillOnce(DoAll(SetArgPointee<0>(alert_data), Return(true)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(alert_data), ReturnError<TPMErrorBase>()));
 
   // Checks that the metrics are reported.
   constexpr char kDiskCleanupResultsHistogram[] =
