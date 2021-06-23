@@ -6,9 +6,11 @@
 
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -20,9 +22,10 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
-#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
@@ -53,6 +56,7 @@ struct UserPassword {
 constexpr char kUser0[] = "First User";
 constexpr char kUserPassword0[] = "user0_pass";
 
+constexpr char kCredDirName[] = "low_entropy_creds";
 constexpr char kPasswordLabel[] = "password";
 constexpr char kAltPasswordLabel[] = "alt_password";
 
@@ -65,7 +69,10 @@ void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
 
 class KeysetManagementTest : public ::testing::Test {
  public:
-  KeysetManagementTest() : crypto_(&platform_) {}
+  KeysetManagementTest() : crypto_(&platform_) {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+  }
+
   ~KeysetManagementTest() override {}
 
   // Not copyable or movable
@@ -95,6 +102,11 @@ class KeysetManagementTest : public ::testing::Test {
     platform_.GetFake()->RemoveSystemSaltForLibbrillo();
   }
 
+  // Returns location of on-disk hash tree directory.
+  base::FilePath CredDirPath() {
+    return temp_dir_.GetPath().Append(kCredDirName);
+  }
+
  protected:
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
@@ -103,7 +115,7 @@ class KeysetManagementTest : public ::testing::Test {
   std::unique_ptr<KeysetManagement> keyset_management_;
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
   std::unique_ptr<KeysetManagement> keyset_management_mock_vk_;
-
+  base::ScopedTempDir temp_dir_;
   struct UserInfo {
     std::string name;
     std::string obfuscated;
@@ -148,6 +160,13 @@ class KeysetManagementTest : public ::testing::Test {
   KeyData DefaultKeyData() {
     KeyData key_data;
     key_data.set_label(kPasswordLabel);
+    return key_data;
+  }
+
+  KeyData DefaultLEKeyData() {
+    KeyData key_data;
+    key_data.set_label(kPasswordLabel);
+    key_data.mutable_policy()->set_low_entropy_credential(true);
     return key_data;
   }
 
@@ -1065,15 +1084,19 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
 
 TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   // SETUP
+  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
 
-  KeysetSetUpWithKeyData(DefaultKeyData());
+  KeysetSetUpWithKeyData(DefaultLEKeyData());
 
   std::unique_ptr<VaultKeyset> vk0 = keyset_management_->GetValidKeyset(
       users_[0].credentials, /* error */ nullptr);
   ASSERT_NE(vk0.get(), nullptr);
-  vk0->SetLELabel(1234);
 
-  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
   EXPECT_CALL(mock_cryptohome_key_loader, HasCryptohomeKey())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_cryptohome_key_loader, Init()).WillRepeatedly(Return());
@@ -1081,25 +1104,16 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  auto le_cred_manager = new cryptohome::MockLECredentialManager();
-  crypto_.set_le_manager_for_testing(
-      std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
-
-  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
-
-  // TEST
-
-  // le credentials which doesn't need pcr binding - no re-save
-  EXPECT_CALL(*le_cred_manager, NeedsPcrBinding(_))
-      .WillRepeatedly(Return(false));
-  vk0->SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
+  fake_backend_.set_needs_pcr_binding(false);
   EXPECT_FALSE(keyset_management_->ShouldReSaveKeyset(vk0.get()));
 
-  // le credentials which needs pcr binding - no resave.
-  EXPECT_CALL(*le_cred_manager, NeedsPcrBinding(_))
-      .WillRepeatedly(Return(true));
-  vk0->SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
+  fake_backend_.set_needs_pcr_binding(true);
   EXPECT_TRUE(keyset_management_->ShouldReSaveKeyset(vk0.get()));
+  // LE Credentials cannot be re-encrypted if the keyset does not have a
+  // reset_seed. This should fail because the keyset_management tries to
+  // re-encrypt the keyset here.
+  EXPECT_FALSE(
+      keyset_management_->ReSaveKeyset(users_[0].credentials, vk0.get()));
 }
 
 TEST_F(KeysetManagementTest, RemoveLECredentials) {

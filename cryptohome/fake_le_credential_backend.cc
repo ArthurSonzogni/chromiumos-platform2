@@ -22,6 +22,7 @@ const uint8_t kInitRootHash14_4[SHA256_DIGEST_LENGTH] = {
 
 FakeLECredentialBackend::FakeLECredentialBackend() {
   log_.reserve(kFakeLogSize);
+  needs_pcr_binding_ = false;
 }
 
 bool FakeLECredentialBackend::Reset(std::vector<uint8_t>* new_root) {
@@ -98,7 +99,7 @@ bool FakeLECredentialBackend::InsertCredential(
 
 bool FakeLECredentialBackend::NeedsPCRBinding(
     const std::vector<uint8_t>& cred_metadata) {
-  return false;
+  return needs_pcr_binding_;
 }
 
 int FakeLECredentialBackend::GetWrongAuthAttempts(

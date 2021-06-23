@@ -99,6 +99,10 @@ class FakeLECredentialBackend : public LECredentialBackend {
   void ExtendArcPCR(const std::string& data);
   void ResetArcPCR();
 
+  void set_needs_pcr_binding(bool needs_pcr_binding) {
+    needs_pcr_binding_ = needs_pcr_binding;
+  }
+
  private:
   // Helper function to calculate root hash, given a leaf with label |label|,
   // MAC value |mac, and a set of auxiliary hashes |h_aux|.
@@ -119,6 +123,8 @@ class FakeLECredentialBackend : public LECredentialBackend {
   // Replay log.
   std::vector<struct FakeLELogEntry> log_;
   std::string pcr_digest;
+
+  bool needs_pcr_binding_;
 };
 
 }  // namespace cryptohome
