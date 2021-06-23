@@ -180,8 +180,8 @@ bool TpmImpl::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
   *context = 0;
   *tpm = 0;
   SecureBlob owner_password;
-  if (!GetOwnerPassword(&owner_password)) {
-    LOG(ERROR) << "ConnectContextAsOwner requires an owner password";
+  if (auto err = GetOwnerPassword(&owner_password)) {
+    LOG(ERROR) << "ConnectContextAsOwner requires an owner password: " << *err;
     return false;
   }
 
@@ -925,21 +925,26 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
   return true;
 }
 
-bool TpmImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
+TPMErrorBase TpmImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   if (IsOwned()) {
     *owner_password =
         brillo::SecureBlob(last_tpm_manager_data_.owner_password());
     if (owner_password->empty()) {
-      LOG(WARNING) << __func__
-                   << ": Trying to get owner password after it is cleared.";
+      return CreateError<TPMError>(
+          "Trying to get owner password after it is cleared",
+          TPMRetryAction::kNoRetry);
     }
   } else {
-    LOG(ERROR)
-        << __func__
-        << ": Cannot get owner password until TPM is confirmed to be owned.";
     owner_password->clear();
+    return CreateError<TPMError>(
+        "Cannot get owner password until TPM is confirmed to be owned",
+        TPMRetryAction::kNoRetry);
   }
-  return !owner_password->empty();
+  if (owner_password->empty()) {
+    return CreateError<TPMError>("Empty owner password",
+                                 TPMRetryAction::kNoRetry);
+  }
+  return nullptr;
 }
 
 bool TpmImpl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
@@ -2098,6 +2103,9 @@ TPMErrorBase TpmImpl::IsDelegateBoundToPcr(bool* result) {
   if (!SetDelegateDataFromTpmManager()) {
     LOG(WARNING) << __func__
                  << ": failed to call |SetDelegateDataFromTpmManager|.";
+    return CreateError<TPMError>(
+        "failed to call |SetDelegateDataFromTpmManager|",
+        TPMRetryAction::kNoRetry);
   }
   *result = is_delegate_bound_to_pcr_;
   return nullptr;

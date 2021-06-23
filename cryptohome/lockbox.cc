@@ -75,7 +75,7 @@ bool Lockbox::Reset(LockboxError* error) {
 
   // If we have authorization, recreate the lockbox space.
   brillo::SecureBlob owner_password;
-  if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0) {
+  if (tpm_->IsOwnerPasswordPresent()) {
     if (tpm_->IsNvramDefined(nvram_index_) &&
         !tpm_->DestroyNvram(nvram_index_)) {
       LOG(ERROR) << "Failed to destroy lockbox data before creation.";

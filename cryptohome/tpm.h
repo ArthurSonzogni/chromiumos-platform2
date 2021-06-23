@@ -264,13 +264,6 @@ class Tpm {
   virtual hwsec::error::TPMErrorBase GetPublicKeyHash(
       TpmKeyHandle key_handle, brillo::SecureBlob* hash) = 0;
 
-  // Returns the owner password if this instance was used to take ownership.
-  // This will only occur when the TPM is unowned, which will be on OOBE
-  //
-  // Parameters
-  //   owner_password (OUT) - The random owner password used
-  virtual bool GetOwnerPassword(brillo::SecureBlob* owner_password) = 0;
-
   // Returns whether or not the TPM is enabled.  This method call returns a
   // cached result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).

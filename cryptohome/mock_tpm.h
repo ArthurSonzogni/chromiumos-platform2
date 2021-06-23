@@ -62,7 +62,6 @@ class MockTpm : public Tpm {
               GetPublicKeyHash,
               (TpmKeyHandle, brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(bool, GetOwnerPassword, (brillo::SecureBlob*), (override));
   MOCK_METHOD(bool, IsEnabled, (), (override));
   MOCK_METHOD(bool, IsOwned, (), (override));
   MOCK_METHOD(bool, IsOwnerPasswordPresent, (), (override));

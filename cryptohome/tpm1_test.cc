@@ -141,38 +141,6 @@ TEST_F(TpmImplTest, OwnedWithoutSignal) {
   EXPECT_TRUE(GetTpm()->IsOwned());
 }
 
-TEST_F(TpmImplTest, GetOwnerPasswordWithoutSignal) {
-  EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .WillRepeatedly(Return(false));
-  SecureBlob result_owner_password;
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
-  LocalData expected_local_data;
-  expected_local_data.set_owner_password("owner password");
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true),
-                      SetArgPointee<2>(expected_local_data), Return(true)));
-  EXPECT_TRUE(GetTpm()->GetOwnerPassword(&result_owner_password));
-  EXPECT_EQ(result_owner_password.to_string(),
-            expected_local_data.owner_password());
-
-  result_owner_password.clear();
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(0);
-  EXPECT_TRUE(GetTpm()->GetOwnerPassword(&result_owner_password));
-  EXPECT_EQ(result_owner_password.to_string(),
-            expected_local_data.owner_password());
-}
-
-TEST_F(TpmImplTest, GetOwnerPasswordEmpty) {
-  SecureBlob result_owner_password;
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true),
-                      SetArgPointee<2>(LocalData{}), Return(true)));
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
-}
-
 TEST_F(TpmImplTest, GetDelegateWithoutSignal) {
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
       .WillRepeatedly(Return(false));
@@ -239,7 +207,6 @@ TEST_F(TpmImplTest, ResetDictionaryAttackMitigation) {
 }
 
 TEST_F(TpmImplTest, SignalCache) {
-  brillo::SecureBlob result_owner_password;
   brillo::Blob result_blob, result_secret;
   bool result_has_reset_lock_permissions;
   ON_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
@@ -247,10 +214,9 @@ TEST_F(TpmImplTest, SignalCache) {
 
   ON_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
       .WillByDefault(Return(false));
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(2);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(1);
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .Times(2);
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
+      .Times(1);
   EXPECT_FALSE(GetTpm()->IsOwned());
 
   // |GetDelegate| doesn't fully rely on the signal. Thus, expects to call
@@ -264,10 +230,9 @@ TEST_F(TpmImplTest, SignalCache) {
 
   ON_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
       .WillByDefault(DoAll(SetArgPointee<0>(false), Return(true)));
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(3);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(2);
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .Times(2);
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
+      .Times(1);
   EXPECT_FALSE(GetTpm()->IsOwned());
   EXPECT_FALSE(GetTpm()->GetDelegate(&result_blob, &result_secret,
                                      &result_has_reset_lock_permissions));
@@ -277,9 +242,8 @@ TEST_F(TpmImplTest, SignalCache) {
           DoAll(SetArgPointee<0>(true), SetArgPointee<1>(false), Return(true)));
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(1);
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .Times(2);
+      .Times(1);
   EXPECT_FALSE(GetTpm()->IsOwned());
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(1);
   EXPECT_FALSE(GetTpm()->GetDelegate(&result_blob, &result_secret,
                                      &result_has_reset_lock_permissions));
@@ -296,11 +260,8 @@ TEST_F(TpmImplTest, SignalCache) {
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(0);
   EXPECT_TRUE(GetTpm()->IsOwned());
   EXPECT_TRUE(GetTpm()->IsEnabled());
-  EXPECT_TRUE(GetTpm()->GetOwnerPassword(&result_owner_password));
   EXPECT_TRUE(GetTpm()->GetDelegate(&result_blob, &result_secret,
                                     &result_has_reset_lock_permissions));
-  EXPECT_THAT(result_owner_password,
-              ElementsAreArray(expected_local_data.owner_password()));
   EXPECT_THAT(result_blob,
               ElementsAreArray(expected_local_data.owner_delegate().blob()));
   EXPECT_THAT(result_secret,
@@ -382,8 +343,6 @@ TEST_F(TpmImplTest, BadTpmManagerUtility) {
   EXPECT_CALL(mock_tpm_manager_utility_, Initialize())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(GetTpm()->TakeOwnership(0, SecureBlob{}));
-  SecureBlob result_owner_password;
-  EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
   EXPECT_FALSE(GetTpm()->IsEnabled());
   EXPECT_FALSE(GetTpm()->IsOwned());
   EXPECT_FALSE(GetTpm()->ResetDictionaryAttackMitigation(Blob{}, Blob{}));

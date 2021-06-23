@@ -66,7 +66,6 @@ class TpmImpl : public Tpm {
       brillo::SecureBlob* plaintext) override;
   hwsec::error::TPMErrorBase GetPublicKeyHash(
       TpmKeyHandle key_handle, brillo::SecureBlob* hash) override;
-  bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override;
   bool IsOwned() override;
   bool IsOwnerPasswordPresent() override;
@@ -197,6 +196,13 @@ class TpmImpl : public Tpm {
       brillo::SecureBlob* auth_value) override;
 
  private:
+  // Returns the owner password if this instance was used to take ownership.
+  // This will only occur when the TPM is unowned, which will be on OOBE
+  //
+  // Parameters
+  //   owner_password (OUT) - The random owner password used
+  hwsec::error::TPMErrorBase GetOwnerPassword(
+      brillo::SecureBlob* owner_password);
   // Processes the delegate blob and establishes if it's bound to any PCR. Also
   // keeps the information about reset_lock_permissions. Returns |true| iff the
   // attributes of the delegate is successfully determined.
@@ -298,7 +304,7 @@ class TpmImpl : public Tpm {
   bool is_owned_{false};
 
   // Indicates if the delegate is bound to PCR.
-  base::Optional<bool> is_delegate_bound_to_pcr_;
+  bool is_delegate_bound_to_pcr_{false};
 
   // Indicates if the delegate is allowed to reset dictional attack counter.
   bool has_reset_lock_permissions_ = false;

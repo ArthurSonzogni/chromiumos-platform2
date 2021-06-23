@@ -216,23 +216,6 @@ Tpm2Impl::Tpm2Impl(TrunksFactory* factory,
   external_trunks_context_.tpm_utility = factory->GetTpmUtility();
 }
 
-bool Tpm2Impl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
-  if (IsOwned()) {
-    *owner_password =
-        brillo::SecureBlob(last_tpm_manager_data_.owner_password());
-    if (owner_password->empty()) {
-      LOG(WARNING) << __func__
-                   << ": Trying to get owner password after it is cleared.";
-    }
-  } else {
-    LOG(ERROR)
-        << __func__
-        << ": Cannot get owner password until TPM is confirmed to be owned.";
-    owner_password->clear();
-  }
-  return !owner_password->empty();
-}
-
 bool Tpm2Impl::InitializeTpmManagerUtility() {
   if (!tpm_manager_utility_) {
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();

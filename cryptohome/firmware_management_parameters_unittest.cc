@@ -149,10 +149,9 @@ TEST_F(FirmwareManagementParametersTest, CreateNew) {
   // HasAuthorization() checks for Create() and Destroy()
   EXPECT_CALL(tpm_, IsEnabled()).Times(2).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(2).WillRepeatedly(Return(true));
-  brillo::SecureBlob pw("sup");
-  EXPECT_CALL(tpm_, GetOwnerPassword(_))
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent())
       .Times(2)
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
+      .WillRepeatedly(DoAll(Return(true)));
 
   // Destroy() doesn't find an existing space
   EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
@@ -172,9 +171,7 @@ TEST_F(FirmwareManagementParametersTest, CreateOverExisting) {
   // HasAuthorization() checks for Create() and Destroy()
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
-  brillo::SecureBlob pw("sup");
-  ON_CALL(tpm_, GetOwnerPassword(_))
-      .WillByDefault(DoAll(SetArgPointee<0>(pw), Return(true)));
+  ON_CALL(tpm_, IsOwnerPasswordPresent()).WillByDefault(DoAll(Return(true)));
 
   // Destroy() the existing space
   EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
@@ -198,7 +195,7 @@ TEST_F(FirmwareManagementParametersTest, CreateWithNoAuth) {
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
 
   // No password for you
-  EXPECT_CALL(tpm_, GetOwnerPassword(_)).WillOnce(Return(false));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent()).WillOnce(Return(false));
   EXPECT_FALSE(fwmp_.Create());
 }
 
@@ -207,9 +204,7 @@ TEST_F(FirmwareManagementParametersTest, CreateDefineError) {
   // HasAuthorization() checks for Create() and Destroy()
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
-  brillo::SecureBlob pw("sup");
-  ON_CALL(tpm_, GetOwnerPassword(_))
-      .WillByDefault(DoAll(SetArgPointee<0>(pw), Return(true)));
+  ON_CALL(tpm_, IsOwnerPasswordPresent()).WillByDefault(DoAll(Return(true)));
 
   // Destroy() doesn't find an existing space
   EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
@@ -229,9 +224,7 @@ TEST_F(FirmwareManagementParametersTest, DestroyExisting) {
   // HasAuthorization() checks for Destroy()
   EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillOnce(Return(true));
-  brillo::SecureBlob pw("sup");
-  EXPECT_CALL(tpm_, GetOwnerPassword(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pw), Return(true)));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent()).WillOnce(DoAll(Return(true)));
 
   // Destroy() the existing space
   EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
@@ -247,9 +240,7 @@ TEST_F(FirmwareManagementParametersTest, DestroyNonExisting) {
   // HasAuthorization() checks for Destroy()
   EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillOnce(Return(true));
-  brillo::SecureBlob pw("sup");
-  EXPECT_CALL(tpm_, GetOwnerPassword(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pw), Return(true)));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent()).WillOnce(DoAll(Return(true)));
 
   // Destroy() non-existing space is fine
   EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))
@@ -265,7 +256,7 @@ TEST_F(FirmwareManagementParametersTest, DestroyWithNoAuth) {
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
 
   // No password for you
-  EXPECT_CALL(tpm_, GetOwnerPassword(_)).WillOnce(Return(false));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent()).WillOnce(Return(false));
   EXPECT_FALSE(fwmp_.Destroy());
 }
 
@@ -274,9 +265,7 @@ TEST_F(FirmwareManagementParametersTest, DestroyFailure) {
   // HasAuthorization() checks for Destroy()
   EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillOnce(Return(true));
-  brillo::SecureBlob pw("sup");
-  EXPECT_CALL(tpm_, GetOwnerPassword(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pw), Return(true)));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent()).WillOnce(DoAll(Return(true)));
 
   // Destroy() the existing space
   EXPECT_CALL(tpm_, IsNvramDefined(FirmwareManagementParameters::kNvramIndex))

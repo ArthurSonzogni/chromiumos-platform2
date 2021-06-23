@@ -91,7 +91,6 @@ class Tpm2Impl : public Tpm {
       brillo::SecureBlob* plaintext) override;
   hwsec::error::TPMErrorBase GetPublicKeyHash(
       TpmKeyHandle key_handle, brillo::SecureBlob* hash) override;
-  bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override;
   bool IsOwned() override;
   bool IsOwnerPasswordPresent() override;

@@ -120,11 +120,8 @@ TEST_P(LockboxTest, ResetCreateSpace) {
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
   // Make the owner password available.
-  static const char* kOwnerPassword = "sup";
-  brillo::SecureBlob pw;
-  pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
-  EXPECT_CALL(tpm_, GetOwnerPassword(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent())
+      .WillRepeatedly(DoAll(Return(true)));
 
   // No pre-existing space.
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef)).WillOnce(Return(false));
@@ -145,11 +142,8 @@ TEST_P(LockboxTest, ResetCreateSpacePreexisting) {
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
   // Make the owner password available.
-  static const char* kOwnerPassword = "sup";
-  brillo::SecureBlob pw;
-  pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
-  EXPECT_CALL(tpm_, GetOwnerPassword(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent())
+      .WillRepeatedly(DoAll(Return(true)));
 
   // Pre-existing space, expect the space to get destroyed.
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef)).WillOnce(Return(true));
@@ -169,7 +163,7 @@ TEST_P(LockboxTest, ResetCreateSpacePreexisting) {
 TEST_P(LockboxTest, ResetNoOwnerAuth) {
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, GetOwnerPassword(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, IsOwnerPasswordPresent()).WillRepeatedly(Return(false));
 
   LockboxError error;
   EXPECT_FALSE(lockbox_.Reset(&error));
