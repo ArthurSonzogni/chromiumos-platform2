@@ -82,9 +82,6 @@ class StubTpm : public Tpm {
   bool IsNvramDefined(uint32_t index) override { return false; }
   bool IsNvramLocked(uint32_t index) override { return false; }
   unsigned int GetNvramSize(uint32_t index) override { return 0; }
-  bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override {
-    return false;
-  }
   bool GetRandomDataBlob(size_t length, brillo::Blob* data) override {
     return false;
   }

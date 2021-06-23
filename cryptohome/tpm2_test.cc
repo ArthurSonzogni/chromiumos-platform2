@@ -342,36 +342,6 @@ TEST_F(Tpm2Test, GetVersionInfoBadInput) {
   EXPECT_FALSE(tpm_->GetVersionInfo(nullptr));
 }
 
-TEST_F(Tpm2Test, PerformEnabledOwnedCheckWithoutSignal) {
-  EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(Return(false));
-  bool enabled = false;
-  bool owned = false;
-  EXPECT_FALSE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
-  EXPECT_FALSE(enabled);
-  EXPECT_FALSE(owned);
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(false), Return(true)));
-  EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
-  EXPECT_TRUE(enabled);
-  EXPECT_FALSE(owned);
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)));
-  EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
-  EXPECT_TRUE(enabled);
-  EXPECT_TRUE(owned);
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)));
-  EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
-  EXPECT_TRUE(enabled);
-  EXPECT_TRUE(owned);
-}
-
 TEST_F(Tpm2Test, BadTpmManagerUtility) {
   EXPECT_CALL(mock_tpm_manager_utility_, Initialize())
       .WillRepeatedly(Return(false));

@@ -43,11 +43,6 @@ class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
   // For TPM-related flags: enabled is always true, other flags are settable.
   bool IsTpmOwned() const { return is_tpm_owned_; }
   void SetIsTpmOwned(bool is_tpm_owned) { is_tpm_owned_ = is_tpm_owned; }
-  bool PerformTpmEnabledOwnedCheck(bool* is_enabled, bool* is_owned) {
-    *is_enabled = true;
-    *is_owned = is_tpm_owned_;
-    return true;
-  }
   bool GetRandomDataBlob(size_t length, brillo::Blob* data) const {
     data->resize(length, 0);
     return true;
@@ -134,9 +129,6 @@ class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned())
         .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::IsTpmOwned));
-    ON_CALL(tpm_, PerformEnabledOwnedCheck(_, _))
-        .WillByDefault(Invoke(
-            this, &CryptohomeRsaKeyLoaderTest::PerformTpmEnabledOwnedCheck));
 
     ON_CALL(tpm_, GetRandomDataBlob(_, _))
         .WillByDefault(

@@ -180,7 +180,7 @@ bool TpmImpl::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
   *context = 0;
   *tpm = 0;
   SecureBlob owner_password;
-  if (auto err = GetOwnerPassword(&owner_password)) {
+  if (TPMErrorBase err = GetOwnerPassword(&owner_password)) {
     LOG(ERROR) << "ConnectContextAsOwner requires an owner password: " << *err;
     return false;
   }
@@ -1093,41 +1093,6 @@ bool TpmImpl::WriteLockNvram(uint32_t index) {
     return false;
   }
   return tpm_manager_utility_->LockSpace(index);
-}
-
-bool TpmImpl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
-  *enabled = false;
-  *owned = false;
-
-  trousers::ScopedTssContext context(ConnectContext());
-  if (!context) {
-    return false;
-  }
-
-  TSS_HCONTEXT context_handle = context.context();
-  TSS_HTPM tpm_handle;
-
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Context_GetTpmObject(context_handle, &tpm_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_GetTpmObject: " << *err;
-    return false;
-  }
-
-  UINT32 sub_cap = TSS_TPMCAP_PROP_OWNER;
-  UINT32 cap_length = 0;
-  trousers::ScopedTssMemory cap(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_TPM_GetCapability(
-          tpm_handle, TSS_TPMCAP_PROPERTY, sizeof(sub_cap),
-          reinterpret_cast<BYTE*>(&sub_cap), &cap_length, cap.ptr()))) {
-    if (ERROR_CODE(err->ErrorCode()) == TPM_E_DISABLED) {
-      *enabled = false;
-    }
-  } else if (cap_length >= (sizeof(TSS_BOOL))) {
-    *enabled = true;
-    *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
-  }
-
-  return true;
 }
 
 bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,

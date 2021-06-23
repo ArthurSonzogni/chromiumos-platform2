@@ -66,7 +66,6 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, IsOwned, (), (override));
   MOCK_METHOD(bool, IsOwnerPasswordPresent, (), (override));
   MOCK_METHOD(bool, HasResetLockPermissions, (), (override));
-  MOCK_METHOD(bool, PerformEnabledOwnedCheck, (bool*, bool*), (override));
   MOCK_METHOD(bool, GetRandomDataBlob, (size_t, brillo::Blob*), (override));
   MOCK_METHOD(bool,
               GetRandomDataSecureBlob,

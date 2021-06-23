@@ -283,19 +283,6 @@ bool Tpm2Impl::HasResetLockPermissions() {
   return has_reset_lock_permissions;
 }
 
-bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
-  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
-    return false;
-  }
-  if (enabled) {
-    *enabled = is_enabled_;
-  }
-  if (owned) {
-    *owned = is_owned_;
-  }
-  return true;
-}
-
 bool Tpm2Impl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
   brillo::SecureBlob blob(length);
   if (!this->GetRandomDataSecureBlob(length, &blob)) {

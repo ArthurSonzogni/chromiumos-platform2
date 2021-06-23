@@ -280,19 +280,6 @@ class Tpm {
   // Returns whether or not the TPM has the permission to reset lock.
   virtual bool HasResetLockPermissions() = 0;
 
-  // Returns whether or not the TPM is enabled and owned using a call to
-  // Tspi_TPM_GetCapability.
-  //
-  // Unlike former functions, this function performs the check (which could take
-  // some time) every time it is invoked. It does not use cached value.
-  //
-  // Parameters
-  //   enabled (OUT) - Whether the TPM is enabled
-  //   owned (OUT) - Whether the TPM is owned
-  //
-  // Returns true if the check was successfully carried out.
-  virtual bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) = 0;
-
   // Gets random bytes from the TPM.
   //
   // Parameters

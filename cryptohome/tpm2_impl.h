@@ -95,7 +95,6 @@ class Tpm2Impl : public Tpm {
   bool IsOwned() override;
   bool IsOwnerPasswordPresent() override;
   bool HasResetLockPermissions() override;
-  bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
   bool GetRandomDataBlob(size_t length, brillo::Blob* data) override;
   bool GetRandomDataSecureBlob(size_t length,
                                brillo::SecureBlob* data) override;
