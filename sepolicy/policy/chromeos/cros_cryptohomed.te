@@ -212,6 +212,9 @@ is_arc_vm(`
   ', (`cros_cryptohomed'));
 ')
 
+# On devices with TPMv1, cryptohomed communicates with tcsd.
+cros_tcsd_client(cros_cryptohomed);
+
 log_writer(cros_cryptohomed);
 uma_writer(cros_cryptohomed);
 allow cros_cryptohomed debugfs:dir r_dir_perms;
