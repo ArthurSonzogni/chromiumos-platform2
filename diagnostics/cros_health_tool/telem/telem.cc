@@ -315,47 +315,40 @@ void DisplayProcessInfo(const ProcessResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBatteryInfo(const BatteryResultPtr& battery_result,
-                        const bool beauty) {
-  if (battery_result->is_error()) {
-    DisplayError(battery_result->get_error());
+void DisplayBatteryInfo(const BatteryResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& battery = battery_result->get_battery_info();
-  if (battery.is_null()) {
-    std::cout << "Device does not have battery" << std::endl;
+  const auto& info = result->get_battery_info();
+  // There might be no battery if it's AC only.
+  // Run the following command on DUT to see if the device is configured to AC
+  // only.
+  // # cros_config /hardware-properties psu-type
+  if (info.is_null()) {
     return;
   }
 
-  const std::vector<std::string> headers = {
-      "charge_full",          "charge_full_design",
-      "cycle_count",          "serial_number",
-      "vendor(manufacturer)", "voltage_now",
-      "voltage_min_design",   "manufacture_date_smart",
-      "temperature_smart",    "model_name",
-      "charge_now",           "current_now",
-      "technology",           "status"};
+  base::Value output{base::Value::Type::DICTIONARY};
+  SET_DICT(charge_full, info, &output);
+  SET_DICT(charge_full_design, info, &output);
+  SET_DICT(charge_now, info, &output);
+  SET_DICT(current_now, info, &output);
+  SET_DICT(cycle_count, info, &output);
+  SET_DICT(model_name, info, &output);
+  SET_DICT(serial_number, info, &output);
+  SET_DICT(status, info, &output);
+  SET_DICT(technology, info, &output);
+  SET_DICT(vendor, info, &output);
+  SET_DICT(voltage_min_design, info, &output);
+  SET_DICT(voltage_now, info, &output);
 
-  std::string manufacture_date_smart =
-      battery->manufacture_date.value_or(kNotApplicableString);
-  std::string temperature_smart =
-      !battery->temperature.is_null()
-          ? std::to_string(battery->temperature->value)
-          : kNotApplicableString;
+  // Optional fields
+  SET_DICT(manufacture_date, info, &output);
+  SET_DICT(temperature, info, &output);
 
-  const std::vector<std::vector<std::string>> values = {
-      {std::to_string(battery->charge_full),
-       std::to_string(battery->charge_full_design),
-       std::to_string(battery->cycle_count), battery->serial_number,
-       battery->vendor, std::to_string(battery->voltage_now),
-       std::to_string(battery->voltage_min_design), manufacture_date_smart,
-       temperature_smart, battery->model_name,
-       std::to_string(battery->charge_now),
-       std::to_string(battery->current_now), battery->technology,
-       battery->status}};
-
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayAudioInfo(const AudioResultPtr& audio_result) {
@@ -703,7 +696,7 @@ void DisplaySystemInfo(const SystemResultPtr& system_result,
 void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
   const auto& battery_result = info->battery_result;
   if (battery_result)
-    DisplayBatteryInfo(battery_result, beauty);
+    DisplayBatteryInfo(battery_result);
 
   const auto& block_device_result = info->block_device_result;
   if (block_device_result)
