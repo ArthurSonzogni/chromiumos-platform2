@@ -5,6 +5,7 @@
 #include "lorgnette/sane_client_impl.h"
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/containers/flat_map.h>
 #include <base/logging.h>
 #include <base/stl_util.h>

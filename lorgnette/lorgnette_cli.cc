@@ -9,6 +9,7 @@
 
 #include <base/callback.h>
 #include <base/command_line.h>
+#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/ref_counted.h>
