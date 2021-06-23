@@ -174,16 +174,16 @@ const int64_t Cellular::kPollLocationIntervalMilliseconds = 5 * 60 * 1000;
 // static
 std::string Cellular::GetStateString(State state) {
   switch (state) {
-    case kStateDisabled:
-      return "CellularStateDisabled";
-    case kStateEnabled:
-      return "CellularStateEnabled";
-    case kStateRegistered:
-      return "CellularStateRegistered";
-    case kStateConnected:
-      return "CellularStateConnected";
-    case kStateLinked:
-      return "CellularStateLinked";
+    case State::kDisabled:
+      return "Disabled";
+    case State::kEnabled:
+      return "Enabled";
+    case State::kRegistered:
+      return "Registered";
+    case State::kConnected:
+      return "Connected";
+    case State::kLinked:
+      return "Linked";
     default:
       NOTREACHED();
   }
@@ -506,7 +506,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
       // SIM. Invoke |callback| with no error so that the enable completes.
       // If the ModemState property later changes to 'disabled', StartModem
       // will be called again.
-      SetState(kStateEnabled);
+      SetState(State::kEnabled);
       callback.Run(Error());
     } else {
       callback.Run(error);
@@ -516,8 +516,8 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
   SetCapabilityState(CapabilityState::kModemStarted);
 
-  if (state_ == kStateDisabled) {
-    SetState(kStateEnabled);
+  if (state_ == State::kDisabled) {
+    SetState(State::kEnabled);
     // Registration state updates may have been ignored while the
     // modem was not yet marked enabled.
     HandleNewRegistrationState();
@@ -546,8 +546,8 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   // Destroy any cellular services regardless of any errors that occur during
   // the stop process since we do not know the state of the modem at this point.
   DestroyAllServices();
-  if (state_ != kStateDisabled)
-    SetState(kStateDisabled);
+  if (state_ != State::kDisabled)
+    SetState(State::kDisabled);
   if (error.type() == Error::kWrongState) {
     // ModemManager.Modem will not respond to Stop when in a failed state. Allow
     // the callback to succeed so that Shill identifies and persists Cellular as
@@ -729,7 +729,7 @@ void Cellular::OnConnected() {
     return;
   }
   SLOG(this, 1) << __func__;
-  SetState(kStateConnected);
+  SetState(State::kConnected);
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
     Disconnect(nullptr, "no cellular service");
@@ -768,15 +768,15 @@ void Cellular::OnAfterResume() {
 
     // If we started disabling the modem before suspend, but that
     // suspend is still in progress, then we are not yet in
-    // kStateDisabled. That's a problem, because Cellular::Start
+    // State::kDisabled. That's a problem, because Cellular::Start
     // returns immediately in that case. Hack around that by forcing
     // |state_| here.
     //
     // TODO(quiche): Remove this hack. Maybe
     // CellularCapability3gpp should generate separate
     // notifications for Stop_Disable, and Stop_PowerDown. Then we'd
-    // update our state to kStateDisabled when Stop_Disable completes.
-    SetState(kStateDisabled);
+    // update our state to State::kDisabled when Stop_Disable completes.
+    SetState(State::kDisabled);
 
     Error error;
     SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
@@ -921,13 +921,12 @@ void Cellular::HandleNewRegistrationState() {
   if (!capability_->IsRegistered()) {
     if (!explicit_disconnect_ &&
         capability_state_ != CapabilityState::kModemStopping &&
-        (state_ == kStateLinked || state_ == kStateConnected) &&
-        service_.get()) {
+        StateIsConnected() && service_.get()) {
       metrics()->NotifyCellularDeviceDrop(
           capability_->GetNetworkTechnologyString(), service_->strength());
     }
     if (StateIsRegistered()) {
-      SetState(kStateEnabled);
+      SetState(State::kEnabled);
     }
     StopLocationPolling();
     return;
@@ -935,11 +934,11 @@ void Cellular::HandleNewRegistrationState() {
   // In Disabled state, defer creating a service until fully
   // enabled. UI will ignore the appearance of a new service
   // on a disabled device.
-  if (state_ == kStateDisabled) {
+  if (state_ == State::kDisabled) {
     return;
   }
-  if (state_ == kStateEnabled) {
-    SetState(kStateRegistered);
+  if (state_ == State::kEnabled) {
+    SetState(State::kRegistered);
 
     // Once modem enters registered state, begin polling location:
     // registered means we've successfully connected
@@ -954,7 +953,7 @@ void Cellular::UpdateServices() {
   //  * Locked: The primary SIM is locked and the modem has not started.
   //  * Failed: No valid SIM in the primary slot.
   // In these cases we want to create any services we know about for the UI.
-  if (state_ == kStateDisabled && modem_state_ != kModemStateLocked &&
+  if (state_ == State::kDisabled && modem_state_ != kModemStateLocked &&
       modem_state_ != kModemStateFailed) {
     DestroyAllServices();
     return;
@@ -976,7 +975,7 @@ void Cellular::UpdateServices() {
     manager()->cellular_service_provider()->UpdateServices(this);
   }
 
-  if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
+  if (state_ == State::kRegistered && modem_state_ == kModemStateConnected)
     OnConnected();
 
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
@@ -1178,7 +1177,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
                           "Already connected; connection request ignored.");
     metrics()->NotifyCellularConnectionResult(error->type());
     return;
-  } else if (state_ != kStateRegistered) {
+  } else if (state_ != State::kRegistered) {
     LOG(ERROR) << "Connect attempted while state = " << GetStateString(state_);
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
                           "Connect Failed: Modem not registered.");
@@ -1295,7 +1294,7 @@ void Cellular::OnDisconnectFailed() {
 
 void Cellular::EstablishLink() {
   SLOG(this, 2) << __func__;
-  CHECK_EQ(kStateConnected, state_);
+  CHECK_EQ(State::kConnected, state_);
   CHECK(capability_);
 
   CellularBearer* bearer = capability_->GetActiveBearer();
@@ -1319,9 +1318,9 @@ void Cellular::EstablishLink() {
 }
 
 void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
-  if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
+  if ((flags & IFF_UP) != 0 && state_ == State::kConnected) {
     LOG(INFO) << link_name() << " is up.";
-    SetState(kStateLinked);
+    SetState(State::kLinked);
 
     // b/182524993, b/185750211 - Currently we only support 1 config method
     // (either IPv4 or IPv6) per bearer. On IPv4 only and IPv6 only network,
@@ -1368,9 +1367,9 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     return;
   }
 
-  if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
+  if ((flags & IFF_UP) == 0 && state_ == State::kLinked) {
     LOG(INFO) << link_name() << " is down.";
-    SetState(kStateConnected);
+    SetState(State::kConnected);
     DropConnection();
   }
 }
@@ -1633,7 +1632,7 @@ void Cellular::OnTerminationCompleted(const Error& error) {
 bool Cellular::DisconnectCleanup() {
   if (!StateIsConnected())
     return false;
-  SetState(kStateRegistered);
+  SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
   DestroyIPConfig();
   return true;
@@ -1693,7 +1692,7 @@ void Cellular::StartPPP(const std::string& serial_device) {
     CHECK_EQ(service_.get(), selected_service().get());
     // Save and restore |service_| state, as DropConnection calls
     // SelectService, and SelectService will move selected_service()
-    // to kStateIdle.
+    // to State::kIdle.
     Service::ConnectState original_state(service_->state());
     Device::DropConnection();  // Don't redirect to PPPDevice.
     service_->SetState(original_state);
@@ -1873,7 +1872,7 @@ void Cellular::ConnectToPending() {
   // For eSIM this is not always true so we need to wait for the Modem to
   // become registered.
   // TODO(b/186482862): Fix this behavior in ModemManager.
-  if (state_ == kStateEnabled && modem_state_ == kModemStateEnabled) {
+  if (state_ == State::kEnabled && modem_state_ == kModemStateEnabled) {
     LOG(WARNING) << __func__ << ": Waiting for Modem registration.";
     return;
   }
@@ -2536,12 +2535,12 @@ void Cellular::OnOperatorChanged() {
 }
 
 bool Cellular::StateIsConnected() {
-  return state_ == kStateConnected || state_ == kStateLinked;
+  return state_ == State::kConnected || state_ == State::kLinked;
 }
 
 bool Cellular::StateIsRegistered() {
-  return state_ == kStateRegistered || state_ == kStateConnected ||
-         state_ == kStateLinked;
+  return state_ == State::kRegistered || state_ == State::kConnected ||
+         state_ == State::kLinked;
 }
 
 void Cellular::SetServiceForTesting(CellularServiceRefPtr service) {

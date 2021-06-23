@@ -241,7 +241,7 @@ TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   static_cast<CellularCapability3gpp*>(cellular->capability_for_testing())
       ->SetDBusPropertiesProxyForTesting(
           DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting());
-  cellular->set_state_for_testing(Cellular::kStateEnabled);
+  cellular->set_state_for_testing(Cellular::State::kEnabled);
 
   Cellular::SimProperties sim1_properties;
   sim1_properties.iccid = "iccid1";

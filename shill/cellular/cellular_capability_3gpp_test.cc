@@ -683,7 +683,7 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   }
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
 
-  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kDisabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateUnknown, cellular_->modem_state());
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
 
@@ -691,7 +691,7 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   // enabled, a termination action should be added.
   cellular_->OnModemStateChanged(Cellular::kModemStateEnabled);
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::kStateEnabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kEnabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateEnabled, cellular_->modem_state());
   EXPECT_FALSE(manager_.termination_actions_.IsEmpty());
 
@@ -703,7 +703,7 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   // disabled, the termination action should be removed.
   cellular_->OnModemStateChanged(Cellular::kModemStateDisabled);
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kDisabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateDisabled, cellular_->modem_state());
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
 
@@ -734,7 +734,7 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   }
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(1);
 
-  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kDisabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateUnknown, cellular_->modem_state());
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
 
@@ -742,7 +742,7 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   // enabled, a termination action should be added.
   cellular_->OnModemStateChanged(Cellular::kModemStateEnabled);
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::kStateEnabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kEnabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateEnabled, cellular_->modem_state());
   EXPECT_FALSE(manager_.termination_actions_.IsEmpty());
 
@@ -750,7 +750,7 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   // not due to a suspend request.
   cellular_->SetEnabled(false);
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::kStateDisabled, cellular_->state());
+  EXPECT_EQ(Cellular::State::kDisabled, cellular_->state());
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
 
   // No termination action should be called here.
@@ -1830,17 +1830,17 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
 
   // Device is connected.
-  cellular_->set_state_for_testing(Cellular::kStateConnected);
+  cellular_->set_state_for_testing(Cellular::State::kConnected);
   capability_->UpdatePendingActivationState();
 
   // Device is linked.
-  cellular_->set_state_for_testing(Cellular::kStateLinked);
+  cellular_->set_state_for_testing(Cellular::State::kLinked);
   capability_->UpdatePendingActivationState();
 
   // Got valid MDN, subscription_state_ is SubscriptionState::kUnknown
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
-  cellular_->set_state_for_testing(Cellular::kStateRegistered);
+  cellular_->set_state_for_testing(Cellular::State::kRegistered);
   cellular_->SetMdn("1020304");
   capability_->subscription_state_ = SubscriptionState::kUnknown;
   capability_->UpdatePendingActivationState();
@@ -1856,7 +1856,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   // Got invalid MDN, subscription_state_ is SubscriptionState::kProvisioned
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
-  cellular_->set_state_for_testing(Cellular::kStateRegistered);
+  cellular_->set_state_for_testing(Cellular::State::kRegistered);
   cellular_->SetMdn("0000000");
   capability_->subscription_state_ = SubscriptionState::kProvisioned;
   capability_->UpdatePendingActivationState();

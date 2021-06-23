@@ -45,21 +45,20 @@ class Cellular : public Device,
     kTypeInvalid,
   };
 
-  // The device states progress linearly from Disabled to Linked.
-  enum State {
+  enum class State {
     // This is the initial state of the modem and indicates that the modem radio
     // is not turned on.
-    kStateDisabled,
+    kDisabled,
     // This state indicates that the modem radio is turned on, and it should be
     // possible to measure signal strength.
-    kStateEnabled,
+    kEnabled,
     // The modem has registered with a network and has signal quality
     // measurements. A cellular service object is created.
-    kStateRegistered,
+    kRegistered,
     // The modem has connected to a network.
-    kStateConnected,
-    // The network interface is UP.
-    kStateLinked,
+    kConnected,
+    // The network interface is up.
+    kLinked,
   };
 
   // This enum must be kept in sync with ModemManager's MMModemState enum.
@@ -585,7 +584,7 @@ class Cellular : public Device,
   bool StateIsConnected();
   bool StateIsRegistered();
 
-  State state_ = kStateDisabled;
+  State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
   CapabilityState capability_state_ = CapabilityState::kCellularStopped;
 
