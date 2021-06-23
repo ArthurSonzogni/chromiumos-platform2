@@ -554,6 +554,45 @@ constexpr char kTypeBroadcast[] = "broadcast";
 constexpr char kTypePeripheral[] = "peripheral";
 }  // namespace bluetooth_advertisement
 
+// https://chromium.googlesource.com/chromiumos/third_party/bluez/+/refs/heads/chromeos-5.54/doc/advertisement-monitor-api.txt
+namespace bluetooth_advertisement_monitor {
+// Bluetooth advertisement monitor service identifiers.
+constexpr char kBluetoothAdvertisementMonitorServiceName[] = "org.bluez";
+constexpr char kBluetoothAdvertisementMonitorInterface[] =
+    "org.bluez.AdvertisementMonitor1";
+
+// Bluetooth advertisement monitor methods.
+constexpr char kRelease[] = "Release";
+constexpr char kActivate[] = "Activate";
+constexpr char kDeviceFound[] = "DeviceFound";
+constexpr char kDeviceLost[] = "DeviceLost";
+
+// Bluetooth advertisement monitor properties.
+constexpr char kType[] = "Type";
+constexpr char kRSSILowThreshold[] = "RSSILowThreshold";
+constexpr char kRSSIHighThreshold[] = "RSSIHighThreshold";
+constexpr char kRSSIHighTimeout[] = "RSSIHighTimeout";
+constexpr char kRSSILowTimeout[] = "RSSILowTimeout";
+constexpr char kRSSISamplingPeriod[] = "RSSISamplingPeriod";
+constexpr char kPatterns[] = "Patterns";
+}  // namespace bluetooth_advertisement_monitor
+
+// https://chromium.googlesource.com/chromiumos/third_party/bluez/+/refs/heads/chromeos-5.54/doc/advertisement-monitor-api.txt
+namespace bluetooth_advertisement_monitor_manager {
+// Bluetooth advertisement monitor manager service identifiers.
+constexpr char kBluetoothAdvertisementMonitorManagerServiceName[] = "org.bluez";
+constexpr char kBluetoothAdvertisementMonitorManagerInterface[] =
+    "org.bluez.AdvertisementMonitorManager1";
+
+// Bluetooth advertisement monitor manager methods.
+constexpr char kRegisterMonitor[] = "RegisterMonitor";
+constexpr char kUnregisterMonitor[] = "UnregisterMonitor";
+
+// Bluetooth advertisement monitor manager properties.
+constexpr char kSupportedMonitorTypes[] = "SupportedMonitorTypes";
+constexpr char kSupportedFeatures[] = "SupportedFeatures";
+}  // namespace bluetooth_advertisement_monitor_manager
+
 // https://chromium.googlesource.com/chromiumos/third_party/bluez/+/HEAD/doc/advertising-api.txt
 namespace bluetooth_advertising_manager {
 // Bluetooth LE Advertising Manager service identifiers.
