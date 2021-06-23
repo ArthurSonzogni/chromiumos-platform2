@@ -23,30 +23,6 @@ TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
                                      CryptohomeKeyLoader* cryptohome_key_loader)
     : tpm_(tpm), cryptohome_key_loader_(cryptohome_key_loader) {}
 
-// static
-CryptoError TpmAuthBlockUtils::TpmErrorToCrypto(
-    Tpm::TpmRetryAction retry_action) {
-  switch (retry_action) {
-    case Tpm::kTpmRetryFatal:
-      // All errors mapped here will cause re-creating the cryptohome if
-      // they occur when decrypting the keyset.
-      return CryptoError::CE_TPM_FATAL;
-    case Tpm::kTpmRetryCommFailure:
-    case Tpm::kTpmRetryInvalidHandle:
-    case Tpm::kTpmRetryLoadFail:
-    case Tpm::kTpmRetryLater:
-      return CryptoError::CE_TPM_COMM_ERROR;
-    case Tpm::kTpmRetryDefendLock:
-      return CryptoError::CE_TPM_DEFEND_LOCK;
-    case Tpm::kTpmRetryReboot:
-      return CryptoError::CE_TPM_REBOOT;
-    default:
-      // TODO(chromium:709646): kTpmRetryFailNoRetry maps here now. Find
-      // a better corresponding CryptoError.
-      return CryptoError::CE_NONE;
-  }
-}
-
 CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
     const hwsec::error::TPMErrorBase& err) {
   hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
@@ -63,13 +39,6 @@ CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
       // a better corresponding CryptoError.
       return CryptoError::CE_TPM_CRYPTO;
   }
-}
-
-// static
-bool TpmAuthBlockUtils::TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
-  return retry_action == Tpm::kTpmRetryLoadFail ||
-         retry_action == Tpm::kTpmRetryInvalidHandle ||
-         retry_action == Tpm::kTpmRetryCommFailure;
 }
 
 bool TpmAuthBlockUtils::TPMErrorIsRetriable(
