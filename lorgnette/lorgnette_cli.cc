@@ -336,10 +336,6 @@ base::Optional<lorgnette::ScannerCapabilities> GetScannerCapabilities(
 void PrintScannerCapabilities(
     const lorgnette::ScannerCapabilities& capabilities) {
   std::cout << "--- Capabilities ---" << std::endl;
-  std::cout << "Resolutions:" << std::endl;
-  for (uint32_t resolution : capabilities.resolutions()) {
-    std::cout << "\t" << resolution << std::endl;
-  }
 
   std::cout << "Sources:" << std::endl;
   for (const lorgnette::DocumentSource& source : capabilities.sources()) {
@@ -349,11 +345,15 @@ void PrintScannerCapabilities(
       std::cout << "\t\t" << source.area().width() << "mm wide by "
                 << source.area().height() << "mm tall" << std::endl;
     }
-  }
-
-  std::cout << "Color Modes:" << std::endl;
-  for (int color_mode : capabilities.color_modes()) {
-    std::cout << "\t" << lorgnette::ColorMode_Name(color_mode) << std::endl;
+    std::cout << "\t\tResolutions:" << std::endl;
+    for (uint32_t resolution : source.resolutions()) {
+      std::cout << "\t\t\t" << resolution << std::endl;
+    }
+    std::cout << "\t\tColor Modes:" << std::endl;
+    for (int color_mode : source.color_modes()) {
+      std::cout << "\t\t\t" << lorgnette::ColorMode_Name(color_mode)
+                << std::endl;
+    }
   }
 }
 
