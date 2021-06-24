@@ -742,6 +742,9 @@ message LxdContainerStartingSignal {
     // One or more steps failed and the container could not be started. No
     // more signals are expected.
     FAILED = 3;
+
+    // Still starting, this is sent as a heartbeat on an interval.
+    STARTING = 4;
   }
 
   // The current status of starting the container.

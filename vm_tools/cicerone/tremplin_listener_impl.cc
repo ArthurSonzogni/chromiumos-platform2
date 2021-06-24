@@ -173,6 +173,9 @@ grpc::Status TremplinListenerImpl::UpdateStartStatus(
     case tremplin::ContainerStartProgress::FAILED:
       status = vm_tools::cicerone::Service::StartStatus::FAILED;
       break;
+    case tremplin::ContainerStartProgress::STARTING:
+      status = vm_tools::cicerone::Service::StartStatus::STARTING;
+      break;
     default:
       status = vm_tools::cicerone::Service::StartStatus::UNKNOWN;
       break;

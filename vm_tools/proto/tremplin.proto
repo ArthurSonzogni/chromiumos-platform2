@@ -203,12 +203,12 @@ message StartContainerResponse {
     // The container could not be started.
     FAILED = 3;
 
-    // The container is starting. Further updates will be delievered via
+    // The container is starting. Further updates will be delivered via
     // UpdateStartStatus.
     STARTING = 4;
 
     // The container is remapping its rootfs uids/gids and will take longer than
-    // usual to start up. Further updates will be delievered via
+    // usual to start up. Further updates will be delivered via
     // UpdateStartStatus.
     REMAPPING = 5;
   }
@@ -374,6 +374,9 @@ message ContainerStartProgress {
 
     // One or more steps failed and the container could not be started.
     FAILED = 3;
+
+    // Still starting, this is sent as a heartbeat on an interval.
+    STARTING = 4;
   }
 
   // The current status of the container.

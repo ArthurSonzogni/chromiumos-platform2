@@ -657,6 +657,9 @@ void Service::LxdContainerStarting(const uint32_t cid,
     case Service::StartStatus::FAILED:
       proto.set_status(LxdContainerStartingSignal::FAILED);
       break;
+    case Service::StartStatus::STARTING:
+      proto.set_status(LxdContainerStartingSignal::STARTING);
+      break;
     default:
       proto.set_status(LxdContainerStartingSignal::UNKNOWN);
       break;

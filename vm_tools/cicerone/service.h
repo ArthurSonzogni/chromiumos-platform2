@@ -116,6 +116,7 @@ class Service final {
     STARTED,
     CANCELLED,
     FAILED,
+    STARTING,
   };
 
   // Notifies the service that a VM with |cid| has finished its create
