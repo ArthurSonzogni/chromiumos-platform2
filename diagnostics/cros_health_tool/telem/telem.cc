@@ -423,49 +423,38 @@ void DisplayBootPerformanceInfo(const BootPerformanceResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBlockDeviceInfo(
-    const NonRemovableBlockDeviceResultPtr& block_device_result,
-    const bool beauty) {
-  if (block_device_result->is_error()) {
-    DisplayError(block_device_result->get_error());
+void DisplayBlockDeviceInfo(const NonRemovableBlockDeviceResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const std::vector<std::string> headers = {
-      "path",
-      "size",
-      "type",
-      "manfid",
-      "name",
-      "serial",
-      "bytes_read_since_last_boot",
-      "bytes_written_since_last_boot",
-      "read_time_seconds_since_last_boot",
-      "write_time_seconds_since_last_boot",
-      "io_time_seconds_since_last_boot",
-      "discard_time_seconds_since_last_boot"};
+  const auto& infos = result->get_block_device_info();
 
-  const auto& block_devices = block_device_result->get_block_device_info();
-  std::vector<std::vector<std::string>> values;
-  for (const auto& device : block_devices) {
-    std::string discard_time =
-        !device->discard_time_seconds_since_last_boot.is_null()
-            ? std::to_string(
-                  device->discard_time_seconds_since_last_boot->value)
-            : kNotApplicableString;
-    values.push_back(
-        {device->path, std::to_string(device->size), device->type,
-         std::to_string(device->manufacturer_id), device->name,
-         std::to_string(device->serial),
-         std::to_string(device->bytes_read_since_last_boot),
-         std::to_string(device->bytes_written_since_last_boot),
-         std::to_string(device->read_time_seconds_since_last_boot),
-         std::to_string(device->write_time_seconds_since_last_boot),
-         std::to_string(device->io_time_seconds_since_last_boot),
-         discard_time});
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* block_devices =
+      output.SetKey("block_devices", base::Value{base::Value::Type::LIST});
+  for (const auto& info : infos) {
+    base::Value data{base::Value::Type::DICTIONARY};
+    SET_DICT(bytes_read_since_last_boot, info, &data);
+    SET_DICT(bytes_written_since_last_boot, info, &data);
+    SET_DICT(io_time_seconds_since_last_boot, info, &data);
+    SET_DICT(name, info, &data);
+    SET_DICT(path, info, &data);
+    SET_DICT(read_time_seconds_since_last_boot, info, &data);
+    SET_DICT(serial, info, &data);
+    SET_DICT(size, info, &data);
+    SET_DICT(type, info, &data);
+    SET_DICT(write_time_seconds_since_last_boot, info, &data);
+    SET_DICT(manufacturer_id, info, &data);
+
+    // optional field
+    SET_DICT(discard_time_seconds_since_last_boot, info, &data);
+
+    block_devices->Append(std::move(data));
   }
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayBluetoothInfo(const BluetoothResultPtr& result) {
@@ -753,7 +742,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& block_device_result = info->block_device_result;
   if (block_device_result)
-    DisplayBlockDeviceInfo(block_device_result, beauty);
+    DisplayBlockDeviceInfo(block_device_result);
 
   const auto& cpu_result = info->cpu_result;
   if (cpu_result)
