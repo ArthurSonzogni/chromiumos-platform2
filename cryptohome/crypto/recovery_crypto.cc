@@ -109,8 +109,9 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
   // Dispose private key.
   ephemeral_priv_key.clear();
 
-  if (!AesGcmEncrypt(mediator_share, aes_gcm_key, &encrypted_ms->iv,
-                     &encrypted_ms->tag, &encrypted_ms->encrypted_data)) {
+  if (!AesGcmEncrypt(mediator_share, /*ad=*/base::nullopt, aes_gcm_key,
+                     &encrypted_ms->iv, &encrypted_ms->tag,
+                     &encrypted_ms->encrypted_data)) {
     LOG(ERROR) << "Failed to perform AES-GCM encryption";
     return false;
   }

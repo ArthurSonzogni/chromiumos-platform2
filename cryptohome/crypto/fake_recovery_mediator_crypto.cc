@@ -93,8 +93,9 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
   }
 
   if (!AesGcmDecrypt(encrypted_mediator_share.encrypted_data,
-                     encrypted_mediator_share.tag, aes_gcm_key,
-                     encrypted_mediator_share.iv, mediator_share)) {
+                     /*ad=*/base::nullopt, encrypted_mediator_share.tag,
+                     aes_gcm_key, encrypted_mediator_share.iv,
+                     mediator_share)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption";
     return false;
   }

@@ -101,7 +101,8 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetAesGcmEncrypted(
       builder.GetBufferPointer() + builder.GetSize());
 
   brillo::SecureBlob tag, iv, ciphertext;
-  if (!AesGcmEncrypt(serialized_uss, main_key, &iv, &tag, &ciphertext)) {
+  if (!AesGcmEncrypt(serialized_uss, /*ad=*/base::nullopt, main_key, &iv, &tag,
+                     &ciphertext)) {
     LOG(ERROR) << "Failed to encrypt UserSecretStash";
     return base::nullopt;
   }
@@ -142,7 +143,8 @@ bool UserSecretStash::FromAesGcmEncrypted(const brillo::SecureBlob& flatbuffer,
   }
 
   brillo::SecureBlob serialized_uss;
-  if (!AesGcmDecrypt(ciphertext, tag, main_key, iv, &serialized_uss)) {
+  if (!AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, main_key, iv,
+                     &serialized_uss)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash";
     return false;
   }

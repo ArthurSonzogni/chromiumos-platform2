@@ -87,13 +87,14 @@ bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
 }
 
 bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
+                   const base::Optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& tag,
                    const brillo::SecureBlob& key,
                    const brillo::SecureBlob& iv,
                    brillo::SecureBlob* plaintext) {
-  CHECK_EQ(key.size(), kAesGcm256KeySize);
-  CHECK_EQ(iv.size(), kAesGcmIVSize);
-  CHECK_EQ(tag.size(), kAesGcmTagSize);
+  DCHECK_EQ(key.size(), kAesGcm256KeySize);
+  DCHECK_EQ(iv.size(), kAesGcmIVSize);
+  DCHECK_EQ(tag.size(), kAesGcmTagSize);
 
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (ctx.get() == nullptr) {
@@ -119,9 +120,23 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
     return false;
   }
 
-  plaintext->resize(ciphertext.size());
+  if (ad.has_value()) {
+    DCHECK_NE(ad.value().size(), 0);
+    int out_size = 0;
+    if (EVP_DecryptUpdate(ctx.get(), nullptr, &out_size, ad.value().data(),
+                          ad.value().size()) != 1) {
+      LOG(ERROR) << "Failed to add additional authentication data.";
+      return false;
+    }
+    if (out_size != ad.value().size()) {
+      LOG(ERROR) << "Failed to process entire ad.";
+      return false;
+    }
+  }
+  brillo::SecureBlob result;
+  result.resize(ciphertext.size());
   int output_size = 0;
-  if (EVP_DecryptUpdate(ctx.get(), plaintext->data(), &output_size,
+  if (EVP_DecryptUpdate(ctx.get(), result.data(), &output_size,
                         ciphertext.data(), ciphertext.size()) != 1) {
     LOG(ERROR) << "Failed to decrypt the plaintext.";
     return false;
@@ -141,16 +156,20 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
 
   output_size = 0;
   int ret_val = EVP_DecryptFinal_ex(ctx.get(), nullptr, &output_size);
-
-  return output_size == 0 && ret_val > 0;
+  bool success = output_size == 0 && ret_val > 0;
+  if (success) {
+    *plaintext = result;
+  }
+  return success;
 }
 
 bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
+                   const base::Optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& key,
                    brillo::SecureBlob* iv,
                    brillo::SecureBlob* tag,
                    brillo::SecureBlob* ciphertext) {
-  CHECK_EQ(key.size(), kAesGcm256KeySize);
+  DCHECK_EQ(key.size(), kAesGcm256KeySize);
 
   iv->resize(kAesGcmIVSize);
   GetSecureRandom(iv->data(), kAesGcmIVSize);
@@ -179,9 +198,23 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
     return false;
   }
 
-  ciphertext->resize(plaintext.size());
+  if (ad.has_value()) {
+    DCHECK_NE(ad.value().size(), 0);
+    int out_size = 0;
+    if (EVP_EncryptUpdate(ctx.get(), nullptr, &out_size, ad.value().data(),
+                          ad.value().size()) != 1) {
+      LOG(ERROR) << "Failed to add additional authentication data.";
+      return false;
+    }
+    if (out_size != ad.value().size()) {
+      LOG(ERROR) << "Failed to process entire ad.";
+      return false;
+    }
+  }
+  brillo::SecureBlob result;
+  result.resize(plaintext.size());
   int processed_bytes = 0;
-  if (EVP_EncryptUpdate(ctx.get(), ciphertext->data(), &processed_bytes,
+  if (EVP_EncryptUpdate(ctx.get(), result.data(), &processed_bytes,
                         plaintext.data(), plaintext.size()) != 1) {
     LOG(ERROR) << "Failed to encrypt plaintext.";
     return false;
@@ -205,6 +238,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
     return false;
   }
 
+  *ciphertext = result;
   return true;
 }
 

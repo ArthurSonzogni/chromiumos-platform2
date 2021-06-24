@@ -129,7 +129,8 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   brillo::SecureBlob plaintext("I am encrypting this message.");
 
   // Encrypt using sender's `aes_gcm_key1`.
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, aes_gcm_key1, &iv, &tag, &ciphertext));
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, aes_gcm_key1, &iv,
+                            &tag, &ciphertext));
 
   ASSERT_TRUE(GenerateEcdhHkdfRecipientKey(*ec, rec_priv_key, eph_pub_key, info,
                                            salt, kHkdfHash, kEcdhHkdfKeySize,
@@ -143,8 +144,8 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
 
   // Decrypt using recipient's `aes_gcm_key2`.
   brillo::SecureBlob decrypted_plaintext;
-  EXPECT_TRUE(
-      AesGcmDecrypt(ciphertext, tag, aes_gcm_key2, iv, &decrypted_plaintext));
+  EXPECT_TRUE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, aes_gcm_key2,
+                            iv, &decrypted_plaintext));
 
   EXPECT_EQ(plaintext, decrypted_plaintext);
 }

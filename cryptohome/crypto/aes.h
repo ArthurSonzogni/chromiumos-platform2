@@ -80,11 +80,13 @@ bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
 //
 // Parameters:
 //   ciphertext - The encrypted data.
+//   ad - (optional) additional authenticated data.
 //   tag - The integrity check of the data.
 //   key - The key to decrypt with.
 //   iv - The IV to decrypt with.
 //   plaintext - On success, the decrypted data.
 bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
+                   const base::Optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& tag,
                    const brillo::SecureBlob& key,
                    const brillo::SecureBlob& iv,
@@ -96,11 +98,13 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
 //
 // Parameters:
 //   plaintext - The plain text data to encrypt.
+//   ad - (optional) additional authenticated data
 //   key - The AES key to use.
 //   iv - The initialization vector generated randomly.
 //   tag - On success, the integrity tag of the data.
 //   ciphertext - On success, the encrypted data.
 bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
+                   const base::Optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& key,
                    brillo::SecureBlob* iv,
                    brillo::SecureBlob* tag,
