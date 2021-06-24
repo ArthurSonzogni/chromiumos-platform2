@@ -388,6 +388,8 @@ has_arc(`
 /mnt/stateful_partition/home/root(/[0-9a-z]{40})? u:object_r:cros_home_root:s0
 /mnt/stateful_partition/home/user(/[0-9a-z]{40})? u:object_r:cros_home_user:s0
 /mnt/stateful_partition/home/chronos(/(?!(u-[0-9a-z]{40}|user)).*)?   u:object_r:cros_home_chronos:s0
+/mnt/stateful_partition/var_overlay/db/pkg(/.*)? u:object_r:cros_var_db_pkg:s0
+/mnt/stateful_partition/var_overlay/lib/portage(/.*)? u:object_r:cros_var_lib_portage:s0
 
 # /home
 /home                            u:object_r:cros_home:s0

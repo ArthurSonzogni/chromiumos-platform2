@@ -353,6 +353,7 @@ type cros_var_cache_camera, file_type, cros_file_type, cros_var_file_type;
 
 # /var/db
 type cros_var_db, file_type, cros_file_type, cros_var_file_type;
+type cros_var_db_pkg, file_type, cros_file_type, cros_var_file_type;
 
 # var/lib
 type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
@@ -363,6 +364,7 @@ type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_portage, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_shill, file_type, cros_file_type, cros_var_file_type;
