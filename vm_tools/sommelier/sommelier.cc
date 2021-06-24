@@ -866,7 +866,7 @@ static void sl_buffer_release(void* data, struct wl_buffer* buffer) {
   struct sl_host_buffer* host =
       static_cast<sl_host_buffer*>(wl_buffer_get_user_data(buffer));
 
-  auto resource_id = wl_resource_get_id(host->resource);
+  auto resource_id = host->resource ? wl_resource_get_id(host->resource) : -1;
   TRACE_EVENT("surface", "sl_buffer_release", "resource_id", resource_id);
   if (host->ctx->timing != NULL) {
     host->ctx->timing->UpdateLastRelease(resource_id);
@@ -878,7 +878,7 @@ static const struct wl_buffer_listener sl_buffer_listener = {sl_buffer_release};
 
 static void sl_destroy_host_buffer(struct wl_resource* resource) {
   TRACE_EVENT("surface", "sl_destroy_host_buffer", "resource_id",
-              wl_resource_get_id(resource));
+              resource ? wl_resource_get_id(resource) : -1);
   struct sl_host_buffer* host =
       static_cast<sl_host_buffer*>(wl_resource_get_user_data(resource));
 

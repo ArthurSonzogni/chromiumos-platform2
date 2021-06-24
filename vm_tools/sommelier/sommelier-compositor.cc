@@ -105,11 +105,15 @@ static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   free(buffer);
 }
 
+static uint32_t try_wl_resource_get_id(wl_resource* resource) {
+  return resource ? wl_resource_get_id(resource) : -1;
+}
+
 static void sl_output_buffer_release(void* data, struct wl_buffer* buffer) {
   struct sl_output_buffer* output_buffer =
       static_cast<sl_output_buffer*>(wl_buffer_get_user_data(buffer));
   TRACE_EVENT("surface", "sl_output_buffer_release", "resource_id",
-              wl_resource_get_id(output_buffer->surface->resource));
+              try_wl_resource_get_id(output_buffer->surface->resource));
   struct sl_host_surface* host_surface = output_buffer->surface;
 
   wl_list_remove(&output_buffer->link);
@@ -122,7 +126,7 @@ static const struct wl_buffer_listener sl_output_buffer_listener = {
 static void sl_host_surface_destroy(struct wl_client* client,
                                     struct wl_resource* resource) {
   TRACE_EVENT("surface", "sl_host_surface_destroy", "resource_id",
-              wl_resource_get_id(resource));
+              try_wl_resource_get_id(resource));
   wl_resource_destroy(resource);
 }
 
@@ -308,7 +312,6 @@ static void sl_host_surface_attach(struct wl_client* client,
         // guest side sync going forward.
         zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
         host->surface_sync = NULL;
-        host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
         fprintf(stderr,
                 "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, defaulting "
                 "to implicit fence for synchronization.\n");
@@ -333,7 +336,7 @@ static void sl_host_surface_attach(struct wl_client* client,
   }
 
   wl_list_for_each(window, &host->ctx->windows, link) {
-    if (window->host_surface_id == wl_resource_get_id(resource)) {
+    if (window->host_surface_id == try_wl_resource_get_id(resource)) {
       while (sl_process_pending_configure_acks(window, host))
         continue;
 
@@ -389,7 +392,7 @@ static void sl_host_surface_damage(struct wl_client* client,
                                    int32_t width,
                                    int32_t height) {
   TRACE_EVENT("surface", "sl_host_surface_damage", "resource_id",
-              wl_resource_get_id(resource));
+              try_wl_resource_get_id(resource));
   const struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
   const double scale = host->ctx->scale;
@@ -427,7 +430,7 @@ static void sl_host_surface_damage_buffer(struct wl_client* client,
                                           int32_t width,
                                           int32_t height) {
   TRACE_EVENT("surface", "sl_host_surface_damage_buffer", "resource_id",
-              wl_resource_get_id(resource));
+              try_wl_resource_get_id(resource));
   const struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
   struct sl_output_buffer* buffer;
@@ -499,7 +502,7 @@ static void sl_host_surface_frame(struct wl_client* client,
                                   struct wl_resource* resource,
                                   uint32_t callback) {
   TRACE_EVENT("surface", "sl_host_surface_frame", "resource_id",
-              wl_resource_get_id(resource));
+              try_wl_resource_get_id(resource));
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
   struct sl_host_callback* host_callback =
@@ -597,7 +600,7 @@ static void copy_damaged_rect(sl_host_surface* host,
 
 static void sl_host_surface_commit(struct wl_client* client,
                                    struct wl_resource* resource) {
-  auto resource_id = wl_resource_get_id(resource);
+  auto resource_id = try_wl_resource_get_id(resource);
   TRACE_EVENT("surface", "sl_host_surface_commit", "resource_id", resource_id);
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
@@ -726,7 +729,7 @@ static void sl_host_surface_commit(struct wl_client* client,
     // commit until window is created.
     struct sl_window* window;
     wl_list_for_each(window, &host->ctx->windows, link) {
-      if (window->host_surface_id == wl_resource_get_id(resource)) {
+      if (window->host_surface_id == try_wl_resource_get_id(resource)) {
         if (window->xdg_surface) {
           wl_surface_commit(host->proxy);
           if (host->contents_width && host->contents_height)
@@ -778,14 +781,14 @@ static const struct wl_surface_interface sl_surface_implementation = {
 
 static void sl_destroy_host_surface(struct wl_resource* resource) {
   TRACE_EVENT("surface", "sl_destroy_host_surface", "resource_id",
-              wl_resource_get_id(resource));
+              try_wl_resource_get_id(resource));
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
   struct sl_window *window, *surface_window = NULL;
   struct sl_output_buffer* buffer;
 
   wl_list_for_each(window, &host->ctx->windows, link) {
-    if (window->host_surface_id == wl_resource_get_id(resource)) {
+    if (window->host_surface_id == try_wl_resource_get_id(resource)) {
       surface_window = window;
       break;
     }
