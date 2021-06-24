@@ -26,8 +26,14 @@ class Cr50Utils {
   // correct, false if the unlock code is rejected.
   virtual bool PerformRsu(const std::string& unlock_code) const = 0;
 
+  // Enable factory mode. Requires HWWP off and not having FWMP.
+  virtual void EnableFactoryMode() const = 0;
+
   // Check if cr50 factory mode is enabled.
   virtual bool IsFactoryModeEnabled() const = 0;
+
+  // Check if device has FWMP.
+  virtual bool HasFwmp() const = 0;
 };
 
 }  // namespace rmad

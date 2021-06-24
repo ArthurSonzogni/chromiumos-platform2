@@ -7,12 +7,20 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+
 namespace rmad {
+
+class Cr50Utils;
 
 class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |cr50_utils_| for testing.
+  WriteProtectDisableCompleteStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<Cr50Utils> cr50_utils);
   ~WriteProtectDisableCompleteStateHandler() override = default;
 
   // This state is not repeatable. Must go through the rest of the RMA flow
@@ -21,6 +29,9 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ private:
+  std::unique_ptr<Cr50Utils> cr50_utils_;
 };
 
 }  // namespace rmad

@@ -19,7 +19,9 @@ class Cr50UtilsImpl : public Cr50Utils {
   bool RoVerificationKeyPressed() const override;
   bool GetRsuChallengeCode(std::string* challenge_code) const override;
   bool PerformRsu(const std::string& unlock_code) const override;
+  void EnableFactoryMode() const override;
   bool IsFactoryModeEnabled() const override;
+  bool HasFwmp() const override;
 };
 
 }  // namespace rmad
