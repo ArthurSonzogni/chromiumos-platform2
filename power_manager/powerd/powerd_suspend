@@ -360,9 +360,16 @@ else
       fi
     fi
 
+    # TODO (b/193451073): Move this to powerd to reduce the delay of blocking
+    # display turning on.
     if [ -e /sys/firmware/log ]; then
-      # Grep /sys/firmware/log for WAK.
+      # Grep /sys/firmware/log for WAK for x86 platforms.
       wakeup_source="$(grep "PM1_STS: WAK" /sys/firmware/log | tail -n 1)"
+      # Try another pattern for MTK (ARM) platforms.
+      if [ -z "${wakeup_source}" ]; then
+        wakeup_source="$(grep "wake up by" /sys/firmware/log | tail -n 1)"
+      fi
+      # Found nothing in the end, the wakeup source is unknown.
       if [ -z "${wakeup_source}" ]; then
         wakeup_source='unknown'
       fi
