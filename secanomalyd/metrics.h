@@ -11,7 +11,8 @@
 // numeric values should never be reused.
 enum class SecurityAnomaly {
   kMountInitNsWx = 0,
-  kMaxValue = kMountInitNsWx,
+  kMountInitNsWxUsrLocal = 1,
+  kMaxValue = kMountInitNsWxUsrLocal,
 };
 
 bool SendSecurityAnomalyToUMA(SecurityAnomaly secanomaly);

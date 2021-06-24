@@ -29,6 +29,8 @@ const std::vector<base::FilePath> kDestPathsToFilter = {
     base::FilePath("/media/fuse"),
     base::FilePath("/media/removable"),
 };
+
+const base::FilePath kUsrLocal = base::FilePath("/usr/local");
 }  // namespace
 
 MountEntry::MountEntry(base::StringPiece mount_str) {
@@ -65,4 +67,8 @@ bool MountEntry::IsUsbDriveOrArchive() {
   }
 
   return false;
+}
+
+bool MountEntry::IsDestInUsrLocal() {
+  return kUsrLocal == this->dest() || kUsrLocal.IsParent(this->dest());
 }

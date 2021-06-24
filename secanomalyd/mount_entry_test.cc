@@ -53,3 +53,24 @@ TEST(MountEntryTest, ArchiveFileInDownloads) {
       "user_id=1000,group_id=1001,default_permissions,allow_other 0 0");
   ASSERT_TRUE(e.IsUsbDriveOrArchive());
 }
+
+TEST(MountEntryTest, UsrLocalIsUsrLocal) {
+  MountEntry e(
+      "/dev/sda1 /usr/local ext4 "
+      "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0");
+  ASSERT_TRUE(e.IsDestInUsrLocal());
+}
+
+TEST(MountEntryTest, UsrLocalBinIsInUsrLocal) {
+  MountEntry e(
+      "/dev/sda1 /usr/local/bin ext4 "
+      "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0");
+  ASSERT_TRUE(e.IsDestInUsrLocal());
+}
+
+TEST(MountEntryTest, UsrIsNotInUsrLocal) {
+  MountEntry e(
+      "/dev/sda1 /usr ext4 "
+      "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0");
+  ASSERT_FALSE(e.IsDestInUsrLocal());
+}

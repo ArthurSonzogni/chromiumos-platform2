@@ -127,8 +127,18 @@ void Daemon::DoWXMountCheck() {
 
         // Report metrics on it, if not running in dev mode.
         if (ShouldReport(dev_)) {
-          if (!SendSecurityAnomalyToUMA(SecurityAnomaly::kMountInitNsWx)) {
-            LOG(WARNING) << "Could not upload metrics";
+          // Report /usr/local mounts separately because those can indicate
+          // systems where |cros_debug == 0| but the system is still a dev
+          // system.
+          if (e.IsDestInUsrLocal()) {
+            if (!SendSecurityAnomalyToUMA(
+                    SecurityAnomaly::kMountInitNsWxUsrLocal)) {
+              LOG(WARNING) << "Could not upload metrics";
+            }
+          } else {
+            if (!SendSecurityAnomalyToUMA(SecurityAnomaly::kMountInitNsWx)) {
+              LOG(WARNING) << "Could not upload metrics";
+            }
           }
         }
 
