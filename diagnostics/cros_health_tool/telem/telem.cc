@@ -580,37 +580,38 @@ void DisplayFanInfo(const FanResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayNetworkInfo(const NetworkResultPtr& network_result,
-                        const bool beauty) {
-  if (network_result->is_error()) {
-    DisplayError(network_result->get_error());
+void DisplayNetworkInfo(const NetworkResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& network_health = network_result->get_network_health();
-  const std::vector<std::string> headers = {
-      "type",        "state",        "portal_state",
-      "guid",        "name",         "signal_strength",
-      "mac_address", "ipv4_address", "ipv6_addresses"};
+  const auto& infos = result->get_network_health()->networks;
 
-  std::vector<std::vector<std::string>> values;
-  for (const auto& network : network_health->networks) {
-    auto signal_strength = network->signal_strength
-                               ? std::to_string(network->signal_strength->value)
-                               : kNotApplicableString;
-    values.push_back({EnumToString(network->type), EnumToString(network->state),
-                      EnumToString(network->portal_state),
-                      network->guid.value_or(kNotApplicableString),
-                      network->name.value_or(kNotApplicableString),
-                      signal_strength,
-                      network->mac_address.value_or(kNotApplicableString),
-                      network->ipv4_address.value_or(kNotApplicableString),
-                      (network->ipv6_addresses.size()
-                           ? base::JoinString(network->ipv6_addresses, ":")
-                           : kNotApplicableString)});
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* networks =
+      output.SetKey("networks", base::Value{base::Value::Type::LIST});
+  for (const auto& info : infos) {
+    base::Value data{base::Value::Type::DICTIONARY};
+    SET_DICT(portal_state, info, &data);
+    SET_DICT(state, info, &data);
+    SET_DICT(type, info, &data);
+
+    // Optional fields
+    SET_DICT(guid, info, &data);
+    SET_DICT(name, info, &data);
+    SET_DICT(mac_address, info, &data);
+    SET_DICT(ipv4_address, info, &data);
+    SET_DICT(signal_strength, info, &data);
+    if (info->ipv6_addresses.size()) {
+      SetJsonDictValue("ipv6_addresses",
+                       base::JoinString(info->ipv6_addresses, ":"), &data);
+    }
+
+    networks->Append(std::move(data));
   }
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayTimezoneInfo(const TimezoneResultPtr& result) {
@@ -778,7 +779,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& network_result = info->network_result;
   if (network_result)
-    DisplayNetworkInfo(network_result, beauty);
+    DisplayNetworkInfo(network_result);
 
   const auto& audio_result = info->audio_result;
   if (audio_result)
