@@ -571,21 +571,24 @@ void DisplayCpuInfo(const CpuResultPtr& cpu_result) {
   }
 }
 
-void DisplayFanInfo(const FanResultPtr& fan_result, const bool beauty) {
-  if (fan_result->is_error()) {
-    DisplayError(fan_result->get_error());
+void DisplayFanInfo(const FanResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const std::vector<std::string> headers = {"speed_rpm"};
+  const auto& infos = result->get_fan_info();
 
-  const auto& fans = fan_result->get_fan_info();
-  std::vector<std::vector<std::string>> values;
-  for (const auto& fan : fans) {
-    values.push_back({std::to_string(fan->speed_rpm)});
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* fans = output.SetKey("fans", base::Value{base::Value::Type::LIST});
+  for (const auto& info : infos) {
+    base::Value data{base::Value::Type::DICTIONARY};
+    SET_DICT(speed_rpm, info, &data);
+
+    fans->Append(std::move(data));
   }
 
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayNetworkInfo(const NetworkResultPtr& network_result,
@@ -770,7 +773,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& fan_result = info->fan_result;
   if (fan_result)
-    DisplayFanInfo(fan_result, beauty);
+    DisplayFanInfo(fan_result);
 
   const auto& stateful_partition_result = info->stateful_partition_result;
   if (stateful_partition_result)
