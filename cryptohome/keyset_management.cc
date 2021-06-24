@@ -425,14 +425,6 @@ bool KeysetManagement::ReSaveKeysetIfNeeded(const Credentials& credentials,
     force_resave = true;
   }
 
-  // If the VaultKeyset doesn't have a reset seed, simply generate
-  // one and re-encrypt before proceeding.
-  if (!keyset->HasWrappedResetSeed()) {
-    LOG(INFO) << "Keyset lacks reset_seed; generating one.";
-    keyset->CreateRandomResetSeed();
-    force_resave = true;
-  }
-
   if (force_resave || ShouldReSaveKeyset(keyset)) {
     return ReSaveKeyset(credentials, keyset);
   }
