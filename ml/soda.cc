@@ -20,10 +20,7 @@ namespace {
 }  // namespace
 
 SodaLibrary::SodaLibrary(const base::FilePath& library_path)
-    : status_(Status::kUninitialized),
-      create_soda_async_(nullptr),
-      add_audio_(nullptr),
-      delete_soda_async_(nullptr) {
+    : status_(Status::kUninitialized) {
   // Load the library with an option preferring own symbols. Otherwise the
   // library will try to call, e.g., external tflite, which leads to crash.
   base::NativeLibraryOptions native_library_options;
@@ -47,10 +44,6 @@ SodaLibrary::SodaLibrary(const base::FilePath& library_path)
     status_ = Status::kFunctionLookupFailed;                           \
     return;                                                            \
   }
-  // Look up the function pointers.
-  ML_SODA_LOOKUP_FUNCTION(create_soda_async_, CreateSodaAsync);
-  ML_SODA_LOOKUP_FUNCTION(add_audio_, AddAudio);
-  ML_SODA_LOOKUP_FUNCTION(delete_soda_async_, DeleteSodaAsync);
 
   ML_SODA_LOOKUP_FUNCTION(create_extended_soda_async_, CreateExtendedSodaAsync);
   ML_SODA_LOOKUP_FUNCTION(delete_extended_soda_async_, DeleteExtendedSodaAsync);
@@ -81,29 +74,6 @@ SodaLibrary* SodaLibrary::GetInstanceAt(const base::FilePath& library_path) {
     instance = it->second;
   }
   return instance;
-}
-
-// Proxy functions to the library function pointers.
-void* SodaLibrary::CreateSodaAsync(const SodaConfig& config) const {
-  DCHECK(status_ == Status::kOk);
-  return (*create_soda_async_)(config);
-}
-
-void SodaLibrary::AddAudio(void* soda_async_handle,
-                           const char* audio_buffer,
-                           int audio_buffer_size) const {
-  DCHECK(status_ == Status::kOk);
-  (*add_audio_)(soda_async_handle, audio_buffer, audio_buffer_size);
-}
-
-void SodaLibrary::AddAudio(void* soda_async_handle,
-                           const std::string& audio_buffer) const {
-  AddAudio(soda_async_handle, audio_buffer.c_str(), audio_buffer.size());
-}
-
-void SodaLibrary::DeleteSodaAsync(void* soda_async_handle) const {
-  DCHECK(status_ == Status::kOk);
-  (*delete_soda_async_)(soda_async_handle);
 }
 
 // Extended APIs

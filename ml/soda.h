@@ -56,25 +56,6 @@ class SodaLibrary {
   // The following public member functions define the interface functions of
   // the libsoda.so library.
 
-  // Creates and returns a handle of a soda instance which is needed for using
-  // the other interfaces. This function will return `NULL` when soda is not
-  // supported.
-  // The memory is owned by the user and should be deleted using
-  // `DeleteSodaAsync` after usage. For the content of config please see
-  // comments of `SodaConfig` in the file "soda_async_impl.h" installed.
-  void* CreateSodaAsync(const SodaConfig& config) const;
-
-  // Feeds raw audio to soda in the form of a contiguous stream of characters.
-  // The memory `audio_buffer` is owned by the caller.
-  void AddAudio(void* soda_async_handle,
-                const char* audio_buffer,
-                int audio_buffer_size) const;
-  void AddAudio(void* soda_async_handle, const std::string& audio_buffer) const;
-
-  // Destroys the instance of soda, called on the destruction of the
-  // SodaAsyncWrapper.
-  void DeleteSodaAsync(void* soda_async_handle) const;
-
   // The extended version APIs
   void* CreateExtendedSodaAsync(const ExtendedSodaConfig& config) const;
   void DeleteExtendedSodaAsync(void* extended_soda_async_handle) const;
@@ -94,13 +75,6 @@ class SodaLibrary {
 
   base::Optional<base::ScopedNativeLibrary> library_;
   Status status_;
-
-  // These pointers are used to store the "simple" interface function pointers.
-  // TODO(robsc): Consider deleting these three function if we do not need them
-  // in CrOS.
-  CreateSodaAsyncFn create_soda_async_;
-  AddAudioFn add_audio_;
-  DeleteSodaAsyncFn delete_soda_async_;
 
   // These pointers are used to store the "extended" interface function
   // pointers. They have more control about when speech starts/stops etc.
