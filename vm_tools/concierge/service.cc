@@ -2722,9 +2722,38 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
       return dbus_response;
   }
 
-  auto op = VmExportOperation::Create(
-      VmId(request.cryptohome_id(), request.disk_path()), disk_path,
-      std::move(storage_fd), std::move(digest_fd), fmt);
+  VmId vm_id(request.cryptohome_id(), request.disk_path());
+
+  if (!request.force()) {
+    if (FindVm(vm_id) != vms_.end()) {
+      LOG(ERROR) << "VM is currently running";
+      response.set_failure_reason("VM is currently running");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    // For Parallels VMs we want to be sure that the VM is shut down, not
+    // merely suspended, to have consistent export.
+    if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
+      bool is_shut_down;
+      if (!pvm::dispatcher::IsVmShutDown(bus_, vmplugin_service_proxy_, vm_id,
+                                         &is_shut_down)) {
+        LOG(ERROR) << "Unable to query VM state";
+        response.set_failure_reason("Unable to query VM state");
+        writer.AppendProtoAsArrayOfBytes(response);
+        return dbus_response;
+      }
+      if (!is_shut_down) {
+        LOG(ERROR) << "VM is not shut down";
+        response.set_failure_reason("VM needs to be shut down for exporting");
+        writer.AppendProtoAsArrayOfBytes(response);
+        return dbus_response;
+      }
+    }
+  }
+
+  auto op = VmExportOperation::Create(vm_id, disk_path, std::move(storage_fd),
+                                      std::move(digest_fd), fmt);
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());
@@ -3643,6 +3672,10 @@ void Service::HandleSuspendDone() {
 
     vm->SetResolvConfig(nameservers_, search_domains_);
   }
+}
+
+Service::VmMap::iterator Service::FindVm(const VmId& vm_id) {
+  return vms_.find(vm_id);
 }
 
 Service::VmMap::iterator Service::FindVm(const std::string& owner_id,

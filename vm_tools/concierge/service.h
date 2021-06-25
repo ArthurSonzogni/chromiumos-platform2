@@ -279,6 +279,9 @@ class Service final {
 
   using VmMap = std::map<VmId, std::unique_ptr<VmInterface>>;
 
+  // Returns an iterator to vm with key |vm_id|.
+  VmMap::iterator FindVm(const VmId& vm_id);
+
   // Returns an iterator to vm with key (|owner_id|, |vm_name|).
   VmMap::iterator FindVm(const std::string& owner_id,
                          const std::string& vm_name);
