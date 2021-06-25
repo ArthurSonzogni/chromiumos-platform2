@@ -235,38 +235,6 @@ void OutputCSV(const std::vector<std::string>& headers,
   }
 }
 
-void OutputTableLine(const std::string& header,
-                     const std::string& value,
-                     const size_t max_len_header) {
-  std::cout << header << std::string(max_len_header - header.length(), ' ')
-            << " : " << value << std::endl;
-}
-
-void OutputTable(const std::vector<std::string>& headers,
-                 const std::vector<std::vector<std::string>>& values) {
-  size_t max_len_header = 0;
-  for (const auto& header : headers) {
-    max_len_header = std::max(max_len_header, header.length());
-  }
-
-  for (const auto& value : values) {
-    for (auto i = 0; i < headers.size(); i++) {
-      OutputTableLine(headers[i], value[i], max_len_header);
-    }
-    std::cout << std::endl;
-  }
-}
-
-void OutputData(const std::vector<std::string>& headers,
-                const std::vector<std::vector<std::string>>& values,
-                const bool beauty) {
-  if (!beauty) {
-    OutputCSV(headers, values);
-  } else {
-    OutputTable(headers, values);
-  }
-}
-
 void OutputJson(const base::Value& output) {
   std::string json;
   base::JSONWriter::WriteWithOptions(
@@ -646,8 +614,7 @@ void DisplayStatefulPartitionInfo(const StatefulPartitionResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplaySystemInfo(const SystemResultPtr& system_result,
-                       const bool beauty) {
+void DisplaySystemInfo(const SystemResultPtr& system_result) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
     return;
@@ -689,11 +656,11 @@ void DisplaySystemInfo(const SystemResultPtr& system_result,
        system_info->product_name.value_or(kNotApplicableString), os_version,
        system_info->os_version->release_channel}};
 
-  OutputData(headers, values, beauty);
+  OutputCSV(headers, values);
 }
 
 // Displays the retrieved telemetry information to the console.
-void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
+void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
   if (battery_result)
     DisplayBatteryInfo(battery_result);
@@ -732,7 +699,7 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info, const bool beauty) {
 
   const auto& system_result = info->system_result;
   if (system_result)
-    DisplaySystemInfo(system_result, beauty);
+    DisplaySystemInfo(system_result);
 
   const auto& network_result = info->network_result;
   if (network_result)
@@ -770,7 +737,6 @@ int telem_main(int argc, char** argv) {
   std::string category_help = GetCategoryHelp();
   DEFINE_string(category, "", category_help.c_str());
   DEFINE_uint32(process, 0, "Process ID to probe.");
-  DEFINE_bool(beauty, false, "Display info with beautiful format.");
   brillo::FlagHelper::Init(argc, argv, "telem - Device telemetry tool.");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
@@ -824,7 +790,7 @@ int telem_main(int argc, char** argv) {
       return EXIT_FAILURE;
     }
 
-    DisplayTelemetryInfo(result, FLAGS_beauty);
+    DisplayTelemetryInfo(result);
   }
 
   return EXIT_SUCCESS;
