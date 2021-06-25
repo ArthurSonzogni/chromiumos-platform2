@@ -939,7 +939,8 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   wl_surface_set_user_data(host_surface->proxy, host_surface);
   wl_surface_add_listener(host_surface->proxy, &sl_surface_listener,
                           host_surface);
-  if (host_surface->ctx->linux_explicit_synchronization) {
+  if (host_surface->ctx->linux_explicit_synchronization &&
+      host_surface->ctx->use_explicit_fence) {
     host_surface->surface_sync =
         zwp_linux_explicit_synchronization_v1_get_synchronization(
             host_surface->ctx->linux_explicit_synchronization->internal,

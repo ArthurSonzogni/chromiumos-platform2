@@ -3915,6 +3915,8 @@ int real_main(int argc, char** argv) {
       xfont_path = sl_arg_value(arg);
     } else if (strstr(arg, "--timing-filename") == arg) {
       ctx.timing = new Timing(sl_arg_value(arg));
+    } else if (strstr(arg, "--explicit-fence") == arg) {
+      ctx.use_explicit_fence = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

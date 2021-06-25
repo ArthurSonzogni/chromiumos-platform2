@@ -183,6 +183,7 @@ struct sl_context {
   Timing* timing;
   const char* trace_filename;
   bool trace_system;
+  bool use_explicit_fence;
   // Never freed after allocation due the fact sommelier doesn't have a
   // shutdown function yet.
   WaylandChannel* channel;
