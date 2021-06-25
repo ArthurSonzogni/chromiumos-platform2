@@ -631,6 +631,10 @@ message ExportDiskImageRequest {
   // Whether we should calculate SHA256 digest of the resulting image. The
   // digest is supposed to be written into the second attached file descriptor.
   bool generate_sha256_digest = 3;
+
+  // Export image even if it may produce inconsistent result because, for
+  // example, VM is not shut down.
+  bool force = 4;
 }
 
 // Response to a ExportDiskImageRequest.
