@@ -852,10 +852,13 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
 
   // Reset test pattern.
-  test_pattern_.reset(
-      new TestPattern(Size(device_info_.sensor_info_pixel_array_size_width,
-                           device_info_.sensor_info_pixel_array_size_height),
-                      stream_on_resolution_));
+  auto entry = static_metadata_.find(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE);
+  if (entry.count == 0) {
+    LOGF(ERROR) << "Failed to find pixel array size";
+    return -EINVAL;
+  }
+  test_pattern_.reset(new TestPattern(
+      Size(entry.data.i32[0], entry.data.i32[1]), stream_on_resolution_));
   return 0;
 }
 
