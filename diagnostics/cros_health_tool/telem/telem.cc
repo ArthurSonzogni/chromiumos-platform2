@@ -283,57 +283,36 @@ void DisplayError(const ProbeErrorPtr& error) {
   OutputJson(output);
 }
 
-void DisplayProcessInfo(const ProcessResultPtr& process_result,
-                        const bool beauty) {
-  if (process_result.is_null())
+void DisplayProcessInfo(const ProcessResultPtr& result) {
+  if (result.is_null())
     return;
 
-  if (process_result->is_error()) {
-    DisplayError(process_result->get_error());
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  const auto& process = process_result->get_process_info();
+  const auto& info = result->get_process_info();
 
-  const std::vector<std::string> headers = {"command",
-                                            "user_id",
-                                            "priority",
-                                            "nice",
-                                            "uptime_ticks",
-                                            "state",
-                                            "total_memory_kib",
-                                            "resident_memory_kib",
-                                            "free_memory_kib",
-                                            "bytes_read",
-                                            "bytes_written",
-                                            "read_system_calls",
-                                            "write_system_calls",
-                                            "physical_bytes_read",
-                                            "physical_bytes_written",
-                                            "cancelled_bytes_written"};
+  base::Value output{base::Value::Type::DICTIONARY};
+  SET_DICT(bytes_read, info, &output);
+  SET_DICT(bytes_written, info, &output);
+  SET_DICT(cancelled_bytes_written, info, &output);
+  SET_DICT(command, info, &output);
+  SET_DICT(free_memory_kib, info, &output);
+  SET_DICT(nice, info, &output);
+  SET_DICT(physical_bytes_read, info, &output);
+  SET_DICT(physical_bytes_written, info, &output);
+  SET_DICT(priority, info, &output);
+  SET_DICT(read_system_calls, info, &output);
+  SET_DICT(resident_memory_kib, info, &output);
+  SET_DICT(state, info, &output);
+  SET_DICT(total_memory_kib, info, &output);
+  SET_DICT(uptime_ticks, info, &output);
+  SET_DICT(user_id, info, &output);
+  SET_DICT(write_system_calls, info, &output);
 
-  // The int8_t fields need to be cast to a larger int type, otherwise they will
-  // be treated as chars and display garbage. Also, wrap the command in quotes,
-  // because the command-line options included in the command sometimes have
-  // their own commas.
-  const std::vector<std::vector<std::string>> values = {
-      {"\"" + static_cast<std::string>(process->command) + "\"",
-       std::to_string(process->user_id),
-       std::to_string(static_cast<int>(process->priority)),
-       std::to_string(static_cast<int>(process->nice)),
-       std::to_string(process->uptime_ticks), EnumToString(process->state),
-       std::to_string(process->total_memory_kib),
-       std::to_string(process->resident_memory_kib),
-       std::to_string(process->free_memory_kib),
-       std::to_string(process->bytes_read),
-       std::to_string(process->bytes_written),
-       std::to_string(process->read_system_calls),
-       std::to_string(process->write_system_calls),
-       std::to_string(process->physical_bytes_read),
-       std::to_string(process->physical_bytes_written),
-       std::to_string(process->cancelled_bytes_written)}};
-
-  OutputData(headers, values, beauty);
+  OutputJson(output);
 }
 
 void DisplayBatteryInfo(const BatteryResultPtr& battery_result,
@@ -839,8 +818,7 @@ int telem_main(int argc, char** argv) {
   // Probe a process, if requested.
   if (FLAGS_process != 0) {
     DisplayProcessInfo(
-        adapter->GetProcessInfo(static_cast<pid_t>(FLAGS_process)),
-        FLAGS_beauty);
+        adapter->GetProcessInfo(static_cast<pid_t>(FLAGS_process)));
   }
 
   // Probe category info, if requested.

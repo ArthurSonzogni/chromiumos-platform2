@@ -260,6 +260,16 @@ void ProcessFetcher::FetchProcessInfo(
     return;
   }
 
+  // In "/proc/{PID}/cmdline", the arguments are separated by 0x00, we need
+  // to replace them by space for better output.
+  for (auto& ch : process_info.command) {
+    if (ch == '\0') {
+      ch = ' ';
+    }
+  }
+  base::TrimWhitespaceASCII(process_info.command, base::TRIM_ALL,
+                            &process_info.command);
+
   context_->executor()->GetProcessIOContents(
       process_id_,
       base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
