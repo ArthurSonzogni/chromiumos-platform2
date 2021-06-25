@@ -186,15 +186,28 @@ message ComponentsRepairState {
       RMAD_COMPONENT_POWER_BUTTON = 35;
     }
     enum RepairStatus {
+      RMAD_REPAIR_STATUS_UNKNOWN = 0;
+      RMAD_REPAIR_STATUS_ORIGINAL = 1;
+      RMAD_REPAIR_STATUS_REPLACED = 2;
+      RMAD_REPAIR_STATUS_MISSING = 3;
+    }
+    Component component = 1;
+    RepairStatus repair_status = 2;
+    // TODO(chenghan): The followings are for compatibility. Remove them in the
+    //                 future.
+    enum RepairState {
       RMAD_REPAIR_UNKNOWN = 0;
       RMAD_REPAIR_ORIGINAL = 1;
       RMAD_REPAIR_REPLACED = 2;
       RMAD_REPAIR_MISSING = 3;
     }
-    Component component = 1;
-    RepairStatus repair_status = 2;
+    Component name = 3;
+    RepairState repair_state = 4;
   }
-  repeated ComponentRepairStatus components = 1;
+  // TODO(chenghan): Rename back to |components|.
+  repeated ComponentRepairStatus component_repair = 1;
+  // TODO(chenghan): Legacy, remove it in the future.
+  repeated ComponentRepairState components = 2;
 }
 
 // Select whether the device is returning to original owner or being wiped for
@@ -352,6 +365,60 @@ message FinalizeState {
   // this proto, or it could be a separate d-bus method.
 }
 
+// Legacy state. Keep it to be compatible with Chrome.
+// TODO(chenghan): Remove it in the future.
+message ComponentRepairState {
+  enum Component {
+    RMAD_COMPONENT_UNKNOWN = 0;
+    // runtime_probe supported components.
+    RMAD_COMPONENT_AUDIO_CODEC = 1;
+    RMAD_COMPONENT_BATTERY = 2;
+    RMAD_COMPONENT_STORAGE = 3;
+    RMAD_COMPONENT_VPD_CACHED = 4;
+    RMAD_COMPONENT_NETWORK = 5;  // Obsolete in M91.
+    RMAD_COMPONENT_CAMERA = 6;
+    RMAD_COMPONENT_STYLUS = 7;
+    RMAD_COMPONENT_TOUCHPAD = 8;
+    RMAD_COMPONENT_TOUCHSCREEN = 9;
+    RMAD_COMPONENT_DRAM = 10;
+    RMAD_COMPONENT_DISPLAY_PANEL = 11;
+    RMAD_COMPONENT_CELLULAR = 12;
+    RMAD_COMPONENT_ETHERNET = 13;
+    RMAD_COMPONENT_WIRELESS = 14;
+    // Additional rmad components.
+    RMAD_COMPONENT_GYROSCOPE = 15;
+    RMAD_COMPONENT_ACCELEROMETER = 16;
+    RMAD_COMPONENT_SCREEN = 17;
+    // Reserved for additional runtime_probe supported components.
+    reserved 18 to 32;
+    // Mainboard rework is a special case.
+    RMAD_COMPONENT_MAINBOARD_REWORK = 33;
+    // Irrelevant components.
+    // TODO(chenghan): Do we really need these?
+    RMAD_COMPONENT_KEYBOARD = 34;
+    RMAD_COMPONENT_POWER_BUTTON = 35;
+    RMAD_COMPONENT_TRACKPAD = 36;
+    RMAD_COMPONENT_THUMB_READER = 37;
+  }
+  enum RepairState {
+    RMAD_REPAIR_UNKNOWN = 0;
+    RMAD_REPAIR_ORIGINAL = 1;
+    RMAD_REPAIR_REPLACED = 2;
+    RMAD_REPAIR_MISSING = 3;
+  }
+  Component name = 1;
+  RepairState repair_state = 2;
+}
+
+// Legacy state. Keep it to be compatible with Chrome.
+// TODO(chenghan): Remove it in the future.
+message CalibrateComponentsState {
+  enum CalibrationComponent {
+    RMAD_CALIBRATION_COMPONENT_UNKNOWN = 0;
+    RMAD_CALIBRATION_COMPONENT_ACCELEROMETER = 1;
+  }
+}
+
 message RmadState {
   oneof state {
     WelcomeState welcome = 1;
@@ -373,6 +440,8 @@ message RmadState {
     ProvisionDeviceState provision_device = 17;
     WriteProtectEnablePhysicalState wp_enable_physical = 18;
     FinalizeState finalize = 19;
+    // Legacy state.
+    CalibrateComponentsState calibrate_components = 20;
   }
 }
 

@@ -56,10 +56,10 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     auto components_repair = std::make_unique<ComponentsRepairState>();
     for (auto component : default_original_components) {
       ComponentRepairStatus* component_repair =
-          components_repair->add_components();
+          components_repair->add_component_repair();
       component_repair->set_component(component);
       component_repair->set_repair_status(
-          ComponentRepairStatus::RMAD_REPAIR_ORIGINAL);
+          ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
     }
     return components_repair;
   }
@@ -92,11 +92,12 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
-  ComponentRepairStatus* component_repair = components_repair->add_components();
+  ComponentRepairStatus* component_repair =
+      components_repair->add_component_repair();
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_REPLACED);
+      ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED);
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
 
@@ -134,17 +135,18 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
-  ComponentRepairStatus* component_repair = components_repair->add_components();
+  ComponentRepairStatus* component_repair =
+      components_repair->add_component_repair();
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_ORIGINAL);
+      ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
   // RMAD_COMPONENT_NETWORK is deprecated.
-  component_repair = components_repair->add_components();
+  component_repair = components_repair->add_component_repair();
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_NETWORK);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_ORIGINAL);
+      ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
 
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
@@ -162,17 +164,18 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
-  ComponentRepairStatus* component_repair = components_repair->add_components();
+  ComponentRepairStatus* component_repair =
+      components_repair->add_component_repair();
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_ORIGINAL);
+      ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
   // RMAD_COMPONENT_STORAGE is not probed.
-  component_repair = components_repair->add_components();
+  component_repair = components_repair->add_component_repair();
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_STORAGE);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_ORIGINAL);
+      ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
 
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
@@ -192,11 +195,12 @@ TEST_F(ComponentsRepairStateHandlerTest,
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
   // RMAD_COMPONENT_BATTERY is probed but set to MISSING.
-  ComponentRepairStatus* component_repair = components_repair->add_components();
+  ComponentRepairStatus* component_repair =
+      components_repair->add_component_repair();
   component_repair->set_component(
       ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
-      ComponentRepairStatus::RMAD_REPAIR_MISSING);
+      ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING);
 
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());

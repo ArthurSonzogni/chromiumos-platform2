@@ -67,9 +67,9 @@ std::unordered_map<Component, RepairStatus> GetUserSelectionDictionary(
   std::unordered_map<Component, RepairStatus> selection_dict;
   if (state.has_components_repair()) {
     const ComponentsRepairState& components_repair = state.components_repair();
-    for (int i = 0; i < components_repair.components_size(); ++i) {
+    for (int i = 0; i < components_repair.component_repair_size(); ++i) {
       const ComponentRepairStatus& component_repair =
-          components_repair.components(i);
+          components_repair.component_repair(i);
       const Component& component = component_repair.component();
       const RepairStatus& repair_status = component_repair.repair_status();
       if (component == ComponentRepairStatus::RMAD_COMPONENT_UNKNOWN) {
@@ -125,7 +125,7 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // runtime_probe results.
   for (auto& [component, probed_component_size] : PROBED_COMPONENT_SIZES) {
     ComponentRepairStatus* component_repair =
-        components_repair->add_components();
+        components_repair->add_component_repair();
     component_repair->set_component(component);
     // TODO(chenghan): Do we need to return detailed info, e.g. component names?
     if ((reply.*probed_component_size)() > 0) {
@@ -133,20 +133,20 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
         component_repair->set_repair_status(previous_selection.at(component));
       } else {
         component_repair->set_repair_status(
-            ComponentRepairStatus::RMAD_REPAIR_UNKNOWN);
+            ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN);
       }
     } else {
       component_repair->set_repair_status(
-          ComponentRepairStatus::RMAD_REPAIR_MISSING);
+          ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING);
     }
   }
   // Other components.
   for (auto& component : OTHER_COMPONENTS) {
     ComponentRepairStatus* component_repair =
-        components_repair->add_components();
+        components_repair->add_component_repair();
     component_repair->set_component(component);
     component_repair->set_repair_status(
-        ComponentRepairStatus::RMAD_REPAIR_UNKNOWN);
+        ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN);
   }
   state_.set_allocated_components_repair(components_repair.release());
 
@@ -189,14 +189,16 @@ bool ComponentsRepairStateHandler::ValidateUserSelection(
       return false;
     }
     RepairStatus prev_repair_status = prev_user_selection[component];
-    if (prev_repair_status == ComponentRepairStatus::RMAD_REPAIR_MISSING &&
-        repair_status != ComponentRepairStatus::RMAD_REPAIR_MISSING) {
+    if (prev_repair_status ==
+            ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING &&
+        repair_status != ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
       LOG(ERROR) << "New state contains repair state for unprobed component "
                  << component_name;
       return false;
     }
-    if (prev_repair_status != ComponentRepairStatus::RMAD_REPAIR_MISSING &&
-        repair_status == ComponentRepairStatus::RMAD_REPAIR_MISSING) {
+    if (prev_repair_status !=
+            ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING &&
+        repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
       LOG(ERROR) << "New state missing repair state for component "
                  << component_name;
       return false;
@@ -207,7 +209,8 @@ bool ComponentsRepairStateHandler::ValidateUserSelection(
   for (auto [component, updated_repair_status] : prev_user_selection) {
     const std::string component_name =
         ComponentRepairStatus::Component_Name(component);
-    if (updated_repair_status == ComponentRepairStatus::RMAD_REPAIR_UNKNOWN) {
+    if (updated_repair_status ==
+        ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN) {
       LOG(ERROR) << "Component " << component_name
                  << " has unknown repair state";
       return false;
@@ -223,7 +226,7 @@ bool ComponentsRepairStateHandler::StoreVars() const {
       GetUserSelectionDictionary(state_);
 
   for (auto [component, repair_status] : user_selection) {
-    if (repair_status == ComponentRepairStatus::RMAD_REPAIR_REPLACED) {
+    if (repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED) {
       replaced_components.push_back(
           ComponentRepairStatus::Component_Name(component));
     }
