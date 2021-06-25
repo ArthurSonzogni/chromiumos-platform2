@@ -460,83 +460,68 @@ void DisplayBluetoothInfo(const BluetoothResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayCpuInfo(const CpuResultPtr& cpu_result) {
-  if (cpu_result->is_error()) {
-    DisplayError(cpu_result->get_error());
+void DisplayCpuInfo(const CpuResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
     return;
   }
 
-  // An example CpuInfo output containing a single physical CPU, which in turn
-  // contains two logical CPUs, would look like the following:
-  //
-  // num_total_threads,architecture
-  // some_uint32,some_string
-  // Physical CPU:
-  //     model_name
-  //     some_string
-  //     Logical CPU:
-  //         max_clock_speed_khz,scaling_max_frequency_khz,... (six keys total)
-  //         some_uint32,... (six values total)
-  //         C-states:
-  //             name,time_in_state_since_last_boot_us
-  //             some_string,some_uint_64
-  //             ... (repeated per C-state)
-  //             some_string,some_uint_64
-  //     Logical CPU:
-  //         max_clock_speed_khz,scaling_max_frequency_khz,... (six keys total)
-  //         some_uint32,... (six values total)
-  //         C-states:
-  //             name,time_in_state_since_last_boot_us
-  //             some_string,some_uint_64
-  //             ... (repeated per C-state)
-  //             some_string,some_uint_64
-  // Temperature Channels:
-  // label, temperature_celsius
-  // some_label, some_int32_t
-  // some_other_label, some_other_int32_t
-  //
-  // Any additional physical CPUs would repeat, similarly to the two logical
-  // CPUs in the example.
-  const auto& cpu_info = cpu_result->get_cpu_info();
-  std::cout << "num_total_threads,architecture" << std::endl;
-  std::cout << cpu_info->num_total_threads << ","
-            << EnumToString(cpu_info->architecture) << std::endl;
-  for (const auto& physical_cpu : cpu_info->physical_cpus) {
-    std::cout << "Physical CPU:" << std::endl;
-    std::cout << "\tmodel_name" << std::endl;
-    // Remove commas from the model name before printing CSVs.
-    std::string csv_model_name;
-    base::RemoveChars(physical_cpu->model_name.value_or(kNotApplicableString),
-                      ",", &csv_model_name);
-    std::cout << "\t" << csv_model_name << std::endl;
+  const auto& info = result->get_cpu_info();
 
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* physical_cpus =
+      output.SetKey("physical_cpus", base::Value{base::Value::Type::LIST});
+  for (const auto& physical_cpu : info->physical_cpus) {
+    base::Value physical_cpu_data{base::Value::Type::DICTIONARY};
+    auto* logical_cpus = physical_cpu_data.SetKey(
+        "logical_cpus", base::Value{base::Value::Type::LIST});
     for (const auto& logical_cpu : physical_cpu->logical_cpus) {
-      std::cout << "\tLogical CPU:" << std::endl;
-      std::cout << "\t\tmax_clock_speed_khz,scaling_max_frequency_khz,scaling_"
-                   "current_frequency_khz,user_time_user_hz,system_time_user_"
-                   "hz,idle_time_user_hz"
-                << std::endl;
-      std::cout << "\t\t" << logical_cpu->max_clock_speed_khz << ","
-                << logical_cpu->scaling_max_frequency_khz << ","
-                << logical_cpu->scaling_current_frequency_khz << ","
-                << logical_cpu->user_time_user_hz << ","
-                << logical_cpu->system_time_user_hz << ","
-                << logical_cpu->idle_time_user_hz << std::endl;
+      base::Value logical_cpu_data{base::Value::Type::DICTIONARY};
 
-      std::cout << "\t\tC-states:" << std::endl;
-      std::cout << "\t\t\tname,time_in_state_since_last_boot_us" << std::endl;
+      SET_DICT(idle_time_user_hz, logical_cpu, &logical_cpu_data);
+      SET_DICT(max_clock_speed_khz, logical_cpu, &logical_cpu_data);
+      SET_DICT(scaling_current_frequency_khz, logical_cpu, &logical_cpu_data);
+      SET_DICT(scaling_max_frequency_khz, logical_cpu, &logical_cpu_data);
+      SET_DICT(system_time_user_hz, logical_cpu, &logical_cpu_data);
+      SET_DICT(user_time_user_hz, logical_cpu, &logical_cpu_data);
+
+      auto* c_states = logical_cpu_data.SetKey(
+          "c_states", base::Value{base::Value::Type::LIST});
       for (const auto& c_state : logical_cpu->c_states) {
-        std::cout << "\t\t\t" << c_state->name << ","
-                  << c_state->time_in_state_since_last_boot_us << std::endl;
+        base::Value c_state_data{base::Value::Type::DICTIONARY};
+
+        SET_DICT(name, c_state, &c_state_data);
+        SET_DICT(time_in_state_since_last_boot_us, c_state, &c_state_data);
+
+        c_states->Append(std::move(c_state_data));
       }
+
+      logical_cpus->Append(std::move(logical_cpu_data));
     }
+
+    // Optional field
+    SET_DICT(model_name, physical_cpu, &physical_cpu_data);
+
+    physical_cpus->Append(std::move(physical_cpu_data));
   }
-  std::cout << "Temperature Channels:" << std::endl;
-  std::cout << "label,temperature_celsius" << std::endl;
-  for (const auto& channel : cpu_info->temperature_channels) {
-    std::cout << channel->label.value_or(kNotApplicableString) << ","
-              << channel->temperature_celsius << std::endl;
+
+  auto* temperature_channels = output.SetKey(
+      "temperature_channels", base::Value{base::Value::Type::LIST});
+  for (const auto& channel : info->temperature_channels) {
+    base::Value data{base::Value::Type::DICTIONARY};
+
+    SET_DICT(temperature_celsius, channel, &data);
+
+    // Optional field
+    SET_DICT(label, channel, &data);
+
+    temperature_channels->Append(std::move(data));
   }
+
+  SET_DICT(num_total_threads, info, &output);
+  SET_DICT(architecture, info, &output);
+
+  OutputJson(output);
 }
 
 void DisplayFanInfo(const FanResultPtr& result) {
