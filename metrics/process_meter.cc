@@ -4,6 +4,8 @@
 
 #include "metrics/process_meter.h"
 
+#include <errno.h>
+
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -152,9 +154,10 @@ ChromeProcessKind GetChromeKind(const base::CommandLine& cmdline) {
 bool GetARCInitPID(const base::FilePath& run_root, int* pid_out) {
   // ARC init may have stopped and restarted, so look up its PID.
   std::string file_content;
-  if (!base::ReadFileToString(run_root.Append(kMetricsARCInitPIDFile),
-                              &file_content)) {
-    // ARC is not running.
+  const base::FilePath pid_file = run_root.Append(kMetricsARCInitPIDFile);
+  if (!base::ReadFileToString(pid_file, &file_content)) {
+    // ARC is not running or failed to read the file.
+    PLOG_IF(ERROR, errno != ENOENT) << "Failed to read " << pid_file;
     return false;
   }
 
