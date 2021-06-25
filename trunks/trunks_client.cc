@@ -63,6 +63,8 @@ void PrintUsage() {
   puts("                    - Creates a key and saves the blob to file.");
   puts("  --key_load --key_blob=<file> [--print_time] [--sess_*]");
   puts("                    - Loads key from blob, returns handle.");
+  puts("  --key_unload --handle=<H>");
+  puts("                    - Unloads a loaded key.");
   puts("  --key_sign --handle=<H> --data=<in_file> --signature=<out_file>");
   puts("             [--ecc] [--print_time] [--sess_*]");
   puts("                    - Signs the hash of data using the loaded key.");
@@ -660,6 +662,18 @@ int main(int argc, char** argv) {
       return -1;
     }
     printf("Loaded key handle: %#x\n", handle);
+    return 0;
+  }
+  if (cl->HasSwitch("key_unload") && cl->HasSwitch("handle")) {
+    const trunks::TPM_HANDLE handle = static_cast<trunks::TPM_HANDLE>(
+        std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0));
+
+    trunks::TPM_RC result = factory.GetTpm()->FlushContextSync(handle, nullptr);
+    if (result) {
+      LOG(ERROR) << "Error closing handle: " << handle << " : "
+                 << trunks::GetErrorString(result);
+      return -1;
+    }
     return 0;
   }
   if (cl->HasSwitch("key_sign") && cl->HasSwitch("handle") &&
