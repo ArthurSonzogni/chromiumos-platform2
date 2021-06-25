@@ -608,11 +608,7 @@ void ArcVmCPUTopology::CreateStaticTopology(void) {
   rt_cpu_mask_ = base::JoinString(cpu_list, ",");
 }
 
-void ArcVmCPUTopology::CreateCPUAffinity(uint32_t num_cpus,
-                                         uint32_t num_rt_cpus) {
-  num_cpus_ = num_cpus;
-  num_rt_cpus_ = num_rt_cpus;
-
+void ArcVmCPUTopology::CreateCPUAffinity() {
   if (num_cpus_ > 2) {
     CreateTopology();
     CreateAffinity();
@@ -631,11 +627,7 @@ void ArcVmCPUTopology::AddCpuToPackageGroupForTesting(uint32_t cpu,
   package_[package].push_back(cpu);
 }
 
-void ArcVmCPUTopology::CreateCPUAffinityForTesting(uint32_t num_cpus,
-                                                   uint32_t num_rt_cpus) {
-  num_cpus_ = num_cpus;
-  num_rt_cpus_ = num_rt_cpus;
-
+void ArcVmCPUTopology::CreateCPUAffinityForTesting() {
   if (num_cpus_ > 2)
     CreateAffinity();
   else
@@ -648,6 +640,10 @@ uint32_t ArcVmCPUTopology::NumCPUs() {
 
 uint32_t ArcVmCPUTopology::NumRTCPUs() {
   return num_rt_cpus_;
+}
+
+void ArcVmCPUTopology::SetNumRTCPUs(uint32_t num_rt_cpus) {
+  num_rt_cpus_ = num_rt_cpus;
 }
 
 const std::string& ArcVmCPUTopology::AffinityMask() {
@@ -666,9 +662,9 @@ const std::vector<std::string>& ArcVmCPUTopology::PackageMask() {
   return package_mask_;
 }
 
-ArcVmCPUTopology::ArcVmCPUTopology(void) {
-  num_cpus_ = 0;
-  num_rt_cpus_ = 0;
+ArcVmCPUTopology::ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus) {
+  num_cpus_ = num_cpus;
+  num_rt_cpus_ = num_rt_cpus;
 }
 
 }  // namespace concierge

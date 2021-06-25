@@ -147,16 +147,17 @@ std::string CreateSharedDataParam(const base::FilePath& data_dir,
 
 class ArcVmCPUTopology {
  public:
-  ArcVmCPUTopology();
+  ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus);
   ~ArcVmCPUTopology() = default;
 
   ArcVmCPUTopology(const ArcVmCPUTopology&) = delete;
   ArcVmCPUTopology& operator=(const ArcVmCPUTopology&) = delete;
 
-  void CreateCPUAffinity(uint32_t num_cpus, uint32_t num_rt_cpus);
+  void CreateCPUAffinity();
 
   uint32_t NumCPUs();
   uint32_t NumRTCPUs();
+  void SetNumRTCPUs(uint32_t num_rt_cpus);
   const std::string& AffinityMask();
   const std::string& RTCPUMask();
   const std::string& CapacityMask();
@@ -165,7 +166,7 @@ class ArcVmCPUTopology {
   // Unit Testing crud
   void AddCpuToCapacityGroupForTesting(uint32_t cpu, uint32_t capacity);
   void AddCpuToPackageGroupForTesting(uint32_t cpu, uint32_t package);
-  void CreateCPUAffinityForTesting(uint32_t num_cpus, uint32_t num_rt_cpus);
+  void CreateCPUAffinityForTesting();
 
  private:
   void CreateTopology();

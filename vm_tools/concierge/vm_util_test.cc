@@ -168,13 +168,13 @@ TEST(VMUtilTest, GetCpuAffinityFromClustersBothPresent) {
 
 // CPU0-CPU1 LITTLE cores, CPU2-CPU3 big cores
 TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClusters) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 1);
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
   topology.AddCpuToCapacityGroupForTesting(1, 42);
   topology.AddCpuToCapacityGroupForTesting(2, 128);
   topology.AddCpuToCapacityGroupForTesting(3, 128);
-  topology.CreateCPUAffinityForTesting(4, 1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
@@ -184,19 +184,17 @@ TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClusters) {
 }
 
 TEST(VMUtilTest, CreateArcVMAffinityTwoGroups) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 1);
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
   topology.AddCpuToCapacityGroupForTesting(1, 42);
   topology.AddCpuToCapacityGroupForTesting(2, 128);
   topology.AddCpuToCapacityGroupForTesting(3, 128);
-  topology.CreateCPUAffinityForTesting(4, 1);
-
   topology.AddCpuToPackageGroupForTesting(0, 0);
   topology.AddCpuToPackageGroupForTesting(1, 0);
   topology.AddCpuToPackageGroupForTesting(2, 1);
   topology.AddCpuToPackageGroupForTesting(3, 1);
-  topology.CreateCPUAffinityForTesting(4, 1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
@@ -206,19 +204,17 @@ TEST(VMUtilTest, CreateArcVMAffinityTwoGroups) {
 }
 
 TEST(VMUtilTest, CreateArcVMAffinityOnePackage) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 1);
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
   topology.AddCpuToCapacityGroupForTesting(1, 42);
   topology.AddCpuToCapacityGroupForTesting(2, 128);
   topology.AddCpuToCapacityGroupForTesting(3, 128);
-  topology.CreateCPUAffinityForTesting(4, 1);
-
   topology.AddCpuToPackageGroupForTesting(0, 0);
   topology.AddCpuToPackageGroupForTesting(1, 0);
   topology.AddCpuToPackageGroupForTesting(2, 0);
   topology.AddCpuToPackageGroupForTesting(3, 0);
-  topology.CreateCPUAffinityForTesting(4, 1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
@@ -228,19 +224,17 @@ TEST(VMUtilTest, CreateArcVMAffinityOnePackage) {
 }
 
 TEST(VMUtilTest, CreateArcVMAffinityOnePackageOneCapacity) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 1);
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
   topology.AddCpuToCapacityGroupForTesting(1, 42);
   topology.AddCpuToCapacityGroupForTesting(2, 42);
   topology.AddCpuToCapacityGroupForTesting(3, 42);
-  topology.CreateCPUAffinityForTesting(4, 1);
-
   topology.AddCpuToPackageGroupForTesting(0, 0);
   topology.AddCpuToPackageGroupForTesting(1, 0);
   topology.AddCpuToPackageGroupForTesting(2, 0);
   topology.AddCpuToPackageGroupForTesting(3, 0);
-  topology.CreateCPUAffinityForTesting(4, 1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
@@ -251,13 +245,13 @@ TEST(VMUtilTest, CreateArcVMAffinityOnePackageOneCapacity) {
 
 // CPU2-CPU3 LITTLE cores, CPU0-CPU1 big cores
 TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClustersReverse) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 1);
 
   topology.AddCpuToCapacityGroupForTesting(2, 42);
   topology.AddCpuToCapacityGroupForTesting(3, 42);
   topology.AddCpuToCapacityGroupForTesting(0, 128);
   topology.AddCpuToCapacityGroupForTesting(1, 128);
-  topology.CreateCPUAffinityForTesting(4, 1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
@@ -268,13 +262,14 @@ TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClustersReverse) {
 
 // All cores are in the same capacity group
 TEST(VMUtilTest, CreateArcVMAffinityOneCapacityCluster) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 0);
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
   topology.AddCpuToCapacityGroupForTesting(1, 42);
   topology.AddCpuToCapacityGroupForTesting(2, 42);
   topology.AddCpuToCapacityGroupForTesting(3, 42);
-  topology.CreateCPUAffinityForTesting(4, 1);
+  topology.SetNumRTCPUs(1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 1);
@@ -285,13 +280,13 @@ TEST(VMUtilTest, CreateArcVMAffinityOneCapacityCluster) {
 
 // No RT CPU requested
 TEST(VMUtilTest, CreateArcVMAffinityOneCapacityClusterNoRT) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(4, 0);
 
   topology.AddCpuToCapacityGroupForTesting(0, 42);
   topology.AddCpuToCapacityGroupForTesting(1, 42);
   topology.AddCpuToCapacityGroupForTesting(2, 42);
   topology.AddCpuToCapacityGroupForTesting(3, 42);
-  topology.CreateCPUAffinityForTesting(4, 0);
+  topology.CreateCPUAffinityForTesting();
 
   ASSERT_EQ(topology.RTCPUMask().size(), 0);
   EXPECT_EQ(topology.NumCPUs(), 4);
@@ -302,9 +297,9 @@ TEST(VMUtilTest, CreateArcVMAffinityOneCapacityClusterNoRT) {
 
 // Static ARCVM CPU topologu
 TEST(VMUtilTest, CreateStaticArcVMAffinity) {
-  ArcVmCPUTopology topology;
+  ArcVmCPUTopology topology(2, 1);
 
-  topology.CreateCPUAffinityForTesting(2, 1);
+  topology.CreateCPUAffinityForTesting();
 
   EXPECT_EQ(topology.NumCPUs(), 3);
   EXPECT_EQ(topology.NumRTCPUs(), 1);

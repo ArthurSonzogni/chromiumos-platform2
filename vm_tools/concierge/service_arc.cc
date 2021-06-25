@@ -174,7 +174,9 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
 
   // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |affinity|
   // should be passed from chrome instead of |enable_rt_vcpu|.
-  ArcVmCPUTopology topology;
+
+  // By default we don't request any RT CPUs
+  ArcVmCPUTopology topology(request.cpus(), 0);
 
   if (request.enable_rt_vcpu()) {
     // RT-vcpu will not work when only one logical core is online.
@@ -188,8 +190,9 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       return dbus_response;
     }
 
-    // We always request 1 RT VCPU
-    topology.CreateCPUAffinity(request.cpus(), 1);
+    // We create only 1 RT VCPU for the time being
+    topology.SetNumRTCPUs(1);
+    topology.CreateCPUAffinity();
 
     params.emplace_back("isolcpus=" + topology.RTCPUMask());
     params.emplace_back("androidboot.rtcpus=" + topology.RTCPUMask());
