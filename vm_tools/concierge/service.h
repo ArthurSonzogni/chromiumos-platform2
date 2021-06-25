@@ -279,8 +279,7 @@ class Service final {
 
   using VmMap = std::map<VmId, std::unique_ptr<VmInterface>>;
 
-  // Returns an iterator to vm with key (|owner_id|, |vm_name|). If no such
-  // element exists, tries the former with |owner_id| equal to empty string.
+  // Returns an iterator to vm with key (|owner_id|, |vm_name|).
   VmMap::iterator FindVm(const std::string& owner_id,
                          const std::string& vm_name);
 

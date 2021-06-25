@@ -3647,12 +3647,7 @@ void Service::HandleSuspendDone() {
 
 Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
                                          const std::string& vm_name) {
-  auto it = vms_.find(VmId(owner_id, vm_name));
-  // TODO(nverne): remove this fallback when Chrome is correctly seting owner_id
-  if (it == vms_.end()) {
-    return vms_.find(VmId("", vm_name));
-  }
-  return it;
+  return vms_.find(VmId(owner_id, vm_name));
 }
 
 base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
