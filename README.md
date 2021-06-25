@@ -144,7 +144,6 @@ copies.
 | [tpm2-simulator](./tpm2-simulator/) | A software TPM 2.0 implementation (for testing/debugging) |
 | [tpm_manager](./tpm_manager/) | Daemon and client for managing TPM setup and operations |
 | [tpm_softclear_utils](./tpm_softclear_utils/) | Utilities that soft-clear TPM (for testing only) |
-| [trace_events](./trace_events/) | A framework for adding trace events to your Rust code. |
 | [trim](./trim/) | Service to manage filesystem trim operations in the background |
 | [trunks](./trunks/) | Middleware and resource manager for interfacing with TPM 2.0 hardware |
 | [typecd](./typecd/) | System daemon to keep track of USB Type C state |
