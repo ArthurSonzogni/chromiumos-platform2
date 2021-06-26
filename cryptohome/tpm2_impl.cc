@@ -920,12 +920,16 @@ void Tpm2Impl::CloseHandle(TpmKeyHandle key_handle) {
   if (!GetTrunksContext(&trunks)) {
     return;
   }
-  TPM_RC result =
-      trunks->factory->GetTpm()->FlushContextSync(key_handle, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(WARNING) << "Error flushing tpm handle " << key_handle << ": "
-                 << GetErrorString(result);
-  }
+  trunks->factory->GetTpm()->FlushContext(
+      key_handle, nullptr,
+      base::BindRepeating(
+          [](TpmKeyHandle key_handle, TPM_RC result) {
+            if (result != TPM_RC_SUCCESS) {
+              LOG(WARNING) << "Error flushing tpm handle " << key_handle << ": "
+                           << GetErrorString(result);
+            }
+          },
+          key_handle));
 }
 
 Tpm::TpmRetryAction Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,

@@ -56,12 +56,16 @@ TPM_HANDLE ScopedKeyHandle::get() const {
 }
 
 void ScopedKeyHandle::FlushHandleContext(TPM_HANDLE handle) {
-  TPM_RC result = TPM_RC_SUCCESS;
-  result = factory_.GetTpm()->FlushContextSync(handle, nullptr);
-  if (result) {
-    LOG(WARNING) << "Error closing handle: " << handle << " : "
-                 << GetErrorString(result);
-  }
+  factory_.GetTpm()->FlushContext(
+      handle, nullptr,
+      base::BindRepeating(
+          [](TPM_HANDLE handle, TPM_RC result) {
+            if (result) {
+              LOG(WARNING) << "Error closing handle: " << handle << " : "
+                           << GetErrorString(result);
+            }
+          },
+          handle));
 }
 
 }  // namespace trunks

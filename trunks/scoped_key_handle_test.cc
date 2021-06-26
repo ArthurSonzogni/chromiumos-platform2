@@ -37,8 +37,7 @@ class ScopedKeyHandleTest : public testing::Test {
 TEST_F(ScopedKeyHandleTest, FlushHandle) {
   TPM_HANDLE handle = TPM_RH_FIRST;
   ScopedKeyHandle scoped_handle(factory_, handle);
-  EXPECT_CALL(mock_tpm_, FlushContextSync(handle, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, FlushContext(handle, _, _)).Times(1);
 }
 
 TEST_F(ScopedKeyHandleTest, GetTest) {
@@ -59,20 +58,17 @@ TEST_F(ScopedKeyHandleTest, ResetAndFlush) {
   TPM_HANDLE new_handle = TPM_RH_NULL;
   ScopedKeyHandle scoped_handle(factory_, old_handle);
   EXPECT_EQ(old_handle, scoped_handle.get());
-  EXPECT_CALL(mock_tpm_, FlushContextSync(old_handle, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, FlushContext(old_handle, _, _)).Times(1);
   scoped_handle.reset(new_handle);
   EXPECT_EQ(new_handle, scoped_handle.get());
-  EXPECT_CALL(mock_tpm_, FlushContextSync(new_handle, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, FlushContext(new_handle, _, _)).Times(1);
 }
 
 TEST_F(ScopedKeyHandleTest, NullReset) {
   TPM_HANDLE handle = TPM_RH_FIRST;
   ScopedKeyHandle scoped_handle(factory_, handle);
   EXPECT_EQ(handle, scoped_handle.get());
-  EXPECT_CALL(mock_tpm_, FlushContextSync(handle, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, FlushContext(handle, _, _)).Times(1);
   scoped_handle.reset();
   EXPECT_EQ(0u, scoped_handle.get());
 }

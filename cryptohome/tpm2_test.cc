@@ -1261,8 +1261,7 @@ TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
 
 TEST_F(Tpm2Test, CloseHandle) {
   TpmKeyHandle key_handle = 42;
-  EXPECT_CALL(mock_tpm_, FlushContextSync(key_handle, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, FlushContext(key_handle, _, _)).Times(1);
   tpm_->CloseHandle(key_handle);
 }
 
