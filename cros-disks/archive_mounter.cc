@@ -17,6 +17,10 @@ namespace cros_disks {
 
 namespace {
 constexpr char kOptionPassword[] = "password";
+
+bool IsFormatRaw(const std::string& archive_type) {
+  return (archive_type == "bz2") || (archive_type == "gz");
+}
 }  // namespace
 
 ArchiveMounter::ArchiveMounter(
@@ -34,7 +38,8 @@ ArchiveMounter::ArchiveMounter(
       metrics_(metrics),
       metrics_name_(std::move(metrics_name)),
       password_needed_exit_codes_(std::move(password_needed_exit_codes)),
-      sandbox_factory_(std::move(sandbox_factory)) {}
+      sandbox_factory_(std::move(sandbox_factory)),
+      format_raw_(IsFormatRaw(archive_type)) {}
 
 ArchiveMounter::~ArchiveMounter() = default;
 
@@ -144,6 +149,9 @@ MountErrorType ArchiveMounter::FormatInvocationCommand(
   std::vector<std::string> opts = {
       "ro", "umask=0222", base::StringPrintf("uid=%d", kChronosUID),
       base::StringPrintf("gid=%d", kChronosAccessGID)};
+  if (format_raw_) {
+    opts.push_back("formatraw");
+  }
 
   std::string options;
   if (!JoinParamsIntoOptions(opts, &options)) {

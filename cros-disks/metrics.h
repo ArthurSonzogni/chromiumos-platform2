@@ -45,7 +45,12 @@ class Metrics {
     kArchiveTar = 3,
     kArchiveTarBzip2 = 4,
     kArchiveTarGzip = 5,
-    kArchiveMaxValue = 6,
+    kArchiveOtherBzip2 = 6,
+    kArchiveOtherGzip = 7,
+    kArchive7z = 8,
+    kArchiveCrx = 9,
+    kArchiveIso = 10,
+    kArchiveMaxValue = 11,
   };
 
   // Don't renumber these values. They are recorded in UMA metrics.
@@ -77,12 +82,17 @@ class Metrics {
   // Mapping from an archive type to its corresponding metric value.
   const std::unordered_map<std::string, ArchiveType> archive_type_map_{
       // The empty // comments make clang-format place one entry per line.
+      {"7z", kArchive7z},             //
+      {"bz2", kArchiveOtherBzip2},    //
+      {"crx", kArchiveCrx},           //
+      {"gz", kArchiveOtherGzip},      //
+      {"iso", kArchiveIso},           //
       {"rar", kArchiveRar},           //
       {"tar", kArchiveTar},           //
       {"tar.bz2", kArchiveTarBzip2},  //
+      {"tar.gz", kArchiveTarGzip},    //
       {"tbz", kArchiveTarBzip2},      //
       {"tbz2", kArchiveTarBzip2},     //
-      {"tar.gz", kArchiveTarGzip},    //
       {"tgz", kArchiveTarGzip},       //
       {"zip", kArchiveZip},           //
   };

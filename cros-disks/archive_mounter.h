@@ -61,6 +61,16 @@ class ArchiveMounter : public FUSEMounter {
   const std::vector<int> password_needed_exit_codes_;
   const std::unique_ptr<SandboxedProcessFactory> sandbox_factory_;
 
+  // Archivemount can read "foo.bz2" and "bar.qux.gz" files that are compressed
+  // but aren't archives (multiple source files rolled into one). It calls
+  // these formats "raw" and treats them as a single-element archive.
+  //
+  // "archivemount" in this comment means a specific program
+  // (https://github.com/cybernoid/archivemount). This C++ class is also called
+  // "ArchiveMounter", but that name uses the "archive mounter" words in their
+  // general technical sense.
+  const bool format_raw_;
+
   friend class ArchiveMounterTest;
 };
 

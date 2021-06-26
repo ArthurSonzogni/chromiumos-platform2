@@ -61,6 +61,39 @@ bool ArchiveManager::Initialize() {
         platform(), process_reaper(), metrics(), std::move(sandbox_factory)));
   }
 
+  // TODO(nigeltao): refactor the ArchiveMounter C++ class (and superclasses)
+  // to break the "1 instance = 1 file extension" assumption. That would let us
+  // add just 1 element to mounters_, not 1 per file extension.
+  const char* const archivemount_extensions[] = {
+      // The empty // comments make clang-format place one entry per line.
+      "7z",       //
+      "bz2",      //
+      "crx",      //
+      "gz",       //
+      "iso",      //
+      "tar",      //
+      "tar.bz2",  //
+      "tar.gz",   //
+      "tbz",      //
+      "tbz2",     //
+      "tgz",      //
+  };
+  for (const char* const ext : archivemount_extensions) {
+    SandboxedExecutable executable = {
+        base::FilePath("/usr/bin/archivemount"),
+        base::FilePath("/usr/share/policy/archivemount-seccomp.policy")};
+
+    auto sandbox_factory =
+        CreateSandboxFactory(std::move(executable), "fuse-archivemount");
+    // The archivemount program (or, at least, the way we use it) doesn't
+    // support passwords.
+    std::vector<int> password_needed_codes = {};
+
+    mounters_.push_back(std::make_unique<ArchiveMounter>(
+        platform(), process_reaper(), ext, metrics(), "Archivemount",
+        std::move(password_needed_codes), std::move(sandbox_factory)));
+  }
+
   return true;
 }
 
