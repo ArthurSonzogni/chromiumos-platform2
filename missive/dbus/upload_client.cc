@@ -93,6 +93,13 @@ void UploadClient::HandleUploadEncryptedRecordResponse(
     const std::unique_ptr<dbus::MethodCall> call,  // owned thru response.
     HandleUploadResponseCallback response_callback,
     dbus::Response* response) const {
+  if (!response) {
+    std::move(response_callback)
+        .Run(Status(error::UNAVAILABLE,
+                    "Chrome is not responding, upload skipped."));
+    return;
+  }
+
   dbus::MessageReader reader(response);
   UploadEncryptedRecordResponse response_proto;
   if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
