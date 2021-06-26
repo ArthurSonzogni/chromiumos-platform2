@@ -336,6 +336,35 @@ TPM_RC ResourceManager::EnsureSessionIsLoaded(const MessageInfo& command_info,
   return TPM_RC_SUCCESS;
 }
 
+void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
+  for (size_t i = 0; i < loaded_virtual_object_handles_.size(); i++) {
+    auto& item = loaded_virtual_object_handles_[i];
+    HandleInfo& info = item.info;
+    if (std::find(command_info.handles.begin(), command_info.handles.end(),
+                  item.handle) != command_info.handles.end()) {
+      continue;
+    }
+    TPM_RC result = SaveContext(command_info, &info);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(WARNING) << "Failed to save transient object: "
+                   << GetErrorString(result);
+      continue;
+    }
+    result = factory_.GetTpm()->FlushContextSync(info.tpm_handle, nullptr);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(WARNING) << "Failed to evict transient object: "
+                   << GetErrorString(result);
+      continue;
+    }
+    VLOG(1) << "EVICT_OBJECT: " << std::hex << info.tpm_handle;
+    tpm_object_handles_.erase(info.tpm_handle);
+    unloaded_virtual_object_handles_.emplace(item.handle, std::move(item.info));
+    loaded_virtual_object_handles_.erase(
+        loaded_virtual_object_handles_.begin() + i);
+    break;
+  }
+}
+
 void ResourceManager::EvictObjects(const MessageInfo& command_info) {
   size_t evict_num = 0;
   for (size_t i = 0; i < loaded_virtual_object_handles_.size(); i++) {
@@ -470,7 +499,7 @@ bool ResourceManager::FixWarnings(const MessageInfo& command_info,
       return true;
     case TPM_RC_OBJECT_MEMORY:
     case TPM_RC_OBJECT_HANDLES:
-      EvictObjects(command_info);
+      EvictOneObject(command_info);
       return true;
     case TPM_RC_SESSION_MEMORY:
       EvictSession(command_info);

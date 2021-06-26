@@ -142,6 +142,10 @@ class ResourceManager : public CommandTransceiver {
   // eviction is best effort; any errors will be ignored.
   void EvictObjects(const MessageInfo& command_info);
 
+  // Evicts one loaded object except those required by |command_info|. The
+  // eviction is best effort; any errors will be ignored.
+  void EvictOneObject(const MessageInfo& command_info);
+
   // Evicts a session other than those required by |command_info|. The eviction
   // is best effort; any errors will be ignored.
   void EvictSession(const MessageInfo& command_info);

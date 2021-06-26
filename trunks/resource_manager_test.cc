@@ -188,7 +188,7 @@ class ResourceManagerTest : public testing::Test {
   }
 
   // Causes the resource manager to evict existing object handles.
-  void EvictObjects() {
+  void EvictOneObject() {
     std::string command = CreateCommand(TPM_CC_Startup, kNoHandles,
                                         kNoAuthorization, kNoParameters);
     std::string response = CreateErrorResponse(TPM_RC_OBJECT_MEMORY);
@@ -358,7 +358,7 @@ TEST_F(ResourceManagerTest, VirtualHandleCleanup) {
 TEST_F(ResourceManagerTest, VirtualHandleLoadBeforeUse) {
   TPM_HANDLE tpm_handle = kArbitraryObjectHandle;
   TPM_HANDLE virtual_handle = LoadHandle(tpm_handle);
-  EvictObjects();
+  EvictOneObject();
   std::vector<TPM_HANDLE> input_handles = {virtual_handle};
   std::string command = CreateCommand(TPM_CC_Sign, input_handles,
                                       kNoAuthorization, kNoParameters);
@@ -604,6 +604,30 @@ TEST_F(ResourceManagerTest, EvictWhenNonAuthSessionInUse) {
   EXPECT_EQ(response, actual_response);
 }
 
+TEST_F(ResourceManagerTest, EvictOneObject) {
+  const int kNumObjects = 10;
+  std::map<TPM_HANDLE, TPM_HANDLE> handles;
+  for (int i = 0; i < kNumObjects; ++i) {
+    TPM_HANDLE handle = kArbitraryObjectHandle + i;
+    handles[LoadHandle(handle)] = handle;
+  }
+  EvictOneObject();
+  std::string response = CreateResponse(TPM_RC_SUCCESS, kNoHandles,
+                                        kNoAuthorization, kNoParameters);
+  EXPECT_CALL(tpm_, ContextLoadSync(_, _, _))
+      .Times(1)
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(_))
+      .WillRepeatedly(Return(response));
+  for (auto item : handles) {
+    std::vector<TPM_HANDLE> input_handles = {item.first};
+    std::string command = CreateCommand(TPM_CC_Sign, input_handles,
+                                        kNoAuthorization, kNoParameters);
+    std::string actual_response = resource_manager_.SendCommandAndWait(command);
+    EXPECT_EQ(response, actual_response);
+  }
+}
+
 TEST_F(ResourceManagerTest, EvictMultipleObjects) {
   const int kNumObjects = 10;
   std::map<TPM_HANDLE, TPM_HANDLE> handles;
@@ -611,7 +635,9 @@ TEST_F(ResourceManagerTest, EvictMultipleObjects) {
     TPM_HANDLE handle = kArbitraryObjectHandle + i;
     handles[LoadHandle(handle)] = handle;
   }
-  EvictObjects();
+  for (int i = 0; i < kNumObjects; ++i) {
+    EvictOneObject();
+  }
   std::string response = CreateResponse(TPM_RC_SUCCESS, kNoHandles,
                                         kNoAuthorization, kNoParameters);
   EXPECT_CALL(tpm_, ContextLoadSync(_, _, _))
@@ -803,7 +829,7 @@ TEST_F(ResourceManagerTest, NestedFailures) {
   for (int i = 0; i < 3; ++i) {
     LoadHandle(kArbitraryObjectHandle + i);
   }
-  EvictObjects();
+  EvictOneObject();
   for (int i = 3; i < 6; ++i) {
     LoadHandle(kArbitraryObjectHandle + i);
   }
@@ -887,7 +913,7 @@ TEST_F(ResourceManagerTest, SuspendSavesObjects) {
   // Handle 0 - was loaded but then flushed. Not saved again by Suspend().
   TPM_HANDLE tpm_handle0 = kArbitraryObjectHandle + 0;
   LoadHandle(tpm_handle0);
-  EvictObjects();
+  EvictOneObject();
   testing::Mock::VerifyAndClearExpectations(&tpm_);
   EXPECT_CALL(tpm_, ContextSaveSync(tpm_handle0, _, _, _)).Times(0);
   EXPECT_CALL(tpm_, FlushContextSync(tpm_handle0, _)).Times(0);
