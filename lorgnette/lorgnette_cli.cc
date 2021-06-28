@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -12,6 +13,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/json/json_writer.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/optional.h>
@@ -22,6 +24,7 @@
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/values.h>
 #include <brillo/errors/error.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process/process.h>
@@ -583,6 +586,39 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
   return true;
 }
 
+std::string ScannerCapabilitiesToJson(
+    const lorgnette::ScannerCapabilities& caps) {
+  base::Value caps_dict(base::Value::Type::DICTIONARY);
+
+  for (const lorgnette::DocumentSource& source : caps.sources()) {
+    base::Value source_dict(base::Value::Type::DICTIONARY);
+    source_dict.SetStringKey("Name", source.name());
+    if (source.has_area()) {
+      base::Value area_dict(base::Value::Type::DICTIONARY);
+      area_dict.SetDoubleKey("Width", source.area().width());
+      area_dict.SetDoubleKey("Height", source.area().height());
+      source_dict.SetKey("ScannableArea", std::move(area_dict));
+    }
+    base::Value resolution_list(base::Value::Type::LIST);
+    for (const uint32_t resolution : source.resolutions()) {
+      resolution_list.Append(static_cast<int>(resolution));
+    }
+    source_dict.SetKey("Resolutions", std::move(resolution_list));
+    base::Value color_mode_list(base::Value::Type::LIST);
+    for (const int color_mode : source.color_modes()) {
+      color_mode_list.Append(lorgnette::ColorMode_Name(color_mode));
+    }
+    source_dict.SetKey("ColorModes", std::move(color_mode_list));
+
+    caps_dict.SetKey(lorgnette::SourceType_Name(source.type()),
+                     std::move(source_dict));
+  }
+
+  std::string json;
+  base::JSONWriter::Write(caps_dict, &json);
+  return json;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -612,15 +648,20 @@ int main(int argc, char** argv) {
   // Cancel Scan options
   DEFINE_string(uuid, "", "UUID of the scan job to cancel.");
 
+  // General scanner operations options.
+  DEFINE_string(scanner, "",
+                "Name of the scanner whose capabilities are requested.");
+
   brillo::FlagHelper::Init(argc, argv,
                            "lorgnette_cli, command-line interface to "
                            "Chromium OS Scanning Daemon");
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 1 ||
-      (args[0] != "scan" && args[0] != "cancel_scan" && args[0] != "list")) {
-    std::cerr << "usage: lorgnette_cli [list|scan|cancel_scan] [FLAGS...]"
+  if (args.size() != 1 || (args[0] != "scan" && args[0] != "cancel_scan" &&
+                           args[0] != "list" && args[0] != "get_json_caps")) {
+    std::cerr << "usage: lorgnette_cli [list|scan|cancel_scan|get_json_caps] "
+                 "[FLAGS...]"
               << std::endl;
     return 1;
   }
@@ -706,6 +747,21 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Failed to cancel scan: " << response->failure_reason();
       return 1;
     }
+    return 0;
+  } else if (command == "get_json_caps") {
+    if (FLAGS_scanner.empty()) {
+      LOG(ERROR) << "Must specify scanner to get capabilities";
+      return 1;
+    }
+
+    base::Optional<lorgnette::ScannerCapabilities> capabilities =
+        GetScannerCapabilities(manager.get(), FLAGS_scanner);
+    if (!capabilities.has_value()) {
+      LOG(ERROR) << "Received null capabilities from lorgnette";
+      return 1;
+    }
+
+    std::cout << ScannerCapabilitiesToJson(capabilities.value());
     return 0;
   }
 }
