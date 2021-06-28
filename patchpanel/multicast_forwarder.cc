@@ -5,6 +5,7 @@
 #include "patchpanel/multicast_forwarder.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <string.h>
@@ -311,7 +312,10 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
 
   ssize_t len = recvfrom(fd, data, kBufSize, 0, fromaddr, &addrlen);
   if (len < 0) {
-    PLOG(WARNING) << "recvfrom failed";
+    // Ignore ENETDOWN: this can happen if the interface is not yet configured
+    if (errno != ENETDOWN) {
+      PLOG(WARNING) << "recvfrom failed";
+    }
     return;
   }
 
@@ -387,8 +391,11 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
   if (src_port == port_) {
     int lan_fd = lan_socket_.find(dst->sa_family)->second->fd.get();
     if (sendto(lan_fd, data, len, 0, dst, dst_len) < 0) {
-      PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
-                    << " from port " << src_port << " failed";
+      // Ignore ENETDOWN: this can happen if the interface is not yet configured
+      if (errno != ENETDOWN) {
+        PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
+                      << " from port " << src_port << " failed";
+      }
       return false;
     }
     return true;
@@ -437,8 +444,11 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
     return false;
 
   if (!temp_socket.SendTo(data, len, dst, dst_len)) {
-    PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_ << " from port "
-                  << src_port << " failed";
+    // Ignore ENETDOWN: this can happen if the interface is not yet configured
+    if (errno != ENETDOWN) {
+      PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
+                    << " from port " << src_port << " failed";
+    }
     return false;
   }
   return true;

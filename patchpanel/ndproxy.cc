@@ -248,7 +248,10 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
 
   ssize_t len;
   if ((len = recvmsg(fd, &hdr, 0)) < 0) {
-    PLOG(ERROR) << "recvmsg() failed";
+    // Ignore ENETDOWN: this can happen if the interface is not yet configured
+    if (errno != ENETDOWN) {
+      PLOG(WARNING) << "recvmsg() failed";
+    }
     return;
   }
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
@@ -374,7 +377,10 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
         .msg_controllen = 0,
     };
     if (sendmsg(fd, &hdr, 0) < 0) {
-      PLOG(ERROR) << "sendmsg() failed on interface " << target_if;
+      // Ignore ENETDOWN: this can happen if the interface is not yet configured
+      if (if_map_ra_.find(target_if) != if_map_ra_.end() && errno != ENETDOWN) {
+        PLOG(WARNING) << "sendmsg() failed on interface " << target_if;
+      }
     }
   }
 }

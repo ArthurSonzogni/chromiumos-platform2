@@ -5,6 +5,7 @@
 #include "patchpanel/broadcast_forwarder.h"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <linux/filter.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -340,7 +341,10 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
 
   ssize_t msg_len = recvmsg(fd, &hdr, 0);
   if (msg_len < 0) {
-    PLOG(ERROR) << "recvmsg() failed";
+    // Ignore ENETDOWN: this can happen if the interface is not yet configured.
+    if (errno != ENETDOWN) {
+      PLOG(WARNING) << "recvmsg() failed";
+    }
     return;
   }
 
@@ -419,7 +423,10 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
   if (sendto(temp_fd.get(), data, len, 0,
              reinterpret_cast<const struct sockaddr*>(&dev_dst),
              sizeof(struct sockaddr_in)) < 0) {
-    PLOG(WARNING) << "sendto failed";
+    // Ignore ENETDOWN: this can happen if the interface is not yet configured.
+    if (errno != ENETDOWN) {
+      PLOG(WARNING) << "sendto() failed";
+    }
     return false;
   }
   return true;
