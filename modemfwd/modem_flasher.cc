@@ -90,7 +90,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
       device_id, current_carrier.empty() ? nullptr : &current_carrier);
 
   // Clear the attach APN if needed for a specific modem/carrier combination.
-  if (!modem->ClearAttachAPN(real_carrier))
+  if (!real_carrier.empty() && !modem->ClearAttachAPN(real_carrier))
     ELOG(INFO) << "Clear attach APN failed for current carrier.";
 
   std::vector<FirmwareConfig> flash_cfg;
