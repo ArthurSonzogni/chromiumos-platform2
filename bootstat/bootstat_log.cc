@@ -194,8 +194,7 @@ bool BootStat::LogDiskEvent(const std::string& event_name) const {
   if (!output_fd.is_valid())
     return false;
 
-  bool ret =
-      base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write disk event.";
   return ret;
 }
@@ -212,8 +211,7 @@ bool BootStat::LogUptimeEvent(const std::string& event_name) const {
   if (!output_fd.is_valid())
     return false;
 
-  bool ret =
-      base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write uptime event.";
   return ret;
 }
@@ -245,8 +243,7 @@ bool BootStat::LogRtcSync(const char* event_name) {
       tick->rtc_time.tm_mday, tick->rtc_time.tm_hour, tick->rtc_time.tm_min,
       tick->rtc_time.tm_sec);
 
-  bool ret =
-      base::WriteFileDescriptor(output_fd.get(), data.c_str(), data.size());
+  bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write rtc sync.";
   return ret;
 }
