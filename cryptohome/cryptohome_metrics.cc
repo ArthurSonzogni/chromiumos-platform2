@@ -99,6 +99,8 @@ constexpr char kCreateAuthBlockTypeHistogram[] =
     "Cryptohome.CreateAuthBlockType";
 constexpr char kDeriveAuthBlockTypeHistogram[] =
     "Cryptohome.DeriveAuthBlockType";
+constexpr char kUserSubdirHasCorrectGroup[] =
+    "Cryptohome.UserSubdirHasCorrectGroup";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -619,6 +621,14 @@ void ReportDeriveAuthBlock(AuthBlockType type) {
   g_metrics->SendEnumToUMA(kDeriveAuthBlockTypeHistogram,
                            static_cast<int>(type),
                            static_cast<int>(AuthBlockType::kMaxValue));
+}
+
+void ReportUserSubdirHasCorrectGroup(bool correct) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendBoolToUMA(kUserSubdirHasCorrectGroup, correct);
 }
 
 }  // namespace cryptohome

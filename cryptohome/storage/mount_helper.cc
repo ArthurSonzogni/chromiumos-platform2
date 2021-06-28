@@ -19,6 +19,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -245,6 +246,17 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
   if (platform_->Stat(root_path, &st) && S_ISDIR(st.st_mode) &&
       st.st_mode & S_ISVTX && st.st_uid == kMountOwnerUid &&
       st.st_gid == kDaemonStoreGid) {
+    // This reports whether the existing user directory has the correct group.
+    // TODO(crbug.com/1205308): Remove once the root cause is fixed and we stop
+    // seeing cases where this directory has the wrong group owner.
+    if (platform_->Stat(user_path, &st)) {
+      bool correct = st.st_gid == default_access_gid_;
+      ReportUserSubdirHasCorrectGroup(correct);
+      if (!correct) {
+        LOG(ERROR) << "Group mismatch in user directory: " << user_path.value()
+                   << " " << st.st_gid << " != " << default_access_gid_;
+      }
+    }
     return;
   }
 

@@ -642,6 +642,13 @@ void ReportCreateAuthBlock(AuthBlockType type);
 // Reports which kinds of auth block we are used to derive.
 void ReportDeriveAuthBlock(AuthBlockType type);
 
+// Reports whether the existing user subdirectory under the home mount has the
+// correct group. This is a temporary metric to diagnose an issue where this
+// directory is not owned by group chronos-access.
+// TODO(crbug.com/1205308): Remove once the root cause is fixed and we stop
+// seeing cases where this directory has the wrong group owner.
+void ReportUserSubdirHasCorrectGroup(bool correct);
+
 // Initialization helper.
 class ScopedMetricsInitializer {
  public:
