@@ -104,6 +104,8 @@ const char kUseModemManagerForDynamicSARPref[] =
     "use_modemmanager_for_dynamic_sar";
 const char kUseMultiPowerLevelDynamicSARPref[] =
     "use_multi_power_level_dynamic_sar";
+const char kSetCellularTransmitPowerLevelMappingPref[] =
+    "set_cellular_transmit_power_level_mapping";
 const char kEnableConsoleDuringSuspendPref[] = "enable_console_during_suspend";
 const char kMaxDarkSuspendDelayTimeoutMsPref[] =
     "max_dark_suspend_delay_timeout_ms";

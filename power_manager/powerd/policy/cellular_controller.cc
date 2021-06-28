@@ -6,19 +6,21 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 #include <vector>
-
-#if USE_QRTR
-#include <base/strings/string_number_conversions.h>
-#include <libqrtr.h>
-#endif  //  USE_QRTR
-
-#include <chromeos/dbus/service_constants.h>
-
-#include "power_manager/common/prefs.h"
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <chromeos/dbus/service_constants.h>
+
+#if USE_QRTR
+#include <libqrtr.h>
+#endif  //  USE_QRTR
+
+#include "power_manager/common/prefs.h"
 
 #if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
               // into modemmanager.
@@ -67,6 +69,13 @@ void CellularController::Init(Delegate* delegate,
                  &use_modemmanager_for_dynamic_sar_);
   prefs->GetBool(kUseMultiPowerLevelDynamicSARPref,
                  &use_multi_power_level_dynamic_sar_);
+  std::string levels_string;
+  if (prefs->GetString(kSetCellularTransmitPowerLevelMappingPref,
+                       &levels_string)) {
+    base::TrimWhitespaceASCII(levels_string, base::TRIM_TRAILING,
+                              &levels_string);
+  }
+  InitPowerLevel(levels_string);
 
   LOG(INFO)
       << "In CellularController::Init set_transmit_power_for_proximity_ = "
@@ -89,6 +98,54 @@ void CellularController::Init(Delegate* delegate,
 
   if (set_transmit_power_for_proximity_ || set_transmit_power_for_tablet_mode_)
     CHECK_GE(dpr_gpio_number_, 0) << "DPR GPIO is unspecified or invalid";
+}
+
+void CellularController::InitPowerLevel(const std::string& power_levels) {
+  if (power_levels.empty()) {
+    if (use_multi_power_level_dynamic_sar_) {
+      level_mappings_ = {{RadioTransmitPower::HIGH, 2},
+                         {RadioTransmitPower::MEDIUM, 1},
+                         {RadioTransmitPower::LOW, 0}};
+    } else {
+      level_mappings_ = {{RadioTransmitPower::HIGH, 0},
+                         {RadioTransmitPower::LOW, 1}};
+    }
+    return;
+  }
+
+  base::StringPairs pairs;
+  if (!base::SplitStringIntoKeyValuePairs(power_levels, ' ', '\n', &pairs))
+    LOG(FATAL) << "Failed parsing " << kSetCellularTransmitPowerLevelMappingPref
+               << " pref";
+  for (const auto& pair : pairs) {
+    const RadioTransmitPower power = GetPowerIndexFromString(pair.first);
+    uint32_t level;
+    if (power == RadioTransmitPower::UNSPECIFIED ||
+        !base::StringToUint(pair.second, &level)) {
+      LOG(FATAL) << "Unrecognized power level \"" << pair.first << "\" for \""
+                 << pair.second << "\" in "
+                 << kSetCellularTransmitPowerLevelMappingPref << " pref";
+    }
+    if (!level_mappings_.insert(std::make_pair(power, level)).second) {
+      LOG(FATAL) << "Duplicate entry for \""
+                 << RadioTransmitPowerToString(power) << "\" in "
+                 << kSetCellularTransmitPowerLevelMappingPref << " pref";
+    }
+    LOG(INFO) << "power = " << RadioTransmitPowerToString(power)
+              << " level = " << level;
+  }
+}
+
+RadioTransmitPower CellularController::GetPowerIndexFromString(
+    const std::string& name) {
+  if (name == "HIGH")
+    return RadioTransmitPower::HIGH;
+  else if (name == "MEDIUM")
+    return RadioTransmitPower::MEDIUM;
+  else if (name == "LOW")
+    return RadioTransmitPower::LOW;
+  else
+    return RadioTransmitPower::UNSPECIFIED;
 }
 
 void CellularController::ProximitySensorDetected(UserProximity value) {
@@ -200,20 +257,21 @@ void CellularController::UpdateTransmitPower() {
 void CellularController::SetCellularTransmitPowerInModemManager(
     RadioTransmitPower power) {
   brillo::ErrorPtr error;
-  uint32_t power_;
   if (!mm_sar_proxy_) {
     LOG(ERROR) << __func__ << " called before SAR interface is up";
     return;
   }
-  if (use_multi_power_level_dynamic_sar_) {
-    power_ = static_cast<uint32_t>(power);
-  } else {
-    power_ = (power == RadioTransmitPower::HIGH) ? 0 : 1;
+  auto power_it = level_mappings_.find(power);
+  if (power_it == level_mappings_.end()) {
+    LOG(ERROR) << "Failed to get SAR table index for power = "
+               << RadioTransmitPowerToString(power);
+    return;
   }
 
   LOG(INFO) << "Setting cellular transmit power level to "
-            << RadioTransmitPowerToString(power);
-  if (!mm_sar_proxy_->SetPowerLevel(power_, &error)) {
+            << RadioTransmitPowerToString(power)
+            << " Table index = " << power_it->second;
+  if (!mm_sar_proxy_->SetPowerLevel(power_it->second, &error)) {
     LOG(ERROR) << "Failed to Set SAR Power Level in modem: "
                << error->GetMessage();
   }

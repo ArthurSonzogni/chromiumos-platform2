@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_CELLULAR_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_CELLULAR_CONTROLLER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -82,6 +83,8 @@ class CellularController : public UserProximityHandler::Delegate {
   void UpdateTransmitPower();
 
   RadioTransmitPower DetermineTransmitPower() const;
+  void InitPowerLevel(const std::string& power_levels);
+  RadioTransmitPower GetPowerIndexFromString(const std::string& name);
 #if USE_CELLULAR
   void SetCellularTransmitPowerInModemManager(RadioTransmitPower power);
   void OnModemManagerServiceAvailable(bool available);
@@ -132,6 +135,7 @@ class CellularController : public UserProximityHandler::Delegate {
   bool set_transmit_power_for_proximity_ = false;
   bool use_modemmanager_for_dynamic_sar_ = false;
   bool use_multi_power_level_dynamic_sar_ = false;
+  std::map<RadioTransmitPower, uint32_t> level_mappings_;
 
 #if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
               // into modemmanager.

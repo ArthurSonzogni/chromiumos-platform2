@@ -250,6 +250,11 @@ extern const char kSetCellularTransmitPowerForProximityPref[];
 // If true, update cellular transmit power based on proximity activity sensors.
 extern const char kSetCellularTransmitPowerForActivityProximityPref[];
 
+// String describing the index corresponding to each power level. Each line
+// contains "LEVEL(ENUM) index", where LEVEL is the name of value from the
+// RadioTransmitPower enum (e.g. "LOW", "MEDIUM", "HIGH".).
+extern const char kSetCellularTransmitPowerLevelMappingPref[];
+
 // GPIO number for the dynamic power reduction signal of a built-in cellular
 // modem.
 extern const char kSetCellularTransmitPowerDprGpioPref[];
