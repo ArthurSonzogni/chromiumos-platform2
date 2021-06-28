@@ -47,6 +47,7 @@ create_dir_file(cros_cryptohomed, {
 create_relabelto_dir_file(cros_cryptohomed, cros_home_shadow_uid);
 
 r_dir_file(cros_cryptohomed, {
+  cros_home_shadow_uid_root_shill_logs
   cros_stateful_partition
   cros_run_daemon_store
   cros_var_db
@@ -150,6 +151,7 @@ allow cros_cryptohomed self:capability {
   fowner
   ipc_lock
   sys_admin
+  sys_nice
 };
 allow cros_cryptohomed self:key {
   setattr
