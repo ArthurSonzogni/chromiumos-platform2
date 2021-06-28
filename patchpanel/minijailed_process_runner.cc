@@ -5,7 +5,6 @@
 #include "patchpanel/minijailed_process_runner.h"
 
 #include <linux/capability.h>
-#include <sys/wait.h>
 #include <utility>
 
 #include <base/check.h>
@@ -62,12 +61,6 @@ std::string ReadBlockingFDToStringAndClose(base::ScopedFD fd) {
 
 }  // namespace
 
-pid_t MinijailedProcessRunner::SyscallImpl::WaitPID(pid_t pid,
-                                                    int* wstatus,
-                                                    int options) {
-  return waitpid(pid, wstatus, options);
-}
-
 int MinijailedProcessRunner::RunSyncDestroy(
     const std::vector<std::string>& argv,
     brillo::Minijail* mj,
@@ -91,7 +84,7 @@ int MinijailedProcessRunner::RunSyncDestroy(
 
   int status = 0;
   if (ran) {
-    ran = syscall_->WaitPID(pid, &status) == pid;
+    ran = system_->WaitPid(pid, &status) == pid;
   }
 
   if (!ran) {
@@ -130,14 +123,13 @@ void EnterChildProcessJail() {
   m->Destroy(jail);
 }
 
-MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj) {
-  mj_ = mj ? mj : brillo::Minijail::GetInstance();
-  syscall_ = std::make_unique<SyscallImpl>();
-}
+MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj)
+    : MinijailedProcessRunner(mj ? mj : brillo::Minijail::GetInstance(),
+                              std::make_unique<System>()) {}
 
-MinijailedProcessRunner::MinijailedProcessRunner(
-    brillo::Minijail* mj, std::unique_ptr<SyscallImpl> syscall)
-    : mj_(mj), syscall_(std::move(syscall)) {}
+MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj,
+                                                 std::unique_ptr<System> system)
+    : mj_(mj), system_(std::move(system)) {}
 
 int MinijailedProcessRunner::Run(const std::vector<std::string>& argv,
                                  bool log_failures) {

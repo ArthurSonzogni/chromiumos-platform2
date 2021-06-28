@@ -6,7 +6,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <base/files/scoped_file.h>
@@ -55,6 +55,10 @@ int System::Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr) {
 
 int System::Ioctl(int fd, ioctl_req_t request, struct rtentry* route) {
   return Ioctl(fd, request, reinterpret_cast<const char*>(route));
+}
+
+pid_t System::WaitPid(pid_t pid, int* wstatus, int options) {
+  return waitpid(pid, wstatus, options);
 }
 
 bool System::SysNetSet(SysNet target,

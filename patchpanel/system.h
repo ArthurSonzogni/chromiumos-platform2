@@ -5,11 +5,12 @@
 #ifndef PATCHPANEL_SYSTEM_H_
 #define PATCHPANEL_SYSTEM_H_
 
-#include <string>
-
 #include <net/if.h>
 #include <net/route.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+
+#include <string>
 
 namespace patchpanel {
 
@@ -56,6 +57,8 @@ class System {
   int Ioctl(int fd, ioctl_req_t request, uint64_t arg);
   int Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr);
   int Ioctl(int fd, ioctl_req_t request, struct rtentry* route);
+
+  virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
   static bool Write(const std::string& path, const std::string& content);
 

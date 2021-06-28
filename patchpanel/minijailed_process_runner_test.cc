@@ -5,6 +5,8 @@
 #include "patchpanel/minijailed_process_runner.h"
 
 #include <linux/capability.h>
+#include <sys/types.h>
+
 #include <memory>
 
 #include <brillo/minijail/mock_minijail.h>
@@ -12,9 +14,12 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/net_util.h"
+#include "patchpanel/system.h"
 
 using testing::_;
 using testing::DoAll;
+using testing::ElementsAre;
+using testing::ElementsAreArray;
 using testing::Eq;
 using testing::Return;
 using testing::SetArgPointee;
@@ -23,95 +28,123 @@ using testing::StrEq;
 namespace patchpanel {
 namespace {
 
-constexpr pid_t kFakePid = 123;
-
-class FakeSyscallImpl : public MinijailedProcessRunner::SyscallImpl {
+class MockSystem : public System {
  public:
-  pid_t WaitPID(pid_t pid, int* wstatus, int options) override { return pid; }
+  MOCK_METHOD3(WaitPid, pid_t(pid_t pid, int* wstatus, int options));
 };
 
-class MinijailProcessRunnerTest : public testing::Test {
- protected:
-  MinijailProcessRunnerTest()
-      : runner_(&mj_, std::make_unique<FakeSyscallImpl>()) {}
+TEST(MinijailProcessRunnerTest, modprobe_all) {
+  brillo::MockMinijail mj;
+  auto system = new MockSystem();
+  MinijailedProcessRunner runner(&mj, std::unique_ptr<System>(system));
 
-  void SetUp() override {
-    ON_CALL(mj_, DropRoot(_, _, _)).WillByDefault(Return(true));
-    ON_CALL(mj_, RunPipesAndDestroy(_, _, _, _, _, _))
-        .WillByDefault(DoAll(SetArgPointee<2>(kFakePid), Return(true)));
-  }
-
-  brillo::MockMinijail mj_;
-  MinijailedProcessRunner runner_;
-};
-
-// Special matcher needed for vector<char*> type.
-// Lifted from shill/process_manager_test.cc
-MATCHER_P2(IsProcessArgs, program, args, "") {
-  if (std::string(arg[0]) != program) {
-    return false;
-  }
-  int index = 1;
-  for (const auto& option : args) {
-    if (std::string(arg[index++]) != option) {
-      return false;
-    }
-  }
-  return arg[index] == nullptr;
-}
-
-TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   uint64_t caps = CAP_TO_MASK(CAP_SYS_MODULE);
+  pid_t pid = 123;
+  EXPECT_CALL(mj, New());
+  EXPECT_CALL(mj, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mj, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj, RunPipesAndDestroy(
+                      _,
+                      ElementsAre(StrEq("/sbin/modprobe"), StrEq("-a"),
+                                  StrEq("module1"), StrEq("module2"), nullptr),
+                      _, nullptr, nullptr, nullptr))
+      .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
+  EXPECT_CALL(*system, WaitPid(pid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
 
-  const std::vector<std::string> args = {"-a", "module1", "module2"};
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(_, IsProcessArgs("/sbin/modprobe", args),
-                                      _, _, _, _));
-  runner_.modprobe_all({"module1", "module2"});
+  EXPECT_TRUE(runner.modprobe_all({"module1", "module2"}));
 }
 
-TEST_F(MinijailProcessRunnerTest, ip) {
+TEST(MinijailProcessRunnerTest, ip) {
+  brillo::MockMinijail mj;
+  auto system = new MockSystem();
+  MinijailedProcessRunner runner(&mj, std::unique_ptr<System>(system));
+
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  const std::vector<std::string> args = {"obj", "cmd", "arg", "arg"};
+  pid_t pid = 123;
+  EXPECT_CALL(mj, New());
+  EXPECT_CALL(mj, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mj, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj, RunPipesAndDestroy(
+                      _,
+                      ElementsAre(StrEq("/bin/ip"), StrEq("obj"), StrEq("cmd"),
+                                  StrEq("arg1"), StrEq("arg2"), nullptr),
+                      _, nullptr, nullptr, nullptr))
+      .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
+  EXPECT_CALL(*system, WaitPid(pid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
 
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(
-      mj_, RunPipesAndDestroy(_, IsProcessArgs("/bin/ip", args), _, _, _, _));
-  runner_.ip("obj", "cmd", {"arg", "arg"});
+  EXPECT_TRUE(runner.ip("obj", "cmd", {"arg1", "arg2"}));
 }
 
-TEST_F(MinijailProcessRunnerTest, ip6) {
+TEST(MinijailProcessRunnerTest, ip6) {
+  brillo::MockMinijail mj;
+  auto system = new MockSystem();
+  MinijailedProcessRunner runner(&mj, std::unique_ptr<System>(system));
+
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  const std::vector<std::string> args = {"-6", "obj", "cmd", "arg", "arg"};
-
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  pid_t pid = 123;
+  EXPECT_CALL(mj, New());
+  EXPECT_CALL(mj, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mj, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(
-      mj_, RunPipesAndDestroy(_, IsProcessArgs("/bin/ip", args), _, _, _, _));
-  runner_.ip6("obj", "cmd", {"arg", "arg"});
+      mj, RunPipesAndDestroy(
+              _,
+              ElementsAre(StrEq("/bin/ip"), StrEq("-6"), StrEq("obj"),
+                          StrEq("cmd"), StrEq("arg1"), StrEq("arg2"), nullptr),
+              _, nullptr, nullptr, nullptr))
+      .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
+  EXPECT_CALL(*system, WaitPid(pid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
+
+  EXPECT_TRUE(runner.ip6("obj", "cmd", {"arg1", "arg2"}));
 }
 
-TEST_F(MinijailProcessRunnerTest, iptables) {
-  const std::vector<std::string> args = {"-t", "table", "arg", "arg"};
+TEST(MinijailProcessRunnerTest, iptables) {
+  brillo::MockMinijail mj;
+  auto system = new MockSystem();
+  MinijailedProcessRunner runner(&mj, std::unique_ptr<System>(system));
 
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, RunPipesAndDestroy(_, IsProcessArgs("/sbin/iptables", args),
-                                      _, _, _, _));
-  runner_.iptables("table", {"arg", "arg"});
+  pid_t pid = 123;
+  EXPECT_CALL(mj, New());
+  EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
+  EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
+  EXPECT_CALL(
+      mj, RunPipesAndDestroy(
+              _,
+              ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"), StrEq("table"),
+                          StrEq("arg1"), StrEq("arg2"), nullptr),
+              _, nullptr, nullptr, nullptr))
+      .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
+  EXPECT_CALL(*system, WaitPid(pid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
+
+  EXPECT_TRUE(runner.iptables("table", {"arg1", "arg2"}));
 }
 
-TEST_F(MinijailProcessRunnerTest, ip6tables) {
-  const std::vector<std::string> args = {"-t", "table", "arg", "arg"};
+TEST(MinijailProcessRunnerTest, ip6tables) {
+  brillo::MockMinijail mj;
+  auto system = new MockSystem();
+  MinijailedProcessRunner runner(&mj, std::unique_ptr<System>(system));
 
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, RunPipesAndDestroy(_, IsProcessArgs("/sbin/ip6tables", args),
-                                      _, _, _, _));
-  runner_.ip6tables("table", {"arg", "arg"});
+  pid_t pid = 123;
+  EXPECT_CALL(mj, New());
+  EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
+  EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
+  EXPECT_CALL(
+      mj, RunPipesAndDestroy(
+              _,
+              ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"), StrEq("table"),
+                          StrEq("arg1"), StrEq("arg2"), nullptr),
+              _, nullptr, nullptr, nullptr))
+      .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
+  EXPECT_CALL(*system, WaitPid(pid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
+
+  EXPECT_TRUE(runner.ip6tables("table", {"arg1", "arg2"}));
 }
 
 }  // namespace

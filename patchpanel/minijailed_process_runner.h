@@ -5,13 +5,15 @@
 #ifndef PATCHPANEL_MINIJAILED_PROCESS_RUNNER_H_
 #define PATCHPANEL_MINIJAILED_PROCESS_RUNNER_H_
 
-#include <memory>
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <brillo/minijail/minijail.h>
+
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 
@@ -23,19 +25,11 @@ void EnterChildProcessJail();
 // Enforces the expected processes are run with the correct privileges.
 class MinijailedProcessRunner {
  public:
-  // For mocking waitpid().
-  class SyscallImpl {
-   public:
-    virtual pid_t WaitPID(pid_t pid, int* wstatus, int options = 0);
-    virtual ~SyscallImpl() = default;
-  };
-
   // Ownership of |mj| is not assumed and must be managed by the caller.
   // If |mj| is null, the default instance will be used.
   explicit MinijailedProcessRunner(brillo::Minijail* mj = nullptr);
   // Provided for testing only.
-  MinijailedProcessRunner(brillo::Minijail* mj,
-                          std::unique_ptr<SyscallImpl> syscall);
+  MinijailedProcessRunner(brillo::Minijail* mj, std::unique_ptr<System> system);
   MinijailedProcessRunner(const MinijailedProcessRunner&) = delete;
   MinijailedProcessRunner& operator=(const MinijailedProcessRunner&) = delete;
 
@@ -102,8 +96,7 @@ class MinijailedProcessRunner {
                      std::string* output);
 
   brillo::Minijail* mj_;
-
-  std::unique_ptr<SyscallImpl> syscall_;
+  std::unique_ptr<System> system_;
 };
 
 }  // namespace patchpanel
