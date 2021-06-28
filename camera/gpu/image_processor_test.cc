@@ -22,7 +22,6 @@
 #include "cros-camera/common.h"
 #include "cros-camera/common_types.h"
 #include "gpu/gles/texture_2d.h"
-#include "gpu/gles/texture_reader.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 #include "gpu/test_support/gl_test_fixture.h"

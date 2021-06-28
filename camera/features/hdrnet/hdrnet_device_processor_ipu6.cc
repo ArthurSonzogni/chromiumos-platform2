@@ -26,7 +26,7 @@ namespace cros {
 namespace {
 
 constexpr const char kVertexShaderFilename[] =
-    "fullscreen_rect_highp_320_es.vert";
+    "fullscreen_rect_highp_310_es.vert";
 constexpr const char kPreprocessorFilename[] = "preprocess_ipu6.frag";
 constexpr const char kPostprocessorFilename[] = "postprocess_ipu6.frag";
 

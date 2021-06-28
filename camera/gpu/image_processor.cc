@@ -22,7 +22,7 @@ namespace cros {
 namespace {
 
 constexpr const char* kVertexShaderFilename =
-    "fullscreen_rect_highp_320_es.vert";
+    "fullscreen_rect_highp_310_es.vert";
 constexpr const char* kRgbaToNv12Filename = "rgba_to_nv12.frag";
 constexpr const char* kExternalYuvToNv12Filename = "external_yuv_to_nv12.frag";
 constexpr const char* kExternalYuvToRgbaFilename = "external_yuv_to_rgba.frag";

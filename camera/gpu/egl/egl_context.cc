@@ -31,7 +31,7 @@ EglContext::EglContext(EGLDisplay display) : display_(display) {
 
   EGLConfig config = EGL_NO_CONFIG_KHR;
   std::vector<EGLint> context_attribs = {
-      EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 2, EGL_NONE,
+      EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 1, EGL_NONE,
   };
   EGLContext share_context = EGL_NO_CONTEXT;
   context_ =
