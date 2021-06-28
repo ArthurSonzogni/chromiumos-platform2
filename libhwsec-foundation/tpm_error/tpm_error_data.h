@@ -9,6 +9,7 @@
 
 #if defined(__cplusplus)
 #include <type_traits>
+#include <vector>
 #endif
 
 #if defined(__cplusplus)
@@ -34,6 +35,10 @@ static_assert(std::is_standard_layout<TpmErrorData>::value);
 #if defined(__cplusplus)
 bool operator==(const struct TpmErrorData& a, const struct TpmErrorData& b);
 bool operator<(const struct TpmErrorData& a, const struct TpmErrorData& b);
+
+// Get SHA256 value from vector of TpmErrorData.
+uint32_t GetHashFromTpmDataSet(
+    const std::vector<struct TpmErrorData>& data_set);
 #endif
 
 #endif  // LIBHWSEC_FOUNDATION_TPM_ERROR_TPM_ERROR_DATA_H_

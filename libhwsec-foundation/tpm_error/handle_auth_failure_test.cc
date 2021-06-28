@@ -14,8 +14,17 @@ namespace hwsec_foundation {
 
 namespace {
 
+// We used hard-coded hash value to verify if hash values accidentally change
+// Note that if wrong_password_hash is changed, the corresponding code in
+// crash-reporter should be also changed.
 constexpr char sample_message[] = "auth failure: command 1, response 1\n";
-constexpr char sample_message2[] = "auth failure: command 1, response 2\n";
+constexpr char sample_message2[] = "auth failure: command 207, response 1\n";
+constexpr char wrong_password_message[] =
+    "auth failure: command 24, response 29\n";
+constexpr uint32_t sample_hash = 0xd6ca7f57;
+constexpr uint32_t sample_hash2 = 0xb349c715;
+constexpr uint32_t wrong_password_hash = 0x2010c9ae;
+
 constexpr struct TpmErrorData sample_data { 1, 1 };
 
 bool HasError() {
@@ -139,6 +148,24 @@ TEST(HandleAuthFailureTest, GetCommandHash) {
   size_t hash_z = GetCommandHash(log);
   // Since we have other message, the hash value should be different.
   EXPECT_NE(hash_x, hash_z);
+}
+
+TEST(HandleAuthFailureTest, GetCommandHashStablity) {
+  base::FilePath log;
+  base::FilePath log2;
+  base::FilePath log3;
+  base::CreateTemporaryFile(&log);
+  base::CreateTemporaryFile(&log2);
+  base::CreateTemporaryFile(&log3);
+
+  EXPECT_TRUE(AppendMessage(log, sample_message));
+  EXPECT_EQ(GetCommandHash(log), sample_hash);
+
+  EXPECT_TRUE(AppendMessage(log2, sample_message2));
+  EXPECT_EQ(GetCommandHash(log2), sample_hash2);
+
+  EXPECT_TRUE(AppendMessage(log3, wrong_password_message));
+  EXPECT_EQ(GetCommandHash(log3), wrong_password_hash);
 }
 
 }  // namespace hwsec_foundation

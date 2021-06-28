@@ -24,7 +24,6 @@ namespace {
 
 constexpr int64_t kLogMaxSize = 20'000;
 constexpr int64_t kLogRemainingSize = 10'000;
-constexpr std::hash<std::u32string> data_hasher;
 char lastError[256] = {'\0'};
 
 base::FilePath logFile;
@@ -98,28 +97,22 @@ uint32_t GetCommandHash(const base::FilePath& log_path) {
                                  base::SPLIT_WANT_NONEMPTY);
 
   // Parse TpmErrorData from auth failure log.
-  std::vector<struct TpmErrorData> data_collect;
+  std::vector<struct TpmErrorData> data_set;
   for (const std::string& line : lines) {
     struct TpmErrorData data;
     if (!RE2::PartialMatch(line, *auth_failure_command, &data.command,
                            &data.response)) {
       continue;
     }
-    data_collect.push_back(data);
+    data_set.push_back(data);
   }
 
   // Uniquify collcection of TpmErrorData.
-  std::sort(data_collect.begin(), data_collect.end());
-  auto it = std::unique(data_collect.begin(), data_collect.end());
-  data_collect.resize(std::distance(data_collect.begin(), it));
+  std::sort(data_set.begin(), data_set.end());
+  auto it = std::unique(data_set.begin(), data_set.end());
+  data_set.resize(std::distance(data_set.begin(), it));
 
-  // Convert collection to u32string, so that we can use std::hash.
-  std::u32string data_string;
-  for (auto& data : data_collect) {
-    data_string.push_back(data.command);
-    data_string.push_back(data.response);
-  }
-  return data_hasher(data_string);
+  return GetHashFromTpmDataSet(data_set);
 }
 
 }  // namespace
