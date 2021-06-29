@@ -106,6 +106,8 @@ class TpmManagerService : public TpmNvramInterface,
       GetTpmNonsensitiveStatusCallback callback) override;
   void GetVersionInfo(const GetVersionInfoRequest& request,
                       GetVersionInfoCallback callback) override;
+  void GetSupportedFeatures(const GetSupportedFeaturesRequest& request,
+                            GetSupportedFeaturesCallback callback) override;
   void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
       GetDictionaryAttackInfoCallback callback) override;
@@ -199,6 +201,12 @@ class TpmManagerService : public TpmNvramInterface,
   // background worker thread.
   void GetVersionInfoTask(const GetVersionInfoRequest& request,
                           const std::shared_ptr<GetVersionInfoReply>& result);
+
+  // Blocking implementation of GetSupportedFeatures that can be executed on the
+  // background worker thread.
+  void GetSupportedFeaturesTask(
+      const GetSupportedFeaturesRequest& request,
+      const std::shared_ptr<GetSupportedFeaturesReply>& result);
 
   // Blocking implementation of GetDictionaryAttackInfo that can be executed on
   // the background worker thread.

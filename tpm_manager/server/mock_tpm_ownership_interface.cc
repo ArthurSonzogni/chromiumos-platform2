@@ -30,6 +30,9 @@ MockTpmOwnershipInterface::MockTpmOwnershipInterface() {
           WithArgs<1>(Invoke(RunCallback<GetTpmNonsensitiveStatusReply>)));
   ON_CALL(*this, GetVersionInfo(_, _))
       .WillByDefault(WithArgs<1>(Invoke(RunCallback<GetVersionInfoReply>)));
+  ON_CALL(*this, GetSupportedFeatures(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(RunCallback<GetSupportedFeaturesReply>)));
   ON_CALL(*this, GetDictionaryAttackInfo(_, _))
       .WillByDefault(
           WithArgs<1>(Invoke(RunCallback<GetDictionaryAttackInfoReply>)));

@@ -147,6 +147,19 @@
       </arg>
     </method>
 
+    <method name="GetSupportedFeatures">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="tpm_manager::GetSupportedFeaturesRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="tpm_manager::GetSupportedFeaturesReply" />
+      </arg>
+    </method>
+
     <method name="GetDictionaryAttackInfo">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

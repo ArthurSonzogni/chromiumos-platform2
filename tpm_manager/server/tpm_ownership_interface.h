@@ -42,6 +42,13 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
   virtual void GetVersionInfo(const GetVersionInfoRequest& request,
                               GetVersionInfoCallback callback) = 0;
 
+  // Gets TPM supported features. Processes |request| and calls |callback| with
+  // a reply when the process is done.
+  using GetSupportedFeaturesCallback =
+      base::OnceCallback<void(const GetSupportedFeaturesReply&)>;
+  virtual void GetSupportedFeatures(const GetSupportedFeaturesRequest& request,
+                                    GetSupportedFeaturesCallback callback) = 0;
+
   // Gets dictionary attack (DA) info. Processes |request| and calls |callback|
   // with a reply when the process is done.
   using GetDictionaryAttackInfoCallback =

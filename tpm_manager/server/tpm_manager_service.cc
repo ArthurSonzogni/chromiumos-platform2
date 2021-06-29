@@ -478,6 +478,21 @@ void TpmManagerService::GetVersionInfoTask(
   }
 }
 
+void TpmManagerService::GetSupportedFeatures(
+    const GetSupportedFeaturesRequest& request,
+    GetSupportedFeaturesCallback callback) {
+  PostTaskToWorkerThread<GetSupportedFeaturesReply>(
+      request, std::move(callback),
+      &TpmManagerService::GetSupportedFeaturesTask);
+}
+
+void TpmManagerService::GetSupportedFeaturesTask(
+    const GetSupportedFeaturesRequest& request,
+    const std::shared_ptr<GetSupportedFeaturesReply>& reply) {
+  // TODO(yich): Implement the GetSupportedFeatures.
+  reply->set_status(STATUS_SUCCESS);
+}
+
 void TpmManagerService::GetDictionaryAttackInfo(
     const GetDictionaryAttackInfoRequest& request,
     GetDictionaryAttackInfoCallback callback) {

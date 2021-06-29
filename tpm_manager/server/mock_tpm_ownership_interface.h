@@ -30,6 +30,11 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
               (const GetVersionInfoRequest&, GetVersionInfoCallback),
               (override));
   MOCK_METHOD(void,
+              GetSupportedFeatures,
+              (const GetSupportedFeaturesRequest&,
+               GetSupportedFeaturesCallback),
+              (override));
+  MOCK_METHOD(void,
               GetDictionaryAttackInfo,
               (const GetDictionaryAttackInfoRequest&,
                GetDictionaryAttackInfoCallback),

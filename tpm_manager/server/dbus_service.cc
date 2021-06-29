@@ -85,6 +85,12 @@ void DBusService::RegisterDBusObjectsAsync(
           &TpmOwnershipInterface::GetVersionInfo>);
 
   ownership_dbus_interface->AddMethodHandler(
+      kGetSupportedFeatures, base::Unretained(this),
+      &DBusService::HandleOwnershipDBusMethod<
+          GetSupportedFeaturesRequest, GetSupportedFeaturesReply,
+          &TpmOwnershipInterface::GetSupportedFeatures>);
+
+  ownership_dbus_interface->AddMethodHandler(
       kGetDictionaryAttackInfo, base::Unretained(this),
       &DBusService::HandleOwnershipDBusMethod<
           GetDictionaryAttackInfoRequest, GetDictionaryAttackInfoReply,

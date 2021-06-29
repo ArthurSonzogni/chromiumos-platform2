@@ -31,6 +31,7 @@ namespace tpm_manager {
 
 constexpr char kGetTpmStatusCommand[] = "status";
 constexpr char kGetVersionInfoCommand[] = "get_version_info";
+constexpr char kGetSupportedFeatures[] = "get_supported_features";
 constexpr char kGetDictionaryAttackInfoCommand[] = "get_da_info";
 constexpr char kResetDictionaryAttackLockCommand[] = "reset_da_lock";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
@@ -64,6 +65,8 @@ Commands:
       Prints TPM status information.
   get_version_info
       Prints TPM version information.
+  get_supported_features
+      Prints TPM supported features.
   get_da_info
       Prints TPM dictionary attack information.
   reset_da_lock
@@ -226,6 +229,9 @@ class ClientLoop : public ClientLoopBase {
     } else if (command == kGetVersionInfoCommand) {
       task = base::Bind(&ClientLoop::HandleGetVersionInfo,
                         weak_factory_.GetWeakPtr());
+    } else if (command == kGetSupportedFeatures) {
+      task = base::Bind(&ClientLoop::HandleGetSupportedFeatures,
+                        weak_factory_.GetWeakPtr());
     } else if (command == kGetDictionaryAttackInfoCommand) {
       task = base::Bind(&ClientLoop::HandleGetDictionaryAttackInfo,
                         weak_factory_.GetWeakPtr());
@@ -355,6 +361,16 @@ class ClientLoop : public ClientLoopBase {
     tpm_ownership_->GetVersionInfoAsync(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetVersionInfoReply>,
+                   weak_factory_.GetWeakPtr()),
+        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        kDefaultTimeout.InMilliseconds());
+  }
+
+  void HandleGetSupportedFeatures() {
+    GetSupportedFeaturesRequest request;
+    tpm_ownership_->GetSupportedFeaturesAsync(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<GetSupportedFeaturesReply>,
                    weak_factory_.GetWeakPtr()),
         base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
