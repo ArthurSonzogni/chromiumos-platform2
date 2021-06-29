@@ -149,7 +149,7 @@ class BiometricsManager {
   // It may take multiple successful scans before enrollment is complete.  When
   // the record is complete, EnrollSession mode will automatically be ended.
   using EnrollScanDoneCallback =
-      base::Callback<void(ScanResult, const EnrollStatus&)>;
+      base::RepeatingCallback<void(ScanResult, const EnrollStatus&)>;
   virtual void SetEnrollScanDoneHandler(
       const EnrollScanDoneCallback& on_enroll_scan_done) = 0;
 
@@ -158,14 +158,15 @@ class BiometricsManager {
   // of user id keys to a vector of record id values.
   using AttemptMatches =
       std::unordered_map<std::string, std::vector<std::string>>;
-  using AuthScanDoneCallback = base::Callback<void(ScanResult, AttemptMatches)>;
+  using AuthScanDoneCallback =
+      base::RepeatingCallback<void(ScanResult, AttemptMatches)>;
   virtual void SetAuthScanDoneHandler(
       const AuthScanDoneCallback& on_auth_scan_done) = 0;
 
   // Invoked during any session to indicate that the session has ended with
   // failure. Any EnrollSession record that was underway is thrown away and
   // AuthSession will no longer be happening.
-  using SessionFailedCallback = base::Callback<void()>;
+  using SessionFailedCallback = base::RepeatingCallback<void()>;
   virtual void SetSessionFailedHandler(
       const SessionFailedCallback& on_session_failed) = 0;
 

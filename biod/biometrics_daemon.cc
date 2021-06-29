@@ -62,11 +62,11 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
       auth_session_object_path_(object_path_.value() + "/AuthSession") {
   CHECK(biometrics_manager_);
 
-  biometrics_manager_->SetEnrollScanDoneHandler(base::Bind(
+  biometrics_manager_->SetEnrollScanDoneHandler(base::BindRepeating(
       &BiometricsManagerWrapper::OnEnrollScanDone, base::Unretained(this)));
-  biometrics_manager_->SetAuthScanDoneHandler(base::Bind(
+  biometrics_manager_->SetAuthScanDoneHandler(base::BindRepeating(
       &BiometricsManagerWrapper::OnAuthScanDone, base::Unretained(this)));
-  biometrics_manager_->SetSessionFailedHandler(base::Bind(
+  biometrics_manager_->SetSessionFailedHandler(base::BindRepeating(
       &BiometricsManagerWrapper::OnSessionFailed, base::Unretained(this)));
 
   dbus::ObjectProxy* bus_proxy = object_manager->GetBus()->GetObjectProxy(
