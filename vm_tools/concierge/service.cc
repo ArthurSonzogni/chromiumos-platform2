@@ -1344,6 +1344,13 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
+  if (request.enable_big_gl() && !request.enable_gpu()) {
+    LOG(ERROR) << "Big GL enabled without GPU";
+    response.set_failure_reason("Big GL enabled without GPU");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Allocate resources for the VM.
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   if (vsock_cid == 0) {
@@ -1392,6 +1399,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   VmFeatures features{
       .gpu = request.enable_gpu(),
       .vulkan = request.enable_vulkan(),
+      .big_gl = request.enable_big_gl(),
       .software_tpm = request.software_tpm(),
       .audio_capture = request.enable_audio_capture(),
   };

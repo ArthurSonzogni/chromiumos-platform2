@@ -216,6 +216,7 @@ fn dbus_message_to_proto<T: ProtoMessage>(message: &Message) -> Result<T, Box<dy
 pub struct VmFeatures {
     pub gpu: bool,
     pub vulkan: bool,
+    pub big_gl: bool,
     pub software_tpm: bool,
     pub audio_capture: bool,
     pub run_as_untrusted: bool,
@@ -1193,6 +1194,7 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.enable_gpu = features.gpu;
         request.enable_vulkan = features.vulkan;
+        request.enable_big_gl = features.big_gl;
         request.software_tpm = features.software_tpm;
         request.enable_audio_capture = features.audio_capture;
         request.run_as_untrusted = features.run_as_untrusted;

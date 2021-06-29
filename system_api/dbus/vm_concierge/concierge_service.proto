@@ -175,6 +175,9 @@ message StartVmRequest {
   // Enable Vulkan in the started Vm.
   bool enable_vulkan = 18;
 
+  // Enable Big GL rendering for the started Vm (default is GLES).
+  bool enable_big_gl = 19;
+
   enum FdType {
     // Kernel image.
     KERNEL = 0;

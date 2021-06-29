@@ -122,6 +122,11 @@ VmBuilder& VmBuilder::EnableVulkan(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableBigGl(bool enable) {
+  enable_big_gl_ = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetGpuCachePath(base::FilePath gpu_cache_path) {
   gpu_cache_path_ = std::move(gpu_cache_path);
   return *this;
@@ -233,6 +238,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
   if (enable_gpu_) {
     std::string gpu_arg = "--gpu=vulkan=";
     gpu_arg += enable_vulkan_ ? "true" : "false";
+    if (enable_big_gl_) {
+      gpu_arg += ",gles=false";
+    }
     if (!gpu_cache_path_.empty()) {
       gpu_arg += ",cache-path=" + gpu_cache_path_.value();
     }

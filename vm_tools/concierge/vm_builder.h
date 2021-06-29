@@ -58,6 +58,8 @@ class VmBuilder {
 
   VmBuilder& EnableGpu(bool enable);
   VmBuilder& EnableVulkan(bool enable);
+  // Make virglrenderer use Big GL instead of the default GLES.
+  VmBuilder& EnableBigGl(bool enable);
   VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
   VmBuilder& SetGpuCacheSize(std::string gpu_cache_size_str);
 
@@ -86,6 +88,7 @@ class VmBuilder {
 
   bool enable_gpu_ = false;
   bool enable_vulkan_ = false;
+  bool enable_big_gl_ = false;
   base::FilePath gpu_cache_path_;
   std::string gpu_cache_size_str_;
 
