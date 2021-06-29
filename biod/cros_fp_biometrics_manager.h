@@ -89,7 +89,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   // For testing.
   friend class CrosFpBiometricsManagerPeer;
 
-  using SessionAction = base::Callback<void(const uint32_t event)>;
+  using SessionAction = base::RepeatingCallback<void(const uint32_t event)>;
 
   class Record : public BiometricsManagerRecord {
    public:

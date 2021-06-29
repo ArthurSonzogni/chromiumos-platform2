@@ -350,7 +350,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
 #if 0
   maintenance_timer_->Start(
       FROM_HERE, base::TimeDelta::FromDays(1),
-      base::Bind(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
+      base::BindRepeating(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
                  base::Unretained(this)));
 #endif
 }
@@ -384,8 +384,8 @@ void CrosFpBiometricsManager::OnMkbpEvent(uint32_t event) {
 bool CrosFpBiometricsManager::RequestEnrollImage(
     BiodStorageInterface::RecordMetadata record) {
   next_session_action_ =
-      base::Bind(&CrosFpBiometricsManager::DoEnrollImageEvent,
-                 base::Unretained(this), std::move(record));
+      base::BindRepeating(&CrosFpBiometricsManager::DoEnrollImageEvent,
+                          base::Unretained(this), std::move(record));
   if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to start enrolling mode";
@@ -397,8 +397,8 @@ bool CrosFpBiometricsManager::RequestEnrollImage(
 bool CrosFpBiometricsManager::RequestEnrollFingerUp(
     BiodStorageInterface::RecordMetadata record) {
   next_session_action_ =
-      base::Bind(&CrosFpBiometricsManager::DoEnrollFingerUpEvent,
-                 base::Unretained(this), std::move(record));
+      base::BindRepeating(&CrosFpBiometricsManager::DoEnrollFingerUpEvent,
+                          base::Unretained(this), std::move(record));
   if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kEnrollSessionFingerUp))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to wait for finger up";
@@ -408,8 +408,8 @@ bool CrosFpBiometricsManager::RequestEnrollFingerUp(
 }
 
 bool CrosFpBiometricsManager::RequestMatch(int attempt) {
-  next_session_action_ = base::Bind(&CrosFpBiometricsManager::DoMatchEvent,
-                                    base::Unretained(this), attempt);
+  next_session_action_ = base::BindRepeating(
+      &CrosFpBiometricsManager::DoMatchEvent, base::Unretained(this), attempt);
   if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kMatch))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to start matching mode";
@@ -419,7 +419,7 @@ bool CrosFpBiometricsManager::RequestMatch(int attempt) {
 }
 
 bool CrosFpBiometricsManager::RequestMatchFingerUp() {
-  next_session_action_ = base::Bind(
+  next_session_action_ = base::BindRepeating(
       &CrosFpBiometricsManager::DoMatchFingerUpEvent, base::Unretained(this));
   if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kFingerUp))) {
     next_session_action_ = SessionAction();
