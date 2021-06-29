@@ -107,6 +107,14 @@ std::string GetProtoDebugStringWithIndent(const GetVersionInfoReply& value,
                                           int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(const GetVersionInfoReply& value);
 std::string GetProtoDebugStringWithIndent(
+    const GetSupportedFeaturesRequest& value, int indent_size);
+BRILLO_EXPORT std::string GetProtoDebugString(
+    const GetSupportedFeaturesRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetSupportedFeaturesReply& value, int indent_size);
+BRILLO_EXPORT std::string GetProtoDebugString(
+    const GetSupportedFeaturesReply& value);
+std::string GetProtoDebugStringWithIndent(
     const GetDictionaryAttackInfoRequest& value, int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(
     const GetDictionaryAttackInfoRequest& value);

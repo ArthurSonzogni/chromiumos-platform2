@@ -923,6 +923,46 @@ std::string GetProtoDebugStringWithIndent(const GetVersionInfoReply& value,
   return output;
 }
 
+std::string GetProtoDebugString(const GetSupportedFeaturesRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetSupportedFeaturesRequest& value, int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetSupportedFeaturesReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetSupportedFeaturesReply& value, int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_support_u2f()) {
+    output += indent + "  support_u2f: ";
+    base::StringAppendF(&output, "%s", value.support_u2f() ? "true" : "false");
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 std::string GetProtoDebugString(const GetDictionaryAttackInfoRequest& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }
@@ -996,6 +1036,11 @@ std::string GetProtoDebugStringWithIndent(
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  if (value.has_is_async()) {
+    output += indent + "  is_async: ";
+    base::StringAppendF(&output, "%s", value.is_async() ? "true" : "false");
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -1031,6 +1076,11 @@ std::string GetProtoDebugStringWithIndent(const TakeOwnershipRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  if (value.has_is_async()) {
+    output += indent + "  is_async: ";
+    base::StringAppendF(&output, "%s", value.is_async() ? "true" : "false");
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
