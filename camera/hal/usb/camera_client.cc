@@ -109,8 +109,10 @@ int CameraClient::CloseDevice() {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   if (device_info_.enable_face_detection) {
-    camera_metrics_->SendFaceAeMaxDetectedFaces(
-        request_handler_->GetMaxNumDetectedFaces());
+    if (request_handler_) {
+      camera_metrics_->SendFaceAeMaxDetectedFaces(
+          request_handler_->GetMaxNumDetectedFaces());
+    }
   }
   StreamOff();
   device_->Disconnect();
