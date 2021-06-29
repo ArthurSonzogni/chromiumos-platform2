@@ -482,10 +482,7 @@ class PowerSetter {
     while (err_ > 0)
       nl_recvmsgs(nl_sock_, cb_);
 
-    // TODO(b/175140213): some drivers may hit this a lot. Consider making this
-    // even louder (CHECK()?) when known driver issues are fixed.
-    if (err_ != 0)
-      LOG(ERROR) << "netlink command failed: " << strerror(-err_);
+    CHECK(err_ == 0) << "netlink command failed: " << strerror(-err_);
 
     nlmsg_free(msg);
     return err_ == 0;
