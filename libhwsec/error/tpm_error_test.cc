@@ -3,11 +3,14 @@
 // found in the LICENSE file.
 
 #include "libhwsec/error/tpm_error.h"
+#include "libhwsec/error/tpm_retry_handler.h"
 #include "libhwsec-foundation/error/testing_helper.h"
 
 #include <sstream>
 #include <type_traits>
 
+#include <base/test/task_environment.h>
+#include <base/test/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -104,6 +107,24 @@ TEST_F(TestingTPMErrorTest, TPMRetryAction) {
   ss << *err2;
   EXPECT_EQ("OuQ: OuOb", ss.str());
   EXPECT_EQ(err2->ToTPMRetryAction(), TPMRetryAction::kReboot);
+}
+
+TEST_F(TestingTPMErrorTest, TPMRetryHandler) {
+  auto err = HANDLE_TPM_COMM_ERROR(
+      CreateError<TPMError>("OuOb", TPMRetryAction::kReboot));
+  EXPECT_EQ("OuOb", err->ToFullReadableString());
+  EXPECT_EQ(TPMRetryAction::kReboot, err->ToTPMRetryAction());
+
+  int counter = 0;
+  auto func = base::BindLambdaForTesting([&]() {
+    counter++;
+    return CreateError<TPMError>("OwO", TPMRetryAction::kCommunication);
+  });
+
+  auto err2 = HANDLE_TPM_COMM_ERROR(func.Run());
+  EXPECT_EQ("Retry Failed: OwO", err2->ToFullReadableString());
+  EXPECT_EQ(TPMRetryAction::kLater, err2->ToTPMRetryAction());
+  EXPECT_EQ(counter, 5);
 }
 
 }  // namespace error

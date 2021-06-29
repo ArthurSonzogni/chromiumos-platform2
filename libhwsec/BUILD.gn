@@ -32,7 +32,7 @@ static_library("overalls_library") {
 }
 
 source_set("error_library") {
-  sources = []
+  sources = [ "error/tpm_retry_handler.cc" ]
   if (use.tpm2) {
     sources += [ "error/tpm2_error.cc" ]
   } else {
