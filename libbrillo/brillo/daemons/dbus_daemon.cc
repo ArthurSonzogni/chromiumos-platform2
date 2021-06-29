@@ -40,7 +40,7 @@ DBusServiceDaemon::DBusServiceDaemon(
 DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name,
                                      base::StringPiece object_manager_path)
     : DBusServiceDaemon(service_name,
-                        dbus::ObjectPath(object_manager_path.as_string())) {}
+                        dbus::ObjectPath(std::string(object_manager_path))) {}
 
 int DBusServiceDaemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();

@@ -21,6 +21,8 @@
 
 #include "brillo/blkdev_utils/lvm.h"
 
+#include <base/optional.h>
+
 namespace brillo {
 
 LogicalVolumeManager::LogicalVolumeManager()

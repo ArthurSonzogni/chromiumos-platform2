@@ -958,7 +958,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadNonBlocking) {
   EXPECT_FALSE(eos);
 
   std::string data{"foo_bar"};
-  EXPECT_TRUE(base::WriteFileDescriptor(fds[1], data.data(), data.size()));
+  EXPECT_TRUE(base::WriteFileDescriptor(fds[1], data));
   EXPECT_TRUE(stream->ReadNonBlocking(buf, sizeof(buf), &read, &eos, nullptr));
   EXPECT_EQ(data.size(), read);
   EXPECT_FALSE(eos);
@@ -1038,7 +1038,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
 
   auto write_data_callback = [](int write_fd) {
     std::string data{"abracadabra"};
-    EXPECT_TRUE(base::WriteFileDescriptor(write_fd, data.data(), data.size()));
+    EXPECT_TRUE(base::WriteFileDescriptor(write_fd, data));
   };
 
   ASSERT_EQ(0, pipe(fds));

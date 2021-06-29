@@ -214,7 +214,7 @@ SafeFD::Error SafeFD::Write(const char* data, size_t size) {
     return SafeFD::Error::kNotInitialized;
   }
   errno = 0;
-  if (!base::WriteFileDescriptor(fd_.get(), data, size)) {
+  if (!base::WriteFileDescriptor(fd_.get(), base::StringPiece(data, size))) {
     PLOG(ERROR) << "Failed to write to file";
     return SafeFD::Error::kIOError;
   }

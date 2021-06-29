@@ -60,12 +60,11 @@ bool FromValue(const base::Value& in_value,
 
 template <typename T, typename Alloc>
 bool FromValue(const base::Value& in_value, std::vector<T, Alloc>* out_value) {
-  const base::ListValue* list = nullptr;
-  if (!in_value.GetAsList(&list))
+  if (!in_value.is_list())
     return false;
   out_value->clear();
-  out_value->reserve(list->GetSize());
-  for (const base::Value& item : *list) {
+  out_value->reserve(in_value.GetList().size());
+  for (const base::Value& item : in_value.GetList()) {
     T value{};
     if (!FromValue(item, &value))
       return false;

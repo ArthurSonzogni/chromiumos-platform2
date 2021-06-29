@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/compiler_specific.h>
 #include <base/location.h>
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
