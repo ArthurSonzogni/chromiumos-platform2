@@ -9787,13 +9787,12 @@ mno {
     uuid : "ad3a642a-95ae-4d9c-b0aa-fc623db81b10"
     country : "no"
     localized_name {
-      name : "Netcom"
+      name : "Telia"
     }
     mccmnc : "24202"
     mobile_apn {
-      apn : "internet.netcom.no"
-      username : "netcom"
-      password : "netcom"
+      apn : "telia"
+      ip_type: IPV4V6
     }
   }
   mvno {
@@ -9822,7 +9821,7 @@ mno {
     uuid : "e60cdda9-7f02-4843-8a17-a1fcc2998ac8"
     country : "no"
     localized_name {
-      name : "Network Norway"
+      name : "Telia Norge AS"
     }
     mccmnc : "24205"
     mobile_apn {
@@ -9866,7 +9865,7 @@ mno {
   mvno {
     mvno_filter {
       type : OPERATOR_NAME
-      regex : "OneCall"
+      regex : "One Call"
     }
     data {
       uuid : "bbc5f574-b33f-4bd5-a722-0ac35f9a920e"
@@ -9877,6 +9876,7 @@ mno {
       mccmnc : "24205"
       mobile_apn {
         apn : "internet"
+        ip_type: IPV4V6
       }
     }
   }
@@ -9888,7 +9888,7 @@ mno {
     uuid : "fb6e43ce-a5be-4e0c-9c92-7215f060be09"
     country : "no"
     localized_name {
-      name : "TDC"
+      name : "TDC" # Acquired by Telia in 2018
     }
     mccmnc : "24208"
     mobile_apn {
@@ -9928,6 +9928,7 @@ mno {
       name : "Telenor"
     }
     mccmnc : "24201"
+    mccmnc : "24212"
     mobile_apn {
       apn : "telenor"
     }
@@ -9955,16 +9956,16 @@ mno {
   data {
     uuid : "f43fa31e-d070-474b-a5e4-8c8baebce6cb"
     country : "no"
+    mccmnc : "24214"
     localized_name {
       name : "ice.net (Nordisk Mobiltelefon)"
     }
     mobile_apn {
-      apn : ""
+      apn : "ice.net"
       localized_name {
-        name : "ice.net (Nordisk Mobiltelefon)"
+        name : "ice.net"
       }
-      username : "cdma"
-      password : "cdma"
+      ip_type: IPV4V6
     }
   }
 }
