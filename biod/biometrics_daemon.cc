@@ -85,20 +85,20 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
                              &property_type_);
   bio_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       kBiometricsManagerStartEnrollSessionMethod,
-      base::Bind(&BiometricsManagerWrapper::StartEnrollSession,
-                 base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerWrapper::StartEnrollSession,
+                          base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
       kBiometricsManagerGetRecordsForUserMethod,
-      base::Bind(&BiometricsManagerWrapper::GetRecordsForUser,
-                 base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerWrapper::GetRecordsForUser,
+                          base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
       kBiometricsManagerDestroyAllRecordsMethod,
-      base::Bind(&BiometricsManagerWrapper::DestroyAllRecords,
-                 base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerWrapper::DestroyAllRecords,
+                          base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       kBiometricsManagerStartAuthSessionMethod,
-      base::Bind(&BiometricsManagerWrapper::StartAuthSession,
-                 base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerWrapper::StartAuthSession,
+                          base::Unretained(this)));
   dbus_object_.RegisterAsync(completion_callback);
 
   RefreshRecordObjects();
@@ -119,10 +119,10 @@ BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
   record_interface->AddProperty(kRecordLabelProperty, &property_label_);
   record_interface->AddSimpleMethodHandlerWithError(
       kRecordSetLabelMethod,
-      base::Bind(&RecordWrapper::SetLabel, base::Unretained(this)));
+      base::BindRepeating(&RecordWrapper::SetLabel, base::Unretained(this)));
   record_interface->AddSimpleMethodHandlerWithError(
       kRecordRemoveMethod,
-      base::Bind(&RecordWrapper::Remove, base::Unretained(this)));
+      base::BindRepeating(&RecordWrapper::Remove, base::Unretained(this)));
   dbus_object_.RegisterAndBlock();
 }
 
@@ -300,8 +300,8 @@ bool BiometricsManagerWrapper::StartEnrollSession(
       enroll_session_dbus_object_->AddOrGetInterface(kEnrollSessionInterface);
   enroll_session_interface->AddSimpleMethodHandlerWithError(
       kEnrollSessionCancelMethod,
-      base::Bind(&BiometricsManagerWrapper::EnrollSessionCancel,
-                 base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerWrapper::EnrollSessionCancel,
+                          base::Unretained(this)));
   enroll_session_dbus_object_->RegisterAndBlock();
   *enroll_session_path = enroll_session_object_path_;
   enroll_session_owner_ = message->GetSender();
@@ -349,8 +349,8 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
       auth_session_dbus_object_->AddOrGetInterface(kAuthSessionInterface);
   auth_session_interface->AddSimpleMethodHandlerWithError(
       kAuthSessionEndMethod,
-      base::Bind(&BiometricsManagerWrapper::AuthSessionEnd,
-                 base::Unretained(this)));
+      base::BindRepeating(&BiometricsManagerWrapper::AuthSessionEnd,
+                          base::Unretained(this)));
   auth_session_dbus_object_->RegisterAndBlock();
   *auth_session_path = auth_session_object_path_;
   auth_session_owner_ = message->GetSender();
