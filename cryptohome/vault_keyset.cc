@@ -770,6 +770,13 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
 
     reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
     reset_secret_ = HmacSha256(reset_salt_.value(), reset_seed_);
+
+    // crbug.com/1224150: When an LE credential is resaved, that means the user
+    // authenticated successfully. In this case, auth_locked policy must always
+    // be set to false. Otherwise when a user enters their password, and
+    // PinWeaver unlocks the LE Credential, this field will remain set to true
+    // and PIN is never usable by Chrome.
+    auth_locked_ = false;
   }
 
   AuthBlockState auth_block_state;
@@ -1217,10 +1224,8 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
     *(serialized.mutable_key_data()) = key_data_.value();
   }
 
-  if (auth_locked_) {
-    serialized.mutable_key_data()->mutable_policy()->set_auth_locked(
-        auth_locked_);
-  }
+  serialized.mutable_key_data()->mutable_policy()->set_auth_locked(
+      auth_locked_);
 
   if (wrapped_chaps_key_.has_value()) {
     serialized.set_wrapped_chaps_key(wrapped_chaps_key_->data(),

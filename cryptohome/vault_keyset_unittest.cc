@@ -538,4 +538,30 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
   EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
 }
 
+// crbug.com/1224150: auth_locked must be set to false when an LE credential is
+// re-saved.
+TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(Return(LE_CRED_SUCCESS));
+
+  pin_vault_keyset_.CreateRandom();
+  pin_vault_keyset_.SetLowEntropyCredential(true);
+
+  // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
+  // VaultKeyset::Encrypt and thus needs to be done manually here.
+  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
+  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
+  pin_vault_keyset_.reset_secret_ = HmacSha256(
+      pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
+  pin_vault_keyset_.auth_locked_ = true;
+
+  SecureBlob key("key");
+  EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, "foo@gmail.com"));
+  EXPECT_TRUE(pin_vault_keyset_.HasKeyData());
+  EXPECT_FALSE(pin_vault_keyset_.auth_locked_);
+
+  const SerializedVaultKeyset& serialized = pin_vault_keyset_.ToSerialized();
+  EXPECT_FALSE(serialized.key_data().policy().auth_locked());
+}
+
 }  // namespace cryptohome
