@@ -130,15 +130,12 @@ void Daemon::DoWXMountCheck() {
           // Report /usr/local mounts separately because those can indicate
           // systems where |cros_debug == 0| but the system is still a dev
           // system.
-          if (e.IsDestInUsrLocal()) {
-            if (!SendSecurityAnomalyToUMA(
-                    SecurityAnomaly::kMountInitNsWxUsrLocal)) {
-              LOG(WARNING) << "Could not upload metrics";
-            }
-          } else {
-            if (!SendSecurityAnomalyToUMA(SecurityAnomaly::kMountInitNsWx)) {
-              LOG(WARNING) << "Could not upload metrics";
-            }
+          SecurityAnomaly mount_anomaly =
+              e.IsDestInUsrLocal()
+                  ? SecurityAnomaly::kMount_InitNs_WxInUsrLocal
+                  : SecurityAnomaly::kMount_InitNs_WxNotInUsrLocal;
+          if (!SendSecurityAnomalyToUMA(mount_anomaly)) {
+            LOG(WARNING) << "Could not upload metrics";
           }
         }
 

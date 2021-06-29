@@ -10,9 +10,10 @@
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class SecurityAnomaly {
-  kMountInitNsWx = 0,
-  kMountInitNsWxUsrLocal = 1,
-  kMaxValue = kMountInitNsWxUsrLocal,
+  kMountInitNsWx = 0,  // deprecated
+  kMount_InitNs_WxInUsrLocal = 1,
+  kMount_InitNs_WxNotInUsrLocal = 2,
+  kMaxValue = kMount_InitNs_WxNotInUsrLocal,
 };
 
 bool SendSecurityAnomalyToUMA(SecurityAnomaly secanomaly);
