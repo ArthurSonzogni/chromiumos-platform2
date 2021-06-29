@@ -294,6 +294,8 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
       {response_header::kContentLength, std::to_string(response_data.size())},
       {response_header::kContentType, mime::text::kHtml},
       {"X-Foo", "baz"},
+      {"Case-Insensitive", "response"},
+      {"Case-Sensitive-Content", "Case Sensitive Content"},
   };
   performer_.status_line = "HTTP/1.1 200 OK";
   performer_.response_body = response_data;
@@ -316,6 +318,9 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
   EXPECT_EQ(mime::text::kHtml,
             connection_->GetResponseHeader(response_header::kContentType));
   EXPECT_EQ("baz", connection_->GetResponseHeader("X-Foo"));
+  EXPECT_EQ("response", connection_->GetResponseHeader("casE-insensitivE"));
+  EXPECT_EQ("Case Sensitive Content",
+            connection_->GetResponseHeader("case-sensitive-content"));
   auto data_stream = connection_->ExtractDataStream(nullptr);
   ASSERT_NE(nullptr, data_stream.get());
 }

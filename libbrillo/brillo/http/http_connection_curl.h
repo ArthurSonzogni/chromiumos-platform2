@@ -78,8 +78,11 @@ class BRILLO_EXPORT Connection : public http::Connection {
   StreamPtr response_data_stream_;
 
   // List of optional request headers provided by the caller.
-  // After request has been sent, contains the received response headers.
-  std::multimap<std::string, std::string> headers_;
+  std::multimap<std::string, std::string> request_headers_;
+
+  // List of headers received in response. Key saved as lower casing for later
+  // processing as headers should be case-insensitive.
+  std::multimap<std::string, std::string> response_headers_;
 
   // HTTP protocol version, such as HTTP/1.1
   std::string protocol_version_;

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_curl.h>
@@ -77,7 +78,7 @@ Connection::~Connection() {
 
 bool Connection::SendHeaders(const HeaderList& headers,
                              brillo::ErrorPtr* /* error */) {
-  headers_.insert(headers.begin(), headers.end());
+  request_headers_.insert(headers.begin(), headers.end());
   return true;
 }
 
@@ -115,7 +116,8 @@ void Connection::PrepareRequest() {
       }
     } else {
       // Data size is unknown, so use chunked upload.
-      headers_.emplace(http::request_header::kTransferEncoding, "chunked");
+      request_headers_.emplace(http::request_header::kTransferEncoding,
+                               "chunked");
     }
 
     if (request_data_stream_) {
@@ -125,9 +127,9 @@ void Connection::PrepareRequest() {
     }
   }
 
-  if (!headers_.empty()) {
+  if (!request_headers_.empty()) {
     CHECK(header_list_ == nullptr);
-    for (auto pair : headers_) {
+    for (const auto& pair : request_headers_) {
       std::string header =
           brillo::string_utils::Join(": ", pair.first, pair.second);
       VLOG(2) << "Request header: " << header;
@@ -136,8 +138,6 @@ void Connection::PrepareRequest() {
     curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_HTTPHEADER,
                                    header_list_);
   }
-
-  headers_.clear();
 
   // Set up HTTP response data.
   if (!response_data_stream_)
@@ -194,8 +194,11 @@ std::string Connection::GetProtocolVersion() const {
 
 std::string Connection::GetResponseHeader(
     const std::string& header_name) const {
-  auto p = headers_.find(header_name);
-  return p != headers_.end() ? p->second : std::string();
+  // According to https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html.
+  // Headers are case-insensitive. All headers in response are saved as lower
+  // case. Convert the requested header to lower case as well.
+  auto p = response_headers_.find(base::ToLowerASCII(header_name));
+  return p != response_headers_.end() ? p->second : std::string();
 }
 
 StreamPtr Connection::ExtractDataStream(brillo::ErrorPtr* error) {
@@ -261,8 +264,13 @@ size_t Connection::header_callback(char* ptr,
     me->status_text_set_ = true;
   } else {
     auto pair = SplitAtFirst(header, ":");
-    if (!pair.second.empty())
-      me->headers_.insert(pair);
+    if (!pair.second.empty()) {
+      // According to https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html.
+      // Headers are case-insensitive. Convert all headers to lower case for
+      // easy processing.
+      pair.first = base::ToLowerASCII(pair.first);
+      me->response_headers_.insert(pair);
+    }
   }
   return hdr_len;
 }
