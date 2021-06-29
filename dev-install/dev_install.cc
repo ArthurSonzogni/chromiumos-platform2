@@ -304,7 +304,7 @@ bool DevInstall::DownloadAndInstallBootstrapPackage(
   if (!CreateMissingDirectory(pkgdir))
     return false;
 
-  LOG(INFO) << "Downloading " + url;
+  LOG(INFO) << "Downloading " << url;
   brillo::ProcessImpl curl;
   curl.SetSearchPath(true);
   curl.AddArg("curl");
@@ -316,12 +316,16 @@ bool DevInstall::DownloadAndInstallBootstrapPackage(
     return false;
   }
 
-  LOG(INFO) << "Unpacking " + pkg.value();
+  LOG(INFO) << "Unpacking " << pkg.value();
   brillo::ProcessImpl tar;
   tar.SetSearchPath(true);
   tar.AddArg("tar");
   tar.AddStringOption("-C", state_dir_.value());
-  tar.AddArg("-xjkf");
+  // Portage binpkgs append metadata to the end of the bzip2 file which makes
+  // bzip2 warn "trailing garbage after EOF ignored".  This is harmless, but
+  // can be confusing & noisy, so suppress it with -q.
+  tar.AddStringOption("-I", "bzip2 -q");
+  tar.AddArg("-xkf");
   tar.AddArg(pkg.value());
   if (tar.Run() != 0) {
     LOG(ERROR) << "Could not extract package";
