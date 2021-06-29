@@ -31,7 +31,7 @@ class MockBiometricsManagerProxyBase : public BiometricsManagerProxyBase {
 
   MOCK_METHOD(void,
               StartAuthSessionAsync,
-              (base::Callback<void(bool success)> callback),
+              (base::OnceCallback<void(bool success)> callback),
               (override));
 
   MOCK_METHOD(void, EndAuthSession, (), (override));

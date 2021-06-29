@@ -45,7 +45,7 @@ class BRILLO_EXPORT BiometricsManagerProxyBase {
   // Starts biometrics auth session asynchronously.
   // |callback| is called when starting the auth session succeeds/fails.
   virtual void StartAuthSessionAsync(
-      base::Callback<void(bool success)> callback);
+      base::OnceCallback<void(bool success)> callback);
 
   // Ends biometrics auth session and resets state.
   virtual void EndAuthSession();
@@ -75,7 +75,7 @@ class BRILLO_EXPORT BiometricsManagerProxyBase {
 
   // Handler for StartAuthSessionAsync. |callback| will be called on behalf of
   // the caller of StartAuthSessionAsync.
-  void OnStartAuthSessionResp(base::Callback<void(bool success)> callback,
+  void OnStartAuthSessionResp(base::OnceCallback<void(bool success)> callback,
                               dbus::Response* response);
 
   // Parse a dbus response and return the ObjectProxy implied by the response.

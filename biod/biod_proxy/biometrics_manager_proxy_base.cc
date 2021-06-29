@@ -120,21 +120,21 @@ bool BiometricsManagerProxyBase::StartAuthSession() {
 }
 
 void BiometricsManagerProxyBase::OnStartAuthSessionResp(
-    base::Callback<void(bool success)> callback, dbus::Response* response) {
+    base::OnceCallback<void(bool success)> callback, dbus::Response* response) {
   biod_auth_session_ = HandleAuthSessionResponse(response);
-  callback.Run(biod_auth_session_ != nullptr);
+  std::move(callback).Run(biod_auth_session_ != nullptr);
 }
 
 void BiometricsManagerProxyBase::StartAuthSessionAsync(
-    base::Callback<void(bool success)> callback) {
+    base::OnceCallback<void(bool success)> callback) {
   LOG(INFO) << "Starting biometric auth session.";
   dbus::MethodCall method_call(biod::kBiometricsManagerInterface,
                                biod::kBiometricsManagerStartAuthSessionMethod);
 
   proxy_->CallMethod(
       &method_call, kDbusTimeoutMs,
-      base::Bind(&BiometricsManagerProxyBase::OnStartAuthSessionResp,
-                 base::Unretained(this), std::move(callback)));
+      base::BindOnce(&BiometricsManagerProxyBase::OnStartAuthSessionResp,
+                     base::Unretained(this), std::move(callback)));
 }
 
 void BiometricsManagerProxyBase::EndAuthSession() {
