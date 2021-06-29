@@ -19,6 +19,7 @@
 #include "shill/manager.h"
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 
 namespace shill {
 

@@ -4,6 +4,7 @@
 
 #include "shill/shims/environment.h"
 
+#include <base/containers/contains.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 

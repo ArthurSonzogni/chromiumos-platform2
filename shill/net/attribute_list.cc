@@ -9,8 +9,8 @@
 
 #include <iomanip>
 
+#include <base/containers/contains.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 
 #include "shill/logging.h"
 #include "shill/net/netlink_attribute.h"

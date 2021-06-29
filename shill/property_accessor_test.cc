@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 

@@ -15,6 +15,7 @@
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
@@ -1611,12 +1612,12 @@ bool Cellular::ResetQ6V5Modem() {
   }
 
   base::ScopedFD scoped_fd(fd);
-  if (!base::WriteFileDescriptor(scoped_fd.get(), "stop", sizeof("stop"))) {
+  if (!base::WriteFileDescriptor(scoped_fd.get(), "stop")) {
     PLOG(ERROR) << "Failed to stop modem";
     return false;
   }
   usleep(kModemResetTimeoutMilliseconds * 1000);
-  if (!base::WriteFileDescriptor(scoped_fd.get(), "start", sizeof("start"))) {
+  if (!base::WriteFileDescriptor(scoped_fd.get(), "start")) {
     PLOG(ERROR) << "Failed to start modem";
     return false;
   }

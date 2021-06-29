@@ -133,8 +133,7 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
   base::ScopedFD scoped_stdin(stdin_fd);
   base::ScopedFD scoped_stdout(stdout_fd);
 
-  if (!base::WriteFileDescriptor(scoped_stdin.get(), base64_private_key.c_str(),
-                                 static_cast<int>(base64_private_key.size()))) {
+  if (!base::WriteFileDescriptor(scoped_stdin.get(), base64_private_key)) {
     LOG(ERROR) << "Failed to send private key to wireguard-tools";
     process_manager->StopProcess(pid);
     return "";

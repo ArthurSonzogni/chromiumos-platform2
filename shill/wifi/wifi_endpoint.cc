@@ -6,8 +6,8 @@
 
 #include <algorithm>
 
+#include <base/containers/contains.h>
 #include <base/notreached.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>

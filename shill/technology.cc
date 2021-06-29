@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 

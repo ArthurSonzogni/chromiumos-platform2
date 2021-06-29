@@ -8,9 +8,9 @@
 
 #include <algorithm>
 
+#include <base/containers/contains.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/logging.h"

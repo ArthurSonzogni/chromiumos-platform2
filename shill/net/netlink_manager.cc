@@ -8,9 +8,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
+#include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "shill/logging.h"

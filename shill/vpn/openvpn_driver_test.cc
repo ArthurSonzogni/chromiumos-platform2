@@ -7,11 +7,11 @@
 #include <memory>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ptr_util.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>

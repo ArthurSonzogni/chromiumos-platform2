@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 
 #include "shill/dns_util.h"

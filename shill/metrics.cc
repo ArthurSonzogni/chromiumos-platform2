@@ -8,8 +8,8 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>

@@ -15,8 +15,8 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 extern "C" {

@@ -28,11 +28,11 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/compiler_specific.h>
+#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/notreached.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

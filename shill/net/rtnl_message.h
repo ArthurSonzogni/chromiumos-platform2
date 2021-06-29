@@ -9,9 +9,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/macros.h>
 #include <base/optional.h>
-#include <base/stl_util.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"

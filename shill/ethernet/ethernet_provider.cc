@@ -12,6 +12,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 
 namespace shill {
 

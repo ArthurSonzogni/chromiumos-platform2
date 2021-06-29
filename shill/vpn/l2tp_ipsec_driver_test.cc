@@ -6,11 +6,11 @@
 
 #include <utility>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
@@ -171,9 +171,7 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
     base::ScopedFD write_scoped_fd(fds[1]);
 
     size_t data_size = password_str.length();
-    base::WriteFileDescriptor(
-        write_scoped_fd.get(),
-        reinterpret_cast<const char*>(password_str.c_str()), data_size);
+    base::WriteFileDescriptor(write_scoped_fd.get(), password_str);
     auto password = password_provider::Password::CreateFromFileDescriptor(
         read_dbus_fd.get(), data_size);
     ASSERT_TRUE(password);

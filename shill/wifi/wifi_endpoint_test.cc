@@ -12,7 +12,7 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

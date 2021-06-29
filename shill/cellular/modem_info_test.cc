@@ -20,6 +20,7 @@
 #include "shill/test_event_dispatcher.h"
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 
 using testing::_;
 using testing::SaveArg;
