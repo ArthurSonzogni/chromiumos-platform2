@@ -129,29 +129,33 @@ LECredError LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
   LECredError ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
                                       &h_aux, &metadata_lost);
   if (ret != LE_CRED_SUCCESS) {
+    ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk, ret);
     return ret;
   }
 
   bool success =
       le_tpm_backend_->RemoveCredential(label, h_aux, orig_mac, &root_hash_);
   if (!success) {
+    ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "Error executing TPM RemoveCredential command.";
     return LE_CRED_ERROR_HASH_TREE;
   }
+  ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_SUCCESS);
 
   if (!hash_tree_->RemoveLabel(label_object)) {
     LOG(ERROR) << "Removed label from TPM but hash tree removal "
                   "encountered error: "
                << label;
+    ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
     // This is an un-salvageable state. We can't make LE updates anymore,
     // since the disk state can't be updated.
     // We block further LE operations until at least the next boot.
     // The hope is that on reboot, the disk operations start working. In that
     // case, we will be able to replay this operation from the TPM log.
     is_locked_ = true;
-    // TODO(crbug.com/809749): Report failure to UMA.
     return LE_CRED_ERROR_HASH_TREE;
   }
+  ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   return LE_CRED_SUCCESS;
 }

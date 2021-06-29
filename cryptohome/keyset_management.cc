@@ -680,7 +680,6 @@ bool KeysetManagement::ForceRemoveKeyset(const std::string& obfuscated,
   // will be deleted.
   if (vk->IsLECredential()) {
     if (!crypto_->RemoveLECredential(vk->GetLELabel())) {
-      // TODO(crbug.com/809749): Add UMA logging for this failure.
       LOG(ERROR)
           << "ForceRemoveKeyset: Failed to remove LE credential metadata.";
     }
