@@ -1,5 +1,5 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
+# Copyright 2021 The Chromium OS Authors.All rights reserved.
+# Use of this source code is governed by a BSD - style license that can be
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
@@ -23,7 +23,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
 
-    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # system_api depends on protobuf(or protobuf - lite).It must appear
     # before protobuf here or the linker flags won't be in the right
     # order.
     "system_api",
@@ -88,6 +88,7 @@ if (use.test) {
 
   executable("missived_testrunner") {
     sources = [
+      "compression/compression_module_test.cc",
       "dbus/upload_client_test.cc",
       "missive_daemon_test.cc",
       "scheduler/enqueue_job_test.cc",
@@ -114,6 +115,8 @@ if (use.test) {
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
+      "//missive/compression:compression_module",
+      "//missive/compression:compression_test_support",
       "//missive/dbus:upload_client",
       "//missive/encryption:encryption_test_support",
       "//missive/encryption:unit_tests",

@@ -21,6 +21,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/compression/compression_module.h"
+#include "missive/compression/test_compression_module.h"
 #include "missive/encryption/decryption.h"
 #include "missive/encryption/encryption.h"
 #include "missive/encryption/encryption_module.h"
@@ -547,10 +549,12 @@ class StorageTest
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
+    test_compression_module_ =
+        base::MakeRefCounted<test::TestCompressionModule>();
     Storage::Create(options,
                     base::BindRepeating(&StorageTest::AsyncStartMockUploader,
                                         base::Unretained(this)),
-                    encryption_module, e.cb());
+                    encryption_module, test_compression_module_, e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
 
     if (expect_to_need_key_) {
@@ -600,11 +604,13 @@ class StorageTest
                   30))) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
+    test_compression_module_ =
+        base::MakeRefCounted<test::TestCompressionModule>();
     Storage::Create(
         options,
         base::BindRepeating(&StorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
-        encryption_module, e.cb());
+        encryption_module, test_compression_module_, e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -738,6 +744,7 @@ class StorageTest
   SignedEncryptionInfo signed_encryption_key_;
   bool expect_to_need_key_{false};
   std::atomic<bool> key_delivery_failure_{false};
+  scoped_refptr<test::TestCompressionModule> test_compression_module_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all MockUploadClients created by test fixture.

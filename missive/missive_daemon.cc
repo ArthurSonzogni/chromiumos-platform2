@@ -16,10 +16,12 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/interface.pb.h"
+#include "missive/proto/record.pb.h"
 #include "missive/scheduler/enqueue_job.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/scheduler/upload_job.h"
@@ -35,6 +37,9 @@ namespace reporting {
 namespace {
 
 constexpr const char kReportingDirectory[] = "/var/cache/reporting";
+const CompressionInformation::CompressionAlgorithm kCompressionType =
+    CompressionInformation::COMPRESSION_SNAPPY;
+constexpr const size_t kCompressionThreshold = 512;
 
 }  // namespace
 
@@ -64,6 +69,7 @@ void MissiveDaemon::RegisterDBusObjectsAsync(
       base::BindRepeating(&MissiveDaemon::AsyncStartUpload,
                           base::Unretained(this)),
       EncryptionModule::Create(),
+      CompressionModule::Create(kCompressionThreshold, kCompressionType),
       base::BindOnce(&MissiveDaemon::OnStorageModuleConfigured,
                      base::Unretained(this)));
 }

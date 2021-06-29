@@ -11,6 +11,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
@@ -30,6 +31,7 @@ class StorageModule : public StorageModuleInterface {
       const StorageOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
+      scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
           callback);
 

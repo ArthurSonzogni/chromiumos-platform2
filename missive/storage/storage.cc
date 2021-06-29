@@ -26,6 +26,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
+#include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
@@ -533,6 +534,7 @@ void Storage::Create(
     const StorageOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
+    scoped_refptr<CompressionModule> compression_module,
     base::OnceCallback<void(StatusOr<scoped_refptr<Storage>>)> completion_cb) {
   // Initialize Storage object, populating all the queues.
   class StorageInitContext
@@ -614,7 +616,7 @@ void Storage::Create(
             base::BindRepeating(&QueueUploaderInterface::AsyncProvideUploader,
                                 /*priority=*/queue_options.first,
                                 base::Unretained(storage_.get())),
-            storage_->encryption_module_,
+            storage_->encryption_module_, storage_->compression_module_,
             base::BindOnce(&StorageInitContext::ScheduleAddQueue,
                            base::Unretained(this),
                            /*priority=*/queue_options.first));
@@ -661,8 +663,9 @@ void Storage::Create(
 
   // Create Storage object.
   // Cannot use base::MakeRefCounted<Storage>, because constructor is private.
-  scoped_refptr<Storage> storage = base::WrapRefCounted(new Storage(
-      options, encryption_module, std::move(async_start_upload_cb)));
+  scoped_refptr<Storage> storage = base::WrapRefCounted(
+      new Storage(options, encryption_module, compression_module,
+                  std::move(async_start_upload_cb)));
 
   // Asynchronously run initialization.
   Start<StorageInitContext>(ExpectedQueues(storage->options_),
@@ -671,10 +674,12 @@ void Storage::Create(
 
 Storage::Storage(const StorageOptions& options,
                  scoped_refptr<EncryptionModuleInterface> encryption_module,
+                 scoped_refptr<CompressionModule> compression_module,
                  UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
     : options_(options),
       encryption_module_(encryption_module),
       key_delivery_(std::make_unique<KeyDelivery>(async_start_upload_cb)),
+      compression_module_(compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
           options.signature_verification_public_key(), options.directory())),
       async_start_upload_cb_(async_start_upload_cb) {}

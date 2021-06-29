@@ -26,6 +26,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/timer/timer.h>
 
+#include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/storage/storage_configuration.h"
@@ -54,6 +55,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       const QueueOptions& options,
       AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
+      scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
           completion_cb);
 
@@ -196,7 +198,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   StorageQueue(scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
                const QueueOptions& options,
                AsyncStartUploaderCb async_start_upload_cb,
-               scoped_refptr<EncryptionModuleInterface> encryption_module);
+               scoped_refptr<EncryptionModuleInterface> encryption_module,
+               scoped_refptr<CompressionModule> compression_module);
 
   // Initializes the object by enumerating files in the assigned directory
   // and determines the sequencing information of the last record.
@@ -350,6 +353,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Encryption module.
   scoped_refptr<EncryptionModuleInterface> encryption_module_;
+
+  // Compression module.
+  scoped_refptr<CompressionModule> compression_module_;
 
   // Test only: records specified to fail on reading.
   base::flat_set<int64_t> test_injected_fail_sequencing_ids_;

@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The Chromium OS Authors.All rights reserved.
 # Use of this source code is governed by a BSD - style license that can be
 # found in the LICENSE file.
 
@@ -19,13 +19,13 @@ pkg_config("target_defaults") {
 }
 
 static_library("storage_configuration") {
-  configs += [ ":target_defaults" ]
   sources = [ "storage_configuration.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("storage_uploader_interface") {
-  configs += [ ":target_defaults" ]
   sources = [ "storage_uploader_interface.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:record_constants",
     "//missive/proto:record_proto",
@@ -35,11 +35,12 @@ static_library("storage_uploader_interface") {
 }
 
 static_library("storage_queue") {
-  configs += [ ":target_defaults" ]
   sources = [ "storage_queue.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":storage_configuration",
     ":storage_uploader_interface",
+    "//missive/compression:compression_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
     "//missive/proto:record_constants",
@@ -52,8 +53,8 @@ static_library("storage_queue") {
 }
 
 static_library("storage_module") {
-  configs += [ ":target_defaults" ]
   sources = [ "storage_module.cc" ]
+  configs += [ ":target_defaults" ]
   public_deps = [ ":storage_configuration" ]
   deps = [
     ":storage",
@@ -68,12 +69,13 @@ static_library("storage_module") {
 }
 
 static_library("storage") {
-  configs += [ ":target_defaults" ]
   sources = [ "storage.cc" ]
+  configs += [ ":target_defaults" ]
   public_deps = [ ":storage_configuration" ]
   deps = [
     ":storage_queue",
     ":storage_uploader_interface",
+    "//missive/compression:compression_module",
     "//missive/encryption:encryption_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
@@ -86,9 +88,10 @@ static_library("storage") {
 }
 
 static_library("storage_module_interface") {
-  configs += [ ":target_defaults" ]
   sources = [ "storage_module_interface.cc" ]
+  configs += [ ":target_defaults" ]
   deps = [
+    "//missive/compression:compression_module",
     "//missive/proto:record_constants",
     "//missive/proto:record_proto",
     "//missive/util:status",
@@ -96,8 +99,8 @@ static_library("storage_module_interface") {
 }
 
 static_library("storage_test_support") {
-  configs += [ ":target_defaults" ]
   sources = [ "test_storage_module.cc" ]
+  configs += [ ":target_defaults" ]
   public_deps = [
     ":storage",
     ":storage_configuration",

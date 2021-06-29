@@ -17,12 +17,16 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/feature_list.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/compression/compression_module.h"
+#include "missive/compression/scoped_compression_feature.h"
+#include "missive/compression/test_compression_module.h"
 #include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
@@ -143,6 +147,8 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     ASSERT_FALSE(storage_queue_) << "StorageQueue already assigned";
     test_encryption_module_ =
         base::MakeRefCounted<test::TestEncryptionModule>();
+    test_compression_module_ =
+        base::MakeRefCounted<test::TestCompressionModule>();
     test::TestEvent<Status> key_update_event;
     test_encryption_module_->UpdateAsymmetricKey("DUMMY KEY", 0,
                                                  key_update_event.cb());
@@ -153,7 +159,8 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
         options,
         base::BindRepeating(&StorageQueueStressTest::AsyncStartTestUploader,
                             base::Unretained(this)),
-        test_encryption_module_, storage_queue_create_event.cb());
+        test_encryption_module_, test_compression_module_,
+        storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
         storage_queue_create_event.result();
     ASSERT_OK(storage_queue_result) << "Failed to create StorageQueue, error="
@@ -204,9 +211,11 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
+  test::ScopedCompressionFeature compression_feature_{/*enable=*/true};
   base::ScopedTempDir location_;
   StorageOptions options_;
   scoped_refptr<test::TestEncryptionModule> test_encryption_module_;
+  scoped_refptr<test::TestCompressionModule> test_compression_module_;
   scoped_refptr<StorageQueue> storage_queue_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record

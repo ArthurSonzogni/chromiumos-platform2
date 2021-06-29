@@ -17,6 +17,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
 
+#include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
@@ -37,6 +38,7 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
       const StorageOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
+      scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<Storage>>)> completion_cb);
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
@@ -92,6 +94,7 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // Queues need to be added afterwards.
   Storage(const StorageOptions& options,
           scoped_refptr<EncryptionModuleInterface> encryption_module,
+          scoped_refptr<CompressionModule> compression_module,
           UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
 
   // Initializes the object by adding all queues for all priorities.
@@ -113,6 +116,9 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
 
   // Internal module for initiail key delivery from server.
   std::unique_ptr<KeyDelivery> key_delivery_;
+
+  // Compression module.
+  scoped_refptr<CompressionModule> compression_module_;
 
   // Internal key management module.
   std::unique_ptr<KeyInStorage> key_in_storage_;

@@ -20,6 +20,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/compression/compression_module.h"
+#include "missive/compression/decompression.h"
+#include "missive/compression/scoped_compression_feature.h"
+#include "missive/compression/test_compression_module.h"
 #include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
@@ -43,6 +47,10 @@ using ::testing::WithoutArgs;
 namespace reporting {
 namespace {
 
+constexpr size_t kCompressionThreshold = 2;
+const CompressionInformation::CompressionAlgorithm kCompressionType =
+    CompressionInformation::COMPRESSION_SNAPPY;
+
 // Metadata file name prefix.
 constexpr char METADATA_NAME[] = "META";
 
@@ -63,6 +71,13 @@ class MockUploadClient : public ::testing::NiceMock<UploaderInterface> {
   void ProcessRecord(EncryptedRecord encrypted_record,
                      base::OnceCallback<void(bool)> processed_cb) override {
     WrappedRecord wrapped_record;
+    // Decompress encrypted_wrapped_record if is was compressed.
+    if (encrypted_record.has_compression_information()) {
+      std::string decompressed_record = Decompression::DecompressRecord(
+          encrypted_record.encrypted_wrapped_record(),
+          encrypted_record.compression_information());
+      encrypted_record.set_encrypted_wrapped_record(decompressed_record);
+    }
     ASSERT_TRUE(wrapped_record.ParseFromString(
         encrypted_record.encrypted_wrapped_record()));
     // Verify generation match.
@@ -84,6 +99,12 @@ class MockUploadClient : public ::testing::NiceMock<UploaderInterface> {
     }
     if (!generation_id_.has_value()) {
       generation_id_ = sequencing_information.generation_id();
+    }
+    // Verify compression information is enabled or disabled.
+    if (CompressionModule::is_enabled()) {
+      EXPECT_TRUE(encrypted_record.has_compression_information());
+    } else {
+      EXPECT_FALSE(encrypted_record.has_compression_information());
     }
 
     // Verify digest and its match.
@@ -293,7 +314,9 @@ class StorageQueueTest : public ::testing::TestWithParam<size_t> {
         options,
         base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
                             base::Unretained(this)),
-        test_encryption_module_, storage_queue_create_event.cb());
+        test_encryption_module_,
+        CompressionModule::Create(kCompressionThreshold, kCompressionType),
+        storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
         storage_queue_create_event.result();
     ASSERT_OK(storage_queue_result) << "Failed to create StorageQueue, error="
@@ -372,9 +395,11 @@ class StorageQueueTest : public ::testing::TestWithParam<size_t> {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
+  test::ScopedCompressionFeature compression_feature_{/*enable=*/true};
   base::ScopedTempDir location_;
   StorageOptions options_;
   scoped_refptr<test::TestEncryptionModule> test_encryption_module_;
+  scoped_refptr<test::TestCompressionModule> test_compression_module_;
   scoped_refptr<StorageQueue> storage_queue_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record
