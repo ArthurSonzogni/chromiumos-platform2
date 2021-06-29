@@ -486,6 +486,13 @@ void TpmManagerService::GetVersionInfoTask(
 void TpmManagerService::GetSupportedFeatures(
     const GetSupportedFeaturesRequest& request,
     GetSupportedFeaturesCallback callback) {
+  {
+    base::AutoLock lock(supported_features_cache_lock_);
+    if (supported_features_cache_) {
+      std::move(callback).Run(*supported_features_cache_);
+      return;
+    }
+  }
   PostTaskToWorkerThread<GetSupportedFeaturesReply>(
       request, std::move(callback),
       &TpmManagerService::GetSupportedFeaturesTask);
@@ -494,8 +501,21 @@ void TpmManagerService::GetSupportedFeatures(
 void TpmManagerService::GetSupportedFeaturesTask(
     const GetSupportedFeaturesRequest& request,
     const std::shared_ptr<GetSupportedFeaturesReply>& reply) {
+  // It's possible that cache was not available when the request came to the
+  // main thread but became available when the task is being processed here.
+  // Checks the cache again to save one TPM call.
+  if (supported_features_cache_) {
+    *reply = *supported_features_cache_;
+    return;
+  }
+
   reply->set_support_u2f(tpm_status_->SupportU2f());
   reply->set_status(STATUS_SUCCESS);
+
+  {
+    base::AutoLock lock(supported_features_cache_lock_);
+    supported_features_cache_ = *reply;
+  }
 }
 
 void TpmManagerService::GetDictionaryAttackInfo(

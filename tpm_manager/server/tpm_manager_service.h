@@ -313,6 +313,9 @@ class TpmManagerService : public TpmNvramInterface,
   // Cache of TPM version info, base::nullopt if cache doesn't exist.
   base::Optional<GetVersionInfoReply> version_info_cache_;
 
+  // Cache of TPM supported features, base::nullopt if cache doesn't exist.
+  base::Optional<GetSupportedFeaturesReply> supported_features_cache_;
+
   // Cache of TPM status.
   GetTpmStatusReply get_tpm_status_cache_;
 
@@ -330,6 +333,10 @@ class TpmManagerService : public TpmNvramInterface,
   // Lock for |version_info_cache_|, which might be accessed from both the main
   // and worker threads.
   base::Lock version_info_cache_lock_;
+
+  // Lock for |supported_features_cache_|, which might be accessed from both the
+  // main and worker threads.
+  base::Lock supported_features_cache_lock_;
 
   // base::Thread subclass so we can implement CleanUp.
   class ServiceWorkerThread : public base::Thread {
