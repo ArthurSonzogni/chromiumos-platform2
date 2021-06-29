@@ -932,6 +932,16 @@ TEST_F(V4L2Test, AutoFocusSupported) {
   ASSERT_TRUE(ExerciseControl(V4L2_CID_FOCUS_AUTO, "focus_auto"));
 }
 
+TEST_F(V4L2Test, GetRoiSupport) {
+  if (g_env->lens_facing_ == LensFacing::kFront) {
+    std::cout << "Facing:front:" << g_env->check_roi_control_ << std::endl;
+  } else if (g_env->lens_facing_ == LensFacing::kBack) {
+    std::cout << "Facing:back:" << g_env->check_roi_control_ << std::endl;
+  } else {
+    FAIL() << "Invalid facing: " << static_cast<int>(g_env->lens_facing_);
+  }
+}
+
 }  // namespace tests
 }  // namespace cros
 
