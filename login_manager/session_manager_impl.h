@@ -290,8 +290,9 @@ class SessionManagerImpl
   void SetFlagsForUser(const std::string& in_account_id,
                        const std::vector<std::string>& in_flags) override;
   void SetFeatureFlagsForUser(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender sender) override;
+      const std::string& in_account_id,
+      const std::vector<std::string>& in_feature_flags,
+      const std::map<std::string, std::string>& in_origin_list_flags) override;
 
   void GetServerBackedStateKeys(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

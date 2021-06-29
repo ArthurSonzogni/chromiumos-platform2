@@ -1195,49 +1195,11 @@ void SessionManagerImpl::SetFlagsForUser(
 }
 
 void SessionManagerImpl::SetFeatureFlagsForUser(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  dbus::MessageReader reader(method_call);
-
-  std::string in_account_id;
-  std::vector<std::string> in_flags;
-  if (!reader.PopString(&in_account_id) ||
-      !reader.PopArrayOfStrings(&in_flags)) {
-    std::move(response_sender)
-        .Run(dbus::ErrorResponse::FromMethodCall(
-            method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
-    return;
-  }
-
-  std::map<std::string, std::string> in_origin_list_flags;
-  if (reader.HasMoreData()) {
-    dbus::MessageReader array_reader(nullptr);
-    if (!reader.PopArray(&array_reader)) {
-      std::move(response_sender)
-          .Run(dbus::ErrorResponse::FromMethodCall(
-              method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
-      return;
-    }
-
-    while (array_reader.HasMoreData()) {
-      dbus::MessageReader entry_reader(nullptr);
-      std::string flag;
-      std::string origin_list_value;
-      if (!array_reader.PopDictEntry(&entry_reader) ||
-          !entry_reader.PopString(&flag) ||
-          !entry_reader.PopString(&origin_list_value)) {
-        std::move(response_sender)
-            .Run(dbus::ErrorResponse::FromMethodCall(
-                method_call, DBUS_ERROR_INVALID_ARGS, std::string()));
-        return;
-      }
-      in_origin_list_flags[flag] = origin_list_value;
-    }
-  }
-
-  manager_->SetFeatureFlagsForUser(in_account_id, in_flags,
+    const std::string& in_account_id,
+    const std::vector<std::string>& in_feature_flags,
+    const std::map<std::string, std::string>& in_origin_list_flags) {
+  manager_->SetFeatureFlagsForUser(in_account_id, in_feature_flags,
                                    in_origin_list_flags);
-  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void SessionManagerImpl::GetServerBackedStateKeys(
