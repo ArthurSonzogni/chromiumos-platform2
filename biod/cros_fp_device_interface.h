@@ -27,7 +27,7 @@ namespace biod {
 
 class CrosFpDeviceInterface {
  public:
-  using MkbpCallback = base::Callback<void(const uint32_t event)>;
+  using MkbpCallback = base::RepeatingCallback<void(const uint32_t event)>;
   CrosFpDeviceInterface() = default;
   CrosFpDeviceInterface(const CrosFpDeviceInterface&) = delete;
   CrosFpDeviceInterface& operator=(const CrosFpDeviceInterface&) = delete;

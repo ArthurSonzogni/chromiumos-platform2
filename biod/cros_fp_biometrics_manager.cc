@@ -338,7 +338,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
   CHECK(biod_metrics_);
   CHECK(maintenance_timer_);
 
-  cros_dev_->SetMkbpEventCallback(base::Bind(
+  cros_dev_->SetMkbpEventCallback(base::BindRepeating(
       &CrosFpBiometricsManager::OnMkbpEvent, base::Unretained(this)));
 
   use_positive_match_secret_ = cros_dev_->SupportsPositiveMatchSecret();
