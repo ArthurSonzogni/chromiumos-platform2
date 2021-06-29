@@ -7,6 +7,7 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_COMMON_TYPES_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_COMMON_TYPES_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -43,6 +44,7 @@ struct Rect {
 };
 
 struct Size {
+  Size() : width(0), height(0) {}
   Size(uint32_t w, uint32_t h) : width(w), height(h) {}
   uint32_t width;
   uint32_t height;
@@ -58,6 +60,25 @@ struct Size {
   }
   std::string ToString() const {
     return base::StringPrintf("%ux%u", width, height);
+  }
+};
+
+template <typename T>
+struct Range {
+  T lower_bound = 0;
+  T upper_bound = 0;
+
+  Range() = default;
+  Range(T l, T u) : lower_bound(l), upper_bound(u) {}
+  bool is_valid() const { return lower_bound <= upper_bound; }
+  T lower() const { return lower_bound; }
+  T upper() const { return upper_bound; }
+  T Clamp(T value) { return std::clamp(value, lower_bound, upper_bound); }
+  bool operator==(const Range& rhs) const {
+    return lower_bound == rhs.lower_bound && upper_bound == rhs.upper_bound;
+  }
+  friend std::ostream& operator<<(std::ostream& stream, const Range& r) {
+    return stream << "[" << r.lower_bound << ", " << r.upper_bound << "]";
   }
 };
 
