@@ -20,6 +20,7 @@ constexpr int kTpmManagerServiceTimeoutInMs = 5 * 60 * 1000;
 constexpr char kGetTpmStatus[] = "GetTpmStatus";
 constexpr char kGetTpmNonsensitiveStatus[] = "GetTpmNonsensitiveStatus";
 constexpr char kGetVersionInfo[] = "GetVersionInfo";
+constexpr char kGetSupportedFeatures[] = "GetSupportedFeatures";
 constexpr char kGetDictionaryAttackInfo[] = "GetDictionaryAttackInfo";
 constexpr char kResetDictionaryAttackLock[] = "ResetDictionaryAttackLock";
 constexpr char kTakeOwnership[] = "TakeOwnership";
