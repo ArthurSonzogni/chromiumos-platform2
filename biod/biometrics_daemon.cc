@@ -73,9 +73,9 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
       dbus::kDBusServiceName, dbus::ObjectPath(dbus::kDBusServicePath));
   bus_proxy->ConnectToSignal(
       dbus::kDBusInterface, "NameOwnerChanged",
-      base::Bind(&BiometricsManagerWrapper::OnNameOwnerChanged,
-                 base::Unretained(this)),
-      base::Bind(&LogOnSignalConnected));
+      base::BindRepeating(&BiometricsManagerWrapper::OnNameOwnerChanged,
+                          base::Unretained(this)),
+      base::BindOnce(&LogOnSignalConnected));
 
   DBusInterface* bio_interface =
       dbus_object_.AddOrGetInterface(kBiometricsManagerInterface);
@@ -462,9 +462,9 @@ BiometricsDaemon::BiometricsDaemon() {
   session_manager_proxy_->ConnectToSignal(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
-      base::Bind(&BiometricsDaemon::OnSessionStateChanged,
-                 base::Unretained(this)),
-      base::Bind(&LogOnSignalConnected));
+      base::BindRepeating(&BiometricsDaemon::OnSessionStateChanged,
+                          base::Unretained(this)),
+      base::BindOnce(&LogOnSignalConnected));
 
   CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));

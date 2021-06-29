@@ -53,10 +53,10 @@ bool BiometricsManagerProxyBase::Initialize(const scoped_refptr<dbus::Bus>& bus,
   proxy_->ConnectToSignal(
       biod::kBiometricsManagerInterface,
       biod::kBiometricsManagerSessionFailedSignal,
-      base::Bind(&BiometricsManagerProxyBase::OnSessionFailed,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&BiometricsManagerProxyBase::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&BiometricsManagerProxyBase::OnSessionFailed,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&BiometricsManagerProxyBase::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
   return true;
 }
 

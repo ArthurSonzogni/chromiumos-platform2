@@ -39,9 +39,10 @@ PowerManagerClient::PowerManagerClient(const scoped_refptr<dbus::Bus>& bus) {
   proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus);
   // Register Input Event signal Handler.
   proxy_->RegisterInputEventSignalHandler(
-      base::Bind(&PowerManagerClient::InputEvent, weak_factory_.GetWeakPtr()),
-      base::Bind(&PowerManagerClient::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerManagerClient::InputEvent,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&PowerManagerClient::OnSignalConnected,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void PowerManagerClient::AddObserver(PowerEventObserver* observer) {

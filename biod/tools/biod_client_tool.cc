@@ -218,17 +218,17 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     proxy_->ConnectToSignal(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerEnrollScanDoneSignal,
-        base::Bind(&BiometricsManagerProxy::OnEnrollScanDone,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&BiometricsManagerProxy::OnSignalConnected,
-                   weak_factory_.GetWeakPtr()));
+        base::BindRepeating(&BiometricsManagerProxy::OnEnrollScanDone,
+                            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&BiometricsManagerProxy::OnSignalConnected,
+                       weak_factory_.GetWeakPtr()));
     proxy_->ConnectToSignal(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerAuthScanDoneSignal,
-        base::Bind(&BiometricsManagerProxy::OnAuthScanDone,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&BiometricsManagerProxy::OnSignalConnected,
-                   weak_factory_.GetWeakPtr()));
+        base::BindRepeating(&BiometricsManagerProxy::OnAuthScanDone,
+                            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&BiometricsManagerProxy::OnSignalConnected,
+                       weak_factory_.GetWeakPtr()));
     return true;
   }
 
