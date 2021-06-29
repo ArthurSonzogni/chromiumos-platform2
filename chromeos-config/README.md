@@ -340,6 +340,7 @@ In the tables below,
 | firmware-signing | [firmware-signing](#firmware_signing) |  | False |  | True |  |
 | hardware-properties | [hardware-properties](#hardware_properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
 | identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
+| keyboard | [keyboard](#keyboard) |  | False |  | False | Contains details about the model's keyboard. |
 | modem | [modem](#modem) |  | False |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | False | Google code name for the given model. While it is OK to use this string for human-display purposes (such as in a debug log or help dialog), or for a searchable-key in metrics collection, it is not recommended to use this property for creating model-specific behaviors. In this case, add a property to the schema which describes your behavior and use that instead. |
 | nnpalm | [nnpalm](#nnpalm) |  | False |  | False |  |
@@ -575,6 +576,12 @@ In the tables below,
 | platform-name | string |  | False | ARM | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
 | sku-id | integer |  | False | ARM | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
 | whitelabel-tag | string |  | False | ARM | False | 'whitelabel_tag' value set in the VPD, to add Whitelabel branding over an unbranded base model. |
+
+### keyboard
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| backlight | boolean |  | False |  | False | Specifies the existence of backlight. |
+| numpad | boolean |  | False |  | False | Specifies the existence of numpad. |
 
 ### modem
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

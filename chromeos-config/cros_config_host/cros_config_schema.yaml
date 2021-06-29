@@ -680,6 +680,16 @@ properties:
                     customization-id: *customization_id
                     whitelabel-tag: *whitelabel_tag
                   additionalProperties: false
+            keyboard:
+              type: object
+              description: Contains details about the model's keyboard.
+              properties:
+                numpad:
+                  type: boolean
+                  description: Specifies the existence of numpad.
+                backlight:
+                  type: boolean
+                  description: Specifies the existence of backlight.
             name:
               type: string
               pattern: "^[_a-zA-Z0-9]{3,}"
