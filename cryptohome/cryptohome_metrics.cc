@@ -101,6 +101,8 @@ constexpr char kDeriveAuthBlockTypeHistogram[] =
     "Cryptohome.DeriveAuthBlockType";
 constexpr char kUserSubdirHasCorrectGroup[] =
     "Cryptohome.UserSubdirHasCorrectGroup";
+constexpr char kLegacyCodePathUsageHistogramPrefix[] =
+    "Cryptohome.LegacyCodePathUsage";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -145,6 +147,14 @@ const TimerHistogramParams kTimerHistogramParams[] = {
 
 static_assert(base::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");
+
+// List of strings for a patterned histogram for legacy locations.
+const char* kLegacyCodePathLocations[] = {".AddKeyResetSeedGeneration"};
+
+static_assert(
+    base::size(kLegacyCodePathLocations) ==
+        static_cast<int>(cryptohome::LegacyCodePathLocation::kMaxValue) + 1,
+    "kLegacyCodePathLocations out of sync with enum LegacyCodePathLocation");
 
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
     "Cryptohome.DeprecatedApiCalled";
@@ -629,6 +639,19 @@ void ReportUserSubdirHasCorrectGroup(bool correct) {
   }
 
   g_metrics->SendBoolToUMA(kUserSubdirHasCorrectGroup, correct);
+}
+
+void ReportUsageOfLegacyCodePath(const LegacyCodePathLocation location,
+                                 bool result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  std::string hist_str =
+      std::string(kLegacyCodePathUsageHistogramPrefix)
+          .append(kLegacyCodePathLocations[static_cast<int>(location)]);
+
+  g_metrics->SendBoolToUMA(hist_str, result);
 }
 
 }  // namespace cryptohome

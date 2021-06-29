@@ -449,6 +449,21 @@ constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
 constexpr char kAttestationMigrateDatabase[] = "MigrateDatabase";
 constexpr char kAttestationPrepareForEnrollment[] = "PrepareForEnrollment";
 
+// List of all the legacy code paths' usage we are tracking. This will enable us
+// to further clean up the code in the future, should any of these code paths
+// are found not being used.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class LegacyCodePathLocation {
+  // When a new keyset is being added, Cryptohome checks to see if the keyset
+  // that authorizes that add keyset action has a reset_seed.
+  // The goal of this block was to support pin, when the older keyset didn't
+  // have reset_seed. In the newer versions of keyset, by default, we store a
+  // reset_seed.
+  kGenerateResetSeedDuringAddKey = 0,
+  kMaxValue = kGenerateResetSeedDuringAddKey
+};
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -648,6 +663,9 @@ void ReportDeriveAuthBlock(AuthBlockType type);
 // TODO(crbug.com/1205308): Remove once the root cause is fixed and we stop
 // seeing cases where this directory has the wrong group owner.
 void ReportUserSubdirHasCorrectGroup(bool correct);
+
+// Reports which code paths are being used today and performing what actions.
+void ReportUsageOfLegacyCodePath(LegacyCodePathLocation location, bool result);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

@@ -21,6 +21,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/vault_keyset.h"
@@ -490,7 +491,10 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
   // If the VaultKeyset doesn't have a reset seed, simply generate
   // one and re-encrypt before proceeding.
-  if (!vk->HasWrappedResetSeed()) {
+  bool has_reset_seed = vk->HasWrappedResetSeed();
+  ReportUsageOfLegacyCodePath(
+      LegacyCodePathLocation::kGenerateResetSeedDuringAddKey, has_reset_seed);
+  if (!has_reset_seed) {
     LOG(INFO) << "Keyset lacks reset_seed; generating one.";
     vk->CreateRandomResetSeed();
     if (!vk->Encrypt(existing_credentials.passkey(), obfuscated) ||
