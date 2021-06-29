@@ -375,8 +375,10 @@ void BrowserJob::SetExtraArguments(const std::vector<std::string>& arguments) {
 }
 
 void BrowserJob::SetFeatureFlags(
-    const std::vector<std::string>& feature_flags) {
+    const std::vector<std::string>& feature_flags,
+    const std::map<std::string, std::string>& origin_list_flags) {
   feature_flags_ = feature_flags;
+  origin_list_flags_ = origin_list_flags;
 }
 
 void BrowserJob::SetTestArguments(const std::vector<std::string>& arguments) {
@@ -442,6 +444,19 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                               &encoded);
       to_return.push_back(base::StringPrintf(
           "--%s=%s", chromeos::switches::kFeatureFlags, encoded.c_str()));
+    }
+
+    // Encode origin list values.
+    base::Value origin_list_dict(base::Value::Type::DICTIONARY);
+    for (const auto& entry : origin_list_flags_) {
+      origin_list_dict.SetStringKey(entry.first, entry.second);
+    }
+    if (!origin_list_dict.DictEmpty()) {
+      std::string encoded;
+      base::JSONWriter::Write(origin_list_dict, &encoded);
+      to_return.push_back(base::StringPrintf(
+          "--%s=%s", chromeos::switches::kFeatureFlagsOriginList,
+          encoded.c_str()));
     }
   }
 

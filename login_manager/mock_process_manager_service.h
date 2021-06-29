@@ -7,6 +7,7 @@
 
 #include "login_manager/process_manager_service_interface.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,9 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
               (override));
   MOCK_METHOD(void,
               SetFeatureFlagsForUser,
-              (const std::string&, const std::vector<std::string>&),
+              (const std::string&,
+               const std::vector<std::string>&,
+               (const std::map<std::string, std::string>&)),
               (override));
   MOCK_METHOD(void,
               SetBrowserDataMigrationArgsForUser,

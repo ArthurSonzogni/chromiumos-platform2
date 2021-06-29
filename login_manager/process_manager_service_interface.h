@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_PROCESS_MANAGER_SERVICE_INTERFACE_H_
 #define LOGIN_MANAGER_PROCESS_MANAGER_SERVICE_INTERFACE_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -63,7 +64,8 @@ class ProcessManagerServiceInterface {
   // restarts Chrome inside an existing session.
   virtual void SetFeatureFlagsForUser(
       const std::string& username,
-      const std::vector<std::string>& feature_flags) = 0;
+      const std::vector<std::string>& feature_flags,
+      const std::map<std::string, std::string>& origin_list_flags) = 0;
 
   // Calls |BrowserJob::SetBrowserDataMigrationArgsForUser()| in order to run
   // browser data migration on chrome launched subsequently.

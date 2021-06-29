@@ -539,7 +539,14 @@
     <method name="SetFeatureFlagsForUser">
       <arg type="s" name="account_id" direction="in" />
       <arg type="as" name="feature_flags" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="a{ss}" name="origin_list_flags" direction="in" />
+      <!--
+          TODO(crbug/1220748): Temporarily uses "raw" kind in order to handle
+          the added origin_list_flags parameter as optional. Switch this back
+          to simple after the Chrome change to pass the origin_list_flags
+          parameter lands.
+      -->
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
     </method>
 
     <!--

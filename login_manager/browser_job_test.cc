@@ -525,12 +525,15 @@ TEST_F(BrowserJobTest, SetTestArgumentsAndSetExtraArgumentsDontConflict) {
 }
 
 TEST_F(BrowserJobTest, FeatureFlags) {
-  job_->SetFeatureFlags({"one", "two", "three"});
+  job_->SetFeatureFlags({"one", "two", "three"}, {{"name", "value"}});
   std::vector<std::string> job_args = job_->ExportArgv();
   // Also verify that the elements appear in alphabetical order.
   EXPECT_THAT(job_args,
               Contains(base::StringPrintf("--%s=[\"one\",\"three\",\"two\"]",
                                           chromeos::switches::kFeatureFlags)));
+  EXPECT_THAT(job_args, Contains(base::StringPrintf(
+                            "--%s={\"name\":\"value\"}",
+                            chromeos::switches::kFeatureFlagsOriginList)));
 }
 
 TEST_F(BrowserJobTest, ExportArgv) {

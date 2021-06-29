@@ -9,6 +9,7 @@
 
 #include <sys/types.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -57,7 +58,8 @@ class FakeBrowserJob : public BrowserJobInterface {
               (override));
   MOCK_METHOD(void,
               SetFeatureFlags,
-              (const std::vector<std::string>&),
+              (const std::vector<std::string>&,
+               (const std::map<std::string, std::string>&)),
               (override));
   MOCK_METHOD(void,
               SetTestArguments,

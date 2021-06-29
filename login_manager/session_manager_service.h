@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -159,7 +160,8 @@ class SessionManagerService
                        const std::vector<std::string>& flags) override;
   void SetFeatureFlagsForUser(
       const std::string& account_id,
-      const std::vector<std::string>& feature_flags) override;
+      const std::vector<std::string>& feature_flags,
+      const std::map<std::string, std::string>& origin_list_flags) override;
   void SetBrowserDataMigrationArgsForUser(const std::string& userhash) override;
   bool IsBrowser(pid_t pid) override;
   base::TimeTicks GetLastBrowserRestartTime() override;
