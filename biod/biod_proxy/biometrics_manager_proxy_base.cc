@@ -16,7 +16,7 @@ namespace biod {
 
 static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 
-using FinishCallback = base::Callback<void(bool success)>;
+using FinishCallback = base::RepeatingCallback<void(bool success)>;
 
 const char* ScanResultToString(ScanResult result) {
   switch (result) {

@@ -118,7 +118,7 @@ class RecordProxy {
 
 class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
  public:
-  using FinishCallback = base::Callback<void(bool success)>;
+  using FinishCallback = base::RepeatingCallback<void(bool success)>;
 
   static std::unique_ptr<BiometricsManagerProxy> Create(
       const scoped_refptr<dbus::Bus>& bus,
@@ -404,7 +404,8 @@ int DoEnroll(base::WeakPtr<BiometricsManagerProxy> biometrics_manager,
   base::RunLoop run_loop;
 
   int ret = 1;
-  biometrics_manager->SetFinishHandler(base::Bind(&OnFinish, &run_loop, &ret));
+  biometrics_manager->SetFinishHandler(
+      base::BindRepeating(&OnFinish, &run_loop, &ret));
 
   run_loop.Run();
 
@@ -430,7 +431,8 @@ int DoAuthenticate(base::WeakPtr<BiometricsManagerProxy> biometrics_manager) {
   base::RunLoop run_loop;
 
   int ret = 1;
-  biometrics_manager->SetFinishHandler(base::Bind(&OnFinish, &run_loop, &ret));
+  biometrics_manager->SetFinishHandler(
+      base::BindRepeating(&OnFinish, &run_loop, &ret));
 
   run_loop.Run();
 

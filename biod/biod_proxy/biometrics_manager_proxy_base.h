@@ -21,7 +21,7 @@ BRILLO_EXPORT const char* ScanResultToString(ScanResult result);
 
 class BRILLO_EXPORT BiometricsManagerProxyBase {
  public:
-  using FinishCallback = base::Callback<void(bool success)>;
+  using FinishCallback = base::RepeatingCallback<void(bool success)>;
   using SignalCallback = dbus::ObjectProxy::SignalCallback;
   using OnConnectedCallback = dbus::ObjectProxy::OnConnectedCallback;
 
