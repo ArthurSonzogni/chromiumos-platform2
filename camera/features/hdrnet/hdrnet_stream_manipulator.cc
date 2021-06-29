@@ -70,7 +70,7 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
       hdrnet_processor_factory_(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
-              : base::BindRepeating(HdrNetProcessorImpl::GetInstance)),
+              : base::BindRepeating(HdrNetProcessorImpl::CreateInstance)),
       hdrnet_ae_controller_factory_(
           !hdrnet_ae_controller_factory.is_null()
               ? std::move(hdrnet_ae_controller_factory)

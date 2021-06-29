@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/hdrnet/hdrnet_device_processor_ipu6.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter_ipu6.h"
 
 #include <string>
 #include <vector>
@@ -32,7 +32,7 @@ constexpr const char kPostprocessorFilename[] = "postprocess_ipu6.frag";
 
 }  // namespace
 
-HdrNetDeviceProcessorIpu6::HdrNetDeviceProcessorIpu6(
+HdrNetProcessorDeviceAdapterIpu6::HdrNetProcessorDeviceAdapterIpu6(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : task_runner_(task_runner) {
@@ -42,7 +42,7 @@ HdrNetDeviceProcessorIpu6::HdrNetDeviceProcessorIpu6(
   num_curve_points_ = *max_curve_points;
 }
 
-bool HdrNetDeviceProcessorIpu6::Initialize() {
+bool HdrNetProcessorDeviceAdapterIpu6::Initialize() {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   rect_ = std::make_unique<ScreenSpaceRect>();
@@ -91,11 +91,11 @@ bool HdrNetDeviceProcessorIpu6::Initialize() {
   return true;
 }
 
-void HdrNetDeviceProcessorIpu6::TearDown() {
+void HdrNetProcessorDeviceAdapterIpu6::TearDown() {
   DCHECK(task_runner_->BelongsToCurrentThread());
 }
 
-void HdrNetDeviceProcessorIpu6::ProcessResultMetadata(
+void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
     int frame_number, const camera_metadata_t* metadata) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   // TODO(jcliang): Theoretically metadata can come after the buffer as well.
@@ -117,9 +117,10 @@ void HdrNetDeviceProcessorIpu6::ProcessResultMetadata(
   }
 }
 
-bool HdrNetDeviceProcessorIpu6::Preprocess(const HdrNetConfig::Options& options,
-                                           const SharedImage& input_nv12,
-                                           const SharedImage& output_rgba) {
+bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
+    const HdrNetConfig::Options& options,
+    const SharedImage& input_nv12,
+    const SharedImage& output_rgba) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   if (!inverse_gtm_lut_.IsValid()) {
@@ -203,7 +204,7 @@ bool HdrNetDeviceProcessorIpu6::Preprocess(const HdrNetConfig::Options& options,
   return true;
 }
 
-bool HdrNetDeviceProcessorIpu6::Postprocess(
+bool HdrNetProcessorDeviceAdapterIpu6::Postprocess(
     const HdrNetConfig::Options& options,
     const SharedImage& input_rgba,
     const SharedImage& output_nv12) {
@@ -292,7 +293,7 @@ bool HdrNetDeviceProcessorIpu6::Postprocess(
   return true;
 }
 
-Texture2D HdrNetDeviceProcessorIpu6::CreateGainLutTexture(
+Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
     base::span<const float> tonemap_curve, bool inverse) {
   auto interpolate = [](float i, float x0, float y0, float x1,
                         float y1) -> float {

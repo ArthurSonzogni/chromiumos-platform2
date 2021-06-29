@@ -35,7 +35,7 @@ static_library("libhdrnet") {
     "//camera/features/hdrnet/hdrnet_ae_controller_impl.cc",
     "//camera/features/hdrnet/hdrnet_ae_device_adapter.cc",
     "//camera/features/hdrnet/hdrnet_config.cc",
-    "//camera/features/hdrnet/hdrnet_device_processor.cc",
+    "//camera/features/hdrnet/hdrnet_processor_device_adapter.cc",
     "//camera/features/hdrnet/hdrnet_processor_impl.cc",
     "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",
   ]
@@ -59,7 +59,7 @@ static_library("libhdrnet") {
   if (use.ipu6ep) {
     sources += [
       "//camera/features/hdrnet/hdrnet_ae_device_adapter_ipu6.cc",
-      "//camera/features/hdrnet/hdrnet_device_processor_ipu6.cc",
+      "//camera/features/hdrnet/hdrnet_processor_device_adapter_ipu6.cc",
       "//camera/features/hdrnet/ipu6_gamma.cc",
     ]
     defines += [ "IPU6EP" ]

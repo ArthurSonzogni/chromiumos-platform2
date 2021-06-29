@@ -15,7 +15,7 @@
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/hdrnet_linear_rgb_pipeline_cros.h"
-#include "features/hdrnet/hdrnet_device_processor.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 
 namespace cros {
 
@@ -24,14 +24,15 @@ namespace cros {
 class HdrNetProcessorImpl : public HdrNetProcessor {
  public:
   // The default factory method to get the activated HdrNetProcessor instance.
-  static std::unique_ptr<HdrNetProcessor> GetInstance(
+  static std::unique_ptr<HdrNetProcessor> CreateInstance(
       const camera_metadata_t* static_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   // All the methods of HdrNetProcessorImpl must be sequenced on |task_runner|.
-  HdrNetProcessorImpl(const camera_metadata_t* static_info,
-                      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-                      std::unique_ptr<HdrNetDeviceProcessor> device_processor);
+  HdrNetProcessorImpl(
+      const camera_metadata_t* static_info,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      std::unique_ptr<HdrNetProcessorDeviceAdapter> processor_device_adapter);
 
   HdrNetProcessorImpl(const HdrNetProcessorImpl& other) = delete;
   HdrNetProcessorImpl& operator=(const HdrNetProcessorImpl& other) = delete;
@@ -66,7 +67,7 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
 
   std::unique_ptr<GpuImageProcessor> image_processor_;
   std::unique_ptr<HdrNetLinearRgbPipelineCrOS> hdrnet_pipeline_;
-  std::unique_ptr<HdrNetDeviceProcessor> device_processor_;
+  std::unique_ptr<HdrNetProcessorDeviceAdapter> processor_device_adapter_;
 
   // Intermediate buffers for storing pre-processing results.
   SharedImage intermediates_[2];

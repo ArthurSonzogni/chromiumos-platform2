@@ -17,7 +17,7 @@
 
 #include "cros-camera/common_types.h"
 #include "features/hdrnet/hdrnet_config.h"
-#include "features/hdrnet/hdrnet_device_processor.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 

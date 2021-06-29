@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_HDRNET_DEVICE_PROCESSOR_H_
-#define CAMERA_FEATURES_HDRNET_HDRNET_DEVICE_PROCESSOR_H_
+#ifndef CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_DEVICE_ADAPTER_H_
+#define CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_DEVICE_ADAPTER_H_
 
 #include <memory>
 
@@ -20,14 +20,14 @@ namespace cros {
 // Device specilization for the pre-processing and post-processing of the HDRnet
 // pipeline.
 //
-// The default HdrNetDeviceProcessor implementation does nothing.
-class HdrNetDeviceProcessor {
+// The default HdrNetProcessorDeviceAdapter implementation does nothing.
+class HdrNetProcessorDeviceAdapter {
  public:
-  static std::unique_ptr<HdrNetDeviceProcessor> GetInstance(
+  static std::unique_ptr<HdrNetProcessorDeviceAdapter> CreateInstance(
       const camera_metadata_t* static_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
-  virtual ~HdrNetDeviceProcessor() = default;
+  virtual ~HdrNetProcessorDeviceAdapter() = default;
   virtual bool Initialize();
   virtual void TearDown();
 
@@ -50,4 +50,4 @@ class HdrNetDeviceProcessor {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_HDRNET_DEVICE_PROCESSOR_H_
+#endif  // CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_DEVICE_ADAPTER_H_

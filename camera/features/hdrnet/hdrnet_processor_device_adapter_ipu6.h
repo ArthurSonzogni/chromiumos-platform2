@@ -4,10 +4,10 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_HDRNET_DEVICE_PROCESSOR_IPU6_H_
-#define CAMERA_FEATURES_HDRNET_HDRNET_DEVICE_PROCESSOR_IPU6_H_
+#ifndef CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_DEVICE_ADAPTER_IPU6_H_
+#define CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_DEVICE_ADAPTER_IPU6_H_
 
-#include "features/hdrnet/hdrnet_device_processor.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 
 #include <memory>
 #include <vector>
@@ -18,15 +18,15 @@
 
 namespace cros {
 
-// HdrNetDeviceProcessor implementation for Intel IPU6.
-class HdrNetDeviceProcessorIpu6 : public HdrNetDeviceProcessor {
+// HdrNetProcessorDeviceAdapter implementation for Intel IPU6.
+class HdrNetProcessorDeviceAdapterIpu6 : public HdrNetProcessorDeviceAdapter {
  public:
-  HdrNetDeviceProcessorIpu6(
+  HdrNetProcessorDeviceAdapterIpu6(
       const camera_metadata_t* static_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
-  // HdrNetDeviceProcessor implementations.
-  ~HdrNetDeviceProcessorIpu6() override = default;
+  // HdrNetProcessorDeviceAdapter implementations.
+  ~HdrNetProcessorDeviceAdapterIpu6() override = default;
   bool Initialize() override;
   void TearDown() override;
   void ProcessResultMetadata(int frame_number,
@@ -62,4 +62,4 @@ class HdrNetDeviceProcessorIpu6 : public HdrNetDeviceProcessor {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_HDRNET_DEVICE_PROCESSOR_IPU6_H_
+#endif  // CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_DEVICE_ADAPTER_IPU6_H_

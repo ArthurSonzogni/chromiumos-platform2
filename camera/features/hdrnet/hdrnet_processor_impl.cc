@@ -28,20 +28,20 @@ constexpr const char kModelDir[] = "/opt/google/cros-camera/ml_models/hdrnet";
 }  // namespace
 
 // static
-std::unique_ptr<HdrNetProcessor> HdrNetProcessorImpl::GetInstance(
+std::unique_ptr<HdrNetProcessor> HdrNetProcessorImpl::CreateInstance(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
   return std::make_unique<HdrNetProcessorImpl>(
       static_info, task_runner,
-      HdrNetDeviceProcessor::GetInstance(static_info, task_runner));
+      HdrNetProcessorDeviceAdapter::CreateInstance(static_info, task_runner));
 }
 
 HdrNetProcessorImpl::HdrNetProcessorImpl(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-    std::unique_ptr<HdrNetDeviceProcessor> device_processor)
+    std::unique_ptr<HdrNetProcessorDeviceAdapter> processor_device_adapter)
     : task_runner_(task_runner),
-      device_processor_(std::move(device_processor)) {}
+      processor_device_adapter_(std::move(processor_device_adapter)) {}
 
 bool HdrNetProcessorImpl::Initialize(Size input_size,
                                      const std::vector<Size>& output_sizes) {
@@ -62,8 +62,8 @@ bool HdrNetProcessorImpl::Initialize(Size input_size,
     return false;
   }
 
-  if (!device_processor_->Initialize()) {
-    LOGF(ERROR) << "Failed to initialized HdrNetDeviceProcessor";
+  if (!processor_device_adapter_->Initialize()) {
+    LOGF(ERROR) << "Failed to initialized HdrNetProcessorDeviceAdapter";
     return false;
   }
 
@@ -99,14 +99,14 @@ bool HdrNetProcessorImpl::Initialize(Size input_size,
 void HdrNetProcessorImpl::TearDown() {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  device_processor_->TearDown();
+  processor_device_adapter_->TearDown();
 }
 
 void HdrNetProcessorImpl::ProcessResultMetadata(
     int frame_number, const camera_metadata_t* metadata) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  device_processor_->ProcessResultMetadata(frame_number, metadata);
+  processor_device_adapter_->ProcessResultMetadata(frame_number, metadata);
 }
 
 base::ScopedFD HdrNetProcessorImpl::Run(
@@ -153,8 +153,8 @@ base::ScopedFD HdrNetProcessorImpl::Run(
     bool success = false;
     do {
       // Run the HDRnet pipeline.
-      success =
-          device_processor_->Preprocess(options, input_yuv, intermediates_[0]);
+      success = processor_device_adapter_->Preprocess(options, input_yuv,
+                                                      intermediates_[0]);
       if (options.dump_buffer) {
         DumpGpuTextureSharedImage(
             intermediates_[0],
@@ -184,8 +184,8 @@ base::ScopedFD HdrNetProcessorImpl::Run(
       for (const auto& output_nv12 : output_images) {
         // Here we assume all the streams have the same aspect ratio, so no
         // cropping is done.
-        success = device_processor_->Postprocess(options, intermediates_[1],
-                                                 output_nv12);
+        success = processor_device_adapter_->Postprocess(
+            options, intermediates_[1], output_nv12);
         if (!success) {
           LOGF(ERROR) << "Failed to post-process HDRnet pipeline output";
           break;
