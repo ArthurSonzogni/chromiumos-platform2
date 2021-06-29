@@ -2140,7 +2140,10 @@ void Cellular::SetImei(const std::string& imei) {
 
 void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
   SLOG(this, 1) << __func__ << " EID= " << sim_properties.eid
-                << " ICCID= " << sim_properties.iccid;
+                << " ICCID= " << sim_properties.iccid
+                << " IMSI= " << sim_properties.imsi
+                << " OperatorId= " << sim_properties.operator_id
+                << " ServiceProviderName= " << sim_properties.spn;
 
   eid_ = sim_properties.eid;
   iccid_ = sim_properties.iccid;
