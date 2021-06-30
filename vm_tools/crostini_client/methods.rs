@@ -904,6 +904,7 @@ impl Methods {
         export_name: &str,
         digest_name: Option<&str>,
         removable_media: Option<&str>,
+        force: bool,
     ) -> Result<Option<String>, Box<dyn Error>> {
         let export_file = self.create_output_file(user_id_hash, export_name, removable_media)?;
         // Safe because OwnedFd is given a valid owned fd.
@@ -913,6 +914,7 @@ impl Methods {
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.generate_sha256_digest = digest_name.is_some();
+        request.force = force;
 
         // We can't use sync_protobus because we need to append the file descriptor out of band from
         // the protobuf message.
@@ -1964,9 +1966,17 @@ impl Methods {
         file_name: &str,
         digest_name: Option<&str>,
         removable_media: Option<&str>,
+        force: bool,
     ) -> Result<Option<String>, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
-        self.export_disk_image(name, user_id_hash, file_name, digest_name, removable_media)
+        self.export_disk_image(
+            name,
+            user_id_hash,
+            file_name,
+            digest_name,
+            removable_media,
+            force,
+        )
     }
 
     pub fn vm_import(

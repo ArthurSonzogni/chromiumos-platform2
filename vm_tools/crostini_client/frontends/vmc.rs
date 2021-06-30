@@ -512,15 +512,30 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn export(&mut self) -> VmcResult {
-        let generate_digest = self.args.len() > 0 && self.args[0] == "-d";
-        if generate_digest {
-            // Discard the first argument (-d).
-            self.args = &self.args[1..];
-        }
+        let mut opts = Options::new();
+        opts.optflag(
+            "d",
+            "digest",
+            "generate checksum/digest for the exported image",
+        );
+        opts.optflag(
+            "f",
+            "force",
+            "force export even if VM is running or not shut down",
+        );
 
-        let (vm_name, file_name, removable_media) = match self.args.len() {
-            2 => (self.args[0], self.args[1], None),
-            3 => (self.args[0], self.args[1], Some(self.args[2])),
+        let matches = opts.parse(self.args)?;
+
+        let generate_digest = matches.opt_present("digest");
+        let force = matches.opt_present("force");
+
+        let (vm_name, file_name, removable_media) = match matches.free.len() {
+            2 => (&matches.free[0], &matches.free[1], None),
+            3 => (
+                &matches.free[0],
+                &matches.free[1],
+                Some(matches.free[2].as_str()),
+            ),
             _ => return Err(ExpectedVmAndFileName.into()),
         };
 
@@ -538,7 +553,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             &user_id_hash,
             file_name,
             digest_option,
-            removable_media
+            removable_media,
+            force,
         )) {
             println!("Export in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "export")?;
@@ -886,7 +902,7 @@ const USAGE: &str = r#"
      adjust <name> <operation> [additional parameters] |
      destroy <name> |
      disk-op-status <command UUID> |
-     export [-d] <vm name> <file name> [<removable storage name>] |
+     export [-d] [-f] <vm name> <file name> [<removable storage name>] |
      import [-p] <vm name> <file name> [<removable storage name>] |
      resize <vm name> <size> |
      list |
@@ -1144,6 +1160,7 @@ mod tests {
             &["vmc", "disk-op-status", "12345"],
             &["vmc", "export", "termina", "file name"],
             &["vmc", "export", "-d", "termina", "file name"],
+            &["vmc", "export", "-d", "-f", "termina", "file name"],
             &["vmc", "export", "termina", "file name", "removable media"],
             &[
                 "vmc",
@@ -1246,6 +1263,9 @@ mod tests {
             &["vmc", "export", "-d", "termina"],
             &["vmc", "export", "termina", "too", "many", "args"],
             &["vmc", "export", "-d", "termina", "too", "many", "args"],
+            &[
+                "vmc", "export", "-d", "-f", "termina", "too", "many", "args",
+            ],
             &["vmc", "import", "termina"],
             &["vmc", "import", "termina", "too", "many", "args"],
             &["vmc", "import", "-p", "termina"],
