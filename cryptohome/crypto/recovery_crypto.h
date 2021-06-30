@@ -39,6 +39,15 @@ class RecoveryCrypto {
     brillo::SecureBlob encrypted_data;
   };
 
+  // HSM Payload is created at onboarding and contains all the data that are
+  // persisted on a chromebook and will be eventually used for recovery.
+  struct HsmPayload {
+    brillo::SecureBlob tag;
+    brillo::SecureBlob iv;
+    brillo::SecureBlob associated_data;
+    brillo::SecureBlob cipher_text;
+  };
+
   // Constant value of hkdf_info for mediator share. Must be kept in sync with
   // the server.
   static const char kMediatorShareHkdfInfoValue[];
@@ -53,6 +62,34 @@ class RecoveryCrypto {
   static std::unique_ptr<RecoveryCrypto> Create();
 
   virtual ~RecoveryCrypto();
+
+  // Generates HSM payload that will be persisted on a chromebook at enrollment
+  // to be subsequently used for recovery.
+  // Consist of the following steps:
+  // 1. Generate publisher key pair (u, G * u according to the protocol spec).
+  // 2. Generate dealer key pair (a, G * a)
+  // 3. Generate 2 shares: mediator (b1) and destination (b2).
+  // 4. Construct associated data {G*s, G*u, `rsa_pub_key`,
+  // `onboarding_metadata`}.
+  // 5. Construct plain text {G*a, b2, kav} (note kav == key auth value is used
+  // only in TPM 1.2 and will be generated for non-empty `rsa_pub_key`).
+  // 6. Calculate shared secret G*(a(b1+b2)) and convert it to the
+  // `recovery_key`.
+  // 7. Generate symmetric key for encrypting PT from (G*h)*u (where G*h is the
+  // mediator public key provided as input).
+  // 8. Enrypt {AD, PT} using AES-GCM scheme.
+  // Channel key pair (s, G*s) is generated separately. G*s is included in
+  // associated data, s is either wrapped with TPM 2.0 or stored in host for TPM
+  // 1.2.
+  // The resulting destination share should be either added to TPM 2.0 or
+  // sealed with kav and stored in the host.
+  virtual bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
+                                  const brillo::SecureBlob& channel_pub_key,
+                                  const brillo::SecureBlob& rsa_pub_key,
+                                  const brillo::SecureBlob& onboarding_metadata,
+                                  HsmPayload* hsm_payload,
+                                  brillo::SecureBlob* destination_share,
+                                  brillo::SecureBlob* recovery_key) const = 0;
 
   // Generates shares for recovery. Returns false if error occurred.
   // Formula:

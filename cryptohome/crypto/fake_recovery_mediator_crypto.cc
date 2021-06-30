@@ -20,9 +20,12 @@
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
 #include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
 
 namespace cryptohome {
 namespace {
+
+const char kFakeHsmMetaData[] = "fake-hsm-metadata";
 
 brillo::SecureBlob GetMediatorShareHkdfInfo() {
   return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
@@ -103,6 +106,35 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
   return true;
 }
 
+bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
+    const brillo::SecureBlob& mediator_priv_key,
+    const RecoveryCrypto::HsmPayload& hsm_payload,
+    brillo::SecureBlob* plain_text) const {
+  brillo::SecureBlob publisher_pub_key;
+  if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
+                                    kPublisherPublicKey, &publisher_pub_key)) {
+    LOG(ERROR) << "Unable to deserialize publisher_pub_key from hsm_payload";
+    return false;
+  }
+  brillo::SecureBlob aes_gcm_key;
+  if (!GenerateEcdhHkdfRecipientKey(
+          ec_, mediator_priv_key, publisher_pub_key, GetMediatorShareHkdfInfo(),
+          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
+          kAesGcm256KeySize, &aes_gcm_key)) {
+    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key";
+    return false;
+  }
+
+  if (!AesGcmDecrypt(hsm_payload.cipher_text, hsm_payload.associated_data,
+                     hsm_payload.tag, aes_gcm_key, hsm_payload.iv,
+                     plain_text)) {
+    LOG(ERROR) << "Failed to perform AES-GCM decryption";
+    return false;
+  }
+
+  return true;
+}
+
 bool FakeRecoveryMediatorCrypto::Mediate(
     const brillo::SecureBlob& mediator_priv_key,
     const brillo::SecureBlob& publisher_pub_key,
@@ -142,6 +174,69 @@ bool FakeRecoveryMediatorCrypto::Mediate(
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
     return false;
   }
+  return true;
+}
+
+bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
+    const brillo::SecureBlob& mediator_priv_key,
+    const RecoveryCrypto::HsmPayload& hsm_payload,
+    ResponsePayload* response_payload) const {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context.get()) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+
+  brillo::SecureBlob plain_text;
+  if (!DecryptHsmPayloadPlainText(mediator_priv_key, hsm_payload,
+                                  &plain_text)) {
+    LOG(ERROR) << "Unable to decrypt plain_text in hsm_payload";
+    return false;
+  }
+
+  brillo::SecureBlob mediator_share;
+  brillo::SecureBlob dealer_pub_key;
+  brillo::SecureBlob kav;
+  if (!DeserializeHsmPlainTextFromCbor(plain_text, &mediator_share,
+                                       &dealer_pub_key, &kav)) {
+    LOG(ERROR) << "Unable to deserialize  plain_text";
+    return false;
+  }
+
+  crypto::ScopedBIGNUM mediator_share_bn = SecureBlobToBigNum(mediator_share);
+  if (!mediator_share_bn) {
+    LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
+    return false;
+  }
+  crypto::ScopedEC_POINT dealer_pub_point =
+      ec_.SecureBlobToPoint(dealer_pub_key, context.get());
+  if (!dealer_pub_point) {
+    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
+    return false;
+  }
+  // Performs scalar multiplication of dealer_pub_key and mediator_share.
+  brillo::SecureBlob mediated_share;
+  crypto::ScopedEC_POINT point_dh =
+      ec_.Multiply(*dealer_pub_point, *mediator_share_bn, context.get());
+  if (!point_dh) {
+    LOG(ERROR) << "Failed to perform scalar multiplication";
+    return false;
+  }
+  if (!ec_.PointToSecureBlob(*point_dh, &mediated_share, context.get())) {
+    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+    return false;
+  }
+
+  // TODO(mslus): We are currently sending encrypted_plain_text in clear.
+  // It should be updated when the epoch is added.
+  if (!SerializeHsmResponsePayloadToCbor(mediated_share, dealer_pub_key,
+                                         /*kav=*/brillo::SecureBlob(),
+                                         &response_payload->cipher_text)) {
+    LOG(ERROR) << "Unable to serialize response payload";
+    return false;
+  }
+  response_payload->associated_data = brillo::SecureBlob(kFakeHsmMetaData);
+
   return true;
 }
 

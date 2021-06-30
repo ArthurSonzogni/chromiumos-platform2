@@ -427,6 +427,7 @@ if (use.test) {
       "crypto/error_util_unittest.cc",
       "crypto/fake_recovery_mediator_crypto.cc",
       "crypto/hkdf_unittest.cc",
+      "crypto/recovery_crypto_hsm_cbor_serialization_unittest.cc",
       "crypto/recovery_crypto_unittest.cc",
       "crypto/rsa_unittest.cc",
       "crypto/scrypt_unittest.cc",

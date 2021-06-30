@@ -7,10 +7,65 @@
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
+#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 
 #include <gtest/gtest.h>
 
 namespace cryptohome {
+
+namespace {
+
+const char kFakeEnrollmentMetaData[] = "fake_enrollment_metadata";
+
+}
+
+TEST(RecoveryCryptoTest, HsmPayloadTest) {
+  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
+  ASSERT_TRUE(recovery);
+  std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
+      FakeRecoveryMediatorCrypto::Create();
+  ASSERT_TRUE(mediator);
+
+  brillo::SecureBlob mediator_pub_key;
+  brillo::SecureBlob mediator_priv_key;
+  ASSERT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
+  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
+      &mediator_priv_key));
+
+  // Generates HSM payload that would be persisted on a chromebook.
+  RecoveryCrypto::HsmPayload hsm_payload;
+  brillo::SecureBlob destination_share;
+  brillo::SecureBlob recovery_key;
+  ASSERT_TRUE(recovery->GenerateHsmPayload(
+      mediator_pub_key,
+      /*channel_pub_key=*/brillo::SecureBlob(),
+      /*rsa_pub_key=*/brillo::SecureBlob(),
+      brillo::SecureBlob(kFakeEnrollmentMetaData), &hsm_payload,
+      &destination_share, &recovery_key));
+
+  // Simulates mediation performed by HSM.
+  FakeRecoveryMediatorCrypto::ResponsePayload response_payload;
+  ASSERT_TRUE(mediator->MediateHsmPayload(mediator_priv_key, hsm_payload,
+                                          &response_payload));
+
+  brillo::SecureBlob mediated_share;
+  brillo::SecureBlob dealer_pub_key;
+  brillo::SecureBlob key_auth_value;
+  ASSERT_TRUE(DeserializeHsmResponsePayloadFromCbor(
+      response_payload.cipher_text, &mediated_share, &dealer_pub_key,
+      &key_auth_value));
+
+  brillo::SecureBlob mediated_recovery_key;
+  ASSERT_TRUE(recovery->RecoverDestination(dealer_pub_key, destination_share,
+                                           mediated_share,
+                                           &mediated_recovery_key));
+
+  // Checks that cryptohome encryption key generated at enrollment and the
+  // one obtained after migration are identical.
+  EXPECT_EQ(recovery_key, mediated_recovery_key);
+}
 
 TEST(RecoveryCryptoTest, RecoverDestination) {
   std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();

@@ -21,12 +21,14 @@ pkg_config("cryptohome-test-tool_config") {
 executable("cryptohome-test-tool") {
   sources = [
     "../crypto/fake_recovery_mediator_crypto.cc",
+    "../crypto/recovery_crypto_hsm_cbor_serialization.cc",
     "../cryptohome-test-tool.cc",
   ]
   configs += [
     ":cryptohome-test-tool_config",
     "//cryptohome/libs:target_defaults",
   ]
+  libs = [ "cbor" ]
   deps = [ "//cryptohome/libs:libcrosplatform" ]
 }
 
