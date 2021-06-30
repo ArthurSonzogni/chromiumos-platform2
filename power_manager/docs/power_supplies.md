@@ -96,6 +96,14 @@ automatically shut the system down before the battery has fully discharged, so
 the displayed percentage is also scaled based on the
 `low_battery_shutdown_percent` pref.
 
+Starting from M92 [crrev/c/2984168](https://crrev.com/c/2984168), on start-up,
+powerd tries to read `low_battery_shutdown_percent` and `full_factor` from
+[CrOS EC] using
+`EC_CMD_DISPLAY_SOC`. `PowerSupply::UpdateBatteryPercentagesAndState` also reads
+the display SoC (state of charge) from [CrOS EC] using `EC_CMD_DISPLAY_SOC`.
+If the command isn't available, the display SoC is computed by powerd using
+`low_battery_shutdown_percent` and `full_factor` read from the pref directories.
+
 ### Time-to-empty and time-to-full
 
 `PowerSupply::UpdateBatteryTimeEstimates` attempts to estimate the time until
@@ -125,3 +133,4 @@ battery is connected or disconnected.
 [udev]: https://en.wikipedia.org/wiki/Udev
 [PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/power_manager/power_supply_properties.proto
 [Battery Notifications]: battery_notifications.md
+[CrOS EC]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md
