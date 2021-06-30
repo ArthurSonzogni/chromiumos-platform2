@@ -45,6 +45,13 @@ constexpr uint32_t kImpl720pStreamUsage = GRALLOC_USAGE_SW_READ_OFTEN |
                                           GRALLOC_USAGE_HW_CAMERA_WRITE |
                                           GRALLOC_USAGE_HW_TEXTURE;
 
+constexpr uint32_t kYuv480pStreamWidth = 640;
+constexpr uint32_t kYuv480pStreamHeight = 480;
+constexpr uint32_t kYuv480pStreamFormat = HAL_PIXEL_FORMAT_YCbCr_420_888;
+constexpr uint32_t kYuv480pStreamUsage =
+    GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE |
+    GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_VIDEO_ENCODER;
+
 constexpr uint32_t kYuv1080pStreamWidth = 1920;
 constexpr uint32_t kYuv1080pStreamHeight = 1080;
 constexpr uint32_t kYuv1080pStreamFormat = HAL_PIXEL_FORMAT_YCbCr_420_888;
@@ -217,6 +224,10 @@ class HdrNetStreamManipulatorTest : public Test {
                           kImpl720pStreamHeight,
                           kImpl720pStreamFormat,
                           kImpl720pStreamUsage),
+        yuv_480p_stream_(kYuv480pStreamWidth,
+                         kYuv480pStreamHeight,
+                         kYuv480pStreamFormat,
+                         kYuv480pStreamUsage),
         yuv_1080p_stream_(kYuv1080pStreamWidth,
                           kYuv1080pStreamHeight,
                           kYuv1080pStreamFormat,
@@ -237,6 +248,10 @@ class HdrNetStreamManipulatorTest : public Test {
     stream_config_.AppendStream(impl_720p_stream_);
   }
 
+  void SetYuv480pStreamInConfig() {
+    stream_config_.AppendStream(yuv_480p_stream_);
+  }
+
   void SetYuv1080pStreamInConfig() {
     stream_config_.AppendStream(yuv_1080p_stream_);
   }
@@ -248,6 +263,25 @@ class HdrNetStreamManipulatorTest : public Test {
   void SetUpStreamsForTest(uint32_t max_buffers) {
     SetImpl720pStreamInConfig();
     SetYuv1080pStreamInConfig();
+    SetBlobStreamInConfig();
+    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
+        stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+    std::vector<camera3_stream_t*> modified_streams;
+    for (int i = 0; i < stream_config_.num_streams(); ++i) {
+      camera3_stream_t* stream = stream_config_.streams()[i];
+      stream->max_buffers = max_buffers;
+      stream->priv = reinterpret_cast<void*>(kFakePriv);
+      modified_streams.push_back(stream);
+    }
+    ASSERT_TRUE(stream_manipulator_->OnConfiguredStreams(
+        stream_config_.stream_config()));
+  }
+
+  // Set up three streams, including two YUV/IMPL streams with different aspect
+  // ratios, for test: one IMPL 720p, one YUV 480p, and one BLOB.
+  void SetUpStreamsWithDifferentAspectRatiosForTest(uint32_t max_buffers) {
+    SetImpl720pStreamInConfig();
+    SetYuv480pStreamInConfig();
     SetBlobStreamInConfig();
     ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
         stream_config_.stream_config(), &stream_config_.stream_ptrs()));
@@ -282,9 +316,31 @@ class HdrNetStreamManipulatorTest : public Test {
     return request;
   }
 
+  // Construct a capture request with three buffers: one IMPL 720p, one YUV
+  // 480p and one BLOB.
+  camera3_capture_request_t
+  ConstructCaptureRequestWithDifferentAspectRatiosForTest(
+      int frame_number,
+      std::vector<camera3_stream_buffer_t>* output_buffers,
+      bool with_blob_buffer = true) {
+    *output_buffers = {
+        impl_720p_stream_.CreateBuffer(),
+        yuv_480p_stream_.CreateBuffer(),
+    };
+    if (with_blob_buffer) {
+      output_buffers->push_back(blob_stream_.CreateBuffer());
+    }
+    camera3_capture_request_t request = {};
+    request.frame_number = frame_number;
+    request.num_output_buffers = output_buffers->size();
+    request.output_buffers = output_buffers->data();
+    return request;
+  }
+
   base::test::SingleThreadTaskEnvironment task_environment_;
   std::unique_ptr<HdrNetStreamManipulator> stream_manipulator_;
   Camera3Stream impl_720p_stream_;
+  Camera3Stream yuv_480p_stream_;
   Camera3Stream yuv_1080p_stream_;
   Camera3Stream blob_stream_;
   Camera3StreamConfig stream_config_;
@@ -300,17 +356,17 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureSingleYuvStreamTest) {
       stream_config_.stream_config(), &stream_config_.stream_ptrs()));
 
   // The stream operation mode should remain unchanged.
-  ASSERT_EQ(stream_config_.operation_mode(),
+  EXPECT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
   // The modified streams should be returned.
-  ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
+  EXPECT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
   // The modified stream config should have one stream.
-  ASSERT_EQ(stream_config_.num_streams(), 1);
+  EXPECT_EQ(stream_config_.num_streams(), 1);
   camera3_stream_t* stream = stream_config_.streams()[0];
   // The modified stream config should replace the original stream with another
   // replacement stream that has the same width and height.
-  ASSERT_NE(stream, impl_720p_stream_.get());
-  ASSERT_TRUE(impl_720p_stream_.HasSameSize(*stream));
+  EXPECT_NE(stream, impl_720p_stream_.get());
+  EXPECT_TRUE(impl_720p_stream_.HasSameSize(*stream));
 }
 
 // Test that HdrNetStreamManipulator can handle stream configuration with
@@ -332,20 +388,26 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureMultipleYuvStreamsTest) {
   // The modified streams should be returned.
   ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
   ASSERT_EQ(stream_config_.num_streams(), 3);
+  bool impl_720p_configured = false, yuv_1080p_configured = false;
   for (int i = 0; i < stream_config_.num_streams(); ++i) {
     camera3_stream_t* stream = stream_config_.streams()[i];
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
-      ASSERT_EQ(stream, blob_stream_.get());
+      EXPECT_EQ(stream, blob_stream_.get());
     } else {
       // The modified stream config should have two streams in replace of the
       // 720p and 1080p streams with the same size.
-      ASSERT_NE(stream, impl_720p_stream_.get());
-      ASSERT_NE(stream, yuv_1080p_stream_.get());
-      ASSERT_TRUE(impl_720p_stream_.HasSameSize(*stream) ||
-                  yuv_1080p_stream_.HasSameSize(*stream));
+      EXPECT_NE(stream, impl_720p_stream_.get());
+      EXPECT_NE(stream, yuv_1080p_stream_.get());
+      if (impl_720p_stream_.HasSameSize(*stream)) {
+        impl_720p_configured = true;
+      } else if (yuv_1080p_stream_.HasSameSize(*stream)) {
+        yuv_1080p_configured = true;
+      }
     }
   }
+  EXPECT_TRUE(impl_720p_configured);
+  EXPECT_TRUE(yuv_1080p_configured);
 }
 
 // Test that HdrNetStreamManipulator correctly restores the stream configuration
@@ -363,7 +425,7 @@ TEST_F(HdrNetStreamManipulatorTest, OnConfiguredMultipleYuvStreamsTest) {
     camera3_stream_t* stream = stream_config_.streams()[i];
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
-      ASSERT_EQ(stream, blob_stream_.get());
+      EXPECT_EQ(stream, blob_stream_.get());
     } else {
       // The two original YUV streams should be restored, with |max_buffers| and
       // |priv| updated.
@@ -372,11 +434,87 @@ TEST_F(HdrNetStreamManipulatorTest, OnConfiguredMultipleYuvStreamsTest) {
       } else if (stream == yuv_1080p_stream_.get()) {
         yuv_1080p_restored = true;
       }
-      ASSERT_EQ(stream->max_buffers, kMaxBuffers);
-      ASSERT_EQ(stream->priv, reinterpret_cast<void*>(kFakePriv));
+      EXPECT_EQ(stream->max_buffers, kMaxBuffers);
+      EXPECT_EQ(stream->priv, reinterpret_cast<void*>(kFakePriv));
     }
   }
-  ASSERT_TRUE(impl_720p_restored && yuv_1080p_restored);
+  EXPECT_TRUE(impl_720p_restored);
+  EXPECT_TRUE(yuv_1080p_restored);
+}
+
+// Test that HdrNetStreamManipulator can handle stream configuration with
+// multiple YUV streams of different aspect ratios. The HdrNetStreamManipulator
+// should replace each of the YUV streams with a HDRnet stream it controls.
+TEST_F(HdrNetStreamManipulatorTest,
+       ConfigureMultipleYuvStreamsOfDifferentAspectRatiosTest) {
+  // Prepare a configuration with multiple YUV streams and a BLOB stream with
+  // different resolutions.
+  SetImpl720pStreamInConfig();
+  SetYuv480pStreamInConfig();
+  SetBlobStreamInConfig();
+
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
+      stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+
+  // The stream operation mode should remain unchanged.
+  ASSERT_EQ(stream_config_.operation_mode(),
+            CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
+  // The modified streams should be returned.
+  ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
+  ASSERT_EQ(stream_config_.num_streams(), 3);
+  bool impl_720p_replaced = false, yuv_480p_replaced = false;
+  for (int i = 0; i < stream_config_.num_streams(); ++i) {
+    camera3_stream_t* stream = stream_config_.streams()[i];
+    if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      // The BLOB stream should be left untouched.
+      EXPECT_EQ(stream, blob_stream_.get());
+    } else {
+      // The modified stream config should have two streams in replace of the
+      // 720p and 480p streams with the same size.
+      EXPECT_NE(stream, impl_720p_stream_.get());
+      EXPECT_NE(stream, yuv_480p_stream_.get());
+      if (impl_720p_stream_.HasSameSize(*stream)) {
+        impl_720p_replaced = true;
+      } else if (yuv_480p_stream_.HasSameSize(*stream)) {
+        yuv_480p_replaced = true;
+      }
+    }
+  }
+  EXPECT_TRUE(impl_720p_replaced);
+  EXPECT_TRUE(yuv_480p_replaced);
+}
+
+// Test that HdrNetStreamManipulator correctly restores the stream configuration
+// with the set of streams of different aspect ratios requested by the client.
+TEST_F(HdrNetStreamManipulatorTest,
+       OnConfiguredMultipleYuvStreamsOfDifferentAspectRatiosTest) {
+  constexpr uint32_t kMaxBuffers = 6;
+  SetUpStreamsWithDifferentAspectRatiosForTest(kMaxBuffers);
+
+  // The stream operation mode should remain unchanged.
+  ASSERT_EQ(stream_config_.operation_mode(),
+            CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
+  ASSERT_EQ(stream_config_.num_streams(), 3);
+  bool impl_720p_restored = false, yuv_480p_restored = false;
+  for (int i = 0; i < stream_config_.num_streams(); ++i) {
+    camera3_stream_t* stream = stream_config_.streams()[i];
+    if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      // The BLOB stream should be left untouched.
+      EXPECT_EQ(stream, blob_stream_.get());
+    } else {
+      // The two original YUV streams should be restored, with |max_buffers| and
+      // |priv| updated.
+      if (stream == impl_720p_stream_.get()) {
+        impl_720p_restored = true;
+      } else if (stream == yuv_480p_stream_.get()) {
+        yuv_480p_restored = true;
+      }
+      EXPECT_EQ(stream->max_buffers, kMaxBuffers);
+      EXPECT_EQ(stream->priv, reinterpret_cast<void*>(kFakePriv));
+    }
+  }
+  EXPECT_TRUE(impl_720p_restored);
+  EXPECT_TRUE(yuv_480p_restored);
 }
 
 // Test that HdrNetStreamManipulator handles multiple configure_streams() calls
@@ -415,20 +553,26 @@ TEST_F(HdrNetStreamManipulatorTest, MultipleConfigureStreamsTest) {
   // The modified streams should be returned.
   ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
   ASSERT_EQ(stream_config_.num_streams(), 3);
+  bool impl_720p_configured = false, yuv_1080p_configured = false;
   for (int i = 0; i < stream_config_.num_streams(); ++i) {
     camera3_stream_t* stream = stream_config_.streams()[i];
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
-      ASSERT_EQ(stream, blob_stream_.get());
+      EXPECT_EQ(stream, blob_stream_.get());
     } else {
       // The modified stream config should have two streams in replace of the
       // 720p and 1080p streams with the same size.
-      ASSERT_NE(stream, impl_720p_stream_.get());
-      ASSERT_NE(stream, yuv_1080p_stream_.get());
-      ASSERT_TRUE(impl_720p_stream_.HasSameSize(*stream) ||
-                  yuv_1080p_stream_.HasSameSize(*stream));
+      EXPECT_NE(stream, impl_720p_stream_.get());
+      EXPECT_NE(stream, yuv_1080p_stream_.get());
+      if (impl_720p_stream_.HasSameSize(*stream)) {
+        impl_720p_configured = true;
+      } else if (yuv_1080p_stream_.HasSameSize(*stream)) {
+        yuv_1080p_configured = true;
+      }
     }
   }
+  EXPECT_TRUE(impl_720p_configured);
+  EXPECT_TRUE(yuv_1080p_configured);
 }
 
 // Test that HdrNetStreamManipulator handles capture request correctly.
@@ -447,24 +591,25 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureRequestTest) {
 
   // The modified request should have two output buffers: one HDRnet buffer and
   // the original BLOB buffer.
-  ASSERT_EQ(request.num_output_buffers, 2);
+  EXPECT_EQ(request.num_output_buffers, 2);
   bool blob_buffer_found = false;
   bool hdrnet_buffer_found = false;
   for (int i = 0; i < request.num_output_buffers; ++i) {
     const camera3_stream_buffer_t* buffer = &request.output_buffers[i];
     if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB buffer should be unchanged.
-      ASSERT_EQ(blob_stream_.get(), buffer->stream);
+      EXPECT_EQ(blob_stream_.get(), buffer->stream);
       blob_buffer_found = true;
     } else {
       // The HDRnet buffer should come from the HdrNetStreamManipulator.
-      ASSERT_NE(impl_720p_stream_.get(), buffer->stream);
-      ASSERT_NE(yuv_1080p_stream_.get(), buffer->stream);
-      ASSERT_TRUE(yuv_1080p_stream_.HasSameSize(*buffer->stream));
+      EXPECT_NE(impl_720p_stream_.get(), buffer->stream);
+      EXPECT_NE(yuv_1080p_stream_.get(), buffer->stream);
+      EXPECT_TRUE(yuv_1080p_stream_.HasSameSize(*buffer->stream));
       hdrnet_buffer_found = true;
     }
   }
-  ASSERT_TRUE(blob_buffer_found && hdrnet_buffer_found);
+  EXPECT_TRUE(blob_buffer_found);
+  EXPECT_TRUE(hdrnet_buffer_found);
 }
 
 // Test that HdrNetStreamManipulator handles process result correctly.
@@ -495,17 +640,108 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureResultTest) {
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(&result));
 
   // The result should have the same number of output buffers as requested.
-  ASSERT_EQ(result.num_output_buffers, request_output_buffers.size());
+  EXPECT_EQ(result.num_output_buffers, request_output_buffers.size());
   // The buffers should be restored to the ones that was provided by the capture
   // request.
   for (int i = 0; i < result.num_output_buffers; ++i) {
     const camera3_stream_buffer_t* buffer = &result.output_buffers[i];
     if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB) {
-      ASSERT_EQ(blob_stream_.get(), buffer->stream);
+      EXPECT_EQ(blob_stream_.get(), buffer->stream);
     } else if (impl_720p_stream_.HasSameSize(*buffer->stream)) {
-      ASSERT_EQ(impl_720p_stream_.get(), buffer->stream);
+      EXPECT_EQ(impl_720p_stream_.get(), buffer->stream);
     } else if (yuv_1080p_stream_.HasSameSize(*buffer->stream)) {
-      ASSERT_EQ(yuv_1080p_stream_.get(), buffer->stream);
+      EXPECT_EQ(yuv_1080p_stream_.get(), buffer->stream);
+    } else {
+      FAIL() << "Unexpected result buffer";
+    }
+  }
+}
+
+// Test that HdrNetStreamManipulator handles capture request with request
+// buffers of different aspect ratios correctly. HdrNetStreamManipulator should
+// replace the YUV buffers with the HDRnet buffer it controls.
+TEST_F(HdrNetStreamManipulatorTest,
+       ProcessCaptureRequestWithDifferentAspectRatiosTest) {
+  constexpr uint32_t kMaxBuffers = 6;
+  SetUpStreamsWithDifferentAspectRatiosForTest(kMaxBuffers);
+
+  constexpr int kFrameNumber = 0;
+  std::vector<camera3_stream_buffer_t> output_buffers;
+  camera3_capture_request_t request =
+      ConstructCaptureRequestWithDifferentAspectRatiosForTest(kFrameNumber,
+                                                              &output_buffers);
+
+  ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
+
+  // The modified request should have three output buffers: one HDRnet 720p
+  // buffer, one HDRnet 480p buffer and the original BLOB buffer.
+  EXPECT_EQ(request.num_output_buffers, 3);
+  bool blob_buffer_found = false;
+  bool hdrnet_720p_buffer_found = false;
+  bool hdrnet_480p_buffer_found = false;
+  for (int i = 0; i < request.num_output_buffers; ++i) {
+    const camera3_stream_buffer_t* buffer = &request.output_buffers[i];
+    if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      // The BLOB buffer should be unchanged.
+      EXPECT_EQ(blob_stream_.get(), buffer->stream);
+      blob_buffer_found = true;
+    } else {
+      // The HDRnet buffer should come from the HdrNetStreamManipulator.
+      EXPECT_NE(impl_720p_stream_.get(), buffer->stream);
+      EXPECT_NE(yuv_480p_stream_.get(), buffer->stream);
+      if (impl_720p_stream_.HasSameSize(*buffer->stream)) {
+        hdrnet_720p_buffer_found = true;
+      } else if (yuv_480p_stream_.HasSameSize(*buffer->stream)) {
+        hdrnet_480p_buffer_found = true;
+      }
+    }
+  }
+  EXPECT_TRUE(blob_buffer_found);
+  EXPECT_TRUE(hdrnet_720p_buffer_found);
+  EXPECT_TRUE(hdrnet_480p_buffer_found);
+}
+
+// Test that HdrNetStreamManipulator handles process result with buffers of
+// different aspect ratios correctly. HdrNetStreamManipulator should produce
+// HDRnet output and fill the client NV12 buffers.
+TEST_F(HdrNetStreamManipulatorTest,
+       ProcessCaptureResultWithDifferentAspectRatiosTest) {
+  constexpr uint32_t kMaxBuffers = 6;
+  SetUpStreamsWithDifferentAspectRatiosForTest(kMaxBuffers);
+
+  constexpr int kFrameNumber = 0;
+  std::vector<camera3_stream_buffer_t> request_output_buffers;
+  camera3_capture_request_t request =
+      ConstructCaptureRequestWithDifferentAspectRatiosForTest(
+          kFrameNumber, &request_output_buffers);
+
+  ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
+
+  // Construct a capture result with the same set of buffers as in the modified
+  // request.
+  std::vector<camera3_stream_buffer_t> result_output_buffers;
+  for (int i = 0; i < request.num_output_buffers; ++i) {
+    result_output_buffers.push_back(request.output_buffers[i]);
+  }
+  camera3_capture_result_t result = {};
+  result.frame_number = kFrameNumber;
+  result.num_output_buffers = result_output_buffers.size();
+  result.output_buffers = result_output_buffers.data();
+
+  ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(&result));
+
+  // The result should have the same number of output buffers as requested.
+  EXPECT_EQ(result.num_output_buffers, request_output_buffers.size());
+  // The buffers should be restored to the ones that was provided by the capture
+  // request.
+  for (int i = 0; i < result.num_output_buffers; ++i) {
+    const camera3_stream_buffer_t* buffer = &result.output_buffers[i];
+    if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      EXPECT_EQ(blob_stream_.get(), buffer->stream);
+    } else if (impl_720p_stream_.HasSameSize(*buffer->stream)) {
+      EXPECT_EQ(impl_720p_stream_.get(), buffer->stream);
+    } else if (yuv_480p_stream_.HasSameSize(*buffer->stream)) {
+      EXPECT_EQ(yuv_480p_stream_.get(), buffer->stream);
     } else {
       FAIL() << "Unexpected result buffer";
     }
@@ -533,10 +769,10 @@ TEST_F(HdrNetStreamManipulatorTest, NotifyBufferErrorTest) {
   } while (true);
 
   // Mark the last request with buffer error.
-  ASSERT_EQ(last_successful_request.num_output_buffers, 1);
+  EXPECT_EQ(last_successful_request.num_output_buffers, 1);
   camera3_stream_t* hdrnet_stream =
       last_successful_request.output_buffers[0].stream;
-  ASSERT_TRUE(yuv_1080p_stream_.HasSameSize(*hdrnet_stream));
+  EXPECT_TRUE(yuv_1080p_stream_.HasSameSize(*hdrnet_stream));
   camera3_error_msg_t error_msg = {
       .frame_number = last_successful_request.frame_number,
       .error_stream = hdrnet_stream,
@@ -554,7 +790,7 @@ TEST_F(HdrNetStreamManipulatorTest, NotifyBufferErrorTest) {
   std::vector<camera3_stream_buffer_t> request_output_buffers;
   camera3_capture_request_t request = ConstructCaptureRequestForTest(
       frame_number, &request_output_buffers, /*with_blob_buffer=*/false);
-  ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
+  EXPECT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
 }
 
 }  // namespace cros

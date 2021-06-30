@@ -38,6 +38,11 @@ inline std::string GetDebugString(const camera3_stream_t* stream) {
       stream->format, stream->usage, stream->max_buffers);
 }
 
+inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
+                                const camera3_stream_t* s2) {
+  return (s1->width * s2->height == s1->height * s2->width);
+}
+
 }  // namespace
 
 base::Optional<int> HdrNetStreamManipulator::HdrNetStreamContext::PopBuffer() {
@@ -191,15 +196,11 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
       // Ignore ZSL streams.
       continue;
     }
-    // TODO(jcliang): Enable all resolutions once the HAL is ready.
-    if ((s->width == 1920 && s->height == 1080) ||
-        (s->width == 1280 && s->height == 720)) {
-      HdrNetStreamContext* context;
-      // TODO(jcliang): See if we need to use 10-bit YUV (i.e. with format
-      // HAL_PIXEL_FORMAT_YCBCR_P010);
-      context = CreateReplaceContext(s, HAL_PIXEL_FORMAT_YCbCr_420_888);
-      stream_list->streams[i] = context->hdrnet_stream.get();
-    }
+    HdrNetStreamContext* context;
+    // TODO(jcliang): See if we need to use 10-bit YUV (i.e. with format
+    // HAL_PIXEL_FORMAT_YCBCR_P010);
+    context = CreateHdrNetStreamContext(s, HAL_PIXEL_FORMAT_YCbCr_420_888);
+    stream_list->streams[i] = context->hdrnet_stream.get();
   }
 
   VLOGF(1) << "After stream manipulation:";
@@ -214,31 +215,27 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     camera3_stream_configuration_t* stream_list) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
-  // Restore 1280x720 or 1920x1080 P010 stream to the original NV12 stream.
+  // Restore HDRnet streams to the original NV12 streams.
   VLOGF(1) << "Before stream manipulation:";
   for (int i = 0; i < stream_list->num_streams; ++i) {
     camera3_stream_t* s = stream_list->streams[i];
     VLOGF(1) << GetDebugString(s);
-    if (s->stream_type == CAMERA3_STREAM_INPUT ||
+    if (s->stream_type != CAMERA3_STREAM_OUTPUT ||
         !(s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
           s->format == HAL_PIXEL_FORMAT_YCBCR_P010)) {
       continue;
     }
-    // TODO(jcliang): Enable all resolutions once the HAL is ready.
-    if ((s->width == 1920 && s->height == 1080) ||
-        (s->width == 1280 && s->height == 720)) {
-      // Sync the stream state from replace to original.
-      HdrNetStreamContext* context = GetReplaceContextFromReplacement(s);
-      if (!context) {
-        LOGF(ERROR) << "Cannot find stream replacement context";
-        return false;
-      }
-      camera3_stream_t* original_stream = context->original_stream;
-      original_stream->max_buffers = s->max_buffers;
-      original_stream->usage = s->usage;
-      original_stream->priv = s->priv;
-      stream_list->streams[i] = original_stream;
+    // Sync the stream state from replace to original.
+    HdrNetStreamContext* context = GetHdrNetContextFromHdrNetStream(s);
+    if (!context) {
+      LOGF(ERROR) << "Cannot find HDRnet stream context";
+      return false;
     }
+    camera3_stream_t* original_stream = context->original_stream;
+    original_stream->max_buffers = s->max_buffers;
+    original_stream->usage = s->usage;
+    original_stream->priv = s->priv;
+    stream_list->streams[i] = original_stream;
   }
 
   bool success = SetUpPipelineOnGpuThread();
@@ -264,7 +261,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
   RecordCaptureMetadataOnGpuThread(request->frame_number, request_metadata);
 
   RequestContext request_context;
-  HdrNetStreamContext* candidate = nullptr;
+  std::vector<HdrNetStreamContext*> hdrnet_stream_contexts;
 
   VLOGF(2) << "[" << request->frame_number << "] Got request:";
   for (int i = 0; i < request->num_output_buffers; ++i) {
@@ -272,7 +269,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     VLOGF(2) << "\t" << GetDebugString(request_buffer->stream);
 
     HdrNetStreamContext* stream_context =
-        GetReplaceContextFromOriginal(request_buffer->stream);
+        GetHdrNetContextFromRequestedStream(request_buffer->stream);
     if (!stream_context) {
       // Not a stream that we care, so simply pass through to HAL.
       request_context.modified_buffers.push_back(*request_buffer);
@@ -281,27 +278,37 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     // Record the client-requested buffers that we will produce with the HDRnet
     // processor.
     request_context.requested_buffers.push_back(*request_buffer);
-    if (!candidate || (stream_context->hdrnet_stream->width >
-                           candidate->hdrnet_stream->width &&
-                       stream_context->hdrnet_stream->height >
-                           candidate->hdrnet_stream->height)) {
-      // Request only one stream and produce the other buffers through
+
+    auto is_compatible = [stream_context](const HdrNetStreamContext* c) {
+      return HaveSameAspectRatio(c->hdrnet_stream.get(),
+                                 stream_context->hdrnet_stream.get());
+    };
+    auto it = std::find_if(hdrnet_stream_contexts.begin(),
+                           hdrnet_stream_contexts.end(), is_compatible);
+    if (it != hdrnet_stream_contexts.end()) {
+      // Request only one stream and produce the other smaller buffers through
       // downscaling. This is more efficient than running HDRnet processor for
       // each buffer.
-      candidate = stream_context;
+      if (stream_context->hdrnet_stream->width > (*it)->hdrnet_stream->width) {
+        *it = stream_context;
+      }
+    } else {
+      hdrnet_stream_contexts.push_back(stream_context);
     }
   }
 
-  if (candidate) {
-    base::Optional<int> buffer_index = candidate->PopBuffer();
+  for (auto* c : hdrnet_stream_contexts) {
+    base::Optional<int> buffer_index = c->PopBuffer();
     if (!buffer_index) {
+      // TODO(jcliang): This is unlikely, but we should report a buffer error in
+      // this case.
       return false;
     }
     request_context.buffer_index = *buffer_index;
     request_context.modified_buffers.push_back(camera3_stream_buffer_t{
-        .stream = candidate->hdrnet_stream.get(),
+        .stream = c->hdrnet_stream.get(),
         .buffer = const_cast<buffer_handle_t*>(
-            &candidate->shared_images[*buffer_index].buffer()),
+            &c->shared_images[*buffer_index].buffer()),
         .status = CAMERA3_BUFFER_STATUS_OK,
         .acquire_fence = -1,
         .release_fence = -1,
@@ -356,65 +363,89 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   }
 
   // Run the HDRnet pipeline if there's a buffer that we care.
-  HdrNetStreamContext* stream_context = nullptr;
-  camera3_stream_buffer_t* hal_buffer_to_process = nullptr;
+  std::vector<std::pair<HdrNetStreamContext*, camera3_stream_buffer_t*>>
+      stream_contexts;
   VLOGF(2) << "[" << result->frame_number << "] Got result:";
   for (int i = 0; i < result->num_output_buffers; ++i) {
     camera3_stream_buffer_t* hal_result_buffer =
         const_cast<camera3_stream_buffer_t*>(&result->output_buffers[i]);
     VLOGF(2) << "\t" << GetDebugString(hal_result_buffer->stream);
-    stream_context =
-        GetReplaceContextFromReplacement(hal_result_buffer->stream);
+    HdrNetStreamContext* stream_context =
+        GetHdrNetContextFromHdrNetStream(hal_result_buffer->stream);
     if (stream_context) {
-      hal_buffer_to_process = hal_result_buffer;
-      break;
+      stream_contexts.emplace_back(stream_context, hal_result_buffer);
     }
   }
 
-  if (stream_context) {
-    // Run the HDRNet pipeline and convert the buffers.
-    HdrNetConfig::Options processor_config = config_.GetOptions();
-    if (processor_config.gcam_ae_enable) {
-      processor_config.hdr_ratio =
-          ae_controller_->GetCalculatedHdrRatio(result->frame_number);
-    }
-
-    // Prepare the set of client-requested buffers that will written to by the
-    // HDRnet pipeline.
+  if (!stream_contexts.empty()) {
     RequestContext& request_context = request_context_[result->frame_number];
-    std::vector<buffer_handle_t> buffers_to_write;
-    for (const auto& requested_buffer : request_context.requested_buffers) {
-      if (requested_buffer.acquire_fence != -1) {
-        if (sync_wait(requested_buffer.acquire_fence,
-                      kDefaultSyncWaitTimeoutMs) != 0) {
-          LOGF(WARNING) << "sync_wait timeout on acquiring requested buffer";
-          // TODO(jcliang): We should trigger a notify message of buffer error
-          // here.
-          return false;
+    const SharedImage* yuv_image_to_record = nullptr;
+    for (auto [stream_context, hal_buffer_to_process] : stream_contexts) {
+      // Prepare the set of client-requested buffers that will written to by the
+      // HDRnet pipeline.
+      std::vector<camera3_stream_buffer_t*> stream_buffers_to_write;
+      for (auto& requested_buffer : request_context.requested_buffers) {
+        if (!HaveSameAspectRatio(requested_buffer.stream,
+                                 stream_context->hdrnet_stream.get())) {
+          continue;
         }
-        close(requested_buffer.acquire_fence);
+        if (requested_buffer.acquire_fence != -1) {
+          if (sync_wait(requested_buffer.acquire_fence,
+                        kDefaultSyncWaitTimeoutMs) != 0) {
+            LOGF(WARNING) << "sync_wait timeout on acquiring requested buffer";
+            // TODO(jcliang): We should trigger a notify message of buffer error
+            // here.
+            return false;
+          }
+          close(requested_buffer.acquire_fence);
+          requested_buffer.acquire_fence = -1;
+        }
+        stream_buffers_to_write.push_back(&requested_buffer);
       }
-      buffers_to_write.push_back(*requested_buffer.buffer);
+
+      // Run the HDRNet pipeline and convert the buffers.
+      HdrNetConfig::Options processor_config = config_.GetOptions();
+      if (processor_config.gcam_ae_enable) {
+        processor_config.hdr_ratio =
+            ae_controller_->GetCalculatedHdrRatio(result->frame_number);
+      }
+
+      const SharedImage& image =
+          stream_context->shared_images[request_context.buffer_index];
+      std::vector<buffer_handle_t> buffers_to_write;
+      for (auto* stream_buffer : stream_buffers_to_write) {
+        buffers_to_write.push_back(*stream_buffer->buffer);
+      }
+      base::ScopedFD hdrnet_release_fence = stream_context->processor->Run(
+          result->frame_number, processor_config, image,
+          base::ScopedFD(hal_buffer_to_process->release_fence),
+          buffers_to_write);
+
+      // Assign the release fence to all client-requested buffers the HDRnet
+      // pipeline writes to.
+      for (auto* stream_buffer : stream_buffers_to_write) {
+        stream_buffer->release_fence =
+            DupWithCloExec(hdrnet_release_fence.get()).release();
+      }
+
+      // Clean up the mapping and return the free hdrnet buffer.
+      stream_context->PushBuffer(request_context.buffer_index,
+                                 DupWithCloExec(hdrnet_release_fence.get()));
+
+      // Pass the buffer with the largest width to AE controller. This is a
+      // heuristic and shouldn't matter for the majority of the time, as for
+      // most cases the requested streams would have the same aspect ratio.
+      if (!yuv_image_to_record ||
+          (CameraBufferManager::GetWidth(image.buffer()) >
+           CameraBufferManager::GetWidth(yuv_image_to_record->buffer()))) {
+        yuv_image_to_record = &image;
+      }
     }
 
-    const SharedImage& image =
-        stream_context->shared_images[request_context.buffer_index];
-    base::ScopedFD hdrnet_release_fence = stream_context->processor->Run(
-        result->frame_number, processor_config, image,
-        base::ScopedFD(hal_buffer_to_process->release_fence), buffers_to_write);
-
-    // Assign the release fence to all client-requested buffers the HDRnet
-    // pipeline writes to.
-    for (auto& requested_buffer : request_context.requested_buffers) {
-      requested_buffer.release_fence =
-          DupWithCloExec(hdrnet_release_fence.get()).release();
+    if (yuv_image_to_record) {
+      RecordYuvBufferForAeControllerOnGpuThread(result->frame_number,
+                                                *yuv_image_to_record);
     }
-
-    RecordYuvBufferForAeControllerOnGpuThread(result->frame_number, image);
-
-    // Clean up the mapping and return the free replacement buffer.
-    stream_context->PushBuffer(request_context.buffer_index,
-                               DupWithCloExec(hdrnet_release_fence.get()));
 
     // Prepare the set of buffers that we'll send back to the client. Include
     // any buffer that's not replaced by us.
@@ -422,7 +453,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
       camera3_stream_buffer_t* hal_result_buffer =
           const_cast<camera3_stream_buffer_t*>(&result->output_buffers[i]);
       HdrNetStreamContext* stream_context =
-          GetReplaceContextFromReplacement(hal_result_buffer->stream);
+          GetHdrNetContextFromHdrNetStream(hal_result_buffer->stream);
       if (!stream_context) {
         request_context.requested_buffers.push_back(*hal_result_buffer);
       }
@@ -459,7 +490,7 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
              << " stream=" << error.error_stream
              << " errorcode=" << error.error_code;
     HdrNetStreamContext* stream_context =
-        GetReplaceContextFromReplacement(error.error_stream);
+        GetHdrNetContextFromHdrNetStream(error.error_stream);
     switch (error.error_code) {
       case CAMERA3_MSG_ERROR_DEVICE:
         // Nothing we can do here. Simply restore the stream and forward the
@@ -472,7 +503,7 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
       case CAMERA3_MSG_ERROR_REQUEST:
       case CAMERA3_MSG_ERROR_BUFFER: {
         // There will be no capture result, or the result buffer will not be
-        // available, so recycle the replacement buffer. The RequestContext in
+        // available, so recycle the hdrnet buffer. The RequestContext in
         // |request_context_| will be erased in due time in
         // ProcessCaptureResultOnGpuThread().
         if (request_context_.count(error.frame_number) == 0) {
@@ -541,7 +572,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
 
     constexpr uint32_t kBufferUsage =
         GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_TEXTURE;
-    // Allocate the replacement buffers.
+    // Allocate the hdrnet buffers.
     constexpr int kNumExtraBuffer = 5;
     for (int i = 0; i < stream->max_buffers + kNumExtraBuffer; ++i) {
       ScopedBufferHandle buffer = CameraBufferManager::AllocateScopedBuffer(
@@ -614,25 +645,25 @@ void HdrNetStreamManipulator::RecordYuvBufferForAeControllerOnGpuThread(
 }
 
 HdrNetStreamManipulator::HdrNetStreamContext*
-HdrNetStreamManipulator::CreateReplaceContext(camera3_stream_t* original,
-                                              uint32_t replace_format) {
+HdrNetStreamManipulator::CreateHdrNetStreamContext(camera3_stream_t* requested,
+                                                   uint32_t replace_format) {
   std::unique_ptr<HdrNetStreamContext> context =
       std::make_unique<HdrNetStreamContext>();
-  context->original_stream = original;
-  context->hdrnet_stream = std::make_unique<camera3_stream_t>(*original);
+  context->original_stream = requested;
+  context->hdrnet_stream = std::make_unique<camera3_stream_t>(*requested);
   context->hdrnet_stream->format = replace_format;
 
   HdrNetStreamContext* addr = context.get();
-  request_stream_mapping_[original] = addr;
+  request_stream_mapping_[requested] = addr;
   result_stream_mapping_[context->hdrnet_stream.get()] = addr;
   stream_replace_context_.emplace_back(std::move(context));
   return addr;
 }
 
 HdrNetStreamManipulator::HdrNetStreamContext*
-HdrNetStreamManipulator::GetReplaceContextFromOriginal(
-    camera3_stream_t* original) {
-  auto iter = request_stream_mapping_.find(original);
+HdrNetStreamManipulator::GetHdrNetContextFromRequestedStream(
+    camera3_stream_t* requested) {
+  auto iter = request_stream_mapping_.find(requested);
   if (iter == request_stream_mapping_.end()) {
     return nullptr;
   }
@@ -640,9 +671,9 @@ HdrNetStreamManipulator::GetReplaceContextFromOriginal(
 }
 
 HdrNetStreamManipulator::HdrNetStreamContext*
-HdrNetStreamManipulator::GetReplaceContextFromReplacement(
-    camera3_stream_t* replace) {
-  auto iter = result_stream_mapping_.find(replace);
+HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
+    camera3_stream_t* hdrnet) {
+  auto iter = result_stream_mapping_.find(hdrnet);
   if (iter == result_stream_mapping_.end()) {
     return nullptr;
   }

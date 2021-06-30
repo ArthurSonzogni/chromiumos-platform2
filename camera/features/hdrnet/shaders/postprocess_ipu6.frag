@@ -7,7 +7,6 @@ layout(binding = 1) uniform highp sampler2D uGammaLutTexture;
 layout(binding = 2) uniform highp sampler2D uGtmLutTexture;
 
 layout(location = 0) uniform bool uIsYPlane;
-layout(location = 1) uniform float uTexelWidth;
 
 layout(location = 0) in highp vec2 vTexCoord;
 layout(location = 0) out highp vec4 outColor;

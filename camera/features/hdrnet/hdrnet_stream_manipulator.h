@@ -119,12 +119,12 @@ class HdrNetStreamManipulator : public StreamManipulator {
   void RecordYuvBufferForAeControllerOnGpuThread(int frame_number,
                                                  const SharedImage& yuv_input);
 
-  HdrNetStreamContext* CreateReplaceContext(camera3_stream_t* original,
-                                            uint32_t replace_format);
-  HdrNetStreamContext* GetReplaceContextFromOriginal(
-      camera3_stream_t* original);
-  HdrNetStreamContext* GetReplaceContextFromReplacement(
-      camera3_stream_t* replace);
+  HdrNetStreamContext* CreateHdrNetStreamContext(camera3_stream_t* requested,
+                                                 uint32_t replace_format);
+  HdrNetStreamContext* GetHdrNetContextFromRequestedStream(
+      camera3_stream_t* requested);
+  HdrNetStreamContext* GetHdrNetContextFromHdrNetStream(
+      camera3_stream_t* hdrnet);
 
   CameraThread gpu_thread_;
   HdrNetProcessor::Factory hdrnet_processor_factory_;

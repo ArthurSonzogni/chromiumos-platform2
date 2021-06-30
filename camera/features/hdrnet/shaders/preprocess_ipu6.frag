@@ -1,5 +1,4 @@
 #version 310 es
-#extension GL_OES_EGL_image_external: require
 
 precision highp float;
 
@@ -7,8 +6,6 @@ layout(binding = 0) uniform highp sampler2D uInputYTexture;
 layout(binding = 1) uniform highp sampler2D uInputUvTexture;
 layout(binding = 2) uniform highp sampler2D uInverseGammaLutTexture;
 layout(binding = 3) uniform highp sampler2D uInverseGtmLutTexture;
-
-layout(location = 0) uniform float uTexelWidth;
 
 layout(location = 0) in highp vec2 vTexCoord;
 layout(location = 0) out highp vec4 outColor;
