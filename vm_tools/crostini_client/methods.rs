@@ -373,6 +373,51 @@ impl ConnectionProxy {
     }
 }
 
+struct OutputFile {
+    path: PathBuf,
+    fd: OwnedFd,
+    committed: bool,
+}
+
+impl OutputFile {
+    pub fn new(path: PathBuf) -> Result<Self, Box<dyn Error>> {
+        // Output file is always a new file, and is only accessible to the user that creates it.
+        // We are not using `O_NOFOLLOW` in open flags, as `O_NOFOLLOW` only preempts symlinks
+        // for the final part of the path, which is guaranteed to not exist by `create_new(true)`.
+        let file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&path)?;
+
+        // Safe because OwnedFd is given a valid owned fd.
+        let fd = unsafe { OwnedFd::new(file.into_raw_fd()) };
+
+        Ok(OutputFile {
+            path,
+            fd,
+            committed: false,
+        })
+    }
+
+    pub fn commit(&mut self) {
+        self.committed = true;
+    }
+
+    pub fn as_owned_fd(&self) -> &OwnedFd {
+        &self.fd
+    }
+}
+
+impl Drop for OutputFile {
+    fn drop(&mut self) {
+        if !self.committed {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct UserDisks {
     pub kernel: Option<String>,
@@ -865,7 +910,7 @@ impl Methods {
         user_id_hash: &str,
         name: &str,
         removable_media: Option<&str>,
-    ) -> Result<std::fs::File, Box<dyn Error>> {
+    ) -> Result<OutputFile, Box<dyn Error>> {
         let path = match removable_media {
             Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT).join(media_path).join(name),
             None => Path::new(CRYPTOHOME_USER)
@@ -882,18 +927,7 @@ impl Methods {
             return Err(ExportPathExists.into());
         }
 
-        // Exporting the disk should always create a new file, and only be accessible to the user
-        // that creates it. The old version of this used `O_NOFOLLOW` in its open flags, but this
-        // has no effect as `O_NOFOLLOW` only preempts symlinks for the final part of the path,
-        // which is guaranteed to not exist by `create_new(true)`.
-        let file = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(path)?;
-
-        Ok(file)
+        OutputFile::new(path)
     }
 
     /// Request that concierge export a VM's disk image.
@@ -906,9 +940,8 @@ impl Methods {
         removable_media: Option<&str>,
         force: bool,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        let export_file = self.create_output_file(user_id_hash, export_name, removable_media)?;
-        // Safe because OwnedFd is given a valid owned fd.
-        let export_fd = unsafe { OwnedFd::new(export_file.into_raw_fd()) };
+        let mut export_file =
+            self.create_output_file(user_id_hash, export_name, removable_media)?;
 
         let mut request = ExportDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
@@ -925,14 +958,16 @@ impl Methods {
             EXPORT_DISK_IMAGE_METHOD,
         )?
         .append1(request.write_to_bytes()?)
-        .append1(export_fd);
+        .append1(export_file.as_owned_fd());
 
-        if let Some(name) = digest_name {
-            let digest_file = self.create_output_file(user_id_hash, name, removable_media)?;
-            // Safe because OwnedFd is given a valid owned fd.
-            let digest_fd = unsafe { OwnedFd::new(digest_file.into_raw_fd()) };
-            method = method.append1(digest_fd);
-        }
+        let digest_file = match digest_name {
+            Some(name) => {
+                let digest = self.create_output_file(user_id_hash, name, removable_media)?;
+                method = method.append1(digest.as_owned_fd());
+                Some(digest)
+            }
+            None => None,
+        };
 
         let message = self
             .connection
@@ -940,8 +975,17 @@ impl Methods {
 
         let response: ExportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status {
-            DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
-            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            DiskImageStatus::DISK_STATUS_CREATED | DiskImageStatus::DISK_STATUS_IN_PROGRESS => {
+                export_file.commit();
+                if let Some(mut f) = digest_file {
+                    f.commit();
+                }
+                if response.status == DiskImageStatus::DISK_STATUS_IN_PROGRESS {
+                    Ok(Some(response.command_uuid))
+                } else {
+                    Ok(None)
+                }
+            }
             DiskImageStatus::DISK_STATUS_NOT_ENOUGH_SPACE => Err(DiskImageOutOfSpace.into()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
