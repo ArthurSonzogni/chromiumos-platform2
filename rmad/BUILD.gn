@@ -91,9 +91,12 @@ if (use.test) {
     sources = [
       "dbus_service_test.cc",
       "rmad_interface_test.cc",
+      "state_handler/check_calibration_state_handler_test.cc",
       "state_handler/components_repair_state_handler_test.cc",
       "state_handler/device_destination_state_handler_test.cc",
+      "state_handler/run_calibration_state_handler_test.cc",
       "state_handler/select_network_state_handler_test.cc",
+      "state_handler/setup_calibration_state_handler_test.cc",
       "state_handler/state_handler_manager_test.cc",
       "state_handler/state_handler_test_common.cc",
       "state_handler/update_chrome_state_handler_test.cc",

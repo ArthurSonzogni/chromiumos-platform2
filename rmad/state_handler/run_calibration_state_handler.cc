@@ -12,14 +12,9 @@
 
 #include "rmad/constants.h"
 
+using CalibrationStatus = rmad::CheckCalibrationState::CalibrationStatus;
+
 namespace rmad {
-
-namespace {
-
-// Poll every two seconds.
-constexpr int kPollIntervalSecs = 2;
-
-}  // namespace
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -30,15 +25,11 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
     state_.set_allocated_run_calibration(new RunCalibrationState);
     base::AutoLock lock_scope(calibration_mutex_);
     components_calibration_map_[base::NumberToString(
-        CheckCalibrationState::CalibrationStatus::
-            RMAD_CALIBRATION_COMPONENT_ACCELEROMETER)] =
-        base::NumberToString(
-            CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
+        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER)] =
+        base::NumberToString(CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
     components_calibration_map_[base::NumberToString(
-        CheckCalibrationState::CalibrationStatus::
-            RMAD_CALIBRATION_COMPONENT_GYROSCOPE)] =
-        base::NumberToString(
-            CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
+        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE)] =
+        base::NumberToString(CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
   }
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
@@ -97,7 +88,7 @@ void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
 
   for (auto component : components_calibration_map_) {
     base::AutoLock lock_scope(calibration_mutex_);
-    CheckCalibrationState::CalibrationStatus component_status;
+    CalibrationStatus component_status;
     if (!ConvertToComponenetStatus(component, &component_status)) {
       return;
     }
@@ -106,18 +97,18 @@ void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
       // Under normal circumstances, we expect that the first calibration has
       // been completed, and the status here is waiting. However, it may fail or
       // get stuck (still in progress) and we should retry the calibration here.
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_WAITING:
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_FAILED:
+      case CalibrationStatus::RMAD_CALIBRATE_WAITING:
+      case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
+      case CalibrationStatus::RMAD_CALIBRATE_FAILED:
         // TODO(genechang): Should execute calibration here.
         PollUntilCalibrationDone(component_status.name());
         break;
       // For those sensors that are calibrated or skipped, we do not need to
       // re-calibrate them.
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_SKIP:
+      case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
+      case CalibrationStatus::RMAD_CALIBRATE_SKIP:
         break;
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
+      case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
       default:
         LOG(ERROR) << "Rmad calibration component calibrate_state is missing.";
         return;
@@ -127,7 +118,7 @@ void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
 
 bool RunCalibrationStateHandler::ShouldRecalibrate() {
   for (auto component : components_calibration_map_) {
-    CheckCalibrationState::CalibrationStatus component_status;
+    CalibrationStatus component_status;
     if (!ConvertToComponenetStatus(component, &component_status)) {
       return true;
     }
@@ -139,16 +130,16 @@ bool RunCalibrationStateHandler::ShouldRecalibrate() {
     switch (component_status.status()) {
       // For those sensors that are calibrated or skipped, we do not need to
       // re-calibrate them.
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_SKIP:
+      case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
+      case CalibrationStatus::RMAD_CALIBRATE_SKIP:
         break;
       // For all incomplete, unskipped, or unknown statuses, we should
       // re-calibrate them.
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_WAITING:
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_FAILED:
+      case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
+      case CalibrationStatus::RMAD_CALIBRATE_WAITING:
+      case CalibrationStatus::RMAD_CALIBRATE_FAILED:
         return true;
-      case CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
+      case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
       default:
         LOG(ERROR) << "Rmad calibration status is missing.";
         return true;
@@ -159,7 +150,7 @@ bool RunCalibrationStateHandler::ShouldRecalibrate() {
 }
 
 void RunCalibrationStateHandler::PollUntilCalibrationDone(
-    CheckCalibrationState::CalibrationStatus::Component component) {
+    CalibrationStatus::Component component) {
   if (!timer_map_[component]) {
     timer_map_[component] = std::make_unique<base::RepeatingTimer>();
   }
@@ -169,17 +160,17 @@ void RunCalibrationStateHandler::PollUntilCalibrationDone(
   }
 
   std::string component_name;
-  if (component == CheckCalibrationState::CalibrationStatus::
-                       RMAD_CALIBRATION_COMPONENT_ACCELEROMETER) {
+  if (component ==
+      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER) {
     component_name = "accelerometer";
     timer_map_[component]->Start(
-        FROM_HERE, base::TimeDelta::FromSeconds(kPollIntervalSecs), this,
+        FROM_HERE, kPollInterval, this,
         &RunCalibrationStateHandler::CheckAccCalibrationTask);
-  } else if (component == CheckCalibrationState::CalibrationStatus::
-                              RMAD_CALIBRATION_COMPONENT_GYROSCOPE) {
+  } else if (component ==
+             CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE) {
     component_name = "gyroscope";
     timer_map_[component]->Start(
-        FROM_HERE, base::TimeDelta::FromSeconds(kPollIntervalSecs), this,
+        FROM_HERE, kPollInterval, this,
         &RunCalibrationStateHandler::CheckGyroCalibrationTask);
   } else {
     LOG(ERROR) << "Rmad calibration component name is invalid.";
@@ -198,8 +189,7 @@ void RunCalibrationStateHandler::CheckAccCalibrationTask() {
     return;
   }
 
-  SaveAndSend(CheckCalibrationState::CalibrationStatus::
-                  RMAD_CALIBRATION_COMPONENT_ACCELEROMETER,
+  SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER,
               progress);
 }
 
@@ -211,24 +201,22 @@ void RunCalibrationStateHandler::CheckGyroCalibrationTask() {
     return;
   }
 
-  SaveAndSend(CheckCalibrationState::CalibrationStatus::
-                  RMAD_CALIBRATION_COMPONENT_GYROSCOPE,
+  SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE,
               progress);
 }
 
 void RunCalibrationStateHandler::SaveAndSend(
-    CheckCalibrationState::CalibrationStatus::Component component,
-    int progress_percentage) {
-  CheckCalibrationState::CalibrationStatus::Status status =
-      CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS;
+    CalibrationStatus::Component component, int progress_percentage) {
+  CalibrationStatus::Status status =
+      CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS;
 
   if (progress_percentage == 100) {
-    status = CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_COMPLETE;
+    status = CalibrationStatus::RMAD_CALIBRATE_COMPLETE;
     if (timer_map_[component]) {
       timer_map_[component]->Stop();
     }
   } else if (progress_percentage < 0) {
-    status = CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_FAILED;
+    status = CalibrationStatus::RMAD_CALIBRATE_FAILED;
     if (timer_map_[component]) {
       timer_map_[component]->Stop();
     }
@@ -242,7 +230,7 @@ void RunCalibrationStateHandler::SaveAndSend(
     json_store_->SetValue(kCalibrationMap, components_calibration_map_);
   }
 
-  CheckCalibrationState::CalibrationStatus component_status;
+  CalibrationStatus component_status;
   component_status.set_name(component);
   component_status.set_status(status);
   double progress = static_cast<double>(progress_percentage) / 100.0;
@@ -251,18 +239,16 @@ void RunCalibrationStateHandler::SaveAndSend(
 
 bool RunCalibrationStateHandler::ConvertToComponenetStatus(
     const std::pair<std::string, std::string>& id_status_str_pair,
-    CheckCalibrationState::CalibrationStatus* component_status) {
+    CalibrationStatus* component_status) {
   int component_id;
   if (!base::StringToInt(id_status_str_pair.first, &component_id)) {
     LOG(ERROR) << "Failed to parse component name from variables";
     return false;
   }
-  CheckCalibrationState::CalibrationStatus::Component component_name =
-      static_cast<CheckCalibrationState::CalibrationStatus::Component>(
-          component_id);
+  CalibrationStatus::Component component_name =
+      static_cast<CalibrationStatus::Component>(component_id);
 
-  if (component_name == CheckCalibrationState::CalibrationStatus::
-                            RMAD_CALIBRATION_COMPONENT_UNKNOWN) {
+  if (component_name == CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN) {
     LOG(ERROR) << "Rmad calibration component name is missing.";
     return false;
   }
@@ -274,8 +260,7 @@ bool RunCalibrationStateHandler::ConvertToComponenetStatus(
   }
 
   component_status->set_name(component_name);
-  component_status->set_status(
-      static_cast<CheckCalibrationState::CalibrationStatus::Status>(status));
+  component_status->set_status(static_cast<CalibrationStatus::Status>(status));
   return true;
 }
 

@@ -19,6 +19,10 @@ namespace rmad {
 
 class RunCalibrationStateHandler : public BaseStateHandler {
  public:
+  // Poll every 2 seconds.
+  static constexpr base::TimeDelta kPollInterval =
+      base::TimeDelta::FromSeconds(2);
+
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
   ~RunCalibrationStateHandler() override = default;
 
