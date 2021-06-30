@@ -224,7 +224,7 @@ static void sl_host_surface_attach(struct wl_client* client,
           _exit(EXIT_FAILURE);
         }
 
-        size = create_output.strides[0] * height;
+        size = create_output.host_size;
         buffer_params = zwp_linux_dmabuf_v1_create_params(
             host->ctx->linux_dmabuf->internal);
         zwp_linux_buffer_params_v1_add(buffer_params, create_output.fd, 0,
@@ -256,20 +256,25 @@ static void sl_host_surface_attach(struct wl_client* client,
         struct WaylandBufferCreateOutput create_output = {0};
         struct wl_shm_pool* pool;
         int rv;
+
+        create_info.drm_format = DRM_FORMAT_R8;
+        create_info.height = 1;
+        create_info.width = size;
         create_info.size = static_cast<__u32>(size);
 
         rv = host->ctx->channel->allocate(create_info, create_output);
         UNUSED(rv);
 
         pool = wl_shm_create_pool(host->ctx->shm->internal, create_output.fd,
-                                  size);
+                                  create_output.host_size);
+
         host->current_buffer->internal = wl_shm_pool_create_buffer(
             pool, 0, width, height, host_buffer->shm_mmap->stride[0],
             shm_format);
         wl_shm_pool_destroy(pool);
 
         host->current_buffer->mmap = sl_mmap_create(
-            create_output.fd, size, bpp, num_planes, 0,
+            create_output.fd, create_output.host_size, bpp, num_planes, 0,
             host_buffer->shm_mmap->stride[0],
             host_buffer->shm_mmap->offset[1] - host_buffer->shm_mmap->offset[0],
             host_buffer->shm_mmap->stride[1], host_buffer->shm_mmap->y_ss[0],

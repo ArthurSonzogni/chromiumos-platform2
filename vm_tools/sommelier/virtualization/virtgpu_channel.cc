@@ -256,16 +256,16 @@ int32_t VirtGpuChannel::allocate(
     const struct WaylandBufferCreateInfo& create_info,
     struct WaylandBufferCreateOutput& create_output) {
   int ret;
-  uint64_t blob_id, host_size;
+  uint64_t blob_id;
   struct drm_virtgpu_resource_create_blob drm_rc_blob = {0};
 
-  ret = image_query(create_info, create_output, host_size, blob_id);
+  ret = image_query(create_info, create_output, blob_id);
   if (ret < 0) {
     fprintf(stderr, "image query failed\n");
     return ret;
   }
 
-  drm_rc_blob.size = host_size;
+  drm_rc_blob.size = create_output.host_size;
   drm_rc_blob.blob_mem = VIRTGPU_BLOB_MEM_HOST3D;
   drm_rc_blob.blob_flags =
       VIRTGPU_BLOB_FLAG_USE_MAPPABLE | VIRTGPU_BLOB_FLAG_USE_SHAREABLE;
@@ -341,7 +341,6 @@ int32_t VirtGpuChannel::submit_cmd(uint32_t* cmd, uint32_t size, bool wait) {
 
 int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
                                     struct WaylandBufferCreateOutput& output,
-                                    uint64_t& host_size,
                                     uint64_t& blob_id) {
   int ret = 0;
   uint32_t* addr = (uint32_t*)ring_addr_;
@@ -353,7 +352,6 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
     if (desc.input.width == input.width && desc.input.height == input.height &&
         desc.input.drm_format == input.drm_format) {
       memcpy(&output, &desc.output, sizeof(struct WaylandBufferCreateOutput));
-      host_size = desc.host_size;
       blob_id = desc.blob_id;
       return 0;
     }
@@ -377,12 +375,12 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
   memcpy(&new_desc.input, &input, sizeof(struct WaylandBufferCreateInfo));
   memcpy(&new_desc.output.strides, &addr[0], 4 * sizeof(uint32_t));
   memcpy(&new_desc.output.offsets, &addr[4], 4 * sizeof(uint32_t));
-  memcpy(&new_desc.host_size, &addr[10], sizeof(uint64_t));
+  memcpy(&new_desc.output.host_size, &addr[10], sizeof(uint64_t));
   memcpy(&new_desc.blob_id, &addr[12], sizeof(uint64_t));
 
   // Sanity check
   if (!input.dmabuf) {
-    if (new_desc.host_size < input.size) {
+    if (new_desc.output.host_size < input.size) {
       fprintf(stderr, "invalid host size\n");
       return -EINVAL;
     }
@@ -390,7 +388,7 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
 
   memcpy(&output.strides, &new_desc.output.strides, 4 * sizeof(uint32_t));
   memcpy(&output.offsets, &new_desc.output.offsets, 4 * sizeof(uint32_t));
-  host_size = new_desc.host_size;
+  output.host_size = new_desc.output.host_size;
   blob_id = new_desc.blob_id;
 
   description_cache_.push_back(new_desc);

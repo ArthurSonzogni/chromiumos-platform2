@@ -173,6 +173,7 @@ int32_t VirtWaylandChannel::allocate(
     ioctl_new.fd = -1;
     ioctl_new.flags = 0;
     ioctl_new.size = create_info.size;
+    create_output.host_size = create_info.size;
   }
 
   ret = ioctl(virtwl_, VIRTWL_IOCTL_NEW, &ioctl_new);
@@ -187,6 +188,9 @@ int32_t VirtWaylandChannel::allocate(
     create_output.offsets[0] = ioctl_new.dmabuf.offset0;
     create_output.offsets[1] = ioctl_new.dmabuf.offset1;
     create_output.offsets[2] = ioctl_new.dmabuf.offset2;
+
+    // The common layer will consider multi-planar sizes as needed.
+    create_output.host_size = create_output.strides[0] * create_info.height;
   }
 
   create_output.fd = ioctl_new.fd;

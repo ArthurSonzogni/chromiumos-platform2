@@ -60,6 +60,7 @@ struct WaylandBufferCreateOutput {
   int fd;
   uint32_t offsets[4];
   uint32_t strides[4];
+  uint64_t host_size;
 };
 
 class WaylandChannel {
@@ -183,14 +184,11 @@ class VirtGpuChannel : public WaylandChannel {
   struct BufferDescription {
     struct WaylandBufferCreateInfo input;
     struct WaylandBufferCreateOutput output;
-
-    uint64_t host_size;
     uint64_t blob_id;
   };
 
   int32_t image_query(const struct WaylandBufferCreateInfo& input,
                       struct WaylandBufferCreateOutput& output,
-                      uint64_t& host_size,
                       uint64_t& blob_id);
 
   int32_t submit_cmd(uint32_t* cmd, uint32_t size, bool wait);
