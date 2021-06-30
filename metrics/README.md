@@ -141,8 +141,8 @@ list of items, because the number of columns depends on number of CPU cores.
 -   From /proc/stat
     -   cpuusage: all cpu usage ticks from `cpu` line excluding idle and iowait.
 -   gpufreq: GPU frequency; how it's obtained depends on device.
--   From /proc/cpuinfo
-    -   cpufreqN: frequency of core in Hz.
+-   From `/sys/devices/system/cpu/cpuN/cpufreq/scaling_cur_freq`
+    -   cpufreqN: frequency of core in kHz.
 
 ## Further Information
 
