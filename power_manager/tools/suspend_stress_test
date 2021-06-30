@@ -251,6 +251,7 @@ while true; do
 
   start_time="$(cat /sys/class/rtc/rtc0/since_epoch)"
   ${suspend_cmd} --wakeup_count=${wakeup_count} --suspend_for_sec=${sus_time}
+  end_time="$(cat /sys/class/rtc/rtc0/since_epoch)"
 
   if [ -n "${FLAGS_post_resume_command}" ]; then
     # Leading space because this will appear on the same line as the
@@ -258,7 +259,6 @@ while true; do
     echo " running ${FLAGS_post_resume_command}"
     ${FLAGS_post_resume_command}
   fi
-  end_time="$(cat /sys/class/rtc/rtc0/since_epoch)"
 
   actual_sus_time=$(( end_time - start_time ))
   diff_sus_time=$(( actual_sus_time - sus_time ))
