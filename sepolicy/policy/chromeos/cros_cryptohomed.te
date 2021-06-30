@@ -164,8 +164,11 @@ allow cros_cryptohomed {
   cgroup
 }:dir r_dir_perms;
 
-allow cros_cryptohomed device:blk_file      rw_file_perms;
-allowxperm cros_cryptohomed device:blk_file ioctl BLKSECDISCARD;
+allowxperm cros_cryptohomed device:blk_file ioctl {
+  BLKSECDISCARD
+  BLKPBSZGET
+  BLKRAGET
+};
 
 # TODO(b/178237710) Label the directories and files with specific contexts.
 allow cros_cryptohomed cros_run_namespaces:dir      search;
@@ -178,13 +181,29 @@ allow cros_cryptohomed labeledfs:filesystem {
 allow cros_cryptohomed cros_unconfined_exec:file    x_file_perms;
 allow cros_cryptohomed cros_initctl_exec:file rx_file_perms;
 
+# Dm-crypt cryptohome related labels.
+allow cros_cryptohomed cros_run_udev:dir search;
+allow cros_cryptohomed cros_run_lock:dir { add_name remove_name write };
+allow cros_cryptohomed cros_run_lock:file { append create getattr lock open read unlink };
+allow cros_cryptohomed device:lnk_file { create unlink };
+allow cros_cryptohomed device:dir { add_name open read remove_name write};
+allow cros_cryptohomed devpts:dir { open read search };
+allow cros_cryptohomed cros_udevadm_exec:file rx_file_perms;
+allow cros_cryptohomed cros_mke2fs_exec:file rx_file_perms;
+allow cros_cryptohomed usb_device:dir search;
+allow cros_cryptohomed kernel:system ipc_info;
+
 # Remove the arc_cts_fails_release macro for ARCVM devices so that
 # cros_cryptohomed is not converted into a permissive domain after being
 # flipped to enforcing.
 is_arc_vm(`
+  allow cros_cryptohomed device:blk_file create_file_perms;
+  allow cros_cryptohomed device:chr_file { ioctl open read getattr write };
   allow cros_cryptohomed self:capability {
     dac_override
     dac_read_search
+    mknod
+    sys_nice
   };
   allow cros_cryptohomed unlabeled:filesystem {
     mount
@@ -198,9 +217,13 @@ is_arc_vm(`
   allow cros_cryptohomed { arc_files unlabeled }:sock_file { rw_file_perms unlink };
 ',`
   arc_cts_fails_release(`
+    allow cros_cryptohomed device:blk_file create_file_perms;
+    allow cros_cryptohomed device:chr_file { ioctl open read getattr write };
     allow cros_cryptohomed self:capability {
       dac_override
       dac_read_search
+      mknod
+      sys_nice
     };
     allow cros_cryptohomed unlabeled:filesystem {
       mount
