@@ -113,6 +113,7 @@ _IUSE = [
     'test',
     'timers',
     'tpm',
+    'tpm_dynamic',
     'tpm2',
     'tpm2_simulator',
     'ubsan',
