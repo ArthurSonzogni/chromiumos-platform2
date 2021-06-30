@@ -489,7 +489,7 @@ void TpmManagerService::GetSupportedFeatures(
 void TpmManagerService::GetSupportedFeaturesTask(
     const GetSupportedFeaturesRequest& request,
     const std::shared_ptr<GetSupportedFeaturesReply>& reply) {
-  // TODO(yich): Implement the GetSupportedFeatures.
+  reply->set_support_u2f(tpm_status_->SupportU2f());
   reply->set_status(STATUS_SUCCESS);
 }
 

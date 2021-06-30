@@ -10,12 +10,16 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/mock_tpm_state.h>
+#include <trunks/mock_tpm_utility.h>
 #include <trunks/trunks_factory_for_test.h>
 
 #include "tpm_manager/common/typedefs.h"
 
+using testing::_;
+using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
 
@@ -28,11 +32,13 @@ class Tpm2StatusTest : public testing::Test {
 
   void SetUp() override {
     factory_.set_tpm_state(&mock_tpm_state_);
+    factory_.set_tpm_utility(&mock_tpm_utility_);
     tpm_status_.reset(new Tpm2StatusImpl(factory_));
   }
 
  protected:
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
+  NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
   trunks::TrunksFactoryForTest factory_;
   std::unique_ptr<TpmStatus> tpm_status_;
 };
@@ -195,6 +201,18 @@ TEST_F(Tpm2StatusTest, IsDictionaryAttackMitigationEnabledSuccess) {
   is_enabled = true;
   EXPECT_TRUE(tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled));
   EXPECT_FALSE(is_enabled);
+}
+
+TEST_F(Tpm2StatusTest, SupportU2f) {
+  EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(true));
+
+  EXPECT_TRUE(tpm_status_->SupportU2f());
+}
+
+TEST_F(Tpm2StatusTest, NotSupportU2f) {
+  EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(false));
+
+  EXPECT_FALSE(tpm_status_->SupportU2f());
 }
 
 }  // namespace tpm_manager

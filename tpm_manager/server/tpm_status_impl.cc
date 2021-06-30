@@ -301,4 +301,9 @@ void TpmStatusImpl::MarkRandomOwnerPasswordSet() {
   }
 }
 
+bool TpmStatusImpl::SupportU2f() {
+  // For TPM1.2, we doesn't support u2f.
+  return false;
+}
+
 }  // namespace tpm_manager

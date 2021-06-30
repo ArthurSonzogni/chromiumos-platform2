@@ -43,6 +43,7 @@ class Tpm2StatusImpl : public TpmStatus {
                       std::vector<uint8_t>* vendor_specific) override;
   bool IsDictionaryAttackMitigationEnabled(bool* is_enabled) override;
   void MarkRandomOwnerPasswordSet() override;
+  bool SupportU2f() override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed
@@ -54,6 +55,7 @@ class Tpm2StatusImpl : public TpmStatus {
   TpmOwnershipStatus ownership_status_{kTpmUnowned};
   const trunks::TrunksFactory& trunks_factory_;
   std::unique_ptr<trunks::TpmState> trunks_tpm_state_;
+  std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
 };
 
 }  // namespace tpm_manager

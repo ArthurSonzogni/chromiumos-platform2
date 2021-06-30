@@ -545,6 +545,36 @@ TEST_F(TpmManagerServiceTest_Preinit, GetVersionInfoError) {
   Run();
 }
 
+TEST_F(TpmManagerServiceTest, GetSupportedFeatures) {
+  EXPECT_CALL(mock_tpm_status_, SupportU2f()).WillOnce(Return(true));
+
+  auto callback = [](TpmManagerServiceTestBase* self,
+                     const GetSupportedFeaturesReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.support_u2f());
+    self->Quit();
+  };
+
+  GetSupportedFeaturesRequest request;
+  service_->GetSupportedFeatures(request, base::BindOnce(callback, this));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, GetSupportedFeaturesFalse) {
+  EXPECT_CALL(mock_tpm_status_, SupportU2f()).WillOnce(Return(false));
+
+  auto callback = [](TpmManagerServiceTestBase* self,
+                     const GetSupportedFeaturesReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.support_u2f());
+    self->Quit();
+  };
+
+  GetSupportedFeaturesRequest request;
+  service_->GetSupportedFeatures(request, base::BindOnce(callback, this));
+  Run();
+}
+
 TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfo) {
   EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
       .WillOnce(Invoke([](uint32_t* counter, uint32_t* threshold, bool* lockout,

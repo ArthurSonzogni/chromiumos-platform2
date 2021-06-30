@@ -41,8 +41,8 @@ class TpmStatusImpl : public TpmStatus {
                       uint32_t* tpm_model,
                       uint64_t* firmware_version,
                       std::vector<uint8_t>* vendor_specific) override;
-
   void MarkRandomOwnerPasswordSet() override;
+  bool SupportU2f() override;
 
  private:
   // Tests if the TPM owner password is the default one. Returns:

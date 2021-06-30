@@ -63,6 +63,9 @@ class TpmStatus {
                               uint64_t* firmware_version,
                               std::vector<uint8_t>* vendor_specific) = 0;
 
+  // Checks TPM support for U2F.
+  virtual bool SupportU2f() = 0;
+
   // Marks the random owner password is set.
   //
   // NOTE: This method should be used by TPM 1.2 only.

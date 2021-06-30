@@ -19,7 +19,8 @@ namespace tpm_manager {
 
 Tpm2StatusImpl::Tpm2StatusImpl(const trunks::TrunksFactory& factory)
     : trunks_factory_(factory),
-      trunks_tpm_state_(trunks_factory_.GetTpmState()) {}
+      trunks_tpm_state_(trunks_factory_.GetTpmState()),
+      trunks_tpm_utility_(trunks_factory_.GetTpmUtility()) {}
 
 bool Tpm2StatusImpl::IsTpmEnabled() {
   // For 2.0, TPM is always enabled.
@@ -126,6 +127,15 @@ bool Tpm2StatusImpl::Refresh() {
 
 void Tpm2StatusImpl::MarkRandomOwnerPasswordSet() {
   LOG(ERROR) << __func__ << ": Not implemented";
+}
+
+bool Tpm2StatusImpl::SupportU2f() {
+  // We support U2F on Cr50.
+  if (trunks_tpm_utility_->IsCr50()) {
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace tpm_manager
