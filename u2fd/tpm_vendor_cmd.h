@@ -5,11 +5,13 @@
 #ifndef U2FD_TPM_VENDOR_CMD_H_
 #define U2FD_TPM_VENDOR_CMD_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
+#include <base/synchronization/lock.h>
+#include <trunks/command_transceiver.h>
 #include <trunks/cr50_headers/u2f.h>
-#include <trunks/trunks_dbus_proxy.h>
 
 namespace u2f {
 
@@ -33,13 +35,18 @@ const uint32_t kVendorRcInvalidResponse = 0xffffffff;
 // TpmVendorCommandProxy sends vendor commands to the TPM security chip
 // by using the D-Bus connection to the trunksd daemon which communicates
 // with the physical TPM through the kernel driver exposing /dev/tpm0.
-class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
+class TpmVendorCommandProxy {
  public:
   TpmVendorCommandProxy();
+  explicit TpmVendorCommandProxy(
+      std::unique_ptr<trunks::CommandTransceiver> transceiver);
   TpmVendorCommandProxy(const TpmVendorCommandProxy&) = delete;
   TpmVendorCommandProxy& operator=(const TpmVendorCommandProxy&) = delete;
 
-  ~TpmVendorCommandProxy() override;
+  virtual ~TpmVendorCommandProxy() = default;
+
+  // Delegate to trunks::CommandTransceiver
+  virtual bool Init();
 
   // Sends the VENDOR_CC_U2F_GENERATE command to cr50, and populates
   // resp_out with the reply.
@@ -108,6 +115,8 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
 
   // Retrieve and record in the log the individual attestation certificate.
   void LogIndividualCertificate();
+
+  std::unique_ptr<trunks::CommandTransceiver> transceiver_;
 
   // A lock to ensure public SendU2fGenerate, SendU2fSign and SendU2fAttest are
   // executed sequentially. Client code is responsible for acquiring the lock.

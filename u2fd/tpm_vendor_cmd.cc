@@ -3,12 +3,15 @@
 // found in the LICENSE file.
 
 #include <array>
+#include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/sys_byteorder.h>
+#include <trunks/trunks_dbus_proxy.h>
 
 #include "u2fd/tpm_vendor_cmd.h"
 
@@ -44,8 +47,17 @@ const uint16_t kVendorCcU2fAttest = 46;
 
 namespace u2f {
 
-TpmVendorCommandProxy::TpmVendorCommandProxy() {}
-TpmVendorCommandProxy::~TpmVendorCommandProxy() {}
+TpmVendorCommandProxy::TpmVendorCommandProxy()
+    : transceiver_(std::make_unique<trunks::TrunksDBusProxy>()) {}
+TpmVendorCommandProxy::TpmVendorCommandProxy(
+    std::unique_ptr<trunks::CommandTransceiver> transceiver)
+    : transceiver_(std::move(transceiver)) {
+  CHECK(transceiver_);
+}
+
+bool TpmVendorCommandProxy::Init() {
+  return transceiver_->Init();
+}
 
 base::Lock& TpmVendorCommandProxy::GetLock() {
   return lock_;
@@ -67,7 +79,7 @@ uint32_t TpmVendorCommandProxy::VendorCommand(uint16_t cc,
   // Send the command, get the response
   VLOG(2) << "Out(" << command.size()
           << "): " << base::HexEncode(command.data(), command.size());
-  std::string response = SendCommandAndWait(command);
+  std::string response = transceiver_->SendCommandAndWait(command);
   VLOG(2) << "In(" << response.size()
           << "):  " << base::HexEncode(response.data(), response.size());
 
@@ -239,7 +251,7 @@ uint32_t TpmVendorCommandProxy::GetG2fCertificate(std::string* cert_out) {
   VLOG(2) << "Out(" << req.size()
           << "): " << base::HexEncode(req.data(), req.size());
 
-  std::string resp = SendCommandAndWait(req);
+  std::string resp = transceiver_->SendCommandAndWait(req);
 
   VLOG(2) << "In(" << resp.size()
           << "):  " << base::HexEncode(resp.data(), resp.size());

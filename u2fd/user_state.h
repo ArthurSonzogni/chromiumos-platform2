@@ -62,6 +62,9 @@ class UserState {
   // Constructor for use by mock objects.
   UserState();
 
+  // FuzzedUserState also use this constant
+  static constexpr const int kUserSecretSizeBytes = 32;
+
  private:
   // Handler for the SessionStateChanged signal.
   void OnSessionStateChanged(const std::string& state);

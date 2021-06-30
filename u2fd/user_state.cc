@@ -25,7 +25,6 @@ namespace {
 constexpr const char kSessionStateStarted[] = "started";
 constexpr const char kUserSecretPath[] = "/run/daemon-store/u2f/%s/secret_db";
 constexpr const char kCounterPath[] = "/run/daemon-store/u2f/%s/counter_db";
-constexpr const int kUserSecretSizeBytes = 32;
 
 // Due to b/186431345, U2F credentials were asserted by the WebAuthn platform
 // authenticator with a timestamp-based signature counter. After this was
