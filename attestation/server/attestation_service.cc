@@ -25,6 +25,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/objects.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -513,11 +514,16 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_));
     crypto_utility_ = default_crypto_utility_.get();
   }
-#if USE_TPM2
-  for (int i = 0; i < base::size(kNvramIndexData); ++i) {
-    nvram_quote_type_to_index_data_[kNvramIndexData[i].quote_type] = i;
-  }
-#endif
+
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    for (int i = 0; i < base::size(kNvramIndexData); ++i) {
+      nvram_quote_type_to_index_data_[kNvramIndexData[i].quote_type] = i;
+    }
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
+
   bool existing_database;
   if (database_) {
     existing_database = true;
@@ -1289,54 +1295,55 @@ bool AttestationService::CreateCertificateRequestInternal(
       identity_certificate.identity_credential());
   request_pb.set_profile(profile);
 
-#if USE_TPM2
-
-  if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
-    const int identity = identity_certificate.identity();
-    const AttestationDatabase::Identity& identity_data =
-        database_->GetProtobuf().identities().Get(identity);
-    // Copy NVRAM quotes to include in an enrollment certificate from the
-    // identity if possible.
-    std::set<NVRAMQuoteType> not_in_identity;
-    for (int i = 0; i < base::size(kNvramQuoteTypeForEnrollmentCertificate);
-         ++i) {
-      const auto quote_type = kNvramQuoteTypeForEnrollmentCertificate[i];
-      const auto found = identity_data.nvram_quotes().find(quote_type);
-      if (found != identity_data.nvram_quotes().cend()) {
-        (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
-      } else {
-        not_in_identity.insert(quote_type);
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
+      const int identity = identity_certificate.identity();
+      const AttestationDatabase::Identity& identity_data =
+          database_->GetProtobuf().identities().Get(identity);
+      // Copy NVRAM quotes to include in an enrollment certificate from the
+      // identity if possible.
+      std::set<NVRAMQuoteType> not_in_identity;
+      for (int i = 0; i < base::size(kNvramQuoteTypeForEnrollmentCertificate);
+           ++i) {
+        const auto quote_type = kNvramQuoteTypeForEnrollmentCertificate[i];
+        const auto found = identity_data.nvram_quotes().find(quote_type);
+        if (found != identity_data.nvram_quotes().cend()) {
+          (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
+        } else {
+          not_in_identity.insert(quote_type);
+        }
+      }
+      // Data that is supposed to be in the identity but is missing won't be
+      // quoted now, as we want to drive everything from the identity.
+      for (int i = 0; i < base::size(kNvramQuoteTypeInIdentityData); ++i) {
+        const auto quote_type = kNvramQuoteTypeInIdentityData[i];
+        if (not_in_identity.erase(quote_type)) {
+          LOG(WARNING)
+              << "Could not find "
+              << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
+                     .quote_name
+              << " quote in identity " << identity
+              << " to provide in enrollment cert request.";
+        }
+      }
+      // Quote the other data now.
+      for (auto it = not_in_identity.cbegin(), end = not_in_identity.cend();
+           it != end; ++it) {
+        Quote quote;
+        if (QuoteNvramData(*it, identity_data.identity_key(), &quote)) {
+          (*request_pb.mutable_nvram_quotes())[*it] = quote;
+        } else {
+          LOG(WARNING) << "Could not provide "
+                       << kNvramIndexData[nvram_quote_type_to_index_data_[*it]]
+                              .quote_name
+                       << " quote in enrollment cert request.";
+        }
       }
     }
-    // Data that is supposed to be in the identiy but is missing won't be
-    // quoted now, as we want to drive everything from the identity.
-    for (int i = 0; i < base::size(kNvramQuoteTypeInIdentityData); ++i) {
-      const auto quote_type = kNvramQuoteTypeInIdentityData[i];
-      if (not_in_identity.erase(quote_type)) {
-        LOG(WARNING)
-            << "Could not find "
-            << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
-                   .quote_name
-            << " quote in identity " << identity
-            << " to provide in enrollment cert request.";
-      }
-    }
-    // Quote the other data now.
-    for (auto it = not_in_identity.cbegin(), end = not_in_identity.cend();
-         it != end; ++it) {
-      Quote quote;
-      if (QuoteNvramData(*it, identity_data.identity_key(), &quote)) {
-        (*request_pb.mutable_nvram_quotes())[*it] = quote;
-      } else {
-        LOG(WARNING)
-            << "Could not provide "
-            << kNvramIndexData[nvram_quote_type_to_index_data_[*it]].quote_name
-            << " quote in enrollment cert request.";
-      }
-    }
-  }
-
-#endif
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
 
   if (!origin.empty() &&
       (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
@@ -1804,33 +1811,34 @@ int AttestationService::CreateIdentity(int identity_features) {
       return -1;
     }
   }
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    // Certify device-specific NV data and insert them in the identity when
+    // we can certify them. This is an almost identical process to the PCR
+    // quotes above.
 
-#if USE_TPM2
-
-  // Certify device-specific NV data and insert them in the identity when
-  // we can certify them. This is an almost identical process to the PCR
-  // quotes above.
-
-  for (int i = 0; i < base::size(kNvramQuoteTypeInIdentityData); ++i) {
-    if (!InsertCertifiedNvramData(kNvramQuoteTypeInIdentityData[i],
-                                  false /* must_be_present */,
-                                  &new_identity_pb)) {
-      return -1;
+    for (int i = 0; i < base::size(kNvramQuoteTypeInIdentityData); ++i) {
+      if (!InsertCertifiedNvramData(kNvramQuoteTypeInIdentityData[i],
+                                    false /* must_be_present */,
+                                    &new_identity_pb)) {
+        return -1;
+      }
     }
-  }
 
-  // Certify the RSA EK cert only when we are using non-RSA EK. In this case, we
-  // don't provide the RSA EK cert which originally is used for calculating the
-  // Enrollment ID.
-  if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
-      GetEndorsementKeyType() != KEY_TYPE_RSA) {
-    if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
-                                  &new_identity_pb)) {
-      return -1;
+    // Certify the RSA EK cert only when we are using non-RSA EK. In this
+    // case, we don't provide the RSA EK cert which originally is used for
+    // calculating the Enrollment ID.
+    if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
+        GetEndorsementKeyType() != KEY_TYPE_RSA) {
+      if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
+                                    &new_identity_pb)) {
+        return -1;
+      }
     }
-  }
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
 
-#endif
   database_pb->add_identities()->CopyFrom(new_identity_pb);
   // Return the index of the newly created identity.
   return database_pb->identities().size() - 1;
@@ -1839,41 +1847,48 @@ int AttestationService::CreateIdentity(int identity_features) {
 bool AttestationService::QuoteNvramData(NVRAMQuoteType quote_type,
                                         const IdentityKey& identity_key,
                                         Quote* quote) {
-#if USE_TPM2
-  const int id = nvram_quote_type_to_index_data_[quote_type];
-  const char* quote_name = kNvramIndexData[id].quote_name;
-  const uint32_t nv_index = kNvramIndexData[id].nv_index;
-  uint16_t nv_size = kNvramIndexData[id].nv_size;
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({
+    LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
+  });
+  TPM2_SECTION({
+    const int id = nvram_quote_type_to_index_data_[quote_type];
+    const char* quote_name = kNvramIndexData[id].quote_name;
+    const uint32_t nv_index = kNvramIndexData[id].nv_index;
+    uint16_t nv_size = kNvramIndexData[id].nv_size;
 
-  if (!nv_size) {
-    uint16_t nv_data_size = 0;
-    if (tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
-      nv_size = nv_data_size;
-    } else {
-      LOG(ERROR) << "Attestation: Failed to obtain data about the "
-                 << quote_name << ".";
+    if (!nv_size) {
+      uint16_t nv_data_size = 0;
+      if (tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
+        nv_size = nv_data_size;
+      } else {
+        LOG(ERROR) << "Attestation: Failed to obtain data about the "
+                   << quote_name << ".";
+      }
     }
-  }
 
-  if (nv_size) {
-    auto identity_key_blob = identity_key.identity_key_blob();
-    std::string certified_value;
-    std::string signature;
+    if (nv_size) {
+      auto identity_key_blob = identity_key.identity_key_blob();
+      std::string certified_value;
+      std::string signature;
 
-    if (tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
-                                &certified_value, &signature)) {
-      quote->set_quote(signature);
-      quote->set_quoted_data(certified_value);
-      return true;
-    } else {
-      LOG(WARNING) << "Attestation: Failed to certify " << quote_name
-                   << " NV data of size " << nv_size << " at index " << std::hex
-                   << std::showbase << nv_index << ".";
+      if (tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
+                                  &certified_value, &signature)) {
+        quote->set_quote(signature);
+        quote->set_quoted_data(certified_value);
+        return true;
+      } else {
+        LOG(WARNING) << "Attestation: Failed to certify " << quote_name
+                     << " NV data of size " << nv_size << " at index "
+                     << std::hex << std::showbase << nv_index << ".";
+      }
     }
-  }
-#else
-  LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
-#endif
+  });
+  OTHER_TPM_SECTION({
+    LOG(ERROR) << __func__
+               << ": Should not be called for none spported TPM devices.";
+  });
+  TPM_SELECT_END;
 
   return false;
 }
@@ -1882,25 +1897,32 @@ bool AttestationService::InsertCertifiedNvramData(
     NVRAMQuoteType quote_type,
     bool must_be_present,
     AttestationDatabase::Identity* identity) {
-#if USE_TPM2
-  Quote quote;
-  if (!QuoteNvramData(quote_type, identity->identity_key(), &quote)) {
-    return !must_be_present;
-  }
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({
+    LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
+  });
+  TPM2_SECTION({
+    Quote quote;
+    if (!QuoteNvramData(quote_type, identity->identity_key(), &quote)) {
+      return !must_be_present;
+    }
 
-  auto* nv_quote_map = identity->mutable_nvram_quotes();
-  auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, quote));
-  if (in_bid.second) {
-    return true;
-  } else {
-    LOG(ERROR) << "Attestation: Failed to store "
-               << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
-                      .quote_name
-               << " quote for identity " << identity << ".";
-  }
-#else
-  LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
-#endif
+    auto* nv_quote_map = identity->mutable_nvram_quotes();
+    auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, quote));
+    if (in_bid.second) {
+      return true;
+    } else {
+      LOG(ERROR) << "Attestation: Failed to store "
+                 << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
+                        .quote_name
+                 << " quote for identity " << identity << ".";
+    }
+  });
+  OTHER_TPM_SECTION({
+    LOG(ERROR) << __func__
+               << ": Should not be called for none supported TPM devices.";
+  });
+  TPM_SELECT_END;
 
   return false;
 }

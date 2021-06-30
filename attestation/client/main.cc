@@ -19,6 +19,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/print_interface_proto.h"
@@ -738,11 +739,17 @@ class ClientLoop : public ClientLoopBase {
     }
     CryptoUtilityImpl crypto(nullptr);
     EncryptedIdentityCredential encrypted;
-#if !USE_TPM2
-    TpmVersion tpm_version = TPM_1_2;
-#else
-    TpmVersion tpm_version = TPM_2_0;
-#endif
+
+    TpmVersion tpm_version;
+    TPM_SELECT_BEGIN;
+    TPM1_SECTION({ tpm_version = TPM_1_2; });
+    TPM2_SECTION({ tpm_version = TPM_2_0; });
+    OTHER_TPM_SECTION({
+      LOG(ERROR) << "Calling on none supported TPM platform.";
+      tpm_version = TPM_2_0;
+    });
+    TPM_SELECT_END;
+
     if (!crypto.EncryptIdentityCredential(
             tpm_version, input, endorsement_info.ek_public_key(),
             attestation_key_info.public_key_tpm_format(), &encrypted)) {

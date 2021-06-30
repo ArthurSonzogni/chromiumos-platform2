@@ -4,6 +4,10 @@
 
 #include "attestation/common/mock_tpm_utility.h"
 
+#include <base/check.h>
+
+#include <libhwsec-foundation/tpm/tpm_version.h>
+
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -62,11 +66,16 @@ namespace attestation {
 
 MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, Initialize()).WillByDefault(Return(true));
-#if !USE_TPM2
-  ON_CALL(*this, GetVersion()).WillByDefault(Return(TPM_1_2));
-#else
-  ON_CALL(*this, GetVersion()).WillByDefault(Return(TPM_2_0));
-#endif
+  ON_CALL(*this, GetVersion()).WillByDefault(Invoke([]() {
+    TPM_SELECT_BEGIN;
+    TPM1_SECTION({ return TPM_1_2; });
+    TPM2_SECTION({ return TPM_2_0; });
+    OTHER_TPM_SECTION({
+      CHECK(false) << "Needs to specify the TPM version in test environment.";
+      return TPM_2_0;
+    });
+    TPM_SELECT_END;
+  }));
   ON_CALL(*this, IsTpmReady()).WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentity(_, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentityForTpm2(_, _, _, _, _, _))

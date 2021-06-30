@@ -4,20 +4,29 @@
 
 #include "attestation/common/tpm_utility_factory.h"
 
+#include <base/logging.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
+
+#include "attestation/common/tpm_utility.h"
+
 #if USE_TPM2
 #include "attestation/common/tpm_utility_v2.h"
-#else
+#endif
+
+#if USE_TPM1
 #include "attestation/common/tpm_utility_v1.h"
 #endif
 
 namespace attestation {
 
 TpmUtility* TpmUtilityFactory::New() {
-#if USE_TPM2
-  return new TpmUtilityV2();
-#else
-  return new TpmUtilityV1();
-#endif
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({ return new TpmUtilityV1(); });
+  TPM2_SECTION({ return new TpmUtilityV2(); });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
+  LOG(WARNING) << "Using unknown TPM";
+  return nullptr;
 }
 
 }  // namespace attestation

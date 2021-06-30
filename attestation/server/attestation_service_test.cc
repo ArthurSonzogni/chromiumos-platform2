@@ -19,6 +19,7 @@
 #include <brillo/errors/error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
 #if USE_TPM2
@@ -53,11 +54,16 @@ namespace attestation {
 
 namespace {
 
-#if USE_TPM2
-constexpr TpmVersion kTpmVersionUnderTest = TPM_2_0;
-#else
-constexpr TpmVersion kTpmVersionUnderTest = TPM_1_2;
-#endif
+TpmVersion GetTpmVersionUnderTest() {
+  SET_DEFAULT_TPM_FOR_TESTING;
+
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({ return TPM_1_2; });
+  TPM2_SECTION({ return TPM_2_0; });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
+  return TPM_2_0;
+}
 
 std::string CreateChallenge(const std::string& prefix) {
   Challenge challenge;
@@ -144,6 +150,7 @@ class AttestationServiceBaseTest : public testing::Test {
   ~AttestationServiceBaseTest() override = default;
 
   void SetUp() override {
+    SET_DEFAULT_TPM_FOR_TESTING;
     service_.reset(new AttestationService(nullptr));
     service_->set_database(&mock_database_);
     service_->set_crypto_utility(&mock_crypto_utility_);
@@ -209,17 +216,21 @@ class AttestationServiceBaseTest : public testing::Test {
         ->set_identity_public_key_tpm_format("public_key_tpm");
     (*identity_data->mutable_pcr_quotes())[0].set_quote("pcr0");
     (*identity_data->mutable_pcr_quotes())[1].set_quote("pcr1");
-#if USE_TPM2
-    (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
-    (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
+      (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
 #if USE_GENERIC_TPM2
-    (*identity_data->mutable_nvram_quotes())[RMA_BYTES].set_quote("rma_bytes");
+      (*identity_data->mutable_nvram_quotes())[RMA_BYTES].set_quote(
+          "rma_bytes");
 #endif
-    if (service_->GetEndorsementKeyType() != KEY_TYPE_RSA) {
-      (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quote(
-          "rsa_pub_ek_cert");
-    }
-#endif
+      if (service_->GetEndorsementKeyType() != KEY_TYPE_RSA) {
+        (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quote(
+            "rsa_pub_ek_cert");
+      }
+    });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
   }
 
   // Generate a unique name for a certificate from an ACA.
@@ -325,7 +336,7 @@ class AttestationServiceBaseTest : public testing::Test {
   StrictMock<policy::MockPolicyProvider>* mock_policy_provider_;  // Not Owned.
   StrictMock<policy::MockDevicePolicy> mock_device_policy_;
   StrictMock<pca_agent::client::FakePcaAgentProxy> fake_pca_agent_proxy_{
-      kTpmVersionUnderTest};
+      GetTpmVersionUnderTest()};
   std::unique_ptr<AttestationService> service_;
   const int identity_ = AttestationService::kFirstIdentity;
 
@@ -981,7 +992,7 @@ class AttestationServiceTest : public AttestationServiceBaseTest,
       response_pb.set_status(OK);
       response_pb.set_detail("");
       response_pb.mutable_encrypted_identity_credential()->set_tpm_version(
-          kTpmVersionUnderTest);
+          GetTpmVersionUnderTest());
       response_pb.mutable_encrypted_identity_credential()->set_asym_ca_contents(
           "1234");
       response_pb.mutable_encrypted_identity_credential()
@@ -1119,7 +1130,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
   SetUpIdentity(identity_);
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
   const std::string cert_name = GetCertificateName(identity_, aca_type_);
-  if (kTpmVersionUnderTest == TPM_1_2) {
+  if (GetTpmVersionUnderTest() == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
                 ActivateIdentity(_, "encrypted1", "encrypted2", _))
         .WillOnce(DoAll(SetArgPointee<3>(cert_name), Return(true)));
@@ -1140,7 +1151,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
   request.mutable_encrypted_certificate()->set_tpm_version(
-      kTpmVersionUnderTest);
+      GetTpmVersionUnderTest());
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
@@ -1160,7 +1171,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   EXPECT_CALL(mock_database_, GetMutableProtobuf()).Times(0);
   EXPECT_CALL(mock_database_, SaveChanges()).Times(0);
   const std::string cert_name = GetCertificateName(identity_, aca_type_);
-  if (kTpmVersionUnderTest == TPM_1_2) {
+  if (GetTpmVersionUnderTest() == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
                 ActivateIdentity(_, "encrypted1", "encrypted2", _))
         .WillOnce(DoAll(SetArgPointee<3>(cert_name), Return(true)));
@@ -1181,7 +1192,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
   request.mutable_encrypted_certificate()->set_tpm_version(
-      kTpmVersionUnderTest);
+      GetTpmVersionUnderTest());
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
@@ -1207,7 +1218,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
   request.mutable_encrypted_certificate()->set_tpm_version(
-      kTpmVersionUnderTest);
+      GetTpmVersionUnderTest());
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
@@ -1223,7 +1234,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
 
 TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   SetUpIdentity(identity_);
-  if (kTpmVersionUnderTest == TPM_1_2) {
+  if (GetTpmVersionUnderTest() == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
                 ActivateIdentity(_, "encrypted1", "encrypted2", _))
         .WillRepeatedly(Return(false));
@@ -1242,7 +1253,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
   request.mutable_encrypted_certificate()->set_tpm_version(
-      kTpmVersionUnderTest);
+      GetTpmVersionUnderTest());
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
@@ -1998,17 +2009,19 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
   EXPECT_TRUE(identity_data.has_identity_key());
   EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
   EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
-#if USE_TPM2
-  EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
-  EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
+    EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
 #if USE_GENERIC_TPM2
-  EXPECT_EQ(1, identity_data.nvram_quotes().count(RMA_BYTES));
+    EXPECT_EQ(1, identity_data.nvram_quotes().count(RMA_BYTES));
 #endif
-  EXPECT_EQ(service_->GetEndorsementKeyType() != KEY_TYPE_RSA ? 1 : 0,
-            identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
-#else
-  EXPECT_TRUE(identity_data.nvram_quotes().empty());
-#endif
+    EXPECT_EQ(service_->GetEndorsementKeyType() != KEY_TYPE_RSA ? 1 : 0,
+              identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
+  });
+  TPM1_SECTION({ EXPECT_TRUE(identity_data.nvram_quotes().empty()); });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
   EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
             identity_data.features());
   // Deprecated identity-related values have not been set.
@@ -2029,6 +2042,7 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
 
 TEST_P(AttestationServiceTest,
        PrepareForEnrollmentCannotQuoteOptionalNvramForRsaEK) {
+  SET_TPM2_FOR_TESTING;
   auto database_pb = mock_database_.GetMutableProtobuf();
   // Start with an empty database to trigger PrepareForEnrollment.
   database_pb->Clear();
@@ -2060,6 +2074,7 @@ TEST_P(AttestationServiceTest,
 
 TEST_P(AttestationServiceTest,
        PrepareForEnrollmentCannotQuoteOptionalNvramForEccEK) {
+  SET_TPM2_FOR_TESTING;
   auto database_pb = mock_database_.GetMutableProtobuf();
 
   // Start with an empty database to trigger PrepareForEnrollment.
@@ -2100,6 +2115,7 @@ TEST_P(AttestationServiceTest,
 
 TEST_P(AttestationServiceTest,
        PrepareForEnrollmentCannotQuoteRsaEKCertForEccEK) {
+  SET_TPM2_FOR_TESTING;
   auto database_pb = mock_database_.GetMutableProtobuf();
 
   // Start with an empty database to trigger PrepareForEnrollment.
@@ -2208,7 +2224,7 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
     EXPECT_TRUE(reply.has_pca_request());
     AttestationCertificateRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_MACHINE_CERTIFICATE, pca_request.profile());
     EXPECT_TRUE(pca_request.nvram_quotes().empty());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
@@ -2226,12 +2242,18 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
 }
 
 TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
-#if USE_TPM2 && !USE_GENERIC_TPM2
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>("rsu_device_id_quoted_data"),
-                            SetArgPointee<4>("rsu_device_id"), Return(true)));
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+#if !USE_GENERIC_TPM2
+    EXPECT_CALL(mock_tpm_utility_,
+                CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<3>("rsu_device_id_quoted_data"),
+                              SetArgPointee<4>("rsu_device_id"), Return(true)));
 #endif
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
+
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   auto callback = [](const std::string& cert_name,
@@ -2241,23 +2263,25 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
     EXPECT_TRUE(reply.has_pca_request());
     AttestationCertificateRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
-#if USE_TPM2
-    EXPECT_EQ(3, pca_request.nvram_quotes().size());
-    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      EXPECT_EQ(3, pca_request.nvram_quotes().size());
+      EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+      EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
 #if !USE_GENERIC_TPM2
-    EXPECT_EQ("rsu_device_id",
-              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
-    EXPECT_EQ("rsu_device_id_quoted_data",
-              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
+      EXPECT_EQ("rsu_device_id",
+                pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
+      EXPECT_EQ("rsu_device_id_quoted_data",
+                pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
 #else
-    EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
+      EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
 #endif
-#else
-    EXPECT_TRUE(pca_request.nvram_quotes().empty());
-#endif
+    });
+    TPM1_SECTION({ EXPECT_TRUE(pca_request.nvram_quotes().empty()); });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     quit_closure.Run();
   };
@@ -2274,13 +2298,18 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
 
 TEST_P(AttestationServiceTest,
        CreateEnrollmentCertificateRequestSuccessWithUnattestedRsuDeviceId) {
-#if USE_TPM2 && !USE_GENERIC_TPM2
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>("rsu_device_id"), Return(true)));
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+#if !USE_GENERIC_TPM2
+    EXPECT_CALL(mock_tpm_utility_,
+                CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
+        .WillRepeatedly(DoAll(SetArgPointee<0>("rsu_device_id"), Return(true)));
 #endif
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   auto callback = [](const std::string& cert_name,
@@ -2290,21 +2319,22 @@ TEST_P(AttestationServiceTest,
     EXPECT_TRUE(reply.has_pca_request());
     AttestationCertificateRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
-#if USE_TPM2
-    //  for `USE_GENERIC_TPM2` case, we also have stand-alone counter.
-    EXPECT_EQ(USE_GENERIC_TPM2 ? 3 : 2, pca_request.nvram_quotes().size());
-    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      EXPECT_EQ(2, pca_request.nvram_quotes().size());
+      EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+      EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
 #if USE_GENERIC_TPM2
-    EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
+      EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
 #endif
-    EXPECT_EQ(pca_request.nvram_quotes().end(),
-              pca_request.nvram_quotes().find(RSU_DEVICE_ID));
-#else
-    EXPECT_TRUE(pca_request.nvram_quotes().empty());
-#endif
+      EXPECT_EQ(pca_request.nvram_quotes().end(),
+                pca_request.nvram_quotes().find(RSU_DEVICE_ID));
+    });
+    TPM1_SECTION({ EXPECT_TRUE(pca_request.nvram_quotes().empty()); });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     quit_closure.Run();
   };
@@ -2321,13 +2351,18 @@ TEST_P(AttestationServiceTest,
 
 TEST_P(AttestationServiceTest,
        CreateEnrollmentCertificateRequestWithoutRsuDeviceIdSuccess) {
-#if USE_TPM2 && !USE_GENERIC_TPM2
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
-      .WillRepeatedly(Return(false));
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+#if !USE_GENERIC_TPM2
+    EXPECT_CALL(mock_tpm_utility_,
+                CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
+        .WillRepeatedly(Return(false));
 #endif
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   auto callback = [](const std::string& cert_name,
@@ -2337,22 +2372,23 @@ TEST_P(AttestationServiceTest,
     EXPECT_TRUE(reply.has_pca_request());
     AttestationCertificateRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
-#if USE_TPM2
-    //  for `USE_GENERIC_TPM2` case, we also have stand-alone counter.
-    EXPECT_EQ(USE_GENERIC_TPM2 ? 3 : 2, pca_request.nvram_quotes().size());
-    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      EXPECT_EQ(2, pca_request.nvram_quotes().size());
+      EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+      EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
 #if USE_GENERIC_TPM2
-    EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
+      EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
 #else
-    EXPECT_EQ(pca_request.nvram_quotes().find(RSU_DEVICE_ID),
-              pca_request.nvram_quotes().cend());
+      EXPECT_EQ(pca_request.nvram_quotes().find(RSU_DEVICE_ID),
+                pca_request.nvram_quotes().cend());
 #endif
-#else
-    EXPECT_TRUE(pca_request.nvram_quotes().empty());
-#endif
+    });
+    TPM1_SECTION({ EXPECT_TRUE(pca_request.nvram_quotes().empty()); });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     quit_closure.Run();
   };
@@ -2493,7 +2529,7 @@ TEST_P(AttestationServiceTest, CreateEnrollRequestSuccessWithoutAbeData) {
     EXPECT_TRUE(reply.has_pca_request());
     AttestationEnrollmentRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ("wrapped_key",
               pca_request.encrypted_endorsement_credential().wrapped_key());
     EXPECT_EQ("public_key_tpm", pca_request.identity_public_key());
@@ -2521,7 +2557,7 @@ TEST_P(AttestationServiceTest, CreateEnrollRequestSuccessWithEmptyAbeData) {
     EXPECT_TRUE(reply.has_pca_request());
     AttestationEnrollmentRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ("wrapped_key",
               pca_request.encrypted_endorsement_credential().wrapped_key());
     EXPECT_EQ("public_key_tpm", pca_request.identity_public_key());
@@ -2551,7 +2587,7 @@ TEST_P(AttestationServiceTest, CreateEnrollRequestSuccessWithAbeData) {
     EXPECT_TRUE(reply.has_pca_request());
     AttestationEnrollmentRequest pca_request;
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ("wrapped_key",
               pca_request.encrypted_endorsement_credential().wrapped_key());
     EXPECT_EQ("public_key_tpm", pca_request.identity_public_key());

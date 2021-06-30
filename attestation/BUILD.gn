@@ -42,7 +42,9 @@ pkg_config("target_defaults") {
     pkg_deps += [ "protobuf-lite" ]
   }
   defines = [
+    "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_GENERIC_TPM2=${use.generic_tpm2}",
   ]
 }
@@ -79,7 +81,10 @@ pkg_config("common_library_config") {
     "openssl",
     "vboot_host",
   ]
-  libs = [ "tpm_manager" ]
+  libs = [
+    "hwsec-foundation",
+    "tpm_manager",
+  ]
 }
 
 config("common_library_with_tpm2_config") {
@@ -93,6 +98,7 @@ config("common_library_without_tpm2_config") {
 source_set("common_library") {
   sources = [
     "common/crypto_utility_impl.cc",
+    "common/tpm_utility_common.cc",
     "common/tpm_utility_factory.cc",
   ]
   all_dependent_configs = [ ":common_library_config" ]
@@ -106,16 +112,11 @@ source_set("common_library") {
     ":proto_library_proto",
   ]
   if (use.tpm2) {
-    sources += [
-      "common/tpm_utility_common.cc",
-      "common/tpm_utility_v2.cc",
-    ]
+    sources += [ "common/tpm_utility_v2.cc" ]
     all_dependent_configs += [ ":common_library_with_tpm2_config" ]
-  } else {
-    sources += [
-      "common/tpm_utility_common.cc",
-      "common/tpm_utility_v1.cc",
-    ]
+  }
+  if (use.tpm) {
+    sources += [ "common/tpm_utility_v1.cc" ]
     all_dependent_configs += [ ":common_library_without_tpm2_config" ]
   }
 }
@@ -299,9 +300,7 @@ if (use.test) {
       "common/crypto_utility_impl_test.cc",
       "common/mock_crypto_utility.cc",
       "common/mock_tpm_utility.cc",
-      "common/tpm_utility_common_test.cc",
       "pca_agent/server/pca_request_test.cc",
-      "server/attestation_service_test.cc",
       "server/certificate_queue_test.cc",
       "server/database_impl_test.cc",
       "server/dbus_service_test.cc",
@@ -310,19 +309,24 @@ if (use.test) {
       "server/mock_key_store.cc",
       "server/pkcs11_key_store_test.cc",
     ]
+
+    libs = [
+      "hwsec_test",
+      "policy",
+    ]
+
     if (use.tpm2) {
       sources += [ "common/tpm_utility_v2_test.cc" ]
-      libs = [
-        "hwsec_test",
-        "policy",
-        "trunks_test",
-      ]
-    } else {
-      libs = [
-        "hwsec_test",
-        "policy",
+      libs += [ "trunks_test" ]
+    }
+
+    if (use.tpm || use.tpm2) {
+      sources += [
+        "common/tpm_utility_common_test.cc",
+        "server/attestation_service_test.cc",
       ]
     }
+
     configs += [
       "//common-mk:test",
       ":attestation_testrunner_config",

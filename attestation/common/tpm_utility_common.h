@@ -66,7 +66,6 @@ class TpmUtilityCommon : public TpmUtility {
   tpm_manager::TpmManagerUtility* tpm_manager_utility_;
 
   // For testing purpose.
-  template <typename T>
   friend class TpmUtilityCommonTest;
 };
 
