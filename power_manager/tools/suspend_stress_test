@@ -27,6 +27,7 @@ DEFINE_boolean pm_print_times ${FLAGS_TRUE} \
                "Print the time taken by devices to suspend and resume"
 DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
+DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
 
 # Record the dmesg for the last iteration.
@@ -247,6 +248,13 @@ while true; do
   if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
     echo 0 > /sys/class/rtc/rtc1/wakealarm
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
+  fi
+
+  if [ -n "${FLAGS_pre_suspend_command}" ]; then
+    # Leading space because this will appear on the same line as the
+    # printf output from above.
+    echo " running ${FLAGS_pre_suspend_command}"
+    ${FLAGS_pre_suspend_command}
   fi
 
   start_time="$(cat /sys/class/rtc/rtc0/since_epoch)"
