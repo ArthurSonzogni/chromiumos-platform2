@@ -13,7 +13,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/fido.pb.h"
 
 namespace cryptohome {

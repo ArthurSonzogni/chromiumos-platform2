@@ -20,7 +20,6 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_le_credential_manager.h"

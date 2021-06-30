@@ -25,7 +25,6 @@
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"

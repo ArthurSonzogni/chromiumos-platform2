@@ -14,11 +14,11 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -105,8 +105,7 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt,
-                                      {&aes_skey, &kdf_skey, &vkk_iv})) {
+  if (!DeriveSecretsScrypt(vault_key, salt, {&aes_skey, &kdf_skey, &vkk_iv})) {
     return base::nullopt;
   }
 
@@ -164,8 +163,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
                             : kDefaultLegacyPasswordRounds;
 
   if (tpm_state.scrypt_derived()) {
-    if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt,
-                                        {&aes_skey, &kdf_skey, vkk_iv})) {
+    if (!DeriveSecretsScrypt(vault_key, salt, {&aes_skey, &kdf_skey, vkk_iv})) {
       PopulateError(error, CryptoError::CE_OTHER_FATAL);
       return false;
     }

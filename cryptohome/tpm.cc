@@ -11,7 +11,6 @@
 #include <string>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 
 #if USE_TPM2
 #include "cryptohome/tpm2_impl.h"

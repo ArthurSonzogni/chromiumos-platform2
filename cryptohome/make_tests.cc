@@ -31,7 +31,7 @@
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_platform.h"
@@ -194,7 +194,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   NiceMock<MockPlatform> platform;
   Crypto crypto(&platform);
   crypto.set_disable_logging_for_testing(/*disable=*/true);
-  CryptoLib::SetScryptTestingParams();
+  SetScryptTestingParams();
   UserOldestActivityTimestampCache timestamp_cache;
   NiceMock<policy::MockDevicePolicy>* device_policy =
       new NiceMock<policy::MockDevicePolicy>;

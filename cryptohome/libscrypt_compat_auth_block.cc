@@ -9,9 +9,9 @@
 
 #include <unistd.h>
 
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/libscrypt_compat.h"
 
@@ -28,9 +28,9 @@ bool CreateScryptHelper(const brillo::SecureBlob& input_key,
   *salt = CreateSecureRandomBlob(kLibScryptSaltSize);
 
   derived_key->resize(kLibScryptDerivedKeySize);
-  if (!CryptoLib::Scrypt(input_key, *salt, kDefaultScryptParams.n_factor,
-                         kDefaultScryptParams.r_factor,
-                         kDefaultScryptParams.p_factor, derived_key)) {
+  if (!Scrypt(input_key, *salt, kDefaultScryptParams.n_factor,
+              kDefaultScryptParams.r_factor, kDefaultScryptParams.p_factor,
+              derived_key)) {
     LOG(ERROR) << "scrypt failed";
     PopulateError(error, CryptoError::CE_SCRYPT_CRYPTO);
     return false;
@@ -53,8 +53,8 @@ bool ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
 
   // Generate the derived key.
   derived_key->resize(kLibScryptDerivedKeySize);
-  if (!CryptoLib::Scrypt(input_key, salt, params.n_factor, params.r_factor,
-                         params.p_factor, derived_key)) {
+  if (!Scrypt(input_key, salt, params.n_factor, params.r_factor,
+              params.p_factor, derived_key)) {
     LOG(ERROR) << "scrypt failed";
     PopulateError(error, CryptoError::CE_SCRYPT_CRYPTO);
     return false;

@@ -13,6 +13,7 @@
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
 
@@ -82,8 +83,8 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!CryptoLib::DeriveSecretsScrypt(publisher_recovery_key, salt,
-                                      {&aes_skey, &vkk_iv})) {
+  if (!DeriveSecretsScrypt(publisher_recovery_key, salt,
+                           {&aes_skey, &vkk_iv})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return base::nullopt;
   }
@@ -145,8 +146,8 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   // TODO(b/184924482): change wrapped keys to USS key after USS is implemented.
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!CryptoLib::DeriveSecretsScrypt(destination_recovery_key, salt,
-                                      {&aes_skey, &vkk_iv})) {
+  if (!DeriveSecretsScrypt(destination_recovery_key, salt,
+                           {&aes_skey, &vkk_iv})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return false;
   }

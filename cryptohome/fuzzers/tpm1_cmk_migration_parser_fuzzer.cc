@@ -24,7 +24,6 @@
 #include <trousers/tss.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 
@@ -33,7 +32,6 @@ using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
-using cryptohome::CryptoLib;
 
 namespace {
 

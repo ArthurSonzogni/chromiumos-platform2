@@ -13,7 +13,6 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {

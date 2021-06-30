@@ -18,7 +18,6 @@
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/fwmp_checker_owner_index.h"
 #include "cryptohome/fwmp_checker_platform_index.h"
 

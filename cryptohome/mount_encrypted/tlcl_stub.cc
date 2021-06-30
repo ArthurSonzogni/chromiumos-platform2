@@ -16,7 +16,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {

@@ -23,7 +23,6 @@
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_platform.h"

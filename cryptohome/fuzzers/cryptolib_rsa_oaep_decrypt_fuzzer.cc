@@ -20,14 +20,12 @@
 #include <openssl/x509.h>
 
 #include "cryptohome/crypto/rsa.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
-using cryptohome::CryptoLib;
 
 namespace {
 

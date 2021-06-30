@@ -4,8 +4,8 @@
 
 #include "cryptohome/pin_weaver_auth_block.h"
 
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -149,9 +149,8 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
-  if (!CryptoLib::DeriveSecretsScrypt(auth_input.user_input.value(),
-                                      auth_input.salt.value(),
-                                      {&le_secret, &kdf_skey})) {
+  if (!DeriveSecretsScrypt(auth_input.user_input.value(),
+                           auth_input.salt.value(), {&le_secret, &kdf_skey})) {
     return base::nullopt;
   }
 
@@ -223,8 +222,8 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   brillo::SecureBlob salt(auth_state.salt().begin(), auth_state.salt().end());
-  if (!CryptoLib::DeriveSecretsScrypt(auth_input.user_input.value(), salt,
-                                      {&le_secret, &kdf_skey})) {
+  if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
+                           {&le_secret, &kdf_skey})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return false;
   }

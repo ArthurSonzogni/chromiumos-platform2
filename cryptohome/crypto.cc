@@ -28,11 +28,11 @@
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/libscrypt_compat.h"
@@ -155,7 +155,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
                            VaultKeyset* keyset) const {
   SecureBlob blob = SecureBlob(serialized.wrapped_keyset());
   SecureBlob decrypted(blob.size());
-  if (!CryptoLib::DeprecatedDecryptScryptBlob(blob, key, &decrypted, error)) {
+  if (!DeprecatedDecryptScryptBlob(blob, key, &decrypted, error)) {
     LOG(ERROR) << "Wrapped keyset Scrypt decrypt failed.";
     return false;
   }
@@ -166,8 +166,8 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
     SecureBlob wrapped_chaps_key = SecureBlob(serialized.wrapped_chaps_key());
     chaps_key.resize(wrapped_chaps_key.size());
     // Perform a Scrypt operation on wrapped chaps key.
-    if (!CryptoLib::DeprecatedDecryptScryptBlob(wrapped_chaps_key, key,
-                                                &chaps_key, error)) {
+    if (!DeprecatedDecryptScryptBlob(wrapped_chaps_key, key, &chaps_key,
+                                     error)) {
       LOG(ERROR) << "Chaps key scrypt decrypt failed.";
       return false;
     }
@@ -179,8 +179,8 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
     SecureBlob wrapped_reset_seed = SecureBlob(serialized.wrapped_reset_seed());
     reset_seed.resize(wrapped_reset_seed.size());
     // Perform a Scrypt operation on wrapped reset seed.
-    if (!CryptoLib::DeprecatedDecryptScryptBlob(wrapped_reset_seed, key,
-                                                &reset_seed, error)) {
+    if (!DeprecatedDecryptScryptBlob(wrapped_reset_seed, key, &reset_seed,
+                                     error)) {
       LOG(ERROR) << "Reset seed scrypt decrypt failed.";
       return false;
     }

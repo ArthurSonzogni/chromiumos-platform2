@@ -46,7 +46,6 @@
 #include <trunks/trunks_factory_for_test.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/protobuf_test_utils.h"
 

@@ -26,7 +26,6 @@
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/encrypted_fs.h"
 #include "cryptohome/mount_encrypted/encryption_key.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"

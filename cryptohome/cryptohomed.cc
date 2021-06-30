@@ -19,8 +19,8 @@
 #include <openssl/evp.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/userdataauth.h"
 
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
   cryptohome::InitializeMetrics();
 
   // Make sure scrypt parameters are correct.
-  cryptohome::CryptoLib::AssertProductionScryptParams();
+  cryptohome::AssertProductionScryptParams();
 
   // Note that there's an AtExitManager in the constructor of
   // UserDataAuthDaemon

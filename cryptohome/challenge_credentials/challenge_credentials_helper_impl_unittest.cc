@@ -22,7 +22,6 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_signature_sealing_backend.h"

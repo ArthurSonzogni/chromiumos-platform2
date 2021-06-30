@@ -16,7 +16,6 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/homedirs.h"

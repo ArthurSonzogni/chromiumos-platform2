@@ -16,7 +16,6 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"

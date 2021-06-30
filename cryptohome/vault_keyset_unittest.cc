@@ -9,6 +9,7 @@
 #include <memory>
 #include <string.h>  // For memcmp().
 #include <vector>
+#include <openssl/evp.h>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>

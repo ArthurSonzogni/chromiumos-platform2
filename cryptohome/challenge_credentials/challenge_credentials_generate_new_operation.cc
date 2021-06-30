@@ -14,7 +14,6 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/tpm.h"
 

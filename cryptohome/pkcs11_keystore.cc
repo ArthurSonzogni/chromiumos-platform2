@@ -19,7 +19,6 @@
 #include <openssl/x509.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/pkcs11_init.h"
 
 using base::FilePath;

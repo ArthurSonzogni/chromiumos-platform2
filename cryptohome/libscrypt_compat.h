@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/scrypt.h"
 
 namespace cryptohome {
 

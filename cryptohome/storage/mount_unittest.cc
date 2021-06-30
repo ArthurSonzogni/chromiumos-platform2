@@ -38,7 +38,6 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_chaps_client_factory.h"

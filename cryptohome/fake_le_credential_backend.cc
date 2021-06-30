@@ -9,7 +9,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/fake_le_credential_metadata.pb.h"
 
 namespace cryptohome {

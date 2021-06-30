@@ -18,7 +18,6 @@
 #include <vboot/tlcl.h>
 
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
 namespace mount_encrypted {

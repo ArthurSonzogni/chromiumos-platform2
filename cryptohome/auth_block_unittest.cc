@@ -16,9 +16,9 @@
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
 #include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_recovery_auth_block.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
@@ -67,8 +67,7 @@ TEST(TpmBoundToPcrTest, CreateTest) {
 
   // Set up the mock expectations.
   brillo::SecureBlob scrypt_derived_key(kDefaultPassBlobSize);
-  EXPECT_TRUE(
-      CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key}));
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key}));
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
@@ -127,7 +126,7 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
-  EXPECT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&aes_skey}));
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_skey}));
   ON_CALL(tpm, EncryptBlob(_, _, aes_skey, _))
       .WillByDefault(Return(Tpm::kTpmRetryNone));
   EXPECT_CALL(tpm, EncryptBlob(_, _, aes_skey, _)).Times(Exactly(1));
@@ -179,7 +178,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
 
   // Set up the mock expectations.
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
-  EXPECT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
   NiceMock<MockLECredentialManager> le_cred_manager;
@@ -233,7 +232,7 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
-  ASSERT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
 
@@ -281,7 +280,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
-  ASSERT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
 
@@ -323,7 +322,7 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
   brillo::SecureBlob vkk_key;
 
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-  ASSERT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&pass_blob}));
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&pass_blob}));
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
@@ -346,7 +345,7 @@ TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
   brillo::SecureBlob vkk_iv(kDefaultAesKeySize);
   brillo::SecureBlob aes_key(kDefaultAesKeySize);
 
-  ASSERT_TRUE(CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&aes_key}));
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_key}));
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;

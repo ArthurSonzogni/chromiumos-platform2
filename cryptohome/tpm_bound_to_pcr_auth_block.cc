@@ -13,11 +13,11 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -52,7 +52,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   const auto vkk_key = CreateSecureRandomBlob(kDefaultAesKeySize);
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
-  if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&pass_blob, &vkk_iv}))
+  if (!DeriveSecretsScrypt(vault_key, salt, {&pass_blob, &vkk_iv}))
     return base::nullopt;
 
   std::map<uint32_t, std::string> default_pcr_map =
@@ -179,7 +179,7 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     brillo::SecureBlob* vkk_iv,
     brillo::SecureBlob* vkk_key) const {
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-  if (!CryptoLib::DeriveSecretsScrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
+  if (!DeriveSecretsScrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
     LOG(ERROR) << "scrypt derivation failed";
     return false;
   }

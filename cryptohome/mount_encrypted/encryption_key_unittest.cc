@@ -18,7 +18,6 @@
 
 #include <gtest/gtest.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 #include "cryptohome/mount_encrypted/tlcl_stub.h"
 #include "cryptohome/mount_encrypted/tpm.h"

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/cryptolib.h"
+#include "cryptohome/crypto/scrypt.h"
 
 #include <limits>
 #include <utility>
@@ -33,6 +33,13 @@
 using brillo::SecureBlob;
 
 namespace cryptohome {
+
+namespace {
+
+// Global override-able for testing.
+ScryptParameters gScryptParams = kDefaultScryptParams;
+
+}  // namespace
 
 // The current number of hash rounds we use.  Large enough to be a measurable
 // amount of time, but not add too much overhead to login (around 10ms).
@@ -71,15 +78,9 @@ constexpr ScryptParameters kDefaultScryptParams;
 // some fast parameters only for test code.
 constexpr ScryptParameters kTestScryptParams = {1024, 8, 1};
 
-// static
-ScryptParameters CryptoLib::gScryptParams = kDefaultScryptParams;
-
-
-// static
-bool CryptoLib::DeriveSecretsScrypt(
-    const brillo::SecureBlob& passkey,
-    const brillo::SecureBlob& salt,
-    std::vector<brillo::SecureBlob*> gen_secrets) {
+bool DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
+                         const brillo::SecureBlob& salt,
+                         std::vector<brillo::SecureBlob*> gen_secrets) {
   if (gen_secrets.empty()) {
     LOG(ERROR) << "No secrets requested from scrypt derivation.";
     return false;
@@ -110,13 +111,12 @@ bool CryptoLib::DeriveSecretsScrypt(
   return true;
 }
 
-// static
-bool CryptoLib::Scrypt(const brillo::SecureBlob& input,
-                       const brillo::SecureBlob& salt,
-                       int work_factor,
-                       int block_size,
-                       int parallel_factor,
-                       brillo::SecureBlob* result) {
+bool Scrypt(const brillo::SecureBlob& input,
+            const brillo::SecureBlob& salt,
+            int work_factor,
+            int block_size,
+            int parallel_factor,
+            brillo::SecureBlob* result) {
   crypto::ScopedEVP_PKEY_CTX pctx(EVP_PKEY_CTX_new_id(EVP_PKEY_SCRYPT, NULL));
   if (EVP_PKEY_derive_init(pctx.get()) <= 0)
     return false;
@@ -137,11 +137,9 @@ bool CryptoLib::Scrypt(const brillo::SecureBlob& input,
   return rc > 0 && outlen == result->size();
 }
 
-// static
-bool CryptoLib::DeprecatedEncryptScryptBlob(
-    const brillo::SecureBlob& blob,
-    const brillo::SecureBlob& key_source,
-    brillo::SecureBlob* wrapped_blob) {
+bool DeprecatedEncryptScryptBlob(const brillo::SecureBlob& blob,
+                                 const brillo::SecureBlob& key_source,
+                                 brillo::SecureBlob* wrapped_blob) {
   wrapped_blob->resize(blob.size() + kScryptMetadataSize);
 
   brillo::SecureBlob salt = CreateSecureRandomBlob(kLibScryptSaltSize);
@@ -161,12 +159,10 @@ bool CryptoLib::DeprecatedEncryptScryptBlob(
   return true;
 }
 
-// static
-bool CryptoLib::DeprecatedDecryptScryptBlob(
-    const brillo::SecureBlob& wrapped_blob,
-    const brillo::SecureBlob& key,
-    brillo::SecureBlob* blob,
-    CryptoError* error) {
+bool DeprecatedDecryptScryptBlob(const brillo::SecureBlob& wrapped_blob,
+                                 const brillo::SecureBlob& key,
+                                 brillo::SecureBlob* blob,
+                                 CryptoError* error) {
   DCHECK(blob->size() >= wrapped_blob.size());
 
   ScryptParameters params;
@@ -201,17 +197,15 @@ bool CryptoLib::DeprecatedDecryptScryptBlob(
   return true;
 }
 
-// static
-void CryptoLib::AssertProductionScryptParams() {
+void AssertProductionScryptParams() {
   // Always perform the check just in case.
   CHECK_EQ(kDefaultScryptParams.n_factor, gScryptParams.n_factor);
   CHECK_EQ(kDefaultScryptParams.r_factor, gScryptParams.r_factor);
   CHECK_EQ(kDefaultScryptParams.p_factor, gScryptParams.p_factor);
 }
 
-// static
-void CryptoLib::SetScryptTestingParams() {
-  CryptoLib::gScryptParams = kTestScryptParams;
+void SetScryptTestingParams() {
+  gScryptParams = kTestScryptParams;
 }
 
 }  // namespace cryptohome
