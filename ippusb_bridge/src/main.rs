@@ -18,7 +18,9 @@ use std::os::unix::net::UnixListener;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
-use sys_util::{error, info, register_signal_handler, syslog, EventFd, PollContext, PollToken};
+use sys_util::{
+    debug, error, info, register_signal_handler, syslog, EventFd, PollContext, PollToken,
+};
 use tiny_http::{ClientConnection, Stream};
 
 use crate::arguments::Args;
@@ -96,6 +98,7 @@ fn add_sigint_handler(shutdown_fd: EventFd) -> sys_util::Result<()> {
 
 struct Daemon {
     verbose_log: bool,
+    num_clients: usize,
 
     shutdown: EventFd,
     listener: Box<dyn Accept>,
@@ -121,6 +124,7 @@ impl Daemon {
     ) -> Result<Self> {
         Ok(Self {
             verbose_log,
+            num_clients: 0,
             shutdown,
             listener,
             usb,
@@ -161,8 +165,15 @@ impl Daemon {
         let connection = ClientConnection::new(stream);
         let mut thread_usb = self.usb.clone();
         let verbose = self.verbose_log;
+        self.num_clients += 1;
+        let client_num = self.num_clients;
         std::thread::spawn(move || {
+            if verbose {
+                debug!("Connection {} opened", client_num);
+            }
+            let mut num_requests = 0;
             for request in connection {
+                num_requests += 1;
                 let usb_conn = match thread_usb.get_connection() {
                     Ok(c) => c,
                     Err(e) => {
@@ -174,6 +185,12 @@ impl Daemon {
                 if let Err(e) = handle_request(verbose, usb_conn, request) {
                     error!("Handling request failed: {}", e);
                 }
+            }
+            if verbose {
+                debug!(
+                    "Connection {} handled {} requests",
+                    client_num, num_requests
+                );
             }
         });
     }

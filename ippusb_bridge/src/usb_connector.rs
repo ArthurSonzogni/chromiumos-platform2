@@ -16,19 +16,21 @@ use sync::{Condvar, Mutex};
 use sys_util::{debug, error, info, EventFd, PollContext};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
+const USB_CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[derive(Debug)]
 pub enum Error {
-    ClaimInterface(rusb::Error),
-    ReleaseInterface(rusb::Error),
+    ClaimInterface(u8, rusb::Error),
+    ReleaseInterface(u8, rusb::Error),
     DetachDrivers(rusb::Error),
     DeviceList(rusb::Error),
     OpenDevice(rusb::Error),
+    CleanupThread(io::Error),
     ReadConfigDescriptor(rusb::Error),
     ReadDeviceDescriptor(rusb::Error),
     RegisterCallback(rusb::Error),
     SetActiveConfig(rusb::Error),
-    SetAlternateSetting(rusb::Error),
+    SetAlternateSetting(u8, rusb::Error),
     NoDevice,
     NoFreeInterface,
     NotIppUsb,
@@ -41,16 +43,21 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Error::*;
         match self {
-            ClaimInterface(err) => write!(f, "Failed to claim interface: {}", err),
-            ReleaseInterface(err) => write!(f, "Failed to release interface: {}", err),
+            ClaimInterface(i, err) => write!(f, "Failed to claim interface {}: {}", i, err),
+            ReleaseInterface(i, err) => write!(f, "Failed to release interface {}: {}", i, err),
             DetachDrivers(err) => write!(f, "Failed to detach kernel drivers: {}", err),
             DeviceList(err) => write!(f, "Failed to read device list: {}", err),
             OpenDevice(err) => write!(f, "Failed to open device: {}", err),
+            CleanupThread(err) => write!(f, "Failed to start cleanup thread: {}", err),
             ReadConfigDescriptor(err) => write!(f, "Failed to read config descriptor: {}", err),
             ReadDeviceDescriptor(err) => write!(f, "Failed to read device descriptor: {}", err),
             RegisterCallback(err) => write!(f, "Failed to register for hotplug callback: {}", err),
             SetActiveConfig(err) => write!(f, "Failed to set active config: {}", err),
-            SetAlternateSetting(err) => write!(f, "Failed to set alternate setting: {}", err),
+            SetAlternateSetting(i, err) => write!(
+                f,
+                "Failed to set interface {} alternate setting: {}",
+                i, err
+            ),
             NoDevice => write!(f, "No valid IPP USB device found."),
             NoFreeInterface => write!(f, "There is no free IPP USB interface to claim."),
             NotIppUsb => write!(f, "The specified device is not an IPP USB device."),
@@ -173,23 +180,64 @@ struct ClaimedInterface {
 }
 
 impl ClaimedInterface {
+    /// Send a USB claim for our interface and switch it to the correct alternate setting.
     fn claim(&mut self) -> Result<()> {
         self.handle
             .claim_interface(self.descriptor.interface_number)
-            .map_err(Error::ClaimInterface)?;
+            .map_err(|e| Error::ClaimInterface(self.descriptor.interface_number, e))?;
         self.handle
             .set_alternate_setting(
                 self.descriptor.interface_number,
                 self.descriptor.alternate_setting,
             )
-            .map_err(Error::SetAlternateSetting)?;
-        Ok(())
+            .map_err(|e| Error::SetAlternateSetting(self.descriptor.interface_number, e))
     }
 
+    /// Send a USB release for our interface.
     fn release(&mut self) -> Result<()> {
         self.handle
             .release_interface(self.descriptor.interface_number)
-            .map_err(Error::ReleaseInterface)
+            .map_err(|e| Error::ReleaseInterface(self.descriptor.interface_number, e))
+    }
+}
+
+/// InterfaceManagerState contains the internal state of InterfaceManager.  It is intended to
+/// be shared across InterfaceManager instances and protected by a mutex.
+struct InterfaceManagerState {
+    interfaces: VecDeque<ClaimedInterface>,
+    handle: rusb::DeviceHandle<GlobalContext>,
+    usb_config: u8,
+    active: usize,
+    pending_cleanup: bool,
+    next_cleanup: Instant,
+}
+
+impl InterfaceManagerState {
+    fn claim_all(&mut self) -> Result<()> {
+        self.handle
+            .set_active_configuration(self.usb_config)
+            .map_err(Error::SetActiveConfig)?;
+
+        for interface in &mut self.interfaces {
+            if let Err(e) = interface.claim() {
+                // We don't bother to free any successfully claimed interfaces because
+                // it's not an error to try to claim them again when the next connection
+                // arrives.
+                error!(
+                    "Failed to reclaim interface {}: {}",
+                    interface.descriptor.interface_number, e
+                );
+                return Err(e);
+            }
+        }
+        Ok(())
+    }
+
+    fn release_all(&mut self) -> Result<()> {
+        for interface in &mut self.interfaces {
+            interface.release()?;
+        }
+        Ok(())
     }
 }
 
@@ -208,11 +256,15 @@ impl ClaimedInterface {
 #[derive(Clone)]
 pub struct InterfaceManager {
     interface_available: Arc<Condvar>,
-    free_interfaces: Arc<Mutex<VecDeque<ClaimedInterface>>>,
+    state: Arc<Mutex<InterfaceManagerState>>,
 }
 
 impl InterfaceManager {
-    fn new(interfaces: Vec<ClaimedInterface>) -> Self {
+    fn new(
+        handle: rusb::DeviceHandle<GlobalContext>,
+        usb_config: u8,
+        interfaces: Vec<ClaimedInterface>,
+    ) -> Self {
         let mut deque: VecDeque<ClaimedInterface> = interfaces.into();
         for interface in &mut deque {
             interface.release().unwrap_or_else(|e| {
@@ -224,56 +276,141 @@ impl InterfaceManager {
         }
         Self {
             interface_available: Arc::new(Condvar::new()),
-            free_interfaces: Arc::new(Mutex::new(deque)),
+            state: Arc::new(Mutex::new(InterfaceManagerState {
+                interfaces: deque,
+                handle,
+                usb_config,
+                active: 0,
+                pending_cleanup: false,
+                next_cleanup: Instant::now(),
+            })),
         }
     }
 
-    /// Claim an interface from the pool of interfaces.
+    /// Start a separate thread to release interfaces.  Interfaces are released once
+    /// USB_CLEANUP_TIMEOUT elapses with no activity after all interfaces are internally
+    /// returned.
+    fn start_cleanup_thread(&mut self) -> Result<std::thread::JoinHandle<()>> {
+        let manager = self.clone();
+
+        let handle = thread::Builder::new()
+            .name("interface cleanup".into())
+            .spawn(move || {
+                debug!("Cleanup thread starting");
+                let mut state = manager.state.lock();
+
+                // We wait in two phases:
+                // 1. As long as no cleanup is pending or there is an active interface, we need to
+                //    wait indefinitely.  Each interface sets pending_cleanup when it is returned,
+                //    so this will eventually drop to 0 active interfaces with a cleanup pending.
+                // 2. Once cleanup is needed and there are no active interfaces, we wait for a
+                //    timeout.  If another connection comes during the timeout, we go back to the
+                //    previous phase.
+                'outer: loop {
+                    // Phase 1: Wait for cleanup to be needed and all active interfaces to be
+                    // returned.
+                    state = manager
+                        .interface_available
+                        .wait_while(state, |t| t.active > 0 || !t.pending_cleanup);
+
+                    // Phase 2: Wait for the cleanup time to arrive.
+                    // 1. If an interface is claimed and returned during the timeout, we will
+                    //    detect this because the timeout will be extended.  We can simply wait
+                    //    more if this happens.
+                    // 2. If an interface is claimed and is still active after our timeout, there's
+                    //    no need to keep waking up.  Go back to phase 1 and wait for the active
+                    //    interfaces to be returned.
+                    // 3. Once everything remains the same for the whole timeout period, we can
+                    //    exit the while loop and release all the interfaces.
+                    while state.next_cleanup > Instant::now() {
+                        let wait = state.next_cleanup - Instant::now();
+                        let result =
+                            manager
+                                .interface_available
+                                .wait_timeout_while(state, wait, |t| t.active == 0);
+                        state = result.0; // Throw away the timed out part of the result.
+                        if state.active > 0 {
+                            continue 'outer;
+                        }
+                    }
+
+                    // Now we know that there must be no active clients and the cleanup time must
+                    // have arrived:
+                    // 1.  If there were an active client, the check inside the while loop above
+                    //     would have gone back to the outer loop.
+                    // 2.  If the cleanup time hadn't arrived, the inner while loop wouldn't have
+                    //     exited.
+                    // This means we can safely release all the interfaces without affecting any
+                    // active connections.
+                    assert_eq!(state.active, 0, "Active interfaces not expected");
+                    assert!(
+                        Instant::now() >= state.next_cleanup,
+                        "Cleanup time not arrived"
+                    );
+                    debug!("Releasing all USB interfaces");
+                    match state.release_all() {
+                        Ok(()) => {}
+
+                        // If the device was unplugged, don't bother to print an error.  We're
+                        // about to exit anyway.
+                        Err(Error::ReleaseInterface(_, rusb::Error::NoDevice)) => {}
+
+                        // If this failed for some other reason, we're in some bad state.  There
+                        // are no active interfaces, so restarting won't interrupt an active
+                        // connection.  We should just quit and let upstart reset us back to a
+                        // known good state.
+                        Err(e) => panic!("Failed to release interfaces: {}", e),
+                    };
+                    state.pending_cleanup = false;
+                }
+            })
+            .map_err(Error::CleanupThread)?;
+
+        Ok(handle)
+    }
+
+    /// Get an interface from the pool of tracked interfaces.
     /// Will block until an interface is available.
+    /// If interfaces are currently not claimed, will first set the active device
+    /// configuration and re-claim USB interfaces.
     fn request_interface(&mut self) -> Result<ClaimedInterface> {
-        let mut free_interfaces = self.free_interfaces.lock();
+        let mut state = self.state.lock();
+
+        state.active += 1;
+        if state.active == 1 && !state.pending_cleanup {
+            debug!("Claiming all interfaces");
+            state.claim_all()?;
+            state.pending_cleanup = true;
+        }
+
         loop {
-            if let Some(mut interface) = free_interfaces.pop_front() {
+            if let Some(interface) = state.interfaces.pop_front() {
                 debug!(
-                    "* Claimed interface {}",
+                    "* Using interface {}",
                     interface.descriptor.interface_number
                 );
-
-                return match interface.claim() {
-                    Ok(()) => Ok(interface),
-                    Err(e) => {
-                        error!(
-                            "Failed to reclaim interface {}: {}",
-                            interface.descriptor.interface_number, e
-                        );
-                        free_interfaces.push_back(interface);
-                        self.interface_available.notify_one();
-                        Err(e)
-                    }
-                };
+                return Ok(interface);
             }
 
-            free_interfaces = self.interface_available.wait(free_interfaces);
+            state = self.interface_available.wait(state);
         }
     }
 
     /// Return an interface to the pool of interfaces.
-    fn free_interface(&mut self, mut interface: ClaimedInterface) {
+    fn free_interface(&mut self, interface: ClaimedInterface) {
         debug!(
-            "* Released interface {}",
+            "* Returning interface {}",
             interface.descriptor.interface_number
         );
-        interface.release().unwrap_or_else(|e| {
-            error!(
-                "Failed to release interface {}: {}",
-                interface.descriptor.interface_number, e
-            );
-            // Put the interface back into the pool instead of a panic.  Since it failed to
-            // release, we can hopefully reclaim it on the next connection.
-        });
-        let mut free_interfaces = self.free_interfaces.lock();
-        free_interfaces.push_back(interface);
-        self.interface_available.notify_one();
+        let mut state = self.state.lock();
+        state.interfaces.push_back(interface);
+        state.next_cleanup = Instant::now() + USB_CLEANUP_TIMEOUT;
+        state.pending_cleanup = true;
+        state.active -= 1;
+
+        // Use notify_all instead of notify_one because the cleanup thread may also be
+        // waiting on this condition variable.
+        self.interface_available.notify_all();
     }
 }
 
@@ -466,20 +603,24 @@ impl UsbConnector {
             let mut interface_handle = device.open().map_err(Error::OpenDevice)?;
             interface_handle
                 .claim_interface(descriptor.interface_number)
-                .map_err(Error::ClaimInterface)?;
+                .map_err(|e| Error::ClaimInterface(descriptor.interface_number, e))?;
             interface_handle
                 .set_alternate_setting(descriptor.interface_number, descriptor.alternate_setting)
-                .map_err(Error::SetAlternateSetting)?;
+                .map_err(|e| Error::SetAlternateSetting(descriptor.interface_number, e))?;
             connections.push(ClaimedInterface {
                 handle: interface_handle,
                 descriptor,
             });
         }
 
+        let mgr_handle = device.open().map_err(Error::OpenDevice)?;
+        let mut manager = InterfaceManager::new(mgr_handle, info.config, connections);
+        manager.start_cleanup_thread()?;
+
         Ok(UsbConnector {
             verbose_log,
             handle: Arc::new(handle),
-            manager: InterfaceManager::new(connections),
+            manager,
         })
     }
 
