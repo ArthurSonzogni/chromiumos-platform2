@@ -25,7 +25,6 @@ ScreenDownload::ScreenDownload(
 
 void ScreenDownload::Show() {
   draw_utils_->MessageBaseScreen();
-  draw_utils_->ShowLanguageMenu(false);
   draw_utils_->ShowInstructionsWithTitle("MiniOS_downloading");
   draw_utils_->ShowStepper({"done", "done", "3-done"});
   constexpr int kProgressHeight = 4;
@@ -34,11 +33,16 @@ void ScreenDownload::Show() {
   StartRecovery();
 }
 
+void ScreenDownload::Finalizing() {
+  draw_utils_->MessageBaseScreen();
+  draw_utils_->ShowInstructionsWithTitle("MiniOS_finalizing");
+  draw_utils_->ShowStepper({"done", "done", "done"});
+}
+
 void ScreenDownload::Completed() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructions("title_MiniOS_complete");
   draw_utils_->ShowStepper({"done", "done", "done"});
-  draw_utils_->ShowLanguageMenu(false);
 
   update_engine_proxy_->TriggerReboot();
 }
@@ -65,6 +69,7 @@ void ScreenDownload::OnProgressChanged(
     case update_engine::Operation::FINALIZING:
       if (previous_update_state_ != operation) {
         LOG(INFO) << "Finalizing installation please wait.";
+        Finalizing();
       }
       break;
     case update_engine::Operation::UPDATED_NEED_REBOOT:

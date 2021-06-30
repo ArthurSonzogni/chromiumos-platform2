@@ -52,6 +52,9 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
   // Calls reboot.
   void Completed();
 
+  // Shown when in the process of verifying update.
+  void Finalizing();
+
   // Begin repartitioning disk, wiping data, and calling update engine to start
   // installation.
   void StartRecovery();
