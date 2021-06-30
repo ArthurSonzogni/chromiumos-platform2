@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libhwsec-foundation" ]
+  deps = [
+    ":libhwsec-foundation",
+    ":tpm_version_client",
+  ]
   if (use.test) {
     deps += [ ":hwsec-foundation_testrunner" ]
   }
@@ -42,6 +45,12 @@ shared_library("libhwsec-foundation") {
     "system_api",
   ]
   configs += [ ":target_defaults" ]
+}
+
+executable("tpm_version_client") {
+  sources = [ "tool/tpm_version_client.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libhwsec-foundation" ]
 }
 
 if (use.test) {
