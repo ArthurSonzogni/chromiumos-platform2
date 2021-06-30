@@ -31,10 +31,6 @@ proto_library("bootlockbox-proto") {
 }
 
 config("target_defaults") {
-  defines = [
-    "USE_SELINUX=${use.selinux}",
-    "USE_TPM2=${use.tpm2}",
-  ]
 }
 
 pkg_config("bootlockbox_dependent_config") {
