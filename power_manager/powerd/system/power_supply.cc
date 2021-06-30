@@ -1284,8 +1284,7 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
       (status.battery_time_to_empty > base::TimeDelta() &&
        status.battery_time_to_empty <= low_battery_shutdown_time_ &&
        status.battery_percentage <= kLowBatteryShutdownSafetyPercent) ||
-      status.battery_percentage <= low_battery_shutdown_percent_ ||
-      status.display_battery_percentage <= 0;
+      status.battery_percentage <= low_battery_shutdown_percent_;
 
   // Most AC chargers can deliver enough current to prevent the battery from
   // discharging while the device is in use; other chargers (e.g. USB) may not
