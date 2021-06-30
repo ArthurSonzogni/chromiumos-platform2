@@ -18,11 +18,10 @@
 #include <libqrtr.h>
 
 #include "hermes/dms_cmd.h"
-#include "hermes/euicc_interface.h"
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 #include "hermes/logger.h"
-#include "hermes/modem_control_interface.h"
+#include "hermes/modem.h"
 #include "hermes/socket_qrtr.h"
 #include "hermes/uim_cmd.h"
 
@@ -30,21 +29,8 @@ namespace hermes {
 
 // Implementation of EuiccCard using QRTR sockets to send QMI UIM
 // messages.
-class ModemQrtr : public EuiccInterface {
+class ModemQrtr : public Modem<QmiCmdInterface> {
  public:
-  // Base class for the tx info specific to a certain type of uim command.
-  // Uim command types that need any additional information should define
-  // a child class. An instance of that class should be set to the data pointer
-  // in its corresponding TxElement.
-  struct TxInfo {
-    virtual ~TxInfo() = default;
-  };
-
-  using ResponseCallback =
-      std::function<void(std::vector<std::vector<uint8_t>>&
-                             responses,  // NOLINT(runtime/references)
-                         int err)>;
-
   static std::unique_ptr<ModemQrtr> Create(
       std::unique_ptr<SocketInterface> socket,
       Logger* logger,
@@ -62,37 +48,26 @@ class ModemQrtr : public EuiccInterface {
   void StartProfileOp(uint32_t physical_slot, ResultCallback cb) override;
   void FinishProfileOp(ResultCallback cb) override;
 
-  // lpa::card::EuiccCard overrides.
-  void SendApdus(std::vector<lpa::card::Apdu> apdus,
-                 ResponseCallback cb) override;
-  bool IsSimValidAfterEnable() override;
-  bool IsSimValidAfterDisable() override;
-  std::string GetImei() override { return imei_; };
-  lpa::util::EuiccLog* logger() override { return logger_; }
 
  private:
+  struct SwitchSlotTxInfo : public TxInfo {
+    explicit SwitchSlotTxInfo(const uint32_t physical_slot,
+                              const uint8_t logical_slot)
+        : physical_slot_(physical_slot), logical_slot_(logical_slot) {}
+    const uint32_t physical_slot_;
+    const uint8_t logical_slot_;
+  };
+
   // Delay between SwitchSlot and the next QMI message. Allows the modem to
   // power on the new slot, and for the eUICC to boot. If this delay is
   // insufficient, we retry after kInitRetryDelay
   static constexpr auto kSwitchSlotDelay = base::TimeDelta::FromSeconds(3);
-
-  struct TxElement {
-    std::unique_ptr<TxInfo> info_;
-    uint16_t id_;
-    std::unique_ptr<QmiCmdInterface> qmi_msg_;
-    // This cb_ maybe called once a response for the qmi_msg_ is received.
-    // The callback must accept an int which is the return value of the qmi
-    // operation
-    base::OnceCallback<void(int)> cb_;
-  };
-
   ModemQrtr(std::unique_ptr<SocketInterface> socket,
             Logger* logger,
             Executor* executor);
   void InitializeUim();
   void RetryInitialization(ResultCallback cb);
   void Shutdown();
-  uint16_t AllocateId();
 
   // Helper methods to create TxElements and add them to the queue.
   void SendReset(ResultCallback cb);
@@ -101,7 +76,7 @@ class ModemQrtr : public EuiccInterface {
   // Top-level method to transmit an element from the tx queue. Dispatches to
   // the proper Transmit*CmdFromQueue method based on the service being
   // transmitted to.
-  void TransmitFromQueue();
+  void TransmitFromQueue() override;
   // Transmit*CmdFromQueue methods perform QMI encoding prior to sending
   // data to the socket. Will remove elements from the tx queue as needed.
   void TransmitDmsCmdFromQueue();
@@ -110,8 +85,11 @@ class ModemQrtr : public EuiccInterface {
   void TransmitQmiSwitchSlot(TxElement* tx_element);
   // Creates and sends OPEN_LOGICAL_CHANNEL QMI request.
   void TransmitQmiOpenLogicalChannel(TxElement* tx_element);
+
+  std::unique_ptr<QmiCmdInterface> GetTagForSendApdu() override;
   // Creates and sends SEND_APDU QMI request.
   void TransmitQmiSendApdu(TxElement* tx_element);
+
   // Performs QMI encoding and sends data to the QRTR socket.
   bool SendCommand(QmiCmdInterface* qmi_command,
                    uint16_t id,
@@ -148,10 +126,6 @@ class ModemQrtr : public EuiccInterface {
 
   void OnDataAvailable(SocketInterface* socket);
 
-  // lpa::card::EuiccCard overrides.
-  const lpa::proto::EuiccSpecVersion& GetCardVersion() override;
-  lpa::util::Executor* executor() override { return executor_; }
-
   // Set the active slot to a euicc so that a channel can be established and
   // profiles can be installed.
   void SetActiveSlot(const uint32_t physical_slot, ResultCallback cb);
@@ -165,7 +139,6 @@ class ModemQrtr : public EuiccInterface {
   };
   void SetProcedureBytes(ProcedureBytesMode procedure_bytes_mode);
   void AcquireChannel(base::OnceCallback<void(int)> cb);
-  void SendApdusResponse(ResponseCallback callback, int err);
 
   friend class ModemQrtrTest;
 
@@ -220,9 +193,6 @@ class ModemQrtr : public EuiccInterface {
   // Set for all known message types except QMI_RESET
   std::unique_ptr<QmiCmdInterface> pending_response_type_;
 
-  bool extended_apdu_supported_;  // There is no plan to support these.
-  uint16_t current_transaction_id_;
-
   // Logical Channel that will be used to communicate with the chip, returned
   // from OPEN_LOGICAL_CHANNEL request sent once the QRTR socket has been
   // opened.
@@ -259,26 +229,12 @@ class ModemQrtr : public EuiccInterface {
   };
   QrtrTable qrtr_table_;
 
-  std::string imei_;
-
   // Buffer for storing data from the QRTR socket
   std::vector<uint8_t> buffer_;
-  // List of responses for the oldest SendApdus call that hasn't been completely
-  // processed.
-  std::vector<std::vector<uint8_t>> responses_;
-  // Queue of packets to send to the modem
-  std::deque<TxElement> tx_queue_;
 
   std::map<std::pair<QmiCmdInterface::Service, uint16_t>,
            base::Callback<int(const qrtr_packet&)>>
       qmi_rx_callbacks_;
-
-  // Used to send notifications about eSIM slot changes.
-  EuiccManagerInterface* euicc_manager_;
-
-  Logger* logger_;
-  Executor* executor_;
-  lpa::proto::EuiccSpecVersion spec_version_;
 
   base::WeakPtrFactory<ModemQrtr> weak_factory_;
 };

@@ -27,4 +27,8 @@ void IgnoreErrorRunClosure(base::OnceCallback<void()> cb, int err) {
   std::move(cb).Run();
 }
 
+void PrintMsgProcessingResult(int err) {
+  VLOG(2) << "Modem processed message processed with code:" << err;
+}
+
 }  // namespace hermes

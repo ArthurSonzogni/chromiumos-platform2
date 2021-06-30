@@ -12,7 +12,6 @@
 #include <google-lpa/lpa/core/lpa.h>
 
 #include "hermes/context.h"
-#include "hermes/euicc_interface.h"
 #include "hermes/modem_qrtr.h"
 #include "hermes/socket_qrtr.h"
 

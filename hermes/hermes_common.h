@@ -23,6 +23,8 @@ std::string GetObjectPathForLog(const dbus::ObjectPath& dbus_path);
 
 void IgnoreErrorRunClosure(base::OnceCallback<void()> cb, int err);
 
+void PrintMsgProcessingResult(int err);
+
 }  // namespace hermes
 
 #endif  // HERMES_HERMES_COMMON_H_
