@@ -10,6 +10,7 @@
 #include "hwsec-test-utils/common/openssl_utility.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 namespace hwsec_test_utils {
 namespace fake_pca_agent {

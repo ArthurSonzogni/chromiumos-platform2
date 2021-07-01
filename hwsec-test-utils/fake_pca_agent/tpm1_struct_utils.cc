@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <base/check_op.h>
 #include <base/hash/sha1.h>
+#include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/optional.h>
 #include <base/sys_byteorder.h>

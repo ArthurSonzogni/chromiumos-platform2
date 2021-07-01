@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/logging.h>
 #include <base/optional.h>
 #include <crypto/sha2.h>
 

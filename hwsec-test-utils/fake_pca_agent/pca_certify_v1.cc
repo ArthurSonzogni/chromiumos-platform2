@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <crypto/scoped_openssl_types.h>
 #include <trousers/trousers.h>
