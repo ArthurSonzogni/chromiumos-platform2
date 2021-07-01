@@ -17,7 +17,11 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
   ]
-  defines = [ "USE_TPM2=${use.tpm2}" ]
+  defines = [
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+  ]
 }
 
 static_library("overalls_library") {
@@ -33,9 +37,10 @@ static_library("overalls_library") {
 
 source_set("error_library") {
   sources = [ "error/tpm_retry_handler.cc" ]
-  if (use.tpm2) {
+  if (use.tpm2 || use.fuzzer) {
     sources += [ "error/tpm2_error.cc" ]
-  } else {
+  }
+  if (use.tpm || use.fuzzer) {
     sources += [ "error/tpm1_error.cc" ]
   }
   configs += [
@@ -46,7 +51,7 @@ source_set("error_library") {
 
 static_library("libhwsec_test") {
   sources = []
-  if (!use.tpm2) {
+  if (use.tpm) {
     sources += [ "test_utils/tpm1/test_fixture.cc" ]
   }
   configs += [
@@ -66,11 +71,13 @@ config("libhwsec_tpm2_config") {
 
 shared_library("libhwsec") {
   configs += [ ":target_defaults" ]
+  all_dependent_configs = []
   deps = [ ":error_library" ]
-  if (use.tpm2) {
-    all_dependent_configs = [ ":libhwsec_tpm2_config" ]
-  } else {
-    all_dependent_configs = [ ":libhwsec_tpm1_config" ]
+  if (use.tpm2 || use.fuzzer) {
+    all_dependent_configs += [ ":libhwsec_tpm2_config" ]
+  }
+  if (use.tpm || use.fuzzer) {
+    all_dependent_configs += [ ":libhwsec_tpm1_config" ]
     deps += [ ":overalls_library" ]
   }
 }
@@ -95,13 +102,14 @@ if (use.test) {
       ":libhwsec_test",
       "//common-mk/testrunner",
     ]
-    if (!use.tpm2) {
+    if (use.tpm) {
       sources += [
         "error/tpm1_error_test.cc",
         "overalls/overalls_api_test.cc",
         "overalls/overalls_singleton_test.cc",
       ]
-    } else {
+    }
+    if (use.tpm2) {
       sources += [ "error/tpm2_error_test.cc" ]
     }
   }
