@@ -155,6 +155,7 @@ void GlibBridge::Dispatch() {
   timeout_closure_.Cancel();
   watchers_.clear();
   poll_fds_.clear();
+  fd_map_.clear();
   max_priority_ = -1;
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::Bind(&GlibBridge::PrepareIteration,
