@@ -97,6 +97,11 @@ constexpr char kCollectChromeFile[] =
 constexpr char kFeatureNamelSessionManagerLongKillTimeout[] =
     "SessionManagerLongKillTimeout";
 
+// This needs to match exactly the name of feature kSessionManagerLivenessCheck
+// in (Chromium) ash_features.cc.
+constexpr char kFeatureNameSessionManagerLivenessCheck[] =
+    "SessionManagerLivenessCheck";
+
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
 
@@ -295,6 +300,11 @@ void SessionManagerService::RunBrowser() {
         kFeatureNamelSessionManagerLongKillTimeout,
         base::Bind(&SessionManagerService::OnLongKillTimeoutEnabled,
                    base::Unretained(this)));
+
+    chrome_features_service_client_->IsFeatureEnabled(
+        kFeatureNameSessionManagerLivenessCheck,
+        base::BindOnce(&SessionManagerService::OnLivenessCheckEnabled,
+                       base::Unretained(this)));
   }
 
   // Note that |child_exit_handler_| will catch browser process termination and
@@ -703,6 +713,20 @@ void SessionManagerService::OnLongKillTimeoutEnabled(
   }
 
   use_long_kill_timeout_ = enabled.value();
+}
+
+void SessionManagerService::OnLivenessCheckEnabled(
+    base::Optional<bool> enabled) {
+  if (!enabled.has_value()) {
+    LOG(ERROR) << "Failed to check SessionManagerLivenessCheck feature.";
+    return;
+  }
+
+  if (!enabled.value()) {
+    LOG(WARNING) << "SessionManagerLivenessCheck disabled, we will NOT abort "
+                    "on a browser hang detected by the liveness checker.";
+    liveness_checker_->DisableAborting();
+  }
 }
 
 }  // namespace login_manager

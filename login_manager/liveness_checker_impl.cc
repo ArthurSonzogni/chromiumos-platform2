@@ -61,6 +61,10 @@ bool LivenessCheckerImpl::IsRunning() {
   return !liveness_check_.IsCancelled();
 }
 
+void LivenessCheckerImpl::DisableAborting() {
+  enable_aborting_ = false;
+}
+
 void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // If there's an un-acked ping, the browser needs to be taken down.
   if (!last_ping_acked_) {

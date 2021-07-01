@@ -238,6 +238,10 @@ class SessionManagerService
   // 'SessionManagerUseLongKillTimeout' feature.
   void OnLongKillTimeoutEnabled(base::Optional<bool> enabled);
 
+  // Invoked to update |liveness_check_enabled_| after checking
+  // the 'SessionManagerLivenessCheck' feature.
+  void OnLivenessCheckEnabled(base::Optional<bool> enabled);
+
   std::unique_ptr<BrowserJobInterface> browser_;
   base::Optional<base::FilePath> chrome_mount_ns_path_;
   base::TimeTicks last_browser_restart_time_;

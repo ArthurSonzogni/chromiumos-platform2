@@ -23,6 +23,7 @@ class MockLivenessChecker : public LivenessChecker {
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (override));
+  MOCK_METHOD(void, DisableAborting, (), (override));
 };
 
 }  // namespace login_manager

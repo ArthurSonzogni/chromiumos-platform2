@@ -42,6 +42,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   void Start() override;
   void Stop() override;
   bool IsRunning() override;
+  void DisableAborting() override;
 
   // If a liveness check is outstanding, kills the browser and clears liveness
   // tracking state.  This instance will be stopped at that point in time.
@@ -61,7 +62,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   dbus::ObjectProxy* dbus_proxy_;            // Owned by the caller.
 
-  const bool enable_aborting_;
+  bool enable_aborting_;
   const base::TimeDelta interval_;
   bool last_ping_acked_ = true;
   base::CancelableClosure liveness_check_;

@@ -28,6 +28,10 @@ class LivenessChecker {
 
   // Returns true if this instance has been started and not yet stopped.
   virtual bool IsRunning() = 0;
+
+  // Turn off aborting of the browser even if a hang has been detected, to allow
+  // HangWatcher to be the sole detector of hangs.
+  virtual void DisableAborting() = 0;
 };
 }  // namespace login_manager
 
