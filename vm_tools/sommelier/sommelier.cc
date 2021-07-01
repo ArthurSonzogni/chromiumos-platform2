@@ -3561,9 +3561,14 @@ int real_main(int argc, char** argv) {
 
   // Attempt to enable tracing.  This could be called earlier but would rather
   // spawn all children first.
-  if (ctx.trace_filename || ctx.trace_system) {
+  const bool tracing_needed = ctx.trace_filename || ctx.trace_system;
+  if (tracing_needed) {
     initialize_tracing(ctx.trace_filename, ctx.trace_system);
     enable_tracing(!ctx.trace_system);
+  }
+
+  // Trigger trace and timing log dumps when USR1 signals are received
+  if (tracing_needed || ctx.timing) {
     ctx.sigusr1_event_source.reset(
         wl_event_loop_add_signal(event_loop, SIGUSR1, sl_handle_sigusr1, &ctx));
   }
