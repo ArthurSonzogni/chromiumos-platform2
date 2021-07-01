@@ -778,11 +778,15 @@ bool MobileOperatorInfoImpl::FilterMatches(
   if (regexec_error) {
     std::string error_string;
     error_string = GetRegError(regcomp_error, &filter_regex);
-    SLOG(this, 2) << "Could not match string " << to_match << " "
-                  << "against regexp " << filter.regex() << ". "
-                  << "Error returned: " << error_string << ". ";
+    SLOG(this, 2) << "Skipping because string '" << to_match << "' is not a "
+                  << "match of regexp '" << filter.regex() << "'. "
+                  << (error_string.empty() ? "" : "Error returned: ")
+                  << error_string;
     regfree(&filter_regex);
     return false;
+  } else {
+    SLOG(this, 2) << "Regex '" << filter.regex() << "' matches '" << to_match
+                  << "'.";
   }
   regfree(&filter_regex);
   return true;
