@@ -163,18 +163,12 @@ TEST_P(Camera3FaceDetectionTest, Detection) {
       ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES))
       << "NO ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES key in static "
          "info";
-  std::vector<uint8_t> face_detect_modes;
+  std::set<uint8_t> face_detect_modes;
   ASSERT_EQ(0, cam_service_.GetStaticInfo(cam_id_)->GetAvailableFaceDetectModes(
                    &face_detect_modes) != 0)
       << "Failed to get face detect modes";
-  bool find_simple_mode = false;
-  for (const auto& mode : face_detect_modes) {
-    if (mode == ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE) {
-      find_simple_mode = true;
-      break;
-    }
-  }
-  ASSERT_TRUE(find_simple_mode)
+  ASSERT_NE(face_detect_modes.find(ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE),
+            face_detect_modes.end())
       << "Can't find ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE";
 
   auto resolution =

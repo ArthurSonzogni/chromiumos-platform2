@@ -615,14 +615,14 @@ int32_t Camera3Device::StaticInfo::GetAvailableTestPatternModes(
 }
 
 int32_t Camera3Device::StaticInfo::GetAvailableFaceDetectModes(
-    std::vector<uint8_t>* face_detect_modes) const {
+    std::set<uint8_t>* face_detect_modes) const {
   camera_metadata_ro_entry_t entry;
   int32_t result = find_camera_metadata_ro_entry(
       characteristics_, ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
       &entry);
   if (result == 0) {
     for (size_t i = 0; i < entry.count; i++) {
-      face_detect_modes->push_back(entry.data.u8[i]);
+      face_detect_modes->insert(entry.data.u8[i]);
     }
   }
   return result;
@@ -869,8 +869,18 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   }
 
   // ISP-processing settings
-  EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_STATISTICS_FACE_DETECT_MODE,
-                      ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
+  std::set<uint8_t> face_detect_modes;
+  ASSERT_EQ(0,
+            static_info->GetAvailableFaceDetectModes(&face_detect_modes) != 0)
+      << "Failed to get face detect modes";
+  if (face_detect_modes.find(ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE) !=
+      face_detect_modes.end()) {
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_STATISTICS_FACE_DETECT_MODE,
+                        ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE);
+  } else {
+    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_STATISTICS_FACE_DETECT_MODE,
+                        ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
+  }
 
   EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_FLASH_MODE,
                       ANDROID_FLASH_MODE_OFF);
