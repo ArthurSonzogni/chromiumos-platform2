@@ -32,8 +32,11 @@ const char kConservativePolicy[] = "conservative";
 
 const char kPerformancePolicy[] = "performance";
 
+const char kCoreIsolationPolicy[] = "core-scheduling";
+
 bool IsValidSchedulerPolicy(const std::string& policy) {
-  return ((policy == kConservativePolicy) || (policy == kPerformancePolicy));
+  return ((policy == kConservativePolicy) || (policy == kPerformancePolicy) ||
+          (policy == kCoreIsolationPolicy));
 }
 
 constexpr bool IsX86_64() {
