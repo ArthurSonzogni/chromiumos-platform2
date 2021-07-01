@@ -21,7 +21,6 @@
 
 namespace hps {
 
-static const int kBlock = 256;      // Size of a download block.
 static const int kTimeoutMs = 250;  // Bank ready timeout.
 static const int kPollMs = 5;       // Delay time for poll.
 static const int kMaxBootRetries = 5;
@@ -339,15 +338,16 @@ bool HPS::WriteFile(int bank, const base::FilePath& source) {
      *    4 bytes of address in big endian format
      *    data
      */
-    uint8_t buf[kBlock + sizeof(uint32_t)];
+    auto buf = std::make_unique<uint8_t[]>(this->device_->BlockSizeBytes() +
+                                           sizeof(uint32_t));
     buf[0] = address >> 24;
     buf[1] = address >> 16;
     buf[2] = address >> 8;
     buf[3] = address;
     rd = file.ReadAtCurrentPos(reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
-                               kBlock);
+                               this->device_->BlockSizeBytes());
     if (rd > 0) {
-      if (!this->device_->Write(I2cMemWrite(bank), buf,
+      if (!this->device_->Write(I2cMemWrite(bank), &buf[0],
                                 rd + sizeof(uint32_t))) {
         LOG(ERROR) << "WriteFile: " << source << ": "
                    << " device write error";

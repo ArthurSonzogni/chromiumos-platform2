@@ -47,5 +47,12 @@ bool DevInterface::WriteReg(int r, uint16_t data) {
   }
   return false;
 }
+/*
+ * Return the maximum download block size (in bytes).
+ * Default is 256 bytes.
+ */
+size_t DevInterface::BlockSizeBytes() {
+  return 256;
+}
 
 }  // namespace hps

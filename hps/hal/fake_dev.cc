@@ -64,6 +64,8 @@ class SimDev : public DevInterface {
     return this->device_->Write(cmd, data, len);
   }
 
+  size_t BlockSizeBytes() override { return this->device_->BlockSizeBytes(); }
+
  private:
   // Reference counted simulator object.
   scoped_refptr<FakeDev> device_;
@@ -338,6 +340,10 @@ void FakeDev::WriteRegActual(int reg, uint16_t value) {
 // The length includes 4 bytes of prepended address.
 uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   if (this->Flag(kMemFail)) {
+    return 0;
+  }
+  // Don't allow writes that exceed the max block size.
+  if (len > (this->block_size_b_.load() + sizeof(uint32_t))) {
     return 0;
   }
   switch (this->stage_) {

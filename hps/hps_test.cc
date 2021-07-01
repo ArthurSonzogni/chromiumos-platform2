@@ -95,6 +95,22 @@ TEST_F(HPSTest, Download) {
 }
 
 /*
+ * Download testing with small block size
+ */
+TEST_F(HPSTest, DownloadSmallBlocks) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto f = temp_dir.GetPath().Append("blob");
+  const int len = 1024;
+  CreateBlob(f, len);
+  fake_->SetBlockSizeBytes(32);
+  // Download allowed to bank 0 in pre-booted state.
+  ASSERT_TRUE(hps_->Download(0, f));
+  // Make sure the right amount was written.
+  EXPECT_EQ(fake_->GetBankLen(0), len);
+}
+
+/*
  * Boot testing.
  */
 TEST_F(HPSTest, SkipBoot) {

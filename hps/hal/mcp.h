@@ -24,6 +24,7 @@ class Mcp : public DevInterface {
   void Close();
   bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
   bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
+  size_t BlockSizeBytes() override;
   static std::unique_ptr<DevInterface> Create(uint8_t address,
                                               uint32_t speedKHz);
 

@@ -41,6 +41,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
         bank_(0),
         flags_(0),
         version_(0),
+        block_size_b_(256),
         f1_result_(0),
         f2_result_(0) {}
   // Flags for controlling behaviour. Multiple flags can be set,
@@ -65,12 +66,14 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   };
   bool Read(uint8_t cmd, uint8_t* data, size_t len);
   bool Write(uint8_t cmd, const uint8_t* data, size_t len);
+  size_t BlockSizeBytes() { return this->block_size_b_.load(); }
   void Run() override;
   void Start();
   void SkipBoot() { this->SetStage(kAppl); }
   void Set(Flags f) { this->flags_.fetch_or(1 << f); }
   void Clear(Flags f) { this->flags_.fetch_and(~(1 << f)); }
   void SetVersion(uint16_t version) { this->version_ = version; }
+  void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
   void SetF1Result(uint16_t result) { this->f1_result_ = result & 0x7FFF; }
   void SetF2Result(uint16_t result) { this->f2_result_ = result & 0x7FFF; }
   size_t GetBankLen(int bank);
@@ -138,6 +141,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   std::atomic<uint16_t> bank_;       // Current memory bank readiness
   std::atomic<uint16_t> flags_;      // Behaviour flags
   std::atomic<uint16_t> version_;    // Application version
+  std::atomic<size_t> block_size_b_;  // Write block size.
   std::atomic<uint16_t> f1_result_;  // Result for feature 1
   std::atomic<uint16_t> f2_result_;  // Result for feature 2
 };

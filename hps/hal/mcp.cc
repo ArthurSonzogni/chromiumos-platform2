@@ -30,6 +30,15 @@ static const uint8_t kReadEndpoint = 0x83;   // device to host
 static const int kTimeout = 1000;      // Timeout in milliseconds.
 static const int kRetries = 50;        // Max retries.
 static const int kDelay = 10;          // Milliseconds delay between retries.
+/*
+ * Calculate write block size.
+ * The I2C header is 4 bytes.
+ * 1 byte is reserved for the I2C cmd byte, 4 for the 32 bit address.
+ * The value should be a multiple of 8 since the flash writing
+ * is generally done in 64 bit blocks.
+ */
+static constexpr size_t kBlockSize =
+    ((hps::kMcpTransferSize - 4 - sizeof(uint32_t) - 1) / 8) * 8;
 
 // Command byte to send to MCP2221
 enum : uint8_t {
@@ -214,8 +223,6 @@ bool Mcp::Read(uint8_t cmd, uint8_t* data, size_t len) {
 }
 
 bool Mcp::Write(uint8_t cmd, const uint8_t* data, size_t len) {
-  // 5 bytes are used at the start of the request buffer, so do not
-  // allow writes that cannot fit into the remaining space.
   if (len > (kMcpTransferSize - 5)) {
     LOG(ERROR) << base::StringPrintf("Write req too long (%zu)", len);
     return false;
@@ -250,6 +257,13 @@ bool Mcp::Write(uint8_t cmd, const uint8_t* data, size_t len) {
   }
   LOG(ERROR) << "Write (retries exceeded) failed";
   return false;
+}
+
+/*
+ * Return max block size for download.
+ */
+size_t Mcp::BlockSizeBytes() {
+  return kBlockSize;
 }
 
 // Ensure the I2C bus is ready. Returns true if bus is clear and ready.

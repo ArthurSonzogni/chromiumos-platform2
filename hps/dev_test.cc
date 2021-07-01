@@ -12,6 +12,7 @@ using hps::DevInterface;
 namespace {
 
 static int const kRetry = 5;
+static int const kBlockSizeBytes = 128;
 
 // Fake that implements a DevInterface.
 // Setting fails_ will fail a read or write, and then decrement the
@@ -49,6 +50,7 @@ class DevInterfaceFake : public DevInterface {
     }
     return true;
   }
+  size_t BlockSizeBytes() override { return kBlockSizeBytes; }
 
   int fails_;        // If non-zero, fail the request and decrement this count.
   uint8_t cmd_;      // Command byte of request.
@@ -141,6 +143,13 @@ TEST_F(DevInterfaceTest, WriteRetry) {
   EXPECT_TRUE(dev_.WriteReg(0, 0x1234));
   // One failed write, one success.
   EXPECT_EQ(dev_.writes_, 2);
+}
+
+/*
+ * Verify that the correct block size is selected.
+ */
+TEST_F(DevInterfaceTest, BlockSize) {
+  EXPECT_EQ(dev_.BlockSizeBytes(), kBlockSizeBytes);
 }
 
 }  //  namespace
