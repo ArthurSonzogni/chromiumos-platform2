@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -17,7 +18,9 @@
 
 #if USE_TPM2
 #include "libtpmcrypto/tpm2_impl.h"
-#else
+#endif
+
+#if USE_TPM1
 #include "libtpmcrypto/tpm1_impl.h"
 #endif
 
@@ -181,11 +184,11 @@ bool AesDecryptGcmMode(const SecureBlob& cipher_text,
 }  // namespace
 
 TpmCryptoImpl::TpmCryptoImpl() : rand_bytes_fn_(RAND_bytes) {
-#if USE_TPM2
-  tpm_ = std::make_unique<Tpm2Impl>();
-#else
-  tpm_ = std::make_unique<Tpm1Impl>();
-#endif
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({ tpm_ = std::make_unique<Tpm2Impl>(); });
+  TPM1_SECTION({ tpm_ = std::make_unique<Tpm1Impl>(); });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
 }
 
 TpmCryptoImpl::TpmCryptoImpl(std::unique_ptr<Tpm> tpm)

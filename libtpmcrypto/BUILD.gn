@@ -13,7 +13,11 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  defines = [ "USE_TPM2=${use.tpm2}" ]
+  defines = [
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+  ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -34,18 +38,20 @@ proto_library("tpm_encrypted_data_proto") {
 
 shared_library("libtpmcrypto") {
   sources = [
+    "tpm.cc",
     "tpm_crypto_impl.cc",
     "tpm_proto_utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  libs = [ "hwsec-foundation" ]
   deps = [ ":tpm_encrypted_data_proto" ]
   if (use.tpm2) {
     sources += [ "tpm2_impl.cc" ]
-    libs = [ "trunks" ]
+    libs += [ "trunks" ]
   }
-  if (!use.tpm2) {
+  if (use.tpm) {
     sources += [ "tpm1_impl.cc" ]
-    libs = [ "tspi" ]
+    libs += [ "tspi" ]
   }
 }
 
@@ -70,12 +76,5 @@ if (use.test) {
       ":tpm_encrypted_data_proto",
       "//common-mk/testrunner",
     ]
-    if (use.tpm2) {
-      sources += [ "tpm2_impl.cc" ]
-      libs = [ "trunks" ]
-    } else {
-      sources += [ "tpm1_impl.cc" ]
-      libs = [ "tspi" ]
-    }
   }
 }

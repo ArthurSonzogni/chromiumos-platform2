@@ -37,10 +37,6 @@ constexpr unsigned int kTpmConnectIntervalMs = 100;
 Tpm1Impl::Tpm1Impl() = default;
 Tpm1Impl::~Tpm1Impl() = default;
 
-std::unique_ptr<Tpm> CreateTpmInstance() {
-  return std::make_unique<Tpm1Impl>();
-}
-
 bool Tpm1Impl::SealToPCR0(const SecureBlob& value, SecureBlob* sealed_value) {
   CHECK(sealed_value);
   ScopedTssContext context_handle;

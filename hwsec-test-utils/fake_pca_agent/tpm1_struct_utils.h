@@ -5,7 +5,7 @@
 #ifndef HWSEC_TEST_UTILS_FAKE_PCA_AGENT_TPM1_STRUCT_UTILS_H_
 #define HWSEC_TEST_UTILS_FAKE_PCA_AGENT_TPM1_STRUCT_UTILS_H_
 
-#if USE_TPM2
+#if !USE_TPM1
 #error "This file is used for TPM1.2 only"
 #endif
 

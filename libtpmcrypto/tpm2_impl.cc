@@ -28,10 +28,6 @@ using PcrMap = std::map<uint32_t, std::string>;
 Tpm2Impl::Tpm2Impl() = default;
 Tpm2Impl::~Tpm2Impl() = default;
 
-std::unique_ptr<Tpm> CreateTpmInstance() {
-  return std::make_unique<Tpm2Impl>();
-}
-
 bool Tpm2Impl::SealToPCR0(const SecureBlob& value, SecureBlob* sealed_value) {
   CHECK(sealed_value);
 
