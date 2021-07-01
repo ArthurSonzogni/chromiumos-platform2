@@ -65,6 +65,10 @@ using trousers::ScopedTssPolicy;
 
 namespace cryptohome {
 
+// Returns the corresponding TpmResult enum value to be used to report a
+// "Cryptohome.TpmResults" histogram sample.
+TpmResult GetTpmResultSample(TSS_RESULT result);
+
 namespace {
 
 typedef std::unique_ptr<BYTE, base::FreeDeleter> ScopedByteArray;

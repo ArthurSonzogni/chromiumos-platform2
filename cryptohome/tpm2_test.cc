@@ -815,7 +815,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_->CreatePCRBoundKey(
       std::map<uint32_t, std::string>({{index, pcr_value}}),
-      trunks::TpmUtility::kDecryptKey, &key_blob, nullptr, &creation_blob));
+      AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
@@ -827,7 +827,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->CreatePCRBoundKey(
       std::map<uint32_t, std::string>({{index, pcr_value}}),
-      trunks::TpmUtility::kDecryptKey, &key_blob, nullptr, &creation_blob));
+      AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
@@ -839,7 +839,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->CreatePCRBoundKey(
       std::map<uint32_t, std::string>({{index, pcr_value}}),
-      trunks::TpmUtility::kDecryptKey, &key_blob, nullptr, &creation_blob));
+      AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreateMultiplePCRBoundKeySuccess) {
@@ -851,7 +851,7 @@ TEST_F(Tpm2Test, CreateMultiplePCRBoundKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_,
               CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_->CreatePCRBoundKey(pcr_map, trunks::TpmUtility::kDecryptKey,
+  EXPECT_TRUE(tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
                                       &key_blob, nullptr, &creation_blob));
 }
 
@@ -1629,8 +1629,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
 
   // Set up mock expectations for the secret creation.
   EXPECT_CALL(mock_tpm_utility_,
-              LoadRSAPublicKey(trunks::TpmUtility::kSignKey, chosen_scheme(),
-                               chosen_hash_alg(), key_modulus_,
+              LoadRSAPublicKey(trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
+                               chosen_scheme(), chosen_hash_alg(), key_modulus_,
                                kKeyPublicExponent, _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
@@ -1737,8 +1737,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
 
   // Set up mock expectations for the unsealing.
   EXPECT_CALL(mock_tpm_utility_,
-              LoadRSAPublicKey(trunks::TpmUtility::kSignKey, chosen_scheme(),
-                               chosen_hash_alg(), key_modulus_,
+              LoadRSAPublicKey(trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
+                               chosen_scheme(), chosen_hash_alg(), key_modulus_,
                                kKeyPublicExponent, _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))

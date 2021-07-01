@@ -219,10 +219,6 @@ enum TpmResult {
   kTpmResultNumberOfBuckets = 195,
 };
 
-// Returns the corresponding TpmResult enum value to be used to report a
-// "Cryptohome.TpmResults" histogram sample.
-TpmResult GetTpmResultSample(TpmReturnCode result);
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_TPM_METRICS_H_

@@ -215,7 +215,6 @@ static_library("libcrostpm") {
       "../pinweaver_le_credential_backend.cc",
       "../signature_sealing_backend_tpm2_impl.cc",
       "../tpm2_impl.cc",
-      "../tpm2_metrics.cc",
     ]
     libs += [ "trunks" ]
   }

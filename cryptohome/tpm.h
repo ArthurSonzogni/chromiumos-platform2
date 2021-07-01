@@ -23,12 +23,6 @@
 #include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
 
-#if USE_TPM2
-#include "cryptohome/tpm2.h"
-#else
-#include "cryptohome/tpm1.h"
-#endif
-
 namespace cryptohome {
 
 using TpmKeyHandle = uint32_t;
@@ -42,6 +36,9 @@ constexpr uint32_t kTpmBootPCR = 0;
 // The PCR index used to restrict the device to access to a single user data.
 constexpr uint32_t kTpmSingleUserPCR = 4;
 const char kDefaultPcrValue[32] = {0};
+
+// Specifies what the key can be used for.
+enum class AsymmetricKeyUsage { kDecryptKey, kSignKey, kDecryptAndSignKey };
 
 // This class provides a wrapper around TpmKeyHandle, and manages freeing of
 // TPM resources associated with TPM keys. It does not take ownership of the

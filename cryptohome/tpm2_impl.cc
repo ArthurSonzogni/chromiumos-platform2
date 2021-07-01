@@ -131,6 +131,22 @@ std::string OwnerDependencyEnumClassToString(
   }
 }
 
+trunks::TpmUtility::AsymmetricKeyUsage ConvertAsymmetricKeyUsage(
+    AsymmetricKeyUsage usage) {
+  switch (usage) {
+    case AsymmetricKeyUsage::kDecryptKey:
+      return trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey;
+    case AsymmetricKeyUsage::kSignKey:
+      return trunks::TpmUtility::AsymmetricKeyUsage::kSignKey;
+    case AsymmetricKeyUsage::kDecryptAndSignKey:
+      return trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey;
+    default:
+      NOTREACHED() << __func__ << ": Unexpected enum class value: "
+                   << static_cast<int>(usage);
+      return trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey;
+  }
+}
+
 }  // namespace
 
 // Keep it with sync to UMA enum list
@@ -698,7 +714,8 @@ bool Tpm2Impl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
   result = trunks->tpm_utility->CreateRSAKeyPair(
-      key_type, kDefaultTpmRsaModulusSize, kDefaultTpmPublicExponent,
+      ConvertAsymmetricKeyUsage(key_type), kDefaultTpmRsaModulusSize,
+      kDefaultTpmPublicExponent,
       "",  // No authorization
       policy_digest,
       true,  // use_only_policy_authorization
@@ -883,8 +900,9 @@ bool Tpm2Impl::WrapRsaKey(const SecureBlob& public_modulus,
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
   TPM_RC result = trunks->tpm_utility->ImportRSAKey(
-      trunks::TpmUtility::kDecryptKey, public_modulus.to_string(),
-      kDefaultTpmPublicExponent, prime_factor.to_string(),
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+      public_modulus.to_string(), kDefaultTpmPublicExponent,
+      prime_factor.to_string(),
       "",  // No authorization,
       delegate.get(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
@@ -1293,8 +1311,8 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
     return false;
   trunks::TPM_HANDLE key_handle_raw = 0;
   TPM_RC tpm_result = trunks->tpm_utility->LoadRSAPublicKey(
-      key_type, scheme, hash_alg, key_modulus.to_string(), key_exponent,
-      session_delegate, &key_handle_raw);
+      ConvertAsymmetricKeyUsage(key_type), scheme, hash_alg,
+      key_modulus.to_string(), key_exponent, session_delegate, &key_handle_raw);
   if (tpm_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading public key: " << GetErrorString(tpm_result);
     return false;

@@ -201,7 +201,7 @@ bool UnsealingSessionTpm2Impl::Unseal(const Blob& signed_challenge_value,
   // Load the protection public key onto the TPM.
   ScopedKeyHandle key_handle;
   if (!tpm_->LoadPublicKeyFromSpki(
-          public_key_spki_der_, trunks::TpmUtility::kSignKey, scheme_,
+          public_key_spki_der_, AsymmetricKeyUsage::kSignKey, scheme_,
           hash_alg_, session->GetDelegate(), &key_handle)) {
     LOG(ERROR) << "Error loading protection key";
     return false;
@@ -297,7 +297,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   // Load the protection public key onto the TPM.
   ScopedKeyHandle key_handle;
   if (!tpm_->LoadPublicKeyFromSpki(
-          public_key_spki_der, trunks::TpmUtility::kSignKey, scheme, hash_alg,
+          public_key_spki_der, AsymmetricKeyUsage::kSignKey, scheme, hash_alg,
           session->GetDelegate(), &key_handle)) {
     LOG(ERROR) << "Error loading protection key";
     return false;
