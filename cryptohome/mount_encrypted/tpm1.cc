@@ -21,6 +21,7 @@
 
 #include <brillo/file_utils.h>
 #include <brillo/process/process.h>
+#include <vboot/tpm1_tss_constants.h>
 
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"

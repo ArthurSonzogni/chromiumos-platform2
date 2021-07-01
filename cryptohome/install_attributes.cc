@@ -15,12 +15,32 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "cryptohome/install_attributes.pb.h"
 #include "cryptohome/lockbox.h"
 #include "cryptohome/tpm.h"
 
 using base::FilePath;
+
+namespace {
+
+// Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
+uint32_t GetLockboxIndex() {
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({
+    // See lockbox.md for information on how this was selected.
+    return 0x20000004;
+  });
+  TPM2_SECTION({ return 0x800004; });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
+
+  LOG(ERROR) << "Failed to get the lockbox index on none supported TPM.";
+  return 0;
+}
+
+}  // namespace
 
 namespace cryptohome {
 
@@ -40,7 +60,7 @@ InstallAttributes::InstallAttributes(Tpm* tpm)
     : data_file_(kDefaultDataFile),
       cache_file_(kDefaultCacheFile),
       default_attributes_(new SerializedInstallAttributes()),
-      default_lockbox_(new Lockbox(tpm, Tpm::kLockboxIndex)),
+      default_lockbox_(new Lockbox(tpm, GetLockboxIndex())),
       default_platform_(new Platform()),
       attributes_(default_attributes_.get()),
       lockbox_(default_lockbox_.get()),

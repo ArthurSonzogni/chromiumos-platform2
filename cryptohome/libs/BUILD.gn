@@ -16,6 +16,8 @@ config("target_defaults") {
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_PINWEAVER=${use.pinweaver}",
     "USE_SELINUX=${use.selinux}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
     "USE_DOUBLE_EXTEND_PCR_ISSUE=${use.double_extend_pcr_issue}",
     "USE_MOUNT_OOP=${use.mount_oop}",
@@ -202,6 +204,8 @@ static_library("libcrostpm") {
   configs += [ ":target_defaults" ]
   libs = [
     "chaps",
+    "hwsec",
+    "hwsec-foundation",
     "tpm_manager",
   ]
   all_dependent_configs = [ ":libcrostpm_dependent_config" ]
@@ -218,17 +222,14 @@ static_library("libcrostpm") {
     ]
     libs += [ "trunks" ]
   }
-  if (!use.tpm2) {
+  if (use.tpm) {
     sources += [
       "../signature_sealing_backend_tpm1_impl.cc",
       "../tpm1_static_utils.cc",
       "../tpm_impl.cc",
       "../tpm_metrics.cc",
     ]
-    libs += [
-      "hwsec",
-      "tspi",
-    ]
+    libs += [ "tspi" ]
   }
   deps = [
     ":cryptohome-flatbuffers",

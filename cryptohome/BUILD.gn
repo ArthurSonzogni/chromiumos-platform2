@@ -311,7 +311,8 @@ executable("tpm-manager") {
 
   if (use.tpm2) {
     libs += [ "trunks" ]
-  } else {
+  }
+  if (use.tpm) {
     libs += [ "chaps" ]
     pkg_deps += [ "vboot_host" ]
   }
@@ -535,7 +536,8 @@ if (use.test) {
         "tpm2_test.cc",
       ]
       libs += [ "trunks_test" ]
-    } else {
+    }
+    if (use.tpm) {
       sources += [
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
@@ -650,7 +652,11 @@ if (use.tpm2) {
       "system_api",
       "protobuf",
     ]
-    defines = [ "USE_TPM2=${use.tpm2}" ]
+    defines = [
+      "USE_TPM1=${use.tpm}",
+      "USE_TPM2=${use.tpm2}",
+      "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    ]
     deps = [ "libs:libnvram-boot-lockbox" ]
   }
 
@@ -676,7 +682,11 @@ if (use.tpm2) {
       "protobuf",
       "vboot_host",
     ]
-    defines = [ "USE_TPM2=${use.tpm2}" ]
+    defines = [
+      "USE_TPM1=${use.tpm}",
+      "USE_TPM2=${use.tpm2}",
+      "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    ]
     libs = [
       "chaps",
       "keyutils",
@@ -712,6 +722,7 @@ if (use.fuzzer) {
       "fuzzers/blob_mutator.cc",
       "fuzzers/tpm1_cmk_migration_parser_fuzzer.cc",
     ]
+    libs = [ "hwsec" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [
       "libs:libcrosplatform",
@@ -726,17 +737,14 @@ if (use.fuzzer) {
     ]
 
     # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
-    if (use.tpm2) {
+    if (!use.tpm) {
       sources += [
         "signature_sealing_backend_tpm1_impl.cc",
         "tpm1_static_utils.cc",
         "tpm_impl.cc",
         "tpm_metrics.cc",
       ]
-      libs = [
-        "hwsec",
-        "tspi",
-      ]
+      libs += [ "tspi" ]
       deps += [ "//libhwsec:overalls_library" ]
     }
   }

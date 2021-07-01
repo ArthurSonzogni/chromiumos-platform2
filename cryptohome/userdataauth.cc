@@ -22,6 +22,7 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
@@ -1169,18 +1170,23 @@ scoped_refptr<Mount> UserDataAuth::CreateMount(const std::string& username) {
 
 void UserDataAuth::EnsureBootLockboxFinalized() {
   AssertOnMountThread();
-#if USE_TPM2
-  // Lock NVRamBootLockbox
-  auto nvram_boot_lockbox_client = BootLockboxClient::CreateBootLockboxClient();
-  if (!nvram_boot_lockbox_client) {
-    LOG(WARNING) << "Failed to create nvram_boot_lockbox_client";
-    return;
-  }
 
-  if (!nvram_boot_lockbox_client->Finalize()) {
-    LOG(WARNING) << "Failed to finalize nvram lockbox.";
-  }
-#endif  // USE_TMP2
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    // Lock NVRamBootLockbox
+    auto nvram_boot_lockbox_client =
+        BootLockboxClient::CreateBootLockboxClient();
+    if (!nvram_boot_lockbox_client) {
+      LOG(WARNING) << "Failed to create nvram_boot_lockbox_client";
+      return;
+    }
+
+    if (!nvram_boot_lockbox_client->Finalize()) {
+      LOG(WARNING) << "Failed to finalize nvram lockbox.";
+    }
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
 }
 
 scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(

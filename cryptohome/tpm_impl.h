@@ -24,8 +24,6 @@
 
 namespace cryptohome {
 
-// See README.lockbox for information on how this was selected.
-const uint32_t kLockboxIndex = 0x20000004;
 
 class TpmImpl : public Tpm {
  public:

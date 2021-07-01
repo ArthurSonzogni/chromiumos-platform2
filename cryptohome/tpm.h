@@ -185,8 +185,6 @@ class Tpm {
 
   static Tpm* GetSingleton();
 
-  static const uint32_t kLockboxIndex;
-
   virtual ~Tpm() {}
 
   // Returns TPM version

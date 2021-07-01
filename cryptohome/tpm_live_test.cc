@@ -20,6 +20,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -30,13 +31,13 @@
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/signature_sealing_backend.h"
 
-#if !USE_TPM2
+#if USE_TPM1
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
 #include "cryptohome/tpm_impl.h"
-#endif  // !USE_TPM2
+#endif  // USE_TPM1
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -722,78 +723,81 @@ class SignatureSealedSecretTestCase final {
   // that will result in the NVRAM space exhaustion after several launches of
   // the test.
   void CleanUpDelegate() {
-#if !USE_TPM2
-    CHECK_EQ(Tpm::TPM_1_2, tpm()->GetVersion());
-    using trousers::ScopedTssContext;
-    using trousers::ScopedTssMemory;
-    using trousers::ScopedTssObject;
-    if (delegate_blob_.empty() || delegate_secret_.empty())
-      return;
-    // Obtain the TPM context and handle with the owner authorization.
-    ScopedTssContext tpm_context;
-    TSS_HTPM tpm_handle = 0;
-    if (!static_cast<TpmImpl*>(tpm())->ConnectContextAsOwner(tpm_context.ptr(),
-                                                             &tpm_handle)) {
-      LOG(ERROR)
-          << "Failed to clean up the delegate: error connecting to the TPM";
-      return;
-    }
-    // Obtain all TPM delegates and delegate families.
-    UINT32 family_table_size = 0;
-    TSS_FAMILY_TABLE_ENTRY* family_table_ptr = nullptr;
-    UINT32 delegate_table_size = 0;
-    TSS_DELEGATION_TABLE_ENTRY* delegate_table_ptr = nullptr;
-    TSS_RESULT tss_result = Tspi_TPM_Delegate_ReadTables(
-        tpm_context, &family_table_size, &family_table_ptr,
-        &delegate_table_size, &delegate_table_ptr);
-    if (TPM_ERROR(tss_result)) {
-      LOG(ERROR)
-          << "Failed to clean up the delegate: error reading delegate table: "
-          << Trspi_Error_String(tss_result);
-      return;
-    }
-    ScopedTssMemory scoped_family_table(
-        tpm_context, reinterpret_cast<BYTE*>(family_table_ptr));
-    ScopedTssMemory scoped_delegate_table(
-        tpm_context, reinterpret_cast<BYTE*>(delegate_table_ptr));
-    // Invalidate the delegate families which have the test label. Note that
-    // this removes from the NVRAM both the delegate families and the delegates
-    // themselves.
-    int invalidated_family_count = 0;
-    UINT64 family_table_offset = 0;
-    for (int family_index = 0; family_index < family_table_size;
-         ++family_index) {
-      TSS_FAMILY_TABLE_ENTRY family_entry;
-      Trspi_UnloadBlob_TSS_FAMILY_TABLE_ENTRY(
-          &family_table_offset, scoped_family_table.value(), &family_entry);
-      if (family_entry.label == kDelegateFamilyLabel) {
-        ScopedTssObject<TSS_HDELFAMILY> family_handle(tpm_context);
-        tss_result = Tspi_TPM_Delegate_GetFamily(
-            tpm_handle, family_entry.familyID, family_handle.ptr());
-        if (TPM_ERROR(tss_result)) {
-          LOG(ERROR) << "Failed to clean up the delegate: error getting "
-                        "delegate family handle: "
-                     << Trspi_Error_String(tss_result);
-          continue;
-        }
-        tss_result =
-            Tspi_TPM_Delegate_InvalidateFamily(tpm_handle, family_handle);
-        if (TPM_ERROR(tss_result)) {
-          LOG(ERROR) << "Failed to clean up the delegate: error invalidating "
-                        "delegate family: "
-                     << Trspi_Error_String(tss_result);
-          continue;
-        }
-        ++invalidated_family_count;
+    TPM_SELECT_BEGIN;
+    TPM1_SECTION({
+      CHECK_EQ(Tpm::TPM_1_2, tpm()->GetVersion());
+      using trousers::ScopedTssContext;
+      using trousers::ScopedTssMemory;
+      using trousers::ScopedTssObject;
+      if (delegate_blob_.empty() || delegate_secret_.empty())
+        return;
+      // Obtain the TPM context and handle with the owner authorization.
+      ScopedTssContext tpm_context;
+      TSS_HTPM tpm_handle = 0;
+      if (!static_cast<TpmImpl*>(tpm())->ConnectContextAsOwner(
+              tpm_context.ptr(), &tpm_handle)) {
+        LOG(ERROR)
+            << "Failed to clean up the delegate: error connecting to the TPM";
+        return;
       }
-    }
-    if (!invalidated_family_count) {
-      LOG(ERROR) << "Failed to clean up the delegate: no entry was "
-                    "successfully invalidated";
-      return;
-    }
-    VLOG(1) << "Delegate families cleaned up: " << invalidated_family_count;
-#endif  // !USE_TPM2
+      // Obtain all TPM delegates and delegate families.
+      UINT32 family_table_size = 0;
+      TSS_FAMILY_TABLE_ENTRY* family_table_ptr = nullptr;
+      UINT32 delegate_table_size = 0;
+      TSS_DELEGATION_TABLE_ENTRY* delegate_table_ptr = nullptr;
+      TSS_RESULT tss_result = Tspi_TPM_Delegate_ReadTables(
+          tpm_context, &family_table_size, &family_table_ptr,
+          &delegate_table_size, &delegate_table_ptr);
+      if (TPM_ERROR(tss_result)) {
+        LOG(ERROR)
+            << "Failed to clean up the delegate: error reading delegate table: "
+            << Trspi_Error_String(tss_result);
+        return;
+      }
+      ScopedTssMemory scoped_family_table(
+          tpm_context, reinterpret_cast<BYTE*>(family_table_ptr));
+      ScopedTssMemory scoped_delegate_table(
+          tpm_context, reinterpret_cast<BYTE*>(delegate_table_ptr));
+      // Invalidate the delegate families which have the test label. Note that
+      // this removes from the NVRAM both the delegate families and the
+      // delegates themselves.
+      int invalidated_family_count = 0;
+      UINT64 family_table_offset = 0;
+      for (int family_index = 0; family_index < family_table_size;
+           ++family_index) {
+        TSS_FAMILY_TABLE_ENTRY family_entry;
+        Trspi_UnloadBlob_TSS_FAMILY_TABLE_ENTRY(
+            &family_table_offset, scoped_family_table.value(), &family_entry);
+        if (family_entry.label == kDelegateFamilyLabel) {
+          ScopedTssObject<TSS_HDELFAMILY> family_handle(tpm_context);
+          tss_result = Tspi_TPM_Delegate_GetFamily(
+              tpm_handle, family_entry.familyID, family_handle.ptr());
+          if (TPM_ERROR(tss_result)) {
+            LOG(ERROR) << "Failed to clean up the delegate: error getting "
+                          "delegate family handle: "
+                       << Trspi_Error_String(tss_result);
+            continue;
+          }
+          tss_result =
+              Tspi_TPM_Delegate_InvalidateFamily(tpm_handle, family_handle);
+          if (TPM_ERROR(tss_result)) {
+            LOG(ERROR) << "Failed to clean up the delegate: error invalidating "
+                          "delegate family: "
+                       << Trspi_Error_String(tss_result);
+            continue;
+          }
+          ++invalidated_family_count;
+        }
+      }
+      if (!invalidated_family_count) {
+        LOG(ERROR) << "Failed to clean up the delegate: no entry was "
+                      "successfully invalidated";
+        return;
+      }
+      VLOG(1) << "Delegate families cleaned up: " << invalidated_family_count;
+    });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
   }
 
   bool CreateSecret(SecureBlob* secret_value,

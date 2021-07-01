@@ -40,7 +40,6 @@ namespace cryptohome {
 
 const uint32_t kDefaultTpmRsaModulusSize = 2048;
 const uint32_t kDefaultTpmPublicExponent = 0x10001;
-const uint32_t kLockboxIndex = 0x800004;
 
 class Tpm2Impl : public Tpm {
  public:

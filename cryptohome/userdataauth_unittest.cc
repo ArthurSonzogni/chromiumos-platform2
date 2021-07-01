@@ -18,6 +18,7 @@
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
 #include <dbus/mock_bus.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
@@ -103,6 +104,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   ~UserDataAuthTestBase() override = default;
 
   void SetUp() override {
+    SET_DEFAULT_TPM_FOR_TESTING;
+    attrs_ = std::make_unique<NiceMock<MockInstallAttributes>>();
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
@@ -119,7 +122,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_crypto(&crypto_);
     userdataauth_->set_keyset_management(&keyset_management_);
     userdataauth_->set_homedirs(&homedirs_);
-    userdataauth_->set_install_attrs(&attrs_);
+    userdataauth_->set_install_attrs(attrs_.get());
     userdataauth_->set_tpm(&tpm_);
     userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
@@ -196,7 +199,7 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Mock InstallAttributes object, will be passed to UserDataAuth for its
   // internal use.
-  NiceMock<MockInstallAttributes> attrs_;
+  std::unique_ptr<NiceMock<MockInstallAttributes>> attrs_;
 
   // Mock Platform object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockPlatform> platform_;
@@ -1044,13 +1047,13 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
 
   std::string str_true = "true";
   std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
   blob_true.push_back(0);
 
-  EXPECT_CALL(attrs_, Get("enterprise.owned", _))
+  EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
 
   InitializeUserDataAuth();
@@ -1060,13 +1063,13 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
 
   std::string str_true = "false";
   std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
   blob_true.push_back(0);
 
-  EXPECT_CALL(attrs_, Get("enterprise.owned", _))
+  EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
 
   InitializeUserDataAuth();
@@ -1090,7 +1093,7 @@ constexpr uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
 TEST_F(UserDataAuthTest, InstallAttributesGet) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
-  EXPECT_CALL(attrs_, Get(kInstallAttributeName, _))
+  EXPECT_CALL(*attrs_, Get(kInstallAttributeName, _))
       .WillOnce(
           Invoke([](const std::string& name, std::vector<uint8_t>* data_out) {
             *data_out = std::vector<uint8_t>(
@@ -1104,7 +1107,7 @@ TEST_F(UserDataAuthTest, InstallAttributesGet) {
   EXPECT_THAT(data, ElementsAreArray(kInstallAttributeData));
 
   // Test for unsuccessful case.
-  EXPECT_CALL(attrs_, Get(kInstallAttributeName, _)).WillOnce(Return(false));
+  EXPECT_CALL(*attrs_, Get(kInstallAttributeName, _)).WillOnce(Return(false));
   EXPECT_FALSE(
       userdataauth_->InstallAttributesGet(kInstallAttributeName, &data));
 }
@@ -1112,8 +1115,8 @@ TEST_F(UserDataAuthTest, InstallAttributesGet) {
 TEST_F(UserDataAuthTest, InstallAttributesSet) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
-  EXPECT_CALL(attrs_, Set(kInstallAttributeName,
-                          ElementsAreArray(kInstallAttributeData)))
+  EXPECT_CALL(*attrs_, Set(kInstallAttributeName,
+                           ElementsAreArray(kInstallAttributeData)))
       .WillOnce(Return(true));
 
   std::vector<uint8_t> data(
@@ -1122,8 +1125,8 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
   EXPECT_TRUE(userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
 
   // Test for unsuccessful case.
-  EXPECT_CALL(attrs_, Set(kInstallAttributeName,
-                          ElementsAreArray(kInstallAttributeData)))
+  EXPECT_CALL(*attrs_, Set(kInstallAttributeName,
+                           ElementsAreArray(kInstallAttributeData)))
       .WillOnce(Return(false));
   EXPECT_FALSE(
       userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
@@ -1132,29 +1135,29 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
 TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
-  EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Finalize()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesFinalize());
 
   // Test for unsuccessful case.
-  EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(false));
+  EXPECT_CALL(*attrs_, Finalize()).WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_->InstallAttributesFinalize());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesCount) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   constexpr int kCount = 42;  // The Answer!!
-  EXPECT_CALL(attrs_, Count()).WillOnce(Return(kCount));
+  EXPECT_CALL(*attrs_, Count()).WillOnce(Return(kCount));
   EXPECT_EQ(kCount, userdataauth_->InstallAttributesCount());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Test for successful case.
-  EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, is_secure()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesIsSecure());
 
   // Test for unsuccessful case.
-  EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(false));
+  EXPECT_CALL(*attrs_, is_secure()).WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_->InstallAttributesIsSecure());
 }
 
@@ -1167,7 +1170,7 @@ TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
       InstallAttributes::Status::kValid, InstallAttributes::Status::kInvalid};
 
   for (auto& s : status_list) {
-    EXPECT_CALL(attrs_, status()).WillOnce(Return(s));
+    EXPECT_CALL(*attrs_, status()).WillOnce(Return(s));
     EXPECT_EQ(s, userdataauth_->InstallAttributesGetStatus());
   }
 }
@@ -1540,7 +1543,7 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
   // Called by ResetAllTPMContext().
   EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
   // Called by InitializeInstallAttributes()
-  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
 
   callback.Run();
 }
@@ -1562,7 +1565,7 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
   // Called by ResetAllTPMContext().
   EXPECT_CALL(crypto_, EnsureTpm(true)).WillOnce(Return(CryptoError::CE_NONE));
   // Called by InitializeInstallAttributes()
-  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(*attrs_, Init(_)).WillOnce(Return(true));
 
   // Call OwnershipCallback twice and see if any of the above gets called more
   // than once.
@@ -3633,7 +3636,7 @@ TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
   static const std::string true_str = "true";
   brillo::Blob true_value(true_str.begin(), true_str.end());
   true_value.push_back(0);
-  EXPECT_CALL(attrs_, Get("enterprise.owned", _))
+  EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
 
   EXPECT_CALL(homedirs_, set_enterprise_owned(true)).WillOnce(Return());

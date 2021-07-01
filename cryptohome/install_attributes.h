@@ -151,8 +151,6 @@ class InstallAttributes {
       observer.OnFinalized();
   }
 
-  // Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
-  static const uint32_t kLockboxIndex;
   // Provides the default location for the attributes data file.
   static const char kDefaultDataFile[];
   // File permissions of attributes data file (modulo umask).

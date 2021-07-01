@@ -7,6 +7,7 @@
 #include <base/command_line.h>
 #include <base/strings/stringprintf.h>
 #include <inttypes.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include <string>
 
@@ -14,9 +15,13 @@
 
 #if USE_TPM2
 #include "cryptohome/tpm2_impl.h"
-#else
+#endif
+
+#if USE_TPM1
 #include "cryptohome/tpm_impl.h"
 #endif
+
+#include "cryptohome/stub_tpm.h"
 
 namespace cryptohome {
 
@@ -26,8 +31,6 @@ constexpr TpmKeyHandle kInvalidKeyHandle = 0;
 
 Tpm* Tpm::singleton_ = NULL;
 base::Lock Tpm::singleton_lock_;
-
-const uint32_t Tpm::kLockboxIndex = cryptohome::kLockboxIndex;
 
 ScopedKeyHandle::ScopedKeyHandle()
     : tpm_(nullptr), handle_(kInvalidKeyHandle) {}
@@ -84,11 +87,14 @@ Tpm* Tpm::GetSingleton() {
   // TODO(fes): Replace with a better atomic operation
   singleton_lock_.Acquire();
   if (!singleton_) {
-#if USE_TPM2
-    singleton_ = new Tpm2Impl();
-#else
-    singleton_ = new TpmImpl();
-#endif
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({ singleton_ = new Tpm2Impl(); });
+    TPM1_SECTION({ singleton_ = new TpmImpl(); });
+    OTHER_TPM_SECTION({
+      LOG(WARNING) << "Unknown TPM";
+      singleton_ = new StubTpm();
+    });
+    TPM_SELECT_END;
   }
   singleton_lock_.Release();
   return singleton_;
