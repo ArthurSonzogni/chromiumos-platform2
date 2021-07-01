@@ -34,7 +34,9 @@
 #include "tpm_manager/server/tpm2_status_impl.h"
 #include "trunks/trunks_factory.h"
 #include "trunks/trunks_factory_impl.h"
-#else
+#endif
+
+#if USE_TPM1
 #include "tpm_manager/server/tpm_initializer_impl.h"
 #include "tpm_manager/server/tpm_nvram_impl.h"
 #include "tpm_manager/server/tpm_status_impl.h"
@@ -350,14 +352,11 @@ class TpmManagerService : public TpmNvramInterface,
 
 #if USE_TPM2
   std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
-  std::unique_ptr<Tpm2StatusImpl> default_tpm_status_;
-  std::unique_ptr<Tpm2InitializerImpl> default_tpm_initializer_;
-  std::unique_ptr<Tpm2NvramImpl> default_tpm_nvram_;
-#else
-  std::unique_ptr<TpmStatusImpl> default_tpm_status_;
-  std::unique_ptr<TpmInitializerImpl> default_tpm_initializer_;
-  std::unique_ptr<TpmNvramImpl> default_tpm_nvram_;
 #endif
+
+  std::unique_ptr<TpmStatus> default_tpm_status_;
+  std::unique_ptr<TpmInitializer> default_tpm_initializer_;
+  std::unique_ptr<TpmNvram> default_tpm_nvram_;
 
   // Whether to clear the stored owner password automatically upon removing all
   // dependencies.

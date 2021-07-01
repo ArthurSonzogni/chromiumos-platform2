@@ -7,6 +7,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libtpmcrypto/tpm.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
@@ -25,12 +26,13 @@ constexpr char kDefaultDatabasePath[] =
 constexpr char kDefaultTpmStatusPath[] = "/mnt/stateful_partition/.tpm_status";
 constexpr char kDefaultLocalDataPath[] = "/var/lib/tpm_manager/local_tpm_data";
 
-constexpr bool ShallTryMigrateLocalData() {
-#if USE_TPM2
+bool ShallTryMigrateLocalData() {
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({ return true; });
+  TPM2_SECTION({ return false; });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
   return false;
-#else
-  return true;
-#endif
 }
 
 }  // namespace

@@ -20,6 +20,7 @@
 #include <base/synchronization/lock.h>
 #include <crypto/sha2.h>
 #include <inttypes.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 
 namespace {
 
@@ -180,32 +181,36 @@ void TpmManagerService::InitializeTask(
 
   if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_) {
     // Setup default objects.
-#if USE_TPM2
-    default_trunks_factory_ = std::make_unique<trunks::TrunksFactoryImpl>();
-    // Tolerate some delay in trunksd being up and ready.
-    base::TimeTicks deadline = base::TimeTicks::Now() + kTrunksDaemonTimeout;
-    while (!default_trunks_factory_->Initialize() &&
-           base::TimeTicks::Now() < deadline) {
-      base::PlatformThread::Sleep(kTrunksDaemonInitAttemptDelay);
-    }
-    default_tpm_status_ =
-        std::make_unique<Tpm2StatusImpl>(*default_trunks_factory_);
-    tpm_status_ = default_tpm_status_.get();
-    default_tpm_initializer_ = std::make_unique<Tpm2InitializerImpl>(
-        *default_trunks_factory_, local_data_store_, tpm_status_);
-    tpm_initializer_ = default_tpm_initializer_.get();
-    default_tpm_nvram_ = std::make_unique<Tpm2NvramImpl>(
-        *default_trunks_factory_, local_data_store_, tpm_status_);
-    tpm_nvram_ = default_tpm_nvram_.get();
-#else
-    default_tpm_status_ = std::make_unique<TpmStatusImpl>();
-    tpm_status_ = default_tpm_status_.get();
-    default_tpm_initializer_ =
-        std::make_unique<TpmInitializerImpl>(local_data_store_, tpm_status_);
-    tpm_initializer_ = default_tpm_initializer_.get();
-    default_tpm_nvram_ = std::make_unique<TpmNvramImpl>(local_data_store_);
-    tpm_nvram_ = default_tpm_nvram_.get();
-#endif
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      default_trunks_factory_ = std::make_unique<trunks::TrunksFactoryImpl>();
+      // Tolerate some delay in trunksd being up and ready.
+      base::TimeTicks deadline = base::TimeTicks::Now() + kTrunksDaemonTimeout;
+      while (!default_trunks_factory_->Initialize() &&
+             base::TimeTicks::Now() < deadline) {
+        base::PlatformThread::Sleep(kTrunksDaemonInitAttemptDelay);
+      }
+      default_tpm_status_ =
+          std::make_unique<Tpm2StatusImpl>(*default_trunks_factory_);
+      tpm_status_ = default_tpm_status_.get();
+      default_tpm_initializer_ = std::make_unique<Tpm2InitializerImpl>(
+          *default_trunks_factory_, local_data_store_, tpm_status_);
+      tpm_initializer_ = default_tpm_initializer_.get();
+      default_tpm_nvram_ = std::make_unique<Tpm2NvramImpl>(
+          *default_trunks_factory_, local_data_store_, tpm_status_);
+      tpm_nvram_ = default_tpm_nvram_.get();
+    });
+    TPM1_SECTION({
+      default_tpm_status_ = std::make_unique<TpmStatusImpl>();
+      tpm_status_ = default_tpm_status_.get();
+      default_tpm_initializer_ =
+          std::make_unique<TpmInitializerImpl>(local_data_store_, tpm_status_);
+      tpm_initializer_ = default_tpm_initializer_.get();
+      default_tpm_nvram_ = std::make_unique<TpmNvramImpl>(local_data_store_);
+      tpm_nvram_ = default_tpm_nvram_.get();
+    });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
   }
   if (!tpm_status_->IsTpmEnabled()) {
     LOG(WARNING) << __func__ << ": TPM is disabled.";
@@ -914,11 +919,15 @@ void TpmManagerService::ShutdownTask() {
   default_tpm_status_.reset();
   default_tpm_initializer_.reset();
   default_tpm_nvram_.reset();
-#if USE_TPM2
-  // Resets |default_trunks_factory_| last because other components hold its
-  // reference.
-  default_trunks_factory_.reset();
-#endif
+
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    // Resets |default_trunks_factory_| last because other components hold its
+    // reference.
+    default_trunks_factory_.reset();
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
 }
 
 template <typename ReplyProtobufType>

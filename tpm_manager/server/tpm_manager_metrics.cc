@@ -5,6 +5,8 @@
 #include "tpm_manager/server/tpm_manager_metrics.h"
 #include "tpm_manager/server/tpm_manager_metrics_names.h"
 
+#include <libhwsec-foundation/tpm/tpm_version.h>
+
 namespace tpm_manager {
 
 namespace {
@@ -34,9 +36,12 @@ void TpmManagerMetrics::ReportDictionaryAttackCounter(int counter) {
 
 void TpmManagerMetrics::ReportSecretStatus(const SecretStatus& status) {
   int flags = 0;
-  if (USE_TPM2) {
-    flags |= kSecretStatusIsTpm2;
-  }
+
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({ flags |= kSecretStatusIsTpm2; });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
+
   if (status.has_owner_password) {
     flags |= kSecretStatusHasOwnerPassword;
   }

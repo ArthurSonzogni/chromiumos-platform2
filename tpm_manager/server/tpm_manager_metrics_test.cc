@@ -8,6 +8,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "tpm_manager/server/tpm_manager_metrics_names.h"
@@ -41,6 +42,7 @@ SecretStatus ToSecretStatus(int flags) {
 class TpmManagerMetricsTest : public ::testing::Test {
  public:
   TpmManagerMetricsTest() {
+    SET_DEFAULT_TPM_FOR_TESTING;
     tpm_manager_metrics_.set_metrics_library_for_testing(
         &mock_metrics_library_);
   }
@@ -81,9 +83,12 @@ TEST_F(TpmManagerMetricsTest, ReportDictionaryAttackCounter) {
 TEST_F(TpmManagerMetricsTest, ReportSecretStatus) {
   for (int i = 0; i < (1 << 5); ++i) {
     int expected_entry = i;
-    if (USE_TPM2) {
-      expected_entry |= kSecretStatusIsTpm2;
-    }
+
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({ expected_entry |= kSecretStatusIsTpm2; });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
+
     EXPECT_CALL(mock_metrics_library_,
                 SendEnumToUMA(kSecretStatusHitogram, expected_entry, _))
         .WillOnce(Return(true));

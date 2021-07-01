@@ -35,7 +35,11 @@ pkg_config("target_default_deps") {
 
 config("target_defaults") {
   configs = [ ":target_default_deps" ]
-  defines = [ "USE_TPM2=${use.tpm2}" ]
+  defines = [
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+  ]
 }
 
 # A protobuf library of legacy local data.
@@ -69,7 +73,6 @@ static_library("server_library") {
     "server/tpm_manager_service.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":legacy_local_data_proto" ]
 
   # NOSORT
   pkg_deps = [
@@ -80,21 +83,29 @@ static_library("server_library") {
     "protobuf",
   ]
 
+  libs = [ "hwsec-foundation" ]
+
+  all_dependent_configs = []
+
+  deps = [ ":legacy_local_data_proto" ]
+
   if (use.tpm2) {
     sources += [
       "server/tpm2_initializer_impl.cc",
       "server/tpm2_nvram_impl.cc",
       "server/tpm2_status_impl.cc",
     ]
-    all_dependent_configs = [ ":server_library_tpm2_config" ]
-  } else {
+    all_dependent_configs += [ ":server_library_tpm2_config" ]
+  }
+
+  if (use.tpm) {
     sources += [
       "server/tpm_connection.cc",
       "server/tpm_initializer_impl.cc",
       "server/tpm_nvram_impl.cc",
       "server/tpm_status_impl.cc",
     ]
-    all_dependent_configs = [ ":server_library_tpm1_config" ]
+    all_dependent_configs += [ ":server_library_tpm1_config" ]
   }
 }
 
@@ -189,6 +200,9 @@ if (use.test) {
       ":target_defaults",
       ":tpm_manager_testrunner_config",
     ]
+
+    libs = [ "hwsec_test" ]
+
     deps = [
       ":server_library",
       ":tpm_manager_test",
@@ -209,14 +223,14 @@ if (use.test) {
         "server/tpm2_nvram_test.cc",
         "server/tpm2_status_test.cc",
       ]
-      libs = [ "trunks_test" ]
-    } else {
+      libs += [ "trunks_test" ]
+    }
+    if (use.tpm) {
       sources += [
         "server/tpm_connection_test.cc",
         "server/tpm_initializer_test.cc",
         "server/tpm_nvram_test.cc",
       ]
-      libs = [ "hwsec_test" ]
     }
   }
 }
