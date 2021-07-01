@@ -162,6 +162,7 @@ const char kActivationTypeProperty[] = "Cellular.ActivationType";
 const char kCellularApnListProperty[] = "Cellular.APNList";
 const char kCellularApnProperty[] = "Cellular.APN";
 const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
+const char kCellularLastAttachApnProperty[] = "Cellular.LastAttachAPN";
 const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
 const char kCellularPPPUsernameProperty[] = "Cellular.PPP.Username";
 const char kNetworkTechnologyProperty[] = "Cellular.NetworkTechnology";

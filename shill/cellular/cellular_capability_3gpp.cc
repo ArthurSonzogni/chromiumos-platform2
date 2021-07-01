@@ -796,6 +796,8 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     SLOG(this, 2) << __func__ << ": no Attach APN.";
     return;
   }
+  // Store the last Attach APN we tried.
+  last_attach_apn_ = *apn_info;
 
   SLOG(this, 2) << __func__ << ": Using APN " << (*apn_info)[kApnProperty];
   properties->Set<std::string>(kConnectApn, (*apn_info)[kApnProperty]);
@@ -1165,9 +1167,27 @@ void CellularCapability3gpp::SetInitialEpsBearer(
 
 void CellularCapability3gpp::OnSetInitialEpsBearerReply(const Error& error) {
   SLOG(this, 3) << __func__;
+
+  CellularServiceRefPtr service = cellular()->service();
   if (error.IsFailure()) {
-    SLOG(this, 2) << "Failed to set the 'attach APN' for the EPS bearer.";
+    LOG(ERROR) << "Failed to set the 'attach APN' for the EPS bearer: "
+               << error;
+    last_attach_apn_.clear();
+    if (service)
+      service->ClearLastAttachApn();
+    return;
   }
+
+  if (!service) {
+    // The service could have been deleted before our
+    // SetInitialEpsBearerSettings() request completes if the modem was enabled
+    // and then quickly disabled.
+    SLOG(this, 2) << __func__ << "Cellular service does not exist.";
+    last_attach_apn_.clear();
+    return;
+  }
+
+  service->SetLastAttachApn(last_attach_apn_);
 }
 
 void CellularCapability3gpp::SetupLocation(uint32_t sources,

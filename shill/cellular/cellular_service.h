@@ -114,6 +114,9 @@ class CellularService : public Service {
   Stringmap* GetLastGoodApn();
   virtual void SetLastGoodApn(const Stringmap& apn_info);
   virtual void ClearLastGoodApn();
+  Stringmap* GetLastAttachApn();
+  virtual void SetLastAttachApn(const Stringmap& apn_info);
+  virtual void ClearLastAttachApn();
 
   void NotifySubscriptionStateChanged(SubscriptionState subscription_state);
 
@@ -224,6 +227,8 @@ class CellularService : public Service {
   std::string usage_url_;
   Stringmap apn_info_;
   Stringmap last_good_apn_info_;
+  // Stores the attach APN used for the initial EPS settings
+  Stringmap last_attach_apn_info_;
   std::string ppp_username_;
   std::string ppp_password_;
   base::Optional<bool> allow_roaming_;

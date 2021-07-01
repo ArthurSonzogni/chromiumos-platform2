@@ -185,6 +185,8 @@ CellularService::CellularService(Manager* manager,
   store->RegisterConstString(kEidProperty, &eid_);
   store->RegisterConstStringmap(kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
+  store->RegisterConstStringmap(kCellularLastAttachApnProperty,
+                                &last_attach_apn_info_);
   store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
   HelpRegisterDerivedBool(kOutOfCreditsProperty,
                           &CellularService::IsOutOfCredits, nullptr);
@@ -526,6 +528,25 @@ void CellularService::ClearLastGoodApn() {
                                   last_good_apn_info_);
 }
 
+Stringmap* CellularService::GetLastAttachApn() {
+  Stringmap::iterator it = last_attach_apn_info_.find(kApnProperty);
+  if (it == last_attach_apn_info_.end() || it->second.empty())
+    return nullptr;
+  return &last_attach_apn_info_;
+}
+
+void CellularService::SetLastAttachApn(const Stringmap& apn_info) {
+  last_attach_apn_info_ = apn_info;
+  adaptor()->EmitStringmapChanged(kCellularLastAttachApnProperty,
+                                  last_attach_apn_info_);
+}
+
+void CellularService::ClearLastAttachApn() {
+  last_attach_apn_info_.clear();
+  adaptor()->EmitStringmapChanged(kCellularLastAttachApnProperty,
+                                  last_attach_apn_info_);
+}
+
 void CellularService::NotifySubscriptionStateChanged(
     SubscriptionState subscription_state) {
   bool new_out_of_credits =
@@ -735,9 +756,12 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   apn_info_ = new_apn_info;
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
 
-  if (apn_info_.count(kApnAttachProperty)) {
-    // The new APN is also an 'attach APN'.
-    // We need to detach and re-attach to the LTE network in order to use it.
+  if (apn_info_.count(kApnAttachProperty) ||
+      last_attach_apn_info_.count(kApnAttachProperty)) {
+    // If the new APN is an 'attach APN',we need to detach and re-attach
+    // to the LTE network in order to use it.
+    // If we were using an attach APN, and we are no longer using it, we should
+    // also re-attach to clear the attach APN in the modem.
     cellular_->ReAttach();
     return true;
   }

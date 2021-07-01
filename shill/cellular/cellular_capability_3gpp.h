@@ -390,6 +390,9 @@ class CellularCapability3gpp : public CellularCapability {
 
   // Properties.
   std::deque<Stringmap> apn_try_list_;
+  // For attach APN, we don't really know if the APN is good or not, we only
+  // know if ModemManager used the provided attach APN or not.
+  Stringmap last_attach_apn_;
   bool resetting_ = false;
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_ = SubscriptionState::kUnknown;
