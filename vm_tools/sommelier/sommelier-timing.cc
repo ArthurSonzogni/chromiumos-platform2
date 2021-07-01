@@ -12,8 +12,8 @@
 #include <string>
 #include <time.h>
 
-// 60 sec * 60 frames/sec * 3 actions/frame = 10800 actions
-static const uint64_t MAX_NUM_ACTIONS = 60 * 60 * 3;
+// 10 min * 60 sec/min * 60 frames/sec * 3 actions/frame = 108000 actions
+static const uint64_t MAX_NUM_ACTIONS = 10 * 60 * 60 * 3;
 
 static timespec GetTime() {
   timespec tp;
@@ -46,10 +46,9 @@ void Timing::UpdateLastRelease(int buffer_id) {
   actions_idx = ((actions_idx + 1) % MAX_NUM_ACTIONS);
 }
 
-// Copy out the current state of Frame data and output the last minute of data
-// to a file.
+// Output the recorded actions to the timing log file.
 void Timing::OutputLog() {
-  std::cout << "Writing last minute of buffer activity" << std::endl;
+  std::cout << "Writing buffer activity to the timing log file" << std::endl;
   auto& last_idx = actions_idx;
 
   std::ofstream outfile(std::string(filename) + "_set#" +
