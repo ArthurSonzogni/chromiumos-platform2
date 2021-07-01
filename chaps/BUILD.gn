@@ -45,7 +45,11 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  defines = [ "USE_TPM2=${use.tpm2}" ]
+  defines = [
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+  ]
 
   # NOSORT
   pkg_deps = [
@@ -64,7 +68,17 @@ pkg_config("target_defaults") {
     pkg_deps += [ "protobuf-lite" ]
   }
 
-  libs = [ "tpm_manager" ]
+  libs = [
+    "hwsec-foundation",
+    "tpm_manager",
+  ]
+
+  if (use.tpm2) {
+    libs += [ "trunks" ]
+  }
+  if (use.tpm) {
+    libs += [ "tspi" ]
+  }
 }
 
 proto_library("chaps-protos") {
@@ -111,7 +125,11 @@ shared_library("libchaps") {
     "proto_conversion.cc",
     "token_manager_client.cc",
   ]
-  defines = [ "USE_TPM2=${use.tpm2}" ]
+  defines = [
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+  ]
   libs = [ "system_api" ]
   pkg_deps = [
     "libbrillo",
@@ -175,7 +193,7 @@ executable("chapsd") {
     sources += [ "tpm2_utility_impl.cc" ]
     libs += [ "trunks" ]
   }
-  if (!use.tpm2) {
+  if (use.tpm) {
     sources += [ "tpm_utility_impl.cc" ]
     libs += [ "tspi" ]
   }
@@ -476,11 +494,9 @@ if (use.test) {
     ]
     if (use.tpm2) {
       sources += [ "tpm2_utility_impl.cc" ]
-      libs = [ "trunks" ]
     }
-    if (!use.tpm2) {
+    if (use.tpm) {
       sources += [ "tpm_utility_impl.cc" ]
-      libs = [ "tspi" ]
     }
   }
 

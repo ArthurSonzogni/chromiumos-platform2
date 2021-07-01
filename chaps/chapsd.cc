@@ -31,6 +31,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
@@ -42,9 +43,13 @@
 #include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
 
+#include "chaps/tpm_utility.h"
+
 #if USE_TPM2
 #include "chaps/tpm2_utility_impl.h"
-#else
+#endif
+
+#if USE_TPM1
 #include "chaps/tpm_utility_impl.h"
 #endif
 
@@ -134,23 +139,30 @@ class Daemon : public brillo::DBusServiceDaemon {
     // Destructor of slot_manager_ will use tpm_
     slot_manager_.reset();
 
-#if USE_TPM2
-    // tpm_ will need tpm_background_thread_ to function
-    tpm_.reset();
-    tpm_background_thread_.Stop();
-#endif
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      // tpm_ will need tpm_background_thread_ to function
+      tpm_.reset();
+      tpm_background_thread_.Stop();
+    });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
   }
 
  protected:
   int OnInit() override {
-#if USE_TPM2
-    CHECK(tpm_background_thread_.StartWithOptions(base::Thread::Options(
-        base::MessagePumpType::IO, 0 /* use default stack size */)));
-    tpm_.reset(new TPM2UtilityImpl(tpm_background_thread_.task_runner()));
-#else
-    // Instantiate a TPM1.2 Utility.
-    tpm_.reset(new TPMUtilityImpl(srk_auth_data_));
-#endif
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      CHECK(tpm_background_thread_.StartWithOptions(base::Thread::Options(
+          base::MessagePumpType::IO, 0 /* use default stack size */)));
+      tpm_.reset(new TPM2UtilityImpl(tpm_background_thread_.task_runner()));
+    });
+    TPM1_SECTION({
+      // Instantiate a TPM1.2 Utility.
+      tpm_.reset(new TPMUtilityImpl(srk_auth_data_));
+    });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
 
     factory_.reset(new ChapsFactoryImpl);
     system_shutdown_blocker_.reset(

@@ -16,6 +16,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
@@ -24,7 +25,9 @@
 
 #if USE_TPM2
 #include "chaps/tpm2_utility_impl.h"
-#else
+#endif
+
+#if USE_TPM1
 #include "chaps/tpm_utility_impl.h"
 #endif
 
@@ -42,13 +45,18 @@ namespace chaps {
 class TestTPMUtility : public ::testing::Test {
  public:
   TestTPMUtility() {
-#if USE_TPM2
-    // Instantiate a TPM2 Utility.
-    tpm_.reset(new TPM2UtilityImpl());
-#else
-    // Instantiate a TPM1.2 Utility.
-    tpm_.reset(new TPMUtilityImpl("", &mock_tpm_manager_utility_));
-#endif
+    SET_DEFAULT_TPM_FOR_TESTING;
+    TPM_SELECT_BEGIN;
+    TPM1_SECTION({
+      // Instantiate a TPM1.2 Utility.
+      tpm_.reset(new TPMUtilityImpl("", &mock_tpm_manager_utility_));
+    });
+    TPM2_SECTION({
+      // Instantiate a TPM2 Utility.
+      tpm_.reset(new TPM2UtilityImpl());
+    });
+    OTHER_TPM_SECTION();
+    TPM_SELECT_END;
   }
 
   void SetUp() {
@@ -187,13 +195,19 @@ TEST_F(TestTPMUtility, BadInput) {
 }
 
 TEST_F(TestTPMUtility, TPMVersionCheck) {
-  TPMVersion version;
-#if USE_TPM2
-  version = TPMVersion::TPM2_0;
-#else
-  version = TPMVersion::TPM1_2;
-#endif
-  EXPECT_EQ(tpm_->GetTPMVersion(), version);
+  TPM_SELECT_BEGIN;
+  TPM2_SECTION({
+    TPMVersion version;
+    version = TPMVersion::TPM2_0;
+    EXPECT_EQ(tpm_->GetTPMVersion(), version);
+  });
+  TPM1_SECTION({
+    TPMVersion version;
+    version = TPMVersion::TPM1_2;
+    EXPECT_EQ(tpm_->GetTPMVersion(), version);
+  });
+  OTHER_TPM_SECTION();
+  TPM_SELECT_END;
 }
 
 }  // namespace chaps
