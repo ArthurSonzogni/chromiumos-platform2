@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <memory>
+#include <cstring>
 
 #include <wayland-server.h>
 

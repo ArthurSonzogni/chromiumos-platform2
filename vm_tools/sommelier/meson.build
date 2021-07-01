@@ -164,18 +164,20 @@ executable('sommelier',
   include_directories: includes,
 )
 
-sommelier_test = executable('sommelier_test',
-  install: true,
-  sources: [
-    'sommelier_test.cc',
-  ],
-  link_with: libsommelier,
-  dependencies: [
-    dependency('gtest'),
-    dependency('gmock'),
-  ],
-  cpp_args: cpp_args + sommelier_defines,
-  include_directories: includes,
-)
+if get_option('with_tests')
+  sommelier_test = executable('sommelier_test',
+    install: true,
+    sources: [
+      'sommelier_test.cc',
+    ],
+    link_with: libsommelier,
+    dependencies: [
+      dependency('gtest'),
+      dependency('gmock'),
+    ],
+    cpp_args: cpp_args + sommelier_defines,
+    include_directories: includes,
+  )
 
-test('sommelier_test', sommelier_test)
+  test('sommelier_test', sommelier_test)
+endif

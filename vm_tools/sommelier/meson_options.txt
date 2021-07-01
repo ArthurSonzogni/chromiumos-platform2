@@ -45,3 +45,9 @@ option('commit_loop_fix',
   value: false,
   description: 'enable a fix to the commit-cycle, which is known to break some apps'
 )
+
+option('with_tests',
+  type: 'boolean',
+  value: true,
+  description: 'build the sommelier_test target'
+)

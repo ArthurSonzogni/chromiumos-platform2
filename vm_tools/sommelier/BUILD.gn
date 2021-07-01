@@ -8,10 +8,13 @@ import("wayland_protocol.gni")
 group("all") {
   deps = [
     ":sommelier",
-    ":sommelier_test",
   ]
   if (use.fuzzer) {
     deps += [ ":sommelier_wayland_fuzzer" ]
+  }
+
+  if (use.test) {
+    deps += [ ":sommelier_test" ]
   }
 }
 
@@ -136,24 +139,28 @@ executable("sommelier") {
   deps = [ ":libsommelier" ]
 }
 
-executable("sommelier_test") {
-  sources = [ "sommelier_test.cc" ]
+if (use.test) {
+  executable("sommelier_test") {
+    sources = [ "sommelier_test.cc" ]
 
-  # gnlint: disable=GnLintCommonTesting
-  libs = [
-    "gmock",
-    "gtest",
-  ]
-  defines = sommelier_defines
-  deps = [ ":libsommelier" ]
+    # gnlint: disable=GnLintCommonTesting
+    libs = [
+      "gmock",
+      "gtest",
+    ]
+    defines = sommelier_defines
+    deps = [ ":libsommelier" ]
+  }
 }
 
-executable("sommelier_wayland_fuzzer") {
-  sources = [ "sommelier-wayland-fuzzer.cc" ]
+if (use.fuzzer) {
+  executable("sommelier_wayland_fuzzer") {
+    sources = [ "sommelier-wayland-fuzzer.cc" ]
 
-  configs += [ "//common-mk/common_fuzzer" ]
+    configs += [ "//common-mk/common_fuzzer" ]
 
-  defines = sommelier_defines
+    defines = sommelier_defines
 
-  deps = [ ":libsommelier" ]
+    deps = [ ":libsommelier" ]
+  }
 }
