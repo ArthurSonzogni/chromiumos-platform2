@@ -12,11 +12,15 @@
 namespace minios {
 
 namespace {
+// Default log constants.
 const int kLogCharPerLine = 111;
 const int kLogLinesPerPage = 20;
-// Logging constants.
-const int kLogAreaWidth = kMonospaceGlyphWidth * kLogCharPerLine;
-const int kLogAreaHeight = kMonospaceGlyphHeight * kLogLinesPerPage;
+
+// Scaled down log constants when frecon canvas size is not big enough to
+// support `log_area_border_large`.
+const int kSmallLogCharPerLine = 79;
+const int kSmallLogLinesPerPage = 13;
+
 // y-coord of the upper edge of the log area, 16px below title.
 const int kLogAreaY = 196;
 
@@ -43,8 +47,13 @@ void ScreenLog::Show() {
 
 void ScreenLog::ShowButtons() {
   draw_utils_->ShowLanguageMenu(index_ == 0);
-  auto y_offset = -draw_utils_->GetFreconCanvasSize() / 2 + kLogAreaY +
-                  kLogAreaHeight + 16 + kButtonHeight / 2;
+  int frecon_size = draw_utils_->GetFreconCanvasSize();
+  int lines_per_page = (frecon_size < kSmallCanvasSize) ? kSmallLogLinesPerPage
+                                                        : kLogLinesPerPage;
+
+  auto y_offset = -frecon_size / 2 + kLogAreaY +
+                  (kMonospaceGlyphHeight * lines_per_page) + 16 +
+                  kButtonHeight / 2;
   auto y_offset_step = kButtonHeight + kButtonMargin;
   int default_btn_width = draw_utils_->GetDefaultButtonWidth();
   draw_utils_->ShowButton("btn_page_up", y_offset, index_ == 1,
@@ -57,10 +66,20 @@ void ScreenLog::ShowButtons() {
 
 void ScreenLog::UpdateLogArea() {
   int frecon_size = draw_utils_->GetFreconCanvasSize();
+  bool is_small_canvas = (frecon_size < kSmallCanvasSize);
+  int lines_per_page =
+      is_small_canvas ? kSmallLogLinesPerPage : kLogLinesPerPage;
+  int char_per_line = is_small_canvas ? kSmallLogCharPerLine : kLogCharPerLine;
+  auto screen_path = draw_utils_->GetScreenPath();
+  auto image_path = is_small_canvas
+                        ? screen_path.Append("log_area_border.png")
+                        : screen_path.Append("log_area_border_large.png");
+
   draw_utils_->ShowImage(
-      draw_utils_->GetScreenPath().Append("log_area_border_large.png"),
-      -frecon_size / 2 + (kLogAreaWidth + 10) / 2,
-      -frecon_size / 2 + kLogAreaY + kLogAreaHeight / 2);
+      image_path,
+      -frecon_size / 2 + ((kMonospaceGlyphWidth * char_per_line) + 10) / 2,
+      -frecon_size / 2 + kLogAreaY +
+          (kMonospaceGlyphHeight * lines_per_page) / 2);
 
   std::string content;
   // If the offsets into the file are already calculated, use the start and end
@@ -69,7 +88,7 @@ void ScreenLog::UpdateLogArea() {
     auto start_offset = log_offsets_[log_offset_idx_],
          end_offset = log_offsets_[log_offset_idx_ + 1];
     auto [success, content_local] = ReadFileContentWithinRange(
-        log_path_, start_offset, end_offset, kLogCharPerLine);
+        log_path_, start_offset, end_offset, char_per_line);
     content = std::move(content_local);
     if (!success) {
       PLOG(ERROR) << "Failed to read content from " << log_path_.value()
@@ -80,8 +99,8 @@ void ScreenLog::UpdateLogArea() {
     // Otherwise, the new end offset must be calculated based off the number of
     // lines and columns to read.
     auto start_offset = log_offsets_[log_offset_idx_];
-    auto [success, content_local, bytes_read] = ReadFileContent(
-        log_path_, start_offset, kLogLinesPerPage, kLogCharPerLine);
+    auto [success, content_local, bytes_read] =
+        ReadFileContent(log_path_, start_offset, lines_per_page, char_per_line);
     content = std::move(content_local);
     if (!success) {
       PLOG(ERROR) << "Failed to read content from " << log_path_.value()
@@ -91,7 +110,7 @@ void ScreenLog::UpdateLogArea() {
     }
   }
   draw_utils_->ShowText(
-      content, -frecon_size / 2,
+      content, (-frecon_size / 2) + kMonospaceGlyphWidth,
       -frecon_size / 2 + kLogAreaY + kMonospaceGlyphHeight / 2, "white");
 }
 

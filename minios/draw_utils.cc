@@ -33,6 +33,7 @@ const int kDefaultButtonWidth = 80;
 constexpr char kScreens[] = "etc/screens";
 constexpr int kFreconScalingFactor = 1;
 constexpr int kCanvasSize = 1080;
+constexpr int kSmallCanvasSize = 900;
 
 namespace {
 constexpr char kConsole0[] = "dev/pts/0";
@@ -153,7 +154,7 @@ bool DrawUtils::ShowMessage(const std::string& message_token,
 
 void DrawUtils::ShowInstructions(const std::string& message_token) {
   const int kXOffset = (-frecon_canvas_size_ / 2) + (kDefaultMessageWidth / 2);
-  const int kYOffset = (-frecon_canvas_size_ / 2) + 283;
+  const int kYOffset = (-frecon_canvas_size_ / 4);
   if (!ShowMessage(message_token, kXOffset, kYOffset))
     LOG(WARNING) << "Unable to show " << message_token;
 }
@@ -200,9 +201,10 @@ void DrawUtils::ShowProgressPercentage(double progress) {
     LOG(WARNING) << "Invalid value of progress: " << progress;
     return;
   }
-  constexpr int kProgressIncrement = 10;
+  // Should be at canvas width at 100%.
+  const double kProgressIncrement = frecon_canvas_size_ / 100.0;
   constexpr int kProgressHeight = 4;
-  constexpr int kLeftIncrement = -500;
+  const int kLeftIncrement = -frecon_canvas_size_ / 2;
   int progress_length = kProgressIncrement * progress * 100;
   ShowBox(kLeftIncrement + progress_length / 2, 0, progress_length,
           kProgressHeight, kMenuBlue);

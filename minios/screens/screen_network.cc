@@ -11,8 +11,8 @@
 namespace minios {
 
 namespace {
-// Dropdown size
-constexpr int kNetworksPerPage = 10;
+// Dropdown Item size
+constexpr int kItemHeight = 40;
 }  // namespace
 
 ScreenNetwork::ScreenNetwork(
@@ -30,6 +30,11 @@ ScreenNetwork::ScreenNetwork(
     // Query for networks.
     network_manager_->GetNetworks();
   }
+  // Calculate how much room is left for the dropdown, leave some space for the
+  // back button.
+  items_per_page_ =
+      (draw_utils_->GetFreconCanvasSize() / 2 - kBtnYStep * 2) / kItemHeight -
+      1;
 }
 
 ScreenNetwork::~ScreenNetwork() {
@@ -58,16 +63,18 @@ void ScreenNetwork::Show() {
 void ScreenNetwork::ShowButtons() {
   draw_utils_->ShowLanguageMenu(index_ == 0);
   ShowCollapsedNetworkDropDown(index_ == 1);
-  draw_utils_->ShowButton("btn_back", kTitleY + 250, (index_ == 2),
+  const int kOffsetY = -draw_utils_->GetFreconCanvasSize() / 4 + kBtnYStep * 4;
+  draw_utils_->ShowButton("btn_back", kOffsetY, (index_ == 2),
                           draw_utils_->GetDefaultButtonWidth(), false);
 }
 
 void ScreenNetwork::UpdateMenu() {
   draw_utils_->ShowLanguageMenu(/*selected=*/false);
   ShowNetworkDropdown(index_);
-  int items_on_page =
-      std::min(kNetworksPerPage, static_cast<int>(networks_.size()));
-  draw_utils_->ShowButton("btn_back", kTitleY + 250 + (items_on_page * 40),
+  int dropdown_size =
+      std::min(items_per_page_, static_cast<int>(networks_.size()));
+  const int kOffsetY = -draw_utils_->GetFreconCanvasSize() / 4 + kBtnYStep * 4;
+  draw_utils_->ShowButton("btn_back", kOffsetY + (dropdown_size * 40),
                           (index_ == networks_.size()),
                           draw_utils_->GetDefaultButtonWidth(), false);
 }
@@ -96,7 +103,7 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           // the back button.
           button_count_ = networks_.size() + 1;
           index_ = 0;
-          UpdateMenu();
+          Show();
           break;
         case 2:
           screen_controller_->OnBackward(this);
@@ -106,7 +113,7 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
       if (index_ == networks_.size()) {
         // Back button. Update internal state and re-query for networks.
         Reset();
-        ShowButtons();
+        Show();
       } else if (0 <= index_ && index_ < networks_.size()) {
         chosen_network_ = networks_[index_];
         LOG(INFO) << "Selected network: " << chosen_network_;
@@ -202,7 +209,7 @@ void ScreenNetwork::GetPassword() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_password");
   draw_utils_->ShowStepper({"done", "2-done", "3"});
-
+  const int kTitleY = (-draw_utils_->GetFreconCanvasSize() / 2) + 238;
   const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
   draw_utils_->ShowButton("Enter your password", kBtnY, false,
                           draw_utils_->GetDefaultButtonWidth() * 4, true);
@@ -236,7 +243,7 @@ void ScreenNetwork::GetPassword() {
 
 void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
   const int frecon_canvas_size = draw_utils_->GetFreconCanvasSize();
-  const int kOffsetY = -frecon_canvas_size / 2 + 350;
+  const int kOffsetY = -frecon_canvas_size / 4 + kBtnYStep * 2;
   const int kBgX = -frecon_canvas_size / 2 + 145;
   const int kGlobeX = -frecon_canvas_size / 2 + 20;
   const int kArrowX = -frecon_canvas_size / 2 + 268;
@@ -258,10 +265,9 @@ void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
 
 void ScreenNetwork::ShowNetworkDropdown(int current_index) {
   const int frecon_canvas_size = draw_utils_->GetFreconCanvasSize();
-  int offset_y = -frecon_canvas_size / 2 + 350 + 40;
+  int offset_y = -frecon_canvas_size / 4 + kBtnYStep * 3;
   const int kBackgroundX = -frecon_canvas_size / 2 + 360;
   const int kOffsetX = -frecon_canvas_size / 2 + 60;
-  constexpr int kItemHeight = 40;
 
   if (networks_.empty()) {
     // Okay to return here as there will be a callback to refresh the dropdown
@@ -277,14 +283,14 @@ void ScreenNetwork::ShowNetworkDropdown(int current_index) {
   // Pick begin index such that the selected index is centered on the screen.
   // If there are not enough items for a full page then start at 0.
   int begin_index = 0;
-  int page_difference = networks_.size() - kNetworksPerPage;
+  int page_difference = networks_.size() - items_per_page_;
   if (page_difference >= 0) {
     begin_index =
-        std::clamp(current_index - kNetworksPerPage / 2, 0, page_difference);
+        std::clamp(current_index - items_per_page_ / 2, 0, page_difference);
   }
 
   for (int i = begin_index;
-       i < (begin_index + kNetworksPerPage) && i < networks_.size(); i++) {
+       i < (begin_index + items_per_page_) && i < networks_.size(); i++) {
     if (current_index == i) {
       draw_utils_->ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
       draw_utils_->ShowText(networks_[i], kOffsetX, offset_y, "black");

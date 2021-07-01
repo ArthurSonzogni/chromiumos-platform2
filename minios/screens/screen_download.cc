@@ -28,8 +28,8 @@ void ScreenDownload::Show() {
   draw_utils_->ShowInstructionsWithTitle("MiniOS_downloading");
   draw_utils_->ShowStepper({"done", "done", "3-done"});
   constexpr int kProgressHeight = 4;
-  draw_utils_->ShowBox(0, 0, 1000, kProgressHeight, kMenuGrey);
-
+  draw_utils_->ShowBox(0, 0, draw_utils_->GetFreconCanvasSize(),
+                       kProgressHeight, kMenuGrey);
   StartRecovery();
 }
 

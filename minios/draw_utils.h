@@ -34,6 +34,7 @@ extern const int kDefaultMessageWidth;
 extern const int kMonospaceGlyphHeight;
 extern const int kMonospaceGlyphWidth;
 extern const int kDefaultButtonWidth;
+extern const int kSmallCanvasSize;
 
 // Frecon constants
 extern const char kScreens[];

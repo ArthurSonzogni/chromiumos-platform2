@@ -20,7 +20,8 @@ void ScreenWelcome::Show() {
 
 void ScreenWelcome::ShowButtons() {
   draw_utils_->ShowLanguageMenu(index_ == 0);
-  const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
+  const int kBtnY =
+      (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
   draw_utils_->ShowButton("btn_next", kBtnY, (index_ == 1),
                           draw_utils_->GetDefaultButtonWidth(), false);
   draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),

@@ -56,11 +56,11 @@ void ScreenError::Show() {
 
 void ScreenError::ShowButtons() {
   draw_utils_->ShowLanguageMenu(index_ == 0);
-  const int kYOffset = -100;
-  const int kYStep = kButtonHeight + kButtonMargin;
-  draw_utils_->ShowButton("btn_try_again", kYOffset, index_ == 1,
+  const int kBtnY =
+      (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
+  draw_utils_->ShowButton("btn_try_again", kBtnY, index_ == 1,
                           draw_utils_->GetDefaultButtonWidth(), false);
-  draw_utils_->ShowButton("btn_debug_options", kYOffset + kYStep, index_ == 2,
+  draw_utils_->ShowButton("btn_debug_options", kBtnY + kBtnYStep, index_ == 2,
                           draw_utils_->GetDefaultButtonWidth(), false);
 }
 

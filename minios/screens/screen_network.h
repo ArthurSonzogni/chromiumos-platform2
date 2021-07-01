@@ -87,6 +87,9 @@ class ScreenNetwork : public ScreenBase,
   // The network the user has chosen.
   std::string chosen_network_;
 
+  // Number of items in the network dropdown.
+  int items_per_page_;
+
   // Current internal state.
   NetworkState state_;
 };

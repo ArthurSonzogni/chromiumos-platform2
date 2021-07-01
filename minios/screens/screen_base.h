@@ -17,7 +17,6 @@
 namespace minios {
 
 extern const int kBtnYStep;
-extern const int kTitleY;
 
 class ScreenBase : public ScreenInterface {
  public:

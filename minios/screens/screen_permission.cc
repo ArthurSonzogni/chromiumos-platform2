@@ -22,7 +22,8 @@ void ScreenPermission::Show() {
 
 void ScreenPermission::ShowButtons() {
   draw_utils_->ShowLanguageMenu(index_ == 0);
-  const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
+  const int kBtnY =
+      (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
   int default_width = draw_utils_->GetDefaultButtonWidth();
   draw_utils_->ShowButton("btn_next", kBtnY, (index_ == 1), default_width,
                           false);
