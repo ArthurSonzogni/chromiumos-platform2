@@ -47,7 +47,6 @@ class TpmUtilityCommonTest : public ::testing::Test {
   }
 
  protected:
-  void OnOwnershipTakenSignal() { tpm_utility_->OnOwnershipTakenSignal(); }
   // Checks if GetTpmStatus sets up the private data member.
   void VerifyAgainstExpectedLocalData(const tpm_manager::LocalData local_data) {
     EXPECT_EQ(tpm_utility_->owner_password_, local_data.owner_password());
@@ -95,20 +94,21 @@ std::unique_ptr<TpmUtilityCommon> GetTpmUtility<TpmUtilityDataV1>(
 TYPED_TEST_SUITE(TpmUtilityCommonTest, Types<TpmUtilityDataV1>);
 
 #endif
-TYPED_TEST(TpmUtilityCommonTest, IsTpmReadySuccess) {
+
+TYPED_TEST(TpmUtilityCommonTest, IsTpmReady) {
+  EXPECT_CALL(this->mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
+      .WillOnce(Return(false))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(false), SetArgPointee<1>(false), Return(true)))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(false), Return(true)));
+  EXPECT_FALSE(this->tpm_utility_->IsTpmReady());
+  EXPECT_FALSE(this->tpm_utility_->IsTpmReady());
+  EXPECT_FALSE(this->tpm_utility_->IsTpmReady());
+
   EXPECT_CALL(this->mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
       .WillOnce(
           DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)));
-  EXPECT_TRUE(this->tpm_utility_->IsTpmReady());
-}
-
-TYPED_TEST(TpmUtilityCommonTest, IsTpmReadyWithOwnershipTakenSignal) {
-  EXPECT_CALL(this->mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(this->tpm_utility_->IsTpmReady());
-  EXPECT_FALSE(this->tpm_utility_->IsTpmReady());
-
-  this->OnOwnershipTakenSignal();
   EXPECT_TRUE(this->tpm_utility_->IsTpmReady());
 }
 

@@ -28,63 +28,14 @@ bool TpmUtilityCommon::Initialize() {
     LOG(INFO) << __func__ << "Reinitialize tpm_manager utility";
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
   }
-  tpm_manager_utility_->AddOwnershipCallback(base::Bind(
-      &TpmUtilityCommon::OnOwnershipTakenSignal, base::Unretained(this)));
   return tpm_manager_utility_;
 }
 
-void TpmUtilityCommon::UpdateTpmLocalData(
-    const tpm_manager::LocalData& local_data) {
-  endorsement_password_ = local_data.endorsement_password();
-  owner_password_ = local_data.owner_password();
-  delegate_blob_ = local_data.owner_delegate().blob();
-  delegate_secret_ = local_data.owner_delegate().secret();
-}
-
-void TpmUtilityCommon::OnOwnershipTakenSignal() {
-  base::AutoLock lock(tpm_state_lock_);
-  if (is_ready_) {
-    return;
-  }
-  CHECK(tpm_manager_utility_);
-  tpm_manager::LocalData local_data;
-  if (!tpm_manager_utility_->GetOwnershipTakenSignalStatus(nullptr, nullptr,
-                                                           &local_data)) {
-    LOG(ERROR) << __func__ << ": Failed to get local data.";
-    return;
-  }
-  is_ready_ = true;
-  UpdateTpmLocalData(local_data);
-}
-
 bool TpmUtilityCommon::IsTpmReady() {
-  if (has_cache_tpm_state_) {
-    return is_ready_;
+  if (!is_ready_) {
+    CacheTpmState();
   }
-  has_cache_tpm_state_ = true;
-
-  base::AutoLock lock(tpm_state_lock_);
-  if (is_ready_) {
-    return true;
-  }
-  tpm_manager::LocalData local_data;
-  bool is_enabled{false};
-  bool is_owned{false};
-  if (!tpm_manager_utility_) {
-    tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
-    if (!tpm_manager_utility_) {
-      LOG(ERROR) << __func__ << ": Failed to get tpm_manager utility.";
-      return false;
-    }
-  }
-  if (!tpm_manager_utility_->GetTpmStatus(&is_enabled, &is_owned,
-                                          &local_data)) {
-    LOG(ERROR) << __func__ << ": Failed to get tpm status from tpm_manager.";
-    return false;
-  }
-  is_ready_ = is_enabled && is_owned;
-  UpdateTpmLocalData(local_data);
-  return true;
+  return is_ready_;
 }
 
 void TpmUtilityCommon::BuildValidPCR0Values() {
@@ -122,7 +73,7 @@ bool TpmUtilityCommon::IsPCR0Valid() {
 
 bool TpmUtilityCommon::GetEndorsementPassword(std::string* password) {
   if (endorsement_password_.empty()) {
-    if (!IsTpmReady()) {
+    if (!CacheTpmState()) {
       return false;
     }
     if (endorsement_password_.empty()) {
@@ -136,7 +87,7 @@ bool TpmUtilityCommon::GetEndorsementPassword(std::string* password) {
 
 bool TpmUtilityCommon::GetOwnerPassword(std::string* password) {
   if (owner_password_.empty()) {
-    if (!IsTpmReady()) {
+    if (!CacheTpmState()) {
       return false;
     }
     if (owner_password_.empty()) {
@@ -145,6 +96,30 @@ bool TpmUtilityCommon::GetOwnerPassword(std::string* password) {
     }
   }
   *password = owner_password_;
+  return true;
+}
+
+bool TpmUtilityCommon::CacheTpmState() {
+  tpm_manager::LocalData local_data;
+  bool is_enabled{false};
+  bool is_owned{false};
+  if (!tpm_manager_utility_) {
+    tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
+    if (!tpm_manager_utility_) {
+      LOG(ERROR) << __func__ << ": Failed to get tpm_manager utility.";
+      return false;
+    }
+  }
+  if (!tpm_manager_utility_->GetTpmStatus(&is_enabled, &is_owned,
+                                          &local_data)) {
+    LOG(ERROR) << __func__ << ": Failed to get tpm status from tpm_manager.";
+    return false;
+  }
+  is_ready_ = is_enabled && is_owned;
+  endorsement_password_ = local_data.endorsement_password();
+  owner_password_ = local_data.owner_password();
+  delegate_blob_ = local_data.owner_delegate().blob();
+  delegate_secret_ = local_data.owner_delegate().secret();
   return true;
 }
 

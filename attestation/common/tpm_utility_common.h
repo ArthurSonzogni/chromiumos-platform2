@@ -43,15 +43,17 @@ class TpmUtilityCommon : public TpmUtility {
   // not available.
   bool GetOwnerPassword(std::string* password);
 
+  // Caches various TPM state including owner / endorsement passwords. On
+  // success, fields like is_ready_ and owner_password_ will be populated.
+  // Returns true on success.
+  bool CacheTpmState();
+
  private:
-  void UpdateTpmLocalData(const tpm_manager::LocalData& local_data);
-  void OnOwnershipTakenSignal();
   void BuildValidPCR0Values();
 
  protected:
   virtual std::string GetPCRValueForMode(const std::string& mode) = 0;
 
-  bool has_cache_tpm_state_{false};
   bool is_ready_{false};
   std::string endorsement_password_;
   std::string owner_password_;
@@ -59,9 +61,6 @@ class TpmUtilityCommon : public TpmUtility {
   std::string delegate_secret_;
 
   std::unordered_set<std::string> valid_pcr0_values_;
-
-  // This Lock is used before updating is_ready_ or UpdateTpmLocalData().
-  base::Lock tpm_state_lock_;
 
   tpm_manager::TpmManagerUtility* tpm_manager_utility_;
 
