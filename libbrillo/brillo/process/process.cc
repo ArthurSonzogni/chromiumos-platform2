@@ -126,9 +126,17 @@ void ProcessImpl::RedirectUsingFile(int child_fd,
 }
 
 void ProcessImpl::RedirectUsingMemory(int child_fd) {
-  int parent_fd = memfd_create(base::NumberToString(child_fd).c_str(), 0);
+  base::FilePath temp_dir;
+
+  if (!base::GetTempDir(&temp_dir)) {
+    LOG(WARNING) << "Failed to get temp dir for output redirection";
+    return;
+  }
+
+  int parent_fd = HANDLE_EINTR(
+      open(temp_dir.value().c_str(), O_TMPFILE | O_CLOEXEC | O_RDWR, 0600));
   if (parent_fd < 0) {
-    PLOG(ERROR) << "Could not memfd_create for " << child_fd;
+    PLOG(ERROR) << "Could not open temp file for " << child_fd;
     return;
   }
   switch (child_fd) {
@@ -142,7 +150,7 @@ void ProcessImpl::RedirectUsingMemory(int child_fd) {
       break;
     default:
       LOG(ERROR) << "Invalid file descriptor " << child_fd
-                 << " redirect to memfd";
+                 << " redirect to temp file";
       IGNORE_EINTR(close(parent_fd));
       return;
   }
