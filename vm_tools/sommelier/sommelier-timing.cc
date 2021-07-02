@@ -4,16 +4,11 @@
 
 #include "sommelier-timing.h"  // NOLINT(build/include_directory)
 
-#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <time.h>
-
-// 10 min * 60 sec/min * 60 frames/sec * 3 actions/frame = 108000 actions
-static const uint64_t MAX_NUM_ACTIONS = 10 * 60 * 60 * 3;
 
 static timespec GetTime() {
   timespec tp;
@@ -21,29 +16,25 @@ static timespec GetTime() {
   return tp;
 }
 
-Timing::Timing(const char* fname) : filename(fname) {
-  actions.resize(MAX_NUM_ACTIONS);
-}
-
 // Create a new action, add info gained from attach call.
 void Timing::UpdateLastAttach(int surface_id, int buffer_id) {
   actions[actions_idx] =
       BufferAction(GetTime(), surface_id, buffer_id, BufferAction::ATTACH);
-  actions_idx = ((actions_idx + 1) % MAX_NUM_ACTIONS);
+  actions_idx = ((actions_idx + 1) % kMaxNumActions);
 }
 
 // Create a new action, add info gained from commit call.
 void Timing::UpdateLastCommit(int surface_id) {
   actions[actions_idx] = BufferAction(GetTime(), surface_id, kUnknownBufferId,
                                       BufferAction::COMMIT);
-  actions_idx = ((actions_idx + 1) % MAX_NUM_ACTIONS);
+  actions_idx = ((actions_idx + 1) % kMaxNumActions);
 }
 
 // Add a release action with release timing info.
 void Timing::UpdateLastRelease(int buffer_id) {
   actions[actions_idx] = BufferAction(GetTime(), kUnknownSurfaceId, buffer_id,
                                       BufferAction::RELEASE);
-  actions_idx = ((actions_idx + 1) % MAX_NUM_ACTIONS);
+  actions_idx = ((actions_idx + 1) % kMaxNumActions);
 }
 
 // Output the recorded actions to the timing log file.
@@ -51,17 +42,19 @@ void Timing::OutputLog() {
   std::cout << "Writing buffer activity to the timing log file" << std::endl;
   auto& last_idx = actions_idx;
 
-  std::ofstream outfile(std::string(filename) + "_set#" +
-                        std::to_string(saves));
+  std::string output_filename =
+      std::string(filename) + "_set_" + std::to_string(saves);
 
-  int64_t start = 0;
-  int64_t next_idx = (last_idx + 1) % MAX_NUM_ACTIONS;
+  std::ofstream outfile(output_filename);
+
+  int start = 0;
+  int next_idx = (last_idx + 1) % kMaxNumActions;
   if (actions[next_idx].action_type != BufferAction::UNKNOWN) {
     start = next_idx;
   }
 
   outfile << "Event, Type, Surface_ID, Buffer_ID, Time" << std::endl;
-  for (int i = start; i != last_idx; i = (i + 1) % MAX_NUM_ACTIONS) {
+  for (int i = start; i != last_idx; i = (i + 1) % kMaxNumActions) {
     std::string type("unknown");
     if (actions[i].action_type == BufferAction::ATTACH) {
       type = "attach";
@@ -79,7 +72,6 @@ void Timing::OutputLog() {
     outfile << actions[i].time.tv_sec << "." << nsec.str() << std::endl;
   }
   outfile.close();
-  std::cout << "Finished writing " << filename << " _set#"
-            << std::to_string(saves) << std::endl;
+  std::cout << "Finished writing " << output_filename << std::endl;
   ++saves;
 }
