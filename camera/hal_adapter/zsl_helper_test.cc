@@ -536,12 +536,17 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestStillCapture) {
       scoped_request->output_buffers,
       scoped_request->output_buffers + scoped_request->num_output_buffers};
 
-  // Assign non-zero ANDROID_JPEG_ORIENTATION and make sure it is re-added to
-  // the metadata.
+  // Assign JPEG metadata and make sure it is re-added to the processed request
+  // metadata.
   constexpr int32_t kJpegOrientation = 90;
   android::CameraMetadata metadata(
       clone_camera_metadata(scoped_request->settings));
   ASSERT_EQ(metadata.update(ANDROID_JPEG_ORIENTATION, &kJpegOrientation, 1), 0);
+  const std::vector<int32_t> kJpegThumbnailSize{320, 240};
+  ASSERT_EQ(
+      metadata.update(ANDROID_JPEG_THUMBNAIL_SIZE, kJpegThumbnailSize.data(),
+                      kJpegThumbnailSize.size()),
+      0);
   internal::ScopedCameraMetadata scoped_metadata(metadata.release());
 
   EXPECT_TRUE(zsl_helper_->ProcessZslCaptureRequest(
@@ -554,6 +559,12 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestStillCapture) {
             0);
   EXPECT_EQ(entry.data.i32[0], kJpegOrientation)
       << "ANDROID_JPEG_ORIENTATION should be re-added to metadata";
+  ASSERT_EQ(find_camera_metadata_ro_entry(scoped_metadata.get(),
+                                          ANDROID_JPEG_THUMBNAIL_SIZE, &entry),
+            0);
+  EXPECT_EQ(entry.count, kJpegThumbnailSize.size());
+  EXPECT_EQ(entry.data.i32[0], kJpegThumbnailSize[0]);
+  EXPECT_EQ(entry.data.i32[1], kJpegThumbnailSize[1]);
 
   // Now make sure we don't select buffers that are too old. We test this by
   // making the current timestamp very new.

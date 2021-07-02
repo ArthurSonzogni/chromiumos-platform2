@@ -495,15 +495,25 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
                                  SelectionStrategy strategy) {
   VLOGF_ENTER();
   base::AutoLock l(ring_buffer_lock_);
-  auto GetJpegOrientation = [&](const camera_metadata_t* settings) {
+
+  const int32_t jpeg_orientation = [&]() {
     camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(settings, ANDROID_JPEG_ORIENTATION,
+    if (find_camera_metadata_ro_entry(settings->get(), ANDROID_JPEG_ORIENTATION,
                                       &entry) != 0) {
       LOGF(ERROR) << "Failed to find JPEG orientation, defaulting to 0";
       return 0;
     }
     return *entry.data.i32;
-  };
+  }();
+  const std::vector<int32_t> jpeg_thumbnail_size = [&]() {
+    camera_metadata_ro_entry_t entry;
+    if (find_camera_metadata_ro_entry(
+            settings->get(), ANDROID_JPEG_THUMBNAIL_SIZE, &entry) != 0) {
+      LOGF(ERROR) << "Failed to find JPEG thumbnail size, defaulting to [0, 0]";
+      return std::vector<int32_t>{0, 0};
+    }
+    return std::vector<int32_t>{entry.data.i32[0], entry.data.i32[1]};
+  }();
 
   // Select the best buffer.
   ZslBufferIterator selected_buffer_it = SelectZslBuffer(strategy);
@@ -522,10 +532,14 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
   // The result metadata for the RAW buffers come from the preview frames. We
   // need to add JPEG orientation back so that the resulting JPEG is of the
   // correct orientation.
-  int32_t jpeg_orientation = GetJpegOrientation(settings->get());
   if (selected_buffer_it->metadata.update(ANDROID_JPEG_ORIENTATION,
                                           &jpeg_orientation, 1) != 0) {
     LOGF(ERROR) << "Failed to update JPEG_ORIENTATION";
+  }
+  if (selected_buffer_it->metadata.update(ANDROID_JPEG_THUMBNAIL_SIZE,
+                                          jpeg_thumbnail_size.data(),
+                                          jpeg_thumbnail_size.size()) != 0) {
+    LOGF(ERROR) << "Failed to update JPEG_THUMBNAIL_SIZE";
   }
   // Note that camera device adapter would take ownership of this pointer.
   settings->reset(selected_buffer_it->metadata.release());
