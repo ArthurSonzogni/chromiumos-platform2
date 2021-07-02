@@ -20,7 +20,7 @@ namespace {
 // This script holds the bulk of the real logic.
 const char kSwapHelperScript[] = "/usr/share/cros/init/swap.sh";
 // The path of the kstaled ratio file.
-const char kKstaledRatioPath[] = "/sys/kernel/mm/kstaled/ratio";
+const char kMGLRUEnabledPath[] = "/sys/kernel/mm/lru_gen/enabled";
 const char kSwapToolErrorString[] = "org.chromium.debugd.error.Swap";
 
 std::string RunSwapHelper(const ProcessWithOutput::ArgList& arguments,
@@ -94,10 +94,10 @@ std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
 
 bool SwapTool::KstaledSetRatio(brillo::ErrorPtr* error,
                                uint8_t kstaled_ratio) const {
-  std::string buf = std::to_string(kstaled_ratio);
+  std::string buf = std::to_string(kstaled_ratio > 0 ? 1 : 0);
 
   errno = 0;
-  size_t res = base::WriteFile(base::FilePath(kKstaledRatioPath), buf.c_str(),
+  size_t res = base::WriteFile(base::FilePath(kMGLRUEnabledPath), buf.c_str(),
                                buf.size());
   if (res != buf.size()) {
     DEBUGD_ADD_ERROR(error, kSwapToolErrorString, strerror(errno));
