@@ -178,20 +178,32 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
     auto status =
         buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
     if (status != 0) {
-      LOGF(INFO) << "Failed to lock input buffer handle for sw encode.";
+      LOGF(WARNING) << "Failed to lock input buffer handle for sw encode.";
       return nullptr;
     }
     status = buffer_manager->Lock(output, 0, 0, 0, 0, 0, &output_ptr);
     if (status != 0) {
-      LOGF(INFO) << "Failed to lock output buffer handle for sw encode.";
+      LOGF(WARNING) << "Failed to lock output buffer handle for sw encode.";
       return nullptr;
     }
 
     auto input_format = buffer_manager->GetV4L2PixelFormat(input);
     auto output_buffer_size = buffer_manager->GetPlaneSize(output, 0);
     // Try SW encode.
-    if (EncodeSw(mapped_input, input_format, output_ptr, output_buffer_size,
-                 width, height, quality, app1_ptr, app1_size, out_data_size)) {
+    bool is_success =
+        EncodeSw(mapped_input, input_format, output_ptr, output_buffer_size,
+                 width, height, quality, app1_ptr, app1_size, out_data_size);
+
+    status = buffer_manager->Unlock(input);
+    if (status != 0) {
+      LOGF(WARNING) << "Failed to unlock input buffer handle for sw encode.";
+    }
+    status = buffer_manager->Unlock(output);
+    if (status != 0) {
+      LOGF(WARNING) << "Failed to unlock output buffer handle for sw encode.";
+    }
+
+    if (is_success) {
       return "software";
     }
 
