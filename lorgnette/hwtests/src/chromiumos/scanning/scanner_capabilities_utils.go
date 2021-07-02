@@ -7,11 +7,34 @@
 package scanning
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 )
+
+// ScannableArea represents the maximum size a scanner source can scan.
+type ScannableArea struct {
+	Height float32 `json:"Height"`
+	Width  float32 `json:"Width"`
+}
+
+// LorgnetteSource represents a scanner source's capabilities as read from
+// Lorgnette.
+type LorgnetteSource struct {
+	ColorModes    []string      `json:"ColorModes"`
+	Resolutions   []int         `json:"Resolutions"`
+	ScannableArea ScannableArea `json:"ScannableArea"`
+}
+
+// LorgnetteCapabilities represents a scanner's capabilities as read from
+// Lorgnette.
+type LorgnetteCapabilities struct {
+	PlatenCaps     LorgnetteSource `json:"SOURCE_PLATEN"`
+	AdfSimplexCaps LorgnetteSource `json:"SOURCE_ADF_SIMPLEX"`
+	AdfDuplexCaps  LorgnetteSource `json:"SOURCE_ADF_DUPLEX"`
+}
 
 // DiscreteResolution represents a pair of X and Y resolution values supported
 // by a scanner.
@@ -156,5 +179,15 @@ func GetScannerCapabilities(addr string) (caps ScannerCapabilities, err error) {
 		return
 	}
 
+	return
+}
+
+// ParseLorgnetteCapabilities parses `rawData` into a structured format. It
+// expects `rawData` to be JSON output from the command
+// `lorgnette_cli get_json_caps --scanner=$SCANNER`. Any fields in
+// LorgnetteCapabilities which were missing from `rawData` will be left at their
+// zero values. If `err` is non-nill, `caps` is invalid.
+func ParseLorgnetteCapabilities(rawData string) (caps LorgnetteCapabilities, err error) {
+	err = json.Unmarshal([]byte(rawData), &caps)
 	return
 }

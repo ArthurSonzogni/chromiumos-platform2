@@ -11,12 +11,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
-// Well-formatted test data.
-const testData = `<scan:ScannerCapabilities xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03">
+// Well-formatted XML test data.
+const XMLTestData = `<scan:ScannerCapabilities xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03">
 	<pwg:Version>2.63</pwg:Version>
 	<pwg:MakeAndModel>MF741C/743C</pwg:MakeAndModel>
 	<pwg:SerialNumber>TestSerialNumber</pwg:SerialNumber>
@@ -172,8 +173,8 @@ const testData = `<scan:ScannerCapabilities xmlns:pwg="http://www.pwg.org/schema
 	<scan:BlankPageDetectionAndRemoval>true</scan:BlankPageDetectionAndRemoval>
 </scan:ScannerCapabilities>`
 
-// Test data which references a SettingProfile which does not exist.
-const noReferencedProfileTestData = `<scan:ScannerCapabilities xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03">
+// XML test data which references a SettingProfile which does not exist.
+const noReferencedProfileXMLTestData = `<scan:ScannerCapabilities xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm" xmlns:scan="http://schemas.hp.com/imaging/escl/2011/05/03">
 	<pwg:Version>2.63</pwg:Version>
 	<pwg:MakeAndModel>MF741C/743C</pwg:MakeAndModel>
 	<pwg:SerialNumber>TestSerialNumber</pwg:SerialNumber>
@@ -211,8 +212,28 @@ const noReferencedProfileTestData = `<scan:ScannerCapabilities xmlns:pwg="http:/
 	</scan:Platen>
 </scan:ScannerCapabilities>`
 
-// Test data which is not valid XML.
+// XML test data which is not valid XML.
 const badXMLTestData = `<scan:ScannerCapabilities`
+
+// Well-formatted test data from lorgnette_cli.
+const lorgnetteCLITestData = `{
+"SOURCE_ADF_DUPLEX":{
+	"ColorModes":["MODE_COLOR"],
+	"Name":"ADF Duplex",
+	"Resolutions":[150],
+	"ScannableArea":{"Height":400,"Width":120}},
+"SOURCE_ADF_SIMPLEX":{
+	"ColorModes":["MODE_LINEART"],
+	"Name":"ADF","Resolutions":[200,600],
+	"ScannableArea":{"Height":200,"Width":100}},
+"SOURCE_PLATEN":{
+	"ColorModes":["MODE_COLOR","MODE_GRAYSCALE"],
+	"Name":"Flatbed","Resolutions":[300],
+	"ScannableArea":{"Height":355.59999084472656,"Width":215.9846649169922}}
+}`
+
+// Test data from lorgnette_cli which is not valid JSON data.
+const badJSONlorgnetteCLITestData = `{"SOURCE_ADF_DUPLEX":{"ColorModes":`
 
 // prettyFormatStruct formats a struct as JSON for human-readability.
 func prettyFormatStruct(i interface{}) string {
@@ -224,7 +245,7 @@ func prettyFormatStruct(i interface{}) string {
 // parsed successfully.
 func TestGetScannerCapabilities(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, testData)
+		fmt.Fprintln(w, XMLTestData)
 	}))
 	defer ts.Close()
 
@@ -389,7 +410,7 @@ func TestGetScannerCapabilities(t *testing.T) {
 			PINLength:            4,
 			MaxJobNameLength:     256}}
 
-	if !reflect.DeepEqual(want, got) {
+	if !cmp.Equal(want, got) {
 		// For such long structs, it's easier to compare if they're
 		// pretty-printed.
 		t.Errorf("Expected: %s, got: %s", prettyFormatStruct(want), prettyFormatStruct(got))
@@ -401,7 +422,7 @@ func TestGetScannerCapabilities(t *testing.T) {
 // to parse.
 func TestGetScannerCapabilitiesNotReferencedProfile(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, noReferencedProfileTestData)
+		fmt.Fprintln(w, noReferencedProfileXMLTestData)
 	}))
 	defer ts.Close()
 
@@ -417,7 +438,7 @@ func TestGetScannerCapabilitiesNotReferencedProfile(t *testing.T) {
 func TestGetScannerCapabilitiesBadHttpResponse(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, testData)
+		fmt.Fprintln(w, XMLTestData)
 	}))
 	defer ts.Close()
 
@@ -440,4 +461,60 @@ func TestGetScannerCapabilitiesBadXml(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error from bad XML")
 	}
+}
+
+// TestParseLorgnetteCapabilities tests that JSON data can be parsed into
+// LorgnetteCapabilities.
+func TestParseLorgnetteCapabilities(t *testing.T) {
+	got, err := ParseLorgnetteCapabilities(lorgnetteCLITestData)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	want := LorgnetteCapabilities{
+		PlatenCaps: LorgnetteSource{
+			ColorModes: []string{
+				"MODE_COLOR",
+				"MODE_GRAYSCALE"},
+			Resolutions: []int{
+				300},
+			ScannableArea: ScannableArea{
+				Height: 355.59999084472656,
+				Width:  215.9846649169922}},
+		AdfSimplexCaps: LorgnetteSource{
+			ColorModes: []string{
+				"MODE_LINEART"},
+			Resolutions: []int{
+				200,
+				600},
+			ScannableArea: ScannableArea{
+				Height: 200,
+				Width:  100}},
+		AdfDuplexCaps: LorgnetteSource{
+			ColorModes: []string{
+				"MODE_COLOR"},
+			Resolutions: []int{
+				150},
+			ScannableArea: ScannableArea{
+				Height: 400,
+				Width:  120}}}
+
+	if !cmp.Equal(want, got) {
+		// For such long structs, it's easier to compare if they're
+		// pretty-printed.
+		t.Errorf("Expected: %s, got: %s", prettyFormatStruct(want), prettyFormatStruct(got))
+	}
+
+}
+
+// TestParseLorgnetteCapabilitiesBadJSON tests that incorrectly formatted JSON
+// data is caught.
+func TestParseLorgnetteCapabilitiesBadJSON(t *testing.T) {
+	_, err := ParseLorgnetteCapabilities(badJSONlorgnetteCLITestData)
+
+	if err == nil {
+		t.Error("Expected error from bad JSON")
+	}
+
 }
