@@ -102,7 +102,7 @@ class PluginVm final : public VmBaseImpl {
            std::unique_ptr<patchpanel::Client> network_client,
            scoped_refptr<dbus::Bus> bus,
            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-           dbus::ObjectProxy* vm_perrmission_service_proxy,
+           dbus::ObjectProxy* vm_permission_service_proxy,
            dbus::ObjectProxy* vmplugin_service_proxy,
            base::FilePath iso_dir,
            base::FilePath root_dir,
