@@ -1802,7 +1802,7 @@ bool Datapath::SetRouteLocalnet(const std::string& ifname, const bool enable) {
 }
 
 bool Datapath::ModprobeAll(const std::vector<std::string>& modules) {
-  return process_runner_->modprobe_all(modules) != 0;
+  return process_runner_->modprobe_all(modules) == 0;
 }
 
 void Datapath::SetIfnameIndex(const std::string& ifname, int ifindex) {
