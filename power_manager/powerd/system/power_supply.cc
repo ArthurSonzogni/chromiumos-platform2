@@ -507,12 +507,12 @@ void PowerSupply::Init(
   dbus_wrapper_ = dbus_wrapper;
   dbus_wrapper->ExportMethod(
       kGetPowerSupplyPropertiesMethod,
-      base::Bind(&PowerSupply::OnGetPowerSupplyPropertiesMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerSupply::OnGetPowerSupplyPropertiesMethodCall,
+                          weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper->ExportMethod(
       kSetPowerSourceMethod,
-      base::Bind(&PowerSupply::OnSetPowerSourceMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&PowerSupply::OnSetPowerSourceMethodCall,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   battery_percentage_converter_ = battery_percentage_converter;
 
@@ -1308,8 +1308,8 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   if (notify_policy == NotifyPolicy::SYNCHRONOUSLY) {
     NotifyObservers();
   } else {
-    notify_observers_task_.Reset(
-        base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
+    notify_observers_task_.Reset(base::BindRepeating(
+        &PowerSupply::NotifyObservers, base::Unretained(this)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, notify_observers_task_.callback());
   }
