@@ -142,6 +142,11 @@ set -x
 # dev mode.
 dev_unmount_packages
 
+# Unmount /var/lib/devicesettings if it is a bind mount to /var/lib/whitelist.
+if mountpoint -q /var/lib/devicesettings; then
+  umount -n /var/lib/devicesettings
+fi
+
 # Unmount /var/run and /var/lock, which were bind mounted to /run and /run/lock
 # respectively to enable backwards compatibility for accessing /run (tmpfs for
 # runtime data) through /var.

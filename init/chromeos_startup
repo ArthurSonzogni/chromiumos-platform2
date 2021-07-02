@@ -540,6 +540,13 @@ fi
 rm -f "${MOUNT_ENCRYPTED_FAILED_FILE}"
 remember_mount "${ENCRYPTED_STATEFUL_MNT}"
 
+# Creates a bind mount of /var/lib/devicesettings -> /var/lib/whitelist to
+# allow code to migrate from /var/lib/whitelist to /var/lib/devicesettings.
+if [ -d "/var/lib/whitelist" ] && [ -d "/var/lib/devicesettings" ]; then
+  mount --bind /var/lib/whitelist /var/lib/devicesettings
+  remember_mount /var/lib/devicesettings
+fi
+
 # Setup the encrypted reboot vault once the encrypted stateful partition
 # is available. If unlocking the encrypted reboot vault failed (due to power
 # loss/reboot/invalid vault), attempt to recreate the encrypted reboot vault.
