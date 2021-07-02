@@ -1741,7 +1741,7 @@ TEST_F(PowerSupplyTest, SendPowerStatusOverDBus) {
             proto.external_power());
   EXPECT_DOUBLE_EQ(23.45, proto.preferred_minimum_external_power());
 
-  // The latest properties should be sent when requested.
+  // The latest properties should be sent when GetPowerSupplyProperties queried.
   dbus::MethodCall method_call(kPowerManagerInterface,
                                kGetPowerSupplyPropertiesMethod);
   std::unique_ptr<dbus::Response> response =
@@ -1753,6 +1753,33 @@ TEST_F(PowerSupplyTest, SendPowerStatusOverDBus) {
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
             proto.external_power());
   EXPECT_DOUBLE_EQ(23.45, proto.preferred_minimum_external_power());
+}
+
+TEST_F(PowerSupplyTest, SendGetBatteryStateOverDBus) {
+  WriteDefaultValues(PowerSource::AC);
+  Init();
+
+  ASSERT_TRUE(power_supply_->RefreshImmediately());
+  dbus_wrapper_.ClearSentSignals();
+
+  // The latest properties should be sent when GetBatteryState queried.
+  dbus::MethodCall method_call(kPowerManagerInterface, kGetBatteryStateMethod);
+  std::unique_ptr<dbus::Response> response =
+      dbus_wrapper_.CallExportedMethodSync(&method_call);
+  dbus::MessageReader reader(response.get());
+  uint32_t external_power_type;
+  uint32_t battery_state;
+  double display_battery_percentage;
+  ASSERT_TRUE(reader.PopUint32(&external_power_type));
+  ASSERT_TRUE(reader.PopUint32(&battery_state));
+  ASSERT_TRUE(reader.PopDouble(&display_battery_percentage));
+  ASSERT_FALSE(reader.HasMoreData());
+
+  // AC charging maps to 1 in power_manager::system::ExternalPowerType.
+  EXPECT_EQ(1, external_power_type);
+  // Battery full maps to 4 in power_manager::system::UpowerBatteryState.
+  EXPECT_EQ(4, battery_state);
+  EXPECT_DOUBLE_EQ(100, display_battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {

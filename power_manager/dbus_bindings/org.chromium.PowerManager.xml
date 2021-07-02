@@ -60,6 +60,18 @@
       </tp:docstring>
       <arg name="serialized_proto" direction="out" type="ay" />
     </method>
+    <method name="GetBatteryState">
+      <tp:docstring>
+        The |external_power_type| arg is a native enum:
+        power_manager::system::ExternalPowerType.
+        The |battery_state| arg is an enum created to be compatible
+        with the upower battery state enum:
+        power_manager::system::UpowerBatteryState.
+      </tp:docstring>
+      <arg name="external_power_type" direction="out" type="u" />
+      <arg name="battery_state" direction="out" type="u" />
+      <arg name="display_battery_percentage" direction="out" type="d" />
+    </method>
     <method name="HandleVideoActivity">
       <arg name="fullscreen" direction="in" type="b" />
     </method>

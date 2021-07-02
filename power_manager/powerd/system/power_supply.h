@@ -454,6 +454,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void OnGetPowerSupplyPropertiesMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
+  void OnGetBatteryStateMethodCall(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
   void OnSetPowerSourceMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);

@@ -162,6 +162,76 @@ const char* ExternalPowerToString(PowerSupplyProperties::ExternalPower type) {
   return "unknown";
 }
 
+/**
+ * ExternalPowerType
+ * ExternalPowerUnknown:      The external power type is unknown
+ * ExternalPowerAC:           The device is connected to AC power (mains)
+ * ExternalPowerUSB:          The device is connected to low-input USB power
+ * ExternalPowerDisconnected: The device is not connected to external power
+ *
+ * A list of possible external line power types.
+ * This list was created with the intention of being independent from
+ *   changes to system_api. Do not change without updating fwupd to match.
+ **/
+enum class ExternalPowerType {
+  ExternalPowerUnknown,
+  ExternalPowerAC,
+  ExternalPowerUSB,
+  ExternalPowerDisconnected
+};
+
+// Returns an enum val of |type|.
+ExternalPowerType ExternalPowerToExternalPowerEnum(
+    PowerSupplyProperties::ExternalPower type) {
+  switch (type) {
+    case PowerSupplyProperties_ExternalPower_AC:
+      return ExternalPowerType::ExternalPowerAC;
+    case PowerSupplyProperties_ExternalPower_USB:
+      return ExternalPowerType::ExternalPowerUSB;
+    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
+      return ExternalPowerType::ExternalPowerDisconnected;
+    default:
+      return ExternalPowerType::ExternalPowerUnknown;
+  }
+}
+
+/**
+ * UpowerBatteryState:
+ * @UpowerUnknown:        The device has an unknown battery state
+ * @UpowerCharging:       The device is charging
+ * @UpowerDischarging:    The device is discharging
+ * @UpowerEmpty:          The device's battery is empty (no powerd mapping)
+ * @UpowerFullyCharged:   The device is fully charged
+ *
+ * A subset of the possible battery states used in upower:
+ *   https://upower.freedesktop.org/docs/Device.html#Device:State
+ * Do not change without updating fwupd to match.
+ **/
+enum class UpowerBatteryState {
+  UpowerUnknown,
+  UpowerCharging,
+  UpowerDischarging,
+  UpowerEmpty,
+  UpowerFullyCharged
+};
+
+// Returns a mapping of |curr_state| to its equivalent upower enum.
+UpowerBatteryState BatteryStateToUpowerEnum(
+    PowerSupplyProperties::BatteryState curr_state) {
+  switch (curr_state) {
+    case PowerSupplyProperties_BatteryState_NOT_PRESENT:
+      return UpowerBatteryState::UpowerUnknown;
+    case PowerSupplyProperties_BatteryState_CHARGING:
+      return UpowerBatteryState::UpowerCharging;
+    case PowerSupplyProperties_BatteryState_DISCHARGING:
+      return UpowerBatteryState::UpowerDischarging;
+    case PowerSupplyProperties_BatteryState_FULL:
+      return UpowerBatteryState::UpowerFullyCharged;
+    default:
+      return UpowerBatteryState::UpowerUnknown;
+  }
+}
+
 // Returns true if |port| is connected to a dedicated power source or dual-role
 // device.
 bool PortHasSourceOrDualRole(const PowerStatus::Port& port) {
@@ -508,6 +578,10 @@ void PowerSupply::Init(
   dbus_wrapper->ExportMethod(
       kGetPowerSupplyPropertiesMethod,
       base::BindRepeating(&PowerSupply::OnGetPowerSupplyPropertiesMethodCall,
+                          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->ExportMethod(
+      kGetBatteryStateMethod,
+      base::BindRepeating(&PowerSupply::OnGetBatteryStateMethodCall,
                           weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper->ExportMethod(
       kSetPowerSourceMethod,
@@ -1364,6 +1438,20 @@ void PowerSupply::OnGetPowerSupplyPropertiesMethodCall(
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(protobuf);
+  std::move(response_sender).Run(std::move(response));
+}
+
+void PowerSupply::OnGetBatteryStateMethodCall(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendUint32(static_cast<uint32_t>(
+      ExternalPowerToExternalPowerEnum(power_status_.external_power)));
+  writer.AppendUint32(static_cast<uint32_t>(
+      BatteryStateToUpowerEnum(power_status_.battery_state)));
+  writer.AppendDouble(power_status_.display_battery_percentage);
   std::move(response_sender).Run(std::move(response));
 }
 
