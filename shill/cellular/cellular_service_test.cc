@@ -531,8 +531,7 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   Mock::VerifyAndClearExpectations(adaptor_);
 }
 
-// Custom property setters should return false, and make no changes, if
-// the new value is the same as the old value.
+// Overriding the APN value with the same value should not result in a failure.
 TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   // Test that we didn't break any setters provided by the base class.
   TestCustomSetterNoopChange(service_, &manager_);
@@ -550,7 +549,7 @@ TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   EXPECT_TRUE(service_->SetApn(testapn, &error));
   EXPECT_TRUE(error.IsSuccess());
   // ... then set to same value.
-  EXPECT_FALSE(service_->SetApn(testapn, &error));
+  EXPECT_TRUE(service_->SetApn(testapn, &error));
   EXPECT_TRUE(error.IsSuccess());
 }
 

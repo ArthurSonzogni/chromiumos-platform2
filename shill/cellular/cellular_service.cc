@@ -730,7 +730,7 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
         base::NumberToString(kCurrentApnCacheVersion);
   }
   if (apn_info_ == new_apn_info) {
-    return false;
+    return true;
   }
   apn_info_ = new_apn_info;
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
