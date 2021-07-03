@@ -137,7 +137,7 @@ SmbFsBootstrapImpl::SmbFsBootstrapImpl(
   DCHECK(smb_filesystem_factory_);
   DCHECK(delegate_);
   DCHECK(!daemon_store_root_.empty());
-  receiver_.set_disconnect_handler(base::Bind(
+  receiver_.set_disconnect_handler(base::BindOnce(
       &SmbFsBootstrapImpl::OnMojoConnectionError, base::Unretained(this)));
 }
 

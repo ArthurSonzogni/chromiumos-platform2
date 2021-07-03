@@ -281,7 +281,7 @@ void SmbFilesystem::RequestCredentialUpdate() {
 
   requesting_credentials_ = true;
   delegate_->RequestCredentials(
-      base::Bind(&SmbFilesystem::OnRequestCredentialsDone, GetWeakPtr()));
+      base::BindOnce(&SmbFilesystem::OnRequestCredentialsDone, GetWeakPtr()));
 }
 
 void SmbFilesystem::OnRequestCredentialsDone(

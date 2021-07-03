@@ -158,8 +158,8 @@ void MojoSession::DoShutdown() {
 void MojoSession::RequestCredentials(RequestCredentialsCallback callback) {
   DCHECK(smbfs_delegate_);
   smbfs_delegate_->RequestCredentials(
-      base::Bind(&MojoSession::OnRequestCredentialsDone, base::Unretained(this),
-                 base::Passed(&callback)));
+      base::BindOnce(&MojoSession::OnRequestCredentialsDone,
+                     base::Unretained(this), base::Passed(&callback)));
 }
 
 void MojoSession::OnRequestCredentialsDone(RequestCredentialsCallback callback,
