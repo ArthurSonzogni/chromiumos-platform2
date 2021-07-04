@@ -64,7 +64,7 @@ class StubTpm : public Tpm {
       SecureBlob* plaintext) override {
     return kTpmRetryFatal;
   }
-  TpmRetryAction GetPublicKeyHash(base::Optional<TpmKeyHandle> key_handle,
+  TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   SecureBlob* hash) override {
     return kTpmRetryNone;
   }
@@ -177,15 +177,30 @@ class StubTpm : public Tpm {
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override {
     return false;
   }
-  bool GetRsuDeviceId(std::string* device_id) { return false; }
+  bool GetRsuDeviceId(std::string* device_id) override { return false; }
   LECredentialBackend* GetLECredentialBackend() override { return nullptr; }
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
-  void SetDelegateData(const std::string& delegate_blob,
-                       bool has_reset_lock_permissions) override {}
   base::Optional<bool> IsDelegateBoundToPcr() override { return true; }
   bool DelegateCanResetDACounter() override { return true; }
+  bool IsOwnerPasswordPresent() override { return false; }
+  bool HasResetLockPermissions() override { return false; }
+  bool OwnerWriteNvram(uint32_t index,
+                       const brillo::SecureBlob& blob) override {
+    return false;
+  }
+  base::Optional<bool> IsSrkRocaVulnerable() override { return false; }
+  bool GetDelegate(brillo::Blob* blob,
+                   brillo::Blob* secret,
+                   bool* has_reset_lock_permissions) override {
+    return false;
+  }
+  std::map<uint32_t, std::string> GetPcrMap(
+      const std::string& obfuscated_username,
+      bool use_extended_pcr) const override {
+    return {};
+  }
 };
 
 }  // namespace cryptohome
