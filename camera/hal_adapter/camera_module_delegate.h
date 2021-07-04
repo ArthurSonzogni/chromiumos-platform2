@@ -35,6 +35,7 @@ class CameraModuleDelegate final
 
   void GetCameraInfo(int32_t camera_id, GetCameraInfoCallback callback) final;
 
+  // TODO(b/169324225): Deprecated. Use SetCallbacksAssociated instead.
   void SetCallbacks(mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks,
                     SetCallbacksCallback callback) final;
 

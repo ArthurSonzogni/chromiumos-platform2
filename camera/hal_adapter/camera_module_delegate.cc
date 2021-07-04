@@ -55,10 +55,8 @@ void CameraModuleDelegate::GetCameraInfo(int32_t camera_id,
 void CameraModuleDelegate::SetCallbacks(
     mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks,
     SetCallbacksCallback callback) {
-  VLOGF_ENTER();
-  DCHECK(task_runner_->BelongsToCurrentThread());
-  std::move(callback).Run(
-      camera_hal_adapter_->SetCallbacks(std::move(callbacks)));
+  LOGF(ERROR) << "CameraModuleDelegate::SetCallbacks() is deprecated";
+  std::move(callback).Run(-ENODEV);
 }
 
 void CameraModuleDelegate::SetTorchMode(int32_t camera_id,
@@ -91,7 +89,7 @@ void CameraModuleDelegate::SetCallbacksAssociated(
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   std::move(callback).Run(
-      camera_hal_adapter_->SetCallbacksAssociated(std::move(callbacks)));
+      camera_hal_adapter_->SetCallbacks(std::move(callbacks)));
 }
 
 }  // namespace cros

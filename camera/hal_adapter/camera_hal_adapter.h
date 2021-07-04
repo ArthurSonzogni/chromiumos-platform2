@@ -43,8 +43,6 @@ class CameraModuleDelegate;
 
 class CameraModuleCallbacksAssociatedDelegate;
 
-class CameraModuleCallbacksDelegate;
-
 class VendorTagOpsDelegate;
 
 class CameraHalAdapter;
@@ -89,11 +87,6 @@ class CameraHalAdapter {
                                 mojom::CameraInfoPtr* camera_info,
                                 mojom::CameraClientType camera_client_type);
 
-  // TODO(b/169324225): Remove when all camera clients transition to
-  // SetCallbacksAssociated.
-  int32_t SetCallbacks(
-      mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks);
-
   virtual int32_t SetTorchMode(int32_t camera_id, bool enabled);
 
   int32_t Init();
@@ -108,10 +101,10 @@ class CameraHalAdapter {
       int32_t camera_id,
       mojom::CameraClientType camera_client_type);
 
-  // A fork of SetCallbacks() that uses associated interfaces. This ensures that
-  // CameraModuleCallbacks runs with the same message pipe as CameraModule which
-  // guarantees FIFO order. See b/169324225 for context.
-  int32_t SetCallbacksAssociated(
+  // We use associated remote here to ensure that CameraModuleCallbacks runs
+  // with the same message pipe as CameraModule which guarantees FIFO order. See
+  // b/169324225 for context.
+  int32_t SetCallbacks(
       mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks);
 
  protected:
@@ -124,19 +117,9 @@ class CameraHalAdapter {
   virtual void StartOnThread(base::Callback<void(bool)> callback);
 
   virtual void NotifyCameraDeviceStatusChange(
-      CameraModuleCallbacksDelegate* delegate,
-      int camera_id,
-      camera_device_status_t status);
-
-  virtual void NotifyCameraDeviceStatusChange(
       CameraModuleCallbacksAssociatedDelegate* delegate,
       int camera_id,
       camera_device_status_t status);
-
-  virtual void NotifyTorchModeStatusChange(
-      CameraModuleCallbacksDelegate* delegate,
-      int camera_id,
-      torch_mode_status_t status);
 
   virtual void NotifyTorchModeStatusChange(
       CameraModuleCallbacksAssociatedDelegate* delegate,
@@ -258,10 +241,8 @@ class CameraHalAdapter {
 
   // The delegate that handles the CameraModuleCallbacks mojo IPC.  The key of
   // the map is got from |callbacks_id_|.
-  std::map<uint32_t, std::unique_ptr<CameraModuleCallbacksDelegate>>
-      callbacks_delegates_;
   std::map<uint32_t, std::unique_ptr<CameraModuleCallbacksAssociatedDelegate>>
-      callbacks_associated_delegates_;
+      callbacks_delegates_;
 
   // Protects |module_delegates_|.
   base::Lock module_delegates_lock_;
@@ -269,8 +250,9 @@ class CameraHalAdapter {
   base::Lock callbacks_delegates_lock_;
 
   // Strictly increasing integers used as the key for new CameraModuleDelegate,
-  // CameraModuleCallbacksDelegate and VendorTagOpsDelegate instances in
-  // |module_delegates_|, |callback_delegates_| and |vendor_tag_ops_delegates_|.
+  // CameraModuleCallbacksAssociatedDelegate and VendorTagOpsDelegate instances
+  // in |module_delegates_|, |callback_delegates_| and
+  // |vendor_tag_ops_delegates_|.
   uint32_t module_id_;
   uint32_t callbacks_id_;
   uint32_t vendor_tag_ops_id_;

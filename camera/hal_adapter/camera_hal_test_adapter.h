@@ -47,13 +47,15 @@ class CameraHalTestAdapter : public CameraHalAdapter {
  protected:
   void StartOnThread(base::Callback<void(bool)> callback) override;
 
-  void NotifyCameraDeviceStatusChange(CameraModuleCallbacksDelegate* delegate,
-                                      int camera_id,
-                                      camera_device_status_t status) override;
+  void NotifyCameraDeviceStatusChange(
+      CameraModuleCallbacksAssociatedDelegate* delegate,
+      int camera_id,
+      camera_device_status_t status) override;
 
-  void NotifyTorchModeStatusChange(CameraModuleCallbacksDelegate* delegate,
-                                   int camera_id,
-                                   torch_mode_status_t status) override;
+  void NotifyTorchModeStatusChange(
+      CameraModuleCallbacksAssociatedDelegate* delegate,
+      int camera_id,
+      torch_mode_status_t status) override;
 
  private:
   bool enable_front_, enable_back_, enable_external_;

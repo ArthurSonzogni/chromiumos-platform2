@@ -135,7 +135,7 @@ void CameraHalTestAdapter::StartOnThread(base::Callback<void(bool)> callback) {
 }
 
 void CameraHalTestAdapter::NotifyCameraDeviceStatusChange(
-    CameraModuleCallbacksDelegate* delegate,
+    CameraModuleCallbacksAssociatedDelegate* delegate,
     int camera_id,
     camera_device_status_t status) {
   VLOGF_ENTER();
@@ -150,7 +150,7 @@ void CameraHalTestAdapter::NotifyCameraDeviceStatusChange(
 }
 
 void CameraHalTestAdapter::NotifyTorchModeStatusChange(
-    CameraModuleCallbacksDelegate* delegate,
+    CameraModuleCallbacksAssociatedDelegate* delegate,
     int camera_id,
     torch_mode_status_t status) {
   VLOGF_ENTER();
