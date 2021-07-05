@@ -287,8 +287,7 @@ base::ScopedFD WriteStringToPipe(const std::string& str) {
   if (!authpolicy::CreatePipe(&pipe_read_end, &pipe_write_end))
     return base::ScopedFD();
 
-  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.data(),
-                                 str.size())) {
+  if (!base::WriteFileDescriptor(pipe_write_end.get(), str)) {
     LOG(ERROR) << "Failed to write string to pipe";
     return base::ScopedFD();
   }
@@ -300,8 +299,7 @@ base::ScopedFD WriteStringAndPipeToPipe(const std::string& str, int fd) {
   if (!authpolicy::CreatePipe(&pipe_read_end, &pipe_write_end))
     return base::ScopedFD();
 
-  if (!base::WriteFileDescriptor(pipe_write_end.get(), str.data(),
-                                 str.size())) {
+  if (!base::WriteFileDescriptor(pipe_write_end.get(), str)) {
     LOG(ERROR) << "Failed to write string to pipe";
     return base::ScopedFD();
   }

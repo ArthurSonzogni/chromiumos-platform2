@@ -14,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/run_loop.h>
-#include <base/strings/string16.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/utf_string_conversions.h>
 #include <base/system/sys_info.h>
@@ -50,7 +49,7 @@ bool LoadPRegFileIntoDict(const base::FilePath& preg_file,
   // the load status into authpolicy, but that would require a lot of plumbing
   // since this code usually runs in a sandboxed process.
   PolicyLoadStatusSampler status;
-  const base::string16 registry_key_utf16 = base::ASCIIToUTF16(registry_key);
+  const std::u16string registry_key_utf16 = base::ASCIIToUTF16(registry_key);
   if (!preg_parser::ReadFile(preg_file, registry_key_utf16, dict, &status)) {
     LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
     return false;

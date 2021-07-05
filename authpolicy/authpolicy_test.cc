@@ -153,8 +153,7 @@ base::ScopedFD MakeFileDescriptor(const char* data) {
   EXPECT_TRUE(base::CreateLocalNonBlockingPipe(fds));
   base::ScopedFD read_scoped_fd(fds[0]);
   base::ScopedFD write_scoped_fd(fds[1]);
-  EXPECT_TRUE(
-      base::WriteFileDescriptor(write_scoped_fd.get(), data, strlen(data)));
+  EXPECT_TRUE(base::WriteFileDescriptor(write_scoped_fd.get(), data));
   return read_scoped_fd;
 }
 

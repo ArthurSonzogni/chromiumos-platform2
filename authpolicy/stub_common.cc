@@ -170,7 +170,7 @@ bool StartsWithCaseSensitive(const std::string& str, const char* search_for) {
 // Writes |str| to |file_descriptor|.
 void WriteFileDescriptor(int file_descriptor, const std::string& str) {
   if (!str.empty()) {
-    CHECK(base::WriteFileDescriptor(file_descriptor, str.data(), str.size()));
+    CHECK(base::WriteFileDescriptor(file_descriptor, str));
   }
 }
 
