@@ -87,7 +87,12 @@ static bool shall_use_tpm_for_system_key() {
     return true;
   }
 
-  /* Assume we have tpm for system_key when we are using vtpm tpm2 simulator */
+  /* Don't use tpm for system key if we are using runtime TPM selection. */
+  if (USE_TPM_DYNAMIC) {
+    return false;
+  }
+
+  /* Assume we have tpm for system_key when we are using vtpm tpm2 simulator. */
   return USE_TPM2_SIMULATOR && USE_VTPM_PROXY;
 }
 

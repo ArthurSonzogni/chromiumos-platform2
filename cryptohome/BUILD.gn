@@ -270,6 +270,7 @@ executable("encrypted-reboot-vault") {
 executable("mount-encrypted") {
   sources = [ "mount_encrypted/mount_encrypted.cc" ]
   defines = [
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",
     "USE_VTPM_PROXY=${use.vtpm_proxy}",
   ]
