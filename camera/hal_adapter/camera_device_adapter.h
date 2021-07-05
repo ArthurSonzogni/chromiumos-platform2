@@ -227,14 +227,13 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   base::Thread camera_callback_ops_thread_;
 
   // A thread to asynchronously wait for release fences and destroy
-  // corresponding buffer handles.
+  // corresponding buffer handles.  |fence_sync_thread_lock_| is used to
+  // synchronize thread start/stop/status checking on different threads.
+  base::Lock fence_sync_thread_lock_;
   base::Thread fence_sync_thread_;
 
   // A thread to apply reprocessing effects
   base::Thread reprocess_effect_thread_;
-
-  // A thread to notify errors in added requests.
-  base::Thread notify_error_thread_;
 
   // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;

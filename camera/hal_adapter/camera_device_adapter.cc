@@ -172,7 +172,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
       reprocess_effect_thread_("ReprocessEffectThread"),
-      notify_error_thread_("NotifyErrorThread"),
       get_internal_camera_id_callback_(get_internal_camera_id_callback),
       get_public_camera_id_callback_(get_public_camera_id_callback),
       close_callback_(close_callback),
@@ -250,16 +249,15 @@ void CameraDeviceAdapter::Bind(
 int32_t CameraDeviceAdapter::Initialize(
     mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops) {
   VLOGF_ENTER();
-  if (!fence_sync_thread_.Start()) {
-    LOGF(ERROR) << "Fence sync thread failed to start";
-    return -ENODEV;
+  {
+    base::AutoLock l(fence_sync_thread_lock_);
+    if (!fence_sync_thread_.Start()) {
+      LOGF(ERROR) << "Fence sync thread failed to start";
+      return -ENODEV;
+    }
   }
   if (!reprocess_effect_thread_.Start()) {
     LOGF(ERROR) << "Reprocessing effect thread failed to start";
-    return -ENODEV;
-  }
-  if (!notify_error_thread_.Start()) {
-    LOGF(ERROR) << "Notify error thread failed to start";
     return -ENODEV;
   }
   capture_request_monitor_.Attach();
@@ -648,11 +646,13 @@ int32_t CameraDeviceAdapter::Close() {
     return 0;
   }
   reprocess_effect_thread_.Stop();
-  notify_error_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
   device_closed_ = true;
   DCHECK_EQ(ret, 0);
-  fence_sync_thread_.Stop();
+  {
+    base::AutoLock l(fence_sync_thread_lock_);
+    fence_sync_thread_.Stop();
+  }
   capture_request_monitor_.Detach();
   capture_result_monitor_.Detach();
 
@@ -1082,11 +1082,17 @@ void CameraDeviceAdapter::RemoveBufferLocked(
   buffer_handles_[buffer_id].swap(buffer_handle);
   buffer_handles_.erase(buffer_id);
 
-  fence_sync_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
-                 base::Unretained(this), base::Passed(&scoped_release_fence),
-                 base::Passed(&buffer_handle)));
+  {
+    base::AutoLock l(fence_sync_thread_lock_);
+    if (!fence_sync_thread_.IsRunning()) {
+      return;
+    }
+    fence_sync_thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
+                   base::Unretained(this), base::Passed(&scoped_release_fence),
+                   base::Passed(&buffer_handle)));
+  }
 }
 
 void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
