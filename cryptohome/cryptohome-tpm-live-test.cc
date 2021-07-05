@@ -8,6 +8,7 @@
 
 #include <base/at_exit.h>
 #include <base/logging.h>
+#include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
@@ -15,6 +16,15 @@
 
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_live_test.h"
+
+class ClientLoop : public brillo::Daemon {
+ protected:
+  int OnEventLoopStarted() override {
+    const bool success = cryptohome::TpmLiveTest().RunLiveTests();
+    QuitWithExitCode(success ? EXIT_SUCCESS : EXIT_FAILURE);
+    return EXIT_SUCCESS;
+  }
+};
 
 int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv,
@@ -25,6 +35,6 @@ int main(int argc, char** argv) {
   OpenSSL_add_all_algorithms();
   LOG(INFO) << "Running TPM live tests.";
 
-  const bool success = cryptohome::TpmLiveTest().RunLiveTests();
-  return success ? EXIT_SUCCESS : EXIT_FAILURE;
+  ClientLoop loop;
+  return loop.Run();
 }
