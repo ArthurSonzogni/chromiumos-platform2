@@ -159,32 +159,38 @@ uint32_t TpmVendorCommandProxy::SendU2fGenerate(
 template <typename Request>
 uint32_t TpmVendorCommandProxy::SendU2fSignGeneric(
     const Request& req, struct u2f_sign_resp* resp_out) {
+  // |resp_out| can be |nullptr| only when the request is 'check only'
+  DCHECK(((req.flags & U2F_AUTH_CHECK_ONLY) == U2F_AUTH_CHECK_ONLY) ||
+         resp_out);
+
   std::string output_str;
   uint32_t resp_code =
       VendorCommand(kVendorCcU2fSign, RequestToString(req), &output_str);
 
-  if (resp_code == 0) {
-    // A success response may or may not have a body, depending on whether the
-    // request was a full sign request, or simply a 'check only' request, to
-    // test ownership of the specified key handle.
-    if (((req.flags & U2F_AUTH_CHECK_ONLY) == U2F_AUTH_CHECK_ONLY) &&
-        output_str.size() == 0) {
-      // We asked to test ownership of a key handle; success response code
-      // indicates it is owned. No response body expected.
-      return resp_code;
-    } else if (output_str.size() == sizeof(struct u2f_sign_resp)) {
-      DCHECK(resp_out);  // It is a programming error for this to fail.
-      memcpy(resp_out, output_str.data(), sizeof(*resp_out));
-    } else {
-      LOG(ERROR) << "Invalid response size for successful vendor command, "
-                 << "expected: "
-                 << (resp_out ? sizeof(struct u2f_sign_resp) : 0)
-                 << ", actual: " << output_str.size();
-      return kVendorRcInvalidResponse;
-    }
+  if (resp_code != 0) {
+    LOG(ERROR) << "U2f sign TPM error, response code = " << resp_code;
+    return resp_code;
   }
 
-  return resp_code;
+  // A success response may or may not have a body, depending on whether the
+  // request was a full sign request, or simply a 'check only' request, to
+  // test ownership of the specified key handle.
+  if ((req.flags & U2F_AUTH_CHECK_ONLY) == U2F_AUTH_CHECK_ONLY) {
+    // We asked to test ownership of a key handle; success response code
+    // indicates it is owned. No response body expected.
+    if (output_str.size() == 0) {
+      return resp_code;
+    }
+  } else {
+    if (resp_out && output_str.size() == sizeof(struct u2f_sign_resp)) {
+      memcpy(resp_out, output_str.data(), sizeof(*resp_out));
+      return resp_code;
+    }
+  }
+  LOG(ERROR) << "Invalid response size for successful vendor command, "
+             << "expected: " << (resp_out ? sizeof(struct u2f_sign_resp) : 0)
+             << ", actual: " << output_str.size();
+  return kVendorRcInvalidResponse;
 }
 
 uint32_t TpmVendorCommandProxy::SendU2fSign(const struct u2f_sign_req& req,
