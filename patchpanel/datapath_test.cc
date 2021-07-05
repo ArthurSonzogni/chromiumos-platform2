@@ -344,6 +344,8 @@ TEST(DatapathTest, Start) {
       {IPv4,
        "filter -I drop_guest_ipv4_prefix -o rmnet+ -s 100.115.92.0/23 -j DROP "
        "-w"},
+      // Asserts for forwarding ICMP6.
+      {IPv6, "filter -A FORWARD -p ipv6-icmp -j ACCEPT -w"},
       // Asserts for OUTPUT ndp connmark bypass rule
       {IPv6,
        "mangle -I OUTPUT -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT "
@@ -697,7 +699,8 @@ TEST(DatapathTest, StartRoutingNamespace) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  MacAddress peer_mac = {1, 2, 3, 4, 5, 6};
+  MacAddress host_mac = {6, 5, 4, 3, 2, 1};
 
   Verify_ip_netns_delete(*runner, "netns_foo");
   Verify_ip_netns_attach(*runner, "netns_foo", kTestPID);
@@ -710,7 +713,7 @@ TEST(DatapathTest, StartRoutingNamespace) {
   Verify_ip(*runner,
             "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
   Verify_ip(*runner,
-            "link set dev arc_ns0 up addr 01:02:03:04:05:06 multicast off");
+            "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
   Verify_iptables(*runner, IPv4, "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
   Verify_iptables(*runner, IPv4, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arc_ns0 -w");
@@ -742,7 +745,8 @@ TEST(DatapathTest, StartRoutingNamespace) {
   nsinfo.peer_ifname = "veth0";
   nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
                                                 base::DoNothing());
-  nsinfo.peer_mac_addr = mac;
+  nsinfo.peer_mac_addr = peer_mac;
+  nsinfo.host_mac_addr = host_mac;
   Datapath datapath(runner, firewall, system);
   datapath.StartRoutingNamespace(nsinfo);
 }

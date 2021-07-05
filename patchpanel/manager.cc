@@ -247,6 +247,9 @@ void Manager::InitialSetup() {
     shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
         base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
                             weak_factory_.GetWeakPtr()));
+    shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
+        base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
+                            weak_factory_.GetWeakPtr()));
     shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
         &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
     shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
@@ -359,11 +362,59 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     StopForwarding(prev_device.ifname, tap_device->host_ifname());
     StartForwarding(new_device.ifname, tap_device->host_ifname());
   }
+
+  // When the default logical network changes, ConnectedNamespaces' devices
+  // which follow the logical network must leave their current forwarding group
+  // for IPv6 ndproxy and join the forwarding group of the new logical default
+  // network. This is marked by empty |outbound_ifname| and |route_on_vpn|
+  // with the value of true.
+  for (auto& [_, nsinfo] : connected_namespaces_) {
+    if (!nsinfo.outbound_ifname.empty() || !nsinfo.route_on_vpn) {
+      continue;
+    }
+    StopForwarding(prev_device.ifname, nsinfo.host_ifname,
+                   ForwardingSet{.ipv6 = true});
+    nsinfo.tracked_outbound_ifname = new_device.ifname;
+    StartForwarding(new_device.ifname, nsinfo.host_ifname,
+                    ForwardingSet{.ipv6 = true});
+  }
+}
+
+void Manager::OnShillDefaultPhysicalDeviceChanged(
+    const ShillClient::Device& new_device,
+    const ShillClient::Device& prev_device) {
+  // Only take into account interface switches and ignore layer 3 property
+  // changes.
+  if (prev_device.ifname == new_device.ifname)
+    return;
+
+  // When the default physical network changes, ConnectedNamespaces' devices
+  // which follow the physical network must leave their current forwarding group
+  // for IPv6 ndproxy and join the forwarding group of the new physical default
+  // network. This is marked by empty |outbound_ifname| and |route_on_vpn|
+  // with the value of false.
+  for (auto& [_, nsinfo] : connected_namespaces_) {
+    if (!nsinfo.outbound_ifname.empty() || nsinfo.route_on_vpn) {
+      continue;
+    }
+    StopForwarding(prev_device.ifname, nsinfo.host_ifname,
+                   ForwardingSet{.ipv6 = true});
+    nsinfo.tracked_outbound_ifname = new_device.ifname;
+    StartForwarding(new_device.ifname, nsinfo.host_ifname,
+                    ForwardingSet{.ipv6 = true});
+  }
 }
 
 void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
                                     const std::vector<std::string>& removed) {
   for (const std::string& ifname : removed) {
+    for (auto& [_, nsinfo] : connected_namespaces_) {
+      if (nsinfo.outbound_ifname != ifname) {
+        continue;
+      }
+      StopForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
+                     ForwardingSet{.ipv6 = true});
+    }
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
     counters_svc_->OnPhysicalDeviceRemoved(ifname);
@@ -371,6 +422,13 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
   }
 
   for (const std::string& ifname : added) {
+    for (auto& [_, nsinfo] : connected_namespaces_) {
+      if (nsinfo.outbound_ifname != ifname) {
+        continue;
+      }
+      StartForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
+                      ForwardingSet{.ipv6 = true});
+    }
     datapath_->StartConnectionPinning(ifname);
     ShillClient::Device shill_device;
     if (!shill_client_->GetDeviceProperties(ifname, &shill_device))
@@ -1107,7 +1165,12 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   nsinfo.host_ifname = "arc_ns" + ifname_id;
   nsinfo.peer_ifname = "veth" + ifname_id;
   nsinfo.peer_subnet = std::move(subnet);
+  nsinfo.host_mac_addr = addr_mgr_.GenerateMacAddress();
   nsinfo.peer_mac_addr = addr_mgr_.GenerateMacAddress();
+  if (nsinfo.host_mac_addr == nsinfo.peer_mac_addr) {
+    LOG(ERROR) << "Failed to generate unique MAC address for connected "
+                  "namespace host and peer interface";
+  }
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
@@ -1127,6 +1190,21 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   response_subnet->set_prefix_len(nsinfo.peer_subnet->PrefixLength());
 
   LOG(INFO) << "Connected network namespace " << nsinfo;
+
+  // Get the ConnectedNamespace outbound interface name.
+  nsinfo.tracked_outbound_ifname = nsinfo.outbound_ifname;
+  if (nsinfo.outbound_ifname.empty()) {
+    if (nsinfo.route_on_vpn) {
+      nsinfo.tracked_outbound_ifname =
+          shill_client_->default_logical_interface();
+    } else {
+      nsinfo.tracked_outbound_ifname =
+          shill_client_->default_physical_interface();
+    }
+  }
+  // Start forwarding for IPv6.
+  StartForwarding(nsinfo.tracked_outbound_ifname, nsinfo.host_ifname,
+                  ForwardingSet{.ipv6 = true});
 
   // Store ConnectedNamespace
   connected_namespaces_next_id_++;
@@ -1177,6 +1255,9 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   // Remove the rules tied to the lifeline fd.
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
+    StopForwarding(connected_namespace_it->second.tracked_outbound_ifname,
+                   connected_namespace_it->second.host_ifname,
+                   ForwardingSet{.ipv6 = true});
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
     LOG(INFO) << "Disconnected network namespace "
               << connected_namespace_it->second;
@@ -1237,7 +1318,8 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
 }
 
 void Manager::StartForwarding(const std::string& ifname_physical,
-                              const std::string& ifname_virtual) {
+                              const std::string& ifname_virtual,
+                              const ForwardingSet& fs) {
   if (ifname_physical.empty() || ifname_virtual.empty())
     return;
 
@@ -1248,7 +1330,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
 
   ShillClient::Device upstream_shill_device;
   shill_client_->GetDeviceProperties(ifname_physical, &upstream_shill_device);
-  if (IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
+  if (fs.ipv6 && IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
     ndproxy_virtual_ifnames_.insert(ifname_virtual);
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
               << ifname_virtual;
@@ -1268,7 +1350,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
     nd_proxy_->SendMessage(ipm);
   }
 
-  if (IsMulticastInterface(ifname_physical)) {
+  if (fs.multicast && IsMulticastInterface(ifname_physical)) {
     multicast_virtual_ifnames_.insert(ifname_virtual);
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
@@ -1277,7 +1359,8 @@ void Manager::StartForwarding(const std::string& ifname_physical,
 }
 
 void Manager::StopForwarding(const std::string& ifname_physical,
-                             const std::string& ifname_virtual) {
+                             const std::string& ifname_virtual,
+                             const ForwardingSet& fs) {
   if (ifname_physical.empty())
     return;
 
@@ -1289,8 +1372,8 @@ void Manager::StopForwarding(const std::string& ifname_physical,
     msg->set_br_ifname(ifname_virtual);
   }
 
-  if (ndproxy_virtual_ifnames_.find(ifname_virtual) !=
-      ndproxy_virtual_ifnames_.end()) {
+  if (fs.ipv6 && ndproxy_virtual_ifnames_.find(ifname_virtual) !=
+                     ndproxy_virtual_ifnames_.end()) {
     ndproxy_virtual_ifnames_.erase(ifname_virtual);
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping IPv6 forwarding on " << ifname_physical;
@@ -1302,8 +1385,8 @@ void Manager::StopForwarding(const std::string& ifname_physical,
     nd_proxy_->SendMessage(ipm);
   }
 
-  if (multicast_virtual_ifnames_.find(ifname_virtual) !=
-      multicast_virtual_ifnames_.end()) {
+  if (fs.multicast && multicast_virtual_ifnames_.find(ifname_virtual) !=
+                          multicast_virtual_ifnames_.end()) {
     multicast_virtual_ifnames_.erase(ifname_virtual);
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping multicast forwarding on " << ifname_physical;

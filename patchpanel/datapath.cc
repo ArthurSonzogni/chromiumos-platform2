@@ -144,6 +144,11 @@ void Datapath::Start() {
                << " connections.";
   }
 
+  // Create a FORWARD ACCEPT rule for ICMP6.
+  if (process_runner_->ip6tables("filter", {"-A", "FORWARD", "-p", "ipv6-icmp",
+                                            "-j", "ACCEPT", "-w"}) != 0)
+    LOG(ERROR) << "Failed to install forwarding rule for ICMP6";
+
   // Create a FORWARD rule for accepting any ARC originated traffic regardless
   // of the output interface. This enables for ARC certain multihoming
   // scenarios (b/182594063).
@@ -733,7 +738,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.peer_mac_addr,
+  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr,
                           nsinfo.peer_subnet->AddressAtOffset(0),
                           nsinfo.peer_subnet->PrefixLength(),
                           true /* link up */, false /* enable_multicast */)) {

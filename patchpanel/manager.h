@@ -33,6 +33,12 @@
 
 namespace patchpanel {
 
+// Struct to specify which forwarders to start and stop.
+struct ForwardingSet {
+  bool ipv6;
+  bool multicast;
+};
+
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
@@ -45,10 +51,14 @@ class Manager final : public brillo::DBusDaemon {
   ~Manager() = default;
 
   void StartForwarding(const std::string& ifname_physical,
-                       const std::string& ifname_virtual);
+                       const std::string& ifname_virtual,
+                       const ForwardingSet& fs = {.ipv6 = true,
+                                                  .multicast = true});
 
   void StopForwarding(const std::string& ifname_physical,
-                      const std::string& ifname_virtual);
+                      const std::string& ifname_virtual,
+                      const ForwardingSet& fs = {.ipv6 = true,
+                                                 .multicast = true});
 
   // This function is used to enable specific features only on selected
   // combination of Android version, Chrome version, and boards.
@@ -65,6 +75,9 @@ class Manager final : public brillo::DBusDaemon {
 
  private:
   void OnShillDefaultLogicalDeviceChanged(
+      const ShillClient::Device& new_device,
+      const ShillClient::Device& prev_device);
+  void OnShillDefaultPhysicalDeviceChanged(
       const ShillClient::Device& new_device,
       const ShillClient::Device& prev_device);
   void OnShillDevicesChanged(const std::vector<std::string>& added,

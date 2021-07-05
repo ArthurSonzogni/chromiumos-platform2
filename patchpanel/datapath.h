@@ -56,8 +56,14 @@ struct ConnectedNamespace {
   std::string peer_ifname;
   // IPv4 subnet assigned to the client namespace.
   std::unique_ptr<Subnet> peer_subnet;
+  // MAC address of the "local" veth interface visible on the host namespace.
+  MacAddress host_mac_addr;
   // MAC address of the "remote" veth interface.
   MacAddress peer_mac_addr;
+  // Interface name of the shill device for routing outbound traffic from the
+  // client namespace. This will be filled to keep track of the upstream
+  // interface if |outbound_ifname| is empty.
+  std::string tracked_outbound_ifname;
 };
 
 struct DnsRedirectionRule {
