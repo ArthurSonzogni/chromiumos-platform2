@@ -32,8 +32,8 @@
 namespace cryptohome {
 
 struct KeyBlobs;
-class VaultKeyset;
 class AuthBlock;
+class VaultKeyset;
 
 class Crypto {
  public:
@@ -132,29 +132,6 @@ class Crypto {
   }
 
  private:
-  bool EncryptScrypt(const VaultKeyset& vault_keyset,
-                     const brillo::SecureBlob& key,
-                     SerializedVaultKeyset* serialized) const;
-
-  bool EncryptChallengeCredential(const VaultKeyset& vault_keyset,
-                                  const brillo::SecureBlob& key,
-                                  const std::string& obfuscated_username,
-                                  SerializedVaultKeyset* serialized) const;
-
-  bool DecryptScrypt(const SerializedVaultKeyset& serialized,
-                     const brillo::SecureBlob& key,
-                     CryptoError* error,
-                     VaultKeyset* keyset) const;
-
-  bool DecryptChallengeCredential(const SerializedVaultKeyset& serialized,
-                                  const brillo::SecureBlob& key,
-                                  CryptoError* error,
-                                  VaultKeyset* vault_keyset) const;
-
-  bool EncryptAuthorizationData(SerializedVaultKeyset* serialized,
-                                const brillo::SecureBlob& vkk_key,
-                                const brillo::SecureBlob& vkk_iv) const;
-
   // The TPM implementation
   Tpm* tpm_;
 

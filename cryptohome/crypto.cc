@@ -150,57 +150,6 @@ void Crypto::PasswordToPasskey(const char* password,
   passkey->swap(local_passkey);
 }
 
-bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
-                           const SecureBlob& key,
-                           CryptoError* error,
-                           VaultKeyset* keyset) const {
-  SecureBlob blob = SecureBlob(serialized.wrapped_keyset());
-  SecureBlob decrypted(blob.size());
-  if (!DeprecatedDecryptScryptBlob(blob, key, &decrypted, error)) {
-    LOG(ERROR) << "Wrapped keyset Scrypt decrypt failed.";
-    return false;
-  }
-
-  bool chaps_key_present = serialized.has_wrapped_chaps_key();
-  if (chaps_key_present) {
-    SecureBlob chaps_key;
-    SecureBlob wrapped_chaps_key = SecureBlob(serialized.wrapped_chaps_key());
-    chaps_key.resize(wrapped_chaps_key.size());
-    // Perform a Scrypt operation on wrapped chaps key.
-    if (!DeprecatedDecryptScryptBlob(wrapped_chaps_key, key, &chaps_key,
-                                     error)) {
-      LOG(ERROR) << "Chaps key scrypt decrypt failed.";
-      return false;
-    }
-    keyset->SetChapsKey(chaps_key);
-  }
-
-  if (serialized.has_wrapped_reset_seed()) {
-    SecureBlob reset_seed;
-    SecureBlob wrapped_reset_seed = SecureBlob(serialized.wrapped_reset_seed());
-    reset_seed.resize(wrapped_reset_seed.size());
-    // Perform a Scrypt operation on wrapped reset seed.
-    if (!DeprecatedDecryptScryptBlob(wrapped_reset_seed, key, &reset_seed,
-                                     error)) {
-      LOG(ERROR) << "Reset seed scrypt decrypt failed.";
-      return false;
-    }
-    keyset->SetResetSeed(reset_seed);
-  }
-
-  // There is a SHA hash included at the end of the decrypted blob. However,
-  // scrypt already appends a MAC, so if the payload is corrupted we will fail
-  // on the first call to DecryptScryptBlob.
-  // TODO(crbug.com/984782): get rid of this entirely.
-  if (decrypted.size() < SHA_DIGEST_LENGTH) {
-    LOG(ERROR) << "Message length underflow: " << decrypted.size() << " bytes?";
-    return false;
-  }
-  decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
-  keyset->FromKeysBlob(decrypted);
-  return true;
-}
-
 bool Crypto::NeedsPcrBinding(const uint64_t& label) const {
   DCHECK(le_manager_)
       << "le_manage_ doesn't exist when calling NeedsPcrBinding()";
