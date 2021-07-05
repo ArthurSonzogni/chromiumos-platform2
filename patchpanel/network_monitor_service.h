@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <linux/neighbour.h>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -209,9 +208,9 @@ class NetworkMonitorService {
   void Start();
 
  private:
-  void OnDevicesChanged(const std::set<std::string>& added,
-                        const std::set<std::string>& removed);
-  void OnIPConfigsChanged(const std::string& device,
+  void OnDevicesChanged(const std::vector<std::string>& added,
+                        const std::vector<std::string>& removed);
+  void OnIPConfigsChanged(const std::string& ifname,
                           const ShillClient::IPConfig& ipconfig);
 
   // ifname => NeighborLinkMonitor.

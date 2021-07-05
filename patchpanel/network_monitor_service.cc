@@ -380,18 +380,19 @@ void NetworkMonitorService::Start() {
 }
 
 void NetworkMonitorService::OnDevicesChanged(
-    const std::set<std::string>& added, const std::set<std::string>& removed) {
-  for (const auto& device : added) {
+    const std::vector<std::string>& added,
+    const std::vector<std::string>& removed) {
+  for (const auto& ifname : added) {
     ShillClient::Device device_props;
-    if (!shill_client_->GetDeviceProperties(device, &device_props)) {
+    if (!shill_client_->GetDeviceProperties(ifname, &device_props)) {
       LOG(ERROR)
           << "Get device props failed. Skipped creating neighbor monitor on "
-          << device;
+          << ifname;
       continue;
     }
 
     if (device_props.type != ShillClient::Device::Type::kWifi) {
-      LOG(INFO) << "Skipped creating neighbor monitor for device " << device;
+      LOG(INFO) << "Skipped creating neighbor monitor for interface " << ifname;
       continue;
     }
 
@@ -405,16 +406,16 @@ void NetworkMonitorService::OnDevicesChanged(
     auto link_monitor = std::make_unique<NeighborLinkMonitor>(
         ifindex, device_props.ifname, rtnl_handler_, &neighbor_event_handler_);
     link_monitor->OnIPConfigChanged(device_props.ipconfig);
-    neighbor_link_monitors_[device] = std::move(link_monitor);
+    neighbor_link_monitors_[ifname] = std::move(link_monitor);
   }
 
-  for (const auto& device : removed)
-    neighbor_link_monitors_.erase(device);
+  for (const auto& ifname : removed)
+    neighbor_link_monitors_.erase(ifname);
 }
 
 void NetworkMonitorService::OnIPConfigsChanged(
-    const std::string& device, const ShillClient::IPConfig& ipconfig) {
-  const auto it = neighbor_link_monitors_.find(device);
+    const std::string& ifname, const ShillClient::IPConfig& ipconfig) {
+  const auto it = neighbor_link_monitors_.find(ifname);
   if (it == neighbor_link_monitors_.end())
     return;
 

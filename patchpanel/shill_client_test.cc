@@ -4,8 +4,8 @@
 
 #include "patchpanel/shill_client.h"
 
+#include <algorithm>
 #include <memory>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,6 +17,7 @@
 #include "patchpanel/fake_shill_client.h"
 
 namespace patchpanel {
+namespace {
 
 class ShillClientTest : public testing::Test {
  protected:
@@ -39,8 +40,8 @@ class ShillClientTest : public testing::Test {
     default_ifname_ = new_device.ifname;
   }
 
-  void DevicesChangedHandler(const std::set<std::string>& added,
-                             const std::set<std::string>& removed) {
+  void DevicesChangedHandler(const std::vector<std::string>& added,
+                             const std::vector<std::string>& removed) {
     added_ = added;
     removed_ = removed;
   }
@@ -52,8 +53,8 @@ class ShillClientTest : public testing::Test {
 
  protected:
   std::string default_ifname_;
-  std::set<std::string> added_;
-  std::set<std::string> removed_;
+  std::vector<std::string> added_;
+  std::vector<std::string> removed_;
   std::vector<std::pair<std::string, ShillClient::IPConfig>>
       ipconfig_change_calls_;
   std::unique_ptr<FakeShillClient> client_;
@@ -65,15 +66,19 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
                                            dbus::ObjectPath("/device/wlan0")};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultDevice("eth0");
+  client_->SetIfname("/device/eth0", "eth0");
+  client_->SetIfname("/device/eth1", "eth1");
+  client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), devices.size());
-  EXPECT_NE(added_.find("eth0"), added_.end());
-  EXPECT_NE(added_.find("wlan0"), added_.end());
+  EXPECT_NE(std::find(added_.begin(), added_.end(), "eth0"), added_.end());
+  EXPECT_NE(std::find(added_.begin(), added_.end(), "wlan0"), added_.end());
   EXPECT_EQ(removed_.size(), 0);
 
   // Implies the default callback was run;
   EXPECT_EQ(default_ifname_, "eth0");
-  EXPECT_NE(added_.find(default_ifname_), added_.end());
+  EXPECT_NE(std::find(added_.begin(), added_.end(), default_ifname_),
+            added_.end());
 
   devices.pop_back();
   devices.emplace_back(dbus::ObjectPath("/device/eth1"));
@@ -89,6 +94,7 @@ TEST_F(ShillClientTest, VerifyDevicesPrefixStripped) {
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0")};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultDevice("eth0");
+  client_->SetIfname("/device/eth0", "eth0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), 1);
   EXPECT_EQ(*added_.begin(), "eth0");
@@ -126,6 +132,8 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/wlan0")};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultDevice("wlan0");
+  client_->SetIfname("/device/eth0", "eth0");
+  client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(default_ifname_, "wlan0");
 
@@ -166,6 +174,8 @@ TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
               DoConnectToSignal(shill::kFlimflamDeviceInterface,
                                 shill::kMonitorPropertyChanged, _, _))
       .Times(1);
+  client_->SetIfname("/device/eth0", "eth0");
+  client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
 
   // Adds another device. DoConnectToSignal() called only for the new added one.
@@ -183,6 +193,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   // Adds a device.
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/wlan0")};
   auto devices_value = brillo::Any(devices);
+  client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
   client_->NotifyDevicePropertyChange("wlan0", shill::kIPConfigsProperty,
                                       brillo::Any());
@@ -198,4 +209,5 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
 }
 
+}  // namespace
 }  // namespace patchpanel

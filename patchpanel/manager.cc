@@ -353,8 +353,8 @@ void Manager::OnDefaultDeviceChanged(const ShillClient::Device& new_device,
   }
 }
 
-void Manager::OnDevicesChanged(const std::set<std::string>& added,
-                               const std::set<std::string>& removed) {
+void Manager::OnDevicesChanged(const std::vector<std::string>& added,
+                               const std::vector<std::string>& removed) {
   for (const std::string& ifname : removed) {
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
@@ -377,12 +377,12 @@ void Manager::OnDevicesChanged(const std::set<std::string>& added,
   }
 }
 
-void Manager::OnIPConfigsChanged(const std::string& device,
+void Manager::OnIPConfigsChanged(const std::string& ifname,
                                  const ShillClient::IPConfig& ipconfig) {
   if (ipconfig.ipv4_dns_addresses.empty()) {
-    datapath_->RemoveRedirectDnsRule(device);
+    datapath_->RemoveRedirectDnsRule(ifname);
   } else {
-    datapath_->AddRedirectDnsRule(device, ipconfig.ipv4_dns_addresses.front());
+    datapath_->AddRedirectDnsRule(ifname, ipconfig.ipv4_dns_addresses.front());
   }
 }
 

@@ -188,8 +188,7 @@ class NeighborLinkMonitorTest : public testing::Test {
   // The internal implementation of Timer uses Now() so we need
   // MOCK_TIME_AND_NOW here.
   base::test::TaskEnvironment task_env_{
-    base::test::TaskEnvironment::TimeSource::MOCK_TIME
-  };
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   FakeNeighborReachabilityEventHandler fake_neighbor_event_handler_;
   NeighborLinkMonitor::NeighborReachabilityEventHandler callback_;
   std::unique_ptr<shill::MockRTNLHandler> mock_rtnl_handler_;
@@ -436,6 +435,9 @@ TEST_F(NetworkMonitorServiceTest, StartRTNLHanlderOnServiceStart) {
 }
 
 TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
+  fake_shill_client_->SetIfname("/device/wlan0", "wlan0");
+  fake_shill_client_->SetIfname("/device/eth0", "eth0");
+
   monitor_svc_->rtnl_handler_ = mock_rtnl_handler_.get();
   // Device added before service starts.
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0")};

@@ -75,12 +75,21 @@ const ShillClient::Device& ShillClient::default_device() const {
   return default_device_;
 }
 
-const std::set<std::string> ShillClient::get_devices() const {
-  return devices_;
+const std::vector<std::string> ShillClient::get_devices() const {
+  std::vector<std::string> ifnames;
+  for (const auto& [_, ifname] : devices_) {
+    ifnames.push_back(ifname);
+  }
+  return ifnames;
 }
 
 bool ShillClient::has_device(const std::string& ifname) const {
-  return devices_.find(ifname) != devices_.end();
+  for (const auto& kv : devices_) {
+    if (kv.second == ifname) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void ShillClient::ScanDevices() {
@@ -230,16 +239,23 @@ void ShillClient::RegisterIPConfigsChangedHandler(
 }
 
 void ShillClient::UpdateDevices(const brillo::Any& property_value) {
-  std::set<std::string> new_devices, added, removed;
+  std::map<std::string, std::string> new_devices;
+  std::vector<std::string> added, removed;
   for (const auto& path :
        property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
     std::string device = path.value();
     // Strip "/device/" prefix.
     device = device.substr(device.find_last_of('/') + 1);
+    const std::string ifname = GetIfname(path);
+    if (ifname.empty()) {
+      LOG(WARNING) << "Found empty interface name for Device " << device;
+      continue;
+    }
 
-    new_devices.emplace(device);
-    if (devices_.find(device) == devices_.end())
-      added.insert(device);
+    new_devices[device] = ifname;
+    if (devices_.find(device) == devices_.end()) {
+      added.push_back(ifname);
+    }
 
     // Registers handler if we see this device for the first time.
     if (known_device_paths_.insert(std::make_pair(device, path)).second) {
@@ -253,23 +269,20 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     }
   }
 
-  for (const auto& d : devices_) {
-    if (new_devices.find(d) == new_devices.end())
-      removed.insert(d);
+  for (const auto& [d, ifname] : devices_) {
+    if (new_devices.find(d) == new_devices.end()) {
+      removed.push_back(ifname);
+    }
   }
+
+  devices_ = new_devices;
 
   // This can happen if the default network switched from one device to another.
   if (added.empty() && removed.empty())
     return;
 
-  devices_ = new_devices;
-
-  LOG(INFO) << "Shill devices changed: added={"
-            << base::JoinString(std::vector(added.begin(), added.end()), ",")
-            << "}, removed={"
-            << base::JoinString(std::vector(removed.begin(), removed.end()),
-                                ",")
-            << "}";
+  LOG(INFO) << "Shill devices changed: added={" << base::JoinString(added, ",")
+            << "}, removed={" << base::JoinString(removed, ",") << "}";
 
   for (const auto& h : device_handlers_)
     h.Run(added, removed);
@@ -381,9 +394,22 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
   return ipconfig;
 }
 
-bool ShillClient::GetDeviceProperties(const std::string& device,
+bool ShillClient::GetDeviceProperties(const std::string& ifname,
                                       Device* output) {
   DCHECK(output);
+
+  std::string device = "";
+  for (const auto& kv : devices_) {
+    if (kv.second == ifname) {
+      device = kv.first;
+      break;
+    }
+  }
+  if (device.empty()) {
+    LOG(ERROR) << "Unknown interface name " << ifname;
+    return false;
+  }
+
   const auto& device_it = known_device_paths_.find(device);
   if (device_it == known_device_paths_.end()) {
     LOG(ERROR) << "Unknown device " << device;
@@ -424,6 +450,25 @@ bool ShillClient::GetDeviceProperties(const std::string& device,
   return true;
 }
 
+std::string ShillClient::GetIfname(const dbus::ObjectPath& device_path) {
+  org::chromium::flimflam::DeviceProxy device_proxy(bus_, device_path);
+  brillo::VariantDictionary props;
+  if (!device_proxy.GetProperties(&props, nullptr)) {
+    LOG(WARNING) << "Unable to get Device properties for "
+                 << device_path.value();
+    return "";
+  }
+
+  const auto& interface_it = props.find(shill::kInterfaceProperty);
+  if (interface_it == props.end()) {
+    LOG(WARNING) << "Device properties is missing Interface for "
+                 << device_path.value();
+    return "";
+  }
+
+  return interface_it->second.TryGet<std::string>();
+}
+
 void ShillClient::OnDevicePropertyChangeRegistration(
     const std::string& interface,
     const std::string& signal_name,
@@ -440,10 +485,17 @@ void ShillClient::OnDevicePropertyChange(const std::string& device,
     return;
 
   const IPConfig& ipconfig = ParseIPConfigsProperty(device, property_value);
+  const auto& it = devices_.find(device);
+  if (it == devices_.end()) {
+    LOG(WARNING) << "Failed to obtain interface name for shill Device "
+                 << device;
+    return;
+  }
+
   // TODO(jiejiang): Keep a cache of the last parsed IPConfig, and only
   // trigger handlers if there is an actual change.
   for (const auto& handler : ipconfigs_handlers_)
-    handler.Run(device, ipconfig);
+    handler.Run(it->second, ipconfig);
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {

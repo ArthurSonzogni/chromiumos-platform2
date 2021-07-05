@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_FAKE_SHILL_CLIENT_H_
 #define PATCHPANEL_FAKE_SHILL_CLIENT_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -41,6 +42,14 @@ class FakeShillClient : public ShillClient {
     fake_default_ifname_ = ifname;
   }
 
+  void SetIfname(const std::string& device_path, const std::string& ifname) {
+    interface_names_[device_path] = ifname;
+  }
+
+  std::string GetIfname(const dbus::ObjectPath& device_path) override {
+    return interface_names_[device_path.value()];
+  }
+
   void NotifyManagerPropertyChange(const std::string& name,
                                    const brillo::Any& value) {
     OnManagerPropertyChange(name, value);
@@ -62,6 +71,7 @@ class FakeShillClient : public ShillClient {
   }
 
  private:
+  std::map<std::string, std::string> interface_names_;
   std::string fake_default_ifname_;
   std::set<std::string> get_device_properties_calls_;
 };

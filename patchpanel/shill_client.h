@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <ostream>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -75,11 +74,15 @@ class ShillClient {
 
   using DefaultDeviceChangeHandler =
       base::Callback<void(const Device& new_device, const Device& prev_device)>;
+  // Client callback for learning which network interfaces start or stop being
+  // managed by shill.
   using DevicesChangeHandler =
-      base::Callback<void(const std::set<std::string>& added,
-                          const std::set<std::string>& removed)>;
+      base::Callback<void(const std::vector<std::string>& added,
+                          const std::vector<std::string>& removed)>;
+  // Client callback for listening to IPConfig changes on any shill Device with
+  // interface name |ifname|.
   using IPConfigsChangeHandler =
-      base::Callback<void(const std::string& device, const IPConfig& ipconfig)>;
+      base::Callback<void(const std::string& ifname, const IPConfig& ipconfig)>;
 
   explicit ShillClient(const scoped_refptr<dbus::Bus>& bus);
   ShillClient(const ShillClient&) = delete;
@@ -100,16 +103,17 @@ class ShillClient {
 
   void ScanDevices();
 
-  // Fetches device properties via dbus. Returns false if an error occurs. Notes
-  // that this method will block the current thread.
-  virtual bool GetDeviceProperties(const std::string& device, Device* output);
+  // Fetches Device properties via dbus for the Device with interface name
+  // |ifname|. Returns false if an error occurs. Notes that this method will
+  // block the current thread.
+  virtual bool GetDeviceProperties(const std::string& ifname, Device* output);
 
   // Returns the cached interface name; does not initiate a property fetch.
   virtual const std::string& default_interface() const;
   // Returns the cached default Device; does not initiate a property fetch.
   virtual const Device& default_device() const;
   // Returns interface names of all known shill Devices.
-  const std::set<std::string> get_devices() const;
+  const std::vector<std::string> get_devices() const;
   // Returns true if |ifname| is a known shill Device.
   bool has_device(const std::string& ifname) const;
 
@@ -131,6 +135,8 @@ class ShillClient {
   // when the system has no default interface.
   virtual Device GetDefaultDevice();
 
+  virtual std::string GetIfname(const dbus::ObjectPath& device_path);
+
  private:
   void UpdateDevices(const brillo::Any& property_value);
 
@@ -147,8 +153,9 @@ class ShillClient {
   // to the physical or virtual device associated with the default logical
   // network service.
   Device default_device_;
-  // Tracks all network interfaces managed by shill.
-  std::set<std::string> devices_;
+  // Tracks all network interfaces managed by shill and maps shill Device
+  // identifiers to interface names.
+  std::map<std::string, std::string> devices_;
   // Stores the map from interface to its object path in shill for all the
   // devices we have seen. Unlike |devices_|, entries in this map will never
   // be removed during the lifetime of this class. We maintain this map mainly
