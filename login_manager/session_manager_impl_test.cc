@@ -2323,7 +2323,9 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
-TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe) {
+// Signed commands should start a powerwash in cloud managed devices.
+TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_Enterprise) {
+  SetDeviceMode("enterprise");
   ExpectDeviceRestart();
   EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
       .WillOnce(Return(true));
@@ -2334,7 +2336,9 @@ TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe) {
   EXPECT_FALSE(error.get());
 }
 
-TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_BadSignature) {
+// Unsigned commands should fail on cloud managed devices.
+TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_EnterpriseBadSignature) {
+  SetDeviceMode("enterprise");
   EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
       .WillOnce(Return(false));
 
@@ -2342,6 +2346,19 @@ TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_BadSignature) {
   std::vector<uint8_t> in_signed_command;
   EXPECT_FALSE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
   EXPECT_TRUE(error.get());
+}
+
+// On AD managed devices, any command (signed or not) should succeed.
+TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_EnterpriseAD) {
+  SetDeviceMode("enterprise_ad");
+  ExpectDeviceRestart();
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
+      .Times(0);
+
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> in_signed_command;
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {

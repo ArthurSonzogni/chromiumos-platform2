@@ -1096,7 +1096,16 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
 
 bool SessionManagerImpl::StartRemoteDeviceWipe(
     brillo::ErrorPtr* error, const std::vector<uint8_t>& in_signed_command) {
-  if (!device_policy_->ValidateRemoteDeviceWipeCommand(in_signed_command)) {
+  const bool is_active_directory =
+      install_attributes_reader_->GetAttribute(
+          InstallAttributesReader::kAttrMode) ==
+      InstallAttributesReader::kDeviceModeEnterpriseAD;
+
+  // Unsigned remote powerwash D-Bus call is allowed only in enterprise_ad mode.
+  // Unsigned requests will be sent from Ash Chrome only if the
+  // `ChromadToCloudMigrationEnabled` policy is true.
+  if (!is_active_directory &&
+      !device_policy_->ValidateRemoteDeviceWipeCommand(in_signed_command)) {
     *error = CreateError(dbus_error::kInvalidParameter,
                          "Remote wipe command validation failed, aborting.");
     return false;
