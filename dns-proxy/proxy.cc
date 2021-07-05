@@ -4,12 +4,13 @@
 
 #include "dns-proxy/proxy.h"
 
+#include <linux/rtnetlink.h>
+#include <net/if.h>
 #include <sys/types.h>
 #include <sysexits.h>
 #include <unistd.h>
 
 #include <set>
-#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -20,6 +21,11 @@
 #include <chromeos/patchpanel/net_util.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/dbus-constants.h>
+#include <shill/net/rtnl_handler.h>
+
+// Using directive is necessary to have the overloaded function for socket data
+// structure available.
+using patchpanel::operator<<;
 
 namespace dns_proxy {
 namespace {
@@ -105,6 +111,12 @@ Proxy::Proxy(const Proxy::Options& opts)
     : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
   if (opts_.type == Type::kSystem)
     doh_config_.set_metrics(&metrics_);
+
+  addr_listener_ = std::make_unique<shill::RTNLListener>(
+      shill::RTNLHandler::kRequestAddr,
+      base::BindRepeating(&Proxy::RTNLMessageHandler,
+                          weak_factory_.GetWeakPtr()));
+  shill::RTNLHandler::GetInstance()->Start(RTMGRP_IPV6_IFADDR);
 }
 
 // This ctor is only used for testing.
@@ -226,9 +238,9 @@ void Proxy::OnPatchpanelReady(bool success) {
         &Proxy::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
 }
 
-void Proxy::StartDnsRedirection(
-    const std::string& ifname,
-    const std::vector<std::string>& ipv4_nameservers) {
+void Proxy::StartDnsRedirection(const std::string& ifname,
+                                sa_family_t sa_family,
+                                const std::vector<std::string>& nameservers) {
   // When disabled, block any attempt to set DNS redirection rule.
   if (!feature_enabled_)
     return;
@@ -238,8 +250,13 @@ void Proxy::StartDnsRedirection(
     return;
   }
 
+  // Request IPv6 DNS redirection rule only if the IPv6 address is available.
+  if (sa_family == AF_INET6 && ns_peer_ipv6_address_.empty()) {
+    return;
+  }
+
   // Reset last created rules.
-  lifeline_fds_.erase(ifname);
+  lifeline_fds_.erase(std::make_pair(ifname, sa_family));
 
   patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
   switch (opts_.type) {
@@ -258,9 +275,11 @@ void Proxy::StartDnsRedirection(
     type = patchpanel::SetDnsRedirectionRuleRequest::USER;
   }
 
-  auto fd = patchpanel_->RedirectDns(
-      type, ifname, patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
-      ipv4_nameservers);
+  auto peer_addr =
+      sa_family == AF_INET
+          ? patchpanel::IPv4AddressToString(ns_.peer_ipv4_address())
+          : ns_peer_ipv6_address_;
+  auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
   // replaced by the IP address of system proxy. This causes non-system traffic
@@ -272,11 +291,12 @@ void Proxy::StartDnsRedirection(
     QuitWithExitCode(EX_CONFIG);
     return;
   }
-  lifeline_fds_.emplace(ifname, std::move(fd));
+  lifeline_fds_.emplace(std::make_pair(ifname, sa_family), std::move(fd));
 }
 
-void Proxy::StopDnsRedirection(const std::string& ifname) {
-  lifeline_fds_.erase(ifname);
+void Proxy::StopDnsRedirection(const std::string& ifname,
+                               sa_family_t sa_family) {
+  lifeline_fds_.erase(std::make_pair(ifname, sa_family));
 }
 
 void Proxy::OnPatchpanelReset(bool reset) {
@@ -391,13 +411,18 @@ void Proxy::Enable() {
   if (opts_.type == Type::kDefault && device_) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection("" /* ifname */, doh_config_.ipv4_nameservers());
+    StartDnsRedirection("" /* ifname */, AF_INET,
+                        doh_config_.ipv4_nameservers());
+    StartDnsRedirection("" /* ifname */, AF_INET6,
+                        doh_config_.ipv6_nameservers());
   }
 
   // Process the current set of patchpanel devices and add necessary
   // redirection rules.
-  for (const auto& d : patchpanel_->GetDevices())
-    VirtualDeviceAdded(d);
+  for (const auto& d : patchpanel_->GetDevices()) {
+    StartGuestDnsRedirection(d, AF_INET);
+    StartGuestDnsRedirection(d, AF_INET6);
+  }
 }
 
 void Proxy::Disable() {
@@ -484,7 +509,10 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection("" /* ifname */, doh_config_.ipv4_nameservers());
+    StartDnsRedirection("" /* ifname */, AF_INET,
+                        doh_config_.ipv4_nameservers());
+    StartDnsRedirection("" /* ifname */, AF_INET6,
+                        doh_config_.ipv6_nameservers());
   }
 
   // For the system proxy, we have to tell shill about it. We should start
@@ -562,11 +590,14 @@ void Proxy::MaybeCreateResolver() {
       NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
   doh_config_.set_resolver(resolver_.get());
 
-  struct sockaddr_in addr = {0};
-  addr.sin_family = AF_INET;
-  addr.sin_port = kDefaultPort;
-  addr.sin_addr.s_addr =
-      INADDR_ANY;  // Since we're running in the private namespace.
+  // Listen on IPv4 and IPv6. Listening on AF_INET explicitly is not needed
+  // because net.ipv6.bindv6only sysctl is defaulted to 0 and is not
+  // explicitly turned on in the codebase.
+  struct sockaddr_in6 addr = {0};
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = kDefaultPort;
+  addr.sin6_addr =
+      in6addr_any;  // Since we're running in the private namespace.
 
   if (!resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr))) {
     metrics_.RecordProcessEvent(
@@ -795,32 +826,71 @@ void Proxy::DoHConfig::set_metrics(Metrics* metrics) {
   metrics_ = metrics;
 }
 
+void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
+  // Listen only for global IPv6 address changes.
+  if (msg.address_status().scope != RT_SCOPE_UNIVERSE) {
+    return;
+  }
+
+  // Listen only for the peer interface IPv6 changes.
+  if (msg.interface_index() != if_nametoindex(ns_.peer_ifname().c_str())) {
+    return;
+  }
+
+  switch (msg.mode()) {
+    case shill::RTNLMessage::kModeAdd:
+      ns_peer_ipv6_address_ = msg.GetIfaAddress().ToString();
+      if (opts_.type == Type::kDefault && device_) {
+        StartDnsRedirection("" /* ifname */, AF_INET6,
+                            doh_config_.ipv6_nameservers());
+      }
+      for (const auto& d : patchpanel_->GetDevices()) {
+        StartGuestDnsRedirection(d, AF_INET6);
+      }
+      return;
+    case shill::RTNLMessage::kModeDelete:
+      ns_peer_ipv6_address_.clear();
+      if (opts_.type == Type::kDefault) {
+        StopDnsRedirection("" /* ifname */, AF_INET6);
+      }
+      for (const auto& d : patchpanel_->GetDevices()) {
+        StopGuestDnsRedirection(d, AF_INET6);
+      }
+      return;
+    default:
+      return;
+  }
+}
+
 void Proxy::OnVirtualDeviceChanged(
     const patchpanel::NetworkDeviceChangedSignal& signal) {
   switch (signal.event()) {
     case patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED:
-      VirtualDeviceAdded(signal.device());
+      StartGuestDnsRedirection(signal.device(), AF_INET);
+      StartGuestDnsRedirection(signal.device(), AF_INET6);
       break;
     case patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED:
-      VirtualDeviceRemoved(signal.device());
+      StopGuestDnsRedirection(signal.device(), AF_INET);
+      StopGuestDnsRedirection(signal.device(), AF_INET6);
       break;
     default:
       NOTREACHED();
   }
 }
 
-void Proxy::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
+void Proxy::StartGuestDnsRedirection(const patchpanel::NetworkDevice& device,
+                                     sa_family_t sa_family) {
   switch (device.guest_type()) {
     case patchpanel::NetworkDevice::TERMINA_VM:
     case patchpanel::NetworkDevice::PLUGIN_VM:
       if (opts_.type == Type::kDefault) {
-        StartDnsRedirection(device.ifname());
+        StartDnsRedirection(device.ifname(), sa_family);
       }
       return;
     case patchpanel::NetworkDevice::ARC:
     case patchpanel::NetworkDevice::ARCVM:
       if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname()) {
-        StartDnsRedirection(device.ifname());
+        StartDnsRedirection(device.ifname(), sa_family);
       }
       return;
     default:
@@ -828,17 +898,23 @@ void Proxy::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
   }
 }
 
-void Proxy::VirtualDeviceRemoved(const patchpanel::NetworkDevice& device) {
+void Proxy::StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
+                                    sa_family_t sa_family) {
   switch (device.guest_type()) {
     case patchpanel::NetworkDevice::TERMINA_VM:
     case patchpanel::NetworkDevice::PLUGIN_VM:
       if (opts_.type == Type::kDefault) {
-        StopDnsRedirection(device.ifname());
+        StopDnsRedirection(device.ifname(), sa_family);
       }
       return;
     default:
       // For ARC, upon removal of the virtual device, the corresponding proxy
       // will also be removed. This will undo the created firewall rules.
+      // However, if IPv6 is removed, firewall rules created need to be
+      // removed.
+      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname()) {
+        StopDnsRedirection(device.ifname(), sa_family);
+      }
       return;
   }
 }

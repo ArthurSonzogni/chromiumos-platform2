@@ -11,6 +11,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
@@ -19,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/dbus/client/client.h>
+#include <shill/net/rtnl_listener.h>
 
 #include "dns-proxy/chrome_features_service_client.h"
 #include "dns-proxy/metrics.h"
@@ -126,10 +128,13 @@ class Proxy : public brillo::DBusDaemon {
 
   // Start and stop DNS redirection rules by querying patchpanel's API. This is
   // necessary to route corresponding DNS traffic to the DNS proxy.
-  void StartDnsRedirection(const std::string& ifname,
-                           const std::vector<std::string>& ipv4_nameservers =
-                               std::vector<std::string>());
-  void StopDnsRedirection(const std::string& ifname);
+  // |sa_family| values will be either AF_INET or AF_INET6, for IPv4 and IPv6
+  // respectively.
+  void StartDnsRedirection(
+      const std::string& ifname,
+      sa_family_t sa_family,
+      const std::vector<std::string>& nameservers = std::vector<std::string>());
+  void StopDnsRedirection(const std::string& ifname, sa_family_t sa_family);
 
   // Triggered whenever the device attached to the default network changes.
   // |device| can be null and indicates the default service is disconnected.
@@ -147,8 +152,12 @@ class Proxy : public brillo::DBusDaemon {
   // network devices.
   void OnVirtualDeviceChanged(
       const patchpanel::NetworkDeviceChangedSignal& signal);
-  void VirtualDeviceAdded(const patchpanel::NetworkDevice& device);
-  void VirtualDeviceRemoved(const patchpanel::NetworkDevice& device);
+
+  // Start and stop DNS redirection rules upon virtual device changed.
+  void StartGuestDnsRedirection(const patchpanel::NetworkDevice& device,
+                                sa_family_t sa_family);
+  void StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
+                               sa_family_t sa_family);
 
   // Helper func for setting the dns-proxy address in shill.
   // Only valid for the system proxy.
@@ -157,6 +166,10 @@ class Proxy : public brillo::DBusDaemon {
   void SetShillProperty(const std::string& addr,
                         bool die_on_failure = false,
                         uint8_t num_retries = kMaxShillPropertyRetries);
+
+  // Callback from RTNetlink listener, invoked when the lan interface IPv6
+  // address is changed.
+  void RTNLMessageHandler(const shill::RTNLMessage& msg);
 
   // Return the property accessor, creating it if needed.
   shill::Client::ManagerPropertyAccessor* shill_props();
@@ -210,11 +223,18 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest);
   FRIEND_TEST(ProxyTest,
               DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled);
+  FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6);
+  FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added);
+  FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted);
+  FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added);
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled);
+  FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added);
+  FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted);
+  FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added);
   FRIEND_TEST(ProxyTest, UpdateNameServers);
 
   const Options opts_;
@@ -226,6 +246,8 @@ class Proxy : public brillo::DBusDaemon {
 
   base::ScopedFD ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_;
+  std::string ns_peer_ipv6_address_;
+
   std::unique_ptr<Resolver> resolver_;
   DoHConfig doh_config_;
   std::unique_ptr<shill::Client::Device> device_;
@@ -233,15 +255,18 @@ class Proxy : public brillo::DBusDaemon {
   bool shill_ready_{false};
   bool feature_enabled_{false};
 
-  // Mapping of interface name to a lifeline file descriptor.
-  // These file descriptors control the lifetime of the DNS redirection rules
-  // created through the patchpanel's DBus API.
+  // Mapping of interface name and socket family pair to a lifeline file
+  // descriptor. These file descriptors control the lifetime of the DNS
+  // redirection rules created through the patchpanel's DBus API.
   // For USER DnsRedirectionRequest, the interface name will be empty as it is
   // not needed.
-  std::map<std::string, base::ScopedFD> lifeline_fds_;
+  std::map<std::pair<std::string, sa_family_t>, base::ScopedFD> lifeline_fds_;
 
   Metrics metrics_;
   const Metrics::ProcessType metrics_proc_type_;
+
+  // Listens for RTMGRP_IPV6_IFADDR messages and invokes RTNLMessageHandler.
+  std::unique_ptr<shill::RTNLListener> addr_listener_;
 
   base::WeakPtrFactory<Proxy> weak_factory_{this};
 };

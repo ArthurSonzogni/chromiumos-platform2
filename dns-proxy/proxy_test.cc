@@ -5,6 +5,7 @@
 #include "dns-proxy/proxy.h"
 
 #include <fcntl.h>
+#include <linux/rtnetlink.h>
 #include <sys/stat.h>
 
 #include <memory>
@@ -20,6 +21,7 @@
 #include <shill/dbus/client/fake_client.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
+#include <shill/net/rtnl_handler.h>
 
 using testing::ElementsAreArray;
 
@@ -1093,6 +1095,7 @@ TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   // System proxy must not request a redirect DNS rule.
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
@@ -1153,6 +1156,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1178,9 +1182,13 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
                           "vmtap0", "10.10.10.10", IsEmpty()))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+                          "vmtap0", "::1", IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   // Default device changed.
   shill::Client::Device default_device;
@@ -1194,13 +1202,17 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv4_dns_addresses))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
+                          ipv6_dns_addresses))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Guest stopped.
   signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
@@ -1210,6 +1222,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1237,8 +1250,12 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv4_dns_addresses))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
+                          ipv6_dns_addresses))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   // Guest started.
   patchpanel::NetworkDeviceChangedSignal signal;
@@ -1252,13 +1269,17 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
                           "vmtap0", "10.10.10.10", IsEmpty()))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+                          "vmtap0", "::1", IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Guest stopped.
   signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
@@ -1268,6 +1289,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1306,6 +1328,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
               ShillClient());
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   proxy.feature_enabled_ = false;
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
@@ -1335,6 +1358,198 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 }
 
+TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
+              ShillClient());
+  proxy.resolver_ = std::make_unique<MockResolver>();
+
+  // Expect ConnectNamespace call and set the namespace address.
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+      .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
+                         bool forward_user_traffic, bool route_on_vpn,
+                         patchpanel::TrafficCounter::Source traffic_source) {
+        patchpanel::ConnectNamespaceResponse resp;
+        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+        return std::make_pair(base::ScopedFD(make_fd()), resp);
+      });
+  EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
+  proxy.OnPatchpanelReady(true);
+  proxy.Enable();
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+
+  // Default device changed.
+  shill::Client::Device default_device;
+  default_device.state = shill::Client::Device::ConnectionState::kOnline;
+  std::vector<std::string> ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
+  default_device.ipconfig.ipv4_dns_addresses = ipv4_dns_addresses;
+  default_device.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                "2001:4860:4860::8844"};
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
+                          ipv4_dns_addresses))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  proxy.OnDefaultDeviceChanged(&default_device);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+
+  // Guest started.
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("vmtap0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::PLUGIN_VM);
+
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+                          "vmtap0", "10.10.10.10", IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  proxy.OnVirtualDeviceChanged(signal);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
+
+  // Guest stopped.
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
+  proxy.OnVirtualDeviceChanged(signal);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+}
+
+TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
+              ShillClient());
+  proxy.ns_.set_peer_ifname("");
+  proxy.Enable();
+
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("vmtap0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+
+  std::string peer_ipv6_addr = "::1";
+  struct in6_addr ipv6_addr;
+  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
+
+  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                 "2001:4860:4860::8844"};
+  proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
+  proxy.device_.reset(new shill::Client::Device{});
+
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
+                          ipv6_dns_addresses))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+                          "vmtap0", peer_ipv6_addr, IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+
+  // Proxy's ConnectedNamespace peer interface name is set to empty and
+  // RTNL message's interface index is set to 0 in order to match.
+  // if_nametoindex which is used to get the interface index will return 0 on
+  // error.
+  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
+                         shill::RTNLMessage::kModeAdd, 0 /* flags */,
+                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                         shill::IPAddress::Family(AF_INET6));
+  msg.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  msg.SetAttribute(IFA_ADDRESS,
+                   shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg);
+}
+
+TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
+              ShillClient());
+  proxy.ns_.set_peer_ifname("");
+
+  proxy.device_.reset(new shill::Client::Device{});
+  proxy.lifeline_fds_.emplace(std::make_pair("", AF_INET6),
+                              base::ScopedFD(make_fd()));
+  proxy.lifeline_fds_.emplace(std::make_pair("vmtap0", AF_INET6),
+                              base::ScopedFD(make_fd()));
+
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("vmtap0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+
+  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
+                         shill::RTNLMessage::kModeDelete, 0 /* flags */,
+                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                         shill::IPAddress::Family(AF_INET6));
+  msg.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  proxy.RTNLMessageHandler(msg);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+}
+
+TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
+              ShillClient());
+  proxy.ns_.set_peer_ifname("");
+  proxy.Enable();
+
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("vmtap0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+
+  std::string peer_ipv6_addr = "::1";
+  struct in6_addr ipv6_addr;
+  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
+
+  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                 "2001:4860:4860::8844"};
+  proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
+  proxy.device_.reset(new shill::Client::Device{});
+
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillRepeatedly(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+  EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
+
+  // Proxy's ConnectedNamespace peer interface name is set to empty and
+  // RTNL message's interface index is set to -1 in order to not match.
+  // if_nametoindex which is used to get the interface index will return 0 on
+  // error.
+  shill::RTNLMessage msg_unrelated_ifindex(
+      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+      0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
+      shill::IPAddress::Family(AF_INET6));
+  msg_unrelated_ifindex.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  msg_unrelated_ifindex.SetAttribute(
+      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg_unrelated_ifindex);
+
+  shill::RTNLMessage msg_unrelated_scope(
+      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+      0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
+      shill::IPAddress::Family(AF_INET6));
+  msg_unrelated_scope.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
+  msg_unrelated_scope.SetAttribute(
+      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg_unrelated_scope);
+}
+
 TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
@@ -1342,6 +1557,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1367,9 +1583,13 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
                           "arc_eth0", "10.10.10.10", IsEmpty()))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+                          "arc_eth0", "::1", IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
@@ -1379,6 +1599,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1406,8 +1627,12 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
                           "arc_eth0", "10.10.10.10", IsEmpty()))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+                          "arc_eth0", "::1", IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
@@ -1417,6 +1642,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1455,6 +1681,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.ns_peer_ipv6_address_ = "::1";
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1493,6 +1720,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
               std::move(client), ShillClient());
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   proxy.feature_enabled_ = false;
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
@@ -1520,6 +1748,126 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
 
   proxy.OnVirtualDeviceChanged(signal);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+}
+
+TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+              std::move(client), ShillClient());
+  proxy.ns_.set_peer_ifname("");
+  proxy.Enable();
+
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("arc_eth0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
+
+  std::string peer_ipv6_addr = "::1";
+  struct in6_addr ipv6_addr;
+  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
+
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+                          "arc_eth0", peer_ipv6_addr, IsEmpty()))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+
+  // Proxy's ConnectedNamespace peer interface name is set to empty and
+  // RTNL message's interface index is set to 0 in order to match.
+  // if_nametoindex which is used to get the interface index will return 0 on
+  // error.
+  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
+                         shill::RTNLMessage::kModeAdd, 0 /* flags */,
+                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                         shill::IPAddress::Family(AF_INET6));
+  msg.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  msg.SetAttribute(IFA_ADDRESS,
+                   shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg);
+}
+
+TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+              std::move(client), ShillClient());
+  proxy.ns_.set_peer_ifname("");
+
+  proxy.device_.reset(new shill::Client::Device{});
+  proxy.lifeline_fds_.emplace(std::make_pair("arc_eth0", AF_INET6),
+                              base::ScopedFD(make_fd()));
+
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("arc_eth0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
+
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+
+  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
+                         shill::RTNLMessage::kModeDelete, 0 /* flags */,
+                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                         shill::IPAddress::Family(AF_INET6));
+  msg.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  proxy.RTNLMessageHandler(msg);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+}
+
+TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
+  auto client = std::make_unique<MockPatchpanelClient>();
+  MockPatchpanelClient* mock_client = client.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+              std::move(client), ShillClient());
+  proxy.ns_.set_peer_ifname("");
+  proxy.Enable();
+
+  patchpanel::NetworkDeviceChangedSignal signal;
+  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
+  auto* dev = signal.mutable_device();
+  dev->set_ifname("arc_eth0");
+  dev->set_phys_ifname("eth0");
+  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
+
+  std::string peer_ipv6_addr = "::1";
+  struct in6_addr ipv6_addr;
+  inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
+
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillRepeatedly(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+  EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
+
+  // Proxy's ConnectedNamespace peer interface name is set to empty and
+  // RTNL message's interface index is set to -1 in order to not match.
+  // if_nametoindex which is used to get the interface index will return 0 on
+  // error.
+  shill::RTNLMessage msg_unrelated_ifindex(
+      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+      0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
+      shill::IPAddress::Family(AF_INET6));
+  msg_unrelated_ifindex.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+  msg_unrelated_ifindex.SetAttribute(
+      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg_unrelated_ifindex);
+
+  shill::RTNLMessage msg_unrelated_scope(
+      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+      0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
+      shill::IPAddress::Family(AF_INET6));
+  msg_unrelated_scope.set_address_status(
+      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
+  msg_unrelated_scope.SetAttribute(
+      IFA_ADDRESS, shill::ByteString(ipv6_addr.s6_addr, sizeof(ipv6_addr)));
+  proxy.RTNLMessageHandler(msg_unrelated_scope);
 }
 
 TEST_F(ProxyTest, UpdateNameServers) {

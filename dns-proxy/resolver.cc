@@ -142,7 +142,9 @@ bool Resolver::ListenTCP(struct sockaddr* addr) {
   auto tcp_src = std::make_unique<patchpanel::Socket>(
       addr->sa_family, SOCK_STREAM | SOCK_NONBLOCK);
 
-  if (!tcp_src->Bind(addr, sizeof(*addr))) {
+  socklen_t len =
+      addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
+  if (!tcp_src->Bind(addr, len)) {
     LOG(ERROR) << "Cannot bind source socket to " << *addr;
     return false;
   }
@@ -166,7 +168,9 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
   auto udp_src = std::make_unique<patchpanel::Socket>(
       addr->sa_family, SOCK_DGRAM | SOCK_NONBLOCK);
 
-  if (!udp_src->Bind(addr, sizeof(*addr))) {
+  socklen_t len =
+      addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
+  if (!udp_src->Bind(addr, len)) {
     LOG(ERROR) << "Cannot bind source socket to " << *addr;
     return false;
   }
@@ -182,7 +186,6 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
 }
 
 void Resolver::OnTCPConnection() {
-  // TODO(jasongustaman): Handle IPv6.
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
   auto client_conn =

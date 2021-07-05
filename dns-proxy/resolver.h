@@ -92,7 +92,6 @@ class Resolver {
 
   // Listen on an incoming DNS query on address |addr| for UDP and TCP.
   // Listening on default DNS port (53) requires CAP_NET_BIND_SERVICE.
-  // TODO(jasongustaman): Listen on IPv6.
   virtual bool ListenTCP(struct sockaddr* addr);
   virtual bool ListenUDP(struct sockaddr* addr);
 

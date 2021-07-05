@@ -35,6 +35,7 @@ pkg_config("target_defaults") {
     "libsession_manager-client",
     "libshill-client",
     "libshill-dbus-client",
+    "libshill-net",
 
     # system_api depends on protobuf (or protobuf-lite). It must
     # appear before protobuf or the linker flags won't be in the right
