@@ -2,10 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
+#include <iterator>
+
 #include "runtime_probe/functions/generic_storage.h"
-#include <memory>
 
 namespace runtime_probe {
+namespace {
+
+void ConcatenateDataType(GenericStorageFunction::DataType* dest,
+                         GenericStorageFunction::DataType&& src) {
+  std::move(src.begin(), src.end(), std::back_inserter(*dest));
+}
+}  // namespace
 
 std::unique_ptr<GenericStorageFunction> GenericStorageFunction::FromKwargsValue(
     const base::Value& dict_value) {
@@ -22,34 +31,12 @@ std::unique_ptr<GenericStorageFunction> GenericStorageFunction::FromKwargsValue(
   PARSE_END();
 }
 
-base::Optional<base::Value> GenericStorageFunction::EvalByDV(
-    const base::Value& storage_dv) const {
-  auto* storage_type = storage_dv.FindStringKey("type");
-
-  if (!storage_type) {
-    LOG(ERROR) << "No \"type\" field in current storage dictionary Value.";
-    return base::nullopt;
-  }
-  if (*storage_type == "ATA")
-    return ata_prober_->EvalByDV(storage_dv);
-  if (*storage_type == "MMC")
-    return mmc_prober_->EvalByDV(storage_dv);
-  if (*storage_type == "NVMe")
-    return nvme_prober_->EvalByDV(storage_dv);
-  LOG(WARNING) << "Type \"" << *storage_type << "\" not recognized";
-  return base::nullopt;
+GenericStorageFunction::DataType GenericStorageFunction::EvalImpl() const {
+  DataType result{};
+  ConcatenateDataType(&result, ata_prober_->Eval());
+  ConcatenateDataType(&result, mmc_prober_->Eval());
+  ConcatenateDataType(&result, nvme_prober_->Eval());
+  return result;
 }
 
-base::Optional<base::Value> GenericStorageFunction::EvalInHelperByPath(
-    const base::FilePath& node_path) const {
-  VLOG(1) << "Trying to determine the type of storage device \""
-          << node_path.value() << "\"";
-
-  auto storage_res = ata_prober_->EvalInHelperByPath(node_path);
-  if (!storage_res)
-    storage_res = mmc_prober_->EvalInHelperByPath(node_path);
-  if (!storage_res)
-    storage_res = nvme_prober_->EvalInHelperByPath(node_path);
-  return storage_res;
-}
 }  // namespace runtime_probe
