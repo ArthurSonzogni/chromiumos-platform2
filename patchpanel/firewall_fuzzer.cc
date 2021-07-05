@@ -23,7 +23,7 @@ namespace {
 
 class FakeProcessRunner : public MinijailedProcessRunner {
  public:
-  FakeProcessRunner() = default;
+  FakeProcessRunner() : MinijailedProcessRunner(nullptr, nullptr) {}
   FakeProcessRunner(const FakeProcessRunner&) = delete;
   FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
   ~FakeProcessRunner() = default;
