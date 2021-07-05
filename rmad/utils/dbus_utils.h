@@ -7,9 +7,13 @@
 
 #include <string>
 
+#include <base/memory/scoped_refptr.h>
+#include <dbus/bus.h>
 #include <google/protobuf/message_lite.h>
 
 namespace rmad {
+
+scoped_refptr<dbus::Bus> GetSystemBus();
 
 class DBusUtils {
  public:

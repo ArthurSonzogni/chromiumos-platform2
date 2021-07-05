@@ -7,11 +7,24 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+
+#include <base/timer/timer.h>
+
+#include "rmad/system/power_manager_client.h"
+
 namespace rmad {
 
 class RestockStateHandler : public BaseStateHandler {
  public:
+  // Wait for 5 seconds before shutting down.
+  static constexpr base::TimeDelta kShutdownDelay =
+      base::TimeDelta::FromSeconds(5);
+
   explicit RestockStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mocked |power_manager_client_| for testing.
+  RestockStateHandler(scoped_refptr<JsonStore> json_store,
+                      std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kRestock);
   SET_REPEATABLE;
@@ -21,6 +34,12 @@ class RestockStateHandler : public BaseStateHandler {
 
  protected:
   ~RestockStateHandler() override = default;
+
+ private:
+  void Shutdown();
+
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
+  base::OneShotTimer timer_;
 };
 
 }  // namespace rmad

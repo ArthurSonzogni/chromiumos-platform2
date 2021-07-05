@@ -4,10 +4,28 @@
 
 #include "rmad/state_handler/restock_state_handler.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/logging.h>
+#include <base/notreached.h>
+
+#include "rmad/system/power_manager_client_impl.h"
+#include "rmad/utils/dbus_utils.h"
+
 namespace rmad {
 
 RestockStateHandler::RestockStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  power_manager_client_ =
+      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+}
+
+RestockStateHandler::RestockStateHandler(
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<PowerManagerClient> power_manager_client)
+    : BaseStateHandler(json_store),
+      power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode RestockStateHandler::InitializeState() {
   if (!state_.has_restock() && !RetrieveState()) {
@@ -31,9 +49,29 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
   state_ = state;
   StoreState();
 
-  // TODO(chenghan): This is currently fake.
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kUpdateDeviceInfo};
+  switch (state_.restock().choice()) {
+    case RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK:
+      timer_.Start(FROM_HERE, kShutdownDelay, this,
+                   &RestockStateHandler::Shutdown);
+      return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
+              .state_case = GetStateCase()};
+    case RestockState::RMAD_RESTOCK_CONTINUE_RMA:
+      return {.error = RMAD_ERROR_OK,
+              .state_case = RmadState::StateCase::kUpdateDeviceInfo};
+    default:
+      break;
+  }
+
+  NOTREACHED();
+  return {.error = RMAD_ERROR_NOT_SET,
+          .state_case = RmadState::StateCase::STATE_NOT_SET};
+}
+
+void RestockStateHandler::Shutdown() {
+  LOG(INFO) << "Shutting down to restock";
+  if (!power_manager_client_->Shutdown()) {
+    LOG(ERROR) << "Failed to shut down";
+  }
 }
 
 }  // namespace rmad

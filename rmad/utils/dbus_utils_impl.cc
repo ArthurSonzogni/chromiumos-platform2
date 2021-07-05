@@ -21,11 +21,8 @@ bool DBusUtilsImpl::CallDBusMethod(const std::string& service_name,
                                    const google::protobuf::MessageLite& request,
                                    google::protobuf::MessageLite* reply,
                                    int timeout_ms) const {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  auto bus = base::MakeRefCounted<dbus::Bus>(options);
-  dbus::ObjectProxy* object_proxy =
-      bus->GetObjectProxy(service_name, dbus::ObjectPath(service_path));
+  dbus::ObjectProxy* object_proxy = GetSystemBus()->GetObjectProxy(
+      service_name, dbus::ObjectPath(service_path));
 
   dbus::MethodCall method_call(interface_name, method_name);
   dbus::MessageWriter writer(&method_call);
