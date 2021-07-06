@@ -91,7 +91,7 @@ class VmInterface {
   virtual void SetBalloonSize(int64_t byte_size) = 0;
 
   // Runs memory balloon policy and resize the ballon accordingly.
-  virtual void RunBalloonPolicy(const BalloonPolicyParams& params) = 0;
+  virtual int64_t RunBalloonPolicy(const BalloonPolicyParams& params) = 0;
 
   // Attach an usb device at host bus:addr, with vid, pid and an opened fd.
   virtual bool AttachUsbDevice(uint8_t bus,

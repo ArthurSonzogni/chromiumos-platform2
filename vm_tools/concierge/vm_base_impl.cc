@@ -51,22 +51,12 @@ void VmBaseImpl::SetBalloonSize(int64_t byte_size) {
       {"balloon", std::to_string(byte_size), GetVmSocketPath()});
 }
 
-void VmBaseImpl::RunBalloonPolicy(const BalloonPolicyParams& params) {
+int64_t VmBaseImpl::RunBalloonPolicy(const BalloonPolicyParams& params) {
   int64_t delta = balloon_policy_.ComputeBalloonDelta(params);
-  if (delta == 0) {
-    return;
+  if (delta != 0) {
+    SetBalloonSize(params.actual_balloon_size + delta);
   }
-  LOG(INFO) << "BalloonTrace: { "
-            << "\"actual_balloon_size\": " << params.actual_balloon_size << ", "
-            << "\"critical_host_available\": " << params.critical_host_available
-            << ", "
-            << "\"guest_available_bias\": " << params.guest_available_bias
-            << ", "
-            << "\"guest_cached\": " << params.guest_cached << ", "
-            << "\"guest_free\": " << params.guest_free << ", "
-            << "\"host_available\": " << params.host_available << ", "
-            << "\"delta\": " << delta << " }";
-  SetBalloonSize(params.actual_balloon_size + delta);
+  return delta;
 }
 
 bool VmBaseImpl::AttachUsbDevice(uint8_t bus,

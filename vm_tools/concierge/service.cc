@@ -791,11 +791,10 @@ void Service::RunBalloonPolicy() {
       continue;
     }
     // Switch available memory for this VM based on the current game mode.
+    bool is_in_game_mode = foreground_vm_name.has_value() &&
+                           vm_entry.first.name() == foreground_vm_name;
     const int64_t available_memory_for_vm =
-        (foreground_vm_name.has_value() &&
-         vm_entry.first.name() == foreground_vm_name)
-            ? *foreground_available_memory
-            : *available_memory;
+        is_in_game_mode ? *foreground_available_memory : *available_memory;
     auto stats_opt = vm->GetBalloonStats();
     if (!stats_opt) {
       // Stats not available. Skip running policies.
@@ -808,7 +807,23 @@ void Service::RunBalloonPolicy() {
     const int64_t bias = vm_entry.first.name() == "arcvm" ? 48 * MIB : 0;
     BalloonPolicyParams params = BalloonPolicyParams::FromBalloonStats(
         stats, *critical_margin, bias, available_memory_for_vm);
-    vm->RunBalloonPolicy(params);
+    int64_t delta = vm->RunBalloonPolicy(params);
+    if (delta != 0) {
+      LOG(INFO) << "BalloonTrace: { "
+                << "\"vm_name\": \"" << vm_entry.first.name() << "\", "
+                << "\"is_in_game_mode\": "
+                << (is_in_game_mode ? "true" : "false") << ", "
+                << "\"actual_balloon_size\": " << params.actual_balloon_size
+                << ", "
+                << "\"critical_host_available\": "
+                << params.critical_host_available << ", "
+                << "\"guest_available_bias\": " << params.guest_available_bias
+                << ", "
+                << "\"guest_cached\": " << params.guest_cached << ", "
+                << "\"guest_free\": " << params.guest_free << ", "
+                << "\"host_available\": " << params.host_available << ", "
+                << "\"delta\": " << delta << " }";
+    }
   }
 }
 

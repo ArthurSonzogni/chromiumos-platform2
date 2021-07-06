@@ -50,7 +50,7 @@ class VmBaseImpl : public VmInterface {
   // VmInterface overrides.
   base::Optional<BalloonStats> GetBalloonStats() override;
   void SetBalloonSize(int64_t byte_size) override;
-  void RunBalloonPolicy(const BalloonPolicyParams& params) override;
+  int64_t RunBalloonPolicy(const BalloonPolicyParams& params) override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,
