@@ -21,6 +21,8 @@
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
 
+using testing::ElementsAreArray;
+
 namespace dns_proxy {
 namespace {
 constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
@@ -435,14 +437,16 @@ TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
   proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
-  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
-  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
+  dev.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                     "2001:4860:4860::8844"};
   // Doesn't call listen since the resolver already exists.
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
-              SetNameServers(
-                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+              SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
+                                         StrEq("2001:4860:4860::8888"),
+                                         StrEq("2001:4860:4860::8844"))));
   proxy.OnDefaultDeviceChanged(&dev);
 }
 
@@ -555,27 +559,30 @@ TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
   shill::Client::Device dev;
   dev.ifname = "wlan0";
   dev.state = shill::Client::Device::ConnectionState::kOnline;
-  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
-  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
+  dev.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                     "2001:4860:4860::8844"};
   // Doesn't call listen since the resolver already exists.
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
-              SetNameServers(
-                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+              SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
+                                         StrEq("2001:4860:4860::8888"),
+                                         StrEq("2001:4860:4860::8844"))));
   proxy.OnDeviceChanged(&dev);
 
   // Verify it only applies changes for the correct interface.
   dev.ifname = "eth0";
-  dev.ipconfig.ipv4_dns_addresses = {"X", "Y", "Z"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4", "1.1.1.1"};
   EXPECT_CALL(*mock_resolver, SetNameServers(_)).Times(0);
   proxy.OnDeviceChanged(&dev);
 
   dev.ifname = "wlan0";
-  dev.ipconfig.ipv4_dns_addresses = {"X", "Y", "Z"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4", "1.1.1.1"};
   dev.ipconfig.ipv6_dns_addresses.clear();
   EXPECT_CALL(*mock_resolver,
-              SetNameServers(ElementsAre(StrEq("X"), StrEq("Y"), StrEq("Z"))));
+              SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
+                                         StrEq("1.1.1.1"))));
   proxy.OnDeviceChanged(&dev);
 }
 
@@ -591,22 +598,26 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
-  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
-  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
+  dev.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                     "2001:4860:4860::8844"};
   // Doesn't call listen since the resolver already exists.
   EXPECT_CALL(mock_manager_, SetDNSProxyIPv4Address(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
-              SetNameServers(
-                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+              SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
+                                         StrEq("2001:4860:4860::8888"),
+                                         StrEq("2001:4860:4860::8844"))));
   proxy.OnDefaultDeviceChanged(&dev);
 
   // Now trigger an ipconfig change.
-  dev.ipconfig.ipv4_dns_addresses = {"X"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
   EXPECT_CALL(*mock_resolver,
-              SetNameServers(ElementsAre(StrEq("X"), StrEq("c"), StrEq("d"))));
+              SetNameServers(ElementsAre(StrEq("8.8.8.8"),
+                                         StrEq("2001:4860:4860::8888"),
+                                         StrEq("2001:4860:4860::8844"))));
   proxy.OnDeviceChanged(&dev);
 }
 
@@ -623,16 +634,18 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   shill::Client::Device dev;
   dev.ifname = "eth0";
   dev.state = shill::Client::Device::ConnectionState::kOnline;
-  dev.ipconfig.ipv4_dns_addresses = {"a", "b"};
-  dev.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
+  dev.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                     "2001:4860:4860::8844"};
   // Doesn't call listen since the resolver already exists.
   EXPECT_CALL(mock_manager_, SetDNSProxyIPv4Address(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
-              SetNameServers(
-                  ElementsAre(StrEq("a"), StrEq("b"), StrEq("c"), StrEq("d"))));
+              SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
+                                         StrEq("2001:4860:4860::8888"),
+                                         StrEq("2001:4860:4860::8844"))));
   proxy.OnDefaultDeviceChanged(&dev);
 
   // No change to ipconfig, no call to SetNameServers
@@ -831,7 +844,8 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
       *mock_resolver,
       SetDoHProviders(ElementsAre(StrEq("https://doh.opendns.com/dns-query")),
                       false));
-  ipconfig.ipv4_dns_addresses = {"8.8.8.8", "2620:119:35::35"};
+  ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
+  ipconfig.ipv6_dns_addresses = {"2620:119:35::35"};
   proxy.UpdateNameServers(ipconfig);
 }
 
@@ -1107,8 +1121,9 @@ TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
   shill::Client::Device default_device;
   default_device.ifname = "eth0";
   default_device.state = shill::Client::Device::ConnectionState::kOnline;
-  default_device.ipconfig.ipv4_dns_addresses = {"a", "b"};
-  default_device.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  default_device.ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
+  default_device.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                "2001:4860:4860::8844"};
   EXPECT_CALL(mock_manager_, SetDNSProxyIPv4Address(_, _, _))
       .WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&default_device);
@@ -1170,9 +1185,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   // Default device changed.
   shill::Client::Device default_device;
   default_device.state = shill::Client::Device::ConnectionState::kOnline;
-  std::vector<std::string> ipv4_dns_addresses = {"a", "b"};
+  std::vector<std::string> ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
   default_device.ipconfig.ipv4_dns_addresses = ipv4_dns_addresses;
-  default_device.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                 "2001:4860:4860::8844"};
+  default_device.ipconfig.ipv6_dns_addresses = ipv6_dns_addresses;
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv4_dns_addresses))
@@ -1211,9 +1228,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   // Default device changed.
   shill::Client::Device default_device;
   default_device.state = shill::Client::Device::ConnectionState::kOnline;
-  std::vector<std::string> ipv4_dns_addresses = {"a", "b"};
+  std::vector<std::string> ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
   default_device.ipconfig.ipv4_dns_addresses = ipv4_dns_addresses;
-  default_device.ipconfig.ipv6_dns_addresses = {"c", "d"};
+  std::vector<std::string> ipv6_dns_addresses = {"2001:4860:4860::8888",
+                                                 "2001:4860:4860::8844"};
+  default_device.ipconfig.ipv6_dns_addresses = ipv6_dns_addresses;
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv4_dns_addresses))
@@ -1501,5 +1520,37 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
 
   proxy.OnVirtualDeviceChanged(signal);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+}
+
+TEST_F(ProxyTest, UpdateNameServers) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  shill::Client::IPConfig ipconfig;
+  ipconfig.ipv4_dns_addresses = {"8.8.4.4",
+                                 "192.168.1.1",
+                                 "256.256.256.256",
+                                 "0.0.0.0",
+                                 "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e",
+                                 "::1",
+                                 "::",
+                                 "a",
+                                 ""};
+  ipconfig.ipv6_dns_addresses = {"8.8.4.4",
+                                 "192.168.1.1",
+                                 "256.256.256.256",
+                                 "0.0.0.0",
+                                 "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e",
+                                 "::1",
+                                 "::",
+                                 "a",
+                                 ""};
+  proxy.UpdateNameServers(ipconfig);
+  const std::string expected_ipv4_dns_addresses[] = {"8.8.4.4", "192.168.1.1"};
+  const std::string expected_ipv6_dns_addresses[] = {
+      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e", "::1"};
+  EXPECT_THAT(proxy.doh_config_.ipv4_nameservers(),
+              ElementsAreArray(expected_ipv4_dns_addresses));
+  EXPECT_THAT(proxy.doh_config_.ipv6_nameservers(),
+              ElementsAreArray(expected_ipv6_dns_addresses));
 }
 }  // namespace dns_proxy

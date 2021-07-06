@@ -215,6 +215,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled);
+  FRIEND_TEST(ProxyTest, UpdateNameServers);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;

@@ -62,7 +62,6 @@ constexpr char kDefaultProxyType[] = "def";
 constexpr char kARCProxyType[] = "arc";
 constexpr int32_t kRequestMaxRetry = 1;
 constexpr uint16_t kDefaultPort = 13568;  // port 53 in network order.
-constexpr char kIfAddrAny[] = "0.0.0.0";
 
 // static
 const char* Proxy::TypeToString(Type t) {
@@ -595,13 +594,27 @@ void Proxy::MaybeCreateResolver() {
 }
 
 void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
-  auto ipv4_nameservers = ipconfig.ipv4_dns_addresses;
-  // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
-  ipv4_nameservers.erase(
-      std::remove_if(ipv4_nameservers.begin(), ipv4_nameservers.end(),
-                     [](const std::string& s) { return s == kIfAddrAny; }),
-      ipv4_nameservers.end());
-  doh_config_.set_nameservers(ipv4_nameservers, ipconfig.ipv6_dns_addresses);
+  std::vector<std::string> ipv4_nameservers;
+  std::vector<std::string> ipv6_nameservers;
+
+  // Validate name servers.
+  for (const auto& addr : ipconfig.ipv4_dns_addresses) {
+    struct in_addr addr4;
+    // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
+    if (inet_pton(AF_INET, addr.c_str(), &addr4) == 1 &&
+        addr4.s_addr != INADDR_ANY) {
+      ipv4_nameservers.push_back(addr);
+    }
+  }
+  for (const auto& addr : ipconfig.ipv6_dns_addresses) {
+    struct in6_addr addr6;
+    if (inet_pton(AF_INET6, addr.c_str(), &addr6.s6_addr) == 1 &&
+        memcmp(&addr6, &in6addr_any, sizeof(in6_addr)) != 0) {
+      ipv6_nameservers.push_back(addr);
+    }
+  }
+
+  doh_config_.set_nameservers(ipv4_nameservers, ipv6_nameservers);
   metrics_.RecordNameservers(doh_config_.ipv4_nameservers().size(),
                              doh_config_.ipv6_nameservers().size());
   LOG(INFO) << opts_ << " applied device DNS configuration";
