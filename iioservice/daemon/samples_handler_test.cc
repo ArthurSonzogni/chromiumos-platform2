@@ -29,7 +29,7 @@ namespace iioservice {
 
 namespace {
 
-constexpr double kMinFrequency = 1.25;
+constexpr double kMinFrequency = 5.00;
 constexpr double kMaxFrequency = 40.0;
 
 constexpr double kFooFrequency = 20.0;
@@ -44,6 +44,16 @@ constexpr int kFakeLightData = 100;
 constexpr char kGreenChannel[] = "illuminance_green";
 
 double FixFrequency(double frequency) {
+  if (frequency < libmems::kFrequencyEpsilon)
+    return 0.0;
+
+  if (frequency > kMaxFrequency)
+    return kMaxFrequency;
+
+  return frequency;
+}
+
+double FixFrequencyWithMin(double frequency) {
   if (frequency < libmems::kFrequencyEpsilon)
     return 0.0;
 
@@ -455,8 +465,8 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
     max_freq2 = std::max(max_freq2, GetParam()[i].second);
   }
 
-  max_freq = FixFrequency(max_freq);
-  max_freq2 = FixFrequency(max_freq2);
+  max_freq = FixFrequencyWithMin(max_freq);
+  max_freq2 = FixFrequencyWithMin(max_freq2);
 
   for (size_t i = 0; i < GetParam().size(); ++i) {
     clients_data_.emplace_back(ClientData(
@@ -567,6 +577,8 @@ INSTANTIATE_TEST_SUITE_P(
                           {0.0, 10.0}, {10.0, 30.0}, {80.0, 60.0}},
                       std::vector<std::pair<double, double>>{
                           {2.0, 10.0}, {50.0, 30.0}, {80.0, 60.0}},
+                      std::vector<std::pair<double, double>>{
+                          {2.0, 10.0}, {3.0, 30.0}, {1.0, 60.0}},
                       std::vector<std::pair<double, double>>{{20.0, 30.0},
                                                              {10.0, 10.0}}));
 

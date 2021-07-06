@@ -28,7 +28,7 @@ constexpr char kAccelDeviceName[] = "FakeAccelDevice";
 constexpr int kAccelDeviceId = 1;
 
 constexpr char kFakeSamplingFrequencyAvailable[] =
-    "0.000000 1.250000 40.000000";
+    "0.000000 5.000000 40.000000";
 
 constexpr int kPauseIndex = 50;
 
