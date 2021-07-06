@@ -95,14 +95,16 @@ bool GetValidPCRValues(const std::string& obfuscated_username,
 
   ValidPcrValue default_pcr_value;
   memset(default_pcr_value.bitmask, 0, 2);
-  default_pcr_value.bitmask[kTpmSingleUserPCR / 8] = 1u << kTpmSingleUserPCR;
+  default_pcr_value.bitmask[kTpmSingleUserPCR / 8] = 1u
+                                                     << (kTpmSingleUserPCR % 8);
   default_pcr_value.digest =
       std::string(default_digest.begin(), default_digest.end());
   valid_pcr_criteria->push_back(default_pcr_value);
 
   ValidPcrValue extended_pcr_value;
   memset(extended_pcr_value.bitmask, 0, 2);
-  extended_pcr_value.bitmask[kTpmSingleUserPCR / 8] = 1u << kTpmSingleUserPCR;
+  extended_pcr_value.bitmask[kTpmSingleUserPCR / 8] =
+      1u << (kTpmSingleUserPCR % 8);
   extended_pcr_value.digest =
       std::string(extended_digest.begin(), extended_digest.end());
   valid_pcr_criteria->push_back(extended_pcr_value);
