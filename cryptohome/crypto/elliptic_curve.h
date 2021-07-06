@@ -74,8 +74,8 @@ class EllipticCurve final {
                                   const BIGNUM& scalar,
                                   BN_CTX* context) const;
 
-  // Performs multiplication with generator. It is required that scalar is
-  // in the range of [0..curve order-1]. Returns nullptr if error occurred.
+  // Performs multiplication with generator. Expects scalar to be in the range
+  // of [-curve order..curve order-1]. Return nullptr if error occurred.
   crypto::ScopedEC_POINT MultiplyWithGenerator(const BIGNUM& scalar,
                                                BN_CTX* context) const;
 

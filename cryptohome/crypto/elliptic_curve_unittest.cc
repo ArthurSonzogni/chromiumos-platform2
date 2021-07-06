@@ -302,6 +302,29 @@ TEST_F(EllipticCurveTest, MultiplyWithInvalidPoint) {
   EXPECT_FALSE(result);
 }
 
+TEST_F(EllipticCurveTest, MultiplyWithGeneratorByNegative) {
+  crypto::ScopedBIGNUM scalar1 = BigNumFromValue(123u);
+  ASSERT_TRUE(scalar1);
+  crypto::ScopedBIGNUM scalar2 = BigNumFromValue(321u);
+  ASSERT_TRUE(scalar2);
+
+  crypto::ScopedEC_POINT point1 =
+      ec_->MultiplyWithGenerator(*scalar1, context_.get());
+  crypto::ScopedEC_POINT point2 =
+      ec_->MultiplyWithGenerator(*scalar2, context_.get());
+  BN_set_negative(scalar1.get(), 1);
+  crypto::ScopedEC_POINT inverse_point1 =
+      ec_->MultiplyWithGenerator(*scalar1, context_.get());
+
+  crypto::ScopedEC_POINT point_sum_12 =
+      ec_->Add(*point1, *point2, context_.get());
+  crypto::ScopedEC_POINT point_sum_all =
+      ec_->Add(*point_sum_12, *inverse_point1, context_.get());
+  // Validates that after adding the inversion of point1 its contribution
+  // cancels out and we are left with point2.
+  ASSERT_TRUE(ec_->AreEqual(*point2, *point_sum_all, context_.get()));
+}
+
 TEST_F(EllipticCurveTest, GenerateKey) {
   crypto::ScopedEC_KEY key = ec_->GenerateKey(context_.get());
   ASSERT_TRUE(key);

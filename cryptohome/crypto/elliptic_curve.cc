@@ -189,11 +189,24 @@ crypto::ScopedEC_POINT EllipticCurve::Multiply(const EC_POINT& point,
 
 crypto::ScopedEC_POINT EllipticCurve::MultiplyWithGenerator(
     const BIGNUM& scalar, BN_CTX* context) const {
-  // Check if scalar is smaller than the curve order. See comment in
-  // EllipticCurve::Multiply for explanation.
-  if (BN_is_negative(&scalar) == 1 || BN_cmp(&scalar, order_.get()) >= 0) {
+  crypto::ScopedBIGNUM scalar_mod(BN_dup(&scalar));
+  if (!scalar_mod) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  // We are normalizing scalar by adding the group order to it. If the result
+  // is not in the range [0..curve order-1] fails as described in
+  // EllipticCurve::Multiply.
+  if (BN_is_negative(scalar_mod.get()) == 1) {
+    if (!BN_add(scalar_mod.get(), order_.get(), scalar_mod.get())) {
+      LOG(ERROR) << "Failed to add group order: " << GetOpenSSLErrors();
+      return nullptr;
+    }
+  }
+  if (BN_is_negative(scalar_mod.get()) == 1 ||
+      BN_cmp(scalar_mod.get(), order_.get()) >= 0) {
     LOG(ERROR) << "Failed to perform multiplication: input scalar is not "
-                  "in the expected range [0..curve order-1]";
+                  "in the expected range [-curve_order..curve order-1]";
     return nullptr;
   }
   crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
@@ -202,8 +215,8 @@ crypto::ScopedEC_POINT EllipticCurve::MultiplyWithGenerator(
                << GetOpenSSLErrors();
     return nullptr;
   }
-  if (EC_POINT_mul(group_.get(), result.get(), &scalar, nullptr, nullptr,
-                   context) != 1) {
+  if (EC_POINT_mul(group_.get(), result.get(), scalar_mod.get(), nullptr,
+                   nullptr, context) != 1) {
     LOG(ERROR) << "Failed to perform multiplication with generator: "
                << GetOpenSSLErrors();
     return nullptr;
