@@ -335,15 +335,18 @@ static result_code mount_encrypted_partition(
   encryption_key.fek = key.encryption_key();
   rc = encrypted_fs->Setup(encryption_key, key.is_fresh());
   if (rc == RESULT_SUCCESS) {
-    bool lockbox_valid = false;
-    if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
-      mount_encrypted::NvramSpace* lockbox_space = tpm.GetLockboxSpace();
-      if (lockbox_valid && lockbox_space->is_valid()) {
-        LOG(INFO) << "Lockbox is valid, exporting.";
-        nvram_export(lockbox_space->contents());
+    /* Only check the lockbox when we are using TPM for system key. */
+    if (shall_use_tpm_for_system_key()) {
+      bool lockbox_valid = false;
+      if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
+        mount_encrypted::NvramSpace* lockbox_space = tpm.GetLockboxSpace();
+        if (lockbox_valid && lockbox_space->is_valid()) {
+          LOG(INFO) << "Lockbox is valid, exporting.";
+          nvram_export(lockbox_space->contents());
+        }
+      } else {
+        LOG(ERROR) << "Lockbox validity check error.";
       }
-    } else {
-      LOG(ERROR) << "Lockbox validity check error.";
     }
   }
 

@@ -27,17 +27,21 @@ namespace {
 
 // Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
 uint32_t GetLockboxIndex() {
+  if (USE_TPM_DYNAMIC) {
+    // For TPM runtime selection case.
+    return 0x9da5b0;
+  }
   TPM_SELECT_BEGIN;
   TPM1_SECTION({
     // See lockbox.md for information on how this was selected.
     return 0x20000004;
   });
   TPM2_SECTION({ return 0x800004; });
-  OTHER_TPM_SECTION();
+  OTHER_TPM_SECTION({
+    LOG(ERROR) << "Failed to get the lockbox index on none supported TPM.";
+    return 0;
+  });
   TPM_SELECT_END;
-
-  LOG(ERROR) << "Failed to get the lockbox index on none supported TPM.";
-  return 0;
 }
 
 }  // namespace
