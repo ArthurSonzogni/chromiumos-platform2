@@ -40,23 +40,23 @@ struct ConnectedNamespace {
   std::string netns_name;
   // Source to which traffic from |host_ifname| will be attributed.
   TrafficSource source;
-  // Name of the shill device for routing outbound traffic from the client
-  // namespace. Empty if outbound traffic should be forwarded to the highest
-  // priority network (physical or virtual).
+  // Interface name of the shill Device for routing outbound traffic from the
+  // client namespace. Empty if outbound traffic should be forwarded to the
+  // highest priority network (physical or virtual).
   std::string outbound_ifname;
   // If |outbound_ifname| is empty and |route_on_vpn| is false, the traffic from
   // the client namespace will be routed to the highest priority physical
-  // device. If |outbound_ifname| is empty and |route_on_vpn| is true, the
+  // network. If |outbound_ifname| is empty and |route_on_vpn| is true, the
   // traffic will be routed through VPN connections. If |outbound_ifname|
-  // specifies a valid physical device, |route_on_vpn| is ignored.
+  // specifies a valid physical interface, |route_on_vpn| is ignored.
   bool route_on_vpn;
-  // Name of the "local" veth device visible on the host namespace.
+  // Name of the "local" veth interface visible on the host namespace.
   std::string host_ifname;
-  // Name of the "remote" veth device moved into the client namespace.
+  // Name of the "remote" veth interface moved into the client namespace.
   std::string peer_ifname;
   // IPv4 subnet assigned to the client namespace.
   std::unique_ptr<Subnet> peer_subnet;
-  // MAC address of the "remote" veth device.
+  // MAC address of the "remote" veth interface.
   MacAddress peer_mac_addr;
 };
 
@@ -181,18 +181,17 @@ class Datapath {
   void StopDnsRedirection(const DnsRedirectionRule& rule);
 
   // Sets up IPv4 SNAT, IP forwarding, and traffic marking for the given
-  // virtual device |int_ifname| associated to |source|. if |ext_ifname| is
-  // empty, the device is implicitly routed through the highest priority
-  // physical network when |route_on_vpn| is false, or through the highest
-  // priority logical network when |route_on_vpn| is true. If |ext_ifname| is
-  // defined, the device is routed to |ext_ifname| and |route_on_vpn| is
-  // ignored.
-  // If the device is associated to a connected namespace and a VPN is
-  // connected, an additional IPv4 VPN fwmark tagging bypass rule is needed
-  // to allow return traffic to reach to the IPv4 local source. |peer_ipv4_addr|
-  // is the address of the interface inside the connected namespace needed to
-  // create this rule. If |peer_ipv4_addr| is 0, no additional rule will be
-  // added.
+  // downstream network interface |int_ifname| associated to |source|. if
+  // |ext_ifname| is empty, traffic from the downstream interface is implicitly
+  // routed through the highest priority physical network when |route_on_vpn| is
+  // false, or through the highest priority logical network when |route_on_vpn|
+  // is true. If |ext_ifname| is defined, traffic from the downstream interface
+  // is routed to |ext_ifname| and |route_on_vpn| is ignored. If |int_ifname| is
+  // associated to a connected namespace and a VPN is connected, an additional
+  // IPv4 VPN fwmark tagging bypass rule is needed to allow return traffic to
+  // reach to the IPv4 local source. |peer_ipv4_addr| is the address of the
+  // interface inside the connected namespace needed to create this rule. If
+  // |peer_ipv4_addr| is 0, no additional rule will be added.
   virtual void StartRoutingDevice(const std::string& ext_ifname,
                                   const std::string& int_ifname,
                                   uint32_t int_ipv4_addr,
@@ -201,7 +200,7 @@ class Datapath {
                                   uint32_t peer_ipv4_addr = 0);
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking for the given
-  // virtual device |int_ifname|.
+  // downstream network interface |int_ifname|.
   virtual void StopRoutingDevice(const std::string& ext_ifname,
                                  const std::string& int_ifname,
                                  uint32_t int_ipv4_addr,
@@ -210,15 +209,18 @@ class Datapath {
 
   // Starts or stops marking conntrack entries routed to |ext_ifname| with its
   // associated fwmark routing tag. Once a conntrack entry is marked with the
-  // fwmark routing tag of a external device, the connection will be pinned
-  // to that deviced if conntrack fwmark restore is set for the source.
+  // fwmark routing tag of an upstream network interface, the connection will be
+  // pinned to that network interface if conntrack fwmark restore is set for the
+  // source.
   virtual void StartConnectionPinning(const std::string& ext_ifname);
   virtual void StopConnectionPinning(const std::string& ext_ifname);
   // Starts or stops VPN routing for:
-  //  - Local sockets of binaries running under uids eligible to be routed
+  //  - Local traffic from sockets of binaries running under uids eligible to be
+  //  routed
   //    through VPN connections. These uids are defined by |kLocalSourceTypes|
   //    in routing_service.h
-  //  - Forwarded virtual devices tracking the default network.
+  //  - Forwarded traffic from downstream network interfaces tracking the
+  //  default network.
   virtual void StartVpnRouting(const std::string& vpn_ifname);
   virtual void StopVpnRouting(const std::string& vpn_ifname);
 
@@ -457,8 +459,8 @@ class Datapath {
   // information is necessary when cleaning up iptables fwmark rules that
   // directly references the interface index. When removing these rules on
   // an RTM_DELLINK event, the interface index cannot be retrieved anymore.
-  // A new entry is only added when a new physical device appears, and entries
-  // are not removed.
+  // A new entry is only added when a new upstream network interface appears,
+  // and entries are not removed.
   // TODO(b/161507671) Rely on RoutingService to obtain this information once
   // shill/routing_table.cc has been migrated to patchpanel.
   std::map<std::string, int> if_nametoindex_;

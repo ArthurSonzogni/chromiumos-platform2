@@ -40,8 +40,8 @@ class ArcService {
   bool Start(uint32_t id);
   void Stop(uint32_t id);
 
-  // Returns a list of device configurations. This method only really is useful
-  // when ARCVM is running as it enables the caller to discover which
+  // Returns a list of ARC Device configurations. This method only really is
+  // useful when ARCVM is running as it enables the caller to discover which
   // configurations, if any, are currently associated to TAP devices.
   std::vector<const Device::Config*> GetDeviceConfigs() const;
 
@@ -52,17 +52,17 @@ class ArcService {
   // Returns true if the service has been started for ARC container or ARCVM.
   bool IsStarted() const;
 
-  // Build and configure the ARC datapath for the physical device |ifname|
-  // provided by Shill.
+  // Build and configure the ARC datapath for the upstream network interface
+  // |ifname| managed by Shill.
   void AddDevice(const std::string& ifname, ShillClient::Device::Type type);
 
-  // Teardown the ARC datapath associated with the physical device |ifname| and
-  // stops forwarding services.
+  // Teardown the ARC datapath associated with the upstream network interface
+  // |ifname|.
   void RemoveDevice(const std::string& ifname);
 
  private:
-  // Creates device configurations for all available IPv4 subnets which will be
-  // assigned to devices as they are added.
+  // Creates ARC interface configurations for all available IPv4 subnets which
+  // will be assigned to ARC Devices as they are added.
   void AllocateAddressConfigs();
 
   // Reserve a configuration for an interface.
@@ -77,23 +77,23 @@ class ArcService {
   GuestMessage::GuestType guest_;
   Device::ChangeEventHandler device_changed_handler_;
 
-  // A set of preallocated device configurations keyed by technology type and
-  // used for setting up ARCVM TAP devices at VM booting time.
+  // A set of preallocated ARC interface configurations keyed by technology type
+  // and used for setting up ARCVM TAP devices at VM booting time.
   std::map<ShillClient::Device::Type,
            std::deque<std::unique_ptr<Device::Config>>>
       available_configs_;
-  // The list of all Device configurations. Also includes ARC management device
-  // for ARCVM.
+  // The list of all ARC interface configurations. Also includes the ARC
+  // management interface arc0 for ARCVM.
   std::vector<Device::Config*> all_configs_;
-  // The ARC device configurations corresponding to the host physical devices,
-  // keyed by device interface name.
+  // The ARC Devices corresponding to the host upstream network interfaces,
+  // keyed by upstream interface name.
   std::map<std::string, std::unique_ptr<Device>> devices_;
-  // The ARC management device used for legacy adb-over-tcp support and VPN
-  // forwarding.
+  // The ARC management Device associated with the ARC management interface arc0
+  // used for legacy adb-over-tcp support and VPN forwarding.
   std::unique_ptr<Device> arc_device_;
   // The PID of the ARC container instance or the CID of ARCVM instance.
   uint32_t id_;
-  // All devices currently managed by shill.
+  // All shill Devices currently managed by shill, keyed by host interface name.
   std::map<std::string, ShillClient::Device::Type> shill_devices_;
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);

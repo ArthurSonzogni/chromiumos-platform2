@@ -18,8 +18,8 @@
 
 namespace patchpanel {
 
-// Crostini networking service handling address allocation and TAP device
-// management for Crostini VMs.
+// Crostini networking service handling address allocation, TAP device creation,
+// and patchpanel Device management for Crostini VMs (Termina VMs, Plugin VMs).
 class CrostiniService {
  public:
   // All pointers are required and must not be null, and are owned by the

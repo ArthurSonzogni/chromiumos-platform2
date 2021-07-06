@@ -8,7 +8,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <map>
 #include <utility>
 
 #include <base/bind.h>

@@ -21,7 +21,7 @@ namespace patchpanel {
 // This class manages the iptables rules for traffic counters, and queries
 // iptables to get the counters when a request comes. This class will set up
 // several iptable rules to track the counters for each possible combination of
-// {bytes, packets} x (Traffic source) x (shill device) x {rx, tx} x {IPv4,
+// {bytes, packets} x (Traffic source) x (shill Device) x {rx, tx} x {IPv4,
 // IPv6}. These counters will never be removed after they are set up, and thus
 // they represent the traffic usage from boot time.
 //
@@ -41,8 +41,8 @@ namespace patchpanel {
 //   chain, which matches packets with this new interface.
 // The above accounting rules and chains will never be removed once created, so
 // we will check if one rule exists before creating it. Jumping rules are added
-// and removed dynamically based on physical device and vpn device creation and
-// removal events.
+// and removed dynamically based on shill physical Device and shill vpn Device
+// creation and removal events.
 //
 // Query: Two commands (iptables and ip6tables) will be executed in the mangle
 // table to get all the chains and rules. And then we perform a text parsing on

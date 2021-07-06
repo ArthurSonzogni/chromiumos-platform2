@@ -68,10 +68,10 @@ class Manager final : public brillo::DBusDaemon {
                               const ShillClient::Device& prev_device);
   void OnDevicesChanged(const std::vector<std::string>& added,
                         const std::vector<std::string>& removed);
-  void OnIPConfigsChanged(const std::string& device,
+  void OnIPConfigsChanged(const std::string& ifname,
                           const ShillClient::IPConfig& ipconfig);
 
-  void OnDeviceChanged(const Device& device,
+  void OnDeviceChanged(const Device& virtual_device,
                        Device::ChangeEvent event,
                        GuestMessage::GuestType guest_type);
 
@@ -99,7 +99,8 @@ class Manager final : public brillo::DBusDaemon {
   // address to guest-facing interface.
   void OnNDProxyMessage(const NDProxyMessage& msg);
 
-  // Handles DBus request for managed device list.
+  // Handles DBus request for querying the list of virtual devices managed by
+  // patchpanel.
   std::unique_ptr<dbus::Response> OnGetDevices(dbus::MethodCall* method_call);
 
   // Handles DBus notification indicating ARC++ is booting up.
@@ -135,7 +136,7 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnSetVpnIntent(dbus::MethodCall* method_call);
 
   // Handles DBus requests for connect and routing an existing network
-  // namespace created via minijail or through the rtnl
+  // namespace created via minijail or through rtnetlink RTM_NEWNSID.
   std::unique_ptr<dbus::Response> OnConnectNamespace(
       dbus::MethodCall* method_call);
 

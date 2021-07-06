@@ -1005,7 +1005,7 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                       int_ifname, "" /*oif*/))
     LOG(ERROR) << "Could not add jump rule from mangle PREROUTING to "
                << subchain;
-  // IPv4 traffic from all downstream devices should be tagged to go through
+  // IPv4 traffic from all downstream interfaces should be tagged to go through
   // SNAT.
   if (!ModifyFwmark(IpFamily::IPv4, subchain, "-A", "", "", 0,
                     kFwmarkLegacySNAT, kFwmarkLegacySNAT))
@@ -1036,8 +1036,8 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
 
     // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
     // connected namespace. This allows the return traffic to reach the local
-    // source. Connected namespace device can be identified by checking if the
-    // value of |peer_ipv4_addr| not equal to 0.
+    // source. Connected namespace interface can be identified by checking if
+    // the value of |peer_ipv4_addr| not equal to 0.
     if (route_on_vpn && peer_ipv4_addr != 0 &&
         process_runner_->iptables(
             "mangle",
@@ -1055,7 +1055,7 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                  << int_ifname;
     }
 
-    // Forwarded traffic from downstream virtual devices routed to the system
+    // Forwarded traffic from downstream interfaces routed to the system
     // default network is eligible to be routed through a VPN if |route_on_vpn|
     // is true.
     if (route_on_vpn && !ModifyFwmarkVpnJumpRule(subchain, "-A", {}, {}))

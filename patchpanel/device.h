@@ -12,6 +12,7 @@
 
 #include <map>
 #include <memory>
+#include <ostream>
 #include <string>
 
 #include <base/bind.h>
@@ -25,11 +26,17 @@
 
 namespace patchpanel {
 
-// Encapsulates a physical (e.g. eth0) or proxy (e.g. arc) network device and
-// its configuration spec (interfaces, addresses) on the host and in the
-// container. It manages additional services such as router detection, address
-// assignment, and MDNS and SSDP forwarding. This class is the authoritative
-// source for configuration events.
+// Represents a virtual network interface created and managed by patchpanel with
+// its configuration. A Device can be associated with:
+//  - ARC container: a pair of virtual ethernet interfaces setup across the
+//  host / ARC namespace boundary, plus a software bridge to which the host-side
+//  veth interface is attached.
+//  - ARCVM: a TAP device plus a software bridge to which the TAP device is
+//  attached.
+//  - Termina VMs, plugin VMs: a TAP device, with no software bridge.
+// Connected namespaces have currently no Device representation.
+// A Device always is always associated with a unique IPv4 subnet statically
+// assigned by AddressManager based on the type of guest.
 class Device {
  public:
   enum class ChangeEvent {
@@ -72,21 +79,26 @@ class Device {
     const std::string& tap_ifname() const;
 
    private:
-    // A random MAC address assigned to the device.
+    // A random MAC address assigned to the Device for the guest facing
+    // interface.
     MacAddress mac_addr_;
-    // The IPV4 subnet allocated for this device.
+    // The static IPv4 subnet allocated for this Device for the host and guest
+    // facing interfaces.
     std::unique_ptr<Subnet> ipv4_subnet_;
-    // The address allocated from |ipv4_subnet| for use by the CrOS-side
-    // interface associated with this device.
+    // The address allocated from |ipv4_subnet| for use by the host-side
+    // interface associated with this Device. This is also used as the next hop
+    // for the guest default route on the virtual network associated with that
+    // Device.
     std::unique_ptr<SubnetAddress> host_ipv4_addr_;
     // The address allocated from |ipv4_subnet| for use by the guest-side
-    // interface associated with this device, if applicable.
+    // interface associated with this Device, if applicable.
     std::unique_ptr<SubnetAddress> guest_ipv4_addr_;
-    // If applicable, an additional subnet allocated for this device for guests
-    // like Crostini to use for assigning addresses to containers running within
-    // the VM.
+    // If applicable, an additional IPv4 subnet allocated for this Device for
+    // guests like Crostini to use for assigning addresses to containers running
+    // within the VM.
     std::unique_ptr<Subnet> lxd_ipv4_subnet_;
-    // TAP devices currently associated with the configuration.
+    // For VM guest, the interface name of the TAP device currently associated
+    // with the configuration.
     std::string tap_;
   };
 

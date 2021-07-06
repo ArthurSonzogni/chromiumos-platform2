@@ -364,16 +364,16 @@ void Manager::OnDevicesChanged(const std::vector<std::string>& added,
 
   for (const std::string& ifname : added) {
     datapath_->StartConnectionPinning(ifname);
-    ShillClient::Device device;
-    if (!shill_client_->GetDeviceProperties(ifname, &device))
+    ShillClient::Device shill_device;
+    if (!shill_client_->GetDeviceProperties(ifname, &shill_device))
       continue;
 
-    if (!device.ipconfig.ipv4_dns_addresses.empty())
-      datapath_->AddRedirectDnsRule(ifname,
-                                    device.ipconfig.ipv4_dns_addresses.front());
+    if (!shill_device.ipconfig.ipv4_dns_addresses.empty())
+      datapath_->AddRedirectDnsRule(
+          ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
 
     counters_svc_->OnPhysicalDeviceAdded(ifname);
-    arc_svc_->AddDevice(ifname, device.type);
+    arc_svc_->AddDevice(ifname, shill_device.type);
   }
 }
 
@@ -386,7 +386,7 @@ void Manager::OnIPConfigsChanged(const std::string& ifname,
   }
 }
 
-void Manager::OnDeviceChanged(const Device& device,
+void Manager::OnDeviceChanged(const Device& virtual_device,
                               Device::ChangeEvent event,
                               GuestMessage::GuestType guest_type) {
   dbus::Signal signal(kPatchPanelInterface, kNetworkDeviceChangedSignal);
@@ -395,8 +395,8 @@ void Manager::OnDeviceChanged(const Device& device,
                       ? NetworkDeviceChangedSignal::DEVICE_ADDED
                       : NetworkDeviceChangedSignal::DEVICE_REMOVED);
   auto* dev = proto.mutable_device();
-  FillDeviceProto(device, dev);
-  if (const auto* subnet = device.config().ipv4_subnet()) {
+  FillDeviceProto(virtual_device, dev);
+  if (const auto* subnet = virtual_device.config().ipv4_subnet()) {
     FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
   }
   switch (guest_type) {
@@ -414,20 +414,20 @@ void Manager::OnDeviceChanged(const Device& device,
       break;
     default:
       dev->set_guest_type(NetworkDevice::UNKNOWN);
-      LOG(ERROR) << "Unknown device type";
+      LOG(ERROR) << "Unknown patchpanel Device type";
       return;
   }
 
   if (dev->guest_type() != NetworkDevice::UNKNOWN) {
     const std::string& upstream_device =
         (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM)
-            ? device.phys_ifname()
+            ? virtual_device.phys_ifname()
             : shill_client_->default_interface();
 
     if (event == Device::ChangeEvent::ADDED) {
-      StartForwarding(upstream_device, device.host_ifname());
+      StartForwarding(upstream_device, virtual_device.host_ifname());
     } else if (event == Device::ChangeEvent::REMOVED) {
-      StopForwarding(upstream_device, device.host_ifname());
+      StopForwarding(upstream_device, virtual_device.host_ifname());
     }
   }
 
@@ -547,8 +547,9 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
         dev->set_guest_type(NetworkDevice::PLUGIN_VM);
         break;
       default:
-        LOG(ERROR) << "Unexpected Device::Type for CrostiniService Device: "
-                   << crosvm_device->type();
+        LOG(ERROR)
+            << "Unexpected patchpanel Device type for CrostiniService Device: "
+            << crosvm_device->type();
         continue;
     }
     if (const auto* subnet = crosvm_device->config().ipv4_subnet()) {
@@ -636,7 +637,8 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     return dbus_response;
   }
 
-  // Populate the response with the known devices.
+  // Populate the response with the interface configurations of the known ARC
+  // Devices
   for (const auto* config : arc_svc_->GetDeviceConfigs()) {
     if (config->tap_ifname().empty())
       continue;
@@ -705,28 +707,29 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
 
   const auto* const tap = cros_svc_->TAP(cid, true /*is_termina*/);
   if (!tap) {
-    LOG(DFATAL) << "TAP device missing";
+    LOG(DFATAL) << "Termina TAP Device missing";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  const auto* device_subnet = tap->config().ipv4_subnet();
-  if (!device_subnet) {
-    LOG(DFATAL) << "Missing required device IPv4 subnet for {cid: " << cid
+  const auto* termina_subnet = tap->config().ipv4_subnet();
+  if (!termina_subnet) {
+    LOG(DFATAL) << "Missing required Termina IPv4 subnet for {cid: " << cid
                 << "}";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
   const auto* lxd_subnet = tap->config().lxd_ipv4_subnet();
   if (!lxd_subnet) {
-    LOG(DFATAL) << "Missing required lxd IPv4 subnet for {cid: " << cid << "}";
+    LOG(DFATAL) << "Missing required lxd container IPv4 subnet for {cid: "
+                << cid << "}";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
   auto* dev = response.mutable_device();
   dev->set_guest_type(NetworkDevice::TERMINA_VM);
   FillDeviceProto(*tap, dev);
-  FillSubnetProto(*device_subnet, dev->mutable_ipv4_subnet());
+  FillSubnetProto(*termina_subnet, dev->mutable_ipv4_subnet());
   FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
 
   writer.AppendProtoAsArrayOfBytes(response);
@@ -786,7 +789,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
 
   const auto* const tap = cros_svc_->TAP(vm_id, false /*is_termina*/);
   if (!tap) {
-    LOG(DFATAL) << "TAP device missing";
+    LOG(DFATAL) << "Plugin VM TAP Device missing";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -902,7 +905,8 @@ std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
   }
 
   const std::string& outbound_ifname = request.outbound_physical_device();
-  if (!outbound_ifname.empty() && !shill_client_->has_device(outbound_ifname)) {
+  if (!outbound_ifname.empty() &&
+      !shill_client_->has_interface(outbound_ifname)) {
     LOG(ERROR) << "Invalid outbound ifname " << outbound_ifname;
     writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
     return dbus_response;
@@ -930,9 +934,9 @@ std::unique_ptr<dbus::Response> Manager::OnGetTrafficCounters(
     return dbus_response;
   }
 
-  const std::set<std::string> devices{request.devices().begin(),
-                                      request.devices().end()};
-  const auto counters = counters_svc_->GetCounters(devices);
+  const std::set<std::string> shill_devices{request.devices().begin(),
+                                            request.devices().end()};
+  const auto counters = counters_svc_->GetCounters(shill_devices);
   for (const auto& kv : counters) {
     auto* traffic_counter = response.add_counters();
     const auto& key = kv.first;
@@ -1234,9 +1238,9 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   msg->set_dev_ifname(ifname_physical);
   msg->set_br_ifname(ifname_virtual);
 
-  ShillClient::Device upstream_device;
-  shill_client_->GetDeviceProperties(ifname_physical, &upstream_device);
-  if (IsIPv6NDProxyEnabled(upstream_device.type)) {
+  ShillClient::Device upstream_shill_device;
+  shill_client_->GetDeviceProperties(ifname_physical, &upstream_shill_device);
+  if (IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
     ndproxy_virtual_ifnames_.insert(ifname_virtual);
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
               << ifname_virtual;

@@ -130,7 +130,7 @@ void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
   done = true;
 }
 
-// Returns the ARC management device used for VPN forwarding, ADB-over-TCP.
+// Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
 std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
                                        GuestMessage::GuestType guest) {
   auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(GuestType::ARC0);
@@ -186,7 +186,7 @@ bool ArcService::IsStarted() const {
 }
 
 void ArcService::AllocateAddressConfigs() {
-  // The first usable subnet is the "other" ARC device subnet.
+  // The first usable subnet is the "other" ARC Device subnet.
   // As a temporary workaround, for ARCVM, allocate fixed MAC addresses.
   uint8_t mac_addr_index = 2;
   // Allocate 2 subnets each for Ethernet and WiFi and 1 for LTE WAN interfaces.
@@ -246,7 +246,7 @@ std::unique_ptr<Device::Config> ArcService::AcquireConfig(
 
   if (it->second.empty()) {
     LOG(ERROR)
-        << "Cannot make virtual device: No more addresses available for type "
+        << "Cannot make virtual Device: No more addresses available for type "
         << type;
     return nullptr;
   }
@@ -298,7 +298,7 @@ bool ArcService::Start(uint32_t id) {
                                     arc_device_->config().mac_addr(),
                                     arc_device_->config().guest_ipv4_addr(), 30,
                                     false /*remote_multicast_flag*/)) {
-      LOG(ERROR) << "Cannot create virtual link for device "
+      LOG(ERROR) << "Cannot create virtual link for shill Device "
                  << arc_device_->phys_ifname();
       return false;
     }
@@ -316,13 +316,13 @@ bool ArcService::Start(uint32_t id) {
   }
 
   if (!datapath_->AddToBridge(kArcBridge, arc_device_ifname)) {
-    LOG(ERROR) << "Failed to bridge arc device " << arc_device_ifname << " to "
+    LOG(ERROR) << "Failed to bridge ARC Device " << arc_device_ifname << " to "
                << kArcBridge;
     return false;
   }
-  LOG(INFO) << "Started ARC management device " << *arc_device_.get();
+  LOG(INFO) << "Started ARC management Device " << *arc_device_.get();
 
-  // Start already known Shill <-> ARC mapped devices.
+  // Start already known shill <-> ARC mapped devices.
   for (const auto& [ifname, type] : shill_devices_)
     AddDevice(ifname, type);
 
@@ -350,7 +350,7 @@ void ArcService::Stop(uint32_t id) {
   if (!datapath_->SetConntrackHelpers(false))
     LOG(ERROR) << "Failed to disable conntrack helpers";
 
-  // Stop Shill <-> ARC mapped devices.
+  // Remove all ARC Devices associated with a shill Device.
   // Make a copy of |shill_devices_| to avoid invalidating any iterator over
   // |shill_devices_| while removing device from it and resetting it afterwards.
   auto shill_devices = shill_devices_;
@@ -359,14 +359,14 @@ void ArcService::Stop(uint32_t id) {
   }
   shill_devices_ = shill_devices;
 
-  // Stop the bridge for the management device arc0.
+  // Stop the bridge for the management interface arc0.
   if (guest_ == GuestMessage::ARC) {
     datapath_->RemoveInterface(ArcVethHostName(arc_device_->phys_ifname()));
     if (!datapath_->NetnsDeleteName(kArcNetnsName))
       LOG(WARNING) << "Failed to delete netns name " << kArcNetnsName;
   }
 
-  // Destroy allocated TAP devices if any, including the ARC management device.
+  // Destroy allocated TAP devices if any, including the ARC management Device.
   for (auto* config : all_configs_) {
     if (config->tap_ifname().empty())
       continue;
@@ -375,7 +375,7 @@ void ArcService::Stop(uint32_t id) {
   }
 
   datapath_->RemoveBridge(kArcBridge);
-  LOG(INFO) << "Stopped ARC management device " << *arc_device_.get();
+  LOG(INFO) << "Stopped ARC management Device " << *arc_device_.get();
   id_ = kInvalidId;
 }
 
@@ -389,7 +389,7 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
 
   if (devices_.find(ifname) != devices_.end()) {
-    LOG(DFATAL) << "Attemping to add already tracked device: " << ifname;
+    LOG(DFATAL) << "Attemping to add already tracked shill Device: " << ifname;
     return;
   }
 
@@ -402,7 +402,7 @@ void ArcService::AddDevice(const std::string& ifname,
   auto device = std::make_unique<Device>(GuestType::ARC_NET, ifname,
                                          ArcBridgeName(ifname), ifname,
                                          std::move(config));
-  LOG(INFO) << "Starting device " << *device;
+  LOG(INFO) << "Starting ARC Device " << *device;
 
   // Create the bridge.
   if (!datapath_->AddBridge(device->host_ifname(),
@@ -459,12 +459,12 @@ void ArcService::RemoveDevice(const std::string& ifname) {
 
   const auto it = devices_.find(ifname);
   if (it == devices_.end()) {
-    LOG(WARNING) << "Unknown device: " << ifname;
+    LOG(WARNING) << "Unknown shill Device " << ifname;
     return;
   }
 
   const auto* device = it->second.get();
-  LOG(INFO) << "Removing device " << *device;
+  LOG(INFO) << "Removing ARC Device " << *device;
 
   device_changed_handler_.Run(*device, Device::ChangeEvent::REMOVED, guest_);
 
@@ -480,8 +480,8 @@ void ArcService::RemoveDevice(const std::string& ifname) {
   if (IsAdbAllowed(type))
     datapath_->DeleteAdbPortAccessRule(ifname);
 
-  // Once the physical Device is gone it may not be possible to retrieve
-  // the device type from Shill DBus interface by interface name.
+  // Once the upstream shill Device is gone it may not be possible to retrieve
+  // the Device type from shill DBus interface by interface name.
   ReleaseConfig(type, it->second->release_config());
   devices_.erase(it);
 }
