@@ -63,7 +63,6 @@ class VmBuilder {
   VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
   VmBuilder& SetGpuCacheSize(std::string gpu_cache_size_str);
 
-  VmBuilder& EnableWaylandDmaBuf(bool enable);
   VmBuilder& EnableSoftwareTpm(bool enable);
   VmBuilder& EnableVideoDecoder(bool enable);
   VmBuilder& EnableVideoEncoder(bool enable);
@@ -92,7 +91,6 @@ class VmBuilder {
   base::FilePath gpu_cache_path_;
   std::string gpu_cache_size_str_;
 
-  bool enable_wayland_dma_buf_ = false;
   bool enable_software_tpm_ = false;
   bool enable_video_decoder_ = false;
   bool enable_video_encoder_ = false;

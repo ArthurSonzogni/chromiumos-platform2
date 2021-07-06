@@ -223,9 +223,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     return false;
   }
 
-  if (USE_CROSVM_WL_DMABUF)
-    vm_builder.EnableWaylandDmaBuf(true /* enable */);
-
   if (USE_CROSVM_VIRTIO_VIDEO) {
     vm_builder.EnableVideoDecoder(true /* enable */);
     vm_builder.EnableVideoEncoder(true /* enable */);

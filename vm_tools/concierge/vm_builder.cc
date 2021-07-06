@@ -137,11 +137,6 @@ VmBuilder& VmBuilder::SetGpuCacheSize(std::string gpu_cache_size_str) {
   return *this;
 }
 
-VmBuilder& VmBuilder::EnableWaylandDmaBuf(bool enable) {
-  enable_wayland_dma_buf_ = enable;
-  return *this;
-}
-
 VmBuilder& VmBuilder::EnableSoftwareTpm(bool enable) {
   enable_software_tpm_ = enable;
   return *this;
@@ -231,9 +226,6 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     auto disk_args = d.GetCrosvmArgs();
     args.insert(std::end(args), std::begin(disk_args), std::end(disk_args));
   }
-
-  if (enable_wayland_dma_buf_)
-    args.emplace_back("--wayland-dmabuf", "");
 
   if (enable_gpu_) {
     std::string gpu_arg = "--gpu=vulkan=";

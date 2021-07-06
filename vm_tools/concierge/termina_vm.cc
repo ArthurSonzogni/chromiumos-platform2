@@ -206,9 +206,6 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       .AppendSerialDevice(GetCrosVmSerial("virtio-console", "console"))
       .SetSyslogTag(base::StringPrintf("VM(%u)", vsock_cid_));
 
-  if (USE_CROSVM_WL_DMABUF)
-    vm_builder.EnableWaylandDmaBuf(true /* enable */);
-
   if (features_.gpu) {
     vm_builder.EnableGpu(true)
         .EnableVulkan(features_.vulkan)
