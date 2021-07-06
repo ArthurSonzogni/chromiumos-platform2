@@ -117,6 +117,8 @@ class NDProxy {
                                      uint8_t opt_type,
                                      const MacAddress& target_mac);
 
+  static void ReplaceSourceIP(uint8_t* frame, const in6_addr& src_ip);
+
   // Get MAC address on a local interface through ioctl().
   // Returns false upon failure.
   virtual bool GetLocalMac(int if_id, MacAddress* mac_addr);
@@ -125,9 +127,18 @@ class NDProxy {
   // Returns false when neighbor entry is not found.
   virtual bool GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr);
 
+  // Get the link local IPv6 address on a local interface.
+  // Returns false upon failure.
+  virtual bool GetLinkLocalAddress(int if_id, in6_addr* link_local);
+
   interface_mapping* MapForType(uint8_t type);
   bool IsGuestInterface(int ifindex);
   bool IsRouterInterface(int ifindex);
+
+  // b/187918638: return true if the interface is a guest interface mapping to
+  // a router interface that does not send NS/NA therefore requires special
+  // workaround.
+  bool IsGuestToIrregularRouter(int ifindex);
 
   // Socket used to communicate with kernel through ioctl. No real packet data
   // goes through this socket.
@@ -144,6 +155,9 @@ class NDProxy {
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;
   interface_mapping if_map_ns_na_;
+
+  // b/187918638: list of interfaces that require special workaround
+  std::set<int> irregular_router_ifs;
 
   base::Callback<void(const std::string&, const std::string&)>
       guest_discovery_handler_;

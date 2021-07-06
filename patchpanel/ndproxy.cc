@@ -22,10 +22,13 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
+#include <fstream>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
@@ -230,6 +233,18 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   return frame_len;
 }
 
+void NDProxy::ReplaceSourceIP(uint8_t* frame, const in6_addr& src_ip) {
+  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(frame + ETHER_HDR_LEN);
+  icmp6_hdr* icmp6 =
+      reinterpret_cast<icmp6_hdr*>(frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
+
+  memcpy(&ip6->ip6_src, &src_ip, sizeof(in6_addr));
+
+  // Recalculate checksum.
+  icmp6->icmp6_cksum = 0;
+  icmp6->icmp6_cksum = Icmpv6Checksum(ip6, icmp6);
+}
+
 void NDProxy::ReadAndProcessOneFrame(int fd) {
   sockaddr_ll dst_addr;
   struct iovec iov = {
@@ -280,20 +295,6 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
     }
   }
 
-  // TODO(b/187918638): with Fibocom cell modem we are observing RAs coming
-  // from a src IP that is not present in neighbor table. Forwarding this
-  // will cause guest OS to set up a default route that's not routable.
-  // Skip these RAs now to avoid blocking connectivity on those devices, and
-  // we can revisit this case later to proper address the issue, potentially
-  // by using host IP as router IP instead.
-  MacAddress router_mac;
-  if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
-      !GetNeighborMac(ip6->ip6_src, &router_mac)) {
-    LOG(WARNING) << "Detected RA from unreachable src on interface "
-                 << dst_addr.sll_ifindex << ", skip proxying the RA.";
-    return;
-  }
-
   // On receiving RA from router, generate an address for each guest-facing
   // interface, and sent it to DeviceManager so it can be assigned. This address
   // will be used when directly communicating with guest OS through IPv6.
@@ -319,6 +320,57 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
         router_discovery_handler_.Run(std::string(target_ifname),
                                       std::string(eui64_addr_str));
       }
+    }
+  }
+
+  // b/187918638: with Fibocom cellular modem we are observing irregular RAs
+  // coming from a src IP that either cannot map to a hardware address in
+  // neighbor table, or is mapped to the local MAC address on the cellular
+  // interface. Directly proxying these RAs will cause guest OS to set up a
+  // default route to a next hop that's not reachable.
+  // A workaround is taken to overwrite that router IP with the host link local
+  // IP, so that the guest OS set up the default route with the host as next hop
+  // instead.
+  // This piece of code detect this irregular case and the actual translation
+  // code happens later below.
+  bool unusual_ra_src = false;
+  if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
+      IsRouterInterface(dst_addr.sll_ifindex)) {
+    MacAddress router_mac;
+    MacAddress inbound_local_mac;
+    if (!GetNeighborMac(ip6->ip6_src, &router_mac)) {
+      // The router ip is not in neighbor table
+      unusual_ra_src = true;
+    } else {
+      // Detect if the router ip get resolved to a local MAC
+      unusual_ra_src = (GetLocalMac(dst_addr.sll_ifindex, &inbound_local_mac) &&
+                        router_mac == inbound_local_mac);
+    }
+    if (unusual_ra_src)
+      irregular_router_ifs.insert(dst_addr.sll_ifindex);
+  }
+
+  // b/187918638(cont.): since these cell upstream never send proper NS and NA,
+  // there is no chance that we get the guest IP as normally from NA. Instead,
+  // we have to monitor DAD NS frames and use it as judgement. Notice that since
+  // upstream never reply NA, this DAD never fails.
+  if (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT &&
+      IsGuestToIrregularRouter(dst_addr.sll_ifindex) &&
+      !guest_discovery_handler_.is_null()) {
+    uint8_t zerobuf[sizeof(in6_addr)] = {0};
+    nd_neighbor_solicit* ns = reinterpret_cast<nd_neighbor_solicit*>(icmp6);
+    if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) ==
+            0  // Empty source IP indicates DAD
+        &&
+        (((ns->nd_ns_target.s6_addr[0] & 0xe0) == 0x20)  // Global Unicast
+         || ((ns->nd_ns_target.s6_addr[0] & 0xfe) == 0xfc))) {  // Unique Local
+      char ifname[IFNAMSIZ];
+      if_indextoname(dst_addr.sll_ifindex, ifname);
+      char ipv6_addr_str[INET6_ADDRSTRLEN];
+      inet_ntop(AF_INET6, &(ns->nd_ns_target.s6_addr), ipv6_addr_str,
+                INET6_ADDRSTRLEN);
+      guest_discovery_handler_.Run(std::string(ifname),
+                                   std::string(ipv6_addr_str));
     }
   }
 
@@ -354,6 +406,19 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
           LOG(DFATAL) << "Unknown error in TranslateNDFrame";
           return;
       }
+    }
+
+    // b/187918638: Overwrite source IP address with host address to workaround
+    // irregular router address on Fibocom cell modem, as described above.
+    if (unusual_ra_src) {
+      in6_addr new_src;
+      if (!GetLinkLocalAddress(target_if, &new_src)) {
+        LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
+                        "proxy RA to interface "
+                     << target_if;
+        return;
+      }
+      ReplaceSourceIP(out_frame_buffer_, new_src);
     }
 
     struct iovec iov_out = {
@@ -402,6 +467,35 @@ const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* in_frame,
     }
   }
   return nullptr;
+}
+
+bool NDProxy::GetLinkLocalAddress(int ifindex, in6_addr* link_local) {
+  DCHECK(link_local != nullptr);
+  std::ifstream proc_file("/proc/net/if_inet6");
+  std::string line;
+  while (std::getline(proc_file, line)) {
+    // Line format in /proc/net/if_inet6:
+    //   address ifindex prefix_len scope flags ifname
+    auto tokens = base::SplitString(line, " \t", base::TRIM_WHITESPACE,
+                                    base::SPLIT_WANT_NONEMPTY);
+    if (tokens[3] != "20") {
+      // We are only looking for link local address (scope value == "20")
+      continue;
+    }
+    int line_if_id;
+    if (!base::HexStringToInt(tokens[1], &line_if_id) ||
+        line_if_id != ifindex) {
+      continue;
+    }
+    std::vector<uint8_t> line_address;
+    if (!base::HexStringToBytes(tokens[0], &line_address) ||
+        line_address.size() != sizeof(in6_addr)) {
+      continue;
+    }
+    memcpy(link_local, line_address.data(), sizeof(in6_addr));
+    return true;
+  }
+  return false;
 }
 
 bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
@@ -632,6 +726,16 @@ bool NDProxy::IsGuestInterface(int ifindex) {
 
 bool NDProxy::IsRouterInterface(int ifindex) {
   return if_map_ra_.find(ifindex) != if_map_ra_.end();
+}
+
+bool NDProxy::IsGuestToIrregularRouter(int ifindex) {
+  if (!IsGuestInterface(ifindex))
+    return false;
+  for (int target_if : if_map_rs_[ifindex]) {
+    if (irregular_router_ifs.count(target_if) > 0)
+      return true;
+  }
+  return false;
 }
 
 std::vector<std::string> NDProxy::GetGuestInterfaces(
