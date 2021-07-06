@@ -5,10 +5,13 @@
 #ifndef IIOSERVICE_LIBIIOSERVICE_IPC_SENSOR_DBUS_H_
 #define IIOSERVICE_LIBIIOSERVICE_IPC_SENSOR_DBUS_H_
 
+#include <memory>
+
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <dbus/object_proxy.h>
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "iioservice/include/export.h"
@@ -27,12 +30,16 @@ class IIOSERVICE_EXPORT SensorDbus {
  protected:
   SensorDbus() = default;
 
+  void OnServiceAvailabilityChange(bool service_is_available);
+
   void OnBootstrapMojoResponse(dbus::Response* response);
   virtual void ReconnectMojoWithDelay();
 
   virtual void OnInvitationReceived(mojo::IncomingInvitation invitation) = 0;
 
-  dbus::Bus* sensor_bus_;
+  dbus::Bus* sensor_bus_ = nullptr;
+  dbus::ObjectProxy* proxy_ = nullptr;
+  std::unique_ptr<dbus::MethodCall> method_call_ = nullptr;
 
   SEQUENCE_CHECKER(sensor_sequence_checker_);
 

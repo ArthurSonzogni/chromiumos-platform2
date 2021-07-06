@@ -12,6 +12,8 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "iioservice/include/common.h"
+
 namespace iioservice {
 
 namespace {
@@ -22,6 +24,23 @@ constexpr int kDelayBootstrapInMilliseconds = 1000;
 
 void SensorDbus::SetBus(dbus::Bus* sensor_bus) {
   sensor_bus_ = sensor_bus;
+}
+
+void SensorDbus::OnServiceAvailabilityChange(bool service_is_available) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sensor_sequence_checker_);
+  DCHECK(proxy_);
+  DCHECK(method_call_);
+
+  if (!service_is_available) {
+    LOGF(ERROR) << "Failed to connect to Chromium";
+    ReconnectMojoWithDelay();
+    return;
+  }
+
+  dbus::MessageWriter writer(method_call_.get());
+  proxy_->CallMethod(method_call_.get(), dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                     base::BindOnce(&SensorDbus::OnBootstrapMojoResponse,
+                                    weak_factory_.GetWeakPtr()));
 }
 
 void SensorDbus::OnBootstrapMojoResponse(dbus::Response* response) {

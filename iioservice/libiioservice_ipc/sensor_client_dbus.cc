@@ -4,9 +4,13 @@
 
 #include "iioservice/libiioservice_ipc/sensor_client_dbus.h"
 
-#include <chromeos/dbus/service_constants.h>
+#include <memory>
+
+#include <base/bind.h>
 #include <base/check.h>
-#include <dbus/object_proxy.h>
+#include <chromeos/dbus/service_constants.h>
+
+#include "iioservice/include/common.h"
 
 namespace iioservice {
 
@@ -14,19 +18,24 @@ void SensorClientDbus::BootstrapMojoConnection() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sensor_sequence_checker_);
   DCHECK(sensor_bus_);
 
-  dbus::ObjectProxy* proxy = sensor_bus_->GetObjectProxy(
+  proxy_ = sensor_bus_->GetObjectProxy(
       ::mojo_connection_service::kMojoConnectionServiceServiceName,
       dbus::ObjectPath(
           ::mojo_connection_service::kMojoConnectionServiceServicePath));
+  if (!proxy_) {
+    LOGF(ERROR) << "Failed to get proxy for "
+                << ::mojo_connection_service::kMojoConnectionServiceServiceName;
+    return;
+  }
 
-  dbus::MethodCall method_call(
+  method_call_ = std::make_unique<dbus::MethodCall>(
       ::mojo_connection_service::kMojoConnectionServiceInterface,
       ::mojo_connection_service::
           kBootstrapMojoConnectionForSensorClientsMethod);
-  dbus::MessageWriter writer(&method_call);
-  proxy->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                    base::BindOnce(&SensorClientDbus::OnBootstrapMojoResponse,
-                                   weak_factory_.GetWeakPtr()));
+
+  proxy_->WaitForServiceToBeAvailable(
+      base::BindOnce(&SensorClientDbus::OnServiceAvailabilityChange,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void SensorClientDbus::OnInvitationReceived(
