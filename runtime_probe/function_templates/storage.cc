@@ -6,9 +6,7 @@
 
 #include <utility>
 
-#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
-#include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/optional.h>
 #include <brillo/strings/string_utils.h>
@@ -18,24 +16,14 @@
 
 namespace runtime_probe {
 namespace {
-constexpr auto kStorageDirPath("/sys/class/block/");
+constexpr auto kStorageDirPath("/sys/class/block/*");
 constexpr auto kReadFileMaxSize = 1024;
 constexpr auto kDefaultBytesPerSector = 512;
-}  // namespace
 
 // Get paths of all non-removeable physical storage.
-std::vector<base::FilePath> StorageFunction::GetFixedDevices() const {
+std::vector<base::FilePath> GetFixedDevices() {
   std::vector<base::FilePath> res{};
-  const base::FilePath storage_dir_path(kStorageDirPath);
-  base::FileEnumerator storage_dir_it(storage_dir_path, true,
-                                      base::FileEnumerator::SHOW_SYM_LINKS |
-                                          base::FileEnumerator::FILES |
-                                          base::FileEnumerator::DIRECTORIES);
-
-  while (true) {
-    const auto storage_path = storage_dir_it.Next();
-    if (storage_path.empty())
-      break;
+  for (const auto& storage_path : Glob(kStorageDirPath)) {
     // Only return non-removable devices.
     const auto storage_removable_path = storage_path.Append("removable");
     std::string removable_res;
@@ -66,8 +54,7 @@ std::vector<base::FilePath> StorageFunction::GetFixedDevices() const {
 }
 
 // Get storage size based on |node_path|.
-base::Optional<int64_t> StorageFunction::GetStorageSectorCount(
-    const base::FilePath& node_path) const {
+base::Optional<int64_t> GetStorageSectorCount(const base::FilePath& node_path) {
   // The sysfs entry for size info.
   const auto size_path = node_path.Append("size");
   std::string size_content;
@@ -89,8 +76,7 @@ base::Optional<int64_t> StorageFunction::GetStorageSectorCount(
 }
 
 // Get the logical block size of the storage given the |node_path|.
-int32_t StorageFunction::GetStorageLogicalBlockSize(
-    const base::FilePath& node_path) const {
+int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) {
   std::string block_size_str;
   if (!base::ReadFileToString(
           node_path.Append("queue").Append("logical_block_size"),
@@ -113,32 +99,17 @@ int32_t StorageFunction::GetStorageLogicalBlockSize(
   return logical_block_size;
 }
 
-StorageFunction::DataType StorageFunction::Eval() const {
-  auto json_output = InvokeHelperToJSON();
-  if (!json_output) {
-    LOG(ERROR)
-        << "Failed to invoke helper to retrieve cached storage information.";
-    return {};
-  }
+}  // namespace
 
-  DataType results(json_output->TakeList());
-  for (auto& storage_res : results) {
-    const auto storage_aux_res = EvalByDV(storage_res);
-    if (storage_aux_res)
-      storage_res.MergeDictionary(&*storage_aux_res);
-  }
-  return results;
-}
-
-int StorageFunction::EvalInHelper(std::string* output) const {
+StorageFunction::DataType StorageFunction::EvalImpl() const {
   const auto storage_nodes_path_list = GetFixedDevices();
-  base::Value result(base::Value::Type::LIST);
+  StorageFunction::DataType result{};
 
   for (const auto& node_path : storage_nodes_path_list) {
     VLOG(2) << "Processnig the node " << node_path.value();
 
     // Get type specific fields and their values.
-    auto node_res = EvalInHelperByPath(node_path);
+    auto node_res = ProbeFromSysfs(node_path);
     if (!node_res)
       continue;
 
@@ -158,19 +129,25 @@ int StorageFunction::EvalInHelper(std::string* output) const {
                                                           logical_block_size));
     }
 
-    result.Append(std::move(*node_res));
-  }
-  if (!base::JSONWriter::Write(result, output)) {
-    LOG(ERROR) << "Failed to serialize storage probed result to json string";
-    return -1;
+    result.push_back(std::move(*node_res));
   }
 
-  return 0;
+  return result;
 }
 
-base::Optional<base::Value> StorageFunction::EvalByDV(
-    const base::Value& storage_dv) const {
-  return base::nullopt;
+void StorageFunction::PostHelperEvalImpl(
+    StorageFunction::DataType* result) const {
+  for (auto& storage_res : *result) {
+    auto* node_path = storage_res.FindStringKey("path");
+    if (!node_path) {
+      LOG(ERROR) << "No path in storage probe result";
+      continue;
+    }
+    const auto storage_aux_res =
+        ProbeFromStorageTool(base::FilePath(*node_path));
+    if (storage_aux_res)
+      storage_res.MergeDictionary(&*storage_aux_res);
+  }
 }
 
 }  // namespace runtime_probe

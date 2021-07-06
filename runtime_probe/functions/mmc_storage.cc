@@ -4,6 +4,8 @@
 
 #include "runtime_probe/functions/mmc_storage.h"
 
+#include <pcrecpp.h>
+
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -15,7 +17,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
-#include <pcrecpp.h>
 
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
@@ -53,9 +54,7 @@ inline std::string VersionFormattedString(const std::string& v,
   return v + " (" + v_decode + ")";
 }
 
-}  // namespace
-
-bool MmcStorageFunction::GetOutputOfMmcExtcsd(std::string* output) const {
+bool GetOutputOfMmcExtcsd(std::string* output) {
   VLOG(1) << "Issuing D-Bus call to debugd to retrieve eMMC 5.0 firmware info.";
 
   brillo::DBusConnection dbus_connection;
@@ -85,9 +84,7 @@ bool MmcStorageFunction::GetOutputOfMmcExtcsd(std::string* output) const {
 
 // Extracts the eMMC 5.0 firmware version of storage device specified
 // by |node_path| from EXT_CSD[254:262] via D-Bus call to debugd MMC method.
-// TODO(hmchu): Try to get firwmare version from <node_path>/device/fwrev first.
-std::string MmcStorageFunction::GetStorageFwVersion(
-    const base::FilePath& node_path) const {
+std::string GetStorageFwVersion(const base::FilePath& node_path) {
   if (node_path.empty())
     return "";
   VLOG(2) << "Checking eMMC firmware version of "
@@ -183,8 +180,7 @@ std::string MmcStorageFunction::GetStorageFwVersion(
   }
 }
 
-bool MmcStorageFunction::CheckStorageTypeMatch(
-    const base::FilePath& node_path) const {
+bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   VLOG(2) << "Checking if storage \"" << node_path.value() << "\" is eMMC.";
   if (node_path.empty())
     return false;
@@ -206,22 +202,9 @@ bool MmcStorageFunction::CheckStorageTypeMatch(
   return true;
 }
 
-base::Optional<base::Value> MmcStorageFunction::EvalByDV(
-    const base::Value& storage_dv) const {
-  auto* node_path = storage_dv.FindStringKey("path");
+}  // namespace
 
-  if (!node_path) {
-    LOG(ERROR) << "No path in storage probe result";
-    return base::nullopt;
-  }
-  base::Value mmc_res(base::Value::Type::DICTIONARY);
-  auto storage_fw_version = GetStorageFwVersion(base::FilePath(*node_path));
-  if (!storage_fw_version.empty())
-    mmc_res.SetStringKey("storage_fw_version", storage_fw_version);
-  return mmc_res;
-}
-
-base::Optional<base::Value> MmcStorageFunction::EvalInHelperByPath(
+base::Optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
 
@@ -246,6 +229,15 @@ base::Optional<base::Value> MmcStorageFunction::EvalInHelperByPath(
   PrependToDVKey(&*mmc_res, kMmcPrefix);
   mmc_res->SetStringKey("type", kMmcType);
   return mmc_res;
+}
+
+base::Optional<base::Value> MmcStorageFunction::ProbeFromStorageTool(
+    const base::FilePath& node_path) const {
+  base::Value result(base::Value::Type::DICTIONARY);
+  auto storage_fw_version = GetStorageFwVersion(node_path);
+  if (!storage_fw_version.empty())
+    result.SetStringKey("storage_fw_version", storage_fw_version);
+  return result;
 }
 
 }  // namespace runtime_probe

@@ -5,7 +5,6 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_NVME_STORAGE_H_
 #define RUNTIME_PROBE_FUNCTIONS_NVME_STORAGE_H_
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,7 +15,7 @@
 
 namespace runtime_probe {
 
-class NvmeStorageFunction : public StorageFunction {
+class NvmeStorageFunction final : public StorageFunction {
  public:
   NAME_PROBE_FUNCTION("nvme_storage");
 
@@ -24,17 +23,10 @@ class NvmeStorageFunction : public StorageFunction {
       FromEmptyKwargsValue<NvmeStorageFunction>;
 
  protected:
-  // Eval the NVMe storage indicated by |node_path| inside the
-  // runtime_probe_helper.
-  base::Optional<base::Value> EvalInHelperByPath(
+  base::Optional<base::Value> ProbeFromSysfs(
       const base::FilePath& node_path) const override;
-
- private:
-  bool CheckStorageTypeMatch(const base::FilePath& node_path) const;
-
-  std::string GetStorageFwVersion(const base::FilePath& node_path) const;
-
-  friend class GenericStorageFunction;
+  base::Optional<base::Value> ProbeFromStorageTool(
+      const base::FilePath& node_path) const override;
 };
 
 }  // namespace runtime_probe

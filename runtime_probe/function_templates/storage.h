@@ -5,8 +5,6 @@
 #ifndef RUNTIME_PROBE_FUNCTION_TEMPLATES_STORAGE_H_
 #define RUNTIME_PROBE_FUNCTION_TEMPLATES_STORAGE_H_
 
-#include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,38 +16,26 @@
 
 namespace runtime_probe {
 
-class StorageFunction : public ProbeFunction {
+class StorageFunction : public PrivilegedProbeFunction {
  public:
-  DataType Eval() const final;
-
-  int EvalInHelper(std::string* output) const override;
+  DataType EvalImpl() const final;
+  void PostHelperEvalImpl(DataType* result) const final;
 
  protected:
   StorageFunction() = default;
   // The following are storage-type specific building blocks.
   // Must be implemented on each derived storage probe function class.
+  // |node_path| is the sysfs path of the storage device. The functions return a
+  // |base::Value| with dictionary type which contains the related information.
 
-  // Evaluate the storage indicated by |storage_dv| to retrieve auxiliary
-  // information. This is reserved for probing we may want to do OUTSIDE of
-  // runtime_probe_helper.
-  virtual base::Optional<base::Value> EvalByDV(
-      const base::Value& storage_dv) const;
-
-  // Evals the network indicated by |node_path| in runtime_probe_helper.
-  // Returns a dictionary type Value with device attributes of |node_path|,
-  // which must contain at least the "type" key. On error, it returns
-  // base::nullopt.
-  virtual base::Optional<base::Value> EvalInHelperByPath(
+  // Probes the information from storage tools. This will be called in
+  // |PostHelperEvalImpl| with the permissions to connect to dbus services.
+  virtual base::Optional<base::Value> ProbeFromStorageTool(
       const base::FilePath& node_path) const = 0;
 
- private:
-  // The following functions are shared across different types of storage.
-  std::vector<base::FilePath> GetFixedDevices() const;
-
-  base::Optional<int64_t> GetStorageSectorCount(
-      const base::FilePath& node_path) const;
-
-  int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) const;
+  // Probes the information from sysfs.
+  virtual base::Optional<base::Value> ProbeFromSysfs(
+      const base::FilePath& node_path) const = 0;
 };
 
 }  // namespace runtime_probe

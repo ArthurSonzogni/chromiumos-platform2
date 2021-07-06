@@ -4,12 +4,13 @@
 
 #include "runtime_probe/functions/nvme_storage.h"
 
+#include <pcrecpp.h>
+
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/strings/string_utils.h>
-#include <pcrecpp.h>
 
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
@@ -21,11 +22,8 @@ const std::vector<std::string> kNvmeFields{"vendor", "device", "class"};
 constexpr auto kNvmeType = "NVMe";
 constexpr auto kNvmePrefix = "pci_";
 
-}  // namespace
-
 // TODO(hmchu): Consider falling back to Smartctl if this fails.
-std::string NvmeStorageFunction::GetStorageFwVersion(
-    const base::FilePath& node_path) const {
+std::string GetStorageFwVersion(const base::FilePath& node_path) {
   std::string fw_ver_res;
   VLOG(2) << "Checking NVMe firmware version of "
           << node_path.BaseName().value();
@@ -38,8 +36,7 @@ std::string NvmeStorageFunction::GetStorageFwVersion(
       .as_string();
 }
 
-bool NvmeStorageFunction::CheckStorageTypeMatch(
-    const base::FilePath& node_path) const {
+bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   VLOG(2) << "Checking if \"" << node_path.value() << "\" is NVMe.";
   base::FilePath driver_symlink_target;
   const auto nvme_driver_path =
@@ -58,7 +55,9 @@ bool NvmeStorageFunction::CheckStorageTypeMatch(
   return true;
 }
 
-base::Optional<base::Value> NvmeStorageFunction::EvalInHelperByPath(
+}  // namespace
+
+base::Optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
 
@@ -84,10 +83,19 @@ base::Optional<base::Value> NvmeStorageFunction::EvalInHelperByPath(
   }
   PrependToDVKey(&*nvme_res, kNvmePrefix);
   nvme_res->SetStringKey("type", kNvmeType);
+
+  // TODO(chungsheng): b/181768966: Move FwVersion into ProbeFromStorageTool
   const std::string storage_fw_version = GetStorageFwVersion(node_path);
   if (!storage_fw_version.empty())
     nvme_res->SetStringKey("storage_fw_version", storage_fw_version);
   return nvme_res;
+}
+
+base::Optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
+    const base::FilePath& node_path) const {
+  base::Value result(base::Value::Type::DICTIONARY);
+  // TODO(chungsheng): b/181768966: Add probing from debugd storage tool
+  return result;
 }
 
 }  // namespace runtime_probe

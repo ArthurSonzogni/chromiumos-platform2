@@ -5,18 +5,14 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_ATA_STORAGE_H_
 #define RUNTIME_PROBE_FUNCTIONS_ATA_STORAGE_H_
 
-#include <memory>
 #include <string>
 #include <vector>
-
-#include <base/files/file_path.h>
-#include <base/values.h>
 
 #include "runtime_probe/function_templates/storage.h"
 
 namespace runtime_probe {
 
-class AtaStorageFunction : public StorageFunction {
+class AtaStorageFunction final : public StorageFunction {
  public:
   NAME_PROBE_FUNCTION("ata_storage");
 
@@ -24,17 +20,10 @@ class AtaStorageFunction : public StorageFunction {
       FromEmptyKwargsValue<AtaStorageFunction>;
 
  protected:
-  // Eval the ATA storage indicated by |node_path| inside the
-  // runtime_probe_helper.
-  base::Optional<base::Value> EvalInHelperByPath(
+  base::Optional<base::Value> ProbeFromSysfs(
       const base::FilePath& node_path) const override;
-
- private:
-  bool CheckStorageTypeMatch(const base::FilePath& node_path) const;
-
-  std::string GetStorageFwVersion(const base::FilePath& node_path) const;
-
-  friend class GenericStorageFunction;
+  base::Optional<base::Value> ProbeFromStorageTool(
+      const base::FilePath& node_path) const override;
 };
 
 }  // namespace runtime_probe

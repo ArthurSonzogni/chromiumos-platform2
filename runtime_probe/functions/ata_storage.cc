@@ -20,17 +20,13 @@ const std::vector<std::string> kAtaFields{"vendor", "model"};
 constexpr auto kAtaType = "ATA";
 constexpr auto kAtaPrefix = "ata_";
 
-}  // namespace
-
 // TODO(b/134981078): Get storage fw version by D-Bus call to debugd for
 // smartctl.
-std::string AtaStorageFunction::GetStorageFwVersion(
-    const base::FilePath& node_path) const {
+std::string GetStorageFwVersion(const base::FilePath& node_path) {
   return "";
 }
 
-bool AtaStorageFunction::CheckStorageTypeMatch(
-    const base::FilePath& node_path) const {
+bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   VLOG(2) << "Checking if \"" << node_path.value() << "\" is SATA.";
   if (node_path.empty())
     return false;
@@ -48,7 +44,9 @@ bool AtaStorageFunction::CheckStorageTypeMatch(
   return true;
 }
 
-base::Optional<base::Value> AtaStorageFunction::EvalInHelperByPath(
+}  // namespace
+
+base::Optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
 
@@ -72,10 +70,16 @@ base::Optional<base::Value> AtaStorageFunction::EvalInHelperByPath(
   }
   PrependToDVKey(&*ata_res, kAtaPrefix);
   ata_res->SetStringKey("type", kAtaType);
-  const std::string storage_fw_version = GetStorageFwVersion(node_path);
-  if (!storage_fw_version.empty())
-    ata_res->SetStringKey("storage_fw_version", storage_fw_version);
   return ata_res;
+}
+
+base::Optional<base::Value> AtaStorageFunction::ProbeFromStorageTool(
+    const base::FilePath& node_path) const {
+  base::Value result(base::Value::Type::DICTIONARY);
+  auto storage_fw_version = GetStorageFwVersion(base::FilePath(node_path));
+  if (!storage_fw_version.empty())
+    result.SetStringKey("storage_fw_version", storage_fw_version);
+  return result;
 }
 
 }  // namespace runtime_probe
