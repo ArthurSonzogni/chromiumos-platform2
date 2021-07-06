@@ -34,8 +34,14 @@ class Tpm;
 
 constexpr uint32_t kNotBoundToPCR = UINT32_MAX;
 constexpr uint32_t kTpmBootPCR = 0;
+
 // The PCR index used to restrict the device to access to a single user data.
+#if USE_TPM_DYNAMIC
+constexpr uint32_t kTpmSingleUserPCR = 11;
+#else
 constexpr uint32_t kTpmSingleUserPCR = 4;
+#endif
+
 const char kDefaultPcrValue[32] = {0};
 
 // Specifies what the key can be used for.
