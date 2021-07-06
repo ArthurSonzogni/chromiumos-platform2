@@ -860,8 +860,8 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
       }
       args.push_back("-j");
       args.push_back("DNAT");
-      args.push_back("--to-destination");  // new output destination ip:port
-      args.push_back(rule.nameservers[i] + ":" + kDefaultDnsPort);
+      args.push_back("--to-destination");
+      args.push_back(rule.nameservers[i]);
       args.push_back("-w");  // Wait for xtables lock.
       if (!ModifyIptables(family, "nat", args)) {
         success = false;
