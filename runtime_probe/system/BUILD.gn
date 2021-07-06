@@ -1,0 +1,22 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("libsystem_common_pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
+}
+
+source_set("libsystem") {
+  configs += [ ":libsystem_common_pkg_deps" ]
+  if (use.factory_runtime_probe) {
+    sources = [ "helper_invoker_direct_impl.cc" ]
+  } else {
+    sources = [ "helper_invoker_debugd_impl.cc" ]
+  }
+}

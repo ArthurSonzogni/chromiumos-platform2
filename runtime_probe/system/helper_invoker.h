@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RUNTIME_PROBE_HELPER_INVOKER_H_
-#define RUNTIME_PROBE_HELPER_INVOKER_H_
+#ifndef RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_H_
+#define RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_H_
 
 #include <string>
 
@@ -25,4 +25,4 @@ class RuntimeProbeHelperInvoker {
 
 }  // namespace runtime_probe
 
-#endif  // RUNTIME_PROBE_HELPER_INVOKER_H_
+#endif  // RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_H_

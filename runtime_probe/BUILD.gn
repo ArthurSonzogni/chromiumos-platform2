@@ -76,15 +76,11 @@ static_library("libruntime_probe") {
     "utils/type_utils.cc",
     "utils/value_utils.cc",
   ]
-  if (use.factory_runtime_probe) {
-    sources += [ "helper_invoker_direct_impl.cc" ]
-  } else {
-    sources += [
-      "daemon.cc",
-      "helper_invoker_debugd_impl.cc",
-    ]
+  if (!use.factory_runtime_probe) {
+    sources += [ "daemon.cc" ]
   }
   configs += [ ":target_defaults" ]
+  deps = [ "system:libsystem" ]
 }
 
 executable("runtime_probe") {

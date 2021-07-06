@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RUNTIME_PROBE_HELPER_INVOKER_DIRECT_IMPL_H_
-#define RUNTIME_PROBE_HELPER_INVOKER_DIRECT_IMPL_H_
+#ifndef RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DIRECT_IMPL_H_
+#define RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DIRECT_IMPL_H_
 
-#include "runtime_probe/helper_invoker.h"
+#include "runtime_probe/system/helper_invoker.h"
 
 #include <string>
 
@@ -26,4 +26,4 @@ class RuntimeProbeHelperInvokerDirectImpl : public RuntimeProbeHelperInvoker {
 
 }  // namespace runtime_probe
 
-#endif  // RUNTIME_PROBE_HELPER_INVOKER_DIRECT_IMPL_H_
+#endif  // RUNTIME_PROBE_SYSTEM_HELPER_INVOKER_DIRECT_IMPL_H_
