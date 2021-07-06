@@ -7,6 +7,8 @@ _llseek: 1
 access: 1
 brk: 1
 clock_getres: 1
+clock_getres_time64: 1
+clock_gettime64: 1
 clock_gettime: 1
 close: 1
 connect: 1
@@ -14,6 +16,7 @@ exit: 1
 exit_group: 1
 fcntl64: arg1 == F_GETFL || arg1 == F_SETFL
 fstat64: 1
+fstatfs64: 1
 geteuid32: 1
 getresgid32: 1
 getresuid32: 1
@@ -45,4 +48,3 @@ write: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg0 == 0 && arg1 == TCGETS
-fstatfs64: 1
