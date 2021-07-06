@@ -62,6 +62,8 @@ class ObserverImpl final : public cros::mojom::SensorHalClient,
   void SetUpChannelTimeout();
   mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote();
 
+  void Reset();
+
   void OnClientDisconnect();
   void OnServiceDisconnect();
   void OnDeviceDisconnect();

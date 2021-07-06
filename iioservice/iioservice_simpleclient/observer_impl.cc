@@ -166,8 +166,7 @@ void ObserverImpl::OnSampleUpdated(
     LOG(INFO) << "Mean latency     : " << total_latency_ / n;
   }
 
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 void ObserverImpl::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
@@ -175,8 +174,7 @@ void ObserverImpl::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
 
   // Don't Change: Used as a check sentence in the tast test.
   LOGF(ERROR) << "OnErrorOccurred: " << type;
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 ObserverImpl::ObserverImpl(
@@ -223,6 +221,17 @@ void ObserverImpl::SetUpChannelTimeout() {
 
   // Don't Change: Used as a check sentence in the tast test.
   LOGF(ERROR) << "SetUpChannelTimeout";
+  Reset();
+}
+
+void ObserverImpl::Reset() {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  client_.reset();
+  sensor_service_remote_.reset();
+  sensor_device_remote_.reset();
+  receiver_.reset();
+
   if (quit_callback_)
     std::move(quit_callback_).Run();
 }
@@ -231,32 +240,28 @@ void ObserverImpl::OnClientDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorHalClient disconnected";
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 void ObserverImpl::OnServiceDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorService disconnected";
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 void ObserverImpl::OnDeviceDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorDevice disconnected";
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 void ObserverImpl::OnObserverDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "Observer diconnected";
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 void ObserverImpl::GetDeviceIdsByType() {
@@ -274,7 +279,7 @@ void ObserverImpl::GetDeviceIdsCallback(
 
   if (iio_device_ids.empty()) {
     LOGF(ERROR) << "No device found give device type: " << device_type_;
-    std::move(quit_callback_).Run();
+    Reset();
   }
 
   // Take the first id.
@@ -326,8 +331,7 @@ void ObserverImpl::GetAllChannelIdsCallback(
 
   if (channel_indices_.empty()) {
     LOGF(ERROR) << "No available channels";
-    if (quit_callback_)
-      std::move(quit_callback_).Run();
+    Reset();
 
     return;
   }
@@ -358,8 +362,7 @@ void ObserverImpl::SetFrequencyCallback(double result_freq) {
     return;
 
   LOGF(ERROR) << "Failed to set frequency";
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
+  Reset();
 }
 
 void ObserverImpl::SetChannelsEnabledCallback(
@@ -384,8 +387,7 @@ void ObserverImpl::SetChannelsEnabledCallback(
 
   if (channel_indices_.empty()) {
     LOGF(ERROR) << "No channel enabled";
-    if (quit_callback_)
-      std::move(quit_callback_).Run();
+    Reset();
   }
 }
 
