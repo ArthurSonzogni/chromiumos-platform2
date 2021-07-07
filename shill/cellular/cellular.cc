@@ -967,11 +967,11 @@ void Cellular::CreateServices() {
 }
 
 void Cellular::DestroyAllServices() {
-  if (service_for_testing_)
-    return;
-
   LOG(INFO) << __func__;
   DropConnection();
+
+  if (service_for_testing_)
+    return;
 
   DCHECK(manager()->cellular_service_provider());
   manager()->cellular_service_provider()->RemoveServices();
@@ -1319,8 +1319,7 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
 
   if ((flags & IFF_UP) == 0 && state_ == State::kLinked) {
     LOG(INFO) << link_name() << " is down.";
-    SetState(State::kConnected);
-    DropConnection();
+    DestroyAllServices();
   }
 }
 

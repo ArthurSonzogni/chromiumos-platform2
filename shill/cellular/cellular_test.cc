@@ -1269,14 +1269,15 @@ TEST_P(CellularTest, PendingDisconnect) {
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
 }
 
-TEST_P(CellularTest, LinkEventWontDestroyService) {
+TEST_P(CellularTest, LinkEventInterfaceDown) {
   // If the network interface goes down, Cellular::LinkEvent should
-  // drop the connection but the service object should persist.
+  // drop the connection and destroy any services.
   device_->set_state_for_testing(Cellular::State::kLinked);
   CellularService* service = SetService();
+  ASSERT_TRUE(service);
+  EXPECT_EQ(device_->service(), service);
   device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
-  EXPECT_EQ(device_->state(), Cellular::State::kConnected);
-  EXPECT_EQ(device_->service_, service);
+  EXPECT_EQ(device_->service(), nullptr);
 }
 
 TEST_P(CellularTest, UseNoArpGateway) {
