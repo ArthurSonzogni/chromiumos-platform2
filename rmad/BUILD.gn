@@ -29,7 +29,10 @@ pkg_config("target_defaults") {
 }
 
 static_library("libsystem") {
-  sources = [ "system/power_manager_client_impl.cc" ]
+  sources = [
+    "system/power_manager_client_impl.cc",
+    "system/runtime_probe_client_impl.cc",
+  ]
   configs += [ ":target_defaults" ]
 }
 
@@ -118,6 +121,7 @@ if (use.test) {
       "state_handler/write_protect_disable_rsu_state_handler_test.cc",
       "state_handler/write_protect_enable_physical_state_handler_test.cc",
       "system/power_manager_client_test.cc",
+      "system/runtime_probe_client_test.cc",
       "utils/fake_cbi_utils.cc",
       "utils/fake_vpd_utils.cc",
       "utils/json_store_test.cc",
