@@ -14,7 +14,6 @@
 namespace rmad {
 
 using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
-using Component = ComponentsRepairState::ComponentRepairStatus::Component;
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -80,8 +79,8 @@ bool DeviceDestinationStateHandler::CanSkipHwwp() const {
   // is small, we keep it simple by using linear searches for each replaced
   // component. It shouldn't affect performance a lot.
   for (const std::string& component_name : replaced_component_names) {
-    Component component;
-    DCHECK(ComponentRepairStatus::Component_Parse(component_name, &component));
+    RmadComponent component;
+    DCHECK(RmadComponent_Parse(component_name, &component));
     if (std::find(kComponentsNeedManualCalibration.begin(),
                   kComponentsNeedManualCalibration.end(),
                   component) != kComponentsNeedManualCalibration.end()) {

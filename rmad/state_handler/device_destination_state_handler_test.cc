@@ -17,7 +17,6 @@
 namespace rmad {
 
 using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
-using Component = ComponentsRepairState::ComponentRepairStatus::Component;
 
 class DeviceDestinationStateHandlerTest : public StateHandlerTest {
  public:
@@ -38,8 +37,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
   json_store_->SetValue(
       kReplacedComponentNames,
-      std::vector<Component>{
-          ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK});
+      std::vector<RmadComponent>{RMAD_COMPONENT_MAINBOARD_REWORK});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -63,8 +61,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
   json_store_->SetValue(
       kReplacedComponentNames,
-      std::vector<std::string>{ComponentRepairStatus::Component_Name(
-          ComponentRepairStatus::RMAD_COMPONENT_BATTERY)});
+      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -86,10 +83,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{ComponentRepairStatus::Component_Name(
-          ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK)});
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{RmadComponent_Name(
+                            RMAD_COMPONENT_MAINBOARD_REWORK)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -111,10 +107,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{ComponentRepairStatus::Component_Name(
-          ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK)});
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{RmadComponent_Name(
+                            RMAD_COMPONENT_MAINBOARD_REWORK)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(

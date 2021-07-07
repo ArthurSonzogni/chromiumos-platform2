@@ -48,11 +48,9 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
   }
 
   std::unique_ptr<ComponentsRepairState> CreateDefaultComponentsRepairState() {
-    static const std::vector<ComponentRepairStatus::Component>
-        default_original_components = {
-            ComponentRepairStatus::RMAD_COMPONENT_MAINBOARD_REWORK,
-            ComponentRepairStatus::RMAD_COMPONENT_KEYBOARD,
-            ComponentRepairStatus::RMAD_COMPONENT_POWER_BUTTON};
+    static const std::vector<RmadComponent> default_original_components = {
+        RMAD_COMPONENT_MAINBOARD_REWORK, RMAD_COMPONENT_KEYBOARD,
+        RMAD_COMPONENT_POWER_BUTTON};
     auto components_repair = std::make_unique<ComponentsRepairState>();
     for (auto component : default_original_components) {
       ComponentRepairStatus* component_repair =
@@ -94,8 +92,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
       CreateDefaultComponentsRepairState();
   ComponentRepairStatus* component_repair =
       components_repair->add_component_repair();
-  component_repair->set_component(
-      ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
+  component_repair->set_component(RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED);
   RmadState state;
@@ -108,9 +105,9 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
   std::vector<std::string> replaced_components;
   EXPECT_TRUE(
       json_store_->GetValue(kReplacedComponentNames, &replaced_components));
-  EXPECT_EQ(replaced_components,
-            std::vector<std::string>{ComponentRepairStatus::Component_Name(
-                ComponentRepairStatus::RMAD_COMPONENT_BATTERY)});
+  EXPECT_EQ(
+      replaced_components,
+      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
@@ -137,14 +134,12 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
       CreateDefaultComponentsRepairState();
   ComponentRepairStatus* component_repair =
       components_repair->add_component_repair();
-  component_repair->set_component(
-      ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
+  component_repair->set_component(RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
   // RMAD_COMPONENT_NETWORK is deprecated.
   component_repair = components_repair->add_component_repair();
-  component_repair->set_component(
-      ComponentRepairStatus::RMAD_COMPONENT_NETWORK);
+  component_repair->set_component(RMAD_COMPONENT_NETWORK);
   component_repair->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
 
@@ -166,14 +161,12 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
       CreateDefaultComponentsRepairState();
   ComponentRepairStatus* component_repair =
       components_repair->add_component_repair();
-  component_repair->set_component(
-      ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
+  component_repair->set_component(RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
   // RMAD_COMPONENT_STORAGE is not probed.
   component_repair = components_repair->add_component_repair();
-  component_repair->set_component(
-      ComponentRepairStatus::RMAD_COMPONENT_STORAGE);
+  component_repair->set_component(RMAD_COMPONENT_STORAGE);
   component_repair->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
 
@@ -197,8 +190,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
   // RMAD_COMPONENT_BATTERY is probed but set to MISSING.
   ComponentRepairStatus* component_repair =
       components_repair->add_component_repair();
-  component_repair->set_component(
-      ComponentRepairStatus::RMAD_COMPONENT_BATTERY);
+  component_repair->set_component(RMAD_COMPONENT_BATTERY);
   component_repair->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING);
 

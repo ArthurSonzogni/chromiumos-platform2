@@ -20,24 +20,13 @@ inline constexpr char kSameOwner[] = "same_owner";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 
 // Component traits.
-inline constexpr std::array<
-    ComponentsRepairState::ComponentRepairStatus::Component,
-    3>
-    kComponentsNeedManualCalibration = {
-        ComponentsRepairState::ComponentRepairStatus::RMAD_COMPONENT_GYROSCOPE,
-        ComponentsRepairState::ComponentRepairStatus::
-            RMAD_COMPONENT_ACCELEROMETER,
-        ComponentsRepairState::ComponentRepairStatus::
-            RMAD_COMPONENT_MAINBOARD_REWORK};
-inline constexpr std::
-    array<ComponentsRepairState::ComponentRepairStatus::Component, 3>
-        kComponentsNeedAutoCalibration = {
-            ComponentsRepairState::ComponentRepairStatus::
-                RMAD_COMPONENT_AUDIO_CODEC,
-            ComponentsRepairState::ComponentRepairStatus::
-                RMAD_COMPONENT_TOUCHSCREEN,
-            ComponentsRepairState::ComponentRepairStatus::
-                RMAD_COMPONENT_MAINBOARD_REWORK,
+inline constexpr std::array<RmadComponent, 3> kComponentsNeedManualCalibration =
+    {RMAD_COMPONENT_GYROSCOPE, RMAD_COMPONENT_ACCELEROMETER,
+     RMAD_COMPONENT_MAINBOARD_REWORK};
+inline constexpr std::array<RmadComponent, 3> kComponentsNeedAutoCalibration = {
+    RMAD_COMPONENT_AUDIO_CODEC,
+    RMAD_COMPONENT_TOUCHSCREEN,
+    RMAD_COMPONENT_MAINBOARD_REWORK,
 };
 
 }  // namespace rmad
