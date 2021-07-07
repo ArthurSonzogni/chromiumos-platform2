@@ -52,6 +52,7 @@ exit_group: 1
 rt_sigreturn: 1
 clone: 1
 rt_sigtimedwait: 1
+pread64: 1
 getdents64: 1
 dup: 1
 dup3: 1
