@@ -28,6 +28,13 @@ namespace context {
 //   fetched multiple times.
 class ContextAdaptor {
  public:
+  // The chaps slots this context is aware of. Note this must be in sync with
+  // the enum definitions in mojo/cert_store.mojom and proto/key_data.proto.
+  enum class Slot {
+    kUser,
+    kSystem,
+  };
+
   ContextAdaptor();
   // Not copyable nor assignable.
   ContextAdaptor(const ContextAdaptor&) = delete;
@@ -38,9 +45,9 @@ class ContextAdaptor {
     return weak_ptr_factory_.GetWeakPtr();
   }
 
-  // Returns the slot id of the security token for the primary user, or
+  // Returns the slot id of the security token for the given |slot|, or
   // base::nullopt if there's an error in the DBus call.
-  base::Optional<CK_SLOT_ID> FetchPrimaryUserSlot();
+  base::Optional<CK_SLOT_ID> FetchSlotId(Slot slot);
 
   const base::Optional<brillo::SecureBlob>& encryption_key() {
     return cached_encryption_key_;
@@ -50,18 +57,34 @@ class ContextAdaptor {
     cached_encryption_key_ = key;
   }
 
-  void set_slot_for_tests(CK_SLOT_ID slot) { cached_slot_ = slot; }
+  void set_user_slot_for_tests(CK_SLOT_ID slot) { cached_user_slot_ = slot; }
+
+  void set_system_slot_for_tests(CK_SLOT_ID slot) {
+    cached_system_slot_ = slot;
+  }
 
  private:
+  // Returns the slot id of the security token for the primary user, or
+  // base::nullopt if there's an error in the DBus call.
+  base::Optional<CK_SLOT_ID> FetchPrimaryUserSlotId();
+
+  // Returns the slot id of the system security token, or base::nullopt if
+  // there's an error in the DBus call.
+  base::Optional<CK_SLOT_ID> FetchSystemSlotId();
+
   // Returns the email of the primary signed in user, or base::nullopt if
   // there's an error in the DBus call
   base::Optional<std::string> FetchPrimaryUserEmail();
+
+  base::Optional<CK_SLOT_ID> FetchSlotIdFromTpmTokenInfo(
+      base::Optional<std::string> user_email);
 
   scoped_refptr<::dbus::Bus> GetBus();
 
   scoped_refptr<::dbus::Bus> bus_;
   // Initially nullopt, then populated in the corresponding fetch operation.
-  base::Optional<CK_SLOT_ID> cached_slot_;
+  base::Optional<CK_SLOT_ID> cached_user_slot_;
+  base::Optional<CK_SLOT_ID> cached_system_slot_;
   base::Optional<std::string> cached_email_;
   // Initially nullopt, then populated in the corresponding setter.
   base::Optional<brillo::SecureBlob> cached_encryption_key_;

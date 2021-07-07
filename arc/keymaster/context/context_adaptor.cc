@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
@@ -64,16 +65,44 @@ base::Optional<std::string> ContextAdaptor::FetchPrimaryUserEmail() {
   return user_email;
 }
 
-base::Optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlot() {
-  // Short circuit if the results is already cached.
-  if (cached_slot_.has_value())
-    return cached_slot_.value();
+base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotId(Slot slot) {
+  switch (slot) {
+    case Slot::kUser:
+      return FetchPrimaryUserSlotId();
+    case Slot::kSystem:
+      return FetchSystemSlotId();
+    default:
+      LOG(ERROR) << "Unknown chaps slot=" << static_cast<int>(slot);
+      return base::nullopt;
+  }
+}
+
+base::Optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlotId() {
+  // Short circuit if the result is already cached.
+  if (cached_user_slot_.has_value())
+    return cached_user_slot_;
 
   // Fetch email of the primary signed in user.
   base::Optional<std::string> user_email = FetchPrimaryUserEmail();
   if (!user_email.has_value())
     return base::nullopt;
 
+  // Cache and return result.
+  cached_user_slot_ = FetchSlotIdFromTpmTokenInfo(user_email);
+  return cached_user_slot_;
+}
+
+base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSystemSlotId() {
+  // Initialize |cached_system_slot_| if result is not already cached.
+  if (!cached_system_slot_.has_value()) {
+    cached_system_slot_ =
+        FetchSlotIdFromTpmTokenInfo(/*user_email=*/base::nullopt);
+  }
+  return cached_system_slot_;
+}
+
+base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotIdFromTpmTokenInfo(
+    base::Optional<std::string> user_email) {
   // Create the dbus proxy if it's not created.
   if (!pkcs11_proxy_) {
     pkcs11_proxy_.reset(
@@ -81,19 +110,21 @@ base::Optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlot() {
   }
 
   user_data_auth::Pkcs11GetTpmTokenInfoRequest request;
-  request.set_username(user_email.value());
+  // Setting a username retrieves the token info for that user. Leaving it empty
+  // retrieves token info for the system.
+  if (user_email.has_value())
+    request.set_username(user_email.value());
   user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
   brillo::ErrorPtr error;
   bool success = pkcs11_proxy_->Pkcs11GetTpmTokenInfo(request, &reply, &error);
   if (!success || error) {
     // Error is logged when it is created, so we don't need to log it again.
-    LOG(ERROR) << "Could not fetch user slot from cryptohome.";
+    LOG(ERROR) << "Could not fetch slot information from cryptohome.";
     return base::nullopt;
   }
 
-  // Cache and return result.
-  cached_slot_ = reply.token_info().slot();
-  return cached_slot_;
+  // Return resulting slot.
+  return reply.token_info().slot();
 }
 
 }  // namespace context

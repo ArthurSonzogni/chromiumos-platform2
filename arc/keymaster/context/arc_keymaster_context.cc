@@ -128,6 +128,8 @@ base::Optional<KeyData> PackToChromeOsKeyData(
         mojo_key_data->get_chaps_key_data()->id);
     key_data.mutable_chaps_key()->set_label(
         mojo_key_data->get_chaps_key_data()->label);
+    key_data.mutable_chaps_key()->set_slot(
+        (ChapsKeyData::Slot)mojo_key_data->get_chaps_key_data()->slot);
   } else {
     return base::nullopt;
   }
@@ -459,7 +461,7 @@ bool ArcKeymasterContext::SerializeKeyData(
     const ::keymaster::AuthorizationSet& hidden,
     ::keymaster::KeymasterKeyBlob* key_blob) const {
   // Fetch key.
-  ChapsClient chaps(context_adaptor_.GetWeakPtr());
+  ChapsClient chaps(context_adaptor_.GetWeakPtr(), ContextAdaptor::Slot::kUser);
   base::Optional<brillo::SecureBlob> encryption_key =
       chaps.ExportOrGenerateEncryptionKey();
   if (!encryption_key.has_value())
@@ -489,7 +491,7 @@ base::Optional<KeyData> ArcKeymasterContext::DeserializeKeyData(
     const ::keymaster::KeymasterKeyBlob& key_blob,
     const ::keymaster::AuthorizationSet& hidden) const {
   // Fetch key.
-  ChapsClient chaps(context_adaptor_.GetWeakPtr());
+  ChapsClient chaps(context_adaptor_.GetWeakPtr(), ContextAdaptor::Slot::kUser);
   base::Optional<brillo::SecureBlob> encryption_key =
       chaps.ExportOrGenerateEncryptionKey();
   if (!encryption_key.has_value())

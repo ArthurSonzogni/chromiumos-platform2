@@ -42,6 +42,8 @@ constexpr size_t kKeymasterOperationTableSize = 16;
 constexpr uint32_t kOsVersion = 9;
 constexpr uint32_t kOsPatchlevel = 20200205;
 
+// Arbitrary CK_SLOT_ID for user slot.
+constexpr uint64_t kUserSlotId = 11;
 // Arbitrary non-zero id.
 constexpr uint64_t kSessionId = 42;
 // Arbitrary 32 byte keys.
@@ -278,7 +280,8 @@ class ArcKeymasterContextTest : public ::testing::Test {
         invalid_key_blob_(kBlob2.data(), kBlob2.size()) {}
 
   void SetUp() override {
-    ContextTestPeer::context_adaptor(context_).set_slot_for_tests(1);
+    ContextTestPeer::context_adaptor(context_).set_user_slot_for_tests(
+        kUserSlotId);
     ContextTestPeer::context_adaptor(context_).set_encryption_key(
         kEncryptionKey);
     // All values pushed into authorization sets below are arbitrary.

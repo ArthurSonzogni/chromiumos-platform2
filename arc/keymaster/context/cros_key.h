@@ -157,6 +157,10 @@ class ChapsKey : public CrosKey {
     return brillo::Blob(key_data().chaps_key().id().begin(),
                         key_data().chaps_key().id().end());
   }
+  // Returns the chaps slot where this key is stored.
+  ContextAdaptor::Slot slot() const {
+    return static_cast<ContextAdaptor::Slot>(key_data().chaps_key().slot());
+  }
 };
 
 class CrosOperationFactory : public ::keymaster::OperationFactory {

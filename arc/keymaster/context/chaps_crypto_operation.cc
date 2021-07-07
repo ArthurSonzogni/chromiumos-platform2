@@ -39,9 +39,10 @@ constexpr MechanismDescription kCkmSha512RsaPkcsSign = {
 
 ChapsCryptoOperation::ChapsCryptoOperation(
     base::WeakPtr<ContextAdaptor> context_adaptor,
+    ContextAdaptor::Slot slot,
     const std::string& label,
     const brillo::Blob& id)
-    : context_adaptor_(context_adaptor), label_(label), id_(id) {}
+    : context_adaptor_(context_adaptor), slot_(slot), label_(label), id_(id) {}
 
 ChapsCryptoOperation::~ChapsCryptoOperation() = default;
 
@@ -63,7 +64,7 @@ base::Optional<uint64_t> ChapsCryptoOperation::Begin(
   }
   set_description(mechanism_description);
 
-  chaps_ = std::make_unique<ChapsClient>(context_adaptor_);
+  chaps_ = std::make_unique<ChapsClient>(context_adaptor_, slot_);
   base::Optional<CK_OBJECT_HANDLE> handle =
       chaps_->FindObject(CKO_PRIVATE_KEY, label_, id_);
   if (!handle.has_value())

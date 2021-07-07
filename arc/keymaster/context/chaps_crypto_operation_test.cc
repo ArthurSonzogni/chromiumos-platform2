@@ -31,6 +31,9 @@ namespace context {
 
 namespace {
 
+// CK_SLOT_IDs for user and system slot. Arbitrary but distinct.
+constexpr uint64_t kSystemSlotId = 2;
+constexpr uint64_t kUserSlotId = 4;
 // Arbitrary non-zero CK_SESSION_HANDLE.
 constexpr uint64_t kSessionId = 9;
 // Arbitrary single-element list.
@@ -54,14 +57,23 @@ const brillo::Blob kId(10, 10);
 
 const MechanismDescription kDescription = kCkmRsaPkcsSign;
 
+// Must be a valid test name (no spaces etc.). Makes the test show up as e.g.
+// ChapsCryptoOperation/ChapsCryptoOperationTest.Update/UserSlot.
+std::string TestName(testing::TestParamInfo<ContextAdaptor::Slot> param_info) {
+  return param_info.param == ContextAdaptor::Slot::kUser ? "UserSlot"
+                                                         : "SystemSlot";
+}
+
 }  // anonymous namespace
 
 // Fixture for chaps client tests.
-class ChapsCryptoOperationTest : public ::testing::Test {
+class ChapsCryptoOperationTest
+    : public ::testing::Test,
+      public ::testing::WithParamInterface<ContextAdaptor::Slot> {
  public:
   ChapsCryptoOperationTest()
       : chaps_mock_(/* is_initialized */ true),
-        operation_(context_adaptor_.GetWeakPtr(), kLabel, kId) {}
+        operation_(context_adaptor_.GetWeakPtr(), GetParam(), kLabel, kId) {}
 
   uint32_t FakeGetKeyBlob(const brillo::SecureBlob& isolate_credential,
                           uint64_t session_id,
@@ -83,9 +95,19 @@ class ChapsCryptoOperationTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
-    context_adaptor_.set_slot_for_tests(1);
+    uint64_t slot_id;
+    switch (GetParam()) {
+      case ContextAdaptor::Slot::kUser:
+        slot_id = kUserSlotId;
+        context_adaptor_.set_user_slot_for_tests(kUserSlotId);
+        break;
+      case ContextAdaptor::Slot::kSystem:
+        slot_id = kSystemSlotId;
+        context_adaptor_.set_system_slot_for_tests(kSystemSlotId);
+        break;
+    }
 
-    ON_CALL(chaps_mock_, OpenSession(_, _, _, _))
+    ON_CALL(chaps_mock_, OpenSession(_, slot_id, _, _))
         .WillByDefault(DoAll(SetArgPointee<3>(kSessionId), Return(CKR_OK)));
     ON_CALL(chaps_mock_, CloseSession(_, _)).WillByDefault(Return(CKR_OK));
     ON_CALL(chaps_mock_, FindObjectsInit(_, _, _))
@@ -105,7 +127,7 @@ class ChapsCryptoOperationTest : public ::testing::Test {
   ChapsCryptoOperation operation_;
 };
 
-TEST_F(ChapsCryptoOperationTest, BeginForwardsLabelAndId) {
+TEST_P(ChapsCryptoOperationTest, BeginForwardsLabelAndId) {
   // Prepare an attributes list with the expected parameters.
   CK_OBJECT_CLASS object_class = CKO_PRIVATE_KEY;
   std::string mutable_label(kLabel);
@@ -125,7 +147,7 @@ TEST_F(ChapsCryptoOperationTest, BeginForwardsLabelAndId) {
   operation_.Begin(kDescription);
 }
 
-TEST_F(ChapsCryptoOperationTest, BeginUsesCorrectMechanism) {
+TEST_P(ChapsCryptoOperationTest, BeginUsesCorrectMechanism) {
   EXPECT_CALL(chaps_mock_, SignInit(_, _, Eq(CKM_RSA_PKCS), _, _));
   operation_.Begin(kCkmRsaPkcsSign);
 
@@ -145,7 +167,7 @@ TEST_F(ChapsCryptoOperationTest, BeginUsesCorrectMechanism) {
   operation_.Begin(kCkmSha512RsaPkcsSign);
 }
 
-TEST_F(ChapsCryptoOperationTest, Update) {
+TEST_P(ChapsCryptoOperationTest, Update) {
   operation_.Begin(kDescription);
   base::Optional<brillo::Blob> result = operation_.Update(kDataBlob);
 
@@ -153,7 +175,7 @@ TEST_F(ChapsCryptoOperationTest, Update) {
   ASSERT_TRUE(result->empty());
 }
 
-TEST_F(ChapsCryptoOperationTest, Finish) {
+TEST_P(ChapsCryptoOperationTest, Finish) {
   operation_.Begin(kDescription);
   base::Optional<brillo::Blob> result = operation_.Finish();
 
@@ -161,12 +183,18 @@ TEST_F(ChapsCryptoOperationTest, Finish) {
   ASSERT_EQ(result.value(), kSignatureBlob);
 }
 
-TEST_F(ChapsCryptoOperationTest, Abort) {
+TEST_P(ChapsCryptoOperationTest, Abort) {
   operation_.Begin(kDescription);
   bool result = operation_.Abort();
 
   ASSERT_TRUE(result);
 }
+
+INSTANTIATE_TEST_SUITE_P(ChapsCryptoOperation,
+                         ChapsCryptoOperationTest,
+                         ::testing::Values(ContextAdaptor::Slot::kUser,
+                                           ContextAdaptor::Slot::kSystem),
+                         TestName);
 
 }  // namespace context
 }  // namespace keymaster

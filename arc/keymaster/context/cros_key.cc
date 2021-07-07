@@ -258,7 +258,7 @@ keymaster_error_t ChapsKey::formatted_key_material(
   if (out_material == nullptr || out_size == nullptr)
     return KM_ERROR_OUTPUT_PARAMETER_NULL;
 
-  ChapsClient chaps_client(cros_key_factory()->context_adaptor());
+  ChapsClient chaps_client(cros_key_factory()->context_adaptor(), slot());
   base::Optional<brillo::Blob> spki =
       chaps_client.ExportSubjectPublicKeyInfo(label(), id());
   if (!spki.has_value())
@@ -303,7 +303,10 @@ CrosOperation::CrosOperation(keymaster_purpose_t purpose, ChapsKey&& key)
     : ::keymaster::Operation(
           purpose, key.hw_enforced_move(), key.sw_enforced_move()),
       operation_(std::make_unique<ChapsCryptoOperation>(
-          key.cros_key_factory()->context_adaptor(), key.label(), key.id())) {}
+          key.cros_key_factory()->context_adaptor(),
+          key.slot(),
+          key.label(),
+          key.id())) {}
 
 CrosOperation::~CrosOperation() = default;
 

@@ -89,8 +89,9 @@ class ScopedSession {
 
 }  // namespace internal
 
-ChapsClient::ChapsClient(base::WeakPtr<ContextAdaptor> context_adaptor)
-    : context_adaptor_(context_adaptor) {}
+ChapsClient::ChapsClient(base::WeakPtr<ContextAdaptor> context_adaptor,
+                         ContextAdaptor::Slot slot)
+    : context_adaptor_(context_adaptor), slot_(slot) {}
 
 ChapsClient::~ChapsClient() = default;
 
@@ -133,10 +134,9 @@ ChapsClient::ExportOrGenerateEncryptionKey() {
 
 base::Optional<CK_SESSION_HANDLE> ChapsClient::session_handle() {
   if (!session_ && context_adaptor_) {
-    base::Optional<CK_SLOT_ID> user_slot =
-        context_adaptor_->FetchPrimaryUserSlot();
-    if (user_slot.has_value())
-      session_ = std::make_unique<internal::ScopedSession>(user_slot.value());
+    base::Optional<CK_SLOT_ID> slot_id = context_adaptor_->FetchSlotId(slot_);
+    if (slot_id.has_value())
+      session_ = std::make_unique<internal::ScopedSession>(slot_id.value());
   }
 
   return session_ ? session_->handle() : base::nullopt;

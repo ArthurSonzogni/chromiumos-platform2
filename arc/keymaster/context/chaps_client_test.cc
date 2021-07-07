@@ -29,6 +29,9 @@ namespace context {
 
 namespace {
 
+// CK_SLOT_IDs for user and system slot. Arbitrary but distinct.
+constexpr uint64_t kSystemSlotId = 7;
+constexpr uint64_t kUserSlotId = 13;
 // Arbitrary non-zero CK_SESSION_HANDLE.
 constexpr uint64_t kSessionId = 9;
 // Arbitrary single-element list.
@@ -136,14 +139,23 @@ const std::vector<uint8_t> kArcKeyPermissionFalse = {10, 2, 8, 1};
 constexpr char kLabel[] = "object_label";
 const brillo::Blob kId(10, 10);
 
+// Must be a valid test name (no spaces etc.). Makes the test show up as e.g.
+// ChapsClient/ChapsClientTest.UsesSlotFromAdaptor/UserSlot.
+std::string TestName(testing::TestParamInfo<ContextAdaptor::Slot> param_info) {
+  return param_info.param == ContextAdaptor::Slot::kUser ? "UserSlot"
+                                                         : "SystemSlot";
+}
+
 }  // anonymous namespace
 
 // Fixture for chaps client tests.
-class ChapsClientTest : public ::testing::Test {
+class ChapsClientTest
+    : public ::testing::Test,
+      public ::testing::WithParamInterface<ContextAdaptor::Slot> {
  public:
   ChapsClientTest()
       : chaps_mock_(/* is_initialized */ true),
-        chaps_client_(context_adaptor_.GetWeakPtr()) {}
+        chaps_client_(context_adaptor_.GetWeakPtr(), GetParam()) {}
 
   uint32_t FakeGetCertificateBlob(const brillo::SecureBlob& isolate_credential,
                                   uint64_t session_id,
@@ -181,9 +193,19 @@ class ChapsClientTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
-    context_adaptor_.set_slot_for_tests(1);
+    uint64_t slot_id;
+    switch (GetParam()) {
+      case ContextAdaptor::Slot::kUser:
+        slot_id = kUserSlotId;
+        context_adaptor_.set_user_slot_for_tests(kUserSlotId);
+        break;
+      case ContextAdaptor::Slot::kSystem:
+        slot_id = kSystemSlotId;
+        context_adaptor_.set_system_slot_for_tests(kSystemSlotId);
+        break;
+    }
 
-    ON_CALL(chaps_mock_, OpenSession(_, _, _, _))
+    ON_CALL(chaps_mock_, OpenSession(_, slot_id, _, _))
         .WillByDefault(DoAll(SetArgPointee<3>(kSessionId), Return(CKR_OK)));
     ON_CALL(chaps_mock_, CloseSession(_, _)).WillByDefault(Return(CKR_OK));
     ON_CALL(chaps_mock_, FindObjectsInit(_, _, _))
@@ -215,10 +237,17 @@ class ChapsClientTest : public ::testing::Test {
   }
 };
 
-TEST_F(ChapsClientTest, UsesSlotFromAdaptor) {
+TEST_P(ChapsClientTest, UsesSlotFromAdaptor) {
   // Setup a fake slot in the cache.
   uint64_t slot = 42;
-  context_adaptor_.set_slot_for_tests(slot);
+  switch (GetParam()) {
+    case ContextAdaptor::Slot::kUser:
+      context_adaptor_.set_user_slot_for_tests(slot);
+      break;
+    case ContextAdaptor::Slot::kSystem:
+      context_adaptor_.set_system_slot_for_tests(slot);
+      break;
+  }
 
   // Expect chaps client will use the given slot.
   EXPECT_CALL(chaps_mock_, OpenSession(_, Eq(slot), _, _));
@@ -227,7 +256,7 @@ TEST_F(ChapsClientTest, UsesSlotFromAdaptor) {
   chaps_client_.session_handle();
 }
 
-TEST_F(ChapsClientTest, ExportExistingEncryptionKey) {
+TEST_P(ChapsClientTest, ExportExistingEncryptionKey) {
   // An existing key is prepared in fixture setup, expect no generation happens.
   EXPECT_CALL(chaps_mock_, GenerateKey(_, _, _, _, _, _)).Times(0);
 
@@ -241,7 +270,7 @@ TEST_F(ChapsClientTest, ExportExistingEncryptionKey) {
   EXPECT_EQ(kKeyBlob, key);
 }
 
-TEST_F(ChapsClientTest, ExportGeneratedEncryptionKey) {
+TEST_P(ChapsClientTest, ExportGeneratedEncryptionKey) {
   // Expect no existing key is found and generation is called.
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kEmptyObjectList), Return(CKR_OK)));
@@ -258,7 +287,7 @@ TEST_F(ChapsClientTest, ExportGeneratedEncryptionKey) {
   EXPECT_EQ(kKeyBlob, key);
 }
 
-TEST_F(ChapsClientTest, CachesExportedEncryptionKey) {
+TEST_P(ChapsClientTest, CachesExportedEncryptionKey) {
   // Expect chaps is queried only once.
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _)).Times(1);
 
@@ -277,7 +306,7 @@ TEST_F(ChapsClientTest, CachesExportedEncryptionKey) {
     chaps_client_.ExportOrGenerateEncryptionKey();
 }
 
-TEST_F(ChapsClientTest, ReturnsCachedEncryptionKey) {
+TEST_P(ChapsClientTest, ReturnsCachedEncryptionKey) {
   // Prepare the adaptor cache with a key.
   brillo::SecureBlob in_key(kKeyBlob.begin(), kKeyBlob.end());
   context_adaptor_.set_encryption_key(in_key);
@@ -296,7 +325,7 @@ TEST_F(ChapsClientTest, ReturnsCachedEncryptionKey) {
   EXPECT_EQ(kKeyBlob, key);
 }
 
-TEST_F(ChapsClientTest, InitializeSignature) {
+TEST_P(ChapsClientTest, InitializeSignature) {
   // Expect the correct parameters are forwarded to chaps.
   CK_MECHANISM_TYPE mechanism = CKM_RSA_PKCS;
   CK_OBJECT_HANDLE handle = 42;
@@ -306,7 +335,7 @@ TEST_F(ChapsClientTest, InitializeSignature) {
   ASSERT_TRUE(result);
 }
 
-TEST_F(ChapsClientTest, InitializeSignatureObeysKeyPermissions) {
+TEST_P(ChapsClientTest, InitializeSignatureObeysKeyPermissions) {
   CK_MECHANISM_TYPE mechanism = CKM_RSA_PKCS;
   CK_OBJECT_HANDLE handle = 42;
 
@@ -327,7 +356,7 @@ TEST_F(ChapsClientTest, InitializeSignatureObeysKeyPermissions) {
   ASSERT_TRUE(new_result);
 }
 
-TEST_F(ChapsClientTest, UpdateSignature) {
+TEST_P(ChapsClientTest, UpdateSignature) {
   // Expect the correct parameters are forwarded to chaps.
   EXPECT_CALL(chaps_mock_, SignUpdate(_, _, Eq(kDataBlob)));
 
@@ -335,7 +364,7 @@ TEST_F(ChapsClientTest, UpdateSignature) {
   ASSERT_TRUE(result);
 }
 
-TEST_F(ChapsClientTest, FinalizeSignature) {
+TEST_P(ChapsClientTest, FinalizeSignature) {
   // Expect the output is forwarded from chaps.
   EXPECT_CALL(chaps_mock_, SignFinal(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(kSignatureBlob), Return(CKR_OK)));
@@ -343,7 +372,7 @@ TEST_F(ChapsClientTest, FinalizeSignature) {
   ASSERT_EQ(kSignatureBlob, signature);
 }
 
-TEST_F(ChapsClientTest, FindObjectHandlesInvalidSession) {
+TEST_P(ChapsClientTest, FindObjectHandlesInvalidSession) {
   // Expect a retry if FindObjects returns CKR_SESSION_HANDLE_INVALID.
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID))
@@ -359,7 +388,7 @@ TEST_F(ChapsClientTest, FindObjectHandlesInvalidSession) {
   EXPECT_EQ(handle.value(), kObjectList[0]);
 }
 
-TEST_F(ChapsClientTest, ExportSubjectPublicKeyInfoHandlesInvalidSession) {
+TEST_P(ChapsClientTest, ExportSubjectPublicKeyInfoHandlesInvalidSession) {
   // Expect a retry if FindObjects returns CKR_SESSION_HANDLE_INVALID.
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID))
@@ -381,7 +410,7 @@ TEST_F(ChapsClientTest, ExportSubjectPublicKeyInfoHandlesInvalidSession) {
 // base::Optional<brillo::Blob> ExportSubjectPublicKeyInfo(
 //    const std::string& label, const brillo::Blob& id);
 
-TEST_F(ChapsClientTest, FindKeyHandlesInvalidSession) {
+TEST_P(ChapsClientTest, FindKeyHandlesInvalidSession) {
   // Expect a retry if FindObjects returns CKR_SESSION_HANDLE_INVALID.
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID))
@@ -398,7 +427,7 @@ TEST_F(ChapsClientTest, FindKeyHandlesInvalidSession) {
   EXPECT_EQ(kKeyBlob, key);
 }
 
-TEST_F(ChapsClientTest, GenerateKeyHandlesInvalidSession) {
+TEST_P(ChapsClientTest, GenerateKeyHandlesInvalidSession) {
   // Expect a retry if GenerateKey returns CKR_SESSION_HANDLE_INVALID.
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kEmptyObjectList), Return(CKR_OK)));
@@ -417,7 +446,7 @@ TEST_F(ChapsClientTest, GenerateKeyHandlesInvalidSession) {
   EXPECT_EQ(kKeyBlob, key);
 }
 
-TEST_F(ChapsClientTest, GetAttributeHandlesInvalidSession) {
+TEST_P(ChapsClientTest, GetAttributeHandlesInvalidSession) {
   // Expect a retry if GetAttribute returns CKR_SESSION_HANDLE_INVALID.
   EXPECT_CALL(chaps_mock_, GetAttributeValue(_, _, _, _, _))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID))
@@ -434,6 +463,12 @@ TEST_F(ChapsClientTest, GetAttributeHandlesInvalidSession) {
   std::vector<uint8_t> key(encryption_key->begin(), encryption_key->end());
   EXPECT_EQ(kKeyBlob, key);
 }
+
+INSTANTIATE_TEST_SUITE_P(ChapsClient,
+                         ChapsClientTest,
+                         ::testing::Values(ContextAdaptor::Slot::kUser,
+                                           ContextAdaptor::Slot::kSystem),
+                         TestName);
 
 }  // namespace context
 }  // namespace keymaster

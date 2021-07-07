@@ -12,6 +12,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "arc/keymaster/context/context_adaptor.h"
 #include "arc/keymaster/context/crypto_operation.h"
 
 namespace arc {
@@ -19,7 +20,6 @@ namespace keymaster {
 namespace context {
 
 class ChapsClient;
-class ContextAdaptor;
 
 extern const MechanismDescription kCkmRsaPkcsSign;
 extern const MechanismDescription kCkmMd5RsaPkcsSign;
@@ -32,6 +32,7 @@ extern const MechanismDescription kCkmSha512RsaPkcsSign;
 class ChapsCryptoOperation : public CryptoOperation {
  public:
   ChapsCryptoOperation(base::WeakPtr<ContextAdaptor> context_adaptor,
+                       ContextAdaptor::Slot slot,
                        const std::string& label,
                        const brillo::Blob& id);
   ~ChapsCryptoOperation() override;
@@ -50,6 +51,8 @@ class ChapsCryptoOperation : public CryptoOperation {
  private:
   const base::WeakPtr<ContextAdaptor> context_adaptor_;
 
+  // Chaps slot where the key is stored.
+  const ContextAdaptor::Slot slot_;
   // Key label and ID in Chaps, correspond to PKCS#11 CKA_LABEL and CKA_ID.
   const std::string label_;
   const brillo::Blob id_;

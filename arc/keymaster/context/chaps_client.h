@@ -13,6 +13,8 @@
 #include <brillo/secure_blob.h>
 #include <chaps/pkcs11/cryptoki.h>
 
+#include "arc/keymaster/context/context_adaptor.h"
+
 namespace arc {
 namespace keymaster {
 namespace context {
@@ -23,13 +25,12 @@ class ScopedSession;
 
 }  // namespace internal
 
-class ContextAdaptor;
-
 // Exposes chaps functionality through an API that is relevant to the ARC
 // Keymaster context.
 class ChapsClient {
  public:
-  explicit ChapsClient(base::WeakPtr<ContextAdaptor> context_adaptor);
+  ChapsClient(base::WeakPtr<ContextAdaptor> context_adaptor,
+              ContextAdaptor::Slot slot);
   // Not copyable nor assignable.
   ChapsClient(const ChapsClient&) = delete;
   ChapsClient& operator=(const ChapsClient&) = delete;
@@ -116,6 +117,8 @@ class ChapsClient {
   std::unique_ptr<internal::ScopedSession> session_;
 
   base::WeakPtr<ContextAdaptor> context_adaptor_;
+
+  const ContextAdaptor::Slot slot_;
 };
 
 }  // namespace context
