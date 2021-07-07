@@ -42,7 +42,6 @@ void TpmUtilityCommon::UpdateTpmLocalData(
 }
 
 void TpmUtilityCommon::OnOwnershipTakenSignal() {
-  base::AutoLock lock(tpm_state_lock_);
   if (is_ready_) {
     return;
   }
@@ -51,6 +50,10 @@ void TpmUtilityCommon::OnOwnershipTakenSignal() {
   if (!tpm_manager_utility_->GetOwnershipTakenSignalStatus(nullptr, nullptr,
                                                            &local_data)) {
     LOG(ERROR) << __func__ << ": Failed to get local data.";
+    return;
+  }
+  base::AutoLock lock(tpm_state_lock_);
+  if (is_ready_) {
     return;
   }
   is_ready_ = true;
@@ -63,7 +66,6 @@ bool TpmUtilityCommon::IsTpmReady() {
   }
   has_cache_tpm_state_ = true;
 
-  base::AutoLock lock(tpm_state_lock_);
   if (is_ready_) {
     return true;
   }
@@ -81,6 +83,10 @@ bool TpmUtilityCommon::IsTpmReady() {
                                           &local_data)) {
     LOG(ERROR) << __func__ << ": Failed to get tpm status from tpm_manager.";
     return false;
+  }
+  base::AutoLock lock(tpm_state_lock_);
+  if (is_ready_) {
+    return true;
   }
   is_ready_ = is_enabled && is_owned;
   UpdateTpmLocalData(local_data);
