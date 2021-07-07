@@ -658,6 +658,10 @@ void CellularCapability3gpp::UpdateServiceActivationState() {
 }
 
 void CellularCapability3gpp::OnServiceCreated() {
+  // This may get tirggered by a callback after the Modem is stopped.
+  if (!proxies_initialized_)
+    return;
+
   // ModemManager might have issued some property updates before the service
   // object was created to receive the updates, so we explicitly refresh the
   // properties here.
@@ -823,7 +827,10 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
 
 void CellularCapability3gpp::GetProperties() {
   SLOG(this, 3) << __func__;
-  CHECK(dbus_properties_proxy_);
+  if (!dbus_properties_proxy_) {
+    LOG(ERROR) << "GetProperties called with no proxy";
+    return;
+  }
 
   auto properties = dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM);
   OnModemPropertiesChanged(properties);
