@@ -177,7 +177,7 @@ users. Suppose our service has the following XML specification:
     <signal name="FrobinationCompleted">
       <arg name="foo" type="i" direction="out" />
       <arg name="bar" type="a{sv}" direction="out" />
-    </method>
+    </signal>
   </interface>
 </node>
 ```
