@@ -17,7 +17,6 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/time/time.h>
@@ -148,12 +147,8 @@ CommandResponse HelperProcessReceiver::HandleCommand(
 }
 
 void HelperProcessReceiver::SendResponse(const CommandResponse& response) {
-  std::string response_str;
-  if (!response.SerializeToString(&response_str))
+  if (!response.SerializeToFileDescriptor(control_fd_.get()))
     LOG(FATAL) << "failed to serialize protobuf";
-  if (!base::WriteFileDescriptor(control_fd_.get(), response_str.data(),
-                                 response_str.size()))
-    PLOG(FATAL) << "short write on protobuf";
 }
 
 }  // namespace imageloader

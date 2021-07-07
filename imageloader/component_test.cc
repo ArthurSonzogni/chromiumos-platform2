@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
@@ -65,7 +66,9 @@ class ComponentTest : public testing::Test {
 
     base::FilePath file = bad_component_dir.Append(file_name);
     const char data[] = "c";
-    if (!base::AppendToFile(file, data, sizeof(data)))
+    // Append to |file| including the trailing '\0' character to fail
+    // Component::IsValidFingerprintFile
+    if (!base::AppendToFile(file, base::StringPiece(data, sizeof(data))))
       return false;
 
     base::FilePath bad_component_dest =
