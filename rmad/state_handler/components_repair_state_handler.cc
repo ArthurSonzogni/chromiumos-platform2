@@ -5,16 +5,15 @@
 #include "rmad/state_handler/components_repair_state_handler.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <dbus/runtime_probe/dbus-constants.h>
-#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
-
 #include "rmad/constants.h"
-#include "rmad/utils/dbus_utils_impl.h"
+#include "rmad/system/runtime_probe_client_impl.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
@@ -23,27 +22,16 @@ using RepairStatus = ComponentRepairStatus::RepairStatus;
 
 namespace {
 
-const std::vector<
-    std::pair<RmadComponent, int (runtime_probe::ProbeResult::*)() const>>
-    PROBED_COMPONENT_SIZES = {
-        {RMAD_COMPONENT_AUDIO_CODEC,
-         &runtime_probe::ProbeResult::audio_codec_size},
-        {RMAD_COMPONENT_BATTERY, &runtime_probe::ProbeResult::battery_size},
-        {RMAD_COMPONENT_STORAGE, &runtime_probe::ProbeResult::storage_size},
-        {RMAD_COMPONENT_CAMERA, &runtime_probe::ProbeResult::camera_size},
-        {RMAD_COMPONENT_STYLUS, &runtime_probe::ProbeResult::stylus_size},
-        {RMAD_COMPONENT_TOUCHPAD, &runtime_probe::ProbeResult::touchpad_size},
-        {RMAD_COMPONENT_TOUCHSCREEN,
-         &runtime_probe::ProbeResult::touchscreen_size},
-        {RMAD_COMPONENT_DRAM, &runtime_probe::ProbeResult::dram_size},
-        {RMAD_COMPONENT_DISPLAY_PANEL,
-         &runtime_probe::ProbeResult::display_panel_size},
-        {RMAD_COMPONENT_CELLULAR, &runtime_probe::ProbeResult::cellular_size},
-        {RMAD_COMPONENT_ETHERNET, &runtime_probe::ProbeResult::ethernet_size},
-        {RMAD_COMPONENT_WIRELESS, &runtime_probe::ProbeResult::wireless_size},
+const std::vector<RmadComponent> kProbeableComponents = {
+    RMAD_COMPONENT_AUDIO_CODEC,   RMAD_COMPONENT_BATTERY,
+    RMAD_COMPONENT_STORAGE,       RMAD_COMPONENT_CAMERA,
+    RMAD_COMPONENT_STYLUS,        RMAD_COMPONENT_TOUCHPAD,
+    RMAD_COMPONENT_TOUCHSCREEN,   RMAD_COMPONENT_DRAM,
+    RMAD_COMPONENT_DISPLAY_PANEL, RMAD_COMPONENT_CELLULAR,
+    RMAD_COMPONENT_ETHERNET,      RMAD_COMPONENT_WIRELESS,
 };
 
-const std::vector<RmadComponent> OTHER_COMPONENTS = {
+const std::vector<RmadComponent> kUnprobeableComponents = {
     RMAD_COMPONENT_MAINBOARD_REWORK,
     RMAD_COMPONENT_KEYBOARD,
     RMAD_COMPONENT_POWER_BUTTON,
@@ -82,43 +70,36 @@ std::unordered_map<RmadComponent, RepairStatus> GetUserSelectionDictionary(
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
-  dbus_utils_ = std::make_unique<DBusUtilsImpl>();
+  runtime_probe_client_ =
+      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
 }
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
-    scoped_refptr<JsonStore> json_store, std::unique_ptr<DBusUtils> dbus_utils)
-    : BaseStateHandler(json_store), dbus_utils_(std::move(dbus_utils)) {}
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<RuntimeProbeClient> runtime_probe_client)
+    : BaseStateHandler(json_store),
+      runtime_probe_client_(std::move(runtime_probe_client)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
+  // Always probe again and update |state_|.
   // Call runtime_probe to get all probed components.
-  runtime_probe::ProbeRequest request;
-  request.set_probe_default_category(true);
-  runtime_probe::ProbeResult reply;
-  if (!dbus_utils_->CallDBusMethod(runtime_probe::kRuntimeProbeServiceName,
-                                   runtime_probe::kRuntimeProbeServicePath,
-                                   runtime_probe::kRuntimeProbeInterfaceName,
-                                   runtime_probe::kProbeCategoriesMethod,
-                                   request, &reply)) {
-    LOG(ERROR) << "runtime_probe D-Bus call failed";
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
-  }
-  if (reply.error() != runtime_probe::RUNTIME_PROBE_ERROR_NOT_SET) {
-    LOG(ERROR) << "runtime_probe return error code " << reply.error();
+  std::set<RmadComponent> probed_components;
+  if (!runtime_probe_client_->ProbeCategories(&probed_components)) {
+    LOG(ERROR) << "Failed to get probe result from runtime_probe";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
-  // Always probe again and update |state_|.
   // TODO(chenghan): Integrate with RACC to check AVL compliance.
   auto components_repair = std::make_unique<ComponentsRepairState>();
   const std::unordered_map<RmadComponent, RepairStatus> previous_selection =
       GetUserSelectionDictionary(state_);
   // runtime_probe results.
-  for (auto& [component, probed_component_size] : PROBED_COMPONENT_SIZES) {
+  for (RmadComponent component : kProbeableComponents) {
     ComponentRepairStatus* component_repair =
         components_repair->add_component_repair();
     component_repair->set_component(component);
     // TODO(chenghan): Do we need to return detailed info, e.g. component names?
-    if ((reply.*probed_component_size)() > 0) {
+    if (probed_components.find(component) != probed_components.end()) {
       if (previous_selection.find(component) != previous_selection.end()) {
         component_repair->set_repair_status(previous_selection.at(component));
       } else {
@@ -131,7 +112,7 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
     }
   }
   // Other components.
-  for (auto& component : OTHER_COMPONENTS) {
+  for (RmadComponent component : kUnprobeableComponents) {
     ComponentRepairStatus* component_repair =
         components_repair->add_component_repair();
     component_repair->set_component(component);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,41 +11,35 @@
 #include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "rmad/constants.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/utils/mock_dbus_utils.h"
+#include "rmad/system/mock_runtime_probe_client.h"
 
 using ComponentRepairStatus =
     rmad::ComponentsRepairState::ComponentRepairStatus;
 using testing::_;
 using testing::DoAll;
 using testing::Invoke;
+using testing::NiceMock;
 using testing::Return;
-using testing::StrictMock;
-using testing::WithArg;
+using testing::SetArgPointee;
 
 namespace rmad {
 
 class ComponentsRepairStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
-      const runtime_probe::ProbeResult& runtime_probe_reply,
-      bool runtime_probe_retval) {
-    // Mock the D-Bus call.
-    auto mock_dbus_utils = std::make_unique<StrictMock<MockDBusUtils>>();
-    EXPECT_CALL(*mock_dbus_utils, CallDBusMethod(_, _, _, _, _, _, _))
-        .WillOnce(
-            DoAll(WithArg<5>(Invoke([=](google::protobuf::MessageLite* reply) {
-                    *static_cast<runtime_probe::ProbeResult*>(reply) =
-                        runtime_probe_reply;
-                  })),
-                  Return(runtime_probe_retval)));
-
+      bool runtime_probe_client_retval,
+      const std::set<RmadComponent>& probed_components) {
+    auto mock_runtime_probe_client =
+        std::make_unique<NiceMock<MockRuntimeProbeClient>>();
+    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(probed_components),
+                             Return(runtime_probe_client_retval)));
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
-        json_store_, std::move(mock_dbus_utils));
+        json_store_, std::move(mock_runtime_probe_client));
   }
 
   std::unique_ptr<ComponentsRepairState> CreateDefaultComponentsRepairState() {
@@ -64,28 +59,18 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(runtime_probe::ProbeResult(), true);
+  auto handler = CreateStateHandler(true, {});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
-TEST_F(ComponentsRepairStateHandlerTest, InitializeState_DBusFail) {
-  auto handler = CreateStateHandler(runtime_probe::ProbeResult(), false);
-  EXPECT_EQ(handler->InitializeState(),
-            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
-}
-
-TEST_F(ComponentsRepairStateHandlerTest, InitializeState_RuntimeProbeFail) {
-  runtime_probe::ProbeResult reply;
-  reply.set_error(runtime_probe::RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
-  auto handler = CreateStateHandler(reply, true);
+TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Fail) {
+  auto handler = CreateStateHandler(false, {});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
-  runtime_probe::ProbeResult reply;
-  reply.add_battery();
-  auto handler = CreateStateHandler(reply, true);
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -111,9 +96,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
-  runtime_probe::ProbeResult reply;
-  reply.add_battery();
-  auto handler = CreateStateHandler(reply, true);
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No ComponentsRepairState.
@@ -125,9 +108,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
-  runtime_probe::ProbeResult reply;
-  reply.add_battery();
-  auto handler = CreateStateHandler(reply, true);
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -152,9 +133,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
-  runtime_probe::ProbeResult reply;
-  reply.add_battery();
-  auto handler = CreateStateHandler(reply, true);
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -180,9 +159,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
 
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_MissingProbedComponent) {
-  runtime_probe::ProbeResult reply;
-  reply.add_battery();
-  auto handler = CreateStateHandler(reply, true);
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -203,9 +180,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownRepairState) {
-  runtime_probe::ProbeResult reply;
-  reply.add_battery();
-  auto handler = CreateStateHandler(reply, true);
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // RMAD_COMPONENT_BATTERY is still UNKNOWN.

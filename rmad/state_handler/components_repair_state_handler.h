@@ -8,18 +8,18 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
-#include <unordered_map>
 
-#include "rmad/utils/dbus_utils.h"
+#include "rmad/system/runtime_probe_client.h"
 
 namespace rmad {
 
 class ComponentsRepairStateHandler : public BaseStateHandler {
  public:
   explicit ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mocked |dbus_utils_| for testing.
-  ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store,
-                               std::unique_ptr<DBusUtils> dbus_utils);
+  // Used to inject mocked |runtime_probe_client_| for testing.
+  ComponentsRepairStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<RuntimeProbeClient> runtime_probe_client);
 
   ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
   SET_REPEATABLE;
@@ -36,7 +36,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
 
-  std::unique_ptr<DBusUtils> dbus_utils_;
+  std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
 };
 
 }  // namespace rmad
