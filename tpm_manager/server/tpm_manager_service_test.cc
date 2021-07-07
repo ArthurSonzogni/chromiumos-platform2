@@ -377,6 +377,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
 TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusSuccess) {
   LocalData local_data;
   local_data.set_owner_password(kOwnerPassword);
+  local_data.set_no_srk_auth(false);
   EXPECT_CALL(mock_local_data_store_, Read(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(local_data), Return(true)));
 
@@ -391,6 +392,7 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusSuccess) {
     // kOwnerPassword is not empty.
     EXPECT_TRUE(reply.is_owner_password_present());
     EXPECT_FALSE(reply.has_reset_lock_permissions());
+    EXPECT_TRUE(reply.is_srk_default_auth());
   };
   auto callback = [](TpmManagerServiceTestBase* self,
                      const GetTpmStatusReply& reply) {
@@ -399,6 +401,7 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusSuccess) {
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_EQ(kOwnerPassword, reply.local_data().owner_password());
+    EXPECT_FALSE(reply.local_data().no_srk_auth());
     self->Quit();
   };
   service_->GetTpmNonsensitiveStatus(

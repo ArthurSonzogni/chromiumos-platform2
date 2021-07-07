@@ -58,6 +58,12 @@ bool TpmInitializerImpl::InitializeTpm(bool* already_owned) {
     *already_owned = true;
     return true;
   }
+  if (ownership_status == TpmStatus::kTpmSrkNoAuth) {
+    // The SRK isn't usable, we can't take ownership in this case.
+    VLOG(1) << "SRK isn't using default auth.";
+    *already_owned = false;
+    return false;
+  }
   *already_owned = false;
   // Makes sure EK is there when unowned.
   if (ownership_status != TpmStatus::kTpmUnowned) {

@@ -26,6 +26,10 @@ class TpmStatus {
     // TPM initialization is completed. The owner password is set to a randomly-
     // generated password.
     kTpmOwned,
+
+    // TPM initialization is completed. But the ownership taken process is
+    // completed by the other system. The TPM is not owned by tpm_manager.
+    kTpmSrkNoAuth,
   };
 
   TpmStatus() = default;

@@ -43,9 +43,35 @@ bool TouchTpmFullyInitializedPath() {
       base::FilePath(kTpmFullyInitializedPath), {});
 }
 
+bool SetNoSrkAuth(tpm_manager::LocalDataStore* local_data_store, bool value) {
+  tpm_manager::LocalData local_data;
+  if (!local_data_store->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": Failed to read local data.";
+    return false;
+  }
+  local_data.set_no_srk_auth(value);
+  if (!local_data_store->Write(local_data)) {
+    LOG(ERROR) << __func__ << ": Failed to write local data change.";
+    return false;
+  }
+  return true;
+}
+
+bool GetNoSrkAuth(tpm_manager::LocalDataStore* local_data_store) {
+  tpm_manager::LocalData local_data;
+  if (!local_data_store->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": Failed to read local data.";
+    return false;
+  }
+  return local_data.no_srk_auth();
+}
+
 }  // namespace
 
 namespace tpm_manager {
+
+TpmStatusImpl::TpmStatusImpl(LocalDataStore* local_data_store)
+    : local_data_store_(local_data_store) {}
 
 bool TpmStatusImpl::IsTpmEnabled() {
   if (!is_enable_initialized_) {
@@ -71,6 +97,9 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
       LOG(WARNING) << __func__ << ": Failed to delete "
                    << kTpmFullyInitializedPath;
     }
+    if (!SetNoSrkAuth(local_data_store_, false)) {
+      LOG(WARNING) << __func__ << ": Failed to set no_srk_auth";
+    }
     // We even haven't tried to take ownership yet.
     ownership_status_ = kTpmUnowned;
     *status = ownership_status_;
@@ -83,7 +112,25 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
     LOG(ERROR) << __func__ << ": Failed to test default owner password.";
     return false;
   }
-  ownership_status_ = *is_default_owner_password ? kTpmPreOwned : kTpmOwned;
+  if (*is_default_owner_password) {
+    ownership_status_ = kTpmPreOwned;
+    *status = ownership_status_;
+    return true;
+  }
+
+  const base::Optional<bool> is_default_srk_auth = TestTpmSrkWithDefaultAuth();
+  if (!is_default_srk_auth.has_value()) {
+    LOG(ERROR) << __func__ << ": Failed to test default SRK auth.";
+    return false;
+  }
+  if (!*is_default_srk_auth) {
+    LOG(WARNING) << __func__ << ": Failed to use SRK with default auth.";
+    ownership_status_ = kTpmSrkNoAuth;
+    *status = ownership_status_;
+    return true;
+  }
+
+  ownership_status_ = kTpmOwned;
 
   *status = ownership_status_;
   return true;
@@ -238,6 +285,74 @@ base::Optional<bool> TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
     TPM_LOG(ERROR, result) << "Unexpected error calling |Tspi_TPM_GetStatus|.";
   }
   return is_owner_password_default_;
+}
+
+base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
+  if (GetNoSrkAuth(local_data_store_)) {
+    is_srk_auth_default_ = false;
+  }
+
+  if (is_srk_auth_default_.has_value()) {
+    return is_srk_auth_default_;
+  }
+
+  TpmConnection connection;
+  TSS_RESULT result;
+  trousers::ScopedTssKey srk_handle(connection.GetContext());
+  TSS_UUID SRK_UUID = TSS_UUID_SRK;
+  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(
+                    connection.GetContext(), TSS_PS_TYPE_SYSTEM, SRK_UUID,
+                    srk_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_LoadKeyByUUID";
+    return base::nullopt;
+  }
+
+  // Check if the SRK wants a password
+  UINT32 srk_authusage;
+  if (TPM_ERROR(result = Tspi_GetAttribUint32(
+                    srk_handle, TSS_TSPATTRIB_KEY_INFO,
+                    TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetAttribUint32";
+    return base::nullopt;
+  }
+
+  if (!srk_authusage) {
+    is_srk_auth_default_ = true;
+    return is_srk_auth_default_;
+  }
+
+  // Give it the password if needed
+  TSS_HPOLICY srk_usage_policy;
+  if (TPM_ERROR(result = Tspi_GetPolicyObject(srk_handle, TSS_POLICY_USAGE,
+                                              &srk_usage_policy))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+    return base::nullopt;
+  }
+  BYTE default_auth[0];
+  result = Tspi_Policy_SetSecret(srk_usage_policy, TSS_SECRET_MODE_PLAIN, 0,
+                                 default_auth);
+  if (result != TPM_SUCCESS) {
+    TPM_LOG(ERROR, result)
+        << "Unexpected error calling |Tspi_Policy_SetSecret|.";
+    return base::nullopt;
+  }
+
+  unsigned public_srk_size;
+  trousers::ScopedTssMemory public_srk_bytes(connection.GetContext());
+  result =
+      Tspi_Key_GetPubKey(srk_handle, &public_srk_size, public_srk_bytes.ptr());
+  if (result == TPM_SUCCESS) {
+    is_srk_auth_default_ = true;
+  } else if (result == TPM_ERROR(TPM_E_AUTHFAIL)) {
+    is_srk_auth_default_ = false;
+    if (!SetNoSrkAuth(local_data_store_, true)) {
+      LOG(WARNING) << __func__ << ": Failed to set no_srk_auth";
+    }
+  } else {
+    TPM_LOG(ERROR, result) << "Unexpected error calling |Tspi_Key_GetPubKey|.";
+    return base::nullopt;
+  }
+  return is_srk_auth_default_;
 }
 
 void TpmStatusImpl::RefreshOwnedEnabledInfo() {

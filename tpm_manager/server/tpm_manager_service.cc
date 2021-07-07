@@ -91,6 +91,7 @@ GetTpmNonsensitiveStatusReply ToGetTpmNonSensitiveStatusReply(
   to.set_has_reset_lock_permissions(
       !sensitive.lockout_password().empty() ||
       sensitive.owner_delegate().has_reset_lock_permissions());
+  to.set_is_srk_default_auth(from.owned() || !sensitive.no_srk_auth());
   return to;
 }
 
@@ -208,7 +209,7 @@ void TpmManagerService::InitializeTask(
       tpm_nvram_ = default_tpm_nvram_.get();
     });
     TPM1_SECTION({
-      default_tpm_status_ = std::make_unique<TpmStatusImpl>();
+      default_tpm_status_ = std::make_unique<TpmStatusImpl>(local_data_store_);
       tpm_status_ = default_tpm_status_.get();
       default_tpm_initializer_ =
           std::make_unique<TpmInitializerImpl>(local_data_store_, tpm_status_);

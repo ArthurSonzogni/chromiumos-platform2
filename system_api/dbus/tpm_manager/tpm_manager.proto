@@ -136,6 +136,11 @@ message LocalData {
   optional bytes lockout_password = 5;
   repeated NvramPolicyRecord nvram_policy = 6;
   optional AuthDelegate owner_delegate = 7;
+  // Whether the SRK can't be used with default auth or not.
+  // If this is true, we should prevent using SRK related commands.
+  // This value should be reset after the TPM had been cleared and only
+  // applicable on TPM1.2 devices.
+  optional bool no_srk_auth = 8;
 }
 
 // The format of the ownership taken signal payload.
@@ -259,12 +264,15 @@ message GetTpmNonsensitiveStatusReply {
   optional TpmManagerStatus status = 1;
   // Whether a TPM is enabled on the system.
   optional bool is_enabled = 2;
-  // Whether the TPM has been owned.
+  // Whether the TPM has been owned by tpm_manager or not.
   optional bool is_owned = 3;
   // Whether the owner password is still retained.
   optional bool is_owner_password_present = 4;
   // Whether tpm manager is capable of reset DA.
   optional bool has_reset_lock_permissions = 5;
+  // Whether the SRK can be used with default auth or not.
+  // This should be true when the TPM is owned by tpm_manaber.
+  optional bool is_srk_default_auth = 6;
 }
 
 message GetVersionInfoRequest {
