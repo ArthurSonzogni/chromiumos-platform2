@@ -42,7 +42,7 @@ bool AppendMessage(const base::FilePath& log_path, const std::string& msg) {
   if (!base::PathExists(log_path)) {
     return base::WriteFile(log_path, msg);
   }
-  if (!base::AppendToFile(log_path, msg.c_str(), msg.size())) {
+  if (!base::AppendToFile(log_path, msg)) {
     return false;
   }
 
