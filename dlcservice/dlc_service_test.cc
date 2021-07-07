@@ -17,6 +17,7 @@
 
 #include "dlcservice/dlc.h"
 #include "dlcservice/dlc_service.h"
+#include "dlcservice/mock_dlc_manager.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
@@ -843,6 +844,48 @@ TEST_F(DlcServiceTest, UpdateCompleted) {
   EXPECT_TRUE(dlc_service_->UpdateCompleted({kFirstDlc, kSecondDlc}, &err_));
   EXPECT_TRUE(
       Prefs(DlcBase(kSecondDlc), inactive_boot_slot).Exists(kDlcPrefVerified));
+}
+
+TEST_F(DlcServiceTest, UpdatedNeedRebootClearsInstalling) {
+  // TODO(kimjae): Eventually move all tests to use mocks instead of setup.
+  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
+  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
+
+  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
+
+  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
+  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kSecondDlc, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
+
+  StatusResult status;
+  status.set_current_operation(Operation::UPDATED_NEED_REBOOT);
+  SystemState::Get()->set_update_engine_status(status);
+
+  EXPECT_FALSE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+}
+
+TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
+  // TODO(kimjae): Eventually move all tests to use mocks instead of setup.
+  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
+  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
+
+  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
+
+  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
+  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kSecondDlc, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
+
+  StatusResult status;
+  status.set_current_operation(Operation::IDLE);
+  SystemState::Get()->set_update_engine_status(status);
+
+  EXPECT_FALSE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
 }
 
 }  // namespace dlcservice

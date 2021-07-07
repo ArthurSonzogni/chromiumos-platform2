@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -68,6 +69,10 @@ class DlcService : public DlcServiceInterface {
   DlcIdList GetDlcsToUpdate() override;
   bool InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
   bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
+
+  void SetDlcManagerForTest(std::unique_ptr<DlcManagerInterface> dlc_manager) {
+    dlc_manager_ = std::move(dlc_manager);
+  }
 
  private:
   friend class DlcServiceTest;
@@ -143,7 +148,7 @@ class DlcService : public DlcServiceInterface {
   // Holds the DLC that is being installed by update_engine.
   base::Optional<DlcId> installing_dlc_id_;
 
-  std::unique_ptr<DlcManager> dlc_manager_;
+  std::unique_ptr<DlcManagerInterface> dlc_manager_;
 
   // Holds the ML task id of the delayed |PeriodicInstallCheck()| if an install
   // is in progress.

@@ -121,6 +121,9 @@ bool DlcService::InstallInternal(const DlcId& id,
 bool DlcService::InstallWithUpdateEngine(const DlcId& id,
                                          const string& omaha_url,
                                          ErrorPtr* err) {
+  // Need to set in order for the cancellation of DLC setup.
+  installing_dlc_id_ = id;
+
   // Check what state update_engine is in.
   if (SystemState::Get()->update_engine_status().current_operation() ==
       update_engine::UPDATED_NEED_REBOOT) {
@@ -133,7 +136,6 @@ bool DlcService::InstallWithUpdateEngine(const DlcId& id,
   LOG(INFO) << "Sending request to update_engine to install DLC=" << id;
   // Invokes update_engine to install the DLC.
   ErrorPtr tmp_err;
-  installing_dlc_id_ = id;
   if (!SystemState::Get()->update_engine()->AttemptInstall(omaha_url, {id},
                                                            &tmp_err)) {
     // TODO(kimjae): need update engine to propagate correct error message by

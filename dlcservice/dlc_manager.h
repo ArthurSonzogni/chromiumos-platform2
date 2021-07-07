@@ -16,35 +16,60 @@
 
 namespace dlcservice {
 
-class DlcManager {
+class DlcManagerInterface {
+ public:
+  virtual ~DlcManagerInterface() = default;
+
+  virtual DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
+  virtual void Initialize() = 0;
+  virtual DlcIdList GetInstalled() = 0;
+  virtual DlcIdList GetExistingDlcs() = 0;
+  virtual DlcIdList GetDlcsToUpdate() = 0;
+  virtual DlcIdList GetSupported() = 0;
+  virtual bool InstallCompleted(const DlcIdList& ids,
+                                brillo::ErrorPtr* err) = 0;
+  virtual bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) = 0;
+  virtual bool Install(const DlcId& id,
+                       bool* external_install_needed,
+                       brillo::ErrorPtr* err) = 0;
+  virtual bool FinishInstall(const DlcId& id, brillo::ErrorPtr* err) = 0;
+  virtual bool CancelInstall(const DlcId& id,
+                             const brillo::ErrorPtr& err_in,
+                             brillo::ErrorPtr* err) = 0;
+  virtual bool Uninstall(const DlcId& id, brillo::ErrorPtr* err) = 0;
+  virtual bool Purge(const DlcId& id, brillo::ErrorPtr* err) = 0;
+  virtual void ChangeProgress(double progress) = 0;
+};
+
+class DlcManager : public DlcManagerInterface {
  public:
   DlcManager() = default;
-  virtual ~DlcManager();
+  ~DlcManager();
 
   // Returns a reference to a DLC object given a DLC ID. If the ID is not
   // supported, it will set the error and return |nullptr|.
-  DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err);
+  DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
 
   // Initializes the state of DlcManager.
-  void Initialize();
+  void Initialize() override;
 
   // Returns the list of installed DLCs.
-  DlcIdList GetInstalled();
+  DlcIdList GetInstalled() override;
 
   // Returns the list of DLCs with installed content.
-  DlcIdList GetExistingDlcs();
+  DlcIdList GetExistingDlcs() override;
 
   // Returns the list of DLCs that need to be updated.
-  DlcIdList GetDlcsToUpdate();
+  DlcIdList GetDlcsToUpdate() override;
 
   // Returns the list of all supported DLC(s).
-  DlcIdList GetSupported();
+  DlcIdList GetSupported() override;
 
   // Persists the verified pref for given DLC(s) on install completion.
-  bool InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err);
+  bool InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
 
   // Persists the verified pref for given DLC(s) on update completion.
-  bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err);
+  bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
 
   // DLC Installation Flow
 
@@ -61,7 +86,7 @@ class DlcManager {
   //   True on success, otherwise false.
   bool Install(const DlcId& id,
                bool* external_install_needed,
-               brillo::ErrorPtr* err);
+               brillo::ErrorPtr* err) override;
 
   // Install Step 2a:
   // Once the missing DLC(s) are installed or there were no missing DLC(s), this
@@ -73,7 +98,7 @@ class DlcManager {
   //   err: The error that's set when returned false.
   // Return:
   //   True on success, otherwise false.
-  bool FinishInstall(const DlcId& id, brillo::ErrorPtr* err);
+  bool FinishInstall(const DlcId& id, brillo::ErrorPtr* err) override;
 
   // Install Step 2b:
   // If for any reason, the init'ed DLC(s) should not follow through with
@@ -88,7 +113,7 @@ class DlcManager {
   //   True on success, otherwise false.
   bool CancelInstall(const DlcId& id,
                      const brillo::ErrorPtr& err_in,
-                     brillo::ErrorPtr* err);
+                     brillo::ErrorPtr* err) override;
 
   // DLC Deletion Flow
 
@@ -102,11 +127,11 @@ class DlcManager {
   //   otherwise false. Deleting a valid DLC that's not installed is considered
   //   successfully uninstalled, however uninstalling a DLC that's not supported
   //   is a failure. Uninstalling a DLC that is installing is also a failure.
-  bool Uninstall(const DlcId& id, brillo::ErrorPtr* err);
-  bool Purge(const DlcId& id, brillo::ErrorPtr* err);
+  bool Uninstall(const DlcId& id, brillo::ErrorPtr* err) override;
+  bool Purge(const DlcId& id, brillo::ErrorPtr* err) override;
 
   // Changes the progress on all DLCs being installed to |progress|.
-  void ChangeProgress(double progress);
+  void ChangeProgress(double progress) override;
 
  private:
   FRIEND_TEST(DlcManagerTest, CleanupDanglingDlcs);
