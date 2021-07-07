@@ -38,9 +38,17 @@ constexpr size_t kInfineonDACounterOffset = 9;
 constexpr char kTpmFullyInitializedPath[] =
     "/mnt/stateful_partition/.tpm_owned";
 
+// The flag that tells if the tpm is full initialized.
+constexpr char kTpmNoSrkAuthPath[] = "/mnt/stateful_partition/.tpm_no_srk_auth";
+
 bool TouchTpmFullyInitializedPath() {
   return brillo::WriteBlobToFile<std::vector<char>>(
       base::FilePath(kTpmFullyInitializedPath), {});
+}
+
+bool TouchTpmNoSrkAuthPath() {
+  return brillo::WriteBlobToFile<std::vector<char>>(
+      base::FilePath(kTpmNoSrkAuthPath), {});
 }
 
 }  // namespace
@@ -71,6 +79,9 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
       LOG(WARNING) << __func__ << ": Failed to delete "
                    << kTpmFullyInitializedPath;
     }
+    if (!base::DeleteFile(base::FilePath(kTpmNoSrkAuthPath))) {
+      LOG(WARNING) << __func__ << ": Failed to delete " << kTpmNoSrkAuthPath;
+    }
     // We even haven't tried to take ownership yet.
     ownership_status_ = kTpmUnowned;
     *status = ownership_status_;
@@ -83,7 +94,19 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
     LOG(ERROR) << __func__ << ": Failed to test default owner password.";
     return false;
   }
-  ownership_status_ = *is_default_owner_password ? kTpmPreOwned : kTpmOwned;
+  if (*is_default_owner_password) {
+    ownership_status_ = kTpmPreOwned;
+    *status = ownership_status_;
+    return true;
+  }
+
+  const base::Optional<bool> is_default_srk_auth = TestTpmSrkWithDefaultAuth();
+  if (!is_default_srk_auth.has_value()) {
+    LOG(ERROR) << __func__ << ": Failed to test default SRK auth.";
+    return false;
+  }
+
+  ownership_status_ = *is_default_srk_auth ? kTpmPreOwned : kTpmOwned;
 
   *status = ownership_status_;
   return true;
@@ -238,6 +261,76 @@ base::Optional<bool> TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
     TPM_LOG(ERROR, result) << "Unexpected error calling |Tspi_TPM_GetStatus|.";
   }
   return is_owner_password_default_;
+}
+
+base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
+  if (base::PathExists(base::FilePath(kTpmNoSrkAuthPath))) {
+    is_srk_auth_default_ = false;
+  }
+
+  if (is_srk_auth_default_.has_value()) {
+    return is_srk_auth_default_;
+  }
+
+  TpmConnection connection;
+  TSS_RESULT result;
+  trousers::ScopedTssKey srk_handle(connection.GetContext());
+  TSS_UUID SRK_UUID = TSS_UUID_SRK;
+  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(
+                    connection.GetContext(), TSS_PS_TYPE_SYSTEM, SRK_UUID,
+                    srk_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_LoadKeyByUUID";
+    return base::nullopt;
+  }
+
+  // Check if the SRK wants a password
+  UINT32 srk_authusage;
+  if (TPM_ERROR(result = Tspi_GetAttribUint32(
+                    srk_handle, TSS_TSPATTRIB_KEY_INFO,
+                    TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetAttribUint32";
+    return base::nullopt;
+  }
+
+  // Give it the password if needed
+  if (srk_authusage) {
+    TSS_HPOLICY srk_usage_policy;
+    if (TPM_ERROR(result = Tspi_GetPolicyObject(srk_handle, TSS_POLICY_USAGE,
+                                                &srk_usage_policy))) {
+      TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+      return base::nullopt;
+    }
+    BYTE default_auth[0];
+    result = Tspi_Policy_SetSecret(srk_usage_policy, TSS_SECRET_MODE_PLAIN, 0,
+                                   default_auth);
+    if (result == TPM_ERROR(TPM_E_AUTHFAIL)) {
+      is_srk_auth_default_ = false;
+      if (!TouchTpmNoSrkAuthPath()) {
+        LOG(WARNING) << __func__ << ": Failed to touch " << kTpmNoSrkAuthPath;
+      }
+      return is_srk_auth_default_;
+    } else if (result != TPM_SUCCESS) {
+      TPM_LOG(ERROR, result)
+          << "Unexpected error calling |Tspi_Policy_SetSecret|.";
+      return base::nullopt;
+    }
+  }
+
+  unsigned public_srk_size;
+  trousers::ScopedTssMemory public_srk_bytes(connection.GetContext());
+  result =
+      Tspi_Key_GetPubKey(srk_handle, &public_srk_size, public_srk_bytes.ptr());
+  if (result == TPM_SUCCESS) {
+    is_srk_auth_default_ = true;
+  } else if (result == TPM_ERROR(TPM_E_AUTHFAIL)) {
+    is_srk_auth_default_ = false;
+    if (!TouchTpmNoSrkAuthPath()) {
+      LOG(WARNING) << __func__ << ": Failed to touch " << kTpmNoSrkAuthPath;
+    }
+  } else {
+    TPM_LOG(ERROR, result) << "Unexpected error calling |Tspi_Key_GetPubKey|.";
+  }
+  return is_srk_auth_default_;
 }
 
 void TpmStatusImpl::RefreshOwnedEnabledInfo() {

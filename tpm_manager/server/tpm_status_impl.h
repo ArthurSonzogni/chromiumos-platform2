@@ -51,11 +51,22 @@ class TpmStatusImpl : public TpmStatus {
   // 3. base::nullopt if any other errors.
   //
   // Note that, w/o any useful cache data, testing tpm with owner auth means it
-  // could increse DA counter or even fail during DA lockout. In case of no
+  // could increase DA counter or even fail during DA lockout. In case of no
   // useful delegate to reset DA, we don't have any way to reset DA so the all
   // the hwsec daemons cannot function correctly until DA unlocks itself after
   // timeout (crbug/1110741).
   base::Optional<bool> TestTpmWithDefaultOwnerPassword();
+  // Tests if the TPM SRK with default auth. Returns:
+  // 1. true if the test succeed.
+  // 2. false if authentication fails with the default auth.
+  // 3. base::nullopt if any other errors.
+  //
+  // Note that, w/o any useful cache data, testing tpm with wrong SRK auth means
+  // it could increase DA counter or even fail during DA lockout. In case of no
+  // useful delegate to reset DA, we don't have any way to reset DA so the all
+  // the hwsec daemons cannot function correctly until DA unlocks itself after
+  // timeout (crbug/1110741).
+  base::Optional<bool> TestTpmSrkWithDefaultAuth();
   // This method refreshes the |is_owned_| and |is_enabled_| status of the
   // Tpm. It can be called multiple times.
   void RefreshOwnedEnabledInfo();
@@ -83,6 +94,10 @@ class TpmStatusImpl : public TpmStatus {
   // Whether current owner password in the TPM is the default one; in case of
   // nullopt the password status is not determined yet.
   base::Optional<bool> is_owner_password_default_;
+
+  // Whether current SRK auth in the TPM is the default one; in case of
+  // nullopt the password status is not determined yet.
+  base::Optional<bool> is_srk_auth_default_;
 };
 
 }  // namespace tpm_manager
