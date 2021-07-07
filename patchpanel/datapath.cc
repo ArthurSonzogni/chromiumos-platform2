@@ -117,52 +117,60 @@ void Datapath::Start() {
   ResetIptables();
 
   // Enable IPv4 packet forwarding
-  if (!system_->SysNetSet(System::SysNet::IPv4Forward, "1"))
+  if (!system_->SysNetSet(System::SysNet::IPv4Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv4.ip_forward."
                << " Guest connectivity will not work correctly.";
+  }
 
   // Limit local port range: Android owns 47104-61000.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103"))
+  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103")) {
     LOG(ERROR) << "Failed to limit local port range. Some Android features or"
                << " apps may not work correctly.";
+  }
 
   // Enable IPv6 packet forwarding
-  if (!system_->SysNetSet(System::SysNet::IPv6Forward, "1"))
+  if (!system_->SysNetSet(System::SysNet::IPv6Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
+  }
 
   // Create a FORWARD ACCEPT rule for connections already established.
   if (process_runner_->iptables(
           "filter", {"-A", "FORWARD", "-m", "state", "--state",
-                     "ESTABLISHED,RELATED", "-j", "ACCEPT", "-w"}) != 0)
+                     "ESTABLISHED,RELATED", "-j", "ACCEPT", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install forwarding rule for established"
                << " connections.";
+  }
 
   // Create a FORWARD rule for accepting any ARC originated traffic regardless
   // of the output interface. This enables for ARC certain multihoming
   // scenarios (b/182594063).
   if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-A", "FORWARD", "ACCEPT",
-                      "arc+", "" /*oif*/))
+                      "arc+", "" /*oif*/)) {
     LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
+  }
 
   // chromium:898210: Drop any locally originated traffic that would exit a
   // physical interface with a source IPv4 address from the subnet of IPs used
   // for VMs, containers, and connected namespaces This is needed to prevent
   // packets leaking with an incorrect src IP when a local process binds to the
   // wrong interface.
-  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain))
+  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain)) {
     LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
                << " filter chain";
+  }
   if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "OUTPUT",
-                      kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/))
+                      kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/)) {
     LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
                << kDropGuestIpv4PrefixChain;
+  }
   for (const auto& oif : kPhysicalIfnamePrefixes) {
-    if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet))
+    if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet)) {
       LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
                    << kGuestIPv4Subnet << " exiting " << oif;
+    }
   }
 
   // Create filter subchains for managing the egress firewall rules associated
@@ -178,16 +186,19 @@ void Datapath::Start() {
   //   FORWARD.
   std::vector<std::string> vpn_chains = {kVpnLockdownChain, kVpnAcceptChain};
   for (const auto& chain : vpn_chains) {
-    if (!AddChain(IpFamily::Dual, "filter", chain))
+    if (!AddChain(IpFamily::Dual, "filter", chain)) {
       LOG(ERROR) << "Failed to create " << chain << " filter chain";
+    }
     if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "OUTPUT", chain,
-                        "" /*iif*/, "" /*oif*/))
+                        "" /*iif*/, "" /*oif*/)) {
       LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
                  << chain;
+    }
     if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "FORWARD", chain,
-                        "" /*iif*/, "" /*oif*/))
+                        "" /*iif*/, "" /*oif*/)) {
       LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
                  << chain;
+    }
   }
 
   // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
@@ -198,28 +209,33 @@ void Datapath::Start() {
       kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
   if (process_runner_->iptables(
           "filter", {"-A", "FORWARD", "-m", "mark", "--mark", snatMark, "-m",
-                     "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0)
+                     "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install SNAT mark rules.";
+  }
   if (process_runner_->iptables(
           "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", snatMark, "-j",
-                  "MASQUERADE", "-w"}) != 0)
+                  "MASQUERADE", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install SNAT mark rules.";
+  }
 
   // Applies the routing tag saved in conntrack for any established connection
   // for sockets created in the host network namespace.
   if (!ModifyConnmarkRestore(IpFamily::Dual, "OUTPUT", "-A", "" /*iif*/,
-                             kFwmarkRoutingMask))
+                             kFwmarkRoutingMask)) {
     LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
+  }
 
   // Set up a mangle chain used in OUTPUT for applying the fwmark TrafficSource
   // tag and tagging the local traffic that should be routed through a VPN.
-  if (!AddChain(IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain))
+  if (!AddChain(IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain)) {
     LOG(ERROR) << "Failed to set up " << kApplyLocalSourceMarkChain
                << " mangle chain";
+  }
   if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "OUTPUT",
-                      kApplyLocalSourceMarkChain, "" /*iif*/, "" /*oif*/))
+                      kApplyLocalSourceMarkChain, "" /*iif*/, "" /*oif*/)) {
     LOG(ERROR) << "Failed to attach " << kApplyLocalSourceMarkChain
                << " to mangle OUTPUT";
+  }
   // Add a rule for skipping this chain if the packet already has a source mark
   // (e.g., packets from a wireguard socket in the kernel).
   // TODO(b/190683881): This will also skip setting VPN policy bits on the
@@ -232,9 +248,10 @@ void Datapath::Start() {
   // Create rules for tagging local sources with the source tag and the vpn
   // policy tag.
   for (const auto& source : kLocalSourceTypes) {
-    if (!ModifyFwmarkLocalSourceTag("-A", source))
+    if (!ModifyFwmarkLocalSourceTag("-A", source)) {
       LOG(ERROR) << "Failed to create fwmark tagging rule for uid " << source
                  << " in " << kApplyLocalSourceMarkChain;
+    }
   }
   // Finally add a catch-all rule for tagging any remaining local sources with
   // the SYSTEM source tag
@@ -244,14 +261,16 @@ void Datapath::Start() {
   // Sets up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
   // tagging applied through "apply_vpn_mark" chain. This is used to protect
   // DNS traffic that should go to the DNS proxy.
-  if (!AddChain(IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain))
+  if (!AddChain(IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain)) {
     LOG(ERROR) << "Failed to set up " << kSkipApplyVpnMarkChain
                << " mangle chain";
+  }
 
   // Sets up nat chains used to redirect DNS traffic when DNS proxy is up.
-  if (!AddChain(IpFamily::Dual, "nat", kRedirectDefaultDnsChain))
+  if (!AddChain(IpFamily::Dual, "nat", kRedirectDefaultDnsChain)) {
     LOG(ERROR) << "Failed to set up " << kRedirectDefaultDnsChain
                << " nat chain";
+  }
 
   // Sets up nat chains used to redirect ARC DNS traffic when DNS proxy is up.
   if (!AddChain(IpFamily::Dual, "nat", kRedirectArcDnsChain))
@@ -259,9 +278,10 @@ void Datapath::Start() {
 
   // Sets up nat chains used to redirect Chrome DNS traffic directly to the
   // set up name servers, skipping DNS proxy.
-  if (!AddChain(IpFamily::Dual, "nat", kRedirectChromeDnsChain))
+  if (!AddChain(IpFamily::Dual, "nat", kRedirectChromeDnsChain)) {
     LOG(ERROR) << "Failed to set up " << kRedirectChromeDnsChain
                << " nat chain";
+  }
 
   // Sets up nat chains used to redirect user DNS traffic when DNS proxy is up.
   if (!AddChain(IpFamily::Dual, "nat", kRedirectUserDnsChain))
@@ -301,13 +321,15 @@ void Datapath::Start() {
 
   // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
   // traffic that should be routed through a VPN.
-  if (!AddChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain))
+  if (!AddChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain)) {
     LOG(ERROR) << "Failed to set up " << kApplyVpnMarkChain << " mangle chain";
+  }
   // All local outgoing traffic eligible to VPN routing should traverse the VPN
   // marking chain.
   if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-A", kFwmarkRouteOnVpn,
-                               kFwmarkVpnMask))
+                               kFwmarkVpnMask)) {
     LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
+  }
 
   // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS queries
   // of system services. When a VPN is connected, a query routed through a
@@ -321,9 +343,10 @@ void Datapath::Start() {
   for (const auto& type : kNeighborDiscoveryTypes) {
     if (!ModifyIptables(IpFamily::IPv6, "mangle",
                         {"-I", "OUTPUT", "-p", "icmpv6", "--icmpv6-type", type,
-                         "-j", "ACCEPT", "-w"}))
+                         "-j", "ACCEPT", "-w"})) {
       LOG(ERROR) << "Failed to set up connmark bypass rule for " << type
                  << " packets in OUTPUT";
+    }
   }
 }
 
@@ -331,8 +354,9 @@ void Datapath::Stop() {
   // Restore original local port range.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 61000"))
+  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 61000")) {
     LOG(ERROR) << "Failed to restore local port range";
+  }
 
   // Disable packet forwarding
   if (!system_->SysNetSet(System::SysNet::IPv6Forward, "0"))
@@ -404,16 +428,19 @@ void Datapath::ResetIptables() {
     // patchpanel starts after boot. Skip flushing and delete these chains if
     // they do not exist to avoid logging spurious error messages.
     if (op.should_delete && !ModifyChain(op.family, op.table, "-L", op.chain,
-                                         false /*log_failures*/))
+                                         false /*log_failures*/)) {
       continue;
+    }
 
-    if (!FlushChain(op.family, op.table, op.chain))
+    if (!FlushChain(op.family, op.table, op.chain)) {
       LOG(ERROR) << "Failed to flush " << op.chain << " chain in table "
                  << op.table;
+    }
 
-    if (op.should_delete && !RemoveChain(op.family, op.table, op.chain))
+    if (op.should_delete && !RemoveChain(op.family, op.table, op.chain)) {
       LOG(ERROR) << "Failed to delete " << op.chain << " chain in table "
                  << op.table;
+    }
   }
 }
 
@@ -980,17 +1007,20 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   uint32_t peer_ipv4_addr) {
   if (source == TrafficSource::ARC && !ext_ifname.empty() &&
       int_ipv4_addr != 0 &&
-      !AddInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr)))
+      !AddInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr))) {
     LOG(ERROR) << "Failed to configure ingress traffic rules for " << ext_ifname
                << "->" << int_ifname;
+  }
 
-  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", ext_ifname, int_ifname))
+  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", ext_ifname, int_ifname)) {
     LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "->"
                << int_ifname;
+  }
 
-  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", int_ifname, ext_ifname))
+  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", int_ifname, ext_ifname)) {
     LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "<-"
                << int_ifname;
+  }
 
   std::string subchain = "PREROUTING_" + int_ifname;
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
@@ -999,20 +1029,24 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     LOG(ERROR) << "Failed to create mangle chain " << subchain;
   // Make sure the chain is empty if patchpanel did not cleaned correctly that
   // chain before.
-  if (!FlushChain(IpFamily::Dual, "mangle", subchain))
+  if (!FlushChain(IpFamily::Dual, "mangle", subchain)) {
     LOG(ERROR) << "Could not flush " << subchain;
+  }
   if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "PREROUTING", subchain,
-                      int_ifname, "" /*oif*/))
+                      int_ifname, "" /*oif*/)) {
     LOG(ERROR) << "Could not add jump rule from mangle PREROUTING to "
                << subchain;
+  }
   // IPv4 traffic from all downstream interfaces should be tagged to go through
   // SNAT.
   if (!ModifyFwmark(IpFamily::IPv4, subchain, "-A", "", "", 0,
-                    kFwmarkLegacySNAT, kFwmarkLegacySNAT))
+                    kFwmarkLegacySNAT, kFwmarkLegacySNAT)) {
     LOG(ERROR) << "Failed to add fwmark SNAT tagging rule for " << int_ifname;
-  if (!ModifyFwmarkSourceTag(subchain, "-A", source))
+  }
+  if (!ModifyFwmarkSourceTag(subchain, "-A", source)) {
     LOG(ERROR) << "Failed to add fwmark tagging rule for source " << source
                << " in " << subchain;
+  }
 
   if (!ext_ifname.empty()) {
     // If |ext_ifname| is not null, mark egress traffic with the
@@ -1022,17 +1056,19 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
       LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
       return;
     }
-    if (!ModifyFwmarkRoutingTag(subchain, "-A", Fwmark::FromIfIndex(ifindex)))
+    if (!ModifyFwmarkRoutingTag(subchain, "-A", Fwmark::FromIfIndex(ifindex))) {
       LOG(ERROR) << "Failed to add fwmark routing tag for " << ext_ifname
                  << "<-" << int_ifname << " in " << subchain;
+    }
   } else {
     // Otherwise if ext_ifname is null, set up a CONNMARK restore rule in
     // PREROUTING to apply any fwmark routing tag saved for the current
     // connection, and rely on implicit routing to the default logical network
     // otherwise.
     if (!ModifyConnmarkRestore(IpFamily::Dual, subchain, "-A", "" /*iif*/,
-                               kFwmarkRoutingMask))
+                               kFwmarkRoutingMask)) {
       LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
+    }
 
     // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
     // connected namespace. This allows the return traffic to reach the local
@@ -1042,8 +1078,9 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
         process_runner_->iptables(
             "mangle",
             {"-A", subchain, "-s", IPv4AddressToString(peer_ipv4_addr), "-d",
-             IPv4AddressToString(int_ipv4_addr), "-j", "ACCEPT", "-w"}) != 0)
+             IPv4AddressToString(int_ipv4_addr), "-j", "ACCEPT", "-w"}) != 0) {
       LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
+    }
 
     // The jump rule below should not be applied for traffic from a
     // ConnectNamespace traffic that needs DNS to go to the VPN
@@ -1068,8 +1105,10 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                                  uint32_t int_ipv4_addr,
                                  TrafficSource source,
                                  bool route_on_vpn) {
-  if (source == TrafficSource::ARC && !ext_ifname.empty() && int_ipv4_addr != 0)
+  if (source == TrafficSource::ARC && !ext_ifname.empty() &&
+      int_ipv4_addr != 0) {
     RemoveInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr));
+  }
   ModifyIpForwarding(IpFamily::IPv4, "-D", ext_ifname, int_ifname);
   ModifyIpForwarding(IpFamily::IPv4, "-D", int_ifname, ext_ifname);
 
@@ -1085,8 +1124,9 @@ bool Datapath::AddInboundIPv4DNAT(const std::string& ifname,
   // Direct ingress IP traffic to existing sockets.
   if (process_runner_->iptables(
           "nat", {"-A", "PREROUTING", "-i", ifname, "-m", "socket",
-                  "--nowildcard", "-j", "ACCEPT", "-w"}) != 0)
+                  "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
     return false;
+  }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(
@@ -1268,37 +1308,43 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   std::string subchain = "POSTROUTING_" + ext_ifname;
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
   // the chain when |ext_ifname| was previously deleted.
-  if (!AddChain(IpFamily::Dual, "mangle", subchain))
+  if (!AddChain(IpFamily::Dual, "mangle", subchain)) {
     LOG(ERROR) << "Failed to create mangle chain " << subchain;
+  }
   // Make sure the chain is empty if patchpanel did not cleaned correctly that
   // chain before.
-  if (!FlushChain(IpFamily::Dual, "mangle", subchain))
+  if (!FlushChain(IpFamily::Dual, "mangle", subchain)) {
     LOG(ERROR) << "Could not flush " << subchain;
+  }
   if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "POSTROUTING", subchain,
-                      "" /*iif*/, ext_ifname))
+                      "" /*iif*/, ext_ifname)) {
     LOG(ERROR) << "Could not add jump rule from mangle POSTROUTING to "
                << subchain;
+  }
 
   Fwmark routing_mark = Fwmark::FromIfIndex(ifindex);
   LOG(INFO) << "Start connection pinning on " << ext_ifname
             << " fwmark=" << routing_mark.ToString();
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
   if (!ModifyConnmarkSet(IpFamily::Dual, subchain, "-A", routing_mark,
-                         kFwmarkRoutingMask))
+                         kFwmarkRoutingMask)) {
     LOG(ERROR) << "Could not start connection pinning on " << ext_ifname;
+  }
   // Save in CONNMARK the source tag for egress traffic of this connection.
   if (!ModifyConnmarkSave(IpFamily::Dual, subchain, "-A",
-                          kFwmarkAllSourcesMask))
+                          kFwmarkAllSourcesMask)) {
     LOG(ERROR) << "Failed to add POSTROUTING CONNMARK rule for saving fwmark "
                   "source tag on "
                << ext_ifname;
+  }
   // Restore from CONNMARK the source tag for ingress traffic of this connection
   // (returned traffic).
   if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-A", ext_ifname,
-                             kFwmarkAllSourcesMask))
+                             kFwmarkAllSourcesMask)) {
     LOG(ERROR) << "Could not setup fwmark source tagging rule for return "
                   "traffic received on "
                << ext_ifname;
+  }
 }
 
 void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
@@ -1308,10 +1354,11 @@ void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
   FlushChain(IpFamily::Dual, "mangle", subchain);
   RemoveChain(IpFamily::Dual, "mangle", subchain);
   if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING", "-D", ext_ifname,
-                             kFwmarkAllSourcesMask))
+                             kFwmarkAllSourcesMask)) {
     LOG(ERROR) << "Could not remove fwmark source tagging rule for return "
                   "traffic received on "
                << ext_ifname;
+  }
 }
 
 void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
@@ -1326,17 +1373,19 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   LOG(INFO) << "Start VPN routing on " << vpn_ifname
             << " fwmark=" << routing_mark.ToString();
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-A", "POSTROUTING", "MASQUERADE",
-                      "" /*iif*/, vpn_ifname))
+                      "" /*iif*/, vpn_ifname)) {
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
+  }
   StartConnectionPinning(vpn_ifname);
 
   // Any traffic that already has a routing tag applied is accepted.
   if (!ModifyIptables(
           IpFamily::Dual, "mangle",
           {"-A", kApplyVpnMarkChain, "-m", "mark", "!", "--mark",
-           "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"}))
+           "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
                   "connections";
+  }
   // Otherwise, any new traffic from a new connection gets marked with the
   // VPN routing tag.
   if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, "-A", routing_mark))
@@ -1344,13 +1393,15 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
 
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
   // that ARC can access the VPN network through arc0.
-  if (vpn_ifname != kArcBridge)
+  if (vpn_ifname != kArcBridge) {
     StartRoutingDevice(vpn_ifname, kArcBridge, 0 /*no inbound DNAT */,
                        TrafficSource::ARC, true /* route_on_vpn */);
+  }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::IPv4, "-A", "OUTPUT", "" /* ifname */, kRedirectDnsChain,
-          kFwmarkRouteOnVpn, kFwmarkVpnMask, false /* redirect_on_mark */))
+          kFwmarkRouteOnVpn, kFwmarkVpnMask, false /* redirect_on_mark */)) {
     LOG(ERROR) << "Failed to set jump rule to " << kRedirectDnsChain;
+  }
 
   // All traffic with the VPN routing tag are explicitly accepted in the filter
   // table. This prevents the VPN lockdown chain to reject that traffic when VPN
@@ -1359,27 +1410,33 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
           IpFamily::Dual, "filter",
           {"-A", kVpnAcceptChain, "-m", "mark", "--mark",
            routing_mark.ToString() + "/" + kFwmarkRoutingMask.ToString(), "-j",
-           "ACCEPT", "-w"}))
+           "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to set filter rule for accepting VPN marked traffic";
+  }
 }
 
 void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   LOG(INFO) << "Stop VPN routing on " << vpn_ifname;
-  if (!FlushChain(IpFamily::Dual, "filter", kVpnAcceptChain))
+  if (!FlushChain(IpFamily::Dual, "filter", kVpnAcceptChain)) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
-  if (vpn_ifname != kArcBridge)
+  }
+  if (vpn_ifname != kArcBridge) {
     StopRoutingDevice(vpn_ifname, kArcBridge, 0 /* no inbound DNAT */,
                       TrafficSource::ARC, false /* route_on_vpn */);
-  if (!FlushChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain))
+  }
+  if (!FlushChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain)) {
     LOG(ERROR) << "Could not flush " << kApplyVpnMarkChain;
+  }
   StopConnectionPinning(vpn_ifname);
   if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "POSTROUTING", "MASQUERADE",
-                      "" /*iif*/, vpn_ifname))
+                      "" /*iif*/, vpn_ifname)) {
     LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
+  }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::IPv4, "-D", "OUTPUT", "" /* ifname */, kRedirectDnsChain,
-          kFwmarkRouteOnVpn, kFwmarkVpnMask, false /* redirect_on_mark */))
+          kFwmarkRouteOnVpn, kFwmarkVpnMask, false /* redirect_on_mark */)) {
     LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
+  }
 }
 
 void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
@@ -1388,11 +1445,13 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
             IpFamily::Dual, "filter",
             {"-A", kVpnLockdownChain, "-m", "mark", "--mark",
              kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
-             "-j", "REJECT", "-w"}))
+             "-j", "REJECT", "-w"})) {
       LOG(ERROR) << "Failed to start VPN lockdown mode";
+    }
   } else {
-    if (!FlushChain(IpFamily::Dual, "filter", kVpnLockdownChain))
+    if (!FlushChain(IpFamily::Dual, "filter", kVpnLockdownChain)) {
       LOG(ERROR) << "Failed to stop VPN lockdown mode";
+    }
   }
 }
 
@@ -1623,10 +1682,12 @@ bool Datapath::ModifyIptables(IpFamily family,
   }
 
   bool success = true;
-  if (family & IpFamily::IPv4)
+  if (family & IpFamily::IPv4) {
     success &= process_runner_->iptables(table, argv, log_failures) == 0;
-  if (family & IpFamily::IPv6)
+  }
+  if (family & IpFamily::IPv6) {
     success &= process_runner_->ip6tables(table, argv, log_failures) == 0;
+  }
   return success;
 }
 
@@ -1636,13 +1697,15 @@ std::string Datapath::DumpIptables(IpFamily family, const std::string& table) {
   switch (family) {
     case IPv4:
       if (process_runner_->iptables(table, argv, true /*log_failures*/,
-                                    &result) != 0)
+                                    &result) != 0) {
         LOG(ERROR) << "Could not dump iptables " << table;
+      }
       break;
     case IPv6:
       if (process_runner_->ip6tables(table, argv, true /*log_failures*/,
-                                     &result) != 0)
+                                     &result) != 0) {
         LOG(ERROR) << "Could not dump ip6tables " << table;
+      }
       break;
     case Dual:
       LOG(ERROR) << "Cannot dump iptables and ip6tables at the same time";
