@@ -17,6 +17,7 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
@@ -94,6 +95,8 @@ class CrosHealthd final
   std::unique_ptr<LidEvents> lid_events_;
   // Provides support for power-related events.
   std::unique_ptr<PowerEvents> power_events_;
+  // Provides support for audio-related events.
+  std::unique_ptr<AudioEvents> audio_events_;
 
   // |routine_service_| delegates routine creation to |routine_factory_|.
   std::unique_ptr<CrosHealthdRoutineFactory> routine_factory_;

@@ -23,6 +23,7 @@ source_set("libcros_healthd_events") {
     "//diagnostics/mojo:cros_healthd_mojo_bindings",
   ]
   sources = [
+    "audio_events_impl.cc",
     "bluetooth_events_impl.cc",
     "lid_events_impl.cc",
     "power_events_impl.cc",
@@ -40,6 +41,7 @@ if (use.test) {
 
   executable("libcros_healthd_events_test") {
     sources = [
+      "audio_events_impl_test.cc",
       "bluetooth_events_impl_test.cc",
       "lid_events_impl_test.cc",
       "power_events_impl_test.cc",

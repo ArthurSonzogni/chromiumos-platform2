@@ -45,3 +45,11 @@ interface CrosHealthdPowerObserver {
   // Fired when the system completes a suspend request.
   OnOsResume();
 };
+
+// Implemented by clients who desire audio notifications.
+interface CrosHealthdAudioObserver {
+  // Fired when the audio underrun happens.
+  OnUnderrun();
+  // Fired when the audio severe underrun happens.
+  OnSevereUnderrun();
+};

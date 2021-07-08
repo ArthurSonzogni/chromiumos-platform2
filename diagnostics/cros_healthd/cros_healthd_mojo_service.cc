@@ -23,17 +23,20 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     FetchAggregator* fetch_aggregator,
     BluetoothEvents* bluetooth_events,
     LidEvents* lid_events,
-    PowerEvents* power_events)
+    PowerEvents* power_events,
+    AudioEvents* audio_events)
     : context_(context),
       fetch_aggregator_(fetch_aggregator),
       bluetooth_events_(bluetooth_events),
       lid_events_(lid_events),
-      power_events_(power_events) {
+      power_events_(power_events),
+      audio_events_(audio_events) {
   DCHECK(context_);
   DCHECK(fetch_aggregator_);
   DCHECK(bluetooth_events_);
   DCHECK(lid_events_);
   DCHECK(power_events_);
+  DCHECK(audio_events_);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
@@ -59,6 +62,12 @@ void CrosHealthdMojoService::AddPowerObserver(
 void CrosHealthdMojoService::AddNetworkObserver(
     mojo::PendingRemote<network_health_ipc::NetworkEventsObserver> observer) {
   context_->network_health_adapter()->AddObserver(std::move(observer));
+}
+
+void CrosHealthdMojoService::AddAudioObserver(
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+        observer) {
+  audio_events_->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::ProbeProcessInfo(

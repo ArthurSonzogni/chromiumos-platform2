@@ -12,6 +12,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
@@ -34,11 +35,13 @@ class CrosHealthdMojoService final
   // |bluetooth_events| - BluetoothEvents implementation.
   // |lid_events| - LidEvents implementation.
   // |power_events| - PowerEvents implementation.
+  // |audio_events| - AudioEvents implementation.
   CrosHealthdMojoService(Context* context,
                          FetchAggregator* fetch_aggregator,
                          BluetoothEvents* bluetooth_events,
                          LidEvents* lid_events,
-                         PowerEvents* power_events);
+                         PowerEvents* power_events,
+                         AudioEvents* audio_events);
   CrosHealthdMojoService(const CrosHealthdMojoService&) = delete;
   CrosHealthdMojoService& operator=(const CrosHealthdMojoService&) = delete;
   ~CrosHealthdMojoService() override;
@@ -58,6 +61,9 @@ class CrosHealthdMojoService final
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer)
       override;
+  void AddAudioObserver(mojo::PendingRemote<
+                        chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+                            observer) override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeProcessInfo(uint32_t process_id,
@@ -89,16 +95,13 @@ class CrosHealthdMojoService final
   mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
       system_receiver_set_;
 
-  // Unowned. The Context instance should outlive this instance.
+  // Unowned. The following instances should outlive this instance.
   Context* const context_ = nullptr;
-  // Unowned. The FetchAggregator instance should outlive this instance.
   FetchAggregator* fetch_aggregator_;
-  // Unowned. The BluetoothEvents instance should outlive this instance.
   BluetoothEvents* const bluetooth_events_ = nullptr;
-  // Unowned. The lid events should outlive this instance.
   LidEvents* const lid_events_ = nullptr;
-  // Unowned. The power events should outlive this instance.
   PowerEvents* const power_events_ = nullptr;
+  AudioEvents* const audio_events_ = nullptr;
 };
 
 }  // namespace diagnostics
