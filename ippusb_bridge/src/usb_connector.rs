@@ -214,6 +214,21 @@ struct InterfaceManagerState {
 
 impl InterfaceManagerState {
     fn claim_all(&mut self) -> Result<()> {
+        // Detach any outstanding kernel drivers for the current config before attempting
+        // to switch to our desired config.
+        let config = self
+            .handle
+            .device()
+            .active_config_descriptor()
+            .map_err(Error::ReadConfigDescriptor)?;
+
+        for interface in config.interfaces() {
+            match self.handle.detach_kernel_driver(interface.number()) {
+                Err(e) if e != rusb::Error::NotFound => return Err(Error::DetachDrivers(e)),
+                _ => {}
+            }
+        }
+
         self.handle
             .set_active_configuration(self.usb_config)
             .map_err(Error::SetActiveConfig)?;
@@ -376,12 +391,12 @@ impl InterfaceManager {
     fn request_interface(&mut self) -> Result<ClaimedInterface> {
         let mut state = self.state.lock();
 
-        state.active += 1;
-        if state.active == 1 && !state.pending_cleanup {
+        if state.active == 0 && !state.pending_cleanup {
             debug!("Claiming all interfaces");
             state.claim_all()?;
             state.pending_cleanup = true;
         }
+        state.active += 1;
 
         loop {
             if let Some(interface) = state.interfaces.pop_front() {
