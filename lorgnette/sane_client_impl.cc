@@ -8,7 +8,6 @@
 #include <base/containers/contains.h>
 #include <base/containers/flat_map.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
 #include <sane/saneopts.h>
