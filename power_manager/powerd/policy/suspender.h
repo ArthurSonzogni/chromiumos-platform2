@@ -148,7 +148,8 @@ class Suspender : public SuspendDelayObserver,
     // Called by Suspend().
     virtual SuspendResult DoSuspend(uint64_t wakeup_count,
                                     bool wakeup_count_valid,
-                                    base::TimeDelta duration) = 0;
+                                    base::TimeDelta duration,
+                                    bool to_hibernate) = 0;
 
     // Undoes the preparations performed by PrepareToSuspend(). Called by
     // FinishRequest().

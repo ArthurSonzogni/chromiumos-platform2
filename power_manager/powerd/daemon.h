@@ -125,6 +125,9 @@ class Daemon :
   void set_suspended_state_path_for_testing(const base::FilePath& path) {
     suspended_state_path_ = path;
   }
+  void set_hibernated_state_path_for_testing(const base::FilePath& path) {
+    hibernated_state_path_ = path;
+  }
 
   bool first_run_after_boot_for_testing() { return first_run_after_boot_; }
 
@@ -154,7 +157,8 @@ class Daemon :
   void PrepareToSuspend() override;
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
-                          base::TimeDelta duration) override;
+                          base::TimeDelta duration,
+                          bool to_hibernate) override;
   void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override;
   void GenerateDarkResumeMetrics(
       const std::vector<policy::Suspender::DarkResumeInfo>&
@@ -399,6 +403,12 @@ class Daemon :
   // that occur while the system is suspended (i.e. probably due to the battery
   // charge reaching zero).
   base::FilePath suspended_state_path_;
+
+  // Similar to suspended_state_path_, a path to a file that's created before
+  // the system hibernates, and unlinked after it resumes. This is similarly
+  // used by crash-reporter to avoid reporting unclean shutdowns that occur
+  // when a hibernate resume was aborted.
+  base::FilePath hibernated_state_path_;
 
   // Path to a file that's touched when a suspend attempt's commencement is
   // announced to other processes and unlinked when the attempt's completion is

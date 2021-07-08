@@ -68,6 +68,7 @@ const char kUsbMinAcWattsPref[] = "usb_min_ac_watts";
 const char kChargingPortsPref[] = "charging_ports";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
+const char kDisableHibernatePref[] = "disable_hibernate";
 const char kShutdownFromSuspendSecPref[] = "shutdown_from_suspend_sec";
 const char kDarkResumeDevicesPref[] = "dark_resume_devices";
 const char kDarkResumeSourcesPref[] = "dark_resume_sources";

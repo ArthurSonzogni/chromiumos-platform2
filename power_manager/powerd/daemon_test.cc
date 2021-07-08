@@ -130,6 +130,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     wakeup_count_path_ = temp_dir_.GetPath().Append("wakeup_count");
     oobe_completed_path_ = temp_dir_.GetPath().Append("oobe_completed");
     suspended_state_path_ = temp_dir_.GetPath().Append("suspended_state");
+    hibernated_state_path_ = temp_dir_.GetPath().Append("hibernated_state");
     flashrom_lock_path_ = temp_dir_.GetPath().Append("flashrom_lock");
     battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
     proc_path_ = temp_dir_.GetPath().Append("proc");
@@ -156,6 +157,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
+    daemon_->set_hibernated_state_path_for_testing(hibernated_state_path_);
     daemon_->Init();
   }
 
@@ -460,6 +462,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   base::FilePath wakeup_count_path_;
   base::FilePath oobe_completed_path_;
   base::FilePath suspended_state_path_;
+  base::FilePath hibernated_state_path_;
   base::FilePath flashrom_lock_path_;
   base::FilePath battery_tool_lock_path_;
   base::FilePath proc_path_;

@@ -35,7 +35,7 @@ class DarkResume : public DarkResumeInterface, public PrefsObserver {
             WakeupSourceIdentifierInterface* wakeup_source_identifier);
 
   // DarkResumeInterface implementation:
-  void HandleSuccessfulResume() override;
+  void HandleSuccessfulResume(bool from_hibernate) override;
   bool InDarkResume() override;
   bool IsEnabled() override;
   void ExitDarkResume() override;

@@ -85,6 +85,8 @@ namespace {
 // Default values for |*_path_| members (which can be overridden for tests).
 const char kDefaultSuspendedStatePath[] =
     "/var/lib/power_manager/powerd_suspended";
+const char kDefaultHibernatedStatePath[] =
+    "/var/lib/power_manager/powerd_hibernated";
 const char kDefaultWakeupCountPath[] = "/sys/power/wakeup_count";
 const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 
@@ -272,6 +274,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       oobe_completed_path_(kDefaultOobeCompletedPath),
       run_dir_(run_dir),
       suspended_state_path_(kDefaultSuspendedStatePath),
+      hibernated_state_path_(kDefaultHibernatedStatePath),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
       video_activity_logger_(new PeriodicActivityLogger(
@@ -290,8 +293,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
           "Hovering",
           base::TimeDelta::FromSeconds(kLogHoveringStoppedDelaySec),
           base::TimeDelta())),
-      weak_ptr_factory_(this) {
-}
+      weak_ptr_factory_(this) {}
 
 Daemon::~Daemon() {
   if (dbus_wrapper_)
@@ -689,7 +691,10 @@ void Daemon::PrepareToSuspend() {
 }
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
-    uint64_t wakeup_count, bool wakeup_count_valid, base::TimeDelta duration) {
+    uint64_t wakeup_count,
+    bool wakeup_count_valid,
+    base::TimeDelta duration,
+    bool to_hibernate) {
   // If power management is overridden by a lockfile, spin for a bit to wait for
   // the process to finish: http://crosbug.com/p/38947
   base::TimeDelta elapsed;
@@ -704,19 +709,25 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 
   // Touch a file that crash-reporter can inspect later to determine
-  // whether the system was suspended while an unclean shutdown occurred.
-  // If the file already exists, assume that crash-reporter hasn't seen it
-  // yet and avoid unlinking it after resume.
+  // whether the system was suspended or hibernated while an unclean
+  // shutdown occurred. If the file already exists, assume that
+  // crash-reporter hasn't seen it yet and avoid unlinking it after
+  // resume.
+  base::FilePath suspended_state_path = suspended_state_path_;
+  if (to_hibernate)
+    suspended_state_path = hibernated_state_path_;
+
   created_suspended_state_file_ = false;
-  if (!base::PathExists(suspended_state_path_)) {
-    if (base::WriteFile(suspended_state_path_, nullptr, 0) == 0)
+  if (!base::PathExists(suspended_state_path)) {
+    if (base::WriteFile(suspended_state_path, nullptr, 0) == 0)
       created_suspended_state_file_ = true;
     else
-      PLOG(ERROR) << "Unable to create " << suspended_state_path_.value();
+      PLOG(ERROR) << "Unable to create " << suspended_state_path.value();
   }
 
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
+  // TODO(b/192353448): Create a mosys eventlog code for hibernate.
   if (log_suspend_with_mosys_eventlog_) {
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
   }
@@ -728,8 +739,12 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
         base::StringPrintf("--suspend_wakeup_count=%" PRIu64, wakeup_count));
   }
 
-  if (suspend_to_idle_)
+  if (to_hibernate) {
+    args.push_back("--suspend_to_disk");
+
+  } else if (suspend_to_idle_) {
     args.push_back("--suspend_to_idle");
+  }
 
   suspend_configurator_->PrepareForSuspend(duration);
 
@@ -756,12 +771,13 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
+  // TODO(b/192353448): Create a mosys eventlog code for hibernate.
   if (log_suspend_with_mosys_eventlog_)
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
 
   if (created_suspended_state_file_) {
-    if (!base::DeleteFile(base::FilePath(suspended_state_path_)))
-      PLOG(ERROR) << "Failed to delete " << suspended_state_path_.value();
+    if (!base::DeleteFile(base::FilePath(suspended_state_path)))
+      PLOG(ERROR) << "Failed to delete " << suspended_state_path.value();
   }
 
   // Use Bitwise-OR to make sure both ThawUserspace and UndoPrepareForSuspend

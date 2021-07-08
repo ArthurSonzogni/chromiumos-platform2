@@ -11,7 +11,7 @@ DarkResumeStub::DarkResumeStub() {}
 
 DarkResumeStub::~DarkResumeStub() {}
 
-void DarkResumeStub::HandleSuccessfulResume() {}
+void DarkResumeStub::HandleSuccessfulResume(bool from_hibernate) {}
 
 bool DarkResumeStub::InDarkResume() {
   return in_dark_resume_;

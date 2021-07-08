@@ -566,23 +566,31 @@ Suspender::State Suspender::Suspend() {
   policy::ShutdownFromSuspendInterface::Action action =
       shutdown_from_suspend_->PrepareForSuspendAttempt();
 
+  bool hibernate = false;
+
   switch (action) {
     case policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN:
       LOG(INFO) << "Shutting down from suspend";
       // Don't call FinishRequest(); we want the backlight to stay off.
       delegate_->ShutDownFromSuspend();
       return State::SHUTTING_DOWN;
+
     case policy::ShutdownFromSuspendInterface::Action::SUSPEND:
       if (suspend_duration_ != base::TimeDelta()) {
-        LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
-                  << " seconds";
+        LOG(INFO) << (hibernate ? "Hibernating" : "Suspending") << " for "
+                  << suspend_duration_.InSeconds() << " seconds";
       }
       break;
   }
 
-  // Note: If this log message is changed, the power_AudioDetector test
-  // must be updated.
-  LOG(INFO) << "Starting suspend";
+  if (hibernate) {
+    LOG(INFO) << "Starting hibernate";
+
+  } else {
+    // Note: If this log message is changed, the platform_SuspendResumeTiming
+    // and bluetooth suspend tests must be updated.
+    LOG(INFO) << "Starting suspend";
+  }
 
   if (!dark_resume_wake_durations_.empty()) {
     dark_resume_wake_durations_.back().first = last_dark_resume_wake_reason_;
@@ -593,7 +601,7 @@ Suspender::State Suspender::Suspend() {
 
   current_num_attempts_++;
   Delegate::SuspendResult result = delegate_->DoSuspend(
-      wakeup_count_, wakeup_count_valid_, suspend_duration_);
+      wakeup_count_, wakeup_count_valid_, suspend_duration_, hibernate);
 
   wakeup_source_identifier_->HandleResume();
 
@@ -608,7 +616,7 @@ Suspender::State Suspender::Suspend() {
     // Reset this immediately right after a successful suspend, leave it
     // for retry attempts
     suspend_duration_ = base::TimeDelta();
-    dark_resume_->HandleSuccessfulResume();
+    dark_resume_->HandleSuccessfulResume(hibernate);
   }
 
   // TODO(crbug.com/790898): Identify attempts that are canceled due to wakeup

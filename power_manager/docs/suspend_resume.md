@@ -21,12 +21,12 @@ processes (particularly ones that have registered [suspend delays]). The
 
 After all suspend delays have become ready or have timed out, powerd starts a
 suspend attempt. This involves using `powerd_setuid_helper` to run the
-`powerd_suspend` script as root; this script is responsible for writing `mem` to
-`/sys/power/state` (the actual act that tells the kernel to suspend). If
-`powerd_suspend` reports that the system suspended and resumed successfully,
-then the pre-suspend preparations are undone, a `SuspendDone` D-Bus signal is
-emitted to inform other process that the suspend request is complete, and
-`Suspender` is ready for the next suspend request.
+`powerd_suspend` script as root; this script is responsible for writing `mem`,
+`freeze`, or `disk` to `/sys/power/state` (the actual act that tells the
+kernel to suspend). If `powerd_suspend` reports that the system suspended and
+resumed successfully, then the pre-suspend preparations are undone, a
+`SuspendDone` D-Bus signal is emitted to inform other process that the suspend
+request is complete, and `Suspender` is ready for the next suspend request.
 
 If the suspend attempt fails, `Suspender` waits for ten seconds before running
 `powerd_suspend` again to retry. After ten failed retries, the system is shut
@@ -118,6 +118,15 @@ After the system wakes into dark resume, powerd checks the battery level. If it
 is low enough to suggest that the battery will be drained entirely while in S3,
 resulting in a system that can't be used until it's recharged, powerd shuts down
 the system. Otherwise, it re-suspends immediately.
+
+## Dark Resume to Hibernate
+
+On some systems, instead of shutting down after a certain amount of time as
+described above, the system may opt to suspend to disk instead (AKA hibernate).
+Hibernate represents a compromise between staying in suspend and shutting down.
+User state is perfectly preserved, much like a regular suspend, and power usage
+is identical to shutdown. The cost of this power savings is additional latency at
+resume, expected to be similar in latency to a fresh boot.
 
 ## Enable console during suspend
 
