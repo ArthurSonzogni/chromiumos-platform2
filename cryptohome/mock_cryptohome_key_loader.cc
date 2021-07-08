@@ -16,7 +16,7 @@ const TpmKeyHandle kTestKeyHandle = 17;  // any non-zero value
 }  // namespace
 
 MockCryptohomeKeyLoader::MockCryptohomeKeyLoader()
-    : CryptohomeKeyLoader(nullptr, nullptr) {
+    : CryptohomeKeyLoader(nullptr, nullptr, base::FilePath("")) {
   ON_CALL(*this, HasCryptohomeKey()).WillByDefault(Return(true));
   ON_CALL(*this, GetCryptohomeKey()).WillByDefault(Return(kTestKeyHandle));
   ON_CALL(*this, ReloadCryptohomeKey()).WillByDefault(Return(true));

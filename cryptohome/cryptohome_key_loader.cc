@@ -4,57 +4,18 @@
 
 #include "cryptohome/cryptohome_key_loader.h"
 
-#include "cryptohome/crypto/rsa.h"
-#include "cryptohome/platform.h"
-
-using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
 
-namespace {
-
-constexpr char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
-
-constexpr unsigned int kDefaultTpmRsaKeyBits = 2048;
-
-}  // namespace
-
-CryptohomeKeyLoader::CryptohomeKeyLoader(Tpm* tpm, Platform* platform)
-    : tpm_(tpm), platform_(platform) {}
-
-CryptohomeKeyLoader::~CryptohomeKeyLoader() {}
-
-bool CryptohomeKeyLoader::CreateCryptohomeKey() {
-  if (!tpm_->IsEnabled() || !tpm_->IsOwned()) {
-    LOG(WARNING) << "Canceled creating cryptohome key - TPM is not ready.";
-    return false;
-  }
-  SecureBlob n;
-  SecureBlob p;
-  if (!CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
-    LOG(ERROR) << "Error creating RSA key";
-    return false;
-  }
-  SecureBlob wrapped_key;
-  if (!tpm_->WrapRsaKey(n, p, &wrapped_key)) {
-    LOG(ERROR) << "Couldn't wrap cryptohome key";
-    return false;
-  }
-
-  if (!SaveCryptohomeKey(wrapped_key)) {
-    LOG(ERROR) << "Couldn't save cryptohome key";
-    return false;
-  }
-
-  LOG(INFO) << "Created new cryptohome key.";
-  return true;
-}
+CryptohomeKeyLoader::CryptohomeKeyLoader(Tpm* tpm,
+                                         Platform* platform,
+                                         const base::FilePath& path)
+    : tpm_(tpm), platform_(platform), cryptohome_key_path_(path) {}
 
 bool CryptohomeKeyLoader::SaveCryptohomeKey(const SecureBlob& wrapped_key) {
-  const FilePath key_file(kDefaultCryptohomeKeyFile);
-  bool ok = platform_->WriteSecureBlobToFileAtomicDurable(key_file, wrapped_key,
-                                                          0600);
+  bool ok = platform_->WriteSecureBlobToFileAtomicDurable(cryptohome_key_path_,
+                                                          wrapped_key, 0600);
   if (!ok)
     LOG(ERROR) << "Error writing key file of desired size: "
                << wrapped_key.size();
@@ -67,8 +28,7 @@ Tpm::TpmRetryAction CryptohomeKeyLoader::LoadCryptohomeKey(
   // First, try loading the key from the key file.
   {
     SecureBlob raw_key;
-    const FilePath key_file(kDefaultCryptohomeKeyFile);
-    if (platform_->ReadFileToSecureBlob(key_file, &raw_key)) {
+    if (platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
       Tpm::TpmRetryAction retry_action =
           tpm_->LoadWrappedKey(raw_key, key_handle);
       if (retry_action == Tpm::kTpmRetryNone ||
@@ -100,7 +60,13 @@ bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
   if (retry_action != Tpm::kTpmRetryNone && !tpm_->IsTransient(retry_action)) {
     // The key couldn't be loaded, and it wasn't due to a transient error,
     // so we must create the key.
-    if (CreateCryptohomeKey()) {
+    SecureBlob wrapped_key;
+    if (CreateCryptohomeKey(&wrapped_key)) {
+      if (!SaveCryptohomeKey(wrapped_key)) {
+        LOG(ERROR) << "Couldn't save cryptohome key";
+        return false;
+      }
+      LOG(INFO) << "Created new cryptohome key.";
       retry_action = LoadCryptohomeKey(key_handle);
     }
   }

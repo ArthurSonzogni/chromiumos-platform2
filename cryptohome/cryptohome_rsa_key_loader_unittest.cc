@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/cryptohome_rsa_key_loader.h"
 
 #include <map>
 #include <string>
@@ -25,13 +25,14 @@ const TpmKeyHandle kTestKeyHandle = 17;  // any non-zero value
 
 // Tests that need to do more setup work before calling Service::Initialize can
 // use this instead of ServiceTest.
-class CryptohomeKeyLoaderTest : public ::testing::Test {
+class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
  public:
-  CryptohomeKeyLoaderTest() : cryptohome_key_loader_(&tpm_, &platform_) {}
-  CryptohomeKeyLoaderTest(const CryptohomeKeyLoaderTest&) = delete;
-  CryptohomeKeyLoaderTest& operator=(const CryptohomeKeyLoaderTest&) = delete;
+  CryptohomeRsaKeyLoaderTest() : cryptohome_key_loader_(&tpm_, &platform_) {}
+  CryptohomeRsaKeyLoaderTest(const CryptohomeRsaKeyLoaderTest&) = delete;
+  CryptohomeRsaKeyLoaderTest& operator=(const CryptohomeRsaKeyLoaderTest&) =
+      delete;
 
-  ~CryptohomeKeyLoaderTest() override = default;
+  ~CryptohomeRsaKeyLoaderTest() override = default;
 
   // Default mock implementations for |tpm_| methods.
   // For TPM-related flags: enabled is always true, other flags are settable.
@@ -127,44 +128,46 @@ class CryptohomeKeyLoaderTest : public ::testing::Test {
   void SetUp() override {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned())
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::IsTpmOwned));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::IsTpmOwned));
     ON_CALL(tpm_, PerformEnabledOwnedCheck(_, _))
         .WillByDefault(Invoke(
-            this, &CryptohomeKeyLoaderTest::PerformTpmEnabledOwnedCheck));
+            this, &CryptohomeRsaKeyLoaderTest::PerformTpmEnabledOwnedCheck));
 
     ON_CALL(tpm_, GetRandomDataBlob(_, _))
         .WillByDefault(
-            Invoke(this, &CryptohomeKeyLoaderTest::GetRandomDataBlob));
+            Invoke(this, &CryptohomeRsaKeyLoaderTest::GetRandomDataBlob));
     ON_CALL(tpm_, GetRandomDataSecureBlob(_, _))
         .WillByDefault(
-            Invoke(this, &CryptohomeKeyLoaderTest::GetRandomDataSecureBlob));
+            Invoke(this, &CryptohomeRsaKeyLoaderTest::GetRandomDataSecureBlob));
 
     ON_CALL(platform_, FileExists(_))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileExists));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileExists));
     ON_CALL(platform_, Move(_, _))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileMove));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileMove));
     ON_CALL(platform_, DeleteFile(_))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileDelete));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileDelete));
     ON_CALL(platform_, DeletePathRecursively(_))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileDelete));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileDelete));
     ON_CALL(platform_, DeleteFileDurable(_))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileDelete));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileDelete));
     ON_CALL(platform_, TouchFileDurable(_))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileTouch));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileTouch));
     ON_CALL(platform_, GetFileSize(_, _))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::GetFileSize));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::GetFileSize));
     ON_CALL(platform_, ReadFile(_, _))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileRead));
+        .WillByDefault(Invoke(this, &CryptohomeRsaKeyLoaderTest::FileRead));
     ON_CALL(platform_, ReadFileToSecureBlob(_, _))
         .WillByDefault(
-            Invoke(this, &CryptohomeKeyLoaderTest::FileReadToSecureBlob));
+            Invoke(this, &CryptohomeRsaKeyLoaderTest::FileReadToSecureBlob));
     ON_CALL(platform_, WriteSecureBlobToFile(_, _))
         .WillByDefault(
-            Invoke(this, &CryptohomeKeyLoaderTest::FileWriteFromSecureBlob));
+            Invoke(this, &CryptohomeRsaKeyLoaderTest::FileWriteFromSecureBlob));
     ON_CALL(platform_, WriteSecureBlobToFileAtomic(_, _, _))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileWriteAtomic));
+        .WillByDefault(
+            Invoke(this, &CryptohomeRsaKeyLoaderTest::FileWriteAtomic));
     ON_CALL(platform_, WriteSecureBlobToFileAtomicDurable(_, _, _))
-        .WillByDefault(Invoke(this, &CryptohomeKeyLoaderTest::FileWriteAtomic));
+        .WillByDefault(
+            Invoke(this, &CryptohomeRsaKeyLoaderTest::FileWriteAtomic));
     ON_CALL(platform_, DataSyncFile(_)).WillByDefault(Return(true));
   }
 
@@ -178,7 +181,7 @@ class CryptohomeKeyLoaderTest : public ::testing::Test {
 
   // Declare cryptohome_key_loader_ last, so it gets destroyed before all the
   // mocks.
-  CryptohomeKeyLoader cryptohome_key_loader_;
+  CryptohomeRsaKeyLoader cryptohome_key_loader_;
 };
 
 MATCHER_P(HasStoredCryptohomeKey, str, "") {
@@ -223,7 +226,7 @@ ACTION_P(LoadWrappedKeyToHandle, handle) {
   return Tpm::kTpmRetryNone;
 }
 
-TEST_F(CryptohomeKeyLoaderTest, LoadCryptohomeKeySuccess) {
+TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeySuccess) {
   FileTouch(kDefaultCryptohomeKeyFile);
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
@@ -231,7 +234,7 @@ TEST_F(CryptohomeKeyLoaderTest, LoadCryptohomeKeySuccess) {
   EXPECT_THAT(&cryptohome_key_loader_, HasLoadedCryptohomeKey(kTestKeyHandle));
 }
 
-TEST_F(CryptohomeKeyLoaderTest, LoadCryptohomeKeyTransientFailure) {
+TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeyTransientFailure) {
   // Transient failure on the first attempt leads to key not being loaded.
   // But the key is not re-created. Success on the second attempt loads the
   // old key.
@@ -247,7 +250,7 @@ TEST_F(CryptohomeKeyLoaderTest, LoadCryptohomeKeyTransientFailure) {
   EXPECT_THAT(this, HasStoredCryptohomeKey("old-key"));
 }
 
-TEST_F(CryptohomeKeyLoaderTest, ReCreateCryptohomeKeyAfterLoadFailure) {
+TEST_F(CryptohomeRsaKeyLoaderTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   // Permanent failure while loading the key leads to re-creating, storing
   // and loading the new key.
   SetIsTpmOwned(true);
@@ -262,7 +265,8 @@ TEST_F(CryptohomeKeyLoaderTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   EXPECT_THAT(this, HasStoredCryptohomeKey("new-key"));
 }
 
-TEST_F(CryptohomeKeyLoaderTest, ReCreateCryptohomeKeyFailureDuringKeyCreation) {
+TEST_F(CryptohomeRsaKeyLoaderTest,
+       ReCreateCryptohomeKeyFailureDuringKeyCreation) {
   // Permanent failure while loading the key leads to an attempt to re-create
   // the key. Which fails. So, nothing new is stored or loaded.
   SetIsTpmOwned(true);
@@ -275,7 +279,8 @@ TEST_F(CryptohomeKeyLoaderTest, ReCreateCryptohomeKeyFailureDuringKeyCreation) {
   EXPECT_THAT(this, HasStoredCryptohomeKey("old-key"));
 }
 
-TEST_F(CryptohomeKeyLoaderTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
+TEST_F(CryptohomeRsaKeyLoaderTest,
+       ReCreateCryptohomeKeyFailureDuringKeyLoading) {
   // Permanent failure while loading the key leads to re-creating the key.
   // It is stored. But then loading fails.
   // Still, on the next attempt, the key is loaded, and not re-created again.

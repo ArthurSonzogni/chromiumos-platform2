@@ -32,6 +32,7 @@
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptohome_rsa_key_loader.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
@@ -223,7 +224,7 @@ bool UserDataAuth::Initialize() {
   // before Initialize() is called.
   if (!cryptohome_key_loader_) {
     default_cryptohome_key_loader_.reset(
-        new CryptohomeKeyLoader(tpm_, platform_));
+        new CryptohomeRsaKeyLoader(tpm_, platform_));
     cryptohome_key_loader_ = default_cryptohome_key_loader_.get();
   }
 
