@@ -116,9 +116,7 @@ std::unique_ptr<password_provider::Password> ReadPasswordFromFile(
   CHECK(base::CreateLocalNonBlockingPipe(fds));
   base::ScopedFD read_fd(fds[0]);
   base::ScopedFD write_fd(fds[1]);
-  CHECK(base::WriteFileDescriptor(
-      write_fd.get(), reinterpret_cast<const char*>(tmp_password.data()),
-      tmp_password.size()));
+  CHECK(base::WriteFileDescriptor(write_fd.get(), tmp_password));
   return password_provider::Password::CreateFromFileDescriptor(
       read_fd.get(), tmp_password.size());
 }

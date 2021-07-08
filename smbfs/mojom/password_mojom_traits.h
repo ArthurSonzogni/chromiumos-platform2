@@ -28,8 +28,7 @@ struct StructTraits<smbfs::mojom::PasswordDataView,
     CHECK(base::CreateLocalNonBlockingPipe(fds));
     base::ScopedFD read_fd(fds[0]);
     base::ScopedFD write_fd(fds[1]);
-    CHECK(base::WriteFileDescriptor(write_fd.get(), password->GetRaw(),
-                                    password->size()));
+    CHECK(base::WriteFileDescriptor(write_fd.get(), password->GetRaw()));
     return mojo::WrapPlatformHandle(mojo::PlatformHandle(std::move(read_fd)));
   }
 
