@@ -33,7 +33,7 @@ class ShutdownFromSuspendTest : public ::testing::Test {
   void Init(bool enable_dark_resume,
             bool enable_hibernate,
             int64_t shutdown_after_secs) {
-    prefs_.SetInt64(kShutdownFromSuspendSecPref, shutdown_after_secs);
+    prefs_.SetInt64(kLowerPowerFromSuspendSecPref, shutdown_after_secs);
     prefs_.SetInt64(kDisableDarkResumePref, enable_dark_resume ? 0 : 1);
     prefs_.SetInt64(kDisableHibernatePref, enable_hibernate ? 0 : 1);
     shutdown_from_suspend_.Init(&prefs_, &power_supply_, &configurator_stub);
@@ -55,7 +55,8 @@ class ShutdownFromSuspendTest : public ::testing::Test {
 // Test that ShutdownFromSuspend is enabled and hibernate is disabled when
 //  1. Dark resume is enabled
 //  2. Hibernate is disabled
-//  3. |kShutdownFromSuspendSecPref| value is set to positive integer.
+//  3. |kLowerPowerFromSuspendSecPref| value is set to positive
+//     integer.
 TEST_F(ShutdownFromSuspendTest, TestShutdownEnable) {
   Init(true, false, 1);
   EXPECT_TRUE(shutdown_from_suspend_.enabled_for_testing());
@@ -65,7 +66,8 @@ TEST_F(ShutdownFromSuspendTest, TestShutdownEnable) {
 // Test that ShutdownFromSuspend and hibernate are enabled when
 //  1. Dark resume is enabled
 //  2. Hibernate is enabled
-//  3. |kShutdownFromSuspendSecPref| value is set to positive integer.
+//  3. |kLowerPowerFromSuspendSecPref| value is set to positive
+//     integer.
 TEST_F(ShutdownFromSuspendTest, TestHibernateEnable) {
   Init(true, true, 1);
   EXPECT_TRUE(shutdown_from_suspend_.enabled_for_testing());
@@ -81,8 +83,8 @@ TEST_F(ShutdownFromSuspendTest, TestDarkResumeDisabled) {
 }
 
 // Test that ShutdownFromSuspend and hibernate are disabled when
-// |kShutdownFromSuspendSecPref| value is set to 0.
-TEST_F(ShutdownFromSuspendTest, TestkShutdownFromSuspendSecPref0) {
+// |kLowerPowerFromSuspendSecPref| value is set to 0.
+TEST_F(ShutdownFromSuspendTest, TestkLowerPowerFromSuspendSecPref0) {
   Init(true, true, 0);
   EXPECT_FALSE(shutdown_from_suspend_.enabled_for_testing());
   EXPECT_FALSE(shutdown_from_suspend_.hibernate_enabled_for_testing());
@@ -100,7 +102,7 @@ TEST_F(ShutdownFromSuspendTest, TestHibernateNotAvailable) {
 // Test that ShutdownFromSuspend asks the system to shut down when
 // 1. ShutdownFromSuspend is enabled
 // 2. Hibernate is disabled
-// 3. Device has spent |kShutdownFromSuspendSecPref| in suspend
+// 3. Device has spent |kLowerPowerFromSuspendSecPref| in suspend
 // 4. Device is not on line power when dark resumed.
 TEST_F(ShutdownFromSuspendTest, TestShutdownPath) {
   int kShutdownAfterSecs = 1;
@@ -121,7 +123,7 @@ TEST_F(ShutdownFromSuspendTest, TestShutdownPath) {
 // Test that ShutdownFromSuspend asks the system to hibernate when
 // 1. ShutdownFromSuspend is enabled
 // 2. Hibernate is enabled
-// 3. Device has spent |kShutdownFromSuspendSecPref| in suspend
+// 3. Device has spent |kLowerPowerFromSuspendSecPref| in suspend
 TEST_F(ShutdownFromSuspendTest, TestHibernatePath) {
   int kShutdownAfterSecs = 1;
   Init(true, true, kShutdownAfterSecs);

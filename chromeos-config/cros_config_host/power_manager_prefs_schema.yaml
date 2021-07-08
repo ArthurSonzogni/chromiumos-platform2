@@ -122,7 +122,7 @@ powerd_prefs: &powerd_prefs
   disable-hibernate:
     <<: *powerd_prefs_default
     default: "1"
-  shutdown-from-suspend-sec:
+  lower-power-from-suspend-sec:
     <<: *powerd_prefs_default
     default: "259200"
   dark-resume-devices: *powerd_prefs_default

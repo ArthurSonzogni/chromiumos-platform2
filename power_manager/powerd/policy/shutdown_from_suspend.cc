@@ -42,7 +42,7 @@ void ShutdownFromSuspend::Init(
   int64_t shutdown_after_sec = 0;
   global_enabled_ =
       !dark_resume_disable &&
-      prefs->GetInt64(kShutdownFromSuspendSecPref, &shutdown_after_sec) &&
+      prefs->GetInt64(kLowerPowerFromSuspendSecPref, &shutdown_after_sec) &&
       shutdown_after_sec > 0;
 
   // Hibernate only works if the system supports it, and

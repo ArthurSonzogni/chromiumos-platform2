@@ -168,9 +168,10 @@ extern const char kDisableDarkResumePref[];
 // If true, disables hibernate even on systems where it is available.
 extern const char kDisableHibernatePref[];
 
-// Seconds in suspend without full resume after which the device should shutdown
-// proactively. Should be a positive integer for the feature to be enabled.
-extern const char kShutdownFromSuspendSecPref[];
+// Seconds in suspend without full resume after which the device should
+// hibernate or shut down proactively. Should be a positive integer for
+// the feature to be enabled.
+extern const char kLowerPowerFromSuspendSecPref[];
 
 // sysfs device directories with power/dark_resume_active and
 // power/dark_resume_source files, respectively, that are used to control

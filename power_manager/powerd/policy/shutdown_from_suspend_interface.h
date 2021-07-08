@@ -11,11 +11,11 @@ namespace policy {
 // Holds the logic to shut down or hibernate the device after prolonged non
 // use.
 //
-// Responsible for setting an alarm for |kShutdownFromSuspendSecPref| before
+// Responsible for setting an alarm for |kLowerPowerFromSuspendSecPref| before
 // every suspend if one is not already running.
 // On dark resume this code will shut down or hibernate the device instead
 // of re-suspending if all of the following conditions hold true:
-//   1. Device has spent |kShutdownFromSuspendSecPref| in suspend or in
+//   1. Device has spent |kLowerPowerFromSuspendSecPref| in suspend or in
 //      dark resume without a full resume, OR the battery is below
 //      |kLowBatteryShutdownPercentPref|.
 //   2. Device is not connected to line power.
