@@ -180,10 +180,11 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   VmId vm_id(request.owner_id(), request.name());
   SendVmStartingUpSignal(vm_id, *vm_info);
 
-  std::string shared_data =
-      CreateSharedDataParam(data_dir, "_data", true, false);
-  std::string shared_data_media =
-      CreateSharedDataParam(data_dir, "_data_media", false, true);
+  const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
+  std::string shared_data = CreateSharedDataParam(data_dir, "_data", true,
+                                                  false, privileged_quota_uids);
+  std::string shared_data_media = CreateSharedDataParam(
+      data_dir, "_data_media", false, true, privileged_quota_uids);
 
   // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |affinity|
   // should be passed from chrome instead of |enable_rt_vcpu|.

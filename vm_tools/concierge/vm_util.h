@@ -176,7 +176,8 @@ class CustomParametersForDev {
 std::string CreateSharedDataParam(const base::FilePath& data_dir,
                                   const std::string& tag,
                                   bool enable_caches,
-                                  bool ascii_casefold);
+                                  bool ascii_casefold,
+                                  const std::vector<uid_t>& privileged_uids);
 
 class ArcVmCPUTopology {
  public:

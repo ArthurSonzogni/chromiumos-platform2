@@ -245,13 +245,13 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       kMediaSharedDir, kMediaSharedDirTag, kAndroidUidMap, kAndroidGidMap);
   const base::FilePath testharness_dir(kTestHarnessSharedDir);
   std::string shared_testharness = CreateSharedDataParam(
-      testharness_dir, kTestHarnessSharedDirTag, true, false);
+      testharness_dir, kTestHarnessSharedDirTag, true, false, {});
   const base::FilePath apkcache_dir(kApkCacheSharedDir);
-  std::string shared_apkcache =
-      CreateSharedDataParam(apkcache_dir, kApkCacheSharedDirTag, true, false);
+  std::string shared_apkcache = CreateSharedDataParam(
+      apkcache_dir, kApkCacheSharedDirTag, true, false, {});
   const base::FilePath fonts_dir(kFontsSharedDir);
   std::string shared_fonts =
-      CreateSharedDataParam(fonts_dir, kFontsSharedDirTag, true, false);
+      CreateSharedDataParam(fonts_dir, kFontsSharedDirTag, true, false, {});
 
   vm_builder
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
