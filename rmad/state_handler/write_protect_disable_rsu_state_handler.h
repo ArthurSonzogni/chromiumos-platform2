@@ -20,13 +20,15 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   // Used to inject mock |cr50_utils_| for testing.
   WriteProtectDisableRsuStateHandler(scoped_refptr<JsonStore> json_store,
                                      std::unique_ptr<Cr50Utils> cr50_utils);
-  ~WriteProtectDisableRsuStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableRsu);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~WriteProtectDisableRsuStateHandler() override = default;
 
  private:
   std::unique_ptr<Cr50Utils> cr50_utils_;

@@ -12,13 +12,15 @@ namespace rmad {
 class RestockStateHandler : public BaseStateHandler {
  public:
   explicit RestockStateHandler(scoped_refptr<JsonStore> json_store);
-  ~RestockStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kRestock);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~RestockStateHandler() override = default;
 };
 
 }  // namespace rmad

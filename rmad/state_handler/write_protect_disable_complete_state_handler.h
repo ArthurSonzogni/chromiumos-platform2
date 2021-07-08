@@ -21,7 +21,6 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
   WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<Cr50Utils> cr50_utils);
-  ~WriteProtectDisableCompleteStateHandler() override = default;
 
   // This state is not repeatable. Must go through the rest of the RMA flow
   // after disabling write protection.
@@ -29,6 +28,9 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~WriteProtectDisableCompleteStateHandler() override = default;
 
  private:
   std::unique_ptr<Cr50Utils> cr50_utils_;

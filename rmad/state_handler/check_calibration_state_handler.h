@@ -15,13 +15,15 @@ namespace rmad {
 class CheckCalibrationStateHandler : public BaseStateHandler {
  public:
   explicit CheckCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
-  ~CheckCalibrationStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kCheckCalibration);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~CheckCalibrationStateHandler() override = default;
 
  private:
   bool CheckIsCalibrationRequired(const RmadState& state,

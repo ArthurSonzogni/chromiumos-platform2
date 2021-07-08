@@ -21,13 +21,15 @@ class VerifyRsuStateHandler : public BaseStateHandler {
   VerifyRsuStateHandler(scoped_refptr<JsonStore> json_store,
                         std::unique_ptr<Cr50Utils> cr50_utils,
                         std::unique_ptr<CrosSystemUtils> crossystem_utils);
-  ~VerifyRsuStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kVerifyRsu);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~VerifyRsuStateHandler() override = default;
 
  private:
   bool VerifyFactoryModeEnabled() const;

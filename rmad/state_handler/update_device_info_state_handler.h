@@ -12,13 +12,15 @@ namespace rmad {
 class UpdateDeviceInfoStateHandler : public BaseStateHandler {
  public:
   explicit UpdateDeviceInfoStateHandler(scoped_refptr<JsonStore> json_store);
-  ~UpdateDeviceInfoStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateDeviceInfo);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~UpdateDeviceInfoStateHandler() override = default;
 };
 
 }  // namespace rmad

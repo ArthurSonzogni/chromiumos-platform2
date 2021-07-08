@@ -12,13 +12,15 @@ namespace rmad {
 class DeviceDestinationStateHandler : public BaseStateHandler {
  public:
   explicit DeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store);
-  ~DeviceDestinationStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kDeviceDestination);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~DeviceDestinationStateHandler() override = default;
 
  private:
   // Store variables that can be used by other state handlers to make decisions.

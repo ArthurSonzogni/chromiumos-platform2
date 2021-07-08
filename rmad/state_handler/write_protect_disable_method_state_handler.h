@@ -13,13 +13,15 @@ class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableMethodStateHandler(
       scoped_refptr<JsonStore> json_store);
-  ~WriteProtectDisableMethodStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableMethod);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~WriteProtectDisableMethodStateHandler() override = default;
 };
 
 }  // namespace rmad

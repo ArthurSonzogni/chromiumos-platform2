@@ -12,13 +12,15 @@ namespace rmad {
 class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
   explicit UpdateRoFirmwareStateHandler(scoped_refptr<JsonStore> json_store);
-  ~UpdateRoFirmwareStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~UpdateRoFirmwareStateHandler() override = default;
 
  private:
   bool IsMainboardRepair() const;

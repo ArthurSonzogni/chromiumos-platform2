@@ -12,13 +12,15 @@ namespace rmad {
 class FinalizeStateHandler : public BaseStateHandler {
  public:
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
-  ~FinalizeStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~FinalizeStateHandler() override = default;
 };
 
 }  // namespace rmad

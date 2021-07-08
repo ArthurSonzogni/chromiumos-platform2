@@ -24,12 +24,12 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       base::TimeDelta::FromSeconds(2);
 
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
-  ~RunCalibrationStateHandler() override = default;
 
   void RegisterSignalSender(
-      std::unique_ptr<base::RepeatingCallback<
-          bool(CheckCalibrationState::CalibrationStatus, double)>> callback)
-      override {
+      std::unique_ptr<
+          base::RepeatingCallback<bool(CheckCalibrationState::CalibrationStatus,
+                                       double)  // NOLINT(readability/casting)
+                                  >> callback) override {
     calibration_signal_sender_ = std::move(callback);
   }
 
@@ -39,6 +39,9 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~RunCalibrationStateHandler() override = default;
 
  private:
   void RetrieveVarsAndCalibrate();

@@ -15,7 +15,6 @@ class MockStateHandler : public BaseStateHandler {
  public:
   explicit MockStateHandler(scoped_refptr<JsonStore> json_store)
       : BaseStateHandler(json_store) {}
-  virtual ~MockStateHandler() = default;
 
   MOCK_METHOD(RmadState::StateCase, GetStateCase, (), (const, override));
   MOCK_METHOD(const RmadState&, GetState, (), (const, override));
@@ -26,6 +25,9 @@ class MockStateHandler : public BaseStateHandler {
               GetNextStateCase,
               (const RmadState&),
               (override));
+
+ protected:
+  ~MockStateHandler() override = default;
 };
 
 }  // namespace rmad

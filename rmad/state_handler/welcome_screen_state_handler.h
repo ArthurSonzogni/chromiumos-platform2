@@ -12,13 +12,15 @@ namespace rmad {
 class WelcomeScreenStateHandler : public BaseStateHandler {
  public:
   explicit WelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store);
-  ~WelcomeScreenStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~WelcomeScreenStateHandler() override = default;
 };
 
 }  // namespace rmad

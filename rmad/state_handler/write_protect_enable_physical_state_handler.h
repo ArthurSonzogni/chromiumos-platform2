@@ -28,7 +28,6 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   WriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<CrosSystemUtils> crossystem_utils);
-  ~WriteProtectEnablePhysicalStateHandler() override = default;
 
   void RegisterSignalSender(
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override {
@@ -41,6 +40,9 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~WriteProtectEnablePhysicalStateHandler() override = default;
 
  private:
   void PollUntilWriteProtectOn();

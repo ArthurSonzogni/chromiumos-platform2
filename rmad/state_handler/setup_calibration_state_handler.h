@@ -12,13 +12,15 @@ namespace rmad {
 class SetupCalibrationStateHandler : public BaseStateHandler {
  public:
   explicit SetupCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
-  ~SetupCalibrationStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kSetupCalibration);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~SetupCalibrationStateHandler() override = default;
 };
 
 }  // namespace rmad

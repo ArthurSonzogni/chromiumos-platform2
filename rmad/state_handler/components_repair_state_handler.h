@@ -20,13 +20,15 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   // Used to inject mocked |dbus_utils_| for testing.
   ComponentsRepairStateHandler(scoped_refptr<JsonStore> json_store,
                                std::unique_ptr<DBusUtils> dbus_utils);
-  ~ComponentsRepairStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~ComponentsRepairStateHandler() override = default;
 
  private:
   // Check that the provided state properly updates every component.

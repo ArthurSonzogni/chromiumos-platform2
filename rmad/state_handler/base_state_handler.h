@@ -25,7 +25,6 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   };
 
   explicit BaseStateHandler(scoped_refptr<JsonStore> json_store);
-  virtual ~BaseStateHandler() = default;
 
   // Returns the RmadState that the class handles. This can be declared by the
   // macro ASSIGN_STATE(state).
@@ -53,8 +52,10 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual void RegisterSignalSender(
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {}
   virtual void RegisterSignalSender(
-      std::unique_ptr<base::RepeatingCallback<
-          bool(CheckCalibrationState::CalibrationStatus, double)>> callback) {}
+      std::unique_ptr<
+          base::RepeatingCallback<bool(CheckCalibrationState::CalibrationStatus,
+                                       double)  // NOLINT(readability/casting)
+                                  >> callback) {}
 
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition
@@ -69,6 +70,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   bool RetrieveState();
 
  protected:
+  friend class base::RefCounted<BaseStateHandler>;
+  virtual ~BaseStateHandler() = default;
+
   RmadState state_;
   scoped_refptr<JsonStore> json_store_;
 };

@@ -12,13 +12,15 @@ namespace rmad {
 class UpdateChromeStateHandler : public BaseStateHandler {
  public:
   explicit UpdateChromeStateHandler(scoped_refptr<JsonStore> json_store);
-  ~UpdateChromeStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateChrome);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~UpdateChromeStateHandler() override = default;
 };
 
 }  // namespace rmad

@@ -12,13 +12,15 @@ namespace rmad {
 class SelectNetworkStateHandler : public BaseStateHandler {
  public:
   explicit SelectNetworkStateHandler(scoped_refptr<JsonStore> json_store);
-  ~SelectNetworkStateHandler() override = default;
 
   ASSIGN_STATE(RmadState::StateCase::kSelectNetwork);
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+
+ protected:
+  ~SelectNetworkStateHandler() override = default;
 
  private:
   // Store variables that can be used by other state handlers to make decisions.
