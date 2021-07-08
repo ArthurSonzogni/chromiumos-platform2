@@ -173,6 +173,7 @@ static_library("libcrostpm") {
     "../crypto.cc",
     "../crypto_error.cc",
     "../cryptohome_key_loader.cc",
+    "../cryptohome_keys_manager.cc",
     "../cryptohome_recovery_auth_block.cc",
     "../cryptohome_rsa_key_loader.cc",
     "../double_wrapped_compat_auth_block.cc",
