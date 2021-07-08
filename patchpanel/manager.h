@@ -64,16 +64,16 @@ class Manager final : public brillo::DBusDaemon {
   int OnInit() override;
 
  private:
-  void OnDefaultDeviceChanged(const ShillClient::Device& new_device,
-                              const ShillClient::Device& prev_device);
-  void OnDevicesChanged(const std::vector<std::string>& added,
-                        const std::vector<std::string>& removed);
+  void OnShillDefaultDeviceChanged(const ShillClient::Device& new_device,
+                                   const ShillClient::Device& prev_device);
+  void OnShillDevicesChanged(const std::vector<std::string>& added,
+                             const std::vector<std::string>& removed);
   void OnIPConfigsChanged(const std::string& ifname,
                           const ShillClient::IPConfig& ipconfig);
 
-  void OnDeviceChanged(const Device& virtual_device,
-                       Device::ChangeEvent event,
-                       GuestMessage::GuestType guest_type);
+  void OnGuestDeviceChanged(const Device& virtual_device,
+                            Device::ChangeEvent event,
+                            GuestMessage::GuestType guest_type);
 
   void InitialSetup();
 

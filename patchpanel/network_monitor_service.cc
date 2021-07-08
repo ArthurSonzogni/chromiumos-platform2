@@ -367,19 +367,20 @@ void NetworkMonitorService::Start() {
   rtnl_handler_->Start(RTMGRP_NEIGH);
 
   // Calls ScanDevices() first to make sure ShillClient knows all existing
-  // shill Devices, and then triggers OnDevicesChanged() manually before
+  // shill Devices, and then triggers OnShillDevicesChanged() manually before
   // registering DevicesChangedHandler to make sure we see each shill Device
   // exactly once.
   shill_client_->ScanDevices();
-  OnDevicesChanged(shill_client_->get_interfaces(), {} /* removed */);
-  shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
-      &NetworkMonitorService::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+  OnShillDevicesChanged(shill_client_->get_interfaces(), {} /* removed */);
+  shill_client_->RegisterDevicesChangedHandler(
+      base::BindRepeating(&NetworkMonitorService::OnShillDevicesChanged,
+                          weak_factory_.GetWeakPtr()));
 
   shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
       &NetworkMonitorService::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
 }
 
-void NetworkMonitorService::OnDevicesChanged(
+void NetworkMonitorService::OnShillDevicesChanged(
     const std::vector<std::string>& added,
     const std::vector<std::string>& removed) {
   for (const auto& ifname : added) {

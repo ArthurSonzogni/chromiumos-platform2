@@ -245,9 +245,9 @@ void Manager::InitialSetup() {
   if (!USE_JETSTREAM_ROUTING) {
     datapath_->Start();
     shill_client_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
-        &Manager::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
+        &Manager::OnShillDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
     shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
-        &Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+        &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
     shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
         &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
   }
@@ -259,11 +259,11 @@ void Manager::InitialSetup() {
       USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;
   arc_svc_ = std::make_unique<ArcService>(
       datapath_.get(), &addr_mgr_, arc_guest,
-      base::BindRepeating(&Manager::OnDeviceChanged,
+      base::BindRepeating(&Manager::OnGuestDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
       &addr_mgr_, datapath_.get(),
-      base::BindRepeating(&Manager::OnDeviceChanged,
+      base::BindRepeating(&Manager::OnGuestDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
       shill_client_.get(),
@@ -327,8 +327,9 @@ void Manager::RestartSubprocess(HelperProcess* subproc) {
   }
 }
 
-void Manager::OnDefaultDeviceChanged(const ShillClient::Device& new_device,
-                                     const ShillClient::Device& prev_device) {
+void Manager::OnShillDefaultDeviceChanged(
+    const ShillClient::Device& new_device,
+    const ShillClient::Device& prev_device) {
   // Only take into account interface switches and ignore layer 3 property
   // changes.
   if (prev_device.ifname == new_device.ifname)
@@ -353,8 +354,8 @@ void Manager::OnDefaultDeviceChanged(const ShillClient::Device& new_device,
   }
 }
 
-void Manager::OnDevicesChanged(const std::vector<std::string>& added,
-                               const std::vector<std::string>& removed) {
+void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
+                                    const std::vector<std::string>& removed) {
   for (const std::string& ifname : removed) {
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
@@ -386,9 +387,9 @@ void Manager::OnIPConfigsChanged(const std::string& ifname,
   }
 }
 
-void Manager::OnDeviceChanged(const Device& virtual_device,
-                              Device::ChangeEvent event,
-                              GuestMessage::GuestType guest_type) {
+void Manager::OnGuestDeviceChanged(const Device& virtual_device,
+                                   Device::ChangeEvent event,
+                                   GuestMessage::GuestType guest_type) {
   dbus::Signal signal(kPatchPanelInterface, kNetworkDeviceChangedSignal);
   NetworkDeviceChangedSignal proto;
   proto.set_event(event == Device::ChangeEvent::ADDED
