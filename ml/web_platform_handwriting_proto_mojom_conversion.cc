@@ -4,6 +4,7 @@
 
 #include "ml/web_platform_handwriting_proto_mojom_conversion.h"
 
+#include <base/numerics/checked_math.h>
 #include <base/time/time.h>
 #include <utility>
 #include <vector>
@@ -75,7 +76,7 @@ WebPlatformHandwritingPredictionsFromProto(
       if (candidate_proto.has_segmentation()) {
         // Denotes the starting index of the grapheme in the whole recognized
         // text (i.e. prediction->text).
-        int grapheme_begin_index = 0;
+        base::CheckedNumeric<unsigned int> grapheme_begin_index = 0;
         for (const auto& segment_proto :
              candidate_proto.segmentation().segments()) {
           auto segment = HandwritingSegment::New();
@@ -83,9 +84,13 @@ WebPlatformHandwritingPredictionsFromProto(
           segment->grapheme = segment_proto.sublabel();
           // Update the index (currently, we only support English so we do not
           // need to consider the variate length of unicode codepoints).
-          segment->begin_index = grapheme_begin_index;
+          segment->begin_index = grapheme_begin_index.ValueOrDie();
           grapheme_begin_index += segment_proto.sublabel().length();
-          segment->end_index = grapheme_begin_index;
+          if (!grapheme_begin_index.IsValid()) {
+            // If `grapheme_begin_index` overflows, we return empty result.
+            return base::nullopt;
+          }
+          segment->end_index = grapheme_begin_index.ValueOrDie();
           // For ink range.
           for (const auto& ink_range_proto : segment_proto.ink_ranges()) {
             // Mainly to avoid overflow when plus 1 to it in the below.
