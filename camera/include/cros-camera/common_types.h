@@ -25,21 +25,15 @@ template <typename T>
 struct Rect {
   T left;
   T top;
-  T right;
-  T bottom;
+  T width;
+  T height;
 
-  Rect() : left(0), top(0), right(0), bottom(0) {}
-  Rect(T l, T t, T r, T b) : left(l), top(t), right(r), bottom(b) {}
-  bool is_valid() const { return left < right && top < bottom; }
-  T width() const { return right - left + 1; }
-  T height() const { return bottom - top + 1; }
+  Rect() : left(0), top(0), width(0), height(0) {}
+  Rect(T l, T t, T w, T h) : left(l), top(t), width(w), height(h) {}
+  bool is_valid() const { return width > 0 && height > 0; }
   bool operator==(const Rect& rhs) const {
-    return left == rhs.left && top == rhs.top && right == rhs.right &&
-           bottom == rhs.bottom;
-  }
-  friend std::ostream& operator<<(std::ostream& stream, const Rect& r) {
-    return stream << "(" << r.left << "," << r.top << "," << r.right << ","
-                  << r.bottom << ")";
+    return left == rhs.left && top == rhs.top && width == rhs.width &&
+           height == rhs.height;
   }
 };
 
@@ -77,10 +71,18 @@ struct Range {
   bool operator==(const Range& rhs) const {
     return lower_bound == rhs.lower_bound && upper_bound == rhs.upper_bound;
   }
-  friend std::ostream& operator<<(std::ostream& stream, const Range& r) {
-    return stream << "[" << r.lower_bound << ", " << r.upper_bound << "]";
-  }
 };
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, const Rect<T>& r) {
+  return stream << "(" << r.left << "," << r.top << ")+" << r.width << "x"
+                << r.height;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, const Range<T>& r) {
+  return stream << "[" << r.lower_bound << ", " << r.upper_bound << "]";
+}
 
 }  // namespace cros
 

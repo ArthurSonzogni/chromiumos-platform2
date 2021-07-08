@@ -564,10 +564,10 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   std::vector<int32_t> active_array_size(4);
   if (device_info.sensor_info_active_array_size.is_valid()) {
     const Rect<int32_t>& rect = device_info.sensor_info_active_array_size;
-    if (rect.width() < max_dimensions.width ||
-        rect.height() < max_dimensions.height) {
-      LOGF(ERROR) << "Sensor active array size (" << rect.width() << "x"
-                  << rect.height()
+    if (rect.width < max_dimensions.width ||
+        rect.height < max_dimensions.height) {
+      LOGF(ERROR) << "Sensor active array size (" << rect.width << "x"
+                  << rect.height
                   << ") is smaller than max supported format dimensions ("
                   << max_dimensions.width << "x" << max_dimensions.height
                   << ")";
@@ -575,8 +575,8 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
     active_array_size[0] = rect.left;
     active_array_size[1] = rect.top;
-    active_array_size[2] = rect.width();
-    active_array_size[3] = rect.height();
+    active_array_size[2] = rect.width;
+    active_array_size[3] = rect.height;
   } else {
     active_array_size[0] = 0;
     active_array_size[1] = 0;
@@ -1342,7 +1342,7 @@ int MetadataHandler::PostHandleRequest(
   if (device_info_.enable_face_detection) {
     std::vector<int32_t> face_rectangles;
     std::vector<uint8_t> face_scores;
-    Rect<int> roi(0, 0, resolution.width - 1, resolution.height - 1);
+    Rect<int> roi(0, 0, resolution.width, resolution.height);
     Rect<int> largest_face;
     int largest_size = 0;
     for (auto& face : faces) {
@@ -1359,7 +1359,7 @@ int MetadataHandler::PostHandleRequest(
       face_scores.push_back(face.confidence * 100);
       int size = (x2 - x1) * (y2 - y1);
       if (size > largest_size) {
-        largest_face = Rect<int>(x1, y1, x2, y2);
+        largest_face = Rect<int>(x1, y1, x2 - x1 + 1, y2 - y1 + 1);
         largest_size = size;
         // Set ROI with largest face to trigger 3A.
         roi = largest_face;

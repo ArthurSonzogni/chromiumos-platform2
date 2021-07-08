@@ -45,11 +45,12 @@ void ParseSize(const std::string& value, T* width, T* height) {
 
 template <typename T>
 Rect<T> ParseRect(const std::string& value) {
-  Rect<T> r;
-  CHECK(RE2::FullMatch(value, "(.*),(.*),(.*),(.*)", &r.left, &r.top, &r.right,
-                       &r.bottom));
-  CHECK(r.is_valid());
-  return r;
+  T left, top, right, bottom;
+  CHECK(RE2::FullMatch(value, "(.*),(.*),(.*),(.*)", &left, &top, &right,
+                       &bottom));
+  Rect<T> rect(left, top, right - left, bottom - top);
+  CHECK(rect.is_valid());
+  return rect;
 }
 
 template <typename T>

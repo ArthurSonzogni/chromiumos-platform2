@@ -289,9 +289,9 @@ class V4L2TestEnvironment : public ::testing::Environment {
       if (test_list_ != kDefaultTestList) {
         if (device_info->sensor_info_active_array_size.is_valid()) {
           sensor_array_size_width_ =
-              device_info->sensor_info_active_array_size.width();
+              device_info->sensor_info_active_array_size.width;
           sensor_array_size_height_ =
-              device_info->sensor_info_active_array_size.height();
+              device_info->sensor_info_active_array_size.height;
         } else {
           LOGF(WARNING) << "Sensor active array size is not available in camera"
                            " config file, using full pixel array size";

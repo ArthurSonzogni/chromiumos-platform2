@@ -462,23 +462,20 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     // ROI regions info after it.
     IsRegionOfInterestSupported(device_fd_.get(), &roi_control_);
     if (roi_control_.roi_flags) {
-      if (roi_control_.roi_bounds_max.width() < width ||
-          roi_control_.roi_bounds_max.height() < height) {
+      if (roi_control_.roi_bounds_max.width < width ||
+          roi_control_.roi_bounds_max.height < height) {
         LOGF(WARNING) << "ROI bounds max is too small"
                       << roi_control_.roi_bounds_max;
       }
       // Workaround some camera module didn't report correct min bounds.
-      if (roi_control_.roi_bounds_min.width() >=
-              roi_control_.roi_bounds_max.width() ||
-          roi_control_.roi_bounds_min.height() >=
-              roi_control_.roi_bounds_max.height()) {
+      if (roi_control_.roi_bounds_min.width >=
+              roi_control_.roi_bounds_max.width ||
+          roi_control_.roi_bounds_min.height >=
+              roi_control_.roi_bounds_max.height) {
         LOGF(WARNING) << "ROI bounds min is too large"
                       << roi_control_.roi_bounds_min
                       << ", Set it to (0, 0, 0, 0)";
-        roi_control_.roi_bounds_min.left = 0;
-        roi_control_.roi_bounds_min.top = 0;
-        roi_control_.roi_bounds_min.right = 0;
-        roi_control_.roi_bounds_min.bottom = 0;
+        roi_control_.roi_bounds_min = Rect<int>();
       }
       VLOGF(1) << "ROI control flags:0x" << std::hex << roi_control_.roi_flags
                << " " << std::dec << "ROI default:" << roi_control_.roi_default;
@@ -890,13 +887,13 @@ int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
   if (roi_control_.roi_flags == 0) {
     return -EINVAL;
   }
-  int width = rectangle.width();
-  int height = rectangle.height();
-  if (width < roi_control_.roi_bounds_min.width()) {
-    width = roi_control_.roi_bounds_min.width();
+  int width = rectangle.width;
+  int height = rectangle.height;
+  if (width < roi_control_.roi_bounds_min.width) {
+    width = roi_control_.roi_bounds_min.width;
   }
-  if (height < roi_control_.roi_bounds_min.height()) {
-    height = roi_control_.roi_bounds_min.height();
+  if (height < roi_control_.roi_bounds_min.height) {
+    height = roi_control_.roi_bounds_min.height;
   }
   v4l2_selection current = {
       .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
@@ -1174,30 +1171,24 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(int fd,
     PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
     return false;
   }
-  roi_control->roi_default.left = current.r.left;
-  roi_control->roi_default.top = current.r.top;
-  roi_control->roi_default.right = current.r.left + current.r.width - 1;
-  roi_control->roi_default.bottom = current.r.top + current.r.height - 1;
+  roi_control->roi_default = Rect<int>(current.r.left, current.r.top,
+                                       current.r.width, current.r.height);
 
   current.target = V4L2_SEL_TGT_ROI_BOUNDS_MIN;
   if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
     PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
     return false;
   }
-  roi_control->roi_bounds_min.left = current.r.left;
-  roi_control->roi_bounds_min.top = current.r.top;
-  roi_control->roi_bounds_min.right = current.r.left + current.r.width - 1;
-  roi_control->roi_bounds_min.bottom = current.r.top + current.r.height - 1;
+  roi_control->roi_bounds_min = Rect<int>(current.r.left, current.r.top,
+                                          current.r.width, current.r.height);
 
   current.target = V4L2_SEL_TGT_ROI_BOUNDS_MAX;
   if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
     PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
     return false;
   }
-  roi_control->roi_bounds_max.left = current.r.left;
-  roi_control->roi_bounds_max.top = current.r.top;
-  roi_control->roi_bounds_max.right = current.r.left + current.r.width - 1;
-  roi_control->roi_bounds_max.bottom = current.r.top + current.r.height - 1;
+  roi_control->roi_bounds_max = Rect<int>(current.r.left, current.r.top,
+                                          current.r.width, current.r.height);
 
   if (QueryControl(fd, kControlRegionOfInterestAuto, &info) != 0) {
     return false;
