@@ -244,6 +244,15 @@ TEST_F(UploadServiceTest, PersistentGUID) {
 }
 
 TEST_F(UploadServiceTest, SessionIdIncrementedAtInitialization) {
+  std::string content(
+      "CHROMEOS_RELEASE_NAME=os name\n"
+      "CHROMEOS_RELEASE_VERSION=version\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=description beta-channel test\n"
+      "CHROMEOS_RELEASE_TRACK=beta-channel\n"
+      "CHROMEOS_RELEASE_BUILD_TYPE=developer build\n"
+      "CHROMEOS_RELEASE_BOARD=myboard");
+
+  base::test::ScopedChromeOSVersionInfo version(content, base::Time());
   cache_.Initialize();
   int session_id = cache_.profile_.session_id;
   cache_.initialized_ = false;

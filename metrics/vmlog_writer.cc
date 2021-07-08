@@ -369,7 +369,7 @@ bool VmlogFile::Write(const std::string& data) {
     }
   }
 
-  if (!base::WriteFileDescriptor(fd_, data.c_str(), data.size())) {
+  if (!base::WriteFileDescriptor(fd_, data)) {
     return false;
   }
   cur_size_ += data.size();

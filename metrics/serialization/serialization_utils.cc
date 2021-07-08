@@ -300,8 +300,7 @@ bool SerializationUtils::WriteMetricsToFile(
     return false;
   }
 
-  if (!base::WriteFileDescriptor(file_descriptor.get(), output.c_str(),
-                                 output.size())) {
+  if (!base::WriteFileDescriptor(file_descriptor.get(), output)) {
     PLOG(ERROR) << "error writing output";
     return false;
   }

@@ -60,8 +60,7 @@ bool WriteFile(const std::string& filepath, const T* proto) {
     return false;
   }
 
-  if (!base::WriteFileDescriptor(file_descriptor.get(), proto_str.c_str(),
-                                 proto_str.size())) {
+  if (!base::WriteFileDescriptor(file_descriptor.get(), proto_str)) {
     PLOG(ERROR) << filepath << " write error";
     return false;
   }
