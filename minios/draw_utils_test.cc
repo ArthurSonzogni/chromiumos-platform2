@@ -97,7 +97,7 @@ TEST_F(DrawUtilsTest, ShowImageTest) {
 }
 
 TEST_F(DrawUtilsTest, ShowImageRtl) {
-  draw_utils_.SetLocaleRtlForTest(true);
+  draw_utils_.SetLanguageForTest("ar");
   EXPECT_TRUE(draw_utils_.ShowImage(
       base::FilePath(test_root_).Append("image.png"), 50, 10));
 
@@ -118,7 +118,7 @@ TEST_F(DrawUtilsTest, ShowBox) {
 
 TEST_F(DrawUtilsTest, ShowBoxRtl) {
   // Set locale to be read right to left.
-  draw_utils_.SetLocaleRtlForTest(true);
+  draw_utils_.SetLanguageForTest("ar");
   EXPECT_TRUE(draw_utils_.ShowBox(-100, -200, 50, 20, "0x8AB4F8"));
   std::string written_command;
   EXPECT_TRUE(ReadFileToString(console_, &written_command));
@@ -232,21 +232,17 @@ TEST_F(DrawUtilsTest, GetLangConsts) {
 
 TEST_F(DrawUtilsTest, CheckRightToLeft) {
   draw_utils_.SetLanguageForTest("fr");
-  draw_utils_.CheckRightToLeft();
-  EXPECT_FALSE(draw_utils_.right_to_left_);
+  EXPECT_FALSE(draw_utils_.IsLocaleRightToLeft());
 
   // Three languages are read from right to left.
   draw_utils_.SetLanguageForTest("he");
-  draw_utils_.CheckRightToLeft();
-  EXPECT_TRUE(draw_utils_.right_to_left_);
+  EXPECT_TRUE(draw_utils_.IsLocaleRightToLeft());
 
   draw_utils_.SetLanguageForTest("fa");
-  draw_utils_.CheckRightToLeft();
-  EXPECT_TRUE(draw_utils_.right_to_left_);
+  EXPECT_TRUE(draw_utils_.IsLocaleRightToLeft());
 
   draw_utils_.SetLanguageForTest("ar");
-  draw_utils_.CheckRightToLeft();
-  EXPECT_TRUE(draw_utils_.right_to_left_);
+  EXPECT_TRUE(draw_utils_.IsLocaleRightToLeft());
 }
 
 TEST_F(DrawUtilsTest, GetLangConstsError) {

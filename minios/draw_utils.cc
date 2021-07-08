@@ -48,7 +48,6 @@ constexpr int kEnglishIndex = 9;
 }  // namespace
 
 bool DrawUtils::Init() {
-  CheckRightToLeft();
   ReadHardwareId();
   // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
   ReadDimensionConstants();
@@ -74,7 +73,7 @@ bool DrawUtils::ShowText(const std::string& text,
       glyph_offset_v += kMonospaceGlyphHeight;
       glyph_offset_h = kTextStart;
     } else {
-      int offset_rtl = right_to_left_ ? -glyph_offset_h : glyph_offset_h;
+      int offset_rtl = IsLocaleRightToLeft() ? -glyph_offset_h : glyph_offset_h;
       if (!ShowImage(chr_file_path, offset_rtl, glyph_offset_v)) {
         LOG(ERROR) << "Failed to show image " << chr_file_path << " for text "
                    << text;
@@ -89,7 +88,7 @@ bool DrawUtils::ShowText(const std::string& text,
 bool DrawUtils::ShowImage(const base::FilePath& image_name,
                           int offset_x,
                           int offset_y) {
-  if (right_to_left_)
+  if (IsLocaleRightToLeft())
     offset_x = -offset_x;
   std::string command = base::StringPrintf(
       "\033]image:file=%s;offset=%d,%d;scale=%d\a", image_name.value().c_str(),
@@ -110,7 +109,7 @@ bool DrawUtils::ShowBox(int offset_x,
                         const std::string& color) {
   size_x = std::max(size_x, 1);
   size_y = std::max(size_y, 1);
-  if (right_to_left_)
+  if (IsLocaleRightToLeft())
     offset_x = -offset_x;
 
   std::string command = base::StringPrintf(
@@ -238,7 +237,7 @@ void DrawUtils::ShowButton(const std::string& message_token,
     LOG(WARNING) << "Could not clear button area.";
   }
 
-  if (right_to_left_) {
+  if (IsLocaleRightToLeft()) {
     std::swap(left_padding_x, right_padding_x);
   }
 
@@ -425,7 +424,7 @@ void DrawUtils::ShowFooter() {
   int hwid_x = kQrCodeX + (kQrCodeSize / 2) + 16 + 5;
   const int kHwidY = kFooterY + kFooterLineHeight;
 
-  if (right_to_left_) {
+  if (IsLocaleRightToLeft()) {
     hwid_x = -hwid_x - kMonospaceGlyphWidth * (hwid_len - 2);
   }
 
@@ -436,7 +435,6 @@ void DrawUtils::ShowFooter() {
 void DrawUtils::LocaleChange(int selected_locale) {
   // Change locale and update constants.
   locale_ = supported_locales_[selected_locale];
-  CheckRightToLeft();
   ReadDimensionConstants();
   ClearScreen();
   ShowFooter();
@@ -592,9 +590,9 @@ bool DrawUtils::GetLangConstants(const std::string& locale, int* lang_width) {
   return false;
 }
 
-void DrawUtils::CheckRightToLeft() {
+bool DrawUtils::IsLocaleRightToLeft() {
   // TODO(vyshu): Create an unblocked_terms.txt to allow "he" for Hebrew.
-  right_to_left_ = (locale_ == "ar" || locale_ == "fa" || locale_ == "he");
+  return (locale_ == "ar" || locale_ == "fa" || locale_ == "he");
 }
 
 bool DrawUtils::IsDetachable() {

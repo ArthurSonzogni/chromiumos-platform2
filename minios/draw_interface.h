@@ -97,6 +97,9 @@ class DrawInterface {
 
   // Returns the screen assets path.
   virtual base::FilePath GetScreenPath() = 0;
+
+  // Returns whether the current locale is read from right to left.
+  virtual bool IsLocaleRightToLeft() = 0;
 };
 
 }  // namespace minios

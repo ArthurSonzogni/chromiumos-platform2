@@ -267,7 +267,8 @@ void ScreenNetwork::ShowNetworkDropdown(int current_index) {
   const int frecon_canvas_size = draw_utils_->GetFreconCanvasSize();
   int offset_y = -frecon_canvas_size / 4 + kBtnYStep * 3;
   const int kBackgroundX = -frecon_canvas_size / 2 + 360;
-  const int kOffsetX = -frecon_canvas_size / 2 + 60;
+  const int kOffsetX =
+      -frecon_canvas_size / 2 + (draw_utils_->IsLocaleRightToLeft() ? 400 : 60);
 
   if (networks_.empty()) {
     // Okay to return here as there will be a callback to refresh the dropdown

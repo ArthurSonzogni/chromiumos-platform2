@@ -83,6 +83,8 @@ class DrawUtils : public DrawInterface {
 
   bool IsDetachable() override;
 
+  bool IsLocaleRightToLeft() override;
+
   void ShowButton(const std::string& message_token,
                   int offset_y,
                   bool is_selected,
@@ -123,10 +125,6 @@ class DrawUtils : public DrawInterface {
     // Reload locale dependent dimension constants.
     ReadDimensionConstants();
   }
-
-  // Override whether current language is marked as being read from right to
-  // left. Does not change language.
-  void SetLocaleRtlForTest(bool is_rtl) { right_to_left_ = is_rtl; }
 
  protected:
   FRIEND_TEST(DrawUtilsTest, InstructionsWithTitle);
@@ -171,10 +169,6 @@ class DrawUtils : public DrawInterface {
   // Gets frecon constants defined at initialization by Upstart job.
   void GetFreconConstants();
 
-  // Checks whether the current language is read from right to left. Must be
-  // updated every time the language changes.
-  void CheckRightToLeft();
-
   // Get hardware Id from crossystem. Set hwid to `CHROMEBOOK` as default.
   void ReadHardwareId();
 
@@ -192,9 +186,6 @@ class DrawUtils : public DrawInterface {
 
   // Default and fall back locale directory.
   std::string locale_{"en-US"};
-
-  // Whether the locale is read from right to left.
-  bool right_to_left_{false};
 
   // Key value pairs that store token name and measurements.
   base::StringPairs image_dimensions_;

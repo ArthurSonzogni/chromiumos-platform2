@@ -66,6 +66,7 @@ class MockDrawInterface : public DrawInterface {
   MOCK_METHOD(int, GetDefaultButtonWidth, ());
   MOCK_METHOD(int, GetFreconCanvasSize, ());
   MOCK_METHOD(base::FilePath, GetScreenPath, ());
+  MOCK_METHOD(bool, IsLocaleRightToLeft, ());
 };
 
 }  // namespace minios
