@@ -16,8 +16,8 @@
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
-#include "trunks/interface.pb.h"
 #include "trunks/mock_dbus_bus.h"
+#include "trunks/trunks_interface.pb.h"
 
 using testing::_;
 using testing::NiceMock;

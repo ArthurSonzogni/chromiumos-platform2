@@ -14,8 +14,8 @@
 #include <brillo/dbus/dbus_object.h>
 
 #include "trunks/command_transceiver.h"
-#include "trunks/interface.pb.h"
 #include "trunks/power_manager.h"
+#include "trunks/trunks_interface.pb.h"
 
 namespace trunks {
 

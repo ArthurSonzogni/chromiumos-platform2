@@ -56,7 +56,7 @@ config("target_defaults") {
 proto_library("interface_proto") {
   proto_in_dir = "."
   proto_out_dir = "include/trunks"
-  sources = [ "${proto_in_dir}/interface.proto" ]
+  sources = [ "${proto_in_dir}/trunks_interface.proto" ]
 
   # Use -fPIC so this code can be linked into a shared library.
   use_pic = true
