@@ -51,7 +51,7 @@ base::ScopedFD PrepareSocket(const std::string& identifier,
                                           identifier.c_str(), pid, severity);
 
   // Send headers (tag and severity).
-  if (!base::WriteFileDescriptor(sock.get(), header.c_str(), header.size())) {
+  if (!base::WriteFileDescriptor(sock.get(), header)) {
     PLOG(ERROR) << "writing headers on stream socket";
     return base::ScopedFD();
   }
