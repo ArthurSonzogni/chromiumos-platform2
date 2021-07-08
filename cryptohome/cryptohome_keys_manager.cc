@@ -5,6 +5,7 @@
 #include "cryptohome/cryptohome_keys_manager.h"
 #include <memory>
 
+#include "cryptohome/cryptohome_ecc_key_loader.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_rsa_key_loader.h"
 
@@ -29,7 +30,11 @@ struct KeyLoaderPair {
 };
 
 KeyLoaderPair kKeyLoaderPairs[] = {
-    {CryptohomeKeyType::kRSA, MakeUniqueKeyLoader<CryptohomeRsaKeyLoader>}};
+    {CryptohomeKeyType::kRSA, MakeUniqueKeyLoader<CryptohomeRsaKeyLoader>},
+#if USE_TPM2
+    {CryptohomeKeyType::kECC, MakeUniqueKeyLoader<CryptohomeEccKeyLoader>},
+#endif
+};
 
 }  // namespace
 
