@@ -58,4 +58,11 @@ bool EventSubscriber::SubscribeToNetworkEvents() {
   return mojo_adapter_->AddNetworkObserver(std::move(remote));
 }
 
+bool EventSubscriber::SubscribeToAudioEvents() {
+  mojo::PendingRemote<mojo_ipc::CrosHealthdAudioObserver> remote;
+  audio_subscriber_ = std::make_unique<AudioSubscriber>(
+      remote.InitWithNewPipeAndPassReceiver());
+  return mojo_adapter_->AddAudioObserver(std::move(remote));
+}
+
 }  // namespace diagnostics

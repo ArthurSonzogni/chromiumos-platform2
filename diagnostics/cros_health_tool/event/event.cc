@@ -31,6 +31,7 @@ enum class EventCategory {
   kPower,
   kBluetooth,
   kNetwork,
+  kAudio,
 };
 
 constexpr std::pair<const char*, EventCategory> kCategorySwitches[] = {
@@ -38,6 +39,7 @@ constexpr std::pair<const char*, EventCategory> kCategorySwitches[] = {
     {"power", EventCategory::kPower},
     {"bluetooth", EventCategory::kBluetooth},
     {"network", EventCategory::kNetwork},
+    {"audio", EventCategory::kAudio},
 };
 
 // Create a stringified list of the category names for use in help.
@@ -99,6 +101,9 @@ int event_main(int argc, char** argv) {
       break;
     case EventCategory::kNetwork:
       success = event_subscriber.SubscribeToNetworkEvents();
+      break;
+    case EventCategory::kAudio:
+      success = event_subscriber.SubscribeToAudioEvents();
       break;
   }
 

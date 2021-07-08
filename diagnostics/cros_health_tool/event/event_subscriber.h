@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "diagnostics/cros_health_tool/event/audio_subscriber.h"
 #include "diagnostics/cros_health_tool/event/bluetooth_subscriber.h"
 #include "diagnostics/cros_health_tool/event/lid_subscriber.h"
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
@@ -40,6 +41,10 @@ class EventSubscriber final {
   // false on failure.
   bool SubscribeToPowerEvents();
 
+  // Subscribes to cros_healthd's audio events. Returns true on success and
+  // false on failure.
+  bool SubscribeToAudioEvents();
+
  private:
   // Allows mojo communication with cros_healthd.
   std::unique_ptr<CrosHealthdMojoAdapter> mojo_adapter_;
@@ -52,6 +57,8 @@ class EventSubscriber final {
   std::unique_ptr<NetworkSubscriber> network_subscriber_;
   // Used to subscribe to power events.
   std::unique_ptr<PowerSubscriber> power_subscriber_;
+  // Used to subscribe to audio events.
+  std::unique_ptr<AudioSubscriber> audio_subscriber_;
 };
 
 }  // namespace diagnostics

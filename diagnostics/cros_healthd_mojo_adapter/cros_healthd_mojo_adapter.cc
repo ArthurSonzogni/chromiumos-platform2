@@ -201,6 +201,11 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
           chromeos::network_health::mojom::NetworkEventsObserver> observer)
       override;
 
+  // Subscribes the client to audio events.
+  bool AddAudioObserver(mojo::PendingRemote<
+                        chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+                            observer) override;
+
  private:
   // Establishes a mojo connection with cros_healthd.
   bool Connect();
@@ -878,6 +883,16 @@ bool CrosHealthdMojoAdapterImpl::AddNetworkObserver(
     return false;
 
   cros_healthd_event_service_->AddNetworkObserver(std::move(observer));
+  return true;
+}
+
+bool CrosHealthdMojoAdapterImpl::AddAudioObserver(
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+        observer) {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
+
+  cros_healthd_event_service_->AddAudioObserver(std::move(observer));
   return true;
 }
 

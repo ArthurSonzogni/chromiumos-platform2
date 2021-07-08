@@ -20,6 +20,7 @@ source_set("libevent") {
     "//diagnostics/mojo:cros_healthd_mojo_bindings",
   ]
   sources = [
+    "audio_subscriber.cc",
     "bluetooth_subscriber.cc",
     "event.cc",
     "event_subscriber.cc",

@@ -200,6 +200,12 @@ class CrosHealthdMojoAdapter {
   virtual bool AddNetworkObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer) = 0;
+
+  // Subscribes the client to audio events.
+  virtual bool AddAudioObserver(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics
