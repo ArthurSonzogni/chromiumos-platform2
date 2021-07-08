@@ -311,12 +311,6 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
   callback.Run(reply);
 }
 
-void RmadInterfaceImpl::GetLogPath(const GetLogPathCallback& callback) {
-  // TODO(gavindodd): Return a valid log file path and add tests.
-  std::string path = "";
-  callback.Run(path);
-}
-
 bool RmadInterfaceImpl::CanGoBack() const {
   if (state_history_.size() > 1) {
     const auto current_state_handler =

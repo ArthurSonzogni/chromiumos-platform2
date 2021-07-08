@@ -56,10 +56,6 @@ class RmadInterface {
 
   // Returns whether it's allowed to abort RMA now.
   virtual bool CanAbort() const = 0;
-
-  using GetLogPathCallback = base::Callback<void(const std::string&)>;
-  // Get the path to the RMA log file.
-  virtual void GetLogPath(const GetLogPathCallback& callback) = 0;
 };
 
 }  // namespace rmad

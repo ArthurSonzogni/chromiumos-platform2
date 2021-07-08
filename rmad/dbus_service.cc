@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/process/launch.h>
 #include <brillo/dbus/data_serialization.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
@@ -119,6 +120,12 @@ struct DBusType<ProvisionDeviceState::ProvisioningStep> {
 
 namespace rmad {
 
+namespace {
+
+const char kCroslogCmd[] = "/usr/sbin/croslog";
+
+}  // namespace
+
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
 
@@ -135,7 +142,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
 }
 
 int DBusService::OnInit() {
-  LOG(INFO) << "Starting DBus service";
+  VLOG(1) << "Starting DBus service";
   const int exit_code = DBusServiceDaemon::OnInit();
   return exit_code;
 }
@@ -165,9 +172,11 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       kAbortRmaMethod, base::Unretained(this),
       &DBusService::HandleMethod<AbortRmaReply, &RmadInterface::AbortRma>);
 
-  dbus_interface->AddMethodHandler(
-      kGetLogPathMethod, base::Unretained(this),
-      &DBusService::HandleMethod<std::string, &RmadInterface::GetLogPath>);
+  dbus_interface->AddSimpleMethodHandler(kGetLogPathMethod,
+                                         base::Unretained(this),
+                                         &DBusService::HandleGetLogPathMethod);
+  dbus_interface->AddSimpleMethodHandler(kGetLogMethod, base::Unretained(this),
+                                         &DBusService::HandleGetLogMethod);
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
   calibration_signal_ =
@@ -205,6 +214,22 @@ void DBusService::RegisterSignalSenders() {
           base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
           base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
                               base::Unretained(this))));
+}
+
+std::string DBusService::HandleGetLogPathMethod() {
+  return "not_supported";
+}
+
+GetLogReply DBusService::HandleGetLogMethod() {
+  GetLogReply reply;
+  std::string log_string;
+  if (base::GetAppOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
+    reply.set_log(log_string);
+  } else {
+    LOG(ERROR) << "Failed to generate logs from croslog";
+    reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
+  }
+  return reply;
 }
 
 bool DBusService::SendErrorSignal(RmadErrorCode error) {
@@ -245,6 +270,7 @@ void DBusService::ConditionallyQuit() {
 
 void DBusService::PostQuitTask() {
   if (bus_) {
+    VLOG(1) << "Stopping DBus service";
     bus_->GetOriginTaskRunner()->PostTask(
         FROM_HERE, base::Bind(&Daemon::Quit, base::Unretained(this)));
   }

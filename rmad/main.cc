@@ -47,6 +47,7 @@ void EnterMinijail() {
 
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
+  minijail_bind(j.get(), "/var/log", "/var/log", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
@@ -55,13 +56,13 @@ void EnterMinijail() {
   rmad::CrosSystemUtilsImpl crossystem_utils;
   int wpsw_cur;
   if (crossystem_utils.GetInt("wpsw_cur", &wpsw_cur) && wpsw_cur == 0) {
-    LOG(INFO) << "Hardware write protection off.";
+    VLOG(1) << "Hardware write protection off.";
     minijail_use_caps(
         j.get(), CAP_TO_MASK(CAP_SYS_RAWIO) | CAP_TO_MASK(CAP_DAC_OVERRIDE));
     minijail_set_ambient_caps(j.get());
     minijail_bind(j.get(), "/dev/mem", "/dev/mem", 0);
   } else {
-    LOG(INFO) << "Hardware write protection on.";
+    VLOG(1) << "Hardware write protection on.";
   }
 
   minijail_use_seccomp_filter(j.get());
@@ -72,7 +73,8 @@ void EnterMinijail() {
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  LOG(INFO) << "Starting Chrome OS RMA Daemon.";
+  VLOG(1) << "Starting Chrome OS RMA Daemon.";
+
   EnterMinijail();
 
   rmad::RmadInterfaceImpl rmad_interface;

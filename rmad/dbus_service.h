@@ -6,6 +6,7 @@
 #define RMAD_DBUS_SERVICE_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <brillo/daemons/dbus_daemon.h>
@@ -98,6 +99,9 @@ class DBusService : public brillo::DBusServiceDaemon {
         base::Bind(&DBusService::SendReply<ReplyType>, base::Unretained(this),
                    SharedResponsePointer(std::move(response))));
   }
+
+  std::string HandleGetLogPathMethod();
+  GetLogReply HandleGetLogMethod();
 
   // Template for sending out the reply.
   template <typename ReplyType>

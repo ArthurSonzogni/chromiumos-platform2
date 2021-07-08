@@ -178,7 +178,7 @@ void JsonStore::InitFromFile() {
       NOTREACHED();
       break;
   }
-  DLOG(INFO) << "JsonStore::InitFromFile complete.";
+  VLOG(2) << "JsonStore::InitFromFile complete.";
 }
 
 std::unique_ptr<JsonStore::ReadResult> JsonStore::ReadFromFile() {

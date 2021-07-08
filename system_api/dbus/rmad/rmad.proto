@@ -129,8 +129,11 @@ enum RmadErrorCode {
   // It is not possible to cancel RMA finalization process at this point.
   RMAD_ERROR_CANNOT_CANCEL_RMA = 38;
 
+  // Failed to get logs.
+  RMAD_ERROR_CANNOT_GET_LOG = 39;
+
   // TODO(genechang): Legacy, remove it in the future.
-  RMAD_ERROR_MISSING_CALIBRATION_COMPONENT = 39;
+  RMAD_ERROR_MISSING_CALIBRATION_COMPONENT = 40;
 }
 
 // Defined Rmad components.
@@ -563,4 +566,10 @@ message GetStateReply {
 // Reply for AbortRma.
 message AbortRmaReply {
   RmadErrorCode error = 1;
+}
+
+// Reply for GetLog.
+message GetLogReply {
+  RmadErrorCode error = 1;
+  string log = 2;
 }

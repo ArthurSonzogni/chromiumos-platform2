@@ -200,16 +200,12 @@ TEST_F(DBusServiceTest, AbortRma) {
 }
 
 TEST_F(DBusServiceTest, GetLogPath) {
+  // This method doesn't call |mock_rma_service_|.
   RegisterDBusObjectAsync();
-
-  EXPECT_CALL(mock_rmad_service_, GetLogPath(_))
-      .WillOnce(Invoke([](const RmadInterface::GetLogPathCallback& callback) {
-        callback.Run("/some/path/to/rma/log.file");
-      }));
 
   std::string reply;
   ExecuteMethod(kGetLogPathMethod, &reply);
-  EXPECT_EQ("/some/path/to/rma/log.file", reply);
+  EXPECT_EQ("not_supported", reply);
 }
 
 TEST_F(DBusServiceTest, SignalError) {
