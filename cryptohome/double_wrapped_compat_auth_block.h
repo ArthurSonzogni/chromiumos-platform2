@@ -18,12 +18,12 @@
 namespace cryptohome {
 
 class Tpm;
-class CryptohomeKeyLoader;
+class CryptohomeKeysManager;
 
 class DoubleWrappedCompatAuthBlock : public AuthBlock {
  public:
   DoubleWrappedCompatAuthBlock(Tpm* tpm,
-                               CryptohomeKeyLoader* cryptohome_key_loader);
+                               CryptohomeKeysManager* cryptohome_keys_manager);
   DoubleWrappedCompatAuthBlock(const DoubleWrappedCompatAuthBlock&) = delete;
   DoubleWrappedCompatAuthBlock& operator=(const DoubleWrappedCompatAuthBlock&) =
       delete;

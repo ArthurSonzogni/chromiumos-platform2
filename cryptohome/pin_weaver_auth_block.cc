@@ -130,12 +130,14 @@ const struct {
 }  // namespace
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(
-    LECredentialManager* le_manager, CryptohomeKeyLoader* cryptohome_key_loader)
+    LECredentialManager* le_manager,
+    CryptohomeKeysManager* cryptohome_keys_manager)
     : AuthBlock(kLowEntropyCredential),
       le_manager_(le_manager),
-      cryptohome_key_loader_(cryptohome_key_loader) {
+      cryptohome_key_loader_(
+          cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)) {
   CHECK_NE(le_manager, nullptr);
-  CHECK_NE(cryptohome_key_loader, nullptr);
+  CHECK_NE(cryptohome_key_loader_, nullptr);
 }
 
 base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(

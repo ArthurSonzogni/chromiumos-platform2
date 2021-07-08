@@ -505,9 +505,10 @@ class UserDataAuth {
   // Override |tpm_| for testing purpose
   void set_tpm(Tpm* tpm) { tpm_ = tpm; }
 
-  // Override |cryptohome_key_loader_| for testing purpose
-  void set_cryptohome_key_loader(CryptohomeKeyLoader* cryptohome_key_loader) {
-    cryptohome_key_loader_ = cryptohome_key_loader;
+  // Override |cryptohome_keys_manager_| for testing purpose
+  void set_cryptohome_keys_manager(
+      CryptohomeKeysManager* cryptohome_keys_manager) {
+    cryptohome_keys_manager_ = cryptohome_keys_manager;
   }
 
   // Override |tpm_manager_util_| for testing purpose
@@ -931,10 +932,10 @@ class UserDataAuth {
   Tpm* tpm_;
 
   // The default cryptohome key loader object
-  std::unique_ptr<CryptohomeKeyLoader> default_cryptohome_key_loader_;
+  std::unique_ptr<CryptohomeKeysManager> default_cryptohome_keys_manager_;
 
   // The cryptohome key loader object
-  CryptohomeKeyLoader* cryptohome_key_loader_;
+  CryptohomeKeysManager* cryptohome_keys_manager_;
 
   tpm_manager::TpmManagerUtility* tpm_manager_util_;
 

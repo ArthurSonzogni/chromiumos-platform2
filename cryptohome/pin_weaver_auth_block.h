@@ -16,7 +16,7 @@ namespace cryptohome {
 class PinWeaverAuthBlock : public AuthBlock {
  public:
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager,
-                              CryptohomeKeyLoader* cryptohome_key_loader);
+                              CryptohomeKeysManager* cryptohome_keys_manager);
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 

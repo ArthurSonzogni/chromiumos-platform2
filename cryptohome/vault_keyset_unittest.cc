@@ -24,7 +24,7 @@
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/mock_cryptohome_key_loader.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -432,7 +432,7 @@ std::string HexDecode(const std::string& hex) {
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest() : crypto_(&platform_) {
-    EXPECT_CALL(cryptohome_key_loader_, Init())
+    EXPECT_CALL(cryptohome_keys_manager_, Init())
         .WillOnce(Return());  // because HasCryptohomeKey returned false once.
 
     EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
@@ -449,7 +449,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
 
-    crypto_.Init(&tpm_, &cryptohome_key_loader_);
+    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
     pin_vault_keyset_.Initialize(&platform_, &crypto_);
   }
@@ -466,7 +466,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
   MockPlatform platform_;
   Crypto crypto_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   MockLECredentialManager* le_cred_manager_;
 
   VaultKeyset pin_vault_keyset_;

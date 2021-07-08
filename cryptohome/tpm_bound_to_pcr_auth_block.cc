@@ -19,7 +19,7 @@
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
@@ -28,13 +28,14 @@
 namespace cryptohome {
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
-    Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader)
+    Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager)
     : AuthBlock(kTpmBackedPcrBound),
       tpm_(tpm),
-      cryptohome_key_loader_(cryptohome_key_loader),
-      utils_(tpm, cryptohome_key_loader) {
+      cryptohome_key_loader_(
+          cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)),
+      utils_(tpm, cryptohome_key_loader_) {
   CHECK(tpm != nullptr);
-  CHECK(cryptohome_key_loader != nullptr);
+  CHECK(cryptohome_key_loader_ != nullptr);
 
   // Create the scrypt thread.
   // TODO(yich): Create another thread in userdataauth and passing it to here.

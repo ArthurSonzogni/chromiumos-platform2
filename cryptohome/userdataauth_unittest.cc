@@ -31,7 +31,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_crypto.h"
-#include "cryptohome/mock_cryptohome_key_loader.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -121,7 +121,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_install_attrs(&attrs_);
     userdataauth_->set_tpm(&tpm_);
-    userdataauth_->set_cryptohome_key_loader(&cryptohome_key_loader_);
+    userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
@@ -206,7 +206,7 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Mock Cryptohome Key Loader object, will be passed to UserDataAuth for its
   // internal use.
-  NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
 
   // Mock TPM Manager utility object, will be passed to UserDataAuth for its
   // internal use.

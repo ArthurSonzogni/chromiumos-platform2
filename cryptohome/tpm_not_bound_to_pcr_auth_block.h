@@ -13,7 +13,7 @@
 #include <base/macros.h>
 
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -23,7 +23,7 @@ namespace cryptohome {
 class TpmNotBoundToPcrAuthBlock : public AuthBlock {
  public:
   TpmNotBoundToPcrAuthBlock(Tpm* tpm,
-                            CryptohomeKeyLoader* cryptohome_key_loader);
+                            CryptohomeKeysManager* cryptohome_keys_manager);
   TpmNotBoundToPcrAuthBlock(const TpmNotBoundToPcrAuthBlock&) = delete;
   TpmNotBoundToPcrAuthBlock& operator=(const TpmNotBoundToPcrAuthBlock&) =
       delete;

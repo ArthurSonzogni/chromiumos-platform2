@@ -31,7 +31,7 @@
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
@@ -61,20 +61,20 @@ const mode_t kSaltFilePermissions = 0644;
 Crypto::Crypto(Platform* platform)
     : tpm_(NULL),
       platform_(platform),
-      cryptohome_key_loader_(NULL),
+      cryptohome_keys_manager_(NULL),
       disable_logging_for_tests_(false) {}
 
 Crypto::~Crypto() {}
 
-bool Crypto::Init(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader) {
-  CHECK(cryptohome_key_loader)
-      << "Crypto wanted to use CryptohomeKeyLoader but was not provided";
+bool Crypto::Init(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager) {
+  CHECK(cryptohome_keys_manager)
+      << "Crypto wanted to use CryptohomeKeysManager but was not provided";
   CHECK(tpm) << "Crypto wanted to use Tpm but was not provided";
   if (tpm_ == NULL) {
     tpm_ = tpm;
   }
-  cryptohome_key_loader_ = cryptohome_key_loader;
-  cryptohome_key_loader_->Init();
+  cryptohome_keys_manager_ = cryptohome_keys_manager;
+  cryptohome_keys_manager_->Init();
   if (tpm_->GetLECredentialBackend() &&
       tpm_->GetLECredentialBackend()->IsSupported()) {
     le_manager_ = std::make_unique<LECredentialManagerImpl>(
@@ -85,9 +85,9 @@ bool Crypto::Init(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader) {
 
 CryptoError Crypto::EnsureTpm(bool reload_key) const {
   CryptoError result = CryptoError::CE_NONE;
-  if (tpm_ && cryptohome_key_loader_) {
-    if (reload_key || !cryptohome_key_loader_->HasCryptohomeKey()) {
-      cryptohome_key_loader_->Init();
+  if (tpm_ && cryptohome_keys_manager_) {
+    if (reload_key || !cryptohome_keys_manager_->HasAnyCryptohomeKey()) {
+      cryptohome_keys_manager_->Init();
     }
   }
   return result;
@@ -270,10 +270,10 @@ bool Crypto::RemoveLECredential(uint64_t label) const {
 }
 
 bool Crypto::is_cryptohome_key_loaded() const {
-  if (tpm_ == NULL || cryptohome_key_loader_ == NULL) {
+  if (tpm_ == NULL || cryptohome_keys_manager_ == NULL) {
     return false;
   }
-  return cryptohome_key_loader_->HasCryptohomeKey();
+  return cryptohome_keys_manager_->HasAnyCryptohomeKey();
 }
 
 bool Crypto::CanUnsealWithUserAuth() const {

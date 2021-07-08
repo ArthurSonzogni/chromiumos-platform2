@@ -148,8 +148,8 @@ UserDataAuth::UserDataAuth()
       mount_thread_(nullptr),
       system_salt_(),
       tpm_(nullptr),
-      default_cryptohome_key_loader_(nullptr),
-      cryptohome_key_loader_(nullptr),
+      default_cryptohome_keys_manager_(nullptr),
+      cryptohome_keys_manager_(nullptr),
       tpm_manager_util_(nullptr),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
@@ -219,13 +219,13 @@ bool UserDataAuth::Initialize() {
     tpm_ = Tpm::GetSingleton();
   }
 
-  // Note that we check to see if |cryptohome_key_loader_| is available here
+  // Note that we check to see if |cryptohome_keys_manager_| is available here
   // because it may have been set to an overridden value during unit testing
   // before Initialize() is called.
-  if (!cryptohome_key_loader_) {
-    default_cryptohome_key_loader_.reset(
-        new CryptohomeRsaKeyLoader(tpm_, platform_));
-    cryptohome_key_loader_ = default_cryptohome_key_loader_.get();
+  if (!cryptohome_keys_manager_) {
+    default_cryptohome_keys_manager_.reset(
+        new CryptohomeKeysManager(tpm_, platform_));
+    cryptohome_keys_manager_ = default_cryptohome_keys_manager_.get();
   }
 
   // Initialize Firmware Management Parameters
@@ -235,7 +235,7 @@ bool UserDataAuth::Initialize() {
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
-  if (!crypto_->Init(tpm_, cryptohome_key_loader_)) {
+  if (!crypto_->Init(tpm_, cryptohome_keys_manager_)) {
     return false;
   }
 
@@ -303,9 +303,9 @@ bool UserDataAuth::Initialize() {
     platform_->TouchFileDurable(base::FilePath(kNotFirstBootFilePath));
   }
 
-  // We expect |tpm_| and |cryptohome_key_loader_| to be available by this
+  // We expect |tpm_| and |cryptohome_keys_manager_| to be available by this
   // point.
-  DCHECK(tpm_ && cryptohome_key_loader_);
+  DCHECK(tpm_ && cryptohome_keys_manager_);
 
   // Seed /dev/urandom
   SeedUrandom();
@@ -2976,7 +2976,10 @@ std::string UserDataAuth::GetStatusString() {
   auto attrs = install_attrs_->GetStatus();
 
   Tpm::TpmStatusInfo tpm_status_info;
-  tpm_->GetStatus(cryptohome_key_loader_->GetCryptohomeKey(), &tpm_status_info);
+  tpm_->GetStatus(
+      cryptohome_keys_manager_->GetKeyLoader(CryptohomeKeyType::kRSA)
+          ->GetCryptohomeKey(),
+      &tpm_status_info);
 
   base::Value tpm(base::Value::Type::DICTIONARY);
   tpm.SetBoolKey("can_connect", tpm_status_info.can_connect);

@@ -15,7 +15,7 @@
 #include <base/threading/thread.h>
 
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -24,7 +24,8 @@ namespace cryptohome {
 
 class TpmBoundToPcrAuthBlock : public AuthBlock {
  public:
-  TpmBoundToPcrAuthBlock(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader);
+  TpmBoundToPcrAuthBlock(Tpm* tpm,
+                         CryptohomeKeysManager* cryptohome_keys_manager);
   TpmBoundToPcrAuthBlock(const TpmBoundToPcrAuthBlock&) = delete;
   TpmBoundToPcrAuthBlock& operator=(const TpmBoundToPcrAuthBlock&) = delete;
 

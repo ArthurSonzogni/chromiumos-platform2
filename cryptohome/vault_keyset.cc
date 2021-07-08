@@ -871,7 +871,7 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
     LOG(ERROR) << "LE Credential block.";
     ReportCreateAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(
-        crypto_->le_manager(), crypto_->cryptohome_key_loader());
+        crypto_->le_manager(), crypto_->cryptohome_keys_manager());
   }
 
   if (IsSignatureChallengeProtected()) {
@@ -890,7 +890,7 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
 
     ReportCreateAuthBlock(AuthBlockType::kTpmBoundToPcr);
     return std::make_unique<TpmBoundToPcrAuthBlock>(
-        crypto_->tpm(), crypto_->cryptohome_key_loader());
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
   }
 
   if (use_tpm && !with_user_auth) {
@@ -898,7 +898,7 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
 
     ReportCreateAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
     return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-        crypto_->tpm(), crypto_->cryptohome_key_loader());
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
   }
 
   ReportCreateAuthBlock(AuthBlockType::kLibScryptCompat);
@@ -910,7 +910,7 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
   if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
     ReportDeriveAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(
-        crypto_->le_manager(), crypto_->cryptohome_key_loader());
+        crypto_->le_manager(), crypto_->cryptohome_keys_manager());
   } else if (flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
     ReportDeriveAuthBlock(AuthBlockType::kChallengeCredential);
     return std::make_unique<ChallengeCredentialAuthBlock>();
@@ -918,16 +918,16 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
              flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
     ReportDeriveAuthBlock(AuthBlockType::kDoubleWrappedCompat);
     return std::make_unique<DoubleWrappedCompatAuthBlock>(
-        crypto_->tpm(), crypto_->cryptohome_key_loader());
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
   } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
     if (flags_ & SerializedVaultKeyset::PCR_BOUND) {
       ReportDeriveAuthBlock(AuthBlockType::kTpmBoundToPcr);
       return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_key_loader());
+          crypto_->tpm(), crypto_->cryptohome_keys_manager());
     } else {
       ReportDeriveAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
       return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_key_loader());
+          crypto_->tpm(), crypto_->cryptohome_keys_manager());
     }
   } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) {
     ReportDeriveAuthBlock(AuthBlockType::kLibScryptCompat);

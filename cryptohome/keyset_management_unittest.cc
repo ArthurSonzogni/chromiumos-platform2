@@ -25,7 +25,8 @@
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/le_credential_manager_impl.h"
-#include "cryptohome/mock_cryptohome_key_loader.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
@@ -1061,15 +1062,15 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
       users_[0].credentials, /* error */ nullptr);
   ASSERT_NE(vk0.get(), nullptr);
 
-  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
-  EXPECT_CALL(mock_cryptohome_key_loader, HasCryptohomeKey())
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  EXPECT_CALL(mock_cryptohome_keys_manager, HasAnyCryptohomeKey())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_cryptohome_key_loader, Init()).WillRepeatedly(Return());
+  EXPECT_CALL(mock_cryptohome_keys_manager, Init()).WillRepeatedly(Return());
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
 
   // TEST
 
@@ -1103,12 +1104,12 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
 
 TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   // SETUP
-  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
   FakeLECredentialBackend fake_backend_;
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
 
   KeysetSetUpWithKeyData(DefaultLEKeyData());
 
@@ -1116,9 +1117,9 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
       users_[0].credentials, /* error */ nullptr);
   ASSERT_NE(vk0.get(), nullptr);
 
-  EXPECT_CALL(mock_cryptohome_key_loader, HasCryptohomeKey())
+  EXPECT_CALL(mock_cryptohome_keys_manager, HasAnyCryptohomeKey())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_cryptohome_key_loader, Init()).WillRepeatedly(Return());
+  EXPECT_CALL(mock_cryptohome_keys_manager, Init()).WillRepeatedly(Return());
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
@@ -1137,12 +1138,12 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
 
 TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // SETUP
-  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
   FakeLECredentialBackend fake_backend_;
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
-  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
 
   // Setup initial user.
   KeysetSetUpWithKeyData(DefaultKeyData());

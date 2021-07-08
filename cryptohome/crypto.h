@@ -24,7 +24,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptohome_key_loader.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -45,7 +45,7 @@ class Crypto {
   virtual ~Crypto();
 
   // Initializes Crypto
-  virtual bool Init(Tpm* tpm, CryptohomeKeyLoader* cryptohome_key_loader);
+  virtual bool Init(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager);
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -105,9 +105,9 @@ class Crypto {
   // Gets the TPM implementation
   Tpm* tpm() { return tpm_; }
 
-  // Gets the CryptohomeKeyLoader object.
-  CryptohomeKeyLoader* cryptohome_key_loader() {
-    return cryptohome_key_loader_;
+  // Gets the CryptohomeKeysManager object.
+  CryptohomeKeysManager* cryptohome_keys_manager() {
+    return cryptohome_keys_manager_;
   }
 
   // Gets an instance of the LECredentialManagerImpl object.
@@ -161,8 +161,8 @@ class Crypto {
   // Platform abstraction
   Platform* platform_;
 
-  // The CryptohomeKeyLoader object used to reload Cryptohome key
-  CryptohomeKeyLoader* cryptohome_key_loader_;
+  // The CryptohomeKeysManager object used to reload Cryptohome keys
+  CryptohomeKeysManager* cryptohome_keys_manager_;
 
   // Handler for Low Entropy credentials.
   std::unique_ptr<LECredentialManager> le_manager_;
