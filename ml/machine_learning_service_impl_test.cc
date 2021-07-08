@@ -419,6 +419,10 @@ void CheckOutputTensor(const std::vector<int64_t> expected_shape,
 
 // Tests that Clone() connects to a working impl.
 TEST(MachineLearningServiceImplTest, Clone) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -472,6 +476,10 @@ TEST(MachineLearningServiceImplTest, TestBadModel) {
 
 // Tests loading an empty model through the downloaded model api.
 TEST(MachineLearningServiceImplTest, EmptyModelString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -500,6 +508,10 @@ TEST(MachineLearningServiceImplTest, EmptyModelString) {
 
 // Tests loading a bad model string through the downloaded model api.
 TEST(MachineLearningServiceImplTest, BadModelString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -528,6 +540,10 @@ TEST(MachineLearningServiceImplTest, BadModelString) {
 
 // Tests loading TEST_MODEL through the builtin model api.
 TEST(MachineLearningServiceImplTest, TestModel) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -586,6 +602,10 @@ TEST(MachineLearningServiceImplTest, TestModel) {
 
 // Tests loading TEST_MODEL through the downloaded model api.
 TEST(MachineLearningServiceImplTest, TestModelString) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -635,6 +655,10 @@ TEST(MachineLearningServiceImplTest, TestModelString) {
 // Tests that the Smart Dim (20181115) model file loads correctly and produces
 // the expected inference result.
 TEST(BuiltinModelInferenceTest, SmartDim20181115) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -672,6 +696,10 @@ TEST(BuiltinModelInferenceTest, SmartDim20181115) {
 // Tests that the Smart Dim (20190221) model file loads correctly and produces
 // the expected inference result.
 TEST(BuiltinModelInferenceTest, SmartDim20190221) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -708,6 +736,10 @@ TEST(BuiltinModelInferenceTest, SmartDim20190221) {
 // Tests that the Smart Dim (20190521) model file loads correctly and produces
 // the expected inference result.
 TEST(BuiltinModelInferenceTest, SmartDim20190521) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -780,6 +812,10 @@ TEST(BuiltinModelInferenceTest, SearchRanker20190923) {
 // Tests that the Smart Dim (20200206) model file loads correctly and
 // produces the expected inference result.
 TEST(DownloadableModelInferenceTest, SmartDim20200206) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());
@@ -831,6 +867,10 @@ TEST(DownloadableModelInferenceTest, SmartDim20200206) {
 // Tests that the Smart Dim (20210201) model file loads correctly and
 // produces the expected inference result.
 TEST(DownloadableModelInferenceTest, SmartDim20210201) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImplForTesting ml_service_impl(
       ml_service.BindNewPipeAndPassReceiver());

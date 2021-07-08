@@ -9,18 +9,11 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <brillo/message_loops/message_loop.h>
 
+#include "base/debug/leak_annotations.h"
 #include "ml/graph_executor_delegate.h"
 #include "ml/machine_learning_service_impl.h"
-
-namespace {
-
-// Callback for self-owned ModelImpl's to delete themselves upon disconnection.
-void DeleteModelImpl(const ml::ModelImpl* const model_impl) {
-  delete model_impl;
-}
-
-}  // namespace
 
 namespace ml {
 
@@ -34,9 +27,18 @@ ModelImpl* ModelImpl::Create(std::unique_ptr<ModelDelegate> model_delegate,
                              mojo::PendingReceiver<Model> receiver) {
   auto model_impl =
       new ModelImpl(std::move(model_delegate), std::move(receiver));
-  // Use a disconnection handler to strongly bind `model_impl` to `receiver`.
-  model_impl->set_disconnect_handler(
-      base::BindOnce(&DeleteModelImpl, base::Unretained(model_impl)));
+  // In production, `model_impl` is intentionally leaked, because this model
+  // runs in its own process and the model's memory is freed when the process
+  // exits. However, when being tested with ASAN, this memory leak causes an
+  // error. Therefore, we annotate it as an intentional leak.
+  ANNOTATE_LEAKING_OBJECT_PTR(model_impl);
+
+  //  Set the disconnection handler to quit the message loop (i.e. exit the
+  //  process) when the connection is gone, because this model is always run in
+  //  a dedicated process.
+  model_impl->receiver_.set_disconnect_handler(
+      base::BindOnce(&brillo::MessageLoop::BreakLoop,
+                     base::Unretained(brillo::MessageLoop::current())));
 
   return model_impl;
 }

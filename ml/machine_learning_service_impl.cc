@@ -197,6 +197,29 @@ void MachineLearningServiceImpl::LoadBuiltinModel(
     return;
   }
 
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "BuiltinModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics have already been reported in
+      // `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadBuiltinModel(std::move(spec), std::move(receiver),
+                           std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
+
   const BuiltinModelMetadata& metadata = metadata_lookup->second;
 
   DCHECK(!metadata.metrics_model_name.empty());
@@ -235,6 +258,29 @@ void MachineLearningServiceImpl::LoadFlatBufferModel(
 
   RequestMetrics request_metrics(spec->metrics_model_name, kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
+
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "FlatBufferModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics have already been reported in
+      // `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadFlatBufferModel(std::move(spec), std::move(receiver),
+                              std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
 
   // Take the ownership of the content of `model_string` because `ModelDelegate`
   // has to hold the memory.

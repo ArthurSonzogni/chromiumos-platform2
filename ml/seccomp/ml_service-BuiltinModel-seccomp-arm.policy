@@ -1,0 +1,37 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This file lists out the seccomp policy for allowed syscalls for
+# BuiltinModel on ARM.
+brk: 1
+clock_gettime: 1
+clock_gettime64: 1
+close: 1
+connect: 1
+epoll_ctl: 1
+epoll_wait: 1
+eventfd2: 1
+exit: 1
+exit_group: 1
+faccessat: 1
+faccessat2: 1
+flock: 1
+fstat64: 1
+fstatat64: 1
+fstatfs: 1
+fstatfs64: 1
+futex: 1
+getpid: 1
+getrandom: 1
+gettid: 1
+_llseek: 1
+memfd_create: 1
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+openat: 1
+read: 1
+recvmsg: 1
+send: 1
+socket: arg0 == AF_UNIX
+statx: 1
+write: 1
