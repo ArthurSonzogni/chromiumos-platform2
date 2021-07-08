@@ -43,7 +43,7 @@ int MiniOs::Run() {
   LOG(INFO) << "Started shell in the background as pid: " << shell_pid;
   if (!screens_controller_.Init()) {
     LOG(ERROR) << "Screens init failed. Exiting.";
-    return 1;
+    return -1;
   }
 
   return 0;
