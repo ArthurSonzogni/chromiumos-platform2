@@ -2624,6 +2624,8 @@ mno {
       }
       username : "guest"
       password : "guest"
+      ip_type : IPV4V6
+      is_attach_apn : true
     }
   }
 }
