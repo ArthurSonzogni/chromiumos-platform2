@@ -32,15 +32,14 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 
   // TODO(gavindodd): How to mock this without making it virtual?
   // Returns the RmadState proto for this state.
-  virtual const RmadState& GetState() const { return state_; }
+  virtual const RmadState& GetState() const;
 
   // Returns whether the state is repeatable. A state is repeatable if it can be
   // run multiple times. For instance, a state that only shows system info, or
   // some calibration that can be done multiple times. We shouldn't visit an
-  // unrepeatable state twice, unless we restart the RMA process again. A state
-  // is unrepeatable by default, and can be set as repeatable by the macro
-  // SET_REPEATABLE.
-  virtual bool IsRepeatable() const { return false; }
+  // unrepeatable state twice, unless we restart the RMA process again. This can
+  // be set by the macro SET_REPEATABLE and SET_UNREPEATABLE.
+  virtual bool IsRepeatable() const = 0;
 
   // Initialize the state. Used when entering or returning to the state.
   virtual RmadErrorCode InitializeState() = 0;
@@ -82,6 +81,8 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 
 #define SET_REPEATABLE \
   bool IsRepeatable() const override { return true; }
+#define SET_UNREPEATABLE \
+  bool IsRepeatable() const override { return false; }
 
 }  // namespace rmad
 

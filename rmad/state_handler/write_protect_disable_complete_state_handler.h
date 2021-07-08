@@ -22,9 +22,8 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<Cr50Utils> cr50_utils);
 
-  // This state is not repeatable. Must go through the rest of the RMA flow
-  // after disabling write protection.
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
+  SET_UNREPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;

@@ -17,6 +17,10 @@ namespace rmad {
 BaseStateHandler::BaseStateHandler(scoped_refptr<JsonStore> json_store)
     : json_store_(json_store) {}
 
+const RmadState& BaseStateHandler::GetState() const {
+  return state_;
+}
+
 bool BaseStateHandler::StoreState() {
   std::map<std::string, std::string> state_map;
   json_store_->GetValue(kStateMap, &state_map);
