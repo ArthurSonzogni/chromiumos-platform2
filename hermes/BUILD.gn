@@ -21,6 +21,7 @@ pkg_config("target_defaults") {
     "jsoncpp",
     "libbrillo",
     "libchrome",
+    "libglib_bridge",
     "openssl",
     "protobuf-lite",
     "re2",

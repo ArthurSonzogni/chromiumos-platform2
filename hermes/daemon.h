@@ -9,6 +9,8 @@
 
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <glib-bridge/glib_bridge.h>
+#include <glib-bridge/glib_logger.h>
 #include <google-lpa/lpa/card/euicc_card.h>
 #include <google-lpa/lpa/core/lpa.h>
 
@@ -44,6 +46,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   AdaptorFactory adaptor_factory_;
 
   std::unique_ptr<Manager> manager_;
+
+  std::unique_ptr<glib_bridge::GlibBridge> glib_bridge_;
 };
 
 }  // namespace hermes

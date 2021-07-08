@@ -20,7 +20,10 @@ namespace hermes {
 Daemon::Daemon()
     : DBusServiceDaemon(kHermesServiceName),
       executor_(base::ThreadTaskRunnerHandle::Get()),
-      smdp_(&logger_, &executor_) {}
+      smdp_(&logger_, &executor_),
+      glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()) {
+  glib_bridge::ForwardLogs();
+}
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
