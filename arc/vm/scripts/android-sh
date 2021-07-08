@@ -29,5 +29,5 @@ exec /usr/bin/vsh \
   ANDROID_STORAGE=/storage \
   ASEC_MOUNTPOINT=/mnt/asec \
   EXTERNAL_STORAGE=/sdcard \
-  PATH=/sbin:/vendor/bin:/system/bin:/system/xbin \
+  PATH=/system/bin:/system/xbin:/vendor/bin \
   /system/bin/sh "$@"
