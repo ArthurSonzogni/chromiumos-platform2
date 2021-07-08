@@ -367,6 +367,17 @@ class Platform {
   virtual bool SetQuotaProjectId(int project_id,
                                  const base::FilePath& path) const;
 
+  // Sets the project ID to the FD.
+  // Returns true if ioctl syscall succeeds.
+  //
+  // Parameters
+  //   project_id - The project ID
+  //   fd - The FD
+  //   out_error - errno when ioctl fails
+  virtual bool SetQuotaProjectIdWithFd(int project_id,
+                                       int fd,
+                                       int* out_error) const;
+
   // Returns true if the specified file exists.
   //
   // Parameters
@@ -896,6 +907,13 @@ class Platform {
   //   file - Path to the file to be resized.
   //   blocks - number of blocks to be resized to.
   virtual bool ResizeFilesystem(const base::FilePath& file, uint64_t blocks);
+
+  // Returns the SELinux context of the file descriptor.
+  // Returns nullopt in case of error.
+  //
+  // Parameters
+  //   fd - The FD.
+  virtual base::Optional<std::string> GetSELinuxContextOfFD(int fd);
 
   // Set the SELinux context for the file/directory pointed by path.
   // Returns true if the context is set successfully.

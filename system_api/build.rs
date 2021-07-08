@@ -42,6 +42,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         "login_manager/dbus_bindings/org.chromium.SessionManagerInterface.xml",
         BindingsType::Client,
     ),
+    (
+        "org_chromium_userdataauth",
+        "cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml",
+        BindingsType::Client,
+    ),
 ];
 
 fn main() {

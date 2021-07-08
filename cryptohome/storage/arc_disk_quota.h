@@ -27,6 +27,10 @@ constexpr char kArcDiskHome[] = "/home";
 constexpr char kUserDownloadsDir[] = "Downloads";
 constexpr char kAndroidDataDir[] = "android-data";
 
+// SELinux context of Android media files.
+constexpr char kMediaRWDataFileSELinuxContext[] =
+    "u:object_r:media_rw_data_file:s0";
+
 // This class handles quota-related query from ARC++, and only designed to be
 // called from within the container. The main reason is that IsQuotaSupported
 // only makes sense from within the container since it counts the number of
@@ -106,6 +110,12 @@ class ArcDiskQuota {
                             SetProjectIdAllowedPathType parent_path,
                             const base::FilePath& child_path,
                             const std::string& obfuscated_username) const;
+
+  // Set the project ID of a media_rw_data_file.
+  // Returns true if ioctl succeeds.
+  virtual bool SetMediaRWDataFileProjectId(int project_id,
+                                           int fd,
+                                           int* out_error) const;
 
   // The constants below describes the ranges of valid ID to query (based on
   // what is tracked by installd).These numbers are from

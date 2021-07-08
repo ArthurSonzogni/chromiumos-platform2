@@ -145,6 +145,22 @@ bool DecodeProcInfoLine(const std::string& line,
   }
 }
 
+bool SetQuotaProjectIdInternal(int project_id, int fd, int* out_error) {
+  struct fsxattr fsx = {};
+  if (ioctl(fd, FS_IOC_FSGETXATTR, &fsx) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_FSGETXATTR) failed";
+    return false;
+  }
+  fsx.fsx_projid = project_id;
+  if (ioctl(fd, FS_IOC_FSSETXATTR, &fsx) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_FSSETXATTR) failed";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -570,19 +586,18 @@ bool Platform::SetQuotaProjectId(int project_id,
     return false;
   }
 
-  struct fsxattr fsx = {};
-  if (ioctl(fd.get(), FS_IOC_FSGETXATTR, &fsx) < 0) {
-    PLOG(ERROR) << "ioctl FSGETXATTR: " << path.value();
+  int error = 0;
+  if (!SetQuotaProjectIdInternal(project_id, fd.get(), &error)) {
+    LOG(ERROR) << "Failed to set quota project id: " << path.value();
     return false;
   }
-
-  fsx.fsx_projid = project_id;
-  if (ioctl(fd.get(), FS_IOC_FSSETXATTR, &fsx) < 0) {
-    PLOG(ERROR) << "ioctl FSSETXATTR: " << path.value();
-    return false;
-  }
-
   return true;
+}
+
+bool Platform::SetQuotaProjectIdWithFd(int project_id,
+                                       int fd,
+                                       int* out_error) const {
+  return SetQuotaProjectIdInternal(project_id, fd, out_error);
 }
 
 bool Platform::FileExists(const FilePath& path) {
@@ -1451,6 +1466,21 @@ bool Platform::RestoreSELinuxContexts(const base::FilePath& path,
   }
 #endif
   return true;
+}
+
+base::Optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {
+#if USE_SELINUX
+  char* con = nullptr;
+  if (fgetfilecon(fd, &con) < 0) {
+    PLOG(ERROR) << "fgetfilecon failed";
+    return base::nullopt;
+  }
+  std::string result = con;
+  freecon(con);
+  return result;
+#else
+  return std::string();
+#endif
 }
 
 bool Platform::SetSELinuxContext(const base::FilePath& path,

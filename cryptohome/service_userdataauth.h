@@ -288,6 +288,12 @@ class ArcQuotaAdaptor : public org::chromium::ArcQuotaInterface,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::SetProjectIdReply>> response,
       const user_data_auth::SetProjectIdRequest& in_request) override;
+  void SetMediaRWDataFileProjectId(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::SetMediaRWDataFileProjectIdReply>> response,
+      const base::ScopedFD& in_fd,
+      const user_data_auth::SetMediaRWDataFileProjectIdRequest& in_request)
+      override;
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

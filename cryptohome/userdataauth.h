@@ -276,6 +276,10 @@ class UserDataAuth {
                     const FilePath& child_path,
                     const cryptohome::AccountIdentifier& account);
 
+  // Sets the project ID of a media_rw_data_file.
+  // See cryptohome/arc_disk_quota.h for more details.
+  bool SetMediaRWDataFileProjectId(int project_id, int fd, int* out_error);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

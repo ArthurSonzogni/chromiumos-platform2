@@ -667,6 +667,21 @@ void ArcQuotaAdaptor::SetProjectId(
   response->Return(reply);
 }
 
+void ArcQuotaAdaptor::SetMediaRWDataFileProjectId(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::SetMediaRWDataFileProjectIdReply>> response,
+    const base::ScopedFD& in_fd,
+    const user_data_auth::SetMediaRWDataFileProjectIdRequest& in_request) {
+  int error = 0;
+  const bool success = service_->SetMediaRWDataFileProjectId(
+      in_request.project_id(), in_fd.get(), &error);
+  user_data_auth::SetMediaRWDataFileProjectIdReply reply;
+  reply.set_success(success);
+  if (!success)
+    reply.set_error(error);
+  response->Return(reply);
+}
+
 void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,

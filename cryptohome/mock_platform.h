@@ -268,6 +268,10 @@ class MockPlatform : public Platform {
               SetQuotaProjectId,
               (int, const base::FilePath&),
               (const, override));
+  MOCK_METHOD(bool,
+              SetQuotaProjectIdWithFd,
+              (int, int, int*),
+              (const, override));
   MOCK_METHOD(int, Access, (const base::FilePath&, uint32_t), (override));
   MOCK_METHOD(int64_t,
               ComputeDirectoryDiskUsage,
@@ -385,6 +389,10 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool,
               RestoreSELinuxContexts,
               (const base::FilePath&, bool),
+              (override));
+  MOCK_METHOD(base::Optional<std::string>,
+              GetSELinuxContextOfFD,
+              (int fd),
               (override));
   MOCK_METHOD(bool,
               SetSELinuxContext,

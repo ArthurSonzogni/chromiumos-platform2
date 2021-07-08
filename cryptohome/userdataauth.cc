@@ -2633,6 +2633,14 @@ bool UserDataAuth::SetProjectId(
       child_path, obfuscated_username);
 }
 
+bool UserDataAuth::SetMediaRWDataFileProjectId(int project_id,
+                                               int fd,
+                                               int* out_error) {
+  AssertOnOriginThread();
+  return arc_disk_quota_->SetMediaRWDataFileProjectId(project_id, fd,
+                                                      out_error);
+}
+
 bool UserDataAuth::Pkcs11IsTpmTokenReady() {
   AssertOnMountThread();
   // We touched the sessions_ object, so we need to be on mount thread.

@@ -438,4 +438,55 @@ TEST_F(ArcDiskQuotaTest, SetProjectId_IoctlFails) {
                                             kObfuscatedUsername));
 }
 
+TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_Succeeds) {
+  constexpr int kProjectId = kValidAndroidProjectId;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
+      .WillOnce(Return(kMediaRWDataFileSELinuxContext));
+  EXPECT_CALL(platform_, SetQuotaProjectIdWithFd(kProjectId, kFd, &error))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(
+      arc_disk_quota_.SetMediaRWDataFileProjectId(kProjectId, kFd, &error));
+}
+
+TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_IdOutOfAllowedRange) {
+  constexpr int kProjectId = kProjectIdForAndroidFilesEnd + 1;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_FALSE(
+      arc_disk_quota_.SetMediaRWDataFileProjectId(kProjectId, kFd, &error));
+  EXPECT_EQ(error, EINVAL);
+}
+
+TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_GetSELinuxContextFails) {
+  constexpr int kProjectId = kValidAndroidProjectId;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
+      .WillOnce(Return(base::nullopt));
+
+  EXPECT_FALSE(
+      arc_disk_quota_.SetMediaRWDataFileProjectId(kProjectId, kFd, &error));
+  EXPECT_EQ(error, EIO);
+}
+
+TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_UnexpectedSELinuxContext) {
+  constexpr int kProjectId = kValidAndroidProjectId;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  constexpr char kUnexpectedSELinuxContext[] = "u:object_r:cros_home_shadow:s0";
+  EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
+      .WillOnce(Return(kUnexpectedSELinuxContext));
+
+  EXPECT_FALSE(
+      arc_disk_quota_.SetMediaRWDataFileProjectId(kProjectId, kFd, &error));
+  EXPECT_EQ(error, EPERM);
+}
+
 }  // namespace cryptohome

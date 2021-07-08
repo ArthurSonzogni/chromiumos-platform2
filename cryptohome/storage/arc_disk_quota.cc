@@ -14,6 +14,17 @@
 
 namespace cryptohome {
 
+namespace {
+
+bool IsAndroidProjectId(int project_id) {
+  return (project_id >= kProjectIdForAndroidFilesStart &&
+          project_id <= kProjectIdForAndroidFilesEnd) ||
+         (project_id >= kProjectIdForAndroidAppsStart &&
+          project_id <= kProjectIdForAndroidAppsEnd);
+}
+
+}  // namespace
+
 ArcDiskQuota::ArcDiskQuota(HomeDirs* homedirs,
                            Platform* platform,
                            const base::FilePath& home)
@@ -82,10 +93,7 @@ int64_t ArcDiskQuota::GetCurrentSpaceForGid(gid_t android_gid) const {
 }
 
 int64_t ArcDiskQuota::GetCurrentSpaceForProjectId(int project_id) const {
-  if ((project_id < kProjectIdForAndroidFilesStart ||
-       project_id > kProjectIdForAndroidFilesEnd) &&
-      (project_id < kProjectIdForAndroidAppsStart ||
-       project_id > kProjectIdForAndroidAppsEnd)) {
+  if (!IsAndroidProjectId(project_id)) {
     LOG(ERROR) << "Project id " << project_id
                << " is outside the allowed query range";
     return -1;
@@ -107,10 +115,7 @@ bool ArcDiskQuota::SetProjectId(int project_id,
                                 SetProjectIdAllowedPathType parent_path,
                                 const base::FilePath& child_path,
                                 const std::string& obfuscated_username) const {
-  if ((project_id < kProjectIdForAndroidFilesStart ||
-       project_id > kProjectIdForAndroidFilesEnd) &&
-      (project_id < kProjectIdForAndroidAppsStart ||
-       project_id > kProjectIdForAndroidAppsEnd)) {
+  if (!IsAndroidProjectId(project_id)) {
     LOG(ERROR) << "Project id " << project_id
                << " is outside the allowed query range";
     return false;
@@ -162,6 +167,29 @@ bool ArcDiskQuota::SetProjectId(int project_id,
   }
 
   return platform_->SetQuotaProjectId(project_id, path);
+}
+
+bool ArcDiskQuota::SetMediaRWDataFileProjectId(int project_id,
+                                               int fd,
+                                               int* out_error) const {
+  if (!IsAndroidProjectId(project_id)) {
+    LOG(ERROR) << "Project id " << project_id
+               << " is outside the allowed query range";
+    *out_error = EINVAL;
+    return false;
+  }
+  base::Optional<std::string> context = platform_->GetSELinuxContextOfFD(fd);
+  if (!context) {
+    LOG(ERROR) << "Failed to get the SELinux context of FD.";
+    *out_error = EIO;
+    return false;
+  }
+  if (*context != kMediaRWDataFileSELinuxContext) {
+    LOG(ERROR) << "Unexpected SELinux context: " << *context;
+    *out_error = EPERM;
+    return false;
+  }
+  return platform_->SetQuotaProjectIdWithFd(project_id, fd, out_error);
 }
 
 base::FilePath ArcDiskQuota::GetDevice() {

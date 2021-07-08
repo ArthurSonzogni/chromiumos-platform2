@@ -1263,6 +1263,19 @@ TEST_F(UserDataAuthTest, SetProjectId) {
       kChildPath, account_id));
 }
 
+TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectId) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
+  constexpr int kProjectId = 1001;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_CALL(arc_disk_quota_,
+              SetMediaRWDataFileProjectId(kProjectId, kFd, &error))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(
+      userdataauth_->SetMediaRWDataFileProjectId(kProjectId, kFd, &error));
+}
+
 TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   // Should Get Random from TPM

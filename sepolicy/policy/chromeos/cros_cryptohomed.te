@@ -250,6 +250,9 @@ log_writer(cros_cryptohomed);
 uma_writer(cros_cryptohomed);
 allow cros_cryptohomed debugfs:dir r_dir_perms;
 
+# To receive file descriptors as D-Bus method call arguments.
+allow cros_cryptohomed cros_vm_concierge:fd use;
+
 filetrans_pattern(cros_cryptohomed, cros_home, cros_home_shadow, dir, ".shadow");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow, cros_home_shadow_low_entropy_creds, dir, "low_entropy_creds");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow, cros_home_shadow_uid, dir);
