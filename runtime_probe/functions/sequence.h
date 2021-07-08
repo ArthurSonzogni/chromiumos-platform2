@@ -29,6 +29,8 @@ namespace runtime_probe {
 // If any subfunction returns 0 or more than 1 results, the final result will be
 // empty (vector size will be empty).
 class SequenceFunction : public ProbeFunction {
+  using ProbeFunction::ProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("sequence");
 

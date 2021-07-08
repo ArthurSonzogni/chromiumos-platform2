@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -91,11 +92,11 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
 
 // Assumes that |T| and |dict_value| are in the scope.
 // Define |instance|, |keys| and |result| into the scope.
-#define PARSE_BEGIN()                                                 \
-  auto instance = std::unique_ptr<T>(new T());                        \
-  instance->raw_value_ = base::Value(base::Value::Type::DICTIONARY);  \
-  instance->raw_value_->SetKey(T::function_name, dict_value.Clone()); \
-  std::set<std::string> keys;                                         \
+#define PARSE_BEGIN()                                              \
+  base::Value raw_value{base::Value::Type::DICTIONARY};            \
+  raw_value.SetKey(T::function_name, dict_value.Clone());          \
+  auto instance = std::unique_ptr<T>{new T(std::move(raw_value))}; \
+  std::set<std::string> keys;                                      \
   bool result = true
 
 // Parses each argument one by one. Stores the value into |instance->arg_name_|.

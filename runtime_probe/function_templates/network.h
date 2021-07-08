@@ -14,9 +14,9 @@
 namespace runtime_probe {
 
 class NetworkFunction : public PrivilegedProbeFunction {
- protected:
-  NetworkFunction() = default;
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
 
+ protected:
   virtual base::Optional<std::string> GetNetworkType() const = 0;
 
  private:

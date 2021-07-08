@@ -15,6 +15,8 @@
 namespace runtime_probe {
 
 class EthernetNetworkFunction : public NetworkFunction {
+  using NetworkFunction::NetworkFunction;
+
  public:
   NAME_PROBE_FUNCTION("ethernet_network");
 

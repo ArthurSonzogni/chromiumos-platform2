@@ -10,6 +10,8 @@
 namespace runtime_probe {
 
 class MemoryFunction : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("memory");
 

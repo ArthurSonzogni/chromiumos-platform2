@@ -26,6 +26,8 @@ namespace runtime_probe {
 //
 // More details can be found under command "ectool i2cread help"
 class EctoolI2Cread final : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("ectool_i2cread");
 

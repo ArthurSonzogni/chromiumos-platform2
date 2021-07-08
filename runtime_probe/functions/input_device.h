@@ -23,6 +23,8 @@ namespace runtime_probe {
 //     "device_type": "touchscreen"
 //   }
 class InputDeviceFunction : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("input_device");
 

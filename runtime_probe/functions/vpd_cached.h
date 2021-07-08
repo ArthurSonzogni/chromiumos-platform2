@@ -24,6 +24,8 @@ namespace runtime_probe {
 // key in the RO_VPD area to read.
 
 class VPDCached : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("vpd_cached");
 

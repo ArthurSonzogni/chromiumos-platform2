@@ -13,6 +13,8 @@
 namespace runtime_probe {
 
 class ShellFunction : public ProbeFunction {
+  using ProbeFunction::ProbeFunction;
+
  public:
   // The identifier / function name of this probe function.
   //

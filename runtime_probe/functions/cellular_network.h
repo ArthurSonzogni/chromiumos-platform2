@@ -15,6 +15,8 @@
 namespace runtime_probe {
 
 class CellularNetworkFunction : public NetworkFunction {
+  using NetworkFunction::NetworkFunction;
+
  public:
   NAME_PROBE_FUNCTION("cellular_network");
 

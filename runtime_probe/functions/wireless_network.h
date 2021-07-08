@@ -15,6 +15,8 @@
 namespace runtime_probe {
 
 class WirelessNetworkFunction : public NetworkFunction {
+  using NetworkFunction::NetworkFunction;
+
  public:
   NAME_PROBE_FUNCTION("wireless_network");
 

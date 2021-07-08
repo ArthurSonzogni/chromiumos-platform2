@@ -15,6 +15,8 @@
 namespace runtime_probe {
 
 class GenericNetworkFunction : public NetworkFunction {
+  using NetworkFunction::NetworkFunction;
+
  public:
   NAME_PROBE_FUNCTION("generic_network");
 

@@ -17,12 +17,13 @@
 namespace runtime_probe {
 
 class StorageFunction : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   DataType EvalImpl() const final;
   void PostHelperEvalImpl(DataType* result) const final;
 
  protected:
-  StorageFunction() = default;
   // The following are storage-type specific building blocks.
   // Must be implemented on each derived storage probe function class.
   // |node_path| is the sysfs path of the storage device. The functions return a

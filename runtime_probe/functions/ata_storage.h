@@ -13,6 +13,8 @@
 namespace runtime_probe {
 
 class AtaStorageFunction final : public StorageFunction {
+  using StorageFunction::StorageFunction;
+
  public:
   NAME_PROBE_FUNCTION("ata_storage");
 

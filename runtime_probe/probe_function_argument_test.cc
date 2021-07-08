@@ -13,6 +13,8 @@
 namespace runtime_probe {
 
 class Mock1ProbeFunction : public ProbeFunction {
+  using ProbeFunction::ProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("mock1");
 
@@ -20,6 +22,8 @@ class Mock1ProbeFunction : public ProbeFunction {
 };
 
 class Mock2ProbeFunction : public ProbeFunction {
+  using ProbeFunction::ProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("mock2");
 

@@ -19,6 +19,8 @@ namespace runtime_probe {
 
 using DataType = typename ProbeFunction::DataType;
 
+ProbeFunction::ProbeFunction(base::Value&& raw_value) {}
+
 std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
   if (!dv.is_dict()) {
     LOG(ERROR) << "ProbeFunction::FromValue takes a dictionary as parameter";
@@ -59,9 +61,12 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
       registered_functions_[function_name](kwargs));
 }
 
+PrivilegedProbeFunction::PrivilegedProbeFunction(base::Value&& raw_value)
+    : raw_value_(std::move(raw_value)) {}
+
 bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
   std::string probe_statement_str;
-  base::JSONWriter::Write(*raw_value_, &probe_statement_str);
+  base::JSONWriter::Write(raw_value_, &probe_statement_str);
 
   // TODO(yhong): Stop hard-coding the underlying implementation so that
   //     unit-tests can mock it.

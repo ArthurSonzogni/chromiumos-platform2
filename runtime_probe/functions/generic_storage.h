@@ -17,6 +17,8 @@
 namespace runtime_probe {
 
 class GenericStorageFunction : public ProbeFunction {
+  using ProbeFunction::ProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("generic_storage");
 
@@ -37,8 +39,6 @@ class GenericStorageFunction : public ProbeFunction {
   }
 
  private:
-  // Use FromKwargsValue to ensure the arg is correctly parsed.
-  GenericStorageFunction() = default;
   DataType EvalImpl() const override;
 
   std::unique_ptr<AtaStorageFunction> ata_prober_;

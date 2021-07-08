@@ -10,6 +10,8 @@
 namespace runtime_probe {
 
 class UsbCameraFunction final : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("usb_camera");
 

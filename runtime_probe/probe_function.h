@@ -114,9 +114,8 @@ class ProbeFunction {
 
  protected:
   ProbeFunction() = default;
-
-  // The value to describe this probe function. Set by |FromKwargsValue|.
-  base::Optional<base::Value> raw_value_;
+  ProbeFunction(const ProbeFunction&) = delete;
+  explicit ProbeFunction(base::Value&& raw_value);
 
  private:
   // Implement this method to provide the probing. The output should be a list
@@ -140,7 +139,18 @@ class PrivilegedProbeFunction : public ProbeFunction {
  public:
   DataType Eval() const final;
 
+  // Redefine this to access protected constructor.
+  template <typename T>
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    PARSE_BEGIN();
+    PARSE_END();
+  }
+
  protected:
+  PrivilegedProbeFunction() = delete;
+  PrivilegedProbeFunction(const PrivilegedProbeFunction&) = delete;
+  explicit PrivilegedProbeFunction(base::Value&& raw_value);
+
   // Serializes this probe function and passes it to helper. The output of the
   // helper will store in |result|. Returns true if success on executing helper.
   bool InvokeHelper(std::string* result) const;
@@ -159,6 +169,9 @@ class PrivilegedProbeFunction : public ProbeFunction {
   // logic out of helper and modify the |result|. See b/185292404 for the
   // discussion about this two steps EvalImpl.
   virtual void PostHelperEvalImpl(DataType* result) const {}
+
+  // The value to describe this probe function.
+  base::Value raw_value_;
 };
 
 #define NAME_PROBE_FUNCTION(name)                       \

@@ -53,6 +53,8 @@ namespace runtime_probe {
 
 class SysfsFunction : public ProbeFunction {
   // All probe functions should inherit runtime_probe::ProbeFunction
+  using ProbeFunction::ProbeFunction;
+
  public:
   // The identifier / function name of this probe function.
   //

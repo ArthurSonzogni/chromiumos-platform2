@@ -20,6 +20,8 @@ namespace runtime_probe {
 // @param edid_patterns a list of paths to be evaluated. (Default:
 // {"/sys/class/drm/*/edid"})
 class EdidFunction final : public PrivilegedProbeFunction {
+  using PrivilegedProbeFunction::PrivilegedProbeFunction;
+
  public:
   NAME_PROBE_FUNCTION("edid");
 
