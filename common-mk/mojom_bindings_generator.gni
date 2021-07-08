@@ -26,6 +26,8 @@
 # Parameters:
 #   sources
 #       The .mojom file paths.
+#   mojo_parser_extra_args (optional)
+#       Extra additional arguments passed to mojom_parser.py.
 #   mojo_extra_args (optional)
 #       Extra additional arguments passed to mojom_bindings_generator.py.
 #   mojo_root (optional)
@@ -76,6 +78,7 @@ _mojom_bindings_suffixes = [
 template("generate_mojom_bindings_gen") {
   forward_variables_from(invoker,
                          [
+                           "mojo_parser_extra_args",
                            "mojo_extra_args",
                            "mojo_root",
                            "mojom_bindings_generator",
@@ -97,6 +100,10 @@ template("generate_mojom_bindings_gen") {
     mojom_parser = rebase_path(mojom_parser)
   } else {
     mojom_parser = "${sysroot}/usr/src/libmojo/mojo/mojom_parser.py"
+  }
+
+  if (!defined(mojo_parser_extra_args)) {
+    mojo_parser_extra_args = []
   }
 
   if (!defined(mojo_extra_args)) {
@@ -162,14 +169,14 @@ template("generate_mojom_bindings_gen") {
 
     script = mojom_parser
     args = [
-      "--mojom-file-list={{response_file_name}}",
-      "--output-root",
-      _mojo_output_base,
-      "--input-root",
-      mojo_root,  # Mojo depth.
-      "--input-root",
-      ".",
-    ]
+             "--mojom-file-list={{response_file_name}}",
+             "--output-root",
+             _mojo_output_base,
+             "--input-root",
+             mojo_root,  # Mojo depth.
+             "--input-root",
+             ".",
+           ] + mojo_parser_extra_args
     foreach(enabled_feature, enabled_features) {
       args += [
         "--enable-feature",
@@ -253,6 +260,7 @@ template("generate_mojom_bindings") {
     forward_variables_from(invoker,
                            [
                              "deps",
+                             "mojo_parser_extra_args",
                              "mojo_extra_args",
                              "mojo_root",
                              "mojom_bindings_generator",
@@ -277,6 +285,7 @@ template("generate_mojom_bindings") {
                            "*",
                            [
                              # Exclude mojo related inputs.
+                             "mojo_parser_extra_args",
                              "mojo_extra_args",
                              "mojo_root",
                              "mojom_bindings_generator",
