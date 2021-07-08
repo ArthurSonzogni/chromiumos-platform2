@@ -2102,7 +2102,7 @@ void ArcSetup::SetupSensorOnPreChroot(const base::FilePath& rootfs) {
   EXIT_IF(!base::AppendToFile(
       base::FilePath("/sys/fs/cgroup/devices/session_manager_containers/"
                      "android/devices.allow"),
-      allow_str.c_str(), allow_str.size()));
+      allow_str));
 
   // Create the device file for the container.
   base::ScopedFD container_dev_dir_fd(

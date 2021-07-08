@@ -60,7 +60,7 @@ TEST_F(SensorDataForwarderTest, Stop) {
 // Tests that the forwarder can forward small data.
 TEST_F(SensorDataForwarderTest, ForwardSmallData) {
   constexpr char kData[] = "0123456789";
-  ASSERT_TRUE(base::WriteFileDescriptor(in_pipe_.get(), kData, sizeof(kData)));
+  ASSERT_TRUE(base::WriteFileDescriptor(in_pipe_.get(), kData));
 
   char buf[sizeof(kData)] = {};
   ASSERT_TRUE(base::ReadFromFD(out_pipe_.get(), buf, sizeof(buf)));
@@ -70,14 +70,14 @@ TEST_F(SensorDataForwarderTest, ForwardSmallData) {
 
 // Tests that the forwarder can forward data larger than the pipe's buffer.
 TEST_F(SensorDataForwarderTest, ForwardLargeData) {
-  std::vector<char> data(GetPipeBufferSize() * 2);
+  std::vector<uint8_t> data(GetPipeBufferSize() * 2);
   base::RandBytes(data.data(), data.size());
 
-  ASSERT_TRUE(
-      base::WriteFileDescriptor(in_pipe_.get(), data.data(), data.size()));
+  ASSERT_TRUE(base::WriteFileDescriptor(in_pipe_.get(), data));
 
-  std::vector<char> buf(data.size());
-  ASSERT_TRUE(base::ReadFromFD(out_pipe_.get(), buf.data(), buf.size()));
+  std::vector<uint8_t> buf(data.size());
+  ASSERT_TRUE(base::ReadFromFD(
+      out_pipe_.get(), reinterpret_cast<char*>(buf.data()), buf.size()));
 
   EXPECT_EQ(data, buf);
 }
@@ -85,17 +85,15 @@ TEST_F(SensorDataForwarderTest, ForwardLargeData) {
 // Tests that the forwarder can stop while forwarding data larger than the
 // pipe's buffer.
 TEST_F(SensorDataForwarderTest, StopForwardingLargeData) {
-  std::vector<char> data(GetPipeBufferSize() * 2);
+  std::vector<uint8_t> data(GetPipeBufferSize() * 2);
   base::RandBytes(data.data(), data.size());
 
-  ASSERT_TRUE(
-      base::WriteFileDescriptor(in_pipe_.get(), data.data(), data.size()));
+  ASSERT_TRUE(base::WriteFileDescriptor(in_pipe_.get(), data));
 
   // Stop the forwarder without reading the data from out_pipe_.
   forwarder_ = nullptr;
 
-  EXPECT_FALSE(
-      base::WriteFileDescriptor(in_pipe_.get(), data.data(), data.size()));
+  EXPECT_FALSE(base::WriteFileDescriptor(in_pipe_.get(), data));
   EXPECT_EQ(errno, EPIPE);
 }
 

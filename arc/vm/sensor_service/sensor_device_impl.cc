@@ -60,7 +60,7 @@ void SensorDeviceImpl::GetAttribute(const std::string& name,
     std::move(callback).Run(mojom::AttributeIOResult::ERROR_IO, {});
     return;
   }
-  value = base::TrimString(value, "\n", base::TRIM_TRAILING).as_string();
+  value = std::string(base::TrimString(value, "\n", base::TRIM_TRAILING));
   std::move(callback).Run(mojom::AttributeIOResult::SUCCESS, std::move(value));
 }
 

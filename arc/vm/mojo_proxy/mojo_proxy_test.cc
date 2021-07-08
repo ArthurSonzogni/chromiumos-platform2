@@ -235,7 +235,7 @@ TEST_F(MojoProxyTest, FileWriteError) {
   // Try to send data from the server to the client, but it fails because of a
   // write error in the client.
   constexpr char kData[] = "abcdefg";
-  ASSERT_TRUE(base::WriteFileDescriptor(server_fd.get(), kData, sizeof(kData)));
+  ASSERT_TRUE(base::WriteFileDescriptor(server_fd.get(), kData));
   // Write error on the client results in closing the server socket.
   WaitUntilReadable(server_fd.get());
   ExpectSocketEof(server_fd.get());

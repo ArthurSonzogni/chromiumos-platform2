@@ -38,8 +38,7 @@ LocalFile::~LocalFile() {
   // Post a task to destruct the FD on the task runner after all tasks finish.
   if (blocking_task_runner_) {
     blocking_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce([](base::ScopedFD fd) {}, base::Passed(std::move(fd_))));
+        FROM_HERE, base::BindOnce([](base::ScopedFD fd) {}, std::move(fd_)));
   }
 }
 

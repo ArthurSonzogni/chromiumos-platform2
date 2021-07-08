@@ -84,7 +84,8 @@ bool MessageStream::Write(const arc_proxy::MojoMessage& message) {
     return false;
   }
 
-  if (!base::WriteFileDescriptor(fd_.get(), buf_.data(), buf_.size())) {
+  if (!base::WriteFileDescriptor(fd_.get(),
+                                 base::StringPiece(buf_.data(), buf_.size()))) {
     PLOG(ERROR) << "Failed to write proto";
     return false;
   }

@@ -127,12 +127,10 @@ int main(int argc, const char** argv) {
 
     LOG(INFO) << "Sending " << kDataReadyCommand << " to ARCVM(" << *peer_cid
               << ").";
-    if (!base::WriteFileDescriptor(vm_client.get(), kDataReadyCommand,
-                                   strlen(kDataReadyCommand))) {
+    if (!base::WriteFileDescriptor(vm_client.get(), kDataReadyCommand)) {
       PLOG(FATAL) << "Unable to send " << kDataReadyCommand << " to client.";
     }
-    if (!base::WriteFileDescriptor(vm_client.get(), send_props.c_str(),
-                                   send_props.size())) {
+    if (!base::WriteFileDescriptor(vm_client.get(), send_props)) {
       PLOG(FATAL) << "Unable to send props to client";
     }
     break;

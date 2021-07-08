@@ -62,7 +62,7 @@ TEST_F(LocalFileTest, ReadErrorRecvmsg) {
   auto pipes = CreatePipe();
   ASSERT_TRUE(pipes.has_value());
   // Put some data.
-  ASSERT_TRUE(base::WriteFileDescriptor(pipes->second.get(), "a", 1));
+  ASSERT_TRUE(base::WriteFileDescriptor(pipes->second.get(), "a"));
   // Pipe doesn't support recvmsg, but can_send_fds==true is specified.
   auto read_result =
       LocalFile(std::move(pipes->first), true, base::DoNothing(), nullptr)
@@ -370,7 +370,8 @@ class PipeStreamTest : public testing::Test {
 
 TEST_F(PipeStreamTest, Read) {
   constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
-  ASSERT_TRUE(base::WriteFileDescriptor(write_fd_.get(), kData, sizeof(kData)));
+  ASSERT_TRUE(base::WriteFileDescriptor(
+      write_fd_.get(), base::StringPiece(kData, sizeof(kData))));
 
   auto read_result = LocalFile(std::move(read_fd_), false,
                                base::BindOnce([]() { ADD_FAILURE(); }), nullptr)
