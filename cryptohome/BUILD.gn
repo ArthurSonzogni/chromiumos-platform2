@@ -449,6 +449,7 @@ if (use.test) {
       "crypto/rsa_unittest.cc",
       "crypto/scrypt_unittest.cc",
       "crypto_unittest.cc",
+      "cryptohome_ecc_key_loader_unittest.cc",
       "cryptohome_keys_manager_unittest.cc",
       "cryptohome_rsa_key_loader_unittest.cc",
       "cryptorecovery/fake_recovery_mediator_crypto.cc",

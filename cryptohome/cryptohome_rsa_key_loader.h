@@ -16,7 +16,7 @@ class CryptohomeRsaKeyLoader : public CryptohomeKeyLoader {
   CryptohomeRsaKeyLoader& operator=(const CryptohomeRsaKeyLoader&) = delete;
   virtual ~CryptohomeRsaKeyLoader() = default;
 
- protected:
+ private:
   bool CreateCryptohomeKey(brillo::SecureBlob* wrapped_key) override;
 };
 

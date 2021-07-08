@@ -32,11 +32,10 @@ class CryptohomeKeyLoader {
   virtual void Init();
 
  protected:
-  virtual bool CreateCryptohomeKey(brillo::SecureBlob* wrapped_key) = 0;
-
   Tpm* GetTpm() { return tpm_; }
 
  private:
+  virtual bool CreateCryptohomeKey(brillo::SecureBlob* wrapped_key) = 0;
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
   hwsec::error::TPMErrorBase LoadCryptohomeKey(ScopedKeyHandle* key_handle);

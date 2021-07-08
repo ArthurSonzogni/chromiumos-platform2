@@ -190,6 +190,7 @@ static_library("libcrostpm") {
     "../crc8.c",
     "../crypto.cc",
     "../crypto_error.cc",
+    "../cryptohome_ecc_key_loader.cc",
     "../cryptohome_key_loader.cc",
     "../cryptohome_keys_manager.cc",
     "../cryptohome_recovery_auth_block.cc",
