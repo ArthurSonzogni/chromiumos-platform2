@@ -13,9 +13,6 @@ class UsbCameraFunction final : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("usb_camera");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<UsbCameraFunction>;
-
  private:
   DataType EvalImpl() const override;
 };

@@ -45,7 +45,7 @@ auto ConstructRegisteredFunctionTable() {
   // to prevent ODR-used variables.
   return std::map<std::string_view, ProbeFunction::FactoryFunctionType>{
       {CallByValue(ProbeFunctionType::function_name),
-       CallByValue(ProbeFunctionType::FromKwargsValue)}...};
+       CallByValue(CreateProbeFunction<ProbeFunctionType>)}...};
 }
 
 }  // namespace

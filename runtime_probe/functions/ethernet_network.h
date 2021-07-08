@@ -18,9 +18,6 @@ class EthernetNetworkFunction : public NetworkFunction {
  public:
   NAME_PROBE_FUNCTION("ethernet_network");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<EthernetNetworkFunction>;
-
  protected:
   base::Optional<std::string> GetNetworkType() const override;
 };

@@ -91,13 +91,6 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
 
 }  // namespace
 
-std::unique_ptr<InputDeviceFunction> InputDeviceFunction::FromKwargsValue(
-    const base::Value& dict_value) {
-  PARSE_BEGIN(InputDeviceFunction);
-  PARSE_ARGUMENT(device_type, std::string(""));
-  PARSE_END();
-}
-
 InputDeviceFunction::DataType InputDeviceFunction::EvalImpl() const {
   InputDeviceFunction::DataType results{};
   std::string input_devices_str;

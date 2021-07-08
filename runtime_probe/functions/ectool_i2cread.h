@@ -35,9 +35,9 @@ class EctoolI2Cread final : public PrivilegedProbeFunction {
   //
   // @return pointer to new `EctoolI2Cread` instance on success, nullptr
   //   otherwise.
-  static std::unique_ptr<EctoolI2Cread> FromKwargsValue(
-      const base::Value& dict_value) {
-    PARSE_BEGIN(EctoolI2Cread);
+  template <typename T>
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    PARSE_BEGIN();
     PARSE_ARGUMENT(size);
     PARSE_ARGUMENT(port);
     PARSE_ARGUMENT(addr);

@@ -19,9 +19,6 @@ class MmcStorageFunction final : public StorageFunction {
  public:
   NAME_PROBE_FUNCTION("mmc_storage");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<MmcStorageFunction>;
-
  protected:
   base::Optional<base::Value> ProbeFromSysfs(
       const base::FilePath& node_path) const override;

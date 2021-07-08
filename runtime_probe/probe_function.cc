@@ -5,6 +5,7 @@
 #include "runtime_probe/probe_function.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/json/json_reader.h>
@@ -60,7 +61,6 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
 
 bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
   std::string probe_statement_str;
-  CHECK(raw_value_.has_value());
   base::JSONWriter::Write(*raw_value_, &probe_statement_str);
 
   // TODO(yhong): Stop hard-coding the underlying implementation so that

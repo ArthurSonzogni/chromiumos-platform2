@@ -18,9 +18,6 @@ class GenericNetworkFunction : public NetworkFunction {
  public:
   NAME_PROBE_FUNCTION("generic_network");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<GenericNetworkFunction>;
-
  protected:
   base::Optional<std::string> GetNetworkType() const override;
 };

@@ -30,9 +30,9 @@ class ShellFunction : public ProbeFunction {
   //
   // @return pointer to new `ShellFunction` instance on success, nullptr
   //   otherwise.
-  static std::unique_ptr<ShellFunction> FromKwargsValue(
-      const base::Value& dict_value) {
-    PARSE_BEGIN(ShellFunction);
+  template <typename T>
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    PARSE_BEGIN();
     PARSE_ARGUMENT(command);
     PARSE_ARGUMENT(key, std::string{"shell_raw"});
     PARSE_ARGUMENT(split_line, false);
@@ -43,6 +43,7 @@ class ShellFunction : public ProbeFunction {
   // Override `EvalImpl` function, which should return a list of Value.
   DataType EvalImpl() const override {
     VLOG(1) << "command: " << command_;
+    VLOG(1) << "split_line: " << split_line_;
     // TODO(stimim): implement this
 
     return DataType{};

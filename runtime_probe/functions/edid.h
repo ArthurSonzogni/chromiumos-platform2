@@ -23,8 +23,13 @@ class EdidFunction final : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("edid");
 
-  static std::unique_ptr<EdidFunction> FromKwargsValue(
-      const base::Value& dict_value);
+  template <typename T>
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    constexpr auto kSysfsEdidPath = "/sys/class/drm/*/edid";
+    PARSE_BEGIN();
+    PARSE_ARGUMENT(edid_patterns, {kSysfsEdidPath});
+    PARSE_END();
+  }
 
  private:
   DataType EvalImpl() const override;

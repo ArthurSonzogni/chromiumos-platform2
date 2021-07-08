@@ -14,15 +14,6 @@
 
 namespace runtime_probe {
 
-std::unique_ptr<SysfsFunction> SysfsFunction::FromKwargsValue(
-    const base::Value& dict_value) {
-  PARSE_BEGIN(SysfsFunction);
-  PARSE_ARGUMENT(dir_path);
-  PARSE_ARGUMENT(keys);
-  PARSE_ARGUMENT(optional_keys, {});
-  PARSE_END();
-}
-
 SysfsFunction::DataType SysfsFunction::EvalImpl() const {
   DataType result{};
   const base::FilePath glob_path{dir_path_};

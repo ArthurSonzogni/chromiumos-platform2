@@ -50,6 +50,7 @@ namespace runtime_probe {
 //     }
 //     // No report for "Dc" because "Dc/1" doesn't exists.
 //   ]
+
 class SysfsFunction : public ProbeFunction {
   // All probe functions should inherit runtime_probe::ProbeFunction
  public:
@@ -69,8 +70,14 @@ class SysfsFunction : public ProbeFunction {
   //
   // @return pointer to new `SysfsFunction` instance on success, nullptr
   //   otherwise.
-  static std::unique_ptr<SysfsFunction> FromKwargsValue(
-      const base::Value& dict_value);
+  template <typename T>
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    PARSE_BEGIN();
+    PARSE_ARGUMENT(dir_path);
+    PARSE_ARGUMENT(keys);
+    PARSE_ARGUMENT(optional_keys, {});
+    PARSE_END();
+  }
 
  private:
   // Override `EvalImpl` function, which should return a list of Value.

@@ -21,13 +21,6 @@ const std::vector<std::string> kAllowedOptionalKeys{"sku_number"};
 const auto kKeyPrefix = "vpd_";
 };  // namespace
 
-std::unique_ptr<VPDCached> VPDCached::FromKwargsValue(
-    const base::Value& dict_value) {
-  PARSE_BEGIN(VPDCached);
-  PARSE_ARGUMENT(vpd_name);
-  PARSE_END();
-}
-
 VPDCached::DataType VPDCached::EvalImpl() const {
   const std::vector<std::string> require_keys{vpd_name_};
   auto dict_value = MapFilesToDict(base::FilePath(kSysfsVPDCached),

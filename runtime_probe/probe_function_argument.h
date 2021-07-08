@@ -89,36 +89,38 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
 //
 // See `functions/shell.h` for example usage.
 
-// Assumes that |dict_value| and |function_name| are in the scope. Define
-// |instance|, |keys| and |result| into the scope.
-#define PARSE_BEGIN(type)                                            \
-  auto instance = std::unique_ptr<type>(new type());                 \
-  instance->raw_value_ = base::Value(base::Value::Type::DICTIONARY); \
-  instance->raw_value_->SetKey(function_name, dict_value.Clone());   \
-  std::set<std::string> keys;                                        \
+// Assumes that |T| and |dict_value| are in the scope.
+// Define |instance|, |keys| and |result| into the scope.
+#define PARSE_BEGIN()                                                 \
+  auto instance = std::unique_ptr<T>(new T());                        \
+  instance->raw_value_ = base::Value(base::Value::Type::DICTIONARY);  \
+  instance->raw_value_->SetKey(T::function_name, dict_value.Clone()); \
+  std::set<std::string> keys;                                         \
   bool result = true
 
 // Parses each argument one by one. Stores the value into |instance->arg_name_|.
 // If fail, sets |result| to false. Assumes that PARSE_BEGIN is called before
 // this.
-#define PARSE_ARGUMENT(member_name, ...)                                    \
-  result &=                                                                 \
-      ParseArgument(function_name, #member_name, &instance->member_name##_, \
-                    dict_value, ##__VA_ARGS__);                             \
+#define PARSE_ARGUMENT(member_name, ...)                                       \
+  result &=                                                                    \
+      ParseArgument(T::function_name, #member_name, &instance->member_name##_, \
+                    dict_value, ##__VA_ARGS__);                                \
   keys.insert(#member_name)
 
 // Checks |result| and returns |instance| or nullptr. Assumes that PARSE_BEGIN
 // is called before this.
-#define PARSE_END()                                                 \
-  if (!result)                                                      \
-    return nullptr;                                                 \
-  for (const auto kv : dict_value.DictItems()) {                    \
-    if (keys.find(kv.first) == keys.end()) {                        \
-      LOG(ERROR) << function_name << " doesn't have \"" << kv.first \
-                 << "\" argument.";                                 \
-      return nullptr;                                               \
-    }                                                               \
-  }                                                                 \
+// Notes that the return type must be |std::unique_ptr<T>| to support return
+// type auto deduction.
+#define PARSE_END()                                                    \
+  if (!result)                                                         \
+    return std::unique_ptr<T>{nullptr};                                \
+  for (const auto kv : dict_value.DictItems()) {                       \
+    if (keys.find(kv.first) == keys.end()) {                           \
+      LOG(ERROR) << T::function_name << " doesn't have \"" << kv.first \
+                 << "\" argument.";                                    \
+      return std::unique_ptr<T>{nullptr};                              \
+    }                                                                  \
+  }                                                                    \
   return instance
 
 }  // namespace runtime_probe

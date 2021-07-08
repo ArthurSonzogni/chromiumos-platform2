@@ -19,9 +19,6 @@ class NvmeStorageFunction final : public StorageFunction {
  public:
   NAME_PROBE_FUNCTION("nvme_storage");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<NvmeStorageFunction>;
-
  protected:
   base::Optional<base::Value> ProbeFromSysfs(
       const base::FilePath& node_path) const override;

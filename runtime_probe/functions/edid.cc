@@ -19,7 +19,6 @@
 namespace runtime_probe {
 
 namespace {
-constexpr auto kSysfsEdidPath = "/sys/class/drm/*/edid";
 
 base::Value ProbeEdidPath(const base::FilePath& edid_path) {
   VLOG(2) << "Processing the node \"" << edid_path.value() << "\"";
@@ -46,13 +45,6 @@ base::Value ProbeEdidPath(const base::FilePath& edid_path) {
 }
 
 }  // namespace
-
-std::unique_ptr<EdidFunction> EdidFunction::FromKwargsValue(
-    const base::Value& dict_value) {
-  PARSE_BEGIN(EdidFunction);
-  PARSE_ARGUMENT(edid_patterns, {kSysfsEdidPath});
-  PARSE_END();
-}
 
 EdidFunction::DataType EdidFunction::EvalImpl() const {
   DataType result{};

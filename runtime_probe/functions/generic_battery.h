@@ -14,8 +14,6 @@ class GenericBattery final : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("generic_battery");
 
-  static constexpr auto FromKwargsValue = FromEmptyKwargsValue<GenericBattery>;
-
  private:
   DataType EvalImpl() const override;
 };

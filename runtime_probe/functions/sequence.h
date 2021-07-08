@@ -32,9 +32,9 @@ class SequenceFunction : public ProbeFunction {
  public:
   NAME_PROBE_FUNCTION("sequence");
 
-  static std::unique_ptr<SequenceFunction> FromKwargsValue(
-      const base::Value& dict_value) {
-    PARSE_BEGIN(SequenceFunction);
+  template <typename T>
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    PARSE_BEGIN();
     PARSE_ARGUMENT(functions);
     PARSE_END();
   }

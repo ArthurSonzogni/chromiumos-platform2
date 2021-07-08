@@ -16,9 +16,6 @@ class AtaStorageFunction final : public StorageFunction {
  public:
   NAME_PROBE_FUNCTION("ata_storage");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<AtaStorageFunction>;
-
  protected:
   base::Optional<base::Value> ProbeFromSysfs(
       const base::FilePath& node_path) const override;

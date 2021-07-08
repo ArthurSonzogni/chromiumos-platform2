@@ -18,9 +18,6 @@ class CellularNetworkFunction : public NetworkFunction {
  public:
   NAME_PROBE_FUNCTION("cellular_network");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<CellularNetworkFunction>;
-
  protected:
   base::Optional<std::string> GetNetworkType() const override;
 };

@@ -13,8 +13,6 @@ class MemoryFunction : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("memory");
 
-  static constexpr auto FromKwargsValue = FromEmptyKwargsValue<MemoryFunction>;
-
  private:
   DataType EvalImpl() const override;
 };

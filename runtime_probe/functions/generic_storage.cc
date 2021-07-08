@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <utility>
 
 #include "runtime_probe/functions/generic_storage.h"
 
@@ -15,21 +16,6 @@ void ConcatenateDataType(GenericStorageFunction::DataType* dest,
   std::move(src.begin(), src.end(), std::back_inserter(*dest));
 }
 }  // namespace
-
-std::unique_ptr<GenericStorageFunction> GenericStorageFunction::FromKwargsValue(
-    const base::Value& dict_value) {
-  PARSE_BEGIN(GenericStorageFunction);
-  instance->ata_prober_ = AtaStorageFunction::FromKwargsValue(dict_value);
-  if (!instance->ata_prober_)
-    return nullptr;
-  instance->mmc_prober_ = MmcStorageFunction::FromKwargsValue(dict_value);
-  if (!instance->mmc_prober_)
-    return nullptr;
-  instance->nvme_prober_ = NvmeStorageFunction::FromKwargsValue(dict_value);
-  if (!instance->nvme_prober_)
-    return nullptr;
-  PARSE_END();
-}
 
 GenericStorageFunction::DataType GenericStorageFunction::EvalImpl() const {
   DataType result{};

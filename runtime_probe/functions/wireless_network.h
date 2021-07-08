@@ -18,9 +18,6 @@ class WirelessNetworkFunction : public NetworkFunction {
  public:
   NAME_PROBE_FUNCTION("wireless_network");
 
-  static constexpr auto FromKwargsValue =
-      FromEmptyKwargsValue<WirelessNetworkFunction>;
-
  protected:
   base::Optional<std::string> GetNetworkType() const override;
 };

@@ -11,7 +11,6 @@
 #include <optional>
 #include <string>
 #include <type_traits>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -22,6 +21,10 @@
 #include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
+
+// Creates a probe function. This is a syntax suger for |FromKwargsValue|.
+template <typename T>
+constexpr auto CreateProbeFunction = &T::template FromKwargsValue<T>;
 
 class ProbeFunction {
   // ProbeFunction is the base class for all probe functions.  A derived
@@ -79,13 +82,12 @@ class ProbeFunction {
   // on failure.
   static std::unique_ptr<ProbeFunction> FromValue(const base::Value& dv);
 
-  // A pre-defined factory function creating a probe function with empty
-  // argument.
+  // Creates a probe function of type |T| with empty argument.
+  // This function can be overridden by the derived classes.  See
+  // `functions/sysfs.h` about how to implement this function.
   template <typename T>
-  static std::unique_ptr<T> FromEmptyKwargsValue(
-      const base::Value& dict_value) {
-    const auto& function_name = T::function_name;
-    PARSE_BEGIN(T);
+  static auto FromKwargsValue(const base::Value& dict_value) {
+    PARSE_BEGIN();
     PARSE_END();
   }
 
@@ -102,9 +104,6 @@ class ProbeFunction {
   // in sandbox environment and we might want to preserve the exit code.
   int EvalInHelper(std::string* output) const;
 
-  // Function prototype of FromKwargsValue() that should be implemented by each
-  // derived class.  See `functions/sysfs.h` about how to implement this
-  // function.
   using FactoryFunctionType =
       std::function<std::unique_ptr<ProbeFunction>(const base::Value&)>;
 
