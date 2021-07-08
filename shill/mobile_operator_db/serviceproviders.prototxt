@@ -9531,7 +9531,7 @@ mno {
       regex : "HP MobileConnect"
     }
     data {
-      uuid : "d80426a8-736c-40fc-973e-ba6f0b9f8826"
+      uuid : "2f45b257-245a-48a4-8e5c-aafd0f42f312"
       localized_name {
         name : "HP MobileConnect"
       }
@@ -13752,7 +13752,7 @@ mno {
       }
     }
     data {
-      uuid : "83c8515d-267a-4600-8aeb-f5748d95c114"
+      uuid : "302da8c0-13e4-4032-9a76-b483be401436"
       localized_name {
         name : "Kajeet"
       }
@@ -14702,7 +14702,7 @@ mno {
       regex : "(20812|312620)[0-9]{10}"
     }
     data {
-      uuid : "aeff3fc4-3e8e-4f76-a4be-f565919cf3ac"
+      uuid : "4b78b3aa-4c6e-4093-af6f-79a0370e5fc5"
     }
   }
 }
@@ -14726,7 +14726,7 @@ mno {
       regex : "HP MobileConnect"
     }
     data {
-      uuid : "d80426a8-736c-40fc-973e-ba6f0b9f8826"
+      uuid : "8ef766f8-1f50-4fbb-b89d-ab4805ccd355"
       localized_name {
         name : "HP MobileConnect"
       }
