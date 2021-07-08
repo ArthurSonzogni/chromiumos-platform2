@@ -89,6 +89,7 @@ shutdown: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX || arg0 == AF_NETLINK || arg0 == AF_INET
 stat: 1
+tgkill: 1
 timerfd_create: 1
 timerfd_settime: 1
 umask: 1
