@@ -21,6 +21,11 @@ std::unique_ptr<HdrNetAeDeviceAdapter> HdrNetAeDeviceAdapter::CreateInstance() {
 #endif
 }
 
+bool HdrNetAeDeviceAdapter::WriteRequestParameters(
+    Camera3CaptureDescriptor* request) {
+  return true;
+}
+
 bool HdrNetAeDeviceAdapter::ExtractAeStats(Camera3CaptureDescriptor* result,
                                            MetadataLogger* metadata_logger) {
   return true;

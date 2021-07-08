@@ -13,7 +13,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
-#include "features/hdrnet/vendor_tags.h"
+#include "features/hdrnet/intel_vendor_metadata_tags.h"
 
 namespace cros {
 
@@ -28,42 +28,52 @@ constexpr int kIpu6WhiteLevel = 249;
 HdrNetAeDeviceAdapterIpu6::HdrNetAeDeviceAdapterIpu6()
     : gcam_ae_(GcamAe::CreateInstance()) {}
 
-bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
-    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger_) {
-  base::span<const int32_t> ae_stats_grid_width =
-      result->GetMetadata<int32_t>(CHROMEOS_IPU6_RGBS_STATS_GRID_WIDTH);
-  if (ae_stats_grid_width.empty()) {
-    VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_GRID_WIDTH";
+bool HdrNetAeDeviceAdapterIpu6::WriteRequestParameters(
+    Camera3CaptureDescriptor* request) {
+  std::array<uint8_t, 1> rgbs_grid_enable = {
+      INTEL_VENDOR_CAMERA_CALLBACK_RGBS_TRUE};
+  if (!request->UpdateMetadata<uint8_t>(INTEL_VENDOR_CAMERA_CALLBACK_RGBS,
+                                        rgbs_grid_enable)) {
+    LOGF(ERROR) << "Cannot enable INTEL_VENDOR_CAMERA_CALLBACK_RGBS in "
+                   "request metadta";
     return false;
   }
-  base::span<const int32_t> ae_stats_grid_height =
-      result->GetMetadata<int32_t>(CHROMEOS_IPU6_RGBS_STATS_GRID_HEIGHT);
-  if (ae_stats_grid_height.empty()) {
-    VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_GRID_HEIGHT";
+  return true;
+}
+
+bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
+    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger_) {
+  base::span<const int32_t> rgbs_grid_size =
+      result->GetMetadata<int32_t>(INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE);
+  if (rgbs_grid_size.empty()) {
+    VLOGF(2) << "Cannot get INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE";
     return false;
   }
   base::span<const uint8_t> ae_stats_shading_correction =
-      result->GetMetadata<uint8_t>(CHROMEOS_IPU6_RGBS_STATS_SHADING_CORRECTION);
+      result->GetMetadata<uint8_t>(INTEL_VENDOR_CAMERA_SHADING_CORRECTION);
   if (ae_stats_shading_correction.empty()) {
-    VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_SHADING_CORRECTION";
+    VLOGF(2) << "Cannot get INTEL_VENDOR_CAMERA_SHADING_CORRECTION";
     return false;
   }
   base::span<const uint8_t> ae_stats_blocks =
-      result->GetMetadata<uint8_t>(CHROMEOS_IPU6_RGBS_STATS_BLOCKS);
+      result->GetMetadata<uint8_t>(INTEL_VENDOR_CAMERA_RGBS_STATS_BLOCKS);
   if (ae_stats_blocks.empty()) {
-    VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_BLOCKS";
+    VLOGF(2) << "Cannot get INTEL_VENDOR_CAMERA_RGBS_STATS_BLOCKS";
     return false;
   }
 
-  VLOGF(2) << "ae_stats_grid_width=" << ae_stats_grid_width[0];
-  VLOGF(2) << "ae_stats_grid_height=" << ae_stats_grid_height[0];
-  VLOGF(2) << "ae_stats_shading_correction="
-           << !!ae_stats_shading_correction[0];
-  VLOGF(2) << "ae_stats_blocks.size()=" << ae_stats_blocks.size();
+  int grid_width = rgbs_grid_size[0];
+  int grid_height = rgbs_grid_size[1];
   if (VLOG_IS_ON(2)) {
-    for (int y = 0; y < ae_stats_grid_height[0]; ++y) {
-      for (int x = 0; x < ae_stats_grid_width[0]; ++x) {
-        int base = (y * (ae_stats_grid_width[0]) + x) * 5;
+    VLOGF(2) << "ae_stats_grid_width=" << grid_width;
+    VLOGF(2) << "ae_stats_grid_height=" << grid_height;
+    VLOGF(2) << "ae_stats_shading_correction="
+             << (ae_stats_shading_correction[0] ==
+                 INTEL_VENDOR_CAMERA_SHADING_CORRECTION_TRUE);
+    VLOGF(2) << "ae_stats_blocks.size()=" << ae_stats_blocks.size();
+    for (int y = 0; y < grid_height; ++y) {
+      for (int x = 0; x < grid_width; ++x) {
+        int base = (y * grid_width + x) * 5;
         int avg_gr = ae_stats_blocks[base];
         int avg_r = ae_stats_blocks[base + 1];
         int avg_b = ae_stats_blocks[base + 2];
@@ -83,9 +93,9 @@ bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
       GetAeStatsEntry(result->frame_number(), /*create_entry=*/true);
 
   (*ae_stats)->white_level = kIpu6WhiteLevel;
-  (*ae_stats)->grid_width = ae_stats_grid_width[0];
-  (*ae_stats)->grid_height = ae_stats_grid_height[0];
-  int num_grid_blocks = ae_stats_grid_width[0] * ae_stats_grid_height[0];
+  (*ae_stats)->grid_width = grid_width;
+  (*ae_stats)->grid_height = grid_height;
+  int num_grid_blocks = grid_width * grid_height;
   for (int i = 0; i < num_grid_blocks; ++i) {
     int base = i * 5;
     AeStatsGridBlockIntelIpu6& block = (*ae_stats)->grid_blocks[i];
@@ -100,9 +110,9 @@ bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
     metadata_logger_->Log(result->frame_number(), kTagWhiteLevel,
                           kIpu6WhiteLevel);
     metadata_logger_->Log(result->frame_number(), kTagIpu6RgbsStatsGridWidth,
-                          ae_stats_grid_width[0]);
+                          grid_width);
     metadata_logger_->Log(result->frame_number(), kTagIpu6RgbsStatsGridHeight,
-                          ae_stats_grid_height[0]);
+                          grid_height);
     metadata_logger_->Log(result->frame_number(),
                           kTagIpu6RgbsStatsShadingCorrection,
                           ae_stats_shading_correction[0]);

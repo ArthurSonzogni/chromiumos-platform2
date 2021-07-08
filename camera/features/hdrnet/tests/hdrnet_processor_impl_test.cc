@@ -46,6 +46,44 @@
 #include "gpu/gles/utils.h"
 #include "gpu/test_support/gl_test_fixture.h"
 
+#if USE_IPU6 || USE_IPU6EP
+#include <system/camera_metadata_hidden.h>
+#include <system/camera_vendor_tags.h>
+
+#include "features/hdrnet/intel_vendor_metadata_tags.h"
+
+// Minimal vendor_tag_ops_t implementation just to keep the test running.
+vendor_tag_ops_t ipu6ep_vendor_tag_ops = {
+    .get_tag_count = [](const vendor_tag_ops_t* v) -> int { return 1; },
+    .get_all_tags =
+        [](const vendor_tag_ops_t* v, uint32_t* tag_array) {
+          ASSERT_NE(tag_array, nullptr);
+          tag_array[0] = INTEL_VENDOR_CAMERA_TONE_MAP_CURVE;
+        },
+    .get_section_name = [](const vendor_tag_ops_t* v,
+                           uint32_t tag) -> const char* {
+      switch (tag) {
+        case INTEL_VENDOR_CAMERA_TONE_MAP_CURVE:
+          return "Intel.VendorCamera";
+      }
+      return nullptr;
+    },
+    .get_tag_name = [](const vendor_tag_ops_t* v, uint32_t tag) -> const char* {
+      switch (tag) {
+        case INTEL_VENDOR_CAMERA_TONE_MAP_CURVE:
+          return "ToneMapCurve";
+      }
+      return nullptr;
+    },
+    .get_tag_type = [](const vendor_tag_ops_t* v, uint32_t tag) -> int {
+      switch (tag) {
+        case INTEL_VENDOR_CAMERA_TONE_MAP_CURVE:
+          return TYPE_FLOAT;
+      }
+      return -1;
+    }};
+#endif
+
 namespace cros {
 
 struct Options {
@@ -172,6 +210,13 @@ class HdrNetProcessorTest : public GlTestFixture {
 
   ~HdrNetProcessorTest() { processor_ = nullptr; }
 
+  void SetUp() override {
+#if USE_IPU6 || USE_IPU6EP
+    ASSERT_EQ(set_camera_metadata_vendor_ops(&ipu6ep_vendor_tag_ops), 0)
+        << "Cannot set vendor tag ops";
+#endif
+  }
+
   void DumpBuffers() {
     if (!g_args.dump_buffer) {
       return;
@@ -211,15 +256,28 @@ TEST_F(HdrNetProcessorTest, HdrNetProcessorBenchmark) {
   for (int i = 0; i < kCurveResolution; ++i) {
     int idx = i * 2;
     gtm_curve[idx] = static_cast<float>(i) / kCurveResolution;
+#if USE_IPU6 || USE_IPU6EP
     // 1.0 means 1x gain.
     gtm_curve[idx + 1] = 1.0;
+#else
+    gtm_curve[idx + 1] = kCurveResolution * gtm_curve[idx];
+#endif
   }
+
+#if USE_IPU6 || USE_IPU6EP
+  ASSERT_EQ(result_metadata.update(INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,
+                                   gtm_curve.data(), gtm_curve.size()),
+            0)
+      << "Cannot set tonemap curve in vendor tag";
+#else
   result_metadata.update(ANDROID_TONEMAP_CURVE_RED, gtm_curve.data(),
                          gtm_curve.size());
   result_metadata.update(ANDROID_TONEMAP_CURVE_GREEN, gtm_curve.data(),
                          gtm_curve.size());
   result_metadata.update(ANDROID_TONEMAP_CURVE_BLUE, gtm_curve.data(),
                          gtm_curve.size());
+#endif
+
   result_metadata.sort();
   const camera_metadata_t* result_metadata_ptr = result_metadata.getAndLock();
 

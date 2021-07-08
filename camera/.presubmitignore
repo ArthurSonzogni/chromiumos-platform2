@@ -1,4 +1,5 @@
 android/*
+features/hdrnet/intel_vendor_metadata_tags.h
 hal/intel/*
 hal/rockchip/*
 mojo/CameraMetadataTagsVerifier.cc

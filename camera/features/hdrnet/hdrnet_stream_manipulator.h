@@ -163,7 +163,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   void ResetStateOnGpuThread();
 
-  void RecordCaptureMetadataOnGpuThread(Camera3CaptureDescriptor* request);
+  void UpdateRequestSettingsOnGpuThread(Camera3CaptureDescriptor* request);
 
   void RecordYuvBufferForAeControllerOnGpuThread(int frame_number,
                                                  const SharedImage& yuv_input);

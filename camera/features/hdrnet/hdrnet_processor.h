@@ -42,6 +42,10 @@ class HdrNetProcessor {
 
   virtual void TearDown() = 0;
 
+  // Per-frame callback to allow the HdrNetProcessor to set device specific
+  // control metadata (e.g. vendor tags) for each capture request.
+  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request) = 0;
+
   // Per-frame callback to pass the capture result metadata to HdrNetProcessor.
   virtual void ProcessResultMetadata(Camera3CaptureDescriptor* result) = 0;
 

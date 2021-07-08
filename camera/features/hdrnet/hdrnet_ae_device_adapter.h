@@ -26,7 +26,11 @@ class HdrNetAeDeviceAdapter {
 
   virtual ~HdrNetAeDeviceAdapter() = default;
 
-  // Called by AeController to extract the device specific AE stats from
+  // Called by HdrNetAeController to allow the adapter to set device specific
+  // control metadata (e.g. vendor tags) for each capture request.
+  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request);
+
+  // Called by HdrNetAeController to extract the device specific AE stats from
   // |result|.
   virtual bool ExtractAeStats(Camera3CaptureDescriptor* result,
                               MetadataLogger* metadata_logger = nullptr);

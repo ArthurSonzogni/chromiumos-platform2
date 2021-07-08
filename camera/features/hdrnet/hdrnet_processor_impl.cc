@@ -102,6 +102,13 @@ void HdrNetProcessorImpl::TearDown() {
   processor_device_adapter_->TearDown();
 }
 
+bool HdrNetProcessorImpl::WriteRequestParameters(
+    Camera3CaptureDescriptor* request) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+
+  return processor_device_adapter_->WriteRequestParameters(request);
+}
+
 void HdrNetProcessorImpl::ProcessResultMetadata(
     Camera3CaptureDescriptor* result) {
   DCHECK(task_runner_->BelongsToCurrentThread());

@@ -31,6 +31,11 @@ bool HdrNetProcessorDeviceAdapter::Initialize() {
 
 void HdrNetProcessorDeviceAdapter::TearDown() {}
 
+bool HdrNetProcessorDeviceAdapter::WriteRequestParameters(
+    Camera3CaptureDescriptor* request) {
+  return true;
+}
+
 void HdrNetProcessorDeviceAdapter::ProcessResultMetadata(
     Camera3CaptureDescriptor* result) {}
 

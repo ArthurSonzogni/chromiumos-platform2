@@ -32,6 +32,10 @@ class HdrNetProcessorDeviceAdapter {
   virtual bool Initialize();
   virtual void TearDown();
 
+  // Called on every frame to allow the adapter to set device specific
+  // control metadata (e.g. vendor tags) for each capture request.
+  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request);
+
   // Called on every frame with the per-frame capture result metadata.
   virtual void ProcessResultMetadata(Camera3CaptureDescriptor* result);
 

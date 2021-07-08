@@ -383,7 +383,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     return true;
   }
 
-  RecordCaptureMetadataOnGpuThread(request);
+  UpdateRequestSettingsOnGpuThread(request);
 
   // First, pick the set of HDRnet stream that we will put into the request.
   base::span<const camera3_stream_buffer_t> client_output_buffers =
@@ -402,6 +402,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
       continue;
     }
 
+    stream_context->processor->WriteRequestParameters(request);
     switch (stream_context->mode) {
       case HdrNetStreamContext::Mode::kReplaceYuv: {
         auto is_compatible =
@@ -604,9 +605,9 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
 
   if (msg->type == CAMERA3_MSG_ERROR) {
     camera3_error_msg_t& error = msg->message.error;
-    VLOGF(1) << "Got error notify: frame_number=" << error.frame_number
-             << " stream=" << error.error_stream
-             << " errorcode=" << error.error_code;
+    VLOGFID(1, error.frame_number) << "Got error notify:"
+                                   << " stream=" << error.error_stream
+                                   << " errorcode=" << error.error_code;
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(error.error_stream);
     switch (error.error_code) {
@@ -858,7 +859,7 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   result_stream_mapping_.clear();
 }
 
-void HdrNetStreamManipulator::RecordCaptureMetadataOnGpuThread(
+void HdrNetStreamManipulator::UpdateRequestSettingsOnGpuThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_thread_.IsCurrentThread());
 

@@ -29,6 +29,7 @@ class HdrNetProcessorDeviceAdapterIpu6 : public HdrNetProcessorDeviceAdapter {
   ~HdrNetProcessorDeviceAdapterIpu6() override = default;
   bool Initialize() override;
   void TearDown() override;
+  bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
   void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
   bool Preprocess(const HdrNetConfig::Options& options,
                   const SharedImage& input_yuv,

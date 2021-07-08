@@ -409,7 +409,16 @@ bool HdrNetAeControllerImpl::WriteRequestAeParameters(
     Camera3CaptureDescriptor* request) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!enabled_ || !latest_ae_parameters_.IsValid()) {
+  if (!enabled_) {
+    return false;
+  }
+
+  if (!ae_device_adapter_->WriteRequestParameters(request)) {
+    LOGFID(ERROR, request->frame_number()) << "Cannot set request parameters";
+    return false;
+  }
+
+  if (!latest_ae_parameters_.IsValid()) {
     return false;
   }
 

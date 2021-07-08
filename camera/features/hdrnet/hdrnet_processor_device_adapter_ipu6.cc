@@ -15,6 +15,7 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "features/hdrnet/embedded_hdrnet_processor_shaders_ipu6_toc.h"
+#include "features/hdrnet/intel_vendor_metadata_tags.h"
 #include "features/hdrnet/ipu6_gamma.h"
 #include "gpu/embedded_gpu_shaders_toc.h"
 #include "gpu/gles/framebuffer.h"
@@ -95,20 +96,33 @@ void HdrNetProcessorDeviceAdapterIpu6::TearDown() {
   DCHECK(task_runner_->BelongsToCurrentThread());
 }
 
+bool HdrNetProcessorDeviceAdapterIpu6::WriteRequestParameters(
+    Camera3CaptureDescriptor* request) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+
+  std::array<uint8_t, 1> tonemap_curve_enable = {
+      INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE_TRUE};
+  if (!request->UpdateMetadata<uint8_t>(INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE,
+                                        tonemap_curve_enable)) {
+    LOGF(ERROR) << "Cannot enable INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE in "
+                   "request metadta";
+    return false;
+  }
+  return true;
+}
+
 void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
     Camera3CaptureDescriptor* result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   // TODO(jcliang): Theoretically metadata can come after the buffer as well.
   // Currently the pipeline would break if the metadata come after the buffers.
   if (!initialized_) {
-    LOGF(ERROR) << "HDRner processor hadn't been initialized";
+    LOGF(ERROR) << "HDRnet processor hadn't been initialized";
     return;
   }
 
-  // TODO(jcliang): Update the metadata tag once we move the GTM curve to a
-  // vendor tag.
   base::span<const float> tonemap_curve =
-      result->GetMetadata<float>(ANDROID_TONEMAP_CURVE_RED);
+      result->GetMetadata<float>(INTEL_VENDOR_CAMERA_TONE_MAP_CURVE);
   if (!tonemap_curve.empty()) {
     VLOGF(1) << "Update GTM curve";
     CHECK_EQ(tonemap_curve.size(), num_curve_points_ * 2);

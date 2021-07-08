@@ -15,6 +15,10 @@ pkg_config("target_defaults") {
     "libchrome-test",
     "libcros_camera",
   ]
+  defines = [
+    "USE_IPU6=${use.ipu6}",
+    "USE_IPU6EP=${use.ipu6ep}",
+  ]
 }
 
 executable("hdrnet_processor_impl_test") {
