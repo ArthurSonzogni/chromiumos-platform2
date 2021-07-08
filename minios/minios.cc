@@ -38,7 +38,7 @@ int MiniOs::Run() {
                                              },
                                              &shell_pid)) {
     LOG(ERROR) << "Failed to start shell in the background.";
-    return -1;
+    return 1;
   }
   LOG(INFO) << "Started shell in the background as pid: " << shell_pid;
   if (!screens_controller_.Init()) {
