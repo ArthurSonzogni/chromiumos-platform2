@@ -49,7 +49,6 @@ impl Args {
 
         let mut opts = getopts::Options::new();
         opts.optopt("d", "bus-device", "Identifier of device", "BUS:DEVICE")
-            .optopt("k", "keep-alive", "Path to keep-alive socket", "PATH")
             .optopt(
                 "s",
                 "unix-socket",
