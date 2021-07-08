@@ -614,7 +614,7 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(
 bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
                            ScopedTssKey* enc_handle,
                            TSS_HTPM tpm_handle,
-                           const SecureBlob& auth_blob) {
+                           const SecureBlob& auth_value) {
   // Create the enc_handle.
   TSS_RESULT result;
   if (TPM_ERROR(result = Tspi_Context_CreateObject(
@@ -632,8 +632,8 @@ bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
     return false;
   }
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(
-                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN, auth_blob.size(),
-                    const_cast<BYTE*>(auth_blob.data())))) {
+                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN, auth_value.size(),
+                    const_cast<BYTE*>(auth_value.data())))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
@@ -648,9 +648,8 @@ bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
 }
 
 Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
-    TpmKeyHandle key_handle,
     const SecureBlob& plaintext,
-    const SecureBlob& auth_blob,
+    const SecureBlob& auth_value,
     const std::map<uint32_t, std::string>& pcr_map,
     SecureBlob* sealed_data) {
   ScopedTssContext context_handle;
@@ -698,7 +697,7 @@ Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
   }
 
   ScopedTssKey enc_handle(context_handle);
-  if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_blob)) {
+  if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_value)) {
     context_handle.reset();
     return Tpm::kTpmRetryFailNoRetry;
   }
@@ -733,10 +732,9 @@ Tpm::TpmRetryAction TpmImpl::PreloadSealedData(
 }
 
 Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
-    TpmKeyHandle key_handle,
     base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
-    const SecureBlob& auth_blob,
+    const SecureBlob& auth_value,
     const std::map<uint32_t, std::string>& pcr_map,
     SecureBlob* plaintext) {
   if (preload_handle) {
@@ -760,7 +758,7 @@ Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
 
   // Create an ENCDATA object with the sealed value.
   ScopedTssKey enc_handle(context_handle);
-  if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_blob)) {
+  if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_value)) {
     context_handle.reset();
     return Tpm::kTpmRetryFailNoRetry;
   }
@@ -2300,6 +2298,14 @@ bool TpmImpl::SetDelegateDataFromTpmManager() {
     has_set_delegate_data_ |= SetDelegateData(blob, has_reset_lock_permissions);
   }
   return has_set_delegate_data_;
+}
+
+bool TpmImpl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                           const SecureBlob& pass_blob,
+                           SecureBlob* auth_value) {
+  // For TPM1.2, the |auth_value| should be the same as |pass_blob|.
+  *auth_value = pass_blob;
+  return true;
 }
 
 }  // namespace cryptohome

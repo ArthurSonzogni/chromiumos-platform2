@@ -209,9 +209,9 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   SecureBlob vkk_key;
   EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
-  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
       .Times(2)  // Once for each valid PCR state.
-      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
+      .WillRepeatedly(DoAll(SaveArg<0>(&vkk_key), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -249,8 +249,8 @@ TEST_F(CryptoTest, TpmStepTest) {
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<5>(vkk_key), Return(Tpm::kTpmRetryNone)));
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), Return(Tpm::kTpmRetryNone)));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -357,7 +357,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
 
-  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _)).Times(2);
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _)).Times(2);
   EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
               HasCryptohomeKey())
       .WillOnce(Return(false))
@@ -395,7 +395,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
 
   // UnsealWithAuthorization operation will fail.
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _))
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(Return(Tpm::kTpmRetryFatal));
 
   ASSERT_FALSE(vault_keyset.DecryptVaultKeyset(

@@ -41,8 +41,7 @@ class MockTpm : public Tpm {
               (override));
   MOCK_METHOD(TpmRetryAction,
               SealToPcrWithAuthorization,
-              (TpmKeyHandle,
-               const brillo::SecureBlob&,
+              (const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                (const std::map<uint32_t, std::string>&),
                brillo::SecureBlob*),
@@ -53,8 +52,7 @@ class MockTpm : public Tpm {
               (override));
   MOCK_METHOD(TpmRetryAction,
               UnsealWithAuthorization,
-              (TpmKeyHandle,
-               base::Optional<TpmKeyHandle>,
+              (base::Optional<TpmKeyHandle>,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                (const std::map<uint32_t, std::string>&),
@@ -186,6 +184,12 @@ class MockTpm : public Tpm {
               GetPcrMap,
               (const std::string&, bool),
               (const override));
+  MOCK_METHOD(bool,
+              GetAuthValue,
+              (base::Optional<TpmKeyHandle> key_handle,
+               const brillo::SecureBlob& pass_blob,
+               brillo::SecureBlob* auth_value),
+              (override));
 
  private:
   TpmRetryAction XorDecrypt(TpmKeyHandle _key,

@@ -39,10 +39,15 @@ class StubTpm : public Tpm {
                              SecureBlob* plaintext) override {
     return kTpmRetryFatal;
   }
+  bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                    const brillo::SecureBlob& pass_blob,
+                    brillo::SecureBlob* auth_value) override {
+    return false;
+  }
+
   TpmRetryAction SealToPcrWithAuthorization(
-      TpmKeyHandle key_handle,
       const SecureBlob& plaintext,
-      const SecureBlob& auth_blob,
+      const SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       SecureBlob* sealed_data) override {
     return kTpmRetryFatal;
@@ -52,15 +57,14 @@ class StubTpm : public Tpm {
     return kTpmRetryFatal;
   }
   TpmRetryAction UnsealWithAuthorization(
-      TpmKeyHandle key_handle,
       base::Optional<TpmKeyHandle> preload_handle,
       const SecureBlob& sealed_data,
-      const SecureBlob& auth_blob,
+      const SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       SecureBlob* plaintext) override {
     return kTpmRetryFatal;
   }
-  TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
+  TpmRetryAction GetPublicKeyHash(base::Optional<TpmKeyHandle> key_handle,
                                   SecureBlob* hash) override {
     return kTpmRetryNone;
   }

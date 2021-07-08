@@ -50,18 +50,16 @@ class TpmImpl : public Tpm {
                              const std::map<uint32_t, std::string>& pcr_map,
                              brillo::SecureBlob* plaintext) override;
   TpmRetryAction SealToPcrWithAuthorization(
-      TpmKeyHandle key_handle,
       const brillo::SecureBlob& plaintext,
-      const brillo::SecureBlob& auth_blob,
+      const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* sealed_data) override;
   TpmRetryAction PreloadSealedData(const brillo::SecureBlob& sealed_data,
                                    ScopedKeyHandle* preload_handle) override;
   TpmRetryAction UnsealWithAuthorization(
-      TpmKeyHandle key_handle,
       base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
-      const brillo::SecureBlob& auth_blob,
+      const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
@@ -188,6 +186,12 @@ class TpmImpl : public Tpm {
                                 UINT32 encryption_scheme,
                                 TSS_HKEY* key_handle);
 
+  // Copies the |pass_blob| to |auth_value|.
+  // The input |pass_blob| must have 256 bytes.
+  bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                    const brillo::SecureBlob& pass_blob,
+                    brillo::SecureBlob* auth_value) override;
+
  private:
   // Processes the delegate blob and establishes if it's bound to any PCR. Also
   // keeps the information about reset_lock_permissions. Returns |true| iff the
@@ -256,7 +260,7 @@ class TpmImpl : public Tpm {
   bool SetAuthValue(TSS_HCONTEXT context_handle,
                     trousers::ScopedTssKey* enc_handle,
                     TSS_HTPM tpm_handle,
-                    const brillo::SecureBlob& auth_blob);
+                    const brillo::SecureBlob& auth_value);
 
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
   bool InitializeTpmManagerUtility();

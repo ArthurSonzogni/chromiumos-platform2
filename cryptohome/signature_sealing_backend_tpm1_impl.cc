@@ -1083,8 +1083,13 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
     return false;
   }
   // Unseal the secret value bound to PCRs and the AuthData value.
+  brillo::SecureBlob auth_value;
+  if (!tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value.";
+    return false;
+  }
   if (tpm_->UnsealWithAuthorization(
-          srk_handle, base::nullopt, SecureBlob(pcr_bound_secret_), auth_data,
+          base::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
           {} /* pcr_map */, unsealed_value) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to unseal the secret value";
     return false;
@@ -1210,9 +1215,14 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
       pcr_values_strings[pcr_index_and_value.first] =
           BlobToString(pcr_index_and_value.second);
     }
+
+    brillo::SecureBlob auth_value;
+    if (!tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+      LOG(ERROR) << "Failed to get auth value.";
+      return false;
+    }
     if (tpm_->SealToPcrWithAuthorization(
-            kInvalidKeyHandle /* key_handle */, *secret_value, auth_data,
-            pcr_values_strings,
+            *secret_value, auth_data, pcr_values_strings,
             &pcr_bound_secret_value) != Tpm::kTpmRetryNone) {
       LOG(ERROR)
           << "Error binding the secret value to PCRs and authorization data";

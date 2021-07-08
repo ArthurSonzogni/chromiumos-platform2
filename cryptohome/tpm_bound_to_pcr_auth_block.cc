@@ -75,18 +75,24 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // Encrypt the VKK using the TPM and the user's passkey. The output is two
   // encrypted blobs, sealed to PCR in |tpm_key| and |extended_tpm_key|,
   // which are stored in the serialized vault keyset.
+  TpmKeyHandle cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
+  brillo::SecureBlob auth_value;
+  if (!tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value.";
+    return base::nullopt;
+  }
+
   brillo::SecureBlob tpm_key;
-  if (tpm_->SealToPcrWithAuthorization(
-          cryptohome_key_loader_->GetCryptohomeKey(), vkk_key, pass_blob,
-          default_pcr_map, &tpm_key) != Tpm::kTpmRetryNone) {
+  if (tpm_->SealToPcrWithAuthorization(vkk_key, auth_value, default_pcr_map,
+                                       &tpm_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to wrap vkk with creds.";
     return base::nullopt;
   }
 
   brillo::SecureBlob extended_tpm_key;
-  if (tpm_->SealToPcrWithAuthorization(
-          cryptohome_key_loader_->GetCryptohomeKey(), vkk_key, pass_blob,
-          extended_pcr_map, &extended_tpm_key) != Tpm::kTpmRetryNone) {
+  if (tpm_->SealToPcrWithAuthorization(vkk_key, auth_value, extended_pcr_map,
+                                       &extended_tpm_key) !=
+      Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR.";
     return base::nullopt;
   }
@@ -99,8 +105,8 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
   brillo::SecureBlob pub_key_hash;
-  if (tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
-                             &pub_key_hash) == Tpm::kTpmRetryNone) {
+  if (tpm_->GetPublicKeyHash(cryptohome_key, &pub_key_hash) ==
+      Tpm::kTpmRetryNone) {
     auth_state->set_tpm_public_key_hash(pub_key_hash.data(),
                                         pub_key_hash.size());
   } else {
@@ -245,10 +251,19 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   }
 
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
+    retry_action = Tpm::kTpmRetryNone;
+    TpmKeyHandle cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
+    brillo::SecureBlob auth_value;
+    if (!tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
+      LOG(ERROR) << "Failed to get auth value.";
+      retry_action = Tpm::kTpmRetryFailNoRetry;
+      // TODO(yich): Reload cryptohome key might be a better choice.
+      break;
+    }
+
     std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
-    retry_action = tpm_->UnsealWithAuthorization(
-        cryptohome_key_loader_->GetCryptohomeKey(), handle, tpm_key, pass_blob,
-        pcr_map, vkk_key);
+    retry_action = tpm_->UnsealWithAuthorization(handle, tpm_key, auth_value,
+                                                 pcr_map, vkk_key);
 
     if (retry_action == Tpm::kTpmRetryNone)
       return true;

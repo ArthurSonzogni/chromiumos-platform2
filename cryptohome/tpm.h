@@ -228,21 +228,17 @@ class Tpm {
       brillo::SecureBlob* plaintext) = 0;
 
   // Seals a data blob to provided PCR data, while assigning a authorization
-  // value derived from provided |auth_blob|. For TPM2.0, |key_handle| is used
-  // to decrypt the |auth_blob|, obtaining the authorization value. For TPM1.2
-  // the |key_handle| is unused. Returns a TpmRetryAction struct.
+  // value derived from provided |auth_value|. Returns a TpmRetryAction struct.
   //
   // Parameters
-  //   key_handle - The loaded TPM key handle.
   //   plaintext - The data blob to be sealed.
-  //   auth_blob - The blob to be used to derive the authorization value.
+  //   auth_value - The blob to be used to derive the authorization value.
   //   pcr_map - The map of PCR index -> expected value when Unseal will be
   //             used.
   //   sealed_data (OUT) - Sealed blob.
   virtual TpmRetryAction SealToPcrWithAuthorization(
-      TpmKeyHandle key_handle,
       const brillo::SecureBlob& plaintext,
-      const brillo::SecureBlob& auth_blob,
+      const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* sealed_data) = 0;
 
@@ -257,31 +253,27 @@ class Tpm {
       const brillo::SecureBlob& sealed_data,
       ScopedKeyHandle* preload_handle) = 0;
 
-  // Unseal a data blob using the provided |auth_blob| to derive the
-  // authorization value. For TPM2.0, |key_handle| is used to decrypt the
-  // |auth_blob|, obtaining the authorization value. Also for TPM2.0, the
-  // session used to unseal is not salted, meaning there's a security risk to
-  // leak the |auth_blob|. That's because it uses one expensive operation in
-  // decrypt to obtain the auth_value, and we can't afford to add a second
-  // operation. This might change in the future if we implement ECC encryption
-  // for salted sessions.
-  // For TPM1.2 the |key_handle| and |preload_handle| are unused. Returns a
-  // TpmRetryAction struct.
+  // Unseal a data blob using the provided |auth_value| to derive the
+  // authorization value. Also for TPM2.0, the session used to unseal is not
+  // salted, meaning there's a security risk to leak the |auth_value|. That's
+  // because it uses one expensive operation in decrypt to obtain the
+  // auth_value, and we can't afford to add a second operation. This might
+  // change in the future if we implement ECC encryption for salted sessions.
+  // For TPM1.2 the |preload_handle| are unused. Returns a TpmRetryAction
+  // struct.
   //
   // Parameters
-  //   key_handle - The loaded TPM key handle.
   //   preload_handle - The handle to the sealed data. (optional)
   //   sealed_data - The sealed data.
-  //   auth_blob - The blob used to derive the authorization value.
+  //   auth_value - The blob used to derive the authorization value.
   //   pcr_map - The map of PCR index -> value bound to the key. This is used
   //             only for TPM 2.0. For TPM 1.2 this parameter is ignored, even
   //             so an empty map can be used.
   //   plaintext (OUT) - Unsealed blob.
   virtual TpmRetryAction UnsealWithAuthorization(
-      TpmKeyHandle key_handle,
       base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
-      const brillo::SecureBlob& auth_blob,
+      const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* plaintext) = 0;
 
@@ -662,6 +654,14 @@ class Tpm {
   // bug.
   virtual std::map<uint32_t, std::string> GetPcrMap(
       const std::string& obfuscated_username, bool use_extended_pcr) const = 0;
+
+  // Derive the |auth_value| from |pass_blob| using |key_handle|.
+  // The input |pass_blob| must have 256 bytes. For TPM2.0, |key_handle| is used
+  // to decrypt the |pass_blob|, obtaining the authorization value. For TPM1.2
+  // the |key_handle| is unused.
+  virtual bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                            const brillo::SecureBlob& pass_blob,
+                            brillo::SecureBlob* auth_value) = 0;
 
  private:
   static Tpm* singleton_;

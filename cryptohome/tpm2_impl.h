@@ -74,18 +74,16 @@ class Tpm2Impl : public Tpm {
                              const std::map<uint32_t, std::string>& pcr_map,
                              brillo::SecureBlob* plaintext) override;
   TpmRetryAction SealToPcrWithAuthorization(
-      TpmKeyHandle key_handle,
       const brillo::SecureBlob& plaintext,
-      const brillo::SecureBlob& auth_blob,
+      const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* sealed_data) override;
   TpmRetryAction PreloadSealedData(const brillo::SecureBlob& sealed_data,
                                    ScopedKeyHandle* preload_handle) override;
   TpmRetryAction UnsealWithAuthorization(
-      TpmKeyHandle key_handle,
       base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
-      const brillo::SecureBlob& auth_blob,
+      const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
@@ -187,6 +185,13 @@ class Tpm2Impl : public Tpm {
       const std::string& obfuscated_username,
       bool use_extended_pcr) const override;
 
+  // Derives the |auth_value| by decrypting the |pass_blob| using |key_handle|
+  // and hashing the result. The input |pass_blob| must have 256 bytes, the
+  // size of cryptohome key modulus.
+  bool GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                    const brillo::SecureBlob& pass_blob,
+                    brillo::SecureBlob* auth_value) override;
+
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
   bool InitializeTpmManagerUtility();
@@ -199,13 +204,6 @@ class Tpm2Impl : public Tpm {
   // public key.
   bool PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
                                 brillo::SecureBlob* public_key_der);
-
-  // Derive the |auth_value| by decrypting the |pass_blob| using |key_handle|
-  // and hashing the result. The input |pass_blob| must have 256 bytes, the
-  // size of cryptohome key modulus.
-  bool GetAuthValue(TpmKeyHandle key_handle,
-                    const brillo::SecureBlob& pass_blob,
-                    std::string* auth_value);
 
   // Updates tpm_status_ according to the requested |refresh_type|. Returns
   // true on success. Use |REFRESH_IF_NEEDED| for most calls. Use

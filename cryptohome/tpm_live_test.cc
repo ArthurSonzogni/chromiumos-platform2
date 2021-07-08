@@ -386,17 +386,21 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   uint32_t index2 = 11;
   std::map<uint32_t, std::string> pcr_map({{index1, ""}, {index2, ""}});
   SecureBlob plaintext(32, 'a');
-  SecureBlob auth_blob(256, 'b');
+  SecureBlob pass_blob(256, 'b');
   SecureBlob ciphertext;
-  if (tpm_->SealToPcrWithAuthorization(handle.value(), plaintext, auth_blob,
-                                       pcr_map,
+  brillo::SecureBlob auth_value;
+  if (!tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value.";
+    return false;
+  }
+  if (tpm_->SealToPcrWithAuthorization(plaintext, auth_value, pcr_map,
                                        &ciphertext) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error sealing the blob.";
     return false;
   }
   SecureBlob unsealed_text;
-  if (tpm_->UnsealWithAuthorization(handle.value(), base::nullopt, ciphertext,
-                                    auth_blob, pcr_map,
+  if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
+                                    pcr_map,
                                     &unsealed_text) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error unsealing blob.";
     return false;
@@ -406,10 +410,10 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     return false;
   }
 
-  // Check that unsealing doesn't work with wrong auth_blob.
-  auth_blob.char_data()[255] = 'a';
-  if (tpm_->UnsealWithAuthorization(handle.value(), base::nullopt, ciphertext,
-                                    auth_blob, pcr_map,
+  // Check that unsealing doesn't work with wrong auth_value.
+  auth_value.char_data()[255] = 'a';
+  if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
+                                    pcr_map,
                                     &unsealed_text) == Tpm::kTpmRetryNone &&
       plaintext == unsealed_text) {
     LOG(ERROR) << "UnsealWithAuthorization failed to fail.";

@@ -31,10 +31,12 @@
 #include "cryptohome/vault_keyset.h"
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Exactly;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 
 namespace cryptohome {
 
@@ -72,9 +74,12 @@ TEST(TpmBoundToPcrTest, CreateTest) {
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, scrypt_derived_key, _, _))
+  brillo::SecureBlob auth_value(256, 'a');
+  EXPECT_CALL(tpm, GetAuthValue(_, scrypt_derived_key, _))
+      .WillOnce(DoAll(SetArgPointee<2>(auth_value), Return(true)));
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
       .Times(Exactly(2));
-  ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
+  ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
       .WillByDefault(Return(Tpm::kTpmRetryNone));
 
   AuthInput user_input = {vault_key,
@@ -103,7 +108,8 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
   // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
+
+  ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
       .WillByDefault(Return(Tpm::kTpmRetryFatal));
 
   AuthInput user_input = {vault_key,
@@ -335,9 +341,11 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
             preload_handle->reset(&tpm, 5566);
             return Tpm::kTpmRetryNone;
           }));
-  EXPECT_CALL(tpm,
-              UnsealWithAuthorization(_, base::Optional<TpmKeyHandle>(5566), _,
-                                      pass_blob, _, _))
+  brillo::SecureBlob auth_value(256, 'a');
+  EXPECT_CALL(tpm, GetAuthValue(_, pass_blob, _))
+      .WillOnce(DoAll(SetArgPointee<2>(auth_value), Return(true)));
+  EXPECT_CALL(tpm, UnsealWithAuthorization(base::Optional<TpmKeyHandle>(5566),
+                                           _, auth_value, _, _))
       .Times(Exactly(1));
 
   CryptoError error = CryptoError::CE_NONE;
@@ -363,8 +371,11 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
   ScopedKeyHandle handle;
   EXPECT_CALL(tpm, PreloadSealedData(_, _))
       .WillOnce(Return(Tpm::kTpmRetryNone));
+  brillo::SecureBlob auth_value(256, 'a');
+  EXPECT_CALL(tpm, GetAuthValue(_, pass_blob, _))
+      .WillOnce(DoAll(SetArgPointee<2>(auth_value), Return(true)));
   base::Optional<TpmKeyHandle> nullopt;
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, nullopt, _, pass_blob, _, _))
+  EXPECT_CALL(tpm, UnsealWithAuthorization(nullopt, _, auth_value, _, _))
       .Times(Exactly(1));
 
   CryptoError error = CryptoError::CE_NONE;
@@ -418,7 +429,8 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(Exactly(1));
-  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, GetAuthValue(_, _, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _)).Times(Exactly(1));
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
 
