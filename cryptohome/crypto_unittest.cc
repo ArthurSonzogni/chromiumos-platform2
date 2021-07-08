@@ -216,7 +216,7 @@ TEST_F(CryptoTest, TpmStepTest) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(cryptohome_key_loader, Init())
-      .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
+      .Times(AtLeast(1));  // One by crypto.Init()
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
@@ -290,7 +290,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(cryptohome_key_loader, Init())
-      .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
+      .Times(AtLeast(1));  // One by crypto.Init()
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
@@ -358,7 +358,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(cryptohome_key_loader, Init())
-      .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
+      .Times(AtLeast(1));  // One by crypto.Init()
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
