@@ -31,8 +31,8 @@ namespace {
 // cause ordering issues.
 template <class T>
 void WriteToFd(int fd, const T event) {
-  CHECK(base::WriteFileDescriptor(fd, reinterpret_cast<const char*>(&event),
-                                  sizeof(T)));
+  CHECK(base::WriteFileDescriptor(fd,
+                                  base::as_bytes(base::make_span(&event, 1))));
 }
 }  // namespace
 

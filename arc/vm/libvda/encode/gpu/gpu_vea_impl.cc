@@ -391,7 +391,7 @@ void GpuVeaImpl::InitializeOnIpcThread(
 
   remote_vea->GetSupportedProfiles(base::BindOnce(
       &GpuVeaImpl::OnGetSupportedProfiles, base::Unretained(this),
-      base::Passed(std::move(remote_vea)), init_complete_event));
+      std::move(remote_vea), init_complete_event));
 }
 
 void GpuVeaImpl::OnGetSupportedProfiles(
@@ -451,7 +451,7 @@ void GpuVeaImpl::InitEncodeSessionOnIpcThread(
       base::BindOnce(
           &GpuVeaImpl::InitEncodeSessionAfterContextInitializedOnIpcThread,
           base::Unretained(this), init_complete_event, out_context,
-          base::Passed(std::move(context))));
+          std::move(context)));
 }
 
 void GpuVeaImpl::InitEncodeSessionAfterContextInitializedOnIpcThread(
