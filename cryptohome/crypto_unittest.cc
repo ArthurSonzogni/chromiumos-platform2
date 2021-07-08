@@ -246,7 +246,6 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   CryptoError crypto_error = CryptoError::CE_NONE;
 
-  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(vkk_key), Return(Tpm::kTpmRetryNone)));
 
@@ -388,7 +387,6 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   CryptoError crypto_error = CryptoError::CE_NONE;
 
   // UnsealWithAuthorization operation will fail.
-  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(1);
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _))
       .WillOnce(Return(Tpm::kTpmRetryFatal));
 

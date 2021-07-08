@@ -326,7 +326,6 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
-  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(Exactly(1));
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, pass_blob, _, _))
       .Times(Exactly(1));
 
@@ -380,7 +379,6 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeyLoader> cryptohome_key_loader;
-  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(Exactly(1));
   EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _, _)).Times(Exactly(1));
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_key_loader);
