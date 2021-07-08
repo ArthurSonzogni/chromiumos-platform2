@@ -123,7 +123,7 @@ class BrowserJobInterface : public ChildJobInterface {
 
   // The flag to pass to chrome to tell it to run migration for the user with
   // the specified user hash.
-  static const char kBrowserDataMigrationFlag[];
+  static const char kBrowserDataMigrationForUserFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {

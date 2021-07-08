@@ -677,8 +677,8 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
   // Check that |job_args_1| has args set for data migration.
   std::vector<std::string> job_args_1 = job_->ExportArgv();
   ExpectArgsToContainFlag(job_args_1, BrowserJob::kLoginManagerFlag, "");
-  ExpectArgsToContainFlag(job_args_1, BrowserJob::kBrowserDataMigrationFlag,
-                          kHash);
+  ExpectArgsToContainFlag(job_args_1,
+                          BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
   ExpectArgsNotToContainFlag(job_args_1, BrowserJob::kLoginUserFlag, kUser);
 
   job_->ClearBrowserDataMigrationArgs();
@@ -688,8 +688,8 @@ TEST_F(BrowserJobTest, SetBrowserDataMigrationArgsForUser) {
   std::vector<std::string> job_args_2 = job_->ExportArgv();
   ExpectArgsToContainFlag(job_args_2, BrowserJob::kLoginUserFlag, kUser);
   ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kLoginManagerFlag, "");
-  ExpectArgsNotToContainFlag(job_args_2, BrowserJob::kBrowserDataMigrationFlag,
-                             kHash);
+  ExpectArgsNotToContainFlag(
+      job_args_2, BrowserJob::kBrowserDataMigrationForUserFlag, kHash);
 }
 
 }  // namespace login_manager

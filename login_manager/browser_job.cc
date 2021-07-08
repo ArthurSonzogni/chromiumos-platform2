@@ -38,8 +38,8 @@ const char BrowserJobInterface::kLoginManagerFlag[] = "--login-manager";
 const char BrowserJobInterface::kLoginUserFlag[] = "--login-user=";
 const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
-const char BrowserJobInterface::kBrowserDataMigrationFlag[] =
-    "--browser-data-migration=";
+const char BrowserJobInterface::kBrowserDataMigrationForUserFlag[] =
+    "--browser-data-migration-for-user=";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
@@ -513,7 +513,7 @@ bool BrowserJob::ShouldDropExtraArguments() const {
 void BrowserJob::SetBrowserDataMigrationArgsForUser(
     const std::string& userhash) {
   browser_data_migration_arguments_.clear();
-  browser_data_migration_arguments_.push_back(kBrowserDataMigrationFlag +
+  browser_data_migration_arguments_.push_back(kBrowserDataMigrationForUserFlag +
                                               userhash);
   browser_data_migration_arguments_.push_back(kLoginManagerFlag);
 }
