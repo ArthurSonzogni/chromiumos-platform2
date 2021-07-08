@@ -16,6 +16,31 @@
 
 namespace cros {
 
+namespace {
+
+bool IsSupportedFormat(uint32_t buffer_format) {
+  switch (buffer_format) {
+    case DRM_FORMAT_NV12:
+    case DRM_FORMAT_P010:
+      return true;
+  }
+  return false;
+}
+
+uint32_t GetDrmPixelFormatForSubplane(buffer_handle_t buffer, int plane) {
+  uint32_t buffer_format = CameraBufferManager::GetDrmPixelFormat(buffer);
+  switch (buffer_format) {
+    case DRM_FORMAT_NV12:
+      return (plane == 0) ? DRM_FORMAT_R8 : DRM_FORMAT_GR88;
+    case DRM_FORMAT_P010:
+      return (plane == 0) ? DRM_FORMAT_R16 : DRM_FORMAT_GR1616;
+  }
+  NOTREACHED() << "Unsupported format: " << FormatToString(buffer_format);
+  return 0;
+}
+
+};  // namespace
+
 // static
 SharedImage SharedImage::CreateFromBuffer(buffer_handle_t buffer,
                                           Texture2D::Target texture_target,
@@ -35,21 +60,23 @@ SharedImage SharedImage::CreateFromBuffer(buffer_handle_t buffer,
     }
   } else {
     uint32_t buffer_format = CameraBufferManager::GetDrmPixelFormat(buffer);
-    if (buffer_format != DRM_FORMAT_NV12) {
-      LOGF(ERROR) << "Only NV12 is supported";
+    if (!IsSupportedFormat(buffer_format)) {
+      LOGF(ERROR) << "Unsupported format: " << FormatToString(buffer_format);
       return SharedImage();
     }
     int buffer_width = static_cast<int>(CameraBufferManager::GetWidth(buffer));
     int buffer_height =
         static_cast<int>(CameraBufferManager::GetHeight(buffer));
-    egl_images.emplace_back(EglImage::FromBufferPlane(
-        buffer, 0, buffer_width, buffer_height, DRM_FORMAT_R8));
+    egl_images.emplace_back(
+        EglImage::FromBufferPlane(buffer, 0, buffer_width, buffer_height,
+                                  GetDrmPixelFormatForSubplane(buffer, 0)));
     if (!egl_images[0].IsValid()) {
       LOGF(ERROR) << "Failed to create EGLimage for Y plane";
       return SharedImage();
     }
     egl_images.emplace_back(EglImage::FromBufferPlane(
-        buffer, 1, buffer_width / 2, buffer_height / 2, DRM_FORMAT_GR88));
+        buffer, 1, buffer_width / 2, buffer_height / 2,
+        GetDrmPixelFormatForSubplane(buffer, 1)));
     if (!egl_images[1].IsValid()) {
       LOGF(ERROR) << "Failed to create EGLimage for UV plane";
       return SharedImage();

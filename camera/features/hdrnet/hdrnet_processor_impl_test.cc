@@ -53,7 +53,8 @@ struct Options {
   static constexpr const char kInputSizeSwitch[] = "input-size";
   static constexpr const char kOutputSizeSwitch[] = "output-sizes";
   static constexpr const char kDumpBufferSwitch[] = "dump-buffer";
-  static constexpr const char kInputNv12File[] = "input-nv12-file";
+  static constexpr const char kInputFile[] = "input-file";
+  static constexpr const char kInputFormat[] = "input-format";
   // Use the default device processor to measure the latency of the core HDRnet
   // linear RGB pipeline.
   static constexpr const char kUseDefaulProcessorDeviceAdapter[] =
@@ -63,8 +64,9 @@ struct Options {
   Size input_size{1920, 1080};
   std::vector<Size> output_sizes{{1920, 1080}, {1280, 720}};
   bool dump_buffer = false;
-  base::Optional<base::FilePath> input_nv12_file;
+  base::Optional<base::FilePath> input_file;
   bool use_default_processor_device_adapter = false;
+  uint32_t input_format = HAL_PIXEL_FORMAT_YCbCr_420_888;
 };
 
 Options g_args;
@@ -110,11 +112,23 @@ void ParseCommandLine(int argc, char** argv) {
     g_args.dump_buffer = true;
   }
   {
-    std::string arg = command_line.GetSwitchValueASCII(Options::kInputNv12File);
+    std::string arg = command_line.GetSwitchValueASCII(Options::kInputFile);
     if (!arg.empty()) {
       base::FilePath path(arg);
-      CHECK(base::PathExists(path)) << ": Input NV12 file does not exist";
-      g_args.input_nv12_file = path;
+      CHECK(base::PathExists(path)) << ": Input file does not exist";
+      g_args.input_file = path;
+    }
+  }
+  {
+    std::string arg = command_line.GetSwitchValueASCII(Options::kInputFormat);
+    if (!arg.empty()) {
+      CHECK(arg == "nv12" || arg == "p010")
+          << "Unrecognized input format: " << arg;
+      if (arg == "nv12") {
+        g_args.input_format = HAL_PIXEL_FORMAT_YCBCR_420_888;
+      } else {  // arg == "p010"
+        g_args.input_format = HAL_PIXEL_FORMAT_YCBCR_P010;
+      }
     }
   }
   if (command_line.HasSwitch(Options::kUseDefaulProcessorDeviceAdapter)) {
@@ -142,14 +156,13 @@ class HdrNetProcessorTest : public GlTestFixture {
     constexpr uint32_t kBufferUsage =
         GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_TEXTURE;
     input_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        g_args.input_size.width, g_args.input_size.height,
-        HAL_PIXEL_FORMAT_YCBCR_420_888,
-        // HAL_PIXEL_FORMAT_YCBCR_P010,
-        // HAL_PIXEL_FORMAT_RGBX_8888,
+        g_args.input_size.width, g_args.input_size.height, g_args.input_format,
         kBufferUsage);
     input_image_ = SharedImage::CreateFromBuffer(
         *input_buffer_.get(), Texture2D::Target::kTarget2D,
         /*separate_yuv_textures=*/true);
+    CHECK(input_image_.y_texture().IsValid() &&
+          input_image_.uv_texture().IsValid());
     for (const auto& size : g_args.output_sizes) {
       output_buffers_.push_back(CameraBufferManager::AllocateScopedBuffer(
           size.width, size.height, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -210,10 +223,8 @@ TEST_F(HdrNetProcessorTest, HdrNetProcessorBenchmark) {
   result_metadata.sort();
   const camera_metadata_t* result_metadata_ptr = result_metadata.getAndLock();
 
-  if (g_args.input_nv12_file) {
-    CHECK_EQ(CameraBufferManager::GetDrmPixelFormat(*input_buffer_),
-             DRM_FORMAT_NV12);
-    ReadFileIntoBuffer(*input_buffer_, *g_args.input_nv12_file);
+  if (g_args.input_file) {
+    ReadFileIntoBuffer(*input_buffer_, *g_args.input_file);
   } else {
     FillTestPattern(*input_buffer_);
   }

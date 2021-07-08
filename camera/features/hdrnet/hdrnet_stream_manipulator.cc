@@ -215,7 +215,7 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     camera3_stream_configuration_t* stream_list) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
-  // Restore HDRnet streams to the original NV12 streams.
+  // Restore HDRnet streams to the original streams.
   VLOGF(1) << "Before stream manipulation:";
   for (int i = 0; i < stream_list->num_streams; ++i) {
     camera3_stream_t* s = stream_list->streams[i];
