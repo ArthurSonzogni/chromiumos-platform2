@@ -23,6 +23,7 @@ genfscon proc /swaps u:object_r:proc_swaps:s0
 genfscon proc /sys/fs/protected_hardlinks u:object_r:proc_security:s0
 genfscon proc /sys/fs/protected_symlinks u:object_r:proc_security:s0
 genfscon proc /sys/fs/suid_dumpable u:object_r:proc_security:s0
+genfscon proc /sys/kernel/ u:object_r:proc_sys_kernel:s0
 genfscon proc /sys/kernel/core_pattern u:object_r:usermodehelper:s0
 genfscon proc /sys/kernel/dmesg_restrict u:object_r:proc_security:s0
 genfscon proc /sys/kernel/domainname u:object_r:proc_hostname:s0

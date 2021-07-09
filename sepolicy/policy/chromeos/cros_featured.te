@@ -1,0 +1,8 @@
+type cros_featured, chromeos_domain, domain;
+
+domain_auto_trans(cros_init, cros_featured_exec, cros_featured);
+
+log_writer(cros_featured)
+cros_dbus_client(cros_featured)
+
+rw_dir_file(cros_featured, proc_sys_kernel);

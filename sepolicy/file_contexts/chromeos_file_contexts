@@ -26,6 +26,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
 /sbin/debugd                    u:object_r:cros_debugd_exec:s0
 /sbin/dhcpcd                    u:object_r:cros_dhcpcd_exec:s0
+/sbin/featured                  u:object_r:cros_featured_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
 /sbin/hwclock                   u:object_r:cros_hwclock_exec:s0
 /sbin/initctl                   u:object_r:cros_initctl_exec:s0
@@ -386,8 +387,11 @@ has_arc(`
 # (USB device nodes passed by Chrome / permission broker)
 /dev/bus/usb(/.*)?              u:object_r:usb_device:s0
 
+# /proc
 # Needed for tmpfiles.d to chgrp ip_conntrack
 /proc/net(/.*)?                 u:object_r:proc_net:s0
+# Needed for featured to enable kernel features
+/proc/sys/kernel(/.*)?                 u:object_r:proc_sys_kernel:s0
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
