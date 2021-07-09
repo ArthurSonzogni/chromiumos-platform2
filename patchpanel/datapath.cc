@@ -359,7 +359,8 @@ void Datapath::ResetIptables() {
   ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
                  kRedirectArcDnsChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
-  ModifyFwmarkSkipVpnJumpRule("OUTPUT", "-D", kChronosUid);
+  ModifyFwmarkSkipVpnJumpRule("OUTPUT", "-D", kChronosUid,
+                              false /*log_failures*/);
 
   std::vector<std::string> vpn_chains = {kVpnAcceptChain, kVpnLockdownChain};
   for (const auto& chain : vpn_chains) {
@@ -1567,7 +1568,8 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
 
 bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
                                            const std::string& op,
-                                           const std::string& uid) {
+                                           const std::string& uid,
+                                           bool log_failures) {
   std::vector<std::string> args = {op, chain};
   if (!uid.empty()) {
     args.push_back("-m");
@@ -1577,7 +1579,7 @@ bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
     args.push_back(uid);
   }
   args.insert(args.end(), {"-j", kSkipApplyVpnMarkChain, "-w"});
-  return ModifyIptables(IpFamily::Dual, "mangle", args);
+  return ModifyIptables(IpFamily::Dual, "mangle", args, log_failures);
 }
 
 bool Datapath::AddChain(IpFamily family,

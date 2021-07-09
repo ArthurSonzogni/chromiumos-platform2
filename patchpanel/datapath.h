@@ -433,7 +433,8 @@ class Datapath {
                                Fwmark mask);
   bool ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
                                    const std::string& op,
-                                   const std::string& uid);
+                                   const std::string& uid,
+                                   bool log_failures = true);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
   // Uses if_nametoindex to return the interface index of |ifname|. If |ifname|
   // does not exist anymore, looks up the cache |if_nametoindex_|. It is
