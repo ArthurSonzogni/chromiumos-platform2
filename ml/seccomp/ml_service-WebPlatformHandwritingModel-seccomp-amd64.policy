@@ -41,3 +41,4 @@ sched_getaffinity: 1
 sendto: 1
 socket: arg0 == AF_UNIX
 write: 1
+fstatfs: 1

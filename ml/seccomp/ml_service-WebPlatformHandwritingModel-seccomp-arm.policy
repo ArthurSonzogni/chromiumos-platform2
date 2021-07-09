@@ -39,3 +39,4 @@ rt_sigprocmask: 1
 send: 1
 socket: arg0 == AF_UNIX
 write: 1
+fstatfs64: 1
