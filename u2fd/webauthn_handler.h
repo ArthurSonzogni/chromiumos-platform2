@@ -14,9 +14,10 @@
 #include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
-#include <cryptohome-client/cryptohome/dbus-proxies.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <metrics/metrics_library.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/allowlisting_util.h"
 #include "u2fd/tpm_vendor_cmd.h"
@@ -129,7 +130,7 @@ class WebAuthnHandler {
   void SetWebAuthnStorageForTesting(std::unique_ptr<WebAuthnStorage> storage);
 
   void SetCryptohomeInterfaceProxyForTesting(
-      std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
+      std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
           cryptohome_proxy);
 
  private:
@@ -140,7 +141,8 @@ class WebAuthnHandler {
 
   // Fetches auth-time WebAuthn secret and keep the hash of it.
   void GetWebAuthnSecretAsync(const std::string& account_id);
-  void OnGetWebAuthnSecretResp(const cryptohome::BaseReply& reply);
+  void OnGetWebAuthnSecretResp(
+      const user_data_auth::GetWebAuthnSecretReply& reply);
   void OnGetWebAuthnSecretCallFailed(brillo::Error* error);
 
   // Callbacks invoked when UI completes user verification flow.
@@ -277,7 +279,7 @@ class WebAuthnHandler {
   // Proxy to user authentication dialog in Ash. Used only in UV requests.
   dbus::ObjectProxy* auth_dialog_dbus_proxy_ = nullptr;
 
-  std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       cryptohome_proxy_;
 
   // Presence-only mode (power button mode) should only be allowed if u2f or

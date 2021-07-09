@@ -41,6 +41,7 @@ pkg_config("u2fd_config") {
     "libmetrics",
     "libpower_manager-client",
     "libtrunks",
+    "libuser_data_auth-client",
     "openssl",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -153,6 +154,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libuser_data_auth-client-test",
     ]
   }
 

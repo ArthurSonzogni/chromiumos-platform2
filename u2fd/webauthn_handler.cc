@@ -177,7 +177,7 @@ void WebAuthnHandler::Initialize(
   // Testing can inject a mock.
   if (!cryptohome_proxy_)
     cryptohome_proxy_ =
-        std::make_unique<org::chromium::CryptohomeInterfaceProxy>(bus_);
+        std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_);
   DCHECK(auth_dialog_dbus_proxy_);
 
   if (user_state_->HasUser()) {
@@ -220,12 +220,13 @@ void WebAuthnHandler::OnSessionStopped() {
 }
 
 void WebAuthnHandler::GetWebAuthnSecretAsync(const std::string& account_id) {
-  cryptohome::AccountIdentifier id;
-  id.set_account_id(account_id);
+  user_data_auth::GetWebAuthnSecretRequest request;
+  request.mutable_account_id()->set_account_id(account_id);
+
   cryptohome::GetWebAuthnSecretRequest req;
 
   cryptohome_proxy_->GetWebAuthnSecretAsync(
-      id, req,
+      request,
       base::Bind(&WebAuthnHandler::OnGetWebAuthnSecretResp,
                  base::Unretained(this)),
       base::Bind(&WebAuthnHandler::OnGetWebAuthnSecretCallFailed,
@@ -239,23 +240,17 @@ void WebAuthnHandler::OnGetWebAuthnSecretCallFailed(brillo::Error* error) {
 }
 
 void WebAuthnHandler::OnGetWebAuthnSecretResp(
-    const cryptohome::BaseReply& reply) {
+    const user_data_auth::GetWebAuthnSecretReply& reply) {
   // In case there's any error, read the backup hash first.
   auth_time_secret_hash_ = webauthn_storage_->LoadAuthTimeSecretHash();
 
-  if (reply.has_error()) {
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "GetWebAuthnSecret reply has error " << reply.error();
     return;
   }
 
-  if (!reply.HasExtension(cryptohome::GetWebAuthnSecretReply::reply)) {
-    LOG(ERROR) << "GetWebAuthnSecret reply doesn't have the correct extension.";
-    return;
-  }
-
-  brillo::SecureBlob secret(
-      reply.GetExtension(cryptohome::GetWebAuthnSecretReply::reply)
-          .webauthn_secret());
+  brillo::SecureBlob secret(reply.webauthn_secret());
   if (secret.size() != SHA256_DIGEST_LENGTH) {
     LOG(ERROR) << "WebAuthn auth time secret size is wrong.";
     return;
@@ -1440,33 +1435,30 @@ void WebAuthnHandler::IsUvpaa(
 }
 
 bool WebAuthnHandler::HasPin(const std::string& account_id) {
-  cryptohome::AccountIdentifier id;
-  id.set_account_id(account_id);
-  cryptohome::AuthorizationRequest auth;
-  cryptohome::GetKeyDataRequest req;
-  req.mutable_key()->mutable_data()->set_label(kCryptohomePinLabel);
-  cryptohome::BaseReply reply;
+  user_data_auth::GetKeyDataRequest request;
+  request.mutable_account_id()->set_account_id(account_id);
+  // Touch mutable_authorization_request() so that has_authorization_request()
+  // would return true.
+  request.mutable_authorization_request();
+  request.mutable_key()->mutable_data()->set_label(kCryptohomePinLabel);
+
+  user_data_auth::GetKeyDataReply reply;
   brillo::ErrorPtr error;
 
-  if (!cryptohome_proxy_->GetKeyDataEx(id, auth, req, &reply, &error,
-                                       kCryptohomeTimeout.InMilliseconds())) {
+  if (!cryptohome_proxy_->GetKeyData(request, &reply, &error,
+                                     kCryptohomeTimeout.InMilliseconds())) {
     LOG(ERROR) << "Cannot query PIN availability from cryptohome, error: "
                << error->GetMessage();
     return false;
   }
 
-  if (reply.has_error()) {
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "GetKeyData response has error " << reply.error();
     return false;
   }
 
-  if (!reply.HasExtension(cryptohome::GetKeyDataReply::reply)) {
-    LOG(ERROR) << "GetKeyData response doesn't have the correct extension.";
-    return false;
-  }
-
-  return reply.GetExtension(cryptohome::GetKeyDataReply::reply)
-             .key_data_size() > 0;
+  return reply.key_data_size() > 0;
 }
 
 bool WebAuthnHandler::HasFingerprint(const std::string& sanitized_user) {
@@ -1513,7 +1505,7 @@ void WebAuthnHandler::SetWebAuthnStorageForTesting(
 }
 
 void WebAuthnHandler::SetCryptohomeInterfaceProxyForTesting(
-    std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
+    std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
         cryptohome_proxy) {
   cryptohome_proxy_ = std::move(cryptohome_proxy);
 }

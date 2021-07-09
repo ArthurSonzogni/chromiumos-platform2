@@ -17,13 +17,13 @@
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
 #include <chromeos/dbus/service_constants.h>
-#include <cryptohome-client-test/cryptohome/dbus-proxy-mocks.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
 #include "u2fd/mock_allowlisting_util.h"
 #include "u2fd/mock_tpm_vendor_cmd.h"
@@ -247,7 +247,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
 
   void PrepareMockCryptohome() {
     auto mock_cryptohome_proxy =
-        std::make_unique<org::chromium::CryptohomeInterfaceProxyMock>();
+        std::make_unique<org::chromium::UserDataAuthInterfaceProxyMock>();
     mock_cryptohome_proxy_ = mock_cryptohome_proxy.get();
     handler_->SetCryptohomeInterfaceProxyForTesting(
         std::move(mock_cryptohome_proxy));
@@ -377,7 +377,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_auth_dialog_proxy_;
   std::unique_ptr<dbus::Response> mock_auth_dialog_response_;
-  org::chromium::CryptohomeInterfaceProxyMock* mock_cryptohome_proxy_;
+  org::chromium::UserDataAuthInterfaceProxyMock* mock_cryptohome_proxy_;
   testing::NiceMock<MetricsLibraryMock> mock_metrics_;
   int presence_requested_count_ = 0;
 };
