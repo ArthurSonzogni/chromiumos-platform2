@@ -241,7 +241,7 @@ TEST_F(DBusServiceTest, SignalCalibration) {
         EXPECT_TRUE(reader.PopDouble(&progress));
         EXPECT_EQ(calibration_status.name(),
                   CheckCalibrationState::CalibrationStatus::
-                      RMAD_CALIBRATION_COMPONENT_ACCELEROMETER);
+                      RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
         EXPECT_EQ(calibration_status.status(),
                   CheckCalibrationState::CalibrationStatus::
                       RMAD_CALIBRATE_IN_PROGRESS);
@@ -249,7 +249,7 @@ TEST_F(DBusServiceTest, SignalCalibration) {
       }));
   CheckCalibrationState::CalibrationStatus component_status;
   component_status.set_name(CheckCalibrationState::CalibrationStatus::
-                                RMAD_CALIBRATION_COMPONENT_ACCELEROMETER);
+                                RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
   component_status.set_status(
       CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS);
   EXPECT_TRUE(SignalCalibration(component_status, 0.3));

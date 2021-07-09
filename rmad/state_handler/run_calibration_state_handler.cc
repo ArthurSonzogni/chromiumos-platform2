@@ -5,6 +5,7 @@
 #include "rmad/state_handler/run_calibration_state_handler.h"
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 
 #include <base/logging.h>
@@ -12,9 +13,9 @@
 
 #include "rmad/constants.h"
 
-using CalibrationStatus = rmad::CheckCalibrationState::CalibrationStatus;
-
 namespace rmad {
+
+using CalibrationStatus = CheckCalibrationState::CalibrationStatus;
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -23,14 +24,8 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
   if (!state_.has_run_calibration() && !RetrieveState()) {
     state_.set_allocated_run_calibration(new RunCalibrationState);
-    base::AutoLock lock_scope(calibration_mutex_);
-    components_calibration_map_[base::NumberToString(
-        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER)] =
-        base::NumberToString(CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
-    components_calibration_map_[base::NumberToString(
-        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE)] =
-        base::NumberToString(CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
   }
+  running_priority_ = std::numeric_limits<int>::max();
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
   RetrieveVarsAndCalibrate();
@@ -58,11 +53,11 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
-  // Since the actual calibration has already started in InitializeState, chrome
-  // should wait for the signal to trigger GetNextStateCaseReply. Under normal
-  // circumstances, we expect that the calibration has been completed here, but
-  // it may fail or is still in progress (hanging?). This is why we should check
-  // here.
+  // Since the actual calibration has already started in InitializeState,
+  // Chrome should wait for the signal to trigger GetNextStateCaseReply. Under
+  // normal circumstances, we expect that the calibration has been completed
+  // here, but it may fail or is still in progress (hanging?). This is why we
+  // should check here.
   if (ShouldRecalibrate()) {
     LOG(ERROR) << "Rmad: The sensor calibration is not complete.";
     return {.error = RMAD_ERROR_CALIBRATION_FAILED,
@@ -81,68 +76,71 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
-  if (!json_store_->GetValue(kCalibrationMap, &components_calibration_map_)) {
+  if (!GetPriorityCalibrationMap()) {
+    SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN, -1);
     LOG(ERROR) << "Failed to read calibration variables";
     return;
   }
 
-  for (auto component : components_calibration_map_) {
-    base::AutoLock lock_scope(calibration_mutex_);
-    CalibrationStatus component_status;
-    if (!ConvertToComponenetStatus(component, &component_status)) {
-      return;
-    }
-
-    switch (component_status.status()) {
-      // Under normal circumstances, we expect that the first calibration has
-      // been completed, and the status here is waiting. However, it may fail or
-      // get stuck (still in progress) and we should retry the calibration here.
-      case CalibrationStatus::RMAD_CALIBRATE_WAITING:
-      case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
-      case CalibrationStatus::RMAD_CALIBRATE_FAILED:
-        // TODO(genechang): Should execute calibration here.
-        PollUntilCalibrationDone(component_status.name());
-        break;
-      // For those sensors that are calibrated or skipped, we do not need to
-      // re-calibrate them.
-      case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
-      case CalibrationStatus::RMAD_CALIBRATE_SKIP:
-        break;
-      case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
-      default:
-        LOG(ERROR) << "Rmad calibration component calibrate_state is missing.";
-        return;
+  for (auto priority_components : priority_components_calibration_map_) {
+    int priority = priority_components.first;
+    for (auto component_status : priority_components.second) {
+      switch (component_status.second) {
+        // Under normal circumstances, we expect that the first calibration has
+        // been completed, and the status here is waiting. However, it may fail
+        // or get stuck (still in progress) and we should retry the calibration
+        // here.
+        case CalibrationStatus::RMAD_CALIBRATE_WAITING:
+        case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
+        case CalibrationStatus::RMAD_CALIBRATE_FAILED:
+          // We start parsing from first priority by ordered map structure.
+          if (running_priority_ >= priority) {
+            // TODO(genechang): Should execute calibration here.
+            PollUntilCalibrationDone(component_status.first);
+            running_priority_ = priority;
+          }
+          break;
+        // For those sensors that are calibrated or skipped, we do not need to
+        // re-calibrate them.
+        case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
+        case CalibrationStatus::RMAD_CALIBRATE_SKIP:
+          break;
+        case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
+        default:
+          SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN,
+                      -1);
+          LOG(ERROR)
+              << "Rmad calibration component calibrate_state is missing.";
+          return;
+      }
     }
   }
 }
 
 bool RunCalibrationStateHandler::ShouldRecalibrate() {
-  for (auto component : components_calibration_map_) {
-    CalibrationStatus component_status;
-    if (!ConvertToComponenetStatus(component, &component_status)) {
-      return true;
-    }
-
-    // Under normal situations, we expect that the calibration has been
-    // completed here, but it may fail, stuck or signal loss. Therefore, we
-    // expect Chrome to still send the request after the timeout. This is why we
-    // allow different statuses here.
-    switch (component_status.status()) {
-      // For those sensors that are calibrated or skipped, we do not need to
-      // re-calibrate them.
-      case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
-      case CalibrationStatus::RMAD_CALIBRATE_SKIP:
-        break;
-      // For all incomplete, unskipped, or unknown statuses, we should
-      // re-calibrate them.
-      case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
-      case CalibrationStatus::RMAD_CALIBRATE_WAITING:
-      case CalibrationStatus::RMAD_CALIBRATE_FAILED:
-        return true;
-      case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
-      default:
-        LOG(ERROR) << "Rmad calibration status is missing.";
-        return true;
+  for (auto priority_components : priority_components_calibration_map_) {
+    for (auto component_status : priority_components.second) {
+      // Under normal situations, we expect that the calibration has been
+      // completed here, but it may fail, stuck or signal loss. Therefore, we
+      // expect Chrome to still send the request after the timeout. This is why
+      // we allow different statuses here.
+      switch (component_status.second) {
+        // For those sensors that are calibrated or skipped, we do not need to
+        // re-calibrate them.
+        case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
+        case CalibrationStatus::RMAD_CALIBRATE_SKIP:
+          break;
+        // For all incomplete, unskipped, or unknown statuses, we should
+        // re-calibrate them.
+        case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
+        case CalibrationStatus::RMAD_CALIBRATE_WAITING:
+        case CalibrationStatus::RMAD_CALIBRATE_FAILED:
+          return true;
+        case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
+        default:
+          LOG(ERROR) << "Rmad calibration status is missing.";
+          return true;
+      }
     }
   }
 
@@ -159,49 +157,62 @@ void RunCalibrationStateHandler::PollUntilCalibrationDone(
     timer_map_[component]->Stop();
   }
 
-  std::string component_name;
-  if (component ==
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER) {
-    component_name = "accelerometer";
-    timer_map_[component]->Start(
-        FROM_HERE, kPollInterval, this,
-        &RunCalibrationStateHandler::CheckAccCalibrationTask);
-  } else if (component ==
-             CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE) {
-    component_name = "gyroscope";
+  if (component == CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE) {
     timer_map_[component]->Start(
         FROM_HERE, kPollInterval, this,
         &RunCalibrationStateHandler::CheckGyroCalibrationTask);
+  } else if (component ==
+             CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER) {
+    timer_map_[component]->Start(
+        FROM_HERE, kPollInterval, this,
+        &RunCalibrationStateHandler::CheckBaseAccCalibrationTask);
+  } else if (component ==
+             CalibrationStatus::RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER) {
+    timer_map_[component]->Start(
+        FROM_HERE, kPollInterval, this,
+        &RunCalibrationStateHandler::CheckLidAccCalibrationTask);
   } else {
     LOG(ERROR) << "Rmad calibration component name is invalid.";
     return;
   }
 
   LOG_STREAM(INFO) << "Start polling calibration progress for "
-                   << component_name;
-}
-
-void RunCalibrationStateHandler::CheckAccCalibrationTask() {
-  int progress = 0;
-
-  if (!GetAccCalibrationProgress(&progress)) {
-    LOG(WARNING) << "Failed to get accelerometer calibration progress";
-    return;
-  }
-
-  SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER,
-              progress);
+                   << CalibrationStatus::Component_Name(component);
 }
 
 void RunCalibrationStateHandler::CheckGyroCalibrationTask() {
   int progress = 0;
 
-  if (!GetAccCalibrationProgress(&progress)) {
-    LOG(WARNING) << "Failed to get accelerometer calibration progress";
+  if (!GetGyroCalibrationProgress(&progress)) {
+    LOG(WARNING) << "Failed to get gyroscpoe calibration progress";
     return;
   }
 
   SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE,
+              progress);
+}
+
+void RunCalibrationStateHandler::CheckBaseAccCalibrationTask() {
+  int progress = 0;
+
+  if (!GetBaseAccCalibrationProgress(&progress)) {
+    LOG(WARNING) << "Failed to get base accelerometer calibration progress";
+    return;
+  }
+
+  SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER,
+              progress);
+}
+
+void RunCalibrationStateHandler::CheckLidAccCalibrationTask() {
+  int progress = 0;
+
+  if (!GetLidAccCalibrationProgress(&progress)) {
+    LOG(WARNING) << "Failed to get lid accelerometer calibration progress";
+    return;
+  }
+
+  SaveAndSend(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_ACCELEROMETER,
               progress);
 }
 
@@ -222,12 +233,11 @@ void RunCalibrationStateHandler::SaveAndSend(
     }
   }
 
-  if (std::string component_str = base::NumberToString(component),
-      state_str = base::NumberToString(status);
-      components_calibration_map_[component_str] != state_str) {
+  if (priority_components_calibration_map_[running_priority_][component] !=
+      status) {
     base::AutoLock lock_scope(calibration_mutex_);
-    components_calibration_map_[component_str] = state_str;
-    json_store_->SetValue(kCalibrationMap, components_calibration_map_);
+    priority_components_calibration_map_[running_priority_][component] = status;
+    SetPriorityCalibrationMap();
   }
 
   CalibrationStatus component_status;
@@ -237,44 +247,60 @@ void RunCalibrationStateHandler::SaveAndSend(
   calibration_signal_sender_->Run(std::move(component_status), progress);
 }
 
-bool RunCalibrationStateHandler::ConvertToComponenetStatus(
-    const std::pair<std::string, std::string>& id_status_str_pair,
-    CalibrationStatus* component_status) {
-  int component_id;
-  if (!base::StringToInt(id_status_str_pair.first, &component_id)) {
-    LOG(ERROR) << "Failed to parse component name from variables";
-    return false;
-  }
-  CalibrationStatus::Component component_name =
-      static_cast<CalibrationStatus::Component>(component_id);
+bool RunCalibrationStateHandler::GetPriorityCalibrationMap() {
+  base::AutoLock lock_scope(calibration_mutex_);
+  priority_components_calibration_map_.clear();
 
-  if (component_name == CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN) {
-    LOG(ERROR) << "Rmad calibration component name is missing.";
+  std::map<std::string, std::map<std::string, std::string>> json_value_map;
+  if (!json_store_->GetValue(kCalibrationMap, &json_value_map)) {
     return false;
   }
 
-  int status = 0;
-  if (!base::StringToInt(id_status_str_pair.second, &status)) {
-    LOG(ERROR) << "Rmad calibration component calibrate_state is missing.";
-    return false;
+  for (auto priority_components : json_value_map) {
+    int priority;
+    if (!base::StringToInt(priority_components.first, &priority)) {
+      return false;
+    }
+    for (auto component_status : priority_components.second) {
+      CalibrationStatus::Component component;
+      if (!CalibrationStatus::Component_Parse(component_status.first,
+                                              &component) ||
+          component == CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN) {
+        LOG(ERROR) << "Failed to parse component name from variables";
+        return false;
+      }
+      CalibrationStatus::Status status;
+      if (!CalibrationStatus::Status_Parse(component_status.second, &status) ||
+          status == CalibrationStatus::RMAD_CALIBRATE_UNKNOWN) {
+        LOG(ERROR) << "Failed to parse status name from variables";
+        return false;
+      }
+      priority_components_calibration_map_[priority][component] = status;
+    }
   }
 
-  component_status->set_name(component_name);
-  component_status->set_status(static_cast<CalibrationStatus::Status>(status));
   return true;
 }
 
-// TODO(genechang): This is currently fake. Should check acceleromoter
-// calibration progress.
-bool RunCalibrationStateHandler::GetAccCalibrationProgress(
-    int* progress_percentage) {
-  static int acc_progress = 0;
-  *progress_percentage = acc_progress;
-  acc_progress += 10;
-  if (acc_progress > 100) {
-    acc_progress = 0;
+bool RunCalibrationStateHandler::SetPriorityCalibrationMap() {
+  // In order to save dictionary style variables to json, currently only
+  // variables whose keys are strings are supported. This is why we converted
+  // it to a string. In addition, in order to ensure that the file is still
+  // readable after the enum sequence is updated, we also convert its value
+  // into a readable string to deal with possible updates.
+  std::map<std::string, std::map<std::string, std::string>> json_value_map;
+  for (auto priority_components : priority_components_calibration_map_) {
+    std::string priority = base::NumberToString(priority_components.first);
+    for (auto component_status : priority_components.second) {
+      std::string component_name =
+          CalibrationStatus::Component_Name(component_status.first);
+      std::string status_name =
+          CalibrationStatus::Status_Name(component_status.second);
+      json_value_map[priority][component_name] = status_name;
+    }
   }
-  return true;
+
+  return json_store_->SetValue(kCalibrationMap, json_value_map);
 }
 
 // TODO(genechang): This is currently fake. Should check gyroscope calibration
@@ -286,6 +312,32 @@ bool RunCalibrationStateHandler::GetGyroCalibrationProgress(
   gyro_progress += 10;
   if (gyro_progress > 100) {
     gyro_progress = 0;
+  }
+  return true;
+}
+
+// TODO(genechang): This is currently fake. Should check base acceleromoter
+// calibration progress.
+bool RunCalibrationStateHandler::GetBaseAccCalibrationProgress(
+    int* progress_percentage) {
+  static int base_acc_progress = 0;
+  *progress_percentage = base_acc_progress;
+  base_acc_progress += 10;
+  if (base_acc_progress > 100) {
+    base_acc_progress = 0;
+  }
+  return true;
+}
+
+// TODO(genechang): This is currently fake. Should check lid acceleromoter
+// calibration progress.
+bool RunCalibrationStateHandler::GetLidAccCalibrationProgress(
+    int* progress_percentage) {
+  static int lid_acc_progress = 0;
+  *progress_percentage = lid_acc_progress;
+  lid_acc_progress += 10;
+  if (lid_acc_progress > 100) {
+    lid_acc_progress = 0;
   }
   return true;
 }

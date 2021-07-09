@@ -348,8 +348,14 @@ message CheckCalibrationState {
   message CalibrationStatus {
     enum Component {
       RMAD_CALIBRATION_COMPONENT_UNKNOWN = 0;
+      // Legacy state. Keep it to be compatible with Chrome.
+      // TODO(genechang): Remove it in the future.
       RMAD_CALIBRATION_COMPONENT_ACCELEROMETER = 1;
+
+      // TODO(genechang): Migrate to generic component
       RMAD_CALIBRATION_COMPONENT_GYROSCOPE = 2;
+      RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER = 3;
+      RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER = 4;
     }
 
     enum Status {

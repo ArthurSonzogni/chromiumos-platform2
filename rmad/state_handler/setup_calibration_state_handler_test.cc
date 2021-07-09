@@ -45,7 +45,7 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  // No CheckCalibrationState.
+  // No SetupCalibrationState.
   RmadState state;
 
   auto [error, state_case] = handler->GetNextStateCase(state);

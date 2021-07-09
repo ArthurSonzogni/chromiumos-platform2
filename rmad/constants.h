@@ -6,6 +6,7 @@
 #define RMAD_CONSTANTS_H_
 
 #include <array>
+#include <limits>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 
@@ -28,6 +29,24 @@ inline constexpr std::array<RmadComponent, 3> kComponentsNeedAutoCalibration = {
     RMAD_COMPONENT_TOUCHSCREEN,
     RMAD_COMPONENT_MAINBOARD_REWORK,
 };
+
+inline constexpr std::array<std::array<int, 2>, 5>
+    kComponentsCalibrationPriority = {
+        {{static_cast<int>(CheckCalibrationState::CalibrationStatus::
+                               RMAD_CALIBRATION_COMPONENT_ACCELEROMETER),
+          1},
+         {static_cast<int>(CheckCalibrationState::CalibrationStatus::
+                               RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
+          1},
+         {static_cast<int>(CheckCalibrationState::CalibrationStatus::
+                               RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
+          1},
+         {static_cast<int>(CheckCalibrationState::CalibrationStatus::
+                               RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
+          2},
+         {static_cast<int>(CheckCalibrationState::CalibrationStatus::
+                               RMAD_CALIBRATION_COMPONENT_UNKNOWN),
+          std::numeric_limits<int>::max()}}};
 
 }  // namespace rmad
 

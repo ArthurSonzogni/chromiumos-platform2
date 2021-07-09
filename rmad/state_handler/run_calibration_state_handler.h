@@ -25,11 +25,10 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
 
+  using CalibrationSignalCallback = base::RepeatingCallback<bool(
+      CheckCalibrationState::CalibrationStatus, double)>;
   void RegisterSignalSender(
-      std::unique_ptr<
-          base::RepeatingCallback<bool(CheckCalibrationState::CalibrationStatus,
-                                       double)  // NOLINT(readability/casting)
-                                  >> callback) override {
+      std::unique_ptr<CalibrationSignalCallback> callback) override {
     calibration_signal_sender_ = std::move(callback);
   }
 
@@ -50,24 +49,32 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       CheckCalibrationState::CalibrationStatus::Component component);
   void CheckCalibrationTask(
       CheckCalibrationState::CalibrationStatus::Component component);
-  void CheckAccCalibrationTask();
+
   void CheckGyroCalibrationTask();
+  void CheckBaseAccCalibrationTask();
+  void CheckLidAccCalibrationTask();
+
   void SaveAndSend(
       CheckCalibrationState::CalibrationStatus::Component component,
       int progress_percentage);
+  bool GetPriorityCalibrationMap();
+  bool SetPriorityCalibrationMap();
 
-  static bool ConvertToComponenetStatus(
-      const std::pair<std::string, std::string>& id_status_str_pair,
-      CheckCalibrationState::CalibrationStatus* component_status);
-
-  static bool GetAccCalibrationProgress(int* progress_percentage);
   static bool GetGyroCalibrationProgress(int* progress_percentage);
+  static bool GetBaseAccCalibrationProgress(int* progress_percentage);
+  static bool GetLidAccCalibrationProgress(int* progress_percentage);
 
   base::Lock calibration_mutex_;
-  std::map<std::string, std::string> components_calibration_map_;
-  std::unique_ptr<base::RepeatingCallback<bool(
-      CheckCalibrationState::CalibrationStatus, double)>>
-      calibration_signal_sender_;
+  // To ensure that calibration starts from a higher priority, we use an
+  // ordered map to traverse it from high to low. Once we find the first
+  // sensor to be calibrated, we only calibrate those sensors that have
+  // the same priority as it.
+  std::map<int,
+           std::map<CheckCalibrationState::CalibrationStatus::Component,
+                    CheckCalibrationState::CalibrationStatus::Status>>
+      priority_components_calibration_map_;
+  int running_priority_;
+  std::unique_ptr<CalibrationSignalCallback> calibration_signal_sender_;
   std::map<CheckCalibrationState::CalibrationStatus::Component,
            std::unique_ptr<base::RepeatingTimer>>
       timer_map_;
