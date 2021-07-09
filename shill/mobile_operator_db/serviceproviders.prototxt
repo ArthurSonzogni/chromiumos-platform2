@@ -4416,7 +4416,7 @@ mno {
   mvno {
     mvno_filter {
       type : ICCID
-      regex : "8981090[0-9]+"
+      regex : "8981090[0-9]+[fF]*"
     }
     mvno_filter {
       type : MCCMNC
