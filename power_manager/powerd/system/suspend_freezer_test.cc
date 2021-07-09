@@ -12,8 +12,8 @@
 #include <set>
 #include <string>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
-#include <base/stl_util.h>
 #include <gtest/gtest.h>
 
 namespace power_manager {
