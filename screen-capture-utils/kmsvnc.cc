@@ -4,7 +4,6 @@
 
 #include <csignal>
 #include <cstdint>
-#include <memory>
 
 #include <sys/time.h>
 #include <time.h>
@@ -21,6 +20,7 @@
 #include "screen-capture-utils/capture.h"
 #include "screen-capture-utils/crtc.h"
 #include "screen-capture-utils/egl_capture.h"
+#include "screen-capture-utils/kmsvnc_utils.h"
 #include "screen-capture-utils/uinput.h"
 
 namespace screenshot {
@@ -30,7 +30,6 @@ constexpr const char kInternalSwitch[] = "internal";
 constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
 constexpr const char kMethodSwitch[] = "method";
-constexpr int kBytesPerPixel = 4;
 
 constexpr const int kFindCrtcMaxRetries = 5;
 const timespec kFindCrtcRetryInterval{0, 100000000};  // 100ms
@@ -119,13 +118,6 @@ void SignalHandler(int signum) {
   g_shutdown_requested = signum;
 }
 
-void ConvertBuffer(const DisplayBuffer::Result& from, char* to) {
-  for (int i = 0; i < from.height; i++) {
-    memcpy(to + from.width * kBytesPerPixel * i,
-           static_cast<char*>(from.buffer) + from.stride * i,
-           from.width * kBytesPerPixel);
-  }
-}
 
 constexpr char kKmsvncMethod[] = "Platform.KmsVncMethod";
 
@@ -197,8 +189,22 @@ int VncMain() {
   uint32_t crtc_width = crtc->width();
   uint32_t crtc_height = crtc->height();
 
+  // vncViewer requires a width with multiple of 4
+  // Pad the width
+  uint32_t vnc_width = getVncWidth(crtc_width);
+  uint32_t vnc_height = crtc_height;
+
   LOG(INFO) << "Starting with CRTC size of: " << crtc_width << " "
             << crtc_height;
+  LOG(INFO) << "with VNC view-port size of: " << vnc_width << " " << vnc_height;
+
+  if (vnc_width != crtc_width) {
+    LOG(INFO) << "Vnc viewport width has been right-padded to be "
+              << "vnc lib compatible multiple of 4.";
+  }
+
+  CHECK_LT(vnc_width - crtc_width, 4);
+  CHECK_GE(vnc_width, crtc_width);
 
   if (method == CaptureMethod::AUTODETECT) {
     // TODO(andrescj): is it possible to still use the EGL path even if this
@@ -217,7 +223,7 @@ int VncMain() {
                         static_cast<int>(CaptureMethod::MAX));
 
   const rfbScreenInfoPtr server =
-      rfbGetScreen(0 /*argc*/, nullptr /*argv*/, crtc_width, crtc_height,
+      rfbGetScreen(0 /*argc*/, nullptr /*argv*/, vnc_width, vnc_height,
                    8 /*bitsPerSample*/, 3 /*samplesPerPixel*/, kBytesPerPixel);
   CHECK(server);
 
@@ -231,12 +237,12 @@ int VncMain() {
         crtc.get(), 0, 0, crtc_width, crtc_height));
   }
 
-  std::vector<char> buffer(crtc_width * crtc_height * kBytesPerPixel);
+  std::vector<char> buffer(vnc_width * vnc_height * kBytesPerPixel);
 
   // This is ARGB buffer.
   {
     auto capture_result = display_buffer->Capture();
-    ConvertBuffer(capture_result, buffer.data());
+    ConvertBuffer(capture_result, buffer.data(), vnc_width);
     server->frameBuffer = buffer.data();
   }
   // http://libvncserver.sourceforge.net/doc/html/rfbproto_8h_source.html#l00150
@@ -252,7 +258,7 @@ int VncMain() {
 
   rfbInitServer(server);
 
-  std::vector<char> prev(crtc_width * crtc_height * kBytesPerPixel);
+  std::vector<char> prev(vnc_width * vnc_height * kBytesPerPixel);
 
   ScopedSigaction sa1(SIGINT, SignalHandler);
   ScopedSigaction sa2(SIGTERM, SignalHandler);
@@ -266,22 +272,22 @@ int VncMain() {
     // Keep the previous framebuffer around for comparison.
     prev.swap(buffer);
     // Copy the current data to the buffer.
-    ConvertBuffer(capture_result, buffer.data());
+    ConvertBuffer(capture_result, buffer.data(), vnc_width);
     // Update VNC server's view to the swapped current buffer.
     server->frameBuffer = buffer.data();
 
     // Find rectangle of modification.
-    int min_x = crtc_width;
-    int min_y = crtc_height;
+    int min_x = vnc_width;
+    int min_y = vnc_height;
     int max_x = 0;
     int max_y = 0;
     const char* current = buffer.data();
-    for (int y = 0; y < crtc_height; y++) {
-      for (int x = 0; x < crtc_width; x++) {
+    for (int y = 0; y < vnc_height; y++) {
+      for (int x = 0; x < vnc_width; x++) {
         if (*reinterpret_cast<const uint32_t*>(
-                &current[(x + y * crtc_width) * kBytesPerPixel]) ==
+                &current[(x + y * vnc_width) * kBytesPerPixel]) ==
             *reinterpret_cast<uint32_t*>(
-                &prev[(x + y * crtc_width) * kBytesPerPixel])) {
+                &prev[(x + y * vnc_width) * kBytesPerPixel])) {
           continue;
         }
         max_x = std::max(x, max_x);

@@ -70,3 +70,9 @@ For debugging I typically need to deploy to /usr/sbin, from inside chroot
 $ cros deploy localhost:2229 chromeos-base/screen-capture-utils
 $ gdb-${BOARD} --remote=localhost:2229 /usr/sbin/kmsvnc
 ```
+
+To run unit-tests
+
+```
+$ FEATURES=test emerge-$BOARD screen-capture-utils
+```

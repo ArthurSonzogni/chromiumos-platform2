@@ -9,6 +9,9 @@ group("all") {
     ":kmsvnc",
     ":screenshot",
   ]
+  if (use.test) {
+    deps += [ ":run_kmsvnc_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -27,6 +30,7 @@ static_library("libscreen-capture") {
     "bo_import_capture.cc",
     "crtc.cc",
     "egl_capture.cc",
+    "kmsvnc_utils.cc",
   ]
   configs += [ ":target_defaults" ]
 }
@@ -55,4 +59,23 @@ executable("kmsvnc") {
   ]
   deps = [ ":libscreen-capture" ]
   pkg_deps = [ "libmetrics" ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "gtest_main" ]
+  }
+  executable("run_kmsvnc_test") {
+    sources = [ "kmsvnc_utils_test.cc" ]
+    run_test = true
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    deps = [
+      ":libscreen-capture",
+      "//common-mk/testrunner",
+    ]
+  }
 }
