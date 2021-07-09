@@ -54,7 +54,7 @@ bool ScreenController::Init() {
 
   current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
   current_screen_->Show();
-  return true;
+  return false;
 }
 
 std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
