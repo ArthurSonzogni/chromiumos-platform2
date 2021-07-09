@@ -13,6 +13,38 @@
 
 #include "libhwsec/error/tpm_retry_action.h"
 
+/* The most important function of TPM error is representing a TPM retry action.
+ *
+ * Using CreateError<> could simply convert a TPM error code to an TPM error.
+ *
+ * For example:
+ *   auto err = CreateError<TPM1Error>(
+ *       Tspi_TPM_CreateEndorsementKey(tpm_handle, local_key_handle, NULL));
+ *
+ * And it could also creating software based TPM error.
+ *
+ * For example:
+ *   auto err = CreateError<TPMError>("Failed to get trunks context",
+ *                                    TPMRetryAction::kNoRetry);
+ *
+ * Using CreateErrorWrap<> could wrap a TPM error into a new TPM error, and it
+ * would transfer the retry action to the new TPM error.
+ *
+ * For example:
+ *   if (auto err = GetPublicKeyBlob(...))) {
+ *     return CreateErrorWrap<TPMError>(std::move(err),
+ *                                      "Failed to get TPM public key hash");
+ *   }
+ *
+ * And it could also overwrite the original retry action.
+ *
+ * For example:
+ *   if (auto err = CreateError<TPM2Error>(...)) {
+ *     return CreateErrorWrap<TPMError>(std::move(err), "Error ...",
+ *                                      TPMRetryAction::kNoRetry);
+ *   }
+ */
+
 namespace hwsec {
 namespace error {
 
