@@ -253,6 +253,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--enable-houdini");
   if (builder->UseFlagIsSet("houdini64"))
     builder->AddArg("--enable-houdini64");
+  if (builder->UseFlagIsSet("houdini_dlc"))
+    builder->AddArg("--enable-houdini-dlc");
   if (builder->UseFlagIsSet("ndk_translation"))
     builder->AddArg("--enable-ndk-translation");
   if (builder->UseFlagIsSet("ndk_translation64"))
