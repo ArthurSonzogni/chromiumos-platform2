@@ -32,6 +32,7 @@
 
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_builder.h"
+#include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
 
 using std::string;
@@ -96,6 +97,9 @@ TerminaVm::TerminaVm(
     std::string stateful_device,
     uint64_t stateful_size,
     VmFeatures features,
+    dbus::ObjectProxy* vm_permission_service_proxy,
+    scoped_refptr<dbus::Bus> bus,
+    VmId id,
     bool is_termina)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
@@ -107,6 +111,9 @@ TerminaVm::TerminaVm(
       stateful_size_(stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
       log_path_(std::move(log_path)),
+      id_(id),
+      bus_(bus),
+      vm_permission_service_proxy_(vm_permission_service_proxy),
       is_termina_(is_termina) {}
 
 // For testing.
@@ -131,6 +138,7 @@ TerminaVm::TerminaVm(
       stateful_size_(stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
       log_path_(std::move(log_path)),
+      id_(VmId("foo", "bar")),
       is_termina_(is_termina) {
   CHECK(subnet_);
 }
@@ -148,12 +156,16 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     std::string stateful_device,
     uint64_t stateful_size,
     VmFeatures features,
+    dbus::ObjectProxy* vm_permission_service_proxy,
+    scoped_refptr<dbus::Bus> bus,
+    VmId id,
     bool is_termina,
     VmBuilder vm_builder) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
-      std::move(stateful_size), features, is_termina));
+      std::move(stateful_size), features, vm_permission_service_proxy,
+      std::move(bus), std::move(id), is_termina));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -183,6 +195,20 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     LOG(ERROR) << "No network devices available";
     return false;
   }
+
+  // TODO(b/193370101) Remove borealis specific code once crostini uses
+  // permission service.
+  if (id_.name() == "borealis") {
+    // Register the VM with permission service and obtain permission
+    // token.
+    if (!vm_permission::RegisterVm(bus_, vm_permission_service_proxy_, id_,
+                                   vm_permission::VmType::BOREALIS,
+                                   &permission_token_)) {
+      LOG(ERROR) << "Failed to register with permission service";
+      return false;
+    }
+  }
+
   subnet_ = MakeSubnet(network_device_.ipv4_subnet());
   container_subnet_ = MakeSubnet(container_subnet);
 
@@ -214,10 +240,20 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   if (features_.software_tpm)
     vm_builder.EnableSoftwareTpm(true /* enable */);
 
-  if (features_.audio_capture) {
-    vm_builder.AppendAudioDevice("backend=cras,capture=true");
+  if (id_.name() == "borealis") {
+    if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
+                                           permission_token_)) {
+      vm_builder.AppendAudioDevice(
+          "backend=cras,capture=true,client_type=borealis");
+    } else {
+      vm_builder.AppendAudioDevice("backend=cras,client_type=borealis");
+    }
   } else {
-    vm_builder.AppendAudioDevice("backend=cras");
+    if (features_.audio_capture) {
+      vm_builder.AppendAudioDevice("backend=cras,capture=true");
+    } else {
+      vm_builder.AppendAudioDevice("backend=cras");
+    }
   }
 
   for (const std::string& p : features_.kernel_params)
@@ -248,6 +284,11 @@ bool TerminaVm::Shutdown() {
   if (network_client_ &&
       !network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
     LOG(WARNING) << "Unable to notify networking services";
+  }
+
+  // Notify permission service of VM destruction.
+  if (!permission_token_.empty()) {
+    vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
   }
 
   // Do a check here to make sure the process is still around.  It may have
@@ -894,12 +935,17 @@ uint32_t TerminaVm::ContainerSubnet() const {
   return INADDR_ANY;
 }
 
+std::string TerminaVm::PermissionToken() const {
+  return permission_token_;
+}
+
 VmInterface::Info TerminaVm::GetInfo() {
   VmInterface::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
       .seneschal_server_handle = seneschal_server_handle(),
+      .permission_token = permission_token_,
       .status = IsTremplinStarted() ? VmInterface::Status::RUNNING
                                     : VmInterface::Status::STARTING,
       .type = is_termina_ ? VmInfo::TERMINA : VmInfo::UNKNOWN,

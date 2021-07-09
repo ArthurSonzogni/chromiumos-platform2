@@ -24,6 +24,7 @@
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -78,6 +79,9 @@ class TerminaVm final : public VmBaseImpl {
       std::string stateful_device,
       uint64_t stateful_size,
       VmFeatures features,
+      dbus::ObjectProxy* vm_permission_service_proxy,
+      scoped_refptr<dbus::Bus> bus,
+      VmId id,
       bool is_termina,
       VmBuilder vm_builder);
   ~TerminaVm() override;
@@ -155,6 +159,10 @@ class TerminaVm final : public VmBaseImpl {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
+  // Token assigned to the VM by the permission service. Used for communicating
+  // with the permission service.
+  std::string PermissionToken() const;
+
   // Name of the guest block device for the stateful filesystem (e.g. /dev/vdb).
   std::string StatefulDevice() const { return stateful_device_; }
 
@@ -214,6 +222,9 @@ class TerminaVm final : public VmBaseImpl {
             std::string stateful_device,
             uint64_t stateful_size,
             VmFeatures features,
+            dbus::ObjectProxy* vm_permission_service_proxy,
+            scoped_refptr<dbus::Bus> bus,
+            VmId id,
             bool is_termina);
 
   // Constructor for testing only.
@@ -268,6 +279,9 @@ class TerminaVm final : public VmBaseImpl {
   // Flags passed to vmc start.
   VmFeatures features_;
 
+  // Token assigned to the VM by the permission service.
+  std::string permission_token_;
+
   // Stub for making RPC requests to the maitre'd process inside the VM.
   std::unique_ptr<vm_tools::Maitred::Stub> stub_;
 
@@ -297,6 +311,16 @@ class TerminaVm final : public VmBaseImpl {
       DiskImageStatus::DISK_STATUS_RESIZED;
 
   base::FilePath log_path_;
+
+  // This VM ID. It is used to communicate with the dispatcher to request
+  // VM state changes.
+  const VmId id_;
+
+  // Connection to the system bus.
+  scoped_refptr<dbus::Bus> bus_;
+
+  // Proxy to the dispatcher service.  Not owned.
+  dbus::ObjectProxy* vm_permission_service_proxy_;
 
   // Confusingly, this class is also used for non-termina VMs that don't fit in
   // other types. This bool indicates if the VM is really a termina VM.

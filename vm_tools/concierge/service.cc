@@ -1690,11 +1690,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     }
   }
 
-  auto vm = TerminaVm::Create(vsock_cid, std::move(network_client),
-                              std::move(server_proxy), std::move(runtime_dir),
-                              std::move(log_path), std::move(stateful_device),
-                              std::move(stateful_size), features,
-                              request.start_termina(), std::move(vm_builder));
+  auto vm = TerminaVm::Create(
+      vsock_cid, std::move(network_client), std::move(server_proxy),
+      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
+      std::move(stateful_size), features, vm_permission_service_proxy_, bus_,
+      vm_id, request.start_termina(), std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -1832,6 +1832,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
                                               : VM_STATUS_RUNNING);
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
+  vm_info->set_permission_token(vm->PermissionToken());
   writer.AppendProtoAsArrayOfBytes(response);
 
   SendVmStartedSignal(vm_id, *vm_info, response.status());
