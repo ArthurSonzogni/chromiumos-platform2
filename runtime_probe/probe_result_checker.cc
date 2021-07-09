@@ -17,12 +17,23 @@
 namespace runtime_probe {
 
 namespace {
-using ReturnCode = runtime_probe::FieldConverter::ReturnCode;
+using ReturnCode = FieldConverter::ReturnCode;
 }  // namespace
 
 std::unique_ptr<ProbeResultChecker> ProbeResultChecker::FromValue(
+    const base::Value& value) {
+  if (value.is_dict())
+    return ProbeResultCheckerDict::FromValue(value);
+  if (value.is_list())
+    return ProbeResultCheckerList::FromValue(value);
+  LOG(ERROR) << "invalid type for 'expect' field: "
+             << base::Value::GetTypeName(value.type());
+  return nullptr;
+}
+
+std::unique_ptr<ProbeResultCheckerDict> ProbeResultCheckerDict::FromValue(
     const base::Value& dict_value) {
-  auto instance = std::make_unique<ProbeResultChecker>();
+  auto instance = std::make_unique<ProbeResultCheckerDict>();
   for (const auto& entry : dict_value.DictItems()) {
     const auto& key = entry.first;
     const auto& val = entry.second;
@@ -78,7 +89,7 @@ std::unique_ptr<ProbeResultChecker> ProbeResultChecker::FromValue(
   return instance;
 }
 
-bool ProbeResultChecker::Apply(base::Value* probe_result) const {
+bool ProbeResultCheckerDict::Apply(base::Value* probe_result) const {
   bool success = true;
 
   CHECK(probe_result != nullptr);
@@ -140,6 +151,32 @@ bool ProbeResultChecker::Apply(base::Value* probe_result) const {
   // Optional fields shouldn't have expect value.
 
   return success;
+}
+
+std::unique_ptr<ProbeResultCheckerList> ProbeResultCheckerList::FromValue(
+    const base::Value& list_value) {
+  auto instance = std::make_unique<ProbeResultCheckerList>();
+  for (auto& dv : list_value.GetList()) {
+    if (!dv.is_dict()) {
+      LOG(ERROR) << "checker should be a valid dictionary";
+      return nullptr;
+    }
+    auto checker = ProbeResultCheckerDict::FromValue(dv);
+    if (!checker)
+      return nullptr;
+    instance->checkers.push_back(std::move(checker));
+  }
+  return instance;
+}
+
+bool ProbeResultCheckerList::Apply(base::Value* probe_result) const {
+  if (checkers.size() == 0)
+    return true;
+  for (const auto& checker : checkers) {
+    if (checker->Apply(probe_result))
+      return true;
+  }
+  return false;
 }
 
 }  // namespace runtime_probe

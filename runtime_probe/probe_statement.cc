@@ -67,9 +67,9 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
 
   // Parse optional field "expect"
   // TODO(b:121354690): Make expect useful
-  const auto* expect_value = dv.FindDictKey("expect");
+  const auto* expect_value = dv.FindKey("expect");
   if (!expect_value) {
-    VLOG(3) << "\"expect\" does not exist or is not a dictionary";
+    VLOG(3) << "\"expect\" does not exist.";
   } else {
     auto checker = ProbeResultChecker::FromValue(*expect_value);
     if (!checker) {
