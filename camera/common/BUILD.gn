@@ -15,6 +15,7 @@ group("all") {
 
   if (use.test) {
     deps += [
+      ":camera_face_detection_test",
       ":cbm_test",
       ":embed_file_toc_test",
       ":future_test",
@@ -159,6 +160,14 @@ config("target_defaults_test") {
 }
 
 if (use.test) {
+  executable("camera_face_detection_test") {
+    sources = [
+      "//camera/common/camera_face_detection.cc",
+      "//camera/common/camera_face_detection_test.cc",
+    ]
+    configs += [ ":target_defaults_test" ]
+  }
+
   executable("cbm_test") {
     sources = [
       "//camera/common/camera_buffer_manager_impl.cc",

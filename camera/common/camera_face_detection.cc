@@ -49,7 +49,9 @@ FaceDetector::FaceDetector(
       wrapper_(std::move(wrapper)) {}
 
 FaceDetectResult FaceDetector::Detect(
-    buffer_handle_t buffer, std::vector<human_sensing::CrosFace>* faces) {
+    buffer_handle_t buffer,
+    std::vector<human_sensing::CrosFace>* faces,
+    base::Optional<Size> active_sensor_array_size) {
   DCHECK(faces);
   base::AutoLock l(lock_);
   Size input_size = Size(buffer_manager_->GetWidth(buffer),
@@ -83,7 +85,45 @@ FaceDetectResult FaceDetector::Detect(
       f.bounding_box.y2 *= ratio;
     }
   }
+
+  if (active_sensor_array_size) {
+    base::Optional<std::tuple<float, float, float>> transform =
+        GetCoordinateTransform(input_size, *active_sensor_array_size);
+    if (!transform) {
+      return FaceDetectResult::kTransformError;
+    }
+    const float scale = std::get<0>(*transform);
+    const float offset_x = std::get<1>(*transform);
+    const float offset_y = std::get<2>(*transform);
+    for (auto& f : *faces) {
+      f.bounding_box.x1 = scale * f.bounding_box.x1 + offset_x;
+      f.bounding_box.y1 = scale * f.bounding_box.y1 + offset_y;
+      f.bounding_box.x2 = scale * f.bounding_box.x2 + offset_x;
+      f.bounding_box.y2 = scale * f.bounding_box.y2 + offset_y;
+    }
+  }
+
   return FaceDetectResult::kDetectOk;
+}
+
+// static
+base::Optional<std::tuple<float, float, float>>
+FaceDetector::GetCoordinateTransform(const Size src, const Size dst) {
+  if (src.width > dst.width || src.height > dst.height) {
+    return base::nullopt;
+  }
+  const float width_ratio = static_cast<float>(dst.width) / src.width;
+  const float height_ratio = static_cast<float>(dst.height) / src.height;
+  const float scaling = std::min(width_ratio, height_ratio);
+  float offset_x = 0.0f, offset_y = 0.0f;
+  if (width_ratio < height_ratio) {
+    // |dst| has larger height than |src| * scaling.
+    offset_y = (dst.height - (src.height * scaling)) / 2;
+  } else {
+    // |dst| has larger width than |src| * scaling.
+    offset_x = (dst.width - (src.width * scaling)) / 2;
+  }
+  return std::make_tuple(scaling, offset_x, offset_y);
 }
 
 void FaceDetector::PrepareBuffer(Size img_size) {
