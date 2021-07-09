@@ -246,7 +246,7 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   // UnsealWithAuthorization will check the preload_handle not containing any
   // value.
   base::Optional<TpmKeyHandle> handle;
-  if (preload_handle.value() != kInvalidKeyHandle) {
+  if (preload_handle.has_value()) {
     handle = preload_handle.value();
   }
 

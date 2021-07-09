@@ -142,7 +142,8 @@ class Tpm2Impl : public Tpm {
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                brillo::SecureBlob* key_blob) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
-  void GetStatus(TpmKeyHandle key, TpmStatusInfo* status) override;
+  void GetStatus(base::Optional<TpmKeyHandle> key,
+                 TpmStatusInfo* status) override;
   base::Optional<bool> IsSrkRocaVulnerable() override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,

@@ -74,7 +74,7 @@ bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
 }
 
 bool CryptohomeKeyLoader::HasCryptohomeKey() {
-  return (cryptohome_key_.value() != kInvalidKeyHandle);
+  return cryptohome_key_.has_value();
 }
 
 TpmKeyHandle CryptohomeKeyLoader::GetCryptohomeKey() {

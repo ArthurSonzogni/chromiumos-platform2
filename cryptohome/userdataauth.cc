@@ -2976,10 +2976,13 @@ std::string UserDataAuth::GetStatusString() {
   auto attrs = install_attrs_->GetStatus();
 
   Tpm::TpmStatusInfo tpm_status_info;
-  tpm_->GetStatus(
-      cryptohome_keys_manager_->GetKeyLoader(CryptohomeKeyType::kRSA)
-          ->GetCryptohomeKey(),
-      &tpm_status_info);
+  CryptohomeKeyLoader* rsa_key_loader =
+      cryptohome_keys_manager_->GetKeyLoader(CryptohomeKeyType::kRSA);
+  if (rsa_key_loader && rsa_key_loader->HasCryptohomeKey()) {
+    tpm_->GetStatus(rsa_key_loader->GetCryptohomeKey(), &tpm_status_info);
+  } else {
+    tpm_->GetStatus(base::nullopt, &tpm_status_info);
+  }
 
   base::Value tpm(base::Value::Type::DICTIONARY);
   tpm.SetBoolKey("can_connect", tpm_status_info.can_connect);

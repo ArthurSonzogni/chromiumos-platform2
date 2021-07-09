@@ -37,7 +37,6 @@ class LECredentialBackend;
 class SignatureSealingBackend;
 class Tpm;
 
-constexpr TpmKeyHandle kInvalidKeyHandle = 0;
 constexpr uint32_t kNotBoundToPCR = UINT32_MAX;
 constexpr uint32_t kTpmBootPCR = 0;
 // The PCR index used to restrict the device to access to a single user data.
@@ -56,6 +55,7 @@ class ScopedKeyHandle {
   ~ScopedKeyHandle();
   TpmKeyHandle value();
   TpmKeyHandle release();
+  bool has_value();
   void reset(Tpm* tpm, TpmKeyHandle handle);
 
  private:
@@ -562,9 +562,10 @@ class Tpm {
   // the test.
   //
   // Parameters
-  //   key - The key to check for encryption/decryption
+  //   key - The optional key to check for encryption/decryption
   //   status (OUT) - The TpmStatusInfo structure containing the results
-  virtual void GetStatus(TpmKeyHandle key, TpmStatusInfo* status) = 0;
+  virtual void GetStatus(base::Optional<TpmKeyHandle> key,
+                         TpmStatusInfo* status) = 0;
 
   // Returns whether the TPM SRK is vulnerable to the ROCA vulnerability.
   // An empty optional is returned when the result is unknown due to an error.

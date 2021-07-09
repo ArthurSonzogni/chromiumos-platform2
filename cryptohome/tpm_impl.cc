@@ -288,10 +288,11 @@ bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
   return true;
 }
 
-void TpmImpl::GetStatus(TpmKeyHandle key_handle, TpmStatusInfo* status) {
+void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
+                        TpmStatusInfo* status) {
   memset(status, 0, sizeof(TpmStatusInfo));
   status->this_instance_has_context = (tpm_context_.value() != 0);
-  status->this_instance_has_key_handle = (key_handle != 0);
+  status->this_instance_has_key_handle = key_handle.has_value();
   ScopedTssContext context_handle;
   // Check if we can connect
   TSS_RESULT result;
@@ -332,7 +333,8 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle, TpmStatusInfo* status) {
   }
 
   // Check the Cryptohome key by using what we have been told.
-  status->has_cryptohome_key = (tpm_context_.value() != 0) && (key_handle != 0);
+  status->has_cryptohome_key =
+      (tpm_context_.value() != 0) && key_handle.has_value();
 
   if (status->has_cryptohome_key) {
     // Check encryption (we don't care about the contents, just whether or not
@@ -347,14 +349,15 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle, TpmStatusInfo* status) {
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob key;
     PasskeyToAesKey(password, salt, 13, &key, NULL);
-    if (EncryptBlob(key_handle, data, key, &data_out) != kTpmRetryNone) {
+    if (EncryptBlob(key_handle.value(), data, key, &data_out) !=
+        kTpmRetryNone) {
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (DecryptBlob(key_handle, data_out, key,
+    if (DecryptBlob(key_handle.value(), data_out, key,
                     std::map<uint32_t, std::string>(),
                     &data) != kTpmRetryNone) {
       return;

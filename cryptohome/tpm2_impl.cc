@@ -1126,14 +1126,15 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
   return Tpm::kTpmRetryNone;
 }
 
-void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
+void Tpm2Impl::GetStatus(base::Optional<TpmKeyHandle> key,
+                         TpmStatusInfo* status) {
   memset(status, 0, sizeof(TpmStatusInfo));
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return;
   }
   status->this_instance_has_context = true;
-  status->this_instance_has_key_handle = (key != 0);
+  status->this_instance_has_key_handle = key.has_value();
   status->last_tpm_error = trunks->tpm_state->Initialize();
   if (status->last_tpm_error != TPM_RC_SUCCESS) {
     return;
@@ -1150,7 +1151,7 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
   status->srk_vulnerable_roca = false;
 
   // Check the Cryptohome key by using what we have been told.
-  status->has_cryptohome_key = (key != 0);
+  status->has_cryptohome_key = key.has_value();
 
   if (status->has_cryptohome_key) {
     // Check encryption (we don't care about the contents, just whether or not
@@ -1165,14 +1166,15 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob aes_key;
     PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
-    if (EncryptBlob(key, data, aes_key, &data_out) != kTpmRetryNone) {
+    if (EncryptBlob(key.value(), data, aes_key, &data_out) != kTpmRetryNone) {
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (DecryptBlob(key, data_out, aes_key, std::map<uint32_t, std::string>(),
+    if (DecryptBlob(key.value(), data_out, aes_key,
+                    std::map<uint32_t, std::string>(),
                     &data) != kTpmRetryNone) {
       return;
     }

@@ -155,7 +155,8 @@ class StubTpm : public Tpm {
     return false;
   }
   void CloseHandle(TpmKeyHandle key_handle) override{};
-  void GetStatus(TpmKeyHandle key, TpmStatusInfo* status) override {}
+  void GetStatus(base::Optional<TpmKeyHandle> key,
+                 TpmStatusInfo* status) override {}
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,

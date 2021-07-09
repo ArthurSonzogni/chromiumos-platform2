@@ -211,9 +211,12 @@ MATCHER_P(HasLoadedCryptohomeKey, handle, "") {
 }
 
 MATCHER(HasNoLoadedCryptohomeKey, "") {
-  TpmKeyHandle loaded_handle = arg->GetCryptohomeKey();
-  *result_listener << "has loaded cryptohome key " << loaded_handle;
-  return !arg->HasCryptohomeKey() && loaded_handle == kInvalidKeyHandle;
+  if (arg->HasCryptohomeKey()) {
+    TpmKeyHandle loaded_handle = arg->GetCryptohomeKey();
+    *result_listener << "has loaded cryptohome key " << loaded_handle;
+    return false;
+  }
+  return true;
 }
 
 ACTION_P(GenerateWrappedKey, wrapped_key) {
@@ -221,15 +224,15 @@ ACTION_P(GenerateWrappedKey, wrapped_key) {
   return true;
 }
 
-ACTION_P(LoadWrappedKeyToHandle, handle) {
-  arg1->reset(nullptr, handle);
+ACTION_P2(LoadWrappedKeyToHandle, tpm, handle) {
+  arg1->reset(tpm, handle);
   return Tpm::kTpmRetryNone;
 }
 
 TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeySuccess) {
   FileTouch(kDefaultCryptohomeKeyFile);
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
-      .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+      .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   cryptohome_key_loader_.Init();
   EXPECT_THAT(&cryptohome_key_loader_, HasLoadedCryptohomeKey(kTestKeyHandle));
 }
@@ -241,7 +244,7 @@ TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeyTransientFailure) {
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryCommFailure))
-      .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+      .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _)).Times(0);
   cryptohome_key_loader_.Init();
   EXPECT_THAT(&cryptohome_key_loader_, HasNoLoadedCryptohomeKey());
@@ -257,7 +260,7 @@ TEST_F(CryptohomeRsaKeyLoaderTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
-      .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+      .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
       .WillOnce(GenerateWrappedKey("new-key"));
   cryptohome_key_loader_.Init();
@@ -289,7 +292,7 @@ TEST_F(CryptohomeRsaKeyLoaderTest,
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
       .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
-      .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+      .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
       .WillOnce(GenerateWrappedKey("new-key"));
   cryptohome_key_loader_.Init();

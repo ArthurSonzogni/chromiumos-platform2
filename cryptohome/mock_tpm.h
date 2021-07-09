@@ -149,7 +149,10 @@ class MockTpm : public Tpm {
               (ScopedKeyHandle*, brillo::SecureBlob*),
               (override));
   MOCK_METHOD(void, CloseHandle, (TpmKeyHandle), (override));
-  MOCK_METHOD(void, GetStatus, (TpmKeyHandle, TpmStatusInfo*), (override));
+  MOCK_METHOD(void,
+              GetStatus,
+              (base::Optional<TpmKeyHandle>, TpmStatusInfo*),
+              (override));
   MOCK_METHOD(base::Optional<bool>, IsSrkRocaVulnerable, (), (override));
   MOCK_METHOD(bool,
               GetDictionaryAttackInfo,

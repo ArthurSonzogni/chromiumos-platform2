@@ -20,6 +20,10 @@
 
 namespace cryptohome {
 
+namespace {
+constexpr TpmKeyHandle kInvalidKeyHandle = 0;
+}
+
 Tpm* Tpm::singleton_ = NULL;
 base::Lock Tpm::singleton_lock_;
 
@@ -53,6 +57,10 @@ void ScopedKeyHandle::reset(Tpm* tpm, TpmKeyHandle handle) {
     tpm_ = tpm;
     handle_ = handle;
   }
+}
+
+bool ScopedKeyHandle::has_value() {
+  return tpm_ != nullptr && handle_ != kInvalidKeyHandle;
 }
 
 int Tpm::TpmVersionInfo::GetFingerprint() const {

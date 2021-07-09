@@ -164,7 +164,7 @@ bool GetIFXFieldUpgradeInfo(cryptohome::Tpm::IFXFieldUpgradeInfo* info) {
 
 bool GetTpmStatus(cryptohome::Tpm::TpmStatusInfo* status) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
-  tpm->GetStatus(0, status);
+  tpm->GetStatus(base::nullopt, status);
   return true;
 }
 
