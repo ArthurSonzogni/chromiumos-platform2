@@ -23,7 +23,7 @@ enum MemtesterErrorCodes {
 
 // Ensure the operating system is left with at least the following size to avoid
 // out of memory error.
-constexpr int kMemoryRoutineReservedSizeMiB = 200;
+constexpr int kMemoryRoutineReservedSizeMiB = 500;
 
 // Status messages the memory routine can report.
 extern const char kMemoryRoutineSucceededMessage[];
