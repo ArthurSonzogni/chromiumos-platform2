@@ -29,8 +29,6 @@ mno {
       }
       username : "mnet"
       password : "mnet"
-      dns : "194.170.1.6"
-      dns : "194.170.1.7"
     }
     mobile_apn {
       apn : "etisalat.ae"
@@ -230,8 +228,6 @@ mno {
     mccmnc : "722340"
     mobile_apn {
       apn : "arnet.personal.com"
-      dns : "172.25.7.6"
-      dns : "172.25.7.7"
     }
   }
 }
@@ -253,8 +249,6 @@ mno {
       }
       username : "clarogprs"
       password : "clarogprs999"
-      dns : "170.51.255.100"
-      dns : "170.51.242.18"
     }
     mobile_apn {
       apn : "internet.ctimovil.com.ar"
@@ -311,8 +305,6 @@ mno {
       }
       username : "gprs"
       password : "adgj"
-      dns : "172.25.7.6"
-      dns : "172.25.7.7"
     }
     mobile_apn {
       apn : "datos.personal.com"
@@ -340,8 +332,6 @@ mno {
       }
       username : "ppp@A1plus.at"
       password : "ppp"
-      dns : "194.48.124.202"
-      dns : "194.48.124.200"
     }
     mobile_apn {
       apn : "aon.data"
@@ -398,8 +388,6 @@ mno {
       apn : "bob.at"
       username : "ppp@bob.at"
       password : "ppp"
-      dns : "194.48.139.254"
-      dns : "194.48.124.200"
     }
     mobile_apn {
       apn : "mms.bob.at"
@@ -422,8 +410,6 @@ mno {
     mccmnc : "23210"
     mobile_apn {
       apn : "drei.at"
-      dns : "213.94.78.17"
-      dns : "213.94.78.16"
     }
   }
 }
@@ -443,8 +429,6 @@ mno {
       }
       username : "web"
       password : "web"
-      dns : "194.24.128.100"
-      dns : "194.24.128.102"
     }
     mobile_apn {
       apn : "wap.one.at"
@@ -477,8 +461,6 @@ mno {
       }
       username : "Orange"
       password : "Orange"
-      dns : "81.3.216.100"
-      dns : "194.24.128.100"
     }
     mobile_apn {
       apn : "orange.mms"
@@ -514,8 +496,6 @@ mno {
       }
       username : "t-mobile"
       password : "tm"
-      dns : "213.162.69.169"
-      dns : "213.162.65.1"
     }
     mobile_apn {
       apn : "business.gprsinternet"
@@ -572,8 +552,6 @@ mno {
       }
       username : "web@telering.at"
       password : "web"
-      dns : "213.162.69.170"
-      dns : "213.162.65.2"
     }
   }
 }
@@ -657,8 +635,6 @@ mno {
       localized_name {
         name : "Crazy NET"
       }
-      dns : "203.21.112.40"
-      dns : "203.21.113.40"
     }
     mobile_apn {
       apn : "purtona.wap"
@@ -808,24 +784,18 @@ mno {
       localized_name {
         name : "Mobile Internet (handsets)"
       }
-      dns : "211.29.132.12"
-      dns : "198.142.0.51"
     }
     mobile_apn {
       apn : "yesinternet"
       localized_name {
         name : "Optus Yes Internet"
       }
-      dns : "211.29.132.12"
-      dns : "198.142.0.51"
     }
     mobile_apn {
       apn : "connect"
       localized_name {
         name : "Wireless Broadband"
       }
-      dns : "211.29.132.12"
-      dns : "198.142.0.51"
       is_attach_apn : true
     }
     mobile_apn {
@@ -833,16 +803,12 @@ mno {
       localized_name {
         name : "Post-Paid Mobile Broadband"
       }
-      dns : "211.29.132.12"
-      dns : "198.142.0.51"
     }
     mobile_apn {
       apn : "preconnect"
       localized_name {
         name : "Pre-Paid Mobile Broadband"
       }
-      dns : "211.29.132.12"
-      dns : "198.142.0.51"
     }
     mobile_apn {
       apn : "mms"
@@ -930,8 +896,6 @@ mno {
     mccmnc : "50501"
     mobile_apn {
       apn : "telstra.wap"
-      dns : "139.130.4.4"
-      dns : "203.50.2.71"
     }
     mobile_apn {
       apn : "telstra.datapack"
@@ -939,16 +903,12 @@ mno {
         name : "Telstra (3G data pack)"
       }
       password : "Telstra"
-      dns : "139.130.4.4"
-      dns : "203.50.2.71"
     }
     mobile_apn {
       apn : "telstra.internet"
       localized_name {
         name : "Telstra (Next G)"
       }
-      dns : "10.4.85.138"
-      dns : "10.4.176.234"
       is_attach_apn : true
     }
     mobile_apn {
@@ -957,8 +917,6 @@ mno {
         name : "Telstra (3G PC pack - pay by time)"
       }
       password : "Telstra"
-      dns : "139.130.4.4"
-      dns : "203.50.2.71"
     }
     mobile_apn {
       apn : "telstra.iph"
@@ -1011,8 +969,6 @@ mno {
       apn : "3netaccess"
       username : "a"
       password : "a"
-      dns : "202.124.68.130"
-      dns : "202.124.76.66"
     }
     mobile_apn {
       apn : "3services"
@@ -1021,8 +977,6 @@ mno {
       }
       username : "a"
       password : "a"
-      dns : "202.124.68.130"
-      dns : "202.124.76.66"
     }
   }
 }
@@ -1042,7 +996,6 @@ mno {
       }
       username : "guest"
       password : "guest"
-      dns : "61.88.88.88"
     }
     mobile_apn {
       apn : "virginbroadband"
@@ -1072,8 +1025,6 @@ mno {
       localized_name {
         name : "Prepaid"
       }
-      dns : "203.21.112.40"
-      dns : "203.21.113.40"
     }
     mobile_apn {
       apn : "live.vodafone.com"
@@ -1219,40 +1170,30 @@ mno {
       localized_name {
         name : "Package 1"
       }
-      dns : "81.93.67.2"
-      dns : "81.93.67.3"
     }
     mobile_apn {
       apn : "mtelgprs2"
       localized_name {
         name : "Package 2"
       }
-      dns : "81.93.67.2"
-      dns : "81.93.67.3"
     }
     mobile_apn {
       apn : "mtelgprs3"
       localized_name {
         name : "Package 3"
       }
-      dns : "81.93.67.2"
-      dns : "81.93.67.3"
     }
     mobile_apn {
       apn : "mtelgprs4"
       localized_name {
         name : "Package 4"
       }
-      dns : "81.93.67.2"
-      dns : "81.93.67.3"
     }
     mobile_apn {
       apn : "mtelfun"
       localized_name {
         name : "Prepaid"
       }
-      dns : "81.93.67.2"
-      dns : "81.93.67.3"
     }
   }
 }
@@ -1284,7 +1225,6 @@ mno {
       localized_name {
         name : "Web"
       }
-      dns : "10.10.55.34"
     }
   }
 }
@@ -1304,8 +1244,6 @@ mno {
       }
       username : "waps"
       password : "waps"
-      dns : "117.18.224.146"
-      dns : "117.18.224.147"
     }
   }
 }
@@ -1320,8 +1258,6 @@ mno {
     mccmnc : "47001"
     mobile_apn {
       apn : "gpinternet"
-      dns : "202.56.4.120"
-      dns : "202.56.4.121"
     }
   }
 }
@@ -1339,7 +1275,6 @@ mno {
       localized_name {
         name : "Internet"
       }
-      dns : "192.168.23.7"
     }
   }
 }
@@ -1357,7 +1292,6 @@ mno {
       localized_name {
         name : "Internet"
       }
-      dns : "10.6.0.2"
     }
   }
 }
@@ -1374,8 +1308,6 @@ mno {
       apn : "gprs.base.be"
       username : "base"
       password : "base"
-      dns : "195.130.131.139"
-      dns : "212.53.4.4"
     }
   }
 }
@@ -1411,8 +1343,6 @@ mno {
       }
       username : "mobistar"
       password : "mobistar"
-      dns : "212.65.63.10"
-      dns : "212.65.63.145"
     }
     mobile_apn {
       apn : "internet.be"
@@ -1421,8 +1351,6 @@ mno {
       }
       username : "mobistar"
       password : "mobistar"
-      dns : "212.65.63.10"
-      dns : "212.65.63.145"
     }
     mobile_apn {
       apn : "iew.be"
@@ -1431,15 +1359,11 @@ mno {
       }
       username : "mobistar"
       password : "mobistar"
-      dns : "212.224.255.252"
-      dns : "212.65.63.217"
     }
     mobile_apn {
       apn : "mworld.be"
       username : "mobistar"
       password : "mobistar"
-      dns : "212.65.63.10"
-      dns : "212.65.63.145"
     }
   }
 }
@@ -1471,16 +1395,12 @@ mno {
       localized_name {
         name : "Inter"
       }
-      dns : "195.238.2.21"
-      dns : "81.169.60.107"
     }
     mobile_apn {
       apn : "intraprox.be"
       localized_name {
         name : "Intra"
       }
-      dns : "195.238.2.21"
-      dns : "195.238.2.22"
     }
   }
 }
@@ -1539,7 +1459,6 @@ mno {
     mobile_apn {
       apn : "internet.globul.bg"
       username : "globul"
-      dns : "192.168.88.11"
     }
   }
 }
@@ -1554,8 +1473,6 @@ mno {
     mccmnc : "28401"
     mobile_apn {
       apn : "inet-gprs.mtel.bg"
-      dns : "213.226.7.34"
-      dns : "213.226.7.35"
     }
   }
 }
@@ -1583,7 +1500,6 @@ mno {
       }
       username : "vivatel"
       password : "vivatel"
-      dns : "192.168.123.123"
     }
   }
 }
@@ -1808,8 +1724,6 @@ mno {
       apn : "tim.br"
       username : "tim"
       password : "tim"
-      dns : "10.223.246.102"
-      dns : "10.223.246.103"
     }
   }
 }
@@ -1825,7 +1739,6 @@ mno {
       apn : "wap.telcel.com"
       username : "iesgprs"
       password : "iesgprs2002"
-      dns : "66.36.250.14"
     }
   }
 }
@@ -2131,8 +2044,6 @@ mno {
       apn : "internet.fido.ca"
       username : "fido"
       password : "fido"
-      dns : "204.92.15.211"
-      dns : "207.181.101.4"
     }
   }
 }
@@ -2172,8 +2083,6 @@ mno {
       apn : "internet.com"
       username : "wapuser1"
       password : "wap"
-      dns : "207.181.101.4"
-      dns : "207.181.101.5"
     }
   }
   mvno {
@@ -2360,7 +2269,6 @@ mno {
     mobile_apn {
       apn : "vodanet"
       username : "vodalive"
-      dns : "172.24.97.1"
     }
   }
 }
@@ -2409,16 +2317,12 @@ mno {
       localized_name {
         name : "Internet Everywhere - Standard"
       }
-      dns : "213.55.128.1"
-      dns : "213.55.128.2"
     }
     mobile_apn {
       apn : "click"
       localized_name {
         name : "Internet Everywhere - Prepaid"
       }
-      dns : "213.55.128.1"
-      dns : "213.55.128.2"
     }
     mobile_apn {
       apn : "intranetaccess"
@@ -2447,8 +2351,6 @@ mno {
       apn : "internet"
       username : "internet"
       password : "internet"
-      dns : "194.230.1.103"
-      dns : "194.230.1.71"
     }
     mobile_apn {
       apn : "wap.sunrise.ch"
@@ -2477,8 +2379,6 @@ mno {
       localized_name {
         name : "Swisscom GPRS"
       }
-      dns : "138.188.101.189"
-      dns : "138.188.101.186"
     }
     mobile_apn {
       apn : "corporate.swisscom.ch"
@@ -2568,7 +2468,6 @@ mno {
     mccmnc : "61205"
     mobile_apn {
       apn : "internet"
-      dns : "172.16.100.5"
     }
   }
 }
@@ -2725,7 +2624,6 @@ mno {
       }
       username : "guest"
       password : "guest"
-      dns : "211.136.20.203"
     }
   }
 }
@@ -2892,7 +2790,6 @@ mno {
       apn : "icecelular"
       username : "guest"
       password : "guest"
-      dns : "208.133.206.44"
     }
   }
 }
@@ -2963,13 +2860,9 @@ mno {
     mccmnc : "23002"
     mobile_apn {
       apn : "internet"
-      dns : "160.218.10.200"
-      dns : "160.218.43.200"
     }
     mobile_apn {
       apn : "internet.open"
-      dns : "160.218.10.200"
-      dns : "160.218.43.200"
     }
     mobile_apn {
       apn : "internet"
@@ -2990,8 +2883,6 @@ mno {
     mccmnc : "23001"
     mobile_apn {
       apn : "internet.t-mobile.cz"
-      dns : "62.141.0.1"
-      dns : "213.162.65.1"
     }
   }
 }
@@ -3006,8 +2897,6 @@ mno {
     mccmnc : "23003"
     mobile_apn {
       apn : "internet"
-      dns : "217.77.161.130"
-      dns : "217.77.161.131"
       is_attach_apn : true
     }
   }
@@ -3025,8 +2914,6 @@ mno {
       apn : "internet.telekom"
       username : "t-mobile"
       password : "tm"
-      dns : "193.254.160.1"
-      dns : "10.74.83.22"
     }
   }
 }
@@ -3044,8 +2931,6 @@ mno {
     mccmnc : "26277"
     mobile_apn {
       apn : "internet"
-      dns : "212.23.97.2"
-      dns : "212.23.97.3"
     }
   }
   mvno {
@@ -3069,8 +2954,6 @@ mno {
         }
         username : "eplus"
         password : "gprs"
-        dns : "212.23.97.2"
-        dns : "212.23.97.3"
       }
       mobile_apn {
         apn : "tagesflat.eplus.de"
@@ -3154,8 +3037,6 @@ mno {
         apn : "internet.eplus.de"
         username : "simyo"
         password : "simyo"
-        dns : "212.23.97.2"
-        dns : "212.23.97.3"
       }
     }
   }
@@ -3260,8 +3141,6 @@ mno {
       apn : "internet.t-mobile"
       username : "t-mobile"
       password : "tm"
-      dns : "10.74.83.22"
-      dns : "193.254.160.1"
     }
   }
 }
@@ -3278,8 +3157,6 @@ mno {
     mccmnc : "26209"
     mobile_apn {
       apn : "web.vodafone.de"
-      dns : "139.7.30.125"
-      dns : "139.7.30.126"
       is_attach_apn : true
     }
     mobile_apn {
@@ -3289,8 +3166,6 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-      dns : "139.7.30.125"
-      dns : "139.7.30.126"
     }
   }
   mvno {
@@ -3347,8 +3222,6 @@ mno {
         localized_name {
           name : "Contract"
         }
-        dns : "139.7.30.125"
-        dns : "139.7.30.126"
         is_attach_apn : true
       }
       mobile_apn {
@@ -3476,8 +3349,6 @@ mno {
     mccmnc : "23801"
     mobile_apn {
       apn : "internet"
-      dns : "194.239.134.83"
-      dns : "193.162.153.164"
     }
     mobile_apn {
       apn : "internet.no"
@@ -3517,8 +3388,6 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
-        dns : "194.239.134.83"
-        dns : "193.162.153.164"
       }
     }
   }
@@ -3569,8 +3438,6 @@ mno {
     mccmnc : "23877"
     mobile_apn {
       apn : "internet"
-      dns : "212.88.64.199"
-      dns : "212.88.64.14"
     }
   }
   earmarked : true
@@ -3619,8 +3486,6 @@ mno {
     mccmnc : "37002"
     mobile_apn {
       apn : "internet.ideasclaro.com.do"
-      dns : "196.3.81.5"
-      dns : "196.3.81.132"
     }
   }
 }
@@ -3744,8 +3609,6 @@ mno {
     mccmnc : "24801"
     mobile_apn {
       apn : "internet.emt.ee"
-      dns : "217.71.32.116"
-      dns : "217.71.32.115"
     }
   }
 }
@@ -3760,7 +3623,6 @@ mno {
     mccmnc : "24802"
     mobile_apn {
       apn : "internet"
-      dns : "194.204.0.1"
     }
   }
 }
@@ -3819,8 +3681,6 @@ mno {
     mccmnc : "60201"
     mobile_apn {
       apn : "mobinilweb"
-      dns : "80.75.166.250"
-      dns : "163.121.163.201"
     }
   }
 }
@@ -3837,8 +3697,6 @@ mno {
       apn : "internet.vodafone.net"
       username : "internet"
       password : "internet"
-      dns : "163.121.128.134"
-      dns : "212.103.160.18"
     }
   }
 }
@@ -3917,8 +3775,6 @@ mno {
     mccmnc : "21421"
     mobile_apn {
       apn : "jazzinternet"
-      dns : "87.216.1.65"
-      dns : "87.216.1.66"
     }
   }
 }
@@ -3953,8 +3809,6 @@ mno {
       }
       username : "telefonica"
       password : "telefonica"
-      dns : "194.179.1.100"
-      dns : "194.179.1.101"
     }
     mobile_apn {
       apn : "movistar.es"
@@ -4014,8 +3868,6 @@ mno {
     mccmnc : "21418"
     mobile_apn {
       apn : "internet.ono.com"
-      dns : "62.42.230.24"
-      dns : "62.42.63.52"
     }
   }
 }
@@ -4036,8 +3888,6 @@ mno {
       }
       username : "ORANGE"
       password : "ORANGE"
-      dns : "85.62.229.133"
-      dns : "85.62.229.134"
     }
   }
   earmarked : true
@@ -4076,8 +3926,6 @@ mno {
     mccmnc : "21419"
     mobile_apn {
       apn : "gprs-service.com"
-      dns : "195.230.105.134"
-      dns : "195.230.105.135"
     }
   }
 }
@@ -4114,8 +3962,6 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-      dns : "212.73.32.96"
-      dns : "212.73.32.67"
       is_attach_apn : true
     }
     mobile_apn {
@@ -4125,8 +3971,6 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-      dns : "212.73.32.3"
-      dns : "212.73.32.67"
     }
   }
 }
@@ -4141,8 +3985,6 @@ mno {
     mccmnc : "21404"
     mobile_apn {
       apn : "internet"
-      dns : "213.248.76.210"
-      dns : "213.248.100.54"
     }
   }
 }
@@ -4157,8 +3999,6 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "internettph"
-      dns : "213.143.33.8"
-      dns : "62.36.225.150"
     }
   }
 }
@@ -4205,8 +4045,6 @@ mno {
     mccmnc : "63601"
     mobile_apn {
       apn : "etc.com"
-      dns : "213.55.96.148"
-      dns : "213.55.96.166"
     }
   }
 }
@@ -4224,8 +4062,6 @@ mno {
       localized_name {
         name : "dna internet"
       }
-      dns : "217.78.192.22"
-      dns : "217.78.192.78"
     }
   }
 }
@@ -4325,24 +4161,18 @@ mno {
       localized_name {
         name : "Postpaid (contract) NAT (available for all subscribers)"
       }
-      dns : "195.74.0.47"
-      dns : "195.197.54.100"
     }
     mobile_apn {
       apn : "internet4"
       localized_name {
         name : "Postpaid (contract) public IP address (needs to be ordered)"
       }
-      dns : "195.74.0.47"
-      dns : "195.197.54.100"
     }
     mobile_apn {
       apn : "internet"
       localized_name {
         name : "Prepaid (no contract)"
       }
-      dns : "195.74.0.47"
-      dns : "195.197.54.100"
     }
   }
 }
@@ -4357,16 +4187,12 @@ mno {
     mccmnc : "24491"
     mobile_apn {
       apn : "internet"
-      dns : "192.89.123.230"
-      dns : "192.89.123.231"
     }
     mobile_apn {
       apn : "prointernet"
       localized_name {
         name : "Prointernet (public IP)"
       }
-      dns : "192.89.123.230"
-      dns : "192.89.123.231"
     }
   }
 }
@@ -4449,35 +4275,30 @@ mno {
       localized_name {
         name : "Contrat Pro Data Illimité"
       }
-      dns : "62.201.129.99"
     }
     mobile_apn {
       apn : "b2bouygtel.com"
       localized_name {
         name : "B2Bouygtel"
       }
-      dns : "62.201.129.99"
     }
     mobile_apn {
       apn : "ebouygtel.com"
       localized_name {
         name : "Forfait Data"
       }
-      dns : "62.201.129.99"
     }
     mobile_apn {
       apn : "mmsbouygtel.com"
       localized_name {
         name : "Forfait Data"
       }
-      dns : "62.201.129.99"
     }
     mobile_apn {
       apn : "pcebouygtel.com"
       localized_name {
         name : "Contrat Pro Data"
       }
-      dns : "62.201.129.99"
     }
   }
 }
@@ -4521,16 +4342,12 @@ mno {
       localized_name {
         name : "Orange Internet"
       }
-      dns : "194.51.3.56"
-      dns : "194.51.3.76"
     }
     mobile_apn {
       apn : "internet-entreprise"
       localized_name {
         name : "Business Contract"
       }
-      dns : "194.51.3.56"
-      dns : "194.51.3.76"
     }
     mobile_apn {
       apn : "orange"
@@ -4539,8 +4356,6 @@ mno {
       }
       username : "orange"
       password : "orange"
-      dns : "194.51.3.56"
-      dns : "194.51.3.76"
     }
     mobile_apn {
       apn : "orange-mib"
@@ -4549,8 +4364,6 @@ mno {
       }
       username : "mportail"
       password : "mib"
-      dns : "172.17.0.2"
-      dns : "172.17.0.4"
     }
     mobile_apn {
       apn : "orange-acte"
@@ -4634,8 +4447,6 @@ mno {
       localized_name {
         name : "Web / Prepaid"
       }
-      dns : "172.20.2.10"
-      dns : "172.20.2.39"
     }
     mobile_apn {
       apn : "wapsfr"
@@ -4660,8 +4471,6 @@ mno {
       localized_name {
         name : "Mobile Broadband"
       }
-      dns : "172.20.2.10"
-      dns : "172.20.2.39"
     }
     mobile_apn {
       apn : "sl2sfr"
@@ -4711,8 +4520,6 @@ mno {
       localized_name {
         name : "Handsets"
       }
-      dns : "172.30.139.17"
-      dns : "172.31.139.17"
     }
   }
   mvno {
@@ -4781,8 +4588,6 @@ mno {
       }
       username : "o2web"
       password : "password"
-      dns : "193.113.200.200"
-      dns : "193.113.200.201"
     }
     mobile_apn {
       apn : "mobile.o2.co.uk"
@@ -4791,8 +4596,6 @@ mno {
       }
       username : "faster"
       password : "password"
-      dns : "193.113.200.200"
-      dns : "193.113.200.201"
     }
     mobile_apn {
       apn : "payandgo.o2.co.uk"
@@ -4817,8 +4620,6 @@ mno {
       }
       username : "o2bb"
       password : "password"
-      dns : "82.132.254.2"
-      dns : "82.132.254.3"
     }
     mobile_apn {
       apn : "wap.o2.co.uk"
@@ -4904,7 +4705,6 @@ mno {
       apn : "prepay.tesco-mobile.com"
       username : "tescowap"
       password : "password"
-      dns : "193.113.200.195"
     }
   }
 }
@@ -4920,8 +4720,6 @@ mno {
     mccmnc : "23432"
     mobile_apn {
       apn : "vdata"
-      dns : "196.7.0.138"
-      dns : "196.7.142.132"
     }
     mobile_apn {
       apn : "goto.virginmobile.uk"
@@ -4945,8 +4743,6 @@ mno {
       }
       username : "web"
       password : "web"
-      dns : "10.206.65.68"
-      dns : "10.203.65.68"
     }
     mobile_apn {
       apn : "ppbundle.internet"
@@ -4955,8 +4751,6 @@ mno {
       }
       username : "web"
       password : "web"
-      dns : "10.203.129.68"
-      dns : "10.203.129.68"
     }
     mobile_apn {
       apn : "smart"
@@ -4981,8 +4775,6 @@ mno {
       }
       username : "web"
       password : "web"
-      dns : "172.29.1.11"
-      dns : "172.29.1.11"
     }
   }
   earmarked : true
@@ -5019,8 +4811,6 @@ mno {
     mccmnc : "28201"
     mobile_apn {
       apn : "internet"
-      dns : "212.72.130.20"
-      dns : "212.72.152.001"
     }
   }
 }
@@ -5072,8 +4862,6 @@ mno {
     mccmnc : "23450"
     mobile_apn {
       apn : "pepper"
-      dns : "212.9.0.135"
-      dns : "212.9.0.136"
     }
   }
 }
@@ -5213,8 +5001,6 @@ mno {
       localized_name {
         name : "Mobile Broadband On Demand"
       }
-      dns : "213.249.17.10"
-      dns : "213.249.17.11"
     }
   }
 }
@@ -5325,8 +5111,6 @@ mno {
     mccmnc : "45402"
     mobile_apn {
       apn : "internet"
-      dns : "202.84.255.1"
-      dns : "203.116.254.150"
     }
   }
 }
@@ -5498,7 +5282,6 @@ mno {
     mccmnc : "21901"
     mobile_apn {
       apn : "web.htgprs"
-      dns : "10.12.0.1"
     }
   }
 }
@@ -5513,7 +5296,6 @@ mno {
     mccmnc : "21902"
     mobile_apn {
       apn : "mobileinternet.tele2.hr"
-      dns : "212.247.156.66"
     }
   }
 }
@@ -5539,7 +5321,6 @@ mno {
       }
       username : "38591"
       password : "38591"
-      dns : "195.29.159.15"
     }
     mobile_apn {
       apn : "gprs0.vipnet.hr"
@@ -5548,7 +5329,6 @@ mno {
       }
       username : "38591"
       password : "38591"
-      dns : "195.29.159.15"
     }
     mobile_apn {
       apn : "3g.vip.hr"
@@ -5557,8 +5337,6 @@ mno {
       }
       username : "38591"
       password : "38591"
-      dns : "212.91.97.3"
-      dns : "212.91.97.4"
     }
   }
 }
@@ -5606,8 +5384,6 @@ mno {
     mccmnc : "21630"
     mobile_apn {
       apn : "internet"
-      dns : "212.51.115.1"
-      dns : "194.176.224.6"
     }
     mobile_apn {
       apn : "mms-westel"
@@ -5615,8 +5391,6 @@ mno {
         name : "MMS"
       }
       username : "mms"
-      dns : "212.51.115.1"
-      dns : "194.176.224.3"
     }
   }
 }
@@ -5634,8 +5408,6 @@ mno {
       localized_name {
         name : "mobilinternet"
       }
-      dns : "217.79.128.40"
-      dns : "217.79.128.45"
     }
   }
 }
@@ -5655,32 +5427,24 @@ mno {
       }
       username : "vodawap"
       password : "vodawap"
-      dns : "80.244.97.30"
-      dns : "80.244.96.1"
     }
     mobile_apn {
       apn : "internet.vodafone.net"
       localized_name {
         name : "Előf. töm."
       }
-      dns : "80.244.97.30"
-      dns : "80.244.96.1"
     }
     mobile_apn {
       apn : "vitamax.snet.vodafone.net"
       localized_name {
         name : "Felt. norm."
       }
-      dns : "80.244.97.30"
-      dns : "80.244.96.1"
     }
     mobile_apn {
       apn : "vitamax.internet.vodafone.net"
       localized_name {
         name : "Vodafone (felt. töm.)"
       }
-      dns : "80.244.96.1"
-      dns : "80.244.97.30"
     }
   }
 }
@@ -5772,8 +5536,6 @@ mno {
       apn : "www.xlgprs.net"
       username : "xlgprs"
       password : "proxl"
-      dns : "202.152.254.245"
-      dns : "202.152.254.246"
     }
   }
 }
@@ -5904,8 +5666,6 @@ mno {
       apn : "telkomsel"
       username : "wap"
       password : "wap123"
-      dns : "202.152.0.2"
-      dns : "202.155.14.251"
     }
     mobile_apn {
       apn : "flash"
@@ -5966,8 +5726,6 @@ mno {
       localized_name {
         name : "Broadband To Go"
       }
-      dns : "212.129.64.220"
-      dns : "212.129.64.221"
     }
     mobile_apn {
       apn : "isp.mymeteor.ie"
@@ -5995,8 +5753,6 @@ mno {
         localized_name {
           name : "Broadband To Go"
         }
-        dns : "212.129.64.220"
-        dns : "212.129.64.221"
       }
     }
   }
@@ -6017,8 +5773,6 @@ mno {
       }
       username : "gprs"
       password : "gprs"
-      dns : "62.40.32.33"
-      dns : "62.40.32.34"
     }
     mobile_apn {
       apn : "pp.internet"
@@ -6027,8 +5781,6 @@ mno {
       }
       username : "faster"
       password : "web"
-      dns : "62.40.32.33"
-      dns : "62.40.32.34"
     }
     mobile_apn {
       apn : "internet"
@@ -6049,8 +5801,6 @@ mno {
     mccmnc : "27205"
     mobile_apn {
       apn : "3ireland.ie"
-      dns : "172.31.140.69"
-      dns : "172.30.140.69"
     }
   }
 }
@@ -6067,8 +5817,6 @@ mno {
       apn : "hs.vodafone.ie"
       username : "vodafone"
       password : "vodafone"
-      dns : "89.19.64.36"
-      dns : "89.19.64.164"
       is_attach_apn : true
     }
     mobile_apn {
@@ -6086,7 +5834,6 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-      dns : "10.24.59.100"
     }
   }
 }
@@ -6160,8 +5907,6 @@ mno {
       localized_name {
         name : "3G Internet"
       }
-      dns : "158.43.192.1"
-      dns : "158.43.128.1"
     }
   }
 }
@@ -6339,8 +6084,6 @@ mno {
     mccmnc : "40556"
     mobile_apn {
       apn : "airtelgprs.com"
-      dns : "202.56.230.5"
-      dns : "202.56.240.5"
     }
   }
 }
@@ -6414,16 +6157,12 @@ mno {
       localized_name {
         name : "Old East Zone Prepaid (Jharkhand, Bihar, Kolkata, West Bengal, Orissa, Assam, North East, Adman Nicobar)"
       }
-      dns : "218.248.240.208"
-      dns : "218.248.240.135"
     }
     mobile_apn {
       apn : "www.e.po"
       localized_name {
         name : "Old East Zone Postpaid (Jharkhand, Bihar, Kolkata, West Bengal, Orissa, Assam, North East, Adman Nicobar)"
       }
-      dns : "218.248.240.208"
-      dns : "218.248.240.135"
     }
   }
 }
@@ -6916,8 +6655,6 @@ mno {
     mccmnc : "27411"
     mobile_apn {
       apn : "internet.nova.is"
-      dns : "192.168.190.54"
-      dns : "192.168.190.55"
     }
   }
 }
@@ -6932,8 +6669,6 @@ mno {
     mccmnc : "27401"
     mobile_apn {
       apn : "wap.simi.is"
-      dns : "194.105.224.1"
-      dns : "212.30.200.200"
     }
   }
 }
@@ -6949,8 +6684,6 @@ mno {
     mccmnc : "27403"
     mobile_apn {
       apn : "vmc.gprs.is"
-      dns : "213.176.128.51"
-      dns : "213.176.128.50"
     }
   }
 }
@@ -6968,8 +6701,6 @@ mno {
       localized_name {
         name : "Ricaricabile"
       }
-      dns : "62.13.169.92"
-      dns : "62.13.169.93"
     }
     mobile_apn {
       apn : "datacard.tre.it"
@@ -7021,8 +6752,6 @@ mno {
         localized_name {
           name : "Solo dati"
         }
-        dns : "213.140.2.43"
-        dns : "213.140.2.49"
       }
     }
   }
@@ -7071,8 +6800,6 @@ mno {
       localized_name {
         name : "Maxxi Alice/Internet"
       }
-      dns : "217.200.200.42"
-      dns : "213.230.129.10"
     }
     mobile_apn {
       apn : "wap.tim.it"
@@ -7080,8 +6807,6 @@ mno {
         name : "WAP"
       }
       username : "WAPTIM"
-      dns : "213.230.155.94"
-      dns : "213.230.130.222"
     }
   }
   mvno {
@@ -7145,8 +6870,6 @@ mno {
       localized_name {
         name : "Internet Facile (old)"
       }
-      dns : "83.224.70.62"
-      dns : "83.224.70.78"
     }
   }
   mvno {
@@ -7183,8 +6906,6 @@ mno {
       }
       username : "Wind"
       password : "Wind"
-      dns : "193.70.152.25"
-      dns : "193.70.192.25"
     }
     mobile_apn {
       apn : "internet.wind.biz"
@@ -7193,8 +6914,6 @@ mno {
       }
       username : "Wind"
       password : "Wind"
-      dns : "193.70.152.25"
-      dns : "193.70.192.25"
     }
   }
 }
@@ -7225,8 +6944,6 @@ mno {
       apn : "pepper"
       username : "abc"
       password : "abc"
-      dns : "212.9.0.135"
-      dns : "212.9.0.136"
     }
   }
 }
@@ -7280,8 +6997,6 @@ mno {
       apn : "web.digiceljamaica.com"
       username : "wapuser"
       password : "wap03jam"
-      dns : "208.131.176.126"
-      dns : "200.10.152.232"
     }
   }
 }
@@ -8071,8 +7786,6 @@ mno {
     mobile_apn {
       apn : "internet.beeline.kz"
       username : "@internet.beeline"
-      dns : "212.19.149.53"
-      dns : "194.226.128.1"
     }
   }
 }
@@ -8165,7 +7878,6 @@ mno {
     mccmnc : "45702"
     mobile_apn {
       apn : "etlnet"
-      dns : "192.168.4.130"
     }
   }
 }
@@ -8350,8 +8062,6 @@ mno {
     mccmnc : "24602"
     mobile_apn {
       apn : "banga"
-      dns : "213.226.131.131"
-      dns : "193.219.88.36"
     }
   }
 }
@@ -8369,8 +8079,6 @@ mno {
       localized_name {
         name : "Contract"
       }
-      dns : "194.176.32.129"
-      dns : "195.22.175.1"
     }
     mobile_apn {
       apn : "gprs.startas.lt"
@@ -8379,8 +8087,6 @@ mno {
       }
       username : "omni"
       password : "omni"
-      dns : "194.176.32.129"
-      dns : "195.22.175.1"
     }
   }
 }
@@ -8409,8 +8115,6 @@ mno {
     mccmnc : "27001"
     mobile_apn {
       apn : "web.pt.lu"
-      dns : "194.154.192.101"
-      dns : "194.154.192.102"
     }
   }
 }
@@ -8425,8 +8129,6 @@ mno {
     mccmnc : "27099"
     mobile_apn {
       apn : "orange.lu"
-      dns : "85.94.224.1"
-      dns : "85.94.224.2"
     }
   }
 }
@@ -8454,8 +8156,6 @@ mno {
       }
       username : "tango"
       password : "tango"
-      dns : "212.66.70.3"
-      dns : "212.66.75.7"
     }
   }
 }
@@ -8507,8 +8207,6 @@ mno {
     mccmnc : "24701"
     mobile_apn {
       apn : "internet.lmt.lv"
-      dns : "212.93.96.2"
-      dns : "212.93.96.4"
     }
     mobile_apn {
       apn : "open.lmt.lv"
@@ -9026,8 +8724,6 @@ mno {
       apn : "internet"
       username : "internet"
       password : "internet"
-      dns : "80.85.96.131"
-      dns : "80.85.97.70"
     }
   }
 }
@@ -9207,8 +8903,6 @@ mno {
       localized_name {
         name : "DiGi Internet"
       }
-      dns : "203.92.128.131"
-      dns : "203.92.128.132"
     }
     mobile_apn {
       apn : "3gdgnet"
@@ -9262,8 +8956,6 @@ mno {
       }
       username : "maxis"
       password : "wap"
-      dns : "10.213.17.1"
-      dns : "10.213.17.2"
     }
   }
 }
@@ -9334,8 +9026,6 @@ mno {
       apn : "isp.mcel.mz"
       username : "guest"
       password : "guest"
-      dns : "212.96.24.2"
-      dns : "212.96.24.1"
     }
   }
 }
@@ -9605,8 +9295,6 @@ mno {
       apn : "internet"
       username : "KPN"
       password : "gprs"
-      dns : "62.133.126.28"
-      dns : "62.133.126.29"
     }
     mobile_apn {
       localized_name {
@@ -9616,8 +9304,6 @@ mno {
     }
     mobile_apn {
       apn : "noapn"
-      dns : "62.133.126.28"
-      dns : "62.133.126.29"
     }
   }
   mvno {
@@ -9718,8 +9404,6 @@ mno {
     mccmnc : "20416"
     mobile_apn {
       apn : "internet"
-      dns : "193.78.240.12"
-      dns : "193.79.242.39"
     }
   }
   mvno {
@@ -9736,8 +9420,6 @@ mno {
       mccmnc : "20416"
       mobile_apn {
         apn : "internet.ben"
-        dns : "193.78.240.12"
-        dns : "193.79.242.39"
       }
     }
   }
@@ -9822,8 +9504,6 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-      dns : "62.140.138.237"
-      dns : "62.140.140.250"
     }
     mobile_apn {
       apn : "office.vodafone.nl"
@@ -9922,8 +9602,6 @@ mno {
       apn : "internet.netcom.no"
       username : "netcom"
       password : "netcom"
-      dns : "212.169.123.67"
-      dns : "212.45.188.254"
     }
   }
   mvno {
@@ -10023,8 +9701,6 @@ mno {
     mccmnc : "24208"
     mobile_apn {
       apn : "internet.no"
-      dns : "80.232.41.10"
-      dns : "80.232.41.20"
     }
   }
 }
@@ -10062,8 +9738,6 @@ mno {
     mccmnc : "24201"
     mobile_apn {
       apn : "telenor"
-      dns : "212.17.131.3"
-      dns : "148.122.161.2"
     }
     mobile_apn {
       apn : "telenor.mbb"
@@ -10150,8 +9824,6 @@ mno {
       localized_name {
         name : "Broadband"
       }
-      dns : "118.148.1.10"
-      dns : "118.148.1.20"
     }
   }
 }
@@ -10192,16 +9864,12 @@ mno {
       localized_name {
         name : "XT mobile (Internet with Firewall)"
       }
-      dns : "202.27.156.72"
-      dns : "202.27.158.40"
     }
     mobile_apn {
       apn : "direct.telecom.co.nz"
       localized_name {
         name : "XT mobile (Direct Internet)"
       }
-      dns : "202.27.156.72"
-      dns : "202.27.158.40"
     }
     mobile_apn {
       apn : "oa.telecom.co.nz"
@@ -10241,8 +9909,6 @@ mno {
       localized_name {
         name : "WAP"
       }
-      dns : "202.73.206.16"
-      dns : "202.73.198.16"
     }
     mobile_apn {
       apn : "www.vodafone.net.nz"
@@ -10255,8 +9921,6 @@ mno {
       localized_name {
         name : "Unrestricted (public)"
       }
-      dns : "202.73.206.16"
-      dns : "202.73.198.16"
     }
     mobile_apn {
       apn : "vodafone"
@@ -10332,8 +9996,6 @@ mno {
       apn : "internet.movistar.pa"
       username : "movistarpa"
       password : "movistarpa"
-      dns : "200.39.10.1"
-      dns : "200.36.160.237"
     }
   }
 }
@@ -10419,8 +10081,6 @@ mno {
       localized_name {
         name : "Prepaid"
       }
-      dns : "10.149.64.77"
-      dns : "8.8.8.8"
     }
   }
 }
@@ -10454,8 +10114,6 @@ mno {
       }
       username : "globe"
       password : "globe"
-      dns : "203.127.225.10"
-      dns : "203.127.225.11"
     }
     mobile_apn {
       apn : "http.globe.com.ph"
@@ -10464,8 +10122,6 @@ mno {
       }
       username : "globe"
       password : "globe"
-      dns : "203.127.225.10"
-      dns : "203.127.225.11"
     }
     mobile_apn {
       apn : "www.globe.com.ph"
@@ -10474,8 +10130,6 @@ mno {
       }
       username : "globe"
       password : "globe"
-      dns : "203.127.225.10"
-      dns : "203.127.225.11"
     }
   }
 }
@@ -10492,8 +10146,6 @@ mno {
       apn : "internet"
       username : "witsductoor"
       password : "banonoy"
-      dns : "202.57.96.3"
-      dns : "202.57.96.4"
     }
   }
 }
@@ -10693,8 +10345,6 @@ mno {
       }
       username : "internet"
       password : "internet"
-      dns : "194.9.223.79"
-      dns : "194.204.159.1"
     }
     mobile_apn {
       apn : "vpn"
@@ -10706,8 +10356,6 @@ mno {
       }
       username : "internet"
       password : "internet"
-      dns : "194.9.223.79"
-      dns : "194.204.159.1"
     }
   }
   mvno {
@@ -10864,8 +10512,6 @@ mno {
       localized_name {
         name : "LTE Plus"
       }
-      dns : "212.2.96.51"
-      dns : "212.2.96.52"
     }
   }
   mvno {
@@ -10968,8 +10614,6 @@ mno {
     mccmnc : "26002"
     mobile_apn {
       apn : "internet"
-      dns : "213.158.194.1"
-      dns : "213.158.193.38"
     }
   }
   mvno {
@@ -10988,8 +10632,6 @@ mno {
         apn : "heyah.pl"
         username : "heyah"
         password : "heyah"
-        dns : "213.158.194.1"
-        dns : "213.158.193.38"
       }
     }
   }
@@ -11058,32 +10700,24 @@ mno {
       localized_name {
         name : "Portátil"
       }
-      dns : "62.169.67.172"
-      dns : "62.169.67.171"
     }
     mobile_apn {
       apn : "kanguru-tempo"
       localized_name {
         name : "Tempo (Prepaid)"
       }
-      dns : "62.169.67.172"
-      dns : "62.169.67.171"
     }
     mobile_apn {
       apn : "kangurufixo"
       localized_name {
         name : "Fixo"
       }
-      dns : "62.169.67.172"
-      dns : "62.169.67.171"
     }
     mobile_apn {
       apn : "noapn"
       localized_name {
         name : "Apn dinâmico (no apn)"
       }
-      dns : "62.169.67.171"
-      dns : "62.169.67.172"
     }
   }
 }
@@ -11107,7 +10741,6 @@ mno {
       localized_name {
         name : "GPRS"
       }
-      dns : "194.79.69.129"
     }
   }
 }
@@ -11127,8 +10760,6 @@ mno {
       }
       username : "tmn"
       password : "tmn"
-      dns : "88.214.178.1"
-      dns : "88.214.182.2"
     }
     mobile_apn {
       apn : "mmsc.tmn.pt"
@@ -11137,8 +10768,6 @@ mno {
       }
       username : "tmn"
       password : "tmnnet"
-      dns : "194.65.3.20"
-      dns : "194.65.3.21"
     }
   }
 }
@@ -11155,8 +10784,6 @@ mno {
       apn : "internet.vodafone.pt"
       username : "vodafone"
       password : "vodafone"
-      dns : "212.18.160.133"
-      dns : "212.18.160.134"
     }
     mobile_apn {
       apn : "net2.vodafone.pt"
@@ -11404,8 +11031,6 @@ mno {
     mccmnc : "22610"
     mobile_apn {
       apn : "net"
-      dns : "172.22.7.21"
-      dns : "172.22.7.20"
     }
   }
 }
@@ -11491,7 +11116,6 @@ mno {
       apn : "gprsinternet"
       username : "mts"
       password : "064"
-      dns : "195.178.38.3"
     }
   }
 }
@@ -11543,8 +11167,6 @@ mno {
       apn : "inet.bwc.ru"
       username : "bwc"
       password : "bwc"
-      dns : "81.18.113.2"
-      dns : "81.18.112.50"
     }
   }
 }
@@ -11571,8 +11193,6 @@ mno {
       }
       username : "beeline"
       password : "beeline"
-      dns : "212.44.130.6"
-      dns : "217.118.83.6"
     }
     mobile_apn {
       apn : "internet.beeline.ru"
@@ -11584,8 +11204,6 @@ mno {
       }
       username : "beeline"
       password : "beeline"
-      dns : "217.118.66.243"
-      dns : "217.118.66.244"
     }
   }
 }
@@ -11618,8 +11236,6 @@ mno {
     mobile_apn {
       apn : "internet.etk.ru"
       username : "etk"
-      dns : "10.10.30.3"
-      dns : "10.10.30.4"
     }
   }
 }
@@ -11636,8 +11252,6 @@ mno {
       apn : "internet.mts.ru"
       username : "mts"
       password : "mts"
-      dns : "213.87.0.1"
-      dns : "213.87.1.1"
     }
   }
 }
@@ -11681,8 +11295,6 @@ mno {
     mobile_apn {
       apn : "inet.ycc.ru"
       username : "motiv"
-      dns : "217.148.52.34"
-      dns : "217.148.52.3"
     }
   }
 }
@@ -11698,8 +11310,6 @@ mno {
     mobile_apn {
       apn : "internet"
       username : "ncc"
-      dns : "10.0.3.5"
-      dns : "10.0.3.2"
     }
   }
 }
@@ -11714,8 +11324,6 @@ mno {
     mccmnc : "25016"
     mobile_apn {
       apn : "internet.ntc"
-      dns : "80.243.64.67"
-      dns : "80.243.68.34"
     }
   }
 }
@@ -11849,8 +11457,6 @@ mno {
       apn : "internet.tatincom.ru"
       username : "tatincom"
       password : "tatincom"
-      dns : "89.207.96.2"
-      dns : "89.207.97.18"
     }
   }
 }
@@ -11868,8 +11474,6 @@ mno {
     mccmnc : "25020"
     mobile_apn {
       apn : "internet.tele2.ru"
-      dns : "130.244.127.161"
-      dns : "130.244.127.169"
     }
   }
 }
@@ -11949,8 +11553,6 @@ mno {
     mccmnc : "42001"
     mobile_apn {
       apn : "jawalnet.com.sa"
-      dns : "212.118.133.101"
-      dns : "212.118.133.102"
     }
   }
 }
@@ -12386,8 +11988,6 @@ mno {
         name : "SunSurf/Mobile Broadband (postpaid)"
       }
       username : "65"
-      dns : "202.79.64.21"
-      dns : "202.79.64.26"
     }
     mobile_apn {
       apn : "miworld"
@@ -12431,8 +12031,6 @@ mno {
     mccmnc : "52502"
     mobile_apn {
       apn : "internet"
-      dns : "165.21.100.88"
-      dns : "165.21.83.88"
     }
   }
 }
@@ -12452,7 +12050,6 @@ mno {
       }
       username : "star"
       password : "hub"
-      dns : "203.116.1.78"
     }
     mobile_apn {
       apn : "shppd"
@@ -12484,15 +12081,11 @@ mno {
       }
       username : "mobitel"
       password : "internet"
-      dns : "213.229.248.161"
-      dns : "193.189.160.11"
     }
     mobile_apn {
       apn : "internetpro"
       username : "mobitel"
       password : "internet"
-      dns : "213.229.248.161"
-      dns : "193.189.160.11"
     }
   }
 }
@@ -12523,8 +12116,6 @@ mno {
       apn : "internet.simobil.si"
       username : "simobil"
       password : "internet"
-      dns : "121.30.86.130"
-      dns : "193.189.160.11"
     }
   }
 }
@@ -12542,8 +12133,6 @@ mno {
       localized_name {
         name : "Internet"
       }
-      dns : "160.218.161.60"
-      dns : "194.228.211.33"
     }
   }
 }
@@ -12558,8 +12147,6 @@ mno {
     mccmnc : "23101"
     mobile_apn {
       apn : "internet"
-      dns : "213.151.200.31"
-      dns : "213.151.208.162"
     }
   }
 }
@@ -12575,8 +12162,6 @@ mno {
     mccmnc : "23104"
     mobile_apn {
       apn : "internet"
-      dns : "195.91.0.17"
-      dns : "194.154.227.17"
     }
   }
 }
@@ -12591,8 +12176,6 @@ mno {
     mccmnc : "60802"
     mobile_apn {
       apn : "wap.sentelgsm.com"
-      dns : "200.85.0.104"
-      dns : "200.85.0.107"
     }
   }
 }
@@ -12668,8 +12251,6 @@ mno {
     mccmnc : "52001"
     mobile_apn {
       apn : "internet"
-      dns : "202.183.255.20"
-      dns : "202.183.255.21"
     }
   }
 }
@@ -12684,8 +12265,6 @@ mno {
     mccmnc : "52018"
     mobile_apn {
       apn : "www.dtac.co.th"
-      dns : "202.44.202.2"
-      dns : "203.44.144.33"
     }
   }
 }
@@ -12818,16 +12397,12 @@ mno {
     mccmnc : "28604"
     mobile_apn {
       apn : "internet"
-      dns : "212.156.4.4"
-      dns : "212.156.4.20"
     }
     mobile_apn {
       apn : "aycell"
       localized_name {
         name : "(former Aycell)"
       }
-      dns : "212.156.4.1"
-      dns : "212.156.4.4"
     }
   }
 }
@@ -13198,16 +12773,12 @@ mno {
     mccmnc : "25501"
     mobile_apn {
       apn : "www.jeans.ua"
-      dns : "80.255.64.23"
-      dns : "80.255.64.24"
     }
     mobile_apn {
       apn : "hyper.net"
       localized_name {
         name : "Hyper.NET"
       }
-      dns : "212.58.160.33"
-      dns : "212.58.160.34"
     }
   }
 }
@@ -13226,8 +12797,6 @@ mno {
         name : "GPRS Internet"
       }
       username : "internet"
-      dns : "212.58.160.33"
-      dns : "212.58.160.34"
     }
     mobile_apn {
       apn : "hyper.net"
@@ -13246,8 +12815,6 @@ mno {
       localized_name {
         name : "umc.ua"
       }
-      dns : "80.255.64.23"
-      dns : "80.255.64.24"
     }
   }
 }
@@ -13339,16 +12906,12 @@ mno {
       localized_name {
         name : "Standard"
       }
-      dns : "212.58.160.33"
-      dns : "212.58.160.34"
     }
     mobile_apn {
       apn : "speed"
       localized_name {
         name : "Faster"
       }
-      dns : "212.58.160.33"
-      dns : "212.58.160.34"
     }
   }
 }
@@ -13363,8 +12926,6 @@ mno {
     mccmnc : "64110"
     mobile_apn {
       apn : "yellopix.mtn.co.ug"
-      dns : "193.108.252.50"
-      dns : "193.108.252.51"
     }
   }
 }
@@ -14158,8 +13719,6 @@ mno {
       localized_name {
         name : "Internet/WebConnect"
       }
-      dns : "10.177.0.34"
-      dns : "10.164.103.44"
     }
     mobile_apn {
       apn : "wap.voicestream.com"
@@ -14423,8 +13982,6 @@ mno {
       localized_name {
         name : "4G LTE Contract"
       }
-      dns : "66.174.92.14"
-      dns : "69.78.96.14"
     }
     sid : "2"
     sid : "4"
@@ -14690,8 +14247,6 @@ mno {
       localized_name {
         name : "ADSL Móvil"
       }
-      dns : "200.40.30.245"
-      dns : "200.40.220.245"
     }
     mobile_apn {
       apn : "prepago.ancel"
@@ -14706,8 +14261,6 @@ mno {
       localized_name {
         name : "GPRS"
       }
-      dns : "200.40.30.245"
-      dns : "200.40.220.245"
     }
   }
 }
@@ -14842,7 +14395,6 @@ mno {
     mccmnc : "73403"
     mobile_apn {
       apn : "gprsweb.digitel.ve"
-      dns : "57.67.127.195"
     }
   }
 }
@@ -14857,8 +14409,6 @@ mno {
     mccmnc : "73406"
     mobile_apn {
       apn : "int.movilnet.com.ve"
-      dns : "200.44.32.12"
-      dns : "200.11.248.12"
     }
   }
 }
@@ -14873,8 +14423,6 @@ mno {
     mccmnc : "73404"
     mobile_apn {
       apn : "internet.movistar.ve"
-      dns : "200.35.65.3"
-      dns : "200.35.65.4"
     }
   }
 }
@@ -15050,8 +14598,6 @@ mno {
     mccmnc : "65507"
     mobile_apn {
       apn : "internet"
-      dns : "196.7.0.138"
-      dns : "196.7.142.132"
     }
   }
 }
@@ -15066,8 +14612,6 @@ mno {
     mccmnc : "65510"
     mobile_apn {
       apn : "internet"
-      dns : "196.11.240.241"
-      dns : "209.212.97.1"
     }
   }
 }
@@ -15082,8 +14626,6 @@ mno {
     mccmnc : "65507"
     mobile_apn {
       apn : "vdata"
-      dns : "196.7.0.138"
-      dns : "196.7.142.132"
     }
   }
 }
@@ -15098,16 +14640,12 @@ mno {
     mccmnc : "65501"
     mobile_apn {
       apn : "internet"
-      dns : "196.207.40.165"
-      dns : "196.43.46.190"
     }
     mobile_apn {
       apn : "unrestricted"
       localized_name {
         name : "Unrestricted"
       }
-      dns : "196.207.32.69"
-      dns : "196.43.45.190"
     }
   }
 }

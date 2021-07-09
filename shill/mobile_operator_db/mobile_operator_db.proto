@@ -47,7 +47,7 @@ message MobileAPN {
   optional string gateway = 4;
   optional string username = 5;
   optional string password = 6;
-  repeated string dns = 7;
+  repeated string OBSOLETE_dns = 7;
 
   enum Authentication {
     DEFAULT = 0;
