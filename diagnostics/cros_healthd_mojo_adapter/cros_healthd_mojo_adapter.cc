@@ -218,27 +218,27 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   // Binds to an implementation of CrosHealthdServiceFactory. The implementation
   // is provided by cros_healthd. Allows calling cros_healthd's mojo factory
   // methods.
-  chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtr
+  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
       cros_healthd_service_factory_;
   // Binds to an implementation of CrosHealthdProbeService. The implementation
   // is provided by cros_healthd. Allows calling cros_healthd's probe-related
   // mojo methods.
-  chromeos::cros_healthd::mojom::CrosHealthdProbeServicePtr
+  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdProbeService>
       cros_healthd_probe_service_;
   // Binds to an implementation of CrosHealthdDiagnosticsService. The
   // implementation is provided by cros_healthd. Allows calling cros_healthd's
   // diagnostics-related mojo methods.
-  chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsServicePtr
+  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       cros_healthd_diagnostics_service_;
   // Binds to an implementation of CrosHealthdEventService. The
   // implementation is provided by cros_healthd. Allows calling cros_healthd's
   // event-related mojo methods.
-  chromeos::cros_healthd::mojom::CrosHealthdEventServicePtr
+  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdEventService>
       cros_healthd_event_service_;
   // Binds to an implementation of CrosHealthdSystemService. The
   // implementation is provided by cros_healthd. Allows calling cros_healthd's
   // system-related mojo methods.
-  chromeos::cros_healthd::mojom::CrosHealthdSystemServicePtr
+  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
       cros_healthd_system_service_;
 };
 
@@ -897,19 +897,22 @@ bool CrosHealthdMojoAdapterImpl::AddAudioObserver(
 }
 
 bool CrosHealthdMojoAdapterImpl::Connect() {
-  cros_healthd_service_factory_ = delegate_->GetCrosHealthdServiceFactory();
-  if (!cros_healthd_service_factory_)
+  auto opt_pending_service_factory = delegate_->GetCrosHealthdServiceFactory();
+  if (!opt_pending_service_factory)
     return false;
+
+  cros_healthd_service_factory_.Bind(
+      std::move(opt_pending_service_factory).value());
 
   // Bind the probe, diagnostics and event services.
   cros_healthd_service_factory_->GetProbeService(
-      mojo::MakeRequest(&cros_healthd_probe_service_));
+      cros_healthd_probe_service_.BindNewPipeAndPassReceiver());
   cros_healthd_service_factory_->GetDiagnosticsService(
-      mojo::MakeRequest(&cros_healthd_diagnostics_service_));
+      cros_healthd_diagnostics_service_.BindNewPipeAndPassReceiver());
   cros_healthd_service_factory_->GetEventService(
-      mojo::MakeRequest(&cros_healthd_event_service_));
+      cros_healthd_event_service_.BindNewPipeAndPassReceiver());
   cros_healthd_service_factory_->GetSystemService(
-      mojo::MakeRequest(&cros_healthd_system_service_));
+      cros_healthd_system_service_.BindNewPipeAndPassReceiver());
 
   return true;
 }

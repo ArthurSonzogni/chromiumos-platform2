@@ -47,7 +47,7 @@ void DoDBusBootstrap(int raw_fd,
       false /* is_chrome */);
 
   if (!response) {
-    LOG(ERROR) << "No response received.";
+    LOG(ERROR) << "No dbus response received.";
     *success = false;
     event->Signal();
     return;
@@ -55,7 +55,7 @@ void DoDBusBootstrap(int raw_fd,
 
   dbus::MessageReader reader(response.get());
   if (!reader.PopString(token_out)) {
-    LOG(ERROR) << "Failed to pop string.";
+    LOG(ERROR) << "Failed to pop string from dbus response.";
     *success = false;
     event->Signal();
     return;
@@ -85,7 +85,8 @@ CrosHealthdMojoAdapterDelegateImpl::CrosHealthdMojoAdapterDelegateImpl() {
 CrosHealthdMojoAdapterDelegateImpl::~CrosHealthdMojoAdapterDelegateImpl() =
     default;
 
-chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtr
+base::Optional<mojo::PendingRemote<
+    chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
 CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   mojo::PlatformChannel channel;
   std::string token;
@@ -104,19 +105,15 @@ CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   event.Wait();
 
   if (!success)
-    return nullptr;
+    return base::nullopt;
 
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());
 
-  // Bind our end of |pipe| to our CrosHealthdServicePtr. The daemon
-  // should bind its end to a CrosHealthdService implementation.
-  chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtr service_ptr;
-  service_ptr.Bind(
-      chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtrInfo(
-          invitation.ExtractMessagePipe(token), 0u /* version */));
-
-  return service_ptr;
+  // Bind our end of |pipe| to a pending remote of CrosHealthdService.
+  return mojo::PendingRemote<
+      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
+      invitation.ExtractMessagePipe(token), 0u /* version */);
 }
 
 }  // namespace diagnostics

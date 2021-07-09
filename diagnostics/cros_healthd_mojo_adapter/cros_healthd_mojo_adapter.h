@@ -26,9 +26,12 @@
 namespace diagnostics {
 
 // Provides a mojo connection to cros_healthd. See mojo/cros_healthd.mojom for
-// details on cros_healthd's mojo interface. This should only be used by
-// processes whose only mojo connection is to cros_healthd. This is a public
-// interface of the class providing the functionality.
+// details on cros_healthd's mojo interface. The interface is used synchronous
+// signature and handled non nullable primitives in Mojo for caller convenience.
+//
+// This should only be used by processes whose only mojo connection is to
+// cros_healthd. This is a public interface of the class providing the
+// functionality.
 class CrosHealthdMojoAdapter {
  public:
   virtual ~CrosHealthdMojoAdapter() {}

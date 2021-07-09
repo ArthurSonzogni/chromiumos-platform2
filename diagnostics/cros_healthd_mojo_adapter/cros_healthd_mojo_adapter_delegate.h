@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_DELEGATE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_DELEGATE_H_
 
+#include <base/optional.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -16,7 +19,8 @@ class CrosHealthdMojoAdapterDelegate {
 
   // Bootstraps a mojo connection to cros_healthd, then returns one end of the
   // bound pipe.
-  virtual chromeos::cros_healthd::mojom::CrosHealthdServiceFactoryPtr
+  virtual base::Optional<mojo::PendingRemote<
+      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
   GetCrosHealthdServiceFactory() = 0;
 };
 
