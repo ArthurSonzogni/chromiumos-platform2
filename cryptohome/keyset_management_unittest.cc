@@ -58,6 +58,7 @@ constexpr char kUserPassword0[] = "user0_pass";
 
 constexpr char kCredDirName[] = "low_entropy_creds";
 constexpr char kPasswordLabel[] = "password";
+constexpr char kPinLabel[] = "lecred1";
 constexpr char kAltPasswordLabel[] = "alt_password";
 
 void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
@@ -165,7 +166,7 @@ class KeysetManagementTest : public ::testing::Test {
 
   KeyData DefaultLEKeyData() {
     KeyData key_data;
-    key_data.set_label(kPasswordLabel);
+    key_data.set_label(kPinLabel);
     key_data.mutable_policy()->set_low_entropy_credential(true);
     return key_data;
   }
@@ -1117,9 +1118,50 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
 }
 
 TEST_F(KeysetManagementTest, RemoveLECredentials) {
-  // TODO(dlunev): this tests nothing really, re-write the test to actually do
-  // functionality test.
+  // SETUP
+  NiceMock<MockCryptohomeKeyLoader> mock_cryptohome_key_loader;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_key_loader);
+
+  // Setup initial user.
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Setup pin credentials.
+  brillo::SecureBlob new_passkey("123456");
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  // Add Pin Credentials
+  int index = -1;
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
+                                          &key_data, true, &index));
+  EXPECT_EQ(index, 1);
+
+  // When adding new keyset with an new label we expect it to have another
+  // keyset.
+  VerifyKeysetIndicies({kInitialKeysetIndex, kInitialKeysetIndex + 1});
+
+  // Ensure Pin keyset was added.
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeyset(new_credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+
+  // TEST
   keyset_management_->RemoveLECredentials(users_[0].obfuscated);
+
+  // Verify
+  vk = keyset_management_->GetValidKeyset(new_credentials, /* error */ nullptr);
+  ASSERT_EQ(vk.get(), nullptr);
+
+  // Make sure that the password credentials are still valid.
+  vk = keyset_management_->GetValidKeyset(users_[0].credentials,
+                                          /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
 }
 
 }  // namespace cryptohome
