@@ -25,17 +25,6 @@ class ScreenNetworkTest : public ::testing::Test {
                                 nullptr, &mock_screen_controller_};
 };
 
-TEST_F(ScreenNetworkTest, InvalidNetwork) {
-  // Get to dropdown screen and set list of available networks.
-  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
-  screen_network_.OnGetNetworks({"network"}, nullptr);
-  screen_network_.SetIndexForTest(2);
-
-  // Resets index because the network chosen was invalid.
-  screen_network_.OnKeyPress(kKeyEnter);
-  EXPECT_EQ(0, screen_network_.GetIndexForTest());
-}
-
 TEST_F(ScreenNetworkTest, GetNetworks) {
   screen_network_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
 

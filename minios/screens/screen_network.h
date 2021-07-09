@@ -56,9 +56,6 @@ class ScreenNetwork : public ScreenBase,
   void SetStateForTest(NetworkState state) { state_ = state; }
 
  private:
-  // Updates network dropdown menu with current selection.
-  void UpdateMenu();
-
   // Updates buttons with current selection.
   void ShowButtons();
 

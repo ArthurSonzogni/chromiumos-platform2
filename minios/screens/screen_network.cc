@@ -49,34 +49,50 @@ void ScreenNetwork::Show() {
       draw_utils_->MessageBaseScreen();
       draw_utils_->ShowInstructions("title_MiniOS_dropdown");
       draw_utils_->ShowStepper({"1-done", "2", "3"});
-      // Show screen components based on state.
-      (state_ == NetworkState::kDropdownClosed) ? ShowButtons() : UpdateMenu();
-      return;
+      break;
     case NetworkState::kGetPassword:
-      GetPassword();
-      return;
-    default:
-      return;
+      draw_utils_->MessageBaseScreen();
+      draw_utils_->ShowInstructionsWithTitle("MiniOS_password");
+      draw_utils_->ShowStepper({"done", "2-done", "3"});
+      break;
   }
+  ShowButtons();
 }
 
 void ScreenNetwork::ShowButtons() {
-  draw_utils_->ShowLanguageMenu(index_ == 0);
-  ShowCollapsedNetworkDropDown(index_ == 1);
-  const int kOffsetY = -draw_utils_->GetFreconCanvasSize() / 4 + kBtnYStep * 4;
-  draw_utils_->ShowButton("btn_back", kOffsetY, (index_ == 2),
-                          draw_utils_->GetDefaultButtonWidth(), false);
-}
+  const int frecon_canvas_size = draw_utils_->GetFreconCanvasSize();
+  const int btn_width = draw_utils_->GetDefaultButtonWidth();
+  const int kOffsetY = -frecon_canvas_size / 4 + kBtnYStep * 4;
 
-void ScreenNetwork::UpdateMenu() {
-  draw_utils_->ShowLanguageMenu(/*selected=*/false);
-  ShowNetworkDropdown(index_);
-  int dropdown_size =
-      std::min(items_per_page_, static_cast<int>(networks_.size()));
-  const int kOffsetY = -draw_utils_->GetFreconCanvasSize() / 4 + kBtnYStep * 4;
-  draw_utils_->ShowButton("btn_back", kOffsetY + (dropdown_size * 40),
-                          (index_ == networks_.size()),
-                          draw_utils_->GetDefaultButtonWidth(), false);
+  switch (state_) {
+    case NetworkState::kDropdownClosed: {
+      draw_utils_->ShowLanguageMenu(index_ == 0);
+      ShowCollapsedNetworkDropDown(index_ == 1);
+      draw_utils_->ShowButton("btn_back", kOffsetY, (index_ == 2), btn_width,
+                              false);
+      break;
+    }
+    case NetworkState::kDropdownOpen: {
+      draw_utils_->ShowLanguageMenu(/*selected=*/false);
+      ShowCollapsedNetworkDropDown(false);
+      ShowNetworkDropdown(index_);
+      int dropdown_size =
+          std::min(items_per_page_, static_cast<int>(networks_.size()));
+      draw_utils_->ShowButton("btn_back", kOffsetY + (dropdown_size * 40),
+                              (index_ == networks_.size()), btn_width, false);
+      break;
+    }
+    case NetworkState::kGetPassword: {
+      button_count_ = 3;
+      draw_utils_->ShowLanguageMenu(index_ == 0);
+      const int kBtnY = (-frecon_canvas_size / 2) + 318 + kBtnYStep * 2;
+      draw_utils_->ShowButton("Enter your password", kBtnY, false,
+                              btn_width * 4, true);
+      draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, index_ == 2,
+                              btn_width, false);
+      break;
+    }
+  }
 }
 
 void ScreenNetwork::WaitForConnection() {
@@ -119,21 +135,37 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
         LOG(INFO) << "Selected network: " << chosen_network_;
         // Update internal state and get password.
         state_ = NetworkState::kGetPassword;
-        GetPassword();
+        index_ = 1;
+        Show();
       } else {
         LOG(WARNING) << "Selected network index: " << index_
                      << " not valid. Retry";
         index_ = 0;
-        UpdateMenu();
+        ShowButtons();
+      }
+    } else if (state_ == NetworkState::kGetPassword) {
+      switch (index_) {
+        case 0:
+          screen_controller_->SwitchLocale(this);
+          break;
+        case 1:
+          GetPassword();
+          break;
+        case 2:
+          // Back to network dropdown.
+          state_ = NetworkState::kDropdownOpen;
+          // Update button count for the dropdown items. Add one extra slot for
+          // the back button.
+          button_count_ = networks_.size() + 1;
+          index_ = 0;
+          chosen_network_.clear();
+          Show();
+          break;
       }
     }
   } else {
     // No selection made. Just update the button or menu focuses.
-    if (state_ == NetworkState::kDropdownClosed) {
-      ShowButtons();
-    } else if (state_ == NetworkState::kDropdownOpen) {
-      UpdateMenu();
-    }
+    ShowButtons();
   }
 }
 
@@ -183,7 +215,7 @@ void ScreenNetwork::OnGetNetworks(const std::vector<std::string>& networks,
   if (state_ == NetworkState::kDropdownOpen) {
     button_count_ = networks_.size() + 1;
     index_ = 0;
-    UpdateMenu();
+    ShowButtons();
   }
 }
 
@@ -206,12 +238,9 @@ void ScreenNetwork::OnConnect(const std::string& ssid, brillo::Error* error) {
 }
 
 void ScreenNetwork::GetPassword() {
-  draw_utils_->MessageBaseScreen();
-  draw_utils_->ShowInstructionsWithTitle("MiniOS_password");
-  draw_utils_->ShowStepper({"done", "2-done", "3"});
   const int kTitleY = (-draw_utils_->GetFreconCanvasSize() / 2) + 238;
   const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
-  draw_utils_->ShowButton("Enter your password", kBtnY, false,
+  draw_utils_->ShowButton("Begin typing", kBtnY, false,
                           draw_utils_->GetDefaultButtonWidth() * 4, true);
   CHECK(!chosen_network_.empty()) << "Cannot connect to an empty network.";
   if (!key_reader_ || !key_reader_->InputSetUp()) {
@@ -276,7 +305,7 @@ void ScreenNetwork::ShowNetworkDropdown(int current_index) {
     draw_utils_->ShowBox(kBackgroundX, offset_y, 718, 38,
                          kMenuDropdownBackgroundBlack);
     draw_utils_->ShowText("Please wait while we find available networks.",
-                          kOffsetX, offset_y, "grey");
+                          kOffsetX, offset_y, "dropdown_grey");
     LOG(ERROR) << "No available networks.";
     return;
   }
@@ -300,7 +329,7 @@ void ScreenNetwork::ShowNetworkDropdown(int current_index) {
                            kMenuDropdownFrameNavy);
       draw_utils_->ShowBox(kBackgroundX, offset_y, 718, 38,
                            kMenuDropdownBackgroundBlack);
-      draw_utils_->ShowText(networks_[i], kOffsetX, offset_y, "grey");
+      draw_utils_->ShowText(networks_[i], kOffsetX, offset_y, "dropdown_grey");
     }
     offset_y += kItemHeight;
   }
