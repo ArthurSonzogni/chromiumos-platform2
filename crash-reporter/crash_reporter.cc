@@ -85,7 +85,8 @@ bool SetUpLockFile() {
 // This function will change ownership and permissions on many files (to allow
 // `crash` to read/write them) so it MUST run as root.
 // Return true on success.
-bool InitializeSystem(UserCollector* user_collector, bool early) {
+bool InitializeSystem(std::shared_ptr<UserCollector> user_collector,
+                      bool early) {
   // Try to create the lock file for crash_sender. Creating this early ensures
   // that no one else can make a directory or such with this name. If the lock
   // file isn't a normal file, crash_sender will never work correctly.
@@ -109,12 +110,13 @@ bool InitializeSystem(UserCollector* user_collector, bool early) {
   return user_collector->Enable(early);
 }
 
-int BootCollect(bool always_allow_feedback,
-                KernelCollector* kernel_collector,
-                ECCollector* ec_collector,
-                BERTCollector* bert_collector,
-                UncleanShutdownCollector* unclean_shutdown_collector,
-                EphemeralCrashCollector* ephemeral_crash_collector) {
+int BootCollect(
+    bool always_allow_feedback,
+    std::shared_ptr<KernelCollector> kernel_collector,
+    std::shared_ptr<ECCollector> ec_collector,
+    std::shared_ptr<BERTCollector> bert_collector,
+    std::shared_ptr<UncleanShutdownCollector> unclean_shutdown_collector,
+    std::shared_ptr<EphemeralCrashCollector> ephemeral_crash_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
   LOG(INFO) << "Running boot collector";
@@ -220,29 +222,6 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
 }
 
 }  // namespace
-
-// Information to invoke a specific call on a collector.
-struct InvocationInfo {
-  // True iff this callback should be invoked.
-  // Once this is true and we invoke the associated callback, main() returns,
-  // so only one handler can run for each execution of crash_reporter.
-  bool should_handle;
-  // Callback to invoke if |should_handle| is true. (can be null).
-  base::RepeatingCallback<bool()> cb;
-};
-
-// Information required to initialize and invoke a collector
-struct CollectorInfo {
-  // An un-owned pointer to the collector
-  CrashCollector* collector;
-  // Initialization function. If none is specified, invoke the default
-  // crash_collector Initialize().
-  base::RepeatingClosure init;
-  // List of handlers with associated conditions.
-  // If a particular condition is true, run init and the associated handler (if
-  // any). If there is no associated handler, keep going.
-  std::vector<InvocationInfo> handlers;
-};
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
@@ -427,15 +406,14 @@ int main(int argc, char* argv[]) {
 
   std::vector<CollectorInfo> collectors;
 #if USE_ARCVM
-  ArcvmCxxCollector arcvm_cxx_collector;
+  auto arcvm_cxx_collector = std::make_shared<ArcvmCxxCollector>();
   collectors.push_back({
-      .collector = &arcvm_cxx_collector,
+      .collector = arcvm_cxx_collector,
       .handlers = {{
           // This handles C++ crashes of ARCVM.
           .should_handle = FLAGS_arc_native,
           .cb = base::BindRepeating(
-              &ArcvmCxxCollector::HandleCrash,
-              base::Unretained(&arcvm_cxx_collector),
+              &ArcvmCxxCollector::HandleCrash, arcvm_cxx_collector,
               arc_util::BuildProperty{.device = FLAGS_arc_device,
                                       .board = FLAGS_arc_board,
                                       .cpu_abi = FLAGS_arc_cpu_abi,
@@ -448,14 +426,14 @@ int main(int argc, char* argv[]) {
       }},
   });
 
-  ArcvmKernelCollector arcvm_kernel_collector;
+  auto arcvm_kernel_collector = std::make_shared<ArcvmKernelCollector>();
   collectors.push_back({
-      .collector = &arcvm_kernel_collector,
+      .collector = arcvm_kernel_collector,
       .handlers = {{
           // This handles kernel crashes of ARCVM.
           .should_handle = FLAGS_arc_kernel,
           .cb = base::BindRepeating(&ArcvmKernelCollector::HandleCrash,
-                                    base::Unretained(&arcvm_kernel_collector),
+                                    arcvm_kernel_collector,
                                     arc_util::BuildProperty{
                                         .device = FLAGS_arc_device,
                                         .board = FLAGS_arc_board,
@@ -467,15 +445,15 @@ int main(int argc, char* argv[]) {
 #endif  // USE_ARCVM
 
 #if USE_ARCPP || USE_ARCVM
-  ArcJavaCollector arc_java_collector;
+  auto arc_java_collector = std::make_shared<ArcJavaCollector>();
   collectors.push_back({
-      .collector = &arc_java_collector,
+      .collector = arc_java_collector,
       .handlers = {{
           // This handles Java app crashes of ARC++ and ARCVM.
           .should_handle = !FLAGS_arc_java_crash.empty(),
           .cb = base::BindRepeating(
-              &ArcJavaCollector::HandleCrash,
-              base::Unretained(&arc_java_collector), FLAGS_arc_java_crash,
+              &ArcJavaCollector::HandleCrash, arc_java_collector,
+              FLAGS_arc_java_crash,
               arc_util::BuildProperty{
                   .device = FLAGS_arc_device,
                   .board = FLAGS_arc_board,
@@ -488,71 +466,69 @@ int main(int argc, char* argv[]) {
 #endif  // USE_ARCPP || USE_ARCVM
 
 #if USE_ARCPP
-  ArcppCxxCollector arcpp_cxx_collector;
+  auto arcpp_cxx_collector = std::make_shared<ArcppCxxCollector>();
 
   // Always initialize arcpp_cxx_collector so that we can use it to determine
   // whether the process is a process in the ARC++ container or a normal
   // process of the host.
-  arcpp_cxx_collector.Initialize(FLAGS_directory_failure, false /* early */);
+  arcpp_cxx_collector->Initialize(FLAGS_directory_failure, false /* early */);
   bool is_arcpp_cxx_process =
       !FLAGS_user.empty() && ArcppCxxCollector::IsArcRunning() &&
-      arcpp_cxx_collector.IsArcProcess(user_crash_attrs.pid);
+      arcpp_cxx_collector->IsArcProcess(user_crash_attrs.pid);
 
   collectors.push_back({
-      .collector = &arcpp_cxx_collector,
+      .collector = arcpp_cxx_collector,
       .init = base::DoNothing(),
       .handlers = {{
           // This handles native crashes of ARC++.
           .should_handle = is_arcpp_cxx_process,
           .cb = base::BindRepeating(&ArcppCxxCollector::HandleCrash,
-                                    base::Unretained(&arcpp_cxx_collector),
-                                    user_crash_attrs, nullptr),
+                                    arcpp_cxx_collector, user_crash_attrs,
+                                    nullptr),
       }},
   });
 #else   // USE_ARCPP
   bool is_arcpp_cxx_process = false;
 #endif  // USE_ARCPP
 
-  UserCollector user_collector;
+  auto user_collector = std::make_shared<UserCollector>();
   collectors.push_back({
-      .collector = &user_collector,
-      .init = base::BindRepeating(&UserCollector::Initialize,
-                                  base::Unretained(&user_collector),
+      .collector = user_collector,
+      .init = base::BindRepeating(&UserCollector::Initialize, user_collector,
                                   my_path.value(), FLAGS_core2md_failure,
                                   FLAGS_directory_failure, FLAGS_early),
-      .handlers =
-          {{
-               // NOTE: This is not handling a crash; it's instead
-               // initializing the entire crash reporting system.
-               // So, leave |cb| unset and call InitializeSystem
-               // manually below.
-               .should_handle = FLAGS_init,
-           },
-           {
-               .should_handle = FLAGS_clean_shutdown,
-               // Leave cb unset: clean_shutdown requires other
-               // collectors, so it's handled later.
-           },
-           {
-               .should_handle = !FLAGS_user.empty() && !is_arcpp_cxx_process,
-               .cb = base::BindRepeating(&UserCollector::HandleCrash,
-                                         base::Unretained(&user_collector),
-                                         user_crash_attrs, nullptr),
-           }},
+      .handlers = {{
+                       // NOTE: This is not handling a crash; it's instead
+                       // initializing the entire crash reporting system.
+                       // So, leave |cb| unset and call InitializeSystem
+                       // manually below.
+                       .should_handle = FLAGS_init,
+                   },
+                   {
+                       .should_handle = FLAGS_clean_shutdown,
+                       // Leave cb unset: clean_shutdown requires other
+                       // collectors, so it's handled later.
+                   },
+                   {
+                       .should_handle =
+                           !FLAGS_user.empty() && !is_arcpp_cxx_process,
+                       .cb = base::BindRepeating(&UserCollector::HandleCrash,
+                                                 user_collector,
+                                                 user_crash_attrs, nullptr),
+                   }},
   });
 
-  EphemeralCrashCollector ephemeral_crash_collector;
+  auto ephemeral_crash_collector = std::make_shared<EphemeralCrashCollector>();
   collectors.push_back({
-      .collector = &ephemeral_crash_collector,
+      .collector = ephemeral_crash_collector,
       .init = base::BindRepeating(&EphemeralCrashCollector::Initialize,
-                                  base::Unretained(&ephemeral_crash_collector),
+                                  ephemeral_crash_collector,
                                   FLAGS_preserve_across_clobber),
       .handlers =
           {{
                .should_handle = FLAGS_ephemeral_collect,
-               .cb = base::BindRepeating(
-                   &EphemeralCrashCollector::Collect,
-                   base::Unretained(&ephemeral_crash_collector)),
+               .cb = base::BindRepeating(&EphemeralCrashCollector::Collect,
+                                         ephemeral_crash_collector),
            },
            {
                .should_handle = FLAGS_boot_collect,
@@ -561,45 +537,45 @@ int main(int argc, char* argv[]) {
            }},
   });
 
-  ClobberStateCollector clobber_state_collector;
+  auto clobber_state_collector = std::make_shared<ClobberStateCollector>();
   collectors.push_back({
-      .collector = &clobber_state_collector,
+      .collector = clobber_state_collector,
       .handlers = {{
           .should_handle = FLAGS_clobber_state,
           .cb = base::BindRepeating(&ClobberStateCollector::Collect,
-                                    base::Unretained(&clobber_state_collector)),
+                                    clobber_state_collector),
       }},
   });
 
-  MountFailureCollector mount_failure_collector(
+  auto mount_failure_collector = std::make_shared<MountFailureCollector>(
       MountFailureCollector::ValidateStorageDeviceType(FLAGS_mount_device),
       testonly_send_all);
   collectors.push_back({
-      .collector = &mount_failure_collector,
+      .collector = mount_failure_collector,
       .handlers = {{
           .should_handle = FLAGS_mount_failure || FLAGS_umount_failure,
-          .cb = base::BindRepeating(&MountFailureCollector::Collect,
-                                    base::Unretained(&mount_failure_collector),
-                                    FLAGS_mount_failure),
+          .cb =
+              base::BindRepeating(&MountFailureCollector::Collect,
+                                  mount_failure_collector, FLAGS_mount_failure),
       }},
   });
 
-  MissedCrashCollector missed_crash_collector;
+  auto missed_crash_collector = std::make_shared<MissedCrashCollector>();
   collectors.push_back({
-      .collector = &missed_crash_collector,
+      .collector = missed_crash_collector,
       .handlers = {{
           .should_handle = FLAGS_missed_chrome_crash,
-          .cb = base::BindRepeating(&MissedCrashCollector::Collect,
-                                    base::Unretained(&missed_crash_collector),
-                                    FLAGS_pid, FLAGS_recent_miss_count,
-                                    FLAGS_recent_match_count,
-                                    FLAGS_pending_miss_count),
+          .cb = base::BindRepeating(
+              &MissedCrashCollector::Collect, missed_crash_collector, FLAGS_pid,
+              FLAGS_recent_miss_count, FLAGS_recent_match_count,
+              FLAGS_pending_miss_count),
       }},
   });
 
-  UncleanShutdownCollector unclean_shutdown_collector;
+  auto unclean_shutdown_collector =
+      std::make_shared<UncleanShutdownCollector>();
   collectors.push_back({
-      .collector = &unclean_shutdown_collector,
+      .collector = unclean_shutdown_collector,
       .handlers = {{
           .should_handle = FLAGS_boot_collect || FLAGS_clean_shutdown,
           // leave cb empty because both of these need multiple collectors and
@@ -614,32 +590,32 @@ int main(int argc, char* argv[]) {
       // the collector gets initialized.
   }};
 
-  KernelCollector kernel_collector;
+  auto kernel_collector = std::make_shared<KernelCollector>();
   collectors.push_back({
-      .collector = &kernel_collector,
+      .collector = kernel_collector,
       .handlers = boot_handlers,
   });
 
-  ECCollector ec_collector;
+  auto ec_collector = std::make_shared<ECCollector>();
   collectors.push_back({
-      .collector = &ec_collector,
+      .collector = ec_collector,
       .handlers = boot_handlers,
   });
 
-  BERTCollector bert_collector;
+  auto bert_collector = std::make_shared<BERTCollector>();
   collectors.push_back({
-      .collector = &bert_collector,
+      .collector = bert_collector,
       .handlers = boot_handlers,
   });
 
-  UdevCollector udev_collector;
-  collectors.push_back({.collector = &udev_collector,
-                        .handlers = {{
-                            .should_handle = !FLAGS_udev.empty(),
-                            .cb = base::BindRepeating(
-                                &UdevCollector::HandleCrash,
-                                base::Unretained(&udev_collector), FLAGS_udev),
-                        }}});
+  auto udev_collector = std::make_shared<UdevCollector>();
+  collectors.push_back(
+      {.collector = udev_collector,
+       .handlers = {{
+           .should_handle = !FLAGS_udev.empty(),
+           .cb = base::BindRepeating(&UdevCollector::HandleCrash,
+                                     udev_collector, FLAGS_udev),
+       }}});
 
   CHECK(FLAGS_chrome.empty() || FLAGS_chrome_memfd == -1)
       << "--chrome= and --chrome_memfd= cannot be both set";
@@ -648,96 +624,53 @@ int main(int argc, char* argv[]) {
         << "--error_key is only for --chrome_memfd crashes";
   }
 
-  ChromeCollector chrome_collector(crash_sending_mode);
+  auto chrome_collector = std::make_shared<ChromeCollector>(crash_sending_mode);
   collectors.push_back({
-      .collector = &chrome_collector,
-      .handlers = {{
-                       .should_handle = !FLAGS_chrome.empty(),
-                       .cb = base::BindRepeating(
-                           &ChromeCollector::HandleCrash,
-                           base::Unretained(&chrome_collector),
-                           FilePath(FLAGS_chrome), FLAGS_pid, FLAGS_uid,
-                           FLAGS_exe),
-                   },
-                   {
-                       .should_handle = FLAGS_chrome_memfd >= 0,
-                       .cb = base::BindRepeating(
-                           &ChromeCollector::HandleCrashThroughMemfd,
-                           base::Unretained(&chrome_collector),
-                           FLAGS_chrome_memfd, FLAGS_pid, FLAGS_uid, FLAGS_exe,
-                           FLAGS_error_key, FLAGS_chrome_dump_dir),
-                   }},
+      .collector = chrome_collector,
+      .handlers =
+          {{
+               .should_handle = !FLAGS_chrome.empty(),
+               .cb = base::BindRepeating(
+                   &ChromeCollector::HandleCrash, chrome_collector,
+                   FilePath(FLAGS_chrome), FLAGS_pid, FLAGS_uid, FLAGS_exe),
+           },
+           {
+               .should_handle = FLAGS_chrome_memfd >= 0,
+               .cb = base::BindRepeating(
+                   &ChromeCollector::HandleCrashThroughMemfd, chrome_collector,
+                   FLAGS_chrome_memfd, FLAGS_pid, FLAGS_uid, FLAGS_exe,
+                   FLAGS_error_key, FLAGS_chrome_dump_dir),
+           }},
   });
 
-  KernelWarningCollector kernel_warning_collector;
-  base::RepeatingCallback<bool(KernelWarningCollector::WarningType)>
-      kernel_warn_cb = base::BindRepeating(
-          &KernelWarningCollector::Collect,
-          base::Unretained(&kernel_warning_collector), FLAGS_weight);
-  collectors.push_back({
-      .collector = &kernel_warning_collector,
-      .handlers = {{
-                       .should_handle = FLAGS_kernel_warning,
-                       .cb = base::BindRepeating(
-                           kernel_warn_cb,
-                           KernelWarningCollector::WarningType::kGeneric),
-                   },
-                   {
-                       .should_handle = FLAGS_kernel_wifi_warning,
-                       .cb = base::BindRepeating(
-                           kernel_warn_cb,
-                           KernelWarningCollector::WarningType::kWifi),
-                   },
-                   {
-                       .should_handle = FLAGS_kernel_smmu_fault,
-                       .cb = base::BindRepeating(
-                           kernel_warn_cb,
-                           KernelWarningCollector::WarningType::kSMMUFault),
-                   },
-                   {
-                       .should_handle = FLAGS_kernel_suspend_warning,
-                       .cb = base::BindRepeating(
-                           kernel_warn_cb,
-                           KernelWarningCollector::WarningType::kSuspend),
-                   },
-                   {
-                       .should_handle = FLAGS_kernel_iwlwifi_error,
-                       .cb = base::BindRepeating(
-                           kernel_warn_cb,
-                           KernelWarningCollector::WarningType::kIwlwifi),
-                   },
-                   {
-                       .should_handle = FLAGS_kernel_ath10k_error,
-                       .cb = base::BindRepeating(
-                           kernel_warn_cb,
-                           KernelWarningCollector::WarningType::kAth10k),
-                   }},
-  });
+  collectors.push_back(KernelWarningCollector::GetHandlerInfo(
+      FLAGS_weight, FLAGS_kernel_warning, FLAGS_kernel_wifi_warning,
+      FLAGS_kernel_smmu_fault, FLAGS_kernel_suspend_warning,
+      FLAGS_kernel_iwlwifi_error, FLAGS_kernel_ath10k_error));
 
-  GenericFailureCollector generic_failure_collector;
+  auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
   collectors.push_back(
-      {.collector = &generic_failure_collector,
+      {.collector = generic_failure_collector,
        .handlers = {
            {
                .should_handle = FLAGS_suspend_failure,
                .cb = base::BindRepeating(
                    &GenericFailureCollector::CollectWithWeight,
-                   base::Unretained(&generic_failure_collector),
+                   generic_failure_collector,
                    GenericFailureCollector::kSuspendFailure,
                    util::GetSuspendFailureWeight()),
            },
            {
                .should_handle = FLAGS_auth_failure,
-               .cb = base::BindRepeating(
-                   &GenericFailureCollector::Collect,
-                   base::Unretained(&generic_failure_collector),
-                   GenericFailureCollector::kAuthFailure),
+               .cb = base::BindRepeating(&GenericFailureCollector::Collect,
+                                         generic_failure_collector,
+                                         GenericFailureCollector::kAuthFailure),
            },
            {
                .should_handle = !FLAGS_arc_service_failure.empty(),
                .cb = base::BindRepeating(
                    &GenericFailureCollector::CollectFull,
-                   base::Unretained(&generic_failure_collector),
+                   generic_failure_collector,
                    StringPrintf("%s-%s",
                                 GenericFailureCollector::kArcServiceFailure,
                                 FLAGS_arc_service_failure.c_str()),
@@ -748,7 +681,7 @@ int main(int argc, char* argv[]) {
                .should_handle = !FLAGS_service_failure.empty(),
                .cb = base::BindRepeating(
                    &GenericFailureCollector::CollectFull,
-                   base::Unretained(&generic_failure_collector),
+                   generic_failure_collector,
                    StringPrintf("%s-%s",
                                 GenericFailureCollector::kServiceFailure,
                                 FLAGS_service_failure.c_str()),
@@ -756,33 +689,34 @@ int main(int argc, char* argv[]) {
                    util::GetServiceFailureWeight()),
            }}});
 
-  SELinuxViolationCollector selinux_violation_collector;
-  collectors.push_back({.collector = &selinux_violation_collector,
-                        .handlers = {{
-                            .should_handle = FLAGS_selinux_violation,
-                            .cb = base::BindRepeating(
-                                &SELinuxViolationCollector::Collect,
-                                base::Unretained(&selinux_violation_collector)),
-                        }}});
-
-  CrashReporterFailureCollector crash_reporter_failure_collector;
+  auto selinux_violation_collector =
+      std::make_shared<SELinuxViolationCollector>();
   collectors.push_back(
-      {.collector = &crash_reporter_failure_collector,
+      {.collector = selinux_violation_collector,
        .handlers = {{
-           .should_handle = FLAGS_crash_reporter_crashed,
-           .cb = base::BindRepeating(
-               &CrashReporterFailureCollector::Collect,
-               base::Unretained(&crash_reporter_failure_collector)),
+           .should_handle = FLAGS_selinux_violation,
+           .cb = base::BindRepeating(&SELinuxViolationCollector::Collect,
+                                     selinux_violation_collector),
        }}});
 
-  VmCollector vm_collector;
-  collectors.push_back({.collector = &vm_collector,
-                        .handlers = {{
-                            .should_handle = FLAGS_vm_crash,
-                            .cb = base::BindRepeating(
-                                &VmCollector::Collect,
-                                base::Unretained(&vm_collector), FLAGS_vm_pid),
-                        }}});
+  auto crash_reporter_failure_collector =
+      std::make_shared<CrashReporterFailureCollector>();
+  collectors.push_back(
+      {.collector = crash_reporter_failure_collector,
+       .handlers = {{
+           .should_handle = FLAGS_crash_reporter_crashed,
+           .cb = base::BindRepeating(&CrashReporterFailureCollector::Collect,
+                                     crash_reporter_failure_collector),
+       }}});
+
+  auto vm_collector = std::make_shared<VmCollector>();
+  collectors.push_back(
+      {.collector = vm_collector,
+       .handlers = {{
+           .should_handle = FLAGS_vm_crash,
+           .cb = base::BindRepeating(&VmCollector::Collect, vm_collector,
+                                     FLAGS_vm_pid),
+       }}});
 
   for (const CollectorInfo& collector : collectors) {
     bool ran_init = false;
@@ -808,8 +742,8 @@ int main(int argc, char* argv[]) {
           if (FLAGS_early || always_allow_feedback ||
               util::IsFeedbackAllowed(&s_metrics_lib)) {
             handled = info.cb.Run();
-          } else if (collector.collector == &ephemeral_crash_collector &&
-                     ephemeral_crash_collector.SkipConsent()) {
+          } else if (collector.collector == ephemeral_crash_collector &&
+                     ephemeral_crash_collector->SkipConsent()) {
             // Due to the specific circumstances in which the ephemeral
             // collector runs, it might need to skip consent checks (e.g. if
             // it's running just after a disk clobber, the clobber may have
@@ -827,22 +761,22 @@ int main(int argc, char* argv[]) {
   if (FLAGS_init) {
     // Called manually to skip the normal consent checks; we always initialize
     // the system regardless of consent.
-    return InitializeSystem(&user_collector, FLAGS_early) ? 0 : 1;
+    return InitializeSystem(user_collector, FLAGS_early) ? 0 : 1;
   }
 
   // These special cases (which use multiple collectors) are at the end so that
   // it's clear that all relevant collectors have been initialized.
   if (FLAGS_boot_collect) {
-    return BootCollect(always_allow_feedback, &kernel_collector, &ec_collector,
-                       &bert_collector, &unclean_shutdown_collector,
-                       &ephemeral_crash_collector);
+    return BootCollect(always_allow_feedback, kernel_collector, ec_collector,
+                       bert_collector, unclean_shutdown_collector,
+                       ephemeral_crash_collector);
   }
 
   if (FLAGS_clean_shutdown) {
     int ret = 0;
-    if (!unclean_shutdown_collector.Disable())
+    if (!unclean_shutdown_collector->Disable())
       ret = 1;
-    if (!user_collector.Disable())
+    if (!user_collector->Disable())
       ret = 1;
     return ret;
   }

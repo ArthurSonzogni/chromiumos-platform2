@@ -4,6 +4,9 @@
 
 #include "crash-reporter/kernel_warning_collector.h"
 
+#include <memory>
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
@@ -345,4 +348,48 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   FinishCrash(meta_path, exec_name, kernel_crash_path.BaseName().value());
 
   return true;
+}
+
+// static
+CollectorInfo KernelWarningCollector::GetHandlerInfo(
+    int32_t weight,
+    bool kernel_warning,
+    bool kernel_wifi_warning,
+    bool kernel_smmu_fault,
+    bool kernel_suspend_warning,
+    bool kernel_iwlwifi_error,
+    bool kernel_ath10k_error) {
+  auto collector = std::make_shared<KernelWarningCollector>();
+  base::RepeatingCallback<bool(KernelWarningCollector::WarningType)>
+      kernel_warn_cb = base::BindRepeating(&KernelWarningCollector::Collect,
+                                           collector, weight);
+  return {
+      .collector = collector,
+      .handlers =
+          {{
+               .should_handle = kernel_warning,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kGeneric),
+           },
+           {
+               .should_handle = kernel_wifi_warning,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kWifi),
+           },
+           {
+               .should_handle = kernel_smmu_fault,
+               .cb =
+                   base::BindRepeating(kernel_warn_cb, WarningType::kSMMUFault),
+           },
+           {
+               .should_handle = kernel_suspend_warning,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kSuspend),
+           },
+           {
+               .should_handle = kernel_iwlwifi_error,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kIwlwifi),
+           },
+           {
+               .should_handle = kernel_ath10k_error,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kAth10k),
+           }},
+  };
 }

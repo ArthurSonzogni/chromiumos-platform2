@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/optional.h>
@@ -492,6 +493,29 @@ class CrashCollector {
   const std::string tag_;
 
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
+};
+
+// Information to invoke a specific call on a collector.
+struct InvocationInfo {
+  // True iff this callback should be invoked.
+  // Once this is true and we invoke the associated callback, main() returns,
+  // so only one handler can run for each execution of crash_reporter.
+  bool should_handle;
+  // Callback to invoke if |should_handle| is true. (can be null).
+  base::RepeatingCallback<bool()> cb;
+};
+
+// Information required to initialize and invoke a collector
+struct CollectorInfo {
+  // Shared pointer to the collector
+  std::shared_ptr<CrashCollector> collector;
+  // Initialization function. If none is specified, invoke the default
+  // crash_collector Initialize().
+  base::RepeatingClosure init;
+  // List of handlers with associated conditions.
+  // If a particular condition is true, run init and the associated handler (if
+  // any). If there is no associated handler, keep going.
+  std::vector<InvocationInfo> handlers;
 };
 
 #endif  // CRASH_REPORTER_CRASH_COLLECTOR_H_

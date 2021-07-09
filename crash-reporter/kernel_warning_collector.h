@@ -41,6 +41,14 @@ class KernelWarningCollector : public CrashCollector {
   // Collects warning.
   bool Collect(int weight, WarningType type);
 
+  static CollectorInfo GetHandlerInfo(int32_t weight,
+                                      bool kernel_warning,
+                                      bool kernel_wifi_warning,
+                                      bool kernel_smmu_fault,
+                                      bool kernel_suspend_warning,
+                                      bool kernel_iwlwifi_error,
+                                      bool kernel_ath10k_error);
+
  protected:
   std::string warning_report_path_;
 
