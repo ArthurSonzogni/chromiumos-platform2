@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/no_destructor.h>
 #include <base/optional.h>

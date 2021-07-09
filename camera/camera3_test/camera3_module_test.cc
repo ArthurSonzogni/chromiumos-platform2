@@ -10,11 +10,11 @@
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/no_destructor.h>
-#include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>

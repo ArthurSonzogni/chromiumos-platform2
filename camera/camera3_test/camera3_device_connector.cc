@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/stl_util.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <drm_fourcc.h>

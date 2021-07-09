@@ -1279,7 +1279,7 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
       DCHECK(process_reprocess_request_callback_.is_null());
       process_reprocess_request_callback_ = base::BindOnce(
           &CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread,
-          base::Unretained(this), base::Passed(&req),
+          base::Unretained(this), std::move(req),
           cros::GetFutureCallback(future));
     }
     camera_device_ops_thread_.task_runner()->PostTask(

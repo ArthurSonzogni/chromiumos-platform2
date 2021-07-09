@@ -14,11 +14,11 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/timer/elapsed_timer.h>
 #include <mojo/public/c/system/buffer.h>
 #include <mojo/public/cpp/system/buffer.h>

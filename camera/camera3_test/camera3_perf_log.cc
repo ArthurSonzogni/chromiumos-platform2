@@ -8,9 +8,9 @@
 
 #include <numeric>
 
-#include <base/optional.h>
-#include <base/stl_util.h>
 #include <base/command_line.h>
+#include <base/containers/contains.h>
+#include <base/optional.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -43,13 +43,13 @@ Camera3PerfLog::~Camera3PerfLog() {
   for (const auto& cam_id_name : camera_name_map_) {
     const std::string s =
         base::StringPrintf("Camera: %s\n", cam_id_name.second.c_str());
-    base::AppendToFile(file_path, s.c_str(), s.length());
+    base::AppendToFile(file_path, s);
     const std::vector<std::pair<std::string, int64_t>> perf_logs =
         CollectPerfLogs(cam_id_name.first);
     for (const auto& perf_log : perf_logs) {
       const std::string s = base::StringPrintf(
           "%s: %" PRId64 " us\n", perf_log.first.c_str(), perf_log.second);
-      base::AppendToFile(file_path, s.c_str(), s.length());
+      base::AppendToFile(file_path, s);
     }
   }
 }
