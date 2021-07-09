@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
@@ -24,25 +25,15 @@ namespace {
 
 class MockRuntimeProbeProxy : public RuntimeProbeProxy {
  public:
-  MOCK_CONST_METHOD2(ProbeCategories,
-                     bool(const runtime_probe::ProbeRequest&,
-                          runtime_probe::ProbeResult*));
+  MOCK_METHOD(bool,
+              ProbeCategories,
+              (const runtime_probe::ProbeRequest&, runtime_probe::ProbeResult*),
+              (const));
   void ConfigProbeCategories(bool retval,
                              const runtime_probe::ProbeResult& resp) {
-    // |probe_request| should include all the categories except UNKNWON.  Here
-    // we only check if the number of category in the protobuf message matches
-    // the size of the defined enum - 1.
-    const auto desc = runtime_probe::ProbeRequest_SupportCategory_descriptor();
-    const auto probe_request_arg_matcher =
-        testing::Property(&runtime_probe::ProbeRequest::categories_size,
-                          testing::Eq(desc->value_count() - 1));
-
-    const auto handler = [retval, resp](runtime_probe::ProbeResult* pr) {
-      pr->CopyFrom(resp);
-      return retval;
-    };
-    EXPECT_CALL(*this, ProbeCategories(probe_request_arg_matcher, testing::_))
-        .WillOnce(testing::WithArg<1>(testing::Invoke(handler)));
+    EXPECT_CALL(*this, ProbeCategories(testing::_, testing::_))
+        .WillOnce(testing::DoAll(testing::SetArgPointee<1>(resp),
+                                 testing::Return(retval)));
   }
 };
 
@@ -51,10 +42,9 @@ class MockRuntimeProbeProxy : public RuntimeProbeProxy {
 class TestProbeResultGetterImpl : public testing::Test {
  protected:
   void SetUp() {
-    runtime_probe_proxy_ = new testing::StrictMock<MockRuntimeProbeProxy>();
-    pr_getter_.reset(
-        new ProbeResultGetterImpl(std::unique_ptr<RuntimeProbeProxy>(
-            static_cast<RuntimeProbeProxy*>(runtime_probe_proxy_))));
+    auto proxy = std::make_unique<testing::StrictMock<MockRuntimeProbeProxy>>();
+    runtime_probe_proxy_ = proxy.get();
+    pr_getter_.reset(new ProbeResultGetterImpl(std::move(proxy)));
   }
 
   testing::StrictMock<MockRuntimeProbeProxy>* runtime_probe_proxy_;

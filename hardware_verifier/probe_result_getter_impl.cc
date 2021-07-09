@@ -50,21 +50,8 @@ base::Optional<runtime_probe::ProbeResult>
 ProbeResultGetterImpl::GetFromRuntimeProbe() const {
   VLOG(1) << "Try to get the probe result by calling |runtime_probe|.";
 
-  // Setup the |ProbeRequest| message, adds all kind of component categories
-  // so that |runtime_probe| won't filter out anything.
-  // TODO(yhong): Call the proper API to probe components of all categories
-  //     directly once b/132127083 is fixed.
   runtime_probe::ProbeRequest probe_request;
-  const auto category_enum_desc =
-      runtime_probe::ProbeRequest_SupportCategory_descriptor();
-  for (int i = 0; i < category_enum_desc->value_count(); ++i) {
-    const auto category =
-        static_cast<runtime_probe::ProbeRequest_SupportCategory>(
-            category_enum_desc->value(i)->number());
-    if (category == runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
-      continue;
-    probe_request.add_categories(category);
-  }
+  probe_request.set_probe_default_category(true);
   VLogProtobuf(2, "ProbeRequest", probe_request);
 
   runtime_probe::ProbeResult probe_result;
