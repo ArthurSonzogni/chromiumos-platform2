@@ -42,8 +42,8 @@ bool IsTargetInsideSource(const std::string& target,
 }
 
 size_t CalculateEntrySize(const std::string& entry_name) {
-  return base::bits::Align(sizeof(smbc_dirent) + entry_name.size(),
-                           alignof(smbc_dirent));
+  return base::bits::AlignUp(sizeof(smbc_dirent) + entry_name.size(),
+                             alignof(smbc_dirent));
 }
 
 bool WriteEntry(const std::string& entry_name,
