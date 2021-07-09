@@ -23,6 +23,7 @@
 #include <brillo/process/process.h>
 
 #include "diagnostics/cros_healthd/process/process_with_output.h"
+#include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "mojo/cros_healthd_executor.mojom.h"
 
@@ -96,25 +97,26 @@ void ExecutorMojoService::GetFanSpeed(GetFanSpeedCallback callback) {
 void ExecutorMojoService::RunMemtester(RunMemtesterCallback callback) {
   mojo_ipc::ProcessResult result;
 
+  // TODO(b/193211343): Design a mechanism for multiple resource intensive task.
   // Only allow one instance of memtester at a time. This is reasonable, because
   // memtester mlocks almost the entirety of the device's memory, and a second
   // memtester process wouldn't have any memory to test.
   auto itr = processes_.find(kMemtesterBinary);
   if (itr != processes_.end()) {
-    result.return_code = EXIT_FAILURE;
+    result.return_code = MemtesterErrorCodes::kAllocatingLockingInvokingError;
     result.err = "Memtester process already running.";
     std::move(callback).Run(result.Clone());
     return;
   }
 
+  // Get AvailablePhysicalMemory in MiB.
   int64_t available_mem = base::SysInfo::AmountOfAvailablePhysicalMemory();
-  // Convert from bytes to MB.
   available_mem /= (1024 * 1024);
-  // Make sure the operating system is left with at least 200 MB.
-  available_mem -= 200;
+
+  available_mem -= kMemoryRoutineReservedSizeMiB;
   if (available_mem <= 0) {
     result.err = "Not enough available memory to run memtester.";
-    result.return_code = EXIT_FAILURE;
+    result.return_code = MemtesterErrorCodes::kAllocatingLockingInvokingError;
     std::move(callback).Run(result.Clone());
     return;
   }

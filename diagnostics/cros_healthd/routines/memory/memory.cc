@@ -96,6 +96,16 @@ void MemoryRoutine::Start() {
       base::SysInfo::AmountOfAvailablePhysicalMemory() * kMicrosecondsPerByte;
   start_ticks_ = tick_clock_->NowTicks();
 
+  // Ealry check and return if system doesn't have enough memory remains.
+  // Get AvailablePhysicalMemory in MiB.
+  int64_t available_mem = base::SysInfo::AmountOfAvailablePhysicalMemory();
+  available_mem /= (1024 * 1024);
+  if (available_mem <= kMemoryRoutineReservedSizeMiB) {
+    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart;
+    status_message_ = kMemoryRoutineAllocatingLockingInvokingFailureMessage;
+    return;
+  }
+
   status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   status_message_ = kMemoryRoutineRunningMessage;
   context_->executor()->RunMemtester(base::BindOnce(
@@ -176,9 +186,16 @@ void MemoryRoutine::DetermineRoutineResult(
     return;
   }
 
+  auto status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
   std::string status_message;
-  if (ret & MemtesterErrorCodes::kAllocatingLockingInvokingError)
-    status_message += kMemoryRoutineAllocatingLockingInvokingFailureMessage;
+  if (ret & MemtesterErrorCodes::kAllocatingLockingInvokingError) {
+    // Return the error message from executor if applicable
+    status_message +=
+        !process->err.empty()
+            ? process->err
+            : kMemoryRoutineAllocatingLockingInvokingFailureMessage;
+    status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+  }
 
   if (ret & MemtesterErrorCodes::kStuckAddressTestError)
     status_message += kMemoryRoutineStuckAddressTestFailureMessage;
@@ -187,7 +204,7 @@ void MemoryRoutine::DetermineRoutineResult(
     status_message += kMemoryRoutineOtherTestFailureMessage;
 
   status_message_ = std::move(status_message);
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+  status_ = status;
 }
 
 void MemoryRoutine::ParseMemtesterOutput(const std::string& raw_output) {

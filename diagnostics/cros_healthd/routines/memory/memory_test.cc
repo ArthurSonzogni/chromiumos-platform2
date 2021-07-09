@@ -194,7 +194,7 @@ TEST_F(MemoryRoutineTest, MemtesterBinaryFailsToRun) {
 
   VerifyNonInteractiveUpdate(
       update()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
       kMemoryRoutineAllocatingLockingInvokingFailureMessage);
 }
 

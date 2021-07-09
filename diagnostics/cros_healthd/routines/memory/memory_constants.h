@@ -21,6 +21,10 @@ enum MemtesterErrorCodes {
   kOtherTestError = 0x04,
 };
 
+// Ensure the operating system is left with at least the following size to avoid
+// out of memory error.
+constexpr int kMemoryRoutineReservedSizeMiB = 200;
+
 // Status messages the memory routine can report.
 extern const char kMemoryRoutineSucceededMessage[];
 extern const char kMemoryRoutineRunningMessage[];
