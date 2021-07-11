@@ -53,7 +53,8 @@ int Controller::OnInit() {
 
   /// Run after Daemon::OnInit()
   base::ThreadTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::Bind(&Controller::Setup, weak_factory_.GetWeakPtr()));
+      FROM_HERE,
+      base::BindOnce(&Controller::Setup, weak_factory_.GetWeakPtr()));
   return DBusDaemon::OnInit();
 }
 
@@ -183,8 +184,8 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
 
   if (!process_reaper_.WatchForChild(
           FROM_HERE, pid,
-          base::Bind(&Controller::OnProxyExit, weak_factory_.GetWeakPtr(),
-                     pid))) {
+          base::BindOnce(&Controller::OnProxyExit, weak_factory_.GetWeakPtr(),
+                         pid))) {
     LOG(ERROR) << "Failed to watch process for proxy " << proc
                << " - did it crash after launch?";
     return;
@@ -249,8 +250,8 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
 
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
           FROM_HERE,
-          base::Bind(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
-                     proc.opts.type, proc.opts.ifname),
+          base::BindOnce(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
+                         proc.opts.type, proc.opts.ifname),
           base::TimeDelta::FromMilliseconds(kSubprocessRestartDelayMs));
       break;
 

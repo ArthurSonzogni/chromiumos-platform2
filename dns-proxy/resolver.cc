@@ -109,7 +109,7 @@ Resolver::SocketFd::SocketFd(int type, int fd)
 
 Resolver::TCPConnection::TCPConnection(
     std::unique_ptr<patchpanel::Socket> sock,
-    const base::Callback<void(int, int)>& callback)
+    const base::RepeatingCallback<void(int, int)>& callback)
     : sock(std::move(sock)) {
   watcher = base::FileDescriptorWatcher::WatchReadable(
       TCPConnection::sock->fd(),

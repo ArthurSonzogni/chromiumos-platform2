@@ -141,7 +141,7 @@ class Resolver {
   // |TCPConnection| is used to track and terminate TCP connections.
   struct TCPConnection {
     TCPConnection(std::unique_ptr<patchpanel::Socket> sock,
-                  const base::Callback<void(int, int)>& callback);
+                  const base::RepeatingCallback<void(int, int)>& callback);
 
     std::unique_ptr<patchpanel::Socket> sock;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;

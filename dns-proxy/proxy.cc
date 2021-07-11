@@ -128,7 +128,7 @@ int Proxy::OnInit() {
 
   /// Run after Daemon::OnInit()
   base::ThreadTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::Bind(&Proxy::Setup, weak_factory_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&Proxy::Setup, weak_factory_.GetWeakPtr()));
   return DBusDaemon::OnInit();
 }
 
@@ -654,8 +654,8 @@ void Proxy::SetShillProperty(const std::string& addr,
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&Proxy::SetShillProperty, weak_factory_.GetWeakPtr(), addr,
-                 die_on_failure, num_retries - 1),
+      base::BindOnce(&Proxy::SetShillProperty, weak_factory_.GetWeakPtr(), addr,
+                     die_on_failure, num_retries - 1),
       kShillPropertyAttemptDelay);
 }
 
