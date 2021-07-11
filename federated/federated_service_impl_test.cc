@@ -39,7 +39,7 @@ TEST(FederatedServiceImplTest, TestReportExample) {
   mojo::Remote<FederatedService> federated_service;
   const FederatedServiceImpl federated_service_impl(
       federated_service.BindNewPipeAndPassReceiver().PassPipe(),
-      base::Closure(), storage_manager.get());
+      base::OnceClosure(), storage_manager.get());
 
   // Reports examples with a registered client_name then an unknown client_name,
   // will trigger storage_manager->OnExampleReceived only once.
@@ -61,7 +61,7 @@ TEST(FederatedServiceImplTest, TestClone) {
   mojo::Remote<FederatedService> federated_service;
   const FederatedServiceImpl federated_service_impl(
       federated_service.BindNewPipeAndPassReceiver().PassPipe(),
-      base::Closure(), storage_manager.get());
+      base::OnceClosure(), storage_manager.get());
 
   // Call Clone to bind another FederatedService.
   mojo::Remote<FederatedService> federated_service_2;

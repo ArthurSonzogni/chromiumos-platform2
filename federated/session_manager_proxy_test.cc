@@ -131,7 +131,7 @@ class SessionManagerProxyTest : public ::testing::Test {
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 
-  base::Callback<void(const std::string& state)>
+  base::RepeatingCallback<void(const std::string& state)>
       session_state_changed_callback_;
 };
 

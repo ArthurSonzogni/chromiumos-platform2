@@ -58,8 +58,8 @@ void Daemon::InitDBus() {
   // Registers a handler of the BootstrapMojoConnection method.
   CHECK(federated_service_exported_object->ExportMethodAndBlock(
       kFederatedInterfaceName, kBootstrapMojoConnectionMethod,
-      base::Bind(&Daemon::BootstrapMojoConnection,
-                 weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::BootstrapMojoConnection,
+                          weak_ptr_factory_.GetWeakPtr())));
 
   // Takes ownership of the Federated service.
   CHECK(bus_->RequestOwnershipAndBlock(kFederatedServiceName,
@@ -114,7 +114,7 @@ void Daemon::BootstrapMojoConnection(
   // Binds primordial message pipe to a FederatedService implementation.
   federated_service_ = std::make_unique<FederatedServiceImpl>(
       invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken),
-      base::Bind(&Daemon::OnMojoDisconnection, base::Unretained(this)),
+      base::BindOnce(&Daemon::OnMojoDisconnection, base::Unretained(this)),
       StorageManager::GetInstance());
 
   // Sends success response.

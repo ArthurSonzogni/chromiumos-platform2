@@ -15,7 +15,7 @@
 namespace federated {
 
 FederatedServiceImpl::FederatedServiceImpl(mojo::ScopedMessagePipeHandle pipe,
-                                           base::Closure disconnect_handler,
+                                           base::OnceClosure disconnect_handler,
                                            StorageManager* storage_manager)
     : storage_manager_(storage_manager),
       registered_clients_(GetClientNames()),

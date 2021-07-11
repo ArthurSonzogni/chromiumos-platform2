@@ -100,7 +100,8 @@ class DeviceStatusMonitorTest : public ::testing::Test {
 
   // Currently DeviceStatusMonitor only connects to one signal, but may use more
   // in the future.
-  std::unordered_map<std::string, base::Callback<void(dbus::Signal* signal)>>
+  std::unordered_map<std::string,
+                     base::RepeatingCallback<void(dbus::Signal* signal)>>
       on_signal_callbacks_;
 };
 

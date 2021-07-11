@@ -34,10 +34,11 @@ void Scheduler::Schedule() {
 
 void Scheduler::PostDelayedTask(const std::string& client_name,
                                 const base::TimeDelta& delay) {
-  task_runner_->PostDelayedTask(FROM_HERE,
-                                base::Bind(&Scheduler::TryToStartJobForClient,
-                                           base::Unretained(this), client_name),
-                                delay);
+  task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Scheduler::TryToStartJobForClient, base::Unretained(this),
+                     client_name),
+      delay);
 }
 
 void Scheduler::TryToStartJobForClient(const std::string& client_name) {

@@ -40,7 +40,7 @@ DeviceStatusMonitor::DeviceStatusMonitor(dbus::Bus* bus)
       power_manager::kPowerSupplyPollSignal,
       base::BindRepeating(&DeviceStatusMonitor::OnPowerSupplyReceived,
                           weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&OnSignalConnected));
+      base::BindOnce(&OnSignalConnected));
 }
 
 bool DeviceStatusMonitor::TrainingConditionsSatisfied() const {

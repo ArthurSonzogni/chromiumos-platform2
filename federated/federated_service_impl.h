@@ -23,7 +23,7 @@ class FederatedServiceImpl
   // Creates an instance bound to `pipe`. The specified `disconnect_handler`
   // will be invoked if the binding encounters a connection error or is closed.
   FederatedServiceImpl(mojo::ScopedMessagePipeHandle pipe,
-                       base::Closure disconnect_handler,
+                       base::OnceClosure disconnect_handler,
                        StorageManager* storage_manager);
   FederatedServiceImpl(const FederatedServiceImpl&) = delete;
   FederatedServiceImpl& operator=(const FederatedServiceImpl&) = delete;
