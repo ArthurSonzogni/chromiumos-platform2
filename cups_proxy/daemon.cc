@@ -121,8 +121,8 @@ void Daemon::InitDBus() {
   CHECK(cups_proxy_exported_object->ExportMethodAndBlock(
       printing::kCupsProxyDaemonInterface,
       printing::kBootstrapMojoConnectionMethod,
-      base::Bind(&Daemon::BootstrapMojoConnection,
-                 weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::BootstrapMojoConnection,
+                          weak_ptr_factory_.GetWeakPtr())));
 
   // Take ownership of the CupsProxy service.
   CHECK(bus_->RequestOwnershipAndBlock(printing::kCupsProxyDaemonName,
@@ -172,7 +172,7 @@ void Daemon::BootstrapMojoConnection(
   // Connect to mojo in the requesting process.
   mojo_handler_.SetupMojoPipe(
       std::move(file_handle),
-      base::Bind(&Daemon::OnConnectionError, base::Unretained(this)));
+      base::BindOnce(&Daemon::OnConnectionError, base::Unretained(this)));
 
   // Send success response.
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));

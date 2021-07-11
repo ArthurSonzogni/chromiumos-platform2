@@ -37,7 +37,7 @@ class MojoHandler {
   bool StartThread();
 
   // Setup the mojo pipe using the fd, and set error handler.
-  void SetupMojoPipe(base::ScopedFD fd, base::Closure error_handler);
+  void SetupMojoPipe(base::ScopedFD fd, base::OnceClosure error_handler);
 
   // Returns whether the mojo interface is bounded.
   bool IsInitialized();
@@ -52,7 +52,7 @@ class MojoHandler {
 
  private:
   // Setup the mojo pipe. This is always called on the mojo thread.
-  void SetupMojoPipeOnThread(base::Closure error_handler,
+  void SetupMojoPipeOnThread(base::OnceClosure error_handler,
                              mojo::IncomingInvitation invitation);
 
   // Sends the request to the mojo pipe. This is always called on the mojo

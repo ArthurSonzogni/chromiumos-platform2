@@ -56,8 +56,8 @@ MojoHandler::~MojoHandler() {
   // the same thread which it is bound, so we close the message pipe by calling
   // .reset() on the mojo thread.
   mojo_task_runner_->PostTask(FROM_HERE,
-                              base::Bind(&mojom::CupsProxierPtr::reset,
-                                         base::Unretained(&chrome_proxy_)));
+                              base::BindOnce(&mojom::CupsProxierPtr::reset,
+                                             base::Unretained(&chrome_proxy_)));
   mojo_thread_.Stop();
 }
 
@@ -70,7 +70,7 @@ bool MojoHandler::StartThread() {
 }
 
 void MojoHandler::SetupMojoPipe(base::ScopedFD fd,
-                                base::Closure error_handler) {
+                                base::OnceClosure error_handler) {
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(fd))));
 
@@ -81,7 +81,7 @@ void MojoHandler::SetupMojoPipe(base::ScopedFD fd,
                      std::move(invitation)));
 }
 
-void MojoHandler::SetupMojoPipeOnThread(base::Closure error_handler,
+void MojoHandler::SetupMojoPipeOnThread(base::OnceClosure error_handler,
                                         mojo::IncomingInvitation invitation) {
   DCHECK(mojo_task_runner_->BelongsToCurrentThread());
   DCHECK(!chrome_proxy_);
