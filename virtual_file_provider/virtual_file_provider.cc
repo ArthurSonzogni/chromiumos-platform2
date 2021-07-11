@@ -112,10 +112,11 @@ void FuseMainDelegateImpl::HandleReadRequest(const std::string& id,
                                              base::ScopedFD fd) {
   service_thread_->task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&Service::SendReadRequest,
-                 // This is safe as service_thread outlives the FUSE main loop.
-                 base::Unretained(service_thread_->service()), id, offset, size,
-                 base::Passed(&fd)));
+      base::BindOnce(
+          &Service::SendReadRequest,
+          // This is safe as service_thread outlives the FUSE main loop.
+          base::Unretained(service_thread_->service()), id, offset, size,
+          base::Passed(&fd)));
 }
 
 void FuseMainDelegateImpl::NotifyIdReleased(const std::string& id) {
@@ -125,9 +126,10 @@ void FuseMainDelegateImpl::NotifyIdReleased(const std::string& id) {
   }
   service_thread_->task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&Service::SendIdReleased,
-                 // This is safe as service_thread outlives the FUSE main loop.
-                 base::Unretained(service_thread_->service()), id));
+      base::BindOnce(
+          &Service::SendIdReleased,
+          // This is safe as service_thread outlives the FUSE main loop.
+          base::Unretained(service_thread_->service()), id));
 }
 
 }  // namespace

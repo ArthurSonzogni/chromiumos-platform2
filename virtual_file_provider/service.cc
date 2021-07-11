@@ -55,14 +55,15 @@ bool Service::Initialize() {
       dbus::ObjectPath(kVirtualFileProviderServicePath));
   if (!exported_object_->ExportMethodAndBlock(
           kVirtualFileProviderInterface, kGenerateVirtualFileIdMethod,
-          base::Bind(&Service::GenerateVirtualFileId,
-                     weak_ptr_factory_.GetWeakPtr()))) {
+          base::BindRepeating(&Service::GenerateVirtualFileId,
+                              weak_ptr_factory_.GetWeakPtr()))) {
     LOG(ERROR) << "Failed to export GenerateVirtualFileId method.";
     return false;
   }
   if (!exported_object_->ExportMethodAndBlock(
           kVirtualFileProviderInterface, kOpenFileByIdMethod,
-          base::Bind(&Service::OpenFileById, weak_ptr_factory_.GetWeakPtr()))) {
+          base::BindRepeating(&Service::OpenFileById,
+                              weak_ptr_factory_.GetWeakPtr()))) {
     LOG(ERROR) << "Failed to export OpenFileById method.";
     return false;
   }

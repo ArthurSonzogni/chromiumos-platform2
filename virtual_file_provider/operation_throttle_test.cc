@@ -33,7 +33,7 @@ TEST(OperationThrottleTest, TwoTasksUnderLimit) {
   base::Thread thread("Test thread");
   ASSERT_TRUE(thread.Start());
   thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(
+      FROM_HERE, base::BindOnce(
                      [](OperationThrottle* throttle, bool* done) {
                        auto operation2 = throttle->StartOperation();
                        *done = true;
@@ -55,7 +55,7 @@ TEST(OperationThrottleTest, TwoTasksOverLimit) {
   base::Thread thread("Test thread");
   ASSERT_TRUE(thread.Start());
   thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(
+      FROM_HERE, base::BindOnce(
                      [](OperationThrottle* throttle, bool* done) {
                        auto operation2 = throttle->StartOperation();
                        *done = true;

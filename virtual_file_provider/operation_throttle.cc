@@ -23,8 +23,8 @@ std::unique_ptr<base::ScopedClosureRunner> OperationThrottle::StartOperation() {
     operation_count_changed_condition_.Wait();
   }
   ++operation_count_;
-  return std::make_unique<base::ScopedClosureRunner>(
-      base::Bind(&OperationThrottle::FinishOperation, base::Unretained(this)));
+  return std::make_unique<base::ScopedClosureRunner>(base::BindOnce(
+      &OperationThrottle::FinishOperation, base::Unretained(this)));
 }
 
 void OperationThrottle::FinishOperation() {
