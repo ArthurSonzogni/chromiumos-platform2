@@ -61,6 +61,35 @@ class FakeSamplesHandler : public SamplesHandler {
   base::WeakPtrFactory<FakeSamplesHandler> weak_factory_{this};
 };
 
+// An observer that does nothing to samples or errors. Instead, it simply waits
+// for the mojo disconnection and calls |quit_closure|.
+class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
+ public:
+  explicit FakeObserver(base::RepeatingClosure quit_closure)
+      : quit_closure_(std::move(quit_closure)) {}
+
+  mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote() {
+    CHECK(!receiver_.is_bound());
+    auto pending_remote = receiver_.BindNewPipeAndPassRemote();
+    receiver_.set_disconnect_handler(base::BindOnce(
+        &FakeObserver::OnObserverDisconnect, base::Unretained(this)));
+    return pending_remote;
+  }
+
+  // cros::mojom::SensorDeviceSamplesObserver overrides:
+  void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override {}
+  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {}
+
+ private:
+  void OnObserverDisconnect() {
+    receiver_.reset();
+    quit_closure_.Run();
+  }
+
+  base::RepeatingClosure quit_closure_;
+  mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
+};
+
 class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
  public:
   static std::unique_ptr<FakeSamplesObserver> Create(

@@ -11,6 +11,8 @@
 
 #include <base/check.h>
 #include <base/containers/flat_map.h>
+#include <base/stl_util.h>
+#include <base/strings/string_util.h>
 #include <libmems/iio_device.h>
 #include <libmems/iio_channel.h>
 #include <mojo/core/embedder/embedder.h>
@@ -23,6 +25,9 @@ namespace iioservice {
 
 // Add a namespace here to not leak |DeviceHasType|.
 namespace {
+
+// Assume there won't be more than 10000 iio devices.
+constexpr int32_t kFusionDeviceIdDelta = 10000;
 
 // Prefixes for each cros::mojom::DeviceType channel.
 constexpr char kChnPrefixes[][12] = {
@@ -66,6 +71,42 @@ bool DeviceHasType(libmems::IioDevice* iio_device,
     default:
       // TODO(chenghaogyang): Support the uncalibrated devices.
       return false;
+  }
+}
+
+Location GetLocation(libmems::IioDevice* device) {
+  auto location_opt = device->ReadStringAttribute(cros::mojom::kLocation);
+  if (location_opt.has_value()) {
+    std::string location_str = std::string(
+        base::TrimString(location_opt.value(), base::StringPiece("\0\n", 2),
+                         base::TRIM_TRAILING));
+
+    if (location_str.compare(cros::mojom::kLocationBase) == 0)
+      return Location::kBase;
+
+    if (location_str.compare(cros::mojom::kLocationLid) == 0)
+      return Location::kLid;
+
+    if (location_str.compare(cros::mojom::kLocationCamera) == 0)
+      return Location::kCamera;
+  }
+
+  return Location::kNone;
+}
+
+std::string LocationToString(Location location) {
+  switch (location) {
+    case Location::kBase:
+      return cros::mojom::kLocationBase;
+
+    case Location::kLid:
+      return cros::mojom::kLocationLid;
+
+    case Location::kCamera:
+      return cros::mojom::kLocationCamera;
+
+    default:
+      return "";
   }
 }
 
@@ -175,21 +216,31 @@ void SensorServiceImpl::GetDevice(
     mojo::PendingReceiver<cros::mojom::SensorDevice> device_request) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (!sensor_device_) {
-    LOGF(ERROR) << "No available SensorDevice";
-    return;
-  }
+  if (iio_device_id < kFusionDeviceIdDelta) {  // IIO device
+    if (!sensor_device_) {
+      LOGF(ERROR) << "No available SensorDevice";
+      return;
+    }
 
-  auto it = device_types_map_.find(iio_device_id);
-  if (it == device_types_map_.end()) {
-    LOGF(ERROR) << "No available device with id: " << iio_device_id;
-    return;
-  }
+    auto it = device_types_map_.find(iio_device_id);
+    if (it == device_types_map_.end()) {
+      LOGF(ERROR) << "No available device with id: " << iio_device_id;
+      return;
+    }
 
-  const auto& types = it->second;
-  sensor_device_->AddReceiver(
-      iio_device_id, std::move(device_request),
-      std::set<cros::mojom::DeviceType>(types.begin(), types.end()));
+    const auto& types = it->second;
+    sensor_device_->AddReceiver(
+        iio_device_id, std::move(device_request),
+        std::set<cros::mojom::DeviceType>(types.begin(), types.end()));
+  } else {  // Fusion device
+    auto it = sensor_device_fusions_.find(iio_device_id);
+    if (it == sensor_device_fusions_.end()) {
+      LOGF(ERROR) << "Invalid iio_device_id: " << iio_device_id;
+      return;
+    }
+
+    it->second->AddReceiver(std::move(device_request));
+  }
 }
 
 void SensorServiceImpl::RegisterNewDevicesObserver(
@@ -242,11 +293,34 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
       types.push_back(type);
   }
 
+  Location location = GetLocation(device);
+  AddDevice(id, types, location);
+
+  // Check fusion devices.
+  for (const auto& type : types) {
+    if (base::Contains(device_maps_[type], location)) {
+      LOGF(WARNING) << "Duplicated pair of type : " << type
+                    << ", and location: " << static_cast<int>(location);
+      continue;
+    }
+
+    device_maps_[type][location] = id;
+
+    // TODO(chenghaoyang): Check if we should create fusion devices based on
+    // this iio device.
+  }
+}
+
+void SensorServiceImpl::AddDevice(
+    int32_t id,
+    const std::vector<cros::mojom::DeviceType>& types,
+    Location location) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
   device_types_map_.emplace(id, types);
 
-  auto location = device->ReadStringAttribute(cros::mojom::kLocation);
   SensorMetrics::GetInstance()->SetConfigForDevice(id, types,
-                                                   location.value_or(""));
+                                                   LocationToString(location));
   for (auto& observer : observers_)
     observer->OnNewDeviceAdded(id, types);
 }

@@ -7,6 +7,8 @@
 
 #include <map>
 #include <set>
+#include <string>
+#include <vector>
 
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -16,11 +18,18 @@
 
 namespace iioservice {
 
+enum Location {
+  kNone = 0,
+  kBase = 1,
+  kLid = 2,
+  kCamera = 3,
+};
+
 class ClientData {
  public:
   ClientData(const mojo::ReceiverId id,
-             libmems::IioDevice* const iio_device,
-             const std::set<cros::mojom::DeviceType>& types);
+             libmems::IioDevice* const iio_device = nullptr,
+             const std::set<cros::mojom::DeviceType>& types = {});
 
   bool IsActive() const;
 
@@ -41,7 +50,18 @@ struct SampleData {
   std::map<int32_t, int64_t> chns;
 };
 
+std::vector<std::string> GetGravityChannels();
+
 constexpr char kInputAttr[] = "input";
+
+// Number of axes for x, y, and z.
+constexpr int kNumberOfAxes = 3;
+constexpr char kChannelFormat[] = "%s_%c";
+constexpr char kChannelAxes[kNumberOfAxes] = {'x', 'y', 'z'};
+
+constexpr char kSamplingFrequencyAvailableFormat[] = "0.000000 %.6f %.6f";
+std::string GetSamplingFrequencyAvailable(double min_frequency,
+                                          double max_frequency);
 
 }  // namespace iioservice
 

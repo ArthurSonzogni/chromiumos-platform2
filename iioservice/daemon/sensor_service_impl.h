@@ -16,6 +16,7 @@
 #include <libmems/iio_context.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "iioservice/daemon/sensor_device_fusion.h"
 #include "iioservice/daemon/sensor_device_impl.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
@@ -56,6 +57,9 @@ class SensorServiceImpl : public cros::mojom::SensorService {
 
  private:
   void AddDevice(libmems::IioDevice* device);
+  void AddDevice(int32_t id,
+                 const std::vector<cros::mojom::DeviceType>& types,
+                 Location location);
 
   void OnSensorServiceDisconnect();
 
@@ -66,6 +70,14 @@ class SensorServiceImpl : public cros::mojom::SensorService {
 
   // First is the iio_device's id, second is the types.
   std::map<int32_t, std::vector<cros::mojom::DeviceType>> device_types_map_;
+
+  // Maps from device type and location to id.
+  std::map<cros::mojom::DeviceType, std::map<Location, int32_t>> device_maps_;
+
+  // First is the fusion device's id, second is the handler of the fusion
+  // device.
+  std::map<int32_t, SensorDeviceFusion::ScopedSensorDeviceFusion>
+      sensor_device_fusions_;
 
   mojo::ReceiverSet<cros::mojom::SensorService> receiver_set_;
   std::vector<mojo::Remote<cros::mojom::SensorServiceNewDevicesObserver>>
