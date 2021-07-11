@@ -18,6 +18,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
+#include "iioservice/daemon/sensor_device_fusion_gravity.h"
 #include "iioservice/daemon/sensor_metrics.h"
 #include "iioservice/include/common.h"
 
@@ -306,8 +307,7 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
     device_maps_[type][location] = id;
 
-    // TODO(chenghaoyang): Check if we should create fusion devices based on
-    // this iio device.
+    CheckGravity(id, type, location);
   }
 }
 
@@ -323,6 +323,48 @@ void SensorServiceImpl::AddDevice(
                                                    LocationToString(location));
   for (auto& observer : observers_)
     observer->OnNewDeviceAdded(id, types);
+}
+
+void SensorServiceImpl::CheckGravity(int32_t id,
+                                     cros::mojom::DeviceType type,
+                                     Location location) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  if (type == cros::mojom::DeviceType::ACCEL ||
+      type == cros::mojom::DeviceType::ANGLVEL) {
+    auto it_accel = device_maps_[cros::mojom::DeviceType::ACCEL].find(location);
+    auto it_gyro =
+        device_maps_[cros::mojom::DeviceType::ANGLVEL].find(location);
+    if (it_accel != device_maps_[cros::mojom::DeviceType::ACCEL].end() &&
+        it_gyro != device_maps_[cros::mojom::DeviceType::ANGLVEL].end()) {
+      // Create the gravity device on |location|.
+      DCHECK(!base::Contains(device_maps_[cros::mojom::DeviceType::GRAVITY],
+                             location));
+
+      int32_t id = kFusionDeviceIdDelta + fusion_device_counter_++;
+      AddDevice(id, {cros::mojom::DeviceType::GRAVITY}, location);
+
+      device_maps_[cros::mojom::DeviceType::GRAVITY][location] = id;
+
+      if (!sensor_device_)
+        return;
+
+      auto* accel = context_->GetDeviceById(it_accel->second);
+      if (!accel)
+        return;
+
+      double min_freq, max_freq;
+      if (!accel->GetMinMaxFrequency(&min_freq, &max_freq))
+        max_freq = 100.0f;
+
+      sensor_device_fusions_.emplace(
+          id, SensorDeviceFusionGravity::Create(
+                  id, location, ipc_task_runner_,
+                  base::BindRepeating(&SensorDeviceImpl::AddReceiver,
+                                      sensor_device_->GetWeakPtr()),
+                  max_freq, it_accel->second, it_gyro->second));
+    }
+  }
 }
 
 void SensorServiceImpl::OnSensorServiceDisconnect() {

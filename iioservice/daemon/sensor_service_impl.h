@@ -61,6 +61,10 @@ class SensorServiceImpl : public cros::mojom::SensorService {
                  const std::vector<cros::mojom::DeviceType>& types,
                  Location location);
 
+  void CheckGravity(int32_t id,
+                    cros::mojom::DeviceType type,
+                    Location location);
+
   void OnSensorServiceDisconnect();
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
@@ -74,6 +78,7 @@ class SensorServiceImpl : public cros::mojom::SensorService {
   // Maps from device type and location to id.
   std::map<cros::mojom::DeviceType, std::map<Location, int32_t>> device_maps_;
 
+  int32_t fusion_device_counter_ = 0;
   // First is the fusion device's id, second is the handler of the fusion
   // device.
   std::map<int32_t, SensorDeviceFusion::ScopedSensorDeviceFusion>

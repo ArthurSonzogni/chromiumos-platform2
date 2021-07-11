@@ -88,6 +88,10 @@ class SensorServiceImplTest : public ::testing::Test {
 
     accel->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
         kFakeAccelChnName, true));
+    // Assign a different location attribute to avoid creating the gravity
+    // device in SensorServiceImpl.
+    accel->WriteStringAttribute(cros::mojom::kLocation,
+                                cros::mojom::kLocationLid);
     gyro->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
         kFakeGyroChnName, true));
 
@@ -310,9 +314,9 @@ INSTANTIATE_TEST_SUITE_P(
                           {"pressure"}, {cros::mojom::DeviceType::BARO}),
                       std::pair<std::vector<std::string>,
                                 std::vector<cros::mojom::DeviceType>>(
-                          {"accel_x", "accel_y", "anglvel_z", "abc"},
+                          {"accel_x", "accel_y", "magn_z", "abc"},
                           {cros::mojom::DeviceType::ACCEL,
-                           cros::mojom::DeviceType::ANGLVEL}),
+                           cros::mojom::DeviceType::MAGN}),
                       std::pair<std::vector<std::string>,
                                 std::vector<cros::mojom::DeviceType>>(
                           {"accel", "anglvel", "illuminance_x", "count_y",

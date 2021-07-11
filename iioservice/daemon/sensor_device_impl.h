@@ -62,6 +62,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
                              const std::string& attr_name,
                              GetChannelsAttributesCallback callback) override;
 
+  base::WeakPtr<SensorDeviceImpl> GetWeakPtr();
+
  private:
   SensorDeviceImpl(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
                    libmems::IioContext* context,

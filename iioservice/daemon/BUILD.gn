@@ -25,10 +25,13 @@ static_library("libiioservice") {
   sources = [
     "common_types.cc",
     "daemon.cc",
+    "fusion.cc",
     "samples_handler.cc",
     "samples_handler_base.cc",
     "samples_handler_fusion.cc",
+    "samples_handler_fusion_gravity.cc",
     "sensor_device_fusion.cc",
+    "sensor_device_fusion_gravity.cc",
     "sensor_device_impl.cc",
     "sensor_hal_server_impl.cc",
     "sensor_metrics.cc",
@@ -61,6 +64,7 @@ if (use.test) {
     sources = [
       "samples_handler_fusion_test.cc",
       "samples_handler_test.cc",
+      "sensor_device_fusion_gravity_test.cc",
       "sensor_device_fusion_test.cc",
       "sensor_device_impl_test.cc",
       "sensor_hal_server_impl_test.cc",

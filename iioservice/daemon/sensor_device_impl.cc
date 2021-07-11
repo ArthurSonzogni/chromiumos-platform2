@@ -324,6 +324,10 @@ void SensorDeviceImpl::GetChannelsAttributes(
   std::move(callback).Run(std::move(values));
 }
 
+base::WeakPtr<SensorDeviceImpl> SensorDeviceImpl::GetWeakPtr() {
+  return weak_factory_.GetWeakPtr();
+}
+
 SensorDeviceImpl::SensorDeviceImpl(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     libmems::IioContext* context,
@@ -334,7 +338,7 @@ SensorDeviceImpl::SensorDeviceImpl(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   receiver_set_.set_disconnect_handler(base::BindRepeating(
-      &SensorDeviceImpl::OnSensorDeviceDisconnect, weak_factory_.GetWeakPtr()));
+      &SensorDeviceImpl::OnSensorDeviceDisconnect, GetWeakPtr()));
 }
 
 void SensorDeviceImpl::OnSensorDeviceDisconnect() {
