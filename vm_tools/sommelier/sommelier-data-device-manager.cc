@@ -148,7 +148,7 @@ static void sl_data_transfer_create(struct wl_event_loop* event_loop,
 
   // Start out the transfer in the reading state.
   struct sl_data_transfer* transfer =
-      static_cast<sl_data_transfer*>(malloc(sizeof(*transfer)));
+      static_cast<sl_data_transfer*>(calloc(1, sizeof(*transfer)));
   assert(transfer);
   transfer->read_fd = read_fd;
   transfer->write_fd = write_fd;
