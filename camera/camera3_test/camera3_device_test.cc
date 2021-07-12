@@ -869,18 +869,18 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   }
 
   // ISP-processing settings
+
+  // Check the default face detection mode is in available modes.
   std::set<uint8_t> face_detect_modes;
   ASSERT_EQ(0,
             static_info->GetAvailableFaceDetectModes(&face_detect_modes) != 0)
       << "Failed to get face detect modes";
-  if (face_detect_modes.find(ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE) !=
-      face_detect_modes.end()) {
-    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_STATISTICS_FACE_DETECT_MODE,
-                        ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE);
-  } else {
-    EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_STATISTICS_FACE_DETECT_MODE,
-                        ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
-  }
+  camera_metadata_ro_entry_t entry;
+  ASSERT_EQ(0,
+            find_camera_metadata_ro_entry(
+                default_settings, ANDROID_STATISTICS_FACE_DETECT_MODE, &entry))
+      << "Cannot find the metadata ANDROID_STATISTICS_FACE_DETECT_MODE";
+  ASSERT_NE(face_detect_modes.find(entry.data.u8[0]), face_detect_modes.end());
 
   EXPECT_KEY_VALUE_EQ(default_settings, ANDROID_FLASH_MODE,
                       ANDROID_FLASH_MODE_OFF);
