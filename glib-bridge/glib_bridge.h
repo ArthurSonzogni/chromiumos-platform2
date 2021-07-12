@@ -57,7 +57,7 @@ struct GLIB_BRIDGE_EXPORT GlibBridge {
 
   // libchrome message loop bits.
   std::map<int, Watcher> watchers_;
-  base::CancelableClosure timeout_closure_;
+  base::CancelableOnceClosure timeout_closure_;
 
   State state_;
 

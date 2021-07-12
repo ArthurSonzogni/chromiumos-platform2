@@ -36,8 +36,8 @@ GlibBridge::GlibBridge()
   CHECK(glib_context_);
   g_main_context_push_thread_default(glib_context_);
   base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::Bind(&GlibBridge::PrepareIteration,
-                            weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&GlibBridge::PrepareIteration,
+                                weak_ptr_factory_.GetWeakPtr()));
 }
 
 GlibBridge::~GlibBridge() {
@@ -63,7 +63,7 @@ void GlibBridge::PrepareIteration() {
     DVLOG(1) << "Iteration can be dispatched immediately";
     base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE,
-        base::Bind(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
+        base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
     state_ = State::kReadyForDispatch;
     return;
   }
@@ -82,9 +82,9 @@ void GlibBridge::PrepareIteration() {
     std::unique_ptr<base::FileDescriptorWatcher::Controller> reader;
     if (fd_flags.second & G_IO_IN) {
       reader = base::FileDescriptorWatcher::WatchReadable(
-          fd_flags.first,
-          base::Bind(&GlibBridge::OnEvent, weak_ptr_factory_.GetWeakPtr(),
-                     fd_flags.first, G_IO_IN));
+          fd_flags.first, base::BindRepeating(&GlibBridge::OnEvent,
+                                              weak_ptr_factory_.GetWeakPtr(),
+                                              fd_flags.first, G_IO_IN));
       CHECK(reader) << "Could not set up read watcher for fd "
                     << fd_flags.first;
     }
@@ -92,9 +92,9 @@ void GlibBridge::PrepareIteration() {
     std::unique_ptr<base::FileDescriptorWatcher::Controller> writer;
     if (fd_flags.second & G_IO_OUT) {
       writer = base::FileDescriptorWatcher::WatchWritable(
-          fd_flags.first,
-          base::Bind(&GlibBridge::OnEvent, weak_ptr_factory_.GetWeakPtr(),
-                     fd_flags.first, G_IO_OUT));
+          fd_flags.first, base::BindRepeating(&GlibBridge::OnEvent,
+                                              weak_ptr_factory_.GetWeakPtr(),
+                                              fd_flags.first, G_IO_OUT));
       CHECK(writer) << "Could not set up write watcher for fd "
                     << fd_flags.first;
     }
@@ -108,7 +108,7 @@ void GlibBridge::PrepareIteration() {
 
   base::TimeDelta timeout = base::TimeDelta::FromMilliseconds(timeout_ms);
   timeout_closure_.Reset(
-      base::Bind(&GlibBridge::Timeout, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&GlibBridge::Timeout, weak_ptr_factory_.GetWeakPtr()));
   base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, timeout_closure_.callback(), timeout);
 }
@@ -131,7 +131,7 @@ void GlibBridge::OnEvent(int fd, int flag) {
 
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
-      base::Bind(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kReadyForDispatch;
 }
 
@@ -139,7 +139,7 @@ void GlibBridge::Timeout() {
   CHECK_EQ(state_, State::kWaitingForEvents);
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
-      base::Bind(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kReadyForDispatch;
 }
 
@@ -158,8 +158,8 @@ void GlibBridge::Dispatch() {
   fd_map_.clear();
   max_priority_ = -1;
   base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::Bind(&GlibBridge::PrepareIteration,
-                            weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&GlibBridge::PrepareIteration,
+                                weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kPreparingIteration;
 }
 
