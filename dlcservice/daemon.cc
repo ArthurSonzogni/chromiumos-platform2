@@ -17,6 +17,7 @@
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_service.h"
 #include "dlcservice/metrics.h"
+#include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
 
 namespace dlcservice {
@@ -76,6 +77,7 @@ void Daemon::RegisterDBusObjectsAsync(
       base::FilePath(kDlcPreloadedImageRootpath),
       base::FilePath(imageloader::kDlcImageRootpath),
       base::FilePath(kDlcServicePrefsPath), base::FilePath(kUsersPath),
+      base::FilePath(kDlcPrefVerifiedValueFile),
       base::DefaultClock::GetInstance());
   CHECK(SystemState::Get());
 

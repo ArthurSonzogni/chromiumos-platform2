@@ -176,6 +176,10 @@ class DlcBase {
   DlcId id_;
   std::string package_;
 
+  // The verification value which validates the current verification stamps is
+  // valid.
+  std::string verification_value_;
+
   DlcState state_;
 
   base::FilePath mount_point_;

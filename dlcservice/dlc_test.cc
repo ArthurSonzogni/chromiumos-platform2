@@ -168,12 +168,30 @@ TEST_F(DlcBaseTest, VerifiedOnInitialization) {
   DlcBase dlc(kSecondDlc);
 
   // Explicitly set |kDlcPrefVerified| here.
+  std::string value;
+  EXPECT_TRUE(
+      base::ReadFileToString(SystemState::Get()->verification_file(), &value));
   EXPECT_TRUE(Prefs(dlc, SystemState::Get()->active_boot_slot())
-                  .Create(kDlcPrefVerified));
+                  .SetKey(kDlcPrefVerified, value));
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
 
   dlc.Initialize();
   EXPECT_TRUE(dlc.IsVerified());
+}
+
+TEST_F(DlcBaseTest, StaleVerificationCheckOnInitialization) {
+  DlcBase dlc(kSecondDlc);
+
+  // Explicitly set |kDlcPrefVerified| here w/ stale value.
+  std::string value;
+  EXPECT_TRUE(
+      base::ReadFileToString(SystemState::Get()->verification_file(), &value));
+  EXPECT_TRUE(Prefs(dlc, SystemState::Get()->active_boot_slot())
+                  .SetKey(kDlcPrefVerified, value + "make it stale"));
+  EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
+
+  dlc.Initialize();
+  EXPECT_FALSE(dlc.IsVerified());
 }
 
 TEST_F(DlcBaseTest, InstallCompleted) {

@@ -48,6 +48,7 @@ class SystemState {
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
+      const base::FilePath& verification_file,
       base::Clock* clock,
       bool for_test = false);
 
@@ -67,6 +68,7 @@ class SystemState {
   const base::FilePath& prefs_dir() const;
   base::FilePath dlc_prefs_dir() const;
   const base::FilePath& users_dir() const;
+  const base::FilePath& verification_file() const;
 
   // Getting active and inactive boot slots easily.
   BootSlot::Slot active_boot_slot() const;
@@ -99,6 +101,7 @@ class SystemState {
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
+      const base::FilePath& verification_file,
       base::Clock* clock);
 
  private:
@@ -118,6 +121,7 @@ class SystemState {
   base::FilePath prefs_dir_;
   BootSlot::Slot active_boot_slot_;
   base::FilePath users_dir_;
+  base::FilePath verification_file_;
   base::Clock* clock_;
   bool is_device_removable_;
 

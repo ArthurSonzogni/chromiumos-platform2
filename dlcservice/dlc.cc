@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
@@ -71,8 +72,20 @@ bool DlcBase::Initialize() {
           << "Failed to delete indirect root mount file during Initialization: "
           << JoinPaths(prefs_package_path_, kDlcRootMount);
   }
-  state_.set_is_verified(
-      Prefs(*this, system_state->active_boot_slot()).Exists(kDlcPrefVerified));
+
+  if (!base::ReadFileToString(SystemState::Get()->verification_file(),
+                              &verification_value_)) {
+    LOG(WARNING) << "Failed to read DLC verification value file.";
+  }
+
+  // Verify that the verification is actually valid.
+  if (Prefs(*this, system_state->active_boot_slot()).Exists(kDlcPrefVerified)) {
+    std::string value;
+    state_.set_is_verified(Prefs(*this, system_state->active_boot_slot())
+                               .GetKey(kDlcPrefVerified, &value) &&
+                           value == verification_value_);
+  }
+
   return true;
 }
 
@@ -234,7 +247,7 @@ bool DlcBase::MakeReadyForUpdate() const {
 bool DlcBase::MarkVerified() {
   state_.set_is_verified(true);
   return Prefs(*this, SystemState::Get()->active_boot_slot())
-      .Create(kDlcPrefVerified);
+      .SetKey(kDlcPrefVerified, verification_value_);
 }
 
 bool DlcBase::MarkUnverified() {
