@@ -21,39 +21,41 @@ class TPM_MANAGER_EXPORT TpmNvramInterface {
   virtual ~TpmNvramInterface() = default;
 
   // Processes a DefineSpaceRequest and responds with a DefineSpaceReply.
-  using DefineSpaceCallback = base::Callback<void(const DefineSpaceReply&)>;
+  using DefineSpaceCallback = base::OnceCallback<void(const DefineSpaceReply&)>;
   virtual void DefineSpace(const DefineSpaceRequest& request,
-                           const DefineSpaceCallback& callback) = 0;
+                           DefineSpaceCallback callback) = 0;
 
   // Processes a DestroySpaceRequest and responds with a DestroySpaceReply.
-  using DestroySpaceCallback = base::Callback<void(const DestroySpaceReply&)>;
+  using DestroySpaceCallback =
+      base::OnceCallback<void(const DestroySpaceReply&)>;
   virtual void DestroySpace(const DestroySpaceRequest& request,
-                            const DestroySpaceCallback& callback) = 0;
+                            DestroySpaceCallback callback) = 0;
 
   // Processes a WriteSpaceRequest and responds with a WriteSpaceReply.
-  using WriteSpaceCallback = base::Callback<void(const WriteSpaceReply&)>;
+  using WriteSpaceCallback = base::OnceCallback<void(const WriteSpaceReply&)>;
   virtual void WriteSpace(const WriteSpaceRequest& request,
-                          const WriteSpaceCallback& callback) = 0;
+                          WriteSpaceCallback callback) = 0;
 
   // Processes a ReadSpaceRequest and responds with a ReadSpaceReply.
-  using ReadSpaceCallback = base::Callback<void(const ReadSpaceReply&)>;
+  using ReadSpaceCallback = base::OnceCallback<void(const ReadSpaceReply&)>;
   virtual void ReadSpace(const ReadSpaceRequest& request,
-                         const ReadSpaceCallback& callback) = 0;
+                         ReadSpaceCallback callback) = 0;
 
   // Processes a LockSpaceRequest and responds with a LockSpaceReply.
-  using LockSpaceCallback = base::Callback<void(const LockSpaceReply&)>;
+  using LockSpaceCallback = base::OnceCallback<void(const LockSpaceReply&)>;
   virtual void LockSpace(const LockSpaceRequest& request,
-                         const LockSpaceCallback& callback) = 0;
+                         LockSpaceCallback callback) = 0;
 
   // Processes a ListSpacesRequest and responds with a ListSpacesReply.
-  using ListSpacesCallback = base::Callback<void(const ListSpacesReply&)>;
+  using ListSpacesCallback = base::OnceCallback<void(const ListSpacesReply&)>;
   virtual void ListSpaces(const ListSpacesRequest& request,
-                          const ListSpacesCallback& callback) = 0;
+                          ListSpacesCallback callback) = 0;
 
   // Processes a GetSpaceInfoRequest and responds with a GetSpaceInfoReply.
-  using GetSpaceInfoCallback = base::Callback<void(const GetSpaceInfoReply&)>;
+  using GetSpaceInfoCallback =
+      base::OnceCallback<void(const GetSpaceInfoReply&)>;
   virtual void GetSpaceInfo(const GetSpaceInfoRequest& request,
-                            const GetSpaceInfoCallback& callback) = 0;
+                            GetSpaceInfoCallback callback) = 0;
 };
 
 }  // namespace tpm_manager

@@ -145,8 +145,8 @@ bool TpmManagerService::Initialize() {
   update_tpm_status_pending_ = true;
 
   PostTaskToWorkerThreadWithoutRequest<GetTpmStatusReply>(
-      base::Bind(&TpmManagerService::UpdateTpmStatusCallback,
-                 base::Unretained(this)),
+      base::BindOnce(&TpmManagerService::UpdateTpmStatusCallback,
+                     base::Unretained(this)),
       &TpmManagerService::InitializeTask);
 
   ReportVersionFingerprint();
@@ -155,7 +155,7 @@ bool TpmManagerService::Initialize() {
 }
 
 void TpmManagerService::ReportVersionFingerprint() {
-  auto callback = base::Bind(
+  auto callback = base::BindOnce(
       [](tpm_manager::TpmManagerMetrics* tpm_manager_metrics,
          const tpm_manager::GetVersionInfoReply& reply) {
         if (reply.status() == STATUS_SUCCESS) {
@@ -171,7 +171,7 @@ void TpmManagerService::ReportVersionFingerprint() {
         }
       },
       base::Unretained(tpm_manager_metrics_));
-  GetVersionInfo(tpm_manager::GetVersionInfoRequest(), callback);
+  GetVersionInfo(tpm_manager::GetVersionInfoRequest(), std::move(callback));
 }
 
 void TpmManagerService::InitializeTask(
@@ -242,8 +242,9 @@ void TpmManagerService::InitializeTask(
   }
   worker_thread_->task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
-                 base::Unretained(this)));
+      base::BindOnce(
+          &TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
+          base::Unretained(this)));
 
   reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
   if (ownership_status == TpmStatus::kTpmOwned) {
@@ -327,8 +328,8 @@ void TpmManagerService::MarkTpmStatusCacheDirty() {
   if (base::PlatformThread::CurrentId() == worker_thread_->GetThreadId()) {
     // This should run on origin thread
     origin_task_runner_->PostTask(
-        FROM_HERE, base::Bind(&TpmManagerService::MarkTpmStatusCacheDirty,
-                              base::Unretained(this)));
+        FROM_HERE, base::BindOnce(&TpmManagerService::MarkTpmStatusCacheDirty,
+                                  base::Unretained(this)));
     return;
   }
 
@@ -338,11 +339,11 @@ void TpmManagerService::MarkTpmStatusCacheDirty() {
 }
 
 void TpmManagerService::GetTpmStatus(const GetTpmStatusRequest& request,
-                                     const GetTpmStatusCallback& callback) {
+                                     GetTpmStatusCallback callback) {
   if (update_tpm_status_cache_dirty_ || request.ignore_cache()) {
     get_tpm_status_waiting_callbacks_.emplace_back(std::move(callback));
   } else {
-    callback.Run(get_tpm_status_cache_);
+    std::move(callback).Run(get_tpm_status_cache_);
     return;
   }
   if (update_tpm_status_pending_) {
@@ -351,27 +352,26 @@ void TpmManagerService::GetTpmStatus(const GetTpmStatusRequest& request,
   update_tpm_status_pending_ = true;
   PostTaskToWorkerThread<GetTpmStatusReply>(
       request,
-      base::Bind(&TpmManagerService::UpdateTpmStatusCallback,
-                 base::Unretained(this)),
+      base::BindOnce(&TpmManagerService::UpdateTpmStatusCallback,
+                     base::Unretained(this)),
       &TpmManagerService::GetTpmStatusTask);
 }
 
 void TpmManagerService::GetTpmNonsensitiveStatus(
     const GetTpmNonsensitiveStatusRequest& request,
-    const GetTpmNonsensitiveStatusCallback& callback) {
+    GetTpmNonsensitiveStatusCallback callback) {
   // This function has a different way to proceed the request from other
   // request; the callback is wrapped to `GetTpmStatusCallback` followed by a
   // handle of `GetTpmStatus()`. Before sending the response,
   // `ToGetTpmNonSensitiveStatusReply()` absracts the sensitive secret in
   // `GetTpmStatusReply` away.
-  GetTpmStatusCallback wrapped_callback = base::Bind(
-      [](const GetTpmNonsensitiveStatusCallback& cb,
-         const GetTpmStatusReply& reply) {
-        cb.Run(ToGetTpmNonSensitiveStatusReply(reply));
+  GetTpmStatusCallback wrapped_callback = base::BindOnce(
+      [](GetTpmNonsensitiveStatusCallback cb, const GetTpmStatusReply& reply) {
+        std::move(cb).Run(ToGetTpmNonSensitiveStatusReply(reply));
       },
-      callback);
+      std::move(callback));
 
-  GetTpmStatus(ToGetTpmStatusRequest(request), wrapped_callback);
+  GetTpmStatus(ToGetTpmStatusRequest(request), std::move(wrapped_callback));
 }
 
 void TpmManagerService::UpdateTpmStatusCallback(
@@ -382,8 +382,8 @@ void TpmManagerService::UpdateTpmStatusCallback(
   get_tpm_status_cache_ = reply;
   std::vector<GetTpmStatusCallback> callbacks;
   callbacks.swap(get_tpm_status_waiting_callbacks_);
-  for (const auto& callback : callbacks) {
-    callback.Run(reply);
+  for (auto& callback : callbacks) {
+    std::move(callback).Run(reply);
   }
 }
 
@@ -417,17 +417,17 @@ void TpmManagerService::GetTpmStatusTask(
 }
 
 void TpmManagerService::GetVersionInfo(const GetVersionInfoRequest& request,
-                                       const GetVersionInfoCallback& callback) {
+                                       GetVersionInfoCallback callback) {
   {
     base::AutoLock lock(version_info_cache_lock_);
     if (version_info_cache_) {
-      callback.Run(*version_info_cache_);
+      std::move(callback).Run(*version_info_cache_);
       return;
     }
   }
 
   PostTaskToWorkerThread<GetVersionInfoReply>(
-      request, callback, &TpmManagerService::GetVersionInfoTask);
+      request, std::move(callback), &TpmManagerService::GetVersionInfoTask);
 }
 
 void TpmManagerService::GetVersionInfoTask(
@@ -480,9 +480,10 @@ void TpmManagerService::GetVersionInfoTask(
 
 void TpmManagerService::GetDictionaryAttackInfo(
     const GetDictionaryAttackInfoRequest& request,
-    const GetDictionaryAttackInfoCallback& callback) {
+    GetDictionaryAttackInfoCallback callback) {
   PostTaskToWorkerThread<GetDictionaryAttackInfoReply>(
-      request, callback, &TpmManagerService::GetDictionaryAttackInfoTask);
+      request, std::move(callback),
+      &TpmManagerService::GetDictionaryAttackInfoTask);
 }
 
 void TpmManagerService::GetDictionaryAttackInfoTask(
@@ -517,18 +518,19 @@ void TpmManagerService::GetDictionaryAttackInfoTask(
 
 void TpmManagerService::ResetDictionaryAttackLock(
     const ResetDictionaryAttackLockRequest& request,
-    const ResetDictionaryAttackLockCallback& callback) {
+    ResetDictionaryAttackLockCallback callback) {
   if (request.is_async()) {
     ResetDictionaryAttackLockReply reply;
     reply.set_status(STATUS_SUCCESS);
-    callback.Run(reply);
+    std::move(callback).Run(reply);
     PostTaskToWorkerThread<ResetDictionaryAttackLockReply>(
         request, base::DoNothing(),
         &TpmManagerService::ResetDictionaryAttackLockTask);
     return;
   }
   PostTaskToWorkerThread<ResetDictionaryAttackLockReply>(
-      request, callback, &TpmManagerService::ResetDictionaryAttackLockTask);
+      request, std::move(callback),
+      &TpmManagerService::ResetDictionaryAttackLockTask);
 }
 
 void TpmManagerService::ResetDictionaryAttackLockTask(
@@ -552,17 +554,17 @@ void TpmManagerService::ResetDictionaryAttackLockTask(
 }
 
 void TpmManagerService::TakeOwnership(const TakeOwnershipRequest& request,
-                                      const TakeOwnershipCallback& callback) {
+                                      TakeOwnershipCallback callback) {
   if (request.is_async()) {
     TakeOwnershipReply reply;
     reply.set_status(STATUS_SUCCESS);
-    callback.Run(reply);
+    std::move(callback).Run(reply);
     PostTaskToWorkerThread<TakeOwnershipReply>(
         request, base::DoNothing(), &TpmManagerService::TakeOwnershipTask);
     return;
   }
   PostTaskToWorkerThread<TakeOwnershipReply>(
-      request, callback, &TpmManagerService::TakeOwnershipTask);
+      request, std::move(callback), &TpmManagerService::TakeOwnershipTask);
 }
 
 void TpmManagerService::TakeOwnershipTask(
@@ -600,9 +602,10 @@ void TpmManagerService::TakeOwnershipTask(
 
 void TpmManagerService::RemoveOwnerDependency(
     const RemoveOwnerDependencyRequest& request,
-    const RemoveOwnerDependencyCallback& callback) {
+    RemoveOwnerDependencyCallback callback) {
   PostTaskToWorkerThread<RemoveOwnerDependencyReply>(
-      request, callback, &TpmManagerService::RemoveOwnerDependencyTask);
+      request, std::move(callback),
+      &TpmManagerService::RemoveOwnerDependencyTask);
 }
 
 void TpmManagerService::RemoveOwnerDependencyTask(
@@ -641,9 +644,10 @@ void TpmManagerService::RemoveOwnerDependencyFromLocalData(
 
 void TpmManagerService::ClearStoredOwnerPassword(
     const ClearStoredOwnerPasswordRequest& request,
-    const ClearStoredOwnerPasswordCallback& callback) {
+    ClearStoredOwnerPasswordCallback callback) {
   PostTaskToWorkerThread<ClearStoredOwnerPasswordReply>(
-      request, callback, &TpmManagerService::ClearStoredOwnerPasswordTask);
+      request, std::move(callback),
+      &TpmManagerService::ClearStoredOwnerPasswordTask);
 }
 
 void TpmManagerService::ClearStoredOwnerPasswordTask(
@@ -666,8 +670,8 @@ void TpmManagerService::ClearStoredOwnerPasswordTask(
 }
 
 void TpmManagerService::DefineSpace(const DefineSpaceRequest& request,
-                                    const DefineSpaceCallback& callback) {
-  PostTaskToWorkerThread<DefineSpaceReply>(request, callback,
+                                    DefineSpaceCallback callback) {
+  PostTaskToWorkerThread<DefineSpaceReply>(request, std::move(callback),
                                            &TpmManagerService::DefineSpaceTask);
 }
 
@@ -686,9 +690,9 @@ void TpmManagerService::DefineSpaceTask(
 }
 
 void TpmManagerService::DestroySpace(const DestroySpaceRequest& request,
-                                     const DestroySpaceCallback& callback) {
+                                     DestroySpaceCallback callback) {
   PostTaskToWorkerThread<DestroySpaceReply>(
-      request, callback, &TpmManagerService::DestroySpaceTask);
+      request, std::move(callback), &TpmManagerService::DestroySpaceTask);
 }
 
 void TpmManagerService::DestroySpaceTask(
@@ -700,8 +704,8 @@ void TpmManagerService::DestroySpaceTask(
 }
 
 void TpmManagerService::WriteSpace(const WriteSpaceRequest& request,
-                                   const WriteSpaceCallback& callback) {
-  PostTaskToWorkerThread<WriteSpaceReply>(request, callback,
+                                   WriteSpaceCallback callback) {
+  PostTaskToWorkerThread<WriteSpaceReply>(request, std::move(callback),
                                           &TpmManagerService::WriteSpaceTask);
 }
 
@@ -723,8 +727,8 @@ void TpmManagerService::WriteSpaceTask(
 }
 
 void TpmManagerService::ReadSpace(const ReadSpaceRequest& request,
-                                  const ReadSpaceCallback& callback) {
-  PostTaskToWorkerThread<ReadSpaceReply>(request, callback,
+                                  ReadSpaceCallback callback) {
+  PostTaskToWorkerThread<ReadSpaceReply>(request, std::move(callback),
                                          &TpmManagerService::ReadSpaceTask);
 }
 
@@ -745,8 +749,8 @@ void TpmManagerService::ReadSpaceTask(
 }
 
 void TpmManagerService::LockSpace(const LockSpaceRequest& request,
-                                  const LockSpaceCallback& callback) {
-  PostTaskToWorkerThread<LockSpaceReply>(request, callback,
+                                  LockSpaceCallback callback) {
+  PostTaskToWorkerThread<LockSpaceReply>(request, std::move(callback),
                                          &TpmManagerService::LockSpaceTask);
 }
 
@@ -768,8 +772,8 @@ void TpmManagerService::LockSpaceTask(
 }
 
 void TpmManagerService::ListSpaces(const ListSpacesRequest& request,
-                                   const ListSpacesCallback& callback) {
-  PostTaskToWorkerThread<ListSpacesReply>(request, callback,
+                                   ListSpacesCallback callback) {
+  PostTaskToWorkerThread<ListSpacesReply>(request, std::move(callback),
                                           &TpmManagerService::ListSpacesTask);
 }
 
@@ -787,9 +791,9 @@ void TpmManagerService::ListSpacesTask(
 }
 
 void TpmManagerService::GetSpaceInfo(const GetSpaceInfoRequest& request,
-                                     const GetSpaceInfoCallback& callback) {
+                                     GetSpaceInfoCallback callback) {
   PostTaskToWorkerThread<GetSpaceInfoReply>(
-      request, callback, &TpmManagerService::GetSpaceInfoTask);
+      request, std::move(callback), &TpmManagerService::GetSpaceInfoTask);
 }
 
 void TpmManagerService::GetSpaceInfoTask(
@@ -864,8 +868,9 @@ void TpmManagerService::PeriodicResetDictionaryAttackCounterTask() {
   }
   worker_thread_->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
-                 base::Unretained(this)),
+      base::BindOnce(
+          &TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
+          base::Unretained(this)),
       time_remaining);
 }
 
@@ -903,9 +908,9 @@ void TpmManagerService::ShutdownTask() {
 
 template <typename ReplyProtobufType>
 void TpmManagerService::TaskRelayCallback(
-    const base::Callback<void(const ReplyProtobufType&)> callback,
+    base::OnceCallback<void(const ReplyProtobufType&)> callback,
     const std::shared_ptr<ReplyProtobufType>& reply) {
-  callback.Run(*reply);
+  std::move(callback).Run(*reply);
 }
 
 template <typename ReplyProtobufType,
@@ -914,31 +919,31 @@ template <typename ReplyProtobufType,
           typename TaskType>
 void TpmManagerService::PostTaskToWorkerThread(
     const RequestProtobufType& request,
-    const ReplyCallbackType& callback,
+    ReplyCallbackType callback,
     TaskType task) {
   auto result = std::make_shared<ReplyProtobufType>();
-  base::Closure background_task =
-      base::Bind(task, base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
-                 weak_factory_.GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, background_task,
-                                                  reply);
+  base::OnceClosure background_task =
+      base::BindOnce(task, base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
+                     weak_factory_.GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(
+      FROM_HERE, std::move(background_task), std::move(reply));
 }
 
 template <typename ReplyProtobufType,
           typename ReplyCallbackType,
           typename TaskType>
 void TpmManagerService::PostTaskToWorkerThreadWithoutRequest(
-    const ReplyCallbackType& callback, TaskType task) {
+    ReplyCallbackType callback, TaskType task) {
   auto result = std::make_shared<ReplyProtobufType>();
-  base::Closure background_task =
-      base::Bind(task, base::Unretained(this), result);
-  base::Closure reply =
-      base::Bind(&TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
-                 weak_factory_.GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, background_task,
-                                                  reply);
+  base::OnceClosure background_task =
+      base::BindOnce(task, base::Unretained(this), result);
+  base::OnceClosure reply =
+      base::BindOnce(&TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
+                     weak_factory_.GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(
+      FROM_HERE, std::move(background_task), std::move(reply));
 }
 
 }  // namespace tpm_manager

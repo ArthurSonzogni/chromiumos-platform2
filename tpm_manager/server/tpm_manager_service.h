@@ -100,42 +100,41 @@ class TpmManagerService : public TpmNvramInterface,
 
   // TpmOwnershipInterface methods.
   void GetTpmStatus(const GetTpmStatusRequest& request,
-                    const GetTpmStatusCallback& callback) override;
+                    GetTpmStatusCallback callback) override;
   void GetTpmNonsensitiveStatus(
       const GetTpmNonsensitiveStatusRequest& request,
-      const GetTpmNonsensitiveStatusCallback& callback) override;
+      GetTpmNonsensitiveStatusCallback callback) override;
   void GetVersionInfo(const GetVersionInfoRequest& request,
-                      const GetVersionInfoCallback& callback) override;
+                      GetVersionInfoCallback callback) override;
   void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
-      const GetDictionaryAttackInfoCallback& callback) override;
+      GetDictionaryAttackInfoCallback callback) override;
   void ResetDictionaryAttackLock(
       const ResetDictionaryAttackLockRequest& request,
-      const ResetDictionaryAttackLockCallback& callback) override;
+      ResetDictionaryAttackLockCallback callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
-                     const TakeOwnershipCallback& callback) override;
-  void RemoveOwnerDependency(
-      const RemoveOwnerDependencyRequest& request,
-      const RemoveOwnerDependencyCallback& callback) override;
+                     TakeOwnershipCallback callback) override;
+  void RemoveOwnerDependency(const RemoveOwnerDependencyRequest& request,
+                             RemoveOwnerDependencyCallback callback) override;
   void ClearStoredOwnerPassword(
       const ClearStoredOwnerPasswordRequest& request,
-      const ClearStoredOwnerPasswordCallback& callback) override;
+      ClearStoredOwnerPasswordCallback callback) override;
 
   // TpmNvramInterface methods.
   void DefineSpace(const DefineSpaceRequest& request,
-                   const DefineSpaceCallback& callback) override;
+                   DefineSpaceCallback callback) override;
   void DestroySpace(const DestroySpaceRequest& request,
-                    const DestroySpaceCallback& callback) override;
+                    DestroySpaceCallback callback) override;
   void WriteSpace(const WriteSpaceRequest& request,
-                  const WriteSpaceCallback& callback) override;
+                  WriteSpaceCallback callback) override;
   void ReadSpace(const ReadSpaceRequest& request,
-                 const ReadSpaceCallback& callback) override;
+                 ReadSpaceCallback callback) override;
   void LockSpace(const LockSpaceRequest& request,
-                 const LockSpaceCallback& callback) override;
+                 LockSpaceCallback callback) override;
   void ListSpaces(const ListSpacesRequest& request,
-                  const ListSpacesCallback& callback) override;
+                  ListSpacesCallback callback) override;
   void GetSpaceInfo(const GetSpaceInfoRequest& request,
-                    const GetSpaceInfoCallback& callback) override;
+                    GetSpaceInfoCallback callback) override;
 
   inline void SetOwnershipTakenCallback(OwnershipTakenCallBack callback) {
     ownership_taken_callback_ = callback;
@@ -153,7 +152,7 @@ class TpmManagerService : public TpmNvramInterface,
   // to TaskRunner::PostTaskAndReply.
   template <typename ReplyProtobufType>
   void TaskRelayCallback(
-      const base::Callback<void(const ReplyProtobufType&)> callback,
+      const base::OnceCallback<void(const ReplyProtobufType&)> callback,
       const std::shared_ptr<ReplyProtobufType>& reply);
 
   // This templated method posts the provided |TaskType| to the background
@@ -164,7 +163,7 @@ class TpmManagerService : public TpmNvramInterface,
             typename ReplyCallbackType,
             typename TaskType>
   void PostTaskToWorkerThread(const RequestProtobufType& request,
-                              const ReplyCallbackType& callback,
+                              ReplyCallbackType callback,
                               TaskType task);
 
   // This templated method posts the provided |TaskType| to the background
@@ -173,7 +172,7 @@ class TpmManagerService : public TpmNvramInterface,
   template <typename ReplyProtobufType,
             typename ReplyCallbackType,
             typename TaskType>
-  void PostTaskToWorkerThreadWithoutRequest(const ReplyCallbackType& callback,
+  void PostTaskToWorkerThreadWithoutRequest(ReplyCallbackType callback,
                                             TaskType task);
 
   // Synchronously initializes the TPM according to the current configuration.

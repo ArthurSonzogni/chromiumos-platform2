@@ -79,7 +79,7 @@ class DBusService : public brillo::DBusServiceDaemon {
             typename TpmInterface>
   using HandlerFunction = void (TpmInterface::*)(
       const RequestProtobufType&,
-      const base::Callback<void(const ReplyProtobufType&)>&);
+      base::OnceCallback<void(const ReplyProtobufType&)>);
 
   // Templates to handle D-Bus calls.
   template <typename RequestProtobufType,

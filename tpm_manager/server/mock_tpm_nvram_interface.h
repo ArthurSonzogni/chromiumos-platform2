@@ -18,31 +18,31 @@ class MockTpmNvramInterface : public TpmNvramInterface {
 
   MOCK_METHOD(void,
               DefineSpace,
-              (const DefineSpaceRequest&, const DefineSpaceCallback&),
+              (const DefineSpaceRequest&, DefineSpaceCallback),
               (override));
   MOCK_METHOD(void,
               DestroySpace,
-              (const DestroySpaceRequest&, const DestroySpaceCallback&),
+              (const DestroySpaceRequest&, DestroySpaceCallback),
               (override));
   MOCK_METHOD(void,
               WriteSpace,
-              (const WriteSpaceRequest&, const WriteSpaceCallback&),
+              (const WriteSpaceRequest&, WriteSpaceCallback),
               (override));
   MOCK_METHOD(void,
               ReadSpace,
-              (const ReadSpaceRequest&, const ReadSpaceCallback&),
+              (const ReadSpaceRequest&, ReadSpaceCallback),
               (override));
   MOCK_METHOD(void,
               LockSpace,
-              (const LockSpaceRequest&, const LockSpaceCallback&),
+              (const LockSpaceRequest&, LockSpaceCallback),
               (override));
   MOCK_METHOD(void,
               ListSpaces,
-              (const ListSpacesRequest&, const ListSpacesCallback&),
+              (const ListSpacesRequest&, ListSpacesCallback),
               (override));
   MOCK_METHOD(void,
               GetSpaceInfo,
-              (const GetSpaceInfoRequest&, const GetSpaceInfoCallback&),
+              (const GetSpaceInfoRequest&, GetSpaceInfoCallback),
               (override));
 };
 

@@ -84,7 +84,7 @@ class TpmManagerServiceTestBase : public testing::Test {
     auto callback = [](TpmManagerServiceTestBase* self,
                        const GetTpmStatusReply& reply) { self->Quit(); };
     GetTpmStatusRequest request;
-    service_->GetTpmStatus(request, base::Bind(callback, this));
+    service_->GetTpmStatus(request, base::BindOnce(callback, this));
     Run();
   }
 
@@ -189,7 +189,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
     self->Quit();
   };
   TakeOwnershipRequest request;
-  service_->TakeOwnership(request, base::Bind(callback, this));
+  service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -272,7 +272,7 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusOwnershipStatusFailure) {
     self->Quit();
   };
   GetTpmStatusRequest request;
-  service_->GetTpmStatus(request, base::Bind(callback, this));
+  service_->GetTpmStatus(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -351,7 +351,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
   first_periodic_event.Wait();
   TakeOwnershipRequest request;
   // The DA reset is triggered for the second time here once the TPM is owned.
-  service_->TakeOwnership(request, base::Bind(callback, this));
+  service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
   second_periodic_event.Wait();
   base::TimeTicks finish_time = base::TimeTicks::Now();
@@ -395,9 +395,10 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusSuccess) {
     EXPECT_EQ(kOwnerPassword, reply.local_data().owner_password());
     self->Quit();
   };
-  service_->GetTpmNonsensitiveStatus(GetTpmNonsensitiveStatusRequest(),
-                                     base::Bind(callback_nonsensitive, this));
-  service_->GetTpmStatus(GetTpmStatusRequest(), base::Bind(callback, this));
+  service_->GetTpmNonsensitiveStatus(
+      GetTpmNonsensitiveStatusRequest(),
+      base::BindOnce(callback_nonsensitive, this));
+  service_->GetTpmStatus(GetTpmStatusRequest(), base::BindOnce(callback, this));
   Run();
 }
 
@@ -416,7 +417,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
     self->Quit();
   };
   service_->GetTpmNonsensitiveStatus(GetTpmNonsensitiveStatusRequest(),
-                                     base::Bind(callback, this));
+                                     base::BindOnce(callback, this));
   Run();
 }
 
@@ -436,7 +437,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
   };
   GetTpmStatusRequest request;
   service_->GetTpmNonsensitiveStatus(GetTpmNonsensitiveStatusRequest(),
-                                     base::Bind(callback, this));
+                                     base::BindOnce(callback, this));
   Run();
 }
 
@@ -454,7 +455,7 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusLocalDataFailure) {
     self->Quit();
   };
   GetTpmStatusRequest request;
-  service_->GetTpmStatus(request, base::Bind(callback, this));
+  service_->GetTpmStatus(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -472,7 +473,7 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusNoTpm) {
     self->Quit();
   };
   GetTpmStatusRequest request;
-  service_->GetTpmStatus(request, base::Bind(callback, this));
+  service_->GetTpmStatus(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -520,9 +521,9 @@ TEST_F(TpmManagerServiceTest_Preinit, GetVersionInfoSuccess) {
   // Only one of the following calls will get version info from the TPM. The
   // other call will return from cache directly.
   service_->GetVersionInfo(
-      request, base::Bind(callback, this, &count, &call_count_lock));
+      request, base::BindOnce(callback, this, &count, &call_count_lock));
   service_->GetVersionInfo(
-      request, base::Bind(callback, this, &count, &call_count_lock));
+      request, base::BindOnce(callback, this, &count, &call_count_lock));
   Run();
 }
 
@@ -540,7 +541,7 @@ TEST_F(TpmManagerServiceTest_Preinit, GetVersionInfoError) {
   };
 
   GetVersionInfoRequest request;
-  service_->GetVersionInfo(request, base::Bind(callback, this));
+  service_->GetVersionInfo(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -566,7 +567,7 @@ TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfo) {
   };
 
   GetDictionaryAttackInfoRequest request;
-  service_->GetDictionaryAttackInfo(request, base::Bind(callback, this));
+  service_->GetDictionaryAttackInfo(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -581,7 +582,7 @@ TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfoError) {
   };
 
   GetDictionaryAttackInfoRequest request;
-  service_->GetDictionaryAttackInfo(request, base::Bind(callback, this));
+  service_->GetDictionaryAttackInfo(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -604,7 +605,7 @@ TEST_F(TpmManagerServiceTest, ResetDictionaryAttackLockReset) {
   };
 
   service_->ResetDictionaryAttackLock(ResetDictionaryAttackLockRequest(),
-                                      base::Bind(callback, this));
+                                      base::BindOnce(callback, this));
   Run();
 }
 
@@ -626,7 +627,7 @@ TEST_F(TpmManagerServiceTest, ResetDictionaryAttackLockSuccessNoNeed) {
   };
 
   service_->ResetDictionaryAttackLock(ResetDictionaryAttackLockRequest(),
-                                      base::Bind(callback, this));
+                                      base::BindOnce(callback, this));
   Run();
 }
 
@@ -649,7 +650,7 @@ TEST_F(TpmManagerServiceTest, ResetDictionaryAttackLockFailure) {
   };
 
   service_->ResetDictionaryAttackLock(ResetDictionaryAttackLockRequest(),
-                                      base::Bind(callback, this));
+                                      base::BindOnce(callback, this));
   Run();
 }
 
@@ -673,7 +674,7 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipSuccess) {
     self->Quit();
   };
   TakeOwnershipRequest request;
-  service_->TakeOwnership(request, base::Bind(callback, this));
+  service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -691,7 +692,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFailure) {
     self->Quit();
   };
   TakeOwnershipRequest request;
-  service_->TakeOwnership(request, base::Bind(callback, this));
+  service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -709,7 +710,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipNoTpm) {
     self->Quit();
   };
   TakeOwnershipRequest request;
-  service_->TakeOwnership(request, base::Bind(callback, this));
+  service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -731,7 +732,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFollowedByDisableDA) {
     self->Quit();
   };
   TakeOwnershipRequest request;
-  service_->TakeOwnership(request, base::Bind(callback, this));
+  service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -747,7 +748,7 @@ TEST_F(TpmManagerServiceTest_Preinit, RemoveOwnerDependencyReadFailure) {
   };
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(kOwnerDependency);
-  service_->RemoveOwnerDependency(request, base::Bind(callback, this));
+  service_->RemoveOwnerDependency(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -763,7 +764,7 @@ TEST_F(TpmManagerServiceTest_Preinit, RemoveOwnerDependencyWriteFailure) {
   };
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(kOwnerDependency);
-  service_->RemoveOwnerDependency(request, base::Bind(callback, this));
+  service_->RemoveOwnerDependency(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -792,7 +793,7 @@ TEST_F(TpmManagerServiceTest_Preinit, RemoveOwnerDependencyNotCleared) {
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(kOwnerDependency);
   service_->RemoveOwnerDependency(request,
-                                  base::Bind(callback, this, &local_data));
+                                  base::BindOnce(callback, this, &local_data));
   Run();
 }
 
@@ -818,7 +819,7 @@ TEST_F(TpmManagerServiceTest_Preinit, RemoveOwnerDependencyCleared) {
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(kOwnerDependency);
   service_->RemoveOwnerDependency(request,
-                                  base::Bind(callback, this, &local_data));
+                                  base::BindOnce(callback, this, &local_data));
   Run();
 }
 
@@ -846,7 +847,7 @@ TEST_F(TpmManagerServiceTest_Preinit, RemoveOwnerDependencyNotPresent) {
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(kOtherDependency);
   service_->RemoveOwnerDependency(request,
-                                  base::Bind(callback, this, &local_data));
+                                  base::BindOnce(callback, this, &local_data));
   Run();
 }
 
@@ -861,7 +862,7 @@ TEST_F(TpmManagerServiceTest_Preinit, ClearStoredOwnerPasswordReadFailure) {
     self->Quit();
   };
   ClearStoredOwnerPasswordRequest request;
-  service_->ClearStoredOwnerPassword(request, base::Bind(callback, this));
+  service_->ClearStoredOwnerPassword(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -881,7 +882,7 @@ TEST_F(TpmManagerServiceTest_Preinit, ClearStoredOwnerPasswordWriteFailure) {
     self->Quit();
   };
   ClearStoredOwnerPasswordRequest request;
-  service_->ClearStoredOwnerPassword(request, base::Bind(callback, this));
+  service_->ClearStoredOwnerPassword(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -906,8 +907,8 @@ TEST_F(TpmManagerServiceTest_Preinit,
     self->Quit();
   };
   ClearStoredOwnerPasswordRequest request;
-  service_->ClearStoredOwnerPassword(request,
-                                     base::Bind(callback, this, &local_data));
+  service_->ClearStoredOwnerPassword(
+      request, base::BindOnce(callback, this, &local_data));
   Run();
 }
 
@@ -933,8 +934,8 @@ TEST_F(TpmManagerServiceTest_Preinit, ClearStoredOwnerPasswordNoDependencies) {
     self->Quit();
   };
   ClearStoredOwnerPasswordRequest request;
-  service_->ClearStoredOwnerPassword(request,
-                                     base::Bind(callback, this, &local_data));
+  service_->ClearStoredOwnerPassword(
+      request, base::BindOnce(callback, this, &local_data));
   Run();
 }
 
@@ -958,7 +959,7 @@ TEST_F(TpmManagerServiceTest, DefineSpaceFailure) {
   request.add_attributes(NVRAM_BOOT_WRITE_LOCK);
   request.set_policy(policy);
   request.set_authorization_value(auth_value);
-  service_->DefineSpace(request, base::Bind(callback, this));
+  service_->DefineSpace(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -980,12 +981,14 @@ TEST_F(TpmManagerServiceTest, DefineSpaceSuccess) {
   DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
   define_request.set_size(nvram_size);
-  service_->DefineSpace(define_request, base::Bind(define_callback));
+  service_->DefineSpace(define_request, base::BindOnce(define_callback));
   ListSpacesRequest list_request;
-  service_->ListSpaces(list_request, base::Bind(list_callback, nvram_index));
+  service_->ListSpaces(list_request,
+                       base::BindOnce(list_callback, nvram_index));
   GetSpaceInfoRequest info_request;
   info_request.set_index(nvram_index);
-  service_->GetSpaceInfo(info_request, base::Bind(info_callback, nvram_size));
+  service_->GetSpaceInfo(info_request,
+                         base::BindOnce(info_callback, nvram_size));
   RunServiceWorkerAndQuit();
 }
 
@@ -996,7 +999,7 @@ TEST_F(TpmManagerServiceTest, DestroyUnitializedNvram) {
     self->Quit();
   };
   DestroySpaceRequest request;
-  service_->DestroySpace(request, base::Bind(callback, this));
+  service_->DestroySpace(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -1012,10 +1015,10 @@ TEST_F(TpmManagerServiceTest, DestroySpaceSuccess) {
   DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
   define_request.set_size(nvram_size);
-  service_->DefineSpace(define_request, base::Bind(define_callback));
+  service_->DefineSpace(define_request, base::BindOnce(define_callback));
   DestroySpaceRequest destroy_request;
   destroy_request.set_index(nvram_index);
-  service_->DestroySpace(destroy_request, base::Bind(destroy_callback));
+  service_->DestroySpace(destroy_request, base::BindOnce(destroy_callback));
   RunServiceWorkerAndQuit();
 }
 
@@ -1034,11 +1037,13 @@ TEST_F(TpmManagerServiceTest, DoubleDestroySpace) {
   DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
   define_request.set_size(nvram_size);
-  service_->DefineSpace(define_request, base::Bind(define_callback));
+  service_->DefineSpace(define_request, base::BindOnce(define_callback));
   DestroySpaceRequest destroy_request;
   destroy_request.set_index(nvram_index);
-  service_->DestroySpace(destroy_request, base::Bind(destroy_callback_success));
-  service_->DestroySpace(destroy_request, base::Bind(destroy_callback_failure));
+  service_->DestroySpace(destroy_request,
+                         base::BindOnce(destroy_callback_success));
+  service_->DestroySpace(destroy_request,
+                         base::BindOnce(destroy_callback_failure));
   RunServiceWorkerAndQuit();
 }
 
@@ -1054,11 +1059,11 @@ TEST_F(TpmManagerServiceTest, WriteSpaceIncorrectSize) {
   DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
   define_request.set_size(nvram_data.size() - 1);
-  service_->DefineSpace(define_request, base::Bind(define_callback));
+  service_->DefineSpace(define_request, base::BindOnce(define_callback));
   WriteSpaceRequest write_request;
   write_request.set_index(nvram_index);
   write_request.set_data(nvram_data);
-  service_->WriteSpace(write_request, base::Bind(write_callback));
+  service_->WriteSpace(write_request, base::BindOnce(write_callback));
   RunServiceWorkerAndQuit();
 }
 
@@ -1080,16 +1085,16 @@ TEST_F(TpmManagerServiceTest, WriteBeforeAfterLock) {
   DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
   define_request.set_size(nvram_data.size());
-  service_->DefineSpace(define_request, base::Bind(define_callback));
+  service_->DefineSpace(define_request, base::BindOnce(define_callback));
   WriteSpaceRequest write_request;
   write_request.set_index(nvram_index);
   write_request.set_data(nvram_data);
-  service_->WriteSpace(write_request, base::Bind(write_callback_success));
+  service_->WriteSpace(write_request, base::BindOnce(write_callback_success));
   LockSpaceRequest lock_request;
   lock_request.set_index(nvram_index);
   lock_request.set_lock_write(true);
-  service_->LockSpace(lock_request, base::Bind(lock_callback));
-  service_->WriteSpace(write_request, base::Bind(write_callback_failure));
+  service_->LockSpace(lock_request, base::BindOnce(lock_callback));
+  service_->WriteSpace(write_request, base::BindOnce(write_callback_failure));
   RunServiceWorkerAndQuit();
 }
 
@@ -1100,7 +1105,7 @@ TEST_F(TpmManagerServiceTest, ReadUninitializedNvram) {
     self->Quit();
   };
   ReadSpaceRequest request;
-  service_->ReadSpace(request, base::Bind(callback, this));
+  service_->ReadSpace(request, base::BindOnce(callback, this));
   Run();
 }
 
@@ -1121,14 +1126,14 @@ TEST_F(TpmManagerServiceTest, ReadWriteSpaceSuccess) {
   DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
   define_request.set_size(nvram_data.size());
-  service_->DefineSpace(define_request, base::Bind(define_callback));
+  service_->DefineSpace(define_request, base::BindOnce(define_callback));
   WriteSpaceRequest write_request;
   write_request.set_index(nvram_index);
   write_request.set_data(nvram_data);
-  service_->WriteSpace(write_request, base::Bind(write_callback));
+  service_->WriteSpace(write_request, base::BindOnce(write_callback));
   ReadSpaceRequest read_request;
   read_request.set_index(nvram_index);
-  service_->ReadSpace(read_request, base::Bind(read_callback, nvram_data));
+  service_->ReadSpace(read_request, base::BindOnce(read_callback, nvram_data));
   RunServiceWorkerAndQuit();
 }
 
@@ -1175,11 +1180,11 @@ TEST_F(TpmManagerServiceTest_Preinit, UpdateTpmStatusAfterTakeOwnership) {
   auto callback_taken = [&](const TakeOwnershipReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     GetTpmStatusRequest request;
-    service_->GetTpmStatus(request, base::Bind(callback_owned, this));
+    service_->GetTpmStatus(request, base::BindOnce(callback_owned, this));
   };
 
   GetTpmStatusRequest get_request;
-  service_->GetTpmStatus(get_request, base::Bind(callback_unowned));
+  service_->GetTpmStatus(get_request, base::BindOnce(callback_unowned));
   TakeOwnershipRequest take_request;
   service_->TakeOwnership(take_request,
                           base::BindLambdaForTesting(callback_taken));
@@ -1218,20 +1223,20 @@ TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
   };
 
   int counter = 3;
-  base::Callback<void(const GetTpmStatusReply&)> callback_fail;
+  base::RepeatingCallback<void(const GetTpmStatusReply&)> callback_fail;
   auto callback_fail_lambda = [&](const GetTpmStatusReply& reply) {
     EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
     GetTpmStatusRequest request;
     counter--;
     if (counter) {
-      service_->GetTpmStatus(request, base::Bind(callback_fail));
+      service_->GetTpmStatus(request, base::BindOnce(callback_fail));
     } else {
-      service_->GetTpmStatus(request, base::Bind(owned_check));
+      service_->GetTpmStatus(request, base::BindOnce(owned_check));
       // Call it multiple times to check the cache is working.
-      service_->GetTpmStatus(request, base::Bind(owned_check));
-      service_->GetTpmStatus(request, base::Bind(owned_check));
-      service_->GetTpmStatus(request, base::Bind(owned_check));
-      service_->GetTpmStatus(request, base::Bind(owned_check));
+      service_->GetTpmStatus(request, base::BindOnce(owned_check));
+      service_->GetTpmStatus(request, base::BindOnce(owned_check));
+      service_->GetTpmStatus(request, base::BindOnce(owned_check));
+      service_->GetTpmStatus(request, base::BindOnce(owned_check));
 
       // Chaining the ignore cache callback.
       auto ignore_cache_callback = [&](const GetTpmStatusReply& reply) {
@@ -1260,7 +1265,7 @@ TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
         .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
 
     GetTpmStatusRequest request;
-    service_->GetTpmStatus(request, base::Bind(callback_fail));
+    service_->GetTpmStatus(request, base::BindOnce(callback_fail));
   };
 
   GetTpmStatusRequest request;

@@ -18,40 +18,40 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
 
   MOCK_METHOD(void,
               GetTpmStatus,
-              (const GetTpmStatusRequest&, const GetTpmStatusCallback&),
+              (const GetTpmStatusRequest&, GetTpmStatusCallback),
               (override));
   MOCK_METHOD(void,
               GetTpmNonsensitiveStatus,
               (const GetTpmNonsensitiveStatusRequest&,
-               const GetTpmNonsensitiveStatusCallback&),
+               GetTpmNonsensitiveStatusCallback),
               (override));
   MOCK_METHOD(void,
               GetVersionInfo,
-              (const GetVersionInfoRequest&, const GetVersionInfoCallback&),
+              (const GetVersionInfoRequest&, GetVersionInfoCallback),
               (override));
   MOCK_METHOD(void,
               GetDictionaryAttackInfo,
               (const GetDictionaryAttackInfoRequest&,
-               const GetDictionaryAttackInfoCallback&),
+               GetDictionaryAttackInfoCallback),
               (override));
   MOCK_METHOD(void,
               ResetDictionaryAttackLock,
               (const ResetDictionaryAttackLockRequest&,
-               const ResetDictionaryAttackLockCallback&),
+               ResetDictionaryAttackLockCallback),
               (override));
   MOCK_METHOD(void,
               TakeOwnership,
-              (const TakeOwnershipRequest&, const TakeOwnershipCallback&),
+              (const TakeOwnershipRequest&, TakeOwnershipCallback),
               (override));
   MOCK_METHOD(void,
               RemoveOwnerDependency,
               (const RemoveOwnerDependencyRequest&,
-               const RemoveOwnerDependencyCallback&),
+               RemoveOwnerDependencyCallback),
               (override));
   MOCK_METHOD(void,
               ClearStoredOwnerPassword,
               (const ClearStoredOwnerPasswordRequest&,
-               const ClearStoredOwnerPasswordCallback&),
+               ClearStoredOwnerPasswordCallback),
               (override));
 };
 

@@ -21,62 +21,64 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
 
   // Gets TPM status, which includes enabled, owned, passwords, etc. Processes
   // |request| and calls |callback| with a reply when the process is done.
-  using GetTpmStatusCallback = base::Callback<void(const GetTpmStatusReply&)>;
+  using GetTpmStatusCallback =
+      base::OnceCallback<void(const GetTpmStatusReply&)>;
   virtual void GetTpmStatus(const GetTpmStatusRequest& request,
-                            const GetTpmStatusCallback& callback) = 0;
+                            GetTpmStatusCallback callback) = 0;
 
   // Gets TPM nonsensitive status, which includes enabled, owned, presence of
   // password, etc. Processes |request| and calls |callback| with a reply when
   // the process is done.
   using GetTpmNonsensitiveStatusCallback =
-      base::Callback<void(const GetTpmNonsensitiveStatusReply&)>;
+      base::OnceCallback<void(const GetTpmNonsensitiveStatusReply&)>;
   virtual void GetTpmNonsensitiveStatus(
       const GetTpmNonsensitiveStatusRequest& request,
-      const GetTpmNonsensitiveStatusCallback& callback) = 0;
+      GetTpmNonsensitiveStatusCallback callback) = 0;
 
   // Gets TPM version info. Processes |request| and calls |callback| with a
   // reply when the process is done.
   using GetVersionInfoCallback =
-      base::Callback<void(const GetVersionInfoReply&)>;
+      base::OnceCallback<void(const GetVersionInfoReply&)>;
   virtual void GetVersionInfo(const GetVersionInfoRequest& request,
-                              const GetVersionInfoCallback& callback) = 0;
+                              GetVersionInfoCallback callback) = 0;
 
   // Gets dictionary attack (DA) info. Processes |request| and calls |callback|
   // with a reply when the process is done.
   using GetDictionaryAttackInfoCallback =
-      base::Callback<void(const GetDictionaryAttackInfoReply&)>;
+      base::OnceCallback<void(const GetDictionaryAttackInfoReply&)>;
   virtual void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
-      const GetDictionaryAttackInfoCallback& callback) = 0;
+      GetDictionaryAttackInfoCallback callback) = 0;
 
   // Resets dictionary attack (DA) lock. Processes |request| and calls
   // |callback| with a reply when the process is done.
   using ResetDictionaryAttackLockCallback =
-      base::Callback<void(const ResetDictionaryAttackLockReply&)>;
+      base::OnceCallback<void(const ResetDictionaryAttackLockReply&)>;
   virtual void ResetDictionaryAttackLock(
       const ResetDictionaryAttackLockRequest& request,
-      const ResetDictionaryAttackLockCallback& callback) = 0;
+      ResetDictionaryAttackLockCallback callback) = 0;
 
   // Processes a TakeOwnershipRequest and responds with a TakeOwnershipReply.
-  using TakeOwnershipCallback = base::Callback<void(const TakeOwnershipReply&)>;
+  using TakeOwnershipCallback =
+      base::OnceCallback<void(const TakeOwnershipReply&)>;
   virtual void TakeOwnership(const TakeOwnershipRequest& request,
-                             const TakeOwnershipCallback& callback) = 0;
+                             TakeOwnershipCallback callback) = 0;
 
   // Processes a RemoveOwnerDependencyRequest and responds with a
   // RemoveOwnerDependencyReply.
   using RemoveOwnerDependencyCallback =
-      base::Callback<void(const RemoveOwnerDependencyReply&)>;
+      base::OnceCallback<void(const RemoveOwnerDependencyReply&)>;
   virtual void RemoveOwnerDependency(
       const RemoveOwnerDependencyRequest& request,
-      const RemoveOwnerDependencyCallback& callback) = 0;
+      RemoveOwnerDependencyCallback callback) = 0;
 
   // Processes a ClearStoredOwnerPasswordRequest and responds with a
   // ClearStoredOwnerPasswordReply.
   using ClearStoredOwnerPasswordCallback =
-      base::Callback<void(const ClearStoredOwnerPasswordReply&)>;
+      base::OnceCallback<void(const ClearStoredOwnerPasswordReply&)>;
   virtual void ClearStoredOwnerPassword(
       const ClearStoredOwnerPasswordRequest& request,
-      const ClearStoredOwnerPasswordCallback& callback) = 0;
+      ClearStoredOwnerPasswordCallback callback) = 0;
 };
 
 }  // namespace tpm_manager

@@ -4,6 +4,8 @@
 
 #include "tpm_manager/server/mock_tpm_nvram_interface.h"
 
+#include <utility>
+
 using testing::_;
 using testing::Invoke;
 using testing::WithArgs;
@@ -11,9 +13,9 @@ using testing::WithArgs;
 namespace {
 
 template <typename ReplyProtoType>
-void RunCallback(const base::Callback<void(const ReplyProtoType&)>& callback) {
+void RunCallback(base::OnceCallback<void(const ReplyProtoType&)> callback) {
   ReplyProtoType empty_proto;
-  callback.Run(empty_proto);
+  std::move(callback).Run(empty_proto);
 }
 
 }  // namespace
