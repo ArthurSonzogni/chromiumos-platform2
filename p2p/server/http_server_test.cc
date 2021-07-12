@@ -33,7 +33,7 @@ using p2p::testutil::TeardownTestDir;
 using std::string;
 using std::vector;
 
-using base::Bind;
+using base::BindRepeating;
 using base::FilePath;
 using base::Unretained;
 
@@ -50,7 +50,7 @@ bool PortNonZero(HttpServer* server) {
 class HttpServerListener {
  public:
   explicit HttpServerListener(HttpServer* server) {
-    server->SetNumConnectionsCallback(base::Bind(
+    server->SetNumConnectionsCallback(base::BindRepeating(
         &HttpServerListener::NumConnectionsCallback, base::Unretained(this)));
   }
   HttpServerListener(const HttpServerListener&) = delete;
@@ -131,7 +131,8 @@ TEST(HttpServer, DISABLED_Basic) {
   server->Start();
 
   // Wait until the HTTP server is running and accepting connections.
-  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs, Bind(&PortNonZero, server));
+  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
+                    BindRepeating(&PortNonZero, server));
   EXPECT_NE(server->Port(), 0);
 
   StrictMock<MockHttpServerListener> listener(server);
@@ -197,10 +198,10 @@ TEST(HttpServer, DISABLED_Basic) {
 
   // Allow clients to start - this ensures that the server reaches
   // the number of connections kMultipleTestNumFiles.
-  RunGMainLoopUntil(
-      3 * kDefaultMainLoopTimeoutMs,
-      Bind(&MockHttpServerListener::NumCallsReached,
-           base::Unretained(&listener), kMultipleTestNumFiles /* num_calls */));
+  RunGMainLoopUntil(3 * kDefaultMainLoopTimeoutMs,
+                    BindRepeating(&MockHttpServerListener::NumCallsReached,
+                                  base::Unretained(&listener),
+                                  kMultipleTestNumFiles /* num_calls */));
 
   // Now, complete the file. This causes each client to finish up.
   EXPECT_COMMAND(0,
@@ -210,9 +211,9 @@ TEST(HttpServer, DISABLED_Basic) {
 
   // Catch again all the disconnection events.
   RunGMainLoopUntil(3 * kDefaultMainLoopTimeoutMs,
-                    Bind(&MockHttpServerListener::NumCallsReached,
-                         base::Unretained(&listener),
-                         2 * kMultipleTestNumFiles /* num_calls */));
+                    BindRepeating(&MockHttpServerListener::NumCallsReached,
+                                  base::Unretained(&listener),
+                                  2 * kMultipleTestNumFiles /* num_calls */));
 
   // Wait for all downloads to finish.
   for (auto& t : threads) {
@@ -241,7 +242,8 @@ TEST(HttpServer, PortNumberTest) {
   server->Start();
 
   // Run for 60s (failure) or until the Port number is not 0.
-  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs, Bind(&PortNonZero, server));
+  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
+                    BindRepeating(&PortNonZero, server));
   EXPECT_NE(server->Port(), 0);
 
   server->Stop();

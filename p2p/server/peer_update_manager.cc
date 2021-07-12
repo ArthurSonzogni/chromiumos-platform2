@@ -132,8 +132,8 @@ void PeerUpdateManager::OnHttpServerNumConnectionsChanged(int num_connections) {
 
 void PeerUpdateManager::Init() {
   http_server_->SetNumConnectionsCallback(
-      base::Bind(&PeerUpdateManager::OnHttpServerNumConnectionsChanged,
-                 base::Unretained(this)));
+      base::BindRepeating(&PeerUpdateManager::OnHttpServerNumConnectionsChanged,
+                          base::Unretained(this)));
 
   for (auto const& file : file_watcher_->files()) {
     Publish(file);
@@ -142,7 +142,7 @@ void PeerUpdateManager::Init() {
 
   // TODO(zeuthen): Move to AddChangedCallback() for multiple
   // listeners. Or delegate pattern?
-  file_watcher_->SetChangedCallback(base::Bind(
+  file_watcher_->SetChangedCallback(base::BindRepeating(
       &PeerUpdateManager::OnFileWatcherChanged, base::Unretained(this)));
 }
 

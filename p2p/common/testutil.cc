@@ -83,7 +83,8 @@ static gboolean RunGMainLoopOnTimeout(gpointer user_data) {
   return FALSE;  // Remove timeout source
 }
 
-void RunGMainLoopUntil(int timeout_msec, base::Callback<bool()> terminate) {
+void RunGMainLoopUntil(int timeout_msec,
+                       base::RepeatingCallback<bool()> terminate) {
   GMainLoop* loop = g_main_loop_new(NULL, FALSE);
   GMainContext* context = g_main_context_default();
 

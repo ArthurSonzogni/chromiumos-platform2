@@ -22,7 +22,8 @@ namespace server {
 class HttpServer {
  public:
   // Called when number of connections changes
-  typedef base::Callback<void(int num_connections)> NumConnectionsCallback;
+  typedef base::RepeatingCallback<void(int num_connections)>
+      NumConnectionsCallback;
 
   virtual ~HttpServer() = default;
 

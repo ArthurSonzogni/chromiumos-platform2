@@ -69,7 +69,8 @@ void TeardownTestDir(const base::FilePath& dir_path);
 // function |terminate| returns true, wichever happens first. The function
 // |terminate| is called before every GLib main loop iteration and its value is
 // checked.
-void RunGMainLoopUntil(int timeout_msec, base::Callback<bool()> terminate);
+void RunGMainLoopUntil(int timeout_msec,
+                       base::RepeatingCallback<bool()> terminate);
 
 // Runs the default GLib main loop at most |iterations| times. This
 // dispatches all the events that are already waiting in the main loop and

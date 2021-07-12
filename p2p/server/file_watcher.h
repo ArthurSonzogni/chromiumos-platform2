@@ -34,7 +34,8 @@ class FileWatcher {
 
   // Type for a callback that is called when a file matching the given
   // extension in the given directory has been added, removed or changed.
-  typedef base::Callback<void(const base::FilePath& file, EventType event_type)>
+  typedef base::RepeatingCallback<void(const base::FilePath& file,
+                                       EventType event_type)>
       FileWatcherCallback;
 
   virtual ~FileWatcher() = default;

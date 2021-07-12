@@ -263,8 +263,8 @@ TEST(P2PHttpServer, MultipleConnections) {
   // Run the main loop until all the connections are established. After that,
   // there's no need to run the main loop, all the work is done by the
   // ConnectionDelegate threads.
-  RunGMainLoopUntil(30000, base::Bind(&ConnectionsReached, &server,
-                                      kMultipleTestNumConnections));
+  RunGMainLoopUntil(30000, base::BindRepeating(&ConnectionsReached, &server,
+                                               kMultipleTestNumConnections));
 
   // Wait for all threads to finish the work.
   for (auto& t : threads) {
