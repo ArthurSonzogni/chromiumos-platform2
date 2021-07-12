@@ -44,7 +44,7 @@ message LocalizedName {
 message MobileAPN {
   required string apn = 1;
   repeated LocalizedName localized_name = 3;
-  optional string gateway = 4;
+  optional string OBSOLETE_gateway = 4;
   optional string username = 5;
   optional string password = 6;
   repeated string OBSOLETE_dns = 7;

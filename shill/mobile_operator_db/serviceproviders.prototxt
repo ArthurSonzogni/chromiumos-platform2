@@ -4667,7 +4667,6 @@ mno {
       }
       mobile_apn {
         apn : "internet"
-        gateway : "hpdatasim.com"
         username : "hpdatasim"
         password : "hpdatasim"
       }
@@ -4684,7 +4683,6 @@ mno {
     }
     mobile_apn {
       apn : "mobile.talktalk.co.uk"
-      gateway : "212.183.137.12:8799"
       username : "wap"
       password : "wap"
     }
@@ -6782,7 +6780,6 @@ mno {
       localized_name {
         name : "Noverca WAP"
       }
-      gateway : "10.248.1.12:80"
     }
   }
 }
@@ -9540,7 +9537,6 @@ mno {
       }
       mobile_apn {
         apn : "internet"
-        gateway : "hpdatasim.com"
         username : "hpdatasim"
         password : "hpdatasim"
       }
@@ -14736,7 +14732,6 @@ mno {
       }
       mobile_apn {
         apn : "internet"
-        gateway : "hpdatasim.com"
         username : "hpdatasim"
         password : "hpdatasim"
       }
