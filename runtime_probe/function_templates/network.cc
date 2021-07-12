@@ -35,11 +35,9 @@ const std::vector<FieldType> kPciFields = {{"vendor_id", "vendor"},
                                            {"device_id", "device"}};
 const std::vector<FieldType> kPciOptionalFields = {
     {"revision", "revision"}, {"subsystem", "subsystem_device"}};
-const std::vector<FieldType> kSdioFields = {{"vendor_id", "vendor"}};
-const std::vector<FieldType> kSdioOptionalFields = {
-    {"manufacturer", "manufacturer"},
-    {"product", "product"},
-    {"bcd_device", "bcdDevice"}};
+const std::vector<FieldType> kSdioFields = {{"vendor_id", "vendor"},
+                                            {"device_id", "device"}};
+const std::vector<FieldType> kSdioOptionalFields = {};
 const std::vector<FieldType> kUsbFields = {{"vendor_id", "idVendor"},
                                            {"product_id", "idProduct"}};
 const std::vector<FieldType> kUsbOptionalFields = {{"bcd_device", "bcdDevice"}};
