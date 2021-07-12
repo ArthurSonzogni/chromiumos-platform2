@@ -101,6 +101,8 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
     return kCanon630U;
   if (name == "canon_dr")
     return kCanonDr;
+  if (name == "canon_lide70")
+    return kCanonLide70;
   if (name == "cardscan")
     return kCardscan;
   if (name == "coolscan")
@@ -125,6 +127,8 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
     return kEpson;
   if (name == "epson2")
     return kEpson2;
+  if (name == "epsonds")
+    return kEpsonDs;
   if (name == "escl")
     return kEscl;
   if (name == "fujitsu")

@@ -116,11 +116,10 @@ enum DocumentScanSaneBackend {
   kIppUsbRicoh = 104,
   kIppUsbSamsung = 105,
   kIppUsbXerox = 106,
+  kCanonLide70 = 107,
+  kEpsonDs = 108,
 
-  // TODO(crbug.com/1218246) Change UMA enum names kMetricScanRequested,
-  // kMetricScanSucceeded, and kMetricScanFailed if new enums are added to avoid
-  // data discontinuity.
-  kMaxValue = kIppUsbXerox,
+  kMaxValue = kEpsonDs,
 };
 
 // Gets the UMA enum corresponding to the SANE backend with the given

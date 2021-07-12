@@ -111,26 +111,22 @@ class ManagerTest : public testing::Test {
         base::Unretained(&signals_)));
   }
 
-  // TODO(crbug.com/1218246) Change UMA enum name kMetricScanRequested,
-  // kMetricScanSucceeded, and kMetricScanFailed if new enums for
-  // DocumentScanSaneBackend are added to avoid data discontinuity, then use
-  // kMaxValue+1 rather than kMaxValue.
   void ExpectScanRequest(DocumentScanSaneBackend backend) {
     EXPECT_CALL(*metrics_library_,
                 SendEnumToUMA(Manager::kMetricScanRequested, backend,
-                              DocumentScanSaneBackend::kMaxValue));
+                              DocumentScanSaneBackend::kMaxValue + 1));
   }
 
   void ExpectScanSuccess(DocumentScanSaneBackend backend) {
     EXPECT_CALL(*metrics_library_,
                 SendEnumToUMA(Manager::kMetricScanSucceeded, backend,
-                              DocumentScanSaneBackend::kMaxValue));
+                              DocumentScanSaneBackend::kMaxValue + 1));
   }
 
   void ExpectScanFailure(DocumentScanSaneBackend backend) {
     EXPECT_CALL(*metrics_library_,
                 SendEnumToUMA(Manager::kMetricScanFailed, backend,
-                              DocumentScanSaneBackend::kMaxValue));
+                              DocumentScanSaneBackend::kMaxValue + 1));
   }
 
   void CompareImages(const std::string& path_a, const std::string& path_b) {
