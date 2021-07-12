@@ -82,14 +82,14 @@ bool DeviceDestinationStateHandler::CanSkipHwwp() const {
   for (const std::string& component_name : replaced_component_names) {
     Component component;
     DCHECK(ComponentRepairStatus::Component_Parse(component_name, &component));
-    if (std::find(components_need_manual_calibration.begin(),
-                  components_need_manual_calibration.end(),
-                  component) != components_need_manual_calibration.end()) {
+    if (std::find(kComponentsNeedManualCalibration.begin(),
+                  kComponentsNeedManualCalibration.end(),
+                  component) != kComponentsNeedManualCalibration.end()) {
       return false;
     }
-    if (std::find(components_need_auto_calibration.begin(),
-                  components_need_auto_calibration.end(),
-                  component) != components_need_auto_calibration.end()) {
+    if (std::find(kComponentsNeedAutoCalibration.begin(),
+                  kComponentsNeedAutoCalibration.end(),
+                  component) != kComponentsNeedAutoCalibration.end()) {
       return false;
     }
   }

@@ -23,7 +23,7 @@ inline constexpr char kCalibrationMap[] = "calibration_map";
 inline constexpr std::array<
     ComponentsRepairState::ComponentRepairStatus::Component,
     3>
-    components_need_manual_calibration = {
+    kComponentsNeedManualCalibration = {
         ComponentsRepairState::ComponentRepairStatus::RMAD_COMPONENT_GYROSCOPE,
         ComponentsRepairState::ComponentRepairStatus::
             RMAD_COMPONENT_ACCELEROMETER,
@@ -31,7 +31,7 @@ inline constexpr std::array<
             RMAD_COMPONENT_MAINBOARD_REWORK};
 inline constexpr std::
     array<ComponentsRepairState::ComponentRepairStatus::Component, 3>
-        components_need_auto_calibration = {
+        kComponentsNeedAutoCalibration = {
             ComponentsRepairState::ComponentRepairStatus::
                 RMAD_COMPONENT_AUDIO_CODEC,
             ComponentsRepairState::ComponentRepairStatus::
