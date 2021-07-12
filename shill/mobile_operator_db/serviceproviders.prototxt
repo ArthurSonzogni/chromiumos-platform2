@@ -5688,25 +5688,6 @@ mno {
 
 mno {
   data {
-    uuid : "2de39b14-c3ba-4143-abb5-c67a390034ee"
-    country : "ie"
-    requires_roaming : true
-    localized_name {
-      name : "Cubic"
-    }
-    localized_name {
-      name : "CUBIC"
-    }
-    mobile_apn {
-      apn : "mtoom.com"
-      username : "mtoom"
-      password : "mtoom"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "1eadb2e5-384b-4f9e-b024-c05eed8725e2"
     country : "ie"
     localized_name {
