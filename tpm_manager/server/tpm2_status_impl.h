@@ -51,6 +51,12 @@ class Tpm2StatusImpl : public TpmStatus {
   // refresh operation succeeded.
   bool Refresh();
 
+  // Tests if the TPM SRK public area is readable with default auth and has
+  // correct attributes, and check the salting session. Returns:
+  // 1. true if the test succeed.
+  // 2. false if any error.
+  bool TestTpmSrkAndSaltingSession();
+
   bool initialized_{false};
   TpmOwnershipStatus ownership_status_{kTpmUnowned};
   const trunks::TrunksFactory& trunks_factory_;

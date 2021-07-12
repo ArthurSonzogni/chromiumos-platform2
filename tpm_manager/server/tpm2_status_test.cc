@@ -11,12 +11,13 @@
 #include <gtest/gtest.h>
 #include <trunks/mock_tpm_state.h>
 #include <trunks/mock_tpm_utility.h>
+#include <trunks/tpm_constants.h>
 #include <trunks/trunks_factory_for_test.h>
 
 #include "tpm_manager/common/typedefs.h"
 
 using testing::_;
-using testing::DoAll;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
@@ -55,9 +56,51 @@ TEST_F(Tpm2StatusTest, IsOwnedSuccess) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(trunks::kStorageRootKey, _))
+      .WillRepeatedly(
+          Invoke([](trunks::TPM_HANDLE, trunks::TPMT_PUBLIC* public_area) {
+            memset(public_area, 0, sizeof(trunks::TPMT_PUBLIC));
+            public_area->object_attributes =
+                trunks::kSensitiveDataOrigin | trunks::kUserWithAuth |
+                trunks::kNoDA | trunks::kRestricted | trunks::kDecrypt;
+            return TPM_RC_SUCCESS;
+          }));
+
   TpmStatus::TpmOwnershipStatus status;
   EXPECT_TRUE(tpm_status_->GetTpmOwned(&status));
   EXPECT_EQ(TpmStatus::kTpmOwned, status);
+}
+
+TEST_F(Tpm2StatusTest, IsOwnedWrongAttributes) {
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(trunks::kStorageRootKey, _))
+      .WillRepeatedly(
+          Invoke([](trunks::TPM_HANDLE, trunks::TPMT_PUBLIC* public_area) {
+            memset(public_area, 0, sizeof(trunks::TPMT_PUBLIC));
+            return TPM_RC_SUCCESS;
+          }));
+  TpmStatus::TpmOwnershipStatus status;
+  EXPECT_TRUE(tpm_status_->GetTpmOwned(&status));
+  EXPECT_EQ(TpmStatus::kTpmPreOwned, status);
+}
+
+TEST_F(Tpm2StatusTest, IsOwnedNoSrk) {
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(trunks::kStorageRootKey, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+
+  TpmStatus::TpmOwnershipStatus status;
+  EXPECT_TRUE(tpm_status_->GetTpmOwned(&status));
+  EXPECT_EQ(TpmStatus::kTpmPreOwned, status);
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedFailure) {
@@ -77,12 +120,23 @@ TEST_F(Tpm2StatusTest, IsOwnedRepeatedInitializationOnFalse) {
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillOnce(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(trunks::kStorageRootKey, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
 
   TpmStatus::TpmOwnershipStatus status;
   EXPECT_TRUE(tpm_status_->GetTpmOwned(&status));
   EXPECT_EQ(TpmStatus::kTpmUnowned, status);
 
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(trunks::kStorageRootKey, _))
+      .WillRepeatedly(
+          Invoke([](trunks::TPM_HANDLE, trunks::TPMT_PUBLIC* public_area) {
+            memset(public_area, 0, sizeof(trunks::TPMT_PUBLIC));
+            public_area->object_attributes =
+                trunks::kSensitiveDataOrigin | trunks::kUserWithAuth |
+                trunks::kNoDA | trunks::kRestricted | trunks::kDecrypt;
+            return TPM_RC_SUCCESS;
+          }));
 
   EXPECT_TRUE(tpm_status_->GetTpmOwned(&status));
   EXPECT_EQ(TpmStatus::kTpmOwned, status);
@@ -93,6 +147,15 @@ TEST_F(Tpm2StatusTest, IsOwnedNoRepeatedInitializationOnTrue) {
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(trunks::kStorageRootKey, _))
+      .WillRepeatedly(
+          Invoke([](trunks::TPM_HANDLE, trunks::TPMT_PUBLIC* public_area) {
+            memset(public_area, 0, sizeof(trunks::TPMT_PUBLIC));
+            public_area->object_attributes =
+                trunks::kSensitiveDataOrigin | trunks::kUserWithAuth |
+                trunks::kNoDA | trunks::kRestricted | trunks::kDecrypt;
+            return TPM_RC_SUCCESS;
+          }));
 
   TpmStatus::TpmOwnershipStatus status;
   EXPECT_TRUE(tpm_status_->GetTpmOwned(&status));

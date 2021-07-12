@@ -38,7 +38,7 @@ bool Tpm2StatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
     return false;
   }
 
-  if (trunks_tpm_state_->IsOwned()) {
+  if (trunks_tpm_state_->IsOwned() && TestTpmSrkAndSaltingSession()) {
     ownership_status_ = kTpmOwned;
   } else if (trunks_tpm_state_->IsOwnerPasswordSet()) {
     ownership_status_ = kTpmPreOwned;
@@ -136,6 +136,49 @@ bool Tpm2StatusImpl::SupportU2f() {
   }
 
   return false;
+}
+
+bool Tpm2StatusImpl::TestTpmSrkAndSaltingSession() {
+  trunks::TPMT_PUBLIC public_area;
+  TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(trunks::kStorageRootKey,
+                                                        &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Failed to get the SRK public area: "
+                 << trunks::GetErrorString(result);
+    return false;
+  }
+  if (!(public_area.object_attributes & trunks::kSensitiveDataOrigin)) {
+    LOG(WARNING) << "SRK doesn't have kSensitiveDataOrigin attribute.";
+    return false;
+  }
+  if (!(public_area.object_attributes & trunks::kUserWithAuth)) {
+    LOG(WARNING) << "SRK doesn't have kUserWithAuth attribute.";
+    return false;
+  }
+  if (!(public_area.object_attributes & trunks::kNoDA)) {
+    LOG(WARNING) << "SRK doesn't have kNoDA attribute.";
+    return false;
+  }
+  if (!(public_area.object_attributes & trunks::kRestricted)) {
+    LOG(WARNING) << "SRK doesn't have kRestricted attribute.";
+    return false;
+  }
+  if (!(public_area.object_attributes & trunks::kDecrypt)) {
+    LOG(WARNING) << "SRK doesn't have kDecrypt attribute.";
+    return false;
+  }
+
+  // Check the salting session.
+  std::unique_ptr<trunks::HmacSession> session =
+      trunks_factory_.GetHmacSession();
+  result = session->StartUnboundSession(true, false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Failed to create unbound session: "
+                 << trunks::GetErrorString(result);
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace tpm_manager
