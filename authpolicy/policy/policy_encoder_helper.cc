@@ -112,10 +112,10 @@ bool GetAsIntegerInRangeAndPrintError(const base::Value* value,
   }
 
   if (*int_value < range_min || *int_value > range_max) {
-    *int_value = 0;
-    LOG(ERROR) << "Value of policy '" << policy_name << "' is " << value
+    LOG(ERROR) << "Value of policy '" << policy_name << "' is " << *int_value
                << ", outside of expected range [" << range_min << ","
                << range_max << "]";
+    *int_value = 0;
     return false;
   }
 
