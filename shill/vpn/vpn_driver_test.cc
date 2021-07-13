@@ -68,7 +68,7 @@ class VPNDriverUnderTest : public VPNDriver {
 const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
     {kEapCaCertPemProperty, Property::kArray},
     {kVPNHostProperty, 0},
-    {kL2tpIpsecCaCertPemProperty, Property::kArray},
+    {kL2TPIPsecCaCertPemProperty, Property::kArray},
     {kOTPProperty, Property::kEphemeral},
     {kPinProperty, Property::kWriteOnly},
     {kPSKProperty, Property::kCredential},
@@ -156,7 +156,7 @@ TEST_F(VPNDriverTest, Load) {
   FakeStore storage;
   GetArgs()->Set<std::string>(kVPNHostProperty, "1.2.3.4");
   GetArgs()->Set<std::string>(kPSKProperty, "1234");
-  GetArgs()->Set<Strings>(kL2tpIpsecCaCertPemProperty,
+  GetArgs()->Set<Strings>(kL2TPIPsecCaCertPemProperty,
                           {"cleared-cert0", "cleared-cert1"});
   std::vector<std::string> kCaCerts{"cert0", "cert1"};
   storage.SetStringList(kStorageID, kEapCaCertPemProperty, kCaCerts);
@@ -174,7 +174,7 @@ TEST_F(VPNDriverTest, Load) {
 
   // Properties missing from the persistent store should be deleted.
   EXPECT_FALSE(GetArgs()->Contains<std::string>(kVPNHostProperty));
-  EXPECT_FALSE(GetArgs()->Contains<Strings>(kL2tpIpsecCaCertPemProperty));
+  EXPECT_FALSE(GetArgs()->Contains<Strings>(kL2TPIPsecCaCertPemProperty));
   EXPECT_FALSE(GetArgs()->Contains<std::string>(kPSKProperty));
 }
 
@@ -223,7 +223,7 @@ TEST_F(VPNDriverTest, SaveNoCredentials) {
                                  nullptr));
   EXPECT_FALSE(storage.GetString(kStorageID, kEapCaCertPemProperty, nullptr));
   EXPECT_FALSE(
-      storage.GetString(kStorageID, kL2tpIpsecCaCertPemProperty, nullptr));
+      storage.GetString(kStorageID, kL2TPIPsecCaCertPemProperty, nullptr));
 }
 
 TEST_F(VPNDriverTest, UnloadCredentials) {
@@ -265,7 +265,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   SetArg(kVPNHostProperty, "");
   const std::vector<std::string> kCaCerts{"cert1"};
   SetArgArray(kEapCaCertPemProperty, kCaCerts);
-  SetArgArray(kL2tpIpsecCaCertPemProperty, std::vector<std::string>());
+  SetArgArray(kL2TPIPsecCaCertPemProperty, std::vector<std::string>());
 
   // We should not be able to read a property out of the driver args using the
   // key to the args directly.
@@ -303,7 +303,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   {
     std::vector<std::string> value;
     EXPECT_TRUE(
-        GetProviderPropertyStrings(store, kL2tpIpsecCaCertPemProperty, &value));
+        GetProviderPropertyStrings(store, kL2TPIPsecCaCertPemProperty, &value));
     EXPECT_TRUE(value.empty());
   }
 

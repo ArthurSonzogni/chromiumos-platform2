@@ -144,8 +144,8 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
     Error unused_error;
     PropertyStore store;
     driver_->InitPropertyStore(&store);
-    store.SetStringProperty(kL2tpIpsecPskProperty, "x", &unused_error);
-    store.SetStringProperty(kL2tpIpsecPasswordProperty, "y", &unused_error);
+    store.SetStringProperty(kL2TPIPsecPskProperty, "x", &unused_error);
+    store.SetStringProperty(kL2TPIPsecPasswordProperty, "y", &unused_error);
     EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
                                         Metrics::kVpnDriverL2tpIpsec,
                                         Metrics::kMetricVpnDriverMax));
@@ -287,10 +287,10 @@ TEST_F(L2TPIPsecDriverTest, InitOptions) {
   base::FilePath pem_cert(kPEMCertfile);
 
   SetArg(kProviderHostProperty, kHost);
-  SetArg(kL2tpIpsecPskProperty, kPSK);
-  SetArg(kL2tpIpsecXauthUserProperty, kXauthUser);
-  SetArg(kL2tpIpsecXauthPasswordProperty, kXauthPassword);
-  SetArgArray(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
+  SetArg(kL2TPIPsecPskProperty, kPSK);
+  SetArg(kL2TPIPsecXauthUserProperty, kXauthUser);
+  SetArg(kL2TPIPsecXauthPasswordProperty, kXauthPassword);
+  SetArgArray(kL2TPIPsecCaCertPemProperty, kCaCertPEM);
 
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(pem_cert));
@@ -328,7 +328,7 @@ TEST_F(L2TPIPsecDriverTest, InitPSKOptions) {
   EXPECT_TRUE(options.empty());
   EXPECT_TRUE(error.IsSuccess());
 
-  SetArg(kL2tpIpsecPskProperty, kPSK);
+  SetArg(kL2TPIPsecPskProperty, kPSK);
 
   EXPECT_FALSE(driver_->InitPSKOptions(&options, &error));
   EXPECT_TRUE(options.empty());
@@ -352,7 +352,7 @@ TEST_F(L2TPIPsecDriverTest, InitPEMOptions) {
   static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
   base::FilePath empty_cert;
   base::FilePath pem_cert(kPEMCertfile);
-  SetArgArray(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
+  SetArgArray(kL2TPIPsecCaCertPemProperty, kCaCertPEM);
   EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(empty_cert))
       .WillOnce(Return(pem_cert));
@@ -375,7 +375,7 @@ TEST_F(L2TPIPsecDriverTest, InitXauthOptions) {
   EXPECT_TRUE(options.empty());
 
   static const char kUser[] = "foobar";
-  SetArg(kL2tpIpsecXauthUserProperty, kUser);
+  SetArg(kL2TPIPsecXauthUserProperty, kUser);
   {
     Error error;
     EXPECT_FALSE(driver_->InitXauthOptions(&options, &error));
@@ -384,8 +384,8 @@ TEST_F(L2TPIPsecDriverTest, InitXauthOptions) {
   EXPECT_TRUE(options.empty());
 
   static const char kPassword[] = "foobar";
-  SetArg(kL2tpIpsecXauthUserProperty, "");
-  SetArg(kL2tpIpsecXauthPasswordProperty, kPassword);
+  SetArg(kL2TPIPsecXauthUserProperty, "");
+  SetArg(kL2TPIPsecXauthPasswordProperty, kPassword);
   {
     Error error;
     EXPECT_FALSE(driver_->InitXauthOptions(&options, &error));
@@ -394,7 +394,7 @@ TEST_F(L2TPIPsecDriverTest, InitXauthOptions) {
   EXPECT_TRUE(options.empty());
   Mock::VerifyAndClearExpectations(&manager_);
 
-  SetArg(kL2tpIpsecXauthUserProperty, kUser);
+  SetArg(kL2TPIPsecXauthUserProperty, kUser);
   const base::FilePath bad_dir("/non/existent/directory");
   const base::FilePath temp_dir(temp_dir_.GetPath());
   EXPECT_CALL(manager_, run_path())
@@ -485,17 +485,17 @@ TEST_F(L2TPIPsecDriverTest, GetLogin) {
   static const char kUser[] = "joesmith";
   static const char kPassword[] = "random-password";
   std::string user, password;
-  SetArg(kL2tpIpsecUserProperty, kUser);
-  SetArg(kL2tpIpsecUseLoginPasswordProperty, "false");
+  SetArg(kL2TPIPsecUserProperty, kUser);
+  SetArg(kL2TPIPsecUseLoginPasswordProperty, "false");
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
-  SetArg(kL2tpIpsecUserProperty, "");
-  SetArg(kL2tpIpsecPasswordProperty, kPassword);
+  SetArg(kL2TPIPsecUserProperty, "");
+  SetArg(kL2TPIPsecPasswordProperty, kPassword);
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
-  SetArg(kL2tpIpsecUserProperty, kUser);
+  SetArg(kL2TPIPsecUserProperty, kUser);
   driver_->GetLogin(&user, &password);
   EXPECT_EQ(kUser, user);
   EXPECT_EQ(kPassword, password);
@@ -505,8 +505,8 @@ TEST_F(L2TPIPsecDriverTest, UseLoginPassword) {
   static const char kUser[] = "joesmith";
   static const char kPassword[] = "random-password";
   std::string user, password;
-  SetArg(kL2tpIpsecUserProperty, kUser);
-  SetArg(kL2tpIpsecUseLoginPasswordProperty, "true");
+  SetArg(kL2TPIPsecUserProperty, kUser);
+  SetArg(kL2TPIPsecUseLoginPasswordProperty, "true");
   driver_->GetLogin(&user, &password);
   EXPECT_TRUE(user.empty());
   EXPECT_TRUE(password.empty());
@@ -576,9 +576,9 @@ TEST_F(L2TPIPsecDriverTest, InitPropertyStore) {
   driver_->InitPropertyStore(&store);
   const std::string kUser = "joe";
   Error error;
-  EXPECT_TRUE(store.SetStringProperty(kL2tpIpsecUserProperty, kUser, &error));
+  EXPECT_TRUE(store.SetStringProperty(kL2TPIPsecUserProperty, kUser, &error));
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kUser, GetArgs()->Lookup<std::string>(kL2tpIpsecUserProperty, ""));
+  EXPECT_EQ(kUser, GetArgs()->Lookup<std::string>(kL2TPIPsecUserProperty, ""));
 }
 
 TEST_F(L2TPIPsecDriverTest, GetProvider) {
@@ -587,32 +587,32 @@ TEST_F(L2TPIPsecDriverTest, GetProvider) {
   {
     KeyValueStore props;
     Error error;
-    SetArg(kL2tpIpsecClientCertIdProperty, "");
+    SetArg(kL2TPIPsecClientCertIdProperty, "");
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
     EXPECT_TRUE(props.Lookup<bool>(kPassphraseRequiredProperty, false));
-    EXPECT_TRUE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, false));
+    EXPECT_TRUE(props.Lookup<bool>(kL2TPIPsecPskRequiredProperty, false));
   }
   {
     KeyValueStore props;
     Error error;
-    SetArg(kL2tpIpsecClientCertIdProperty, "some-cert-id");
+    SetArg(kL2TPIPsecClientCertIdProperty, "some-cert-id");
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
     EXPECT_TRUE(props.Lookup<bool>(kPassphraseRequiredProperty, false));
-    EXPECT_FALSE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, true));
-    SetArg(kL2tpIpsecClientCertIdProperty, "");
+    EXPECT_FALSE(props.Lookup<bool>(kL2TPIPsecPskRequiredProperty, true));
+    SetArg(kL2TPIPsecClientCertIdProperty, "");
   }
   {
     KeyValueStore props;
-    SetArg(kL2tpIpsecPasswordProperty, "random-password");
-    SetArg(kL2tpIpsecPskProperty, "random-psk");
+    SetArg(kL2TPIPsecPasswordProperty, "random-password");
+    SetArg(kL2TPIPsecPskProperty, "random-psk");
     Error error;
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
     EXPECT_FALSE(props.Lookup<bool>(kPassphraseRequiredProperty, true));
-    EXPECT_FALSE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, true));
-    EXPECT_FALSE(props.Contains<std::string>(kL2tpIpsecPasswordProperty));
+    EXPECT_FALSE(props.Lookup<bool>(kL2TPIPsecPskRequiredProperty, true));
+    EXPECT_FALSE(props.Contains<std::string>(kL2TPIPsecPasswordProperty));
   }
 }
 
