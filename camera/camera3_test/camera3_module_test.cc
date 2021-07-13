@@ -422,8 +422,9 @@ static void InitCameraModuleByFacing(int facing,
         camera_info info;
         ASSERT_EQ(0, camera_module.GetCameraInfo(i, &info));
         if (info.facing == facing) {
-          base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
-              "camera_ids", std::to_string(i));
+          auto* cmd_line = base::CommandLine::ForCurrentProcess();
+          cmd_line->AppendSwitchASCII("camera_ids", std::to_string(i));
+          cmd_line->AppendSwitchPath("camera_hal_path", hal_path);
           *camera_hal_path = hal_path;
           cleanup_ptr.release();
           return;
