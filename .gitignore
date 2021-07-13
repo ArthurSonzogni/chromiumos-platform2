@@ -71,3 +71,6 @@ target/
 # clangd cache dir
 .clangd
 .cache
+
+# Created when building with USE=compilation_database
+compile_commands.json
