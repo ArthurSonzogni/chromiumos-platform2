@@ -296,6 +296,12 @@ TEST_F(KeysetManagementTest, AddInitialKeyset) {
 
   VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
                                       kInitialKeysetIndex);
+
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+
+  SerializedVaultKeyset svk = vk->ToSerialized();
+  LOG(INFO) << svk.DebugString();
 }
 
 // Successfully adds new keyset
@@ -529,13 +535,19 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
   brillo::SecureBlob new_passkey("new pass");
   Credentials new_credentials(users_[0].name, new_passkey);
 
-  // Mock vk to inject encryption failure
+  // Mock vk to inject encryption failure on new keyset.
+  auto mock_vk_to_add = new NiceMock<MockVaultKeyset>();
+  // Mock vk for existing keyset.
   auto mock_vk = new NiceMock<MockVaultKeyset>();
+  mock_vk->CreateRandomResetSeed();
   mock_vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
-  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
+      .Times(2)
+      .WillOnce(Return(mock_vk))
+      .WillOnce(Return(mock_vk_to_add));
   EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
   EXPECT_CALL(*mock_vk, Decrypt(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk, Encrypt(new_passkey, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_vk_to_add, Encrypt(new_passkey, _)).WillOnce(Return(false));
 
   // TEST
 
@@ -565,14 +577,20 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   brillo::SecureBlob new_passkey("new pass");
   Credentials new_credentials(users_[0].name, new_passkey);
 
-  // Mock vk to inject save failure.
+  // Mock vk to inject encryption failure on new keyset.
+  auto mock_vk_to_add = new NiceMock<MockVaultKeyset>();
+  // Mock vk for existing keyset.
   auto mock_vk = new NiceMock<MockVaultKeyset>();
+  mock_vk->CreateRandomResetSeed();
   mock_vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
-  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
+      .Times(2)
+      .WillOnce(Return(mock_vk))
+      .WillOnce(Return(mock_vk_to_add));
   EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
   EXPECT_CALL(*mock_vk, Decrypt(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk, Encrypt(new_passkey, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk, Save(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_vk_to_add, Encrypt(new_passkey, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_vk_to_add, Save(_)).WillOnce(Return(false));
 
   // TEST
 

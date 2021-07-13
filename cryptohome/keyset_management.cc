@@ -505,28 +505,26 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
   }
 
   // Walk the namespace looking for the first free spot.
-  // Optimizations can come later.
-  // Note, nothing is stopping simultaenous access to these files
+  // Note, nothing is stopping simultaneous access to these files
   // or enforcing mandatory locking.
   int new_index = 0;
-  FILE* vk_file = NULL;
   base::FilePath vk_path;
+  bool slot_found = false;
   for (; new_index < kKeyFileMax; ++new_index) {
     vk_path = VaultKeysetPath(obfuscated, new_index);
     // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
     // repeatedly until there is an opening.
-    // TODO(wad) Add a clean-up-0-byte-keysets helper to c-home startup
-    vk_file = platform_->OpenFile(vk_path, "wx");
-    if (vk_file)  // got one
+    base::ScopedFILE vk_file(platform_->OpenFile(vk_path, "wx"));
+    if (vk_file) {  // got one
+      slot_found = true;
       break;
+    }
   }
 
-  if (!vk_file) {
+  if (!slot_found) {
     LOG(WARNING) << "Failed to find an available keyset slot";
     return CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED;
   }
-  // Once the file has been claimed, we can release the handle.
-  platform_->CloseFile(vk_file);
 
   // Before persisting, check, in a racy-way, if there is
   // an existing labeled credential.
@@ -543,16 +541,20 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
       vk_path = match->GetSourceFile();
     }
   }
-  // Since we're reusing the authorizing VaultKeyset, be careful with the
-  // metadata.
-  vk->ClearKeyData();
+
+  std::unique_ptr<VaultKeyset> keyset_to_add(
+      vault_keyset_factory_->New(platform_, crypto_));
+  keyset_to_add->InitializeToAdd(*vk);
+
+  // Sets KeyData if it is passed in.
   if (new_data) {
-    vk->SetKeyData(*new_data);
+    keyset_to_add->SetKeyData(*new_data);
   }
 
   // Repersist the VK with the new creds.
   CryptohomeErrorCode added = CRYPTOHOME_ERROR_NOT_SET;
-  if (!vk->Encrypt(new_passkey, obfuscated) || !vk->Save(vk_path)) {
+  if (!keyset_to_add->Encrypt(new_passkey, obfuscated) ||
+      !keyset_to_add->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
     added = CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
     // If we're clobbering, don't delete on error.
@@ -601,15 +603,16 @@ user_data_auth::CryptohomeErrorCode KeysetManagement::AddKeyset(
     vk_path = match->GetSourceFile();
   }
 
-  // Since we're reusing the authorizing VaultKeyset, be careful with the
-  // metadata.
-  vault_keyset.SetKeyData(new_credentials.key_data());
+  std::unique_ptr<VaultKeyset> keyset_to_add(
+      vault_keyset_factory_->New(platform_, crypto_));
+  keyset_to_add->InitializeToAdd(vault_keyset);
+  keyset_to_add->SetKeyData(new_credentials.key_data());
 
   // Repersist the VK with the new creds.
   user_data_auth::CryptohomeErrorCode ret_code =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  if (!vault_keyset.Encrypt(new_credentials.passkey(), obfuscated_username) ||
-      !vault_keyset.Save(vk_path)) {
+  if (!keyset_to_add->Encrypt(new_credentials.passkey(), obfuscated_username) ||
+      !keyset_to_add->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
     ret_code = user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
     // If we're re-saving an existing keyset, don't delete on error.

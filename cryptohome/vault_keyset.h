@@ -45,6 +45,9 @@ class VaultKeyset {
   // Populates the fields from a SerializedVaultKeyset.
   void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
 
+  // Populates the fields from a Vaultkeyset to add a new key for the user.
+  virtual void InitializeToAdd(const VaultKeyset& vault_keyset);
+
   //  The following methods deal with importing another object type into this
   //  VaultKeyset container.
   virtual void FromKeys(const VaultKeysetKeys& keys);
@@ -416,6 +419,7 @@ class VaultKeyset {
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptTestReset);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, EncryptionTest);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, DecryptionTest);
+  FRIEND_TEST_ALL_PREFIXES(KeysetManagementTest, AddInitialKeyset);
 };
 
 }  // namespace cryptohome

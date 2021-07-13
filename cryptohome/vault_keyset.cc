@@ -63,6 +63,32 @@ void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
   crypto_ = crypto;
 }
 
+void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
+  VaultKeysetKeys vault_keyset_keys;
+  // This copies the encryption keys, reset_seed and chaps key.
+  vault_keyset.ToKeys(&vault_keyset_keys);
+  FromKeys(vault_keyset_keys);
+  // Set chaps key if it exists.
+  if (!vault_keyset.GetChapsKey().empty()) {
+    SetChapsKey(vault_keyset.GetChapsKey());
+  }
+
+  // Set reset_seed reset_if it exists
+  if (!vault_keyset.GetResetSeed().empty()) {
+    SetResetSeed(vault_keyset.GetResetSeed());
+  }
+
+  // Set reset_iv if it exists.
+  if (vault_keyset.HasResetIV()) {
+    SetResetIV(vault_keyset.GetResetIV());
+  }
+
+  // Set FSCrypt policy version
+  if (vault_keyset.HasFSCryptPolicyVersion()) {
+    SetFSCryptPolicyVersion(vault_keyset.GetFSCryptPolicyVersion());
+  }
+}
+
 void VaultKeyset::FromKeys(const VaultKeysetKeys& keys) {
   fek_.resize(sizeof(keys.fek));
   memcpy(fek_.data(), keys.fek, fek_.size());
