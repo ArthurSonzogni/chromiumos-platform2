@@ -36,7 +36,7 @@ void ScreenDownload::Show() {
 void ScreenDownload::Finalizing() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_finalizing");
-  draw_utils_->ShowStepper({"done", "done", "done"});
+  draw_utils_->ShowStepper({"done", "done", "3-done"});
 }
 
 void ScreenDownload::Completed() {

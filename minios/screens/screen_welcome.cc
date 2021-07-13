@@ -14,7 +14,7 @@ ScreenWelcome::ScreenWelcome(std::shared_ptr<DrawInterface> draw_utils,
 void ScreenWelcome::Show() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_welcome");
-  draw_utils_->ShowStepper({"1", "2", "3"});
+  draw_utils_->ShowStepper({"1-done", "2", "3"});
   ShowButtons();
 }
 

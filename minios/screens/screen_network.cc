@@ -97,7 +97,7 @@ void ScreenNetwork::ShowButtons() {
 
 void ScreenNetwork::WaitForConnection() {
   draw_utils_->MessageBaseScreen();
-  draw_utils_->ShowStepper({"done", "2-done", "3-done"});
+  draw_utils_->ShowStepper({"done", "2-done", "3"});
   draw_utils_->ShowLanguageMenu(false);
   draw_utils_->ShowInstructions("title_MiniOS_wait_for_connection");
 }

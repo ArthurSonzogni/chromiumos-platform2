@@ -50,7 +50,6 @@ void ScreenError::Show() {
   }
 
   draw_utils_->ShowInstructionsWithTitle(error_message);
-  draw_utils_->ShowStepper({"done", "done", "stepper_error"});
   ShowButtons();
 }
 

@@ -16,7 +16,7 @@ ScreenPermission::ScreenPermission(std::shared_ptr<DrawInterface> draw_utils,
 void ScreenPermission::Show() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_user_confirm");
-  draw_utils_->ShowStepper({"done", "2-done", "3-done"});
+  draw_utils_->ShowStepper({"done", "2-done", "3"});
   ShowButtons();
 }
 
