@@ -906,7 +906,7 @@ base::Optional<T> SaneDeviceImpl::GetOption(brillo::ErrorPtr* error,
 base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
     brillo::ErrorPtr* error) {
   if (options_.count(kResolution) == 0) {
-    return std::vector<uint32_t>{};
+    return base::nullopt;
   }
 
   int index = options_.at(kResolution).GetIndex();
@@ -932,7 +932,7 @@ base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
 base::Optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
     brillo::ErrorPtr* error) {
   if (options_.count(kScanMode) == 0) {
-    return std::vector<std::string>{};
+    return base::nullopt;
   }
 
   int index = options_.at(kScanMode).GetIndex();
