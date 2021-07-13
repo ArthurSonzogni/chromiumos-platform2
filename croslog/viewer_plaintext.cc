@@ -184,7 +184,7 @@ void ViewerPlaintext::ReadRemainingLogs() {
     if (!last_shown_log_time.is_null()) {
       WriteOutput("-- cursor: ");
       WriteOutput(GenerateCursor(last_shown_log_time));
-      WriteOutput("\n", 1);
+      WriteOutput("\n");
     }
   }
 }
@@ -221,18 +221,18 @@ void ViewerPlaintext::WriteLog(const LogEntry& entry) {
 
   const std::string& s = entry.entire_line();
   WriteOutput(s);
-  WriteOutput("\n", 1);
+  WriteOutput("\n");
 }
 
 void ViewerPlaintext::WriteLogInExportFormat(const LogEntry& entry) {
   const auto&& kvs = GenerateKeyValues(entry);
   for (const auto& kv : kvs) {
     WriteOutput(kv.first);
-    WriteOutput("=", 1);
+    WriteOutput("=");
     WriteOutput(kv.second);
-    WriteOutput("\n", 1);
+    WriteOutput("\n");
   }
-  WriteOutput("\n", 1);
+  WriteOutput("\n");
 }
 
 std::string ViewerPlaintext::GetBootIdAt(base::Time time) {
@@ -262,7 +262,7 @@ std::string ViewerPlaintext::GetBootIdAt(base::Time time) {
 void ViewerPlaintext::WriteLogInJsonFormat(const LogEntry& entry) {
   const auto&& kvs = GenerateKeyValues(entry);
   bool first = true;
-  WriteOutput("{", 1);
+  WriteOutput("{");
   for (const auto& kv : kvs) {
     std::string escaped_value;
     bool ret_value = base::EscapeJSONString(kv.second, true, &escaped_value);
@@ -270,25 +270,20 @@ void ViewerPlaintext::WriteLogInJsonFormat(const LogEntry& entry) {
       escaped_value = "<<INVALID>>";
 
     if (!first)
-      WriteOutput(", \"", 3);
+      WriteOutput(", \"");
     else
-      WriteOutput("\"", 1);
+      WriteOutput("\"");
     // All keys are hard-corded and unnecessary to escape.
     WriteOutput(kv.first);
-    WriteOutput("\": ", 3);
+    WriteOutput("\": ");
     WriteOutput(escaped_value);
     first = false;
   }
-  WriteOutput("}\n", 2);
+  WriteOutput("}\n");
 }
 
-void ViewerPlaintext::WriteOutput(const std::string& str) {
-  WriteOutput(str.data(), str.size());
-}
-
-void ViewerPlaintext::WriteOutput(const char* str, size_t size) {
-  bool write_stdout_result =
-      base::WriteFileDescriptor(STDOUT_FILENO, str, size);
+void ViewerPlaintext::WriteOutput(base::StringPiece str) {
+  bool write_stdout_result = base::WriteFileDescriptor(STDOUT_FILENO, str);
   CHECK(write_stdout_result);
 }
 

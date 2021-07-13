@@ -73,8 +73,7 @@ class ViewerPlaintext : public Multiplexer::Observer {
   void WriteLog(const LogEntry& entry);
   void WriteLogInExportFormat(const LogEntry& entry);
   void WriteLogInJsonFormat(const LogEntry& entry);
-  void WriteOutput(const std::string& str);
-  void WriteOutput(const char* str, size_t size);
+  void WriteOutput(base::StringPiece str);
 };
 
 }  // namespace croslog
