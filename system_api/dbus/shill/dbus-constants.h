@@ -88,6 +88,7 @@ const char kDefaultServiceProperty[] = "DefaultService";
 const char kDefaultTechnologyProperty[] = "DefaultTechnology";
 const char kDevicesProperty[] = "Devices";
 const char kDisableWiFiVHTProperty[] = "DisableWiFiVHT";
+const char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 const char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
 const char kPortalFallbackUrlsStringProperty[] = "PortalFallbackUrlsString";
 const char kPortalHttpUrlProperty[] = "PortalHttpUrl";
@@ -96,10 +97,10 @@ const char kProfilesProperty[] = "Profiles";
 const char kServiceCompleteListProperty[] = "ServiceCompleteList";
 const char kServiceWatchListProperty[] = "ServiceWatchList";
 const char kServicesProperty[] = "Services";  // Also used for Profile.
+const char kSupportedVPNTypesProperty[] = "SupportedVPNTypes";
 const char kUninitializedTechnologiesProperty[] = "UninitializedTechnologies";
 const char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 const char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
-const char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 
 // Manager and DefaultProfile property names (the Manager properties that are
 // persisted by a DefaultProfile; these are always read-only for

@@ -633,6 +633,13 @@ Properties 	object ActiveProfile [readonly]
 			emitted every time the Service list is reordered, even if this list
 			has not changed.
 
+		string SupportedVPNTypes [readonly]
+
+			The list of supported vpn types. This is a comma-separated string;
+			e.g. "l2tpipsec,openvpn,thirdpartyvpn,arcvpn". The possible value of
+			list items are "l2tpipsec", "openvpn", "thirdpartyvpn", "arcvpn", and
+			"wireguard".
+
 		string State [readonly]
 
 			The global connection state of a system. Possible values are

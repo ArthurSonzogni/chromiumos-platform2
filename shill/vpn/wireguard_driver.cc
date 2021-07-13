@@ -5,6 +5,8 @@
 #include "shill/vpn/wireguard_driver.h"
 
 #include <poll.h>
+#include <sys/utsname.h>
+
 #include <set>
 #include <string>
 #include <utility>
@@ -21,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
+#include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/random.h>
 
@@ -620,6 +623,20 @@ bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
 
 void WireGuardDriver::ClearPeers(Error* error) {
   peers_.clear();
+}
+
+// static
+bool WireGuardDriver::IsSupported() {
+  // WireGuard is current supported on kernel version >= 5.10
+  struct utsname buf;
+  if (uname(&buf) != 0) {
+    return false;
+  }
+  // Extract the numeric part of release string
+  std::string version = base::SplitString(
+      buf.release, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)[0];
+  base::Version kernel_version = base::Version(version);
+  return kernel_version.IsValid() && kernel_version >= base::Version("5.10");
 }
 
 }  // namespace shill

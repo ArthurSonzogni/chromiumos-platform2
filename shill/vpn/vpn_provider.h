@@ -60,6 +60,9 @@ class VPNProvider : public ProviderInterface {
   // Disconnect any other active VPN services.
   virtual void DisconnectAll();
 
+  // Return a comma-separated string of supported VPN types.
+  std::string GetSupportedType();
+
  private:
   friend class ArcVpnDriverTest;
   friend class L2TPIPsecDriverTest;

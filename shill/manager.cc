@@ -297,8 +297,11 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedKeyValueStore(kDNSProxyDOHProvidersProperty,
                                    &Manager::GetDNSProxyDOHProviders,
                                    &Manager::SetDNSProxyDOHProviders);
+  store_.RegisterConstString(kSupportedVPNTypesProperty, &supported_vpn_);
 
   UpdateProviderMapping();
+
+  supported_vpn_ = vpn_provider_->GetSupportedType();
 
   dhcp_properties_->InitPropertyStore(&store_);
 

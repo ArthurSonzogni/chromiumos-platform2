@@ -927,6 +927,9 @@ class Manager {
   // DhcpProperties stored for the default profile.
   std::unique_ptr<DhcpProperties> dhcp_properties_;
 
+  // List of supported vpn types;
+  std::string supported_vpn_;
+
   // Bandwidth throttling variables. Default values are overridden by
   // SetNetworkThrottlingStatus, called from the client.
   bool network_throttling_enabled_;

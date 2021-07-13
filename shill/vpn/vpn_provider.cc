@@ -328,4 +328,17 @@ void VPNProvider::DisconnectAll() {
   }
 }
 
+std::string VPNProvider::GetSupportedType() {
+#ifndef DISABLE_VPN
+  std::vector<std::string> list({kProviderL2tpIpsec, kProviderOpenVpn,
+                                 kProviderThirdPartyVpn, kProviderArcVpn});
+  if (WireGuardDriver::IsSupported()) {
+    list.push_back(kProviderWireGuard);
+  }
+  return base::JoinString(list, ",");
+#else
+  return "";
+#endif  // DISABLE_VPN
+}
+
 }  // namespace shill

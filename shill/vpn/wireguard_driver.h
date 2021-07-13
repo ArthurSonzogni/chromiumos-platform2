@@ -57,6 +57,8 @@ class WireGuardDriver : public VPNDriver {
   // Resets credential fields (PrivateKey and PresharedKey) from the service.
   void UnloadCredentials() override;
 
+  static bool IsSupported();
+
  protected:
   KeyValueStore GetProvider(Error* error) override;
 
