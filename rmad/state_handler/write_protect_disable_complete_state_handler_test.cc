@@ -11,6 +11,7 @@
 
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
+#include "rmad/system/mock_cryptohome_client.h"
 #include "rmad/utils/mock_cr50_utils.h"
 
 using testing::_;
@@ -26,10 +27,13 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
         .WillByDefault(Return(factory_mode_enabled));
-    ON_CALL(*mock_cr50_utils, HasFwmp()).WillByDefault(Return(has_fwmp));
+    auto mock_cryptohome_client =
+        std::make_unique<NiceMock<MockCryptohomeClient>>();
+    ON_CALL(*mock_cryptohome_client, HasFwmp()).WillByDefault(Return(has_fwmp));
 
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
-        json_store_, std::move(mock_cr50_utils));
+        json_store_, std::move(mock_cr50_utils),
+        std::move(mock_cryptohome_client));
   }
 };
 

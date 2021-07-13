@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "rmad/system/cryptohome_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 
 namespace rmad {
@@ -15,13 +16,17 @@ WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>();
 }
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(
         scoped_refptr<JsonStore> json_store,
-        std::unique_ptr<Cr50Utils> cr50_utils)
-    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
+        std::unique_ptr<Cr50Utils> cr50_utils,
+        std::unique_ptr<CryptohomeClient> cryptohome_client)
+    : BaseStateHandler(json_store),
+      cr50_utils_(std::move(cr50_utils)),
+      cryptohome_client_(std::move(cryptohome_client)) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // Always probe again when entering the state.
@@ -34,7 +39,7 @@ RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // Can enable cr50 factory mode if it's not currently enabled, and device
   // doesn't have FWMP.
   wp_disable_complete->set_can_enable_factory_mode(
-      !cr50_utils_->IsFactoryModeEnabled() && !cr50_utils_->HasFwmp());
+      !cr50_utils_->IsFactoryModeEnabled() && !cryptohome_client_->HasFwmp());
   state_.set_allocated_wp_disable_complete(wp_disable_complete.release());
   return RMAD_ERROR_OK;
 }
