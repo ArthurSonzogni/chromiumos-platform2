@@ -62,3 +62,5 @@ sched_getparam: 1
 sched_getscheduler: 1
 sched_yield: 1
 fstatfs: 1
+readlink: 1
+getpriority: 1
