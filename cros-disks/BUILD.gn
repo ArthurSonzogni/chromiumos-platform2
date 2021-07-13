@@ -124,6 +124,7 @@ if (use.test) {
       "fuse_mount_manager_test.cc",
       "fuse_mounter_test.cc",
       "metrics_test.cc",
+      "mock_platform.h",
       "mount_info_test.cc",
       "mount_manager_test.cc",
       "mount_options_test.cc",

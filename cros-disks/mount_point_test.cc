@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/platform.h"
 
 namespace cros_disks {
@@ -22,22 +23,6 @@ constexpr char kMountPath[] = "/mount/path";
 constexpr char kSource[] = "source";
 constexpr char kFSType[] = "fstype";
 constexpr char kOptions[] = "foo=bar";
-
-class MockPlatform : public Platform {
- public:
-  MOCK_METHOD(MountErrorType,
-              Mount,
-              (const std::string& source,
-               const std::string& target,
-               const std::string& filesystem_type,
-               uint64_t flags,
-               const std::string& options),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Unmount,
-              (const std::string& path, int flags),
-              (const, override));
-};
 
 }  // namespace
 

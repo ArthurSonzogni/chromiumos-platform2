@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/metrics.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/user.h"
 
@@ -24,19 +25,6 @@ using testing::SetArgPointee;
 using testing::UnorderedElementsAre;
 
 const char kMountRootDirectory[] = "/my_mount_point";
-
-// Mock Platform implementation for testing.
-class MockPlatform : public Platform {
- public:
-  MOCK_METHOD(bool,
-              GetUserAndGroupId,
-              (const std::string&, uid_t*, gid_t*),
-              (const, override));
-  MOCK_METHOD(bool,
-              GetGroupId,
-              (const std::string&, gid_t*),
-              (const, override));
-};
 
 }  // namespace
 

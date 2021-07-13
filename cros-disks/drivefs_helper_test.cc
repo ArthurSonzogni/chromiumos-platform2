@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/fuse_mounter.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
@@ -54,35 +55,15 @@ std::vector<std::string> ParseOptions(const SandboxedProcess& sandbox) {
 }
 
 // Mock Platform implementation for testing.
-class MockPlatform : public Platform {
+class PlatformForTest : public MockPlatform {
  public:
-  MockPlatform() {
+  PlatformForTest() {
     ON_CALL(*this, GetRealPath(_, _))
-        .WillByDefault(Invoke(this, &MockPlatform::GetRealPathImpl));
+        .WillByDefault(Invoke(this, &PlatformForTest::GetRealPathImpl));
     ON_CALL(*this, DirectoryExists(_)).WillByDefault(Return(true));
     ON_CALL(*this, GetOwnership(_, _, _))
         .WillByDefault(DoAll(SetArgPointee<1>(kChronosUID), Return(true)));
   }
-
-  MOCK_METHOD(bool,
-              GetRealPath,
-              (const std::string&, std::string*),
-              (const, override));
-  MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
-  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
-  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
-  MOCK_METHOD(bool,
-              RemoveEmptyDirectory,
-              (const std::string&),
-              (const, override));
-  MOCK_METHOD(bool,
-              GetOwnership,
-              (const std::string&, uid_t*, gid_t*),
-              (const, override));
-  MOCK_METHOD(bool,
-              SetPermissions,
-              (const std::string&, mode_t),
-              (const, override));
 
   bool GetRealPathImpl(const std::string& path, std::string* real_path) const {
     std::vector<std::string> components;
@@ -129,7 +110,7 @@ class DrivefsHelperTest : public ::testing::Test {
   DrivefsHelperTest() : helper_(&platform_, &process_reaper_) {}
 
  protected:
-  MockPlatform platform_;
+  PlatformForTest platform_;
   brillo::ProcessReaper process_reaper_;
   TestDrivefsHelper helper_;
 };

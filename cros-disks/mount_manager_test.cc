@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/metrics.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
@@ -49,46 +50,6 @@ const char kMountOptionReadOnly[] = "ro";
 const char kMountOptionReadWrite[] = "rw";
 
 }  // namespace
-
-// A mock platform class for testing the mount manager base class.
-class MockPlatform : public Platform {
- public:
-  MockPlatform() = default;
-
-  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
-  MOCK_METHOD(bool,
-              CreateOrReuseEmptyDirectory,
-              (const std::string&),
-              (const, override));
-  MOCK_METHOD(bool,
-              CreateOrReuseEmptyDirectoryWithFallback,
-              (std::string*, unsigned, const std::unordered_set<std::string>&),
-              (const, override));
-  MOCK_METHOD(bool,
-              RemoveEmptyDirectory,
-              (const std::string&),
-              (const, override));
-  MOCK_METHOD(bool,
-              SetOwnership,
-              (const std::string&, uid_t, gid_t),
-              (const, override));
-  MOCK_METHOD(bool,
-              SetPermissions,
-              (const std::string&, mode_t),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Unmount,
-              (const std::string&, int),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Mount,
-              (const std::string& source,
-               const std::string& target,
-               const std::string& filesystem_type,
-               uint64_t flags,
-               const std::string& options),
-              (const, override));
-};
 
 // A mock mount manager class for testing the mount manager base class.
 class MountManagerUnderTest : public MountManager {

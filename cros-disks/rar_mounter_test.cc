@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/metrics.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 
@@ -22,12 +23,6 @@ using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
 using ::testing::Return;
 using ::testing::SizeIs;
-
-// Mock Platform implementation for testing.
-class MockPlatform : public Platform {
- public:
-  MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
-};
 
 class FakeSandboxedProcessFactory : public SandboxedProcessFactory {
  public:

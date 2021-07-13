@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/fuse_mounter.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
@@ -41,9 +42,9 @@ std::vector<std::string> ParseOptions(const SandboxedProcess& sandbox) {
 }
 
 // Mock Platform implementation for testing.
-class MockPlatform : public Platform {
+class PlatformForTest : public MockPlatform {
  public:
-  MockPlatform() = default;
+  PlatformForTest() = default;
 
   bool GetUserAndGroupId(const std::string& name,
                          uid_t* uid,
@@ -78,7 +79,7 @@ class SmbfsHelperTest : public ::testing::Test {
     return error;
   }
 
-  MockPlatform platform_;
+  PlatformForTest platform_;
   brillo::ProcessReaper process_reaper_;
   SmbfsHelper helper_;
 };

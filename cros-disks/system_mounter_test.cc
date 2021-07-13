@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
@@ -36,22 +37,6 @@ class PlatformForTest : public Platform {
     return Platform::Mount(source, target, filesystem_type,
                            flags & ~MS_NOSYMFOLLOW, options);
   }
-};
-
-class MockPlatform : public Platform {
- public:
-  MOCK_METHOD(MountErrorType,
-              Mount,
-              (const std::string& source,
-               const std::string& target,
-               const std::string& filesystem_type,
-               uint64_t flags,
-               const std::string& options),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Unmount,
-              (const std::string& target, int flags),
-              (const, override));
 };
 }  // namespace
 

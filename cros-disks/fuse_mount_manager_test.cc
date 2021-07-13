@@ -17,6 +17,7 @@
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
+#include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
@@ -39,35 +40,6 @@ const char kWorkingDirRoot[] = "/wkdir";
 const char kNoType[] = "";
 const char kSomeMountpoint[] = "/mnt";
 const Uri kSomeSource("fuse", "something");
-
-// Mock Platform implementation for testing.
-class MockPlatform : public Platform {
- public:
-  MockPlatform() = default;
-
-  MOCK_METHOD(MountErrorType,
-              Mount,
-              (const std::string& source,
-               const std::string& target,
-               const std::string& filesystem_type,
-               uint64_t flags,
-               const std::string& options),
-              (const, override));
-  MOCK_METHOD(MountErrorType,
-              Unmount,
-              (const std::string&, int),
-              (const, override));
-  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
-  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
-  MOCK_METHOD(bool,
-              SetPermissions,
-              (const std::string&, mode_t),
-              (const, override));
-  MOCK_METHOD(bool,
-              CreateTemporaryDirInDir,
-              (const std::string&, const std::string&, std::string*),
-              (const, override));
-};
 
 // Mock implementation of a Mounter.
 class MockMounter : public Mounter {
