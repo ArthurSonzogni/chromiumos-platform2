@@ -1021,10 +1021,6 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
         ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
         std::vector<uint8_t>{ANDROID_STATISTICS_FACE_DETECT_MODE_OFF,
                              ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE});
-
-    update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
-                   ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE);
-
     // FaceSSD can detect more than 600 faces in one 320x320 image.
     // 100 is enough for our use cases.
     update_static(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, 100);
@@ -1032,12 +1028,11 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
     update_static(
         ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
         std::vector<uint8_t>{ANDROID_STATISTICS_FACE_DETECT_MODE_OFF});
-
-    update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
-                   ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
-
     update_static(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, 0);
   }
+  update_request(ANDROID_STATISTICS_FACE_DETECT_MODE,
+                 ANDROID_STATISTICS_FACE_DETECT_MODE_OFF);
+
   return update_static.ok() && update_request.ok() ? 0 : -EINVAL;
 }
 

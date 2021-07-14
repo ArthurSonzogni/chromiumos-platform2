@@ -241,6 +241,8 @@ int CachedFrame::Convert(
         request_metadata.find(ANDROID_STATISTICS_FACE_DETECT_MODE);
     if (entry.data.u8[0] == ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE) {
       DetectFaces(*nv12_frame, faces);
+    } else {
+      faces->clear();
     }
   }
 
