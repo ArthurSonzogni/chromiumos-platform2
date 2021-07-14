@@ -51,6 +51,7 @@ pkg_config("liboobeconfig_config") {
   pkg_deps = [
     "dbus-1",
     "libpower_manager-client",
+    "openssl",
   ]
 }
 
@@ -61,6 +62,7 @@ static_library("liboobeconfig") {
     "metrics.cc",
     "oobe_config.cc",
     "rollback_constants.cc",
+    "rollback_openssl_encryption.cc",
   ]
   configs += [ ":liboobeconfig_config" ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -132,6 +134,7 @@ if (use.test) {
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
       "rollback_helper_test.cc",
+      "rollback_openssl_encryption_test.cc",
     ]
     configs += [
       "//common-mk:test",
