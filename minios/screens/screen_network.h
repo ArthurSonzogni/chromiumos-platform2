@@ -18,6 +18,8 @@
 
 namespace minios {
 
+extern const char kShillEthernetLabel[];
+
 // The internal states of `ScreenNetwork`.
 enum class NetworkState {
   kDropdownClosed = 0,

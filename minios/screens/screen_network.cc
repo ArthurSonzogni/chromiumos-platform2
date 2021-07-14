@@ -10,6 +10,8 @@
 
 namespace minios {
 
+const char kShillEthernetLabel[] = "Ethernet";
+
 namespace {
 // Dropdown Item size
 constexpr int kItemHeight = 40;
@@ -133,6 +135,11 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
       } else if (0 <= index_ && index_ < networks_.size()) {
         chosen_network_ = networks_[index_];
         LOG(INFO) << "Selected network: " << chosen_network_;
+        if (chosen_network_ == kShillEthernetLabel) {
+          // User has chosen the Ethernet connection. No need to enter password.
+          screen_controller_->OnForward(this);
+          return;
+        }
         // Update internal state and get password.
         state_ = NetworkState::kGetPassword;
         index_ = 1;
@@ -210,6 +217,12 @@ void ScreenNetwork::OnGetNetworks(const std::vector<std::string>& networks,
   }
   LOG(INFO) << "Trying to update network list.";
   networks_ = networks;
+
+  // If the network list has Ethernet, move it to the front.
+  auto itr = std::find(networks_.begin(), networks_.end(), kShillEthernetLabel);
+  if (itr != networks_.end()) {
+    iter_swap(itr, networks_.begin());
+  }
 
   // If already waiting on the dropdown screen, refresh.
   if (state_ == NetworkState::kDropdownOpen) {

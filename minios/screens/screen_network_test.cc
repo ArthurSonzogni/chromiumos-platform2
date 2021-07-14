@@ -37,6 +37,19 @@ TEST_F(ScreenNetworkTest, GetNetworks) {
   screen_network_.OnGetNetworks({}, error_ptr.get());
 }
 
+TEST_F(ScreenNetworkTest, GetNetworksWithEthernet) {
+  // Ethernet included in list of networks.
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
+  screen_network_.OnGetNetworks(
+      {"test1", "test2", kShillEthernetLabel, "test3"}, nullptr);
+
+  // Ethernet should be the first one, pressing it should skip password and
+  // connection screens.
+  screen_network_.SetIndexForTest(0);
+  EXPECT_CALL(mock_screen_controller_, OnForward(testing::_));
+  screen_network_.OnKeyPress(kKeyEnter);
+}
+
 TEST_F(ScreenNetworkTest, GetNetworksRefresh) {
   screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
   // Menu count is updated amd drop down screen is refreshed.
