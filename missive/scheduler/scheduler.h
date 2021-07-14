@@ -8,6 +8,9 @@
 #include <memory>
 #include <vector>
 
+#include <base/sequence_checker.h>
+#include <base/sequenced_task_runner.h>
+
 #include "missive/util/shared_queue.h"
 #include "missive/util/status.h"
 
@@ -24,11 +27,10 @@ namespace reporting {
 //    cancelled.
 class Scheduler {
  public:
-  // A Job is a unit of work with a common interface. |StartImpl|,
-  // |ReportCompletionImpl|, and |CancelImpl| need to be overriden to implement
-  // the specific job functionality.
-  // To protect work from being corrupted, most of the public functions only
-  // work when the job is in the NOT_RUNNING state.
+  // A Job is a unit of work with a common interface. |StartImpl| needs to be
+  // overridden to implement the specific job functionality ending up calling
+  // |Finish|. To protect work from being corrupted, most of the public
+  // functions only work when the job is in the NOT_RUNNING state.
   class Job {
    public:
     // NOT_RUNNING is the inital state of a Job, no methods have been called and
@@ -161,7 +163,9 @@ class Scheduler {
   //     base::MemoryPressureListener::MemoryPressureLevel
   //     memory_pressure_level);
 
+  // Must be the first member of the class.
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
 
   std::unique_ptr<JobSemaphore> job_semaphore_;
   scoped_refptr<SharedQueue<std::unique_ptr<Job>>> jobs_queue_;

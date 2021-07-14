@@ -203,7 +203,8 @@ Scheduler::Scheduler()
     : sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner({})),
       job_semaphore_(std::make_unique<JobSemaphore>(sequenced_task_runner_,
                                                     TaskLimit::NORMAL)),
-      jobs_queue_(SharedQueue<std::unique_ptr<Job>>::Create()) {}
+      jobs_queue_(
+          SharedQueue<std::unique_ptr<Job>>::Create(sequenced_task_runner_)) {}
 
 Scheduler::~Scheduler() = default;
 

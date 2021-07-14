@@ -84,6 +84,8 @@ class UploadJob : public Scheduler::Job {
     const base::WeakPtr<UploadJob> job_;
   };
 
+  ~UploadJob() override;
+
   static StatusOr<std::unique_ptr<UploadJob>> Create(
       scoped_refptr<UploadClient> upload_client,
       bool need_encryption_key,
@@ -102,6 +104,7 @@ class UploadJob : public Scheduler::Job {
   UploaderInterface::UploaderInterfaceResultCb start_cb_;
 
   std::unique_ptr<UploadDelegate> upload_delegate_;
+  SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<UploadJob> weak_ptr_factory_{this};
 };
 

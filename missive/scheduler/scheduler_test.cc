@@ -5,9 +5,13 @@
 #include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/check_op.h>
 #include <base/run_loop.h>
+#include <base/sequence_checker.h>
+#include <base/memory/weak_ptr.h>
 #include <base/test/task_environment.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -37,6 +41,7 @@ class TestCallbackWaiter {
 
 class FakeJob : public Scheduler::Job {
  public:
+  using StartCallback = base::OnceCallback<void()>;
   using ReportCompletionCallback = base::OnceCallback<Status()>;
   using CancelCallback = base::OnceCallback<Status(Status)>;
 
@@ -61,14 +66,27 @@ class FakeJob : public Scheduler::Job {
   };
 
   explicit FakeJob(std::unique_ptr<FakeJobDelegate> fake_job_delegate)
-      : Job(std::move(fake_job_delegate)) {}
+      : Job(std::move(fake_job_delegate)) {
+    DETACH_FROM_SEQUENCE(sequence_checker_);
+  }
+
+  ~FakeJob() override { DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_); }
 
   void SetFinishStatus(Status status) { finish_status_ = status; }
 
  protected:
-  void StartImpl() override { Finish(finish_status_); }
+  void StartImpl() override {
+    DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    base::SequencedTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&FakeJob::Finish, weak_ptr_factory_.GetWeakPtr(),
+                       finish_status_));
+  }
 
   Status finish_status_{Status::StatusOK()};
+  SEQUENCE_CHECKER(sequence_checker_);
+  base::WeakPtrFactory<FakeJob> weak_ptr_factory_{this};
 };
 
 class JobTest : public ::testing::Test {
@@ -265,7 +283,6 @@ TEST_F(SchedulerTest, SchedulesAndRunsJobs) {
   // be even.
   const size_t kNumJobs = 10u;
 
-  TestCallbackWaiterWithCounter start_waiter{kNumJobs};
   TestCallbackWaiterWithCounter complete_waiter{kNumJobs};
 
   std::atomic<size_t> completion_counter = 0;
@@ -298,8 +315,8 @@ TEST_F(SchedulerTest, SchedulesAndRunsJobs) {
     }
     scheduler_.EnqueueJob(std::move(job));
   }
-  task_environment_.RunUntilIdle();
   complete_waiter.Wait();
+  task_environment_.RunUntilIdle();
 
   ASSERT_EQ(scheduler_observer_.accepted_jobs_, kNumJobs);
 
@@ -325,6 +342,9 @@ TEST_F(SchedulerTest, SchedulesAndRunsJobs) {
   EXPECT_EQ(completion_counter, kNumJobs / 2u);
   EXPECT_EQ(cancel_counter, kNumJobs / 2u);
 }
+
+// TODO(b/193577465): Add test for Scheduler been destructed before all jobs
+// have been run. This might require changes in Scheduler itself.
 
 }  // namespace
 }  // namespace reporting

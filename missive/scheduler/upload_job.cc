@@ -151,6 +151,7 @@ StatusOr<std::unique_ptr<UploadJob>> UploadJob::Create(
 
 void UploadJob::StartImpl() {
   DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Currently running tasks are not destroyable under normal circumstances, so
   // base::Unretained is safe here.
   std::move(start_cb_).Run(std::make_unique<RecordProcessor>(
@@ -173,6 +174,12 @@ UploadJob::UploadJob(std::unique_ptr<UploadDelegate> upload_delegate,
                      UploaderInterface::UploaderInterfaceResultCb start_cb)
     : Job(std::move(upload_delegate)),
       set_records_cb_(std::move(set_records_cb)),
-      start_cb_(std::move(start_cb)) {}
+      start_cb_(std::move(start_cb)) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+}
+
+UploadJob::~UploadJob() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
 
 }  // namespace reporting
