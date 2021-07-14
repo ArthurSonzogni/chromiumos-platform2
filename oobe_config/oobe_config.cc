@@ -13,8 +13,10 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "oobe_config/pstore_storage.h"
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
+#include "oobe_config/rollback_openssl_encryption.h"
 
 namespace oobe_config {
 
@@ -126,12 +128,26 @@ bool OobeConfig::EncryptedRollbackSave() const {
     return false;
   }
 
-  // TODO(crbug/1212958) implement encryption that works across TPM clear.
-  LOG(WARNING) << "Encryption not yet implemented!";
-  std::string encrypted = serialized_rollback_data;
+  // Encrypt data with software and store the key in pstore.
+  // TODO(crbug/1212958) add TPM based encryption.
 
-  LOG(INFO) << "Writing encrypted rollback data.";
-  if (!WriteFile(kUnencryptedStatefulRollbackDataPath, encrypted)) {
+  base::Optional<EncryptedData> encrypted_rollback_data =
+      Encrypt(brillo::SecureBlob(serialized_rollback_data));
+
+  if (!encrypted_rollback_data) {
+    LOG(ERROR) << "Failed to encrypt, not saving any rollback data.";
+    return false;
+  }
+
+  if (!StoreInPstore(encrypted_rollback_data->key.to_string(),
+                     prefix_path_for_testing_)) {
+    LOG(ERROR)
+        << "Failed to prepare data for storage in the encrypted reboot vault";
+    return false;
+  }
+
+  if (!WriteFile(kUnencryptedStatefulRollbackDataPath,
+                 brillo::BlobToString(encrypted_rollback_data->data))) {
     LOG(ERROR) << "Failed to write encrypted rollback data file.";
     return false;
   }
@@ -166,15 +182,25 @@ bool OobeConfig::UnencryptedRollbackRestore() const {
 }
 
 bool OobeConfig::EncryptedRollbackRestore() const {
+  LOG(INFO) << "Fetching key from pstore.";
+  base::Optional<std::string> key = LoadFromPstore(prefix_path_for_testing_);
+  if (!key.has_value()) {
+    LOG(ERROR) << "Failed to load key from pstore.";
+    return false;
+  }
+
   std::string encrypted_data;
   if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &encrypted_data)) {
     return false;
   }
+  base::Optional<brillo::SecureBlob> decrypted_data = Decrypt(
+      {brillo::BlobFromString(encrypted_data), brillo::SecureBlob(*key)});
+  if (!decrypted_data.has_value()) {
+    LOG(ERROR) << "Could not decrypt rollback data.";
+    return false;
+  }
 
-  // Decrypt the data.
-  LOG(INFO) << "Decrypting rollback data size=" << encrypted_data.size();
-  LOG(WARNING) << "Encryption not yet implemented, expecting unencrypted data!";
-  std::string rollback_data_str = encrypted_data;
+  std::string rollback_data_str = decrypted_data->to_string();
 
   // Write the unencrypted data immediately to
   // kEncryptedStatefulRollbackDataPath.

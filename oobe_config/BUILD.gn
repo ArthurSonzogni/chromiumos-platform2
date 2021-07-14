@@ -61,6 +61,7 @@ static_library("liboobeconfig") {
     "load_oobe_config_rollback.cc",
     "metrics.cc",
     "oobe_config.cc",
+    "pstore_storage.cc",
     "rollback_constants.cc",
     "rollback_openssl_encryption.cc",
   ]

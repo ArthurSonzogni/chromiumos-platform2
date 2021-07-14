@@ -42,13 +42,17 @@ class OobeConfigTest : public ::testing::Test {
     std::string rollback_data_str;
     ASSERT_TRUE(oobe_config_->ReadFile(kUnencryptedStatefulRollbackDataPath,
                                        &rollback_data_str));
-    EXPECT_FALSE(rollback_data_str.empty());
 
+    std::string pstore_data;
+    EXPECT_FALSE(rollback_data_str.empty());
     if (!encrypted) {
       oobe_config::RollbackData rollback_data;
       ASSERT_TRUE(rollback_data.ParseFromString(rollback_data_str));
       ASSERT_TRUE(rollback_data.eula_auto_accept());
       ASSERT_FALSE(rollback_data.eula_send_statistics());
+    } else {
+      ASSERT_TRUE(
+          oobe_config_->ReadFile(kRollbackDataForPmsgFile, &pstore_data));
     }
 
     // Simulate powerwash and only preserve rollback_data by creating new temp
@@ -67,6 +71,10 @@ class OobeConfigTest : public ::testing::Test {
     // during a rollback powerwash.
     ASSERT_TRUE(oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath,
                                         rollback_data_str));
+    if (encrypted) {
+      oobe_config_->WriteFile(kPstorePath.Append("pmsg-ramoops-0"),
+                              pstore_data);
+    }
 
     // Restore data.
     LOG(INFO) << "Restoring rollback data...";

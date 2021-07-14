@@ -36,4 +36,8 @@ const char kPreserveGroupName[] = "preserve";
 const base::FilePath kDataSavedFile =
     base::FilePath("/var/lib/oobe_config_save/.data_saved");
 
+const base::FilePath kRollbackDataForPmsgFile =
+    base::FilePath("/var/lib/oobe_config_save/data_for_pstore");
+const base::FilePath kPstorePath = base::FilePath("/sys/fs/pstore");
+
 }  // namespace oobe_config

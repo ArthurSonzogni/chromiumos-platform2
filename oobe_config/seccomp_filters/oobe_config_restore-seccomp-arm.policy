@@ -23,6 +23,7 @@ fstat64: 1
 fstatat64: 1
 futex: 1
 futex_time64: 1
+getdents64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1
