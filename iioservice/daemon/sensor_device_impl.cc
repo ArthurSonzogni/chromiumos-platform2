@@ -118,10 +118,9 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   for (const auto& attr_name : attr_names) {
     auto value_opt = client.iio_device->ReadStringAttribute(attr_name);
     if (value_opt.has_value()) {
-      value_opt =
-          base::TrimString(value_opt.value(), base::StringPiece("\0\n", 2),
-                           base::TRIM_TRAILING)
-              .as_string();
+      value_opt = std::string(base::TrimString(value_opt.value(),
+                                               base::StringPiece("\0\n", 2),
+                                               base::TRIM_TRAILING));
     }
 
     values.push_back(std::move(value_opt));
@@ -312,10 +311,9 @@ void SensorDeviceImpl::GetChannelsAttributes(
 
     base::Optional<std::string> value_opt = chn->ReadStringAttribute(attr_name);
     if (value_opt.has_value()) {
-      value_opt =
-          base::TrimString(value_opt.value(), base::StringPiece("\0\n", 2),
-                           base::TRIM_TRAILING)
-              .as_string();
+      value_opt = std::string(base::TrimString(value_opt.value(),
+                                               base::StringPiece("\0\n", 2),
+                                               base::TRIM_TRAILING));
     }
 
     values.push_back(value_opt);
