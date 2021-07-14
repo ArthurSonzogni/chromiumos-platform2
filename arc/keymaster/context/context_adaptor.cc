@@ -116,7 +116,8 @@ base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotIdFromTpmTokenInfo(
     request.set_username(user_email.value());
   user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
   brillo::ErrorPtr error;
-  bool success = pkcs11_proxy_->Pkcs11GetTpmTokenInfo(request, &reply, &error);
+  bool success = pkcs11_proxy_->Pkcs11GetTpmTokenInfo(
+      request, &reply, &error, user_data_auth::kUserDataAuthServiceTimeoutInMs);
   if (!success || error) {
     // Error is logged when it is created, so we don't need to log it again.
     LOG(ERROR) << "Could not fetch slot information from cryptohome.";
