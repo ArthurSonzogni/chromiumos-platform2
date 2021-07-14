@@ -50,7 +50,8 @@ bool CryptohomeGetLoginStatus(dbus::Bus* bus,
   org::chromium::CryptohomeMiscInterfaceProxy proxy(bus);
   user_data_auth::GetLoginStatusRequest request;
   brillo::ErrorPtr error;
-  bool success = proxy.GetLoginStatus(request, reply, &error);
+  bool success = proxy.GetLoginStatus(
+      request, reply, &error, user_data_auth::kUserDataAuthServiceTimeoutInMs);
   if (!success || error) {
     return false;
   }
