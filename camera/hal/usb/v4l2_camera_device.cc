@@ -15,6 +15,7 @@
 #include <limits>
 
 #include <base/check.h>
+#include <base/containers/flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -947,36 +948,43 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
   for (;
        TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_ENUM_FMT, &v4l2_format)) == 0;
        ++v4l2_format.index) {
-    SupportedFormat supported_format;
-    supported_format.fourcc = v4l2_format.pixelformat;
-
+    base::flat_set<Size> supported_frame_sizes;
     v4l2_frmsizeenum frame_size = {};
     frame_size.pixel_format = v4l2_format.pixelformat;
     for (; HANDLE_EINTR(ioctl(fd.get(), VIDIOC_ENUM_FRAMESIZES, &frame_size)) ==
            0;
          ++frame_size.index) {
-      if (frame_size.type == V4L2_FRMSIZE_TYPE_DISCRETE) {
-        supported_format.width = frame_size.discrete.width;
-        supported_format.height = frame_size.discrete.height;
-      } else if (frame_size.type == V4L2_FRMSIZE_TYPE_STEPWISE ||
-                 frame_size.type == V4L2_FRMSIZE_TYPE_CONTINUOUS) {
-        // TODO(henryhsu): see http://crbug.com/249953, support these devices.
-        LOGF(ERROR) << "Stepwise and continuous frame size are unsupported";
-        return formats;
+      switch (frame_size.type) {
+        case V4L2_FRMSIZE_TYPE_DISCRETE:
+          supported_frame_sizes.emplace(frame_size.discrete.width,
+                                        frame_size.discrete.height);
+          break;
+        case V4L2_FRMSIZE_TYPE_STEPWISE:
+        case V4L2_FRMSIZE_TYPE_CONTINUOUS:
+          // Simply choose the maximum and minimum sizes for non-discrete types.
+          supported_frame_sizes.emplace(frame_size.stepwise.max_width,
+                                        frame_size.stepwise.max_height);
+          supported_frame_sizes.emplace(frame_size.stepwise.min_width,
+                                        frame_size.stepwise.min_height);
+          break;
+        default:
+          LOGF(WARNING) << "Unknown v4l2_frmsizetypes: " << frame_size.type;
+          continue;
       }
-      bool is_filtered_out =
-          base::Contains(filter_out_resolutions,
-                         Size(supported_format.width, supported_format.height));
-      if (is_filtered_out) {
-        LOGF(INFO) << "Filter " << supported_format.width << "x"
-                   << supported_format.height;
+    }
+
+    for (const Size& size : supported_frame_sizes) {
+      if (base::Contains(filter_out_resolutions, size)) {
+        LOGF(INFO) << "Filter out " << size.ToString();
         continue;
       }
-
-      supported_format.frame_rates = GetFrameRateList(
-          fd.get(), v4l2_format.pixelformat, frame_size.discrete.width,
-          frame_size.discrete.height);
-      formats.push_back(supported_format);
+      formats.push_back(SupportedFormat{
+          .width = size.width,
+          .height = size.height,
+          .fourcc = v4l2_format.pixelformat,
+          .frame_rates = GetFrameRateList(fd.get(), v4l2_format.pixelformat,
+                                          size.width, size.height),
+      });
     }
   }
   return formats;
@@ -1125,7 +1133,8 @@ std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
                                                       uint32_t fourcc,
                                                       uint32_t width,
                                                       uint32_t height) {
-  std::vector<float> frame_rates;
+  constexpr uint64_t kPrecisionFactor = 1'000'000u;
+  base::flat_set<uint64_t> frame_rates;
 
   v4l2_frmivalenum frame_interval = {};
   frame_interval.pixel_format = fourcc;
@@ -1134,25 +1143,45 @@ std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
   for (; TEMP_FAILURE_RETRY(
              ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &frame_interval)) == 0;
        ++frame_interval.index) {
-    if (frame_interval.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
-      if (frame_interval.discrete.numerator != 0) {
-        frame_rates.push_back(
-            frame_interval.discrete.denominator /
-            static_cast<float>(frame_interval.discrete.numerator));
-      }
-    } else if (frame_interval.type == V4L2_FRMIVAL_TYPE_CONTINUOUS ||
-               frame_interval.type == V4L2_FRMIVAL_TYPE_STEPWISE) {
-      // TODO(henryhsu): see http://crbug.com/249953, support these devices.
-      LOGF(ERROR) << "Stepwise and continuous frame interval are unsupported";
-      return frame_rates;
+    switch (frame_interval.type) {
+      case V4L2_FRMIVAL_TYPE_DISCRETE:
+        if (frame_interval.discrete.numerator != 0) {
+          frame_rates.insert(kPrecisionFactor *
+                             frame_interval.discrete.denominator /
+                             frame_interval.discrete.numerator);
+        }
+        break;
+      case V4L2_FRMIVAL_TYPE_CONTINUOUS:
+      case V4L2_FRMIVAL_TYPE_STEPWISE:
+        // Simply choose the maximum and minimum frame rates for non-discrete
+        // types.
+        if (frame_interval.stepwise.min.numerator != 0) {
+          frame_rates.insert(kPrecisionFactor *
+                             frame_interval.stepwise.min.denominator /
+                             frame_interval.stepwise.min.numerator);
+        }
+        if (frame_interval.stepwise.max.numerator != 0) {
+          frame_rates.insert(kPrecisionFactor *
+                             frame_interval.stepwise.max.denominator /
+                             frame_interval.stepwise.max.numerator);
+        }
+        break;
+      default:
+        LOGF(WARNING) << "Unknown v4l2_frmivaltypes: " << frame_interval.type;
+        continue;
     }
   }
   // Some devices, e.g. Kinect, do not enumerate any frame rates, see
-  // http://crbug.com/412284. Set their frame_rate to zero.
+  // http://crbug.com/412284. Set their frame rate to zero.
   if (frame_rates.empty()) {
-    frame_rates.push_back(0);
+    frame_rates.insert(0);
   }
-  return frame_rates;
+
+  std::vector<float> result;
+  for (uint64_t frame_rate : frame_rates) {
+    result.push_back(static_cast<float>(frame_rate) / kPrecisionFactor);
+  }
+  return result;
 }
 
 // static
