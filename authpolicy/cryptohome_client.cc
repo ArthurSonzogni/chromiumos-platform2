@@ -28,8 +28,8 @@ std::string CryptohomeClient::GetSanitizedUsername(
   request.set_username(account_id_key);
   brillo::ErrorPtr error;
 
-  bool success =
-      cryptohome_misc_proxy_->GetSanitizedUsername(request, &reply, &error);
+  bool success = cryptohome_misc_proxy_->GetSanitizedUsername(
+      request, &reply, &error, user_data_auth::kUserDataAuthServiceTimeoutInMs);
   if (!success || error) {
     // Error is logged when it is created, so we don't need to log it again.
     LOG(ERROR) << "Failed to get sanitized username from cryptohomed.";
