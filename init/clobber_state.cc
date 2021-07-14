@@ -21,6 +21,7 @@
 #include <linux/fs.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <utility>
@@ -56,6 +57,10 @@ constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
 constexpr char kStatefulClobberLogPath[] = "unencrypted/clobber.log";
+constexpr char kMountEncryptedPath[] = "/usr/sbin/mount-encrypted";
+constexpr char kRollbackFileForPstorePath[] =
+    "/var/lib/oobe_config_save/data_for_pstore";
+constexpr char kPstoreInputPath[] = "/dev/pmsg0";
 // Keep file names in sync with update_engine prefs.
 constexpr char kLastPingDate[] = "last-active-ping-day";
 constexpr char kLastRollcallDate[] = "last-roll-call-ping-day";
@@ -213,6 +218,51 @@ bool CreateEncryptedRebootVault() {
     return false;
 
   return true;
+}
+
+bool MountEncryptedStateful() {
+  brillo::ProcessImpl mount_encstateful;
+  mount_encstateful.AddArg(kMountEncryptedPath);
+  if (mount_encstateful.Run() != 0) {
+    PLOG(ERROR) << "Failed to mount encrypted stateful.";
+    return false;
+  }
+  return true;
+}
+
+void UnmountEncryptedStateful() {
+  for (int attempts = 0; attempts < 10; ++attempts) {
+    brillo::ProcessImpl umount_encstateful;
+    umount_encstateful.AddArg(kMountEncryptedPath);
+    umount_encstateful.AddArg("umount");
+    if (umount_encstateful.Run()) {
+      return;
+    }
+  }
+  PLOG(ERROR) << "Failed to unmount encrypted stateful.";
+}
+
+void MoveRollbackFileToPstore() {
+  const base::FilePath file_for_pstore(kRollbackFileForPstorePath);
+
+  std::string data;
+  if (!base::ReadFileToString(file_for_pstore, &data)) {
+    if (errno != ENOENT) {
+      PLOG(ERROR) << "Failed to read rollback data for pstore.";
+    }
+    return;
+  }
+  if (!base::AppendToFile(base::FilePath(kPstoreInputPath), data.c_str(),
+                          data.size())) {
+    if (errno != ENOENT) {
+      PLOG(WARNING)
+          << "Could not write rollback data because /dev/pmsg0 does not exist.";
+    } else {
+      PLOG(ERROR) << "Failed to write rollback data to pstore.";
+    }
+  }
+  // The rollback file will be lost on tpm reset, so we do not need to
+  // delete it manually.
 }
 
 // Minimal physical volume size (1 default sized extent).
@@ -1103,14 +1153,20 @@ int ClobberState::Run() {
     LOG(ERROR) << "Clearing biometric sensor internal entropy failed";
   }
 
+  // Try to mount encrypted stateful to save some files from there.
+  bool encrypted_stateful_mounted = MountEncryptedStateful();
+
   if (args_.safe_wipe) {
     IncrementFileCounter(stateful_.Append(kPowerWashCountPath));
-    base::FilePath preserve_path = stateful_.Append(kUpdateEnginePreservePath);
-    base::FilePath prefs_path(kUpdateEnginePrefsPath);
-    base::CopyFile(prefs_path.Append(kLastPingDate),
-                   preserve_path.Append(kLastPingDate));
-    base::CopyFile(prefs_path.Append(kLastRollcallDate),
-                   preserve_path.Append(kLastRollcallDate));
+    if (encrypted_stateful_mounted) {
+      base::FilePath preserve_path =
+          stateful_.Append(kUpdateEnginePreservePath);
+      base::FilePath prefs_path(kUpdateEnginePrefsPath);
+      base::CopyFile(prefs_path.Append(kLastPingDate),
+                     preserve_path.Append(kLastPingDate));
+      base::CopyFile(prefs_path.Append(kLastRollcallDate),
+                     preserve_path.Append(kLastRollcallDate));
+    }
   }
 
   // Clear clobber log if needed.
@@ -1127,6 +1183,15 @@ int ClobberState::Run() {
   int ret = PreserveFiles(stateful_, preserved_files, preserved_tar_file);
   if (ret) {
     LOG(ERROR) << "Preserving files failed with code " << ret;
+  }
+
+  if (encrypted_stateful_mounted) {
+    // Preserve a rollback data file separately as it's sensitive and must not
+    // be stored unencrypted on the hard drive.
+    if (args_.rollback_wipe) {
+      MoveRollbackFileToPstore();
+    }
+    UnmountEncryptedStateful();
   }
 
   // As we move factory wiping from release image to factory test image,
