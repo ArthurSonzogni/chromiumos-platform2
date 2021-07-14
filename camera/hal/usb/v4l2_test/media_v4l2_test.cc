@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <linux/v4l2-controls.h>
+
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -238,6 +240,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
     } else if (test_list == kCertificationTestList) {
       // There is no facing information when running certification test.
       AddNegativeGtestFilter("V4L2Test.MaximumSupportedResolution");
+      AddNegativeGtestFilter("V4L2Test.AutoFocusSupported");
     } else if (test_list == kHalv3TestList) {
       // The camera modules do not support 1080p 30fps and got waived.
       // Please see http://b/142289821 and http://b/115453284 for the detail.
@@ -918,6 +921,15 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
     ASSERT_TRUE(dev_.StopCapture());
     ASSERT_TRUE(dev_.UninitDevice());
   }
+}
+
+// Chrome OS requires that the world-facing camera supports auto-focus. The
+// software uses V4L2_CID_FOCUS_AUTO control to toggle auto-focus on/off, which
+// maps to the Android AUTO/OFF AF mode.
+TEST_F(V4L2Test, AutoFocusSupported) {
+  if (g_env->lens_facing_ != LensFacing::kBack)
+    GTEST_SKIP();
+  ASSERT_TRUE(ExerciseControl(V4L2_CID_FOCUS_AUTO, "focus_auto"));
 }
 
 }  // namespace tests
