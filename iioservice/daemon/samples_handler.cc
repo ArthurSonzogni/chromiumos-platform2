@@ -402,16 +402,6 @@ double SamplesHandler::FixFrequency(double frequency) {
   if (frequency < libmems::kFrequencyEpsilon)
     return 0.0;
 
-  if (frequency > dev_max_frequency_)
-    return dev_max_frequency_;
-
-  return frequency;
-}
-
-double SamplesHandler::FixFrequencyWithMin(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
-    return 0.0;
-
   if (frequency < dev_min_frequency_)
     return dev_min_frequency_;
 
@@ -491,11 +481,6 @@ bool SamplesHandler::RemoveFrequencyOnThread(double frequency) {
 
 bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
-
-  // We didn't limit clients' frequency to be greater than or equal to
-  // |dev_min_frequency_|, but we need to do that when setting the real
-  // frequency.
-  frequency = FixFrequencyWithMin(frequency);
 
   if (frequency == requested_frequency_)
     return true;

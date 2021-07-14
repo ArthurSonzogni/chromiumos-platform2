@@ -81,7 +81,6 @@ class SamplesHandler {
   void StopSampleWatcherOnThread();
 
   double FixFrequency(double frequency);
-  double FixFrequencyWithMin(double frequency);
 
   void AddActiveClientOnThread(ClientData* client_data);
   void AddClientOnThread(
