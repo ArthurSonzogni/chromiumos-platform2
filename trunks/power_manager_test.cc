@@ -26,12 +26,15 @@ using testing::Invoke;
 using testing::Return;
 using testing::StrictMock;
 
-using MessageCallback = base::Callback<void(const std::vector<uint8_t>&)>;
+using MessageRepeatingCallback =
+    base::RepeatingCallback<void(const std::vector<uint8_t>&)>;
+using MessageOnceCallback =
+    base::OnceCallback<void(const std::vector<uint8_t>&)>;
 using ConnectedCallback = dbus::ObjectProxy::OnConnectedCallback;
-using ErrorCallback = base::Callback<void(brillo::Error*)>;
-using SuccessCallback = base::Callback<void()>;
+using ErrorCallback = base::OnceCallback<void(brillo::Error*)>;
+using SuccessCallback = base::OnceCallback<void()>;
 using NameOwnerChangedCallback =
-    base::Callback<void(const std::string&, const std::string&)>;
+    base::RepeatingCallback<void(const std::string&, const std::string&)>;
 using ServiceAvailableCallback =
     dbus::ObjectProxy::WaitForServiceToBeAvailableCallback;
 
@@ -57,11 +60,11 @@ bool DeserializeProto(const std::vector<uint8_t>& raw_buf,
   return proto->ParseFromArray(&raw_buf.front(), raw_buf.size());
 }
 
-void SendMessage(const MessageCallback& callback,
+void SendMessage(MessageOnceCallback callback,
                  const google::protobuf::MessageLite& proto) {
   std::vector<uint8_t> serialized_proto;
   SerializeProto(proto, &serialized_proto);
-  callback.Run(serialized_proto);
+  std::move(callback).Run(serialized_proto);
 }
 
 }  // namespace
@@ -72,7 +75,7 @@ class PowerManagerTest : public testing::Test {
  public:
   struct Signal {
     std::string name;
-    MessageCallback on_signal;
+    MessageRepeatingCallback on_signal;
     ConnectedCallback on_connected;
   };
 
@@ -83,21 +86,21 @@ class PowerManagerTest : public testing::Test {
 
   void SetUp() override {
     ON_CALL(proxy_, DoRegisterSuspendDoneSignalHandler(_, _))
-        .WillByDefault(Invoke(
-            [this](MessageCallback signal, ConnectedCallback* connected) {
-              suspend_done_.name = kSuspendDoneSignal;
-              suspend_done_.on_signal = signal;
-              suspend_done_.on_connected = std::move(*connected);
-            }));
+        .WillByDefault(Invoke([this](const MessageRepeatingCallback& signal,
+                                     ConnectedCallback* connected) {
+          suspend_done_.name = kSuspendDoneSignal;
+          suspend_done_.on_signal = signal;
+          suspend_done_.on_connected = std::move(*connected);
+        }));
     ON_CALL(proxy_, DoRegisterSuspendImminentSignalHandler(_, _))
-        .WillByDefault(Invoke([this](const MessageCallback& signal,
+        .WillByDefault(Invoke([this](const MessageRepeatingCallback& signal,
                                      ConnectedCallback* connected) {
           suspend_imminent_.name = kSuspendImminentSignal;
           suspend_imminent_.on_signal = signal;
           suspend_imminent_.on_connected = std::move(*connected);
         }));
     ON_CALL(proxy_, DoRegisterDarkSuspendImminentSignalHandler(_, _))
-        .WillByDefault(Invoke([this](const MessageCallback& signal,
+        .WillByDefault(Invoke([this](const MessageRepeatingCallback& signal,
                                      ConnectedCallback* connected) {
           dark_suspend_imminent_.name = kDarkSuspendImminentSignal;
           dark_suspend_imminent_.on_signal = signal;
@@ -156,41 +159,39 @@ class PowerManagerTest : public testing::Test {
   void SetSuspendDelay(int32_t delay_id = kSomeDelayId) {
     EXPECT_CALL(proxy_, RegisterSuspendDelayAsync(_, _, _, _))
         .WillOnce(Invoke([delay_id](const std::vector<uint8_t>& /* request */,
-                                    const MessageCallback& on_reply,
-                                    const ErrorCallback& /* on_error */,
+                                    MessageOnceCallback on_reply,
+                                    ErrorCallback /* on_error */,
                                     int /* timeout_ms */) {
           power_manager::RegisterSuspendDelayReply reply;
           reply.set_delay_id(delay_id);
-          SendMessage(on_reply, reply);
+          SendMessage(std::move(on_reply), reply);
         }));
   }
   void DenySuspendDelay() {
     EXPECT_CALL(proxy_, RegisterSuspendDelayAsync(_, _, _, _))
-        .WillOnce(
-            Invoke([this](const std::vector<uint8_t>& /* request */,
-                          const MessageCallback& /* on_reply */,
-                          const ErrorCallback& on_error, int /* timeout_ms */) {
-              brillo::ErrorPtr error = TestError();
-              on_error.Run(error.get());
-            }));
+        .WillOnce(Invoke([this](const std::vector<uint8_t>& /* request */,
+                                MessageOnceCallback /* on_reply */,
+                                ErrorCallback on_error, int /* timeout_ms */) {
+          brillo::ErrorPtr error = TestError();
+          std::move(on_error).Run(error.get());
+        }));
   }
 
   void ExpectSuspendReadiness(bool reply_success = true) {
     last_readiness_info_.Clear();
     EXPECT_CALL(proxy_, HandleSuspendReadinessAsync(_, _, _, _))
-        .WillOnce(
-            Invoke([this, reply_success](
-                       const std::vector<uint8_t>& serialized_proto,
-                       const SuccessCallback& on_success,
-                       const ErrorCallback& on_error, int /* timeout_ms */) {
-              DeserializeProto(serialized_proto, &last_readiness_info_);
-              if (reply_success) {
-                on_success.Run();
-              } else {
-                brillo::ErrorPtr error = TestError();
-                on_error.Run(error.get());
-              }
-            }))
+        .WillOnce(Invoke([this, reply_success](
+                             const std::vector<uint8_t>& serialized_proto,
+                             SuccessCallback on_success, ErrorCallback on_error,
+                             int /* timeout_ms */) {
+          DeserializeProto(serialized_proto, &last_readiness_info_);
+          if (reply_success) {
+            std::move(on_success).Run();
+          } else {
+            brillo::ErrorPtr error = TestError();
+            std::move(on_error).Run(error.get());
+          }
+        }))
         .RetiresOnSaturation();
   }
   void CheckSuspendReadiness(int32_t suspend_id = kSomeSuspendId,

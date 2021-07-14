@@ -65,16 +65,16 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
   MOCK_METHOD5(ElementsAsync,
                void(const std::string& /*in_space_walk*/,
                     const std::vector<dbus::ObjectPath>& /*in_ramblin_man*/,
-                    const base::Callback<void(const std::string&)>& /*success_callback*/,
-                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
+                    base::OnceCallback<void(const std::string&)> /*success_callback*/,
+                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(ReturnToPatagonia,
                bool(int64_t*,
                     brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(ReturnToPatagoniaAsync,
-               void(const base::Callback<void(int64_t)>& /*success_callback*/,
-                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
+               void(base::OnceCallback<void(int64_t)> /*success_callback*/,
+                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(NiceWeatherForDucks,
                bool(bool,
@@ -82,15 +82,15 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                     int /*timeout_ms*/));
   MOCK_METHOD4(NiceWeatherForDucksAsync,
                void(bool,
-                    const base::Callback<void()>& /*success_callback*/,
-                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
+                    base::OnceCallback<void()> /*success_callback*/,
+                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_METHOD2(ExperimentNumberSix,
                bool(brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(ExperimentNumberSixAsync,
-               void(const base::Callback<void()>& /*success_callback*/,
-                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
+               void(base::OnceCallback<void()> /*success_callback*/,
+                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
   bool AllTheWayUpToEleven(bool /*in_arg1*/,
                            bool /*in_arg2*/,
@@ -114,28 +114,28 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                                 bool /*in_arg6*/,
                                 bool /*in_arg7*/,
                                 bool /*in_arg8*/,
-                                const base::Callback<void(bool /*arg9*/)>& /*success_callback*/,
-                                const base::Callback<void(brillo::Error*)>& /*error_callback*/,
+                                base::OnceCallback<void(bool /*arg9*/)> /*success_callback*/,
+                                base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                                 int /*timeout_ms*/) override {
     LOG(WARNING) << "AllTheWayUpToElevenAsync(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
   }
   void RegisterCloserSignalHandler(
-    const base::Closure& signal_callback,
+    base::RepeatingClosure signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     DoRegisterCloserSignalHandler(signal_callback, &on_connected_callback);
   }
   MOCK_METHOD2(DoRegisterCloserSignalHandler,
-               void(const base::Closure& /*signal_callback*/,
+               void(base::RepeatingClosure /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
   void RegisterTheCurseOfKaZarSignalHandler(
-    const base::Callback<void(const std::vector<std::string>&,
-                              uint8_t)>& signal_callback,
+    const base::RepeatingCallback<void(const std::vector<std::string>&,
+                                       uint8_t)>& signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     DoRegisterTheCurseOfKaZarSignalHandler(signal_callback, &on_connected_callback);
   }
   MOCK_METHOD2(DoRegisterTheCurseOfKaZarSignalHandler,
-               void(const base::Callback<void(const std::vector<std::string>&,
-                                              uint8_t)>& /*signal_callback*/,
+               void(const base::RepeatingCallback<void(const std::vector<std::string>&,
+                                                       uint8_t)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
@@ -159,16 +159,16 @@ class TestInterface2ProxyMock : public TestInterface2ProxyInterface {
                     brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(GetPersonInfoAsync,
-               void(const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& /*success_callback*/,
-                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
+               void(base::OnceCallback<void(const std::string& /*name*/, int32_t /*age*/)> /*success_callback*/,
+                    base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_CONST_METHOD0(data, const std::string&());
   MOCK_CONST_METHOD0(name, const std::string&());
-  MOCK_METHOD2(set_name, void(const std::string&, const base::Callback<bool>&));
+  MOCK_METHOD2(set_name, void(const std::string&, base::OnceCallback<bool>));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
   MOCK_METHOD1(SetPropertyChangedCallback,
-               void(const base::Callback<void(TestInterface2ProxyInterface*, const std::string&)>&));
+               void(const base::RepeatingCallback<void(TestInterface2ProxyInterface*, const std::string&)>&));
 };
 }  // namespace chromium
 }  // namespace org

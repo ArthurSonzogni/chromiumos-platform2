@@ -14,8 +14,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "chromeos-dbus-bindings/disallow_copy_and_assign.h"
 #include "chromeos-dbus-bindings/dbus_signature.h"
+#include "chromeos-dbus-bindings/disallow_copy_and_assign.h"
 #include "chromeos-dbus-bindings/header_generator.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/name_parser.h"
@@ -290,10 +290,10 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   }
   if (!config.object_manager.name.empty() && !interface.properties.empty()) {
     text->AddLine("PropertySet* property_set_;");
-    text->AddLine(
-        StringPrintf("base::Callback<void(%sInterface*, const std::string&)> "
-                     "on_property_changed_;",
-                     proxy_name.c_str()));
+    text->AddLine(StringPrintf(
+        "base::RepeatingCallback<void(%sInterface*, const std::string&)> "
+        "on_property_changed_;",
+        proxy_name.c_str()));
   }
   text->AddLine("dbus::ObjectProxy* dbus_object_proxy_;");
   if (config.object_manager.name.empty() && !interface.properties.empty())
@@ -355,7 +355,7 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
     if (prop.access == "readwrite") {
       text->AddLine(
           StringPrintf("MOCK_METHOD2(set_%s, void(%s, "
-                       "const base::Callback<bool>&));",
+                       "base::OnceCallback<bool>));",
                        name.c_str(), type.c_str()));
     }
   }
@@ -367,15 +367,15 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
       text->AddLineAndPushOffsetTo("MOCK_METHOD1(InitializeProperties,", 1,
                                    '(');
       text->AddLine(
-          StringPrintf("void(const base::Callback<void(%sInterface*, "
-                       "const std::string&)>&));",
+          StringPrintf("void(base::OnceCallback<void(%sInterface*, "
+                       "const std::string&)>));",
                        proxy_name.c_str()));
       text->PopOffset();
     } else {
       text->AddLineAndPushOffsetTo("MOCK_METHOD1(SetPropertyChangedCallback,",
                                    1, '(');
       text->AddLine(
-          StringPrintf("void(const base::Callback<void(%sInterface*, "
+          StringPrintf("void(const base::RepeatingCallback<void(%sInterface*, "
                        "const std::string&)>&));",
                        proxy_name.c_str()));
       text->PopOffset();
@@ -439,9 +439,10 @@ void ProxyGenerator::AddDestructor(const string& class_name,
 
 void ProxyGenerator::AddReleaseObjectProxy(IndentedText* text) {
   text->AddBlankLine();
-  text->AddLine("void ReleaseObjectProxy(const base::Closure& callback) {");
+  text->AddLine("void ReleaseObjectProxy(base::OnceClosure callback) {");
   text->AddLineWithOffset(
-      "bus_->RemoveObjectProxy(service_name_, object_path_, callback);",
+      "bus_->RemoveObjectProxy(service_name_, object_path_, "
+      "std::move(callback));",
       kBlockOffset);
   text->AddLine("}");
 }
@@ -467,7 +468,7 @@ void ProxyGenerator::AddInitializeProperties(const string& class_name,
   text->AddLine(StringPrintf("%svoid InitializeProperties(",
                              declaration_only ? "virtual " : ""));
   text->AddLineWithOffset(
-      StringPrintf("const base::Callback<void(%sInterface*, "
+      StringPrintf("const base::RepeatingCallback<void(%sInterface*, "
                    "const std::string&)>& callback) %s",
                    class_name.c_str(),
                    declaration_only ? "= 0;" : "override {"),
@@ -477,7 +478,8 @@ void ProxyGenerator::AddInitializeProperties(const string& class_name,
     block.PushOffset(kBlockOffset);
     block.AddLine("property_set_.reset(");
     block.AddLineWithOffset(
-        "new PropertySet(dbus_object_proxy_, base::Bind(callback, this)));",
+        "new PropertySet(dbus_object_proxy_, base::BindRepeating(callback, "
+        "this)));",
         kLineContinuationOffset);
     block.AddLine("property_set_->ConnectSignals();");
     block.AddLine("property_set_->GetAll();");
@@ -493,7 +495,7 @@ void ProxyGenerator::AddSetPropertyChanged(const string& class_name,
   text->AddLine(StringPrintf("%svoid SetPropertyChangedCallback(",
                              declaration_only ? "virtual " : ""));
   text->AddLineWithOffset(
-      StringPrintf("const base::Callback<void(%sInterface*, "
+      StringPrintf("const base::RepeatingCallback<void(%sInterface*, "
                    "const std::string&)>& callback) %s",
                    class_name.c_str(),
                    declaration_only ? "= 0;" : "override {"),
@@ -643,13 +645,12 @@ void ProxyGenerator::AddProperties(const Interface& interface,
                        declaration_only ? "virtual " : "", name.c_str(),
                        type.c_str()),
           1, '(');
-      text->AddLine(
-          StringPrintf("const base::Callback<void(bool)>& callback)%s",
-                       declaration_only ? " = 0;" : " override {"));
+      text->AddLine(StringPrintf("base::OnceCallback<void(bool)> callback)%s",
+                                 declaration_only ? " = 0;" : " override {"));
       text->PopOffset();
       if (!declaration_only) {
         text->AddLineWithOffset(
-            StringPrintf("property_set_->%s.Set(value, callback);",
+            StringPrintf("property_set_->%s.Set(value, std::move(callback));",
                          name.c_str()),
             kBlockOffset);
         text->AddLine("}");
@@ -757,10 +758,9 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
       base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
     out_params.push_back(argument_type);
   }
-  block.AddLine(
-      StringPrintf("const base::Callback<void(%s)>& success_callback,",
-                   base::JoinString(out_params, ", ").c_str()));
-  block.AddLine("const base::Callback<void(brillo::Error*)>& error_callback,");
+  block.AddLine(StringPrintf("base::OnceCallback<void(%s)> success_callback,",
+                             base::JoinString(out_params, ", ").c_str()));
+  block.AddLine("base::OnceCallback<void(brillo::Error*)> error_callback,");
   block.AddLine(
       StringPrintf("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)%s",
                    declaration_only ? " = 0;" : " override {"));
@@ -774,8 +774,8 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
     block.AddLine("dbus_object_proxy_,");
     block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
     block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
-    block.AddLine("success_callback,");
-    string last_argument = "error_callback";
+    block.AddLine("std::move(success_callback),");
+    string last_argument = "std::move(error_callback)";
     for (const auto& argument_name : argument_names) {
       block.AddLine(StringPrintf("%s,", last_argument.c_str()));
       last_argument = argument_name;
@@ -838,10 +838,10 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
     out_params.push_back(argument_type);
   }
   arguments.push_back(
-      StringPrintf("const base::Callback<void(%s)>& /*success_callback*/",
+      StringPrintf("base::OnceCallback<void(%s)> /*success_callback*/",
                    base::JoinString(out_params, ", ").c_str()));
   arguments.push_back(
-      "const base::Callback<void(brillo::Error*)>& /*error_callback*/");
+      "base::OnceCallback<void(brillo::Error*)> /*error_callback*/");
   arguments.push_back("int /*timeout_ms*/");
   AddMockMethodDeclaration(method.name + "Async", "void", arguments, text);
 }
@@ -944,10 +944,10 @@ void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
                    comment_arg_name ? "*/" : "");
   if (signal.arguments.empty()) {
     block->AddLine(
-        StringPrintf("const base::Closure& %s,", signal_callback.c_str()));
+        StringPrintf("base::RepeatingClosure %s,", signal_callback.c_str()));
   } else {
     string last_argument;
-    string prefix{"const base::Callback<void("};
+    string prefix{"const base::RepeatingCallback<void("};
     for (const auto& argument : signal.arguments) {
       if (!last_argument.empty()) {
         if (!prefix.empty()) {
@@ -1147,9 +1147,9 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   text->AddLine(
       StringPrintf("void Set%sAddedCallback(", itf_name.type_name().c_str()));
   text->PushOffset(kLineContinuationOffset);
-  text->AddLine(
-      StringPrintf("const base::Callback<void(%sInterface*)>& callback) {",
-                   itf_name.MakeProxyName(true).c_str()));
+  text->AddLine(StringPrintf(
+      "const base::RepeatingCallback<void(%sInterface*)>& callback) {",
+      itf_name.MakeProxyName(true).c_str()));
   text->PopOffset();
   text->PushOffset(kBlockOffset);
   text->AddLine(StringPrintf("on_%s_added_ = callback;",
@@ -1162,7 +1162,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
       StringPrintf("void Set%sRemovedCallback(", itf_name.type_name().c_str()));
   text->PushOffset(kLineContinuationOffset);
   text->AddLine(
-      "const base::Callback<void(const dbus::ObjectPath&)>& "
+      "const base::RepeatingCallback<void(const dbus::ObjectPath&)>& "
       "callback) {");
   text->PopOffset();
   text->PushOffset(kBlockOffset);
@@ -1352,7 +1352,8 @@ void ProxyGenerator::ObjectManager::AddCreateProperties(
     text->PushOffset(kLineContinuationOffset);
     text->AddLine("object_proxy,");
     text->AddLineAndPushOffsetTo(
-        StringPrintf("base::Bind(&%s::OnPropertyChanged,", class_name.c_str()),
+        StringPrintf("base::BindRepeating(&%s::OnPropertyChanged,",
+                     class_name.c_str()),
         1, '(');
     text->AddLine("weak_ptr_factory_.GetWeakPtr(),");
     text->AddLine("object_path,");
@@ -1394,11 +1395,11 @@ void ProxyGenerator::ObjectManager::AddDataMembers(
                                itf_name.MakeProxyName(true).c_str(),
                                var_name.c_str()));
     text->PopOffset();
+    text->AddLine(StringPrintf(
+        "base::RepeatingCallback<void(%sInterface*)> on_%s_added_;",
+        itf_name.MakeProxyName(true).c_str(), var_name.c_str()));
     text->AddLine(
-        StringPrintf("base::Callback<void(%sInterface*)> on_%s_added_;",
-                     itf_name.MakeProxyName(true).c_str(), var_name.c_str()));
-    text->AddLine(
-        StringPrintf("base::Callback<void(const dbus::ObjectPath&)> "
+        StringPrintf("base::RepeatingCallback<void(const dbus::ObjectPath&)> "
                      "on_%s_removed_;",
                      var_name.c_str()));
   }

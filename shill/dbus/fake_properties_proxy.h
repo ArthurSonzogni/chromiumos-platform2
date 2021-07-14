@@ -40,8 +40,8 @@ class FakePropertiesProxy
   void GetAsync(
       const std::string& in_interface_name,
       const std::string& in_property_name,
-      const base::Callback<void(const brillo::Any& value)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const brillo::Any& value)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override;
   bool Set(const std::string& in_interface_name,
            const std::string& in_property_name,
@@ -52,8 +52,8 @@ class FakePropertiesProxy
       const std::string& in_interface_name,
       const std::string& in_property_name,
       const brillo::Any& in_value,
-      const base::Callback<void()>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override;
   bool GetAll(const std::string& in_interface_name,
               brillo::VariantDictionary* out_properties,
@@ -61,19 +61,19 @@ class FakePropertiesProxy
               int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override;
   void GetAllAsync(
       const std::string& in_interface_name,
-      const base::Callback<void(const brillo::VariantDictionary& properties)>&
+      base::OnceCallback<void(const brillo::VariantDictionary& properties)>
           success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override;
   void RegisterMmPropertiesChangedSignalHandler(
-      const base::Callback<void(const std::string&,
-                                const brillo::VariantDictionary&)>&
+      const base::RepeatingCallback<void(const std::string&,
+                                         const brillo::VariantDictionary&)>&
           signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override;
   void RegisterPropertiesChangedSignalHandler(
-      const base::Callback<void(const std::string&,
-                                const brillo::VariantDictionary&,
-                                const std::vector<std::string>&)>&
+      const base::RepeatingCallback<void(const std::string&,
+                                         const brillo::VariantDictionary&,
+                                         const std::vector<std::string>&)>&
           signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override;
 

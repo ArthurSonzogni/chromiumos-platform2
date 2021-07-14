@@ -4,6 +4,8 @@
 
 #include "shill/dbus/fake_properties_proxy.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/errors/error.h>
@@ -33,8 +35,8 @@ bool FakePropertiesProxy::Get(const std::string& in_interface_name,
 void FakePropertiesProxy::GetAsync(
     const std::string& in_interface_name,
     const std::string& in_property_name,
-    const base::Callback<void(const brillo::Any& value)>& success_callback,
-    const base::Callback<void(brillo::Error*)>& error_callback,
+    base::OnceCallback<void(const brillo::Any& value)> success_callback,
+    base::OnceCallback<void(brillo::Error*)> error_callback,
     int timeout_ms) {
   std::string error_code;
   brillo::Any value;
@@ -42,10 +44,10 @@ void FakePropertiesProxy::GetAsync(
     brillo::ErrorPtr error =
         brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                               error_code, "GetAsync failed");
-    error_callback.Run(error.get());
+    std::move(error_callback).Run(error.get());
     return;
   }
-  success_callback.Run(value);
+  std::move(success_callback).Run(value);
 }
 
 bool FakePropertiesProxy::Set(const std::string& in_interface_name,
@@ -61,11 +63,11 @@ void FakePropertiesProxy::SetAsync(
     const std::string& in_interface_name,
     const std::string& in_property_name,
     const brillo::Any& in_value,
-    const base::Callback<void()>& success_callback,
-    const base::Callback<void(brillo::Error*)>& error_callback,
+    base::OnceCallback<void()> success_callback,
+    base::OnceCallback<void(brillo::Error*)> error_callback,
     int timeout_ms) {
   properties_[in_interface_name][in_property_name] = in_value;
-  success_callback.Run();
+  std::move(success_callback).Run();
 }
 
 bool FakePropertiesProxy::GetAll(const std::string& in_interface_name,
@@ -82,30 +84,30 @@ bool FakePropertiesProxy::GetAll(const std::string& in_interface_name,
 
 void FakePropertiesProxy::GetAllAsync(
     const std::string& in_interface_name,
-    const base::Callback<void(const brillo::VariantDictionary& properties)>&
+    base::OnceCallback<void(const brillo::VariantDictionary& properties)>
         success_callback,
-    const base::Callback<void(brillo::Error*)>& error_callback,
+    base::OnceCallback<void(brillo::Error*)> error_callback,
     int timeout_ms) {
   brillo::VariantDictionary dictionary;
   if (!GetAllProperties(in_interface_name, &dictionary)) {
     brillo::ErrorPtr error =
         brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                               kInterfaceNotFound, "GetAllAsync failed");
-    error_callback.Run(error.get());
+    std::move(error_callback).Run(error.get());
     return;
   }
-  success_callback.Run(dictionary);
+  std::move(success_callback).Run(dictionary);
 }
 
 void FakePropertiesProxy::RegisterMmPropertiesChangedSignalHandler(
-    const base::Callback<void(
+    const base::RepeatingCallback<void(
         const std::string&, const brillo::VariantDictionary&)>& signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {}
 
 void FakePropertiesProxy::RegisterPropertiesChangedSignalHandler(
-    const base::Callback<void(const std::string&,
-                              const brillo::VariantDictionary&,
-                              const std::vector<std::string>&)>&
+    const base::RepeatingCallback<void(const std::string&,
+                                       const brillo::VariantDictionary&,
+                                       const std::vector<std::string>&)>&
         signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {}
 

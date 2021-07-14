@@ -55,8 +55,8 @@
 //  brillo::dbus_utils::CallMethod(obj,
 //                                   "org.chromium.MyService.MyInterface",
 //                                   "MyMethod",
-//                                   base::Bind(OnSuccess),
-//                                   base::Bind(OnError),
+//                                   base::BindOnce(OnSuccess),
+//                                   base::BindOnce(OnError),
 //                                   2, 8.7);
 
 #ifndef LIBBRILLO_BRILLO_DBUS_DBUS_METHOD_INVOKER_H_
@@ -68,6 +68,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/scoped_file.h>
 #include <brillo/dbus/dbus_param_reader.h>
@@ -237,11 +238,11 @@ inline bool ExtractMethodCallResults(::dbus::Message* message,
 //////////////////////////////////////////////////////////////////////////////
 // Asynchronous method invocation support
 
-using AsyncErrorCallback = base::Callback<void(Error* error)>;
+using AsyncErrorCallback = base::OnceCallback<void(Error* error)>;
 
 // A helper function that translates dbus::ErrorResponse response
 // from D-Bus into brillo::Error* and invokes the |callback|.
-void BRILLO_EXPORT TranslateErrorResponse(const AsyncErrorCallback& callback,
+void BRILLO_EXPORT TranslateErrorResponse(AsyncErrorCallback callback,
                                           ::dbus::ErrorResponse* resp);
 
 // A helper function that translates dbus::Response from D-Bus into
@@ -250,19 +251,19 @@ void BRILLO_EXPORT TranslateErrorResponse(const AsyncErrorCallback& callback,
 // are of wrong types, an error is sent to |error_callback|.
 template <typename... OutArgs>
 void TranslateSuccessResponse(
-    const base::Callback<void(OutArgs...)>& success_callback,
-    const AsyncErrorCallback& error_callback,
+    base::OnceCallback<void(OutArgs...)> success_callback,
+    AsyncErrorCallback error_callback,
     ::dbus::Response* resp) {
   auto callback = [&success_callback](const OutArgs&... params) {
     if (!success_callback.is_null()) {
-      success_callback.Run(params...);
+      std::move(success_callback).Run(params...);
     }
   };
   ErrorPtr error;
   ::dbus::MessageReader reader(resp);
   if (!DBusParamReader<false, OutArgs...>::Invoke(callback, &reader, &error) &&
       !error_callback.is_null()) {
-    error_callback.Run(error.get());
+    std::move(error_callback).Run(error.get());
   }
 }
 
@@ -282,17 +283,47 @@ inline void CallMethodWithTimeout(
     ::dbus::ObjectProxy* object,
     const std::string& interface_name,
     const std::string& method_name,
-    const base::Callback<void(OutArgs...)>& success_callback,
-    const AsyncErrorCallback& error_callback,
+    base::OnceCallback<void(OutArgs...)> success_callback,
+    AsyncErrorCallback error_callback,
+    const InArgs&... params) {
+  ::dbus::MethodCall method_call(interface_name, method_name);
+  ::dbus::MessageWriter writer(&method_call);
+  DBusParamWriter::Append(&writer, params...);
+
+  auto split_error_callback =
+      base::SplitOnceCallback(std::move(error_callback));
+
+  ::dbus::ObjectProxy::ErrorCallback dbus_error_callback = base::BindOnce(
+      &TranslateErrorResponse, std::move(split_error_callback.first));
+  ::dbus::ObjectProxy::ResponseCallback dbus_success_callback = base::BindOnce(
+      &TranslateSuccessResponse<OutArgs...>, std::move(success_callback),
+      std::move(split_error_callback.second));
+
+  object->CallMethodWithErrorCallback(&method_call, timeout_ms,
+                                      std::move(dbus_success_callback),
+                                      std::move(dbus_error_callback));
+}
+
+// TODO(crbug/1205291): Remove this repeating callback helper after migration
+// finished.
+template <typename... InArgs, typename... OutArgs>
+inline void CallMethodWithTimeout(
+    int timeout_ms,
+    ::dbus::ObjectProxy* object,
+    const std::string& interface_name,
+    const std::string& method_name,
+    const base::RepeatingCallback<void(OutArgs...)>& success_callback,
+    const base::RepeatingCallback<void(Error* error)>& error_callback,
     const InArgs&... params) {
   ::dbus::MethodCall method_call(interface_name, method_name);
   ::dbus::MessageWriter writer(&method_call);
   DBusParamWriter::Append(&writer, params...);
 
   ::dbus::ObjectProxy::ErrorCallback dbus_error_callback =
-      base::Bind(&TranslateErrorResponse, error_callback);
-  ::dbus::ObjectProxy::ResponseCallback dbus_success_callback = base::Bind(
-      &TranslateSuccessResponse<OutArgs...>, success_callback, error_callback);
+      base::BindOnce(&TranslateErrorResponse, error_callback);
+  ::dbus::ObjectProxy::ResponseCallback dbus_success_callback =
+      base::BindOnce(&TranslateSuccessResponse<OutArgs...>,
+                     std::move(success_callback), error_callback);
 
   object->CallMethodWithErrorCallback(&method_call, timeout_ms,
                                       std::move(dbus_success_callback),
@@ -304,12 +335,29 @@ template <typename... InArgs, typename... OutArgs>
 inline void CallMethod(::dbus::ObjectProxy* object,
                        const std::string& interface_name,
                        const std::string& method_name,
-                       const base::Callback<void(OutArgs...)>& success_callback,
-                       const AsyncErrorCallback& error_callback,
+                       base::OnceCallback<void(OutArgs...)> success_callback,
+                       AsyncErrorCallback error_callback,
                        const InArgs&... params) {
   return CallMethodWithTimeout(::dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, object,
-                               interface_name, method_name, success_callback,
-                               error_callback, params...);
+                               interface_name, method_name,
+                               std::move(success_callback),
+                               std::move(error_callback), params...);
+}
+
+// TODO(crbug/1205291): Remove this repeating callback helper after migration
+// finished.
+template <typename... InArgs, typename... OutArgs>
+inline void CallMethod(
+    ::dbus::ObjectProxy* object,
+    const std::string& interface_name,
+    const std::string& method_name,
+    const base::RepeatingCallback<void(OutArgs...)>& success_callback,
+    const base::RepeatingCallback<void(Error* error)>& error_callback,
+    const InArgs&... params) {
+  return CallMethodWithTimeout(::dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, object,
+                               interface_name, method_name,
+                               std::move(success_callback),
+                               std::move(error_callback), params...);
 }
 
 }  // namespace dbus_utils

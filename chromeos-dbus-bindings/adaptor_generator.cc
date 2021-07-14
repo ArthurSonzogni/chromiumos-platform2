@@ -227,7 +227,7 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
       text->PushOffset(kLineContinuationOffset);
       text->AddLineAndPushOffsetTo(
           StringPrintf(
-              "base::Bind(&%s::Validate%s,",
+              "base::BindRepeating(&%s::Validate%s,",
               NameParser{interface.name}.MakeAdaptorName(false).c_str(),
               property.name.c_str()),
           1, '(');

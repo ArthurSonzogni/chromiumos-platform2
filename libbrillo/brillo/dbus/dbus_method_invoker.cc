@@ -7,7 +7,7 @@
 namespace brillo {
 namespace dbus_utils {
 
-void TranslateErrorResponse(const AsyncErrorCallback& callback,
+void TranslateErrorResponse(AsyncErrorCallback callback,
                             dbus::ErrorResponse* resp) {
   if (!callback.is_null()) {
     ErrorPtr error;
@@ -15,7 +15,7 @@ void TranslateErrorResponse(const AsyncErrorCallback& callback,
     std::string error_message;
     if (ExtractMessageParameters(&reader, &error, &error_message))
       AddDBusError(&error, resp->GetErrorName(), error_message);
-    callback.Run(error.get());
+    std::move(callback).Run(error.get());
   }
 }
 

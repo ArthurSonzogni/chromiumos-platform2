@@ -120,8 +120,8 @@ class TestAdaptor {
     write_property_.SetAccessMode(
         brillo::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
     write_property_.SetValidator(
-        base::Bind(&TestAdaptor::ValidateWriteProperty,
-                   base::Unretained(this)));
+        base::BindRepeating(&TestAdaptor::ValidateWriteProperty,
+                            base::Unretained(this)));
     itf->AddProperty(WritePropertyName(), &write_property_);
   }
 

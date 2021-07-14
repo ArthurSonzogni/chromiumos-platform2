@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
@@ -17,8 +18,8 @@ namespace {
 
 using ::testing::_;
 using ::testing::ByRef;
-using ::testing::DoAll;
 using ::testing::ElementsAreArray;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -26,12 +27,15 @@ using ::testing::SetArgPointee;
 using ::testing::Test;
 using ::testing::WithArg;
 
-// testing::InvokeArgument<N> does not work with base::Callback, need to use
+// testing::InvokeArgument<N> does not work with base::OnceCallback, need to use
 // |ACTION_TAMPLATE| along with predefined |args| tuple.
 ACTION_TEMPLATE(InvokeCallbackArgument,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(p0)) {
-  std::get<k>(args).Run(p0);
+  // Runs it as base::OnceCallback anyway.
+  std::move(const_cast<typename std::remove_cv<typename std::remove_reference<
+                decltype(std::get<k>(args))>::type>::type&>(std::get<k>(args)))
+      .Run(p0);
 }
 
 }  // namespace
@@ -433,9 +437,10 @@ void TpmManagerUtilityTest::RunDefineSpaceTest(bool write_define,
   reply.set_result(result);
 
   EXPECT_CALL(mock_tpm_nvram_, DefineSpaceAsync(_, _, _, _))
-      .WillOnce(
-          DoAll(SaveArg<0>(&request), InvokeCallbackArgument<1>(ByRef(reply))));
-
+      .WillOnce(Invoke([&](auto req, auto callback, auto, auto) {
+        request = req;
+        std::move(callback).Run(reply);
+      }));
   std::string output;
   EXPECT_EQ(expect_success,
             tpm_manager_utility_.DefineSpace(kNvIndex, kSize, write_define,
@@ -501,8 +506,10 @@ void TpmManagerUtilityTest::RunReadSpaceTest(bool use_owner_auth,
   }
 
   EXPECT_CALL(mock_tpm_nvram_, ReadSpaceAsync(_, _, _, _))
-      .WillOnce(
-          DoAll(SaveArg<0>(&request), InvokeCallbackArgument<1>(ByRef(reply))));
+      .WillOnce(Invoke([&](auto req, auto callback, auto, auto) {
+        request = req;
+        std::move(callback).Run(reply);
+      }));
 
   std::string output;
   EXPECT_EQ(expect_success,
@@ -549,8 +556,10 @@ void TpmManagerUtilityTest::RunWriteSpaceTest(bool use_owner_auth,
   reply.set_result(result);
 
   EXPECT_CALL(mock_tpm_nvram_, WriteSpaceAsync(_, _, _, _))
-      .WillOnce(
-          DoAll(SaveArg<0>(&request), InvokeCallbackArgument<1>(ByRef(reply))));
+      .WillOnce(Invoke([&](auto req, auto callback, auto, auto) {
+        request = req;
+        std::move(callback).Run(reply);
+      }));
 
   EXPECT_EQ(expect_success,
             tpm_manager_utility_.WriteSpace(kNvIndex, kData, use_owner_auth));
@@ -661,8 +670,10 @@ TEST_F(TpmManagerUtilityTest, LockSpace) {
   tpm_manager::LockSpaceRequest request;
   lock_space_reply_.set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
   EXPECT_CALL(mock_tpm_nvram_, LockSpaceAsync(_, _, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&request),
-                      InvokeCallbackArgument<1>(ByRef(lock_space_reply_))));
+      .WillOnce(Invoke([&](auto req, auto callback, auto, auto) {
+        request = req;
+        std::move(callback).Run(lock_space_reply_);
+      }));
   EXPECT_TRUE(tpm_manager_utility_.LockSpace(0x123456));
   EXPECT_TRUE(request.lock_write());
   EXPECT_FALSE(request.lock_read());

@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -67,8 +68,10 @@ TEST_F(DebugdAdapterImplTest, GetSmartAttributes) {
   constexpr char kResult[] = "S.M.A.R.T. status";
   EXPECT_CALL(*debugd_proxy_mock_, SmartctlAsync(kSmartAttributes, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
-          [kResult](const base::Callback<void(const std::string& /* result */)>&
-                        success_callback) { success_callback.Run(kResult); })));
+          [kResult](base::OnceCallback<void(const std::string& /* result */)>
+                        success_callback) {
+            std::move(success_callback).Run(kResult);
+          })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
   debugd_adapter_->GetSmartAttributes(base::Bind(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
@@ -78,10 +81,10 @@ TEST_F(DebugdAdapterImplTest, GetSmartAttributes) {
 TEST_F(DebugdAdapterImplTest, GetSmartAttributesError) {
   const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(*debugd_proxy_mock_, SmartctlAsync(kSmartAttributes, _, _, _))
-      .WillOnce(WithArg<2>(Invoke(
-          [error = kError.get()](
-              const base::Callback<void(brillo::Error*)>& error_callback) {
-            error_callback.Run(error);
+      .WillOnce(WithArg<2>(
+          Invoke([error = kError.get()](
+                     base::OnceCallback<void(brillo::Error*)> error_callback) {
+            std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
   debugd_adapter_->GetSmartAttributes(base::Bind(
@@ -93,8 +96,10 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentity) {
   constexpr char kResult[] = "NVMe identity data";
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeIdentity, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
-          [kResult](const base::Callback<void(const std::string& /* result */)>&
-                        success_callback) { success_callback.Run(kResult); })));
+          [kResult](base::OnceCallback<void(const std::string& /* result */)>
+                        success_callback) {
+            std::move(success_callback).Run(kResult);
+          })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
   debugd_adapter_->GetNvmeIdentity(base::Bind(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
@@ -104,10 +109,10 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentity) {
 TEST_F(DebugdAdapterImplTest, GetNvmeIdentityError) {
   const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeIdentity, _, _, _))
-      .WillOnce(WithArg<2>(Invoke(
-          [error = kError.get()](
-              const base::Callback<void(brillo::Error*)>& error_callback) {
-            error_callback.Run(error);
+      .WillOnce(WithArg<2>(
+          Invoke([error = kError.get()](
+                     base::OnceCallback<void(brillo::Error*)> error_callback) {
+            std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
   debugd_adapter_->GetNvmeIdentity(base::Bind(
@@ -145,8 +150,10 @@ TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTest) {
   constexpr char kResult[] = "Device self-test started";
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
-          [kResult](const base::Callback<void(const std::string& /* result */)>&
-                        success_callback) { success_callback.Run(kResult); })));
+          [kResult](base::OnceCallback<void(const std::string& /* result */)>
+                        success_callback) {
+            std::move(success_callback).Run(kResult);
+          })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
   debugd_adapter_->RunNvmeShortSelfTest(base::Bind(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
@@ -156,10 +163,10 @@ TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTest) {
 TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTestError) {
   const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
-      .WillOnce(WithArg<2>(Invoke(
-          [error = kError.get()](
-              const base::Callback<void(brillo::Error*)>& error_callback) {
-            error_callback.Run(error);
+      .WillOnce(WithArg<2>(
+          Invoke([error = kError.get()](
+                     base::OnceCallback<void(brillo::Error*)> error_callback) {
+            std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
   debugd_adapter_->RunNvmeShortSelfTest(base::Bind(
@@ -171,8 +178,10 @@ TEST_F(DebugdAdapterImplTest, RunNvmeLongSelfTest) {
   constexpr char kResult[] = "Device self-test started";
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
-          [kResult](const base::Callback<void(const std::string& /* result */)>&
-                        success_callback) { success_callback.Run(kResult); })));
+          [kResult](base::OnceCallback<void(const std::string& /* result */)>
+                        success_callback) {
+            std::move(success_callback).Run(kResult);
+          })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
   debugd_adapter_->RunNvmeLongSelfTest(base::Bind(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
@@ -182,10 +191,10 @@ TEST_F(DebugdAdapterImplTest, RunNvmeLongSelfTest) {
 TEST_F(DebugdAdapterImplTest, RunNvmeLongSelfTestError) {
   const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
-      .WillOnce(WithArg<2>(Invoke(
-          [error = kError.get()](
-              const base::Callback<void(brillo::Error*)>& error_callback) {
-            error_callback.Run(error);
+      .WillOnce(WithArg<2>(
+          Invoke([error = kError.get()](
+                     base::OnceCallback<void(brillo::Error*)> error_callback) {
+            std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
   debugd_adapter_->RunNvmeLongSelfTest(base::Bind(
@@ -197,8 +206,10 @@ TEST_F(DebugdAdapterImplTest, StopNvmeSelfTest) {
   constexpr char kResult[] = "Aborting device self-test operation";
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeStopSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
-          [kResult](const base::Callback<void(const std::string& /* result */)>&
-                        success_callback) { success_callback.Run(kResult); })));
+          [kResult](base::OnceCallback<void(const std::string& /* result */)>
+                        success_callback) {
+            std::move(success_callback).Run(kResult);
+          })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
   debugd_adapter_->StopNvmeSelfTest(base::Bind(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
@@ -208,10 +219,10 @@ TEST_F(DebugdAdapterImplTest, StopNvmeSelfTest) {
 TEST_F(DebugdAdapterImplTest, StopNvmeSelfTestError) {
   const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeStopSelfTestOption, _, _, _))
-      .WillOnce(WithArg<2>(Invoke(
-          [error = kError.get()](
-              const base::Callback<void(brillo::Error*)>& error_callback) {
-            error_callback.Run(error);
+      .WillOnce(WithArg<2>(
+          Invoke([error = kError.get()](
+                     base::OnceCallback<void(brillo::Error*)> error_callback) {
+            std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
   debugd_adapter_->StopNvmeSelfTest(base::Bind(
@@ -225,8 +236,10 @@ TEST_F(DebugdAdapterImplTest, GetNvmeLog) {
               NvmeLogAsync(kNvmeGetLogPageId, kNvmeGetLogDataLength,
                            kNvmeGetLogRawBinary, _, _, _))
       .WillOnce(WithArg<3>(Invoke(
-          [kResult](const base::Callback<void(const std::string& /* result */)>&
-                        success_callback) { success_callback.Run(kResult); })));
+          [kResult](base::OnceCallback<void(const std::string& /* result */)>
+                        success_callback) {
+            std::move(success_callback).Run(kResult);
+          })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
   debugd_adapter_->GetNvmeLog(kNvmeGetLogPageId, kNvmeGetLogDataLength,
                               kNvmeGetLogRawBinary,
@@ -240,10 +253,10 @@ TEST_F(DebugdAdapterImplTest, GetNvmeLogError) {
   EXPECT_CALL(*debugd_proxy_mock_,
               NvmeLogAsync(kNvmeGetLogPageId, kNvmeGetLogDataLength,
                            kNvmeGetLogRawBinary, _, _, _))
-      .WillOnce(WithArg<4>(Invoke(
-          [error = kError.get()](
-              const base::Callback<void(brillo::Error*)>& error_callback) {
-            error_callback.Run(error);
+      .WillOnce(WithArg<4>(
+          Invoke([error = kError.get()](
+                     base::OnceCallback<void(brillo::Error*)> error_callback) {
+            std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
   debugd_adapter_->GetNvmeLog(kNvmeGetLogPageId, kNvmeGetLogDataLength,

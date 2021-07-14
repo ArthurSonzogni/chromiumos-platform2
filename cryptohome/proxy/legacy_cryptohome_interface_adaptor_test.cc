@@ -129,18 +129,18 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExSuccess) {
   req.set_public_mount(false);
 
   EXPECT_CALL(userdataauth_, MountAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const user_data_auth::MountRequest& in_request,
-                    const base::Callback<void(
-                        const user_data_auth::MountReply&)>& success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(
+          Invoke([&](const user_data_auth::MountRequest& in_request,
+                     base::OnceCallback<void(const user_data_auth::MountReply&)>
+                         success_callback,
+                     base::OnceCallback<void(brillo::Error*)> error_callback,
+                     int timeout_ms) {
+            proxied_request = in_request;
             user_data_auth::MountReply proxied_reply;
             proxied_reply.set_recreated(true);
             proxied_reply.set_sanitized_username(kSanitizedUsername1);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<cryptohome::BaseReply> final_reply;
   std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
@@ -184,18 +184,18 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExSuccessWithCreate) {
   key->set_secret(kSecret);
 
   EXPECT_CALL(userdataauth_, MountAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const user_data_auth::MountRequest& in_request,
-                    const base::Callback<void(
-                        const user_data_auth::MountReply&)>& success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(
+          Invoke([&](const user_data_auth::MountRequest& in_request,
+                     base::OnceCallback<void(const user_data_auth::MountReply&)>
+                         success_callback,
+                     base::OnceCallback<void(brillo::Error*)> error_callback,
+                     int timeout_ms) {
+            proxied_request = in_request;
             user_data_auth::MountReply proxied_reply;
             proxied_reply.set_recreated(true);
             proxied_reply.set_sanitized_username(kSanitizedUsername1);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   int respond_count = 0;
   std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
@@ -240,19 +240,19 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExFail) {
   req.set_public_mount(true);
 
   EXPECT_CALL(userdataauth_, MountAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const user_data_auth::MountRequest& in_request,
-                    const base::Callback<void(
-                        const user_data_auth::MountReply&)>& success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(
+          Invoke([&](const user_data_auth::MountRequest& in_request,
+                     base::OnceCallback<void(const user_data_auth::MountReply&)>
+                         success_callback,
+                     base::OnceCallback<void(brillo::Error*)> error_callback,
+                     int timeout_ms) {
+            proxied_request = in_request;
             user_data_auth::MountReply proxied_reply;
             proxied_reply.set_error(
                 user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
             proxied_reply.set_recreated(false);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<cryptohome::BaseReply> final_reply;
   std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
@@ -285,21 +285,20 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmIsAttestationPreparedSuccessResultTrue) {
   attestation::GetEnrollmentPreparationsRequest proxied_request;
   EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
-                        in_request,
-                    const base::Callback<void(
-                        const attestation::GetEnrollmentPreparationsReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(Invoke(
+          [&](const attestation::GetEnrollmentPreparationsRequest& in_request,
+              base::OnceCallback<void(
+                  const attestation::GetEnrollmentPreparationsReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
             attestation::GetEnrollmentPreparationsReply proxied_reply;
             proxied_reply.set_status(attestation::STATUS_SUCCESS);
             (*proxied_reply.mutable_enrollment_preparations())[0] = true;
             (*proxied_reply.mutable_enrollment_preparations())[1] = false;
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<bool> result;
   std::unique_ptr<MockDBusMethodResponse<bool>> response(
@@ -319,21 +318,20 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmIsAttestationPreparedSuccessResultFalse) {
   attestation::GetEnrollmentPreparationsRequest proxied_request;
   EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
-                        in_request,
-                    const base::Callback<void(
-                        const attestation::GetEnrollmentPreparationsReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(Invoke(
+          [&](const attestation::GetEnrollmentPreparationsRequest& in_request,
+              base::OnceCallback<void(
+                  const attestation::GetEnrollmentPreparationsReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
             attestation::GetEnrollmentPreparationsReply proxied_reply;
             proxied_reply.set_status(attestation::STATUS_SUCCESS);
             (*proxied_reply.mutable_enrollment_preparations())[0] = false;
             (*proxied_reply.mutable_enrollment_preparations())[1] = false;
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<bool> result;
   std::unique_ptr<MockDBusMethodResponse<bool>> response(
@@ -354,21 +352,20 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationGetEnrollmentPreparationsExSuccess) {
   attestation::GetEnrollmentPreparationsRequest proxied_request;
   EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
-                        in_request,
-                    const base::Callback<void(
-                        const attestation::GetEnrollmentPreparationsReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(Invoke(
+          [&](const attestation::GetEnrollmentPreparationsRequest& in_request,
+              base::OnceCallback<void(
+                  const attestation::GetEnrollmentPreparationsReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
             attestation::GetEnrollmentPreparationsReply proxied_reply;
             proxied_reply.set_status(attestation::STATUS_SUCCESS);
             (*proxied_reply.mutable_enrollment_preparations())[0] = true;
             (*proxied_reply.mutable_enrollment_preparations())[1] = false;
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<cryptohome::BaseReply> result;
   std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
@@ -429,20 +426,19 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationGetEnrollmentPreparationsExFailure) {
   attestation::GetEnrollmentPreparationsRequest proxied_request;
   EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
-                        in_request,
-                    const base::Callback<void(
-                        const attestation::GetEnrollmentPreparationsReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(Invoke(
+          [&](const attestation::GetEnrollmentPreparationsRequest& in_request,
+              base::OnceCallback<void(
+                  const attestation::GetEnrollmentPreparationsReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
             attestation::GetEnrollmentPreparationsReply proxied_reply;
             proxied_reply.set_status(
                 attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<cryptohome::BaseReply> result;
   std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
@@ -470,20 +466,20 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationCreateEnrollRequestSuccess) {
   attestation::CreateEnrollRequestRequest proxied_request;
   EXPECT_CALL(attestation_, CreateEnrollRequestAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::CreateEnrollRequestRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::CreateEnrollRequestReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(
+          Invoke([&](const attestation::CreateEnrollRequestRequest& in_request,
+                     base::OnceCallback<void(
+                         const attestation::CreateEnrollRequestReply&)>
+                         success_callback,
+                     base::OnceCallback<void(brillo::Error*)> error_callback,
+                     int timeout_ms) {
+            proxied_request = in_request;
             attestation::CreateEnrollRequestReply proxied_reply;
             proxied_reply.set_status(attestation::STATUS_SUCCESS);
             proxied_reply.set_pca_request(
                 std::string(kPCARequest, sizeof(kPCARequest)));
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<std::vector<uint8_t>> result_pca_request;
   std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
@@ -523,18 +519,18 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationCreateEnrollRequestFailed) {
   attestation::CreateEnrollRequestRequest proxied_request;
   EXPECT_CALL(attestation_, CreateEnrollRequestAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::CreateEnrollRequestRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::CreateEnrollRequestReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(
+          Invoke([&](const attestation::CreateEnrollRequestRequest& in_request,
+                     base::OnceCallback<void(
+                         const attestation::CreateEnrollRequestReply&)>
+                         success_callback,
+                     base::OnceCallback<void(brillo::Error*)> error_callback,
+                     int timeout_ms) {
+            proxied_request = in_request;
             attestation::CreateEnrollRequestReply reply;
             reply.set_status(attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
-            success_callback.Run(reply);
-          })));
+            std::move(success_callback).Run(reply);
+          }));
 
   std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
       new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
@@ -556,19 +552,17 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollSuccess) {
   attestation::FinishEnrollRequest proxied_request;
   EXPECT_CALL(attestation_, FinishEnrollAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke(
-              [](const attestation::FinishEnrollRequest& in_request,
-                 const base::Callback<void(
-                     const attestation::FinishEnrollReply&)>& success_callback,
-                 const base::Callback<void(brillo::Error*)>& error_callback,
-                 int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-                attestation::FinishEnrollReply proxied_reply;
-                proxied_reply.set_status(attestation::STATUS_SUCCESS);
-                success_callback.Run(proxied_reply);
-              })));
-
+      .WillOnce(Invoke(
+          [&](const attestation::FinishEnrollRequest& in_request,
+              base::OnceCallback<void(const attestation::FinishEnrollReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+            proxied_request = in_request;
+            attestation::FinishEnrollReply proxied_reply;
+            proxied_reply.set_status(attestation::STATUS_SUCCESS);
+            std::move(success_callback).Run(proxied_reply);
+          }));
   base::Optional<bool> result_success;
   std::unique_ptr<MockDBusMethodResponse<bool>> response(
       new MockDBusMethodResponse<bool>(nullptr));
@@ -610,19 +604,17 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollInvalidACA) {
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollFailed) {
   attestation::FinishEnrollRequest proxied_request;
   EXPECT_CALL(attestation_, FinishEnrollAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke(
-              [](const attestation::FinishEnrollRequest& in_request,
-                 const base::Callback<void(
-                     const attestation::FinishEnrollReply&)>& success_callback,
-                 const base::Callback<void(brillo::Error*)>& error_callback,
-                 int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
-                attestation::FinishEnrollReply reply;
-                reply.set_status(attestation::STATUS_NOT_READY);
-                success_callback.Run(reply);
-              })));
-
+      .WillOnce(Invoke(
+          [&](const attestation::FinishEnrollRequest& in_request,
+              base::OnceCallback<void(const attestation::FinishEnrollReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+            proxied_request = in_request;
+            attestation::FinishEnrollReply reply;
+            reply.set_status(attestation::STATUS_NOT_READY);
+            std::move(success_callback).Run(reply);
+          }));
   base::Optional<bool> result_success;
   std::unique_ptr<MockDBusMethodResponse<bool>> response(
       new MockDBusMethodResponse<bool>(nullptr));
@@ -651,22 +643,20 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationCreateCertRequestSuccess) {
   attestation::CreateCertificateRequestRequest proxied_request;
   EXPECT_CALL(attestation_, CreateCertificateRequestAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke(
-              [](const attestation::CreateCertificateRequestRequest& in_request,
-                 const base::Callback<void(
-                     const attestation::CreateCertificateRequestReply&)>&
-                     success_callback,
-                 const base::Callback<void(brillo::Error*)>& error_callback,
-                 int timeout_ms) {
-                attestation::CreateCertificateRequestReply proxied_reply;
-                proxied_reply.set_status(attestation::STATUS_SUCCESS);
-                proxied_reply.set_pca_request(
-                    std::string(kPCARequest, sizeof(kPCARequest)));
-                success_callback.Run(proxied_reply);
-              })));
-
+      .WillOnce(Invoke(
+          [&](const attestation::CreateCertificateRequestRequest& in_request,
+              base::OnceCallback<void(
+                  const attestation::CreateCertificateRequestReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
+            attestation::CreateCertificateRequestReply proxied_reply;
+            proxied_reply.set_status(attestation::STATUS_SUCCESS);
+            proxied_reply.set_pca_request(
+                std::string(kPCARequest, sizeof(kPCARequest)));
+            std::move(success_callback).Run(proxied_reply);
+          }));
   base::Optional<std::vector<uint8_t>> result_pca_request;
   std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
       new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
@@ -712,20 +702,18 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationCreateCertRequestFailed) {
   attestation::CreateCertificateRequestRequest proxied_request;
   EXPECT_CALL(attestation_, CreateCertificateRequestAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke(
-              [](const attestation::CreateCertificateRequestRequest& in_request,
-                 const base::Callback<void(
-                     const attestation::CreateCertificateRequestReply&)>&
-                     success_callback,
-                 const base::Callback<void(brillo::Error*)>& error_callback,
-                 int timeout_ms) {
-                attestation::CreateCertificateRequestReply reply;
-                reply.set_status(attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
-                success_callback.Run(reply);
-              })));
-
+      .WillOnce(Invoke(
+          [&](const attestation::CreateCertificateRequestRequest& in_request,
+              base::OnceCallback<void(
+                  const attestation::CreateCertificateRequestReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
+            attestation::CreateCertificateRequestReply reply;
+            reply.set_status(attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
+            std::move(success_callback).Run(reply);
+          }));
   std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
       new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
   EXPECT_CALL(
@@ -754,17 +742,17 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationDeleteKeysSuccess) {
   attestation::DeleteKeysRequest proxied_request;
   EXPECT_CALL(attestation_, DeleteKeysAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::DeleteKeysRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::DeleteKeysReply&)>& success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(Invoke(
+          [&](const attestation::DeleteKeysRequest& in_request,
+              base::OnceCallback<void(const attestation::DeleteKeysReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
             attestation::DeleteKeysReply proxied_reply;
             proxied_reply.set_status(attestation::STATUS_SUCCESS);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<bool> result;
   std::unique_ptr<MockDBusMethodResponse<bool>> response(
@@ -792,17 +780,17 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationDeleteKeysSuccess) {
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationDeleteKeySuccess) {
   attestation::DeleteKeysRequest proxied_request;
   EXPECT_CALL(attestation_, DeleteKeysAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const attestation::DeleteKeysRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::DeleteKeysReply&)>& success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms) {
+      .WillOnce(Invoke(
+          [&](const attestation::DeleteKeysRequest& in_request,
+              base::OnceCallback<void(const attestation::DeleteKeysReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms) {
+            proxied_request = in_request;
             attestation::DeleteKeysReply proxied_reply;
             proxied_reply.set_status(attestation::STATUS_SUCCESS);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   base::Optional<bool> result;
   std::unique_ptr<MockDBusMethodResponse<bool>> response(
@@ -834,19 +822,18 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MigrateToDircryptoSuccess) {
 
   user_data_auth::StartMigrateToDircryptoRequest proxied_request;
   EXPECT_CALL(userdataauth_, StartMigrateToDircryptoAsync(_, _, _, _))
-      .WillOnce(DoAll(
-          SaveArg<0>(&proxied_request),
-          Invoke([](const user_data_auth::StartMigrateToDircryptoRequest&
-                        in_request,
-                    const base::Callback<void(
-                        const user_data_auth::StartMigrateToDircryptoReply&)>&
-                        success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
-                    int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      .WillOnce(Invoke(
+          [&](const user_data_auth::StartMigrateToDircryptoRequest& in_request,
+              base::OnceCallback<void(
+                  const user_data_auth::StartMigrateToDircryptoReply&)>
+                  success_callback,
+              base::OnceCallback<void(brillo::Error*)> error_callback,
+              int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+            proxied_request = in_request;
             user_data_auth::StartMigrateToDircryptoReply proxied_reply;
             proxied_reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-            success_callback.Run(proxied_reply);
-          })));
+            std::move(success_callback).Run(proxied_reply);
+          }));
 
   bool called = false;
   std::unique_ptr<MockDBusMethodResponse<>> response(
@@ -910,10 +897,10 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, GetVersionInfo) {
   EXPECT_CALL(ownership_, GetVersionInfoAsync(_, _, _, _))
       .WillOnce(
           Invoke([](const tpm_manager::GetVersionInfoRequest& in_request,
-                    const base::Callback<void(
-                        const tpm_manager::GetVersionInfoReply& /*reply*/)>&
+                    base::OnceCallback<void(
+                        const tpm_manager::GetVersionInfoReply& /*reply*/)>
                         success_callback,
-                    const base::Callback<void(brillo::Error*)>&
+                    base::OnceCallback<void(brillo::Error*)>
                     /* error_callback */,
                     int /* timeout_ms */) {
             tpm_manager::GetVersionInfoReply info;
@@ -923,7 +910,7 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, GetVersionInfo) {
             info.set_tpm_model(4);
             info.set_firmware_version(5);
             info.set_vendor_specific("ab");
-            success_callback.Run(info);
+            std::move(success_callback).Run(info);
           }));
 
   using VersionInfoResponse =
@@ -962,16 +949,16 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, GetLoginStatus) {
   EXPECT_CALL(misc_, GetLoginStatusAsync(_, _, _, _))
       .WillOnce(
           Invoke([](const user_data_auth::GetLoginStatusRequest& request,
-                    const base::Callback<void(
-                        const user_data_auth::GetLoginStatusReply& /*reply*/)>&
+                    base::OnceCallback<void(
+                        const user_data_auth::GetLoginStatusReply& /*reply*/)>
                         success_callback,
-                    const base::Callback<void(brillo::Error*)>&
+                    base::OnceCallback<void(brillo::Error*)>
                     /* error_callback */,
                     int /* timeout_ms */) {
             user_data_auth::GetLoginStatusReply reply;
             reply.set_owner_user_exists(true);
             reply.set_is_locked_to_single_user(true);
-            success_callback.Run(reply);
+            std::move(success_callback).Run(reply);
           }));
 
   base::Optional<cryptohome::BaseReply> final_reply;
@@ -1056,18 +1043,19 @@ class LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus
     EXPECT_CALL(ownership_, GetTpmStatusAsync(_, _, _, _))
         .WillOnce(Invoke(
             [reply](const tpm_manager::GetTpmStatusRequest& in_request,
-                    const base::Callback<void(
-                        const tpm_manager::GetTpmStatusReply& /*reply*/)>&
+                    base::OnceCallback<void(
+                        const tpm_manager::GetTpmStatusReply& /*reply*/)>
                         success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    base::OnceCallback<void(brillo::Error*)> error_callback,
                     int timeout_ms) {
               if (reply.has_value()) {
                 // If |reply| has value, then the method will be successful and
                 // |reply| will be returned.
-                success_callback.Run(reply.value());
+                std::move(success_callback).Run(reply.value());
               } else {
                 // If not, the method will return an error.
-                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+                std::move(error_callback)
+                    .Run(CreateDefaultError(FROM_HERE).get());
               }
             }));
   }
@@ -1078,16 +1066,16 @@ class LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus
         .WillOnce(Invoke(
             [reply](
                 const tpm_manager::GetDictionaryAttackInfoRequest& in_request,
-                const base::Callback<void(
-                    const tpm_manager::
-                        GetDictionaryAttackInfoReply& /*reply*/)>&
+                base::OnceCallback<void(
+                    const tpm_manager::GetDictionaryAttackInfoReply& /*reply*/)>
                     success_callback,
-                const base::Callback<void(brillo::Error*)>& error_callback,
+                base::OnceCallback<void(brillo::Error*)> error_callback,
                 int timeout_ms) {
               if (reply.has_value()) {
-                success_callback.Run(reply.value());
+                std::move(success_callback).Run(reply.value());
               } else {
-                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+                std::move(error_callback)
+                    .Run(CreateDefaultError(FROM_HERE).get());
               }
             }));
   }
@@ -1100,16 +1088,17 @@ class LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus
         .WillOnce(Invoke(
             [reply](const user_data_auth::InstallAttributesGetStatusRequest&
                         in_request,
-                    const base::Callback<void(
+                    base::OnceCallback<void(
                         const user_data_auth::
-                            InstallAttributesGetStatusReply& /*reply*/)>&
+                            InstallAttributesGetStatusReply& /*reply*/)>
                         success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    base::OnceCallback<void(brillo::Error*)> error_callback,
                     int timeout_ms) {
               if (reply.has_value()) {
-                success_callback.Run(reply.value());
+                std::move(success_callback).Run(reply.value());
               } else {
-                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+                std::move(error_callback)
+                    .Run(CreateDefaultError(FROM_HERE).get());
               }
             }));
   }
@@ -1119,15 +1108,16 @@ class LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus
     EXPECT_CALL(attestation_, GetStatusAsync(_, _, _, _))
         .WillOnce(Invoke(
             [reply](const attestation::GetStatusRequest& in_request,
-                    const base::Callback<void(
-                        const attestation::GetStatusReply& /*reply*/)>&
+                    base::OnceCallback<void(
+                        const attestation::GetStatusReply& /*reply*/)>
                         success_callback,
-                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    base::OnceCallback<void(brillo::Error*)> error_callback,
                     int timeout_ms) {
               if (reply.has_value()) {
-                success_callback.Run(reply.value());
+                std::move(success_callback).Run(reply.value());
               } else {
-                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+                std::move(error_callback)
+                    .Run(CreateDefaultError(FROM_HERE).get());
               }
             }));
   }

@@ -74,8 +74,8 @@ class TestInterfaceProxyInterface {
   virtual void ElementsAsync(
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
-      const base::Callback<void(const std::string&)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const std::string&)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual bool ReturnToPatagonia(
@@ -84,8 +84,8 @@ class TestInterfaceProxyInterface {
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void ReturnToPatagoniaAsync(
-      const base::Callback<void(int64_t)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(int64_t)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual bool NiceWeatherForDucks(
@@ -95,8 +95,8 @@ class TestInterfaceProxyInterface {
 
   virtual void NiceWeatherForDucksAsync(
       bool in_1,
-      const base::Callback<void()>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   // Comment line1
@@ -108,8 +108,8 @@ class TestInterfaceProxyInterface {
   // Comment line1
   // line2
   virtual void ExperimentNumberSixAsync(
-      const base::Callback<void()>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual bool NervousTension(
@@ -120,17 +120,17 @@ class TestInterfaceProxyInterface {
 
   virtual void NervousTensionAsync(
       const PageOne& in_page_one,
-      const base::Callback<void(const Pushy& /*pushy*/)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const Pushy& /*pushy*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual void RegisterTheCurseOfKaZarSignalHandler(
-      const base::Callback<void(const std::vector<std::string>&,
-                                uint8_t)>& signal_callback,
+      const base::RepeatingCallback<void(const std::vector<std::string>&,
+                                         uint8_t)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
@@ -162,7 +162,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   }
 
   void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
@@ -173,8 +173,8 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   }
 
   void RegisterTheCurseOfKaZarSignalHandler(
-      const base::Callback<void(const std::vector<std::string>&,
-                                uint8_t)>& signal_callback,
+      const base::RepeatingCallback<void(const std::vector<std::string>&,
+                                         uint8_t)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
@@ -184,8 +184,8 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         std::move(on_connected_callback));
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -217,16 +217,16 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   void ElementsAsync(
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
-      const base::Callback<void(const std::string&)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const std::string&)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Elements",
-        success_callback,
-        error_callback,
+        std::move(success_callback),
+        std::move(error_callback),
         in_space_walk,
         in_ramblin_man);
   }
@@ -246,16 +246,16 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   }
 
   void ReturnToPatagoniaAsync(
-      const base::Callback<void(int64_t)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(int64_t)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ReturnToPatagonia",
-        success_callback,
-        error_callback);
+        std::move(success_callback),
+        std::move(error_callback));
   }
 
   bool NiceWeatherForDucks(
@@ -275,16 +275,16 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   void NiceWeatherForDucksAsync(
       bool in_1,
-      const base::Callback<void()>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "NiceWeatherForDucks",
-        success_callback,
-        error_callback,
+        std::move(success_callback),
+        std::move(error_callback),
         in_1);
   }
 
@@ -306,16 +306,16 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   // Comment line1
   // line2
   void ExperimentNumberSixAsync(
-      const base::Callback<void()>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void()> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ExperimentNumberSix",
-        success_callback,
-        error_callback);
+        std::move(success_callback),
+        std::move(error_callback));
   }
 
   bool NervousTension(
@@ -336,16 +336,16 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   void NervousTensionAsync(
       const PageOne& in_page_one,
-      const base::Callback<void(const Pushy& /*pushy*/)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const Pushy& /*pushy*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "NervousTension",
-        success_callback,
-        error_callback,
+        std::move(success_callback),
+        std::move(error_callback),
         in_page_one);
   }
 
@@ -375,8 +375,8 @@ class TestInterface2ProxyInterface {
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void GetPersonInfoAsync(
-      const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const std::string& /*name*/, int32_t /*age*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
@@ -409,8 +409,8 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
   ~TestInterface2Proxy() override {
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -437,16 +437,16 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
   }
 
   void GetPersonInfoAsync(
-      const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const std::string& /*name*/, int32_t /*age*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface2",
         "GetPersonInfo",
-        success_callback,
-        error_callback);
+        std::move(success_callback),
+        std::move(error_callback));
   }
 
  private:
@@ -494,7 +494,7 @@ class TestInterfaceProxyInterface {
   virtual ~TestInterfaceProxyInterface() = default;
 
   virtual void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
@@ -523,7 +523,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   }
 
   void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
@@ -533,8 +533,8 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         std::move(on_connected_callback));
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -592,8 +592,8 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
   ~TestInterface2Proxy() override {
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -655,7 +655,7 @@ class Itf1ProxyInterface {
   virtual ~Itf1ProxyInterface() = default;
 
   virtual void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   static const char* DataName() { return "Data"; }
@@ -663,13 +663,13 @@ class Itf1ProxyInterface {
   static const char* NameName() { return "Name"; }
   virtual const std::string& name() const = 0;
   virtual void set_name(const std::string& value,
-                        const base::Callback<void(bool)>& callback) = 0;
+                        base::OnceCallback<void(bool)> callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 
   virtual void SetPropertyChangedCallback(
-      const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) = 0;
+      const base::RepeatingCallback<void(Itf1ProxyInterface*, const std::string&)>& callback) = 0;
 };
 
 }  // namespace chromium
@@ -717,7 +717,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   }
 
   void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
@@ -727,8 +727,8 @@ class Itf1Proxy final : public Itf1ProxyInterface {
         std::move(on_connected_callback));
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -740,7 +740,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   }
 
   void SetPropertyChangedCallback(
-      const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) override {
+      const base::RepeatingCallback<void(Itf1ProxyInterface*, const std::string&)>& callback) override {
     on_property_changed_ = callback;
   }
 
@@ -756,8 +756,8 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   }
 
   void set_name(const std::string& value,
-                const base::Callback<void(bool)>& callback) override {
-    property_set_->name.Set(value, callback);
+                base::OnceCallback<void(bool)> callback) override {
+    property_set_->name.Set(value, std::move(callback));
   }
 
  private:
@@ -770,7 +770,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   std::string service_name_;
   const dbus::ObjectPath object_path_{"/org/chromium/Test/Object"};
   PropertySet* property_set_;
-  base::Callback<void(Itf1ProxyInterface*, const std::string&)> on_property_changed_;
+  base::RepeatingCallback<void(Itf1ProxyInterface*, const std::string&)> on_property_changed_;
   dbus::ObjectProxy* dbus_object_proxy_;
 
   friend class org::chromium::ObjectManagerProxy;
@@ -831,8 +831,8 @@ class Itf2Proxy final : public Itf2ProxyInterface {
   ~Itf2Proxy() override {
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -895,11 +895,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return values;
   }
   void SetItf1AddedCallback(
-      const base::Callback<void(org::chromium::Itf1ProxyInterface*)>& callback) {
+      const base::RepeatingCallback<void(org::chromium::Itf1ProxyInterface*)>& callback) {
     on_itf1_added_ = callback;
   }
   void SetItf1RemovedCallback(
-      const base::Callback<void(const dbus::ObjectPath&)>& callback) {
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_itf1_removed_ = callback;
   }
 
@@ -918,11 +918,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return values;
   }
   void SetItf2AddedCallback(
-      const base::Callback<void(org::chromium::Itf2ProxyInterface*)>& callback) {
+      const base::RepeatingCallback<void(org::chromium::Itf2ProxyInterface*)>& callback) {
     on_itf2_added_ = callback;
   }
   void SetItf2RemovedCallback(
-      const base::Callback<void(const dbus::ObjectPath&)>& callback) {
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_itf2_removed_ = callback;
   }
 
@@ -995,19 +995,19 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     if (interface_name == "org.chromium.Itf1") {
       return new org::chromium::Itf1Proxy::PropertySet{
           object_proxy,
-          base::Bind(&ObjectManagerProxy::OnPropertyChanged,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     object_path,
-                     interface_name)
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
       };
     }
     if (interface_name == "org.chromium.Itf2") {
       return new org::chromium::Itf2Proxy::PropertySet{
           object_proxy,
-          base::Bind(&ObjectManagerProxy::OnPropertyChanged,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     object_path,
-                     interface_name)
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
       };
     }
     LOG(FATAL) << "Creating properties for unsupported interface "
@@ -1020,12 +1020,12 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   dbus::ObjectManager* dbus_object_manager_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf1Proxy>> itf1_instances_;
-  base::Callback<void(org::chromium::Itf1ProxyInterface*)> on_itf1_added_;
-  base::Callback<void(const dbus::ObjectPath&)> on_itf1_removed_;
+  base::RepeatingCallback<void(org::chromium::Itf1ProxyInterface*)> on_itf1_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_itf1_removed_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf2Proxy>> itf2_instances_;
-  base::Callback<void(org::chromium::Itf2ProxyInterface*)> on_itf2_added_;
-  base::Callback<void(const dbus::ObjectPath&)> on_itf2_removed_;
+  base::RepeatingCallback<void(org::chromium::Itf2ProxyInterface*)> on_itf2_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_itf2_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
@@ -1070,13 +1070,13 @@ class TestProxyInterface {
   static const char* NameName() { return "Name"; }
   virtual const std::string& name() const = 0;
   virtual void set_name(const std::string& value,
-                        const base::Callback<void(bool)>& callback) = 0;
+                        base::OnceCallback<void(bool)> callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 
   virtual void InitializeProperties(
-      const base::Callback<void(TestProxyInterface*, const std::string&)>& callback) = 0;
+      const base::RepeatingCallback<void(TestProxyInterface*, const std::string&)>& callback) = 0;
 };
 
 }  // namespace chromium
@@ -1118,8 +1118,8 @@ class TestProxy final : public TestProxyInterface {
   ~TestProxy() override {
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -1131,9 +1131,9 @@ class TestProxy final : public TestProxyInterface {
   }
 
   void InitializeProperties(
-      const base::Callback<void(TestProxyInterface*, const std::string&)>& callback) override {
+      const base::RepeatingCallback<void(TestProxyInterface*, const std::string&)>& callback) override {
     property_set_.reset(
-        new PropertySet(dbus_object_proxy_, base::Bind(callback, this)));
+        new PropertySet(dbus_object_proxy_, base::BindRepeating(callback, this)));
     property_set_->ConnectSignals();
     property_set_->GetAll();
   }
@@ -1150,8 +1150,8 @@ class TestProxy final : public TestProxyInterface {
   }
 
   void set_name(const std::string& value,
-                const base::Callback<void(bool)>& callback) override {
-    property_set_->name.Set(value, callback);
+                base::OnceCallback<void(bool)> callback) override {
+    property_set_->name.Set(value, std::move(callback));
   }
 
  private:
@@ -1206,7 +1206,7 @@ class Itf1ProxyInterface {
   virtual ~Itf1ProxyInterface() = default;
 
   virtual void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
@@ -1249,7 +1249,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   }
 
   void RegisterCloserSignalHandler(
-      const base::Closure& signal_callback,
+      base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
@@ -1259,8 +1259,8 @@ class Itf1Proxy final : public Itf1ProxyInterface {
         std::move(on_connected_callback));
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -1332,8 +1332,8 @@ class Itf2Proxy final : public Itf2ProxyInterface {
   ~Itf2Proxy() override {
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -1394,11 +1394,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return values;
   }
   void SetItf1AddedCallback(
-      const base::Callback<void(org::chromium::Itf1ProxyInterface*)>& callback) {
+      const base::RepeatingCallback<void(org::chromium::Itf1ProxyInterface*)>& callback) {
     on_itf1_added_ = callback;
   }
   void SetItf1RemovedCallback(
-      const base::Callback<void(const dbus::ObjectPath&)>& callback) {
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_itf1_removed_ = callback;
   }
 
@@ -1417,11 +1417,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return values;
   }
   void SetItf2AddedCallback(
-      const base::Callback<void(org::chromium::Itf2ProxyInterface*)>& callback) {
+      const base::RepeatingCallback<void(org::chromium::Itf2ProxyInterface*)>& callback) {
     on_itf2_added_ = callback;
   }
   void SetItf2RemovedCallback(
-      const base::Callback<void(const dbus::ObjectPath&)>& callback) {
+      const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_itf2_removed_ = callback;
   }
 
@@ -1483,19 +1483,19 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     if (interface_name == "org.chromium.Itf1") {
       return new org::chromium::Itf1Proxy::PropertySet{
           object_proxy,
-          base::Bind(&ObjectManagerProxy::OnPropertyChanged,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     object_path,
-                     interface_name)
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
       };
     }
     if (interface_name == "org.chromium.Itf2") {
       return new org::chromium::Itf2Proxy::PropertySet{
           object_proxy,
-          base::Bind(&ObjectManagerProxy::OnPropertyChanged,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     object_path,
-                     interface_name)
+          base::BindRepeating(&ObjectManagerProxy::OnPropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              object_path,
+                              interface_name)
       };
     }
     LOG(FATAL) << "Creating properties for unsupported interface "
@@ -1507,12 +1507,12 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   dbus::ObjectManager* dbus_object_manager_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf1Proxy>> itf1_instances_;
-  base::Callback<void(org::chromium::Itf1ProxyInterface*)> on_itf1_added_;
-  base::Callback<void(const dbus::ObjectPath&)> on_itf1_removed_;
+  base::RepeatingCallback<void(org::chromium::Itf1ProxyInterface*)> on_itf1_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_itf1_removed_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf2Proxy>> itf2_instances_;
-  base::Callback<void(org::chromium::Itf2ProxyInterface*)> on_itf2_added_;
-  base::Callback<void(const dbus::ObjectPath&)> on_itf2_removed_;
+  base::RepeatingCallback<void(org::chromium::Itf2ProxyInterface*)> on_itf2_added_;
+  base::RepeatingCallback<void(const dbus::ObjectPath&)> on_itf2_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 };
 
@@ -1560,12 +1560,12 @@ class TestInterfaceProxyInterface {
 
   virtual void WrapFileDescriptorAsync(
       const brillo::dbus_utils::FileDescriptor& in_1,
-      const base::Callback<void(const base::ScopedFD&)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const base::ScopedFD&)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void RegisterFileSignalHandler(
-      const base::Callback<void(const base::ScopedFD&)>& signal_callback,
+      const base::RepeatingCallback<void(const base::ScopedFD&)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
@@ -1597,7 +1597,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   }
 
   void RegisterFileSignalHandler(
-      const base::Callback<void(const base::ScopedFD&)>& signal_callback,
+      const base::RepeatingCallback<void(const base::ScopedFD&)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
@@ -1607,8 +1607,8 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         std::move(on_connected_callback));
   }
 
-  void ReleaseObjectProxy(const base::Closure& callback) {
-    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  void ReleaseObjectProxy(base::OnceClosure callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, std::move(callback));
   }
 
   const dbus::ObjectPath& GetObjectPath() const override {
@@ -1637,16 +1637,16 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   void WrapFileDescriptorAsync(
       const brillo::dbus_utils::FileDescriptor& in_1,
-      const base::Callback<void(const base::ScopedFD&)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const base::ScopedFD&)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "WrapFileDescriptor",
-        success_callback,
-        error_callback,
+        std::move(success_callback),
+        std::move(error_callback),
         in_1);
   }
 

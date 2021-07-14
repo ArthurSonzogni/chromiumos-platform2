@@ -288,16 +288,16 @@ TEST_F(AsyncDBusMethodInvokerTest, TestSuccess) {
   int success_count = 0;
   brillo::dbus_utils::CallMethod(
       mock_object_proxy_.get(), kTestInterface, kTestMethod1,
-      base::Bind(SuccessCallback, "4", &success_count),
-      base::Bind(SimpleErrorCallback, &error_count), 2, 2);
+      base::BindOnce(SuccessCallback, "4", &success_count),
+      base::BindOnce(SimpleErrorCallback, &error_count), 2, 2);
   brillo::dbus_utils::CallMethod(
       mock_object_proxy_.get(), kTestInterface, kTestMethod1,
-      base::Bind(SuccessCallback, "10", &success_count),
-      base::Bind(SimpleErrorCallback, &error_count), 3, 7);
+      base::BindOnce(SuccessCallback, "10", &success_count),
+      base::BindOnce(SimpleErrorCallback, &error_count), 3, 7);
   brillo::dbus_utils::CallMethod(
       mock_object_proxy_.get(), kTestInterface, kTestMethod1,
-      base::Bind(SuccessCallback, "-4", &success_count),
-      base::Bind(SimpleErrorCallback, &error_count), 13, -17);
+      base::BindOnce(SuccessCallback, "-4", &success_count),
+      base::BindOnce(SimpleErrorCallback, &error_count), 13, -17);
   EXPECT_EQ(0, error_count);
   EXPECT_EQ(3, success_count);
 }
@@ -307,9 +307,9 @@ TEST_F(AsyncDBusMethodInvokerTest, TestFailure) {
   int success_count = 0;
   brillo::dbus_utils::CallMethod(
       mock_object_proxy_.get(), kTestInterface, kTestMethod2,
-      base::Bind(SimpleSuccessCallback, &success_count),
-      base::Bind(ErrorCallback, brillo::errors::dbus::kDomain, "org.MyError",
-                 "My error message", &error_count),
+      base::BindOnce(SimpleSuccessCallback, &success_count),
+      base::BindOnce(ErrorCallback, brillo::errors::dbus::kDomain,
+                     "org.MyError", "My error message", &error_count),
       2, 2);
   EXPECT_EQ(1, error_count);
   EXPECT_EQ(0, success_count);

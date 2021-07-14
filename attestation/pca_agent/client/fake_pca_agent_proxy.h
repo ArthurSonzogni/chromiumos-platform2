@@ -6,6 +6,7 @@
 #define ATTESTATION_PCA_AGENT_CLIENT_FAKE_PCA_AGENT_PROXY_H_
 
 #include <string>
+#include <utility>
 
 #include <attestation/pca_agent/dbus-proxy-mocks.h>
 #include <attestation/proto_bindings/pca_agent.pb.h>
@@ -97,31 +98,33 @@ class FakePcaAgentProxy : public org::chromium::PcaAgentProxyMock {
   template <class ReplyType, class SuccessCallbackType, class ErrorCallbackType>
   void PostTask(const Config& config,
                 const ReplyType& reply,
-                const SuccessCallbackType& on_success,
-                const ErrorCallbackType& on_error) {
-    auto task = config.success ? base::Bind(on_success, reply)
-                               : base::Bind(on_error, dummy_error_.get());
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(FROM_HERE, task,
-                                                         config.delay);
+                SuccessCallbackType on_success,
+                ErrorCallbackType on_error) {
+    auto task = config.success
+                    ? base::BindOnce(std::move(on_success), reply)
+                    : base::BindOnce(std::move(on_error), dummy_error_.get());
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE, std::move(task), config.delay);
   }
 
   void FakeEnrollAsync(
       const EnrollRequest& request,
-      const base::Callback<void(const EnrollReply&)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const EnrollReply&)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int /*timeout_ms*/) {
     enroll_reply_.set_status(enroll_config_.status);
     if (enroll_config_.status == STATUS_SUCCESS) {
       enroll_reply_.set_response(
           CreateCAEnrollResponse(enroll_config_.is_good_pca_response));
     }
-    PostTask(enroll_config_, enroll_reply_, success_callback, error_callback);
+    PostTask(enroll_config_, enroll_reply_, std::move(success_callback),
+             std::move(error_callback));
   }
 
   void FakeGetCertificateAsync(
       const GetCertificateRequest& request,
-      const base::Callback<void(const GetCertificateReply&)>& success_callback,
-      const base::Callback<void(brillo::Error*)>& error_callback,
+      base::OnceCallback<void(const GetCertificateReply&)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
       int /*timeout_ms*/) {
     get_certificate_reply_.set_status(get_certificate_config_.status);
     if (get_certificate_config_.status == STATUS_SUCCESS) {
@@ -131,8 +134,8 @@ class FakePcaAgentProxy : public org::chromium::PcaAgentProxyMock {
           CreateCACertResponse(get_certificate_config_.is_good_pca_response,
                                pca_request.message_id()));
     }
-    PostTask(get_certificate_config_, get_certificate_reply_, success_callback,
-             error_callback);
+    PostTask(get_certificate_config_, get_certificate_reply_,
+             std::move(success_callback), std::move(error_callback));
   }
 
   // Creates a fake enroll response.

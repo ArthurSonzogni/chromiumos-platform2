@@ -193,7 +193,7 @@ and our proxy class will have a method:
 
 ```c++
 void RegisterFrobinationCompletedSignalHandler(
-    const base::Callback<void(int32_t, const brillo::VariantDictionary&)>& signal_callback,
+    const base::RepeatingCallback<void(int32_t, const brillo::VariantDictionary&)>& signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
 ```
 

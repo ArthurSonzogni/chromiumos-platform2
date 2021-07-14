@@ -995,24 +995,25 @@ class LegacyCryptohomeInterfaceAdaptor
   // Note that this version deals with async method calls that return byte array
   // data.
   template <typename RequestProtoType, typename ReplyProtoType>
-  int HandleAsyncData(const std::string& (ReplyProtoType::*func)() const,
-                      RequestProtoType request,
-                      base::OnceCallback<void(
-                          const RequestProtoType&,
-                          const base::Callback<void(const ReplyProtoType&)>&,
-                          const base::Callback<void(brillo::Error*)>&,
-                          int)> target_method,
-                      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+  int HandleAsyncData(
+      const std::string& (ReplyProtoType::*func)() const,
+      RequestProtoType request,
+      base::OnceCallback<void(const RequestProtoType&,
+                              base::OnceCallback<void(const ReplyProtoType&)>,
+                              base::OnceCallback<void(brillo::Error*)>,
+                              int)> target_method,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
     int async_id = NextSequence();
 
-    base::Callback<void(const ReplyProtoType&)> on_success = base::Bind(
+    base::OnceCallback<void(const ReplyProtoType&)> on_success = base::BindOnce(
         &LegacyCryptohomeInterfaceAdaptor::AsyncReplyWithData<ReplyProtoType>,
         base::Unretained(this), func, async_id);
-    base::Callback<void(brillo::Error*)> on_failure =
-        base::Bind(&LegacyCryptohomeInterfaceAdaptor::AsyncForwardErrorWithData<
-                       ReplyProtoType>,
-                   base::Unretained(this), func, async_id);
-    std::move(target_method).Run(request, on_success, on_failure, timeout_ms);
+    base::OnceCallback<void(brillo::Error*)> on_failure = base::BindOnce(
+        &LegacyCryptohomeInterfaceAdaptor::AsyncForwardErrorWithData<
+            ReplyProtoType>,
+        base::Unretained(this), func, async_id);
+    std::move(target_method)
+        .Run(request, std::move(on_success), std::move(on_failure), timeout_ms);
 
     return async_id;
   }
@@ -1027,22 +1028,22 @@ class LegacyCryptohomeInterfaceAdaptor
   template <typename RequestProtoType, typename ReplyProtoType>
   int HandleAsyncStatus(
       RequestProtoType request,
-      base::OnceCallback<
-          void(const RequestProtoType&,
-               const base::Callback<void(const ReplyProtoType&)>&,
-               const base::Callback<void(brillo::Error*)>&,
-               int)> target_method,
+      base::OnceCallback<void(const RequestProtoType&,
+                              base::OnceCallback<void(const ReplyProtoType&)>,
+                              base::OnceCallback<void(brillo::Error*)>,
+                              int)> target_method,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
     int async_id = NextSequence();
 
-    base::Callback<void(const ReplyProtoType&)> on_success = base::Bind(
+    base::OnceCallback<void(const ReplyProtoType&)> on_success = base::BindOnce(
         &LegacyCryptohomeInterfaceAdaptor::AsyncReplyWithNoData<ReplyProtoType>,
         base::Unretained(this), async_id);
-    base::Callback<void(brillo::Error*)> on_failure = base::Bind(
+    base::OnceCallback<void(brillo::Error*)> on_failure = base::BindOnce(
         &LegacyCryptohomeInterfaceAdaptor::AsyncForwardErrorWithNoData<
             ReplyProtoType>,
         base::Unretained(this), async_id);
-    std::move(target_method).Run(request, on_success, on_failure, timeout_ms);
+    std::move(target_method)
+        .Run(request, std::move(on_success), std::move(on_failure), timeout_ms);
 
     return async_id;
   }

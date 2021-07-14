@@ -202,8 +202,8 @@ class WebAuthnFuzzer : public brillo::Daemon {
                                           auto error_callback, int timeout_ms) {
             if (success) {
               base::SequencedTaskRunnerHandle::Get()->PostNonNestableTask(
-                  FROM_HERE,
-                  base::BindOnce(success_callback, get_web_authn_secret_reply));
+                  FROM_HERE, base::BindOnce(std::move(success_callback),
+                                            get_web_authn_secret_reply));
             } else {
               // TODO(domen): Prevent showing the error message.
               // |brillo::Error| shows the error message regardless of the

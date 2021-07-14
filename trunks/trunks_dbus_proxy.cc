@@ -5,6 +5,7 @@
 #include "trunks/trunks_dbus_proxy.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -87,7 +88,7 @@ void TrunksDBusProxy::SendCommand(const std::string& command,
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
-  auto on_success = base::Bind(
+  auto on_success = base::BindOnce(
       [](const ResponseCallback& callback,
          const SendCommandResponse& response) {
         callback.Run(response.response());
@@ -95,8 +96,8 @@ void TrunksDBusProxy::SendCommand(const std::string& command,
       callback);
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusMaxTimeout, object_proxy_, trunks::kTrunksInterface,
-      trunks::kSendCommand, on_success,
-      base::Bind(&TrunksDBusProxy::OnError, GetWeakPtr(), callback),
+      trunks::kSendCommand, std::move(on_success),
+      base::BindOnce(&TrunksDBusProxy::OnError, GetWeakPtr(), callback),
       tpm_command_proto);
 }
 
