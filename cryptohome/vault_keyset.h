@@ -111,9 +111,6 @@ class VaultKeyset {
   // Gets the label from the KeyData.
   virtual std::string GetLabel() const;
 
-  virtual int GetFscryptPolicyVersion();
-  virtual void SetFscryptPolicyVersion(int policy_version);
-
   // Checks the key data policy for low entropy credential (not the flags).
   virtual bool IsLECredential() const;
 

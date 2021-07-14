@@ -946,14 +946,6 @@ bool VaultKeyset::IsSignatureChallengeProtected() const {
   return flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
 }
 
-int VaultKeyset::GetFscryptPolicyVersion() {
-  return fscrypt_policy_version_.value_or(-1);
-}
-
-void VaultKeyset::SetFscryptPolicyVersion(int policy_version) {
-  fscrypt_policy_version_ = policy_version;
-}
-
 bool VaultKeyset::HasTpmPublicKeyHash() const {
   return tpm_public_key_hash_.has_value();
 }

@@ -173,7 +173,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
       static_cast<google::protobuf::uint8*>(tbytes.data());
   timestamp.SerializeWithCachedSizesToArray(buf);
 
-  keyset.SetFscryptPolicyVersion(kFscryptPolicyVersion);
+  keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
 
   EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
@@ -194,7 +194,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   EXPECT_EQ(kTestTimestamp, new_keyset.GetLastActivityTimestamp());
   EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */,
                                  nullptr /* crypto_error */));
-  EXPECT_EQ(new_keyset.GetFscryptPolicyVersion(), kFscryptPolicyVersion);
+  EXPECT_EQ(new_keyset.GetFSCryptPolicyVersion(), kFscryptPolicyVersion);
 }
 
 TEST_F(VaultKeysetTest, WriteError) {
@@ -223,7 +223,7 @@ TEST_F(VaultKeysetTest, AuthLockedDefault) {
   static const int kFscryptPolicyVersion = 2;
 
   keyset.CreateRandom();
-  keyset.SetFscryptPolicyVersion(kFscryptPolicyVersion);
+  keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
   keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
 
   SecureBlob key("key");
