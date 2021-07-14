@@ -233,6 +233,9 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
   handler_->RemoveClient(&client_data);
   // RemoveClient can be called multiple times.
   handler_->RemoveClient(&client_data);
+
+  // Wait until tasks are run.
+  base::RunLoop().RunUntilIdle();
 }
 
 // Add clients with only timestamp channel enabled, enable all other channels,

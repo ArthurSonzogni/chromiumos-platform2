@@ -382,11 +382,11 @@ void SamplesHandler::RemoveClientOnThread(ClientData* client_data) {
   DCHECK_EQ(client_data->iio_device, iio_device_);
 
   client_data->observer.reset();
-  SensorMetrics::GetInstance()->SendSensorObserverClosed();
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
     inactive_clients_.erase(it);
+    SensorMetrics::GetInstance()->SendSensorObserverClosed();
     return;
   }
 
@@ -395,6 +395,7 @@ void SamplesHandler::RemoveClientOnThread(ClientData* client_data) {
     return;
   }
 
+  SensorMetrics::GetInstance()->SendSensorObserverClosed();
   RemoveActiveClientOnThread(client_data, client_data->frequency);
 }
 
