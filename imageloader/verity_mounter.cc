@@ -385,6 +385,13 @@ MountStatus GetLoopDevice(const base::ScopedFD& image_fd,
     return MountStatus::RETRY;
   }
 
+  // Support since Linux 4.4, so treat as best effort.
+  // The (third) ioctl(2) argument is an unsigned long value.
+  // A nonzero represents direct I/O mode.
+  if (ioctl(loop_device_fd.get(), LOOP_SET_DIRECT_IO, 1) == -1) {
+    PLOG(WARNING) << "ioctl: LOOP_SET_DIRECT_IO";
+  }
+
   device_path_out->assign(device_path);
   return MountStatus::SUCCESS;
 }
