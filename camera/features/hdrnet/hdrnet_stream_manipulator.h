@@ -44,6 +44,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
                         std::vector<camera3_stream_t*>* streams) override;
   bool OnConfiguredStreams(
       camera3_stream_configuration_t* stream_list) override;
+  bool ConstructDefaultRequestSettings(
+      camera_metadata_t* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
   bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
   bool Notify(camera3_notify_msg_t* msg) override;

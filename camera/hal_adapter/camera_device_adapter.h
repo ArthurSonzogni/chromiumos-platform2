@@ -38,7 +38,6 @@
 #include "cros-camera/camera_metrics.h"
 #include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
-#include "hal_adapter/zsl_helper.h"
 
 namespace cros {
 
@@ -88,7 +87,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
       base::RepeatingCallback<int(int)> get_public_camera_id_callback,
       base::Callback<void()> close_callback,
-      bool attempt_zsl,
       std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
 
   ~CameraDeviceAdapter();
@@ -256,19 +254,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The non-owning read-only view of the static camera characteristics of this
   // device.
   const camera_metadata_t* static_info_;
-
-  // Whether we should attempt to enable ZSL. We might have vendor-specific ZSL
-  // solution, and in which case we should not try to enable our ZSL.
-  bool attempt_zsl_;
-
-  // A helper class that includes various functions for the mechanisms of ZSL.
-  ZslHelper zsl_helper_;
-
-  // Whether ZSL is enabled. The value can change after each ConfigureStreams().
-  std::atomic<bool> zsl_enabled_;
-
-  // The stream configured for ZSL requests.
-  camera3_stream_t* zsl_stream_;
 
   // Stores the request template for a given request type. The local reference
   // is needed here because we need to modify the templates from HAL if ZSL is

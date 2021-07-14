@@ -37,20 +37,6 @@
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
 
-namespace {
-
-void DeleteCameraMetadataEntry(camera_metadata_t* metadata, uint32_t tag) {
-  camera_metadata_entry_t entry;
-  if (find_camera_metadata_entry(metadata, tag, &entry) != 0) {
-    return;
-  }
-  if (delete_camera_metadata_entry(metadata, entry.index) != 0) {
-    LOGF(ERROR) << "Failed to delete camera metadata tag: " << tag;
-  }
-}
-
-}  // namespace
-
 namespace cros {
 
 constexpr base::TimeDelta kMonitorTimeDelta = base::TimeDelta::FromSeconds(2);
@@ -154,7 +140,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
     base::RepeatingCallback<int(int)> get_public_camera_id_callback,
     base::Callback<void()> close_callback,
-    bool attempt_zsl,
     std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
@@ -167,8 +152,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       camera_device_(camera_device),
       device_api_version_(device_api_version),
       static_info_(static_info),
-      attempt_zsl_(attempt_zsl),
-      zsl_helper_(static_info),
       camera_metrics_(CameraMetrics::New()),
       capture_request_monitor_("CaptureRequest"),
       capture_result_monitor_("CaptureResult"),
@@ -361,13 +344,6 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     (*it)->ConfigureStreams(&stream_list, &streams);
   }
 
-  zsl_enabled_ = false;
-  bool is_zsl_stream_attached =
-      attempt_zsl_ && zsl_helper_.AttachZslStream(&stream_list, &streams);
-  if (is_zsl_stream_attached) {
-    zsl_stream_ = streams.back();
-  }
-
   int32_t result =
       camera_device_->ops->configure_streams(camera_device_, &stream_list);
 
@@ -379,14 +355,6 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   }
 
   if (result == 0) {
-    if (is_zsl_stream_attached) {
-      if (zsl_helper_.Initialize(&stream_list)) {
-        zsl_enabled_ = true;
-        LOGF(INFO) << "Enabling ZSL";
-      } else {
-        LOGF(ERROR) << "Failed to initialize ZslHelper";
-      }
-    }
     *updated_config = mojom::Camera3StreamConfiguration::New();
     (*updated_config)->operation_mode = config->operation_mode;
     if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
@@ -462,16 +430,6 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     request_template.acquire(clone_camera_metadata(
         camera_device_->ops->construct_default_request_settings(
             camera_device_, static_cast<int32_t>(type))));
-    if (attempt_zsl_) {
-      // TODO(lnishan): Enable ZSL by default.
-      uint8_t enable_zsl = 0;
-      if (request_template.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1) !=
-          0) {
-        LOGF(WARNING) << "Failed to add ENABLE_ZSL to template " << type;
-      } else {
-        LOGF(INFO) << "Added ENABLE_ZSL to template " << type;
-      }
-    }
   }
   return internal::SerializeCameraMetadata(request_template.getAndLock());
 }
@@ -541,21 +499,11 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
       internal::DeserializeStreamBuffer(out_buf_ptr, streams_, buffer_handles_,
                                         &output_buffers.at(i));
     }
-    if (zsl_enabled_) {
-      zsl_helper_.ProcessZslCaptureRequest(
-          &req, &output_buffers, &settings,
-          ZslHelper::SelectionStrategy::CLOSEST_3A);
-    }
     req.num_output_buffers = output_buffers.size();
     req.output_buffers =
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
 
-  // If |attempt_zsl_| is true. We would add ANDROID_CONTROL_ENABLE_ZSL to the
-  // capture templates. We need to make sure it is hidden from the actual HAL.
-  if (attempt_zsl_) {
-    DeleteCameraMetadataEntry(settings.get(), ANDROID_CONTROL_ENABLE_ZSL);
-  }
   req.settings = settings.get();
 
   std::vector<const char*> phys_ids;
@@ -722,9 +670,11 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 
   self->capture_result_monitor_.Kick();
 
+  // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
+  // so the stream manipulators can unwind the buffer states.
   Camera3CaptureDescriptor result_descriptor(*result);
-  for (auto it = self->stream_manipulators_.begin();
-       it != self->stream_manipulators_.end(); ++it) {
+  for (auto it = self->stream_manipulators_.rbegin();
+       it != self->stream_manipulators_.rend(); ++it) {
     (*it)->ProcessCaptureResult(&result_descriptor);
   }
 
@@ -963,26 +913,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
   mojom::Camera3CaptureResultPtr r = mojom::Camera3CaptureResult::New();
 
   r->frame_number = result->frame_number;
-
-  const camera3_stream_buffer_t* attached_output = nullptr;
-  const camera3_stream_buffer_t* transformed_input = nullptr;
-  if (zsl_enabled_) {
-    base::AutoLock streams_lock(streams_lock_);
-    base::AutoLock buffer_handles_lock(buffer_handles_lock_);
-    zsl_helper_.ProcessZslCaptureResult(result, &attached_output,
-                                        &transformed_input);
-  }
-
-  // If we attempt ZSL, we'll add ANDROID_CONTROL_ENABLE_ZSL to the capture
-  // template which will then require us to add it to capture results as well.
-  if (attempt_zsl_ && result->partial_result == partial_result_count_) {
-    android::CameraMetadata zsl_metadata(clone_camera_metadata(result->result));
-    uint8_t enable_zsl = transformed_input != nullptr;
-    zsl_metadata.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1);
-    r->result = internal::SerializeCameraMetadata(zsl_metadata.getAndLock());
-  } else {
-    r->result = internal::SerializeCameraMetadata(result->result);
-  }
+  r->result = internal::SerializeCameraMetadata(result->result);
   r->partial_result = result->partial_result;
 
   // Serialize output buffers.  This may be none as num_output_buffers may be 0.
@@ -991,9 +922,6 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     std::vector<mojom::Camera3StreamBufferPtr> output_buffers;
     for (size_t i = 0; i < result->num_output_buffers; i++) {
-      if (result->output_buffers + i == attached_output) {
-        continue;
-      }
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
           result->output_buffers + i, streams_, buffer_handles_);
       if (out_buf.is_null()) {
@@ -1010,7 +938,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
   }
 
   // Serialize input buffer.
-  if (result->input_buffer && result->input_buffer != transformed_input) {
+  if (result->input_buffer) {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     mojom::Camera3StreamBufferPtr input_buffer =

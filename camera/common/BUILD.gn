@@ -20,6 +20,7 @@ group("all") {
       ":cbm_test",
       ":embed_file_toc_test",
       ":future_test",
+      "//camera/features/zsl:zsl_helper_test",
     ]
   }
 }
@@ -230,6 +231,7 @@ shared_library("libcros_camera") {
     ":mojo_base",
     ":sensor_client",
     ":v4l2_device",
+    "//camera/features/zsl",
   ]
 
   if (use.camera_feature_hdrnet) {

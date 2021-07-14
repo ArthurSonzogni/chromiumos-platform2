@@ -22,13 +22,32 @@ namespace cros {
 // the standard camera HAL3 capture pipeline.
 class CROS_CAMERA_EXPORT StreamManipulator {
  public:
+  struct Options {
+    // Used to identify the camera device that the stream manipulators will be
+    // created for (e.g. USB v.s. vendor camera HAL).
+    std::string camera_module_name;
+
+    // Whether we should attempt to enable ZSL. We might have vendor-specific
+    // ZSL solution, and in which case we should not try to enable our ZSL.
+    bool enable_cros_zsl;
+  };
+
   // Gets the set of enabled StreamManipulator instances. The StreamManipulators
   // are enabled through platform or device specific settings. This factory
-  // method is called by CameraDeviceAdapter.  |camera_module_name| can be used
-  // to identify the camera device that the stream manipulators will be created
-  // for (e.g. USB v.s. vendor camera HAL).
+  // method is called by CameraDeviceAdapter.
+  //
+  // The hooks of the StreamManipulators are called by CameraDeviceAdapter in
+  // the various HAL3 APIs. See the comments below for details regarding where
+  // each hook is called and its expected behavior. For
+  // ProcessCaptureRequest / ProcessCaptureResult and
+  // ConfigureStreams / OnConfiguredStreams pairs, CameraDeviceAdapter will
+  // iterate through the list of StreamManipulators with reverse order.
+  //
+  // CameraDeviceAdapter will iterate through all the StreamManipulators
+  // regardless of the return value of each hook call. The return value of the
+  // hook is mainly used to log the status for each StreamManipulator.
   static std::vector<std::unique_ptr<StreamManipulator>>
-  GetEnabledStreamManipulators(std::string camera_module_name);
+  GetEnabledStreamManipulators(Options options);
 
   virtual ~StreamManipulator() = default;
 
@@ -52,6 +71,13 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // |stream_list| returned by the camera HAL implementation.
   virtual bool OnConfiguredStreams(
       camera3_stream_configuration_t* stream_list) = 0;
+
+  // A hook to the camera3_device_ops::construct_default_request_settings().
+  // Will be called by CameraDeviceAdapter with the default request settings
+  // |default_request_settings| prepared by the camera HAL implementation for
+  // type |type|.
+  virtual bool ConstructDefaultRequestSettings(
+      camera_metadata_t* default_request_settings, int type) = 0;
 
   // A hook to the camera3_device_ops::process_capture_request(). Will be called
   // by CameraDeviceAdapter for each incoming capture request |request|.

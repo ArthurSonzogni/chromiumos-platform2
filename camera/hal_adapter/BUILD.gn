@@ -6,9 +6,6 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":cros_camera_service" ]
-  if (use.test) {
-    deps += [ ":zsl_helper_test" ]
-  }
 }
 
 pkg_config("target_defaults") {
@@ -49,32 +46,10 @@ executable("cros_camera_service") {
     "reprocess_effect/reprocess_effect_manager.cc",
     "scoped_yuv_buffer_handle.cc",
     "vendor_tag_ops_delegate.cc",
-    "zsl_helper.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
     "dl",
     "rt",
   ]
-}
-
-if (use.test) {
-  executable("zsl_helper_test") {
-    sources = [
-      "//camera/common/camera_buffer_manager_impl.cc",
-      "//camera/common/camera_buffer_manager_internal.cc",
-      "//camera/common/utils/camera_config_impl.cc",
-      "zsl_helper.cc",
-      "zsl_helper_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    include_dirs = [
-      "//camera",
-      "//camera/include",
-    ]
-    pkg_deps = [ "gbm" ]
-  }
 }

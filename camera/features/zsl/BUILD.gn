@@ -1,0 +1,40 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("target_defaults") {
+  configs = [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [
+    "libcros_camera_android_deps",
+    "libsync",
+  ]
+}
+
+source_set("zsl") {
+  sources = [
+    "//camera/features/zsl/zsl_helper.cc",
+    "//camera/features/zsl/zsl_stream_manipulator.cc",
+  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+}
+
+if (use.test) {
+  executable("zsl_helper_test") {
+    sources = [
+      "//camera/features/zsl/zsl_helper.cc",
+      "//camera/features/zsl/zsl_helper_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    pkg_deps = [
+      "gbm",
+      "libdrm",
+    ]
+    deps = [ "//camera/common:base" ]
+  }
+}

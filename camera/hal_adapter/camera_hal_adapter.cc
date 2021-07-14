@@ -38,9 +38,16 @@
 #include "hal_adapter/camera_module_delegate.h"
 #include "hal_adapter/camera_trace_event.h"
 #include "hal_adapter/vendor_tag_ops_delegate.h"
-#include "hal_adapter/zsl_helper.h"
 
 namespace cros {
+
+// Defined in features/zsl/zsl_helper.cc. We use forward declaration instead
+// including the header file to avoid having direct dependency on files under
+// features/zsl/.
+//
+// TODO(jcliang): See if we can have a hook in StreamManipulator for the static
+// metadata configuration.
+bool TryAddEnableZslKey(android::CameraMetadata* metadata);
 
 namespace {
 
@@ -217,13 +224,15 @@ int32_t CameraHalAdapter::OpenDevice(
   base::Callback<void()> close_callback = base::Bind(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
+  StreamManipulator::Options options = {
+      .camera_module_name = camera_module->common.name,
+      .enable_cros_zsl = base::Contains(can_attempt_zsl_camera_ids_, camera_id),
+  };
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), close_callback,
-      base::Contains(can_attempt_zsl_camera_ids_, camera_id),
-      StreamManipulator::GetEnabledStreamManipulators(
-          camera_module->common.name));
+      StreamManipulator::GetEnabledStreamManipulators(std::move(options)));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback =
@@ -421,7 +430,7 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
   auto* metadata = metadata_scoped.get();
   metadata->acquire(clone_camera_metadata(static_metadata));
   reprocess_effect_manager_.UpdateStaticMetadata(metadata);
-  if (ZslHelper::TryAddEnableZslKey(metadata)) {
+  if (TryAddEnableZslKey(metadata)) {
     LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
     can_attempt_zsl_camera_ids_.insert(camera_id);
   }

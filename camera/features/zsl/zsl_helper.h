@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
-#define CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
+#ifndef CAMERA_FEATURES_ZSL_ZSL_HELPER_H_
+#define CAMERA_FEATURES_ZSL_ZSL_HELPER_H_
 
 #include <atomic>
 #include <deque>
@@ -22,8 +22,9 @@
 #include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata.h>
-#include "common/utils/common_types.h"
 
+#include "common/camera_hal3_helpers.h"
+#include "common/utils/common_types.h"
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace cros {
@@ -40,8 +41,9 @@ const int GRALLOC_USAGE_STILL_CAPTURE = GRALLOC_USAGE_PRIVATE_1;
 struct ZslBuffer {
  public:
   ZslBuffer();
-  explicit ZslBuffer(uint32_t frame_number,
-                     const camera3_stream_buffer_t& buffer);
+  ZslBuffer(uint32_t frame_number, camera3_stream_buffer_t buffer);
+
+  void AttachToRequest(Camera3CaptureDescriptor* capture_request);
 
   // The frame number associated with this buffer.
   uint32_t frame_number;
@@ -138,12 +140,6 @@ class ZslHelper {
 
   using ZslBufferIterator = std::deque<ZslBuffer>::iterator;
 
-  // Updates the static metadata of the camera device if we can attempt to
-  // enable our in-house ZSL solution for it. It checks whether or not the
-  // device already supports ZSL, and checks for private processing capability
-  // if not.
-  static bool TryAddEnableZslKey(android::CameraMetadata* metadata);
-
   // Initialize static metadata and ZSL ring buffer.
   explicit ZslHelper(const camera_metadata_t* static_info);
 
@@ -160,17 +156,15 @@ class ZslHelper {
   // Processes a capture request by either attaching a RAW output buffer (for
   // queueing the ZSL ring buffer) or transforming the request by adding a RAW
   // input stream.
-  bool ProcessZslCaptureRequest(
-      camera3_capture_request_t* request,
-      std::vector<camera3_stream_buffer_t>* output_buffers,
-      internal::ScopedCameraMetadata* settings,
-      SelectionStrategy strategy = CLOSEST_3A);
+  bool ProcessZslCaptureRequest(Camera3CaptureDescriptor* request,
+                                SelectionStrategy strategy = CLOSEST_3A);
 
   // Merges ZSL metadata and mark buffer as ready to be submitted.
-  void ProcessZslCaptureResult(
-      const camera3_capture_result_t* result,
-      const camera3_stream_buffer_t** attached_output,
-      const camera3_stream_buffer_t** transformed_input);
+  void ProcessZslCaptureResult(Camera3CaptureDescriptor* result,
+                               bool* is_input_transformed);
+
+  // Callback for error message notification.
+  void OnNotifyError(const camera3_error_msg_t& error_msg);
 
  private:
   friend class tests::ZslHelperTest;
@@ -181,7 +175,7 @@ class ZslHelper {
   // Whether ZSL is enabled for this capture request.
   // Note that this function deletes the ANDROID_CONTROL_ENABLE_ZSL if
   // delete_entry is true.
-  bool IsZslRequested(camera_metadata_t* settings);
+  bool IsZslRequested(const Camera3CaptureDescriptor* settings);
 
   // Whether this buffer belongs to an attached ZSL request.
   bool IsAttachedZslBuffer(const camera3_stream_buffer_t* buffer);
@@ -193,12 +187,10 @@ class ZslHelper {
   void TryReleaseBuffer();
 
   // Attaches ZSL output buffer into the request.
-  void AttachRequest(camera3_capture_request_t* request,
-                     std::vector<camera3_stream_buffer_t>* output_buffers);
+  void AttachRequest(Camera3CaptureDescriptor* request);
 
   // Transforms a simple capture request into a reprocessing request.
-  bool TransformRequest(camera3_capture_request_t* request,
-                        internal::ScopedCameraMetadata* settings,
+  bool TransformRequest(Camera3CaptureDescriptor* request,
                         SelectionStrategy strategy = CLOSEST_3A);
 
   // Wait for the release fence on an attached ZSL output buffer. This function
@@ -276,6 +268,10 @@ class ZslHelper {
   int64_t override_current_timestamp_for_testing_;
 };
 
+// Updates the static metadata of the camera device if we can attempt to
+// enable our in-house ZSL solution for it.
+bool CROS_CAMERA_EXPORT TryAddEnableZslKey(android::CameraMetadata* metadata);
+
 }  // namespace cros
 
-#endif  // CAMERA_HAL_ADAPTER_ZSL_HELPER_H_
+#endif  // CAMERA_FEATURES_ZSL_ZSL_HELPER_H_

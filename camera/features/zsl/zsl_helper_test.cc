@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/zsl_helper.h"
+#include "features/zsl/zsl_helper.h"
 
 #include <cmath>
 #include <memory>
@@ -17,10 +17,10 @@
 #include <gtest/gtest.h>
 #include <system/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/utils/common_types.h"
 #include "cros-camera/camera_buffer_manager.h"
 
-using testing::_;
 using testing::Return;
 
 namespace {
@@ -202,24 +202,6 @@ class ZslHelperTest : public ::testing::Test {
   }
 
  protected:
-  struct CaptureRequestDeleter {
-    void operator()(camera3_capture_request_t* request) {
-      if (!request) {
-        return;
-      }
-      // request->input_buffer comes from ZSL ring buffer. No need to delete it.
-      if (request->output_buffers) {
-        delete[] request->output_buffers;
-      }
-      if (request->settings) {
-        free_camera_metadata(const_cast<camera_metadata_t*>(request->settings));
-      }
-      delete request;
-    }
-  };
-  using ScopedCaptureRequest =
-      std::unique_ptr<camera3_capture_request_t, CaptureRequestDeleter>;
-
   void SetUp() override {
     android::CameraMetadata static_metadata;
     // Expose private reprocessing as an available request capability.
@@ -297,37 +279,32 @@ class ZslHelperTest : public ::testing::Test {
 
   camera3_stream_t* GetZslBiStream() { return zsl_helper_->bi_stream_.get(); }
 
-  ScopedCaptureRequest GetMockCaptureRequest(
+  Camera3CaptureDescriptor GetMockCaptureRequest(
       camera_metadata_enum_android_control_capture_intent_t capture_intent) {
     static uint32_t frame_number_iter = 0;
 
-    ScopedCaptureRequest request(new camera3_capture_request_t);
-    request->frame_number = frame_number_iter++;
-    request->input_buffer = nullptr;
-    request->num_output_buffers = 1;
+    Camera3CaptureDescriptor request(
+        camera3_capture_request_t{.frame_number = frame_number_iter++});
 
-    camera3_stream_buffer_t* output_buffers = new camera3_stream_buffer_t[1];
-    camera3_stream_buffer_t& buffer = output_buffers[0];
-    buffer.acquire_fence = -1;
-    buffer.release_fence = -1;
-    buffer.status = CAMERA3_BUFFER_STATUS_OK;
-    buffer.buffer = nullptr;  // Not used in tests.
-    buffer.stream =
-        capture_intent == ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE
-            ? &still_capture_stream_
-            : &preview_stream_;
-    request->output_buffers = output_buffers;
+    request.AppendOutputBuffer({
+        .stream = capture_intent == ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE
+                      ? &still_capture_stream_
+                      : &preview_stream_,
+        .buffer = nullptr,  // Not used in tests.
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1,
+    });
 
-    android::CameraMetadata metadata;
-    EXPECT_EQ(metadata.update(ANDROID_CONTROL_CAPTURE_INTENT,
-                              reinterpret_cast<uint8_t*>(&capture_intent), 1),
-              0);
+    EXPECT_TRUE(request.UpdateMetadata<uint8_t>(
+        ANDROID_CONTROL_CAPTURE_INTENT,
+        std::array<uint8_t, 1>{static_cast<unsigned char>(capture_intent)}));
+
     if (capture_intent == ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE) {
-      uint8_t enable_zsl = 1;
-      EXPECT_EQ(metadata.update(ANDROID_CONTROL_ENABLE_ZSL, &enable_zsl, 1), 0)
+      EXPECT_TRUE(request.UpdateMetadata<uint8_t>(ANDROID_CONTROL_ENABLE_ZSL,
+                                                  std::array<uint8_t, 1>{1}))
           << "Failed to set ANDROID_CONTROL_ENABLE_ZSL";
     }
-    request->settings = metadata.release();
     return request;
   }
 
@@ -410,7 +387,7 @@ class ZslHelperTest : public ::testing::Test {
     return zsl_helper_->CanEnableZsl(streams);
   }
 
-  bool DoIsZslRequested(camera_metadata_t* settings) {
+  bool DoIsZslRequested(Camera3CaptureDescriptor* settings) {
     return zsl_helper_->IsZslRequested(settings);
   }
 
@@ -444,18 +421,20 @@ TEST(ZslHelperStaticTest, TryAddEnableZslKeyTest) {
                 ANDROID_REQUEST_AVAILABLE_CAPABILITIES,
                 {ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING}),
             0);
-  std::vector<int32_t> request_keys;
+  // Add a random tag so that ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS isn't
+  // empty.
+  std::vector<int32_t> request_keys = {ANDROID_CONTROL_AE_MODE};
   ASSERT_EQ(static_metadata.update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
                                    request_keys),
             0);
 
-  EXPECT_TRUE(ZslHelper::TryAddEnableZslKey(&static_metadata));
+  EXPECT_TRUE(TryAddEnableZslKey(&static_metadata));
 
-  request_keys = {ANDROID_CONTROL_ENABLE_ZSL};
+  request_keys = {ANDROID_CONTROL_AE_MODE, ANDROID_CONTROL_ENABLE_ZSL};
   ASSERT_EQ(static_metadata.update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
                                    request_keys),
             0);
-  EXPECT_FALSE(ZslHelper::TryAddEnableZslKey(&static_metadata))
+  EXPECT_FALSE(TryAddEnableZslKey(&static_metadata))
       << "We shouldn't add ANDROID_CONTROL_ENABLE_ZSL if HAL already supports "
          "ZSL";
 }
@@ -509,20 +488,13 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestPreview) {
   InitializeZslHelper();
   DoOverrideCurrentTimestampForTesting(kMockCurrentTimestamp);
   FillZslRingBuffer(/*ring_buffer_3a_converged=*/true);
-  auto scoped_request =
+  Camera3CaptureDescriptor mock_request =
       GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW);
-  std::vector<camera3_stream_buffer_t> output_buffers{
-      scoped_request->output_buffers,
-      scoped_request->output_buffers + scoped_request->num_output_buffers};
-  internal::ScopedCameraMetadata scoped_metadata(
-      clone_camera_metadata(scoped_request->settings));
-
   // Intentionally initialize it in case someone accesses its content.
   buffer_handle_t buffer = nullptr;
   EXPECT_CALL(*zsl_buffer_manager_, GetBuffer).WillOnce(Return(&buffer));
-  ASSERT_FALSE(zsl_helper_->ProcessZslCaptureRequest(
-      scoped_request.get(), &output_buffers, &scoped_metadata));
-  EXPECT_EQ(output_buffers.back().stream, GetZslBiStream());
+  ASSERT_FALSE(zsl_helper_->ProcessZslCaptureRequest(&mock_request));
+  EXPECT_EQ(mock_request.GetOutputBuffers().back().stream, GetZslBiStream());
 }
 
 // Test that |ZslHelper| transforms capture requests correctly.
@@ -530,90 +502,69 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestStillCapture) {
   InitializeZslHelper();
   DoOverrideCurrentTimestampForTesting(kMockCurrentTimestamp);
   FillZslRingBuffer(/*ring_buffer_3a_converged=*/true);
-  auto scoped_request =
+  Camera3CaptureDescriptor mock_request =
       GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE);
-  std::vector<camera3_stream_buffer_t> output_buffers{
-      scoped_request->output_buffers,
-      scoped_request->output_buffers + scoped_request->num_output_buffers};
 
   // Assign JPEG metadata and make sure it is re-added to the processed request
   // metadata.
   constexpr int32_t kJpegOrientation = 90;
-  android::CameraMetadata metadata(
-      clone_camera_metadata(scoped_request->settings));
-  ASSERT_EQ(metadata.update(ANDROID_JPEG_ORIENTATION, &kJpegOrientation, 1), 0);
-  const std::vector<int32_t> kJpegThumbnailSize{320, 240};
-  ASSERT_EQ(
-      metadata.update(ANDROID_JPEG_THUMBNAIL_SIZE, kJpegThumbnailSize.data(),
-                      kJpegThumbnailSize.size()),
-      0);
-  internal::ScopedCameraMetadata scoped_metadata(metadata.release());
+  const std::array<int32_t, 2> kJpegThumbnailSize{320, 240};
+  ASSERT_TRUE(mock_request.UpdateMetadata<int32_t>(
+      ANDROID_JPEG_ORIENTATION, std::array<int32_t, 1>{kJpegOrientation}));
+  ASSERT_TRUE(mock_request.UpdateMetadata<int32_t>(ANDROID_JPEG_THUMBNAIL_SIZE,
+                                                   kJpegThumbnailSize));
 
-  EXPECT_TRUE(zsl_helper_->ProcessZslCaptureRequest(
-      scoped_request.get(), &output_buffers, &scoped_metadata));
-  EXPECT_TRUE(scoped_request->input_buffer != nullptr);
+  EXPECT_TRUE(zsl_helper_->ProcessZslCaptureRequest(&mock_request));
+  EXPECT_NE(mock_request.GetInputBuffer(), nullptr);
 
-  camera_metadata_ro_entry_t entry;
-  ASSERT_EQ(find_camera_metadata_ro_entry(scoped_metadata.get(),
-                                          ANDROID_JPEG_ORIENTATION, &entry),
-            0);
-  EXPECT_EQ(entry.data.i32[0], kJpegOrientation)
+  base::span<const int32_t> entry =
+      mock_request.GetMetadata<int32_t>(ANDROID_JPEG_ORIENTATION);
+  ASSERT_FALSE(entry.empty());
+  EXPECT_EQ(entry[0], kJpegOrientation)
       << "ANDROID_JPEG_ORIENTATION should be re-added to metadata";
-  ASSERT_EQ(find_camera_metadata_ro_entry(scoped_metadata.get(),
-                                          ANDROID_JPEG_THUMBNAIL_SIZE, &entry),
-            0);
-  EXPECT_EQ(entry.count, kJpegThumbnailSize.size());
-  EXPECT_EQ(entry.data.i32[0], kJpegThumbnailSize[0]);
-  EXPECT_EQ(entry.data.i32[1], kJpegThumbnailSize[1]);
+  entry = mock_request.GetMetadata<int32_t>(ANDROID_JPEG_THUMBNAIL_SIZE);
+  ASSERT_EQ(entry.size(), kJpegThumbnailSize.size());
+  EXPECT_EQ(entry[0], kJpegThumbnailSize[0]);
+  EXPECT_EQ(entry[1], kJpegThumbnailSize[1]);
 
   // Now make sure we don't select buffers that are too old. We test this by
   // making the current timestamp very new.
   DoOverrideCurrentTimestampForTesting(kMockCurrentTimestamp +
                                        ZslHelper::kZslDefaultLookbackNs + 1);
-  scoped_request =
+  mock_request =
       GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE);
-  output_buffers = {
-      scoped_request->output_buffers,
-      scoped_request->output_buffers + scoped_request->num_output_buffers};
-  scoped_metadata = internal::ScopedCameraMetadata(
-      clone_camera_metadata(scoped_request->settings));
-  EXPECT_FALSE(zsl_helper_->ProcessZslCaptureRequest(
-      scoped_request.get(), &output_buffers, &scoped_metadata));
+  EXPECT_FALSE(zsl_helper_->ProcessZslCaptureRequest(&mock_request));
 
   // Test that we don't select a buffer when 3A is not converged.
   DoOverrideCurrentTimestampForTesting(kMockCurrentTimestamp);
   FillZslRingBuffer(/*ring_buffer_3a_converged=*/false);
-  scoped_request =
+  mock_request =
       GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE);
-  output_buffers = {
-      scoped_request->output_buffers,
-      scoped_request->output_buffers + scoped_request->num_output_buffers};
-  scoped_metadata = internal::ScopedCameraMetadata(
-      clone_camera_metadata(scoped_request->settings));
-  EXPECT_FALSE(zsl_helper_->ProcessZslCaptureRequest(
-      scoped_request.get(), &output_buffers, &scoped_metadata));
+  EXPECT_FALSE(zsl_helper_->ProcessZslCaptureRequest(&mock_request));
 }
 
-// Verifies that the attached output stream can be identified successfully.
+// Verifies that the attached output stream can be removed successfully.
 // We cannot test |transformed_input| because |ZslHelper| would attempt to
 // release/free the input buffer and there isn't a good way to mock it.
 TEST_F(ZslHelperTest, ProcessZslCaptureResultTest) {
   std::vector<camera3_stream_buffer_t> attached_output_buffers = {
       {.stream = &preview_stream_, .release_fence = -1},
       {.stream = GetZslBiStream(), .release_fence = -1}};
-  camera3_capture_result_t result = {
+  Camera3CaptureDescriptor result(camera3_capture_result_t{
       .frame_number = 1,
       .result = nullptr,
       .num_output_buffers =
           static_cast<uint32_t>(attached_output_buffers.size()),
       .output_buffers = attached_output_buffers.data(),
       .input_buffer = nullptr,
-      .partial_result = 0};
-  const camera3_stream_buffer_t* attached_output;
-  const camera3_stream_buffer_t* transformed_input;
-  zsl_helper_->ProcessZslCaptureResult(&result, &attached_output,
-                                       &transformed_input);
-  EXPECT_EQ(attached_output, &attached_output_buffers[1]);
+      .partial_result = 0});
+
+  bool is_input_transformed = true;
+  zsl_helper_->ProcessZslCaptureResult(&result, &is_input_transformed);
+
+  EXPECT_FALSE(is_input_transformed);
+  EXPECT_EQ(result.num_output_buffers(), 1);
+  EXPECT_EQ(result.GetOutputBuffers()[0].stream, &preview_stream_);
 }
 
 TEST_F(ZslHelperTest, CanEnableZslTest) {
@@ -644,14 +595,12 @@ TEST_F(ZslHelperTest, CanEnableZslTest) {
 }
 
 TEST_F(ZslHelperTest, IsZslRequestedTest) {
-  ScopedCaptureRequest request =
+  Camera3CaptureDescriptor request =
       GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE);
-  EXPECT_TRUE(
-      DoIsZslRequested(const_cast<camera_metadata_t*>(request->settings)));
+  EXPECT_TRUE(DoIsZslRequested(&request));
 
   request = GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW);
-  EXPECT_FALSE(
-      DoIsZslRequested(const_cast<camera_metadata_t*>(request->settings)));
+  EXPECT_FALSE(DoIsZslRequested(&request));
 }
 
 TEST_F(ZslHelperTest, Is3AConvergedTest) {

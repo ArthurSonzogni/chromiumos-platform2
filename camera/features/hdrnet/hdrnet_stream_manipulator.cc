@@ -121,6 +121,11 @@ bool HdrNetStreamManipulator::OnConfiguredStreams(
   return ret;
 }
 
+bool HdrNetStreamManipulator::ConstructDefaultRequestSettings(
+    camera_metadata_t* default_request_settings, int type) {
+  return true;
+}
+
 bool HdrNetStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   bool ret;

@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/zsl_helper.h"
+#include "features/zsl/zsl_helper.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,9 +21,12 @@
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
+#include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/utils/camera_config.h"
+
+namespace cros {
 
 namespace {
 
@@ -49,19 +52,55 @@ int64_t GetTimestamp(const android::CameraMetadata& android_metadata) {
   return static_cast<int64_t>(-1);
 }
 
-}  // namespace
+// Checks the static metadata of the camera device to see if we can attempt to
+// enable our in-house ZSL solution for it. It checks whether or not the
+// device already supports ZSL, and checks for private processing capability
+// if not.
+bool CanEnableZsl(const camera_metadata_t* metadata) {
+  // Determine if it's possible for us to enable our in-house ZSL solution. Note
+  // that we may end up not enabling it in situations where we cannot allocate
+  // sufficient private buffers or the camera HAL client's stream configuration
+  // wouldn't allow us to set up the streams we need.
+  base::span<const uint8_t> available_caps = GetRoMetadataAsSpan<uint8_t>(
+      metadata, ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
+  if (available_caps.empty()) {
+    return false;
+  }
+  if (std::find(available_caps.begin(), available_caps.end(),
+                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING) ==
+      available_caps.end()) {
+    return false;
+  }
 
-namespace cros {
+  // See if the camera HAL already supports ZSL.
+  base::span<const int32_t> req_keys = GetRoMetadataAsSpan<int32_t>(
+      metadata, ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+  if (req_keys.empty()) {
+    return false;
+  }
+  if (std::find(req_keys.begin(), req_keys.end(), ANDROID_CONTROL_ENABLE_ZSL) !=
+      req_keys.end()) {
+    LOGF(INFO) << "Device supports vendor-provided ZSL";
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
 
 ZslBuffer::ZslBuffer()
     : metadata_ready(false), buffer_ready(false), selected(false) {}
-ZslBuffer::ZslBuffer(uint32_t frame_number,
-                     const camera3_stream_buffer_t& buffer)
+ZslBuffer::ZslBuffer(uint32_t frame_number, camera3_stream_buffer_t buffer)
     : frame_number(frame_number),
-      buffer(buffer),
+      buffer(std::move(buffer)),
       metadata_ready(false),
       buffer_ready(false),
       selected(false) {}
+
+void ZslBuffer::AttachToRequest(Camera3CaptureDescriptor* capture_request) {
+  capture_request->AppendOutputBuffer(buffer);
+}
 
 ZslBufferManager::ZslBufferManager()
     : initialized_(false), buffer_manager_(nullptr) {}
@@ -156,45 +195,6 @@ void ZslBufferManager::Reset() {
 void ZslBufferManager::SetCameraBufferManagerForTesting(
     CameraBufferManager* buffer_manager) {
   buffer_manager_ = buffer_manager;
-}
-
-// static
-bool ZslHelper::TryAddEnableZslKey(android::CameraMetadata* metadata) {
-  // Determine if it's possible for us to enable our in-house ZSL solution. Note
-  // that we may end up not enabling it in situations where we cannot allocate
-  // sufficient private buffers or the camera HAL client's stream configuration
-  // wouldn't allow us to set up the streams we need.
-  if (!metadata->exists(ANDROID_REQUEST_AVAILABLE_CAPABILITIES)) {
-    return false;
-  }
-  const auto cap_entry = metadata->find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
-  if (std::find(cap_entry.data.u8, cap_entry.data.u8 + cap_entry.count,
-                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING) ==
-      cap_entry.data.u8 + cap_entry.count) {
-    return false;
-  }
-
-  // See if the camera HAL already supports ZSL.
-  if (!metadata->exists(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS)) {
-    return false;
-  }
-  auto entry = metadata->find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
-  if (std::find(entry.data.i32, entry.data.i32 + entry.count,
-                ANDROID_CONTROL_ENABLE_ZSL) != entry.data.i32 + entry.count) {
-    LOGF(INFO) << "Device supports vendor-provided ZSL";
-    return false;
-  }
-
-  std::vector<int32_t> new_request_keys{entry.data.i32,
-                                        entry.data.i32 + entry.count};
-  new_request_keys.push_back(ANDROID_CONTROL_ENABLE_ZSL);
-  if (metadata->update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
-                       new_request_keys.data(), new_request_keys.size()) != 0) {
-    LOGF(ERROR) << "Failed to add ANDROID_CONTROL_ENABLE_ZSL to metadata";
-    return false;
-  }
-  LOGF(INFO) << "Added ANDROID_CONTROL_ENABLE_ZSL to static metadata";
-  return true;
 }
 
 ZslHelper::ZslHelper(const camera_metadata_t* static_info)
@@ -383,12 +383,12 @@ bool ZslHelper::CanEnableZsl(std::vector<camera3_stream_t*>* streams) {
                                      // streams.
 }
 
-bool ZslHelper::IsZslRequested(camera_metadata_t* settings) {
+bool ZslHelper::IsZslRequested(const Camera3CaptureDescriptor* request) {
   bool enable_zsl = [&]() {
-    camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(settings, ANDROID_CONTROL_ENABLE_ZSL,
-                                      &entry) == 0) {
-      return static_cast<bool>(entry.data.u8[0]);
+    base::span<const uint8_t> entry =
+        request->GetMetadata<uint8_t>(ANDROID_CONTROL_ENABLE_ZSL);
+    if (!entry.empty()) {
+      return entry[0] == ANDROID_CONTROL_ENABLE_ZSL_TRUE;
     }
     return false;
   }();
@@ -396,11 +396,11 @@ bool ZslHelper::IsZslRequested(camera_metadata_t* settings) {
     return false;
   }
   // We can only enable ZSL when capture intent is also still capture.
-  camera_metadata_ro_entry_t entry;
-  if (find_camera_metadata_ro_entry(settings, ANDROID_CONTROL_CAPTURE_INTENT,
-                                    &entry) == 0) {
-    return entry.data.u8[0] == ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE ||
-           entry.data.u8[0] == ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
+  base::span<const uint8_t> entry =
+      request->GetMetadata<uint8_t>(ANDROID_CONTROL_CAPTURE_INTENT);
+  if (!entry.empty()) {
+    return entry[0] == ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE ||
+           entry[0] == ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
   }
   return false;
 }
@@ -445,29 +445,24 @@ void ZslHelper::TryReleaseBuffer() {
   ring_buffer_.pop_back();
 }
 
-bool ZslHelper::ProcessZslCaptureRequest(
-    camera3_capture_request_t* request,
-    std::vector<camera3_stream_buffer_t>* output_buffers,
-    internal::ScopedCameraMetadata* settings,
-    SelectionStrategy strategy) {
-  if (request->input_buffer != nullptr) {
+bool ZslHelper::ProcessZslCaptureRequest(Camera3CaptureDescriptor* request,
+                                         SelectionStrategy strategy) {
+  if (request->GetInputBuffer() != nullptr) {
     return false;
   }
   bool transformed = false;
-  if (IsZslRequested(settings->get())) {
-    transformed = TransformRequest(request, settings, strategy);
+  if (IsZslRequested(request)) {
+    transformed = TransformRequest(request, strategy);
     if (!transformed) {
       LOGF(ERROR) << "Failed to find a suitable ZSL buffer";
     }
   } else {
-    AttachRequest(request, output_buffers);
+    AttachRequest(request);
   }
   return transformed;
 }
 
-void ZslHelper::AttachRequest(
-    camera3_capture_request_t* request,
-    std::vector<camera3_stream_buffer_t>* output_buffers) {
+void ZslHelper::AttachRequest(Camera3CaptureDescriptor* request) {
   VLOGF_ENTER();
 
   base::AutoLock l(ring_buffer_lock_);
@@ -483,36 +478,32 @@ void ZslHelper::AttachRequest(
   stream_buffer.stream = bi_stream_.get();
   stream_buffer.acquire_fence = stream_buffer.release_fence = -1;
 
-  ZslBuffer zsl_buffer(request->frame_number, stream_buffer);
+  ZslBuffer zsl_buffer(request->frame_number(), stream_buffer);
+  zsl_buffer.AttachToRequest(request);
   ring_buffer_.push_front(std::move(zsl_buffer));
-
-  output_buffers->push_back(std::move(stream_buffer));
-  request->num_output_buffers++;
 }
 
-bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
-                                 internal::ScopedCameraMetadata* settings,
+bool ZslHelper::TransformRequest(Camera3CaptureDescriptor* request,
                                  SelectionStrategy strategy) {
   VLOGF_ENTER();
   base::AutoLock l(ring_buffer_lock_);
 
   const int32_t jpeg_orientation = [&]() {
-    camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(settings->get(), ANDROID_JPEG_ORIENTATION,
-                                      &entry) != 0) {
-      LOGF(ERROR) << "Failed to find JPEG orientation, defaulting to 0";
+    base::span<const int32_t> entry =
+        request->GetMetadata<int32_t>(ANDROID_JPEG_ORIENTATION);
+    if (entry.empty()) {
       return 0;
     }
-    return *entry.data.i32;
+    return entry[0];
   }();
   const std::vector<int32_t> jpeg_thumbnail_size = [&]() {
-    camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(
-            settings->get(), ANDROID_JPEG_THUMBNAIL_SIZE, &entry) != 0) {
+    base::span<const int32_t> entry =
+        request->GetMetadata<int32_t>(ANDROID_JPEG_THUMBNAIL_SIZE);
+    if (entry.empty()) {
       LOGF(ERROR) << "Failed to find JPEG thumbnail size, defaulting to [0, 0]";
       return std::vector<int32_t>{0, 0};
     }
-    return std::vector<int32_t>{entry.data.i32[0], entry.data.i32[1]};
+    return std::vector<int32_t>{entry[0], entry[1]};
   }();
 
   // Select the best buffer.
@@ -524,10 +515,10 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
   }
 
   LOGF(INFO) << "Transforming request into ZSL reprocessing request";
-  request->input_buffer = &selected_buffer_it->buffer;
-  request->input_buffer->stream = bi_stream_.get();
-  request->input_buffer->acquire_fence = -1;
-  request->input_buffer->release_fence = -1;
+  selected_buffer_it->buffer.stream = bi_stream_.get();
+  selected_buffer_it->buffer.acquire_fence = -1;
+  selected_buffer_it->buffer.acquire_fence = -1;
+  request->SetInputBuffer(selected_buffer_it->buffer);
 
   // The result metadata for the RAW buffers come from the preview frames. We
   // need to add JPEG orientation back so that the resulting JPEG is of the
@@ -541,56 +532,63 @@ bool ZslHelper::TransformRequest(camera3_capture_request_t* request,
                                           jpeg_thumbnail_size.size()) != 0) {
     LOGF(ERROR) << "Failed to update JPEG_THUMBNAIL_SIZE";
   }
-  // Note that camera device adapter would take ownership of this pointer.
-  settings->reset(selected_buffer_it->metadata.release());
+  request->SetMetadata(selected_buffer_it->metadata.getAndLock());
   return true;
 }
 
-void ZslHelper::ProcessZslCaptureResult(
-    const camera3_capture_result_t* result,
-    const camera3_stream_buffer_t** attached_output,
-    const camera3_stream_buffer_t** transformed_input) {
+void ZslHelper::ProcessZslCaptureResult(Camera3CaptureDescriptor* result,
+                                        bool* is_input_transformed) {
   VLOGF_ENTER();
-  for (size_t i = 0; i < result->num_output_buffers; ++i) {
-    if (IsAttachedZslBuffer(&result->output_buffers[i])) {
-      *attached_output = &result->output_buffers[i];
-      break;
+  std::vector<camera3_stream_buffer_t> zsl_detached_output_buffers;
+  for (const auto& buffer : result->GetOutputBuffers()) {
+    if (buffer.stream == bi_stream_.get()) {
+      WaitAttachedFrame(result->frame_number(), buffer.release_fence);
+    } else {
+      zsl_detached_output_buffers.push_back(buffer);
     }
   }
-  if (result->input_buffer && IsTransformedZslBuffer(result->input_buffer)) {
-    *transformed_input = result->input_buffer;
-    ReleaseStreamBuffer(*result->input_buffer);
+  result->SetOutputBuffers(zsl_detached_output_buffers);
+
+  const camera3_stream_buffer_t* input_buffer = result->GetInputBuffer();
+  if (input_buffer != nullptr && IsTransformedZslBuffer(input_buffer)) {
+    *is_input_transformed = true;
+    ReleaseStreamBuffer(*input_buffer);
+    result->ResetInputBuffer();
+  } else {
+    *is_input_transformed = false;
   }
 
   base::AutoLock ring_buffer_lock(ring_buffer_lock_);
   auto it = std::find_if(ring_buffer_.begin(), ring_buffer_.end(),
                          [&](const ZslBuffer& buffer) {
-                           return buffer.frame_number == result->frame_number;
+                           return buffer.frame_number == result->frame_number();
                          });
   if (it == ring_buffer_.end()) {
     return;
   }
-  for (size_t i = 0; i < result->num_output_buffers; ++i) {
-    if (result->output_buffers[i].stream == bi_stream_.get()) {
-      WaitAttachedFrame(result->frame_number,
-                        result->output_buffers[i].release_fence);
-      break;
-    }
-  }
 
-  if (result->partial_result != 0) {  // Result has metadata. Merge it.
-    it->metadata.append(result->result);
-    if (result->partial_result == partial_result_count_) {
+  if (result->partial_result() != 0) {  // Result has metadata. Merge it.
+    const camera3_capture_result_t* locked_result = result->LockForResult();
+    it->metadata.append(locked_result->result);
+    result->Unlock();
+    if (result->partial_result() == partial_result_count_) {
       it->metadata_ready = true;
     }
+  }
+}
+
+void ZslHelper::OnNotifyError(const camera3_error_msg_t& error_msg) {
+  if (error_msg.error_stream == bi_stream_.get()) {
+    LOGFID(ERROR, error_msg.frame_number)
+        << "Received error message: " << error_msg.error_code;
   }
 }
 
 void ZslHelper::WaitAttachedFrame(uint32_t frame_number, int release_fence) {
   fence_sync_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
-                 base::Unretained(this), frame_number, release_fence));
+      base::BindOnce(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
+                     base::Unretained(this), frame_number, release_fence));
 }
 
 void ZslHelper::WaitAttachedFrameOnFenceSyncThread(uint32_t frame_number,
@@ -611,14 +609,15 @@ void ZslHelper::WaitAttachedFrameOnFenceSyncThread(uint32_t frame_number,
   }
   fence_sync_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
-                 base::Unretained(this), frame_number, release_fence));
+      base::BindOnce(&ZslHelper::WaitAttachedFrameOnFenceSyncThread,
+                     base::Unretained(this), frame_number, release_fence));
 }
 
 void ZslHelper::ReleaseStreamBuffer(camera3_stream_buffer_t buffer) {
   fence_sync_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
-                            base::Unretained(this), base::Passed(&buffer)));
+      FROM_HERE,
+      base::BindOnce(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
+                     base::Unretained(this), base::Passed(&buffer)));
 }
 
 void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
@@ -635,8 +634,9 @@ void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
     return;
   }
   fence_sync_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
-                            base::Unretained(this), base::Passed(&buffer)));
+      FROM_HERE,
+      base::BindOnce(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
+                     base::Unretained(this), base::Passed(&buffer)));
 }
 
 bool ZslHelper::IsCapabilitySupported(const camera_metadata_t* static_info,
@@ -851,6 +851,27 @@ void ZslHelper::SetZslBufferManagerForTesting(
 
 void ZslHelper::OverrideCurrentTimestampForTesting(int64_t timestamp) {
   override_current_timestamp_for_testing_ = timestamp;
+}
+
+bool TryAddEnableZslKey(android::CameraMetadata* metadata) {
+  const camera_metadata_t* locked_metadata = metadata->getAndLock();
+  if (!CanEnableZsl(locked_metadata)) {
+    metadata->unlock(locked_metadata);
+    return false;
+  }
+  metadata->unlock(locked_metadata);
+
+  auto entry = metadata->find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+  std::vector<int32_t> new_request_keys(entry.data.i32,
+                                        entry.data.i32 + entry.count);
+  new_request_keys.push_back(ANDROID_CONTROL_ENABLE_ZSL);
+  if (metadata->update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                       new_request_keys.data(), new_request_keys.size()) != 0) {
+    LOGF(ERROR) << "Failed to add ANDROID_CONTROL_ENABLE_ZSL to metadata";
+    return false;
+  }
+  LOGF(INFO) << "Added ANDROID_CONTROL_ENABLE_ZSL to static metadata";
+  return true;
 }
 
 }  // namespace cros
