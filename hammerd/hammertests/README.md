@@ -27,6 +27,7 @@ A list of current devices with detachable base mappings is as follows:
 |Kakadu                |Moonball
 |Katsu                 |Don
 |CoachZ                |Zed
+|Homestar              |Star
 
 
 ## ON HOST
