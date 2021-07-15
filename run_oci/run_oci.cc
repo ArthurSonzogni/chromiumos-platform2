@@ -436,9 +436,7 @@ bool RunOneHook(const OciHook& hook,
 
   base::Process child = base::LaunchProcess(args, options);
   write_pipe_read_fd.reset();
-  if (!base::WriteFileDescriptor(write_pipe_write_fd.get(),
-                                 container_state.c_str(),
-                                 container_state.size())) {
+  if (!base::WriteFileDescriptor(write_pipe_write_fd.get(), container_state)) {
     PLOG(ERROR) << "Failed to send container state";
   }
   write_pipe_write_fd.reset();

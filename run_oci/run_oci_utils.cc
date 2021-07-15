@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -193,9 +194,8 @@ void SyslogStdioAdapter::RunLoop(base::ScopedFD stdout_fd,
       // lines that are output using raw write(2) syscalls being split across
       // two read(2) syscalls.
       base::StringPiece lines(buffer, bytes);
-      for (const auto& line :
-           base::SplitString(lines.as_string(), "\n", base::KEEP_WHITESPACE,
-                             base::SPLIT_WANT_NONEMPTY)) {
+      for (const auto& line : base::SplitString(
+               lines, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
         syslog(descriptor->priority, "[%s] %s", descriptor->name, line.data());
       }
     }
