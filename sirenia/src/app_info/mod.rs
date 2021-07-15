@@ -11,6 +11,8 @@ use libsirenia::communication::persistence::Scope;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
+use crate::Digest;
+
 #[derive(ThisError, Debug)]
 pub enum Error {
     /// Invalid app id.
@@ -53,10 +55,16 @@ pub struct SecretsParameters {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AppManifestEntry {
     pub app_name: String,
-    pub path: String,
+    pub exec_info: ExececutableInfo,
     pub sandbox_type: SandboxType,
     pub secrets_parameters: Option<SecretsParameters>,
     pub storage_parameters: Option<StorageParameters>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ExececutableInfo {
+    Path(String),
+    Digest(Digest),
 }
 
 /// Provides a lookup for registered AppManifestEntries that represent which
@@ -66,25 +74,23 @@ impl AppManifest {
         let mut manifest = AppManifest {
             entries: Map::new(),
         };
-        // TODO: Manifests are hardcoded here for now while we determine the
-        // best way to store manifests.
         manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "shell".to_string(),
-            path: "/bin/sh".to_string(),
+            exec_info: ExececutableInfo::Path("/bin/sh".to_string()),
             sandbox_type: SandboxType::DeveloperEnvironment,
             secrets_parameters: None,
             storage_parameters: None,
         });
         manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "sandboxed-shell".to_string(),
-            path: "/bin/sh".to_string(),
+            exec_info: ExececutableInfo::Path("/bin/sh".to_string()),
             sandbox_type: SandboxType::Container,
             secrets_parameters: None,
             storage_parameters: None,
         });
         manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "demo_app".to_string(),
-            path: "/usr/bin/demo_app".to_string(),
+            exec_info: ExececutableInfo::Path("/usr/bin/demo_app".to_string()),
             sandbox_type: SandboxType::DeveloperEnvironment,
             secrets_parameters: None,
             storage_parameters: Some(StorageParameters {

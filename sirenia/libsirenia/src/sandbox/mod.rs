@@ -100,6 +100,26 @@ impl Sandbox {
         Ok(pid)
     }
 
+    pub fn run_raw(
+        &mut self,
+        cmd: RawFd,
+        args: &[&str],
+        keep_fds: &[(RawFd, RawFd)],
+    ) -> Result<pid_t> {
+        let pid = match self
+            .0
+            .run_fd_remap(&cmd, keep_fds, args)
+            .map_err(Error::ForkingJail)?
+        {
+            0 => {
+                unsafe { libc::exit(0) };
+            }
+            p => p,
+        };
+
+        Ok(pid)
+    }
+
     /// Wait until the child process completes. Non-zero return codes are
     /// returned as an error.
     pub fn wait_for_completion(&mut self) -> Result<()> {

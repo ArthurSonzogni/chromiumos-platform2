@@ -4,16 +4,14 @@
 
 //! A TEE application life-cycle manager.
 
-use std::io::stderr;
-use std::os::unix::io::AsRawFd;
-
 use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::env;
 use std::fmt::Debug;
+use std::io::{self, stderr, Seek, SeekFrom, Write};
 use std::mem::swap;
 use std::ops::{Deref, DerefMut};
-use std::os::unix::io::RawFd;
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
@@ -43,14 +41,19 @@ use libsirenia::{
     },
 };
 use sirenia::{
-    app_info::{self, AppManifest, AppManifestEntry, SandboxType, StorageParameters},
+    app_info::{
+        self, AppManifest, AppManifestEntry, ExececutableInfo, SandboxType, StorageParameters,
+    },
+    compute_sha256,
     secrets::{
         self, storage_encryption::StorageEncryption, GscSecret, PlatformSecret, SecretManager,
         VersionedSecret,
     },
+    Digest,
 };
 use sys_util::{
     self, error, getpid, getsid, info, setsid, syslog, vsock::SocketAddr as VSocketAddr,
+    MemfdSeals, SharedMemory,
 };
 use thiserror::Error as ThisError;
 
@@ -76,8 +79,24 @@ pub enum Error {
     UnexpectedRequest,
     #[error("Error retrieving from  app_manifest: {0}")]
     AppManifest(app_info::Error),
+    #[error("Error retrieving path for TEE app: {0}")]
+    AppPath(String),
+    #[error("TEE app not loadable: {0}")]
+    AppNotLoadable(String),
+    #[error("Digest of TEE app executable did not match value in manifest")]
+    DigestMismatch,
+    #[error("Failed to open memfd: {0:?}")]
+    Memfd(sys_util::Error),
+    #[error("Failed to write executable to memfd: {0:?}")]
+    MemfdWrite(io::Error),
+    #[error("Failed to seek executable to memfd: {0:?}")]
+    MemfdSeek(io::Error),
+    #[error("Failed to seal executable to memfd: {0:?}")]
+    MemfdSeal(sys_util::Error),
     #[error("Sandbox type not implemented for: {0:?}")]
     SandboxTypeNotImplemented(AppManifestEntry),
+    #[error("Failed to compute sha256 digest: {0:?}")]
+    Sha256(String),
 }
 
 /// The result of an operation in this crate.
@@ -187,6 +206,7 @@ struct TrichechusState {
     persistence: RefCell<Option<CronistaClient>>,
     secret_manager: RefCell<SecretManager>,
     app_manifest: AppManifest,
+    loaded_apps: RefCell<Map<Digest, SharedMemory>>,
 }
 
 impl TrichechusState {
@@ -206,8 +226,9 @@ impl TrichechusState {
                 port: DEFAULT_CRONISTA_PORT,
             }),
             persistence: RefCell::new(None),
-            app_manifest,
             secret_manager: RefCell::new(secret_manager),
+            app_manifest,
+            loaded_apps: RefCell::new(Map::new()),
         }
     }
 
@@ -276,6 +297,11 @@ impl Trichechus for TrichechusServerImpl {
         Ok(())
     }
 
+    fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<StdResult<(), String>, ()> {
+        Ok(load_app(self.state.borrow_mut().deref_mut(), &app_id, &elf)
+            .map_err(|err| format!("{:?}", err)))
+    }
+
     fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, ()> {
         let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
@@ -297,7 +323,7 @@ impl DugongConnectionHandler {
         let state = self.state.clone();
         // Only borrow once.
         let mut trichechus_state = self.state.borrow_mut();
-        match spawn_tee_app(&trichechus_state.app_manifest, app_id, connection) {
+        match spawn_tee_app(&trichechus_state, app_id, connection) {
             Ok((app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 trichechus_state.running_apps.insert(id, tee_app.clone());
@@ -347,12 +373,47 @@ impl ConnectionHandler for DugongConnectionHandler {
     }
 }
 
+fn fd_to_path(fd: RawFd) -> StdResult<PathBuf, io::Error> {
+    PathBuf::from(format!("/proc/self/fd/{}", fd)).read_link()
+}
+
+fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> Result<()> {
+    let app_info = state
+        .app_manifest
+        .get_app_manifest_entry(app_id)
+        .map_err(Error::AppManifest)?;
+    if let ExececutableInfo::Digest(expected) = &app_info.exec_info {
+        let actual = compute_sha256(&elf).map_err(|err| Error::Sha256(format!("{:?}", err)))?;
+        if expected.deref() != &*actual {
+            Err(Error::DigestMismatch)
+        } else {
+            let mut executable = SharedMemory::new(None).map_err(Error::Memfd)?;
+            executable.write_all(elf).map_err(Error::MemfdWrite)?;
+            executable
+                .seek(SeekFrom::Start(0))
+                .map_err(Error::MemfdSeek)?;
+
+            let mut seals = MemfdSeals::default();
+            seals.set_grow_seal();
+            seals.set_shrink_seal();
+            seals.set_write_seal();
+            executable.add_seals(seals).map_err(Error::MemfdSeal)?;
+
+            state.loaded_apps.borrow_mut().insert(actual, executable);
+            Ok(())
+        }
+    } else {
+        Err(Error::AppNotLoadable(app_info.app_name.clone()))
+    }
+}
+
 fn spawn_tee_app(
-    app_manifest: &AppManifest,
+    state: &TrichechusState,
     app_id: &str,
     transport: Transport,
 ) -> Result<(TeeApp, Transport)> {
-    let app_info = app_manifest
+    let app_info = state
+        .app_manifest
         .get_app_manifest_entry(app_id)
         .map_err(Error::AppManifest)?;
     let mut sandbox = match &app_info.sandbox_type {
@@ -371,11 +432,25 @@ fn spawn_tee_app(
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
-    let process_path = app_info.path.to_string();
 
-    sandbox
-        .run(Path::new(&process_path), &[&process_path], &keep_fds)
-        .map_err(Error::RunSandbox)?;
+    match &app_info.exec_info {
+        ExececutableInfo::Path(path) => {
+            sandbox
+                .run(Path::new(&path), &[&path], &keep_fds)
+                .map_err(Error::RunSandbox)?;
+        }
+        ExececutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {
+            Some(shared_mem) => {
+                let fd_path = fd_to_path(shared_mem.as_raw_fd())
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|_| "".into());
+                sandbox
+                    .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
+                    .map_err(Error::RunSandbox)?;
+            }
+            None => return Err(Error::AppPath(app_info.app_name.clone())),
+        },
+    }
 
     Ok((
         TeeApp {

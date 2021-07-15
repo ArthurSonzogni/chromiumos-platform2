@@ -9,7 +9,7 @@ use std::fs::File;
 use std::io::{self, copy, stdin, stdout, BufRead, BufReader, Read, Write};
 use std::mem::replace;
 use std::os::unix::io::FromRawFd;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{exit, ChildStderr, Command, Stdio};
 use std::str::FromStr;
 use std::thread::{spawn, JoinHandle};
@@ -76,8 +76,14 @@ enum Error {
     Rpc(rpc::Error),
     #[error("start app failed with code: {0:}")]
     StartApp(i32),
+    #[error("Load app failed with: {0:}")]
+    LoadApp(String),
     #[error("copy failed: {0:}")]
     Copy(io::Error),
+    #[error("open failed: {0:}")]
+    Open(io::Error),
+    #[error("read failed: {0:}")]
+    Read(io::Error),
     #[error("failed to get port: {0:}")]
     GetPort(transport::Error),
     #[error("failed to get client for transport: {0:}")]
@@ -130,7 +136,11 @@ fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
     handle_app_fds(file_in, file_out)
 }
 
-fn direct_start_manatee_app(trichechus_uri: TransportType, app_id: &str) -> Result<()> {
+fn direct_start_manatee_app(
+    trichechus_uri: TransportType,
+    app_id: &str,
+    elf: Option<Vec<u8>>,
+) -> Result<()> {
     info!("Opening connection to trichechus");
     // Adjust the source port when connecting to a non-standard port to facilitate testing.
     let bind_port = match trichechus_uri.get_port().map_err(Error::GetPort)? {
@@ -153,9 +163,17 @@ fn direct_start_manatee_app(trichechus_uri: TransportType, app_id: &str) -> Resu
         .map_err(Error::IntoClient)?;
     let addr = app_transport.bind().map_err(Error::TransportBind)?;
     let app_info = AppInfo {
-        app_id: String::from(app_id),
+        app_id: app_id.to_string(),
         port_number: addr.get_port().map_err(Error::GetPort)?,
     };
+
+    if let Some(elf) = elf {
+        info!("Transmitting TEE app.");
+        client
+            .load_app(app_id.to_string(), elf)
+            .map_err(Error::Rpc)?
+            .map_err(Error::LoadApp)?;
+    }
 
     info!("Starting rpc.");
     client.start_session(app_info).map_err(Error::Rpc)?;
@@ -303,6 +321,7 @@ fn main() -> Result<()> {
     const RUN_SERVICES_LOCALLY_SHORT_NAME: &str = "r";
     const SANDBOX_SHORT_NAME: &str = "s";
     const APP_ID_SHORT_NAME: &str = "a";
+    const APP_ELF_SHORT_NAME: &str = "X";
 
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
@@ -321,6 +340,12 @@ fn main() -> Result<()> {
         "app-id",
         "Specify the app ID to invoke.",
         "demo_app",
+    );
+    options.optopt(
+        APP_ELF_SHORT_NAME,
+        "app-elf",
+        "Specify the app elf file to load.",
+        "/bin/bash",
     );
     let trichechus_uri_opt = TransportTypeOption::new(
         DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
@@ -357,12 +382,12 @@ fn main() -> Result<()> {
             opts.push(format!("-{}", short_name));
         }
     }
-    if opts.len() > 1 {
-        eprintln!("{}", options.usage(""));
-        return Err(Error::ConflictingOptions(opts));
-    }
 
     if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
+        if opts.len() > 1 {
+            eprintln!("{}", options.usage(""));
+            return Err(Error::ConflictingOptions(opts));
+        }
         return run_test_environment();
     }
 
@@ -375,11 +400,22 @@ fn main() -> Result<()> {
         DEVELOPER_SHELL_APP_ID.to_string()
     };
 
+    let elf = if let Some(elf_path) = matches.opt_get::<String>(APP_ELF_SHORT_NAME).unwrap() {
+        let mut data = Vec::<u8>::new();
+        File::open(Path::new(&elf_path))
+            .map_err(Error::Open)?
+            .read_to_end(&mut data)
+            .map_err(Error::Read)?;
+        Some(data)
+    } else {
+        None
+    };
+
     match trichechus_uri_opt
         .from_matches(&matches)
         .map_err(Error::TransportOptionsParse)?
     {
         None => dbus_start_manatee_app(&app_id),
-        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id),
+        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, elf),
     }
 }

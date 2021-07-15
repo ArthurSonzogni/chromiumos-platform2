@@ -15,12 +15,13 @@ use std::ops::Deref;
 
 use openssl::{
     error::ErrorStack,
-    hash::{hash, DigestBytes, MessageDigest},
+    hash::{hash, MessageDigest},
 };
+use serde::{Deserialize, Serialize};
 
 pub const SHA256_SIZE: usize = 32;
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Digest([u8; SHA256_SIZE]);
 
 impl Deref for Digest {
@@ -31,10 +32,10 @@ impl Deref for Digest {
     }
 }
 
-impl From<DigestBytes> for Digest {
-    fn from(d: DigestBytes) -> Self {
+impl<A: AsRef<[u8]>> From<A> for Digest {
+    fn from(d: A) -> Self {
         let mut array = [0u8; SHA256_SIZE];
-        array.copy_from_slice(&d);
+        array.copy_from_slice(d.as_ref());
         Digest(array)
     }
 }

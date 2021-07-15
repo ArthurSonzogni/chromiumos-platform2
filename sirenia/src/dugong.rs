@@ -219,6 +219,7 @@ fn main() -> Result<()> {
     info!("Starting rpc");
     let client = TrichechusClient::new(transport);
     if get_logs {
+        info!("Getting logs");
         let logs = client.get_logs().unwrap();
         for entry in &logs[..] {
             print!("{}", String::from_utf8_lossy(entry));
