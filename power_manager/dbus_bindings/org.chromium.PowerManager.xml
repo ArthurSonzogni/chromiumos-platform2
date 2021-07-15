@@ -36,6 +36,11 @@
         Introspection XML file.
       </tp:docstring>
       <arg name="external_wakeup_count" direction="in" type="t" />
+      <tp:docstring>
+        The |wakeup_timeout| arg is optional. It specifies a timeout after
+        which the system should resume. Supply 0 for no timeout.
+      </tp:docstring>
+      <arg name="wakeup_timeout" direction="in" type="i" />
     </method>
     <method name="SetScreenBrightness">
       <tp:docstring>

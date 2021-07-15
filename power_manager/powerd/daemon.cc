@@ -1178,9 +1178,15 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   // Read an optional uint64_t argument specifying the wakeup count that is
   // expected.
   dbus::MessageReader reader(method_call);
-  uint64_t external_wakeup_count = 0;
-  const bool got_external_wakeup_count =
-      reader.PopUint64(&external_wakeup_count);
+  uint64_t external_wakeup_count = -1ULL;
+  bool got_external_wakeup_count = reader.PopUint64(&external_wakeup_count);
+  // Use -1 as a "no external wakeup count" value. Optional parameters like
+  // this are discouraged in new designs because to add additional parameters,
+  // all optional parameters before it must be supplied. Null values like
+  // -1 are then needed as a way to say "I'm giving you this parameter, but
+  // pretend like I'm not."
+  if (external_wakeup_count == -1ULL)
+    got_external_wakeup_count = false;
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
             << (got_external_wakeup_count
                     ? base::StringPrintf(" with external wakeup count %" PRIu64,
