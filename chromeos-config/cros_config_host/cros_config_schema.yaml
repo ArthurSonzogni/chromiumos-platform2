@@ -210,6 +210,63 @@ typeDefs:
         minimum: 0x0
         maximum: 0xFF
     additionalProperties: false
+  mtk-wifi-transmit-power-chain: &mtk-wifi-transmit-power-chain
+    description: "[mtk] WiFi power chain for use with MediaTek mt7921 driver. Limits
+      in units of 0.25 dBm."
+    type: object
+    properties:
+      limit-2g:
+        description: "2G band power limit. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-5g-1:
+        description: "5G band 1 power limit: 5.15G-5.35G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-5g-2:
+        description: "5G band 2 power limit: 5.35G-5.47G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-5g-3:
+        description: "5G band 3 power limit: 5.47G-5.725G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-5g-4:
+        description: "5G band 4 power limit: 5.725G-5.95G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+    additionalProperties: false
+  mtk-wifi-geo-transmit-power-chain: &mtk-wifi-geo-transmit-power-chain
+    description: "[mtk] WiFi power chain of regulatory domain for use with MediaTek mt7921 driver.
+      Limits in units of 0.25 dBm, Offset in units of 0.25 dBm"
+    type: object
+    properties:
+      limit-2g:
+        description: "2G band geo power limit. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-5g:
+        description: "5G band geo power limit. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      offset-2g:
+        description: "Value to be added to the 2.4GHz WiFi band. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      offset-5g:
+        description: "Value to be added to all 5GHz WiFi bands. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+    additionalProperties: false
 type: object
 properties:
   chromeos:
@@ -359,7 +416,7 @@ properties:
               type: object
               description: Sets limits on maximum WiFi transmit power for tablet and non-tablet
                 device configurations. This config must contain properties for ath10k wifi driver,
-                rtw88 wifi driver, or intel driver. Note that configs for the intel driver are
+                rtw88 wifi driver, mtk driver, or intel driver. Note that configs for the intel driver are
                 delivered as encoded wifi sar hex files.
               oneOf:
                 - properties:
@@ -372,6 +429,13 @@ properties:
                     geo-offsets-fcc: *wifi-geo-offsets
                     geo-offsets-eu: *wifi-geo-offsets
                     geo-offsets-rest-of-world: *wifi-geo-offsets
+                  additionalProperties: false
+                - properties:
+                    tablet-mode-power-table-mtk: *mtk-wifi-transmit-power-chain
+                    non-tablet-mode-power-table-mtk: *mtk-wifi-transmit-power-chain
+                    fcc-power-table-mtk: *mtk-wifi-geo-transmit-power-chain
+                    eu-power-table-mtk: *mtk-wifi-geo-transmit-power-chain
+                    rest-of-world-power-table-mtk: *mtk-wifi-geo-transmit-power-chain
                   additionalProperties: false
                 - properties:
                     sar-file: *system_file_v2

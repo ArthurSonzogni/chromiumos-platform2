@@ -354,7 +354,7 @@ In the tables below,
 | touch | [touch](#touch) |  | False |  | False |  |
 | ui | [ui](#ui) |  | False |  | False |  |
 | wallpaper | string |  | False |  | False | Base filename of the default wallpaper to show on this device. |
-| wifi | [wifi](#wifi) |  | False |  | False | Sets limits on maximum WiFi transmit power for tablet and non-tablet device configurations. This config must contain properties for ath10k wifi driver, rtw88 wifi driver, or intel driver. Note that configs for the intel driver are delivered as encoded wifi sar hex files. |
+| wifi | [wifi](#wifi) |  | False |  | False | Sets limits on maximum WiFi transmit power for tablet and non-tablet device configurations. This config must contain properties for ath10k wifi driver, rtw88 wifi driver, mtk driver, or intel driver. Note that configs for the intel driver are delivered as encoded wifi sar hex files. |
 
 ### arc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -809,7 +809,12 @@ In the tables below,
 | geo-offsets-rest-of-world | [geo-offsets-rest-of-world](#geo_offsets_rest_of_world) |  | False | rtw | False | Offsets which are applied to WiFi power limits depending on the current regulatory domain. Offsets in units of 0.125 dBm. The sum of a geo offset and any power limit to which it applies cannot exceed 255. When the current regulatory domain is unknown or has yet to be determined, the base transmit power limits are used without any geo offsets applied. 'geo-offsets-fcc' is used for regulatory domains which follow FCC guidelines, 'geo-offsets-eu' is used for regulatory domains which follow ETSI guidelines, and 'geo-offsets-rest-of-world' is used for regulatory domains which don't follow FCC or ETSI guidelines. |
 | non-tablet-mode-power-table-rtw | [non-tablet-mode-power-table-rtw](#non_tablet_mode_power_table_rtw) |  | False | rtw | False | [rtw] WiFi power chain for use with Realtek rtw88 drivers. Limits in units of 0.125 dBm. 5g band 2 (channels 5.35G-5.47G) power limit is not supported. |
 | tablet-mode-power-table-rtw | [tablet-mode-power-table-rtw](#tablet_mode_power_table_rtw) |  | False | rtw | False | [rtw] WiFi power chain for use with Realtek rtw88 drivers. Limits in units of 0.125 dBm. 5g band 2 (channels 5.35G-5.47G) power limit is not supported. |
-| sar-file | [sar-file](#sar_file) |  | False | GROUP(2) | False |  |
+| eu-power-table-mtk | [eu-power-table-mtk](#eu_power_table_mtk) |  | False | mtk | False | [mtk] WiFi power chain of regulatory domain for use with MediaTek mt7921 driver. Limits in units of 0.25 dBm, Offset in units of 0.25 dBm |
+| fcc-power-table-mtk | [fcc-power-table-mtk](#fcc_power_table_mtk) |  | False | mtk | False | [mtk] WiFi power chain of regulatory domain for use with MediaTek mt7921 driver. Limits in units of 0.25 dBm, Offset in units of 0.25 dBm |
+| non-tablet-mode-power-table-mtk | [non-tablet-mode-power-table-mtk](#non_tablet_mode_power_table_mtk) |  | False | mtk | False | [mtk] WiFi power chain for use with MediaTek mt7921 driver. Limits in units of 0.25 dBm. |
+| rest-of-world-power-table-mtk | [rest-of-world-power-table-mtk](#rest_of_world_power_table_mtk) |  | False | mtk | False | [mtk] WiFi power chain of regulatory domain for use with MediaTek mt7921 driver. Limits in units of 0.25 dBm, Offset in units of 0.25 dBm |
+| tablet-mode-power-table-mtk | [tablet-mode-power-table-mtk](#tablet_mode_power_table_mtk) |  | False | mtk | False | [mtk] WiFi power chain for use with MediaTek mt7921 driver. Limits in units of 0.25 dBm. |
+| sar-file | [sar-file](#sar_file) |  | False | GROUP(3) | False |  |
 
 ### non-tablet-mode-power-table-ath10k
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -856,6 +861,48 @@ In the tables below,
 | limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit: 5.15G-5.35G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G channels. (0.125 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+
+### eu-power-table-mtk
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g | integer |  | False |  | False | 5G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+
+### fcc-power-table-mtk
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g | integer |  | False |  | False | 5G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+
+### non-tablet-mode-power-table-mtk
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit: 5.15G-5.35G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit: 5.35G-5.47G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+
+### rest-of-world-power-table-mtk
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g | integer |  | False |  | False | 5G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+
+### tablet-mode-power-table-mtk
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit: 5.15G-5.35G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit: 5.35G-5.47G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### sar-file
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
