@@ -21,9 +21,11 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
                    base::Optional<std::string> name,
                    base::Optional<std::string> location);
 
-  void AddReceiver(
+  mojo::ReceiverId AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);
   bool HasReceivers() const;
+
+  void ResetObserverRemote(mojo::ReceiverId id);
 
   // Implementation of cros::mojom::SensorDevice.
   void SetTimeout(uint32_t timeout) override {}

@@ -24,13 +24,20 @@ FakeSensorDevice::FakeSensorDevice(bool is_color_sensor,
     attributes_[cros::mojom::kLocation] = location.value();
 }
 
-void FakeSensorDevice::AddReceiver(
+mojo::ReceiverId FakeSensorDevice::AddReceiver(
     mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver) {
-  receiver_set_.Add(this, std::move(pending_receiver));
+  return receiver_set_.Add(this, std::move(pending_receiver));
 }
 
 bool FakeSensorDevice::HasReceivers() const {
   return !receiver_set_.empty();
+}
+
+void FakeSensorDevice::ResetObserverRemote(mojo::ReceiverId id) {
+  auto it = observers_.find(id);
+  DCHECK(it != observers_.end());
+
+  observers_.erase(it);
 }
 
 void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,

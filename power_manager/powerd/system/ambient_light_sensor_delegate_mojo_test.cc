@@ -84,7 +84,7 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
     base::RunLoop loop;
 
     mojo::Remote<cros::mojom::SensorDevice> remote;
-    sensor_device_->AddReceiver(remote.BindNewPipeAndPassReceiver());
+    id_ = sensor_device_->AddReceiver(remote.BindNewPipeAndPassReceiver());
     auto light = AmbientLightSensorDelegateMojo::Create(
         kFakeSensorId, std::move(remote), color_delegate, loop.QuitClosure());
     light_ = light.get();
@@ -121,6 +121,8 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
 
   std::unique_ptr<AmbientLightSensor> sensor_;
   AmbientLightSensorDelegateMojo* light_;
+
+  mojo::ReceiverId id_;
 };
 
 TEST_F(AmbientLightSensorDelegateMojoTest, NoColorSensor) {
@@ -135,7 +137,7 @@ TEST_F(AmbientLightSensorDelegateMojoTest, NoColorSensor) {
   observer_.CheckSample(200);
 
   // Simulate disconnection of the observer channel.
-  sensor_device_->StopReadingSamples();
+  sensor_device_->ResetObserverRemote(id_);
 
   // Wait until the disconnection is done.
   base::RunLoop().RunUntilIdle();
