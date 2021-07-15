@@ -215,7 +215,7 @@ void TimberSlide::OnEventReadable() {
       ProcessLogBuffer(std::string(buffer, ret), base::Time::Now());
   ret = str.size();
 
-  if (!base::AppendToFile(current_log_, str.c_str(), ret)) {
+  if (!base::AppendToFile(current_log_, str)) {
     PLOG(ERROR) << "Could not append to log file";
     Quit();
     return;
