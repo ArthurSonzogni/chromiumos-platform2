@@ -55,12 +55,6 @@ constexpr uint32_t kInitialFileDescriptorId = 1;
 // Initial ID value for the IdMap of mount IDs.
 constexpr uint32_t kInitialMountId = 0;
 
-// Initial ID value for the IdMap of CopyProgress trackers.
-constexpr uint32_t kInitialCopyProgressTrackerId = 0;
-
-// Initial ID value for the IdMap of ReadDirProgress trackers.
-constexpr uint32_t kInitialReadDirProgressTrackerId = 0;
-
 // Entries returned by smbc_getdents() that we ignore.
 extern const char kEntryParent[];
 extern const char kEntrySelf[];

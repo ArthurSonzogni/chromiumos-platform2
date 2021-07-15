@@ -140,43 +140,8 @@ bool IsValidOpenFileFlags(int32_t flags) {
   return flags == O_RDONLY || flags == O_RDWR || flags == O_WRONLY;
 }
 
-bool ReadFromFD(const WriteFileOptionsProto& options,
-                const base::ScopedFD& fd,
-                int32_t* error,
-                std::vector<uint8_t>* buffer) {
-  DCHECK(buffer);
-  DCHECK(error);
-
-  if (!fd.is_valid()) {
-    LogAndSetError(options, ERROR_DBUS_PARSE_FAILED, error);
-    return false;
-  }
-
-  buffer->resize(options.length());
-  if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(buffer->data()),
-                        buffer->size())) {
-    LogAndSetError(options, ERROR_IO, error);
-    return false;
-  }
-
-  return true;
-}
-
 int32_t GetOpenFilePermissions(const bool writeable) {
   return writeable ? O_RDWR : O_RDONLY;
-}
-
-int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options) {
-  return GetOpenFilePermissions(options.writeable());
-}
-
-int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused) {
-  return O_WRONLY;
-}
-
-int32_t GetOpenFilePermissions(const CopyEntryOptionsProto& unused) {
-  // OpenFile is Read-Only for CopyEntry since we only need to read the source.
-  return O_RDONLY;
 }
 
 PathParts SplitPath(const std::string& full_path) {

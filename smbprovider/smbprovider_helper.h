@@ -102,20 +102,8 @@ int32_t GetDirectoryEntryProtoFromStat(const std::string& full_path,
 // include: O_RDONLY, O_RDWR, O_WRONLY.
 bool IsValidOpenFileFlags(int32_t flags);
 
-// Helper method to read data from a file descriptor |fd| and store the
-// result in |buffer|. This reads bytes equal to what is specified in |options|,
-// and will fail if it doesn't read that amount. Returns true on success and
-// |error| is set on failure.
-bool ReadFromFD(const WriteFileOptionsProto& options,
-                const base::ScopedFD& fd,
-                int32_t* error,
-                std::vector<uint8_t>* buffer);
-
 // Gets the correct permissions flag for |options|.
 int32_t GetOpenFilePermissions(const bool writeable);
-int32_t GetOpenFilePermissions(const OpenFileOptionsProto& options);
-int32_t GetOpenFilePermissions(const TruncateOptionsProto& unused);
-int32_t GetOpenFilePermissions(const CopyEntryOptionsProto& unused);
 
 // Returns the components of a filepath as a vector<std::string>.
 PathParts SplitPath(const std::string& full_path);

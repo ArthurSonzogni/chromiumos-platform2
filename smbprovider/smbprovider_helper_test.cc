@@ -174,79 +174,6 @@ TEST_F(SmbProviderHelperTest, IsValidOpenFileFlags) {
   EXPECT_FALSE(IsValidOpenFileFlags(O_TRUNC));
 }
 
-TEST_F(SmbProviderHelperTest, ReadFromFDErrorOnInvalidFd) {
-  std::vector<uint8_t> buffer;
-  int32_t error;
-
-  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, 0 /* length */);
-
-  // Create a file descriptor that is invalid.
-  base::ScopedFD invalid_fd;
-  EXPECT_FALSE(invalid_fd.is_valid());
-
-  // Should return an error when passing in an invalid file descriptor.
-  EXPECT_FALSE(ReadFromFD(proto, invalid_fd, &error, &buffer));
-  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, static_cast<ErrorType>(error));
-}
-
-TEST_F(SmbProviderHelperTest, ReadFromFDFailsWithLengthLargerThanData) {
-  const std::vector<uint8_t> data = {0, 1, 2, 3};
-
-  // Send in options with length larger than the data.
-  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, data.size() + 1);
-  int32_t error;
-
-  // Ensure that the fd created is valid.
-  base::ScopedFD fd(temp_file_manager_.CreateTempFile(data).release());
-  EXPECT_TRUE(fd.is_valid());
-
-  // Should fail since it can't read that much data.
-  std::vector<uint8_t> buffer;
-  EXPECT_FALSE(ReadFromFD(proto, fd, &error, &buffer));
-  EXPECT_EQ(ERROR_IO, static_cast<ErrorType>(error));
-}
-
-TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithLengthSmallerThanData) {
-  const std::vector<uint8_t> data = {0, 1, 2, 3};
-
-  // Send in options with length smaller than the data.
-  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, data.size() - 1);
-  int32_t error;
-
-  // Ensure that the fd created is valid.
-  base::ScopedFD fd(temp_file_manager_.CreateTempFile(data).release());
-  EXPECT_TRUE(fd.is_valid());
-
-  // Should be OK.
-  std::vector<uint8_t> buffer;
-  EXPECT_TRUE(ReadFromFD(proto, fd, &error, &buffer));
-
-  // Should be equal to the truncated data.
-  const std::vector<uint8_t> expected = {0, 1, 2};
-  EXPECT_EQ(expected, buffer);
-}
-
-TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithExactSize) {
-  const std::vector<uint8_t> data = {0, 1, 2, 3};
-
-  // Send in options with length equal to the data.
-  WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, data.size());
-  int32_t error;
-
-  // Ensure that the fd created is valid.
-  base::ScopedFD fd(temp_file_manager_.CreateTempFile(data).release());
-  EXPECT_TRUE(fd.is_valid());
-
-  // Should be OK.
-  std::vector<uint8_t> buffer;
-  EXPECT_TRUE(ReadFromFD(proto, fd, &error, &buffer));
-  EXPECT_EQ(data, buffer);
-}
-
 // SplitPath correctly splits a relative path into a vector of its components.
 TEST_F(SmbProviderHelperTest, SplitPathCorrectlySplitsPath) {
   const std::string relative_path = "/testShare/dogs/lab.jpg";
@@ -338,23 +265,6 @@ TEST_F(SmbProviderHelperTest, ShouldReportCreateDirError) {
   EXPECT_TRUE(ShouldReportCreateDirError(EEXIST, false /* ignore_existing */));
   EXPECT_TRUE(ShouldReportCreateDirError(EPERM, false /* ignore_existing */));
   EXPECT_TRUE(ShouldReportCreateDirError(EPERM, true /* ignore_existing */));
-}
-
-// GetOpenFilePermissions correctly returns permissions.
-TEST_F(SmbProviderHelperTest, GetOpenFilePermissions) {
-  OpenFileOptionsProto open_file_proto_read = CreateOpenFileOptionsProto(
-      3 /* mount_id */, "smb://testShare/dir1/pic.png", false /* writeable */);
-  EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(open_file_proto_read));
-
-  OpenFileOptionsProto open_file_proto_read_write = CreateOpenFileOptionsProto(
-      3 /* mount_id */, "smb://testShare/dir1/pic.png", true /* writeable */);
-  EXPECT_EQ(O_RDWR, GetOpenFilePermissions(open_file_proto_read_write));
-
-  TruncateOptionsProto truncate_proto_blank;
-  EXPECT_EQ(O_WRONLY, GetOpenFilePermissions(truncate_proto_blank));
-
-  CopyEntryOptionsProto copy_entry_proto_blank;
-  EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(copy_entry_proto_blank));
 }
 
 TEST_F(SmbProviderHelperTest, GetOpenFilePermissionsBoolean) {
