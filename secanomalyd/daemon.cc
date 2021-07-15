@@ -58,12 +58,10 @@ bool ReportMount(const MountEntry& e, bool report_in_dev_mode) {
   crash_reporter.RedirectUsingPipe(STDIN_FILENO, true);
   CHECK(crash_reporter.Start());
   int stdin_fd = crash_reporter.GetPipe(STDIN_FILENO);
-  CHECK(base::WriteFileDescriptor(stdin_fd, e.src().value().data(),
-                                  e.src().value().length()));
+  CHECK(base::WriteFileDescriptor(stdin_fd, e.src().value()));
   std::string newline = "\n";
-  CHECK(base::WriteFileDescriptor(stdin_fd, newline.data(), newline.length()));
-  CHECK(base::WriteFileDescriptor(stdin_fd, e.dest().value().data(),
-                                  e.dest().value().length()));
+  CHECK(base::WriteFileDescriptor(stdin_fd, newline));
+  CHECK(base::WriteFileDescriptor(stdin_fd, e.dest().value()));
   CHECK_GE(IGNORE_EINTR(close(stdin_fd)), 0);
   CHECK_EQ(0, crash_reporter.Wait());
 

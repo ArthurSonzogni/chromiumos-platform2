@@ -40,9 +40,9 @@ MountEntry::MountEntry(base::StringPiece mount_str) {
       base::SplitStringPiece(mount_str, base::kWhitespaceASCII,
                              base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-  src_ = base::FilePath(fields[0].as_string());
-  dest_ = base::FilePath(fields[1].as_string());
-  type_ = fields[2].as_string();
+  src_ = base::FilePath(fields[0]);
+  dest_ = base::FilePath(fields[1]);
+  type_ = std::string(fields[2]);
 
   opts_ = base::SplitString(fields[3], ",", base::TRIM_WHITESPACE,
                             base::SPLIT_WANT_NONEMPTY);
