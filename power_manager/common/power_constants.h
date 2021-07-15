@@ -447,6 +447,12 @@ enum class WifiRegDomain {
   NONE,
 };
 
+enum class SuspendFlavor {
+  SUSPEND_DEFAULT = 0,
+  SUSPEND_TO_RAM = 1,
+  SUSPEND_TO_DISK = 2,
+};
+
 // Returns human-readable descriptions of enum values.
 std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);

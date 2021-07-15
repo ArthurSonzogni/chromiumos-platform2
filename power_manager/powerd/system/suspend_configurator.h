@@ -91,6 +91,11 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Mode for suspend. One of Suspend-to-idle, Power-on-suspend, or
   // Suspend-to-RAM.
   std::string suspend_mode_;
+
+  // Whether hibernate support has already been checked, and what the
+  // result of the check was.
+  bool hibernate_availability_known_ = false;
+  bool hibernate_available_;
 };
 
 }  // namespace system

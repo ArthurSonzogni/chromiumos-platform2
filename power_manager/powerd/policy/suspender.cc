@@ -66,12 +66,14 @@ void Suspender::Init(
     system::DisplayWatcherInterface* display_watcher,
     system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
     policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
-    PrefsInterface* prefs) {
+    PrefsInterface* prefs,
+    system::SuspendConfiguratorInterface* suspend_configurator) {
   delegate_ = delegate;
   dbus_wrapper_ = dbus_wrapper;
   dark_resume_ = dark_resume;
   wakeup_source_identifier_ = wakeup_source_identifier;
   shutdown_from_suspend_ = shutdown_from_suspend;
+  prefs_ = prefs;
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;
@@ -104,6 +106,7 @@ void Suspender::Init(
 
   CHECK(prefs->GetInt64(kRetrySuspendAttemptsPref, &max_retries_));
 
+  hibernate_available_ = suspend_configurator->IsHibernateAvailable();
   ExportDBusMethods();
 
   // Clean up if powerd was previously restarted after emitting SuspendImminent
@@ -117,22 +120,26 @@ void Suspender::Init(
 }
 
 void Suspender::RequestSuspend(SuspendImminent::Reason reason,
-                               base::TimeDelta duration) {
+                               base::TimeDelta duration,
+                               SuspendFlavor flavor) {
   suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = false;
   suspend_request_wakeup_count_ = 0;
   suspend_duration_ = duration;
+  suspend_request_flavor_ = flavor;
   HandleEvent(Event::SUSPEND_REQUESTED);
 }
 
 void Suspender::RequestSuspendWithExternalWakeupCount(
     SuspendImminent::Reason reason,
     uint64_t wakeup_count,
-    base::TimeDelta duration) {
+    base::TimeDelta duration,
+    SuspendFlavor flavor) {
   suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = true;
   suspend_request_wakeup_count_ = wakeup_count;
   suspend_duration_ = duration;
+  suspend_request_flavor_ = flavor;
   HandleEvent(Event::SUSPEND_REQUESTED);
 }
 
@@ -567,24 +574,50 @@ Suspender::State Suspender::Suspend() {
       shutdown_from_suspend_->PrepareForSuspendAttempt();
 
   bool hibernate = false;
+  bool hibernate_disabled = false;
 
-  switch (action) {
-    case policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN:
-      LOG(INFO) << "Shutting down from suspend";
-      // Don't call FinishRequest(); we want the backlight to stay off.
-      delegate_->ShutDownFromSuspend();
-      return State::SHUTTING_DOWN;
+  switch (suspend_request_flavor_) {
+    // If the caller has no preference for suspend flavor, determine the
+    // automatic action.
+    case SuspendFlavor::SUSPEND_DEFAULT:
+      switch (action) {
+        case policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN:
+          LOG(INFO) << "Shutting down from suspend";
+          // Don't call FinishRequest(); we want the backlight to stay off.
+          delegate_->ShutDownFromSuspend();
+          return State::SHUTTING_DOWN;
 
-    case policy::ShutdownFromSuspendInterface::Action::HIBERNATE:
-      hibernate = true;
-      FALLTHROUGH;
+        case policy::ShutdownFromSuspendInterface::Action::HIBERNATE:
+          hibernate = true;
+          break;
 
-    case policy::ShutdownFromSuspendInterface::Action::SUSPEND:
-      if (suspend_duration_ != base::TimeDelta()) {
-        LOG(INFO) << (hibernate ? "Hibernating" : "Suspending") << " for "
-                  << suspend_duration_.InSeconds() << " seconds";
+        case policy::ShutdownFromSuspendInterface::Action::SUSPEND:
+          break;
       }
+
       break;
+
+    case SuspendFlavor::SUSPEND_TO_RAM:
+      break;
+
+    case SuspendFlavor::SUSPEND_TO_DISK:
+      hibernate = true;
+      break;
+  }
+
+  if (hibernate) {
+    CHECK(prefs_->GetBool(kDisableHibernatePref, &hibernate_disabled));
+    if (hibernate_disabled || !hibernate_available_) {
+      LOG(WARNING) << "Cannot hibernate because hibernation is "
+                   << (hibernate_disabled ? "disabled" : "unavailable");
+      hibernate = false;
+    }
+  }
+
+  if (suspend_duration_ != base::TimeDelta()) {
+    LOG(INFO) << (hibernate ? "Hibernating" : "Suspending") << " for "
+              << suspend_duration_.InSeconds() << " seconds"
+              << (hibernate ? " (duration likely ignored for hibernate)" : "");
   }
 
   if (hibernate) {

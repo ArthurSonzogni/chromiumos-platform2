@@ -24,6 +24,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
+#include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
@@ -214,12 +215,15 @@ class Suspender : public SuspendDelayObserver,
             system::DisplayWatcherInterface* display_watcher,
             system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
             policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
-            PrefsInterface* prefs);
+            PrefsInterface* prefs,
+            system::SuspendConfiguratorInterface* suspend_configurator);
 
   // Starts the suspend process. Note that suspending happens
   // asynchronously. The system will automatically resume after |duration| if it
   // is non-zero.
-  void RequestSuspend(SuspendImminent::Reason reason, base::TimeDelta duration);
+  void RequestSuspend(SuspendImminent::Reason reason,
+                      base::TimeDelta duration,
+                      SuspendFlavor flavor);
 
   // Like RequestSuspend(), but aborts the suspend attempt immediately if
   // the current wakeup count reported by the kernel exceeds
@@ -230,7 +234,8 @@ class Suspender : public SuspendDelayObserver,
   // RequestSuspend.
   void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
                                              uint64_t wakeup_count,
-                                             base::TimeDelta duration);
+                                             base::TimeDelta duration,
+                                             SuspendFlavor flavor);
 
   // Handles events that may abort in-progress suspend attempts.
   void HandleLidOpened();
@@ -373,6 +378,7 @@ class Suspender : public SuspendDelayObserver,
   policy::ShutdownFromSuspendInterface* shutdown_from_suspend_ =
       nullptr;  // weak
 
+  PrefsInterface* prefs_ = nullptr;  // weak
   std::unique_ptr<Clock> clock_;
   std::unique_ptr<SuspendDelayController> suspend_delay_controller_;
   std::unique_ptr<SuspendDelayController> dark_suspend_delay_controller_;
@@ -411,6 +417,9 @@ class Suspender : public SuspendDelayObserver,
   // received while powerd's event loop isn't running.
   uint64_t wakeup_count_ = 0;
   bool wakeup_count_valid_ = false;
+
+  // The type of suspend requested.
+  SuspendFlavor suspend_request_flavor_ = SuspendFlavor::SUSPEND_DEFAULT;
 
   // Boot time at which the suspend request started.
   base::TimeTicks suspend_request_start_time_;
@@ -457,6 +466,9 @@ class Suspender : public SuspendDelayObserver,
 
   // Whether the system is presenting or not.
   DisplayMode display_mode_ = DisplayMode::NORMAL;
+
+  // Whether or not the system supports hibernate.
+  bool hibernate_available_;
 
   // Keep this last.
   base::WeakPtrFactory<Suspender> weak_ptr_factory_;

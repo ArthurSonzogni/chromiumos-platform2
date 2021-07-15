@@ -41,6 +41,12 @@
         which the system should resume. Supply 0 for no timeout.
       </tp:docstring>
       <arg name="wakeup_timeout" direction="in" type="i" />
+      <tp:docstring>
+        The |suspend_flavor| arg is optional. It specifies the type of
+        suspend to perform. See enum RequestSuspendFlavor for values.
+        Not specifying a value is equivalent to 0, REQUEST_SUSPEND_DEFAULT.
+      </tp:docstring>
+      <arg name="suspend_flavor" direction="in" type="u" />
     </method>
     <method name="SetScreenBrightness">
       <tp:docstring>

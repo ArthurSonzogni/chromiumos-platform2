@@ -149,8 +149,8 @@ int main(int argc, char* argv[]) {
                "isn't recognized as user activity that cancels the suspend "
                "request.");
   DEFINE_int32(timeout, 0, "How long to wait for a resume signal in seconds.");
-  DEFINE_uint64(wakeup_count, 0,
-                "Wakeup count to pass to powerd or 0 if "
+  DEFINE_uint64(wakeup_count, -1ULL,
+                "Wakeup count to pass to powerd or -1ULL if "
                 "unset.");
   DEFINE_int32(wakeup_timeout, 0,
                "Sets an RTC alarm immediately that fires after the given "
@@ -159,6 +159,11 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(suspend_for_sec, 0,
                "Ask powerd to suspend the device for this many seconds. powerd "
                "then sets an alarm just before going to suspend.");
+  DEFINE_uint32(
+      flavor, 0,
+      "Perform a specific flavor of suspend. 0 represents the default, "
+      "dealer's choice, which is almost always suspend-to-RAM. "
+      "1 is suspend-to-RAM, 2 is suspend-to-disk.");
   DEFINE_bool(print_wakeup_type, false, "Print wakeup type of last resume.");
   DEFINE_bool(disable_dark_resume, true,
               "whether or not to disable dark resume before suspend. Resets to "
@@ -204,14 +209,21 @@ int main(int argc, char* argv[]) {
   // Send a suspend request.
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kRequestSuspendMethod);
-  if (FLAGS_wakeup_count) {
+  // The arguments are positional, so all earlier arguments must be supplied
+  // if a later argument is.
+  if (FLAGS_wakeup_count || FLAGS_suspend_for_sec || FLAGS_flavor) {
     dbus::MessageWriter writer(&method_call);
     writer.AppendUint64(FLAGS_wakeup_count);
   }
   // Pass suspend_for_sec to the daemon.
-  if (FLAGS_suspend_for_sec) {
+  if (FLAGS_suspend_for_sec || FLAGS_flavor) {
     dbus::MessageWriter writer(&method_call);
     writer.AppendInt32(FLAGS_suspend_for_sec);
+  }
+  // Pass flavor to the daemon.
+  if (FLAGS_flavor) {
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendUint32(FLAGS_flavor);
   }
   std::unique_ptr<dbus::Response> response(powerd_proxy->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));

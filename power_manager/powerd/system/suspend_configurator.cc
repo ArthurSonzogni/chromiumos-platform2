@@ -100,6 +100,10 @@ bool SuspendConfigurator::UndoPrepareForSuspend() {
 }
 
 bool SuspendConfigurator::IsHibernateAvailable() {
+  if (hibernate_availability_known_) {
+    return hibernate_available_;
+  }
+
   base::FilePath snapshot_device_path =
       GetPrefixedFilePath(base::FilePath(kSnapshotDevicePath));
 
@@ -107,11 +111,15 @@ bool SuspendConfigurator::IsHibernateAvailable() {
   // is capable of doing suspend to disk.
   if (base::PathExists(snapshot_device_path)) {
     LOG(INFO) << "Hibernate is available";
-    return true;
+    hibernate_available_ = true;
+
+  } else {
+    LOG(INFO) << "Hibernate is not available on this machine";
+    hibernate_available_ = false;
   }
 
-  LOG(INFO) << "Hibernate is not available on this machine";
-  return false;
+  hibernate_availability_known_ = true;
+  return hibernate_available_;
 }
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {

@@ -229,7 +229,8 @@ class Daemon::StateControllerDelegate
         suspend_reason = SuspendImminent_Reason_LID_CLOSED;
         break;
     }
-    daemon_->Suspend(suspend_reason, false, 0, base::TimeDelta());
+    daemon_->Suspend(suspend_reason, false, 0, base::TimeDelta(),
+                     SuspendFlavor::SUSPEND_DEFAULT);
   }
 
   void StopSession() override {
@@ -415,7 +416,8 @@ void Daemon::Init() {
 
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(),
                    display_watcher_.get(), wakeup_source_identifier_.get(),
-                   shutdown_from_suspend_.get(), prefs_.get());
+                   shutdown_from_suspend_.get(), prefs_.get(),
+                   suspend_configurator_.get());
 
   input_event_handler_->Init(input_watcher_.get(), this, display_watcher_.get(),
                              dbus_wrapper_.get(), prefs_.get());
@@ -1199,8 +1201,13 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   int32_t wakeup_timeout = 0;
   reader.PopInt32(&wakeup_timeout);
   base::TimeDelta duration = base::TimeDelta::FromSeconds(wakeup_timeout);
+  // Read an optional uint32_t argument specifying the suspend flavor.
+  uint32_t suspend_flavor =
+      static_cast<uint32_t>(SuspendFlavor::SUSPEND_DEFAULT);
+  reader.PopUint32(&suspend_flavor);
   Suspend(SuspendImminent_Reason_OTHER, got_external_wakeup_count,
-          external_wakeup_count, duration);
+          external_wakeup_count, duration,
+          static_cast<SuspendFlavor>(suspend_flavor));
   return nullptr;
 }
 
@@ -1436,7 +1443,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
 void Daemon::Suspend(SuspendImminent::Reason reason,
                      bool use_external_wakeup_count,
                      uint64_t external_wakeup_count,
-                     base::TimeDelta duration) {
+                     base::TimeDelta duration,
+                     SuspendFlavor flavor) {
   if (shutting_down_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;
@@ -1444,9 +1452,9 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
 
   if (use_external_wakeup_count) {
     suspender_->RequestSuspendWithExternalWakeupCount(
-        reason, external_wakeup_count, duration);
+        reason, external_wakeup_count, duration, flavor);
   } else {
-    suspender_->RequestSuspend(reason, duration);
+    suspender_->RequestSuspend(reason, duration, flavor);
   }
 }
 
