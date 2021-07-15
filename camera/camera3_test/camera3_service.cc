@@ -150,6 +150,22 @@ int Camera3Service::WaitForAEStable(int cam_id) {
   return cam_dev_service_map_[cam_id]->WaitForAEStable();
 }
 
+void Camera3Service::StartFaceDetection(int cam_id) {
+  base::AutoLock l(lock_);
+  if (initialized_ &&
+      cam_dev_service_map_.find(cam_id) != cam_dev_service_map_.end()) {
+    cam_dev_service_map_[cam_id]->StartFaceDetection();
+  }
+}
+
+void Camera3Service::StopFaceDetection(int cam_id) {
+  base::AutoLock l(lock_);
+  if (initialized_ &&
+      cam_dev_service_map_.find(cam_id) != cam_dev_service_map_.end()) {
+    cam_dev_service_map_[cam_id]->StopFaceDetection();
+  }
+}
+
 void Camera3Service::TakeStillCapture(int cam_id,
                                       const camera_metadata_t* metadata) {
   base::AutoLock l(lock_);
@@ -366,6 +382,22 @@ int Camera3Service::Camera3DeviceService::WaitForAEStable() {
     VLOGF(1) << "Flash needs to be fired for good quality still capture";
   }
   return 0;
+}
+
+void Camera3Service::Camera3DeviceService::StartFaceDetection() {
+  VLOGF_ENTER();
+  service_thread_.PostTaskAsync(
+      FROM_HERE, base::BindRepeating(&Camera3Service::Camera3DeviceService::
+                                         StartFaceDetectionOnServiceThread,
+                                     base::Unretained(this)));
+}
+
+void Camera3Service::Camera3DeviceService::StopFaceDetection() {
+  VLOGF_ENTER();
+  service_thread_.PostTaskAsync(
+      FROM_HERE, base::BindRepeating(&Camera3Service::Camera3DeviceService::
+                                         StopFaceDetectionOnServiceThread,
+                                     base::Unretained(this)));
 }
 
 void Camera3Service::Camera3DeviceService::TakeStillCapture(
@@ -600,6 +632,20 @@ void Camera3Service::Camera3DeviceService::StartAEPrecaptureOnServiceThread() {
   uint8_t ae_trigger = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START;
   EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
                               &ae_trigger, 1, &oneshot_preview_metadata_));
+}
+
+void Camera3Service::Camera3DeviceService::StartFaceDetectionOnServiceThread() {
+  DCHECK(service_thread_.IsCurrentThread());
+  uint8_t fd_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE;
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_STATISTICS_FACE_DETECT_MODE, &fd_mode, 1,
+                              &repeating_preview_metadata_));
+}
+
+void Camera3Service::Camera3DeviceService::StopFaceDetectionOnServiceThread() {
+  DCHECK(service_thread_.IsCurrentThread());
+  uint8_t fd_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_STATISTICS_FACE_DETECT_MODE, &fd_mode, 1,
+                              &repeating_preview_metadata_));
 }
 
 void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(

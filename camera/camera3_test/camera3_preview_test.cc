@@ -59,7 +59,7 @@ TEST_P(Camera3SinglePreviewTest, Camera3BasicPreviewTest) {
 class Camera3FaceDetectionTest : public Camera3PreviewFixture,
                                  public ::testing::WithParamInterface<int32_t> {
  public:
-  const uint32_t kNumPreviewFrames = 3;
+  const uint32_t kNumPreviewFrames = 20;
   const uint32_t kTimeoutMsPerFrame = 1000;
   Camera3FaceDetectionTest()
       : Camera3PreviewFixture(std::vector<int>(1, GetParam())),
@@ -91,7 +91,7 @@ class Camera3FaceDetectionTest : public Camera3PreviewFixture,
     return value;
   }
 
-  void CheckNumOfFaces();
+  void CheckNumOfFaces(int num_faces);
 
   int cam_id_;
   int expected_num_faces_;
@@ -115,24 +115,28 @@ void Camera3FaceDetectionTest::ProcessPreviewResult(
   result_metadata_ = std::move(metadata);
 }
 
-void Camera3FaceDetectionTest::CheckNumOfFaces() {
+void Camera3FaceDetectionTest::CheckNumOfFaces(int num_faces) {
   ASSERT_NE(nullptr, result_metadata_.get())
       << "Result metadata is unavailable";
   camera_metadata_ro_entry_t entry;
-  ASSERT_EQ(0, find_camera_metadata_ro_entry(result_metadata_.get(),
-                                             ANDROID_STATISTICS_FACE_RECTANGLES,
-                                             &entry))
+  int result = find_camera_metadata_ro_entry(
+      result_metadata_.get(), ANDROID_STATISTICS_FACE_RECTANGLES, &entry);
+  // Accept no rectangles.
+  if (num_faces == 0 && result != 0) {
+    return;
+  }
+  ASSERT_EQ(0, result)
       << "Metadata key ANDROID_STATISTICS_FACE_RECTANGLES not found";
-  EXPECT_EQ(expected_num_faces_ * 4, entry.count)
-      << "Expect face rectangles size " << expected_num_faces_ * 4
-      << " but detected " << entry.count;
+  EXPECT_EQ(num_faces * 4, entry.count)
+      << "Expect face rectangles size " << num_faces * 4 << " but detected "
+      << entry.count;
   ASSERT_EQ(
       0, find_camera_metadata_ro_entry(result_metadata_.get(),
                                        ANDROID_STATISTICS_FACE_SCORES, &entry))
       << "Metadata key ANDROID_STATISTICS_FACE_SCORES not found";
-  EXPECT_EQ(expected_num_faces_, entry.count)
-      << "Expect " << expected_num_faces_ << " faces, but detected "
-      << entry.count << " faces";
+  EXPECT_EQ(num_faces, entry.count)
+      << "Expect " << num_faces << " faces, but detected " << entry.count
+      << " faces";
   result_metadata_.reset();
 }
 
@@ -195,10 +199,23 @@ TEST_P(Camera3FaceDetectionTest, Detection) {
   ASSERT_EQ(0, cam_service_.WaitForAEStable(cam_id_))
       << "Wait for AE stable timed out";
 
+  // Check there is no face detected before enabling face detection
   ASSERT_EQ(0, cam_service_.WaitForPreviewFrames(cam_id_, kNumPreviewFrames,
                                                  kTimeoutMsPerFrame));
+  CheckNumOfFaces(0);
+
+  cam_service_.StartFaceDetection(cam_id_);
+  ASSERT_EQ(0, cam_service_.WaitForPreviewFrames(cam_id_, kNumPreviewFrames,
+                                                 kTimeoutMsPerFrame));
+  CheckNumOfFaces(expected_num_faces_);
+
+  // Check no face detected after stop face detection
+  cam_service_.StopFaceDetection(cam_id_);
+  ASSERT_EQ(0, cam_service_.WaitForPreviewFrames(cam_id_, kNumPreviewFrames,
+                                                 kTimeoutMsPerFrame));
+  CheckNumOfFaces(0);
+
   cam_service_.StopPreview(cam_id_);
-  CheckNumOfFaces();
 }
 
 INSTANTIATE_TEST_SUITE_P(

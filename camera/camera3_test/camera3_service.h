@@ -92,6 +92,12 @@ class Camera3Service {
   // Wait for AE stable
   int WaitForAEStable(int cam_id);
 
+  // Start Face detection
+  void StartFaceDetection(int cam_id);
+
+  // Stop Face detection
+  void StopFaceDetection(int cam_id);
+
   // Take still capture with settings |metadata|
   void TakeStillCapture(int cam_id, const camera_metadata_t* metadata);
 
@@ -175,6 +181,12 @@ class Camera3Service::Camera3DeviceService {
   // Wait for AE stable
   int WaitForAEStable();
 
+  // Start Face Detection
+  void StartFaceDetection();
+
+  // Stopt Face Detection
+  void StopFaceDetection();
+
   // Take still capture with settings |metadata|
   void TakeStillCapture(const camera_metadata_t* metadata);
 
@@ -221,6 +233,10 @@ class Camera3Service::Camera3DeviceService {
   void LockAWBOnServiceThread();
 
   void StartAEPrecaptureOnServiceThread();
+
+  void StartFaceDetectionOnServiceThread();
+
+  void StopFaceDetectionOnServiceThread();
 
   void TakeStillCaptureOnServiceThread(const camera_metadata_t* metadata,
                                        base::Callback<void()> cb);
