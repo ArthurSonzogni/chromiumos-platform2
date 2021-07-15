@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -71,7 +72,7 @@ bool WriteCgroupFile(const base::FilePath& cgroup_path,
   base::ScopedFD fd = OpenCgroupFile(cgroup_path, name, true);
   if (!fd.is_valid())
     return false;
-  if (!base::WriteFileDescriptor(fd.get(), str.data(), str.size()))
+  if (!base::WriteFileDescriptor(fd.get(), str))
     return false;
   return true;
 }
@@ -92,16 +93,9 @@ bool CopyCgroupParent(const base::FilePath& cgroup_path,
   if (!source.is_valid())
     return false;
 
-  char buffer[256];
-  ssize_t bytes_read;
-  while ((bytes_read = read(source.get(), buffer, sizeof(buffer))) > 0) {
-    if (!base::WriteFileDescriptor(dest.get(), buffer, bytes_read))
-      return false;
-  }
-  if (bytes_read < 0)
-    return false;
-
-  return true;
+  base::File infile(std::move(source));
+  base::File outfile(std::move(dest));
+  return base::CopyFileContents(infile, outfile);
 }
 
 std::string GetDeviceString(const int major, const int minor) {
@@ -308,7 +302,7 @@ std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
       return nullptr;
   }
 
-  cg->name_ = name.as_string();
+  cg->name_ = std::string(name);
 
   return cg;
 }

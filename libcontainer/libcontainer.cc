@@ -782,7 +782,7 @@ int Setexeccon(void* payload) {
     return -errno;
   }
 
-  if (!base::WriteFileDescriptor(fd.get(), init_domain, strlen(init_domain))) {
+  if (!base::WriteFileDescriptor(fd.get(), init_domain)) {
     PLOG(ERROR) << "Failed to write the SELinux label to " << exec_path;
     return -errno;
   }
