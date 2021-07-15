@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequenced_task_runner.h>
+#include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>

@@ -13,6 +13,7 @@
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 
