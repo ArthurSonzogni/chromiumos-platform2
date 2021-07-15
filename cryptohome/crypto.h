@@ -73,48 +73,6 @@ class Crypto {
   // Ensures that the TPM is connected
   virtual CryptoError EnsureTpm(bool reload_key) const;
 
-  // Seals arbitrary-length data to the TPM's PCR0.
-  // Parameters
-  //   data - Data to encrypt with tpm.
-  //   encrypted_data (OUT) - Encrypted data as a string.
-  // Returns true if we succeeded in creating the encrypted data blob.
-  virtual bool EncryptWithTpm(const brillo::SecureBlob& data,
-                              std::string* encrypted_data) const;
-
-  // Decrypts data previously sealed to the TPM's PCR0.
-  // Parameters
-  //   encrypted_data - Encrypted data previously sealed with EncryptWithTPM.
-  //   data (OUT) - Decrypted data as a blob.
-  // Returns true if we succeeded to decrypt the data blob.
-  virtual bool DecryptWithTpm(const std::string& encrypted_data,
-                              brillo::SecureBlob* data) const;
-
-  // Note the following 4 methods are only to be used if there is a strong
-  // reason to avoid talking to the TPM e.g. needing to flush some encrypted
-  // data periodically to disk and you don't want to seal a key each time.
-  // Otherwise, a user should use Encrypt/DecryptWithTpm.
-
-  // Creates a randomly generated aes key and seals it to the TPM's PCR0.
-  virtual bool CreateSealedKey(brillo::SecureBlob* aes_key,
-                               brillo::SecureBlob* sealed_key) const;
-
-  // Encrypts the given data using the aes_key. Sealed key is necessary to
-  // wrap into the returned data to allow for decryption.
-  virtual bool EncryptData(const brillo::SecureBlob& data,
-                           const brillo::SecureBlob& aes_key,
-                           const brillo::SecureBlob& sealed_key,
-                           std::string* encrypted_data) const;
-
-  // Returns the sealed and unsealed aes_key wrapped in the encrypted_data.
-  virtual bool UnsealKey(const std::string& encrypted_data,
-                         brillo::SecureBlob* aes_key,
-                         brillo::SecureBlob* sealed_key) const;
-
-  // Decrypts encrypted_data using the aes_key.
-  virtual bool DecryptData(const std::string& encrypted_data,
-                           const brillo::SecureBlob& aes_key,
-                           brillo::SecureBlob* data) const;
-
   // Attempts to reset an LE credential, specified by |vk|.
   // Returns true on success.
   // On failure, false is returned and |error| is set with the appropriate

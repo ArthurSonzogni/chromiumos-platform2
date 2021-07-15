@@ -27,14 +27,6 @@ class MockCrypto : public Crypto {
               GetOrCreateSalt,
               (const base::FilePath&, size_t, bool, brillo::SecureBlob*),
               (const, override));
-  MOCK_METHOD(bool,
-              EncryptWithTpm,
-              (const brillo::SecureBlob&, std::string*),
-              (const, override));
-  MOCK_METHOD(bool,
-              DecryptWithTpm,
-              (const std::string&, brillo::SecureBlob*),
-              (const, override));
 
   MOCK_METHOD(CryptoError, EnsureTpm, (bool), (const, override));
 };
