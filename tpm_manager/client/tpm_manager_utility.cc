@@ -5,6 +5,7 @@
 #include "tpm_manager/client/tpm_manager_utility.h"
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -54,9 +55,9 @@ bool TpmManagerUtility::Initialize() {
 bool TpmManagerUtility::TakeOwnership() {
   tpm_manager::TakeOwnershipRequest request;
   tpm_manager::TakeOwnershipReply reply;
-  SendTpmOwnerRequestAndWait(
-      &org::chromium::TpmManagerProxyInterface::TakeOwnershipAsync, request,
-      &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmManagerProxyInterface::TakeOwnershipAsync, tpm_owner_,
+      request, &reply);
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to take ownership.";
     return false;
@@ -69,9 +70,9 @@ bool TpmManagerUtility::GetTpmStatus(bool* is_enabled,
                                      LocalData* local_data) {
   tpm_manager::GetTpmStatusRequest request;
   tpm_manager::GetTpmStatusReply tpm_status;
-  SendTpmOwnerRequestAndWait(
-      &org::chromium::TpmManagerProxyInterface::GetTpmStatusAsync, request,
-      &tpm_status);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmManagerProxyInterface::GetTpmStatusAsync, tpm_owner_,
+      request, &tpm_status);
   if (tpm_status.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to read TPM state from tpm_managerd.";
     return false;
@@ -89,9 +90,9 @@ bool TpmManagerUtility::GetTpmNonsensitiveStatus(
     bool* has_reset_lock_permissions) {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply tpm_status;
-  SendTpmOwnerRequestAndWait(
+  SendProxyRequestAndWait(
       &org::chromium::TpmManagerProxyInterface::GetTpmNonsensitiveStatusAsync,
-      request, &tpm_status);
+      tpm_owner_, request, &tpm_status);
   if (tpm_status.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to read TPM nonsensitive state from tpm_managerd.";
@@ -125,9 +126,9 @@ bool TpmManagerUtility::GetVersionInfo(uint32_t* family,
   }
   tpm_manager::GetVersionInfoRequest request;
   tpm_manager::GetVersionInfoReply version_info;
-  SendTpmOwnerRequestAndWait(
-      &org::chromium::TpmManagerProxyInterface::GetVersionInfoAsync, request,
-      &version_info);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmManagerProxyInterface::GetVersionInfoAsync, tpm_owner_,
+      request, &version_info);
   if (version_info.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": failed to get version info from tpm_managerd.";
     return false;
@@ -146,9 +147,9 @@ bool TpmManagerUtility::RemoveOwnerDependency(const std::string& dependency) {
   tpm_manager::RemoveOwnerDependencyRequest request;
   tpm_manager::RemoveOwnerDependencyReply reply;
   request.set_owner_dependency(dependency);
-  SendTpmOwnerRequestAndWait(
+  SendProxyRequestAndWait(
       &org::chromium::TpmManagerProxyInterface::RemoveOwnerDependencyAsync,
-      request, &reply);
+      tpm_owner_, request, &reply);
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to remove the dependency of "
                << dependency << ".";
@@ -160,9 +161,9 @@ bool TpmManagerUtility::RemoveOwnerDependency(const std::string& dependency) {
 bool TpmManagerUtility::ClearStoredOwnerPassword() {
   tpm_manager::ClearStoredOwnerPasswordRequest request;
   tpm_manager::ClearStoredOwnerPasswordReply reply;
-  SendTpmOwnerRequestAndWait(
+  SendProxyRequestAndWait(
       &org::chromium::TpmManagerProxyInterface::ClearStoredOwnerPasswordAsync,
-      request, &reply);
+      tpm_owner_, request, &reply);
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to clear owner password. ";
     return false;
@@ -193,53 +194,35 @@ void TpmManagerUtility::InitializationTask(base::WaitableEvent* completion) {
   completion->Signal();
 }
 
-template <typename ReplyProtoType, typename MethodType>
-void TpmManagerUtility::SendTpmManagerRequestAndWait(
-    const MethodType& method, ReplyProtoType* reply_proto) {
+template <typename ReplyProtoType,
+          typename ProxyType,
+          typename RequestProtoType,
+          typename MethodType>
+void TpmManagerUtility::SendProxyRequestAndWait(
+    const MethodType& method,
+    ProxyType* const& proxy,
+    const RequestProtoType& request_proto,
+    ReplyProtoType* reply_proto) {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
-  auto callback = base::Bind(
+  auto callback = base::BindOnce(
       [](ReplyProtoType* target, base::WaitableEvent* completion,
          const ReplyProtoType& reply) {
         *target = reply;
         completion->Signal();
       },
       reply_proto, &event);
-  auto error_callback = base::Bind(
+  auto error_callback = base::BindOnce(
       [](base::WaitableEvent* completion, brillo::Error* error) {
-        LOG(ERROR) << "Failed to call ResetDictionaryAttackLock: "
-                   << error->GetMessage();
+        LOG(ERROR) << "SendProxyRequestAndWait failed: " << error->GetMessage();
         completion->Signal();
       },
       &event);
   tpm_manager_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(method, callback, error_callback,
-                            kDefaultTimeout.InMilliseconds()));
+      FROM_HERE, base::BindOnce(method, base::Unretained(proxy), request_proto,
+                                std::move(callback), std::move(error_callback),
+                                kDefaultTimeout.InMilliseconds()));
   event.Wait();
-}
-
-template <typename ReplyProtoType,
-          typename RequestProtoType,
-          typename MethodType>
-void TpmManagerUtility::SendTpmOwnerRequestAndWait(
-    const MethodType& method,
-    const RequestProtoType& request_proto,
-    ReplyProtoType* reply_proto) {
-  SendTpmManagerRequestAndWait(
-      base::Bind(method, base::Unretained(tpm_owner_), request_proto),
-      reply_proto);
-}
-
-template <typename ReplyProtoType,
-          typename RequestProtoType,
-          typename MethodType>
-void TpmManagerUtility::SendTpmNvramRequestAndWait(
-    const MethodType& method,
-    const RequestProtoType& request_proto,
-    ReplyProtoType* reply_proto) {
-  SendTpmManagerRequestAndWait(
-      base::Bind(method, base::Unretained(tpm_nvram_), request_proto),
-      reply_proto);
 }
 
 void TpmManagerUtility::ShutdownTask() {
@@ -255,9 +238,9 @@ bool TpmManagerUtility::GetDictionaryAttackInfo(int* counter,
                                                 int* seconds_remaining) {
   tpm_manager::GetDictionaryAttackInfoRequest request;
   tpm_manager::GetDictionaryAttackInfoReply reply;
-  SendTpmOwnerRequestAndWait(
+  SendProxyRequestAndWait(
       &org::chromium::TpmManagerProxyInterface::GetDictionaryAttackInfoAsync,
-      request, &reply);
+      tpm_owner_, request, &reply);
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to retreive the dictionary attack information.";
@@ -275,9 +258,9 @@ bool TpmManagerUtility::GetDictionaryAttackInfo(int* counter,
 bool TpmManagerUtility::ResetDictionaryAttackLock() {
   tpm_manager::ResetDictionaryAttackLockRequest request;
   tpm_manager::ResetDictionaryAttackLockReply reply;
-  SendTpmOwnerRequestAndWait(
+  SendProxyRequestAndWait(
       &org::chromium::TpmManagerProxyInterface::ResetDictionaryAttackLockAsync,
-      request, &reply);
+      tpm_owner_, request, &reply);
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to reset DA lock.";
     return false;
@@ -303,9 +286,9 @@ bool TpmManagerUtility::DefineSpace(uint32_t index,
     request.add_attributes(tpm_manager::NVRAM_PLATFORM_READ);
   }
   tpm_manager::DefineSpaceReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::DefineSpaceAsync, request,
-      &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::DefineSpaceAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to define nvram space: " << reply.result();
@@ -318,9 +301,9 @@ bool TpmManagerUtility::DestroySpace(uint32_t index) {
   tpm_manager::DestroySpaceRequest request;
   request.set_index(index);
   tpm_manager::DestroySpaceReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::DestroySpaceAsync, request,
-      &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::DestroySpaceAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to destroy nvram space: " << reply.result();
@@ -337,8 +320,9 @@ bool TpmManagerUtility::WriteSpace(uint32_t index,
   request.set_data(data);
   request.set_use_owner_authorization(use_owner_auth);
   tpm_manager::WriteSpaceReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::WriteSpaceAsync, request, &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::WriteSpaceAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() == tpm_manager::NVRAM_RESULT_SPACE_DOES_NOT_EXIST) {
     LOG(ERROR) << __func__ << ": NV Index [" << index << "] does not exist.";
     return false;
@@ -358,8 +342,9 @@ bool TpmManagerUtility::ReadSpace(uint32_t index,
   request.set_index(index);
   request.set_use_owner_authorization(use_owner_auth);
   tpm_manager::ReadSpaceReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::ReadSpaceAsync, request, &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::ReadSpaceAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() == tpm_manager::NVRAM_RESULT_SPACE_DOES_NOT_EXIST) {
     LOG(ERROR) << __func__ << ": NV Index [" << index << "] does not exist.";
     return false;
@@ -376,8 +361,9 @@ bool TpmManagerUtility::ReadSpace(uint32_t index,
 bool TpmManagerUtility::ListSpaces(std::vector<uint32_t>* spaces) {
   tpm_manager::ListSpacesRequest request;
   tpm_manager::ListSpacesReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::ListSpacesAsync, request, &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::ListSpacesAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to list nvram spaces: " << reply.result();
@@ -400,9 +386,9 @@ bool TpmManagerUtility::GetSpaceInfo(
   tpm_manager::GetSpaceInfoRequest request;
   request.set_index(index);
   tpm_manager::GetSpaceInfoReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::GetSpaceInfoAsync, request,
-      &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::GetSpaceInfoAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to get space info for space " << index
                << ": " << reply.result();
@@ -424,8 +410,9 @@ bool TpmManagerUtility::LockSpace(uint32_t index) {
   request.set_index(index);
   request.set_lock_write(true);
   tpm_manager::LockSpaceReply reply;
-  SendTpmNvramRequestAndWait(
-      &org::chromium::TpmNvramProxyInterface::LockSpaceAsync, request, &reply);
+  SendProxyRequestAndWait(
+      &org::chromium::TpmNvramProxyInterface::LockSpaceAsync, tpm_nvram_,
+      request, &reply);
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to lock nvram space: " << reply.result();

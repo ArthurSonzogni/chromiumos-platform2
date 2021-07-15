@@ -206,42 +206,22 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
   // Shutdown operation that must be performed on the tpm_manager thread.
   void ShutdownTask();
 
-  // Sends a request to tpm_managerd and waits for a response. The given
-  // interface |method| will be called and a |reply_proto| will be populated.
-  //
-  // Example usage:
-  //
-  // tpm_manager::GetTpmStatusReply tpm_status;
-  // SendTpmManagerRequestAndWait(
-  //     base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
-  //                base::Unretained(tpm_owner_),
-  //                tpm_manager::GetTpmStatusRequest()),
-  //     &tpm_status);
-  template <typename ReplyProtoType, typename MethodType>
-  void SendTpmManagerRequestAndWait(const MethodType& method,
-                                    ReplyProtoType* reply_proto);
-
-  // Sends a request to tpm_managerd and waits for a response. And these are
-  // wraps of SendTpmManagerRequestAndWait.
+  // Sends a request to tpm_managerd proxy and waits for a response.
   //
   // Example usage:
   //
   // tpm_manager::TakeOwnershipReply reply;
-  // SendTpmOwnerRequestAndWait(
+  // SendProxyRequestAndWait(
   //     &tpm_manager::TpmOwnershipInterface::TakeOwnership,
-  //     tpm_manager::GetTpmStatusRequest(), &reply);
+  //     tpm_owner_, tpm_manager::GetTpmStatusRequest(), &reply);
   template <typename ReplyProtoType,
+            typename ProxyType,
             typename RequestProtoType,
             typename MethodType>
-  void SendTpmOwnerRequestAndWait(const MethodType& method,
-                                  const RequestProtoType& request_proto,
-                                  ReplyProtoType* reply_proto);
-  template <typename ReplyProtoType,
-            typename RequestProtoType,
-            typename MethodType>
-  void SendTpmNvramRequestAndWait(const MethodType& method,
-                                  const RequestProtoType& request_proto,
-                                  ReplyProtoType* reply_proto);
+  void SendProxyRequestAndWait(const MethodType& method,
+                               ProxyType* const& proxy,
+                               const RequestProtoType& request_proto,
+                               ReplyProtoType* reply_proto);
 
   scoped_refptr<dbus::Bus> bus_;
 
