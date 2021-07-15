@@ -30,7 +30,7 @@ class FakeVeaContext : public VeaContext {
                       uint32_t offset,
                       uint32_t size) override;
 
-  int RequestEncodingParamsChange(uint32_t bitrate,
+  int RequestEncodingParamsChange(vea_bitrate_t bitrate,
                                   uint32_t framerate) override;
 
   int Flush() override;
@@ -68,10 +68,10 @@ int FakeVeaContext::UseOutputBuffer(vea_output_buffer_id_t output_buffer_id,
   return 0;
 }
 
-int FakeVeaContext::RequestEncodingParamsChange(uint32_t bitrate,
+int FakeVeaContext::RequestEncodingParamsChange(vea_bitrate_t bitrate,
                                                 uint32_t framerate) {
-  LOG(INFO) << "FakeVeaContext::RequestEncodingParamsChange bitrate=" << bitrate
-            << " framerate=" << framerate;
+  LOG(INFO) << "FakeVeaContext::RequestEncodingParamsChange bitrate="
+            << bitrate.target << " framerate=" << framerate;
   return 0;
 }
 

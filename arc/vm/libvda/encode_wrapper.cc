@@ -159,7 +159,7 @@ int vea_use_output_buffer(void* ctx,
 }
 
 int vea_request_encoding_params_change(void* ctx,
-                                       uint32_t bitrate,
+                                       vea_bitrate_t bitrate,
                                        uint32_t framerate) {
   return static_cast<arc::VeaContext*>(ctx)->RequestEncodingParamsChange(
       bitrate, framerate);

@@ -75,7 +75,7 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
                       uint32_t offset,
                       uint32_t size) override;
 
-  int RequestEncodingParamsChange(uint32_t bitrate,
+  int RequestEncodingParamsChange(vea_bitrate_t bitrate,
                                   uint32_t framerate) override;
 
   int Flush() override;
@@ -115,7 +115,7 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
                                   base::ScopedFD fd,
                                   uint32_t offset,
                                   uint32_t size);
-  void RequestEncodingParamsChangeOnIpcThread(uint32_t bitrate,
+  void RequestEncodingParamsChangeOnIpcThread(vea_bitrate_t bitrate,
                                               uint32_t framerate);
   void FlushOnIpcThread();
 
@@ -290,7 +290,7 @@ void GpuVeaContext::OnOutputBufferFilled(
                                 timestamp);
 }
 
-int GpuVeaContext::RequestEncodingParamsChange(uint32_t bitrate,
+int GpuVeaContext::RequestEncodingParamsChange(vea_bitrate_t bitrate,
                                                uint32_t framerate) {
   ipc_task_runner_->PostTask(
       FROM_HERE,
@@ -299,9 +299,9 @@ int GpuVeaContext::RequestEncodingParamsChange(uint32_t bitrate,
   return 0;
 }
 
-void GpuVeaContext::RequestEncodingParamsChangeOnIpcThread(uint32_t bitrate,
-                                                           uint32_t framerate) {
-  remote_vea_->RequestEncodingParametersChange(bitrate, framerate);
+void GpuVeaContext::RequestEncodingParamsChangeOnIpcThread(
+    vea_bitrate_t bitrate, uint32_t framerate) {
+  remote_vea_->RequestEncodingParametersChange(bitrate.target, framerate);
 }
 
 int GpuVeaContext::Flush() {

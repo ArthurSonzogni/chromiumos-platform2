@@ -229,7 +229,7 @@ int LIBVDA_EXPORT vea_use_output_buffer(void* ctx,
 // The returned value will be 0 when the param change request has been
 // successfully sent.
 int LIBVDA_EXPORT vea_request_encoding_params_change(void* ctx,
-                                                     uint32_t bitrate,
+                                                     vea_bitrate_t bitrate,
                                                      uint32_t framerate);
 
 // Requests the encoder to flush. All pending buffers provided by vea_encode

@@ -47,7 +47,7 @@ class VeaContext {
   // Requests a change to encoding parameters.
   // The return value will be 0 when the param change request has been
   // successfully sent, and non-zero otherwise.
-  virtual int RequestEncodingParamsChange(uint32_t bitrate,
+  virtual int RequestEncodingParamsChange(vea_bitrate_t bitrate,
                                           uint32_t framerate) = 0;
 
   // Requests to flush the encode session.
