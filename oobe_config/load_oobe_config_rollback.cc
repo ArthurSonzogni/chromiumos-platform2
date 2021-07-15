@@ -107,6 +107,9 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   // Tell Chrome that it still has to create some robot accounts that were
   // destroyed during rollback.
   dictionary.SetBoolKey("enrollmentRestoreAfterRollback", true);
+  // Send network config to Chrome. Chrome takes care of how to reconfigure the
+  // networks.
+  dictionary.SetStringKey("networkConfig", rollback_data.network_config());
 
   return base::JSONWriter::Write(dictionary, config);
 }

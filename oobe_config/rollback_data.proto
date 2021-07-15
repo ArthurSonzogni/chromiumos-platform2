@@ -13,4 +13,6 @@ message RollbackData {
   bool eula_send_statistics = 1;
   // Whether the EULA has already been accepted.
   bool eula_auto_accept = 2;
+  // Network configuration in ONC format.
+  string network_config = 3;
 }
