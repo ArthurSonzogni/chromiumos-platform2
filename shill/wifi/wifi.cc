@@ -1344,43 +1344,46 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  uint32_t flags;
-  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
-          NL80211_ATTR_FEATURE_FLAGS, &flags)) {
-    LOG(WARNING) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_FEATURE_FLAGS";
-    return;
-  }
 
   // Look for scheduled scan support.
   AttributeListConstRefPtr cmds;
-  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+  if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SUPPORTED_COMMANDS, &cmds)) {
-    LOG(WARNING)
-        << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_SUPPORTED_COMMANDS";
-    return;
-  }
-
-  AttributeIdIterator cmds_iter(*cmds);
-  for (; !cmds_iter.AtEnd(); cmds_iter.Advance()) {
-    uint32_t cmd;
-    if (!cmds->GetU32AttributeValue(cmds_iter.GetId(), &cmd)) {
-      LOG(ERROR) << "Failed to get supported cmd " << cmds_iter.GetId();
-      return;
+    AttributeIdIterator cmds_iter(*cmds);
+    for (; !cmds_iter.AtEnd(); cmds_iter.Advance()) {
+      uint32_t cmd;
+      if (!cmds->GetU32AttributeValue(cmds_iter.GetId(), &cmd)) {
+        LOG(ERROR) << "Failed to get supported cmd " << cmds_iter.GetId();
+        return;
+      }
+      if (cmd == NL80211_CMD_START_SCHED_SCAN)
+        sched_scan_supported_ = true;
     }
-    if (cmd == NL80211_CMD_START_SCHED_SCAN)
-      sched_scan_supported_ = true;
   }
 
-  // There are two flags for MAC randomization: one for regular scans and one
-  // for scheduled scans. Only look for the latter if scheduled scans are
-  // supported.
-  random_mac_supported_ =
-      (flags & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
-      (!sched_scan_supported_ ||
-       (flags & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR));
+  uint32_t flag;
+  if (nl80211_message.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_FEATURE_FLAGS, &flag)) {
+    // There are two flags for MAC randomization: one for regular scans and one
+    // for scheduled scans. Only look for the latter if scheduled scans are
+    // supported.
+    //
+    // This flag being set properly currently relies on the assumption that
+    // sched_scan_supported_ is set sometime before this codepath is called.
+    // A potential TODO to not rely on this assumption is to accumulate all
+    // split messages, log the DONE reply, and perform our determinations at the
+    // end (aka set this flag). More discussion can be found on
+    // crrev.com/c/3028791.
 
-  SLOG(this, 7) << __func__ << ": "
-                << "Supports random MAC: " << random_mac_supported_;
+    random_mac_supported_ =
+        (flag & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
+        (!sched_scan_supported_ ||
+         (flag & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR));
+    if (random_mac_supported_) {
+      SLOG(this, 7) << __func__ << ": "
+                    << "Supports random MAC: " << random_mac_supported_;
+    }
+  }
 }
 
 void WiFi::HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
@@ -2855,8 +2858,11 @@ void WiFi::Restart() {
 
 void WiFi::GetPhyInfo() {
   GetWiphyMessage get_wiphy;
+  get_wiphy.AddFlag(NLM_F_DUMP);
   get_wiphy.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                interface_index());
+  get_wiphy.attributes()->SetFlagAttributeValue(NL80211_ATTR_SPLIT_WIPHY_DUMP,
+                                                true);
   netlink_manager_->SendNl80211Message(
       &get_wiphy,
       base::Bind(&WiFi::OnNewWiphy,
@@ -2871,7 +2877,6 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
     LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
     return;
   }
-
   if (wake_on_wifi_) {
     wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
   }
@@ -2890,44 +2895,41 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
   // The attributes, for this message, are complicated.
   // NL80211_ATTR_BANDS contains an array of bands...
   AttributeListConstRefPtr wiphy_bands;
-  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+  if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WIPHY_BANDS, &wiphy_bands)) {
-    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_BANDS";
-    return;
-  }
+    AttributeIdIterator band_iter(*wiphy_bands);
+    for (; !band_iter.AtEnd(); band_iter.Advance()) {
+      AttributeListConstRefPtr wiphy_band;
+      if (!wiphy_bands->ConstGetNestedAttributeList(band_iter.GetId(),
+                                                    &wiphy_band)) {
+        LOG(WARNING) << "WiFi band " << band_iter.GetId() << " not found";
+        continue;
+      }
 
-  AttributeIdIterator band_iter(*wiphy_bands);
-  for (; !band_iter.AtEnd(); band_iter.Advance()) {
-    AttributeListConstRefPtr wiphy_band;
-    if (!wiphy_bands->ConstGetNestedAttributeList(band_iter.GetId(),
-                                                  &wiphy_band)) {
-      LOG(WARNING) << "WiFi band " << band_iter.GetId() << " not found";
-      continue;
-    }
+      // ...Each band has a FREQS attribute...
+      AttributeListConstRefPtr frequencies;
+      if (!wiphy_band->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
+                                                   &frequencies)) {
+        LOG(ERROR) << "BAND " << band_iter.GetId()
+                   << " had no 'frequencies' attribute";
+        continue;
+      }
 
-    // ...Each band has a FREQS attribute...
-    AttributeListConstRefPtr frequencies;
-    if (!wiphy_band->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
-                                                 &frequencies)) {
-      LOG(ERROR) << "BAND " << band_iter.GetId()
-                 << " had no 'frequencies' attribute";
-      continue;
-    }
-
-    // ...And each FREQS attribute contains an array of information about the
-    // frequency...
-    AttributeIdIterator freq_iter(*frequencies);
-    for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
-      AttributeListConstRefPtr frequency;
-      if (frequencies->ConstGetNestedAttributeList(freq_iter.GetId(),
-                                                   &frequency)) {
-        // ...Including the frequency, itself (the part we want).
-        uint32_t frequency_value = 0;
-        if (frequency->GetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
-                                            &frequency_value)) {
-          SLOG(this, 7) << "Found frequency[" << freq_iter.GetId()
-                        << "] = " << frequency_value;
-          all_scan_frequencies_.insert(frequency_value);
+      // ...And each FREQS attribute contains an array of information about the
+      // frequency...
+      AttributeIdIterator freq_iter(*frequencies);
+      for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
+        AttributeListConstRefPtr frequency;
+        if (frequencies->ConstGetNestedAttributeList(freq_iter.GetId(),
+                                                     &frequency)) {
+          // ...Including the frequency, itself (the part we want).
+          uint32_t frequency_value = 0;
+          if (frequency->GetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
+                                              &frequency_value)) {
+            SLOG(this, 7) << "Found frequency[" << freq_iter.GetId()
+                          << "] = " << frequency_value;
+            all_scan_frequencies_.insert(frequency_value);
+          }
         }
       }
     }

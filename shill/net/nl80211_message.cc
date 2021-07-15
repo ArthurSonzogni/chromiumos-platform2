@@ -273,6 +273,8 @@ GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
       NL80211_ATTR_IFINDEX,
       base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
                  NetlinkMessage::MessageContext()));
+  attributes()->CreateFlagAttribute(NL80211_ATTR_SPLIT_WIPHY_DUMP,
+                                    "Split wiphy dump");
 }
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
