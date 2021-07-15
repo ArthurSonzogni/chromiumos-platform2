@@ -430,14 +430,28 @@ void Cellular::Start(Error* error,
 
 void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
-  if (!capability_) {
+  if (capability_) {
+    StopModem(error, callback);
+  } else {
     // Modem is already stopped (it crashed or is inhibited). Invoke the
     // callback with no error to persist the disabled state.
     callback.Run(Error());
-    return;
   }
 
-  StopModem(error, callback);
+  // Sockets should be destroyed here to ensure we make new connections
+  // when we next enable cellular. Since the carrier may assign us a new IP
+  // on reconnection and some carriers don't like when packets are sent from
+  // this device using the old IP, we need to make sure we prevent further
+  // packets from going out.
+  if (manager() && manager()->device_info() && socket_destroyer_) {
+    StopIPv6();
+
+    for (const auto& address :
+         manager()->device_info()->GetAddresses(interface_index())) {
+      rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
+      socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
+    }
+  }
 }
 
 void Cellular::StartModem(Error* error,
@@ -496,29 +510,9 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_)
                 << " Error: " << error;
   SetState(State::kDisabled);
-
   // Destroy any cellular services regardless of any errors that occur during
   // the stop process since we do not know the state of the modem at this point.
   DestroyAllServices();
-
-  // Sockets should be destroyed here to ensure that we make new connections
-  // when we next enable Cellular. Since the carrier may assign us a new IP
-  // on reconnect and some carriers don't like it when packets are sent from
-  // this device using the old IP, we need to make sure that we prevent further
-  // packets from going out.
-  StopIPv6();
-  for (const auto& address :
-       manager()->device_info()->GetAddresses(interface_index())) {
-    rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
-    if (socket_destroyer_)
-      socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
-  }
-
-  // In case no termination action was executed (and TerminationActionComplete
-  // was not invoked) in response to a suspend request, any registered
-  // termination action needs to be removed explicitly.
-  manager()->RemoveTerminationAction(link_name());
-
   if (error.type() == Error::kWrongState) {
     // ModemManager.Modem will not respond to Stop when in a failed state. Allow
     // the callback to succeed so that Shill identifies and persists Cellular as
@@ -529,7 +523,10 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   } else {
     callback.Run(error);
   }
-
+  // In case no termination action was executed (and TerminationActionComplete
+  // was not invoked) in response to a suspend request, any registered
+  // termination action needs to be removed explicitly.
+  manager()->RemoveTerminationAction(link_name());
   UpdateScanning();
 }
 
