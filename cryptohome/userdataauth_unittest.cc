@@ -143,8 +143,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_key_challenge_service_factory(
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
-    ON_CALL(homedirs_, keyset_management())
-        .WillByDefault(Return(&keyset_management_));
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
     ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
@@ -171,7 +169,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     brillo::SecureBlob salt;
     AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
     mount_ = new NiceMock<MockMount>();
-    session_ = new UserSession(&homedirs_, salt, mount_);
+    session_ = new UserSession(&homedirs_, &keyset_management_, salt, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
@@ -882,7 +880,7 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   // Check when there's 1 mount, and it's initialized.
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 =
-      new UserSession(&homedirs_, salt, mount1);
+      new UserSession(&homedirs_, &keyset_management_, salt, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsInitialized));
@@ -912,7 +910,7 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   // Check when there's another mount.
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 =
-      new UserSession(&homedirs_, salt, mount2);
+      new UserSession(&homedirs_, &keyset_management_, salt, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
 
   // Both is initialized.
@@ -1599,7 +1597,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   SetupMount("foo@gmail.com");
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(homedirs_, UpdateActivityTimestamp(_, _, kTimeshift))
+  EXPECT_CALL(keyset_management_, UpdateActivityTimestamp(_, _, kTimeshift))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
@@ -1609,7 +1607,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   SetupMount("bar@gmail.com");
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(homedirs_, UpdateActivityTimestamp(_, _, kTimeshift))
+  EXPECT_CALL(keyset_management_, UpdateActivityTimestamp(_, _, kTimeshift))
       .WillOnce(Return(true))
       .WillOnce(Return(true));
 
@@ -1624,7 +1622,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
   SetupMount("foo@gmail.com");
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(homedirs_, UpdateActivityTimestamp(_, _, kTimeshift))
+  EXPECT_CALL(keyset_management_, UpdateActivityTimestamp(_, _, kTimeshift))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
@@ -1922,7 +1920,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // ownership handed off to the Service MountMap
   MockMountFactory mount_factory;
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory, New(_, _)).WillOnce(Return(mount));
+  EXPECT_CALL(mount_factory, New(_, _, _)).WillOnce(Return(mount));
   userdataauth_->set_mount_factory(&mount_factory);
   EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
@@ -2025,7 +2023,7 @@ TEST_F(UserDataAuthTest,
   // ownership handed off to the Service MountMap
   MockMountFactory mount_factory;
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory, New(_, _)).WillOnce(Return(mount));
+  EXPECT_CALL(mount_factory, New(_, _, _)).WillOnce(Return(mount));
   userdataauth_->set_mount_factory(&mount_factory);
   EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
@@ -2385,8 +2383,8 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
 
-  EXPECT_CALL(mount_factory_, New(_, _))
-      .WillOnce(Invoke([](Platform*, HomeDirs*) {
+  EXPECT_CALL(mount_factory_, New(_, _, _))
+      .WillOnce(Invoke([](Platform*, HomeDirs*, KeysetManagement*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, Init()).WillOnce(Return(true));
         EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(true));
@@ -2424,7 +2422,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
 
-  EXPECT_CALL(mount_factory_, New(_, _)).Times(0);
+  EXPECT_CALL(mount_factory_, New(_, _, _)).Times(0);
 
   bool called = false;
   {
@@ -2451,8 +2449,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(mount_factory_, New(_, _))
-      .WillOnce(Invoke([](Platform*, HomeDirs*) {
+  EXPECT_CALL(mount_factory_, New(_, _, _))
+      .WillOnce(Invoke([](Platform*, HomeDirs*, KeysetManagement*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, Init()).WillOnce(Return(true));
         EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(false));
@@ -3391,12 +3389,14 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
   remove_homedir_req_->mutable_identifier()->set_account_id(kUsername1);
 
   // Test for successful case.
-  EXPECT_CALL(homedirs_, Remove(kUsername1)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
+      .WillOnce(Return(true));
   EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test for unsuccessful case.
-  EXPECT_CALL(homedirs_, Remove(kUsername1)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
+      .WillOnce(Return(false));
   EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED);
 }
@@ -3753,6 +3753,8 @@ TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
       .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
 
   EXPECT_CALL(homedirs_, set_enterprise_owned(true)).WillOnce(Return());
+  EXPECT_CALL(keyset_management_, set_enterprise_owned(true))
+      .WillOnce(Return());
 
   InitializeUserDataAuth();
 }

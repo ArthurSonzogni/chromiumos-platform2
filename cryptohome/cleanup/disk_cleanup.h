@@ -17,6 +17,7 @@
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
@@ -45,6 +46,7 @@ class DiskCleanup {
   DiskCleanup() = default;
   DiskCleanup(Platform* platform,
               HomeDirs* homedirs,
+              KeysetManagement* keyset_management,
               UserOldestActivityTimestampCache* timestamp_cache);
   virtual ~DiskCleanup() = default;
 
@@ -109,6 +111,8 @@ class DiskCleanup {
   // Not owned. Must outlive DiskCleanup. Passed with call to Init.
   Platform* platform_ = nullptr;
   HomeDirs* homedirs_ = nullptr;
+  // KeysetManagement object is needed to cleanup the user credentials.
+  KeysetManagement* keyset_management_ = nullptr;
   UserOldestActivityTimestampCache* timestamp_cache_ = nullptr;
 
   // Cleanup routines.

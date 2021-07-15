@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/platform.h"
@@ -79,9 +80,6 @@ class DiskCleanupRoutinesTest
 
     EXPECT_CALL(platform_, HasExtendedFileAttribute(_, _))
         .WillRepeatedly(Return(false));
-
-    EXPECT_CALL(homedirs_, keyset_management())
-        .WillRepeatedly(Return(&keyset_management_));
   }
 
  protected:
@@ -353,18 +351,12 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
 }
 
 TEST_P(DiskCleanupRoutinesTest, DeleteUserProfile) {
-  EXPECT_CALL(keyset_management_, RemoveLECredentials(kTestUser)).Times(1);
-  EXPECT_CALL(platform_, DeletePathRecursively(ShadowRoot().Append(kTestUser)))
-      .WillOnce(Return(true));
-
+  EXPECT_CALL(homedirs_, Remove(kTestUser)).WillOnce(Return(true));
   EXPECT_TRUE(routines_.DeleteUserProfile(kTestUser));
 }
 
 TEST_P(DiskCleanupRoutinesTest, DeleteUserProfileFail) {
-  EXPECT_CALL(keyset_management_, RemoveLECredentials(kTestUser)).Times(1);
-  EXPECT_CALL(platform_, DeletePathRecursively(ShadowRoot().Append(kTestUser)))
-      .WillOnce(Return(false));
-
+  EXPECT_CALL(homedirs_, Remove(kTestUser)).WillOnce(Return(false));
   EXPECT_FALSE(routines_.DeleteUserProfile(kTestUser));
 }
 

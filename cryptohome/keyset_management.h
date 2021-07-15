@@ -13,10 +13,12 @@
 #include <brillo/secure_blob.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/rpc.pb.h"
+#include "cryptohome/storage/homedirs.h"
 #include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
@@ -29,6 +31,7 @@ class KeysetManagement {
   KeysetManagement(Platform* platform,
                    Crypto* crypto,
                    const brillo::SecureBlob& system_salt,
+                   UserOldestActivityTimestampCache* timestamp_cache,
                    std::unique_ptr<VaultKeysetFactory> vault_keyset_factory);
   virtual ~KeysetManagement() = default;
   KeysetManagement(const KeysetManagement&) = delete;
@@ -150,6 +153,22 @@ class KeysetManagement {
   virtual brillo::SecureBlob GetPublicMountPassKey(
       const std::string& account_id);
 
+  // Called during disk cleanup if the timestamp cache is not yet
+  // initialized. Loads the last activity timestamp from the vault keyset.
+  virtual void AddUserTimestampToCache(const std::string& obfuscated);
+
+  // Updates the timestamp with the current time shifted back by
+  // |time_shift_sec| and saves on disk. If the timestamp cache is initialized,
+  // updates timestamp cache as well.
+  virtual bool UpdateActivityTimestamp(const std::string& obfuscted,
+                                       int index,
+                                       int time_shift_sec);
+
+  // Accessors. Mostly used for unit testing. These do not take ownership of
+  // passed-in pointers.
+  virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
+  virtual bool enterprise_owned() const { return enterprise_owned_; }
+
  private:
   // Check if the vault keyset needs re-encryption.
   bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
@@ -166,6 +185,8 @@ class KeysetManagement {
   Platform* platform_;
   Crypto* crypto_;
   brillo::SecureBlob system_salt_;
+  bool enterprise_owned_;
+  UserOldestActivityTimestampCache* timestamp_cache_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;
 
   FRIEND_TEST(KeysetManagementTest, ReSaveOnLoadNoReSave);

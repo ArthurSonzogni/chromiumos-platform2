@@ -20,6 +20,7 @@
 
 namespace cryptohome {
 class VaultKeyset;
+class HomeDirs;
 
 class MockKeysetManagement : public KeysetManagement {
  public:
@@ -63,6 +64,16 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(bool, ForceRemoveKeyset, (const std::string&, int), (override));
   MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
   MOCK_METHOD(void, RemoveLECredentials, (const std::string&), (override));
+  MOCK_METHOD(void,
+              AddUserTimestampToCache,
+              (const std::string& obfuscated),
+              (override));
+  MOCK_METHOD(bool,
+              UpdateActivityTimestamp,
+              (const std::string& obfuscated, int index, int time_shift_sec),
+              (override));
+  MOCK_METHOD(void, set_enterprise_owned, (bool), (override));
+  MOCK_METHOD(bool, enterprise_owned, (), (const, override));
   MOCK_METHOD(bool, UserExists, (const std::string&), (override));
   MOCK_METHOD(brillo::SecureBlob,
               GetPublicMountPassKey,

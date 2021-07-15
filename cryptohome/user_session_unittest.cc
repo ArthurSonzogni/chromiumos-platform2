@@ -56,11 +56,12 @@ class UserSessionTest : public ::testing::Test {
   void SetUp() override {
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
+        &platform_, &crypto_, system_salt_, nullptr,
         std::make_unique<VaultKeysetFactory>());
+    HomeDirs::RemoveCallback remove_callback;
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, keyset_management_.get(), system_salt_, nullptr,
-        std::make_unique<policy::PolicyProvider>());
+        &platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
+        remove_callback);
 
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
@@ -69,7 +70,8 @@ class UserSessionTest : public ::testing::Test {
     PrepareDirectoryStructure();
 
     mount_ = new NiceMock<MockMount>();
-    session_ = new UserSession(homedirs_.get(), system_salt_, mount_);
+    session_ = new UserSession(homedirs_.get(), keyset_management_.get(),
+                               system_salt_, mount_);
   }
 
   void TearDown() override {
@@ -410,7 +412,8 @@ class UserSessionReAuthTest : public ::testing::Test {
 
 TEST_F(UserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
-  scoped_refptr<UserSession> session = new UserSession(nullptr, salt, nullptr);
+  scoped_refptr<UserSession> session =
+      new UserSession(nullptr, nullptr, salt, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials, 0));
 
   EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername(salt)));
@@ -422,7 +425,8 @@ TEST_F(UserSessionReAuthTest, VerifyCredentials) {
   Credentials credentials_2("username", SecureBlob("password2"));
   Credentials credentials_3("username2", SecureBlob("password2"));
 
-  scoped_refptr<UserSession> session = new UserSession(nullptr, salt, nullptr);
+  scoped_refptr<UserSession> session =
+      new UserSession(nullptr, nullptr, salt, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials_1, 0));
   EXPECT_TRUE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));

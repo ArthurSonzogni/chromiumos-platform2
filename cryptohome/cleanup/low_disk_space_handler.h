@@ -20,12 +20,14 @@ namespace cryptohome {
 
 class DiskCleanup;
 class HomeDirs;
+class KeysetManagement;
 class Platform;
 class UserOldestActivityTimestampCache;
 
 class LowDiskSpaceHandler {
  public:
   LowDiskSpaceHandler(HomeDirs* homedirs,
+                      KeysetManagement* keyset_management,
                       Platform* platform,
                       UserOldestActivityTimestampCache* timestamp_cache);
   virtual ~LowDiskSpaceHandler();

@@ -157,9 +157,8 @@ bool DiskCleanupRoutines::DeleteUserAndroidCache(
 bool DiskCleanupRoutines::DeleteUserProfile(const std::string& obfuscated) {
   FilePath shadow_dir = GetShadowDir(obfuscated);
 
-  homedirs_->keyset_management()->RemoveLECredentials(obfuscated);
-  if (!platform_->DeletePathRecursively(shadow_dir)) {
-    PLOG(WARNING) << "Failed to remove " << shadow_dir.value();
+  if (!homedirs_->Remove(obfuscated)) {
+    PLOG(WARNING) << "Failed to remove user profile";
     return false;
   }
 

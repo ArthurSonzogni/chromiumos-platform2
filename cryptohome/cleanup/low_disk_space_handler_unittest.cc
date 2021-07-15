@@ -15,6 +15,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/mock_homedirs.h"
 
@@ -28,7 +29,8 @@ namespace cryptohome {
 class LowDiskSpaceHandlerTest : public ::testing::Test {
  public:
   LowDiskSpaceHandlerTest()
-      : handler_(&homedirs_, &platform_, &timestamp_cache_) {}
+      : handler_(
+            &homedirs_, &keyset_management_, &platform_, &timestamp_cache_) {}
   virtual ~LowDiskSpaceHandlerTest() = default;
 
   void SetUp() {
@@ -67,6 +69,7 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
 
   StrictMock<MockPlatform> platform_;
   StrictMock<MockHomeDirs> homedirs_;
+  StrictMock<MockKeysetManagement> keyset_management_;
   StrictMock<UserOldestActivityTimestampCache> timestamp_cache_;
   StrictMock<MockDiskCleanup> disk_cleanup_;
   scoped_refptr<base::TestMockTimeTaskRunner> task_runner_ =

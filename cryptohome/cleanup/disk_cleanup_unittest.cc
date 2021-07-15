@@ -18,6 +18,7 @@
 #include "cryptohome/cleanup/mock_disk_cleanup_routines.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/mock_homedirs.h"
 
@@ -55,7 +56,8 @@ class DiskCleanupTest : public ::testing::Test {
   DiskCleanupTest() = default;
 
   void SetUp() {
-    cleanup_.reset(new DiskCleanup(&platform_, &homedirs_, &timestamp_cache_));
+    cleanup_.reset(new DiskCleanup(&platform_, &homedirs_, &keyset_management_,
+                                   &timestamp_cache_));
 
     cleanup_routines_ = new StrictMock<MockDiskCleanupRoutines>;
     cleanup_->set_routines_for_testing(cleanup_routines_);
@@ -77,6 +79,8 @@ class DiskCleanupTest : public ::testing::Test {
         .WillRepeatedly(Return(false));
     EXPECT_CALL(homedirs_, GetOwner(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(false));
+    EXPECT_CALL(keyset_management_, enterprise_owned())
+        .WillRepeatedly(Return(false));
   }
 
  protected:
@@ -120,7 +124,9 @@ class DiskCleanupTest : public ::testing::Test {
   }
 
   StrictMock<MockPlatform> platform_;
+  brillo::SecureBlob system_salt_;
   StrictMock<MockHomeDirs> homedirs_;
+  StrictMock<MockKeysetManagement> keyset_management_;
   StrictMock<MockUserOldestActivityTimestampCache> timestamp_cache_;
   StrictMock<MockDiskCleanupRoutines>* cleanup_routines_;
   std::unique_ptr<DiskCleanup> cleanup_;
@@ -251,12 +257,10 @@ TEST_F(DiskCleanupTest, IsFreeableDiskSpaceAvailable) {
   EXPECT_TRUE(cleanup_->IsFreeableDiskSpaceAvailable());
 }
 
-TEST_F(DiskCleanupTest, EphemeralUsers) {
+TEST_F(DiskCleanupTest, EphemeralUsersHomedirs) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
       .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
-
   EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
-
   EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).WillOnce(Return());
 
   cleanup_->FreeDiskSpace();
@@ -279,7 +283,7 @@ TEST_F(DiskCleanupTest, CacheInitialization) {
   EXPECT_CALL(timestamp_cache_, Initialize()).WillOnce(Return());
 
   for (const auto& dir : homedirs)
-    EXPECT_CALL(homedirs_, AddUserTimestampToCache(dir.obfuscated))
+    EXPECT_CALL(keyset_management_, AddUserTimestampToCache(dir.obfuscated))
         .WillOnce(Return());
 
   cleanup_->FreeDiskSpace();

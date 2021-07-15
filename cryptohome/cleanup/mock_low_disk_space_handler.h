@@ -18,7 +18,8 @@ namespace cryptohome {
 
 class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
  public:
-  MockLowDiskSpaceHandler() : LowDiskSpaceHandler(nullptr, nullptr, nullptr) {}
+  MockLowDiskSpaceHandler()
+      : LowDiskSpaceHandler(nullptr, nullptr, nullptr, nullptr) {}
   virtual ~MockLowDiskSpaceHandler() = default;
 
   MOCK_METHOD(

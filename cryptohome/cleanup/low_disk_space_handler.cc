@@ -16,10 +16,12 @@ namespace cryptohome {
 
 LowDiskSpaceHandler::LowDiskSpaceHandler(
     HomeDirs* homedirs,
+    KeysetManagement* keyset_management,
     Platform* platform,
     UserOldestActivityTimestampCache* timestamp_cache)
     : platform_(platform),
-      default_cleanup_(new DiskCleanup(platform, homedirs, timestamp_cache)),
+      default_cleanup_(new DiskCleanup(
+          platform, homedirs, keyset_management, timestamp_cache)),
       cleanup_(default_cleanup_.get()),
       low_disk_notification_period_(
           base::TimeDelta::FromMilliseconds(kLowDiskNotificationPeriodMS)),

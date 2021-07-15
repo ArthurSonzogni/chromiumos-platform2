@@ -16,15 +16,18 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/storage/homedirs.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
@@ -36,10 +39,13 @@ KeysetManagement::KeysetManagement(
     Platform* platform,
     Crypto* crypto,
     const brillo::SecureBlob& system_salt,
+    UserOldestActivityTimestampCache* timestamp_cache,
     std::unique_ptr<VaultKeysetFactory> vault_keyset_factory)
     : platform_(platform),
       crypto_(crypto),
       system_salt_(system_salt),
+      enterprise_owned_(false),
+      timestamp_cache_(timestamp_cache),
       vault_keyset_factory_(std::move(vault_keyset_factory)) {}
 
 bool KeysetManagement::AreCredentialsValid(const Credentials& creds) {
@@ -883,6 +889,7 @@ void KeysetManagement::RemoveLECredentials(
     base::FilePath vk_path = VaultKeysetPath(obfuscated_username, index);
     platform_->DeleteFile(vk_path);
   }
+  return;
 }
 
 bool KeysetManagement::UserExists(const std::string& obfuscated_username) {
@@ -904,6 +911,61 @@ brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
   brillo::SecureBlob passkey;
   Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
   return passkey;
+}
+
+void KeysetManagement::AddUserTimestampToCache(const std::string& obfuscated) {
+  //  Add a timestamp for every key.
+  std::vector<int> key_indices;
+  // Failure is okay since the loop falls through.
+  GetVaultKeysets(obfuscated, &key_indices);
+  // Collect the most recent time for a given user by walking all
+  // vaults.  This avoids trying to keep them in sync atomically.
+  base::Time timestamp = base::Time();  // This gives the current time.
+  // Update timestamps on each keyset for the |obfuscated| username unless it is
+  // greater than the current time.
+  for (int index : key_indices) {
+    std::unique_ptr<VaultKeyset> keyset =
+        LoadVaultKeysetForUser(obfuscated, index);
+    if (keyset.get() && keyset->HasLastActivityTimestamp()) {
+      const base::Time previous_timestamp =
+          base::Time::FromInternalValue(keyset->GetLastActivityTimestamp());
+      if (previous_timestamp > timestamp) {
+        timestamp = previous_timestamp;
+      }
+    }
+  }
+  if (!timestamp.is_null()) {
+    timestamp_cache_->AddExistingUser(obfuscated, timestamp);
+  }
+}
+
+bool KeysetManagement::UpdateActivityTimestamp(const std::string& obfuscated,
+                                               int index,
+                                               int time_shift_sec) {
+  base::Time timestamp = platform_->GetCurrentTime();
+  if (time_shift_sec > 0) {
+    timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
+  }
+
+  Timestamp ts_proto;
+  ts_proto.set_timestamp(timestamp.ToInternalValue());
+  std::string timestamp_str;
+  if (!ts_proto.SerializeToString(&timestamp_str)) {
+    return false;
+  }
+
+  base::FilePath ts_file = UserActivityTimestampPath(obfuscated, index);
+  if (!platform_->WriteStringToFileAtomicDurable(ts_file, timestamp_str,
+                                                 kKeyFilePermissions)) {
+    LOG(ERROR) << "Failed writing to timestamp file: " << ts_file;
+    return false;
+  }
+
+  if (timestamp_cache_ && timestamp_cache_->initialized()) {
+    timestamp_cache_->UpdateExistingUser(obfuscated, timestamp);
+  }
+
+  return true;
 }
 
 }  // namespace cryptohome

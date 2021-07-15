@@ -15,6 +15,7 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 
@@ -24,6 +25,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
  public:
   UserSession();
   UserSession(HomeDirs* homedirs,
+              KeysetManagement* keyset_management,
               const brillo::SecureBlob& salt,
               const scoped_refptr<Mount> mount);
   virtual ~UserSession();
@@ -101,6 +103,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   void ClearWebAuthnSecret();
 
   HomeDirs* homedirs_;
+  KeysetManagement* keyset_management_;
 
   std::string obfuscated_username_;
   std::string username_;

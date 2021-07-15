@@ -4,6 +4,7 @@
 
 #include "cryptohome/keyset_management.h"
 
+#include <algorithm>
 #include <set>
 #include <string>
 #include <utility>
@@ -20,19 +21,23 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/le_credential_manager_impl.h"
+#include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/signed_secret.pb.h"
+#include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 
 using ::testing::_;
@@ -87,13 +92,12 @@ class KeysetManagementTest : public ::testing::Test {
   void SetUp() override {
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
+        &platform_, &crypto_, system_salt_, &timestamp_cache_,
         std::make_unique<VaultKeysetFactory>());
     mock_vault_keyset_factory_ = new MockVaultKeysetFactory();
     keyset_management_mock_vk_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
+        &platform_, &crypto_, system_salt_, &timestamp_cache_,
         std::unique_ptr<VaultKeysetFactory>(mock_vault_keyset_factory_));
-
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
     AddUser(kUser0, kUserPassword0);
@@ -113,6 +117,7 @@ class KeysetManagementTest : public ::testing::Test {
  protected:
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockUserOldestActivityTimestampCache> timestamp_cache_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
   std::unique_ptr<KeysetManagement> keyset_management_;
@@ -270,6 +275,48 @@ class KeysetManagementTest : public ::testing::Test {
     EXPECT_TRUE(vk->HasWrappedResetSeed());
   }
 };
+
+TEST_F(KeysetManagementTest, AddUserTimestampToCache) {
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
+  vk.CreateRandom();
+  constexpr char kKeyFileIndexSuffix[] = "0";
+  constexpr char kKeyFileTimestampSuffix[] = "0.timestamp";
+  constexpr int kTime = 499;
+  const base::Time t = base::Time::FromInternalValue(kTime);
+  Timestamp timestamp;
+  timestamp.set_timestamp(kTime);
+  std::string timestamp_str;
+  ASSERT_TRUE(timestamp.SerializeToString(&timestamp_str));
+  ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
+      users_[0].homedir_path.Append(kKeyFile).AddExtension(
+          kKeyFileTimestampSuffix),
+      timestamp_str, 0600));
+  ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[0].obfuscated));
+  ASSERT_TRUE(vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension(
+      kKeyFileIndexSuffix)));
+
+  // TS from an external file
+  EXPECT_CALL(timestamp_cache_, AddExistingUser(users_[0].obfuscated, t))
+      .Times(1);
+  keyset_management_->AddUserTimestampToCache(users_[0].obfuscated);
+}
+
+TEST_F(KeysetManagementTest, AddUserTimestampToCacheEmpty) {
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
+  vk.CreateRandom();
+  ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[0].obfuscated));
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+
+  // No user ts is added.
+  EXPECT_CALL(timestamp_cache_, AddExistingUser(users_[0].obfuscated, _))
+      .Times(0);
+  keyset_management_->AddUserTimestampToCache(users_[0].obfuscated);
+}
 
 TEST_F(KeysetManagementTest, AreCredentialsValid) {
   // SETUP

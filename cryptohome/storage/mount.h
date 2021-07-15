@@ -31,6 +31,7 @@
 #include <policy/libpolicy.h>
 
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -70,7 +71,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
-  Mount(Platform* platform, HomeDirs* homedirs);
+  Mount(Platform* platform,
+        HomeDirs* homedirs,
+        KeysetManagement* keyset_management);
   Mount(const Mount&) = delete;
   Mount& operator=(const Mount&) = delete;
 
@@ -190,6 +193,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   }
 
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
+  FRIEND_TEST(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest);
   friend class MakeTests;
   friend class MountTest;
   friend class ChapsDirectoryTest;
@@ -312,6 +316,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // HomeDirs encapsulates operations on Cryptohomes at rest.
   HomeDirs* homedirs_;
+
+  // KeysetManagement object to call user key management operations.
+  KeysetManagement* keyset_management_;
 
   // Name of the user the mount belongs to.
   std::string username_;

@@ -16,7 +16,6 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
@@ -44,10 +43,6 @@ class MockHomeDirs : public HomeDirs {
               CryptohomeExists,
               (const std::string&, MountError*),
               (const, override));
-  MOCK_METHOD(bool,
-              UpdateActivityTimestamp,
-              (const std::string&, int, int),
-              (override));
   MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
 
   MOCK_METHOD(bool,
@@ -57,13 +52,8 @@ class MockHomeDirs : public HomeDirs {
 
   MOCK_METHOD(bool, SetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(std::vector<HomeDir>, GetHomeDirs, (), (override));
-  MOCK_METHOD(void,
-              AddUserTimestampToCache,
-              (const std::string& obfuscated),
-              (override));
   MOCK_METHOD(void, set_enterprise_owned, (bool), (override));
   MOCK_METHOD(bool, enterprise_owned, (), (const, override));
-  MOCK_METHOD(KeysetManagement*, keyset_management, (), (override));
 };
 
 }  // namespace cryptohome

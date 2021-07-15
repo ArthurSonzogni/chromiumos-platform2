@@ -39,9 +39,11 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_chaps_client_factory.h"
 #include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
@@ -132,22 +134,26 @@ class MountTest
 
     InitializeFilesystemLayout(&platform_, &crypto_, nullptr);
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, helper_.system_salt, nullptr);
+        &platform_, &crypto_, helper_.system_salt, nullptr, nullptr);
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
-
+    KeysetManagement* keyset_management = keyset_management_.get();
+    HomeDirs::RemoveCallback remove_callback =
+        base::BindRepeating(&KeysetManagement::RemoveLECredentials,
+                            base::Unretained(keyset_management));
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, keyset_management_.get(), helper_.system_salt, nullptr,
+        &platform_, helper_.system_salt,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
+        remove_callback,
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
     platform_.GetFake()->SetStandardUsersAndGroups();
 
-    mount_ = new Mount(&platform_, homedirs_.get());
+    mount_ = new Mount(&platform_, homedirs_.get(), keyset_management);
 
     mount_->set_chaps_client_factory(&chaps_client_factory_);
     // Perform mounts in-process.
@@ -441,6 +447,7 @@ class MountTest
     // architecture. Once service.cc and related are gone, re-architect.
     EXPECT_CALL(platform_, DirectoryExists(mount_source))
         .WillRepeatedly(Return(false));
+
     EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
                                mount_source, stat_data.st_mode,
                                stat_data.st_uid, stat_data.st_gid))
@@ -761,12 +768,13 @@ class ChapsDirectoryTest : public ::testing::Test {
 
     brillo::SecureBlob salt;
     InitializeFilesystemLayout(&platform_, &crypto_, &salt);
-    keyset_management_ =
-        std::make_unique<KeysetManagement>(&platform_, &crypto_, salt, nullptr);
-    homedirs_ = std::make_unique<HomeDirs>(&platform_, keyset_management_.get(),
-                                           salt, nullptr, nullptr);
+    keyset_management_ = std::make_unique<KeysetManagement>(
+        &platform_, &crypto_, salt, nullptr, nullptr);
+    HomeDirs::RemoveCallback remove_cb;
+    homedirs_ =
+        std::make_unique<HomeDirs>(&platform_, salt, nullptr, remove_cb);
 
-    mount_ = new Mount(&platform_, homedirs_.get());
+    mount_ = new Mount(&platform_, homedirs_.get(), keyset_management_.get());
     mount_->Init();
     mount_->chaps_user_ = fake_platform::kChapsUID;
     mount_->default_access_group_ = fake_platform::kSharedGID;
@@ -1270,7 +1278,13 @@ class AltImageTest : public MountTest {
       if (delete_user) {
         EXPECT_CALL(platform_,
                     DeletePathRecursively(helper_.users[user].base_path))
-            .WillOnce(Return(true));
+            .WillRepeatedly(Return(true));
+        EXPECT_CALL(platform_,
+                    DeletePathRecursively(helper_.users[user].user_mount_path))
+            .WillRepeatedly(Return(true));
+        EXPECT_CALL(platform_,
+                    DeletePathRecursively(helper_.users[user].root_mount_path))
+            .WillRepeatedly(Return(true));
       }
     }
   }
@@ -1479,6 +1493,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   // mounted and no regular vault is created.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
+
   TestUser* user = &helper_.users[0];
 
   EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
@@ -1510,6 +1526,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // regular vault to be created.
   set_policy(true, "", false);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   TestUser* user = &helper_.users[0];
 
   // Always removes non-owner cryptohomes.
@@ -1558,6 +1575,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
   // Checks the case when ephemeral statvfs call fails.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
@@ -1575,6 +1593,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
   // created.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
@@ -1595,6 +1614,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
   // Checks the case when ephemeral sparse file fails to create.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1619,6 +1639,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
   // appropriately.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1648,6 +1669,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
   // happens appropriately.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1675,6 +1697,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
   // happens appropriately.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1909,7 +1932,10 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   // Checks that when a device is enterprise enrolled, all stale cryptohomes are
   // removed while mounting.
   set_policy(false, "", true);
+
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
+
   TestUser* user = &helper_.users[0];
 
   std::vector<int> expect_deletion;
@@ -1932,11 +1958,13 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_,
               DeletePathRecursively(
                   brillo::cryptohome::home::GetRootPath(user->username)))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               DeletePathRecursively(
                   brillo::cryptohome::home::GetUserPath(user->username)))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeletePathRecursively(
                              MountHelper::GetNewUserPath(user->username)))
       .WillOnce(Return(true));
@@ -2048,11 +2076,13 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_,
               DeletePathRecursively(
                   brillo::cryptohome::home::GetRootPath(user->username)))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               DeletePathRecursively(
                   brillo::cryptohome::home::GetUserPath(user->username)))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeletePathRecursively(
                              MountHelper::GetNewUserPath(user->username)))
       .WillOnce(Return(true));
@@ -2131,7 +2161,7 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, DeletePathRecursively(user->ephemeral_mount_path))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
   ExpectDownloadsUnmounts(*user, true /* ephemeral_mount */);
   // Detach succeeds.
@@ -2151,6 +2181,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   // removed while unmounting.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
 
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
@@ -2281,6 +2312,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // Since ephemeral users aren't enabled, no vaults will be deleted.
   set_policy(true, "", false);
   homedirs_->set_enterprise_owned(true);
+  keyset_management_->set_enterprise_owned(true);
 
   TestUser* user = &helper_.users[0];
 

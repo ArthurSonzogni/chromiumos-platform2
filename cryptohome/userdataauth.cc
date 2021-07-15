@@ -249,7 +249,7 @@ bool UserDataAuth::Initialize() {
 
   if (!keyset_management_) {
     default_keyset_management_ = std::make_unique<KeysetManagement>(
-        platform_, crypto_, system_salt_,
+        platform_, crypto_, system_salt_, user_timestamp_cache_.get(),
         std::make_unique<VaultKeysetFactory>());
     keyset_management_ = default_keyset_management_.get();
   }
@@ -260,16 +260,22 @@ bool UserDataAuth::Initialize() {
     container_factory->set_allow_fscrypt_v2(fscrypt_v2_);
     auto vault_factory = std::make_unique<CryptohomeVaultFactory>(
         platform_, std::move(container_factory));
+    // This callback runs in HomeDirs::Remove on |this.homedirs_|. Since
+    // |this.keyset_management_| won't be destroyed upon call of Remove(),
+    // base::Unretained(keyset_management_) will be valid when the callback
+    // runs.
+    HomeDirs::RemoveCallback remove_callback =
+        base::BindRepeating(&KeysetManagement::RemoveLECredentials,
+                            base::Unretained(keyset_management_));
     default_homedirs_ = std::make_unique<HomeDirs>(
-        platform_, keyset_management_, system_salt_,
-        user_timestamp_cache_.get(), std::make_unique<policy::PolicyProvider>(),
-        std::move(vault_factory));
+        platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
+        remove_callback, std::move(vault_factory));
     homedirs_ = default_homedirs_.get();
   }
 
   if (!low_disk_space_handler_) {
     default_low_disk_space_handler_ = std::make_unique<LowDiskSpaceHandler>(
-        homedirs_, platform_, user_timestamp_cache_.get());
+        homedirs_, keyset_management_, platform_, user_timestamp_cache_.get());
     low_disk_space_handler_ = default_low_disk_space_handler_.get();
   }
   low_disk_space_handler_->disk_cleanup()->set_cleanup_threshold(
@@ -1079,6 +1085,7 @@ void UserDataAuth::SetEnterpriseOwned(bool enterprise_owned) {
 
   enterprise_owned_ = enterprise_owned;
   homedirs_->set_enterprise_owned(enterprise_owned);
+  keyset_management_->set_enterprise_owned(enterprise_owned);
 }
 
 void UserDataAuth::DetectEnterpriseOwnership() {
@@ -1162,7 +1169,7 @@ scoped_refptr<Mount> UserDataAuth::CreateMount(const std::string& username) {
   scoped_refptr<Mount> m;
   // TODO(dlunev): Decide if finalization should be moved to MountFactory.
   EnsureBootLockboxFinalized();
-  m = mount_factory_->New(platform_, homedirs_);
+  m = mount_factory_->New(platform_, homedirs_, keyset_management_);
   m->set_legacy_mount(legacy_mount_);
   m->set_bind_mount_downloads(bind_mount_downloads_);
   if (!m->Init()) {
@@ -1203,7 +1210,8 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
     if (!m) {
       return nullptr;
     }
-    sessions_[username] = new UserSession(homedirs_, system_salt_, m);
+    sessions_[username] =
+        new UserSession(homedirs_, keyset_management_, system_salt_, m);
   }
   return sessions_[username];
 }
@@ -1727,8 +1735,12 @@ void UserDataAuth::ContinueMountWithCredentials(
   if (request.public_mount() && other_sessions_active &&
       !only_self_unmounted_attempt) {
     LOG(ERROR) << "Public mount requested with other sessions active.";
-    if (!request.auth_session_id().empty() && !homedirs_->Remove(account_id)) {
-      LOG(ERROR) << "Failed to remove vault for kiosk user.";
+    if (!request.auth_session_id().empty()) {
+      std::string obfuscated =
+          SanitizeUserNameWithSalt(account_id, system_salt_);
+      if (!homedirs_->Remove(obfuscated)) {
+        LOG(ERROR) << "Failed to remove vault for kiosk user.";
+      }
     }
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
     std::move(on_done).Run(reply);
@@ -1822,7 +1834,8 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   if (code == MOUNT_ERROR_VAULT_UNRECOVERABLE) {
     LOG(ERROR) << "Unrecoverable vault, removing.";
-    if (!homedirs_->Remove(credentials->username())) {
+    std::string obfuscated = credentials->GetObfuscatedUsername(system_salt_);
+    if (!homedirs_->Remove(obfuscated)) {
       LOG(ERROR) << "Failed to remove unrecoverable vault.";
       code = MOUNT_ERROR_REMOVE_INVALID_USER_FAILED;
     }
@@ -2502,7 +2515,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  if (!homedirs_->Remove(request.identifier().account_id())) {
+  std::string obfuscated = SanitizeUserNameWithSalt(account_id, system_salt_);
+  if (!homedirs_->Remove(obfuscated)) {
     return user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED;
   }
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

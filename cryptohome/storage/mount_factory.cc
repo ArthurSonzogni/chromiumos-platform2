@@ -4,6 +4,7 @@
 
 #include "cryptohome/storage/mount_factory.h"
 
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
@@ -13,7 +14,9 @@ namespace cryptohome {
 MountFactory::MountFactory() {}
 MountFactory::~MountFactory() {}
 
-Mount* MountFactory::New(Platform* platform, HomeDirs* homedirs) {
-  return new Mount(platform, homedirs);
+Mount* MountFactory::New(Platform* platform,
+                         HomeDirs* homedirs,
+                         KeysetManagement* keyset_management) {
+  return new Mount(platform, homedirs, keyset_management);
 }
 }  // namespace cryptohome

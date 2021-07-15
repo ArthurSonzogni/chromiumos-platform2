@@ -13,6 +13,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -202,13 +203,20 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
 
   InitializeFilesystemLayout(&platform, &crypto, nullptr);
   KeysetManagement keyset_management(&platform, &crypto, sec_salt,
+                                     &timestamp_cache,
                                      std::make_unique<VaultKeysetFactory>());
-  HomeDirs homedirs(
-      &platform, &keyset_management, sec_salt, &timestamp_cache,
-      std::make_unique<policy::PolicyProvider>(
-          std::unique_ptr<policy::MockDevicePolicy>(device_policy)));
 
-  scoped_refptr<Mount> mount = new Mount(&platform, &homedirs);
+  HomeDirs::RemoveCallback remove_callback =
+      base::BindRepeating(&KeysetManagement::RemoveLECredentials,
+                          base::Unretained(&keyset_management));
+  HomeDirs homedirs(
+      &platform, sec_salt,
+      std::make_unique<policy::PolicyProvider>(
+          std::unique_ptr<policy::MockDevicePolicy>(device_policy)),
+      remove_callback);
+
+  scoped_refptr<Mount> mount =
+      new Mount(&platform, &homedirs, &keyset_management);
   FilePath keyset_path =
       ShadowRoot()
           .Append(obfuscated_username)

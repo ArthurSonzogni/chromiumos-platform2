@@ -42,6 +42,7 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
@@ -91,7 +92,9 @@ void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
     PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
 }
 
-Mount::Mount(Platform* platform, HomeDirs* homedirs)
+Mount::Mount(Platform* platform,
+             HomeDirs* homedirs,
+             KeysetManagement* keyset_management)
     : default_user_(-1),
       chaps_user_(-1),
       default_group_(-1),
@@ -99,6 +102,7 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       system_salt_(),
       platform_(platform),
       homedirs_(homedirs),
+      keyset_management_(keyset_management),
       pkcs11_state_(kUninitialized),
       legacy_mount_(true),
       bind_mount_downloads_(true),
@@ -111,7 +115,7 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       mount_non_ephemeral_session_out_of_process_(true),
       mount_guest_session_non_root_namespace_(true) {}
 
-Mount::Mount() : Mount(nullptr, nullptr) {}
+Mount::Mount() : Mount(nullptr, nullptr, nullptr) {}
 
 Mount::~Mount() {
   if (IsMounted())
@@ -203,7 +207,9 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
 
   if (!MountEphemeralCryptohomeInternal(username_, ephemeral_mounter,
                                         std::move(cleanup))) {
-    homedirs_->Remove(username_);
+    std::string obfuscated_username =
+        SanitizeUserNameWithSalt(username_, system_salt_);
+    homedirs_->Remove(obfuscated_username);
     return MOUNT_ERROR_FATAL;
   }
 
@@ -508,12 +514,11 @@ base::Value Mount::GetStatus(int active_key_index) {
   base::Value keysets(base::Value::Type::LIST);
   std::vector<int> key_indices;
   if (user.length() &&
-      homedirs_->keyset_management()->GetVaultKeysets(user, &key_indices)) {
+      keyset_management_->GetVaultKeysets(user, &key_indices)) {
     for (auto key_index : key_indices) {
       base::Value keyset_dict(base::Value::Type::DICTIONARY);
       std::unique_ptr<VaultKeyset> keyset(
-          homedirs_->keyset_management()->LoadVaultKeysetForUser(user,
-                                                                 key_index));
+          keyset_management_->LoadVaultKeysetForUser(user, key_index));
       if (keyset.get()) {
         bool tpm = keyset->GetFlags() & SerializedVaultKeyset::TPM_WRAPPED;
         bool scrypt =

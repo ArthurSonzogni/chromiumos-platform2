@@ -17,6 +17,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
@@ -29,9 +30,13 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 UserSession::UserSession() {}
 UserSession::~UserSession() {}
 UserSession::UserSession(HomeDirs* homedirs,
+                         KeysetManagement* keyset_management,
                          const brillo::SecureBlob& salt,
                          const scoped_refptr<Mount> mount)
-    : homedirs_(homedirs), system_salt_(salt), mount_(mount) {}
+    : homedirs_(homedirs),
+      keyset_management_(keyset_management),
+      system_salt_(salt),
+      mount_(mount) {}
 
 MountError UserSession::MountVault(const Credentials& credentials,
                                    const Mount::MountArgs& mount_args) {
@@ -54,12 +59,12 @@ MountError UserSession::MountVault(const Credentials& credentials,
     }
 
     if (!homedirs_->Create(credentials.username()) ||
-        !homedirs_->keyset_management()->AddInitialKeyset(credentials)) {
+        !keyset_management_->AddInitialKeyset(credentials)) {
       LOG(ERROR) << "Error creating cryptohome.";
       return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
     }
-    homedirs_->UpdateActivityTimestamp(obfuscated_username, kInitialKeysetIndex,
-                                       0);
+    keyset_management_->UpdateActivityTimestamp(obfuscated_username,
+                                                kInitialKeysetIndex, 0);
     created = true;
   }
 
@@ -67,7 +72,7 @@ MountError UserSession::MountVault(const Credentials& credentials,
   // keys.
   MountError code = MOUNT_ERROR_NONE;
   std::unique_ptr<VaultKeyset> vk =
-      homedirs_->keyset_management()->LoadUnwrappedKeyset(credentials, &code);
+      keyset_management_->LoadUnwrappedKeyset(credentials, &code);
   if (code != MOUNT_ERROR_NONE) {
     return code;
   }
@@ -142,8 +147,8 @@ bool UserSession::UpdateActivityTimestamp(int time_shift_sec) {
   if (!mount_->IsNonEphemeralMounted()) {
     return false;
   }
-  return homedirs_->UpdateActivityTimestamp(obfuscated_username_, key_index_,
-                                            time_shift_sec);
+  return keyset_management_->UpdateActivityTimestamp(
+      obfuscated_username_, key_index_, time_shift_sec);
 }
 
 base::Value UserSession::GetStatus() const {

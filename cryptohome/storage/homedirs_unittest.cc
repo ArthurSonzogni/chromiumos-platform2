@@ -20,18 +20,16 @@
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
 
-#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/mount_constants.h"
-#include "cryptohome/timestamp.pb.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -77,6 +75,11 @@ struct UserInfo {
   base::FilePath user_path;
 };
 
+struct test_homedir {
+  const char* obfuscated;
+  base::Time::Exploded time;
+};
+
 }  // namespace
 
 class HomeDirsTest
@@ -97,18 +100,17 @@ class HomeDirsTest
     PreparePolicy(true, kOwner, false, "");
 
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
-    keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
-        std::make_unique<VaultKeysetFactory>());
-
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
-
+    HomeDirs::RemoveCallback remove_callback =
+        base::BindRepeating(&MockKeysetManagement::RemoveLECredentials,
+                            base::Unretained(&keyset_management_));
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, keyset_management_.get(), system_salt_, &timestamp_cache_,
+        &platform_, system_salt_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
+        remove_callback,
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
@@ -161,11 +163,10 @@ class HomeDirsTest
 
  protected:
   NiceMock<MockPlatform> platform_;
-  NiceMock<MockUserOldestActivityTimestampCache> timestamp_cache_;
+  MockKeysetManagement keyset_management_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
-  std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<HomeDirs> homedirs_;
 
   // Information about users' homedirs. The order of users is equal to kUsers.
@@ -200,6 +201,8 @@ TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
   EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
 
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(3);
+
   homedirs_->RemoveNonOwnerCryptohomes();
 
   // Non-owners' vaults are removed
@@ -427,48 +430,6 @@ TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
   EXPECT_EQ(1, homedirs_->GetUnmountedAndroidDataCount());
 }
 
-TEST_P(HomeDirsTest, AddUserTimestampToCacheEmpty) {
-  VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto_);
-  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
-  vk.CreateRandom();
-  ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[0].obfuscated));
-  ASSERT_TRUE(
-      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
-
-  // No user ts is added.
-  EXPECT_CALL(timestamp_cache_, AddExistingUser(users_[0].obfuscated, _))
-      .Times(0);
-  homedirs_->AddUserTimestampToCache(users_[0].obfuscated);
-}
-
-TEST_P(HomeDirsTest, AddUserTimestampToCache) {
-  VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto_);
-  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
-  vk.CreateRandom();
-  constexpr char kKeyFileIndexSuffix[] = "0";
-  constexpr char kKeyFileTimestampSuffix[] = "0.timestamp";
-  constexpr int kTime = 499;
-  const base::Time t = base::Time::FromInternalValue(kTime);
-  Timestamp timestamp;
-  timestamp.set_timestamp(kTime);
-  std::string timestamp_str;
-  ASSERT_TRUE(timestamp.SerializeToString(&timestamp_str));
-  ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
-      users_[2].homedir_path.Append(kKeyFile).AddExtension(
-          kKeyFileTimestampSuffix),
-      timestamp_str, 0600));
-  ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[2].obfuscated));
-  ASSERT_TRUE(vk.Save(users_[2].homedir_path.Append(kKeyFile).AddExtension(
-      kKeyFileIndexSuffix)));
-
-  // TS from an external file
-  EXPECT_CALL(timestamp_cache_, AddExistingUser(users_[2].obfuscated, t))
-      .Times(1);
-  homedirs_->AddUserTimestampToCache(users_[2].obfuscated);
-}
-
 TEST_P(HomeDirsTest, GetHomedirsAllMounted) {
   std::vector<bool> all_mounted(users_.size(), true);
   std::set<std::string> hashes, got_hashes;
@@ -518,13 +479,12 @@ class HomeDirsVaultTest : public ::testing::Test {
   ~HomeDirsVaultTest() override = default;
 
   void SetUp() override {
-    keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
-        std::make_unique<VaultKeysetFactory>());
+    HomeDirs::RemoveCallback remove_callback;
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, keyset_management_.get(), system_salt_, &timestamp_cache_,
+        &platform_, system_salt_,
         std::make_unique<policy::PolicyProvider>(
-            std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)));
+            std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
+        remove_callback);
   }
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
@@ -561,11 +521,9 @@ class HomeDirsVaultTest : public ::testing::Test {
   const FileSystemKeyReference key_reference_;
 
   NiceMock<MockPlatform> platform_;
-  NiceMock<MockUserOldestActivityTimestampCache> timestamp_cache_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
-  std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<HomeDirs> homedirs_;
 };
 

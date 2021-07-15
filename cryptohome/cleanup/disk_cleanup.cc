@@ -19,6 +19,7 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
@@ -26,9 +27,11 @@ namespace cryptohome {
 
 DiskCleanup::DiskCleanup(Platform* platform,
                          HomeDirs* homedirs,
+                         KeysetManagement* keyset_management,
                          UserOldestActivityTimestampCache* timestamp_cache)
     : platform_(platform),
       homedirs_(homedirs),
+      keyset_management_(keyset_management),
       timestamp_cache_(timestamp_cache),
       routines_(std::make_unique<DiskCleanupRoutines>(homedirs_, platform_)) {}
 
@@ -155,6 +158,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (homedirs_->AreEphemeralUsersEnabled()) {
     homedirs_->RemoveNonOwnerCryptohomes();
+
     ReportDiskCleanupProgress(
         DiskCleanupProgress::kEphemeralUserProfilesCleaned);
     return true;
@@ -171,7 +175,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   if (!timestamp_cache_->initialized()) {
     timestamp_cache_->Initialize();
     for (const auto& dir : homedirs) {
-      homedirs_->AddUserTimestampToCache(dir.obfuscated);
+      keyset_management_->AddUserTimestampToCache(dir.obfuscated);
     }
   }
 

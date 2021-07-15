@@ -371,9 +371,12 @@ void MountHelper::RecursiveCopy(const FilePath& source,
   std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source, false, base::FileEnumerator::FILES));
   FilePath next_path;
+
   while (!(next_path = file_enumerator->Next()).empty()) {
     FilePath file_name = next_path.BaseName();
+
     FilePath destination_file = destination.Append(file_name);
+
     if (!platform_->Copy(next_path, destination_file) ||
         !platform_->SetOwnership(destination_file, default_uid_, default_gid_,
                                  false)) {
@@ -382,18 +385,23 @@ void MountHelper::RecursiveCopy(const FilePath& source,
                  << ") of destination path: " << destination_file.value();
     }
   }
+
   std::unique_ptr<cryptohome::FileEnumerator> dir_enumerator(
       platform_->GetFileEnumerator(source, false,
                                    base::FileEnumerator::DIRECTORIES));
+
   while (!(next_path = dir_enumerator->Next()).empty()) {
     FilePath dir_name = FilePath(next_path).BaseName();
+
     FilePath destination_dir = destination.Append(dir_name);
     VLOG(1) << "RecursiveCopy: " << destination_dir.value();
+
     if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
             destination_dir, kSkeletonSubDirMode, default_uid_, default_gid_)) {
       LOG(ERROR) << "SafeCreateDirAndSetOwnership() failed: "
                  << destination_dir.value();
     }
+
     RecursiveCopy(FilePath(next_path), destination_dir);
   }
 }
@@ -425,6 +433,7 @@ bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
 
   const auto subdirs = GetEphemeralSubdirectories(default_uid_, default_gid_,
                                                   default_access_gid_);
+
   for (const auto& subdir : subdirs) {
     FilePath path = FilePath(source_path).Append(subdir.path);
     if (platform_->DirectoryExists(path))
@@ -436,7 +445,6 @@ bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
       return false;
     }
   }
-
   return true;
 }
 
@@ -985,6 +993,8 @@ bool MountHelper::PerformEphemeralMount(const std::string& username) {
 
   const FilePath mount_point =
       GetUserEphemeralMountDirectory(obfuscated_username);
+  LOG(ERROR) << "Directory is" << mount_point.value();
+
   if (!platform_->CreateDirectory(mount_point)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
     return false;
@@ -1004,12 +1014,14 @@ bool MountHelper::PerformEphemeralMount(const std::string& username) {
 
   // Create user & root directories.
   CreateHomeSubdirectories(mount_point);
+
   if (!EnsureUserMountPoints(username)) {
     return false;
   }
 
   const FilePath user_home =
       GetMountedEphemeralUserHomePath(obfuscated_username);
+
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
 

@@ -30,9 +30,7 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/rpc.pb.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -59,17 +57,21 @@ class HomeDirs {
     bool is_mounted = false;
   };
 
+  using RemoveCallback =
+      base::RepeatingCallback<void(const std::string& obfuscated_username)>;
+
   HomeDirs() = default;
+  // |remove_callback| is executed in Remove() to make sure LE Credentials of
+  // the corresponding |obfuscated_username| is also removed when user's
+  // cryptohome is removed from the device.
   HomeDirs(Platform* platform,
-           KeysetManagement* keyset_management,
            const brillo::SecureBlob& system_salt,
-           UserOldestActivityTimestampCache* timestamp_cache,
-           std::unique_ptr<policy::PolicyProvider> policy_provider);
-  HomeDirs(Platform* platform,
-           KeysetManagement* keyset_management,
-           const brillo::SecureBlob& system_salt,
-           UserOldestActivityTimestampCache* timestamp_cache,
            std::unique_ptr<policy::PolicyProvider> policy_provider,
+           const RemoveCallback& remove_callback);
+  HomeDirs(Platform* platform,
+           const brillo::SecureBlob& system_salt,
+           std::unique_ptr<policy::PolicyProvider> policy_provider,
+           const RemoveCallback& remove_callback,
            std::unique_ptr<CryptohomeVaultFactory> vault_factory);
   HomeDirs(const HomeDirs&) = delete;
   HomeDirs& operator=(const HomeDirs&) = delete;
@@ -96,8 +98,8 @@ class HomeDirs {
   // Creates the cryptohome for the named user.
   virtual bool Create(const std::string& username);
 
-  // Removes the cryptohome for the named user.
-  virtual bool Remove(const std::string& username);
+  // Removes the cryptohome for the given obfuscated username.
+  virtual bool Remove(const std::string& obfuscated);
 
   // Renames account identified by |account_id_from| to |account_id_to|.
   // This is called when user e-mail is replaced with GaiaId as account
@@ -144,10 +146,6 @@ class HomeDirs {
   virtual bool DmcryptCacheContainerExists(
       const std::string& obfuscated_username) const;
 
-  virtual bool UpdateActivityTimestamp(const std::string& obfuscted,
-                                       int index,
-                                       int time_shift_sec);
-
   // Returns the path to the user's chaps token directory.
   virtual base::FilePath GetChapsTokenDir(const std::string& username) const;
 
@@ -168,10 +166,6 @@ class HomeDirs {
 
   // Get the list of cryptohomes on the system.
   virtual std::vector<HomeDir> GetHomeDirs();
-
-  // Called during disk cleanup if the timestamp cache is not yet
-  // initialized. Loads the last activity timestamp from the vault keyset.
-  virtual void AddUserTimestampToCache(const std::string& obfuscated);
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
@@ -212,10 +206,6 @@ class HomeDirs {
       bool is_pristine,
       MountError* mount_error);
 
-  // TODO(dlunev, b/172344610): this is a temporary accessor to simplify the
-  // split patch. Remove it once all clients using it are either get it
-  // directly or not use it.
-  virtual KeysetManagement* keyset_management() { return keyset_management_; }
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   void SetLogicalVolumeManagerForTesting(
@@ -241,14 +231,6 @@ class HomeDirs {
 
   // Removes all mounted homedirs from the vector
   void FilterMountedHomedirs(std::vector<HomeDir>* homedirs);
-  // Used by RemoveNonOwnerCryptohomes and FreeDiskSpace to perform the actual
-  // cleanup.
-  void RemoveNonOwnerCryptohomesInternal(const std::vector<HomeDir>& homedirs);
-  // Callback used during RemoveNonOwnerCryptohomes()
-  void RemoveNonOwnerCryptohomesCallback(const std::string& obfuscated);
-  // Deletes all directories under the supplied directory whose basename is not
-  // the same as the obfuscated owner name.
-  void RemoveNonOwnerDirectories(const base::FilePath& prefix);
 
   // Helper function to check if the directory contains subdirectory that looks
   // like encrypted android-data (see definition of looks-like-android-data in
@@ -275,13 +257,15 @@ class HomeDirs {
   bool IsOwnedByAndroidSystem(const base::FilePath& directory) const;
 
   Platform* platform_;
-  KeysetManagement* keyset_management_;
   brillo::SecureBlob system_salt_;
-  UserOldestActivityTimestampCache* timestamp_cache_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool enterprise_owned_;
   chaps::TokenManagerClient chaps_client_;
   std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
+  std::vector<HomeDir> unmounted_homedirs_;
+  // This callback will be run in Remove() to remove LE Credentials when the
+  // home directory of the corresponding user is removed.
+  RemoveCallback remove_callback_;
 
   // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
   static constexpr uid_t kAndroidSystemUid = 1000;

@@ -11,12 +11,12 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <base/timer/elapsed_timer.h>
 #include <brillo/cryptohome.h>
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
@@ -26,7 +26,6 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -34,14 +33,12 @@
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key.pb.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signed_secret.pb.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/mount_helper.h"
-#include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -59,30 +56,26 @@ const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 
 HomeDirs::HomeDirs(Platform* platform,
-                   KeysetManagement* keyset_management,
                    const brillo::SecureBlob& system_salt,
-                   UserOldestActivityTimestampCache* timestamp_cache,
-                   std::unique_ptr<policy::PolicyProvider> policy_provider)
+                   std::unique_ptr<policy::PolicyProvider> policy_provider,
+                   const RemoveCallback& remove_callback)
     : HomeDirs(platform,
-               keyset_management,
                system_salt,
-               timestamp_cache,
                std::move(policy_provider),
+               remove_callback,
                std::make_unique<CryptohomeVaultFactory>(platform)) {}
 
 HomeDirs::HomeDirs(Platform* platform,
-                   KeysetManagement* keyset_management,
                    const brillo::SecureBlob& system_salt,
-                   UserOldestActivityTimestampCache* timestamp_cache,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
+                   const RemoveCallback& remove_callback,
                    std::unique_ptr<CryptohomeVaultFactory> vault_factory)
     : platform_(platform),
-      keyset_management_(keyset_management),
       system_salt_(system_salt),
-      timestamp_cache_(timestamp_cache),
       policy_provider_(std::move(policy_provider)),
       enterprise_owned_(false),
-      vault_factory_(std::move(vault_factory)) {
+      vault_factory_(std::move(vault_factory)),
+      remove_callback_(remove_callback) {
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   lvm_ = std::make_unique<brillo::LogicalVolumeManager>();
@@ -194,73 +187,33 @@ bool HomeDirs::DmcryptCacheContainerExists(
                                 kDmcryptCacheContainerSuffix);
 }
 
-bool HomeDirs::UpdateActivityTimestamp(const std::string& obfuscated,
-                                       int index,
-                                       int time_shift_sec) {
-  base::Time timestamp = platform_->GetCurrentTime();
-  if (time_shift_sec > 0) {
-    timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
-  }
-
-  Timestamp ts_proto;
-  ts_proto.set_timestamp(timestamp.ToInternalValue());
-  std::string timestamp_str;
-  if (!ts_proto.SerializeToString(&timestamp_str)) {
-    return false;
-  }
-
-  base::FilePath ts_file = UserActivityTimestampPath(obfuscated, index);
-  if (!platform_->WriteStringToFileAtomicDurable(ts_file, timestamp_str,
-                                                 kKeyFilePermissions)) {
-    LOG(ERROR) << "Failed writing to timestamp file: " << ts_file;
-    return false;
-  }
-
-  if (timestamp_cache_ && timestamp_cache_->initialized()) {
-    timestamp_cache_->UpdateExistingUser(obfuscated, timestamp);
-  }
-
-  return true;
-}
-
-void HomeDirs::RemoveNonOwnerCryptohomesCallback(
-    const std::string& obfuscated) {
-  if (!enterprise_owned_) {  // Enterprise owned? Delete it all.
-    std::string owner;
-    if (!GetOwner(&owner) || obfuscated == owner)
-      return;
-  }
-  // Once we're sure this is not the owner's cryptohome, delete it.
-  keyset_management_->RemoveLECredentials(obfuscated);
-  FilePath shadow_dir = ShadowRoot().Append(obfuscated);
-  platform_->DeletePathRecursively(shadow_dir);
-}
-
 void HomeDirs::RemoveNonOwnerCryptohomes() {
+  // If the device is not enterprise owned it should have an owner user.
   std::string owner;
-  if (!enterprise_owned_ && !GetOwner(&owner))
+  if (!enterprise_owned_ && !GetOwner(&owner)) {
     return;
+  }
 
   auto homedirs = GetHomeDirs();
   FilterMountedHomedirs(&homedirs);
 
-  RemoveNonOwnerCryptohomesInternal(homedirs);
-}
-
-void HomeDirs::RemoveNonOwnerCryptohomesInternal(
-    const std::vector<HomeDir>& homedirs) {
-  std::string owner;
-  if (!enterprise_owned_ && !GetOwner(&owner))
-    return;
-
   for (const auto& dir : homedirs) {
-    HomeDirs::RemoveNonOwnerCryptohomesCallback(dir.obfuscated);
+    if (GetOwner(&owner)) {
+      if (dir.obfuscated == owner && !enterprise_owned_) {
+        continue;  // Remove them all if enterprise owned.
+      }
+    }
+    if (platform_->IsDirectoryMounted(
+            brillo::cryptohome::home::GetUserPathPrefix().Append(
+                dir.obfuscated)) ||
+        platform_->IsDirectoryMounted(
+            brillo::cryptohome::home::GetRootPathPrefix().Append(
+                dir.obfuscated))) {
+      continue;  // Don't use LE credentials if user cryptohome is mounted.
+    } else if (!HomeDirs::Remove(dir.obfuscated)) {
+      LOG(WARNING) << "Failed to remove all non-owner home directories.";
+    }
   }
-
-  // TODO(ellyjones): is this valuable? These two directories should just be
-  // mountpoints.
-  RemoveNonOwnerDirectories(brillo::cryptohome::home::GetUserPathPrefix());
-  RemoveNonOwnerDirectories(brillo::cryptohome::home::GetRootPathPrefix());
 }
 
 std::vector<HomeDirs::HomeDir> HomeDirs::GetHomeDirs() {
@@ -311,26 +264,6 @@ void HomeDirs::FilterMountedHomedirs(std::vector<HomeDirs::HomeDir>* homedirs) {
                                    return dir.is_mounted;
                                  }),
                   homedirs->end());
-}
-
-void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
-  std::vector<FilePath> dirents;
-  if (!platform_->EnumerateDirectoryEntries(prefix, false, &dirents))
-    return;
-  std::string owner;
-  if (!enterprise_owned_ && !GetOwner(&owner))
-    return;
-  for (const auto& dirent : dirents) {
-    const std::string basename = dirent.BaseName().value();
-    if (!enterprise_owned_ && !strcasecmp(basename.c_str(), owner.c_str()))
-      continue;  // Skip the owner's directory.
-    if (!brillo::cryptohome::home::IsSanitizedUserName(basename))
-      continue;  // Skip any directory whose name is not an obfuscated user
-                 // name.
-    if (platform_->IsDirectoryMounted(dirent))
-      continue;  // Skip any directory that is currently mounted.
-    platform_->DeletePathRecursively(dirent);
-  }
 }
 
 bool HomeDirs::GetTrackedDirectory(const FilePath& user_dir,
@@ -385,30 +318,6 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
   }
   *out = current_path;
   return true;
-}
-
-void HomeDirs::AddUserTimestampToCache(const std::string& obfuscated) {
-  //  Add a timestamp for every key.
-  std::vector<int> key_indices;
-  // Failure is okay since the loop falls through.
-  keyset_management_->GetVaultKeysets(obfuscated, &key_indices);
-  // Collect the most recent time for a given user by walking all
-  // vaults.  This avoids trying to keep them in sync atomically.
-  // TODO(wad,?) Move non-key vault metadata to a standalone file.
-  base::Time timestamp = base::Time();
-  for (int index : key_indices) {
-    std::unique_ptr<VaultKeyset> keyset =
-        keyset_management_->LoadVaultKeysetForUser(obfuscated, index);
-    if (keyset.get() && keyset->HasLastActivityTimestamp()) {
-      const base::Time t =
-          base::Time::FromInternalValue(keyset->GetLastActivityTimestamp());
-      if (t > timestamp)
-        timestamp = t;
-    }
-  }
-  if (!timestamp.is_null()) {
-    timestamp_cache_->AddExistingUser(obfuscated, timestamp);
-  }
 }
 
 EncryptedContainerType HomeDirs::ChooseVaultType() {
@@ -592,13 +501,13 @@ bool HomeDirs::Create(const std::string& username) {
   return true;
 }
 
-bool HomeDirs::Remove(const std::string& username) {
-  std::string obfuscated = SanitizeUserNameWithSalt(username, system_salt_);
-  keyset_management_->RemoveLECredentials(obfuscated);
-
+bool HomeDirs::Remove(const std::string& obfuscated) {
+  remove_callback_.Run(obfuscated);
   FilePath user_dir = ShadowRoot().Append(obfuscated);
-  FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
-  FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
+  FilePath user_path =
+      brillo::cryptohome::home::GetUserPathPrefix().Append(obfuscated);
+  FilePath root_path =
+      brillo::cryptohome::home::GetRootPathPrefix().Append(obfuscated);
 
   bool ret = true;
 
