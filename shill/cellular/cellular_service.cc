@@ -200,7 +200,8 @@ CellularService::CellularService(Manager* manager,
       kCellularAllowRoamingProperty,
       BoolAccessor(new CustomAccessor<CellularService, bool>(
           this, &CellularService::GetAllowRoaming,
-          &CellularService::SetAllowRoaming)));
+          &CellularService::SetAllowRoaming,
+          &CellularService::ClearAllowRoaming)));
   storage_identifier_ = GetDefaultStorageIdentifier();
   SLOG(this, 1) << "CellularService Created: " << log_name();
 }
@@ -374,6 +375,8 @@ bool CellularService::Save(StoreInterface* storage) {
 
   if (allow_roaming_.has_value())
     storage->SetBool(id, kStorageAllowRoaming, allow_roaming_.value());
+  else
+    storage->DeleteKey(id, kStorageAllowRoaming);
 
   return true;
 }
@@ -814,6 +817,10 @@ bool CellularService::SetAllowRoaming(const bool& value, Error* error) {
 
 bool CellularService::GetAllowRoaming(Error* /*error*/) {
   return GetAllowRoaming();
+}
+
+void CellularService::ClearAllowRoaming(Error* /*error*/) {
+  allow_roaming_.reset();
 }
 
 }  // namespace shill

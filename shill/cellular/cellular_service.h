@@ -202,8 +202,9 @@ class CellularService : public Service {
   KeyValueStore GetStorageProperties() const;
   std::string GetDefaultStorageIdentifier() const;
   bool IsOutOfCredits(Error* /*error*/);
-  bool GetAllowRoaming(Error* /*error*/);
   bool SetAllowRoaming(const bool& value, Error* error);
+  bool GetAllowRoaming(Error* /*error*/);
+  void ClearAllowRoaming(Error* /*error*/);
 
   // The IMSI for the SIM. This is saved in the Profile and emitted as a
   // property so that it is available for non primary SIM Profiles.
