@@ -21,6 +21,7 @@ group("all") {
     deps += [
       ":u2f_apdu_fuzzer",
       ":u2f_msg_handler_fuzzer",
+      ":u2f_webauthn_fuzzer",
       ":u2fhid_fuzzer",
     ]
   }
@@ -215,6 +216,7 @@ if (use.fuzzer) {
 
   executable("u2f_msg_handler_fuzzer") {
     sources = [
+      "fuzzers/fuzzed_allowlisting_util_factory.cc",
       "fuzzers/fuzzed_user_state.cc",
       "fuzzers/u2f_msg_handler_fuzzer.cc",
     ]
@@ -225,5 +227,40 @@ if (use.fuzzer) {
     ]
     libs = [ "trunks_test" ]
     deps = [ ":libu2fd" ]
+  }
+
+  executable("u2f_webauthn_fuzzer") {
+    sources = [
+      "fuzzers/fuzzed_allowlisting_util_factory.cc",
+      "fuzzers/fuzzed_user_state.cc",
+      "fuzzers/webauthn_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      "//common-mk:test",
+      ":target_defaults",
+      ":u2fd_config",
+      ":local_proto_include",
+    ]
+    libs = [ "trunks_test" ]
+    deps = [
+      ":libu2fd",
+      ":webauthn_fuzzer_data_proto",
+    ]
+    pkg_deps = [
+      "libchrome-test",
+      "libprotobuf-mutator",
+      "libuser_data_auth-client-test",
+    ]
+  }
+  config("local_proto_include") {
+    include_dirs = [ "${sysroot}/usr/include/u2f/proto_bindings/" ]
+  }
+  proto_library("webauthn_fuzzer_data_proto") {
+    proto_in_dir = "fuzzers"
+    proto_out_dir = "include/u2fd/fuzzers"
+    proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/u2f" ]
+    configs = [ ":local_proto_include" ]
+    sources = [ "${proto_in_dir}/webauthn_fuzzer_data.proto" ]
   }
 }

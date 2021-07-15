@@ -10,6 +10,12 @@
 
 namespace u2f {
 
+namespace {
+constexpr char kUser[] = "user";
+constexpr char kSanitizedUser[] =
+    "12dea96fec20593566ab75692c9949596833adc9";  // SHA1("user")
+}  // namespace
+
 FuzzedUserState::FuzzedUserState(FuzzedDataProvider* data_provider)
     : data_provider_(data_provider) {
   NextState();
@@ -55,26 +61,28 @@ bool FuzzedUserState::IncrementCounter() {
   return data_provider_->ConsumeBool();
 }
 
-// Not implemented UserState methods
 void FuzzedUserState::SetSessionStartedCallback(
     base::RepeatingCallback<void(const std::string&)>) {
-  NoImplementation();
+  // Do nothing since FuzzedUserState does not call this callback function for
+  // now
 }
 void FuzzedUserState::SetSessionStoppedCallback(
     base::RepeatingCallback<void()>) {
-  NoImplementation();
+  // Do nothing since FuzzedUserState does not call this callback function for
+  // now
 }
+
 bool FuzzedUserState::HasUser() {
-  NoImplementation();
-  return false;
+  // TODO(domen): Support the state that there is no user.
+  // We will need to call the callback functions in order to support changing
+  // the user.
+  return true;
 }
 base::Optional<std::string> FuzzedUserState::GetUser() {
-  NoImplementation();
-  return base::nullopt;
+  return kUser;
 }
 base::Optional<std::string> FuzzedUserState::GetSanitizedUser() {
-  NoImplementation();
-  return base::nullopt;
+  return kSanitizedUser;
 }
 
 }  // namespace u2f

@@ -8,35 +8,20 @@
 #include <memory>
 #include <string>
 
-#include <attestation/proto_bindings/interface.pb.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <metrics/metrics_library_mock.h>
 #include <trunks/fuzzed_command_transceiver.h>
 
 #include "u2fd/allowlisting_util.h"
+#include "u2fd/fuzzers/fuzzed_allowlisting_util_factory.h"
 #include "u2fd/fuzzers/fuzzed_user_state.h"
 #include "u2fd/u2f_msg_handler.h"
 
 namespace {
 
 constexpr size_t kMaxTpmMessageLength = 512;
-constexpr uint32_t kGetCertifiedG2fCertFailureRate = 10;
-
-base::Optional<attestation::GetCertifiedNvIndexReply> GetCertifiedG2fCert(
-    FuzzedDataProvider* data_provider, int g2f_cert_size) {
-  if (data_provider->ConsumeIntegralInRange<uint32_t>(0, 99) <
-      kGetCertifiedG2fCertFailureRate) {
-    return base::nullopt;
-  }
-
-  attestation::GetCertifiedNvIndexReply reply;
-  std::string buf = data_provider->ConsumeRandomLengthString();
-  reply.ParseFromString(buf);
-  return reply;
-}
 
 }  // namespace
 
@@ -49,13 +34,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   FuzzedDataProvider data_provider(data, size);
 
-  auto allowlisting_util =
-      data_provider.ConsumeBool()
-          ? std::make_unique<u2f::AllowlistingUtil>(
-                [&data_provider](int g2f_cert_size) {
-                  return GetCertifiedG2fCert(&data_provider, g2f_cert_size);
-                })
-          : std::unique_ptr<u2f::AllowlistingUtil>(nullptr);
+  u2f::FuzzedAllowlistingUtilFactory allowlisting_util_factory(&data_provider);
+  auto allowlisting_util = allowlisting_util_factory.CreateAllowlistingUtil();
   std::function<void()> request_presence = []() {
     // do nothing
   };

@@ -30,8 +30,6 @@ class FuzzedUserState : public UserState {
   base::Optional<brillo::SecureBlob> GetUserSecret() override;
   base::Optional<std::vector<uint8_t>> GetCounter() override;
   bool IncrementCounter() override;
-
-  // Not implemented UserState methods
   void SetSessionStartedCallback(
       base::RepeatingCallback<void(const std::string&)> callback) override;
   void SetSessionStoppedCallback(
@@ -41,8 +39,6 @@ class FuzzedUserState : public UserState {
   base::Optional<std::string> GetSanitizedUser() override;
 
  private:
-  void NoImplementation() { LOG(FATAL) << "Method not implemented"; }
-
   FuzzedDataProvider* const data_provider_;
 
   base::Optional<brillo::SecureBlob> user_secret_;
