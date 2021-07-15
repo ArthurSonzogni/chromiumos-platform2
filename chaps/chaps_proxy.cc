@@ -16,13 +16,11 @@
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
-#include "chaps/dbus/dbus_proxy_wrapper.h"
-#include "chaps/dbus/scoped_bus.h"
-#include "chaps/dbus_bindings/constants.h"
 #include "chaps/isolate.h"
 #include "pkcs11/cryptoki.h"
 
 using base::AutoLock;
+using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::dbus_utils::ExtractMethodCallResults;
 using std::string;
@@ -30,21 +28,13 @@ using std::vector;
 
 namespace {
 
-const char kDBusThreadName[] = "chaps_dbus_client_thread";
+// 5 minutes, since some TPM operations can take a while.
+constexpr base::TimeDelta kDBusTimeout = base::TimeDelta::FromMinutes(5);
 
-// These methods are equivalent to static_casting the blob to
-// a regular std::vector since this is just an upcast. The reason why
-// we use them is that the libbrillo D-Bus bindings rely on template
-// argument type deduction to figure out which MessageReader and
-// MessageWriter methods need to be called to marshal and unmarshal
-// data into D-Bus messages, and SecureBlob has no specializations
-// there.
-inline const brillo::SecureVector AsVector(const SecureBlob& blob) {
-  return blob;
-}
-
-inline brillo::SecureVector* AsVector(SecureBlob* blob) {
-  return blob;
+// TODO(yich): We should remove this after chromeos-dbus-binding support
+// SecureBlob.
+inline const Blob ToBlob(const SecureBlob& blob) {
+  return Blob(blob.begin(), blob.end());
 }
 
 // We need to be able to shadow AtExitManagers because we don't know if the
@@ -63,12 +53,8 @@ namespace chaps {
 
 // Below is the real implementation.
 
-ChapsProxyImpl::ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit,
-                               std::unique_ptr<base::Thread> dbus_thread,
-                               scoped_refptr<DBusProxyWrapper> proxy)
-    : at_exit_(std::move(at_exit)),
-      dbus_thread_(std::move(dbus_thread)),
-      proxy_(proxy) {}
+ChapsProxyImpl::ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit)
+    : at_exit_(std::move(at_exit)) {}
 
 ChapsProxyImpl::~ChapsProxyImpl() {}
 
@@ -79,39 +65,99 @@ std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create(bool shadow_at_exit) {
     at_exit = std::make_unique<ProxyAtExitManager>();
   }
 
+  auto chaps_proxy_impl =
+      base::WrapUnique(new ChapsProxyImpl(std::move(at_exit)));
+
   base::Thread::Options options(base::MessagePumpType::IO, 0);
-  auto dbus_thread = std::make_unique<base::Thread>(kDBusThreadName);
-  dbus_thread->StartWithOptions(options);
+  chaps_proxy_impl->dbus_thread_ =
+      std::make_unique<ChapsProxyThread>(chaps_proxy_impl.get());
+  chaps_proxy_impl->dbus_thread_->StartWithOptions(options);
 
-  scoped_refptr<ProxyWrapperConstructionTask> task(
-      new ProxyWrapperConstructionTask);
-  scoped_refptr<DBusProxyWrapper> proxy =
-      task->ConstructProxyWrapper(dbus_thread->task_runner());
-  if (!proxy)
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool connected = false;
+
+  chaps_proxy_impl->dbus_thread_->task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&ChapsProxyImpl::InitializationTask,
+                                base::Unretained(chaps_proxy_impl.get()),
+                                &event, &connected));
+
+  event.Wait();
+
+  if (!connected) {
+    // We should return nullptr when failed to connect to system D-Bus, and let
+    // C_Initialize return CKR_GENERAL_ERROR.
+    LOG(ERROR) << "Failed to connect to system D-Bus";
     return nullptr;
+  }
 
-  VLOG(1) << "Chaps proxy initialized (" << kChapsServicePath << ").";
-  return base::WrapUnique(
-      new ChapsProxyImpl(std::move(at_exit), std::move(dbus_thread), proxy));
+  return chaps_proxy_impl;
+}
+
+void ChapsProxyImpl::InitializationTask(base::WaitableEvent* completion,
+                                        bool* connected) {
+  CHECK(completion);
+  CHECK(dbus_thread_->task_runner()->BelongsToCurrentThread());
+
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  bus_ = base::MakeRefCounted<dbus::Bus>(options);
+
+  *connected = bus_->Connect();
+
+  default_proxy_ = std::make_unique<org::chromium::ChapsProxy>(bus_);
+
+  proxy_ = default_proxy_.get();
+
+  completion->Signal();
+}
+
+void ChapsProxyImpl::ShutdownTask() {
+  default_proxy_.reset();
+  bus_->ShutdownAndBlock();
+  bus_.reset();
+}
+
+template <typename MethodType, typename... Args>
+bool ChapsProxyImpl::SendRequestAndWait(const MethodType& method,
+                                        Args... args) {
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool success = true;
+  dbus_thread_->task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](org::chromium::ChapsProxyInterface* proxy,
+                        base::WaitableEvent* completion, bool* success,
+                        const MethodType& method, Args... args) {
+                       brillo::ErrorPtr error = nullptr;
+                       if (!(proxy->*method)(args..., &error,
+                                             kDBusTimeout.InMilliseconds()) ||
+                           error) {
+                         *success = false;
+                       }
+                       completion->Signal();
+                     },
+                     proxy_, &event, &success, method, args...));
+
+  event.Wait();
+  return success;
 }
 
 bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
                                  bool* new_isolate_created) {
+  Blob isolate_credential_out;
   bool result = false;
-  SecureBlob isolate_credential_in;
-  SecureBlob isolate_credential_out;
-  isolate_credential_in.swap(*isolate_credential);
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kOpenIsolateMethod, AsVector(isolate_credential_in));
-  if (resp && ExtractMethodCallResults(resp.get(), nullptr,
-                                       AsVector(&isolate_credential_out),
-                                       new_isolate_created, &result))
-    isolate_credential->swap(isolate_credential_out);
-  return result;
+  bool success =
+      SendRequestAndWait(&org::chromium::ChapsProxyInterface::OpenIsolate,
+                         ToBlob(*isolate_credential), &isolate_credential_out,
+                         new_isolate_created, &result);
+  *isolate_credential = SecureBlob(isolate_credential_out);
+  return success && result;
 }
 
 void ChapsProxyImpl::CloseIsolate(const SecureBlob& isolate_credential) {
-  proxy_->CallMethod(kCloseIsolateMethod, AsVector(isolate_credential));
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::CloseIsolate,
+                     ToBlob(isolate_credential));
 }
 
 bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
@@ -120,39 +166,39 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                const string& label,
                                uint64_t* slot_id) {
   bool result = false;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kLoadTokenMethod, AsVector(isolate_credential), path,
-                         AsVector(auth_data), label);
-  return resp &&
-         ExtractMethodCallResults(resp.get(), nullptr, slot_id, &result) &&
-         result;
+  bool success =
+      SendRequestAndWait(&org::chromium::ChapsProxyInterface::LoadToken,
+                         ToBlob(isolate_credential), path, ToBlob(auth_data),
+                         label, slot_id, &result);
+  return success && result;
 }
 
 void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
                                  const string& path) {
-  proxy_->CallMethod(kUnloadTokenMethod, AsVector(isolate_credential), path);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::UnloadToken,
+                     ToBlob(isolate_credential), path);
 }
 
 void ChapsProxyImpl::ChangeTokenAuthData(
     const string& path,
     const brillo::SecureBlob& old_auth_data,
     const brillo::SecureBlob& new_auth_data) {
-  proxy_->CallMethod(kChangeTokenAuthDataMethod, path, AsVector(old_auth_data),
-                     AsVector(new_auth_data));
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::ChangeTokenAuthData,
+                     path, ToBlob(old_auth_data), ToBlob(new_auth_data));
 }
 
 bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,
                                   uint64_t slot_id,
                                   string* path) {
   bool result = false;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetTokenPathMethod, AsVector(isolate_credential), slot_id);
-  return resp && ExtractMethodCallResults(resp.get(), nullptr, path, &result) &&
-         result;
+  bool success =
+      SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetTokenPath,
+                         ToBlob(isolate_credential), slot_id, path, &result);
+  return success && result;
 }
 
 void ChapsProxyImpl::SetLogLevel(const int32_t& level) {
-  proxy_->CallMethod(kSetLogLevelMethod, level);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SetLogLevel, level);
 }
 
 uint32_t ChapsProxyImpl::GetSlotList(const SecureBlob& isolate_credential,
@@ -160,10 +206,10 @@ uint32_t ChapsProxyImpl::GetSlotList(const SecureBlob& isolate_credential,
                                      vector<uint64_t>* slot_list) {
   LOG_CK_RV_AND_RETURN_IF(!slot_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetSlotListMethod, AsVector(isolate_credential), token_present);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, slot_list, &result);
+
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetSlotList,
+                     ToBlob(isolate_credential), token_present, slot_list,
+                     &result);
   return result;
 }
 
@@ -172,10 +218,8 @@ uint32_t ChapsProxyImpl::GetSlotInfo(const SecureBlob& isolate_credential,
                                      SlotInfo* slot_info) {
   LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetSlotInfoMethod, AsVector(isolate_credential), slot_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, slot_info, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetSlotInfo,
+                     ToBlob(isolate_credential), slot_id, slot_info, &result);
   return result;
 }
 
@@ -184,10 +228,8 @@ uint32_t ChapsProxyImpl::GetTokenInfo(const SecureBlob& isolate_credential,
                                       TokenInfo* token_info) {
   LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetTokenInfoMethod, AsVector(isolate_credential), slot_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, token_info, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetTokenInfo,
+                     ToBlob(isolate_credential), slot_id, token_info, &result);
   return result;
 }
 
@@ -196,10 +238,9 @@ uint32_t ChapsProxyImpl::GetMechanismList(const SecureBlob& isolate_credential,
                                           vector<uint64_t>* mechanism_list) {
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetMechanismListMethod, AsVector(isolate_credential), slot_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, mechanism_list, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetMechanismList,
+                     ToBlob(isolate_credential), slot_id, mechanism_list,
+                     &result);
   return result;
 }
 
@@ -209,11 +250,9 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(const SecureBlob& isolate_credential,
                                           MechanismInfo* mechanism_info) {
   LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kGetMechanismInfoMethod, AsVector(isolate_credential),
-                         slot_id, mechanism_type);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, mechanism_info, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetMechanismInfo,
+                     ToBlob(isolate_credential), slot_id, mechanism_type,
+                     mechanism_info, &result);
   return result;
 }
 
@@ -225,11 +264,9 @@ uint32_t ChapsProxyImpl::InitToken(const SecureBlob& isolate_credential,
   string tmp_pin;
   if (so_pin)
     tmp_pin = *so_pin;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kInitTokenMethod, AsVector(isolate_credential),
-                         slot_id, (so_pin == nullptr), tmp_pin, label);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::InitToken,
+                     ToBlob(isolate_credential), slot_id, (so_pin == nullptr),
+                     tmp_pin, label, &result);
   return result;
 }
 
@@ -240,11 +277,9 @@ uint32_t ChapsProxyImpl::InitPIN(const SecureBlob& isolate_credential,
   string tmp_pin;
   if (pin)
     tmp_pin = *pin;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kInitPINMethod, AsVector(isolate_credential),
-                         session_id, (pin == nullptr), tmp_pin);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::InitPIN,
+                     ToBlob(isolate_credential), session_id, (pin == nullptr),
+                     tmp_pin, &result);
   return result;
 }
 
@@ -259,11 +294,10 @@ uint32_t ChapsProxyImpl::SetPIN(const SecureBlob& isolate_credential,
   string tmp_new_pin;
   if (new_pin)
     tmp_new_pin = *new_pin;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kSetPINMethod, AsVector(isolate_credential), session_id,
-      (old_pin == nullptr), tmp_old_pin, (new_pin == nullptr), tmp_new_pin);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SetPIN,
+                     ToBlob(isolate_credential), session_id,
+                     (old_pin == nullptr), tmp_old_pin, (new_pin == nullptr),
+                     tmp_new_pin, &result);
   return result;
 }
 
@@ -273,20 +307,17 @@ uint32_t ChapsProxyImpl::OpenSession(const SecureBlob& isolate_credential,
                                      uint64_t* session_id) {
   LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kOpenSessionMethod, AsVector(isolate_credential), slot_id, flags);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, session_id, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::OpenSession,
+                     ToBlob(isolate_credential), slot_id, flags, session_id,
+                     &result);
   return result;
 }
 
 uint32_t ChapsProxyImpl::CloseSession(const SecureBlob& isolate_credential,
                                       uint64_t session_id) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kCloseSessionMethod, AsVector(isolate_credential), session_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::CloseSession,
+                     ToBlob(isolate_credential), session_id, &result);
   return result;
 }
 
@@ -295,10 +326,9 @@ uint32_t ChapsProxyImpl::GetSessionInfo(const SecureBlob& isolate_credential,
                                         SessionInfo* session_info) {
   LOG_CK_RV_AND_RETURN_IF(!session_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetSessionInfoMethod, AsVector(isolate_credential), session_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, session_info, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetSessionInfo,
+                     ToBlob(isolate_credential), session_id, session_info,
+                     &result);
   return result;
 }
 
@@ -307,10 +337,9 @@ uint32_t ChapsProxyImpl::GetOperationState(const SecureBlob& isolate_credential,
                                            vector<uint8_t>* operation_state) {
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGetOperationStateMethod, AsVector(isolate_credential), session_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, operation_state, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetOperationState,
+                     ToBlob(isolate_credential), session_id, operation_state,
+                     &result);
   return result;
 }
 
@@ -321,11 +350,9 @@ uint32_t ChapsProxyImpl::SetOperationState(
     uint64_t encryption_key_handle,
     uint64_t authentication_key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kSetOperationStateMethod, AsVector(isolate_credential), session_id,
-      operation_state, encryption_key_handle, authentication_key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SetOperationState,
+                     ToBlob(isolate_credential), session_id, operation_state,
+                     encryption_key_handle, authentication_key_handle, &result);
   return result;
 }
 
@@ -337,21 +364,17 @@ uint32_t ChapsProxyImpl::Login(const SecureBlob& isolate_credential,
   string tmp_pin;
   if (pin)
     tmp_pin = *pin;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kLoginMethod, AsVector(isolate_credential), session_id,
-                         user_type, (pin == nullptr), tmp_pin);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Login,
+                     ToBlob(isolate_credential), session_id, user_type,
+                     (pin == nullptr), tmp_pin, &result);
   return result;
 }
 
 uint32_t ChapsProxyImpl::Logout(const SecureBlob& isolate_credential,
                                 uint64_t session_id) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kLogoutMethod, AsVector(isolate_credential), session_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Logout,
+                     ToBlob(isolate_credential), session_id, &result);
   return result;
 }
 
@@ -361,11 +384,9 @@ uint32_t ChapsProxyImpl::CreateObject(const SecureBlob& isolate_credential,
                                       uint64_t* new_object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kCreateObjectMethod, AsVector(isolate_credential),
-                         session_id, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, new_object_handle, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::CreateObject,
+                     ToBlob(isolate_credential), session_id, attributes,
+                     new_object_handle, &result);
   return result;
 }
 
@@ -376,11 +397,9 @@ uint32_t ChapsProxyImpl::CopyObject(const SecureBlob& isolate_credential,
                                     uint64_t* new_object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kCopyObjectMethod, AsVector(isolate_credential),
-                         session_id, object_handle, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, new_object_handle, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::CopyObject,
+                     ToBlob(isolate_credential), session_id, object_handle,
+                     attributes, new_object_handle, &result);
   return result;
 }
 
@@ -388,11 +407,9 @@ uint32_t ChapsProxyImpl::DestroyObject(const SecureBlob& isolate_credential,
                                        uint64_t session_id,
                                        uint64_t object_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDestroyObjectMethod, AsVector(isolate_credential),
-                         session_id, object_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DestroyObject,
+                     ToBlob(isolate_credential), session_id, object_handle,
+                     &result);
   return result;
 }
 
@@ -402,11 +419,9 @@ uint32_t ChapsProxyImpl::GetObjectSize(const SecureBlob& isolate_credential,
                                        uint64_t* object_size) {
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kGetObjectSizeMethod, AsVector(isolate_credential),
-                         session_id, object_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, object_size, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetObjectSize,
+                     ToBlob(isolate_credential), session_id, object_handle,
+                     object_size, &result);
   return result;
 }
 
@@ -417,11 +432,9 @@ uint32_t ChapsProxyImpl::GetAttributeValue(const SecureBlob& isolate_credential,
                                            vector<uint8_t>* attributes_out) {
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kGetAttributeValueMethod, AsVector(isolate_credential),
-                         session_id, object_handle, attributes_in);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, attributes_out, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GetAttributeValue,
+                     ToBlob(isolate_credential), session_id, object_handle,
+                     attributes_in, attributes_out, &result);
   return result;
 }
 
@@ -430,11 +443,9 @@ uint32_t ChapsProxyImpl::SetAttributeValue(const SecureBlob& isolate_credential,
                                            uint64_t object_handle,
                                            const vector<uint8_t>& attributes) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kSetAttributeValueMethod, AsVector(isolate_credential),
-                         session_id, object_handle, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SetAttributeValue,
+                     ToBlob(isolate_credential), session_id, object_handle,
+                     attributes, &result);
   return result;
 }
 
@@ -442,11 +453,9 @@ uint32_t ChapsProxyImpl::FindObjectsInit(const SecureBlob& isolate_credential,
                                          uint64_t session_id,
                                          const vector<uint8_t>& attributes) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kFindObjectsInitMethod, AsVector(isolate_credential),
-                         session_id, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::FindObjectsInit,
+                     ToBlob(isolate_credential), session_id, attributes,
+                     &result);
   return result;
 }
 
@@ -457,21 +466,17 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kFindObjectsMethod, AsVector(isolate_credential),
-                         session_id, max_object_count);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, object_list, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::FindObjects,
+                     ToBlob(isolate_credential), session_id, max_object_count,
+                     object_list, &result);
   return result;
 }
 
 uint32_t ChapsProxyImpl::FindObjectsFinal(const SecureBlob& isolate_credential,
                                           uint64_t session_id) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kFindObjectsFinalMethod, AsVector(isolate_credential), session_id);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::FindObjectsFinal,
+                     ToBlob(isolate_credential), session_id, &result);
   return result;
 }
 
@@ -481,11 +486,9 @@ uint32_t ChapsProxyImpl::EncryptInit(const SecureBlob& isolate_credential,
                                      const vector<uint8_t>& mechanism_parameter,
                                      uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kEncryptInitMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::EncryptInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, key_handle, &result);
   return result;
 }
 
@@ -497,13 +500,9 @@ uint32_t ChapsProxyImpl::Encrypt(const SecureBlob& isolate_credential,
                                  vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kEncryptMethod, AsVector(isolate_credential),
-                         session_id, data_in, max_out_length);
-  if (resp) {
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
-  }
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Encrypt,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -515,13 +514,9 @@ uint32_t ChapsProxyImpl::EncryptUpdate(const SecureBlob& isolate_credential,
                                        vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kEncryptUpdateMethod, AsVector(isolate_credential),
-                         session_id, data_in, max_out_length);
-  if (resp) {
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
-  }
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::EncryptUpdate,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -532,20 +527,16 @@ uint32_t ChapsProxyImpl::EncryptFinal(const SecureBlob& isolate_credential,
                                       vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kEncryptFinalMethod, AsVector(isolate_credential),
-                         session_id, max_out_length);
-  if (resp) {
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
-  }
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::EncryptFinal,
+                     ToBlob(isolate_credential), session_id, max_out_length,
+                     actual_out_length, data_out, &result);
   return result;
 }
 
 void ChapsProxyImpl::EncryptCancel(const SecureBlob& isolate_credential,
                                    uint64_t session_id) {
-  proxy_->CallMethod(kEncryptCancelMethod, AsVector(isolate_credential),
-                     session_id);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::EncryptCancel,
+                     ToBlob(isolate_credential), session_id);
 }
 
 uint32_t ChapsProxyImpl::DecryptInit(const SecureBlob& isolate_credential,
@@ -554,11 +545,9 @@ uint32_t ChapsProxyImpl::DecryptInit(const SecureBlob& isolate_credential,
                                      const vector<uint8_t>& mechanism_parameter,
                                      uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDecryptInitMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DecryptInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, key_handle, &result);
   return result;
 }
 
@@ -570,13 +559,9 @@ uint32_t ChapsProxyImpl::Decrypt(const SecureBlob& isolate_credential,
                                  vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDecryptMethod, AsVector(isolate_credential),
-                         session_id, data_in, max_out_length);
-  if (resp) {
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
-  }
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Decrypt,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -588,12 +573,9 @@ uint32_t ChapsProxyImpl::DecryptUpdate(const SecureBlob& isolate_credential,
                                        vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDecryptUpdateMethod, AsVector(isolate_credential),
-                         session_id, data_in, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DecryptUpdate,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -604,19 +586,16 @@ uint32_t ChapsProxyImpl::DecryptFinal(const SecureBlob& isolate_credential,
                                       vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDecryptFinalMethod, AsVector(isolate_credential),
-                         session_id, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DecryptFinal,
+                     ToBlob(isolate_credential), session_id, max_out_length,
+                     actual_out_length, data_out, &result);
   return result;
 }
 
 void ChapsProxyImpl::DecryptCancel(const SecureBlob& isolate_credential,
                                    uint64_t session_id) {
-  proxy_->CallMethod(kDecryptCancelMethod, AsVector(isolate_credential),
-                     session_id);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DecryptCancel,
+                     ToBlob(isolate_credential), session_id);
 }
 
 uint32_t ChapsProxyImpl::DigestInit(
@@ -625,11 +604,9 @@ uint32_t ChapsProxyImpl::DigestInit(
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDigestInitMethod, AsVector(isolate_credential),
-                         session_id, mechanism_type, mechanism_parameter);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DigestInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, &result);
   return result;
 }
 
@@ -640,12 +617,9 @@ uint32_t ChapsProxyImpl::Digest(const SecureBlob& isolate_credential,
                                 uint64_t* actual_out_length,
                                 vector<uint8_t>* digest) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDigestMethod, AsVector(isolate_credential),
-                         session_id, data_in, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, digest,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Digest,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, digest, &result);
   return result;
 }
 
@@ -653,10 +627,8 @@ uint32_t ChapsProxyImpl::DigestUpdate(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& data_in) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDigestUpdateMethod, AsVector(isolate_credential), session_id, data_in);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DigestUpdate,
+                     ToBlob(isolate_credential), session_id, data_in, &result);
   return result;
 }
 
@@ -664,10 +636,9 @@ uint32_t ChapsProxyImpl::DigestKey(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDigestKeyMethod, AsVector(isolate_credential), session_id, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DigestKey,
+                     ToBlob(isolate_credential), session_id, key_handle,
+                     &result);
   return result;
 }
 
@@ -677,19 +648,16 @@ uint32_t ChapsProxyImpl::DigestFinal(const SecureBlob& isolate_credential,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* digest) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kDigestFinalMethod, AsVector(isolate_credential),
-                         session_id, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, digest,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DigestFinal,
+                     ToBlob(isolate_credential), session_id, max_out_length,
+                     actual_out_length, digest, &result);
   return result;
 }
 
 void ChapsProxyImpl::DigestCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
-  proxy_->CallMethod(kDigestCancelMethod, AsVector(isolate_credential),
-                     session_id);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DigestCancel,
+                     ToBlob(isolate_credential), session_id);
 }
 
 uint32_t ChapsProxyImpl::SignInit(const SecureBlob& isolate_credential,
@@ -698,11 +666,9 @@ uint32_t ChapsProxyImpl::SignInit(const SecureBlob& isolate_credential,
                                   const vector<uint8_t>& mechanism_parameter,
                                   uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kSignInitMethod, AsVector(isolate_credential), session_id, mechanism_type,
-      mechanism_parameter, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, key_handle, &result);
   return result;
 }
 
@@ -713,12 +679,9 @@ uint32_t ChapsProxyImpl::Sign(const SecureBlob& isolate_credential,
                               uint64_t* actual_out_length,
                               vector<uint8_t>* signature) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kSignMethod, AsVector(isolate_credential), session_id,
-                         data, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, signature,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Sign,
+                     ToBlob(isolate_credential), session_id, data,
+                     max_out_length, actual_out_length, signature, &result);
   return result;
 }
 
@@ -726,10 +689,9 @@ uint32_t ChapsProxyImpl::SignUpdate(const SecureBlob& isolate_credential,
                                     uint64_t session_id,
                                     const vector<uint8_t>& data_part) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kSignUpdateMethod, AsVector(isolate_credential), session_id, data_part);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignUpdate,
+                     ToBlob(isolate_credential), session_id, data_part,
+                     &result);
   return result;
 }
 
@@ -739,19 +701,16 @@ uint32_t ChapsProxyImpl::SignFinal(const SecureBlob& isolate_credential,
                                    uint64_t* actual_out_length,
                                    vector<uint8_t>* signature) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kSignFinalMethod, AsVector(isolate_credential),
-                         session_id, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, signature,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignFinal,
+                     ToBlob(isolate_credential), session_id, max_out_length,
+                     actual_out_length, signature, &result);
   return result;
 }
 
 void ChapsProxyImpl::SignCancel(const SecureBlob& isolate_credential,
                                 uint64_t session_id) {
-  proxy_->CallMethod(kSignCancelMethod, AsVector(isolate_credential),
-                     session_id);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignCancel,
+                     ToBlob(isolate_credential), session_id);
 }
 
 uint32_t ChapsProxyImpl::SignRecoverInit(
@@ -761,11 +720,9 @@ uint32_t ChapsProxyImpl::SignRecoverInit(
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kSignRecoverInitMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignRecoverInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, key_handle, &result);
   return result;
 }
 
@@ -776,12 +733,9 @@ uint32_t ChapsProxyImpl::SignRecover(const SecureBlob& isolate_credential,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* signature) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kSignRecoverMethod, AsVector(isolate_credential),
-                         session_id, data, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, signature,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignRecover,
+                     ToBlob(isolate_credential), session_id, data,
+                     max_out_length, actual_out_length, signature, &result);
   return result;
 }
 
@@ -791,11 +745,9 @@ uint32_t ChapsProxyImpl::VerifyInit(const SecureBlob& isolate_credential,
                                     const vector<uint8_t>& mechanism_parameter,
                                     uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kVerifyInitMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::VerifyInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, key_handle, &result);
   return result;
 }
 
@@ -804,10 +756,9 @@ uint32_t ChapsProxyImpl::Verify(const SecureBlob& isolate_credential,
                                 const vector<uint8_t>& data,
                                 const vector<uint8_t>& signature) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kVerifyMethod, AsVector(isolate_credential), session_id, data, signature);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::Verify,
+                     ToBlob(isolate_credential), session_id, data, signature,
+                     &result);
   return result;
 }
 
@@ -815,10 +766,9 @@ uint32_t ChapsProxyImpl::VerifyUpdate(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& data_part) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kVerifyUpdateMethod, AsVector(isolate_credential), session_id, data_part);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::VerifyUpdate,
+                     ToBlob(isolate_credential), session_id, data_part,
+                     &result);
   return result;
 }
 
@@ -826,17 +776,16 @@ uint32_t ChapsProxyImpl::VerifyFinal(const SecureBlob& isolate_credential,
                                      uint64_t session_id,
                                      const vector<uint8_t>& signature) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kVerifyUpdateMethod, AsVector(isolate_credential), session_id, signature);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::VerifyFinal,
+                     ToBlob(isolate_credential), session_id, signature,
+                     &result);
   return result;
 }
 
 void ChapsProxyImpl::VerifyCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
-  proxy_->CallMethod(kVerifyCancelMethod, AsVector(isolate_credential),
-                     session_id);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::VerifyCancel,
+                     ToBlob(isolate_credential), session_id);
 }
 
 uint32_t ChapsProxyImpl::VerifyRecoverInit(
@@ -846,11 +795,9 @@ uint32_t ChapsProxyImpl::VerifyRecoverInit(
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kVerifyRecoverInitMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, key_handle);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::VerifyRecoverInit,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, key_handle, &result);
   return result;
 }
 
@@ -861,12 +808,9 @@ uint32_t ChapsProxyImpl::VerifyRecover(const SecureBlob& isolate_credential,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data) {
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kVerifyRecoverMethod, AsVector(isolate_credential),
-                         session_id, signature, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::VerifyRecover,
+                     ToBlob(isolate_credential), session_id, signature,
+                     max_out_length, actual_out_length, data, &result);
   return result;
 }
 
@@ -879,12 +823,9 @@ uint32_t ChapsProxyImpl::DigestEncryptUpdate(
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDigestEncryptUpdateMethod, AsVector(isolate_credential), session_id,
-      data_in, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DigestEncryptUpdate,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -897,12 +838,9 @@ uint32_t ChapsProxyImpl::DecryptDigestUpdate(
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDecryptDigestUpdateMethod, AsVector(isolate_credential), session_id,
-      data_in, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DecryptDigestUpdate,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -914,12 +852,9 @@ uint32_t ChapsProxyImpl::SignEncryptUpdate(const SecureBlob& isolate_credential,
                                            vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kSignEncryptUpdateMethod, AsVector(isolate_credential),
-                         session_id, data_in, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SignEncryptUpdate,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -932,12 +867,9 @@ uint32_t ChapsProxyImpl::DecryptVerifyUpdate(
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDecryptVerifyUpdateMethod, AsVector(isolate_credential), session_id,
-      data_in, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length, data_out,
-                             &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DecryptVerifyUpdate,
+                     ToBlob(isolate_credential), session_id, data_in,
+                     max_out_length, actual_out_length, data_out, &result);
   return result;
 }
 
@@ -949,11 +881,9 @@ uint32_t ChapsProxyImpl::GenerateKey(const SecureBlob& isolate_credential,
                                      uint64_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kGenerateKeyMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, key_handle, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GenerateKey,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, attributes, key_handle, &result);
   return result;
 }
 
@@ -969,13 +899,10 @@ uint32_t ChapsProxyImpl::GenerateKeyPair(
   LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
                           CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kGenerateKeyPairMethod, AsVector(isolate_credential),
-                         session_id, mechanism_type, mechanism_parameter,
-                         public_attributes, private_attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, public_key_handle,
-                             private_key_handle, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GenerateKeyPair,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, public_attributes, private_attributes,
+                     public_key_handle, private_key_handle, &result);
   return result;
 }
 
@@ -991,12 +918,10 @@ uint32_t ChapsProxyImpl::WrapKey(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
                           CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kWrapKeyMethod, AsVector(isolate_credential), session_id, mechanism_type,
-      mechanism_parameter, wrapping_key_handle, key_handle, max_out_length);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, actual_out_length,
-                             wrapped_key, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::WrapKey,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, wrapping_key_handle, key_handle,
+                     max_out_length, actual_out_length, wrapped_key, &result);
   return result;
 }
 
@@ -1010,12 +935,10 @@ uint32_t ChapsProxyImpl::UnwrapKey(const SecureBlob& isolate_credential,
                                    uint64_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kUnwrapKeyMethod, AsVector(isolate_credential),
-                         session_id, mechanism_type, mechanism_parameter,
-                         wrapping_key_handle, wrapped_key, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, key_handle, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::UnwrapKey,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, wrapping_key_handle, wrapped_key,
+                     attributes, key_handle, &result);
   return result;
 }
 
@@ -1028,11 +951,10 @@ uint32_t ChapsProxyImpl::DeriveKey(const SecureBlob& isolate_credential,
                                    uint64_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kDeriveKeyMethod, AsVector(isolate_credential), session_id,
-      mechanism_type, mechanism_parameter, base_key_handle, attributes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, key_handle, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::DeriveKey,
+                     ToBlob(isolate_credential), session_id, mechanism_type,
+                     mechanism_parameter, base_key_handle, attributes,
+                     key_handle, &result);
   return result;
 }
 
@@ -1041,10 +963,8 @@ uint32_t ChapsProxyImpl::SeedRandom(const SecureBlob& isolate_credential,
                                     const vector<uint8_t>& seed) {
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kSeedRandomMethod, AsVector(isolate_credential), session_id, seed);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::SeedRandom,
+                     ToBlob(isolate_credential), session_id, seed, &result);
   return result;
 }
 
@@ -1054,11 +974,9 @@ uint32_t ChapsProxyImpl::GenerateRandom(const SecureBlob& isolate_credential,
                                         vector<uint8_t>* random_data) {
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
-  std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kGenerateRandomMethod, AsVector(isolate_credential),
-                         session_id, num_bytes);
-  if (resp)
-    ExtractMethodCallResults(resp.get(), nullptr, random_data, &result);
+  SendRequestAndWait(&org::chromium::ChapsProxyInterface::GenerateRandom,
+                     ToBlob(isolate_credential), session_id, num_bytes,
+                     random_data, &result);
   return result;
 }
 

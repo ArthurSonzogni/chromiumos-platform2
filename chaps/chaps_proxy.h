@@ -14,14 +14,13 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
+#include <chaps-client/chaps/dbus-proxies.h>
 #include <dbus/message.h>
 
 #include "chaps/chaps_interface.h"
-#include "chaps/dbus_bindings/constants.h"
 
 namespace chaps {
-
-class DBusProxyWrapper;
 
 // ChapsProxyImpl is the default implementation of the chaps proxy interface.
 // All calls are forwarded to a libchrome proxy object.
@@ -344,16 +343,44 @@ class ChapsProxyImpl : public ChapsInterface {
                           std::vector<uint8_t>* random_data) override;
 
  private:
+  // Chaps proxy communication thread class that cleans up after stopping.
+  class ChapsProxyThread : public base::Thread {
+   public:
+    explicit ChapsProxyThread(ChapsProxyImpl* proxy)
+        : base::Thread("chaps_dbus_client_thread"), proxy_(proxy) {
+      DCHECK(proxy_);
+    }
+    ChapsProxyThread(const ChapsProxyThread&) = delete;
+    ChapsProxyThread& operator=(const ChapsProxyThread&) = delete;
+
+    ~ChapsProxyThread() override { Stop(); }
+
+   private:
+    void CleanUp() override { proxy_->ShutdownTask(); }
+
+    ChapsProxyImpl* const proxy_;
+  };
+
   // Use the static factory method to create a ChapsProxyImpl.
-  ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit,
-                 std::unique_ptr<base::Thread> dbus_thread,
-                 scoped_refptr<DBusProxyWrapper> proxy);
+  explicit ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit);
+
   ChapsProxyImpl(const ChapsProxyImpl&) = delete;
   ChapsProxyImpl& operator=(const ChapsProxyImpl&) = delete;
 
+  void InitializationTask(base::WaitableEvent* completion, bool* connected);
+  void ShutdownTask();
+
+  template <typename MethodType, typename... Args>
+  bool SendRequestAndWait(const MethodType& method, Args... args);
+
   std::unique_ptr<base::AtExitManager> at_exit_;
-  std::unique_ptr<base::Thread> dbus_thread_;  // Runs D-Bus tasks for |proxy_|.
-  scoped_refptr<DBusProxyWrapper> proxy_;
+
+  std::unique_ptr<org::chromium::ChapsProxy> default_proxy_;
+  org::chromium::ChapsProxyInterface* proxy_;
+  scoped_refptr<dbus::Bus> bus_;
+
+  std::unique_ptr<ChapsProxyThread>
+      dbus_thread_;  // Runs D-Bus tasks for |proxy_|.
 };
 
 }  // namespace chaps
