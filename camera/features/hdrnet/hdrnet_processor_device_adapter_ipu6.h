@@ -29,8 +29,7 @@ class HdrNetProcessorDeviceAdapterIpu6 : public HdrNetProcessorDeviceAdapter {
   ~HdrNetProcessorDeviceAdapterIpu6() override = default;
   bool Initialize() override;
   void TearDown() override;
-  void ProcessResultMetadata(int frame_number,
-                             const camera_metadata_t* metadata) override;
+  void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
   bool Preprocess(const HdrNetConfig::Options& options,
                   const SharedImage& input_nv12,
                   const SharedImage& output_rgba) override;

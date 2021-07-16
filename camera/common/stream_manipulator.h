@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -54,7 +55,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // A hook to the camera3_device_ops::process_capture_request(). Will be called
   // by CameraDeviceAdapter for each incoming capture request |request|.
-  virtual bool ProcessCaptureRequest(camera3_capture_request_t* request) = 0;
+  virtual bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) = 0;
 
   // A hook to the camera3_device_ops::flush(). Will be called by
   // CameraDeviceAdapter when the camera client requests a flush.
@@ -66,7 +67,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // A hook to the camera3_callback_ops::process_capture_result(). Will be
   // called by CameraDeviceAdapter for each capture result |result| produced by
   // the camera HAL implementation.
-  virtual bool ProcessCaptureResult(camera3_capture_result_t* result) = 0;
+  virtual bool ProcessCaptureResult(Camera3CaptureDescriptor* result) = 0;
 
   // A hook to the camera3_callback_ops::notify(). Will be called by
   // CameraDeviceAdapter for each notify message |msg| produced by the camera

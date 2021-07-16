@@ -96,7 +96,7 @@ void HdrNetProcessorDeviceAdapterIpu6::TearDown() {
 }
 
 void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
-    int frame_number, const camera_metadata_t* metadata) {
+    Camera3CaptureDescriptor* result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   // TODO(jcliang): Theoretically metadata can come after the buffer as well.
   // Currently the pipeline would break if the metadata come after the buffers.
@@ -108,7 +108,7 @@ void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
   // TODO(jcliang): Update the metadata tag once we move the GTM curve to a
   // vendor tag.
   base::span<const float> tonemap_curve =
-      GetRoMetadataAsSpan<float>(metadata, ANDROID_TONEMAP_CURVE_RED);
+      result->GetMetadata<float>(ANDROID_TONEMAP_CURVE_RED);
   if (!tonemap_curve.empty()) {
     VLOGF(1) << "Update GTM curve";
     CHECK_EQ(tonemap_curve.size(), num_curve_points_ * 2);

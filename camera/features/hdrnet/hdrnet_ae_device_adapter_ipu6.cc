@@ -29,42 +29,41 @@ HdrNetAeDeviceAdapterIpu6::HdrNetAeDeviceAdapterIpu6()
     : gcam_ae_(GcamAe::CreateInstance()) {}
 
 bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
-    int frame_number,
-    const camera_metadata_t* result_metadata,
-    MetadataLogger* metadata_logger_) {
-  base::Optional<int32_t> ae_stats_grid_width = GetRoMetadata<int32_t>(
-      result_metadata, CHROMEOS_IPU6_RGBS_STATS_GRID_WIDTH);
-  if (!ae_stats_grid_width) {
+    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger_) {
+  base::span<const int32_t> ae_stats_grid_width =
+      result->GetMetadata<int32_t>(CHROMEOS_IPU6_RGBS_STATS_GRID_WIDTH);
+  if (ae_stats_grid_width.empty()) {
     VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_GRID_WIDTH";
     return false;
   }
-  base::Optional<int32_t> ae_stats_grid_height = GetRoMetadata<int32_t>(
-      result_metadata, CHROMEOS_IPU6_RGBS_STATS_GRID_HEIGHT);
-  if (!ae_stats_grid_height) {
+  base::span<const int32_t> ae_stats_grid_height =
+      result->GetMetadata<int32_t>(CHROMEOS_IPU6_RGBS_STATS_GRID_HEIGHT);
+  if (ae_stats_grid_height.empty()) {
     VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_GRID_HEIGHT";
     return false;
   }
-  base::Optional<uint8_t> ae_stats_shading_correction = GetRoMetadata<uint8_t>(
-      result_metadata, CHROMEOS_IPU6_RGBS_STATS_SHADING_CORRECTION);
-  if (!ae_stats_shading_correction) {
+  base::span<const uint8_t> ae_stats_shading_correction =
+      result->GetMetadata<uint8_t>(CHROMEOS_IPU6_RGBS_STATS_SHADING_CORRECTION);
+  if (ae_stats_shading_correction.empty()) {
     VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_SHADING_CORRECTION";
     return false;
   }
-  base::span<const uint8_t> ae_stats_blocks = GetRoMetadataAsSpan<uint8_t>(
-      result_metadata, CHROMEOS_IPU6_RGBS_STATS_BLOCKS);
+  base::span<const uint8_t> ae_stats_blocks =
+      result->GetMetadata<uint8_t>(CHROMEOS_IPU6_RGBS_STATS_BLOCKS);
   if (ae_stats_blocks.empty()) {
     VLOGF(2) << "Cannot get CHROMEOS_IPU6_RGBS_STATS_BLOCKS";
     return false;
   }
 
-  VLOGF(2) << "ae_stats_grid_width=" << *ae_stats_grid_width;
-  VLOGF(2) << "ae_stats_grid_height=" << *ae_stats_grid_height;
-  VLOGF(2) << "ae_stats_shading_correction=" << !!*ae_stats_shading_correction;
+  VLOGF(2) << "ae_stats_grid_width=" << ae_stats_grid_width[0];
+  VLOGF(2) << "ae_stats_grid_height=" << ae_stats_grid_height[0];
+  VLOGF(2) << "ae_stats_shading_correction="
+           << !!ae_stats_shading_correction[0];
   VLOGF(2) << "ae_stats_blocks.size()=" << ae_stats_blocks.size();
   if (VLOG_IS_ON(2)) {
-    for (int y = 0; y < *ae_stats_grid_height; ++y) {
-      for (int x = 0; x < *ae_stats_grid_width; ++x) {
-        int base = (y * (*ae_stats_grid_width) + x) * 5;
+    for (int y = 0; y < ae_stats_grid_height[0]; ++y) {
+      for (int x = 0; x < ae_stats_grid_width[0]; ++x) {
+        int base = (y * (ae_stats_grid_width[0]) + x) * 5;
         int avg_gr = ae_stats_blocks[base];
         int avg_r = ae_stats_blocks[base + 1];
         int avg_b = ae_stats_blocks[base + 2];
@@ -81,12 +80,12 @@ bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
   // We should create the entry only when there's valid AE stats, so that when
   // HasAeStats() returns true there's indeed valid AE stats.
   base::Optional<AeStatsIntelIpu6*> ae_stats =
-      GetAeStatsEntry(frame_number, /*create_entry=*/true);
+      GetAeStatsEntry(result->frame_number(), /*create_entry=*/true);
 
   (*ae_stats)->white_level = kIpu6WhiteLevel;
-  (*ae_stats)->grid_width = *ae_stats_grid_width;
-  (*ae_stats)->grid_height = *ae_stats_grid_height;
-  int num_grid_blocks = *ae_stats_grid_width * *ae_stats_grid_height;
+  (*ae_stats)->grid_width = ae_stats_grid_width[0];
+  (*ae_stats)->grid_height = ae_stats_grid_height[0];
+  int num_grid_blocks = ae_stats_grid_width[0] * ae_stats_grid_height[0];
   for (int i = 0; i < num_grid_blocks; ++i) {
     int base = i * 5;
     AeStatsGridBlockIntelIpu6& block = (*ae_stats)->grid_blocks[i];
@@ -98,14 +97,16 @@ bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
   }
 
   if (metadata_logger_) {
-    metadata_logger_->Log(frame_number, kTagWhiteLevel, kIpu6WhiteLevel);
-    metadata_logger_->Log(frame_number, kTagIpu6RgbsStatsGridWidth,
-                          *ae_stats_grid_width);
-    metadata_logger_->Log(frame_number, kTagIpu6RgbsStatsGridHeight,
-                          *ae_stats_grid_height);
-    metadata_logger_->Log(frame_number, kTagIpu6RgbsStatsShadingCorrection,
-                          *ae_stats_shading_correction);
-    metadata_logger_->Log(frame_number, kTagIpu6RgbsStatsBlocks,
+    metadata_logger_->Log(result->frame_number(), kTagWhiteLevel,
+                          kIpu6WhiteLevel);
+    metadata_logger_->Log(result->frame_number(), kTagIpu6RgbsStatsGridWidth,
+                          ae_stats_grid_width[0]);
+    metadata_logger_->Log(result->frame_number(), kTagIpu6RgbsStatsGridHeight,
+                          ae_stats_grid_height[0]);
+    metadata_logger_->Log(result->frame_number(),
+                          kTagIpu6RgbsStatsShadingCorrection,
+                          ae_stats_shading_correction[0]);
+    metadata_logger_->Log(result->frame_number(), kTagIpu6RgbsStatsBlocks,
                           ae_stats_blocks);
   }
 

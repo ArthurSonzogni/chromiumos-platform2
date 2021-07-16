@@ -15,6 +15,7 @@
 #include <base/single_thread_task_runner.h>
 #include <system/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/common_types.h"
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_processor_device_adapter.h"
@@ -42,10 +43,7 @@ class HdrNetProcessor {
   virtual void TearDown() = 0;
 
   // Per-frame callback to pass the capture result metadata to HdrNetProcessor.
-  // |frame_number| is the frame number as set in the camera3_capture_result
-  // struct. |metadata| is the result_metadata carried in the capture result.
-  virtual void ProcessResultMetadata(int frame_number,
-                                     const camera_metadata_t* metadata) = 0;
+  virtual void ProcessResultMetadata(Camera3CaptureDescriptor* result) = 0;
 
   // Runs the HDRnet pipeline for frame |frame_number| with configuration
   // specified in |options|. |input_yuv| is the input YUV buffer

@@ -235,7 +235,10 @@ TEST_F(HdrNetProcessorTest, HdrNetProcessorBenchmark) {
 
   for (int i = 0; i < g_args.benchmark_iterations; ++i) {
     base::TimeTicks base = base::TimeTicks::Now();
-    processor_->ProcessResultMetadata(i, result_metadata_ptr);
+    Camera3CaptureDescriptor result(
+        camera3_capture_result_t{.frame_number = static_cast<uint32_t>(i)});
+    result.AppendMetadata(result_metadata_ptr);
+    processor_->ProcessResultMetadata(&result);
     total_latency_for_updating_gtm_textures += base::TimeTicks::Now() - base;
 
     std::vector<buffer_handle_t> output_buffers;

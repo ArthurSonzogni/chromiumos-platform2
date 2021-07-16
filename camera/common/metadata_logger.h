@@ -120,6 +120,12 @@ CROS_CAMERA_EXPORT void MetadataLogger::Log(int frame_number,
                                             std::string key,
                                             base::span<const Rational> values);
 
+template <>
+CROS_CAMERA_EXPORT void MetadataLogger::Log(
+    int frame_number,
+    std::string key,
+    base::span<const camera_metadata_rational_t> values);
+
 }  // namespace cros
 
 #endif  // CAMERA_COMMON_METADATA_LOGGER_H_

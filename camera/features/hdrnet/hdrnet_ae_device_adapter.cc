@@ -21,10 +21,8 @@ std::unique_ptr<HdrNetAeDeviceAdapter> HdrNetAeDeviceAdapter::CreateInstance() {
 #endif
 }
 
-bool HdrNetAeDeviceAdapter::ExtractAeStats(
-    int frame_number,
-    const camera_metadata_t* result_metadata,
-    MetadataLogger* metadata_logger) {
+bool HdrNetAeDeviceAdapter::ExtractAeStats(Camera3CaptureDescriptor* result,
+                                           MetadataLogger* metadata_logger) {
   return true;
 }
 

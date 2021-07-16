@@ -122,7 +122,7 @@ bool HdrNetStreamManipulator::OnConfiguredStreams(
 }
 
 bool HdrNetStreamManipulator::ProcessCaptureRequest(
-    camera3_capture_request_t* request) {
+    Camera3CaptureDescriptor* request) {
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
@@ -133,7 +133,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequest(
 }
 
 bool HdrNetStreamManipulator::ProcessCaptureResult(
-    camera3_capture_result_t* result) {
+    Camera3CaptureDescriptor* result) {
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
@@ -253,31 +253,30 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
 }
 
 bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
-    camera3_capture_request_t* request) {
+    Camera3CaptureDescriptor* request) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
-  camera_metadata_t* request_metadata =
-      const_cast<camera_metadata_t*>(request->settings);
-  RecordCaptureMetadataOnGpuThread(request->frame_number, request_metadata);
+  RecordCaptureMetadataOnGpuThread(request);
 
   RequestContext request_context;
   std::vector<HdrNetStreamContext*> hdrnet_stream_contexts;
 
-  VLOGF(2) << "[" << request->frame_number << "] Got request:";
-  for (int i = 0; i < request->num_output_buffers; ++i) {
-    const camera3_stream_buffer_t* request_buffer = &request->output_buffers[i];
-    VLOGF(2) << "\t" << GetDebugString(request_buffer->stream);
+  VLOGFID(2, request->frame_number()) << " Got request:";
+  base::span<const camera3_stream_buffer_t> output_buffers =
+      request->GetOutputBuffers();
+  for (const auto& request_buffer : output_buffers) {
+    VLOGF(2) << "\t" << GetDebugString(request_buffer.stream);
 
     HdrNetStreamContext* stream_context =
-        GetHdrNetContextFromRequestedStream(request_buffer->stream);
+        GetHdrNetContextFromRequestedStream(request_buffer.stream);
     if (!stream_context) {
       // Not a stream that we care, so simply pass through to HAL.
-      request_context.modified_buffers.push_back(*request_buffer);
+      request_context.modified_buffers.push_back(request_buffer);
       continue;
     }
     // Record the client-requested buffers that we will produce with the HDRnet
     // processor.
-    request_context.requested_buffers.push_back(*request_buffer);
+    request_context.requested_buffers.push_back(request_buffer);
 
     auto is_compatible = [stream_context](const HdrNetStreamContext* c) {
       return HaveSameAspectRatio(c->hdrnet_stream.get(),
@@ -315,70 +314,67 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     });
   }
 
-  uint32_t frame_number = request->frame_number;
+  uint32_t frame_number = request->frame_number();
   request_context_.insert({frame_number, std::move(request_context)});
-  request->num_output_buffers =
-      request_context_[frame_number].modified_buffers.size();
-  request->output_buffers =
-      request_context_[frame_number].modified_buffers.data();
+  request->SetOutputBuffers(request_context_[frame_number].modified_buffers);
 
-  VLOGF(2) << "[" << request->frame_number << "] Modified request:";
-  for (int i = 0; i < request->num_output_buffers; ++i) {
-    camera3_stream_buffer_t* request_buffer =
-        const_cast<camera3_stream_buffer_t*>(&request->output_buffers[i]);
-    VLOGF(2) << "\t" << GetDebugString(request_buffer->stream);
+  if (VLOG_IS_ON(2)) {
+    VLOGFID(2, frame_number) << "Modified request:";
+    base::span<const camera3_stream_buffer_t> output_buffers =
+        request->GetOutputBuffers();
+    for (const auto& request_buffer : output_buffers) {
+      VLOGF(2) << "\t" << GetDebugString(request_buffer.stream);
+    }
   }
 
   return true;
 }
 
 bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
-    camera3_capture_result_t* result) {
+    Camera3CaptureDescriptor* result) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
   HdrNetConfig::Options options = config_.GetOptions();
 
-  if (result->result) {
-    ae_controller_->RecordAeMetadata(result->frame_number, result->result);
+  if (result->has_metadata()) {
+    ae_controller_->RecordAeMetadata(result);
 
     if (options.use_cros_face_detector) {
       // This is mainly for displaying the face rectangles in camera app for
       // development and debugging.
-      ae_controller_->WriteResultFaceRectangles(
-          const_cast<camera_metadata_t*>(result->result));
+      ae_controller_->WriteResultFaceRectangles(result);
     }
     if (options.hdrnet_enable) {
       // Result metadata may come before the buffers due to partial results.
       for (const auto& context : stream_replace_context_) {
         // TODO(jcliang): Update the LUT textures once and share it with all
         // processors.
-        context->processor->ProcessResultMetadata(result->frame_number,
-                                                  result->result);
+        context->processor->ProcessResultMetadata(result);
       }
     }
   }
 
-  if (result->num_output_buffers == 0) {
+  if (result->num_output_buffers() == 0) {
     return true;
   }
 
   // Run the HDRnet pipeline if there's a buffer that we care.
-  std::vector<std::pair<HdrNetStreamContext*, camera3_stream_buffer_t*>>
+  std::vector<std::pair<HdrNetStreamContext*, const camera3_stream_buffer_t*>>
       stream_contexts;
-  VLOGF(2) << "[" << result->frame_number << "] Got result:";
-  for (int i = 0; i < result->num_output_buffers; ++i) {
-    camera3_stream_buffer_t* hal_result_buffer =
-        const_cast<camera3_stream_buffer_t*>(&result->output_buffers[i]);
-    VLOGF(2) << "\t" << GetDebugString(hal_result_buffer->stream);
+  VLOGFID(2, result->frame_number()) << "Got result:";
+  base::span<const camera3_stream_buffer_t> output_buffers =
+      result->GetOutputBuffers();
+  for (const auto& hal_result_buffer : output_buffers) {
+    VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream);
     HdrNetStreamContext* stream_context =
-        GetHdrNetContextFromHdrNetStream(hal_result_buffer->stream);
+        GetHdrNetContextFromHdrNetStream(hal_result_buffer.stream);
     if (stream_context) {
-      stream_contexts.emplace_back(stream_context, hal_result_buffer);
+      stream_contexts.emplace_back(stream_context, &hal_result_buffer);
     }
   }
 
   if (!stream_contexts.empty()) {
-    RequestContext& request_context = request_context_[result->frame_number];
+    RequestContext& request_context = request_context_[result->frame_number()];
     const SharedImage* yuv_image_to_record = nullptr;
     for (auto [stream_context, hal_buffer_to_process] : stream_contexts) {
       // Prepare the set of client-requested buffers that will written to by the
@@ -407,7 +403,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
       HdrNetConfig::Options processor_config = config_.GetOptions();
       if (processor_config.gcam_ae_enable) {
         processor_config.hdr_ratio =
-            ae_controller_->GetCalculatedHdrRatio(result->frame_number);
+            ae_controller_->GetCalculatedHdrRatio(result->frame_number());
       }
 
       const SharedImage& image =
@@ -417,7 +413,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
         buffers_to_write.push_back(*stream_buffer->buffer);
       }
       base::ScopedFD hdrnet_release_fence = stream_context->processor->Run(
-          result->frame_number, processor_config, image,
+          result->frame_number(), processor_config, image,
           base::ScopedFD(hal_buffer_to_process->release_fence),
           buffers_to_write);
 
@@ -443,39 +439,33 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     }
 
     if (yuv_image_to_record) {
-      RecordYuvBufferForAeControllerOnGpuThread(result->frame_number,
+      RecordYuvBufferForAeControllerOnGpuThread(result->frame_number(),
                                                 *yuv_image_to_record);
     }
 
     // Prepare the set of buffers that we'll send back to the client. Include
     // any buffer that's not replaced by us.
-    for (int i = 0; i < result->num_output_buffers; ++i) {
-      camera3_stream_buffer_t* hal_result_buffer =
-          const_cast<camera3_stream_buffer_t*>(&result->output_buffers[i]);
+    base::span<const camera3_stream_buffer_t> output_buffers =
+        result->GetOutputBuffers();
+    for (const auto& hal_result_buffer : output_buffers) {
       HdrNetStreamContext* stream_context =
-          GetHdrNetContextFromHdrNetStream(hal_result_buffer->stream);
+          GetHdrNetContextFromHdrNetStream(hal_result_buffer.stream);
       if (!stream_context) {
-        request_context.requested_buffers.push_back(*hal_result_buffer);
+        request_context.requested_buffers.push_back(hal_result_buffer);
       }
     }
     // Send back the buffers with our buffer set.
-    result->num_output_buffers = request_context.requested_buffers.size();
-    result->output_buffers = request_context.requested_buffers.data();
+    result->SetOutputBuffers(request_context.requested_buffers);
+    request_context_.erase(result->frame_number());
   }
 
-  // We don't delete the request context immediately because |requested_buffers|
-  // needs to stay alive until the client finishes consuming it. Removing the
-  // request contexts 6 frames after the result has been returned seems to be a
-  // reasonable TTL. 6 is chosen because it's the common max_buffer setting on
-  // Intel devices.
-  constexpr uint32_t kRequestTTL = 6;
-  if (result->frame_number >= kRequestTTL) {
-    request_context_.erase(result->frame_number - kRequestTTL);
-  }
-
-  VLOGF(2) << "[" << result->frame_number << "] Modified result:";
-  for (int i = 0; i < result->num_output_buffers; ++i) {
-    VLOGF(2) << "\t" << GetDebugString(result->output_buffers[i].stream);
+  if (VLOG_IS_ON(2)) {
+    VLOGFID(2, result->frame_number()) << "Modified result:";
+    base::span<const camera3_stream_buffer_t> output_buffers =
+        result->GetOutputBuffers();
+    for (const auto& buffer : output_buffers) {
+      VLOGF(2) << "\t" << GetDebugString(buffer.stream);
+    }
   }
   return true;
 }
@@ -610,7 +600,7 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
 }
 
 void HdrNetStreamManipulator::RecordCaptureMetadataOnGpuThread(
-    int frame_number, camera_metadata_t* metadata) {
+    Camera3CaptureDescriptor* request) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
   if (!egl_context_->MakeCurrent()) {
@@ -630,8 +620,7 @@ void HdrNetStreamManipulator::RecordCaptureMetadataOnGpuThread(
       .log_frame_metadata = options.log_frame_metadata,
   };
   ae_controller_->SetOptions(ae_controller_options);
-
-  ae_controller_->WriteRequestAeParameters(frame_number, metadata);
+  ae_controller_->WriteRequestAeParameters(request);
 }
 
 void HdrNetStreamManipulator::RecordYuvBufferForAeControllerOnGpuThread(

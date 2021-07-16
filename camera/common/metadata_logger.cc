@@ -139,6 +139,18 @@ void MetadataLogger::Log(int frame_number,
   entry.SetKey(key, base::Value(std::move(value_list)));
 }
 
+template <>
+void MetadataLogger::Log(int frame_number,
+                         std::string key,
+                         base::span<const camera_metadata_rational_t> values) {
+  base::Value& entry = GetOrCreateEntry(frame_number);
+  std::vector<base::Value> value_list;
+  for (const auto& v : values) {
+    value_list.emplace_back(static_cast<double>(v.numerator) / v.denominator);
+  }
+  entry.SetKey(key, base::Value(std::move(value_list)));
+}
+
 bool MetadataLogger::DumpMetadata() {
   std::vector<base::Value> metadata_to_dump;
   for (const auto& entry : frame_metadata_) {

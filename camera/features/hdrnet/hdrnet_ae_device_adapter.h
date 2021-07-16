@@ -11,6 +11,7 @@
 
 #include <camera/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
 #include "features/hdrnet/ae_info.h"
 
@@ -25,10 +26,9 @@ class HdrNetAeDeviceAdapter {
 
   virtual ~HdrNetAeDeviceAdapter() = default;
 
-  // Called by AeController to extract the device specific AE stats from the
-  // given |result_metadata|.
-  virtual bool ExtractAeStats(int frame_number,
-                              const camera_metadata_t* result_metadata,
+  // Called by AeController to extract the device specific AE stats from
+  // |result|.
+  virtual bool ExtractAeStats(Camera3CaptureDescriptor* result,
                               MetadataLogger* metadata_logger = nullptr);
 
   // Whether there's AE stats available for frame |frame_number|.

@@ -44,8 +44,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
                         std::vector<camera3_stream_t*>* streams) override;
   bool OnConfiguredStreams(
       camera3_stream_configuration_t* stream_list) override;
-  bool ProcessCaptureRequest(camera3_capture_request_t* request) override;
-  bool ProcessCaptureResult(camera3_capture_result_t* result) override;
+  bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
 
@@ -104,8 +104,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
                                    std::vector<camera3_stream_t*>* streams);
   bool OnConfiguredStreamsOnGpuThread(
       camera3_stream_configuration_t* stream_list);
-  bool ProcessCaptureRequestOnGpuThread(camera3_capture_request_t* request);
-  bool ProcessCaptureResultOnGpuThread(camera3_capture_result_t* result);
+  bool ProcessCaptureRequestOnGpuThread(Camera3CaptureDescriptor* request);
+  bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
   bool NotifyOnGpuThread(camera3_notify_msg_t* msg);
   bool FlushOnGpuThread();
 
@@ -113,8 +113,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   void ResetStateOnGpuThread();
 
-  void RecordCaptureMetadataOnGpuThread(int frame_number,
-                                        camera_metadata_t* metadata);
+  void RecordCaptureMetadataOnGpuThread(Camera3CaptureDescriptor* request);
 
   void RecordYuvBufferForAeControllerOnGpuThread(int frame_number,
                                                  const SharedImage& yuv_input);

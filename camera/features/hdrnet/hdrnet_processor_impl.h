@@ -42,8 +42,7 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
   bool Initialize(Size input_size,
                   const std::vector<Size>& output_sizes) override;
   void TearDown() override;
-  void ProcessResultMetadata(int frame_number,
-                             const camera_metadata_t* metadata) override;
+  void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
   base::ScopedFD Run(
       int frame_number,
       const HdrNetConfig::Options& options,

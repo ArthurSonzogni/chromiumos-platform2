@@ -32,7 +32,7 @@ bool HdrNetProcessorDeviceAdapter::Initialize() {
 void HdrNetProcessorDeviceAdapter::TearDown() {}
 
 void HdrNetProcessorDeviceAdapter::ProcessResultMetadata(
-    int frame_number, const camera_metadata_t* metadata) {}
+    Camera3CaptureDescriptor* result) {}
 
 bool HdrNetProcessorDeviceAdapter::Preprocess(
     const HdrNetConfig::Options& options,

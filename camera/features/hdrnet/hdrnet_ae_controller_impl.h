@@ -37,13 +37,11 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
   void RecordYuvBuffer(int frame_number,
                        buffer_handle_t buffer,
                        base::ScopedFD acquire_fence);
-  void RecordAeMetadata(int frame_number,
-                        const camera_metadata_t* result_metadata);
+  void RecordAeMetadata(Camera3CaptureDescriptor* result);
   void SetOptions(const Options& options);
   float GetCalculatedHdrRatio(int frame_number) const;
-  bool WriteRequestAeParameters(int frame_number,
-                                camera_metadata_t* request_metadata);
-  bool WriteResultFaceRectangles(camera_metadata_t* result_metadata);
+  bool WriteRequestAeParameters(Camera3CaptureDescriptor* request);
+  bool WriteResultFaceRectangles(Camera3CaptureDescriptor* result);
 
  private:
   bool ShouldRunAe(int frame_number) const;
@@ -53,10 +51,8 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
   base::Optional<const AeFrameInfo*> GetAeFrameInfoEntry(
       int frame_number) const;
   void MaybeRunAE(int frame_number);
-  bool SetExposureCompensation(int frame_number,
-                               camera_metadata_t* request_metadata);
-  bool SetManualSensorControls(int frame_number,
-                               camera_metadata_t* request_metadata);
+  bool SetExposureCompensation(Camera3CaptureDescriptor* request);
+  bool SetManualSensorControls(Camera3CaptureDescriptor* request);
 
   // AE loop controls.
   bool enabled_ = true;

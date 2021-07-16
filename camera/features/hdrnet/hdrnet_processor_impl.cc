@@ -103,10 +103,10 @@ void HdrNetProcessorImpl::TearDown() {
 }
 
 void HdrNetProcessorImpl::ProcessResultMetadata(
-    int frame_number, const camera_metadata_t* metadata) {
+    Camera3CaptureDescriptor* result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  processor_device_adapter_->ProcessResultMetadata(frame_number, metadata);
+  processor_device_adapter_->ProcessResultMetadata(result);
 }
 
 base::ScopedFD HdrNetProcessorImpl::Run(

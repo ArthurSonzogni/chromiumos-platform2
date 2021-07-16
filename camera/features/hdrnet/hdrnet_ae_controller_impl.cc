@@ -129,81 +129,86 @@ void HdrNetAeControllerImpl::RecordYuvBuffer(int frame_number,
 }
 
 void HdrNetAeControllerImpl::RecordAeMetadata(
-    int frame_number, const camera_metadata_t* result_metadata) {
+    Camera3CaptureDescriptor* result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(frame_number);
+  AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(result->frame_number());
 
   // Exposure and gain info.
-  base::Optional<int32_t> sensitivity =
-      GetRoMetadata<int32_t>(result_metadata, ANDROID_SENSOR_SENSITIVITY);
-  if (!sensitivity) {
+  base::span<const int32_t> sensitivity =
+      result->GetMetadata<int32_t>(ANDROID_SENSOR_SENSITIVITY);
+  if (sensitivity.empty()) {
     LOGF(WARNING) << "Cannot get ANDROID_SENSOR_SENSITIVITY";
     return;
   }
-  base::Optional<int64_t> exposure_time_ns =
-      GetRoMetadata<int64_t>(result_metadata, ANDROID_SENSOR_EXPOSURE_TIME);
-  if (!exposure_time_ns) {
+  base::span<const int64_t> exposure_time_ns =
+      result->GetMetadata<int64_t>(ANDROID_SENSOR_EXPOSURE_TIME);
+  if (exposure_time_ns.empty()) {
     LOGF(WARNING) << "Cannot get ANDROID_SENSOR_EXPOSURE_TIME";
     return;
   }
-  base::Optional<float> aperture =
-      GetRoMetadata<float>(result_metadata, ANDROID_LENS_APERTURE);
-  if (!aperture) {
+  base::span<const float> aperture =
+      result->GetMetadata<float>(ANDROID_LENS_APERTURE);
+  if (aperture.empty()) {
     LOGF(WARNING) << "Cannot get ANDROID_LENS_APERTURE";
     return;
   }
-  base::Optional<int32_t> ae_compensation = GetRoMetadata<int32_t>(
-      result_metadata, ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
-  if (!ae_compensation) {
+  base::span<const int32_t> ae_compensation =
+      result->GetMetadata<int32_t>(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
+  if (ae_compensation.empty()) {
     LOGF(WARNING) << "Cannot get ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION";
     return;
   }
-  if (*ae_compensation < ae_compensation_range_.lower() ||
-      *ae_compensation > ae_compensation_range_.upper()) {
-    LOGF(WARNING) << "[" << frame_number
-                  << "] Invalid AE compensation value: " << *ae_compensation;
+  if (ae_compensation[0] < ae_compensation_range_.lower() ||
+      ae_compensation[0] > ae_compensation_range_.upper()) {
+    LOGFID(WARNING, result->frame_number())
+        << "Invalid AE compensation value: " << ae_compensation[0];
     return;
   }
-  base::Optional<uint8_t> face_detect_mode = GetRoMetadata<uint8_t>(
-      result_metadata, ANDROID_STATISTICS_FACE_DETECT_MODE);
-  if (!face_detect_mode) {
+  base::span<const uint8_t> face_detect_mode =
+      result->GetMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE);
+  if (face_detect_mode.empty()) {
     LOGF(WARNING) << "Cannot get ANDROID_STATISTICS_FACE_DETECT_MODE";
     return;
   }
 
   float total_gain =
-      base::checked_cast<float>(*sensitivity) / sensitivity_range_.lower();
+      base::checked_cast<float>(sensitivity[0]) / sensitivity_range_.lower();
   float analog_gain = std::min(total_gain, max_analog_gain_);
   float digital_gain = std::max(total_gain / max_analog_gain_, 1.0f);
 
   frame_info.exposure_time_ms =
-      base::checked_cast<float>(*exposure_time_ns) / 1'000'000;
+      base::checked_cast<float>(exposure_time_ns[0]) / 1'000'000;
   frame_info.analog_gain = analog_gain;
   frame_info.digital_gain = digital_gain;
   frame_info.estimated_sensor_sensitivity =
       (base::checked_cast<float>(sensitivity_range_.lower()) /
-       (*aperture * *aperture));
-  frame_info.ae_compensation = *ae_compensation;
-  frame_info.face_detection_mode = *face_detect_mode;
+       (aperture[0] * aperture[0]));
+  frame_info.ae_compensation = ae_compensation[0];
+  frame_info.face_detection_mode = face_detect_mode[0];
 
   if (metadata_logger_) {
-    metadata_logger_->Log(frame_number, kTagCaptureExposureTimeNs,
-                          *exposure_time_ns);
-    metadata_logger_->Log(frame_number, kTagCaptureSensitivity, *sensitivity);
-    metadata_logger_->Log(frame_number, kTagCaptureAnalogGain, analog_gain);
-    metadata_logger_->Log(frame_number, kTagCaptureDigitalGain, digital_gain);
-    metadata_logger_->Log(frame_number, kTagEstimatedSensorSensitivity,
+    metadata_logger_->Log(result->frame_number(), kTagCaptureExposureTimeNs,
+                          exposure_time_ns[0]);
+    metadata_logger_->Log(result->frame_number(), kTagCaptureSensitivity,
+                          sensitivity[0]);
+    metadata_logger_->Log(result->frame_number(), kTagCaptureAnalogGain,
+                          analog_gain);
+    metadata_logger_->Log(result->frame_number(), kTagCaptureDigitalGain,
+                          digital_gain);
+    metadata_logger_->Log(result->frame_number(),
+                          kTagEstimatedSensorSensitivity,
                           frame_info.estimated_sensor_sensitivity);
-    metadata_logger_->Log(frame_number, kTagLensAperture, *aperture);
-    metadata_logger_->Log(frame_number, kTagAeExposureCompensation,
-                          *ae_compensation);
+    metadata_logger_->Log(result->frame_number(), kTagLensAperture,
+                          aperture[0]);
+    metadata_logger_->Log(result->frame_number(), kTagAeExposureCompensation,
+                          ae_compensation[0]);
   }
 
   // Face info.
   if (!use_cros_face_detector_) {
-    base::span<const int> face_rectangles = GetRoMetadataAsSpan<int>(
-        result_metadata, ANDROID_STATISTICS_FACE_RECTANGLES);
+    base::span<const int32_t> face_rectangles =
+        result->GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES);
     if (face_rectangles.size() >= 4) {
       for (size_t i = 0; i < face_rectangles.size(); i += 4) {
         const int* rect_bound = &face_rectangles[i];
@@ -223,18 +228,19 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
       }
     }
     if (metadata_logger_) {
-      metadata_logger_->Log(frame_number, kTagFaceRectangles, face_rectangles);
+      metadata_logger_->Log(result->frame_number(), kTagFaceRectangles,
+                            face_rectangles);
     }
   }
 
   // AWB info.
-  base::span<const float> color_correction_gains = GetRoMetadataAsSpan<float>(
-      result_metadata, ANDROID_COLOR_CORRECTION_GAINS);
+  base::span<const float> color_correction_gains =
+      result->GetMetadata<float>(ANDROID_COLOR_CORRECTION_GAINS);
   if (!color_correction_gains.empty()) {
     CHECK_EQ(color_correction_gains.size(), 4);
     memcpy(frame_info.rggb_gains, color_correction_gains.data(),
            4 * sizeof(float));
-    VLOGFID(2, frame_number)
+    VLOGFID(2, result->frame_number())
         << "AWB gains: " << frame_info.rggb_gains[0] << ", "
         << frame_info.rggb_gains[1] << ", " << frame_info.rggb_gains[2] << ", "
         << frame_info.rggb_gains[3];
@@ -243,13 +249,14 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
   }
 
   if (metadata_logger_) {
-    metadata_logger_->Log(frame_number, kTagAwbGains, color_correction_gains);
+    metadata_logger_->Log(result->frame_number(), kTagAwbGains,
+                          color_correction_gains);
   }
 
   // CCM
-  base::span<const Rational> color_correction_transform =
-      GetRoMetadataAsSpan<Rational>(result_metadata,
-                                    ANDROID_COLOR_CORRECTION_TRANSFORM);
+  base::span<const camera_metadata_rational_t> color_correction_transform =
+      result->GetMetadata<camera_metadata_rational_t>(
+          ANDROID_COLOR_CORRECTION_TRANSFORM);
   if (!color_correction_transform.empty()) {
     CHECK_EQ(color_correction_transform.size(), 9);
     for (int i = 0; i < 9; ++i) {
@@ -257,7 +264,7 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
           static_cast<float>(color_correction_transform[i].numerator) /
           color_correction_transform[i].denominator;
     }
-    VLOGFID(2, frame_number)
+    VLOGFID(2, result->frame_number())
         << "CCM: " << frame_info.ccm[0] << ", " << frame_info.ccm[1] << ", "
         << frame_info.ccm[2] << ", " << frame_info.ccm[3] << ", "
         << frame_info.ccm[4] << ", " << frame_info.ccm[5] << ", "
@@ -269,15 +276,15 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
   }
 
   if (metadata_logger_) {
-    metadata_logger_->Log(frame_number, kTagCcm, color_correction_transform);
+    metadata_logger_->Log(result->frame_number(), kTagCcm,
+                          color_correction_transform);
   }
 
   // AE stats.
-  ae_device_adapter_->ExtractAeStats(frame_number, result_metadata,
-                                     metadata_logger_.get());
+  ae_device_adapter_->ExtractAeStats(result, metadata_logger_.get());
 
-  if (ShouldRunAe(frame_number)) {
-    MaybeRunAE(frame_number);
+  if (ShouldRunAe(result->frame_number())) {
+    MaybeRunAE(result->frame_number());
   }
 }
 
@@ -381,32 +388,32 @@ float HdrNetAeControllerImpl::GetCalculatedHdrRatio(int frame_number) const {
 }
 
 bool HdrNetAeControllerImpl::WriteRequestAeParameters(
-    int frame_number, camera_metadata_t* request_metadata) {
+    Camera3CaptureDescriptor* request) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!enabled_ || !latest_ae_parameters_.IsValid()) {
     return false;
   }
 
-  AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(frame_number);
+  AeFrameInfo& frame_info =
+      GetOrCreateAeFrameInfoEntry(request->frame_number());
   frame_info.targeted_short_tet = latest_ae_parameters_.short_tet;
   frame_info.targeted_long_tet = latest_ae_parameters_.long_tet;
 
-  base::Optional<int32_t> ae_comp = GetRoMetadata<int32_t>(
-      request_metadata, ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
-  if (ae_comp) {
-    frame_info.targeted_ae_compensation = *ae_comp * ae_compensation_step_;
+  base::span<const int32_t> ae_comp =
+      request->GetMetadata<int32_t>(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
+  if (!ae_comp.empty()) {
+    frame_info.targeted_ae_compensation = ae_comp[0] * ae_compensation_step_;
   }
 
   if (use_cros_face_detector_) {
     // TODO(jcliang): Restore the metadata to the original value in capture
     // results if we end up needing this for production.
-    base::Optional<uint8_t*> face_detect_mode = GetMetadata<uint8_t>(
-        request_metadata, ANDROID_STATISTICS_FACE_DETECT_MODE);
-    if (face_detect_mode) {
-      **face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
-    } else {
-      LOGF(WARNING) << "Cannot set ANDROID_STATISTICS_FACE_DETECT_MODE";
+    std::array<uint8_t, 1> face_detect_mode{
+        ANDROID_STATISTICS_FACE_DETECT_MODE_OFF};
+    if (!request->UpdateMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE,
+                                          face_detect_mode)) {
+      LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_DETECT_MODE to OFF";
     }
   }
 
@@ -414,9 +421,9 @@ bool HdrNetAeControllerImpl::WriteRequestAeParameters(
   // CTS. We may need to disable HDRnet for Android.
   switch (ae_override_mode_) {
     case AeOverrideMode::kWithExposureCompensation:
-      return SetExposureCompensation(frame_number, request_metadata);
+      return SetExposureCompensation(request);
     case AeOverrideMode::kWithManualSensorControl:
-      return SetManualSensorControls(frame_number, request_metadata);
+      return SetManualSensorControls(request);
     default:
       NOTREACHED() << "Invalid AeOverrideMethod";
       return true;
@@ -424,7 +431,7 @@ bool HdrNetAeControllerImpl::WriteRequestAeParameters(
 }
 
 bool HdrNetAeControllerImpl::WriteResultFaceRectangles(
-    camera_metadata_t* result_metadata) {
+    Camera3CaptureDescriptor* result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!use_cros_face_detector_ || latest_faces_.empty()) {
@@ -437,10 +444,8 @@ bool HdrNetAeControllerImpl::WriteResultFaceRectangles(
     face_coordinates.push_back(f.x1 * active_array_dimension_.width);
     face_coordinates.push_back(f.y1 * active_array_dimension_.height);
   }
-  int ret = add_camera_metadata_entry(
-      result_metadata, ANDROID_STATISTICS_FACE_RECTANGLES,
-      face_coordinates.data(), face_coordinates.size());
-  if (ret != 0) {
+  if (!result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
+                                       face_coordinates)) {
     LOGF(ERROR) << "Cannot set face rectangles";
     return false;
   }
@@ -560,49 +565,49 @@ void HdrNetAeControllerImpl::MaybeRunAE(int frame_number) {
 }
 
 bool HdrNetAeControllerImpl::SetExposureCompensation(
-    int frame_number, camera_metadata_t* request_metadata) {
-  base::Optional<int32_t*> exp_comp = GetMetadata<int32_t>(
-      request_metadata, ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
-  if (exp_comp) {
-    **exp_comp = latest_ae_compensation_;
-  } else {
+    Camera3CaptureDescriptor* request) {
+  std::array<int32_t, 1> exp_comp{latest_ae_compensation_};
+  if (!request->UpdateMetadata<int32_t>(
+          ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, exp_comp)) {
     LOGF(WARNING) << "Cannot set AE compensation in capture request";
     return false;
   }
   if (metadata_logger_) {
-    metadata_logger_->Log(frame_number, kTagRequestAeCompensation, **exp_comp);
+    metadata_logger_->Log(request->frame_number(), kTagRequestAeCompensation,
+                          exp_comp[0]);
   }
 
   return true;
 }
 
 bool HdrNetAeControllerImpl::SetManualSensorControls(
-    int frame_number, camera_metadata_t* request_metadata) {
-  base::Optional<uint8_t*> ae_mode =
-      GetMetadata<uint8_t>(request_metadata, ANDROID_CONTROL_AE_MODE);
-  base::Optional<int64_t*> exposure_time =
-      GetMetadata<int64_t>(request_metadata, ANDROID_SENSOR_EXPOSURE_TIME);
-  base::Optional<int32_t*> sensitivity =
-      GetMetadata<int32_t>(request_metadata, ANDROID_SENSOR_SENSITIVITY);
-
-  if (!ae_mode || !sensitivity || !exposure_time) {
-    LOGF(ERROR) << "Cannot update AE metadata";
-    return false;
-  }
-
+    Camera3CaptureDescriptor* request) {
   // Cap exposure_time to 33.33 ms.
   constexpr float kMaxExposureTime = 33.33f;
   float exp_time = std::min(latest_ae_parameters_.short_tet, kMaxExposureTime);
   float gain = latest_ae_parameters_.short_tet / exp_time;
-  **ae_mode = ANDROID_CONTROL_AE_MODE_OFF;
-  **exposure_time = base::checked_cast<int64_t>(exp_time * 1'000'000);
-  **sensitivity = sensitivity_range_.Clamp(
-      base::checked_cast<int32_t>(sensitivity_range_.lower() * gain));
-  VLOGFID(2, frame_number) << "exp_time=" << exp_time << " gain=" << gain;
+  VLOGFID(2, request->frame_number())
+      << "exp_time=" << exp_time << " gain=" << gain;
+
+  std::array<uint8_t, 1> ae_mode{ANDROID_CONTROL_AE_MODE_OFF};
+  std::array<int64_t, 1> exposure_time{
+      base::checked_cast<int64_t>(exp_time * 1'000'000)};
+  std::array<int32_t, 1> sensitivity{sensitivity_range_.Clamp(
+      base::checked_cast<int32_t>(sensitivity_range_.lower() * gain))};
+  if (!request->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_MODE, ae_mode) ||
+      !request->UpdateMetadata<int64_t>(ANDROID_SENSOR_EXPOSURE_TIME,
+                                        exposure_time) ||
+      !request->UpdateMetadata<int32_t>(ANDROID_SENSOR_SENSITIVITY,
+                                        sensitivity)) {
+    LOGF(ERROR) << "Cannot set manual sensor control parameters";
+    return false;
+  }
 
   if (metadata_logger_) {
-    metadata_logger_->Log(frame_number, kTagRequestExpTime, **exposure_time);
-    metadata_logger_->Log(frame_number, kTagRequestSensitivity, **sensitivity);
+    metadata_logger_->Log(request->frame_number(), kTagRequestExpTime,
+                          exposure_time[0]);
+    metadata_logger_->Log(request->frame_number(), kTagRequestSensitivity,
+                          sensitivity[0]);
   }
 
   return true;

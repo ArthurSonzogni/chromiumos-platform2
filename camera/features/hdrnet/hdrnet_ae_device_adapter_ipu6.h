@@ -24,8 +24,7 @@ class HdrNetAeDeviceAdapterIpu6 : public HdrNetAeDeviceAdapter {
 
   // HdrNetAeDeviceAdapter implementations.
   ~HdrNetAeDeviceAdapterIpu6() override = default;
-  bool ExtractAeStats(int frame_number,
-                      const camera_metadata_t* result_metadata,
+  bool ExtractAeStats(Camera3CaptureDescriptor* result,
                       MetadataLogger* metadata_logger = nullptr) override;
   bool HasAeStats(int frame_number) override;
   AeParameters ComputeAeParameters(int frame_number,

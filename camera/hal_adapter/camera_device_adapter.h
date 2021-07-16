@@ -30,6 +30,7 @@
 #include <system/camera_metadata.h>
 
 #include "camera/mojo/camera3.mojom.h"
+#include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
 #include "common/utils/common_types.h"
 #include "common/utils/cros_camera_mojo_utils.h"
@@ -44,21 +45,6 @@ namespace cros {
 class Camera3DeviceOpsDelegate;
 
 class Camera3CallbackOpsDelegate;
-
-// Flattened capture request
-class Camera3CaptureRequest : public camera3_capture_request_t {
- public:
-  explicit Camera3CaptureRequest(const camera3_capture_request_t& req);
-
-  ~Camera3CaptureRequest() = default;
-
- private:
-  android::CameraMetadata settings_;
-
-  camera3_stream_buffer_t input_buffer_;
-
-  std::vector<camera3_stream_buffer_t> output_stream_buffers_;
-};
 
 // It is a watchdog-like monitor. It detects the kick event. If there is no
 // kick event between 2 timeout it outputs log to indicate it. We can use it to
@@ -212,10 +198,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       std::unique_ptr<camera_buffer_handle_t> buffer);
 
   void ReprocessEffectsOnReprocessEffectThread(
-      std::unique_ptr<Camera3CaptureRequest> req);
+      std::unique_ptr<Camera3CaptureDescriptor> req);
 
   void ProcessReprocessRequestOnDeviceOpsThread(
-      std::unique_ptr<Camera3CaptureRequest> req,
+      std::unique_ptr<Camera3CaptureDescriptor> req,
       base::Callback<void(int32_t)> callback);
 
   void ResetDeviceOpsDelegateOnThread();

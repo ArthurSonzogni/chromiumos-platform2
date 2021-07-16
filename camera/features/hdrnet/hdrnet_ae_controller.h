@@ -14,6 +14,7 @@
 #include <cutils/native_handle.h>
 #include <system/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "features/hdrnet/ae_info.h"
 #include "features/hdrnet/hdrnet_ae_device_adapter.h"
 
@@ -66,11 +67,10 @@ class HdrNetAeController {
                                buffer_handle_t buffer,
                                base::ScopedFD acquire_fence) = 0;
 
-  // Records the AE metadata from capture results of frame |frame_number|.  The
-  // implementation should use this method to capture the metadata needed for
-  // their AE algorithm.
-  virtual void RecordAeMetadata(int frame_number,
-                                const camera_metadata_t* result_metadata) = 0;
+  // Records the AE metadata from capture result |result|.  The implementation
+  // should use this method to capture the metadata needed for their AE
+  // algorithm.
+  virtual void RecordAeMetadata(Camera3CaptureDescriptor* result) = 0;
 
   virtual void SetOptions(const Options& options) = 0;
 
@@ -79,15 +79,13 @@ class HdrNetAeController {
   virtual float GetCalculatedHdrRatio(int frame_number) const = 0;
 
   // Writes the AE parameters calculated by the AE algorithm in the capture
-  // request of frame |frame_number| in the request metadata |request_metadata|.
-  virtual bool WriteRequestAeParameters(
-      int frame_number, camera_metadata_t* request_metadata) = 0;
+  // request |request|.
+  virtual bool WriteRequestAeParameters(Camera3CaptureDescriptor* request) = 0;
 
-  // Writes the face metadata in the capture result metadata |result_metadata|.
+  // Writes the face metadata in the capture result metadata in |result|.
   // This method has effect only when CrOS face detector is enabled, otherwise
   // the face metadata would be filled by the vendor camera HAL.
-  virtual bool WriteResultFaceRectangles(
-      camera_metadata_t* result_metadata) = 0;
+  virtual bool WriteResultFaceRectangles(Camera3CaptureDescriptor* result) = 0;
 };
 
 }  // namespace cros
