@@ -84,6 +84,9 @@ class VmInterface {
   // Information about the VM.
   virtual Info GetInfo() = 0;
 
+  // Returns if the balloon policy enabled for this vm.
+  virtual bool IsBalloonPolicyEnabled() = 0;
+
   // Returns balloon stats info retrieved from virtio-balloon device.
   virtual base::Optional<BalloonStats> GetBalloonStats() = 0;
 

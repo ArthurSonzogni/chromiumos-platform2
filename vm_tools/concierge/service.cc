@@ -786,6 +786,9 @@ void Service::RunBalloonPolicy() {
   const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
+    if (!vm->IsBalloonPolicyEnabled()) {
+      continue;
+    }
     if (vm->IsSuspended()) {
       // Skip suspended VMs since there is no effect.
       continue;

@@ -48,6 +48,7 @@ class VmBaseImpl : public VmInterface {
   pid_t pid() { return process_.pid(); }
 
   // VmInterface overrides.
+  bool IsBalloonPolicyEnabled() override { return true; };
   base::Optional<BalloonStats> GetBalloonStats() override;
   void SetBalloonSize(int64_t byte_size) override;
   int64_t RunBalloonPolicy(const BalloonPolicyParams& params) override;

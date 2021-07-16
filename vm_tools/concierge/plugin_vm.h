@@ -56,6 +56,7 @@ class PluginVm final : public VmBaseImpl {
   // VmInterface overrides.
   bool Shutdown() override;
   VmInterface::Info GetInfo() override;
+  bool IsBalloonPolicyEnabled() override { return false; };
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;
