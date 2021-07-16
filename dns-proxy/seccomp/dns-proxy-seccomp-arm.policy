@@ -72,7 +72,7 @@ wait4: 1
 futex: 1
 futex_time64: 1
 tgkill: 1
-kill: arg1 == SIGTERM
+kill: 1
 bind: 1
 listen: 1
 accept: 1
