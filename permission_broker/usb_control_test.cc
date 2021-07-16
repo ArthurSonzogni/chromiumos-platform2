@@ -71,7 +71,7 @@ TEST_F(UsbControlTest, PowerCycleSingleDeviceSucceeds) {
   // Test that usb_control is correctly able to power-cycle the device.
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
-  usb_control.PowerCycleUsbPorts(base::Bind(&TestResultCallback, result),
+  usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
                                  0x2bd9, 0x0011,
                                  base::TimeDelta::FromMilliseconds(1));
 
@@ -108,7 +108,7 @@ TEST_F(UsbControlTest, PowerCycleMultipleDevicesSucceed) {
   // Test that usb_control is correctly able to power-cycle the device.
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
-  usb_control.PowerCycleUsbPorts(base::Bind(&TestResultCallback, result),
+  usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
                                  0x2bd9, 0x0011,
                                  base::TimeDelta::FromMilliseconds(1));
 
@@ -136,7 +136,7 @@ TEST_F(UsbControlTest, DeviceNotFound) {
   // the device is not available.
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
-  usb_control.PowerCycleUsbPorts(base::Bind(&TestResultCallback, result),
+  usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
                                  0x2bd9, 0x0011,
                                  base::TimeDelta::FromMilliseconds(1));
 
@@ -159,7 +159,7 @@ TEST_F(UsbControlTest, PowerCycleNotAllowedDevice) {
   // allowed.
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
-  usb_control.PowerCycleUsbPorts(base::Bind(&TestResultCallback, result),
+  usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
                                  0x1234, 0x5678,
                                  base::TimeDelta::FromMilliseconds(1));
 
@@ -185,7 +185,7 @@ TEST_F(UsbControlTest, PowerOffFails) {
   // failes to turn off.
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   UsbControl usb_control(std::move(manager));
-  usb_control.PowerCycleUsbPorts(base::Bind(&TestResultCallback, result),
+  usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
                                  0x2bd9, 0x0011,
                                  base::TimeDelta::FromMilliseconds(1));
 
@@ -216,7 +216,7 @@ TEST_F(UsbControlTest, PowerOnFails) {
   // failes to turn on.
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   UsbControl usb_control(std::move(manager));
-  usb_control.PowerCycleUsbPorts(base::Bind(&TestResultCallback, result),
+  usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
                                  0x2bd9, 0x0011,
                                  base::TimeDelta::FromMilliseconds(1));
 
