@@ -49,6 +49,32 @@ inline vea_error_t ConvertMojoError(
   }
 }
 
+inline arc::mojom::BitratePtr ConvertToMojoBitrate(
+    const vea_bitrate_t& vea_bitrate) {
+  arc::mojom::BitratePtr bitrate = arc::mojom::Bitrate::New();
+  switch (vea_bitrate.mode) {
+    case VBR: {
+      arc::mojom::VariableBitratePtr variable_bitrate =
+          arc::mojom::VariableBitrate::New();
+      variable_bitrate->target = vea_bitrate.target;
+      variable_bitrate->peak = vea_bitrate.peak;
+      bitrate->set_variable(std::move(variable_bitrate));
+      break;
+    }
+    case CBR: {
+      arc::mojom::ConstantBitratePtr constant_bitrate =
+          arc::mojom::ConstantBitrate::New();
+      constant_bitrate->target = vea_bitrate.target;
+      bitrate->set_constant(std::move(constant_bitrate));
+      break;
+    }
+    default:
+      NOTREACHED();
+      break;
+  }
+  return bitrate;
+}
+
 class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
  public:
   // Create a new GpuVeaContext. Must be called on |ipc_task_runner|.
@@ -168,16 +194,15 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   mojo_config->input_visible_size->width = config->input_visible_width;
   mojo_config->input_visible_size->height = config->input_visible_height;
 
-  // TODO(b/190336806) Pass bitrate mode and peak bitrate once mojo bindings
-  // have been updated.
   mojo_config->output_profile =
       ConvertCodecProfileToMojoProfile(config->output_profile);
-  mojo_config->initial_bitrate = config->bitrate.target;
   mojo_config->initial_framerate = config->initial_framerate;
   mojo_config->has_initial_framerate = config->has_initial_framerate;
   mojo_config->h264_output_level = config->h264_output_level;
   mojo_config->has_h264_output_level = config->has_h264_output_level;
   mojo_config->storage_type = arc::mojom::VideoFrameStorageType::DMABUF;
+
+  mojo_config->bitrate = ConvertToMojoBitrate(config->bitrate);
 
   remote_vea_->Initialize(
       std::move(mojo_config), std::move(remote_client),
@@ -302,7 +327,8 @@ int GpuVeaContext::RequestEncodingParamsChange(vea_bitrate_t bitrate,
 
 void GpuVeaContext::RequestEncodingParamsChangeOnIpcThread(
     vea_bitrate_t bitrate, uint32_t framerate) {
-  remote_vea_->RequestEncodingParametersChange(bitrate.target, framerate);
+  remote_vea_->RequestEncodingParametersChange(ConvertToMojoBitrate(bitrate),
+                                               framerate);
 }
 
 int GpuVeaContext::Flush() {
