@@ -23,7 +23,6 @@ source_set("libcros_healthd_executor") {
   sources = [
     "executor.cc",
     "executor_adapter_impl.cc",
-    "executor_constants.cc",
     "executor_mojo_service.cc",
   ]
 }
