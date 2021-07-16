@@ -217,9 +217,6 @@ void SensorDeviceImpl::SetChannelsEnabled(
     return;
   }
 
-  // List of channels failed to enabled.
-  std::vector<int32_t> failed_indices;
-
   if (en) {
     for (int32_t chn_index : iio_chn_indices)
       client.enabled_chn_indices.emplace(chn_index);
@@ -228,7 +225,7 @@ void SensorDeviceImpl::SetChannelsEnabled(
       client.enabled_chn_indices.erase(chn_index);
   }
 
-  std::move(callback).Run(std::move(failed_indices));
+  std::move(callback).Run({});
 }
 
 void SensorDeviceImpl::GetChannelsEnabled(
