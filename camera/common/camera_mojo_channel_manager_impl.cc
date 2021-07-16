@@ -101,6 +101,7 @@ CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
+  sensor_hal_client_.reset();
   if (ipc_thread_.IsRunning()) {
     ipc_thread_.task_runner()->PostTask(
         FROM_HERE,
