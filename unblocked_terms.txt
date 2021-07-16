@@ -11,6 +11,7 @@ native
 sane
 sanity
 slave
+white.?label
 white.?list
 
 # We still use "master" in a few places, but block its usage in URIs as people

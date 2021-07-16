@@ -16,6 +16,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcros_config",
     "libminijail",
     "libuser_data_auth-client",
     "re2",
@@ -43,6 +44,7 @@ static_library("libutils") {
     "utils/calibration_utils.cc",
     "utils/cbi_utils_impl.cc",
     "utils/cr50_utils_impl.cc",
+    "utils/cros_config_utils_impl.cc",
     "utils/crossystem_utils_impl.cc",
     "utils/dbus_utils.cc",
     "utils/json_store.cc",
@@ -125,6 +127,7 @@ if (use.test) {
       "system/cryptohome_client_test.cc",
       "system/power_manager_client_test.cc",
       "system/runtime_probe_client_test.cc",
+      "utils/cros_config_utils_test.cc",
       "utils/fake_cbi_utils.cc",
       "utils/fake_vpd_utils.cc",
       "utils/json_store_test.cc",
