@@ -2910,8 +2910,6 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
       AttributeListConstRefPtr frequencies;
       if (!wiphy_band->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
                                                    &frequencies)) {
-        LOG(ERROR) << "BAND " << band_iter.GetId()
-                   << " had no 'frequencies' attribute";
         continue;
       }
 
