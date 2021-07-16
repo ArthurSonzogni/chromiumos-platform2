@@ -242,7 +242,7 @@ const std::vector<Log> kCommandLogs {
     "for f in /sys/class/drm/card?-*/edid; do "
       "echo \"----------- ${f}\"; "
       // edid-decode's stderr output is redundant, so silence it.
-      "edid-decode \"${f}\" 2>/dev/null; "
+      "edid-decode --skip-hex-dump \"${f}\" 2>/dev/null; "
     "done"},
   {kFile, "eventlog", "/var/log/eventlog.txt"},
   {kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
