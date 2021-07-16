@@ -16,6 +16,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":camera_face_detection_test",
+      ":camera_hal3_helpers_test",
       ":cbm_test",
       ":embed_file_toc_test",
       ":future_test",
@@ -60,6 +61,7 @@ shared_library("libcros_camera") {
     "//camera/common/camera_buffer_manager_internal.cc",
     "//camera/common/camera_buffer_utils.cc",
     "//camera/common/camera_face_detection.cc",
+    "//camera/common/camera_hal3_helpers.cc",
     "//camera/common/camera_metrics_impl.cc",
     "//camera/common/camera_mojo_channel_manager_impl.cc",
     "//camera/common/embed_file_toc.cc",
@@ -166,6 +168,14 @@ if (use.test) {
     sources = [
       "//camera/common/camera_face_detection.cc",
       "//camera/common/camera_face_detection_test.cc",
+    ]
+    configs += [ ":target_defaults_test" ]
+  }
+
+  executable("camera_hal3_helpers_test") {
+    sources = [
+      "//camera/common/camera_hal3_helpers.cc",
+      "//camera/common/camera_hal3_helpers_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
   }
