@@ -39,6 +39,7 @@
 #include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -136,6 +137,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   CellularCapability3gppTest()
       : control_interface_(this),
         manager_(&control_interface_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         modem_info_(&control_interface_, &manager_),
         modem_3gpp_proxy_(new NiceMock<mm1::MockModemModem3gppProxy>()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -152,6 +154,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   void SetUp() override {
     EXPECT_CALL(*modem_proxy_, set_state_changed_callback(_))
         .Times(AnyNumber());
+    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
 
     cellular_ = new Cellular(&manager_, "", "00:01:02:03:04:05", 0,
@@ -521,6 +524,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   TestControl control_interface_;
   NiceMock<MockMetrics> metrics_;
   NiceMock<MockManager> manager_;
+  NiceMock<MockDeviceInfo> device_info_;
   MockModemInfo modem_info_;
   std::unique_ptr<NiceMock<mm1::MockModemModem3gppProxy>> modem_3gpp_proxy_;
   std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
