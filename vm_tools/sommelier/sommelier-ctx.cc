@@ -188,10 +188,37 @@ void sl_context_init_default(struct sl_context* ctx) {
 #endif
 }
 
+static int sl_handle_clipboard_event(int fd, uint32_t mask, void* data) {
+  int rv;
+  struct sl_context* ctx = (struct sl_context*)data;
+  bool readable = false;
+  bool hang_up = false;
+
+  if (mask & WL_EVENT_READABLE)
+    readable = true;
+  if (mask & WL_EVENT_HANGUP)
+    hang_up = true;
+
+  rv = ctx->channel->handle_pipe(fd, readable, hang_up);
+  if (rv) {
+    fprintf(stderr, "reading pipe failed with %s\n", strerror(rv));
+    return 0;
+  }
+
+  if (hang_up) {
+    ctx->clipboard_event_source.reset();
+    return 0;
+  }
+
+  return 1;
+}
+
 static int sl_handle_wayland_channel_event(int fd, uint32_t mask, void* data) {
   TRACE_EVENT("surface", "sl_handle_wayland_channel_event");
   struct sl_context* ctx = (struct sl_context*)data;
   struct WaylandSendReceive receive = {0};
+  int pipe_read_fd = -1;
+  enum WaylandChannelEvent event_type = WaylandChannelEvent::None;
 
   char fd_buffer[CMSG_LEN(sizeof(int) * WAYLAND_MAX_FDs)];
   struct msghdr msg = {0};
@@ -208,12 +235,22 @@ static int sl_handle_wayland_channel_event(int fd, uint32_t mask, void* data) {
   }
 
   receive.channel_fd = fd;
-  rv = ctx->channel->receive(receive);
+  rv = ctx->channel->handle_channel_event(event_type, receive, pipe_read_fd);
   if (rv) {
     close(ctx->virtwl_socket_fd);
     ctx->virtwl_socket_fd = -1;
     return 0;
   }
+
+  if (event_type == WaylandChannelEvent::ReceiveAndProxy) {
+    struct wl_event_loop* event_loop =
+        wl_display_get_event_loop(ctx->host_display);
+
+    ctx->clipboard_event_source.reset(
+        wl_event_loop_add_fd(event_loop, pipe_read_fd, WL_EVENT_READABLE,
+                             sl_handle_clipboard_event, ctx));
+  } else if (event_type != WaylandChannelEvent::Receive)
+    return 1;
 
   buffer_iov.iov_base = receive.data;
   buffer_iov.iov_len = receive.data_size;

@@ -121,7 +121,10 @@ int32_t VirtWaylandChannel::send(const struct WaylandSendReceive& send) {
   return 0;
 }
 
-int32_t VirtWaylandChannel::receive(struct WaylandSendReceive& receive) {
+int32_t VirtWaylandChannel::handle_channel_event(
+    enum WaylandChannelEvent& event_type,
+    struct WaylandSendReceive& receive,
+    int& out_read_pipe) {
   int ret;
   uint8_t ioctl_buffer[4096];
 
@@ -152,6 +155,7 @@ int32_t VirtWaylandChannel::receive(struct WaylandSendReceive& receive) {
   }
 
   receive.data_size = txn->len;
+  event_type = WaylandChannelEvent::Receive;
   return 0;
 }
 
@@ -207,5 +211,11 @@ int32_t VirtWaylandChannel::sync(int dmabuf_fd, uint64_t flags) {
   if (ret)
     return -errno;
 
+  return 0;
+}
+
+int32_t VirtWaylandChannel::handle_pipe(int read_fd,
+                                        bool readable,
+                                        bool& hang_up) {
   return 0;
 }

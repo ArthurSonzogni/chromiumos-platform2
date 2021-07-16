@@ -23,6 +23,13 @@ struct WaylandSendReceive {
   size_t data_size;
 };
 
+enum WaylandChannelEvent {
+  None,
+  Receive,
+  ReceiveAndProxy,
+  Read,
+};
+
 struct WaylandBufferCreateInfo {
   /*
    * If true, create a dmabuf on the host.  If not, create a shared memory
@@ -103,21 +110,29 @@ class WaylandChannel {
   // in `send.data`.
   virtual int32_t send(const struct WaylandSendReceive& send) = 0;
 
-  // Receives fds and associated commands from the host [like recvmsg(..)].
-  // The use cases for receiving fds are:
+  // Handles a poll event on the channel file descriptor.
   //
-  // (a) wayland pipes, which are forwarded from the host to the guest
-  // (b) release fences from the compositor
+  // Returns 0 on success.  Returns -errno on failure.  On success, the type of
+  // event is given by `event_type`.
   //
-  // virtwl supports (a), and support for (b) in Linux may take some time
-  // [https://lwn.net/Articles/814587/].  ChromeOS already has support at the
-  // kernel mode setting level for release fences.  It has yet to be plumbed
-  // at the host compositor level.
+  // If `event_type` is WaylandChannelEvent::Receive, the caller must forward
+  // received fds and associated commands to the client.
   //
-  // Returns 0 on success.  Returns -errno on failure.  If the returned
-  // `receive.data_size` is than greater zero, then the caller takes ownership
-  // of `receive.data` and must free(..) the memory when appropriate.
-  virtual int32_t receive(struct WaylandSendReceive& receive) = 0;
+  // If `event_type` is WaylandChannelEvent::ReceiveAndProxy, `out_read_pipe`
+  // is also returned in addition to the `receive` data.  The caller does not
+  // take ownership of `out_read_pipe`.  The caller must poll `out_read_pipe`
+  // in addition to forwarding the data given by `receive`.  The `handle_pipe`
+  // function must be called the case of `out_read_pipe` event.
+  //
+  // In both above cases, if the returned `receive.data_size` is than greater
+  // zero, then the caller takes ownership of `receive.data` and must free(..)
+  // the memory when appropriate.
+  //
+  // If `event_type` is WaylandChannelEvent::Read, then both `out_read_pipe` and
+  // `receive` are meaningless. The implementation handles the event internally.
+  virtual int32_t handle_channel_event(enum WaylandChannelEvent& event_type,
+                                       struct WaylandSendReceive& receive,
+                                       int& out_read_pipe) = 0;
 
   // Allocates a shared memory resource or dma-buf on the host.  Maps it into
   // the guest.  The intended use case for this function is sharing resources
@@ -130,6 +145,14 @@ class WaylandChannel {
   // Synchronizes accesses to previously created host dma-buf.
   // Returns 0 on success.  Returns -errno on failure.
   virtual int32_t sync(int dmabuf_fd, uint64_t flags) = 0;
+
+  // Reads from the specified `read_fd` and forwards to the host if `readable`
+  // is true.  Closes the `read_fd` and the proxied write fd on the host if
+  // `hang_up` is true and all the data has been read.
+  //
+  // `read_fd` *must* be a read pipe given by `handle_channel_event` when the
+  // `event_type` is WaylandChannelEvent::ReceiveAndProxy.
+  virtual int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) = 0;
 };
 
 class VirtWaylandChannel : public WaylandChannel {
@@ -142,12 +165,15 @@ class VirtWaylandChannel : public WaylandChannel {
   int32_t create_context(int& out_channel_fd) override;
   int32_t create_pipe(int& out_pipe_fd) override;
   int32_t send(const struct WaylandSendReceive& send) override;
-  int32_t receive(struct WaylandSendReceive& receive) override;
+  int32_t handle_channel_event(enum WaylandChannelEvent& event_type,
+                               struct WaylandSendReceive& receive,
+                               int& out_read_pipe) override;
 
   int32_t allocate(const struct WaylandBufferCreateInfo& create_info,
                    struct WaylandBufferCreateOutput& create_output) override;
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override;
+  int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override;
 
  private:
   // virtwl device file descriptor
@@ -169,12 +195,15 @@ class VirtGpuChannel : public WaylandChannel {
   int32_t create_context(int& out_channel_fd) override;
   int32_t create_pipe(int& out_pipe_fd) override;
   int32_t send(const struct WaylandSendReceive& send) override;
-  int32_t receive(struct WaylandSendReceive& receive) override;
+  int32_t handle_channel_event(enum WaylandChannelEvent& event_type,
+                               struct WaylandSendReceive& receive,
+                               int& out_read_pipe) override;
 
   int32_t allocate(const struct WaylandBufferCreateInfo& create_info,
                    struct WaylandBufferCreateOutput& create_output) override;
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override;
+  int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override;
 
  private:
   /*

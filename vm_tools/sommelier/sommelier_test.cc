@@ -30,10 +30,12 @@ class MockWaylandChannel : public WaylandChannel {
   MOCK_METHOD(int32_t, create_context, (int& out_socket_fd));
   MOCK_METHOD(int32_t, create_pipe, (int& out_pipe_fd));
   MOCK_METHOD(int32_t, send, (const struct WaylandSendReceive& send));
-  MOCK_METHOD(int32_t,
-              receive,
-              (struct WaylandSendReceive &
-               receive));  // NOLINT(runtime/references)
+  MOCK_METHOD(
+      int32_t,
+      handle_channel_event,
+      (enum WaylandChannelEvent & event_type,
+       struct WaylandSendReceive& receive,  // NOLINT(runtime/references)
+       int& out_read_pipe));
 
   MOCK_METHOD(int32_t,
               allocate,
@@ -41,6 +43,9 @@ class MockWaylandChannel : public WaylandChannel {
                struct WaylandBufferCreateOutput&
                    create_output));  // NOLINT(runtime/references)
   MOCK_METHOD(int32_t, sync, (int dmabuf_fd, uint64_t flags));
+  MOCK_METHOD(int32_t,
+              handle_pipe,
+              (int read_fd, bool readable, bool& hang_up));
 
  protected:
   ~MockWaylandChannel() override {}

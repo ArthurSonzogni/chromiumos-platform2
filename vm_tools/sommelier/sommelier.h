@@ -91,6 +91,7 @@ struct sl_context {
   std::unique_ptr<struct wl_event_source> display_ready_event_source;
   std::unique_ptr<struct wl_event_source> sigchld_event_source;
   std::unique_ptr<struct wl_event_source> sigusr1_event_source;
+  std::unique_ptr<struct wl_event_source> clipboard_event_source;
   struct wl_array dpi;
   int wm_fd;
   int wayland_channel_fd;

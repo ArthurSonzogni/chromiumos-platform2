@@ -52,7 +52,9 @@ class FuzzChannel : public WaylandChannel {
 
   int32_t send(const struct WaylandSendReceive& send) override { return 0; }
 
-  int32_t receive(struct WaylandSendReceive& receive) override {
+  int32_t handle_channel_event(enum WaylandChannelEvent& event_type,
+                               struct WaylandSendReceive& receive,
+                               int& out_read_pipe) override {
     uint8_t* buffer = static_cast<uint8_t*>(malloc(4096));
     int bytes = recv(receive.channel_fd, buffer, 4096, 0);
     if (bytes < 0) {
@@ -72,6 +74,9 @@ class FuzzChannel : public WaylandChannel {
   }
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override { return 0; }
+  int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override {
+    return 0;
+  }
 };
 
 void null_logger(const char*, va_list) {}

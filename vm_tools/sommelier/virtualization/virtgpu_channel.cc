@@ -248,7 +248,10 @@ int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
   return -EINVAL;
 }
 
-int32_t VirtGpuChannel::receive(struct WaylandSendReceive& receive) {
+int32_t VirtGpuChannel::handle_channel_event(
+    enum WaylandChannelEvent& event_type,
+    struct WaylandSendReceive& receive,
+    int& out_read_pipe) {
   return -EINVAL;
 }
 
@@ -297,6 +300,10 @@ int32_t VirtGpuChannel::allocate(
 
 int32_t VirtGpuChannel::sync(int dmabuf_fd, uint64_t flags) {
   return -EINVAL;
+}
+
+int32_t VirtGpuChannel::handle_pipe(int read_fd, bool readable, bool& hang_up) {
+  return 0;
 }
 
 int32_t VirtGpuChannel::submit_cmd(uint32_t* cmd, uint32_t size, bool wait) {
