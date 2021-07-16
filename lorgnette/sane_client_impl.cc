@@ -17,8 +17,8 @@
 #include "lorgnette/guess_source.h"
 
 static const char* kDbusDomain = brillo::errors::dbus::kDomain;
-static const char* kRightJustification = "Right";
-static const char* kCenterJustification = "Center";
+static const char* kRightJustification = "right";
+static const char* kCenterJustification = "center";
 
 namespace lorgnette {
 
