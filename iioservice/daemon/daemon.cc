@@ -76,7 +76,7 @@ void Daemon::HandleMemsSetupDone(
     dbus::MessageReader reader(method_call);
     int32_t iio_device_id;
     if (!reader.PopInt32(&iio_device_id) || iio_device_id < 0) {
-      LOG(ERROR) << "Couldn't extract iio_device_id (int32_t) from D-Bus call";
+      LOGF(ERROR) << "Couldn't extract iio_device_id (int32_t) from D-Bus call";
       std::move(response_sender)
           .Run(dbus::ErrorResponse::FromMethodCall(
               method_call, DBUS_ERROR_FAILED,

@@ -63,7 +63,7 @@ void SensorHalServerImpl::CreateChannel(
 }
 
 void SensorHalServerImpl::OnDeviceAdded(int iio_device_id) {
-  LOG(INFO) << "iio device id: " << iio_device_id;
+  LOGF(INFO) << "iio device id: " << iio_device_id;
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK(sensor_service_);
 

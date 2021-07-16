@@ -9,6 +9,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "iioservice/daemon/daemon.h"
+#include "iioservice/include/common.h"
 
 int main() {
   brillo::OpenLog("iioservice", true /*log_pid*/);
@@ -17,7 +18,7 @@ int main() {
 
   iioservice::Daemon daemon;
   daemon.Run();
-  LOG(INFO) << "Daemon stopped";
+  LOGF(INFO) << "Daemon stopped";
 
   return 0;
 }

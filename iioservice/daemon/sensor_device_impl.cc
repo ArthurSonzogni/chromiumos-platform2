@@ -276,7 +276,7 @@ void SensorDeviceImpl::GetChannelsAttributes(
     auto chn = iio_device->GetChannel(chn_index);
 
     if (!chn) {
-      LOG(ERROR) << "Cannot find chn with index: " << chn_index;
+      LOGF(ERROR) << "Cannot find chn with index: " << chn_index;
       values.push_back(base::nullopt);
       continue;
     }
