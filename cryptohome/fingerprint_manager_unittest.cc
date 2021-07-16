@@ -89,7 +89,7 @@ class FingerprintManagerTest : public testing::Test {
 
 TEST_F(FingerprintManagerTest, StartAuthSessionFail) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(false);
       });
   status_ = true;
@@ -103,7 +103,7 @@ TEST_F(FingerprintManagerTest, StartAuthSessionFail) {
 
 TEST_F(FingerprintManagerTest, StartAuthSessionSuccess) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   status_ = false;
@@ -123,7 +123,7 @@ TEST_F(FingerprintManagerTest, StartAuthSessionSuccess) {
 TEST_F(FingerprintManagerTest, StartAuthSessionTwice) {
   // First auth session still exists.
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   status_ = false;
@@ -145,7 +145,7 @@ TEST_F(FingerprintManagerTest, StartAuthSessionTwice) {
 
 TEST_F(FingerprintManagerTest, AuthScanDoneNoScanResult) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   fingerprint_manager_->StartAuthSessionAsyncForUser(
@@ -168,7 +168,7 @@ TEST_F(FingerprintManagerTest, AuthScanDoneNoScanResult) {
 
 TEST_F(FingerprintManagerTest, AuthScanDoneScanResultFailed) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   fingerprint_manager_->StartAuthSessionAsyncForUser(
@@ -193,7 +193,7 @@ TEST_F(FingerprintManagerTest, AuthScanDoneScanResultFailed) {
 
 TEST_F(FingerprintManagerTest, AuthScanDoneNoMatch) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   fingerprint_manager_->StartAuthSessionAsyncForUser(
@@ -222,7 +222,7 @@ TEST_F(FingerprintManagerTest, AuthScanDoneNoMatch) {
 
 TEST_F(FingerprintManagerTest, AuthScanDoneSuccess) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   fingerprint_manager_->StartAuthSessionAsyncForUser(
@@ -252,7 +252,7 @@ TEST_F(FingerprintManagerTest, AuthScanDoneSuccess) {
 
 TEST_F(FingerprintManagerTest, AuthScanDoneTooManyRetries) {
   EXPECT_CALL(mock_biod_proxy_, StartAuthSessionAsync(_))
-      .WillOnce([](base::Callback<void(bool success)> callback) {
+      .WillOnce([](base::OnceCallback<void(bool success)> callback) {
         std::move(callback).Run(true);
       });
   fingerprint_manager_->StartAuthSessionAsyncForUser(
