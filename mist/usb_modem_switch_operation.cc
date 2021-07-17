@@ -81,11 +81,10 @@ UsbModemSwitchOperation::~UsbModemSwitchOperation() {
     ignore_result(bulk_transfer_.release());
 }
 
-void UsbModemSwitchOperation::Start(
-    const CompletionCallback& completion_callback) {
+void UsbModemSwitchOperation::Start(CompletionCallback completion_callback) {
   CHECK(!completion_callback.is_null());
 
-  completion_callback_ = completion_callback;
+  completion_callback_ = std::move(completion_callback);
   VLOG(1) << "Start modem switch operation for device '"
           << switch_context_->sys_path() << "'.";
 
@@ -110,13 +109,13 @@ void UsbModemSwitchOperation::Cancel() {
 }
 
 void UsbModemSwitchOperation::ScheduleTask(Task task) {
-  pending_task_.Reset(base::Bind(task, base::Unretained(this)));
+  pending_task_.Reset(base::BindOnce(task, base::Unretained(this)));
   context_->event_dispatcher()->PostTask(pending_task_.callback());
 }
 
 void UsbModemSwitchOperation::ScheduleDelayedTask(
     Task task, const base::TimeDelta& delay) {
-  pending_task_.Reset(base::Bind(task, base::Unretained(this)));
+  pending_task_.Reset(base::BindOnce(task, base::Unretained(this)));
   context_->event_dispatcher()->PostDelayedTask(pending_task_.callback(),
                                                 delay);
 }
@@ -138,8 +137,8 @@ void UsbModemSwitchOperation::Complete(bool success) {
   //    loop for too long as Complete() can be called from one of the tasks.
   // 2. The completion callback may delete this object, so this object should
   //    not be accessed after this method returns.
-  context_->event_dispatcher()->PostTask(
-      base::Bind(completion_callback_, base::Unretained(this), success));
+  context_->event_dispatcher()->PostTask(base::BindOnce(
+      std::move(completion_callback_), base::Unretained(this), success));
 }
 
 void UsbModemSwitchOperation::DetachAllKernelDrivers() {
@@ -466,7 +465,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
   // of the USB bulk transfer. This avoids the need to defer the destruction
   // of this object in order to wait for the completion callback of the
   // transfer when the transfer is cancelled by this object.
-  if (!bulk_transfer->Submit(base::Bind(completion_handler, AsWeakPtr()))) {
+  if (!bulk_transfer->Submit(base::BindOnce(completion_handler, AsWeakPtr()))) {
     LOG(ERROR) << "Could not submit USB bulk transfer: "
                << bulk_transfer->error();
     Complete(false);
@@ -565,7 +564,7 @@ void UsbModemSwitchOperation::ScheduleNextMessageToMassStorageEndpoint() {
 
 void UsbModemSwitchOperation::StartWaitingForDeviceToReconnect() {
   pending_task_.Cancel();
-  reconnect_timeout_callback_.Reset(base::Bind(
+  reconnect_timeout_callback_.Reset(base::BindOnce(
       &UsbModemSwitchOperation::OnReconnectTimeout, base::Unretained(this)));
   context_->event_dispatcher()->PostDelayedTask(
       reconnect_timeout_callback_.callback(),

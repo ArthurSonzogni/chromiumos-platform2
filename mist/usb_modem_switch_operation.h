@@ -48,8 +48,8 @@ class UsbModemSwitchOperation
     : public base::SupportsWeakPtr<UsbModemSwitchOperation>,
       public UsbDeviceEventObserver {
  public:
-  using CompletionCallback =
-      base::Callback<void(UsbModemSwitchOperation* operation, bool success)>;
+  using CompletionCallback = base::OnceCallback<void(
+      UsbModemSwitchOperation* operation, bool success)>;
 
   // Constructs a UsbModemSwitchOperation object by taking a raw pointer to a
   // Context object as |context| and a raw pointer to a UsbModemSwitchContext
@@ -67,7 +67,7 @@ class UsbModemSwitchOperation
   // Starts the modem switch operation. Upon the completion of the operation,
   // the completion callback |completion_callback| is invoked with the status
   // of the operation.
-  void Start(const CompletionCallback& completion_callback);
+  void Start(CompletionCallback completion_callback);
 
   // Cancels the modem switch operation and closes any open device. It is a
   // no-op if the operation has not been started by Start().
@@ -180,8 +180,8 @@ class UsbModemSwitchOperation
   int message_index_;
   int num_usb_messages_;
   std::unique_ptr<UsbBulkTransfer> bulk_transfer_;
-  base::CancelableClosure pending_task_;
-  base::CancelableClosure reconnect_timeout_callback_;
+  base::CancelableOnceClosure pending_task_;
+  base::CancelableOnceClosure reconnect_timeout_callback_;
 };
 
 }  // namespace mist

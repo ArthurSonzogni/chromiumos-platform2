@@ -36,8 +36,8 @@ void UsbModemOneShotSwitcher::Start(UsbModemSwitchContext* switch_context) {
   CHECK(operation_);
 
   operation_->Start(
-      base::Bind(&UsbModemOneShotSwitcher::OnSwitchOperationCompleted,
-                 base::Unretained(this)));
+      base::BindOnce(&UsbModemOneShotSwitcher::OnSwitchOperationCompleted,
+                     base::Unretained(this)));
 }
 
 void UsbModemOneShotSwitcher::OnSwitchOperationCompleted(

@@ -29,13 +29,13 @@ void EventDispatcher::Stop() {
   task_runner_->PostTask(FROM_HERE, std::move(quit_closure_));
 }
 
-bool EventDispatcher::PostTask(const base::Closure& task) {
-  return task_runner_->PostTask(FROM_HERE, task);
+bool EventDispatcher::PostTask(base::OnceClosure task) {
+  return task_runner_->PostTask(FROM_HERE, std::move(task));
 }
 
-bool EventDispatcher::PostDelayedTask(const base::Closure& task,
+bool EventDispatcher::PostDelayedTask(base::OnceClosure task,
                                       const base::TimeDelta& delay) {
-  return task_runner_->PostDelayedTask(FROM_HERE, task, delay);
+  return task_runner_->PostDelayedTask(FROM_HERE, std::move(task), delay);
 }
 
 bool EventDispatcher::StartWatchingFileDescriptor(

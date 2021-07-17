@@ -4,6 +4,8 @@
 
 #include "mist/usb_transfer.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -20,7 +22,7 @@ UsbTransfer::~UsbTransfer() {
   Free();
 }
 
-bool UsbTransfer::Submit(const CompletionCallback& completion_callback) {
+bool UsbTransfer::Submit(CompletionCallback completion_callback) {
   if (!VerifyAllocated())
     return false;
 
@@ -29,7 +31,7 @@ bool UsbTransfer::Submit(const CompletionCallback& completion_callback) {
     return false;
   }
 
-  completion_callback_ = completion_callback;
+  completion_callback_ = std::move(completion_callback);
 
   VLOG(1) << "Submit USB transfer: " << *this;
   int result = libusb_submit_transfer(transfer_);
@@ -218,7 +220,7 @@ void UsbTransfer::Complete() {
   if (!completion_callback_.is_null()) {
     VLOG(2) << base::StringPrintf(
         "Invoke completion callback for USB transfer %p.", transfer_);
-    completion_callback_.Run(this);
+    std::move(completion_callback_).Run(this);
   }
 }
 

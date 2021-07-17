@@ -29,7 +29,7 @@ namespace mist {
 // wrapped libusb_transfer accordingly for a specific type of transfer.
 class UsbTransfer {
  public:
-  using CompletionCallback = base::Callback<void(UsbTransfer* transfer)>;
+  using CompletionCallback = base::OnceCallback<void(UsbTransfer* transfer)>;
 
   enum State { kIdle, kInProgress, kCancelling };
 
@@ -42,7 +42,7 @@ class UsbTransfer {
   // UsbError::kErrorTransferAlreadySubmitted and returns false. Upon the
   // completion of this transfer, |completion_callback| is invoked. It is ok to
   // submit this transfer again after completion.
-  bool Submit(const CompletionCallback& completion_callback);
+  bool Submit(CompletionCallback completion_callback);
 
   // Cancels this USB transfer if it has been submitted via Submit(). Returns
   // true on success. If this transfer has not been submitted, sets |error_| to

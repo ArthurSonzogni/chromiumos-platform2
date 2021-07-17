@@ -42,11 +42,11 @@ class EventDispatcher {
   void Stop();
 
   // Posts |task| to the message loop for execution. Returns true on success.
-  bool PostTask(const base::Closure& task);
+  bool PostTask(base::OnceClosure task);
 
   // Posts |task| to the message loop for execution after the specified |delay|.
   // Returns true on success.
-  bool PostDelayedTask(const base::Closure& task, const base::TimeDelta& delay);
+  bool PostDelayedTask(base::OnceClosure task, const base::TimeDelta& delay);
 
   // Starts watching |file_descriptor| for its readiness for I/O based on |mode|
   // |callback| is invoked when |file_descriptor| is ready for I/O. Returns true

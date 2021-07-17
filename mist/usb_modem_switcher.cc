@@ -58,8 +58,8 @@ void UsbModemSwitcher::OnUsbDeviceAdded(const std::string& sys_path,
   CHECK(operation);
 
   // The operation object will be deleted in OnSwitchOperationCompleted().
-  operation->Start(base::Bind(&UsbModemSwitcher::OnSwitchOperationCompleted,
-                              base::Unretained(this)));
+  operation->Start(base::BindOnce(&UsbModemSwitcher::OnSwitchOperationCompleted,
+                                  base::Unretained(this)));
 }
 
 void UsbModemSwitcher::OnUsbDeviceRemoved(const std::string& sys_path) {
