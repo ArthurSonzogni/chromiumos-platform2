@@ -168,7 +168,7 @@ class SenderBase {
     base::TimeDelta hold_off_time = kMaxHoldOffTime;
 
     // Alternate sleep function for unit testing.
-    base::Callback<void(base::TimeDelta)> sleep_function;
+    base::RepeatingCallback<void(base::TimeDelta)> sleep_function;
   };
 
   SenderBase(std::unique_ptr<base::Clock> clock, const Options& options);
@@ -255,7 +255,7 @@ class SenderBase {
   void EnsureDBusIsReady();
 
   // These are accessed by child classes.
-  base::Callback<void(base::TimeDelta)> sleep_function_;
+  base::RepeatingCallback<void(base::TimeDelta)> sleep_function_;
   scoped_refptr<dbus::Bus> bus_;
   bool crash_during_testing_ = false;
   const base::TimeDelta hold_off_time_;

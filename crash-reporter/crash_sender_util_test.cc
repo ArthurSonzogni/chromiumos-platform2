@@ -117,7 +117,7 @@ class MockSender : public util::Sender {
         std::make_shared<brillo::http::fake::Transport>();
     fake_transport->AddHandler(
         kReportUploadProdUrl, brillo::http::request_type::kPost,
-        base::Bind(MockMethodHandler, success_, response_));
+        base::BindRepeating(MockMethodHandler, success_, response_));
 
     return fake_transport;
   }
@@ -1750,7 +1750,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.max_crash_rate = 2;
   // Setting max_crash_bytes to 0 will limit to the uploader to max_crash_rate.
   options.max_crash_bytes = 0;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
   MockSender sender(true /*success*/,
                     "123",  // upload_id
@@ -1897,7 +1897,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_TooManyRequests) {
   options.max_crash_rate = 2;
   // Setting max_crash_bytes to 0 will limit to the uploader to max_crash_rate.
   options.max_crash_bytes = 0;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
   MockSender sender(false,                // success=false
                     "Too Many Requests",  // Response
@@ -1963,7 +1963,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   Sender::Options options;
   options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
   MockSender sender(false,  // success=false
                     "500",  // Response code
@@ -2019,7 +2019,7 @@ TEST_F(CrashSenderUtilDeathTest, SendCrashes_Crash) {
   Sender::Options options;
   options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
   MockSender sender(true,                 // success=true
                     "Too Many Requests",  // Response
@@ -2043,7 +2043,7 @@ TEST_F(CrashSenderUtilTest, LockFile) {
   EXPECT_CALL(*clock, Now()).Times(2).WillRepeatedly(Return(start_time));
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   Sender sender(std::move(metrics_lib_), std::move(clock), options);
 
   EXPECT_FALSE(IsFileLocked(paths::Get(paths::kCrashSenderLockFile)));
@@ -2075,7 +2075,7 @@ TEST_F(CrashSenderUtilTest, LockFileTriesAgainIfFirstAttemptFails) {
       }));
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   Sender sender(std::move(metrics_lib_), std::move(clock), options);
 
   base::File lock(sender.AcquireLockFileOrDie());
@@ -2107,7 +2107,7 @@ TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
       }));
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   Sender sender(std::move(metrics_lib_), std::move(clock), options);
 
   base::File lock(sender.AcquireLockFileOrDie());
@@ -2120,7 +2120,7 @@ TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
   auto lock_process = LockFile(lock_file_path);
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   Sender sender(std::move(metrics_lib_),
                 std::make_unique<test_util::AdvancingClock>(), options);
   base::Time start_time = base::Time::Now();

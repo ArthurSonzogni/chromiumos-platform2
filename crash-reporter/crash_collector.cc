@@ -17,6 +17,7 @@
 #include <ctime>
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -1321,19 +1322,19 @@ base::Optional<bool> CrashCollector::IsEnterpriseEnrolled() {
 
 // Callback for CallMethodWithErrorCallback(). Discards the response pointer
 // and just calls |callback|.
-static void IgnoreResponsePointer(base::Callback<void()> callback,
+static void IgnoreResponsePointer(base::OnceCallback<void()> callback,
                                   dbus::Response*) {
-  callback.Run();
+  std::move(callback).Run();
 }
 
 // Error callback for CallMethodWithErrorCallback(). Discards the error pointer
 // and just calls |callback|.
-static void IgnoreErrorResponsePointer(base::Callback<void()> callback,
+static void IgnoreErrorResponsePointer(base::OnceCallback<void()> callback,
                                        dbus::ErrorResponse*) {
   // We set the timeout to 0, so of course we time out before we get a response.
   // 99% of the time, the ErrorResponse is just "NoReply". Don't spam the error
   // log with that information, just discard the error response.
-  callback.Run();
+  std::move(callback).Run();
 }
 
 void CrashCollector::FinishCrash(const FilePath& meta_path,
@@ -1448,8 +1449,8 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
                                                 std::move(in_memory_files_));
     debugd_proxy_->GetObjectProxy()->CallMethodWithErrorCallback(
         &method_call, 0 /*timeout_ms*/,
-        base::Bind(IgnoreResponsePointer, quit_closure),
-        base::Bind(IgnoreErrorResponsePointer, quit_closure));
+        base::BindOnce(IgnoreResponsePointer, quit_closure),
+        base::BindOnce(IgnoreErrorResponsePointer, quit_closure));
     run_loop.Run();
   }
 
