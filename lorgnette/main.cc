@@ -54,7 +54,7 @@ void OnStartup(const char* daemon_name) {
 }
 
 int main(int argc, char** argv) {
-  lorgnette::Daemon daemon(base::Bind(&OnStartup, argv[0]));
+  lorgnette::Daemon daemon(base::BindOnce(&OnStartup, argv[0]));
 
   daemon.Run();
 

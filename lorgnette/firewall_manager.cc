@@ -59,8 +59,8 @@ void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
   // The callback will be invoked as soon as service is avalilable and will
   // be cleared after it is invoked. So this will be an one time callback.
   permission_broker_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::Bind(&FirewallManager::OnServiceAvailable,
-                 weak_factory_.GetWeakPtr()));
+      base::BindOnce(&FirewallManager::OnServiceAvailable,
+                     weak_factory_.GetWeakPtr()));
 
   // This will continuously monitor the name owner of the service. However,
   // it does not connect the name owner changed signal in DBus object proxy
@@ -69,8 +69,8 @@ void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
   // Since we're not interested in any signals from the proxy,
   // WaitForServiceToBeAvailable is used.
   permission_broker_proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
-      base::Bind(&FirewallManager::OnServiceNameChanged,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&FirewallManager::OnServiceNameChanged,
+                          weak_factory_.GetWeakPtr()));
 }
 
 PortToken FirewallManager::RequestPixmaPortAccess() {

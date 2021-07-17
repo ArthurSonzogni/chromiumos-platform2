@@ -64,7 +64,7 @@ class FirewallManager;
 class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                 public org::chromium::lorgnette::ManagerInterface {
  public:
-  Manager(base::Callback<void(size_t)> activity_callback,
+  Manager(base::RepeatingCallback<void(size_t)> activity_callback,
           std::unique_ptr<SaneClient> sane_client);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
@@ -149,7 +149,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                          const ScanFailureMode failure_mode);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  base::Callback<void(size_t)> activity_callback_;
+  base::RepeatingCallback<void(size_t)> activity_callback_;
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
 
   // Manages port access for receiving replies from network scanners.

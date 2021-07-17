@@ -21,7 +21,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   static const char kScanGroupName[];
   static const char kScanUserName[];
 
-  explicit Daemon(const base::Closure& startup_callback);
+  explicit Daemon(base::OnceClosure startup_callback);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() = default;
@@ -45,8 +45,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   void PostponeShutdown(size_t ms);
 
   std::unique_ptr<Manager> manager_;
-  base::Closure startup_callback_;
-  base::CancelableClosure shutdown_callback_;
+  base::OnceClosure startup_callback_;
+  base::CancelableOnceClosure shutdown_callback_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<Daemon> weak_factory_{this};

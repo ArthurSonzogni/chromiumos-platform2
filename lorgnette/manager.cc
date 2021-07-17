@@ -142,7 +142,7 @@ const char Manager::kMetricScanRequested[] = "DocumentScan.ScanRequested";
 const char Manager::kMetricScanSucceeded[] = "DocumentScan.ScanSucceeded";
 const char Manager::kMetricScanFailed[] = "DocumentScan.ScanFailed";
 
-Manager::Manager(base::Callback<void(size_t)> activity_callback,
+Manager::Manager(base::RepeatingCallback<void(size_t)> activity_callback,
                  std::unique_ptr<SaneClient> sane_client)
     : org::chromium::lorgnette::ManagerAdaptor(this),
       activity_callback_(activity_callback),

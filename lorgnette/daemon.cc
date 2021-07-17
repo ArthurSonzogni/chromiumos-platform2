@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -26,9 +27,9 @@ const char Daemon::kScanUserName[] = "saned";
 const int Daemon::kNormalShutdownTimeoutMilliseconds = 2000;
 const int Daemon::kExtendedShutdownTimeoutMilliseconds = 300000;
 
-Daemon::Daemon(const base::Closure& startup_callback)
+Daemon::Daemon(base::OnceClosure startup_callback)
     : DBusServiceDaemon(kManagerServiceName, "/ObjectManager"),
-      startup_callback_(startup_callback) {}
+      startup_callback_(std::move(startup_callback)) {}
 
 int Daemon::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
@@ -39,15 +40,15 @@ int Daemon::OnInit() {
   PostponeShutdown(kNormalShutdownTimeoutMilliseconds);
 
   // Signal that we've acquired all resources.
-  startup_callback_.Run();
+  std::move(startup_callback_).Run();
   return EX_OK;
 }
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  manager_.reset(new Manager(
-      base::Bind(&Daemon::PostponeShutdown, weak_factory_.GetWeakPtr()),
-      SaneClientImpl::Create()));
+  manager_.reset(new Manager(base::BindRepeating(&Daemon::PostponeShutdown,
+                                                 weak_factory_.GetWeakPtr()),
+                             SaneClientImpl::Create()));
   manager_->RegisterAsync(object_manager_.get(), sequencer);
 }
 
@@ -58,7 +59,7 @@ void Daemon::OnShutdown(int* return_code) {
 
 void Daemon::PostponeShutdown(size_t ms) {
   shutdown_callback_.Reset(
-      base::Bind(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(),
       base::TimeDelta::FromMilliseconds(ms));
