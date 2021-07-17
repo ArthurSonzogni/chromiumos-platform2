@@ -153,7 +153,7 @@ bool SendReport(FeedbackServiceInterface* interface, FeedbackCommon* report) {
 
   report->CompressLogs();
   interface->SendFeedback(
-      *report, base::Bind(&CommandlineReportStatus, &event, &status));
+      *report, base::BindOnce(&CommandlineReportStatus, &event, &status));
   event.Wait();
   return status;
 }

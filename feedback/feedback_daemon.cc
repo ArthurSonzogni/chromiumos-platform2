@@ -59,7 +59,7 @@ void Daemon::Run() {
   // Load all reports currently on disk and queue them for sending.
   FeedbackReport::LoadReportsAndQueue(
       uploader_->GetFeedbackReportsPath(),
-      base::Bind(&FeedbackService::QueueExistingReport, impl.get()));
+      base::BindRepeating(&FeedbackService::QueueExistingReport, impl.get()));
 
   CHECK(impl->Start(bus.get())) << "Failed to start feedback service";
 

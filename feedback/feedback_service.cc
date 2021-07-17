@@ -60,7 +60,8 @@ bool DBusFeedbackServiceImpl::Start(dbus::Bus* bus) {
 
   if (!object->ExportMethodAndBlock(
           feedback::kFeedbackServiceName, feedback::kSendFeedback,
-          base::Bind(&DBusFeedbackServiceImpl::DBusSendFeedback, this))) {
+          base::BindRepeating(&DBusFeedbackServiceImpl::DBusSendFeedback,
+                              this))) {
     bus->UnregisterExportedObject(path);
     LOG(ERROR) << "Failed to export method " << feedback::kSendFeedback;
     return false;

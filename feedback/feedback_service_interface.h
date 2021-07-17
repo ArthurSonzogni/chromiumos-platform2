@@ -16,7 +16,7 @@ class Thread;
 
 class FeedbackCommon;
 
-typedef base::Callback<void(bool status)> FeedbackResultCallback;
+typedef base::OnceCallback<void(bool status)> FeedbackResultCallback;
 
 class FeedbackServiceInterface
     : public base::RefCountedThreadSafe<FeedbackServiceInterface> {
@@ -51,7 +51,7 @@ class FeedbackServiceInterface
 // feedback.AddLog(log_name, log_data);
 // ...
 // feedback.CompressLogs();
-// service.SendFeedback(feedback, base::Bind(&some_callback))
+// service.SendFeedback(feedback, base::BindOnce(&some_callback))
 class DBusFeedbackServiceInterface : public FeedbackServiceInterface {
  public:
   DBusFeedbackServiceInterface();

@@ -5,6 +5,7 @@
 #include "feedback/feedback_service_interface.h"
 
 #include <memory>
+#include <utility>
 
 #include "base/bind.h"
 #include "chromeos/dbus/service_constants.h"
@@ -43,7 +44,7 @@ bool DBusFeedbackServiceInterface::SendFeedback(
   std::unique_ptr<dbus::Response> response =
       object->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (response.get() == nullptr) {
-    callback.Run(false);
+    std::move(callback).Run(false);
     return true;
   }
 
@@ -54,6 +55,6 @@ bool DBusFeedbackServiceInterface::SendFeedback(
     reader.PopBool(&status);
   }
 
-  callback.Run(status);
+  std::move(callback).Run(status);
   return true;
 }

@@ -18,7 +18,7 @@
 
 namespace feedback {
 
-typedef base::Callback<void(const std::string&)> ReportDataCallback;
+typedef base::RepeatingCallback<void(const std::string&)> ReportDataCallback;
 
 class FeedbackReport;
 

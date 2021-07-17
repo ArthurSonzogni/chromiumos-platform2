@@ -125,7 +125,8 @@ TEST_F(FeedbackServiceTest, SendFeedback) {
   scoped_refptr<FeedbackService> svc = new FeedbackService(&uploader);
 
   svc->SendFeedback(
-      report, base::Bind(&FeedbackServiceTest::CallbackFeedbackResult, true));
+      report,
+      base::BindOnce(&FeedbackServiceTest::CallbackFeedbackResult, true));
 }
 
 TEST_F(FeedbackServiceTest, DispatchTest) {
@@ -138,7 +139,8 @@ TEST_F(FeedbackServiceTest, DispatchTest) {
   scoped_refptr<FeedbackService> svc = new FeedbackService(&uploader);
 
   svc->SendFeedback(
-      report, base::Bind(&FeedbackServiceTest::CallbackFeedbackResult, true));
+      report,
+      base::BindOnce(&FeedbackServiceTest::CallbackFeedbackResult, true));
 }
 
 TEST_F(FeedbackServiceTest, UploadFailure) {
@@ -151,7 +153,8 @@ TEST_F(FeedbackServiceTest, UploadFailure) {
   scoped_refptr<FeedbackService> svc = new FeedbackService(&uploader);
 
   svc->SendFeedback(
-      report, base::Bind(&FeedbackServiceTest::CallbackFeedbackResult, true));
+      report,
+      base::BindOnce(&FeedbackServiceTest::CallbackFeedbackResult, true));
   WaitOnThread();
 
   // Verify that this got put back on the queue.

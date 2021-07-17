@@ -53,7 +53,7 @@ FeedbackReport::FeedbackReport(
 
   reports_task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&WriteReportOnBlockingPool, reports_path_, file_, data_));
+      base::BindOnce(&WriteReportOnBlockingPool, reports_path_, file_, data_));
 }
 
 FeedbackReport::~FeedbackReport() {}

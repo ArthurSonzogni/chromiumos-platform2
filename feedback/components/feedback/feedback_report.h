@@ -19,7 +19,7 @@ class SequencedTaskRunner;
 
 namespace feedback {
 
-typedef base::Callback<void(const std::string&)> QueueCallback;
+typedef base::RepeatingCallback<void(const std::string&)> QueueCallback;
 
 // This class holds a feedback report. Once a report is created, a disk backup
 // for it is created automatically. This backup needs to explicitly be
