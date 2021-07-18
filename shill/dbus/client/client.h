@@ -285,6 +285,9 @@ class BRILLO_EXPORT Client {
   virtual org::chromium::flimflam::ManagerProxyInterface* GetManagerProxy()
       const;
 
+  // Returns all available devices.
+  virtual std::vector<std::unique_ptr<Device>> GetDevices() const;
+
  protected:
   // All of the methods and members with protected access scope are needed for
   // unit testing.

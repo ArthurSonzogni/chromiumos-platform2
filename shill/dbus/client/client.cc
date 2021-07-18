@@ -718,6 +718,20 @@ void Client::OnServicePropertyChange(const std::string& device_path,
       handler.Run(device);
 }
 
+std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
+  std::vector<std::unique_ptr<Client::Device>> devices;
+  // Provide the current list of devices.
+  for (const auto& [_, dev] : devices_) {
+    auto device = std::make_unique<Device>();
+    device->type = dev->device()->type;
+    device->ifname = dev->device()->ifname;
+    device->state = dev->device()->state;
+    device->ipconfig = dev->device()->ipconfig;
+    devices.emplace_back(std::move(device));
+  }
+  return devices;
+}
+
 std::unique_ptr<Client::ManagerPropertyAccessor> Client::ManagerProperties(
     const base::TimeDelta& timeout) const {
   return std::make_unique<PropertyAccessor<ManagerProxyInterface>>(

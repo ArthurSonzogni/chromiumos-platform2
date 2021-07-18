@@ -37,6 +37,7 @@ class BRILLO_EXPORT FakeClient : public Client {
       const base::TimeDelta& timeout) const override;
 
   std::unique_ptr<Client::Device> DefaultDevice(bool exclude_vpn) override;
+  std::vector<std::unique_ptr<Device>> GetDevices() const override;
 
  protected:
   base::OnceCallback<void(bool)> available_handler_;

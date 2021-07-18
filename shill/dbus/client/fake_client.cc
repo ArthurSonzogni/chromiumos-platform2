@@ -54,4 +54,8 @@ std::unique_ptr<Client::Device> FakeClient::DefaultDevice(bool exlcude_vpn) {
   return nullptr;
 }
 
+std::vector<std::unique_ptr<Client::Device>> FakeClient::GetDevices() const {
+  return {};
+}
+
 }  // namespace shill
