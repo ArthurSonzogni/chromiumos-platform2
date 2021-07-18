@@ -53,8 +53,8 @@ void UploadService::Init(const base::TimeDelta& upload_interval,
   if (!testing_) {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&UploadService::UploadEventCallback, base::Unretained(this),
-                   upload_interval),
+        base::BindOnce(&UploadService::UploadEventCallback,
+                       base::Unretained(this), upload_interval),
         upload_interval);
   }
 }
@@ -72,8 +72,8 @@ void UploadService::UploadEventCallback(const base::TimeDelta& interval) {
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&UploadService::UploadEventCallback, base::Unretained(this),
-                 interval),
+      base::BindOnce(&UploadService::UploadEventCallback,
+                     base::Unretained(this), interval),
       interval);
 }
 

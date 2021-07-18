@@ -15,9 +15,10 @@
 //     backing_dir,
 //     stat_names,
 //     TimeDelta::FromMinutes(5),
-//     base::Bind(&UpdateConnectivityStats),
+//     base::BindRepeating(&UpdateConnectivityStats),
 //     TimeDelta::FromDays(1),
-//     base::Bind(&ReportConnectivityStats, base::Unretained(metrics_lib_));
+//     base::BindRepeating(&ReportConnectivityStats,
+//     base::Unretained(metrics_lib_));
 //
 //   ...
 // }
@@ -66,7 +67,7 @@ namespace chromeos_metrics {
 
 class CumulativeMetrics {
  public:
-  using Callback = base::Callback<void(CumulativeMetrics*)>;
+  using Callback = base::RepeatingCallback<void(CumulativeMetrics*)>;
   // Constructor.
   //
   // |backing_dir| points to a subdirectory for the backing files, for instance

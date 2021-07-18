@@ -493,8 +493,9 @@ int MetricsDaemon::OnInit() {
     powerd_proxy->ConnectToSignal(
         power_manager::kPowerManagerInterface,
         power_manager::kSuspendDoneSignal,
-        base::Bind(&MetricsDaemon::HandleSuspendDone, GET_THIS_FOR_POSTTASK()),
-        base::Bind(&DBusSignalConnected));
+        base::BindRepeating(&MetricsDaemon::HandleSuspendDone,
+                            GET_THIS_FOR_POSTTASK()),
+        base::BindOnce(&DBusSignalConnected));
 
   } else {
     LOG(ERROR) << "DBus isn't connected.";
@@ -503,8 +504,8 @@ int MetricsDaemon::OnInit() {
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
-                 GET_THIS_FOR_POSTTASK()),
+      base::BindOnce(&MetricsDaemon::HandleUpdateStatsTimeout,
+                     GET_THIS_FOR_POSTTASK()),
       base::TimeDelta::FromMilliseconds(kInitialUpdateStatsIntervalMs));
 
   // Emit a "0" value on start, to provide a baseline for this metric.
@@ -696,7 +697,7 @@ void MetricsDaemon::ScheduleStatsCallback(int wait) {
   }
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::StatsCallback, GET_THIS_FOR_POSTTASK()),
+      base::BindOnce(&MetricsDaemon::StatsCallback, GET_THIS_FOR_POSTTASK()),
       base::TimeDelta::FromSeconds(wait));
 }
 

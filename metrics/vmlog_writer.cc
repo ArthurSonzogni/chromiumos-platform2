@@ -402,8 +402,8 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
     LOG(WARNING) << "Time seems incorrect, too close to epoch: " << now;
     valid_time_delay_timer_.Start(
         FROM_HERE, base::TimeDelta::FromMinutes(5),
-        base::Bind(&VmlogWriter::Init, base::Unretained(this), vmlog_dir,
-                   log_interval));
+        base::BindOnce(&VmlogWriter::Init, base::Unretained(this), vmlog_dir,
+                       log_interval));
     return;
   }
 
