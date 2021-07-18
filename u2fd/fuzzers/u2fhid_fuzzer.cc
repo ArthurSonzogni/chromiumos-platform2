@@ -11,10 +11,10 @@
 #include <cstdint>
 #include <memory>
 
+#include "u2fd/fuzzers/fake_u2f_msg_handler.h"
+#include "u2fd/fuzzers/fake_uhid_device.h"
 #include "u2fd/hid_interface.h"
 #include "u2fd/u2fhid.h"
-#include "u2fd/u2fhid_fuzzer/fake_u2f_msg_handler.h"
-#include "u2fd/u2fhid_fuzzer/fake_uhid_device.h"
 
 namespace {
 class FuzzerLoop : public brillo::Daemon {

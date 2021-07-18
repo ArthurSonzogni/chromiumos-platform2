@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "u2fd/u2fhid_fuzzer/fake_uhid_device.h"
+#include "u2fd/fuzzers/fake_uhid_device.h"
 
 #include <base/check.h>
 

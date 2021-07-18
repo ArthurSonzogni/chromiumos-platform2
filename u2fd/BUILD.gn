@@ -182,9 +182,9 @@ if (use.test) {
 if (use.fuzzer) {
   executable("u2f_apdu_fuzzer") {
     sources = [
+      "fuzzers/u2f_apdu_fuzzer.cc",
       "tpm_vendor_cmd.cc",
       "u2f_apdu.cc",
-      "u2f_apdu_fuzzer.cc",
       "util.cc",
     ]
     configs += [
@@ -199,11 +199,11 @@ if (use.fuzzer) {
 
   executable("u2fhid_fuzzer") {
     sources = [
+      "fuzzers/fake_u2f_msg_handler.cc",
+      "fuzzers/fake_uhid_device.cc",
+      "fuzzers/u2fhid_fuzzer.cc",
       "u2f_apdu.cc",
       "u2fhid.cc",
-      "u2fhid_fuzzer/fake_u2f_msg_handler.cc",
-      "u2fhid_fuzzer/fake_uhid_device.cc",
-      "u2fhid_fuzzer/u2fhid_fuzzer.cc",
     ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",

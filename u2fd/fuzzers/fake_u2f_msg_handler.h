@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_U2FHID_FUZZER_FAKE_U2F_MSG_HANDLER_H_
-#define U2FD_U2FHID_FUZZER_FAKE_U2F_MSG_HANDLER_H_
+#ifndef U2FD_FUZZERS_FAKE_U2F_MSG_HANDLER_H_
+#define U2FD_FUZZERS_FAKE_U2F_MSG_HANDLER_H_
 
 #include <string>
 
@@ -20,4 +20,4 @@ class FakeU2fMessageHandler : public U2fMessageHandlerInterface {
 
 }  // namespace u2f
 
-#endif  // U2FD_U2FHID_FUZZER_FAKE_U2F_MSG_HANDLER_H_
+#endif  // U2FD_FUZZERS_FAKE_U2F_MSG_HANDLER_H_
