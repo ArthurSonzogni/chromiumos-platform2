@@ -106,8 +106,6 @@ class FakeClient : public Client {
  protected:
   // Erase the default implementations so we can keep the same proxy pointers
   // throughout.
-  void NewManagerProxy() override {}
-  void ReleaseManagerProxy() override {}
   void NewDefaultServiceProxy(const dbus::ObjectPath& service_path) override {
     service_path_ = service_path;
   }
@@ -157,6 +155,15 @@ class ClientTest : public testing::Test {
     last_device_changed_.clear();
     last_device_cxn_state_ = Client::Device::ConnectionState::kUnknown;
 
+    // It's necessary to mock the base object used for the
+    // SetNameOwnerChangedCallback.
+    base_mock_ = new dbus::MockObjectProxy(
+        bus_mock_.get(), kFlimflamServiceName, dbus::ObjectPath("/"));
+    EXPECT_CALL(*bus_mock_,
+                GetObjectProxy(kFlimflamServiceName, dbus::ObjectPath("/")))
+        .WillRepeatedly(Return(base_mock_.get()));
+    EXPECT_CALL(*base_mock_, SetNameOwnerChangedCallback(_));
+
     client_ = std::make_unique<FakeClient>(bus_mock_);
     client_->RegisterDefaultServiceChangedHandler(
         base::Bind(&ClientTest::DefaultServiceHandler, base::Unretained(this)));
@@ -169,24 +176,11 @@ class ClientTest : public testing::Test {
     client_->RegisterDeviceChangedHandler(
         base::Bind(&ClientTest::DeviceChangedHandler, base::Unretained(this)));
 
-    // It's necessary to mock the base object used for the
-    // SetNameOwnerChangedCallback.
-    base_mock_ = new dbus::MockObjectProxy(
-        bus_mock_.get(), kFlimflamServiceName, dbus::ObjectPath("/"));
-    EXPECT_CALL(*bus_mock_,
-                GetObjectProxy(kFlimflamServiceName, dbus::ObjectPath("/")))
-        .WillRepeatedly(Return(base_mock_.get()));
-    EXPECT_CALL(*base_mock_, SetNameOwnerChangedCallback(_));
-
     // These are not blindly added - we expect the Client to issue these calls
     // on the service in order to recover the path.
     EXPECT_CALL(*client_->default_service(), GetObjectPath)
         .WillRepeatedly(
             Invoke([&]() { return client_->default_service_path(); }));
-    // This is the initial property registration called during Init().
-    EXPECT_CALL(*client_->manager(),
-                DoRegisterPropertyChangedSignalHandler(_, _));
-    client_->Init();
   }
 
   void TearDown() override { client_.reset(); }
@@ -238,26 +232,6 @@ ACTION_TEMPLATE(MovePointee,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(pointer)) {
   *pointer = std::move(*(::std::get<k>(args)));
-}
-
-TEST_F(ClientTest, ShillResetCreatesNewManagerProxy) {
-  static bool is_reset = false;
-  client_->RegisterProcessChangedHandler(
-      base::BindRepeating([](bool b) { is_reset = b; }));
-  EXPECT_CALL(*client_->manager(),
-              DoRegisterPropertyChangedSignalHandler(_, _));
-  client_->NotifyOwnerChange("old", "new");
-  EXPECT_TRUE(is_reset);
-}
-
-TEST_F(ClientTest, ShillLostDoesNotCreateNewManagerProxy) {
-  static bool is_reset = false;
-  client_->RegisterProcessChangedHandler(
-      base::BindRepeating([](bool b) { is_reset = b; }));
-  EXPECT_CALL(*client_->manager(), DoRegisterPropertyChangedSignalHandler(_, _))
-      .Times(0);
-  client_->NotifyOwnerChange("old", "");
-  EXPECT_FALSE(is_reset);
 }
 
 TEST_F(ClientTest, DefaultServiceHandlerCalledForValidServicePath) {

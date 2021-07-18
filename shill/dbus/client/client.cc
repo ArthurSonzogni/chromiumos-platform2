@@ -93,32 +93,20 @@ const char* ToString(Client::Device::ConnectionState state) {
 
 }  // namespace
 
-Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
-
-void Client::Init() {
+Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
   bus_->GetObjectProxy(kFlimflamServiceName, dbus::ObjectPath{"/"})
       ->SetNameOwnerChangedCallback(base::BindRepeating(
           &Client::OnOwnerChange, weak_factory_.GetWeakPtr()));
-  SetupManagerProxy();
-}
-
-void Client::NewManagerProxy() {
   manager_proxy_ = std::make_unique<ManagerProxy>(bus_);
-}
-
-void Client::SetupManagerProxy() {
-  NewManagerProxy();
   manager_proxy_->RegisterPropertyChangedSignalHandler(
       base::Bind(&Client::OnManagerPropertyChange, weak_factory_.GetWeakPtr()),
       base::Bind(&Client::OnManagerPropertyChangeRegistration,
                  weak_factory_.GetWeakPtr()));
 }
 
-void Client::ReleaseManagerProxy() {
-  devices_.clear();
+Client::~Client() {
   bus_->RemoveObjectProxy(kFlimflamServiceName, dbus::ObjectPath("/"),
                           base::DoNothing());
-  manager_proxy_.reset();
 }
 
 void Client::NewDefaultServiceProxy(const dbus::ObjectPath& service_path) {
@@ -236,19 +224,16 @@ void Client::RegisterDeviceRemovedHandler(const DeviceChangedHandler& handler) {
 void Client::OnOwnerChange(const std::string& old_owner,
                            const std::string& new_owner) {
   ReleaseDefaultServiceProxy();
-  ReleaseManagerProxy();
+  devices_.clear();
 
-  if (new_owner.empty()) {
+  bool reset = !new_owner.empty();
+  if (reset)
+    LOG(INFO) << "Shill reset";
+  else
     LOG(INFO) << "Shill lost";
-    if (!process_handler_.is_null())
-      process_handler_.Run(false);
-    return;
-  }
 
-  LOG(INFO) << "Shill reset";
-  SetupManagerProxy();
   if (!process_handler_.is_null())
-    process_handler_.Run(true);
+    process_handler_.Run(reset);
 }
 
 void Client::OnManagerPropertyChangeRegistration(const std::string& interface,

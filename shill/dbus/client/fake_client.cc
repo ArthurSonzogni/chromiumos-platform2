@@ -10,10 +10,6 @@ namespace shill {
 
 FakeClient::FakeClient(scoped_refptr<dbus::Bus> bus) : Client(bus) {}
 
-void FakeClient::Init() {
-  init_ = true;
-}
-
 void FakeClient::RegisterOnAvailableCallback(
     base::OnceCallback<void(bool)> handler) {
   available_handler_ = std::move(handler);

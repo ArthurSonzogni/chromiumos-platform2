@@ -212,12 +212,9 @@ class BRILLO_EXPORT Client {
   using DeviceChangedHandler = base::Callback<void(const Device* const)>;
 
   explicit Client(scoped_refptr<dbus::Bus> bus);
-  virtual ~Client() = default;
+  virtual ~Client();
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
-
-  // Initiates the connection to DBus and starts processing signals.
-  virtual void Init();
 
   // |handler| will be invoked when shill's DBus service is available.
   // If called and the service is up, it will return true immediately,
@@ -332,8 +329,6 @@ class BRILLO_EXPORT Client {
   // Methods for managing proxy objects. These are overridden in tests to ensure
   // registration hooks, callbacks and properties can be plumbed back through
   // the interfaces as needed.
-  virtual void NewManagerProxy();
-  virtual void ReleaseManagerProxy();
   virtual void NewDefaultServiceProxy(const dbus::ObjectPath& service_path);
   virtual void ReleaseDefaultServiceProxy();
   virtual std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>
@@ -390,7 +385,6 @@ class BRILLO_EXPORT Client {
                                            const std::string& signal_name,
                                            bool success);
 
-  void SetupManagerProxy();
   void SetupDefaultServiceProxy(const dbus::ObjectPath& service_path);
   void SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
                                  const dbus::ObjectPath& device_path);

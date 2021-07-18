@@ -18,7 +18,6 @@ class BRILLO_EXPORT FakeClient : public Client {
   virtual ~FakeClient() = default;
 
   // Client methods.
-  void Init() override;
 
   void RegisterOnAvailableCallback(
       base::OnceCallback<void(bool)> handler) override;
@@ -40,7 +39,6 @@ class BRILLO_EXPORT FakeClient : public Client {
   std::unique_ptr<Client::Device> DefaultDevice(bool exclude_vpn) override;
 
  protected:
-  bool init_{false};
   base::OnceCallback<void(bool)> available_handler_;
   base::RepeatingCallback<void(bool)> process_handler_;
   std::vector<DefaultServiceChangedHandler> default_service_handlers_;
