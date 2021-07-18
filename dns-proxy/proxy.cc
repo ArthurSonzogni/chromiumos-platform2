@@ -321,6 +321,11 @@ void Proxy::OnShillReady(bool success) {
       &Proxy::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
   shill_->RegisterDeviceChangedHandler(
       base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr()));
+  if (opts_.type == Proxy::Type::kARC) {
+    for (const auto& d : shill_->GetDevices()) {
+      OnDeviceChanged(d.get());
+    }
+  }
 }
 
 void Proxy::OnShillReset(bool reset) {
