@@ -39,7 +39,7 @@ class DBusMethodResponseWrapperTestBase : public testing::Test {
   // Create a mock DbusMethodResponse callback which will run |check_function|
   // after it is called.
   DBusMethodResponseCallback CreateMockDBusMethodResponse(
-      base::Closure check_function) {
+      base::OnceClosure check_function) {
     // Make a fake method call.
     std::shared_ptr<dbus::MethodCall> method_call =
         std::make_shared<dbus::MethodCall>("com.example.Interface",
@@ -47,11 +47,12 @@ class DBusMethodResponseWrapperTestBase : public testing::Test {
     // Set a value to bypass the checks in dbus libraray.
     method_call->SetSerial(5);
 
-    // TODO(crbug/1094927): Change to base::BindOnce after uprev.
-    ResponseSender sender = base::Bind(
-        [](std::shared_ptr<dbus::MethodCall> method_call, base::Closure check,
-           std::unique_ptr<dbus::Response> response) { check.Run(); },
-        method_call, check_function);
+    ResponseSender sender = base::BindOnce(
+        [](std::shared_ptr<dbus::MethodCall> method_call,
+           base::OnceClosure check, std::unique_ptr<dbus::Response> response) {
+          std::move(check).Run();
+        },
+        method_call, std::move(check_function));
 
     return std::make_unique<DBusMethodResponse>(method_call.get(),
                                                 std::move(sender));
@@ -66,43 +67,43 @@ class DBusMethodResponseWrapperTestBase : public testing::Test {
   // |callback_decorator| and pass the callback to |handler| and run on the
   // |thread_of_handler|.
   void CreateCallbackAndCallOnHandler(
-      const base::Callback<DBusMethodResponseCallback(
-          DBusMethodResponseCallback)> callback_decorator,
+      base::OnceCallback<DBusMethodResponseCallback(DBusMethodResponseCallback)>
+          callback_decorator,
       base::Thread* thread_of_handler,
-      base::Callback<void(DBusMethodResponseCallback)> handler) {
-    auto checker = base::Bind(&DBusMethodResponseWrapperTestBase::
-                                  CheckIfDbusCallbackIsCalledOnDbusThread,
-                              base::Unretained(this));
+      base::OnceCallback<void(DBusMethodResponseCallback)> handler) {
+    auto checker = base::BindOnce(&DBusMethodResponseWrapperTestBase::
+                                      CheckIfDbusCallbackIsCalledOnDbusThread,
+                                  base::Unretained(this));
 
     // Create the raw DbusMethodResponse callback with |checker|.
     DBusMethodResponseCallback raw_callback =
-        CreateMockDBusMethodResponse(checker);
+        CreateMockDBusMethodResponse(std::move(checker));
 
     // Post-process the DbusMethodResponse callback with custom decorator.
     DBusMethodResponseCallback final_callback =
-        callback_decorator.Run(std::move(raw_callback));
+        std::move(callback_decorator).Run(std::move(raw_callback));
 
     // Run the |handler| on thread |thread_of_handler| with customized dbus
     // callback.
     thread_of_handler->task_runner()->PostTask(
-        FROM_HERE,
-        base::Bind(handler, base::Passed(std::move(final_callback))));
+        FROM_HERE, base::BindOnce(std::move(handler),
+                                  base::Passed(std::move(final_callback))));
   }
 
   // Run CreateCallbackAndCallOnHandler on dbus thread.
   void DoCreateCallbackAndCallOnHandler(
-      const base::Callback<DBusMethodResponseCallback(
-          DBusMethodResponseCallback)> callback_decorator,
-      base::Callback<void(DBusMethodResponseCallback)> handler,
+      base::OnceCallback<DBusMethodResponseCallback(DBusMethodResponseCallback)>
+          callback_decorator,
+      base::OnceCallback<void(DBusMethodResponseCallback)> handler,
       bool run_handler_on_the_different_thread) {
     base::Thread* target_thread =
         run_handler_on_the_different_thread ? &worker_thread_ : &dbus_thread_;
     dbus_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(
+        base::BindOnce(
             &DBusMethodResponseWrapperTestBase::CreateCallbackAndCallOnHandler,
-            base::Unretained(this), callback_decorator,
-            base::Unretained(target_thread), handler));
+            base::Unretained(this), std::move(callback_decorator),
+            base::Unretained(target_thread), std::move(handler)));
   }
 
  protected:
@@ -126,45 +127,46 @@ INSTANTIATE_TEST_SUITE_P(TestedOnWorkerThread,
                          ::testing::Values(false, true));
 
 TEST_P(ThreadSafeDBusMethodResponseTest, Return) {
-  auto dbus_handler = base::Bind(
+  auto dbus_handler = base::BindOnce(
       [](DBusMethodResponseCallback callback) { callback->Return(); });
   auto callback_decorator =
-      base::Bind(ThreadSafeDBusMethodResponse::MakeThreadSafe);
-  DoCreateCallbackAndCallOnHandler(callback_decorator, dbus_handler,
-                                   on_worker_thread_);
+      base::BindOnce(ThreadSafeDBusMethodResponse::MakeThreadSafe);
+  DoCreateCallbackAndCallOnHandler(std::move(callback_decorator),
+                                   std::move(dbus_handler), on_worker_thread_);
   EXPECT_TRUE(finished_event_.TimedWait(kTestTimeout));
 }
 
 TEST_P(ThreadSafeDBusMethodResponseTest, ReplyWithErrorWithRawPointer) {
-  auto dbus_handler = base::Bind([](DBusMethodResponseCallback callback) {
+  auto dbus_handler = base::BindOnce([](DBusMethodResponseCallback callback) {
     auto error_ptr = brillo::Error::Create(FROM_HERE, "error_domain",
                                            "error_code", "error_message");
     callback->ReplyWithError(error_ptr.get());
   });
   auto callback_decorator =
-      base::Bind(ThreadSafeDBusMethodResponse::MakeThreadSafe);
-  DoCreateCallbackAndCallOnHandler(callback_decorator, dbus_handler,
-                                   on_worker_thread_);
+      base::BindOnce(ThreadSafeDBusMethodResponse::MakeThreadSafe);
+  DoCreateCallbackAndCallOnHandler(std::move(callback_decorator),
+                                   std::move(dbus_handler), on_worker_thread_);
   EXPECT_TRUE(finished_event_.TimedWait(kTestTimeout));
 }
 
 TEST_P(ThreadSafeDBusMethodResponseTest, ReplyWithErrorWithStrings) {
-  auto dbus_handler = base::Bind([](DBusMethodResponseCallback callback) {
+  auto dbus_handler = base::BindOnce([](DBusMethodResponseCallback callback) {
     callback->ReplyWithError(FROM_HERE, "error_domain", "error_code",
                              "error_message");
   });
   auto callback_decorator =
-      base::Bind(ThreadSafeDBusMethodResponse::MakeThreadSafe);
-  DoCreateCallbackAndCallOnHandler(callback_decorator, dbus_handler,
-                                   on_worker_thread_);
+      base::BindOnce(ThreadSafeDBusMethodResponse::MakeThreadSafe);
+  DoCreateCallbackAndCallOnHandler(std::move(callback_decorator),
+                                   std::move(dbus_handler), on_worker_thread_);
   EXPECT_TRUE(finished_event_.TimedWait(kTestTimeout));
 }
 
 TEST_P(ThreadSafeDBusMethodResponseTest, Destruct) {
-  auto dbus_handler = base::Bind([](DBusMethodResponseCallback callback) {});
+  auto dbus_handler =
+      base::BindOnce([](DBusMethodResponseCallback callback) {});
   auto callback_decorator =
-      base::Bind(ThreadSafeDBusMethodResponse::MakeThreadSafe);
-  DoCreateCallbackAndCallOnHandler(callback_decorator, dbus_handler,
-                                   on_worker_thread_);
+      base::BindOnce(ThreadSafeDBusMethodResponse::MakeThreadSafe);
+  DoCreateCallbackAndCallOnHandler(std::move(callback_decorator),
+                                   std::move(dbus_handler), on_worker_thread_);
   EXPECT_TRUE(finished_event_.TimedWait(kTestTimeout));
 }
