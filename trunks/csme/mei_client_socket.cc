@@ -56,7 +56,8 @@ void MeiClientSocket::Uninitialize() {
   }
 }
 
-bool MeiClientSocket::Send(const std::string& data) {
+bool MeiClientSocket::Send(const std::string& data,
+                           bool /*wait_for_response_ready*/) {
   if (!initialized_ && !Initialize()) {
     LOG(ERROR) << __func__ << ": Not initialized.";
     return false;

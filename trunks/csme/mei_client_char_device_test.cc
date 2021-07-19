@@ -93,7 +93,7 @@ TEST_F(MeiClientCharDeviceTest, ReceiveInitializeFailure) {
 TEST_F(MeiClientCharDeviceTest, SendInitializeFailure) {
   std::string data;
   EXPECT_CALL(mock_syscaller_, Open(_, _)).WillOnce(Return(-1));
-  EXPECT_FALSE(client_.Send(data));
+  EXPECT_FALSE(client_.Send(data, /*wait_for_response_ready=*/true));
 }
 
 TEST_F(MeiClientCharDeviceTest, ReceiveSuccess) {
@@ -122,7 +122,16 @@ TEST_F(MeiClientCharDeviceTest, SendSuccess) {
       .WillOnce(Return(kFakeMessageLength));
   EXPECT_CALL(mock_syscaller_, Select(kFakeFd + 1, _, nullptr, nullptr, _))
       .WillOnce(Return(1));
-  EXPECT_TRUE(client_.Send(kFakeMessage));
+  EXPECT_TRUE(client_.Send(kFakeMessage, /*wait_for_response_ready=*/true));
+}
+
+TEST_F(MeiClientCharDeviceTest, SendSuccessNoWaitForResponseReady) {
+  InitializeMeiClient();
+  EXPECT_CALL(mock_syscaller_, Write(kFakeFd, _, kFakeMessageLength))
+      .WillOnce(Return(kFakeMessageLength));
+  // `Select()` shouldn't be called; `StrictMock` will verify it.
+
+  EXPECT_TRUE(client_.Send(kFakeMessage, /*wait_for_response_ready=*/false));
 }
 
 TEST_F(MeiClientCharDeviceTest, SendBadWriteSize) {
@@ -132,8 +141,8 @@ TEST_F(MeiClientCharDeviceTest, SendBadWriteSize) {
   EXPECT_CALL(mock_syscaller_, Write(kFakeFd, _, kFakeMessageLength))
       .WillOnce(Return(kFakeMessageLength + 1))
       .WillOnce(Return(kFakeMessageLength - 1));
-  EXPECT_FALSE(client_.Send(kFakeMessage));
-  EXPECT_FALSE(client_.Send(kFakeMessage));
+  EXPECT_FALSE(client_.Send(kFakeMessage, /*wait_for_response_ready=*/true));
+  EXPECT_FALSE(client_.Send(kFakeMessage, /*wait_for_response_ready=*/true));
 }
 
 TEST_F(MeiClientCharDeviceTest, SendSelectTimeout) {
@@ -142,7 +151,7 @@ TEST_F(MeiClientCharDeviceTest, SendSelectTimeout) {
       .WillOnce(Return(kFakeMessageLength));
   EXPECT_CALL(mock_syscaller_, Select(kFakeFd + 1, _, nullptr, nullptr, _))
       .WillOnce(Return(0));
-  EXPECT_FALSE(client_.Send(kFakeMessage));
+  EXPECT_FALSE(client_.Send(kFakeMessage, /*wait_for_response_ready=*/true));
 }
 
 TEST_F(MeiClientCharDeviceTest, SendSelectError) {
@@ -151,7 +160,7 @@ TEST_F(MeiClientCharDeviceTest, SendSelectError) {
       .WillOnce(Return(kFakeMessageLength));
   EXPECT_CALL(mock_syscaller_, Select(kFakeFd + 1, _, nullptr, nullptr, _))
       .WillOnce(Return(-1));
-  EXPECT_FALSE(client_.Send(kFakeMessage));
+  EXPECT_FALSE(client_.Send(kFakeMessage, /*wait_for_response_ready=*/true));
 }
 
 }  // namespace csme

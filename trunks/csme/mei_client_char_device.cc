@@ -70,7 +70,8 @@ void MeiClientCharDevice::Uninitialize() {
   }
 }
 
-bool MeiClientCharDevice::Send(const std::string& data) {
+bool MeiClientCharDevice::Send(const std::string& data,
+                               bool wait_for_response_ready) {
   if (!initialized_ && !Initialize()) {
     LOG(ERROR) << __func__ << ": Not initialized.";
     return false;
@@ -84,7 +85,7 @@ bool MeiClientCharDevice::Send(const std::string& data) {
     LOG(ERROR) << __func__ << ": Bad written size of payload: " << wsize;
     return false;
   }
-  if (!EnsureWriteSuccess()) {
+  if (wait_for_response_ready && !EnsureWriteSuccess()) {
     return false;
   }
 

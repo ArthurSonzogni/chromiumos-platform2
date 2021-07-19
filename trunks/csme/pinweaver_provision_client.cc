@@ -36,7 +36,8 @@ bool PinWeaverProvisionClient::SetSaltingKeyHash(const std::string& hash) {
   std::copy(hash.begin(), hash.end(), req.buffer);
   const std::string request = SerializeToString(req);
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
@@ -54,7 +55,8 @@ bool PinWeaverProvisionClient::GetSaltingKeyHash(std::string* salting_key_hash,
   BuildFixedSizedRequest(PW_SALTING_KEY_HASH_GET, seq_++, &req);
   const std::string request = SerializeToString(req);
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
@@ -73,7 +75,8 @@ bool PinWeaverProvisionClient::CommitSaltingKeyHash() {
   BuildFixedSizedRequest(PW_SALTING_KEY_HASH_COMMIT, seq_++, &req);
   const std::string request = SerializeToString(req);
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
@@ -89,7 +92,8 @@ bool PinWeaverProvisionClient::InitOwner() {
   BuildFixedSizedRequest(PW_PROV_INITIALIZE_OWNER, seq_++, &req);
   const std::string request = SerializeToString(req);
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }

@@ -22,7 +22,7 @@ class TRUNKS_EXPORT MeiClientSocket : public MeiClient {
   MeiClientSocket(const std::string& mei_path, const uuid_le& guid);
   ~MeiClientSocket() override;
   bool Initialize() override;
-  bool Send(const std::string& data) override;
+  bool Send(const std::string& data, bool wait_for_response_ready) override;
   bool Receive(std::string* data) override;
 
  private:

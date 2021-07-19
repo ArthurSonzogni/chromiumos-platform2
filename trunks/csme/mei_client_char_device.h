@@ -30,7 +30,7 @@ class TRUNKS_EXPORT MeiClientCharDevice : public MeiClient {
   ~MeiClientCharDevice() override;
   bool Initialize() override;
   // TODO(b/190621192): Avoid indefinite timeout for `Send()` and `Receive()`.
-  bool Send(const std::string& data) override;
+  bool Send(const std::string& data, bool wait_for_response_ready) override;
   bool Receive(std::string* data) override;
 
  private:

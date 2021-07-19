@@ -107,10 +107,11 @@ bool TpmTunnelService::Run() {
     resp.header.pw_heci_seq = req.header.pw_heci_seq;
     resp.header.pw_heci_rc = csme_rc;
     resp.header.total_length = tpm_response.size();
-    if (!mei_client_->Send(std::string(std::begin(resp_serialized),
-                                       std::begin(resp_serialized) +
-                                           sizeof(resp.header) +
-                                           tpm_response.size()))) {
+    if (!mei_client_->Send(
+            std::string(std::begin(resp_serialized),
+                        std::begin(resp_serialized) + sizeof(resp.header) +
+                            tpm_response.size()),
+            /*wait_for_response_ready=*/false)) {
       LOG(ERROR) << __func__ << "Failed to send TPM resposne back to CSME.";
       return false;
     }

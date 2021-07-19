@@ -20,8 +20,9 @@ class TRUNKS_EXPORT MeiClient {
   // Initializes the connection to the device (or socket). Returns `true` iff
   // the reuired operations succeeds.
   virtual bool Initialize() = 0;
-  // Sends `data` to the connected MEI device.
-  virtual bool Send(const std::string& data) = 0;
+  // Sends `data` to the connected MEI device. if `wait_for_response_ready` is
+  // set to `true`, also checks readiness of MEI device after sending `data`.
+  virtual bool Send(const std::string& data, bool wait_for_response_ready) = 0;
   // Waits for data sent from MEI and stores them in `data`.
   virtual bool Receive(std::string* data) = 0;
 };

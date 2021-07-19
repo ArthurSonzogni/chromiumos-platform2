@@ -38,7 +38,8 @@ bool PinWeaverCoreClient::ExtendPcr(uint32_t pcr_index,
   std::copy(extension.begin(), extension.end(), req.buffer);
   const std::string request = SerializeToString(req);
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
@@ -60,7 +61,8 @@ bool PinWeaverCoreClient::ReadPcr(uint32_t pcr_index_in,
   req.hash_alg = hash_alg_in;
   const std::string request = SerializeToString(req);
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
@@ -89,7 +91,8 @@ bool PinWeaverCoreClient::PinWeaverCommand(const std::string& pinweaver_request,
                                 sizeof(pw_heci_header_req) +
                                 pinweaver_request.size());
   std::string response;
-  if (!GetMeiClient()->Send(request) || !GetMeiClient()->Receive(&response)) {
+  if (!GetMeiClient()->Send(request, /*wait_for_response_ready=*/true) ||
+      !GetMeiClient()->Receive(&response)) {
     LOG(ERROR) << __func__ << ": Failed to send request.";
     return false;
   }
