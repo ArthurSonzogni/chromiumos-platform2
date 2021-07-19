@@ -64,7 +64,6 @@ class Controller : public brillo::DBusDaemon {
   void SetupPatchpanel();
   void OnPatchpanelReady(bool success);
   void OnPatchpanelReset(bool reset);
-  void SetupShill();
   void OnShillReady(bool success);
   void OnShillReset(bool reset);
 
@@ -93,6 +92,7 @@ class Controller : public brillo::DBusDaemon {
   brillo::ProcessReaper process_reaper_;
   std::set<ProxyProc> proxies_;
 
+  bool shill_ready_{false};
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
 

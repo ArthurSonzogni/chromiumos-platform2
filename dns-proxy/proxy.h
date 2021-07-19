@@ -111,7 +111,6 @@ class Proxy : public brillo::DBusDaemon {
   void OnPatchpanelReady(bool success);
   void OnPatchpanelReset(bool reset);
 
-  void NewShill();
   void InitShill();
   void OnShillReady(bool success);
   void OnShillReset(bool reset);
@@ -230,6 +229,7 @@ class Proxy : public brillo::DBusDaemon {
   DoHConfig doh_config_;
   std::unique_ptr<shill::Client::Device> device_;
 
+  bool shill_ready_{false};
   bool feature_enabled_{false};
 
   // Mapping of interface name to a lifeline file descriptor.

@@ -63,7 +63,12 @@ void Controller::OnShutdown(int*) {
 }
 
 void Controller::Setup() {
-  SetupShill();
+  shill_.reset(new shill::Client(bus_));
+  shill_->RegisterProcessChangedHandler(base::BindRepeating(
+      &Controller::OnShillReset, weak_factory_.GetWeakPtr()));
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Controller::OnShillReady, weak_factory_.GetWeakPtr()));
+
   SetupPatchpanel();
   RunProxy(Proxy::Type::kSystem);
   RunProxy(Proxy::Type::kDefault);
@@ -82,12 +87,6 @@ void Controller::SetupPatchpanel() {
       &Controller::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
   patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
       &Controller::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
-}
-
-void Controller::SetupShill() {
-  shill_.reset(new shill::Client(bus_));
-  shill_->RegisterOnAvailableCallback(
-      base::BindOnce(&Controller::OnShillReady, weak_factory_.GetWeakPtr()));
 }
 
 void Controller::OnPatchpanelReady(bool success) {
@@ -120,16 +119,13 @@ void Controller::OnPatchpanelReset(bool reset) {
 }
 
 void Controller::OnShillReady(bool success) {
-  if (!success) {
-    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
-                                Metrics::ProcessEvent::kShillNotReady);
-    LOG(DFATAL) << "Failed to connect to shill";
-    shill_.reset();
+  shill_ready_ = success;
+  if (shill_ready_)
     return;
-  }
-  shill_->Init();
-  shill_->RegisterProcessChangedHandler(base::BindRepeating(
-      &Controller::OnShillReset, weak_factory_.GetWeakPtr()));
+
+  metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                              Metrics::ProcessEvent::kShillNotReady);
+  LOG(DFATAL) << "Failed to connect to shill";
 }
 
 void Controller::OnShillReset(bool reset) {
@@ -139,7 +135,10 @@ void Controller::OnShillReset(bool reset) {
   }
 
   LOG(WARNING) << "Shill has been shutdown";
-  SetupShill();
+  shill_ready_ = false;
+  // Listen for it to come back.
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Controller::OnShillReady, weak_factory_.GetWeakPtr()));
 }
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
@@ -278,8 +277,14 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
     return;
 
   // Ensure the system proxy address is cleared from shill.
+  if (!shill_ready_) {
+    LOG(WARNING) << "Cannot clear shill dns-property for " << proc
+                 << " - shill is not connected";
+    return;
+  }
+
   brillo::ErrorPtr error;
-  if (!shill_ || !shill_->GetManagerProxy()->SetDNSProxyIPv4Address("", &error))
+  if (!shill_->GetManagerProxy()->SetDNSProxyIPv4Address("", &error))
     LOG(WARNING) << "Failed to clear shill dns-proxy property for " << proc
                  << ": " << error->GetMessage();
 }

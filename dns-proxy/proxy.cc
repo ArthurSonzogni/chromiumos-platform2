@@ -214,7 +214,7 @@ void Proxy::OnPatchpanelReady(bool success) {
             << ns_.host_ifname() << " <--> " << ns_.peer_ifname();
 
   // Now it's safe to connect shill.
-  NewShill();
+  InitShill();
 
   // Track single-networked guests' start up and shut down for redirecting
   // traffic to the proxy.
@@ -291,33 +291,29 @@ void Proxy::OnPatchpanelReset(bool reset) {
   QuitWithExitCode(EX_UNAVAILABLE);
 }
 
-void Proxy::NewShill() {
+void Proxy::InitShill() {
   // shill_ should always be null unless a test has injected a client.
   if (!shill_)
     shill_.reset(new shill::Client(bus_));
 
-  shill_props_.reset();
   shill_->RegisterOnAvailableCallback(
       base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
-}
-
-void Proxy::InitShill() {
-  shill_->Init();
   shill_->RegisterProcessChangedHandler(
       base::BindRepeating(&Proxy::OnShillReset, weak_factory_.GetWeakPtr()));
-  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
-      &Proxy::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
-  shill_->RegisterDeviceChangedHandler(
-      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr()));
 }
 
 void Proxy::OnShillReady(bool success) {
-  if (!success) {
+  shill_ready_ = success;
+  if (!shill_ready_) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kShillNotReady);
     LOG(FATAL) << "Failed to connect to shill";
   }
-  InitShill();
+
+  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
+      &Proxy::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
+  shill_->RegisterDeviceChangedHandler(
+      base::BindRepeating(&Proxy::OnDeviceChanged, weak_factory_.GetWeakPtr()));
 }
 
 void Proxy::OnShillReset(bool reset) {
@@ -337,8 +333,10 @@ void Proxy::OnShillReset(bool reset) {
   metrics_.RecordProcessEvent(metrics_proc_type_,
                               Metrics::ProcessEvent::kShillShutdown);
   LOG(WARNING) << "Shill has been shutdown";
-  shill_.reset();
-  NewShill();
+  shill_ready_ = false;
+  shill_props_.reset();
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
 }
 
 void Proxy::OnSessionStateChanged(bool login) {
@@ -635,19 +633,21 @@ void Proxy::SetShillProperty(const std::string& addr,
     return;
   }
 
-  // This can only happen if called from OnShutdown and Setup had somehow failed
-  // to create the client... it's unlikely but regardless, that shill client
-  // isn't coming back so there's no point in retrying anything.
-  if (!shill_) {
+  // If doesn't ever come back, there is no point in retrying here; and
+  // if it does, then initialization process will eventually come back
+  // into this function and succeed.
+  if (!shill_ready_) {
     LOG(ERROR)
         << "No connection to shill - cannot set dns-proxy address property ["
-        << addr << "].";
+        << addr << "]";
     return;
   }
 
   brillo::ErrorPtr error;
-  if (shill_->GetManagerProxy()->SetDNSProxyIPv4Address(addr, &error))
+  if (shill_->GetManagerProxy()->SetDNSProxyIPv4Address(addr, &error)) {
+    LOG(INFO) << "Successfully set dns-proxy address property [" << addr << "]";
     return;
+  }
 
   LOG(ERROR) << "Failed to set dns-proxy address property [" << addr
              << "] on shill: " << error->GetMessage() << ". Retrying...";
