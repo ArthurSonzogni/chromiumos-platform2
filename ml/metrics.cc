@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
@@ -105,7 +106,9 @@ void Metrics::StartCollectingProcessMetrics() {
   }
 
   // Baseline the CPU usage counter in `process_metrics_` to be zero as of now.
-  process_metrics_->GetPlatformIndependentCPUUsage();
+  const double initial_cpu_usage =
+      process_metrics_->GetPlatformIndependentCPUUsage();
+  DCHECK_EQ(initial_cpu_usage, 0);
 
   cumulative_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(
       base::FilePath(kCumulativeMetricsBackingDir),

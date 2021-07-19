@@ -15,6 +15,7 @@
 #include <pwd.h>
 
 #include <base/bind.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/process/process_metrics.h>
 #include <base/strings/stringprintf.h>
@@ -194,7 +195,9 @@ Process::SendMojoInvitationAndGetRemote(pid_t worker_pid,
   worker_info.process_metrics =
       base::ProcessMetrics::CreateProcessMetrics(worker_pid);
   // Baseline the CPU usage counter in `process_metrics` to be zero as of now.
-  worker_info.process_metrics->GetPlatformIndependentCPUUsage();
+  const double initial_cpu_usage =
+      worker_info.process_metrics->GetPlatformIndependentCPUUsage();
+  DCHECK_EQ(initial_cpu_usage, 0);
 
   worker_pid_info_map_[worker_pid] = std::move(worker_info);
 
