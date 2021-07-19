@@ -97,7 +97,10 @@ class AresClient {
   // Handle result of `AresCallback(...)`. Running ares functions on the
   // callback results in an undefined behavior, use another function
   // instead.
-  void HandleResult(State* state, int status, uint8_t* msg, int len);
+  void HandleResult(State* state,
+                    int status,
+                    std::unique_ptr<uint8_t[]> msg,
+                    int len);
 
   // Callback called whenever an event is ready to be handled by ares on
   // |socket_fd|.

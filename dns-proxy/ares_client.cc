@@ -101,14 +101,20 @@ void AresClient::AresCallback(
     delete state;
     return;
   }
+
+  auto buf = std::make_unique<uint8_t[]>(len);
+  memcpy(buf.get(), msg, len);
   // Handle the result outside this function to avoid undefined behaviors.
   base::ThreadTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::BindRepeating(&AresClient::HandleResult,
-                                     state->client->weak_factory_.GetWeakPtr(),
-                                     state, status, msg, len));
+      FROM_HERE, base::BindOnce(&AresClient::HandleResult,
+                                state->client->weak_factory_.GetWeakPtr(),
+                                state, status, std::move(buf), len));
 }
 
-void AresClient::HandleResult(State* state, int status, uint8_t* msg, int len) {
+void AresClient::HandleResult(State* state,
+                              int status,
+                              std::unique_ptr<uint8_t[]> msg,
+                              int len) {
   // Set state as unique pointer to force cleanup, the state must be destroyed
   // in this function.
   std::unique_ptr<State> scoped_state(state);
@@ -130,7 +136,8 @@ void AresClient::HandleResult(State* state, int status, uint8_t* msg, int len) {
   if (status != ARES_SUCCESS && nfds > 0) {
     return;
   }
-  state->callback.Run(state->ctx, status, msg, len);
+  state->callback.Run(state->ctx, status, msg.get(), len);
+  msg.reset();
 
   // Cancel other queries and destroy the channel. Whenever ares_destroy is
   // called, AresCallback will be called with status equal to ARES_EDESTRUCTION.
