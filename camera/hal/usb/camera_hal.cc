@@ -122,6 +122,22 @@ void AdjustMetadataForAE(android::CameraMetadata* data) {
   }
 }
 
+// TODO(mojahsu): Make it work on android side.
+void AdjustMetadataForFaceDetection(android::CameraMetadata* data) {
+  camera_metadata_entry_t entry =
+      data->find(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES);
+  // Only support ANDROID_STATISTICS_FACE_DETECT_MODE_OFF or no such metadata.
+  if (entry.count <= 1) {
+    return;
+  }
+
+  LOGF(INFO) << "Remove Face Detection related metadata";
+
+  data->update(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES,
+               std::vector<uint8_t>{ANDROID_STATISTICS_FACE_DETECT_MODE_OFF});
+  data->update(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, std::vector<int32_t>{0});
+}
+
 ScopedCameraMetadata StaticMetadataForAndroid(
     const android::CameraMetadata& static_metadata) {
   android::CameraMetadata data(static_metadata);
@@ -157,6 +173,7 @@ ScopedCameraMetadata StaticMetadataForAndroid(
               stream_configurations);
 
   AdjustMetadataForAE(&data);
+  AdjustMetadataForFaceDetection(&data);
 
   return ScopedCameraMetadata(data.release());
 }
