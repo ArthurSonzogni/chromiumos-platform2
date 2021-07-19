@@ -524,11 +524,12 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
   dev_frequency_ = frequency;
 
   if (iio_device_->HasFifo()) {
-    if (dev_frequency_ < libmems::kFrequencyEpsilon)
-      return true;
+    double ec_period = 0;
+    if (dev_frequency_ > libmems::kFrequencyEpsilon)
+      ec_period = 1.0 / dev_frequency_;
 
     if (!iio_device_->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr,
-                                           1.0 / dev_frequency_)) {
+                                           ec_period)) {
       LOGF(ERROR) << "Failed to set fifo timeout";
       return false;
     }
