@@ -180,7 +180,6 @@ SensorHalClientImpl::IPCBridge::IPCBridge(
 SensorHalClientImpl::IPCBridge::~IPCBridge() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  cancellation_relay_->CancelAllFutures();
   receiver_.reset();
   ResetSensorService();
 }
