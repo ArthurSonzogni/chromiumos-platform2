@@ -184,7 +184,6 @@ class ArcVmCPUTopology {
 
  private:
   void CreateTopology();
-  void CreateStaticTopology();
   void CreateAffinity();
 
   // Total number of CPUs VM will be configured with

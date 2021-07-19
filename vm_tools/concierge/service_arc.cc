@@ -184,17 +184,6 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   ArcVmCPUTopology topology(request.cpus(), 0);
 
   if (request.enable_rt_vcpu()) {
-    // RT-vcpu will not work when only one logical core is online.
-    if (request.cpus() < 2) {
-      LOG(ERROR)
-          << "RT-vcpu doesn't support device with only one logical core online";
-
-      response.set_failure_reason(
-          "RT-vcpu doesn't support device with only one logical core online");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-    }
-
     // We create only 1 RT VCPU for the time being
     topology.SetNumRTCPUs(1);
     topology.CreateCPUAffinity();
