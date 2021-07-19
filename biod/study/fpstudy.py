@@ -20,9 +20,27 @@ import tempfile
 import gnupg
 
 
-# Study Directory/File Structure:
-# <participant_id>/<group>/<finger_id>/<finger_id>_<capture_num>.<raw|fmi>.gpg
-FILE_GLOB_GPG = '*/*/*/*.gpg'
+def find_files(path: str, ext: str) -> list:
+    """
+    Find all files under the given path that have the specified file extension.
+
+    The path may be a directory or a single file. If the path is a single file,
+    the extension will be checked.
+    """
+
+    files = []
+    if os.path.isdir(path):
+        files = glob.glob(path + '/**/*' + ext, recursive=True)
+    elif os.path.isfile(path):
+        _, path_ext = os.path.splitext(path)
+        if path_ext != ext:
+            raise Exception(f'The given path "{path}" is not a "{ext}" file')
+        files = [path]
+    else:
+        raise Exception(
+            f'The given path "{path}" is not a directory or file')
+
+    return files
 
 
 def decrypt(private_key: str, private_key_pass: str, files: list) -> bool:
@@ -81,11 +99,15 @@ def cmd_decrypt(args: argparse.Namespace) -> int:
         print(f'Error - The given key file {args.key} does not exist.')
         return 1
 
-    if not os.path.isdir(args.dir):
-        print(f'Error - The given dir path {args.dir} is not a directory.')
+    try:
+        files = find_files(args.path, '.gpg')
+    except Exception as e:
+        print(f'Error - {e}')
+        return 1
+    if not files:
+        print('Error - The given path does not contain gpg files.')
         return 1
 
-    files = glob.glob(args.dir + '/' + FILE_GLOB_GPG)
     if not files:
         print('Error - The given dir path does not contain encrypted files.')
         return 1
@@ -106,8 +128,9 @@ def main(argv: list) -> int:
     # Parser for "decrypt" subcommand.
     parser_decrypt = subparsers.add_parser('decrypt')
     parser_decrypt.add_argument('key', help='Path to the GPG private key')
-    parser_decrypt.add_argument(
-        'dir', help='Path to directory of encrypted captures')
+    parser_decrypt.add_argument('path',
+                                help='Path to directory of encrypted captures '
+                                'or single encrypted file')
     parser_decrypt.add_argument('--password', default=None,
                                 help='Password for private key')
     parser_decrypt.set_defaults(func=cmd_decrypt)
