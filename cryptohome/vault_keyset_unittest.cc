@@ -41,6 +41,39 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::WithArg;
 
+namespace {
+constexpr char kHexHighEntropySecret[] =
+    "F3D9D5B126C36676689E18BB8517D95DF4F30947E71D4A840824425760B1D3FA";
+constexpr char kHexResetSecret[] =
+    "B133D2450392335BA8D33AA95AD52488254070C66F5D79AEA1A46AC4A30760D4";
+constexpr char kHexWrappedKeyset[] =
+    "B737B5D73E39BD390A4F361CE2FC166CF1E89EC6AEAA35D4B34456502C48B4F5EFA310077"
+    "324B393E13AF633DF3072FF2EC78BD2B80D919035DB97C30F1AD418737DA3F26A4D35DF6B"
+    "6A9743BD0DF3D37D8A68DE0932A9905452D05ECF92701B9805937F76EE01D10924268F057"
+    "EDD66087774BB86C2CB92B01BD3A3C41C10C52838BD3A3296474598418E5191DEE9E8D831"
+    "3C859C9EDB0D5F2BC1D7FC3C108A0D4ABB2D90E413086BCFFD0902AB68E2BF787817EB10C"
+    "25E2E43011CAB3FB8AA";
+constexpr char kHexSalt[] = "D470B9B108902241";
+constexpr char kHexVaultKey[] =
+    "665A58534E684F2B61516B6D42624B514E6749732B4348427450305453754158377232347"
+    "37A79466C6B383D";
+constexpr char kHexFekIv[] = "EA80F14BF29C6D580D536E7F0CC47F3E";
+constexpr char kHexChapsIv[] = "ED85D928940E5B02ED218F29225AA34F";
+constexpr char kHexWrappedChapsKey[] =
+    "7D7D01EECC8DAE7906CAD56310954BBEB3CC81765210D29902AB92DDE074217771AD284F2"
+    "12C13897C6CBB30CEC4CD75";
+
+constexpr int kLegacyIndex = 1;
+constexpr char kLegacyLabel[] = "legacy-1";
+constexpr char kTempLabel[] = "tempLabel";
+
+std::string HexDecode(const std::string& hex) {
+  std::vector<uint8_t> output;
+  CHECK(base::HexStringToBytes(hex, &output));
+  return std::string(output.begin(), output.end());
+}
+}  // namespace
+
 class VaultKeysetTest : public ::testing::Test {
  public:
   VaultKeysetTest() {}
@@ -400,34 +433,44 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
   ASSERT_TRUE(VaultKeysetTest::FindBlobInBlob(new_data, original_data));
 }
 
-namespace {
-constexpr char kHexHeSecret[] =
-    "F3D9D5B126C36676689E18BB8517D95DF4F30947E71D4A840824425760B1D3FA";
-constexpr char kHexResetSecret[] =
-    "B133D2450392335BA8D33AA95AD52488254070C66F5D79AEA1A46AC4A30760D4";
-constexpr char kHexWrappedKeyset[] =
-    "B737B5D73E39BD390A4F361CE2FC166CF1E89EC6AEAA35D4B34456502C48B4F5EFA310077"
-    "324B393E13AF633DF3072FF2EC78BD2B80D919035DB97C30F1AD418737DA3F26A4D35DF6B"
-    "6A9743BD0DF3D37D8A68DE0932A9905452D05ECF92701B9805937F76EE01D10924268F057"
-    "EDD66087774BB86C2CB92B01BD3A3C41C10C52838BD3A3296474598418E5191DEE9E8D831"
-    "3C859C9EDB0D5F2BC1D7FC3C108A0D4ABB2D90E413086BCFFD0902AB68E2BF787817EB10C"
-    "25E2E43011CAB3FB8AA";
-constexpr char kHexSalt[] = "D470B9B108902241";
-constexpr char kHexVaultKey[] =
-    "665A58534E684F2B61516B6D42624B514E6749732B4348427450305453754158377232347"
-    "37A79466C6B383D";
-constexpr char kHexFekIv[] = "EA80F14BF29C6D580D536E7F0CC47F3E";
-constexpr char kHexChapsIv[] = "ED85D928940E5B02ED218F29225AA34F";
-constexpr char kHexWrappedChapsKey[] =
-    "7D7D01EECC8DAE7906CAD56310954BBEB3CC81765210D29902AB92DDE074217771AD284F2"
-    "12C13897C6CBB30CEC4CD75";
+TEST_F(VaultKeysetTest, GetLegacyLabelTest) {
+  Crypto crypto(&platform_);
 
-std::string HexDecode(const std::string& hex) {
-  std::vector<uint8_t> output;
-  CHECK(base::HexStringToBytes(hex, &output));
-  return std::string(output.begin(), output.end());
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.SetLegacyIndex(kLegacyIndex);
+
+  ASSERT_EQ(vault_keyset.GetLabel(), kLegacyLabel);
 }
-}  // namespace
+
+TEST_F(VaultKeysetTest, GetLabelTest) {
+  Crypto crypto(&platform_);
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  KeyData key_data;
+  key_data.set_label(kTempLabel);
+  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetKeyData(key_data);
+
+  ASSERT_EQ(vault_keyset.GetLabel(), kTempLabel);
+}
+
+TEST_F(VaultKeysetTest, GetEmptyLabelTest) {
+  Crypto crypto(&platform_);
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  KeyData key_data;
+
+  // Setting empty label.
+  key_data.set_label("");
+
+  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  vault_keyset.SetKeyData(key_data);
+
+  ASSERT_EQ(vault_keyset.GetLabel(), kLegacyLabel);
+}
 
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
@@ -443,7 +486,8 @@ class LeCredentialsManagerTest : public ::testing::Test {
     le_cred_manager_ = new MockLECredentialManager();
     EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
         .WillRepeatedly(DoAll(
-            SetArgPointee<2>(brillo::SecureBlob(HexDecode(kHexHeSecret))),
+            SetArgPointee<2>(
+                brillo::SecureBlob(HexDecode(kHexHighEntropySecret))),
             SetArgPointee<3>(brillo::SecureBlob(HexDecode(kHexResetSecret))),
             Return(LE_CRED_SUCCESS)));
     crypto_.set_le_manager_for_testing(
