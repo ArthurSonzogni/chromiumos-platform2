@@ -14,9 +14,10 @@ pkg_config("libsystem_common_pkg_deps") {
 
 source_set("libsystem") {
   configs += [ ":libsystem_common_pkg_deps" ]
+  sources = [ "context_instance.cc" ]
   if (use.factory_runtime_probe) {
-    sources = [ "helper_invoker_direct_impl.cc" ]
+    sources += [ "helper_invoker_direct_impl.cc" ]
   } else {
-    sources = [ "helper_invoker_debugd_impl.cc" ]
+    sources += [ "helper_invoker_debugd_impl.cc" ]
   }
 }

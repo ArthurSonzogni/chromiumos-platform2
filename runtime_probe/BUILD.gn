@@ -77,9 +77,6 @@ static_library("libruntime_probe") {
     "utils/type_utils.cc",
     "utils/value_utils.cc",
   ]
-  if (!use.factory_runtime_probe) {
-    sources += [ "daemon.cc" ]
-  }
   configs += [ ":target_defaults" ]
   deps = [ "system:libsystem" ]
 }
@@ -90,6 +87,8 @@ executable("runtime_probe") {
   deps = [ ":libruntime_probe" ]
   if (use.factory_runtime_probe) {
     output_name = "factory_runtime_probe"
+  } else {
+    sources += [ "daemon.cc" ]
   }
 }
 
