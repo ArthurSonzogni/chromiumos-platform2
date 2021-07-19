@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/stl_util.h>

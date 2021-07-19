@@ -15,6 +15,7 @@
 #include <limits>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
