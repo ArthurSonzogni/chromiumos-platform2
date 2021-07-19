@@ -221,7 +221,7 @@ bool Volume::Initialize(base::File image_file) {
 bool Volume::ReadDirectory(int64_t start_sector,
                            const ReadDirectoryCallback& callback) {
   std::vector<char> dir_entry_buf(bytes_per_sector_);
-  std::vector<base::char16> long_name_buf;
+  std::u16string long_name_buf;
   for (int64_t pos = 0, sector = start_sector;
        pos < FAT_MAX_DIR_SIZE && sector != kInvalidValue;
        pos += bytes_per_sector_, sector = GetNextSector(sector)) {

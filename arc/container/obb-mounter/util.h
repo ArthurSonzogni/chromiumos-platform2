@@ -8,9 +8,8 @@
 #include <linux/msdos_fs.h>
 #include <stdint.h>
 
+#include <string>
 #include <vector>
-
-#include <base/strings/string16.h>
 
 #include "arc/container/obb-mounter/volume.h"
 
@@ -27,7 +26,7 @@ uint16_t GetUnalignedLE16(const uint8_t* data);
 // Appends the given slot's long file name characters to |out| in the reversed
 // order.
 void AppendLongFileNameCharactersReversed(const msdos_dir_slot& slot,
-                                          std::vector<base::char16>* out);
+                                          std::u16string* out);
 
 // Reads the FAT (file allocation table) value at the given index.
 // If there is an error, or reached EOF, returns kInvalidValue.

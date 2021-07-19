@@ -14,7 +14,7 @@ uint16_t GetUnalignedLE16(const uint8_t* data) {
 }
 
 void AppendLongFileNameCharactersReversed(const msdos_dir_slot& slot,
-                                          std::vector<base::char16>* out) {
+                                          std::u16string* out) {
   if (slot.id & 0x40) {  // Starting a new name.
     out->clear();
   }

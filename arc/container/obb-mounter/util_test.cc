@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <string>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/utf_string_conversions.h>
@@ -14,16 +15,16 @@ namespace fat {
 
 TEST(UtilTest, AppendLongFileNameCharactersReversed) {
   // 20 characters: 13 characters for slot2, 7 for slot1.
-  base::string16 str = base::ASCIIToUTF16("0123456789abcdef.txt");
+  std::u16string str = u"0123456789abcdef.txt";
   msdos_dir_slot slot1 = {}, slot2 = {};
   // The last slot comes first.
   memcpy(slot2.name0_4, str.c_str(), sizeof(slot2.name0_4));
   memcpy(slot2.name5_10, str.c_str() + 5, sizeof(slot2.name5_10));
   memcpy(slot2.name11_12, str.c_str() + 11, sizeof(slot2.name11_12));
   memcpy(slot1.name0_4, str.c_str() + 13, sizeof(slot1.name0_4));
-  memcpy(slot1.name5_10, str.c_str() + 18, sizeof(base::char16) * 2);
+  memcpy(slot1.name5_10, str.c_str() + 18, sizeof(char16_t) * 2);
 
-  std::vector<base::char16> buf;
+  std::u16string buf;
   AppendLongFileNameCharactersReversed(slot1, &buf);
   ASSERT_EQ(13, buf.size());
   AppendLongFileNameCharactersReversed(slot2, &buf);
@@ -32,7 +33,7 @@ TEST(UtilTest, AppendLongFileNameCharactersReversed) {
   std::reverse(buf.begin(), buf.end());
   // Compare with the string.
   EXPECT_EQ(0, buf[str.size()]);  // Null-terminated.
-  EXPECT_EQ(str, base::string16(buf.begin(), buf.begin() + str.size()));
+  EXPECT_EQ(str, buf.substr(0, str.size()));
 
   // ID == 0x40 means starting a new name.
   slot1.id = 0x40;
