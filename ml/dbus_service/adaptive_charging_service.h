@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "dbus_adaptors/org.chromium.MachineLearning.AdaptiveCharging.h"
+#include "ml/dbus_service/tf_model_graph_executor.h"
 
 namespace ml {
 
@@ -39,6 +40,7 @@ class AdaptiveChargingService
 
  private:
   const std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  const std::unique_ptr<TfModelGraphExecutor> tf_model_graph_executor_;
 };
 
 }  // namespace ml

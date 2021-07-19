@@ -12,7 +12,13 @@ generate_dbus_adaptors("dbus-adaptors") {
 }
 
 static_library("core") {
-  sources = [ "adaptive_charging_service.cc" ]
+  sources = [
+    "adaptive_charging_service.cc",
+    "tf_model_graph_executor.cc",
+  ]
+
+  include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
+  libs = [ "tensorflowlite" ]
 
   deps = [
     ":dbus-adaptors",

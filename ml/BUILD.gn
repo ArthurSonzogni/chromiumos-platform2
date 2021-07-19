@@ -254,6 +254,7 @@ static_library("ml_cmdline_common") {
 
 executable("ml_service") {
   sources = [ "main.cc" ]
+  include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
   deps = [
     ":ml_common",
     "//ml/dbus_service:core",
@@ -269,6 +270,7 @@ executable("ml_cmdline") {
 if (use.test) {
   executable("ml_service_test") {
     sources = [
+      "dbus_service/tf_model_graph_executor_test.cc",
       "dlcservice_client_test.cc",
       "document_scanner_library_test.cc",
       "example_preprocessor/example_preprocessing_test.cc",
