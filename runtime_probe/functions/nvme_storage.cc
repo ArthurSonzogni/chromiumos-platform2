@@ -32,8 +32,8 @@ std::string GetStorageFwVersion(const base::FilePath& node_path) {
     VLOG(2) << "Failed to read NVMe firmware version from sysfs.";
     return std::string{""};
   }
-  return base::TrimWhitespaceASCII(fw_ver_res, base::TrimPositions::TRIM_ALL)
-      .as_string();
+  return std::string(
+      base::TrimWhitespaceASCII(fw_ver_res, base::TrimPositions::TRIM_ALL));
 }
 
 bool CheckStorageTypeMatch(const base::FilePath& node_path) {

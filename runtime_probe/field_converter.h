@@ -89,7 +89,7 @@ class StringFieldConverter : public FieldConverter {
     if (op == ValidatorOperator::RE) {
       // pcrecpp::RE constructor will always succeed, but might set "error()" if
       // the pattern is invalid.  This will be checked in |Build()|.
-      regex_ = std::make_unique<pcrecpp::RE>(operand.as_string());
+      regex_ = std::make_unique<pcrecpp::RE>(std::string(operand));
     }
   }
 

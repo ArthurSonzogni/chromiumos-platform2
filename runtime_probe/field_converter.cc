@@ -105,10 +105,10 @@ std::unique_ptr<ConverterType> BuildNumericConverter(
         op == ValidatorOperator::GT || op == ValidatorOperator::GE ||
         op == ValidatorOperator::LT || op == ValidatorOperator::LE) {
       typename ConverterType::OperandType operand;
-      if (ConverterType::StringToOperand(rest.as_string(), &operand)) {
+      if (ConverterType::StringToOperand(std::string(rest), &operand)) {
         return std::make_unique<ConverterType>(op, operand);
       } else {
-        LOG(ERROR) << "Can't convert to operand: " << rest.as_string();
+        LOG(ERROR) << "Can't convert to operand: " << rest;
       }
     }
   }

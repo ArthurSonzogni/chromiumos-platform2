@@ -34,8 +34,8 @@ std::vector<base::FilePath> GetFixedDevices() {
       continue;
     }
 
-    if (base::TrimWhitespaceASCII(removable_res, base::TrimPositions::TRIM_ALL)
-            .as_string() != "0") {
+    if (base::TrimWhitespaceASCII(removable_res,
+                                  base::TrimPositions::TRIM_ALL) != "0") {
       VLOG(2) << "Storage device " << storage_path.value() << " is removable.";
       continue;
     }
