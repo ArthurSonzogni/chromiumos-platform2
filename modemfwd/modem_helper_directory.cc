@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/macros.h>
 #include <brillo/proto_file_io.h>
 

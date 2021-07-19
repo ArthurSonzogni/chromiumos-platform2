@@ -53,9 +53,9 @@ bool IsAutoUpdateDisabledByPref() {
   if (!base::ReadFileToString(pref_path, &contents))
     return false;
 
-  contents = base::TrimWhitespaceASCII(contents, base::TRIM_ALL).as_string();
   int pref_value;
-  if (!base::StringToInt(contents, &pref_value))
+  if (!base::StringToInt(base::TrimWhitespaceASCII(contents, base::TRIM_ALL),
+                         &pref_value))
     return false;
 
   return (pref_value == 1);
