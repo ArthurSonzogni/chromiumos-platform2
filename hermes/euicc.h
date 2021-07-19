@@ -60,6 +60,7 @@ class Euicc {
                             DbusResult<> dbus_result);
 
   void UpdateInstalledProfilesProperty();
+  void SendNotifications(DbusResult<> dbus_result);
 
   // Update |installed_profiles_| with all profiles installed on the eUICC.
   void OnInstalledProfilesReceived(

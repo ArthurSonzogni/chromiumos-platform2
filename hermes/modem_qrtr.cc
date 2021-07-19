@@ -29,20 +29,8 @@ namespace {
 // other multi-sim modems, get the first active slot and store it as a ModemQrtr
 // field.
 constexpr uint8_t kDefaultLogicalSlot = 0x01;
-constexpr uint8_t kInvalidChannel = -1;
 
 constexpr int kEidLen = 16;
-constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
-
-// A profile enable/disable results in an automatic refresh.
-// Block QMI messages during this refresh. If the refresh
-// takes any longer, Hermes will retry channel acquisition
-// after kInitRetryDelay
-constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
-
-constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
-constexpr int kMaxRetries = 5;
-
 constexpr int kQmiSuccess = 0;
 // This error will be returned when a received qmi message cannot be parsed
 // or when it is received in an unexpected state.
@@ -58,18 +46,6 @@ bool CheckMessageSuccess(UimCmd cmd, const uim_qmi_result& qmi_result) {
   return false;
 }
 constexpr uint16_t kErrorNoEffect = 26;
-
-void RunNextStep(
-    base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
-    base::OnceCallback<void(int)> cb,
-    int err) {
-  VLOG(2) << "QMI message processed with code:" << err;
-  if (err) {
-    std::move(cb).Run(err);
-    return;
-  }
-  std::move(next_step).Run(std::move(cb));
-}
 
 }  // namespace
 
@@ -550,17 +526,6 @@ void ModemQrtr::ProcessQrtrPacket(uint32_t node, uint32_t port, int size) {
   if (!pending_response_type_) {
     TransmitFromQueue();
   }
-}
-
-void ModemQrtr::RunNextStepOrRetry(
-    base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
-    base::OnceCallback<void(int)> cb,
-    int err) {
-  if (err) {
-    RetryInitialization(std::move(cb));
-    return;
-  }
-  RunNextStep(std::move(next_step), std::move(cb), err);
 }
 
 void ModemQrtr::SendReset(ResultCallback cb) {

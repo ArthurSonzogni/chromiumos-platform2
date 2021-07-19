@@ -42,11 +42,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   SmdsFactory smds_;
   std::unique_ptr<EuiccInterface> modem_;
   std::unique_ptr<lpa::core::Lpa> lpa_;
-
   AdaptorFactory adaptor_factory_;
-
   std::unique_ptr<Manager> manager_;
-
   std::unique_ptr<glib_bridge::GlibBridge> glib_bridge_;
 };
 

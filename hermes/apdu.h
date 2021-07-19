@@ -107,6 +107,7 @@ class ResponseApdu {
   // sw2) will be returned, and the ResponseApdu will revert to its default
   // state with an empty data buffer.
   std::vector<uint8_t> Release();
+  std::vector<uint8_t> ReleaseOnly();
 
   // Create a GetMoreResponse APDU command using the current sw2 value.
   CommandApdu CreateGetMoreCommand(bool use_extended_length) const;

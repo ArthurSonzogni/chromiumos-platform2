@@ -67,7 +67,7 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
             Executor* executor);
   void InitializeUim();
   void RetryInitialization(ResultCallback cb);
-  void Shutdown();
+  void Shutdown() override;
 
   // Helper methods to create TxElements and add them to the queue.
   void SendReset(ResultCallback cb);
@@ -108,11 +108,6 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   int ReceiveQmiSwitchSlot(const qrtr_packet& packet);
   // Performs decoding for GET_SLOTS QMI response.
   int ReceiveQmiGetSlots(const qrtr_packet& packet);
-  // Used to retry GET_SLOTS if no euicc is found
-  void RunNextStepOrRetry(
-      base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
-      base::OnceCallback<void(int)> cb,
-      int err);
   // Performs decoding for OPEN_LOGICAL_CHANNEL QMI response.
   int ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet);
   int ParseQmiOpenLogicalChannel(const qrtr_packet& packet);

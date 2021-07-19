@@ -14,7 +14,7 @@
 namespace hermes {
 
 using ResultCallback = base::OnceCallback<void(int)>;
-
+constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
 constexpr auto kLpaRetryDelay = base::TimeDelta::FromSeconds(2);
 
 std::string GetTrailingChars(const std::string& pii, int num_chars);
@@ -24,6 +24,11 @@ std::string GetObjectPathForLog(const dbus::ObjectPath& dbus_path);
 void IgnoreErrorRunClosure(base::OnceCallback<void()> cb, int err);
 
 void PrintMsgProcessingResult(int err);
+
+void RunNextStep(
+    base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
+    base::OnceCallback<void(int)> cb,
+    int err);
 
 }  // namespace hermes
 

@@ -140,7 +140,6 @@ void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
                              "Cannot enable a pending Profile object");
     return;
   }
-
   LOG(INFO) << "Enabling profile: " << GetObjectPathForLog(object_path_);
   auto enable_profile =
       base::BindOnce(&Profile::EnableProfile, weak_factory_.GetWeakPtr());
@@ -221,7 +220,10 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
   }
   VLOG(2) << "Enabled profile: " << object_path_.value();
   SetState(profile::kActive);
-  response->Return();
+
+  context_->lpa()->SendNotifications(
+      context_->executor(),
+      [response{std::move(response)}](int /*error*/) { response->Return(); });
 }
 
 void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
@@ -235,7 +237,10 @@ void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
   }
   VLOG(2) << "Disabled profile: " << object_path_.value();
   SetState(profile::kInactive);
-  response->Return();
+
+  context_->lpa()->SendNotifications(
+      context_->executor(),
+      [response{std::move(response)}](int /*error*/) { response->Return(); });
 }
 
 void Profile::Rename(std::unique_ptr<DBusResponse<>> response,

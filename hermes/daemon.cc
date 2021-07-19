@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,11 +13,14 @@
 #include <google-lpa/lpa/core/lpa.h>
 
 #include "hermes/context.h"
+#if USE_QRTR
 #include "hermes/modem_qrtr.h"
 #include "hermes/socket_qrtr.h"
+#else
+#include "hermes/modem_mbim.h"
+#endif
 
 namespace hermes {
-
 Daemon::Daemon()
     : DBusServiceDaemon(kHermesServiceName),
       executor_(base::ThreadTaskRunnerHandle::Get()),
@@ -28,16 +31,20 @@ Daemon::Daemon()
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  static_assert(USE_QRTR, "Only QRTR modems are supported");
-
+#if USE_QRTR
   modem_ =
       ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_, &executor_);
+#else
+  modem_ = ModemMbim::Create(&logger_, &executor_);
+#endif
 
   lpa::core::Lpa::Builder b;
   b.SetEuiccCard(modem_.get())
       .SetSmdpClientFactory(&smdp_)
       .SetSmdsClientFactory(&smds_)
-      .SetLogger(&logger_);
+      .SetLogger(&logger_)
+      .SetLogger(&logger_)
+      .SetAutoSendNotifications(false);
   lpa_ = b.Build();
 
   Context::Initialize(bus_, lpa_.get(), &executor_, &adaptor_factory_,

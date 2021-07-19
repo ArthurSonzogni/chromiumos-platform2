@@ -17,7 +17,11 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "gio-2.0",
+    "gio-unix-2.0",
+    "glib-2.0",
     "google-lpa",
+    "gthread-2.0",
     "jsoncpp",
     "libbrillo",
     "libchrome",
@@ -29,6 +33,8 @@ pkg_config("target_defaults") {
   ]
   if (use.qrtr) {
     libs = [ "qrtr" ]
+  } else {
+    libs = [ "mbim-glib" ]
   }
 }
 
@@ -68,6 +74,8 @@ static_library("libhermes") {
       "socket_qrtr.cc",
       "uim_cmd.cc",
     ]
+  } else {
+    sources += [ "modem_mbim.cc" ]
   }
 
   configs += [ ":target_defaults" ]

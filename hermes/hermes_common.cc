@@ -32,4 +32,16 @@ void PrintMsgProcessingResult(int err) {
   VLOG(2) << "Modem processed message processed with code:" << err;
 }
 
+void RunNextStep(
+    base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
+    base::OnceCallback<void(int)> cb,
+    int err) {
+  VLOG(2) << "Modem message processed with code:" << err;
+  if (err) {
+    std::move(cb).Run(err);
+    return;
+  }
+  std::move(next_step).Run(std::move(cb));
+}
+
 }  // namespace hermes

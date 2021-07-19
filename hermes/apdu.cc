@@ -167,6 +167,10 @@ std::vector<uint8_t> ResponseApdu::Release() {
   return std::move(data_);
 }
 
+std::vector<uint8_t> ResponseApdu::ReleaseOnly() {
+  return std::move(data_);
+}
+
 CommandApdu ResponseApdu::CreateGetMoreCommand(bool use_extended_length) const {
   uint8_t sw2 = 0;
   if (2 <= data_.size()) {

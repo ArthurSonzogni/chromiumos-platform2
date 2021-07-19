@@ -252,16 +252,18 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
     installed_profiles_.back()->SetState(profile::kInactive);
   }
   // Refresh LPA profile cache
-  context_->lpa()->GetInstalledProfiles(
+  // Send notifications and refresh LPA profile cache. No errors will be raised
+  // if these operations fail since the profile installation already succeeded.
+  context_->lpa()->SendNotifications(
       context_->executor(),
-      [dbus_result{std::move(dbus_result)}, this](
-          std::vector<lpa::proto::ProfileInfo>& profile_infos, int error) {
-        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-        if (decoded_error) {
-          dbus_result.Error(decoded_error);
-          return;
-        }
-        dbus_result.Success(installed_profiles_.back()->object_path());
+      [this, dbus_result{std::move(dbus_result)},
+       profile_path{installed_profiles_.back()->object_path()}](int /*err*/) {
+        // Send notifications has completed, refresh the profile cache.
+        context_->lpa()->GetInstalledProfiles(
+            context_->executor(),
+            [dbus_result{std::move(dbus_result)}, profile_path](
+                std::vector<lpa::proto::ProfileInfo>& profile_infos,
+                int /*error*/) { dbus_result.Success(profile_path); });
       });
 }
 
@@ -284,17 +286,20 @@ void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
   CHECK(iter != installed_profiles_.end());
   installed_profiles_.erase(iter);
   UpdateInstalledProfilesProperty();
-  // Refresh LPA profile cache
-  context_->lpa()->GetInstalledProfiles(
+  SendNotifications(std::move(dbus_result));
+}
+void Euicc::SendNotifications(
+    DbusResult<> dbus_result) {  // Send notifications and refresh LPA profile
+                                 // cache. No errors will be raised
+  // if these operations fail since the profile operation already succeeded.
+  context_->lpa()->SendNotifications(
       context_->executor(),
-      [dbus_result{std::move(dbus_result)}](
-          std::vector<lpa::proto::ProfileInfo>& profile_infos, int error) {
-        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-        if (decoded_error) {
-          dbus_result.Error(decoded_error);
-          return;
-        }
-        dbus_result.Success();
+      [this, dbus_result{std::move(dbus_result)}](int /*err*/) {
+        context_->lpa()->GetInstalledProfiles(
+            context_->executor(),
+            [dbus_result{std::move(dbus_result)}](
+                std::vector<lpa::proto::ProfileInfo>& profile_infos,
+                int /*error*/) { dbus_result.Success(); });
       });
 }
 
@@ -460,13 +465,15 @@ void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
   bool reset_uicc = false;  // Ignored by the lpa.
   context_->lpa()->ResetMemory(
       reset_options, reset_uicc, context_->executor(),
-      [dbus_result{std::move(dbus_result)}](int error) {
+      [this, dbus_result{std::move(dbus_result)}](int error) {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
           dbus_result.Error(decoded_error);
           return;
         }
-        dbus_result.Success();
+        installed_profiles_.clear();
+        UpdateInstalledProfilesProperty();
+        SendNotifications(std::move(dbus_result));
       });
 }
 

@@ -19,6 +19,16 @@
 
 namespace hermes {
 
+constexpr int kMaxRetries = 5;
+constexpr int kMaxApduLen = 260;
+constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
+constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
+constexpr int kModemSuccess = 0;
+// This error will be returned when a received mbim/qmi message cannot be parsed
+// or when it is received in an unexpected state.
+constexpr int kModemMessageProcessingError = -1;
+constexpr uint8_t kInvalidChannel = 0;
+
 // Modem houses code shared by ModemQrtr and ModemMbim
 // T is the type of message that the modem implementation uses. For
 // QMI, messages are stored in objects of type QmiCmdInterface, and for MBIM,
@@ -30,6 +40,7 @@ class Modem : public EuiccInterface {
       : euicc_manager_(nullptr),
         logger_(logger),
         executor_(executor),
+        retry_count_(0),
         current_transaction_id_(static_cast<uint16_t>(-1)),
         weak_factory_(this) {
     // Set SGP.22 specification version supported by this implementation (this
@@ -85,7 +96,6 @@ class Modem : public EuiccInterface {
   };
 
   uint16_t AllocateId();
-
   // The tag is used by TransmitFromQueue to distinguish apdu's from other types
   // of messages in the tx_queue.
   virtual std::unique_ptr<T> GetTagForSendApdu() = 0;
@@ -95,6 +105,12 @@ class Modem : public EuiccInterface {
   // In the QMI and MBIM implementations, TransmitFromQueue also processes
   // other messages like reset, close channel, open channel etc.
   virtual void TransmitFromQueue() = 0;
+  virtual void Shutdown() = 0;
+  void RetryInitialization(ResultCallback cb);
+  void RunNextStepOrRetry(
+      base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
+      base::OnceCallback<void(int)> cb,
+      int err);
   // List of responses for the oldest SendApdus call that hasn't been completely
   // processed.
   std::vector<std::vector<uint8_t>> responses_;
@@ -107,6 +123,8 @@ class Modem : public EuiccInterface {
   Executor* executor_;
   lpa::proto::EuiccSpecVersion spec_version_;
   std::string imei_;
+  int retry_count_;
+  base::OnceClosure retry_initialization_callback_;
 
  private:
   uint16_t current_transaction_id_;
@@ -119,6 +137,7 @@ void Modem<T>::SendApdus(std::vector<lpa::card::Apdu> apdus,
   base::OnceCallback<void(int)> callback;
   callback = base::BindOnce(&Modem<T>::SendApdusResponse,
                             weak_factory_.GetWeakPtr(), std::move(cb));
+  LOG(INFO) << __func__;
   for (size_t i = 0; i < apdus.size(); ++i) {
     CommandApdu apdu(static_cast<ApduClass>(apdus[i].cla()),
                      static_cast<ApduInstruction>(apdus[i].ins()),
@@ -151,6 +170,43 @@ uint16_t Modem<T>::AllocateId() {
   DCHECK_NE(current_transaction_id_, 0);
   current_transaction_id_ += 2;
   return current_transaction_id_;
+}
+
+template <typename T>
+void Modem<T>::RetryInitialization(ResultCallback cb) {
+  if (retry_count_ > kMaxRetries) {
+    LOG(INFO) << __func__ << ": Max retry count(" << kMaxRetries
+              << ") exceeded, will not retry initialization.";
+    retry_count_ = 0;
+    while (!tx_queue_.empty()) {
+      std::move(tx_queue_[0].cb_).Run(kModemMessageProcessingError);
+      tx_queue_.pop_front();
+    }
+    std::move(cb).Run(kModemMessageProcessingError);
+    return;
+  }
+  LOG(INFO) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
+            << " seconds";
+  Shutdown();
+  retry_initialization_callback_.Reset();
+  retry_initialization_callback_ =
+      base::BindOnce(&Modem<T>::Initialize, weak_factory_.GetWeakPtr(),
+                     euicc_manager_, std::move(cb));
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, std::move(retry_initialization_callback_), kInitRetryDelay);
+  retry_count_++;
+}
+
+template <typename T>
+void Modem<T>::RunNextStepOrRetry(
+    base::OnceCallback<void(base::OnceCallback<void(int)>)> next_step,
+    base::OnceCallback<void(int)> cb,
+    int err) {
+  if (err) {
+    RetryInitialization(std::move(cb));
+    return;
+  }
+  RunNextStep(std::move(next_step), std::move(cb), err);
 }
 
 }  // namespace hermes
