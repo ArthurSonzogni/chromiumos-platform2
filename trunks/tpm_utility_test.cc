@@ -3377,4 +3377,14 @@ TEST_F(TpmUtilityTest, ManageCCDPwdFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ManageCCDPwd(true));
 }
 
+TEST_F(TpmUtilityTest, IsCr50) {
+  SetCr50(true);
+  EXPECT_TRUE(utility_.IsCr50());
+}
+
+TEST_F(TpmUtilityTest, NotCr50) {
+  SetCr50(false);
+  EXPECT_FALSE(utility_.IsCr50());
+}
+
 }  // namespace trunks

@@ -263,6 +263,7 @@ class MockTpmUtility : public TpmUtility {
                       std::string*,
                       std::string*));
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
+  MOCK_METHOD(bool, IsCr50, (), (override));
 };
 
 }  // namespace trunks

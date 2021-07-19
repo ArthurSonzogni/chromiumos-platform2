@@ -571,6 +571,8 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetRsuDeviceId(device_id);
   }
 
+  bool IsCr50() override { return target_->IsCr50(); }
+
  private:
   TpmUtility* target_;
 };

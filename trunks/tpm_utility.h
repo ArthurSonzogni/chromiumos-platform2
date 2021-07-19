@@ -735,6 +735,9 @@ class TRUNKS_EXPORT TpmUtility {
 
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
+
+  // Returns true for TPMs running Cr50.
+  virtual bool IsCr50() = 0;
 };
 
 }  // namespace trunks

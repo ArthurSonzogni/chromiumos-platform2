@@ -268,6 +268,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                             std::string* mac_out) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
 
+  bool IsCr50() override;
+
  private:
   friend class TpmUtilityTest;
   friend class NVTpmUtilityTest;
@@ -418,9 +420,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // in case of error reading the property.
   // Caches a non-zero vendor ID.
   uint32_t VendorId();
-
-  // Returns true for TPMs running Cr50.
-  bool IsCr50();
 
   // Returns true for TPMs running on simulator.
   bool IsSimulator();
