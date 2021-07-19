@@ -79,7 +79,7 @@ static bool ValidateThumbnailSize(
   return false;
 }
 
-CachedFrame::CachedFrame()
+CachedFrame::CachedFrame(const android::CameraMetadata& static_metadata)
     : image_processor_(new ImageProcessor()),
       camera_metrics_(CameraMetrics::New()),
       jda_available_(false),
@@ -117,6 +117,12 @@ CachedFrame::CachedFrame()
   if (force_jpeg_hw_decode_) {
     LOGF(INFO) << "Force JPEG hardware decode";
   }
+
+  camera_metadata_ro_entry entry =
+      static_metadata.find(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+  DCHECK_EQ(entry.count, 4);
+  active_array_size_.width = entry.data.i32[2];
+  active_array_size_.height = entry.data.i32[3];
 
   face_detector_ = FaceDetector::Create();
 }
@@ -599,8 +605,8 @@ void CachedFrame::DetectFaces(const FrameBuffer& input_nv12_frame,
     return;
   }
 
-  FaceDetectResult ret =
-      face_detector_->Detect(input_nv12_frame.GetBufferHandle(), &faces_);
+  FaceDetectResult ret = face_detector_->Detect(
+      input_nv12_frame.GetBufferHandle(), &faces_, active_array_size_);
   if (ret != FaceDetectResult::kDetectOk) {
     faces_.clear();
   }

@@ -539,6 +539,7 @@ CameraClient::RequestHandler::RequestHandler(
       device_(device),
       callback_ops_(callback_ops),
       task_runner_(task_runner),
+      cached_frame_(static_metadata),
       metadata_handler_(metadata_handler),
       stream_on_fps_(0.0),
       stream_on_resolution_(0, 0),

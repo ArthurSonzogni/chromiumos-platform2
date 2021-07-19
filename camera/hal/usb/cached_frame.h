@@ -25,7 +25,7 @@ namespace cros {
 // format of libyuv, to allow convenient processing.
 class CachedFrame {
  public:
-  CachedFrame();
+  explicit CachedFrame(const android::CameraMetadata& static_metadata);
 
   // Convert |in_frame| into |out_frames| with |rotate_degree|, cropping,
   // scaling, and format conversion. |rotate_degree| should be 0, 90, or 270.
@@ -103,6 +103,7 @@ class CachedFrame {
   std::unique_ptr<FaceDetector> face_detector_;
   std::vector<human_sensing::CrosFace> faces_;
   int frame_count_;
+  Size active_array_size_;
 };
 
 }  // namespace cros
