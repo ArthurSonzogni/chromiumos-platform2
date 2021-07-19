@@ -100,7 +100,8 @@ def cmd_decrypt(args: argparse.Namespace) -> int:
 
 def main(argv: list) -> int:
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(title='subcommands')
+    subparsers = parser.add_subparsers(
+        dest='subcommand', required=True, title='subcommands')
 
     # Parser for "decrypt" subcommand.
     parser_decrypt = subparsers.add_parser('decrypt')
