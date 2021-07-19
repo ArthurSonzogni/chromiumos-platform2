@@ -43,11 +43,13 @@ constexpr int kSecurityTokenLength = 36;
 // File extension for desktop files.
 constexpr char kDesktopFileExtension[] = ".desktop";
 // Directory where the MIME types file is stored for watching with inotify.
-constexpr char kMimeTypesDir[] = "/etc";
+constexpr char kMimeTypesDir[] = "/usr/share/mime";
+// User directory where the MIME types file is stored for watching with inotify.
+constexpr char kUserMimeTypesDir[] = ".local/share/mime";
 // File where MIME type information is stored in the container.
-constexpr char kMimeTypesFilePath[] = "/etc/mime.types";
+constexpr char kMimeTypesFilePath[] = "/usr/share/mime/mime.cache";
 // Filename for the user's MIME types file in their home dir.
-constexpr char kUserMimeTypesFile[] = ".mime.types";
+constexpr char kUserMimeTypesFile[] = ".local/share/mime/mime.cache";
 // Duration over which we coalesce changes to the desktop file system.
 constexpr base::TimeDelta kFilesystemChangeCoalesceTime =
     base::TimeDelta::FromSeconds(3);
@@ -495,7 +497,7 @@ bool HostNotifier::Init(uint32_t vsock_port,
   // We can only watch directories and on changes we aren't notified which
   // file changes, so we end up watching for any changes in /etc or $HOME.
 
-  // Also setup the watcher for the /etc/mime.types file.
+  // Also setup the watcher for the /usr/local/share/mime/mime.cache file.
   std::unique_ptr<base::FilePathWatcher> mime_type_watcher =
       std::make_unique<base::FilePathWatcher>();
   base::FilePath mime_type_path(kMimeTypesDir);
@@ -508,13 +510,14 @@ bool HostNotifier::Init(uint32_t vsock_port,
   }
   watchers_.emplace_back(std::move(mime_type_watcher));
 
-  // Also setup the watcher for the $HOME/.mime.types file.
+  // Also setup the watcher for the $HOME/.local/share/mime/mime.cache file.
   std::unique_ptr<base::FilePathWatcher> home_mime_type_watcher =
       std::make_unique<base::FilePathWatcher>();
-  if (!home_mime_type_watcher->Watch(base::GetHomeDir(),
-                                     base::FilePathWatcher::Type::kNonRecursive,
-                                     base::Bind(&HostNotifier::MimeTypesChanged,
-                                                base::Unretained(this)))) {
+  if (!home_mime_type_watcher->Watch(
+          base::GetHomeDir().Append(kUserMimeTypesDir),
+          base::FilePathWatcher::Type::kNonRecursive,
+          base::Bind(&HostNotifier::MimeTypesChanged,
+                     base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
                << base::GetHomeDir().value();
   }
