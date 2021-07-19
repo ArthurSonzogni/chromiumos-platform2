@@ -270,6 +270,11 @@ bool KernelFeatureTool::GetFeatureList(std::string* csv_list,
 
   bool first = true;
   for (auto& it : *(parser_->GetFeatureMap())) {
+    // Skip features that device does not support
+    const auto& feature_obj = it.second;
+    if (!feature_obj.IsSupported())
+      continue;
+
     if (!first)
       csv_list->append(",");
     else
