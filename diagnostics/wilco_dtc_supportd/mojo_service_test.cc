@@ -78,11 +78,10 @@ class MojoServiceTest : public testing::Test {
 };
 
 TEST_F(MojoServiceTest, SendWilcoDtcMessageToUi) {
-  constexpr base::StringPiece kJsonMessageToUi("{\"message\": \"ping\"}");
-  constexpr base::StringPiece kJsonMessageFromUi("{\"message\": \"pong\"}");
+  constexpr char kJsonMessageToUi[] = "{\"message\": \"ping\"}";
+  constexpr char kJsonMessageFromUi[] = "{\"message\": \"pong\"}";
 
-  EXPECT_CALL(*mojo_client(),
-              SendWilcoDtcMessageToUiImpl(kJsonMessageToUi.as_string(), _))
+  EXPECT_CALL(*mojo_client(), SendWilcoDtcMessageToUiImpl(kJsonMessageToUi, _))
       .WillOnce(WithArg<1>(
           Invoke([kJsonMessageFromUi](
                      MockMojoClient::SendWilcoDtcMessageToUiCallback callback) {
@@ -92,7 +91,7 @@ TEST_F(MojoServiceTest, SendWilcoDtcMessageToUi) {
 
   base::RunLoop run_loop;
   mojo_service()->SendWilcoDtcMessageToUi(
-      kJsonMessageToUi.as_string(),
+      kJsonMessageToUi,
       base::Bind(
           [](const base::Closure& quit_closure,
              base::StringPiece expected_json_message, grpc::Status status,

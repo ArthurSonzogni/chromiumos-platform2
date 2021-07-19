@@ -79,14 +79,15 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
 // Converts |str| to a signed, 8-bit integer. If the conversion is successful,
 // returns base::nullopt and sets |int_out| to the converted value. If the
 // conversion fails, |int_out| is invalid and an appropriate error is returned.
-base::Optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(
-    const std::string& str, int8_t* int_out) {
+base::Optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
+                                                          int8_t* int_out) {
   DCHECK(int_out);
 
   int full_size_int;
   if (!base::StringToInt(str, &full_size_int)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  "Failed to convert " + str + " to int.");
+    return CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kParseError,
+        "Failed to convert " + std::string(str) + " to int.");
   }
 
   if (full_size_int > std::numeric_limits<int8_t>::max()) {
@@ -309,22 +310,21 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   if (error.has_value())
     return error;
 
-  error = GetInt8FromString(
-      stat_tokens[ProcPidStatIndices::kPriority].as_string(), priority);
+  error =
+      GetInt8FromString(stat_tokens[ProcPidStatIndices::kPriority], priority);
   if (error.has_value())
     return error;
 
-  error = GetInt8FromString(stat_tokens[ProcPidStatIndices::kNice].as_string(),
-                            nice);
+  error = GetInt8FromString(stat_tokens[ProcPidStatIndices::kNice], nice);
   if (error.has_value())
     return error;
 
   base::StringPiece start_time_str =
       stat_tokens[ProcPidStatIndices::kStartTime];
   if (!base::StringToUint64(start_time_str, start_time_ticks)) {
-    return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
-        "Failed to convert starttime to uint64: " + start_time_str.as_string());
+    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+                                  "Failed to convert starttime to uint64: " +
+                                      std::string(start_time_str));
   }
 
   return base::nullopt;

@@ -47,8 +47,8 @@ std::string GetProblemMessage(
     }
   }
 
-  return base::TrimString(problem_message, "\n", base::TRIM_TRAILING)
-      .as_string();
+  return std::string(
+      base::TrimString(problem_message, "\n", base::TRIM_TRAILING));
 }
 
 // Parses the results of the video conferencing routine.

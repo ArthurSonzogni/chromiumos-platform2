@@ -29,7 +29,7 @@ namespace {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 template <typename T>
-bool HexToUInt(base::BasicStringPiece<std::string> in, T* out) {
+bool HexToUInt(base::StringPiece in, T* out) {
   uint32_t raw;
   if (!base::HexStringToUInt(in, &raw))
     return false;

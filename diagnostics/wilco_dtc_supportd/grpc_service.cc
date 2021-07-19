@@ -66,7 +66,7 @@ void ForwardSendMessageToUiResponse(const SendMessageToUiCallback& callback,
                                     grpc::Status status,
                                     base::StringPiece response_json_message) {
   auto reply = std::make_unique<grpc_api::SendMessageToUiResponse>();
-  reply->set_response_json_message(response_json_message.as_string());
+  reply->set_response_json_message(std::string(response_json_message));
   callback.Run(status, std::move(reply));
 }
 
@@ -80,7 +80,7 @@ void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
     case DelegateWebRequestStatus::kOk:
       reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
       reply->set_http_status(http_status);
-      reply->set_response_body(response_body.as_string());
+      reply->set_response_body(std::string(response_body));
       break;
     case DelegateWebRequestStatus::kNetworkError:
       reply->set_status(
@@ -89,7 +89,7 @@ void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
     case DelegateWebRequestStatus::kHttpError:
       reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_HTTP_ERROR);
       reply->set_http_status(http_status);
-      reply->set_response_body(response_body.as_string());
+      reply->set_response_body(std::string(response_body));
       break;
     case DelegateWebRequestStatus::kInternalError:
       reply->set_status(
