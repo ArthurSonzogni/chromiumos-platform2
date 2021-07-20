@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/macros.h>
@@ -469,7 +470,9 @@ class Cellular : public Device,
   void OnConnecting();
   void OnDisconnected();
   void OnDisconnectFailed();
-
+  void NotifyCellularConnectionResult(const Error& error,
+                                      const std::string& iccid,
+                                      bool is_user_triggered);
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
@@ -511,7 +514,9 @@ class Cellular : public Device,
   void HelpRegisterConstDerivedString(
       const std::string& name, std::string (Cellular::*get)(Error* error));
 
-  void OnConnectReply(std::string iccid, const Error& error);
+  void OnConnectReply(std::string iccid,
+                      bool is_user_triggered,
+                      const Error& error);
   void OnDisconnectReply(const Error& error);
 
   void ReAttachOnDetachComplete(const Error& error);
@@ -697,6 +702,10 @@ class Cellular : public Device,
 
   // Legacy device storage identifier, used for removing legacy entry.
   std::string legacy_storage_id_;
+
+  // A Map containing the last connection results. ICCID is used as the key.
+  std::unordered_map<std::string, Error::Type>
+      last_cellular_connection_results_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };

@@ -468,6 +468,8 @@ class Service : public base::RefCounted<Service> {
   // and broadcasts the new value
   void SetHasEverConnected(bool has_ever_connected);
 
+  bool is_in_user_connect() const { return is_in_user_connect_; }
+
   int32_t priority() const { return priority_; }
   bool SetPriority(const int32_t& priority, Error* error);
 
