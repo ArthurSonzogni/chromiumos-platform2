@@ -22,7 +22,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "common/sensor_reader.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 #include "cros-camera/sensor_hal_client.h"
@@ -107,13 +106,6 @@ class SensorHalClientImpl final : public SensorHalClient {
       base::OnceCallback<void(bool)> callback;
     };
 
-    struct ReaderData {
-      int32_t iio_device_id;
-      mojom::DeviceType type;
-      double frequency;
-      std::unique_ptr<SensorReader> sensor_reader;
-    };
-
     void OnDeviceQueryTimedOut(uint32_t info_id);
 
     void RegisterDevice(int32_t iio_device_id,
@@ -175,9 +167,6 @@ class SensorHalClientImpl final : public SensorHalClient {
     // First is iio_device_id, second is the device's attributes and Mojo
     // remote.
     std::map<int32_t, DeviceData> devices_;
-
-    // First is the observer's pointer, second is the specific sensor reader.
-    std::map<SamplesObserver*, ReaderData> readers_;
 
     base::WeakPtrFactory<IPCBridge> weak_ptr_factory_{this};
   };
