@@ -9,6 +9,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 
 #include "runtime_probe/utils/file_utils.h"
@@ -25,6 +26,7 @@ using std::vector;
 namespace {
 
 constexpr int kReadFileMaxSize = 1024;
+constexpr int kGlobFileCountLimit = 512;
 
 // Get string to be used as key name in |MapFilesToDict|.
 const string& GetKeyName(const string& key) {
@@ -106,6 +108,9 @@ std::vector<base::FilePath> GlobInternal(
   for (auto path = it.Next(); !path.empty(); path = it.Next()) {
     auto sub_res = GlobInternal(path, patterns, idx + 1);
     std::move(sub_res.begin(), sub_res.end(), std::back_inserter(res));
+    // Early return if the file count exceeds the limit.
+    if (res.size() > kGlobFileCountLimit)
+      return res;
   }
   return res;
 }
@@ -147,7 +152,13 @@ template base::Optional<Value> MapFilesToDict<pair<string, string>>(
 std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
   std::vector<std::string> components;
   pattern.GetComponents(&components);
-  return GlobInternal(base::FilePath(components[0]), components, 1);
+  auto res = GlobInternal(base::FilePath(components[0]), components, 1);
+  if (res.size() > kGlobFileCountLimit) {
+    LOG(ERROR) << "Glob file count reached the limit " << kGlobFileCountLimit
+               << " with the input: " << pattern.value();
+    res.resize(kGlobFileCountLimit);
+  }
+  return res;
 }
 
 std::vector<base::FilePath> Glob(const std::string& pattern) {
