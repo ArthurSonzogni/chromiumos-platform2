@@ -18,6 +18,12 @@
 #include <base/files/file_util.h>
 #include <chromeos/constants/cryptohome.h>
 
+namespace {
+// Size of span when writing protobuf message size to file.
+constexpr int kSpanSize = 1;
+
+}  // namespace
+
 namespace cryptohome {
 
 bool UserSessionMountNamespaceExists() {
@@ -60,20 +66,14 @@ bool ReadProtobuf(int in_fd, google::protobuf::MessageLite* message) {
 
 bool WriteProtobuf(int out_fd, const google::protobuf::MessageLite& message) {
   size_t size = message.ByteSizeLong();
-  std::vector<char> buf(message.ByteSizeLong());
-  if (!message.SerializeToArray(buf.data(), buf.size())) {
-    LOG(ERROR) << "Failed to serialize protobuf";
-    return false;
-  }
-
-  if (!base::WriteFileDescriptor(out_fd, reinterpret_cast<char*>(&size),
-                                 sizeof(size))) {
+  if (!base::WriteFileDescriptor(
+          out_fd, base::as_bytes(base::make_span(&size, kSpanSize)))) {
     PLOG(ERROR) << "Failed to write protobuf size";
     return false;
   }
 
-  if (!base::WriteFileDescriptor(out_fd, buf.data(), size)) {
-    PLOG(ERROR) << "Failed to write protobuf";
+  if (!message.SerializeToFileDescriptor(out_fd)) {
+    LOG(ERROR) << "Failed to serialize and write protobuf";
     return false;
   }
 
