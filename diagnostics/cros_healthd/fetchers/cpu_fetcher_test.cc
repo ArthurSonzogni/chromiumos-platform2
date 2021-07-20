@@ -152,7 +152,7 @@ void VerifyLogicalCpu(
     uint32_t expected_scaling_current_frequency_khz,
     uint32_t expected_user_time_user_hz,
     uint32_t expected_system_time_user_hz,
-    uint32_t expected_idle_time_user_hz,
+    uint64_t expected_idle_time_user_hz,
     const std::vector<std::pair<std::string, uint64_t>>& expected_c_states,
     const mojo_ipc::LogicalCpuInfoPtr& actual_data) {
   ASSERT_FALSE(actual_data.is_null());

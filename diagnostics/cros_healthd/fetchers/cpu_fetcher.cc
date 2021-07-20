@@ -64,7 +64,7 @@ const char kCPUTempFilePattern[] = "temp*_input";
 struct ParsedStatContents {
   uint64_t user_time_user_hz;
   uint64_t system_time_user_hz;
-  uint32_t idle_time_user_hz;
+  uint64_t idle_time_user_hz;
 };
 
 // Read system temperature sensor data and appends it to |out_contents|. Returns
@@ -226,7 +226,7 @@ base::Optional<std::map<std::string, ParsedStatContents>> ParseStatContents(
     ParsedStatContents contents;
     if (!base::StringToUint64(user_time_str, &contents.user_time_user_hz) ||
         !base::StringToUint64(system_time_str, &contents.system_time_user_hz) ||
-        !base::StringToUint(idle_time_str, &contents.idle_time_user_hz)) {
+        !base::StringToUint64(idle_time_str, &contents.idle_time_user_hz)) {
       return base::nullopt;
     }
     DCHECK_EQ(parsed_contents.count(logical_cpu_id), 0);
