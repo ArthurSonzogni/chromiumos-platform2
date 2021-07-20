@@ -317,8 +317,7 @@ void Camera3DeviceImpl::AddStreamOnThread(int format,
       stream.usage |= GRALLOC_USAGE_HW_COMPOSER;
     }
     if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
-      stream.physical_camera_id_string = "";
-      stream.physical_camera_id = stream.physical_camera_id_string.c_str();
+      stream.physical_camera_id = "";
     }
     stream.crop_rotate_scale_degrees = crop_rotate_scale_degrees;
     cur_stream.push_back(stream);

@@ -587,7 +587,7 @@ int ClientDeviceConnector::DecodeStreamBufferPtr(
   }
 
   if (buffer_ptr->release_fence.is_valid()) {
-    buffer->acquire_fence =
+    buffer->release_fence =
         mojo::UnwrapPlatformHandle(std::move(buffer_ptr->release_fence))
             .ReleaseFD();
   } else {
