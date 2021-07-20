@@ -25,6 +25,7 @@ namespace cros {
 class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
                                private camera_algorithm_callback_ops_t {
  public:
+  CameraAlgorithmOpsImpl();
   CameraAlgorithmOpsImpl(const CameraAlgorithmOpsImpl&) = delete;
   CameraAlgorithmOpsImpl& operator=(const CameraAlgorithmOpsImpl&) = delete;
 
@@ -59,8 +60,6 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   void DeregisterBuffers(const std::vector<int32_t>& buffer_handles) override;
 
  private:
-  CameraAlgorithmOpsImpl();
-
   ~CameraAlgorithmOpsImpl() override {}
 
   static void ReturnCallbackForwarder(

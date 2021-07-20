@@ -50,6 +50,7 @@ const char* GetAlgorithmLibraryName(const std::string& pipe_name) {
 
 CameraAlgorithmAdapter::CameraAlgorithmAdapter()
     : algo_impl_(CameraAlgorithmOpsImpl::GetInstance()),
+      is_algo_impl_bound_(false),
       algo_dll_handle_(nullptr),
       ipc_thread_("IPC thread") {}
 
@@ -95,22 +96,27 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
       dlsym(algo_dll_handle_, CAMERA_ALGORITHM_MODULE_INFO_SYM_AS_STR));
   if (!cam_algo) {
     LOGF(ERROR) << "Camera algorithm is invalid";
-    dlclose(algo_dll_handle_);
     DestroyOnIpcThread();
     return;
   }
 
   base::Closure ipc_lost_handler = base::Bind(
       &CameraAlgorithmAdapter::DestroyOnIpcThread, base::Unretained(this));
-  algo_impl_->Bind(std::move(pending_receiver), cam_algo,
-                   ipc_thread_.task_runner(), ipc_lost_handler);
+  if (!algo_impl_->Bind(std::move(pending_receiver), cam_algo,
+                        ipc_thread_.task_runner(), ipc_lost_handler)) {
+    LOGF(ERROR) << "Failed to bind algorithm implementation";
+    DestroyOnIpcThread();
+    return;
+  }
+  is_algo_impl_bound_ = true;
   VLOGF_EXIT();
 }
 
 void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
-  algo_impl_->Unbind();
+  if (is_algo_impl_bound_)
+    algo_impl_->Unbind();
   ipc_support_ = nullptr;
   if (algo_dll_handle_) {
     dlclose(algo_dll_handle_);

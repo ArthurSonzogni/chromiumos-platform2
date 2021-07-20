@@ -41,6 +41,7 @@ class CameraAlgorithmAdapter {
 
   // Pointer to CameraAlgorithmOps interface implementation.
   CameraAlgorithmOpsImpl* algo_impl_;
+  bool is_algo_impl_bound_;
 
   // Handle of the camera algorithm library.
   void* algo_dll_handle_;

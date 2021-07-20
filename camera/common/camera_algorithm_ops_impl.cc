@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"
@@ -29,8 +30,8 @@ CameraAlgorithmOpsImpl::CameraAlgorithmOpsImpl()
 
 // static
 CameraAlgorithmOpsImpl* CameraAlgorithmOpsImpl::GetInstance() {
-  static CameraAlgorithmOpsImpl impl;
-  return &impl;
+  static base::NoDestructor<CameraAlgorithmOpsImpl> impl;
+  return impl.get();
 }
 
 bool CameraAlgorithmOpsImpl::Bind(
@@ -54,10 +55,10 @@ bool CameraAlgorithmOpsImpl::Bind(
 }
 
 void CameraAlgorithmOpsImpl::Unbind() {
+  DCHECK(ipc_task_runner_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(receiver_.is_bound());
   DCHECK(cam_algo_);
-  DCHECK(ipc_task_runner_);
   callback_ops_.reset();
   ipc_task_runner_ = nullptr;
   cam_algo_ = nullptr;
