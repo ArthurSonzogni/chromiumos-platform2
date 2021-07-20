@@ -94,7 +94,8 @@ def decrypt(private_key: str, private_key_pass: str, files: list) -> bool:
 
 
 def cmd_decrypt(args: argparse.Namespace) -> int:
-    """Handle the subcommand decrypt."""
+    """Decrypt all gpg encrypted fingerprint captures."""
+
     if not os.path.isfile(args.key):
         print(f'Error - The given key file {args.key} does not exist.')
         return 1
@@ -126,7 +127,7 @@ def main(argv: list) -> int:
         dest='subcommand', required=True, title='subcommands')
 
     # Parser for "decrypt" subcommand.
-    parser_decrypt = subparsers.add_parser('decrypt')
+    parser_decrypt = subparsers.add_parser('decrypt', help=cmd_decrypt.__doc__)
     parser_decrypt.add_argument('key', help='Path to the GPG private key')
     parser_decrypt.add_argument('path',
                                 help='Path to directory of encrypted captures '
