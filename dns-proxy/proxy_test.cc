@@ -358,23 +358,6 @@ TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
   EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::TrafficCounter::ARC);
 }
 
-TEST_F(ProxyTest, CrashOnConnectNamespaceFailure) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  auto pp = PatchpanelClient();
-  pp->SetConnectNamespaceResult(-1 /* invalid fd */,
-                                patchpanel::ConnectNamespaceResponse());
-  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(pp), ShillClient());
-  EXPECT_DEATH(proxy.OnPatchpanelReady(true), "namespace");
-}
-
-TEST_F(ProxyTest, CrashOnPatchpanelNotReady) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              PatchpanelClient(), ShillClient());
-  EXPECT_DEATH(proxy.OnPatchpanelReady(false), "patchpanel");
-}
-
 TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   auto pp = PatchpanelClient();
   patchpanel::ConnectNamespaceResponse resp;
@@ -439,22 +422,6 @@ TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
       .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   proxy.OnDefaultDeviceChanged(&dev);
   EXPECT_TRUE(proxy.resolver_);
-}
-
-TEST_F(ProxyTest, CrashOnListenFailure) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
-                  PatchpanelClient(), ShillClient());
-  proxy.device_ = std::make_unique<shill::Client::Device>();
-  proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
-  auto resolver = std::make_unique<MockResolver>();
-  MockResolver* mock_resolver = resolver.get();
-  proxy.resolver = std::move(resolver);
-  shill::Client::Device dev;
-  dev.state = shill::Client::Device::ConnectionState::kOnline;
-  ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(false));
-  ON_CALL(*mock_resolver, ListenTCP(_)).WillByDefault(Return(false));
-  EXPECT_DEATH(proxy.OnDefaultDeviceChanged(&dev), "relay loop");
 }
 
 TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {

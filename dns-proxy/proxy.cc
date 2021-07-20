@@ -118,11 +118,6 @@ Proxy::Proxy(const Options& opts,
       feature_enabled_(true),
       metrics_proc_type_(ProcessTypeOf(opts_.type)) {}
 
-Proxy::~Proxy() {
-  if (bus_)
-    bus_->ShutdownAndBlock();
-}
-
 int Proxy::OnInit() {
   LOG(INFO) << "Starting DNS proxy " << opts_;
 
@@ -132,10 +127,13 @@ int Proxy::OnInit() {
   return DBusDaemon::OnInit();
 }
 
-void Proxy::OnShutdown(int*) {
-  LOG(INFO) << "Stopping DNS proxy " << opts_;
+void Proxy::OnShutdown(int* code) {
+  LOG(INFO) << "Stopping DNS proxy " << opts_ << "(" << *code << ")";
   if (opts_.type == Type::kSystem)
     SetShillProperty("");
+
+  if (bus_)
+    bus_->ShutdownAndBlock();
 }
 
 void Proxy::Setup() {
@@ -165,7 +163,9 @@ void Proxy::Setup() {
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
         metrics_proc_type_, Metrics::ProcessEvent::kPatchpanelNotInitialized);
-    LOG(FATAL) << "Failed to initialize patchpanel client";
+    LOG(ERROR) << "Failed to initialize patchpanel client";
+    QuitWithExitCode(EX_UNAVAILABLE);
+    return;
   }
 
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
@@ -178,7 +178,9 @@ void Proxy::OnPatchpanelReady(bool success) {
   if (!success) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNotReady);
-    LOG(FATAL) << "Failed to connect to patchpanel";
+    LOG(ERROR) << "Failed to connect to patchpanel";
+    QuitWithExitCode(EX_UNAVAILABLE);
+    return;
   }
 
   // The default network proxy might actually be carrying Chrome, Crostini or
@@ -206,7 +208,9 @@ void Proxy::OnPatchpanelReady(bool success) {
   if (!res.first.is_valid()) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoNamespace);
-    LOG(FATAL) << "Failed to establish private network namespace";
+    LOG(ERROR) << "Failed to establish private network namespace";
+    QuitWithExitCode(EX_CANTCREAT);
+    return;
   }
   ns_fd_ = std::move(res.first);
   ns_ = res.second;
@@ -265,7 +269,9 @@ void Proxy::StartDnsRedirection(
   if (!fd.is_valid()) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoRedirect);
-    LOG(FATAL) << "Failed to start DNS redirection for " << opts_.type;
+    LOG(ERROR) << "Failed to start DNS redirection for " << opts_.type;
+    QuitWithExitCode(EX_CONFIG);
+    return;
   }
   lifeline_fds_.emplace(ifname, std::move(fd));
 }
@@ -307,7 +313,9 @@ void Proxy::OnShillReady(bool success) {
   if (!shill_ready_) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kShillNotReady);
-    LOG(FATAL) << "Failed to connect to shill";
+    LOG(ERROR) << "Failed to connect to shill";
+    QuitWithExitCode(EX_UNAVAILABLE);
+    return;
   }
 
   shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
@@ -559,7 +567,9 @@ void Proxy::MaybeCreateResolver() {
   if (!resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr))) {
     metrics_.RecordProcessEvent(
         metrics_proc_type_, Metrics::ProcessEvent::kResolverListenUDPFailure);
-    LOG(FATAL) << opts_ << " failed to start UDP relay loop";
+    LOG(ERROR) << opts_ << " failed to start UDP relay loop";
+    QuitWithExitCode(EX_IOERR);
+    return;
   }
 
   if (!resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr))) {

@@ -6,6 +6,7 @@
 
 #include <sys/capability.h>
 #include <sys/prctl.h>
+#include <sysexits.h>
 
 #include <vector>
 
@@ -27,14 +28,6 @@ constexpr char kSeccompPolicyPath[] =
 }  // namespace
 
 Controller::Controller(const std::string& progname) : progname_(progname) {}
-
-Controller::~Controller() {
-  for (const auto& p : proxies_)
-    Kill(p);
-
-  if (bus_)
-    bus_->ShutdownAndBlock();
-}
 
 int Controller::OnInit() {
   LOG(INFO) << "Starting DNS Proxy service";
@@ -58,8 +51,13 @@ int Controller::OnInit() {
   return DBusDaemon::OnInit();
 }
 
-void Controller::OnShutdown(int*) {
-  LOG(INFO) << "Stopping DNS Proxy service";
+void Controller::OnShutdown(int* code) {
+  LOG(INFO) << "Stopping DNS Proxy service (" << *code << ")";
+  for (const auto& p : proxies_)
+    Kill(p);
+
+  if (bus_)
+    bus_->ShutdownAndBlock();
 }
 
 void Controller::Setup() {
@@ -80,7 +78,9 @@ void Controller::SetupPatchpanel() {
     metrics_.RecordProcessEvent(
         Metrics::ProcessType::kController,
         Metrics::ProcessEvent::kPatchpanelNotInitialized);
-    LOG(FATAL) << "Failed to initialize patchpanel client";
+    LOG(ERROR) << "Failed to initialize patchpanel client";
+    QuitWithExitCode(EX_UNAVAILABLE);
+    return;
   }
 
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
@@ -93,7 +93,9 @@ void Controller::OnPatchpanelReady(bool success) {
   if (!success) {
     metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
                                 Metrics::ProcessEvent::kPatchpanelNotReady);
-    LOG(FATAL) << "Failed to connect to patchpanel";
+    LOG(ERROR) << "Failed to connect to patchpanel";
+    QuitWithExitCode(EX_UNAVAILABLE);
+    return;
   }
   patchpanel_->RegisterNetworkDeviceChangedSignalHandler(base::BindRepeating(
       &Controller::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));

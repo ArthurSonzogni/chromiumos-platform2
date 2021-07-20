@@ -28,7 +28,7 @@ class Controller : public brillo::DBusDaemon {
   explicit Controller(const std::string& progname);
   Controller(const Controller&) = delete;
   Controller& operator=(const Controller&) = delete;
-  ~Controller();
+  ~Controller() = default;
 
  protected:
   int OnInit() override;
