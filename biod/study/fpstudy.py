@@ -48,12 +48,13 @@ def find_files(path: str, ext: str) -> list:
     return files
 
 
-def decrypt(private_key: str, private_key_pass: str, files: list) -> bool:
+def decrypt(private_key: str, private_key_pass: str, files: list):
     """Decrypt the given file."""
 
     # Enable basic stdout logging for gnupg.
     h = logging.StreamHandler()
     l = logging.getLogger('gnupg')
+    # Change this to logging.DEBUG to debug gnupg issues.
     l.setLevel(logging.INFO)
     l.addHandler(h)
 
@@ -62,40 +63,40 @@ def decrypt(private_key: str, private_key_pass: str, files: list) -> bool:
         # Creating this directory makes old gnupg versions happy.
         os.makedirs(f'{gnupghome}/private-keys-v1.d', mode=stat.S_IRWXU)
 
-        gpg = gnupg.GPG(gnupghome=gnupghome,
-                        verbose=False,
-                        options=[
-                            '--no-options',
-                            '--no-default-recipient',
-                            '--trust-model', 'always',
-                        ])
+        try:
+            gpg = gnupg.GPG(gnupghome=gnupghome,
+                            verbose=False,
+                            options=[
+                                '--no-options',
+                                '--no-default-recipient',
+                                '--trust-model', 'always',
+                            ])
 
-        with open(private_key, mode='rb') as key_file:
-            key_data = key_file.read()
-            if gpg.import_keys(key_data).count != 1:
-                raise Exception(f'Failed to import key {private_key}.')
+            with open(private_key, mode='rb') as key_file:
+                key_data = key_file.read()
+                if gpg.import_keys(key_data).count != 1:
+                    raise Exception(f'Failed to import key {private_key}.')
 
-        for file in files:
-            file_parts = os.path.splitext(file)
-            assert file_parts[1] == '.gpg'
-            file_output = file_parts[0]
-            print(f'Decrypting file {file} to {file_output}.')
-            with open(file, mode='rb') as file_input_stream:
-                ret = gpg.decrypt_file(file_input_stream,
-                                       always_trust=True,
-                                       passphrase=private_key_pass,
-                                       output=file_output)
-                if not ret.ok:
-                    raise Exception(f'Failed to decrypt file {file}.')
+            for file in files:
+                file_parts = os.path.splitext(file)
+                assert file_parts[1] == '.gpg'
+                file_output = file_parts[0]
+                print(f'Decrypting file {file} to {file_output}.')
+                with open(file, mode='rb') as file_input_stream:
+                    ret = gpg.decrypt_file(file_input_stream,
+                                           always_trust=True,
+                                           passphrase=private_key_pass,
+                                           output=file_output)
+                    if not ret.ok:
+                        raise Exception(f'Failed to decrypt file {file}')
 
-                if not os.path.exists(file_output):
-                    raise Exception(
-                        f'Output file {file_output} was not created.'
-                    )
-
-        # Shred all remnants GPG keys in the temp directory.
-        os.system(f'find {gnupghome} -type f | xargs shred -v')
-    return True
+                    if not os.path.exists(file_output):
+                        raise Exception(
+                            f'Output file {file_output} was not created'
+                        )
+        finally:
+            # Shred all remnants GPG keys in the temp directory.
+            os.system(f'find {gnupghome} -type f | xargs shred -v')
 
 
 def cmd_decrypt(args: argparse.Namespace) -> int:
@@ -122,7 +123,12 @@ def cmd_decrypt(args: argparse.Namespace) -> int:
         print('Error - The shred utility does not exist.')
         return 1
 
-    if not decrypt(args.key, args.password, files):
+    try:
+        decrypt(args.key, args.password, files)
+    except Exception as e:
+        print(f'Error - {e}.')
+        print('Ensure that you provided or were prompted for the private '
+              'key password.')
         return 1
 
 
