@@ -3,9 +3,6 @@
 # shill spawns openvpn as 'openvpn' user now. We plan to replace it with
 # 'vpn' user. See b/177984585
 20104:217
-# charon daemon (part of strongswan IPsec package) drops to 'ipsec' user
-# now. We plan to replace it with 'vpn' user. See b/177984585
-20104:212
 # shill spawns logger as 'syslog' user
 20104:202
 # shill spawns VPN clients as 'vpn' user
@@ -16,7 +13,6 @@
 # else a compromised shill could switch to one of them and then switch
 # to any UID on the system.
 217:217
-212:212
 224:224
 202:202
 20174:20174
