@@ -132,6 +132,46 @@ def cmd_decrypt(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_rm(args: argparse.Namespace) -> int:
+    """Recursively shred and remove files of a certain extension."""
+
+    try:
+        files = find_files(args.path, args.ext)
+    except Exception as e:
+        print(f'Error - {e}.')
+        return 1
+    if not files:
+        print(f'Error - The given path does not contain {args.ext} files.')
+        return 1
+
+    if args.ext in CAPTURE_FILE_EXTS:
+        print(f'WARNING: You are about to destroy {len(files)} original '
+              f'".{args.ext}" fingerprint capture files from path '
+              f'"{args.path}".')
+        resp = input('Confirm y/n: ')
+        if not resp in ['y', 'Y']:
+            print('Aborting.')
+            return 0
+
+    if not shutil.which('shred'):
+        print('Error - The shred utility does not exist.')
+        return 1
+
+    files_list = '\n'.join(files) + '\n'
+    print(f'Shredding {len(files)} files.')
+    p = subprocess.run(['xargs', 'shred', '-v'], capture_output=True,
+                       input=bytes(files_list, 'utf-8'))
+    if p.returncode != 0:
+        print('shred stdout:\n', str(p.stdout, 'utf-8'))
+        print('shred stderr:\n', str(p.stderr, 'utf-8'))
+        print(f'Error - shred returned {p.returncode}.')
+        return 1
+
+    for file in files:
+        print(f'Removing {file}.')
+        os.remove(file)
+
+
 def main(argv: list) -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(
@@ -146,6 +186,16 @@ def main(argv: list) -> int:
     parser_decrypt.add_argument('--password', default=None,
                                 help='Password for private key')
     parser_decrypt.set_defaults(func=cmd_decrypt)
+
+    # Parser for "rm" subcommand.
+    parser_rm = subparsers.add_parser('rm', help=cmd_rm.__doc__)
+    parser_rm.add_argument('ext', type=str,
+                           choices=OUTPUT_IMAGE_FILE_EXTS+CAPTURE_FILE_EXTS,
+                           help='The file extension to remove')
+    parser_rm.add_argument('path',
+                           help='Path to directory of raw captures '
+                           'or single raw file')
+    parser_rm.set_defaults(func=cmd_rm)
 
     args = parser.parse_args(argv)
     return args.func(args)
