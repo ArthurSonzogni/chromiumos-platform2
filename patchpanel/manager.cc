@@ -280,15 +280,21 @@ void Manager::OnShutdown(int* exit_code) {
   arc_svc_.reset();
   // Tear down any remaining active lifeline file descriptors.
   std::vector<int> lifeline_fds;
-  for (const auto& kv : connected_namespaces_)
+  for (const auto& kv : connected_namespaces_) {
     lifeline_fds.push_back(kv.first);
-  for (const auto& kv : dns_redirection_rules_)
+  }
+  for (const auto& kv : dns_redirection_rules_) {
     lifeline_fds.push_back(kv.first);
-  for (const int fdkey : lifeline_fds)
+  }
+  for (const int fdkey : lifeline_fds) {
     OnLifelineFdClosed(fdkey);
-  if (!USE_JETSTREAM_ROUTING)
+  }
+  if (!USE_JETSTREAM_ROUTING) {
     datapath_->Stop();
-
+  }
+  if (bus_) {
+    bus_->ShutdownAndBlock();
+  }
   brillo::DBusDaemon::OnShutdown(exit_code);
 }
 
