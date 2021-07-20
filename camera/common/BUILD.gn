@@ -78,7 +78,6 @@ shared_library("libcros_camera") {
     "//camera/common/libcamera_connector/stream_buffer_manager.cc",
     "//camera/common/libcamera_connector/supported_formats.cc",
     "//camera/common/metadata_logger.cc",
-    "//camera/common/sensor_hal_client_impl.cc",
     "//camera/common/stream_manipulator.cc",
     "//camera/common/timezone.cc",
     "//camera/common/udev_watcher.cc",
