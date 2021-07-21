@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 
