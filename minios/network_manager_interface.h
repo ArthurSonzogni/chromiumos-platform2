@@ -20,6 +20,12 @@ class NetworkManagerInterface {
  public:
   virtual ~NetworkManagerInterface() = default;
 
+  // Network information returned `OnGetNetworks`.
+  typedef struct {
+    std::string ssid;
+    uint8_t strength;
+  } NetworkProperties;
+
   class Observer : public base::CheckedObserver {
    public:
     ~Observer() override = default;
@@ -28,7 +34,7 @@ class NetworkManagerInterface {
     virtual void OnConnect(const std::string& ssid, brillo::Error* error) = 0;
 
     // Called when a network scan is complete with the list of networks names.
-    virtual void OnGetNetworks(const std::vector<std::string>& networks,
+    virtual void OnGetNetworks(const std::vector<NetworkProperties>& networks,
                                brillo::Error* error) = 0;
 
    protected:

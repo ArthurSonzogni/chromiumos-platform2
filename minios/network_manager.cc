@@ -317,11 +317,16 @@ void NetworkManager::IterateOverServicePropertiesSuccess(
     GetNetworksListIter iter, const brillo::VariantDictionary& dict) {
   LOG(INFO) << "IterateOverServiceProperties success.";
 
-  // Save the name (SSID) if it's not empty.
   auto name =
       brillo::GetVariantValueOrDefault<std::string>(dict, shill::kNameProperty);
-  if (!name.empty())
-    iter->networks.push_back(std::move(name));
+
+  // Get the network strength and save the network propertiess if SSID is not
+  // empty.
+  if (!name.empty()) {
+    auto strength = brillo::GetVariantValueOrDefault<uint8_t>(
+        dict, shill::kSignalStrengthProperty);
+    iter->networks.push_back({.ssid = name, .strength = strength});
+  }
 
   // Iterated over all services.
   if (iter->service_paths.empty()) {

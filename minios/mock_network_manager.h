@@ -27,10 +27,12 @@ class MockNetworkManagerObserver : public NetworkManagerInterface::Observer {
               (const std::string& ssid, brillo::Error* error),
               (override));
 
-  MOCK_METHOD(void,
-              OnGetNetworks,
-              (const std::vector<std::string>& networks, brillo::Error* error),
-              (override));
+  MOCK_METHOD(
+      void,
+      OnGetNetworks,
+      (const std::vector<NetworkManagerInterface::NetworkProperties>& networks,
+       brillo::Error* error),
+      (override));
 };
 
 class MockNetworkManager : public NetworkManagerInterface {

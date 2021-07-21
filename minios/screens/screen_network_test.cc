@@ -26,7 +26,8 @@ class ScreenNetworkTest : public ::testing::Test {
 };
 
 TEST_F(ScreenNetworkTest, GetNetworks) {
-  screen_network_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
+  screen_network_.OnGetNetworks(
+      {{.ssid = "test1"}, {.ssid = "test2"}, {.ssid = "test3"}}, nullptr);
 
   // Network error.
   brillo::ErrorPtr error_ptr =
@@ -40,11 +41,14 @@ TEST_F(ScreenNetworkTest, GetNetworks) {
 TEST_F(ScreenNetworkTest, GetNetworksWithEthernet) {
   // Ethernet included in list of networks.
   screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
-  screen_network_.OnGetNetworks(
-      {"test1", "test2", kShillEthernetLabel, "test3"}, nullptr);
+  screen_network_.OnGetNetworks({{.ssid = "test1", .strength = 0},
+                                 {.ssid = "test2", .strength = 10},
+                                 {.ssid = kShillEthernetLabel, .strength = 2},
+                                 {.ssid = "test3", .strength = 7}},
+                                nullptr);
 
-  // Ethernet should be the first one, pressing it should skip password and
-  // connection screens.
+  // Ethernet should be the first one regardless of strength, pressing it should
+  // skip password and connection screens.
   screen_network_.SetIndexForTest(0);
   EXPECT_CALL(mock_screen_controller_, OnForward(testing::_));
   screen_network_.OnKeyPress(kKeyEnter);
@@ -53,7 +57,8 @@ TEST_F(ScreenNetworkTest, GetNetworksWithEthernet) {
 TEST_F(ScreenNetworkTest, GetNetworksRefresh) {
   screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
   // Menu count is updated amd drop down screen is refreshed.
-  screen_network_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
+  screen_network_.OnGetNetworks(
+      {{.ssid = "test1"}, {.ssid = "test2"}, {.ssid = "test3"}}, nullptr);
   // Update button when "refreshing" to the expanded dropdown screen.
   EXPECT_EQ(screen_network_.GetButtonCountForTest(), 4);
 }
@@ -65,7 +70,8 @@ TEST_F(ScreenNetworkTest, EnterOnDropDown) {
   screen_network_.OnKeyPress(kKeyEnter);
 
   // Set networks.
-  screen_network_.OnGetNetworks({"test1", "test2", "test3"}, nullptr);
+  screen_network_.OnGetNetworks(
+      {{.ssid = "test1"}, {.ssid = "test2"}, {.ssid = "test3"}}, nullptr);
 
   // Select dropdown.
   screen_network_.OnKeyPress(kKeyUp);

@@ -44,8 +44,9 @@ class DBusService : public org::chromium::MiniOsInterfaceInterface,
  private:
   // `NetworkManagerInterface::Observer` overrides.
   void OnConnect(const std::string& ssid, brillo::Error* error) override;
-  void OnGetNetworks(const std::vector<std::string>& networks,
-                     brillo::Error* error) override;
+  void OnGetNetworks(
+      const std::vector<NetworkManagerInterface::NetworkProperties>& networks,
+      brillo::Error* error) override;
 
   std::shared_ptr<MiniOsInterface> mini_os_;
 

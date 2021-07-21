@@ -134,8 +134,8 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
         Show();
       } else if (0 <= index_ && index_ < networks_.size()) {
         chosen_network_ = networks_[index_];
-        LOG(INFO) << "Selected network: " << chosen_network_;
-        if (chosen_network_ == kShillEthernetLabel) {
+        LOG(INFO) << "Selected network: " << chosen_network_.ssid;
+        if (chosen_network_.ssid == kShillEthernetLabel) {
           // User has chosen the Ethernet connection. No need to enter password.
           screen_controller_->OnForward(this);
           return;
@@ -165,7 +165,7 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           // the back button.
           button_count_ = networks_.size() + 1;
           index_ = 0;
-          chosen_network_.clear();
+          chosen_network_ = NetworkManagerInterface::NetworkProperties{};
           Show();
           break;
       }
@@ -205,8 +205,9 @@ std::string ScreenNetwork::GetName() {
   }
 }
 
-void ScreenNetwork::OnGetNetworks(const std::vector<std::string>& networks,
-                                  brillo::Error* error) {
+void ScreenNetwork::OnGetNetworks(
+    const std::vector<NetworkManagerInterface::NetworkProperties>& networks,
+    brillo::Error* error) {
   if (error) {
     LOG(ERROR) << "Could not get networks. ErrorCode=" << error->GetCode()
                << "ErrorMessage=" << error->GetMessage();
@@ -218,11 +219,17 @@ void ScreenNetwork::OnGetNetworks(const std::vector<std::string>& networks,
   LOG(INFO) << "Trying to update network list.";
   networks_ = networks;
 
-  // If the network list has Ethernet, move it to the front.
-  auto itr = std::find(networks_.begin(), networks_.end(), kShillEthernetLabel);
-  if (itr != networks_.end()) {
-    iter_swap(itr, networks_.begin());
-  }
+  // Sort in descending order by signal strength. If the network list has
+  // Ethernet, move it to the front.
+  std::sort(networks_.begin(), networks_.end(),
+            [](NetworkManagerInterface::NetworkProperties lhs,
+               NetworkManagerInterface::NetworkProperties rhs) {
+              if (lhs.ssid == kShillEthernetLabel)
+                return true;
+              if (rhs.ssid == kShillEthernetLabel)
+                return false;
+              return lhs.strength > rhs.strength;
+            });
 
   // If already waiting on the dropdown screen, refresh.
   if (state_ == NetworkState::kDropdownOpen) {
@@ -255,7 +262,7 @@ void ScreenNetwork::GetPassword() {
   const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
   draw_utils_->ShowButton("Begin typing", kBtnY, false,
                           draw_utils_->GetDefaultButtonWidth() * 4, true);
-  CHECK(!chosen_network_.empty()) << "Cannot connect to an empty network.";
+  CHECK(!chosen_network_.ssid.empty()) << "Cannot connect to an empty network.";
   if (!key_reader_ || !key_reader_->InputSetUp()) {
     LOG(ERROR) << "Unable to set up key reader.";
     screen_controller_->OnError(ScreenType::kGeneralError);
@@ -280,7 +287,7 @@ void ScreenNetwork::GetPassword() {
   key_reader_->StartWatcher();
   // Wait to connect to network.
   WaitForConnection();
-  network_manager_->Connect(chosen_network_, plain_text_password);
+  network_manager_->Connect(chosen_network_.ssid, plain_text_password);
 }
 
 void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
@@ -336,13 +343,14 @@ void ScreenNetwork::ShowNetworkDropdown(int current_index) {
        i < (begin_index + items_per_page_) && i < networks_.size(); i++) {
     if (current_index == i) {
       draw_utils_->ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
-      draw_utils_->ShowText(networks_[i], kOffsetX, offset_y, "black");
+      draw_utils_->ShowText(networks_[i].ssid, kOffsetX, offset_y, "black");
     } else {
       draw_utils_->ShowBox(kBackgroundX, offset_y, 720, 40,
                            kMenuDropdownFrameNavy);
       draw_utils_->ShowBox(kBackgroundX, offset_y, 718, 38,
                            kMenuDropdownBackgroundBlack);
-      draw_utils_->ShowText(networks_[i], kOffsetX, offset_y, "dropdown_grey");
+      draw_utils_->ShowText(networks_[i].ssid, kOffsetX, offset_y,
+                            "dropdown_grey");
     }
     offset_y += kItemHeight;
   }

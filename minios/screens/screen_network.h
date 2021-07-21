@@ -48,8 +48,9 @@ class ScreenNetwork : public ScreenBase,
 
   // `NetworkManagerInterface::Observer` overrides.
   // Updates the list of networks stored by the UI to show in the drop down.
-  void OnGetNetworks(const std::vector<std::string>& networks,
-                     brillo::Error* error) override;
+  void OnGetNetworks(
+      const std::vector<NetworkManagerInterface::NetworkProperties>& networks,
+      brillo::Error* error) override;
 
   // Attempts to connect, shows error screen on failure.
   void OnConnect(const std::string& ssid, brillo::Error* error) override;
@@ -81,10 +82,10 @@ class ScreenNetwork : public ScreenBase,
 
   KeyReader* key_reader_;
 
-  std::vector<std::string> networks_;
+  std::vector<NetworkManagerInterface::NetworkProperties> networks_;
 
   // The network the user has chosen.
-  std::string chosen_network_;
+  NetworkManagerInterface::NetworkProperties chosen_network_;
 
   // Number of items in the network dropdown.
   int items_per_page_;

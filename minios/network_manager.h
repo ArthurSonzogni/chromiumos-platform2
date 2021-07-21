@@ -85,7 +85,7 @@ class NetworkManager : public NetworkManagerInterface {
     // The scanned list of services to go over.
     std::vector<dbus::ObjectPath> service_paths;
     // The network names that is built up.
-    std::vector<std::string> networks;
+    std::vector<NetworkProperties> networks;
   } GetNetworksField;
   using GetNetworksListType = std::vector<GetNetworksField>;
   using GetNetworksListIter = GetNetworksListType::iterator;

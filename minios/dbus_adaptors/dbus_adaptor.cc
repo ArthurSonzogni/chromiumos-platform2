@@ -54,14 +54,21 @@ void DBusService::OnConnect(const std::string& ssid, brillo::Error* error) {
   connect_response_.reset();
 }
 
-void DBusService::OnGetNetworks(const std::vector<std::string>& networks,
-                                brillo::Error* error) {
+void DBusService::OnGetNetworks(
+    const std::vector<NetworkManagerInterface::NetworkProperties>& networks,
+    brillo::Error* error) {
   if (!get_networks_response_)
     return;
-  if (error)
+  if (error) {
     get_networks_response_->ReplyWithError(error);
-  else
-    get_networks_response_->Return(networks);
+  } else {
+    std::vector<std::string> network_list;
+    for (const auto& network : networks) {
+      network_list.push_back(network.ssid);
+    }
+    get_networks_response_->Return(network_list);
+  }
+
   get_networks_response_.reset();
 }
 

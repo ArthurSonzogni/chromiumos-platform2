@@ -252,7 +252,7 @@ TEST_F(NetworkManagerTest, GetGlobalPropertiesSuccess_EmptyServices) {
       network_manager_->get_networks_list_.begin(),
       NetworkManager::GetNetworksField());
   EXPECT_CALL(mock_network_manager_observer_,
-              OnGetNetworks(std::vector<std::string>(), IsNull()));
+              OnGetNetworks(testing::_, IsNull()));
   network_manager_->GetGlobalPropertiesSuccess(iter, {});
 }
 
@@ -262,7 +262,7 @@ TEST_F(NetworkManagerTest, IterateOverServicePropertiesSuccess_EmptyServices) {
       network_manager_->get_networks_list_.begin(),
       NetworkManager::GetNetworksField{.service_paths = {}});
   EXPECT_CALL(mock_network_manager_observer_,
-              OnGetNetworks(std::vector<std::string>(), IsNull()));
+              OnGetNetworks(testing::_, IsNull()));
   network_manager_->IterateOverServicePropertiesSuccess(iter, {});
 }
 
@@ -277,7 +277,7 @@ TEST_F(NetworkManagerTest, IterateOverServicePropertiesSuccess_OneService) {
       {shill::kNameProperty, brillo::Any(kSsid)},
   };
   EXPECT_CALL(mock_network_manager_observer_,
-              OnGetNetworks(std::vector<std::string>{kSsid}, IsNull()));
+              OnGetNetworks(testing::_, IsNull()));
   network_manager_->IterateOverServicePropertiesSuccess(iter, input_properties);
 }
 
@@ -296,7 +296,7 @@ TEST_F(NetworkManagerTest,
   EXPECT_TRUE(iter->networks.empty());
   EXPECT_CALL(*mock_shill_proxy_ptr_, ServiceGetProperties(object_path, _, _));
   network_manager_->IterateOverServicePropertiesSuccess(iter, input_properties);
-  EXPECT_THAT(iter->networks, ElementsAre(kSsid));
+  EXPECT_THAT(iter->networks[0].ssid, kSsid);
   EXPECT_TRUE(iter->service_paths.empty());
 }
 
@@ -320,10 +320,10 @@ TEST_F(NetworkManagerTest,
   auto iter = network_manager_->get_networks_list_.insert(
       network_manager_->get_networks_list_.begin(),
       NetworkManager::GetNetworksField{.service_paths = {},
-                                       .networks = {kSsid}});
+                                       .networks = {{.ssid = kSsid}}});
 
   EXPECT_CALL(mock_network_manager_observer_,
-              OnGetNetworks(std::vector<std::string>{kSsid}, IsNull()));
+              OnGetNetworks(testing::_, IsNull()));
   network_manager_->IterateOverServicePropertiesError(iter, nullptr);
 }
 
