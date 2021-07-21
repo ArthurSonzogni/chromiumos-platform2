@@ -22,9 +22,8 @@ class RmadInterfaceImpl final : public RmadInterface {
  public:
   RmadInterfaceImpl();
   // Used to inject mocked json_store and state_handler_manager.
-  explicit RmadInterfaceImpl(
-      scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<StateHandlerManager> state_handler_manager);
+  RmadInterfaceImpl(scoped_refptr<JsonStore> json_store,
+                    std::unique_ptr<StateHandlerManager> state_handler_manager);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
   RmadInterfaceImpl& operator=(const RmadInterfaceImpl&) = delete;
 
@@ -35,9 +34,7 @@ class RmadInterfaceImpl final : public RmadInterface {
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override;
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<base::RepeatingCallback<
-          bool(CheckCalibrationState::CalibrationStatus, double)>> callback)
-      override;
+      std::unique_ptr<CalibrationSignalCallback> callback) override;
 
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;

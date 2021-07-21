@@ -26,8 +26,7 @@ class MockRmadInterface : public RmadInterface {
   MOCK_METHOD(void,
               RegisterSignalSender,
               (RmadState::StateCase,
-               std::unique_ptr<base::RepeatingCallback<
-                   bool(CheckCalibrationState::CalibrationStatus, double)>>),
+               std::unique_ptr<CalibrationSignalCallback>),
               (override));
 
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
