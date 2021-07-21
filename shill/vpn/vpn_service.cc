@@ -70,6 +70,12 @@ void VPNService::OnConnect(Error* error) {
   // VPNService after completing the connection for a new ARC VPNService will
   // cause the arc_device to be disabled at the end of this call.
 
+  if (manager()->IsTechnologyProhibited(Technology::kVPN)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
+                          "VPN is prohibited.");
+    return;
+  }
+
   SetState(ConnectState::kStateAssociating);
   // driver_ is owned by VPNService, so this is safe.
   base::TimeDelta timeout = driver_->ConnectAsync(this);

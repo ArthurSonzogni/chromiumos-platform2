@@ -3962,7 +3962,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   // Test initial state.
   EXPECT_EQ("", manager()->props_.prohibited_technologies);
   EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kCellular));
-  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kVPN));
+  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kEthernet));
 
   Error smoke_error;
   EXPECT_FALSE(
@@ -3970,7 +3970,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_EQ(Error::kInvalidArguments, smoke_error.type());
 
   ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kVPN));
+      .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[2], technology())
@@ -3985,8 +3985,8 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_CALL(*mock_devices_[1], SetEnabledNonPersistent(false, _, _));
   EXPECT_CALL(*mock_devices_[2], SetEnabledNonPersistent(false, _, _)).Times(0);
   Error error;
-  manager()->SetProhibitedTechnologies("cellular,vpn", &error);
-  EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kVPN));
+  manager()->SetProhibitedTechnologies("cellular,ethernet", &error);
+  EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kEthernet));
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kCellular));
   EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWifi));
   Mock::VerifyAndClearExpectations(mock_devices_[0].get());
@@ -3999,7 +3999,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   mock_devices_.push_back(
       new NiceMock<MockDevice>(manager(), "null5", "addr5", 0));
   ON_CALL(*mock_devices_[3], technology())
-      .WillByDefault(Return(Technology::kVPN));
+      .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[4], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[5], technology())
@@ -4035,7 +4035,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_CALL(*mock_devices_[3], SetEnabledPersistent(true, _, _)).Times(0);
   EXPECT_CALL(technology_reply_handler,
               ReportResult(ErrorTypeIs(Error::kPermissionDenied)));
-  manager()->SetEnabledStateForTechnology("vpn", true, true,
+  manager()->SetEnabledStateForTechnology("ethernet", true, true,
                                           enable_technology_callback);
 }
 

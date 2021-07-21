@@ -1176,6 +1176,18 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
   }
 
   SLOG(this, 2) << __func__ << ": " << technology_name << ": " << enabled_state;
+
+  if (id == Technology::kVPN) {
+    // VPN needs special handling since there are no permanent VPN devices.
+    // Upon disabling, just disconnect all existing connections here, and new
+    // connection requests will be handled in VPNService::OnConnect().
+    if (!enabled_state) {
+      vpn_provider()->DisconnectAll();
+    }
+    callback.Run(error);
+    return;
+  }
+
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(callback));
   for (auto& device : devices_) {
     if (device->technology() != id)
