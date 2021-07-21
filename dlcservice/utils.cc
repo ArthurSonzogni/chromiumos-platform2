@@ -58,7 +58,7 @@ bool WriteFile(const FilePath& path, const string& data, bool truncate) {
   }
   if (data.empty())
     return true;
-  return base::WriteFileDescriptor(fd.get(), data.c_str(), data.size());
+  return base::WriteFileDescriptor(fd.get(), data);
 }
 
 }  // namespace
