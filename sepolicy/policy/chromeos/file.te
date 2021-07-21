@@ -144,6 +144,7 @@ type cros_qrtr_ns_exec, exec_type, file_type, cros_file_type, cros_system_file_t
 type cros_recover_duts_script, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_restorecon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_resourced_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_rmad_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rmtfs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rootdev_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -368,6 +369,7 @@ type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_
 type cros_var_lib_portage, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_rmad, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_shill, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_tpm, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_trim, file_type, cros_file_type, cros_var_file_type;

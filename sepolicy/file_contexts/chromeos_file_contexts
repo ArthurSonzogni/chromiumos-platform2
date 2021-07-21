@@ -182,6 +182,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/parted                u:object_r:cros_parted_exec:s0
 /usr/sbin/pca_agentd            u:object_r:cros_pca_agentd_exec:s0
 /usr/sbin/pciguard              u:object_r:cros_pciguard_exec:s0
+/usr/sbin/rmad                  u:object_r:cros_rmad_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/secanomalyd           u:object_r:cros_secanomalyd_exec:s0
 /usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
@@ -252,6 +253,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
 /var/lib/preload-network-drivers.* u:object_r:cros_var_lib_preload_network_drivers:s0
+/var/lib/rmad(/.*)?             u:object_r:cros_var_lib_rmad:s0
 /var/lib/shill(/.*)?            u:object_r:cros_var_lib_shill:s0
 /var/lib/tpm(/.*)?              u:object_r:cros_var_lib_tpm:s0
 /var/lib/trim(/.*)?             u:object_r:cros_var_lib_trim:s0
