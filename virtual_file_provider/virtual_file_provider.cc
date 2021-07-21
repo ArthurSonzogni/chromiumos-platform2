@@ -116,7 +116,7 @@ void FuseMainDelegateImpl::HandleReadRequest(const std::string& id,
           &Service::SendReadRequest,
           // This is safe as service_thread outlives the FUSE main loop.
           base::Unretained(service_thread_->service()), id, offset, size,
-          base::Passed(&fd)));
+          std::move(fd)));
 }
 
 void FuseMainDelegateImpl::NotifyIdReleased(const std::string& id) {
