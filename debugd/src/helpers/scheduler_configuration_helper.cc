@@ -19,11 +19,24 @@
 #include <build/buildflag.h>
 #include <chromeos/dbus/service_constants.h>
 
-// Not all Linux kernels have this defined.
+// Downstream core scheduling interface for CrOS v4.19, v5.4 kernels.
+// TODO(b/152605392): Remove once those kernel versions are obsolete.
 #ifndef PR_SET_CORE_SCHED
-// TODO(b/152605392): Replace this with the final upstream interface.
 #define PR_SET_CORE_SCHED 0x200
 #endif
+
+// Upstream interface for core scheduling. Defined upstream from v5.14-rc1
+// onwards in include/uapi/linux/prctl.h. Backported to CrOS kernel v5.10.
+#ifndef PR_SCHED_CORE
+#define PR_SCHED_CORE 62
+#define PR_SCHED_CORE_GET 0
+#define PR_SCHED_CORE_CREATE 1
+#define PR_SCHED_CORE_SHARE_TO 2
+#define PR_SCHED_CORE_SHARE_FROM 3
+#define PR_SCHED_CORE_MAX 4
+#endif
+
+enum pid_type { PIDTYPE_PID = 0, PIDTYPE_TGID, PIDTYPE_PGID };
 
 using debugd::scheduler_configuration::kConservativeScheduler;
 using debugd::scheduler_configuration::kCoreIsolationScheduler;
@@ -58,6 +71,25 @@ void EnterSandbox() {
   minijail_enter_pivot_root(jail.get(), "/mnt/empty");
   minijail_bind(jail.get(), "/sys", "/sys", 1);
   minijail_enter(jail.get());
+}
+
+bool CoreSchedSupported() {
+  int ret = prctl(PR_SET_CORE_SCHED, 2);
+  DCHECK_LT(ret, 0);  // This should never succeed.
+  // The kernel supports the call but we gave it a bogus argument.
+  if (errno == ERANGE)
+    return true;
+
+  // Otherwise, try the new interface (available on >=5.10 kernels) to check
+  // for support.
+  ret = prctl(PR_SCHED_CORE, PR_SCHED_CORE_CREATE, 0, PIDTYPE_PID, 0);
+
+  // Since HT is likely not enabled initially, the prctl(2) may initially
+  // return -ENODEV and we know the prctl(2) is working.
+  if (ret != -1 || (ret == -1 && errno == ENODEV))
+    return true;
+
+  return false;
 }
 
 }  // namespace
@@ -100,10 +132,7 @@ int main(int argc, char* argv[]) {
   // scheduling, so debugd makes that decision, and defaults to conservative if
   // core scheduling is not supported.
   if (FLAGS_policy == kCoreIsolationScheduler) {
-    int ret = prctl(PR_SET_CORE_SCHED, 2);
-    DCHECK_LT(ret, 0);  // This should never succeed.
-    if (errno == ERANGE) {
-      // The kernel supports the call but we gave it a bogus argument.
+    if (CoreSchedSupported()) {
       FLAGS_policy = kPerformanceScheduler;
     } else {
       FLAGS_policy = kConservativeScheduler;
