@@ -7,6 +7,24 @@
 #include <base/check.h>
 #include <base/strings/string_split.h>
 
+namespace chromeos {
+namespace cros_healthd {
+namespace mojom {
+
+bool operator<(const BusInfo& a, const BusInfo& b) {
+  if (a.which() != b.which())
+    return a.which() < b.which();
+  switch (a.which()) {
+    case BusInfo::Tag::PCI_BUS_INFO:
+      return a.get_pci_bus_info() < b.get_pci_bus_info();
+    case BusInfo::Tag::USB_BUS_INFO:
+      return a.get_usb_bus_info() < b.get_usb_bus_info();
+  }
+}
+}  // namespace mojom
+}  // namespace cros_healthd
+}  // namespace chromeos
+
 namespace diagnostics {
 namespace internal {
 // For each line, adds a 2-space-indent at the beginning.
@@ -183,6 +201,65 @@ std::string GetDiffString<mojo_ipc::SystemInfoV2>(
       .FIELD(vpd_info)
       .FIELD(dmi_info)
       .FIELD(os_info)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::BusDevice>(const mojo_ipc::BusDevice& a,
+                                               const mojo_ipc::BusDevice& b) {
+  return CompareHelper(a, b)
+      .FIELD(vendor_name)
+      .FIELD(product_name)
+      .FIELD(device_class)
+      .FIELD(bus_info)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::BusInfo>(const mojo_ipc::BusInfo& a,
+                                             const mojo_ipc::BusInfo& b) {
+  return CompareHelper(a, b)
+      .UNION(pci_bus_info)
+      .UNION(usb_bus_info)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::PciBusInfo>(const mojo_ipc::PciBusInfo& a,
+                                                const mojo_ipc::PciBusInfo& b) {
+  return CompareHelper(a, b)
+      .FIELD(class_id)
+      .FIELD(subclass_id)
+      .FIELD(prog_if_id)
+      .FIELD(device_id)
+      .FIELD(vendor_id)
+      .FIELD(driver)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::UsbBusInfo>(const mojo_ipc::UsbBusInfo& a,
+                                                const mojo_ipc::UsbBusInfo& b) {
+  return CompareHelper(a, b)
+      .FIELD(class_id)
+      .FIELD(subclass_id)
+      .FIELD(protocol_id)
+      .FIELD(vendor_id)
+      .FIELD(product_id)
+      .FIELD(interfaces)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::UsbBusInterfaceInfo>(
+    const mojo_ipc::UsbBusInterfaceInfo& a,
+    const mojo_ipc::UsbBusInterfaceInfo& b) {
+  return CompareHelper(a, b)
+      .FIELD(interface_number)
+      .FIELD(class_id)
+      .FIELD(subclass_id)
+      .FIELD(protocol_id)
+      .FIELD(driver)
       .GetResult();
 }
 

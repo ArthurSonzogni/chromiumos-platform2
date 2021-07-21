@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_COMMON_MOJO_TYPE_UTILS_H_
 #define DIAGNOSTICS_COMMON_MOJO_TYPE_UTILS_H_
 
+#include <algorithm>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -12,6 +13,16 @@
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "mojo/cros_healthd_probe.mojom.h"
+
+namespace chromeos {
+namespace cros_healthd {
+namespace mojom {
+// Union types don't have default operator<. Define them so we can use std::sort
+// to sort them.
+bool operator<(const BusInfo& a, const BusInfo& b);
+}  // namespace mojom
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 namespace diagnostics {
 namespace internal {
@@ -142,6 +153,42 @@ template <>
 std::string GetDiffString<::chromeos::cros_healthd::mojom::SystemInfoV2>(
     const ::chromeos::cros_healthd::mojom::SystemInfoV2& a,
     const ::chromeos::cros_healthd::mojom::SystemInfoV2& b);
+
+template <>
+std::string GetDiffString<::chromeos::cros_healthd::mojom::BusDevice>(
+    const ::chromeos::cros_healthd::mojom::BusDevice& a,
+    const ::chromeos::cros_healthd::mojom::BusDevice& b);
+
+template <>
+std::string GetDiffString<::chromeos::cros_healthd::mojom::BusInfo>(
+    const ::chromeos::cros_healthd::mojom::BusInfo& a,
+    const ::chromeos::cros_healthd::mojom::BusInfo& b);
+
+template <>
+std::string GetDiffString<::chromeos::cros_healthd::mojom::PciBusInfo>(
+    const ::chromeos::cros_healthd::mojom::PciBusInfo& a,
+    const ::chromeos::cros_healthd::mojom::PciBusInfo& b);
+
+template <>
+std::string GetDiffString<::chromeos::cros_healthd::mojom::UsbBusInfo>(
+    const ::chromeos::cros_healthd::mojom::UsbBusInfo& a,
+    const ::chromeos::cros_healthd::mojom::UsbBusInfo& b);
+
+template <>
+std::string GetDiffString<::chromeos::cros_healthd::mojom::UsbBusInterfaceInfo>(
+    const ::chromeos::cros_healthd::mojom::UsbBusInterfaceInfo& a,
+    const ::chromeos::cros_healthd::mojom::UsbBusInterfaceInfo& b);
+
+// Clones and sorts the vector.
+template <typename T, typename = std::enable_if_t<IsStructPtr<T>::value>>
+std::vector<T> Sorted(const std::vector<T>& in) {
+  std::vector<T> out;
+  for (const auto& ele : in) {
+    out.push_back(ele.Clone());
+  }
+  sort(out.begin(), out.end());
+  return out;
+}
 
 }  // namespace diagnostics
 
