@@ -118,8 +118,9 @@ if (use.test) {
       "testdata/test.txt",
     ]
     deps = [
-      ":libruntime_probe",
       "//common-mk/testrunner",
+      ":libruntime_probe",
+      "system:libsystem_test"
     ]
   }
 }

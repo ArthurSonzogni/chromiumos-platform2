@@ -8,58 +8,28 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
-#include <base/memory/scoped_refptr.h>
-#include <chromeos/dbus/service_constants.h>
-#include <dbus/bus.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
+#include <brillo/errors/error.h>
+#include <debugd/dbus-proxies.h>
 
+#include "runtime_probe/system/context_instance.h"
 #include "runtime_probe/utils/pipe_utils.h"
 
 namespace runtime_probe {
 
-namespace {
-
-constexpr auto kDebugdRunProbeHelperMethodName = "EvaluateProbeFunction";
-constexpr auto kDebugdRunProbeHelperDefaultTimeoutMs = 10 * 1000;  // in ms
-
-}  // namespace
-
-bool RuntimeProbeHelperInvokerDebugdImpl::Invoke(
-    const std::string& probe_statement, std::string* result) {
-  dbus::Bus::Options ops;
-  ops.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(ops)));
-  if (!bus->Connect()) {
-    LOG(ERROR) << "Failed to connect to system D-Bus service.";
-    return false;
-  }
-
-  dbus::ObjectProxy* object_proxy = bus->GetObjectProxy(
-      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
-
-  dbus::MethodCall method_call(debugd::kDebugdInterface,
-                               kDebugdRunProbeHelperMethodName);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(probe_statement);
-
-  std::unique_ptr<dbus::Response> response = object_proxy->CallMethodAndBlock(
-      &method_call, kDebugdRunProbeHelperDefaultTimeoutMs);
-  if (!response) {
-    LOG(ERROR) << "Failed to issue D-Bus call to method "
-               << kDebugdRunProbeHelperMethodName
-               << " of debugd D-Bus interface.";
-    return false;
-  }
-
-  dbus::MessageReader reader(response.get());
+bool HelperInvokerDebugdImpl::Invoke(const ProbeFunction* probe_function,
+                                     const std::string& probe_statement_str,
+                                     std::string* result) const {
   base::ScopedFD read_fd{};
-  if (!reader.PopFileDescriptor(&read_fd)) {
-    LOG(ERROR) << "Failed to read fd that represents the read end of the pipe"
-                  " from debugd.";
+  brillo::ErrorPtr error;
+  if (!ContextInstance::Get()->debugd_proxy()->EvaluateProbeFunction(
+          probe_statement_str, &read_fd, &error)) {
+    LOG(ERROR) << "Debugd::EvaluateProbeFunction failed: "
+               << error->GetMessage();
     return false;
   }
+
   if (!ReadNonblockingPipeToString(read_fd.get(), result)) {
     LOG(ERROR) << "Cannot read result from helper";
     return false;

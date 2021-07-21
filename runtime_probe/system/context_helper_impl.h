@@ -18,6 +18,11 @@ class ContextHelperImpl : public Context {
     NOTREACHED() << "The helper should not call debugd.";
     return nullptr;
   };
+
+  HelperInvoker* helper_invoker() override {
+    NOTREACHED() << "The helper should not call helper.";
+    return nullptr;
+  }
 };
 
 }  // namespace runtime_probe

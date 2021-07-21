@@ -9,9 +9,14 @@
 
 namespace runtime_probe {
 
-class RuntimeProbeHelperInvoker {
+class ProbeFunction;
+
+class HelperInvoker {
  public:
-  virtual ~RuntimeProbeHelperInvoker() = default;
+  HelperInvoker() = default;
+  HelperInvoker(const HelperInvoker&) = delete;
+  HelperInvoker& operator=(const HelperInvoker&) = delete;
+  virtual ~HelperInvoker() = default;
 
   // Invokes an individual helper instance to perform the actual probing actions
   // in a properly secured environment.  The |probe_statement| is the input
@@ -19,8 +24,9 @@ class RuntimeProbeHelperInvoker {
   // the helper process ends.  If it successes, the method stores the probed
   // result in |result| and returns |true|; otherwise, the method returns
   // |false|.
-  virtual bool Invoke(const std::string& probe_statement,
-                      std::string* result) = 0;
+  virtual bool Invoke(const ProbeFunction* probe_function,
+                      const std::string& probe_statement_str,
+                      std::string* result) const = 0;
 };
 
 }  // namespace runtime_probe

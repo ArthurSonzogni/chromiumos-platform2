@@ -12,8 +12,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 
-#include "runtime_probe/system/helper_invoker_debugd_impl.h"
-#include "runtime_probe/system/helper_invoker_direct_impl.h"
+#include "runtime_probe/system/context_instance.h"
 
 namespace runtime_probe {
 
@@ -68,15 +67,8 @@ bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
   std::string probe_statement_str;
   base::JSONWriter::Write(raw_value_, &probe_statement_str);
 
-  // TODO(yhong): Stop hard-coding the underlying implementation so that
-  //     unit-tests can mock it.
-  if constexpr (USE_FACTORY_RUNTIME_PROBE) {
-    return RuntimeProbeHelperInvokerDirectImpl().Invoke(probe_statement_str,
-                                                        result);
-  } else {
-    return RuntimeProbeHelperInvokerDebugdImpl().Invoke(probe_statement_str,
-                                                        result);
-  }
+  return ContextInstance::Get()->helper_invoker()->Invoke(
+      /*probe_function=*/this, probe_statement_str, result);
 }
 
 base::Optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON()

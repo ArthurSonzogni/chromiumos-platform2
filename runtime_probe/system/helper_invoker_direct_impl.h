@@ -11,7 +11,9 @@
 
 namespace runtime_probe {
 
-class RuntimeProbeHelperInvokerDirectImpl : public RuntimeProbeHelperInvoker {
+class HelperInvokerDirectImpl : public HelperInvoker {
+  using HelperInvoker::HelperInvoker;
+
  public:
   // Invoke the helper replica by running the subprocess directly.
   //
@@ -21,7 +23,9 @@ class RuntimeProbeHelperInvokerDirectImpl : public RuntimeProbeHelperInvoker {
   // `debugd` can't help in this scenario.  Combining with the fact that
   // security is not a critical factor in the factory environment, calling
   // subprocesses directly becomes a valid alternative.
-  bool Invoke(const std::string& probe_statement, std::string* result) override;
+  bool Invoke(const ProbeFunction* probe_function,
+              const std::string& probe_statement_str,
+              std::string* result) const override;
 };
 
 }  // namespace runtime_probe

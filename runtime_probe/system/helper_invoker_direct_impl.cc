@@ -18,13 +18,14 @@ static_assert(USE_FACTORY_RUNTIME_PROBE,
               "The compiler should never reach " __FILE__
               " while building a regular runtime_probe.");
 
-bool RuntimeProbeHelperInvokerDirectImpl::Invoke(
-    const std::string& probe_statement, std::string* result) {
+bool HelperInvokerDirectImpl::Invoke(const ProbeFunction* probe_function,
+                                     const std::string& probe_statement_str,
+                                     std::string* result) const {
   brillo::ProcessImpl helper_proc;
   helper_proc.AddArg(
       base::CommandLine::ForCurrentProcess()->GetProgram().value());
   helper_proc.AddArg("--helper");
-  helper_proc.AddArg(probe_statement);
+  helper_proc.AddArg(probe_statement_str);
   helper_proc.RedirectInput("/dev/null");
   helper_proc.RedirectUsingPipe(STDOUT_FILENO, false);
 

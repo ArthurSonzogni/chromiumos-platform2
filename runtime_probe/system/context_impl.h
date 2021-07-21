@@ -24,6 +24,11 @@ class ContextImpl : public Context {
     return debugd_proxy_.get();
   };
 
+  HelperInvoker* helper_invoker() override {
+    CHECK(helper_invoker_);
+    return helper_invoker_.get();
+  }
+
  protected:
   // This interface should be used through its derived classes.
   ContextImpl() = default;
@@ -37,6 +42,8 @@ class ContextImpl : public Context {
   scoped_refptr<dbus::Bus> dbus_bus_;
   // The proxy object for dbugd dbus service.
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
+  // The object for invoking helper.
+  std::unique_ptr<HelperInvoker> helper_invoker_;
 };
 
 }  // namespace runtime_probe

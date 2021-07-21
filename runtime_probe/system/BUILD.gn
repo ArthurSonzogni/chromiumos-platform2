@@ -39,4 +39,12 @@ if (use.test) {
       "libdebugd-client-test",
     ]
   }
+
+  source_set("libsystem_test") {
+    configs += [
+      ":libsystem_common_pkg_deps",
+      ":libsystem_test_pkg_deps",
+    ]
+    sources = [ "fake_helper_invoker.cc" ]
+  }
 }

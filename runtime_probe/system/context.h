@@ -5,6 +5,8 @@
 #ifndef RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 #define RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 
+#include "runtime_probe/system/helper_invoker.h"
+
 namespace org {
 namespace chromium {
 class debugdProxyInterface;
@@ -26,6 +28,9 @@ class Context {
 
   // Use the object returned by debugd_proxy() to make calls to debugd.
   virtual org::chromium::debugdProxyInterface* debugd_proxy() = 0;
+
+  // The object to invoke the runtime_probe helper.
+  virtual HelperInvoker* helper_invoker() = 0;
 };
 
 }  // namespace runtime_probe
