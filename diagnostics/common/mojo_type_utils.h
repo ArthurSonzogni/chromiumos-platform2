@@ -14,13 +14,27 @@
 
 namespace diagnostics {
 
-// Type traits templates for identifying the template types.
+// Type traits templates for identifying the mojo StructPtr types.
 template <typename>
 class IsStructPtr : public std::false_type {};
 template <typename T>
 class IsStructPtr<::mojo::StructPtr<T>> : public std::true_type {};
 template <typename T>
 class IsStructPtr<::mojo::InlinedStructPtr<T>> : public std::true_type {};
+
+// Type traits templates for identifying the mojo Union types.
+template <typename T>
+class HasWhichFunction {
+  template <typename U>
+  static int8_t test_funtion(decltype(&U::which));
+  template <typename U>
+  static int16_t test_funtion(...);
+
+ public:
+  static constexpr bool value = (sizeof(test_funtion<T>(0)) == sizeof(int8_t));
+};
+template <typename T>
+class IsMojoUnion : public HasWhichFunction<T> {};
 
 // Helper type for better compiler error message.
 template <typename T>

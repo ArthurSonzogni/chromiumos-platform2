@@ -13,6 +13,9 @@ namespace {
 const auto kEqualStr = "[Equal]";
 const auto kNullStr = "[null]";
 
+const auto kMissingMessage =
+    "It is possible that some fields are missing in GetDiffString.";
+
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 // For each line, adds a 2-space-indent at the beginning.
@@ -44,13 +47,35 @@ class CompareHelper {
     return *this;
   }
 
+  template <typename Field>
+  CompareHelper& AddUnion(const std::string& label,
+                          const Field* a_field,
+                          const Field* b_field) {
+    if (a_field)
+      a_type_ = "type[" + label + "]";
+    if (b_field)
+      b_type_ = "type[" + label + "]";
+    if (!a_field || !b_field)
+      return *this;
+    return AddField(label, *a_field, *b_field);
+  }
+
   std::string GetResult() {
-    if (res_ == "") {
-      CHECK(a_ == b_)
-          << "The structs do not equal to each other, while all the fields are "
-             "equal. It is possible that some fields are missing in in "
-             "GetDiffString.";
-      res_ = kEqualStr;
+    if constexpr (IsMojoUnion<MojoType>::value) {
+      // Mojo union
+      CHECK(a_type_ != "" && b_type_ != "")
+          << "Missing type info. " << kMissingMessage;
+      if (a_.which() != b_.which())
+        res_ = StringCompareFormat(a_type_, b_type_);
+    } else {
+      // Mojo struct
+      if (res_ == "") {
+        CHECK(a_ == b_) << "The structs do not equal to each other, while all "
+                           "the fields are "
+                           "equal. "
+                        << kMissingMessage;
+        res_ = kEqualStr;
+      }
     }
     return res_;
   }
@@ -59,12 +84,17 @@ class CompareHelper {
   const MojoType& a_;
   const MojoType& b_;
   std::string res_;
+  std::string a_type_;
+  std::string b_type_;
 };
 
 // Helper macro for defining the |GetDiffString| of mojo structs. See below
 // definitions of |GetDiffString| for the usage.
 #define FIELD(label) AddField(#label, a.label, b.label)
 
+#define UNION(label)                                              \
+  AddUnion(#label, (a.is_##label() ? &a.get_##label() : nullptr), \
+           (b.is_##label() ? &b.get_##label() : nullptr))
 }  // namespace
 
 template <>
