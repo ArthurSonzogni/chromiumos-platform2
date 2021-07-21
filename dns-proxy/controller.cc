@@ -61,18 +61,6 @@ void Controller::OnShutdown(int* code) {
 }
 
 void Controller::Setup() {
-  shill_.reset(new shill::Client(bus_));
-  shill_->RegisterProcessChangedHandler(base::BindRepeating(
-      &Controller::OnShillReset, weak_factory_.GetWeakPtr()));
-  shill_->RegisterOnAvailableCallback(
-      base::BindOnce(&Controller::OnShillReady, weak_factory_.GetWeakPtr()));
-
-  SetupPatchpanel();
-  RunProxy(Proxy::Type::kSystem);
-  RunProxy(Proxy::Type::kDefault);
-}
-
-void Controller::SetupPatchpanel() {
   patchpanel_ = patchpanel::Client::New();
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
@@ -82,11 +70,19 @@ void Controller::SetupPatchpanel() {
     QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
-
   patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
       &Controller::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
   patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
       &Controller::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
+
+  shill_.reset(new shill::Client(bus_));
+  shill_->RegisterProcessChangedHandler(base::BindRepeating(
+      &Controller::OnShillReset, weak_factory_.GetWeakPtr()));
+  shill_->RegisterOnAvailableCallback(
+      base::BindOnce(&Controller::OnShillReady, weak_factory_.GetWeakPtr()));
+
+  RunProxy(Proxy::Type::kSystem);
+  RunProxy(Proxy::Type::kDefault);
 }
 
 void Controller::OnPatchpanelReady(bool success) {
@@ -117,7 +113,6 @@ void Controller::OnPatchpanelReset(bool reset) {
   metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
                               Metrics::ProcessEvent::kPatchpanelShutdown);
   LOG(ERROR) << "Patchpanel has been shutdown - reconnecting...";
-  SetupPatchpanel();
 }
 
 void Controller::OnShillReady(bool success) {
