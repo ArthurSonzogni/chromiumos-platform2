@@ -18,6 +18,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <camera/camera_metadata.h>
@@ -270,7 +271,9 @@ TEST_F(HdrNetProcessorTest, HdrNetProcessorBenchmark) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  ::testing::InitGoogleTest(&argc, argv);
+  base::CommandLine::Init(argc, argv);
+  TestTimeouts::Initialize();
   cros::ParseCommandLine(argc, argv);
+  ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

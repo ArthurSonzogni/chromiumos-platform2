@@ -9,8 +9,10 @@
 #include <algorithm>
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #pragma push_macro("None")
 #pragma push_macro("Bool")
 #undef None
@@ -559,6 +561,8 @@ TEST_F(HdrNetStreamManipulatorTest, NotifyBufferErrorTest) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
+  base::CommandLine::Init(argc, argv);
+  TestTimeouts::Initialize();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
