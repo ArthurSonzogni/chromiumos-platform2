@@ -2359,7 +2359,7 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
   ctx->selection_data_ack_pending = 0;
 
   int pipe_fd;
-  rv = ctx->channel->create_pipe(&pipe_fd);
+  rv = ctx->channel->create_pipe(pipe_fd);
   if (rv) {
     fprintf(stderr, "error: failed to create virtwl pipe: %s\n", strerror(-rv));
     sl_send_selection_notify(ctx, XCB_ATOM_NONE);
@@ -3333,7 +3333,7 @@ int real_main(int argc, char** argv) {
   }
 
   event_loop = wl_display_get_event_loop(ctx.host_display);
-  if (!sl_context_init_virtwl(&ctx, event_loop, display)) {
+  if (!sl_context_init_wayland_channel(&ctx, event_loop, display)) {
     return EXIT_FAILURE;
   }
 

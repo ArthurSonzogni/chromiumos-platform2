@@ -36,7 +36,7 @@ class FuzzChannel : public WaylandChannel {
 
   bool supports_dmabuf() override { return false; }
 
-  int32_t create_context(int* out_socket_fd) override {
+  int32_t create_context(int& out_channel_fd) override {
     int sv[2];
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv)) {
       return -errno;
@@ -44,17 +44,17 @@ class FuzzChannel : public WaylandChannel {
 
     send_fd = sv[0];
     recv_fd = sv[1];
-    *out_socket_fd = sv[1];
+    out_channel_fd = sv[1];
     return 0;
   }
 
-  int32_t create_pipe(int* out_pipe_fd) override { return -1; }
+  int32_t create_pipe(int& out_pipe_fd) override { return -1; }
 
   int32_t send(const struct WaylandSendReceive& send) override { return 0; }
 
   int32_t receive(struct WaylandSendReceive& receive) override {
     uint8_t* buffer = static_cast<uint8_t*>(malloc(4096));
-    int bytes = recv(receive.socket_fd, buffer, 4096, 0);
+    int bytes = recv(receive.channel_fd, buffer, 4096, 0);
     if (bytes < 0) {
       return -errno;
     }
@@ -159,7 +159,7 @@ int LLVMFuzzerTestOneInput_real(const uint8_t* data, size_t size) {
   struct wl_event_loop* event_loop =
       wl_display_get_event_loop(ctx.host_display);
   ctx.channel = &channel;
-  sl_context_init_virtwl(&ctx, event_loop, /*display=*/false);
+  sl_context_init_wayland_channel(&ctx, event_loop, /*display=*/false);
   // `display` takes ownership of `virtwl_display_fd`
   ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
 
@@ -216,7 +216,7 @@ int LLVMFuzzerTestOneInput_real(const uint8_t* data, size_t size) {
   close(ctx.virtwl_socket_fd);
   close(client_to_sommelier);
 
-  ctx.virtwl_ctx_event_source.reset();
+  ctx.wayland_channel_event_source.reset();
   ctx.virtwl_socket_event_source.reset();
   drain_event.reset();
   display_event.reset();

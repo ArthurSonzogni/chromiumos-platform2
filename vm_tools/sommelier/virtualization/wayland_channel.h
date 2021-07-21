@@ -15,7 +15,7 @@
 #define WAYLAND_MAX_FDs 28
 
 struct WaylandSendReceive {
-  int socket_fd;
+  int channel_fd;
 
   int fds[WAYLAND_MAX_FDs];
   uint32_t num_fds;
@@ -77,12 +77,12 @@ class WaylandChannel {
   virtual bool supports_dmabuf(void) = 0;
 
   // Creates a new context for handling the wayland command stream.  Returns 0
-  // on success, and a pollable `out_socket_fd`.  This fd represents the
+  // on success, and a pollable `out_channel_fd`.  This fd represents the
   // connection to the host compositor, and used for subsequent `send` and
   // `receive` operations.
   //
   // Returns -errno on failure.
-  virtual int32_t create_context(int* out_socket_fd) = 0;
+  virtual int32_t create_context(int& out_channel_fd) = 0;
 
   // Creates a new clipboard pipe for Wayland input.  Note this interface can't
   // wrap a call to "pipe", and is named based on VIRTWL_IOCTL_NEW_PIPE.  A new
@@ -90,7 +90,7 @@ class WaylandChannel {
   //
   // Returns 0 on success, and a readable `out_pipe_fd`.
   // Returns -errno on failure.
-  virtual int32_t create_pipe(int* out_pipe_fd) = 0;
+  virtual int32_t create_pipe(int& out_pipe_fd) = 0;
 
   // Sends fds and associated commands to the host [like sendmsg(..)].  The fds
   // are converted to host handles using an implementation specific method.
@@ -139,8 +139,8 @@ class VirtWaylandChannel : public WaylandChannel {
 
   int32_t init() override;
   bool supports_dmabuf() override;
-  int32_t create_context(int* out_socket_fd) override;
-  int32_t create_pipe(int* out_pipe_fd) override;
+  int32_t create_context(int& out_channel_fd) override;
+  int32_t create_pipe(int& out_pipe_fd) override;
   int32_t send(const struct WaylandSendReceive& send) override;
   int32_t receive(struct WaylandSendReceive& receive) override;
 
@@ -166,8 +166,8 @@ class VirtGpuChannel : public WaylandChannel {
 
   int32_t init() override;
   bool supports_dmabuf() override;
-  int32_t create_context(int* out_socket_fd) override;
-  int32_t create_pipe(int* out_pipe_fd) override;
+  int32_t create_context(int& out_channel_fd) override;
+  int32_t create_pipe(int& out_pipe_fd) override;
   int32_t send(const struct WaylandSendReceive& send) override;
   int32_t receive(struct WaylandSendReceive& receive) override;
 

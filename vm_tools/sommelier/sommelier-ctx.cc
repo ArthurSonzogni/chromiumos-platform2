@@ -117,10 +117,10 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->sigchld_event_source = NULL;
   ctx->sigusr1_event_source = NULL;
   ctx->wm_fd = -1;
-  ctx->virtwl_ctx_fd = -1;
+  ctx->wayland_channel_fd = -1;
   ctx->virtwl_socket_fd = -1;
   ctx->virtwl_display_fd = -1;
-  ctx->virtwl_ctx_event_source = NULL;
+  ctx->wayland_channel_event_source = NULL;
   ctx->virtwl_socket_event_source = NULL;
   ctx->vm_id = DEFAULT_VM_NAME;
   ctx->drm_device = NULL;
@@ -188,8 +188,8 @@ void sl_context_init_default(struct sl_context* ctx) {
 #endif
 }
 
-static int sl_handle_virtwl_ctx_event(int fd, uint32_t mask, void* data) {
-  TRACE_EVENT("surface", "sl_handle_virtwl_ctx_event");
+static int sl_handle_wayland_channel_event(int fd, uint32_t mask, void* data) {
+  TRACE_EVENT("surface", "sl_handle_wayland_channel_event");
   struct sl_context* ctx = (struct sl_context*)data;
   struct WaylandSendReceive receive = {0};
 
@@ -207,7 +207,7 @@ static int sl_handle_virtwl_ctx_event(int fd, uint32_t mask, void* data) {
     exit(EXIT_SUCCESS);
   }
 
-  receive.socket_fd = fd;
+  receive.channel_fd = fd;
   rv = ctx->channel->receive(receive);
   if (rv) {
     close(ctx->virtwl_socket_fd);
@@ -300,7 +300,7 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
     send.num_fds += cmsg_fd_count;
   }
 
-  send.socket_fd = ctx->virtwl_ctx_fd;
+  send.channel_fd = ctx->wayland_channel_fd;
   send.data = data_buffer;
   send.data_size = bytes;
 
@@ -313,9 +313,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   return 1;
 }
 
-bool sl_context_init_virtwl(struct sl_context* ctx,
-                            struct wl_event_loop* event_loop,
-                            bool display) {
+bool sl_context_init_wayland_channel(struct sl_context* ctx,
+                                     struct wl_event_loop* event_loop,
+                                     bool display) {
   int rv = ctx->channel->init();
   if (rv) {
     fprintf(stderr, "error: could not initialize wayland channel: %s\n",
@@ -336,7 +336,7 @@ bool sl_context_init_virtwl(struct sl_context* ctx,
     ctx->virtwl_socket_fd = vws[0];
     ctx->virtwl_display_fd = vws[1];
 
-    rv = ctx->channel->create_context(&ctx->virtwl_ctx_fd);
+    rv = ctx->channel->create_context(ctx->wayland_channel_fd);
     if (rv) {
       fprintf(stderr, "error: failed to create virtwl context: %s\n",
               strerror(-rv));
@@ -346,9 +346,9 @@ bool sl_context_init_virtwl(struct sl_context* ctx,
     ctx->virtwl_socket_event_source.reset(wl_event_loop_add_fd(
         event_loop, ctx->virtwl_socket_fd, WL_EVENT_READABLE,
         sl_handle_virtwl_socket_event, ctx));
-    ctx->virtwl_ctx_event_source.reset(
-        wl_event_loop_add_fd(event_loop, ctx->virtwl_ctx_fd, WL_EVENT_READABLE,
-                             sl_handle_virtwl_ctx_event, ctx));
+    ctx->wayland_channel_event_source.reset(wl_event_loop_add_fd(
+        event_loop, ctx->wayland_channel_fd, WL_EVENT_READABLE,
+        sl_handle_wayland_channel_event, ctx));
   }
   return true;
 }

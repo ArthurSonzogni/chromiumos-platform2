@@ -27,8 +27,8 @@ class MockWaylandChannel : public WaylandChannel {
 
   MOCK_METHOD(int32_t, init, ());
   MOCK_METHOD(bool, supports_dmabuf, ());
-  MOCK_METHOD(int32_t, create_context, (int* out_socket_fd));
-  MOCK_METHOD(int32_t, create_pipe, (int* out_pipe_fd));
+  MOCK_METHOD(int32_t, create_context, (int& out_socket_fd));
+  MOCK_METHOD(int32_t, create_pipe, (int& out_pipe_fd));
   MOCK_METHOD(int32_t, send, (const struct WaylandSendReceive& send));
   MOCK_METHOD(int32_t,
               receive,
@@ -54,7 +54,7 @@ class SommelierTest : public ::testing::Test {
     assert(ctx->host_display);
 
     ctx->channel = &mock_wayland_channel_;
-    return sl_context_init_virtwl(
+    return sl_context_init_wayland_channel(
         ctx, wl_display_get_event_loop(ctx->host_display), false);
   }
 
@@ -64,8 +64,7 @@ class SommelierTest : public ::testing::Test {
     int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, mws);
     errno_assert(!rv);
 
-    ON_CALL(mock_wayland_channel_, create_context(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(mws[1]), Return(0)));
+    ON_CALL(mock_wayland_channel_, create_context(_)).WillByDefault(Return(0));
   }
 
  protected:

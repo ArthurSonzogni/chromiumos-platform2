@@ -56,7 +56,7 @@ bool VirtWaylandChannel::supports_dmabuf(void) {
   return supports_dmabuf_;
 }
 
-int32_t VirtWaylandChannel::create_context(int* out_socket_fd) {
+int32_t VirtWaylandChannel::create_context(int& out_channel_fd) {
   int ret;
   struct virtwl_ioctl_new new_ctx = {
       .type = VIRTWL_IOCTL_NEW_CTX,
@@ -68,12 +68,12 @@ int32_t VirtWaylandChannel::create_context(int* out_socket_fd) {
   if (ret)
     return -errno;
 
-  *out_socket_fd = new_ctx.fd;
+  out_channel_fd = new_ctx.fd;
 
   return 0;
 }
 
-int32_t VirtWaylandChannel::create_pipe(int* out_pipe_fd) {
+int32_t VirtWaylandChannel::create_pipe(int& out_pipe_fd) {
   int ret;
   struct virtwl_ioctl_new new_pipe = {
       .type = VIRTWL_IOCTL_NEW_PIPE_READ,
@@ -87,7 +87,7 @@ int32_t VirtWaylandChannel::create_pipe(int* out_pipe_fd) {
   if (ret)
     return -errno;
 
-  *out_pipe_fd = new_pipe.fd;
+  out_pipe_fd = new_pipe.fd;
 
   return 0;
 }
@@ -114,7 +114,7 @@ int32_t VirtWaylandChannel::send(const struct WaylandSendReceive& send) {
   }
 
   txn->len = send.data_size;
-  ret = ioctl(send.socket_fd, VIRTWL_IOCTL_SEND, txn);
+  ret = ioctl(send.channel_fd, VIRTWL_IOCTL_SEND, txn);
   if (ret)
     return -errno;
 
@@ -130,7 +130,7 @@ int32_t VirtWaylandChannel::receive(struct WaylandSendReceive& receive) {
   void* recv_data = &txn->data;
 
   txn->len = max_recv_size;
-  ret = ioctl(receive.socket_fd, VIRTWL_IOCTL_RECV, txn);
+  ret = ioctl(receive.channel_fd, VIRTWL_IOCTL_RECV, txn);
   if (ret)
     return -errno;
 

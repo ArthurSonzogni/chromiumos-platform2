@@ -92,13 +92,11 @@ struct sl_context {
   std::unique_ptr<struct wl_event_source> sigchld_event_source;
   std::unique_ptr<struct wl_event_source> sigusr1_event_source;
   struct wl_array dpi;
-  int shm_driver;
-  int data_driver;
   int wm_fd;
-  int virtwl_ctx_fd;
+  int wayland_channel_fd;
   int virtwl_socket_fd;
   int virtwl_display_fd;
-  std::unique_ptr<struct wl_event_source> virtwl_ctx_event_source;
+  std::unique_ptr<struct wl_event_source> wayland_channel_event_source;
   std::unique_ptr<struct wl_event_source> virtwl_socket_event_source;
   const char* vm_id;
   const char* drm_device;

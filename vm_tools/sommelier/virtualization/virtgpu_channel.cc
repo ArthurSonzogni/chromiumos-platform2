@@ -173,7 +173,7 @@ bool VirtGpuChannel::supports_dmabuf(void) {
   return supports_dmabuf_;
 }
 
-int32_t VirtGpuChannel::create_context(int* out_socket_fd) {
+int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
   int ret;
   struct drm_virtgpu_map map = {0};
   struct drm_virtgpu_context_init init = {0};
@@ -240,7 +240,7 @@ int32_t VirtGpuChannel::create_context(int* out_socket_fd) {
   return 0;
 }
 
-int32_t VirtGpuChannel::create_pipe(int* out_pipe_fd) {
+int32_t VirtGpuChannel::create_pipe(int& out_pipe_fd) {
   return -EINVAL;
 }
 

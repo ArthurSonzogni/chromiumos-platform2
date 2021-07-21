@@ -179,7 +179,7 @@ static void sl_data_offer_receive(struct wl_client* client,
       static_cast<sl_host_data_offer*>(wl_resource_get_user_data(resource));
 
   int pipe_fd, rv;
-  rv = host->ctx->channel->create_pipe(&pipe_fd);
+  rv = host->ctx->channel->create_pipe(pipe_fd);
   if (rv) {
     fprintf(stderr, "error: failed to create virtwl pipe: %s\n", strerror(-rv));
     close(fd);
