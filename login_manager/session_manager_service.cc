@@ -684,8 +684,7 @@ void SessionManagerService::WriteBrowserPidFile(base::FilePath path) {
   }
 
   std::string pid_string = base::NumberToString(browser_->CurrentPid());
-  if (!base::WriteFileDescriptor(browser_pid_fd.get(), pid_string.c_str(),
-                                 pid_string.size())) {
+  if (!base::WriteFileDescriptor(browser_pid_fd.get(), pid_string)) {
     PLOG(ERROR) << "Failed to write " << path.value();
     return;
   }
