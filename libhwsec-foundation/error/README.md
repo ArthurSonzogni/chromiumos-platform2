@@ -54,3 +54,40 @@ CustomError CreateError(T&& error_msg) {
   return std::make_unique<CustomError>(std::forward<T>(error_msg));
 }
 ```
+
+# Recommended coding style
+
+1. When should we use `auto`? Similar to [the style of unique_ptr](https://google.github.io/styleguide/cppguide.html#Type_deduction).
+    1. Use `auto` when the error is created by `CreateError<>` or `CreateErrorWrap<>`
+        ```C++
+        if (auto err = CreateError<TPM1Error>(0x99)) {
+          /* Do some error handlings... */
+        }
+        ```
+    2. Specify the error type in other cases.
+        ```C++
+        if (TPM1Error err = SomeMagicFunction()) {
+          /* Do some error handlings... */
+        }
+        ```
+2. Use Error in the `if` expression:
+    1. It's fine to do implicit bool conversions when the error is declared inside the if expression.
+        ```C++
+        if (TPM1Error err = SomeMagicFunction()) {
+          /* Do some error handlings... */
+        }
+        ```
+    2. But we should prevent doing implicit bool conversions when the error isn’t declared in the if expression.
+        ```C++
+        if (SomeMagicFunction()) {
+          /* Don’t do this. */
+        }
+        ```
+        Please use:
+        ```C++
+        if (SomeMagicFunction() != nullptr) {
+            /* This it better */
+            /* But should think about why we need to drop the extra error information in this case. */
+            /* For example: Should we log more messages in this case? */
+        }
+        ```
