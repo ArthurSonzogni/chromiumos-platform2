@@ -388,7 +388,7 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   SecureBlob plaintext(32, 'a');
   SecureBlob pass_blob(256, 'b');
   SecureBlob ciphertext;
-  brillo::SecureBlob auth_value;
+  SecureBlob auth_value;
   if (!tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
     LOG(ERROR) << "Failed to get auth value.";
     return false;
@@ -410,8 +410,12 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     return false;
   }
 
-  // Check that unsealing doesn't work with wrong auth_value.
-  auth_value.char_data()[255] = 'a';
+  // Check that unsealing doesn't work with wrong pass_blob.
+  pass_blob.char_data()[255] = 'a';
+  if (!tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
+    LOG(ERROR) << "Failed to get auth value.";
+    return false;
+  }
   if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
                                     pcr_map,
                                     &unsealed_text) == Tpm::kTpmRetryNone &&
