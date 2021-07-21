@@ -167,10 +167,10 @@ message WelcomeState {
   FinalizeChoice choice = 1;
 }
 
+// Legacy state. Keep it to be compatible with Chrome.
+// TODO(gavindodd): Remove it in the future.
 // Request for optional connection to Wifi when no network is connected.
 message SelectNetworkState {
-  // TODO(gavindodd): How does network connection work? Once the user logs in to
-  // wifi does some other system preserve the connection information?
   enum Network {
     RMAD_NETWORK_UNKNOWN = 0;
     RMAD_NETWORK_USER_DECLINED = 1;
@@ -179,6 +179,8 @@ message SelectNetworkState {
   Network connection_state = 1;
 }
 
+// Legacy state. Keep it to be compatible with Chrome.
+// TODO(gavindodd): Remove it in the future.
 // Update Chrome
 message UpdateChromeState {
   enum UpdateState {
@@ -472,7 +474,11 @@ message CalibrateComponentsState {
 message RmadState {
   oneof state {
     WelcomeState welcome = 1;
+    // Legacy state. Keep it to be compatible with Chrome.
+    // TODO(gavindodd): Remove it in the future.
     SelectNetworkState select_network = 2;
+    // Legacy state. Keep it to be compatible with Chrome.
+    // TODO(gavindodd): Remove it in the future.
     UpdateChromeState update_chrome = 3;
     ComponentsRepairState components_repair = 4;
     DeviceDestinationState device_destination = 5;

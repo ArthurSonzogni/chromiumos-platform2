@@ -16,9 +16,7 @@
 #include "rmad/state_handler/provision_device_state_handler.h"
 #include "rmad/state_handler/restock_state_handler.h"
 #include "rmad/state_handler/run_calibration_state_handler.h"
-#include "rmad/state_handler/select_network_state_handler.h"
 #include "rmad/state_handler/setup_calibration_state_handler.h"
-#include "rmad/state_handler/update_chrome_state_handler.h"
 #include "rmad/state_handler/update_device_info_state_handler.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
 #include "rmad/state_handler/verify_rsu_state_handler.h"
@@ -50,10 +48,6 @@ void StateHandlerManager::RegisterStateHandlers() {
   // Maybe initializing states in history order would help?
   RegisterStateHandler(
       base::MakeRefCounted<WelcomeScreenStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<SelectNetworkStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<UpdateChromeStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<ComponentsRepairStateHandler>(json_store_));
   RegisterStateHandler(

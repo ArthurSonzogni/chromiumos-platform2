@@ -40,7 +40,7 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
               .state_case = RmadState::StateCase::STATE_NOT_SET};
     case WelcomeState::RMAD_CHOICE_FINALIZE_REPAIR:
       return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kSelectNetwork};
+              .state_case = RmadState::StateCase::kComponentsRepair};
     default:
       break;
   }

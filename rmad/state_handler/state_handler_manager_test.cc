@@ -49,8 +49,8 @@ class StateHandlerManagerTest : public testing::Test {
 };
 
 TEST_F(StateHandlerManagerTest, GetStateHandler) {
-  auto handler1 = CreateMockStateHandler(RmadState::kSelectNetwork,
-                                         RmadState::kUpdateChrome);
+  auto handler1 = CreateMockStateHandler(RmadState::kComponentsRepair,
+                                         RmadState::kDeviceDestination);
   auto handler2 =
       CreateMockStateHandler(RmadState::kWelcome, RmadState::STATE_NOT_SET);
   state_handler_manager_->RegisterStateHandler(handler1);
@@ -76,7 +76,7 @@ TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {
   auto handler1 =
       CreateMockStateHandler(RmadState::kWelcome, RmadState::STATE_NOT_SET);
   auto handler2 =
-      CreateMockStateHandler(RmadState::kWelcome, RmadState::kSelectNetwork);
+      CreateMockStateHandler(RmadState::kWelcome, RmadState::kComponentsRepair);
   state_handler_manager_->RegisterStateHandler(handler1);
   EXPECT_DEATH(state_handler_manager_->RegisterStateHandler(handler2),
                "Registered handlers should have unique RmadStates.");

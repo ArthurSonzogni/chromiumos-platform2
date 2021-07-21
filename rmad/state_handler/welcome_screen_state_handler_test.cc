@@ -38,7 +38,7 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Success) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kSelectNetwork);
+  EXPECT_EQ(state_case, RmadState::StateCase::kComponentsRepair);
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
