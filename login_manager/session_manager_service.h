@@ -65,6 +65,9 @@ class SessionManagerService
     CRASH_WHILE_RESTART_DISABLED = 1,
     CHILD_EXITING_TOO_FAST = 2,
     MUST_WIPE_DEVICE = 3,
+    // Used in upstart to signal that the session wasn't started since the
+    // device was already shutting down.
+    DEVICE_SHUTTING_DOWN = 4,
   };
 
   // Path to flag file indicating that a user has logged in since last boot.

@@ -119,6 +119,8 @@ const char* ExitCodeToString(SessionManagerService::ExitCode code) {
       return "child exiting too fast";
     case SessionManagerService::MUST_WIPE_DEVICE:
       return "must wipe device";
+    case SessionManagerService::DEVICE_SHUTTING_DOWN:
+      return "device shutting down";
   }
   NOTREACHED() << "Invalid exit code " << code;
   return "unknown";

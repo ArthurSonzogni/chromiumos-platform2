@@ -8,6 +8,8 @@ set -e
 
 JOB=$(basename "$0")
 
+DEVICE_SHUTTING_DOWN=4 # Defined in session_manager_service.h
+
 # Read chrome OS configurations
 read_cros_config() {
   local path="$1"
@@ -34,6 +36,17 @@ read_cros_config_int() {
       ;;
     esac
 }
+
+# The ui job can be restarted asynchronously via ui-respawn. This allows the
+# possibility that ui can be started while shutdown/reboot is in process.
+# Make sure that the reboot/halt jobs are not active at the time we are
+# restarting ui.
+if ! initctl status reboot | grep -q 'stop/waiting' || \
+    ! initctl status halt | grep -q 'stop/waiting'; then
+  logger -t "${UPSTART_JOB}" "ERROR: reboot/shutdown in progress, quit."
+  stop ui
+  exit ${DEVICE_SHUTTING_DOWN}
+fi
 
 # Setup drm log tracing if available. This will allow us to access more verbose
 # logs to debug display connectivity issues when they arise. The traces are
