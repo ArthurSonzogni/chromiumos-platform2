@@ -95,8 +95,10 @@ if (use.test) {
       "scheduler/upload_job_test.cc",
       "storage/resources/resource_interface_test.cc",
       "storage/storage_queue_stress_test.cc",
-      "storage/storage_queue_test.cc",
-      "storage/storage_test.cc",
+
+      # "storage/storage_queue_test.cc",  Disabled by sheriff (b/193454390)
+
+      # "storage/storage_test.cc",  Disabled by sheriff (b/194224371)
       "util/shared_queue_test.cc",
       "util/status_macros_test.cc",
       "util/status_test.cc",
