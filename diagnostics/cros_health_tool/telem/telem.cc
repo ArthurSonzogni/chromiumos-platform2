@@ -43,6 +43,9 @@ using chromeos::cros_healthd::mojom::BacklightResultPtr;
 using chromeos::cros_healthd::mojom::BatteryResultPtr;
 using chromeos::cros_healthd::mojom::BluetoothResultPtr;
 using chromeos::cros_healthd::mojom::BootPerformanceResultPtr;
+using chromeos::cros_healthd::mojom::BusDeviceClass;
+using chromeos::cros_healthd::mojom::BusInfo;
+using chromeos::cros_healthd::mojom::BusResultPtr;
 using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
 using chromeos::cros_healthd::mojom::CpuResultPtr;
 using chromeos::cros_healthd::mojom::ErrorType;
@@ -81,6 +84,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"network", ProbeCategoryEnum::kNetwork},
     {"audio", ProbeCategoryEnum::kAudio},
     {"boot_performance", ProbeCategoryEnum::kBootPerformance},
+    {"bus", ProbeCategoryEnum::kBus},
 };
 
 std::string EnumToString(ProcessState state) {
@@ -184,6 +188,21 @@ std::string EnumToString(PortalState state) {
       return "Proxy Auth Required";
     case PortalState::kNoInternet:
       return "No Internet";
+  }
+}
+
+std::string EnumToString(BusDeviceClass device_class) {
+  switch (device_class) {
+    case BusDeviceClass::kOthers:
+      return "others";
+    case BusDeviceClass::kDisplayController:
+      return "display controller";
+    case BusDeviceClass::kEthernetController:
+      return "ethernet controller";
+    case BusDeviceClass::kWirelessController:
+      return "wireless controller";
+    case BusDeviceClass::kBluetoothAdapter:
+      return "bluetooth controller";
   }
 }
 
@@ -659,6 +678,63 @@ void DisplaySystemInfo(const SystemResultPtr& system_result) {
   OutputCSV(headers, values);
 }
 
+void DisplayBusDevices(const BusResultPtr& bus_result) {
+  if (bus_result->is_error()) {
+    DisplayError(bus_result->get_error());
+    return;
+  }
+
+  const auto& devices = bus_result->get_bus_devices();
+
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* out_devices =
+      output.SetKey("devices", base::Value{base::Value::Type::LIST});
+  for (const auto& device : devices) {
+    base::Value out_device{base::Value::Type::DICTIONARY};
+    SET_DICT(vendor_name, device, &out_device);
+    SET_DICT(product_name, device, &out_device);
+    SET_DICT(device_class, device, &out_device);
+    auto* out_bus_info = out_device.SetKey(
+        "bus_info", base::Value{base::Value::Type::DICTIONARY});
+    switch (device->bus_info->which()) {
+      case BusInfo::Tag::PCI_BUS_INFO: {
+        const auto& pci_info = device->bus_info->get_pci_bus_info();
+        SetJsonDictValue("type", "pci", out_bus_info);
+        SET_DICT(class_id, pci_info, out_bus_info);
+        SET_DICT(subclass_id, pci_info, out_bus_info);
+        SET_DICT(prog_if_id, pci_info, out_bus_info);
+        SET_DICT(vendor_id, pci_info, out_bus_info);
+        SET_DICT(device_id, pci_info, out_bus_info);
+        SET_DICT(driver, pci_info, out_bus_info);
+        break;
+      }
+      case BusInfo::Tag::USB_BUS_INFO: {
+        const auto& usb_info = device->bus_info->get_usb_bus_info();
+        SetJsonDictValue("type", "usb", out_bus_info);
+        SET_DICT(class_id, usb_info, out_bus_info);
+        SET_DICT(subclass_id, usb_info, out_bus_info);
+        SET_DICT(protocol_id, usb_info, out_bus_info);
+        SET_DICT(vendor_id, usb_info, out_bus_info);
+        SET_DICT(product_id, usb_info, out_bus_info);
+        auto* out_usb_ifs = out_bus_info->SetKey(
+            "interfaces", base::Value{base::Value::Type::LIST});
+        for (const auto& usb_if_info : usb_info->interfaces) {
+          base::Value out_usb_if{base::Value::Type::DICTIONARY};
+          SET_DICT(class_id, usb_if_info, &out_usb_if);
+          SET_DICT(subclass_id, usb_if_info, &out_usb_if);
+          SET_DICT(protocol_id, usb_if_info, &out_usb_if);
+          SET_DICT(driver, usb_if_info, &out_usb_if);
+          out_usb_ifs->Append(std::move(out_usb_if));
+        }
+        break;
+      }
+    }
+    out_devices->Append(std::move(out_device));
+  }
+
+  OutputJson(output);
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
@@ -712,6 +788,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& boot_performance_result = info->boot_performance_result;
   if (boot_performance_result)
     DisplayBootPerformanceInfo(boot_performance_result);
+
+  const auto& bus_result = info->bus_result;
+  if (bus_result)
+    DisplayBusDevices(bus_result);
 }
 
 // Create a stringified list of the category names for use in help.
