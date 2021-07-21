@@ -123,8 +123,8 @@ void UsbControl::PowerCycleUsbPorts(base::OnceCallback<void(bool)> callback,
   // After the specified delay, turn all the devices on.
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&PowerOnDevicesCallback, base::Passed(std::move(callback)),
-                     base::Passed(std::move(devices)), cumulative_success),
+      base::BindOnce(&PowerOnDevicesCallback, std::move(callback),
+                     std::move(devices), cumulative_success),
       delay);
 }
 

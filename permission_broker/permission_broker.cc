@@ -198,8 +198,7 @@ void PermissionBroker::PowerCycleUsbPorts(
     uint16_t in_pid,
     int64_t in_delay) {
   usb_control_.PowerCycleUsbPorts(
-      base::BindOnce(&PowerCycleUsbPortsResultCallback,
-                     base::Passed(std::move(response))),
+      base::BindOnce(&PowerCycleUsbPortsResultCallback, std::move(response)),
       in_vid, in_pid, base::TimeDelta::FromInternalValue(in_delay));
 }
 
