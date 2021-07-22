@@ -37,7 +37,7 @@ std::unique_ptr<Udev> Udev::Create() {
 
 // static
 std::unique_ptr<UdevDevice> Udev::CreateDevice(udev_device* device) {
-  auto device_to_return = std::make_unique<UdevDevice>(device);
+  auto device_to_return = std::make_unique<UdevDeviceImpl>(device);
 
   // UdevDevice increases the reference count of the udev_device struct by one.
   // Thus, decrease the reference count of the udev_device struct by one before
