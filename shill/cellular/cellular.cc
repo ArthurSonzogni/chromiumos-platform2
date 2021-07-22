@@ -318,10 +318,13 @@ bool Cellular::Load(const StoreInterface* storage) {
     }
     legacy_storage_id_ = id;
   }
-  LOG(INFO) << __func__ << " id: " << id;
   storage->GetBool(id, kAllowRoaming, &allow_roaming_);
   storage->GetBool(id, kPolicyAllowRoaming, &policy_allow_roaming_);
   storage->GetBool(id, kUseAttachApn, &use_attach_apn_);
+  LOG(INFO) << __func__ << " id:" << id << " " << kAllowRoaming << ":"
+            << allow_roaming_ << " " << kPolicyAllowRoaming << ":"
+            << policy_allow_roaming_ << " " << kUseAttachApn << ":"
+            << use_attach_apn_ << " ";
   return Device::Load(storage);
 }
 
