@@ -646,6 +646,8 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
 
       wl_minus_brand.get('arc', {}). get('build-properties', {}).pop(
           'marketing-name', None)
+      wl_minus_brand.get('arc', {}). get('build-properties', {}).pop(
+          'oem', None)
 
       config_list.append(wl_minus_brand)
       whitelabels[name] = config_list
