@@ -14,6 +14,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
@@ -648,6 +649,7 @@ class Cellular : public Device,
 
   Type type_;
   std::unique_ptr<CellularCapability> capability_;
+  base::Optional<InterfaceToProperties> initial_properties_;
 
   PPPDeviceFactory* ppp_device_factory_;
 

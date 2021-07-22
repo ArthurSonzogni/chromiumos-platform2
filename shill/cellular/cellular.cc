@@ -1039,6 +1039,10 @@ void Cellular::CreateCapability() {
   capability_ = CellularCapability::Create(
       type_, this, manager()->control_interface(), manager()->metrics(),
       manager()->modem_info()->pending_activation_store());
+  if (initial_properties_.has_value()) {
+    SetInitialProperties(*initial_properties_);
+    initial_properties_ = base::nullopt;
+  }
 
   home_provider_info_->AddObserver(this);
   serving_operator_info_->AddObserver(this);
@@ -1382,7 +1386,11 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
 }
 
 void Cellular::SetInitialProperties(const InterfaceToProperties& properties) {
-  CHECK(capability_);
+  if (!capability_) {
+    LOG(WARNING) << "SetInitialProperties with no Capability";
+    initial_properties_ = properties;
+    return;
+  }
   capability_->SetInitialProperties(properties);
 }
 
