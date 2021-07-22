@@ -92,6 +92,10 @@ what it means and how to parse it.
 
 ## cros_fp.previous
 
+## cros_fp_panicinfo
+
+[FPMCU] [Panic Data] in human readable form.
+
 ## cros_ish.log
 
 ## cros_ish.previous
@@ -310,3 +314,6 @@ Memory management related statistics for zram from /sys/block/zram0/, Documented
 at https://www.kernel.org/doc/html/latest/admin-guide/blockdev/zram.html#stats
 
 Useful to know how much memory is being stored compressed in zram.
+
+[FPMCU]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/fingerprint/fingerprint.md
+[Panic Data]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md#Panicinfo

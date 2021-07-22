@@ -201,6 +201,8 @@ const std::vector<Log> kCommandLogs {
   {kFile, "cros_fp.previous", "/var/log/cros_fp.previous",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  {kCommand, "cros_fp_panicinfo", "ectool --name=cros_fp panicinfo",
+    kRoot, kRoot},
   {kFile, "cros_ish.log", "/var/log/cros_ish.log",
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
