@@ -83,7 +83,10 @@ static_library("libruntime_probe") {
 
 executable("runtime_probe") {
   sources = [ "runtime_probe.cc" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    "system:libsystem_common_pkg_deps",
+  ]
   deps = [ ":libruntime_probe" ]
   if (use.factory_runtime_probe) {
     output_name = "factory_runtime_probe"
@@ -108,6 +111,7 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":target_defaults",
+      "system:libsystem_test_pkg_deps",
     ]
     data = [
       "testdata/probe_config.json",

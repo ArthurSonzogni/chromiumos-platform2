@@ -5,13 +5,13 @@
 #ifndef RUNTIME_PROBE_SYSTEM_CONTEXT_FACTORY_IMPL_H_
 #define RUNTIME_PROBE_SYSTEM_CONTEXT_FACTORY_IMPL_H_
 
-#include "runtime_probe/system/context.h"
+#include "runtime_probe/system/context_impl.h"
 
 namespace runtime_probe {
 
-class ContextFactoryImpl : public Context {
+class ContextFactoryImpl : public ContextImpl {
  public:
-  ContextFactoryImpl() = default;
+  ContextFactoryImpl();
   ~ContextFactoryImpl() override = default;
 };
 

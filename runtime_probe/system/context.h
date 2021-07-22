@@ -5,6 +5,12 @@
 #ifndef RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 #define RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 
+namespace org {
+namespace chromium {
+class debugdProxyInterface;
+}  // namespace chromium
+}  // namespace org
+
 namespace runtime_probe {
 
 // A context class for holding the helper objects used in runtime probe, which
@@ -18,7 +24,8 @@ class Context {
   Context& operator=(const Context&) = delete;
   virtual ~Context() = default;
 
-  // TODO(chungsheng): Add interfaces
+  // Use the object returned by debugd_proxy() to make calls to debugd.
+  virtual org::chromium::debugdProxyInterface* debugd_proxy() = 0;
 };
 
 }  // namespace runtime_probe

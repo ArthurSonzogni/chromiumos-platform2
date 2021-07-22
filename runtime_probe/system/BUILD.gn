@@ -8,16 +8,35 @@ pkg_config("libsystem_common_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libdebugd-client",
   ]
   defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
 }
 
 source_set("libsystem") {
   configs += [ ":libsystem_common_pkg_deps" ]
-  sources = [ "context_instance.cc" ]
+  sources = [
+    "context_impl.cc",
+    "context_instance.cc",
+  ]
   if (use.factory_runtime_probe) {
-    sources += [ "helper_invoker_direct_impl.cc" ]
+    sources += [
+      "context_factory_impl.cc",
+      "helper_invoker_direct_impl.cc",
+    ]
   } else {
-    sources += [ "helper_invoker_debugd_impl.cc" ]
+    sources += [
+      "context_runtime_impl.cc",
+      "helper_invoker_debugd_impl.cc",
+    ]
+  }
+}
+
+if (use.test) {
+  pkg_config("libsystem_test_pkg_deps") {
+    pkg_deps = [
+      "libdebugd-client",
+      "libdebugd-client-test",
+    ]
   }
 }

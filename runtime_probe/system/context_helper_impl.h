@@ -13,6 +13,11 @@ class ContextHelperImpl : public Context {
  public:
   ContextHelperImpl() = default;
   ~ContextHelperImpl() override = default;
+
+  org::chromium::debugdProxyInterface* debugd_proxy() override {
+    NOTREACHED() << "The helper should not call debugd.";
+    return nullptr;
+  };
 };
 
 }  // namespace runtime_probe
