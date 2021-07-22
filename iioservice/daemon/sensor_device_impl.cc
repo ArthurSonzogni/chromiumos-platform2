@@ -257,7 +257,7 @@ void SensorDeviceImpl::GetChannelsEnabled(
   auto it = clients_.find(id);
   if (it == clients_.end()) {
     LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run({});
+    std::move(callback).Run(std::vector<bool>(iio_chn_indices.size(), false));
     return;
   }
 
