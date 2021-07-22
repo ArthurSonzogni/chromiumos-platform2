@@ -42,6 +42,7 @@ using chromeos::cros_healthd::mojom::AudioResultPtr;
 using chromeos::cros_healthd::mojom::BacklightResultPtr;
 using chromeos::cros_healthd::mojom::BatteryResultPtr;
 using chromeos::cros_healthd::mojom::BluetoothResultPtr;
+using chromeos::cros_healthd::mojom::BootMode;
 using chromeos::cros_healthd::mojom::BootPerformanceResultPtr;
 using chromeos::cros_healthd::mojom::BusDeviceClass;
 using chromeos::cros_healthd::mojom::BusInfo;
@@ -54,12 +55,14 @@ using chromeos::cros_healthd::mojom::MemoryResultPtr;
 using chromeos::cros_healthd::mojom::NetworkResultPtr;
 using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
 using chromeos::cros_healthd::mojom::NullableUint64Ptr;
+using chromeos::cros_healthd::mojom::OsInfoPtr;
 using chromeos::cros_healthd::mojom::ProbeCategoryEnum;
 using chromeos::cros_healthd::mojom::ProbeErrorPtr;
 using chromeos::cros_healthd::mojom::ProcessResultPtr;
 using chromeos::cros_healthd::mojom::ProcessState;
 using chromeos::cros_healthd::mojom::StatefulPartitionResultPtr;
 using chromeos::cros_healthd::mojom::SystemResultPtr;
+using chromeos::cros_healthd::mojom::SystemResultV2Ptr;
 using chromeos::cros_healthd::mojom::TelemetryInfoPtr;
 using chromeos::cros_healthd::mojom::TimezoneResultPtr;
 using chromeos::network_config::mojom::NetworkType;
@@ -81,6 +84,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"stateful_partition", ProbeCategoryEnum::kStatefulPartition},
     {"bluetooth", ProbeCategoryEnum::kBluetooth},
     {"system", ProbeCategoryEnum::kSystem},
+    {"system2", ProbeCategoryEnum::kSystem2},
     {"network", ProbeCategoryEnum::kNetwork},
     {"audio", ProbeCategoryEnum::kAudio},
     {"boot_performance", ProbeCategoryEnum::kBootPerformance},
@@ -203,6 +207,19 @@ std::string EnumToString(BusDeviceClass device_class) {
       return "wireless controller";
     case BusDeviceClass::kBluetoothAdapter:
       return "bluetooth controller";
+  }
+}
+
+std::string EnumToString(BootMode mode) {
+  switch (mode) {
+    case BootMode::kUnknown:
+      return "Unknown";
+    case BootMode::kCrosSecure:
+      return "cros_secure";
+    case BootMode::kCrosEfi:
+      return "cros_efi";
+    case BootMode::kCrosLegacy:
+      return "cros_legacy";
   }
 }
 
@@ -638,7 +655,6 @@ void DisplaySystemInfo(const SystemResultPtr& system_result) {
     DisplayError(system_result->get_error());
     return;
   }
-
   const auto& system_info = system_result->get_system_info();
   const std::vector<std::string> headers = {
       "first_power_date",   "manufacture_date",
@@ -676,6 +692,61 @@ void DisplaySystemInfo(const SystemResultPtr& system_result) {
        system_info->os_version->release_channel}};
 
   OutputCSV(headers, values);
+}
+
+void DisplaySystemInfoV2(const SystemResultV2Ptr& system_result) {
+  if (system_result->is_error()) {
+    DisplayError(system_result->get_error());
+    return;
+  }
+  const auto& system_info = system_result->get_system_info_v2();
+  base::Value output{base::Value::Type::DICTIONARY};
+
+  const auto& os_info = system_info->os_info;
+  auto* out_os_info =
+      output.SetKey("os_info", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(code_name, os_info, out_os_info);
+  SET_DICT(marketing_name, os_info, out_os_info);
+  SET_DICT(boot_mode, os_info, out_os_info);
+
+  const auto& os_version = os_info->os_version;
+  auto* out_os_version = out_os_info->SetKey(
+      "os_version", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(release_milestone, os_version, out_os_version);
+  SET_DICT(build_number, os_version, out_os_version);
+  SET_DICT(patch_number, os_version, out_os_version);
+  SET_DICT(release_channel, os_version, out_os_version);
+
+  const auto& vpd_info = system_info->vpd_info;
+  if (vpd_info) {
+    auto* out_vpd_info =
+        output.SetKey("vpd_info", base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(serial_number, vpd_info, out_vpd_info);
+    SET_DICT(region, vpd_info, out_vpd_info);
+    SET_DICT(mfg_date, vpd_info, out_vpd_info);
+    SET_DICT(activate_date, vpd_info, out_vpd_info);
+    SET_DICT(sku_number, vpd_info, out_vpd_info);
+    SET_DICT(model_name, vpd_info, out_vpd_info);
+  }
+
+  const auto& dmi_info = system_info->dmi_info;
+  if (dmi_info) {
+    auto* out_dmi_info =
+        output.SetKey("dmi_info", base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(bios_vendor, dmi_info, out_dmi_info);
+    SET_DICT(bios_version, dmi_info, out_dmi_info);
+    SET_DICT(board_name, dmi_info, out_dmi_info);
+    SET_DICT(board_vender, dmi_info, out_dmi_info);
+    SET_DICT(board_version, dmi_info, out_dmi_info);
+    SET_DICT(chassis_vendor, dmi_info, out_dmi_info);
+    SET_DICT(chassis_type, dmi_info, out_dmi_info);
+    SET_DICT(product_family, dmi_info, out_dmi_info);
+    SET_DICT(product_name, dmi_info, out_dmi_info);
+    SET_DICT(product_version, dmi_info, out_dmi_info);
+    SET_DICT(sys_vendor, dmi_info, out_dmi_info);
+  }
+
+  OutputJson(output);
 }
 
 void DisplayBusDevices(const BusResultPtr& bus_result) {
@@ -792,6 +863,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& bus_result = info->bus_result;
   if (bus_result)
     DisplayBusDevices(bus_result);
+
+  const auto& system_result_v2 = info->system_result_v2;
+  if (system_result_v2)
+    DisplaySystemInfoV2(system_result_v2);
 }
 
 // Create a stringified list of the category names for use in help.
