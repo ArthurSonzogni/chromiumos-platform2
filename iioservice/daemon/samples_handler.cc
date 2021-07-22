@@ -14,7 +14,6 @@
 #include <base/check_op.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
-#include <libmems/test_fakes.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
 #include <libmems/iio_context.h>
@@ -27,7 +26,6 @@ namespace iioservice {
 
 namespace {
 
-constexpr char kNoBatchChannels[][10] = {"timestamp", "count"};
 constexpr char kHWFifoFlushPath[] = "buffer/hwfifo_flush";
 
 constexpr double kAcpiAlsMinFrequency = 0.1;
@@ -150,6 +148,7 @@ void SamplesHandler::RemoveClient(ClientData* client_data) {
       FROM_HERE, base::BindOnce(&SamplesHandler::RemoveClientOnThread,
                                 weak_factory_.GetWeakPtr(), client_data));
 }
+
 void SamplesHandler::UpdateFrequency(
     ClientData* client_data,
     double frequency,
@@ -195,22 +194,19 @@ SamplesHandler::SamplesHandler(
     libmems::IioDevice* iio_device,
     double min_freq,
     double max_freq)
-    : ipc_task_runner_(std::move(ipc_task_runner)),
+    : SamplesHandlerBase(sample_task_runner),
+      ipc_task_runner_(std::move(ipc_task_runner)),
       sample_task_runner_(std::move(sample_task_runner)),
       iio_device_(iio_device),
       dev_min_frequency_(min_freq),
       dev_max_frequency_(max_freq) {
   DCHECK_GE(dev_max_frequency_, dev_min_frequency_);
 
-  auto channels = iio_device_->GetAllChannels();
-  for (size_t i = 0; i < channels.size(); ++i) {
-    for (size_t j = 0; j < base::size(kNoBatchChannels); ++j) {
-      if (strcmp(channels[i]->GetId(), kNoBatchChannels[j]) == 0) {
-        no_batch_chn_indices.emplace(i);
-        break;
-      }
-    }
-  }
+  std::vector<std::string> channel_ids;
+  for (auto channel : iio_device_->GetAllChannels())
+    channel_ids.push_back(channel->GetId());
+
+  SetNoBatchChannels(channel_ids);
 }
 
 void SamplesHandler::SetSampleWatcherOnThread() {
@@ -265,15 +261,10 @@ void SamplesHandler::StopSampleWatcherOnThread() {
 }
 
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
-  DCHECK(sample_task_runner_->BelongsToCurrentThread());
   DCHECK_EQ(client_data->iio_device, iio_device_);
-  DCHECK(client_data->IsActive());
-  DCHECK(client_data->observer.is_bound());
-  DCHECK(inactive_clients_.find(client_data) == inactive_clients_.end());
-  DCHECK(clients_map_.find(client_data) == clients_map_.end());
 
-  clients_map_.emplace(client_data, SampleData{});
-  clients_map_[client_data].sample_index = samples_cnt_;
+  SamplesHandlerBase::AddActiveClientOnThread(client_data);
+
   if (IsOnChangeDevice(client_data)) {
     // Read the first sample of the ON_CHANGE sensor for the sensor client.
     libmems::IioDevice::IioSample sample;
@@ -294,66 +285,6 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
 
   if (!watcher_.get())
     SetSampleWatcherOnThread();
-
-  SetTimeoutTaskOnThread(client_data);
-
-  if (AddFrequencyOnThread(client_data->frequency))
-    return;
-
-  client_data->observer->OnErrorOccurred(
-      cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
-}
-
-void SamplesHandler::AddClientOnThread(
-    ClientData* client_data,
-    mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
-  DCHECK(sample_task_runner_->BelongsToCurrentThread());
-  DCHECK_EQ(client_data->iio_device, iio_device_);
-
-  if (inactive_clients_.find(client_data) != inactive_clients_.end() ||
-      clients_map_.find(client_data) != clients_map_.end()) {
-    LOGF(ERROR) << "Failed to AddClient: Already added";
-    mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(std::move(observer))
-        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
-    return;
-  }
-
-  DCHECK(!client_data->observer.is_bound());
-  client_data->observer.Bind(std::move(observer));
-  client_data->observer.set_disconnect_handler(
-      base::BindOnce(&SamplesHandler::OnSamplesObserverDisconnect,
-                     weak_factory_.GetWeakPtr(), client_data));
-
-  SensorMetrics::GetInstance()->SendSensorObserverOpened();
-
-  client_data->frequency = FixFrequency(client_data->frequency);
-
-  if (client_data->IsActive()) {
-    AddActiveClientOnThread(client_data);
-    return;
-  }
-
-  // Adding an inactive client.
-  inactive_clients_.emplace(client_data);
-
-  if (client_data->frequency < libmems::kFrequencyEpsilon) {
-    LOGF(ERROR) << "Added an inactive client: Invalid frequency.";
-    client_data->observer->OnErrorOccurred(
-        cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
-  }
-  if (client_data->enabled_chn_indices.empty()) {
-    LOGF(ERROR) << "Added an inactive client: No enabled channels.";
-    client_data->observer->OnErrorOccurred(
-        cros::mojom::ObserverErrorType::NO_ENABLED_CHANNELS);
-  }
-}
-
-void SamplesHandler::OnSamplesObserverDisconnect(ClientData* client_data) {
-  DCHECK(sample_task_runner_->RunsTasksInCurrentSequence());
-
-  LOGF(ERROR) << "SamplesObserver disconnected. ReceiverId: "
-              << client_data->id;
-  RemoveClientOnThread(client_data);
 }
 
 void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
@@ -363,40 +294,10 @@ void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
   DCHECK_GE(orig_freq, libmems::kFrequencyEpsilon);
   DCHECK(clients_map_.find(client_data) != clients_map_.end());
 
-  clients_map_.erase(client_data);
+  SamplesHandlerBase::RemoveActiveClientOnThread(client_data, orig_freq);
+
   if (clients_map_.empty())
     StopSampleWatcherOnThread();
-
-  if (RemoveFrequencyOnThread(orig_freq))
-    return;
-
-  // Failed to set frequency
-  if (client_data->observer.is_bound()) {
-    client_data->observer->OnErrorOccurred(
-        cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
-  }
-}
-
-void SamplesHandler::RemoveClientOnThread(ClientData* client_data) {
-  DCHECK(sample_task_runner_->BelongsToCurrentThread());
-  DCHECK_EQ(client_data->iio_device, iio_device_);
-
-  client_data->observer.reset();
-
-  auto it = inactive_clients_.find(client_data);
-  if (it != inactive_clients_.end()) {
-    inactive_clients_.erase(it);
-    SensorMetrics::GetInstance()->SendSensorObserverClosed();
-    return;
-  }
-
-  if (clients_map_.find(client_data) == clients_map_.end()) {
-    LOGF(ERROR) << "Failed to RemoveClient: Client not found";
-    return;
-  }
-
-  SensorMetrics::GetInstance()->SendSensorObserverClosed();
-  RemoveActiveClientOnThread(client_data, client_data->frequency);
 }
 
 double SamplesHandler::FixFrequency(double frequency) {
@@ -462,35 +363,19 @@ void SamplesHandler::UpdateFrequencyOnThread(
   DCHECK(client_data->observer.is_bound());
 
   if (AddFrequencyOnThread(client_data->frequency) &&
-      RemoveFrequencyOnThread(orig_freq))
+      RemoveFrequencyOnThread(orig_freq)) {
     return;
+  }
 
   // Failed to set device frequency
   client_data->observer->OnErrorOccurred(
       cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
 }
 
-bool SamplesHandler::AddFrequencyOnThread(double frequency) {
+bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
 
-  frequencies_.emplace(frequency);
-  double max_freq = *frequencies_.rbegin();
-  return UpdateRequestedFrequencyOnThread(max_freq);
-}
-bool SamplesHandler::RemoveFrequencyOnThread(double frequency) {
-  DCHECK(sample_task_runner_->BelongsToCurrentThread());
-
-  auto it = frequencies_.find(frequency);
-  DCHECK(it != frequencies_.end());
-  frequencies_.erase(it);
-  auto r_it = frequencies_.rbegin();
-  double max_freq = (r_it == frequencies_.rend()) ? 0.0 : *r_it;
-  DCHECK_LE(max_freq, requested_frequency_);
-  return UpdateRequestedFrequencyOnThread(max_freq);
-}
-
-bool SamplesHandler::UpdateRequestedFrequencyOnThread(double frequency) {
-  DCHECK(sample_task_runner_->BelongsToCurrentThread());
+  double frequency = GetRequestedFrequencyOnThread();
 
   // We didn't limit clients' frequency to be greater than or equal to
   // |dev_min_frequency_|, but we need to do that when setting the real
@@ -623,38 +508,13 @@ void SamplesHandler::GetChannelsEnabledOnThread(
       FROM_HERE, base::BindOnce(std::move(callback), std::move(enabled)));
 }
 
-void SamplesHandler::SetTimeoutTaskOnThread(ClientData* client_data) {
-  DCHECK(sample_task_runner_->BelongsToCurrentThread());
-
-  if (client_data->timeout == 0)
-    return;
-
-  sample_task_runner_->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&SamplesHandler::SampleTimeout, weak_factory_.GetWeakPtr(),
-                     client_data, clients_map_[client_data].sample_index),
-      base::TimeDelta::FromMilliseconds(client_data->timeout));
-}
-void SamplesHandler::SampleTimeout(ClientData* client_data,
-                                   uint64_t sample_index) {
-  if (!client_data->observer.is_bound())
-    return;
-
-  auto it = clients_map_.find(client_data);
-  if (it == clients_map_.end() || it->second.sample_index != sample_index)
-    return;
-
-  client_data->observer->OnErrorOccurred(
-      cros::mojom::ObserverErrorType::READ_TIMEOUT);
-}
-
 void SamplesHandler::OnSampleAvailableWithoutBlocking() {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
   DCHECK(num_read_failed_logs_ == 0 || num_read_failed_logs_recovery_ == 0);
 
   auto sample = iio_device_->ReadSample();
   if (!sample) {
-    AddReadFailedLog();
+    AddReadFailedLogOnThread();
     for (auto& [client_data, _] : clients_map_) {
       client_data->observer->OnErrorOccurred(
           cros::mojom::ObserverErrorType::READ_FAILED);
@@ -663,105 +523,7 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
     return;
   }
 
-  if (num_read_failed_logs_ == 0) {
-    if (num_read_failed_logs_recovery_ > 0 &&
-        ++num_read_failed_logs_recovery_ >= kNumReadFailedLogsRecovery) {
-      LOGF(INFO) << "Resuming error logs";
-      num_read_failed_logs_recovery_ = 0;
-    }
-  } else {
-    --num_read_failed_logs_;
-  }
-
-  for (auto& [client_data, sample_data] : clients_map_) {
-    DCHECK(client_data->IsActive());
-    DCHECK(client_data->observer.is_bound());
-
-    int step =
-        std::max(1, static_cast<int>(dev_frequency_ / client_data->frequency));
-
-    // Update moving averages for channels
-    for (int32_t chn_index : client_data->enabled_chn_indices) {
-      if (no_batch_chn_indices.find(chn_index) != no_batch_chn_indices.end())
-        continue;
-
-      if (sample->find(chn_index) == sample->end()) {
-        LOGF(ERROR) << "Missing chn index: " << chn_index << " in sample";
-        continue;
-      }
-
-      int size = samples_cnt_ - sample_data.sample_index + 1;
-      if (sample_data.chns.find(chn_index) == sample_data.chns.end() &&
-          size != 1) {
-        // A new enabled channel: fill up previous sample points with the
-        // current value
-        sample_data.chns[chn_index] =
-            sample.value()[chn_index] * (size * (size - 1) / 2);
-      }
-
-      sample_data.chns[chn_index] += sample.value()[chn_index] * size;
-    }
-
-    if (sample_data.sample_index + step - 1 <= samples_cnt_) {
-      // Send a sample to the client
-      int64_t size = samples_cnt_ - sample_data.sample_index + 1;
-      DCHECK_GE(size, 1);
-      int64_t denom = ((size + 1) * size / 2);
-
-      libmems::IioDevice::IioSample client_sample;
-      for (int32_t chn_index : client_data->enabled_chn_indices) {
-        if (sample->find(chn_index) == sample->end()) {
-          LOGF(ERROR) << "Missing chn: " << chn_index << " in sample";
-          continue;
-        }
-
-        if (no_batch_chn_indices.find(chn_index) !=
-            no_batch_chn_indices.end()) {
-          // Use the current value directly
-          client_sample[chn_index] = sample.value()[chn_index];
-          continue;
-        }
-
-        if (sample_data.chns.find(chn_index) == sample_data.chns.end()) {
-          LOGF(ERROR) << "Missed chn index: " << chn_index
-                      << " in moving averages";
-          continue;
-        }
-
-        client_sample[chn_index] = sample_data.chns[chn_index] / denom;
-      }
-
-      sample_data.sample_index = samples_cnt_ + 1;
-      sample_data.chns.clear();
-
-      client_data->observer->OnSampleUpdated(std::move(client_sample));
-      SetTimeoutTaskOnThread(client_data);
-    }
-  }
-
-  ++samples_cnt_;
-}
-
-void SamplesHandler::AddReadFailedLog() {
-  if (num_read_failed_logs_recovery_ > 0) {
-    if (++num_read_failed_logs_recovery_ >= kNumReadFailedLogsRecovery) {
-      LOGF(INFO) << "Resuming error logs";
-      num_read_failed_logs_recovery_ = 0;
-    }
-
-    return;
-  }
-
-  if (++num_read_failed_logs_ >= kNumReadFailedLogsBeforeGivingUp) {
-    LOGF(ERROR) << "Too many read failed logs: Skipping logs until "
-                << kNumReadFailedLogsRecovery << " reads are done";
-
-    num_read_failed_logs_ = 0;
-    num_read_failed_logs_recovery_ = 1;
-    return;
-  }
-
-  LOGF(ERROR) << "Failed to read a sample";
+  OnSampleAvailableOnThread(sample.value());
 }
 
 }  // namespace iioservice
