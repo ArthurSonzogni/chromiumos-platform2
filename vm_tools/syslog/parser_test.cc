@@ -269,6 +269,7 @@ TEST_P(TimestampTest, ParsesCorrectly) {
   struct tm current_tm;
   ASSERT_TRUE(localtime_r(&ts.tv_sec, &current_tm));
   param.tm.tm_year = current_tm.tm_year;
+  param.tm.tm_isdst = current_tm.tm_isdst;
 
   vm_tools::Timestamp timestamp;
   EXPECT_EQ(ParseSyslogTimestamp(param.buf, &timestamp), param.count);
@@ -309,6 +310,7 @@ TEST_P(EndToEndSyslogTest, ParsesCorrectly) {
   struct tm current_tm;
   ASSERT_TRUE(localtime_r(&ts.tv_sec, &current_tm));
   param.tm.tm_year = current_tm.tm_year;
+  param.tm.tm_isdst = current_tm.tm_isdst;
 
   // We use a tm_mday value of 0 to indicate that the log record doesn't contain
   // a valid time because it's not valid for tm_mday to be 0.

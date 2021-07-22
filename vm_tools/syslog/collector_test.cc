@@ -330,6 +330,7 @@ TEST_F(CollectorTest, EndToEnd) {
     vm_tools::LogRecord* record = user_request->add_records();
     record->set_severity(test.severity);
     test.tm.tm_year = current_tm.tm_year;
+    test.tm.tm_isdst = current_tm.tm_isdst;
     record->mutable_timestamp()->set_seconds(timelocal(&test.tm));
     record->mutable_timestamp()->set_nanos(0);
     record->set_content(string(&test.buf[test.content_offset]));
