@@ -103,6 +103,12 @@ TEST_F(MimeTypesParserTest, ValidResult) {
   EXPECT_EQ(map, expected);
 }
 
+TEST_F(MimeTypesParserTest, Empty) {
+  MimeTypeMap map;
+  WriteContents("");
+  EXPECT_FALSE(ParseMimeTypes(TempFilePath(), &map));
+}
+
 //  xxd /tmp/mimetest/mime.cache
 // 00000000: 0001 0002 0000 0060 0000 0064 0000 0068  .......`...d...h
 // 00000010: 0000 0078 0000 01a0 0000 01a4 0000 01b0  ...x............

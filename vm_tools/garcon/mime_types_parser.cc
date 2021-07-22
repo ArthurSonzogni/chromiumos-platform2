@@ -97,6 +97,11 @@ bool ParseMimeTypes(const std::string& file_name, MimeTypeMap* out_mime_types) {
     return false;
   }
 
+  if (buf.size() < kHeaderSize) {
+    LOG(ERROR) << "Invalid mime.cache file size=" << buf.size();
+    return false;
+  }
+
   // Validate file[ALIAS_LIST_OFFSET - 1] is null to ensure that any
   // null-terminated strings we dereference at addresses below ALIAS_LIST_OFFSET
   // will not overflow.
