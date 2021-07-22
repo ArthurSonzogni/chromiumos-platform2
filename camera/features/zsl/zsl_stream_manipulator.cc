@@ -15,7 +15,8 @@ ZslStreamManipulator::ZslStreamManipulator() {}
 
 ZslStreamManipulator::~ZslStreamManipulator() {}
 
-bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info) {
+bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
+                                      CaptureResultCallback result_callback) {
   base::Optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   if (!partial_result_count) {

@@ -233,9 +233,11 @@ int32_t CameraDeviceAdapter::Initialize(
     return -ENODEV;
   }
 
+  auto result_callback = base::BindRepeating(
+      &CameraDeviceAdapter::ReturnResultToClient, base::Unretained(this));
   for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
        ++it) {
-    (*it)->Initialize(static_info_);
+    (*it)->Initialize(static_info_, result_callback);
   }
 
   capture_request_monitor_.Attach();
@@ -685,6 +687,26 @@ void CameraDeviceAdapter::ProcessCaptureResult(
     (*it)->ProcessCaptureResult(&result_descriptor);
   }
 
+  ReturnResultToClient(ops, std::move(result_descriptor));
+}
+
+// static
+void CameraDeviceAdapter::ReturnResultToClient(
+    const camera3_callback_ops_t* ops,
+    Camera3CaptureDescriptor result_descriptor) {
+  VLOGF_ENTER();
+  if (!result_descriptor.has_metadata() &&
+      result_descriptor.GetInputBuffer() == nullptr &&
+      result_descriptor.num_output_buffers() == 0) {
+    // Android camera framework doesn't accept empty capture results. Since ZSL
+    // would remove the input buffer, output buffers and metadata it added, it's
+    // possible that we end up with an empty capture result.
+    VLOGFID(1, result_descriptor.frame_number()) << "Drop empty capture result";
+    return;
+  }
+
+  CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
+      static_cast<const CameraDeviceAdapter*>(ops));
   camera3_stream_buffer_t in_buf = {};
   mojom::Camera3CaptureResultPtr result_ptr;
   {
@@ -716,15 +738,6 @@ void CameraDeviceAdapter::ProcessCaptureResult(
       self->reprocess_result_metadata_.erase(result_descriptor.frame_number());
     }
     result_ptr = self->PrepareCaptureResult(result_descriptor.LockForResult());
-  }
-
-  if (!result_ptr->result->entries.has_value() &&
-      !result_ptr->output_buffers.has_value() &&
-      result_ptr->input_buffer.is_null()) {
-    // Android camera framework doesn't accept empty capture results. Since ZSL
-    // would remove the input buffer, output buffers and metadata it added, it's
-    // possible that we end up with an empty capture result.
-    return;
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);

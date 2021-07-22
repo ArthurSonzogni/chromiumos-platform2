@@ -6,10 +6,15 @@
 
 #include "common/stream_manipulator.h"
 
+#include <utility>
+
 #if USE_CAMERA_FEATURE_HDRNET
 #include <base/files/file_util.h>
 
+#include "common/still_capture_processor_impl.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/constants.h"
+#include "cros-camera/jpeg_compressor.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 #endif
 
@@ -35,8 +40,12 @@ void MaybeEnableHdrNetStreamManipulator(
     constexpr const char kIntelIpu6CameraModuleName[] =
         "Intel Camera3HAL Module";
     if (options.camera_module_name == kIntelIpu6CameraModuleName) {
+      std::unique_ptr<JpegCompressor> jpeg_compressor =
+          JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
       out_stream_manipulators->emplace_back(
-          std::make_unique<HdrNetStreamManipulator>());
+          std::make_unique<HdrNetStreamManipulator>(
+              std::make_unique<StillCaptureProcessorImpl>(
+                  std::move(jpeg_compressor))));
     }
   }
 #endif

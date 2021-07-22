@@ -79,8 +79,6 @@ source_set("base") {
     "//camera/common/future.cc",
     "//camera/common/ipc_util.cc",
     "//camera/common/metadata_logger.cc",
-    "//camera/common/still_capture_processor_impl.cc",
-    "//camera/common/stream_manipulator.cc",
     "//camera/common/timezone.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",
@@ -220,6 +218,21 @@ source_set("camera_gpu_algorithm") {
   public_deps = [ ":base" ]
 }
 
+source_set("stream_manipulator") {
+  sources = [
+    "//camera/common/still_capture_processor_impl.cc",
+    "//camera/common/stream_manipulator.cc",
+  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
+}
+
 shared_library("libcros_camera") {
   output_name = "libcros_camera"
   configs += [ ":target_defaults" ]
@@ -231,6 +244,7 @@ shared_library("libcros_camera") {
     ":jpeg",
     ":mojo_base",
     ":sensor_client",
+    ":stream_manipulator",
     ":v4l2_device",
     "//camera/features/zsl",
   ]

@@ -29,6 +29,7 @@
 #pragma pop_macro("Bool")
 #include <hardware/camera3.h>
 
+#include "common/still_capture_processor.h"
 #include "features/hdrnet/hdrnet_ae_controller.h"
 #include "features/hdrnet/hdrnet_processor.h"
 
@@ -184,6 +185,56 @@ std::unique_ptr<HdrNetAeController> CreateMockHdrNetAeControllerInstance(
       static_info);
 }
 
+class FakeStillCaptureProcessor : public StillCaptureProcessor {
+ public:
+  FakeStillCaptureProcessor() {}
+  ~FakeStillCaptureProcessor() = default;
+
+  void Initialize(const camera3_stream_t* const still_capture_stream,
+                  CaptureResultCallback result_callback) override {
+    result_callback_ = std::move(result_callback);
+  }
+
+  void QueuePendingOutputBuffer(
+      int frame_number,
+      camera3_stream_buffer_t output_buffer,
+      const camera_metadata_t* request_settings) override {
+    EXPECT_EQ(result_descriptor_.count(frame_number), 0);
+    result_descriptor_.insert({frame_number, ResultDescriptor()});
+  }
+
+  void QueuePendingAppsSegments(int frame_number,
+                                buffer_handle_t blob_buffer) override {
+    ASSERT_EQ(result_descriptor_.count(frame_number), 1);
+    result_descriptor_[frame_number].has_apps_segments = true;
+    MaybeProduceCaptureResult(frame_number);
+  }
+
+  void QueuePendingYuvImage(int frame_number,
+                            buffer_handle_t yuv_buffer) override {
+    ASSERT_EQ(result_descriptor_.count(frame_number), 1);
+    result_descriptor_[frame_number].has_yuv_buffer = true;
+    MaybeProduceCaptureResult(frame_number);
+  }
+
+ private:
+  void MaybeProduceCaptureResult(int frame_number) {
+    if (result_descriptor_[frame_number].has_apps_segments &&
+        result_descriptor_[frame_number].has_yuv_buffer) {
+      result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
+          .frame_number = static_cast<uint32_t>(frame_number)}));
+    }
+  }
+
+  CaptureResultCallback result_callback_;
+
+  struct ResultDescriptor {
+    bool has_apps_segments = false;
+    bool has_yuv_buffer = false;
+  };
+  std::map<int, ResultDescriptor> result_descriptor_;
+};
+
 class HdrNetStreamManipulatorTest : public Test {
  protected:
   HdrNetStreamManipulatorTest()
@@ -206,9 +257,13 @@ class HdrNetStreamManipulatorTest : public Test {
 
   void SetUp() {
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
+        std::make_unique<FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance),
         base::BindRepeating(CreateMockHdrNetAeControllerInstance));
-    stream_manipulator_->Initialize(nullptr);
+    stream_manipulator_->Initialize(
+        nullptr,
+        base::BindRepeating(&HdrNetStreamManipulatorTest::ProcessCaptureResult,
+                            base::Unretained(this)));
   }
 
   void SetImpl720pStreamInConfig() {
@@ -294,6 +349,10 @@ class HdrNetStreamManipulatorTest : public Test {
     return desc;
   }
 
+  void ProcessCaptureResult(Camera3CaptureDescriptor result) {
+    callback_received_.insert(result.frame_number());
+  }
+
   base::test::SingleThreadTaskEnvironment task_environment_;
   std::unique_ptr<HdrNetStreamManipulator> stream_manipulator_;
   Camera3Stream impl_720p_stream_;
@@ -301,6 +360,7 @@ class HdrNetStreamManipulatorTest : public Test {
   Camera3Stream yuv_1080p_stream_;
   Camera3Stream blob_stream_;
   Camera3StreamConfiguration stream_config_;
+  std::set<uint32_t> callback_received_;
 };
 
 // Test that HdrNetStreamManipulator can handle stream configuration with a
@@ -338,8 +398,9 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureMultipleYuvStreamsTest) {
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
-  // The modified streams should have three streams.
-  ASSERT_EQ(stream_config_.num_streams(), 3);
+  // The modified streams should have four streams: three HDRnet streams plus
+  // the original BLOB stream.
+  ASSERT_EQ(stream_config_.num_streams(), 4);
   bool impl_720p_configured = false, yuv_1080p_configured = false;
   for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
@@ -408,8 +469,9 @@ TEST_F(HdrNetStreamManipulatorTest,
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
-  // The modified streams should have three streams.
-  ASSERT_EQ(stream_config_.num_streams(), 3);
+  // The modified streams should have four streams: three HDRnet streams plus
+  // the original BLOB stream.
+  ASSERT_EQ(stream_config_.num_streams(), 4);
   bool impl_720p_replaced = false, yuv_480p_replaced = false;
   for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
@@ -492,7 +554,7 @@ TEST_F(HdrNetStreamManipulatorTest, MultipleConfigureStreamsTest) {
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
   // The modified streams should be returned.
-  ASSERT_EQ(stream_config_.num_streams(), 3);
+  ASSERT_EQ(stream_config_.num_streams(), 4);
   bool impl_720p_configured = false, yuv_1080p_configured = false;
   for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
@@ -527,11 +589,12 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureRequestTest) {
 
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
 
-  // The modified request should have two output buffers: one HDRnet buffer and
-  // the original BLOB buffer.
-  EXPECT_EQ(request.num_output_buffers(), 2);
+  // The modified request should have three output buffers: two HDRnet buffers
+  // and the original BLOB buffer.
+  EXPECT_EQ(request.num_output_buffers(), 3);
   bool blob_buffer_found = false;
-  bool hdrnet_buffer_found = false;
+  bool hdrnet_buffer_for_yuv_found = false;
+  bool hdrnet_buffer_for_blob_found = false;
   for (const auto& buffer : request.GetOutputBuffers()) {
     if (buffer.stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB buffer should be unchanged.
@@ -541,12 +604,16 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureRequestTest) {
       // The HDRnet buffer should come from the HdrNetStreamManipulator.
       EXPECT_NE(impl_720p_stream_.get(), buffer.stream);
       EXPECT_NE(yuv_1080p_stream_.get(), buffer.stream);
-      EXPECT_TRUE(yuv_1080p_stream_.HasSameSize(*buffer.stream));
-      hdrnet_buffer_found = true;
+      if (yuv_1080p_stream_.HasSameSize(*buffer.stream)) {
+        hdrnet_buffer_for_yuv_found = true;
+      } else if (blob_stream_.HasSameSize(*buffer.stream)) {
+        hdrnet_buffer_for_blob_found = true;
+      }
     }
   }
   EXPECT_TRUE(blob_buffer_found);
-  EXPECT_TRUE(hdrnet_buffer_found);
+  EXPECT_TRUE(hdrnet_buffer_for_yuv_found);
+  EXPECT_TRUE(hdrnet_buffer_for_blob_found);
 }
 
 // Test that HdrNetStreamManipulator handles process result correctly.
@@ -559,7 +626,8 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureResultTest) {
   constexpr int kFrameNumber = 0;
   Camera3CaptureDescriptor request =
       ConstructCaptureRequestForTest(kFrameNumber);
-  int num_buffers_in_original_request = request.num_output_buffers();
+  // Don't count the BLOB buffer.
+  int num_yuv_buffers_in_original_request = request.num_output_buffers() - 1;
 
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
 
@@ -571,14 +639,12 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureResultTest) {
 
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(&result));
 
-  // The result should have the same number of output buffers as requested.
-  EXPECT_EQ(result.num_output_buffers(), num_buffers_in_original_request);
+  // The result should have all the YUV output buffers as requested.
+  EXPECT_EQ(result.num_output_buffers(), num_yuv_buffers_in_original_request);
   // The buffers should be restored to the ones that was provided by the capture
   // request.
   for (const auto& buffer : result.GetOutputBuffers()) {
-    if (buffer.stream->format == HAL_PIXEL_FORMAT_BLOB) {
-      EXPECT_EQ(blob_stream_.get(), buffer.stream);
-    } else if (impl_720p_stream_.HasSameSize(*buffer.stream)) {
+    if (impl_720p_stream_.HasSameSize(*buffer.stream)) {
       EXPECT_EQ(impl_720p_stream_.get(), buffer.stream);
     } else if (yuv_1080p_stream_.HasSameSize(*buffer.stream)) {
       EXPECT_EQ(yuv_1080p_stream_.get(), buffer.stream);
@@ -586,6 +652,8 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureResultTest) {
       FAIL() << "Unexpected result buffer";
     }
   }
+  // We should get the result callback for the BLOB buffer.
+  EXPECT_EQ(callback_received_.count(kFrameNumber), 1);
 }
 
 // Test that HdrNetStreamManipulator handles capture request with request
@@ -602,9 +670,10 @@ TEST_F(HdrNetStreamManipulatorTest,
 
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
 
-  // The modified request should have three output buffers: one HDRnet 720p
-  // buffer, one HDRnet 480p buffer and the original BLOB buffer.
-  EXPECT_EQ(request.num_output_buffers(), 3);
+  // The modified request should have four output buffers: one HDRnet 720p
+  // buffer, one HDRnet 480p buffer, the original BLOB buffer and one HDRnet
+  // buffer for the BLOB buffer.
+  EXPECT_EQ(request.num_output_buffers(), 4);
   bool blob_buffer_found = false;
   bool hdrnet_720p_buffer_found = false;
   bool hdrnet_480p_buffer_found = false;
@@ -640,6 +709,8 @@ TEST_F(HdrNetStreamManipulatorTest,
   constexpr int kFrameNumber = 0;
   Camera3CaptureDescriptor request =
       ConstructCaptureRequestWithDifferentAspectRatiosForTest(kFrameNumber);
+  // Don't count the BLOB buffer.
+  int num_yuv_buffers_in_original_request = request.num_output_buffers() - 1;
 
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
 
@@ -651,14 +722,13 @@ TEST_F(HdrNetStreamManipulatorTest,
 
   ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(&result));
 
-  // The result should have the same number of output buffers as requested.
-  EXPECT_EQ(result.num_output_buffers(), request.num_output_buffers());
+  // The result should have the same number of YUV output buffers as requested.
+  // BLOB output should be handled by still capture processor.
+  EXPECT_EQ(result.num_output_buffers(), num_yuv_buffers_in_original_request);
   // The buffers should be restored to the ones that was provided by the capture
   // request.
   for (const auto& buffer : result.GetOutputBuffers()) {
-    if (buffer.stream->format == HAL_PIXEL_FORMAT_BLOB) {
-      EXPECT_EQ(blob_stream_.get(), buffer.stream);
-    } else if (impl_720p_stream_.HasSameSize(*buffer.stream)) {
+    if (impl_720p_stream_.HasSameSize(*buffer.stream)) {
       EXPECT_EQ(impl_720p_stream_.get(), buffer.stream);
     } else if (yuv_480p_stream_.HasSameSize(*buffer.stream)) {
       EXPECT_EQ(yuv_480p_stream_.get(), buffer.stream);
@@ -666,6 +736,8 @@ TEST_F(HdrNetStreamManipulatorTest,
       FAIL() << "Unexpected result buffer";
     }
   }
+  // We should get the result callback for the BLOB buffer.
+  EXPECT_EQ(callback_received_.count(kFrameNumber), 1);
 }
 
 // Test that HdrNetStreamManipulator handles error notify messages correctly.
@@ -686,6 +758,7 @@ TEST_F(HdrNetStreamManipulatorTest, NotifyBufferErrorTest) {
       break;
     }
     last_successful_request = std::move(request);
+    frame_number++;
   } while (true);
 
   // Mark the last request with buffer error.

@@ -26,7 +26,8 @@ class ZslStreamManipulator : public StreamManipulator {
   ~ZslStreamManipulator() override;
 
   // Implementations of StreamManipulator.
-  bool Initialize(const camera_metadata_t* static_info) override;
+  bool Initialize(const camera_metadata_t* static_info,
+                  CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(

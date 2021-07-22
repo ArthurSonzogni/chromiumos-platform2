@@ -155,6 +155,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // Implementation of camera3_callback_ops_t.
   static void ProcessCaptureResult(const camera3_callback_ops_t* ops,
                                    const camera3_capture_result_t* result);
+  static void ReturnResultToClient(const camera3_callback_ops_t* ops,
+                                   Camera3CaptureDescriptor result);
 
   static void Notify(const camera3_callback_ops_t* ops,
                      const camera3_notify_msg_t* msg);
