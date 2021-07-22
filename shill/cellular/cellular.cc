@@ -891,6 +891,8 @@ void Cellular::HandleNewRegistrationState() {
           capability_->GetNetworkTechnologyString(), service_->strength());
     }
     if (StateIsRegistered()) {
+      // If the state is moving out of Connected/Linked clean up IP/networking.
+      OnDisconnected();
       SetState(State::kEnabled);
     }
     StopLocationPolling();
