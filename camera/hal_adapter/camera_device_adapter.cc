@@ -574,8 +574,8 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     camera_metadata_inspector_->InspectRequest(locked_request);
   }
 
-  int ret = camera_device_->ops->process_capture_request(
-      camera_device_, request_descriptor.LockForRequest());
+  int ret = camera_device_->ops->process_capture_request(camera_device_,
+                                                         locked_request);
 
   return ret;
 }
@@ -721,10 +721,10 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
-  camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
   if (self->callback_ops_delegate_) {
     if (self->camera_metadata_inspector_) {
-      self->camera_metadata_inspector_->InspectResult(locked_result);
+      self->camera_metadata_inspector_->InspectResult(
+          result_descriptor.GetLockedResult());
     }
     self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
   }

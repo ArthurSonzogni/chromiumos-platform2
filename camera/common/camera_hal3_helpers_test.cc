@@ -14,6 +14,58 @@
 
 namespace cros {
 
+TEST(Camera3StreamConfiguration, BasicCorrectnessTest) {
+  std::vector<camera3_stream_t> raw_streams = {
+      camera3_stream_t{
+          .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
+      },
+      camera3_stream_t{
+          .format = HAL_PIXEL_FORMAT_BLOB,
+      },
+  };
+  std::vector<camera3_stream_t*> raw_streams_ptr;
+  for (auto& s : raw_streams) {
+    raw_streams_ptr.push_back(&s);
+  }
+  constexpr uint32_t kTestOperationMode =
+      CAMERA3_STREAM_CONFIGURATION_CONSTRAINED_HIGH_SPEED_MODE;
+  camera3_stream_configuration_t stream_list = {
+      .num_streams = static_cast<uint32_t>(raw_streams_ptr.size()),
+      .streams = raw_streams_ptr.data(),
+      .operation_mode = kTestOperationMode,
+      .session_parameters = nullptr,
+  };
+
+  Camera3StreamConfiguration stream_config(stream_list);
+
+  // stream_config should have the same data content as the raw stream_list.
+  EXPECT_TRUE(stream_config.is_valid());
+  EXPECT_EQ(stream_config.operation_mode(), kTestOperationMode);
+  EXPECT_EQ(stream_config.num_streams(), raw_streams_ptr.size());
+  base::span<camera3_stream_t* const> streams = stream_config.GetStreams();
+  for (size_t i = 0; i < streams.size(); ++i) {
+    EXPECT_EQ(streams[i], raw_streams_ptr[i]);
+  }
+
+  // Test that we can update the streams.
+  camera3_stream_t p010_stream = {.format = HAL_PIXEL_FORMAT_YCBCR_P010};
+  std::vector<camera3_stream_t*> new_streams_ptr(streams.begin(),
+                                                 streams.end());
+  new_streams_ptr.push_back(&p010_stream);
+  stream_config.SetStreams(new_streams_ptr);
+  EXPECT_EQ(stream_config.num_streams(), 3);
+  EXPECT_EQ(stream_config.GetStreams()[2]->format, HAL_PIXEL_FORMAT_YCBCR_P010);
+
+  // Test that Lock works.
+  camera3_stream_configuration_t* raw_config = stream_config.Lock();
+  EXPECT_EQ(raw_config->num_streams, new_streams_ptr.size());
+  for (size_t i = 0; i < raw_config->num_streams; ++i) {
+    EXPECT_EQ(raw_config->streams[i], new_streams_ptr[i]);
+  }
+  EXPECT_EQ(raw_config->operation_mode, kTestOperationMode);
+  EXPECT_EQ(raw_config->session_parameters, nullptr);
+}
+
 TEST(Camera3CaptureDescriptor, BasicCaptureRequestCorrectnessTest) {
   android::CameraMetadata request_settings(10);
   std::array<uint8_t, 1> ae_mode{ANDROID_CONTROL_AE_MODE_ON};

@@ -11,6 +11,65 @@
 
 namespace cros {
 
+//
+// Camera3StreamConfiguration implementations.
+//
+
+Camera3StreamConfiguration::Camera3StreamConfiguration(
+    const camera3_stream_configuration_t& stream_list)
+    : streams_(stream_list.streams,
+               stream_list.streams + stream_list.num_streams),
+      operation_mode_(stream_list.operation_mode),
+      session_parameters_(stream_list.session_parameters) {}
+
+base::span<camera3_stream_t* const> Camera3StreamConfiguration::GetStreams()
+    const {
+  return {streams_.data(), streams_.size()};
+}
+
+bool Camera3StreamConfiguration::SetStreams(
+    base::span<camera3_stream_t* const> streams) {
+  if (IsLocked()) {
+    LOGF(ERROR) << "Cannot set streams when locked";
+    return false;
+  }
+  streams_.clear();
+  streams_.resize(streams.size());
+  std::copy(streams.begin(), streams.end(), streams_.begin());
+  return true;
+}
+
+bool Camera3StreamConfiguration::AppendStream(camera3_stream_t* stream) {
+  if (IsLocked()) {
+    LOGF(ERROR) << "Cannot append streams when locked";
+    return false;
+  }
+  streams_.push_back(stream);
+  return true;
+}
+
+camera3_stream_configuration_t* Camera3StreamConfiguration::Lock() {
+  CHECK(!IsLocked());
+  raw_configuration_ = camera3_stream_configuration_t{
+      .num_streams = static_cast<uint32_t>(streams_.size()),
+      .streams = streams_.data(),
+      .operation_mode = operation_mode_,
+      .session_parameters = session_parameters_};
+  return &raw_configuration_.value();
+}
+
+void Camera3StreamConfiguration::Unlock() {
+  raw_configuration_.reset();
+}
+
+bool Camera3StreamConfiguration::IsLocked() const {
+  return raw_configuration_.has_value();
+}
+
+//
+// Camera3CaptureDescriptor implementations.
+//
+
 Camera3CaptureDescriptor::Camera3CaptureDescriptor(
     const camera3_capture_request_t& request)
     : type_(Type::kCaptureRequest),
@@ -204,11 +263,8 @@ camera3_capture_request* Camera3CaptureDescriptor::LockForRequest() {
     LOGF(ERROR) << "Cannot lock for capture request";
     return nullptr;
   }
-  if (IsLocked()) {
-    return &raw_descriptor_->raw_request;
-  }
-
-  raw_descriptor_ = std::make_unique<RawDescriptor>();
+  CHECK(!IsLocked());
+  raw_descriptor_ = RawDescriptor();
   raw_descriptor_->raw_request.frame_number = frame_number_;
   raw_descriptor_->raw_request.settings = metadata_.getAndLock();
   raw_descriptor_->raw_request.input_buffer = input_buffer_.get();
@@ -226,11 +282,8 @@ camera3_capture_result_t* Camera3CaptureDescriptor::LockForResult() {
     LOGF(ERROR) << "Cannot lock for capture result";
     return nullptr;
   }
-  if (IsLocked()) {
-    return &raw_descriptor_->raw_result;
-  }
-
-  raw_descriptor_ = std::make_unique<RawDescriptor>();
+  CHECK(!IsLocked());
+  raw_descriptor_ = RawDescriptor();
   raw_descriptor_->raw_result.frame_number = frame_number_;
   raw_descriptor_->raw_result.result = metadata_.getAndLock();
   raw_descriptor_->raw_result.num_output_buffers = output_buffers_.size();
@@ -241,6 +294,28 @@ camera3_capture_result_t* Camera3CaptureDescriptor::LockForResult() {
   raw_descriptor_->raw_result.physcam_ids = physcam_ids_;
   raw_descriptor_->raw_result.physcam_metadata = physcam_metadata_;
 
+  return &raw_descriptor_->raw_result;
+}
+
+camera3_capture_request_t* Camera3CaptureDescriptor::GetLockedRequest() {
+  if (type_ != Type::kCaptureRequest) {
+    LOGF(ERROR) << "Cannot lock for capture request";
+    return nullptr;
+  }
+  if (!IsLocked()) {
+    return nullptr;
+  }
+  return &raw_descriptor_->raw_request;
+}
+
+camera3_capture_result_t* Camera3CaptureDescriptor::GetLockedResult() {
+  if (type_ != Type::kCaptureResult) {
+    LOGF(ERROR) << "Cannot lock for capture result";
+    return nullptr;
+  }
+  if (!IsLocked()) {
+    return nullptr;
+  }
   return &raw_descriptor_->raw_result;
 }
 
@@ -258,7 +333,7 @@ void Camera3CaptureDescriptor::Unlock() {
     case Type::kInvalidType:
       NOTREACHED() << "Cannot unlock invalid descriptor";
   }
-  raw_descriptor_ = nullptr;
+  raw_descriptor_.reset();
 }
 
 void Camera3CaptureDescriptor::Invalidate() {
@@ -270,11 +345,11 @@ void Camera3CaptureDescriptor::Invalidate() {
   partial_result_ = 0;
   physcam_ids_ = nullptr;
   physcam_metadata_ = nullptr;
-  raw_descriptor_ = nullptr;
+  raw_descriptor_.reset();
 }
 
 bool Camera3CaptureDescriptor::IsLocked() const {
-  return raw_descriptor_ != nullptr;
+  return raw_descriptor_.has_value();
 }
 
 }  // namespace cros

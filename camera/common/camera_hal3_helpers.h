@@ -20,6 +20,56 @@
 
 namespace cros {
 
+// A helper class to make it easy to modify camera3_stream_configuration_t.
+//
+// The class is not thread-safe. The user of this class needs to ensure that the
+// method calls are serialized and also that the class instance remains valid
+// when the data members are being referenced externally.
+class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
+ public:
+  // Default constructor creates an invalid instance.
+  Camera3StreamConfiguration() = default;
+  explicit Camera3StreamConfiguration(
+      const camera3_stream_configuration_t& stream_list);
+  ~Camera3StreamConfiguration() = default;
+
+  Camera3StreamConfiguration(Camera3StreamConfiguration&& other) = default;
+  Camera3StreamConfiguration& operator=(Camera3StreamConfiguration&& other) =
+      default;
+  Camera3StreamConfiguration(const Camera3StreamConfiguration& other) = delete;
+  Camera3StreamConfiguration& operator=(
+      const Camera3StreamConfiguration& other) = delete;
+
+  // Gets the stream configuration in a span.
+  base::span<camera3_stream_t* const> GetStreams() const;
+
+  // Sets the stream configuration to |streams|.
+  bool SetStreams(base::span<camera3_stream_t* const> streams);
+
+  // Appends |stream| to the stream configuration.
+  bool AppendStream(camera3_stream_t* stream);
+
+  // Locks the internal data and get the camera3_stream_configuration_t that can
+  // be consumed by the Android HAL3 API.
+  camera3_stream_configuration_t* Lock();
+
+  // Unlocks the instance for further modification.
+  void Unlock();
+
+  bool is_valid() const { return !streams_.empty(); }
+  uint32_t num_streams() const { return streams_.size(); }
+  uint32_t operation_mode() const { return operation_mode_; }
+
+ private:
+  bool IsLocked() const;
+
+  std::vector<camera3_stream_t*> streams_;
+  uint32_t operation_mode_ = 0;
+  const camera_metadata_t* session_parameters_ = nullptr;
+
+  base::Optional<camera3_stream_configuration_t> raw_configuration_;
+};
+
 // A helper class to make it easy to modify camera3_capture_request_t and
 // camera3_capture_result_t objects.
 //
@@ -97,6 +147,8 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   // camera3_capture_result_t that can be consumed by the Android HAL3 API.
   camera3_capture_request_t* LockForRequest();
   camera3_capture_result_t* LockForResult();
+  camera3_capture_request_t* GetLockedRequest();
+  camera3_capture_result_t* GetLockedResult();
 
   // Unlocks the descriptor for further modification.
   void Unlock();
@@ -132,7 +184,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
     camera3_capture_request_t raw_request;
     camera3_capture_result_t raw_result;
   };
-  std::unique_ptr<RawDescriptor> raw_descriptor_;
+  base::Optional<RawDescriptor> raw_descriptor_;
 };
 
 template <>
