@@ -72,10 +72,11 @@ class KeyReader {
   // and creating the proper keyboard layout.
   bool InputSetUp();
 
-  // Sets 'enter' to true after return key press is recorded. Press tab
-  // to toggle between showing and hiding passwords. Returns false on error.
-  // This is a blocking call, and any active watchers must be disabled for the
-  // duration of this function.
+  // In order to be able to display the string as users are typing,
+  // `GetUserInput` returns every time a char is added to the string buffer, but
+  // only returns with true once the enter key is pressed. Press tab to toggle
+  // between showing and hiding passwords. This is a blocking call, and any
+  // active watchers must be disabled for the duration of this function.
   bool GetUserInput(bool* enter, bool* tab_toggle, std::string* user_input);
 
   // Sets the watcher to the `epfd`, has a callback to `OnKeyEvent`.
