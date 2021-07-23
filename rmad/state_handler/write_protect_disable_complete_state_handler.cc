@@ -40,6 +40,8 @@ RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // doesn't have FWMP.
   wp_disable_complete->set_can_enable_factory_mode(
       !cr50_utils_->IsFactoryModeEnabled() && !cryptohome_client_->HasFwmp());
+  // Initialize to false so it doesn't violate rules under all conditions.
+  wp_disable_complete->set_enable_factory_mode(false);
   state_.set_allocated_wp_disable_complete(wp_disable_complete.release());
   return RMAD_ERROR_OK;
 }

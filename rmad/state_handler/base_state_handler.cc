@@ -30,7 +30,7 @@ bool BaseStateHandler::StoreState() {
   state_.SerializeToString(&serialized_string);
   base::Base64Encode(serialized_string, &serialized_string_base64);
 
-  state_map.insert({key, serialized_string_base64});
+  state_map[key] = serialized_string_base64;
   return json_store_->SetValue(kStateMap, state_map);
 }
 

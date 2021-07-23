@@ -30,6 +30,7 @@ class MockRmadInterface : public RmadInterface {
               (override));
 
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
+  MOCK_METHOD(void, TryTransitionNextStateFromCurrentState, (), (override));
   MOCK_METHOD(void, GetCurrentState, (const GetStateCallback&), (override));
   MOCK_METHOD(void,
               TransitionNextState,

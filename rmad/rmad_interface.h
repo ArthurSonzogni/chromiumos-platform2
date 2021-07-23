@@ -33,6 +33,10 @@ class RmadInterface {
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;
 
+  // Try to transition to the next state using the current state without
+  // additional user input.
+  virtual void TryTransitionNextStateFromCurrentState() = 0;
+
   // Callback used by all state functions to return the current state to the
   // dbus service.
   using GetStateCallback = base::Callback<void(const GetStateReply&)>;

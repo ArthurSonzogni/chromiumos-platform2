@@ -71,11 +71,13 @@ void EnterMinijail() {
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  rmad::RmadInterfaceImpl rmad_interface;
-  rmad::DBusService dbus_service(&rmad_interface);
-
   LOG(INFO) << "Starting Chrome OS RMA Daemon.";
   EnterMinijail();
+
+  rmad::RmadInterfaceImpl rmad_interface;
+  // Try a state transition during initialization.
+  rmad_interface.TryTransitionNextStateFromCurrentState();
+
+  rmad::DBusService dbus_service(&rmad_interface);
   return dbus_service.Run();
 }

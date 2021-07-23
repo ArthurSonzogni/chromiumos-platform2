@@ -39,6 +39,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;
   }
+  void TryTransitionNextStateFromCurrentState() override;
   void GetCurrentState(const GetStateCallback& callback) override;
   void TransitionNextState(const TransitionNextStateRequest& request,
                            const GetStateCallback& callback) override;
@@ -57,6 +58,10 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadErrorCode GetInitializedStateHandler(
       RmadState::StateCase state_case,
       scoped_refptr<BaseStateHandler>* state_handler) const;
+
+  GetStateReply GetCurrentStateInternal();
+  GetStateReply TransitionNextStateInternal(
+      const TransitionNextStateRequest& request);
 
   // Store the state history to |json_store_|.
   bool StoreStateHistory();

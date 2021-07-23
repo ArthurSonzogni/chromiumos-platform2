@@ -51,6 +51,12 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
 
   switch (state_.restock().choice()) {
     case RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK:
+      // Set the choice to "Continue", so the device can auto-transition to the
+      // next state on next boot.
+      state_.mutable_restock()->set_choice(
+          RestockState::RMAD_RESTOCK_CONTINUE_RMA);
+      StoreState();
+      // Wait for a while before shutting down.
       timer_.Start(FROM_HERE, kShutdownDelay, this,
                    &RestockStateHandler::Shutdown);
       return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,

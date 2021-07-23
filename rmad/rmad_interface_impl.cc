@@ -136,7 +136,22 @@ void RmadInterfaceImpl::RegisterSignalSender(
   }
 }
 
+void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
+  VLOG(1) << "Trying a state transition using current state";
+  GetStateReply get_current_state_reply = GetCurrentStateInternal();
+  if (get_current_state_reply.error() == RMAD_ERROR_OK) {
+    TransitionNextStateRequest request;
+    *request.mutable_state() = get_current_state_reply.state();
+    TransitionNextStateInternal(request);
+  }
+}
+
 void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
+  GetStateReply reply = GetCurrentStateInternal();
+  callback.Run(reply);
+}
+
+GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> state_handler;
 
@@ -153,12 +168,18 @@ void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
     reply.set_error(error);
   }
 
-  callback.Run(reply);
+  return reply;
 }
 
 void RmadInterfaceImpl::TransitionNextState(
     const TransitionNextStateRequest& request,
     const GetStateCallback& callback) {
+  GetStateReply reply = TransitionNextStateInternal(request);
+  callback.Run(reply);
+}
+
+GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
+    const TransitionNextStateRequest& request) {
   // TODO(chenghan): Add error replies when failed to write |json_store_|.
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> current_state_handler, next_state_handler;
@@ -167,8 +188,7 @@ void RmadInterfaceImpl::TransitionNextState(
                                                        &current_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
-    callback.Run(reply);
-    return;
+    return reply;
   }
 
   auto [next_state_case_error, next_state_case] =
@@ -181,8 +201,7 @@ void RmadInterfaceImpl::TransitionNextState(
     reply.set_error(next_state_case_error);
     reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
-    callback.Run(reply);
-    return;
+    return reply;
   }
 
   CHECK(next_state_case != current_state_case_)
@@ -194,8 +213,7 @@ void RmadInterfaceImpl::TransitionNextState(
     reply.set_error(error);
     reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
-    callback.Run(reply);
-    return;
+    return reply;
   }
 
   // Transition to next state.
@@ -218,7 +236,7 @@ void RmadInterfaceImpl::TransitionNextState(
   reply.set_error(RMAD_ERROR_OK);
   reply.set_allocated_state(new RmadState(next_state_handler->GetState()));
   reply.set_can_go_back(CanGoBack());
-  callback.Run(reply);
+  return reply;
 }
 
 void RmadInterfaceImpl::TransitionPreviousState(
