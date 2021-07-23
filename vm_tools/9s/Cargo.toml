@@ -7,6 +7,6 @@ authors = ["The Chromium OS Authors"]
 getopts = "0.2"
 libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
-p9 = { path = "../p9" } # provided by ebuild
+p9 = { path = "../../../platform/crosvm/common/p9" } # provided by ebuild
 log = "0.4"
 sys_util = { path = "../../../platform/crosvm/sys_util" } # provided by ebuild
