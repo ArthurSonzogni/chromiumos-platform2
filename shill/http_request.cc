@@ -192,7 +192,7 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
 }
 
 void HttpRequest::Stop() {
-  SLOG(this, 3) << "In " << __func__ << "; running is " << is_running_;
+  SLOG(this, 3) << "In " << __func__ << ": running is " << is_running_;
 
   if (!is_running_) {
     return;

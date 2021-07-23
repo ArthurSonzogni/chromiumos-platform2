@@ -329,7 +329,7 @@ void CellularCapability3gpp::StartModem(Error* error,
                                   weak_ptr_factory_.GetWeakPtr(), callback),
                        kTimeoutEnable);
   if (local_error.IsFailure()) {
-    SLOG(this, 2) << __func__ << "Call to modem_proxy_->Enable() failed";
+    SLOG(this, 2) << __func__ << ": Call to modem_proxy_->Enable() failed";
   }
   if (error) {
     error->CopyFrom(local_error);
@@ -1189,7 +1189,7 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(const Error& error) {
     // The service could have been deleted before our
     // SetInitialEpsBearerSettings() request completes if the modem was enabled
     // and then quickly disabled.
-    SLOG(this, 2) << __func__ << "Cellular service does not exist.";
+    SLOG(this, 2) << __func__ << ": Cellular service does not exist.";
     last_attach_apn_.clear();
     return;
   }

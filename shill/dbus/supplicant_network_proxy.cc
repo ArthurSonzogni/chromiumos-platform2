@@ -98,7 +98,7 @@ void SupplicantNetworkProxy::OnSignalConnected(
     const std::string& signal_name,
     bool success) {
   SLOG(&network_proxy_->GetObjectPath(), 2)
-      << __func__ << "interface: " << interface_name
+      << __func__ << ": interface: " << interface_name
       << " signal: " << signal_name << "success: " << success;
   if (!success) {
     LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "

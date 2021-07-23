@@ -50,7 +50,7 @@ void SupplicantBSSProxy::OnSignalConnected(const std::string& interface_name,
                                            const std::string& signal_name,
                                            bool success) {
   SLOG(&bss_proxy_->GetObjectPath(), 2)
-      << __func__ << "interface: " << interface_name
+      << __func__ << ": interface: " << interface_name
       << " signal: " << signal_name << "success: " << success;
   if (!success) {
     LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "

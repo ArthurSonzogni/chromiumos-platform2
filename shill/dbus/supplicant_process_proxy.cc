@@ -217,7 +217,7 @@ void SupplicantProcessProxy::OnServiceAvailable(bool available) {
 void SupplicantProcessProxy::OnServiceOwnerChanged(
     const std::string& old_owner, const std::string& new_owner) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2)
-      << __func__ << "old: " << old_owner << " new: " << new_owner;
+      << __func__ << ": old: " << old_owner << " new: " << new_owner;
   if (new_owner.empty()) {
     OnServiceAvailable(false);
   } else {
@@ -236,7 +236,7 @@ void SupplicantProcessProxy::OnSignalConnected(
     const std::string& signal_name,
     bool success) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2)
-      << __func__ << "interface: " << interface_name
+      << __func__ << ": interface: " << interface_name
       << " signal: " << signal_name << "success: " << success;
   if (!success) {
     LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "

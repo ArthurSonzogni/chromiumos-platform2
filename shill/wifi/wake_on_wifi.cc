@@ -266,14 +266,14 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         if (!triggers->CreateFlagAttribute(NL80211_WOWLAN_TRIG_DISCONNECT,
                                            "Wake on Disconnect")) {
           LOG(ERROR) << __func__
-                     << "Could not create flag attribute "
+                     << ": Could not create flag attribute "
                         "NL80211_WOWLAN_TRIG_DISCONNECT";
           return false;
         }
         if (!triggers->SetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                              true)) {
           LOG(ERROR) << __func__
-                     << "Could not set flag attribute "
+                     << ": Could not set flag attribute "
                         "NL80211_WOWLAN_TRIG_DISCONNECT";
           return false;
         }
@@ -430,14 +430,14 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
                                       &unused_flag) &&
       !base::Contains(trigs, kWakeTriggerDisconnect)) {
     SLOG(WiFi, nullptr, 3)
-        << __func__ << "Wake on disconnect trigger not expected but found";
+        << __func__ << ": Wake on disconnect trigger not expected but found";
     return false;
   }
   if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
                                             &unused_list) &&
       !base::Contains(trigs, kWakeTriggerSSID)) {
     SLOG(WiFi, nullptr, 3) << __func__
-                           << "Wake on SSID trigger not expected but found";
+                           << ": Wake on SSID trigger not expected but found";
     return false;
   }
   // Check that each expected trigger is present in |msg| with matching
@@ -454,7 +454,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         }
         if (!wake_on_disconnect) {
           SLOG(WiFi, nullptr, 3)
-              << __func__ << "Wake on disconnect flag not set.";
+              << __func__ << ": Wake on disconnect flag not set.";
           return false;
         }
         break;
@@ -480,7 +480,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         }
         if (interval != net_detect_scan_period_seconds * 1000) {
           SLOG(WiFi, nullptr, 3)
-              << __func__ << "Net Detect scan period mismatch";
+              << __func__ << ": Net Detect scan period mismatch";
           return false;
         }
         AttributeListConstRefPtr ssids;
@@ -522,7 +522,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           ssid_iter.Advance();
         }
         if (ssid_mismatch_found || ssid_num_mismatch) {
-          SLOG(WiFi, nullptr, 3) << __func__ << "Net Detect SSID mismatch";
+          SLOG(WiFi, nullptr, 3) << __func__ << ": Net Detect SSID mismatch";
           return false;
         }
         break;
