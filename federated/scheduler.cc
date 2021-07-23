@@ -26,6 +26,9 @@ Scheduler::Scheduler(StorageManager* storage_manager, dbus::Bus* bus)
       registered_clients_(GetClientNames()),
       task_runner_(base::SequencedTaskRunnerHandle::Get()) {}
 
+// TODO(alanlxl): create a destructor or finalize method that deletes examples
+//                from the database.
+
 void Scheduler::Schedule() {
   for (const auto& client_name : registered_clients_) {
     PostDelayedTask(client_name, kDefaultRetryWindow);
@@ -49,19 +52,19 @@ void Scheduler::TryToStartJobForClient(const std::string& client_name) {
     return;
   }
 
-  if (!storage_manager_->PrepareStreamingForClient(client_name)) {
-    DVLOG(1) << "Client " << client_name << " fails to prepare examples.";
+  const base::Optional<ExampleDatabase::Iterator> examples =
+      storage_manager_->GetExampleIterator(client_name);
+  if (!examples.has_value()) {
+    DVLOG(1) << "Client " << client_name << " failed to prepare examples.";
     PostDelayedTask(client_name, next_retry_delay);
     return;
   }
-  bool clean_examples = false;
 
   // TODO(alanlxl): the real federated task happens here.
-  // `next_retry_delay` and `clean_examples` should be updated according to the
-  // response from the server.
+  // `next_retry_delay` should be updated according to the response from the
+  // server.
 
-  // Closes the streaming and posts next task.
-  storage_manager_->CloseStreaming(clean_examples);
+  // Posts next task.
   PostDelayedTask(client_name, next_retry_delay);
 }
 

@@ -27,12 +27,10 @@ class MockStorageManager : public StorageManager {
               OnExampleReceived,
               (const std::string&, const std::string&),
               (override));
-  MOCK_METHOD(bool,
-              PrepareStreamingForClient,
+  MOCK_METHOD(base::Optional<ExampleDatabase::Iterator>,
+              GetExampleIterator,
               (const std::string&),
-              (override));
-  MOCK_METHOD(bool, GetNextExample, (std::string*, bool*), (override));
-  MOCK_METHOD(bool, CloseStreaming, (bool), (override));
+              (const, override));
 };
 
 }  // namespace federated
