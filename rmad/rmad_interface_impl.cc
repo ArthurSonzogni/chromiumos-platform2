@@ -274,14 +274,14 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
   AbortRmaReply reply;
 
   if (allow_abort_) {
-    LOG(INFO) << "AbortRma: Abort allowed.";
-    // TODO(gavindodd): The json store file should be deleted and a reboot
-    // triggered.
-    json_store_->Clear();
+    VLOG(1) << "AbortRma: Abort allowed.";
+    if (!json_store_->ClearAndDeleteFile()) {
+      LOG(ERROR) << "AbortRma: Failed to clear RMA state file";
+    }
     current_state_case_ = RmadState::STATE_NOT_SET;
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else {
-    LOG(INFO) << "AbortRma: Failed to abort.";
+    VLOG(1) << "AbortRma: Failed to abort.";
     reply.set_error(RMAD_ERROR_ABORT_FAILED);
   }
 

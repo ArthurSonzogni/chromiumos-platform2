@@ -153,6 +153,10 @@ bool JsonStore::Clear() {
   return WriteToFile();
 }
 
+bool JsonStore::ClearAndDeleteFile() {
+  return Clear() && base::DeleteFile(file_path_);
+}
+
 void JsonStore::InitFromFile() {
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
   read_error_ = read_result->read_error;

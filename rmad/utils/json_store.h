@@ -77,6 +77,10 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // the file.
   bool Clear();
 
+  // Clear the dictionary and delete the file that stores the data in storage.
+  // Return true on success, false if failed to clear or delete the file.
+  bool ClearAndDeleteFile();
+
   // Get read status of the file.
   ReadError GetReadError() const { return read_error_; }
 

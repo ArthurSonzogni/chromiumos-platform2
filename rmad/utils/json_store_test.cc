@@ -304,4 +304,32 @@ TEST_F(JsonStoreTest, SetValue_TemplateNestedMapList) {
   EXPECT_EQ(values["b"][1], 4);
 }
 
+TEST_F(JsonStoreTest, Clear) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+
+  base::Value value;
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &value));
+
+  // Clear the data.
+  EXPECT_TRUE(json_store->Clear());
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &value));
+}
+
+TEST_F(JsonStoreTest, ClearAndDeleteFile) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+
+  base::Value value;
+  EXPECT_TRUE(base::PathExists(input_file));
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &value));
+
+  // Delete the file.
+  EXPECT_TRUE(json_store->ClearAndDeleteFile());
+  EXPECT_FALSE(base::PathExists(input_file));
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &value));
+}
+
 }  // namespace rmad
