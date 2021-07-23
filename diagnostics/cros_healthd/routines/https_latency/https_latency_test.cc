@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/https_latency/https_latency.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -77,10 +78,12 @@ class HttpsLatencyRoutineTest : public testing::Test {
 TEST_F(HttpsLatencyRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsLatencyRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HttpsLatencyCallback callback) {
-        std::move(callback).Run(
+                               RunHttpsLatencyCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-            /*problems=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -94,10 +97,12 @@ TEST_F(HttpsLatencyRoutineTest, RoutineSuccess) {
 TEST_F(HttpsLatencyRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsLatencyRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HttpsLatencyCallback callback) {
-        std::move(callback).Run(
+                               RunHttpsLatencyCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
-            /*problem=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -124,10 +129,12 @@ class HttpsLatencyProblemTest
 TEST_P(HttpsLatencyProblemTest, HandleHttpsLatencyProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsLatencyRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HttpsLatencyCallback callback) {
-        std::move(callback).Run(
+                               RunHttpsLatencyCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
-            {params().problem_enum});
+            network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems(
+                {params().problem_enum}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/signal_strength/signal_strength.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -78,10 +79,12 @@ class SignalStrengthRoutineTest : public testing::Test {
 TEST_F(SignalStrengthRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunSignalStrengthRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               SignalStrengthCallback callback) {
-        std::move(callback).Run(
+                               RunSignalStrengthCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-            /*problems=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -95,10 +98,12 @@ TEST_F(SignalStrengthRoutineTest, RoutineSuccess) {
 TEST_F(SignalStrengthRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunSignalStrengthRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               SignalStrengthCallback callback) {
-        std::move(callback).Run(
+                               RunSignalStrengthCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
-            /*problem=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -126,10 +131,12 @@ class SignalStrengthProblemTest
 TEST_P(SignalStrengthProblemTest, HandleSignalStrengthProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunSignalStrengthRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               SignalStrengthCallback callback) {
-        std::move(callback).Run(
+                               RunSignalStrengthCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
-            {params().problem_enum});
+            network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
+                {params().problem_enum}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

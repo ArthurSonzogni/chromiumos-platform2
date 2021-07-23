@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/gateway_can_be_pinged/gateway_can_be_pinged.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -78,10 +79,12 @@ class GatewayCanBePingedRoutineTest : public testing::Test {
 TEST_F(GatewayCanBePingedRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunGatewayCanBePingedRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               GatewayCanBePingedCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-            /*problems=*/{});
+                               RunGatewayCanBePingedCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewGatewayCanBePingedProblems({}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -95,10 +98,12 @@ TEST_F(GatewayCanBePingedRoutineTest, RoutineSuccess) {
 TEST_F(GatewayCanBePingedRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunGatewayCanBePingedRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               GatewayCanBePingedCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kNotRun,
-            /*problem=*/{});
+                               RunGatewayCanBePingedCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewGatewayCanBePingedProblems({}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -126,10 +131,12 @@ class GatewayCanBePingedProblemTest
 TEST_P(GatewayCanBePingedProblemTest, HandleGatewayCanBePingedProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunGatewayCanBePingedRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               GatewayCanBePingedCallback callback) {
-        std::move(callback).Run(
+                               RunGatewayCanBePingedCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
-            {params().problem_enum});
+            network_diagnostics_ipc::RoutineProblems::
+                NewGatewayCanBePingedProblems({params().problem_enum}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

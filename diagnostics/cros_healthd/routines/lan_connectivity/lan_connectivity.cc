@@ -27,22 +27,29 @@ namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 void ParseLanConnectivityResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    network_diagnostics_ipc::RoutineVerdict verdict) {
+    network_diagnostics_ipc::RoutineResultPtr result) {
   DCHECK(status);
   DCHECK(status_message);
 
-  switch (verdict) {
+  switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
       *status_message = kLanConnectivityRoutineNoProblemMessage;
       break;
-    case network_diagnostics_ipc::RoutineVerdict::kProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
-      *status_message = kLanConnectivityRoutineProblemMessage;
-      break;
     case network_diagnostics_ipc::RoutineVerdict::kNotRun:
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun;
       *status_message = kLanConnectivityRoutineNotRunMessage;
+      break;
+    case network_diagnostics_ipc::RoutineVerdict::kProblem:
+      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+      auto problems = result->problems->get_lan_connectivity_problems();
+      DCHECK(!problems.empty());
+      switch (problems[0]) {
+        case network_diagnostics_ipc::LanConnectivityProblem::
+            kNoLanConnectivity:
+          *status_message = kLanConnectivityRoutineProblemMessage;
+          break;
+      }
       break;
   }
 }

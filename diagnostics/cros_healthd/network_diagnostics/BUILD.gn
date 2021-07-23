@@ -14,8 +14,17 @@ pkg_config("libnetwork_diagnostics_pkg_deps") {
 
 source_set("libnetwork_diagnostics_adapter") {
   configs += [ ":libnetwork_diagnostics_pkg_deps" ]
-  deps = [ "//diagnostics/mojo:network_diagnostics_mojo_bindings" ]
+  deps = [
+    ":libnetwork_diagnostics_utils",
+    "//diagnostics/mojo:network_diagnostics_mojo_bindings",
+  ]
   sources = [ "network_diagnostics_adapter_impl.cc" ]
+}
+
+source_set("libnetwork_diagnostics_utils") {
+  configs += [ ":libnetwork_diagnostics_pkg_deps" ]
+  deps = [ "//diagnostics/mojo:network_diagnostics_mojo_bindings" ]
+  sources = [ "network_diagnostics_utils.cc" ]
 }
 
 if (use.test) {
@@ -31,6 +40,7 @@ if (use.test) {
     ]
     deps = [
       ":libnetwork_diagnostics_adapter",
+      ":libnetwork_diagnostics_utils",
       "//diagnostics/common:mojo_testrunner",
     ]
   }

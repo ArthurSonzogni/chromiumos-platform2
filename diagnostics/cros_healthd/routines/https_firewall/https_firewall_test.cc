@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/https_firewall/https_firewall.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -77,10 +78,12 @@ class HttpsFirewallRoutineTest : public testing::Test {
 TEST_F(HttpsFirewallRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsFirewallRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HttpsFirewallCallback callback) {
-        std::move(callback).Run(
+                               RunHttpsFirewallCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-            /*problems=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewHttpsFirewallProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -94,10 +97,12 @@ TEST_F(HttpsFirewallRoutineTest, RoutineSuccess) {
 TEST_F(HttpsFirewallRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsFirewallRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HttpsFirewallCallback callback) {
-        std::move(callback).Run(
+                               RunHttpsFirewallCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
-            /*problem=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewHttpsFirewallProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -124,10 +129,12 @@ class HttpsFirewallProblemTest
 TEST_P(HttpsFirewallProblemTest, HandleHttpsFirewallProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunHttpsFirewallRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HttpsFirewallCallback callback) {
-        std::move(callback).Run(
+                               RunHttpsFirewallCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
-            {params().problem_enum});
+            network_diagnostics_ipc::RoutineProblems::NewHttpsFirewallProblems(
+                {params().problem_enum}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

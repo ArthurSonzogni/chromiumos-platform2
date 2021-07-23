@@ -16,7 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/video_conferencing/video_conferencing.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -42,8 +42,6 @@ struct VideoConferencingProblemTestParams {
   std::vector<network_diagnostics_ipc::VideoConferencingProblem> problems;
   std::string failure_message;
 };
-
-constexpr char kSupportDetails[] = "www.support_link_goes_here.com";
 
 }  // namespace
 
@@ -88,10 +86,12 @@ TEST_F(VideoConferencingRoutineTest, RoutineSuccess) {
       .WillOnce(
           Invoke([&](const base::Optional<std::string>& stun_server_hostname,
                      network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         VideoConferencingCallback callback) {
-            std::move(callback).Run(
+                         RunVideoConferencingCallback callback) {
+            auto result = CreateResult(
                 network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-                /*problems=*/{}, /*support_details=*/base::nullopt);
+                network_diagnostics_ipc::RoutineProblems::
+                    NewVideoConferencingProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -108,10 +108,12 @@ TEST_F(VideoConferencingRoutineTest, RoutineError) {
       .WillOnce(
           Invoke([&](const base::Optional<std::string>& stun_server_hostname,
                      network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         VideoConferencingCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNotRun,
-                /*problem=*/{}, /*support_details=*/base::nullopt);
+                         RunVideoConferencingCallback callback) {
+            auto result =
+                CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
+                             network_diagnostics_ipc::RoutineProblems::
+                                 NewVideoConferencingProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -142,29 +144,18 @@ TEST_P(VideoConferencingProblemTest, HandleVideoConferencingProblem) {
       .WillOnce(
           Invoke([&](const base::Optional<std::string>& stun_server_hostname,
                      network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         VideoConferencingCallback callback) {
-            std::move(callback).Run(
+                         RunVideoConferencingCallback callback) {
+            auto result = CreateResult(
                 network_diagnostics_ipc::RoutineVerdict::kProblem,
-                params().problems, kSupportDetails);
+                network_diagnostics_ipc::RoutineProblems::
+                    NewVideoConferencingProblems(params().problems));
+            std::move(callback).Run(std::move(result));
           }));
-
-  // Set up the JSON output which provides support details when a problem
-  // occurs.
-  base::Value output_dict(base::Value::Type::DICTIONARY);
-  output_dict.SetKey(kVideoConferencingRoutineSupportDetailsKey,
-                     base::Value(kSupportDetails));
-  std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output_dict, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
-  auto support_details_output = base::StringPiece(json);
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
                              params().failure_message);
-
-  EXPECT_EQ(GetStringFromMojoHandle(std::move(routine_update->output)),
-            support_details_output);
 }
 
 INSTANTIATE_TEST_SUITE_P(

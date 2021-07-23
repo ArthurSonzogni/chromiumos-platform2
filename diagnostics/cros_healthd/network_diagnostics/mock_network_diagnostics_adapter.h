@@ -33,63 +33,64 @@ class MockNetworkDiagnosticsAdapter final : public NetworkDiagnosticsAdapter {
   MOCK_METHOD(void,
               RunLanConnectivityRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::LanConnectivityCallback),
+                   NetworkDiagnosticsRoutines::RunLanConnectivityCallback),
               (override));
   MOCK_METHOD(void,
               RunSignalStrengthRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::SignalStrengthCallback),
+                   NetworkDiagnosticsRoutines::RunSignalStrengthCallback),
               (override));
   MOCK_METHOD(void,
               RunGatewayCanBePingedRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::GatewayCanBePingedCallback),
+                   NetworkDiagnosticsRoutines::RunGatewayCanBePingedCallback),
               (override));
-  MOCK_METHOD(void,
-              RunHasSecureWiFiConnectionRoutine,
-              (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::HasSecureWiFiConnectionCallback),
-              (override));
+  MOCK_METHOD(
+      void,
+      RunHasSecureWiFiConnectionRoutine,
+      (chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+           RunHasSecureWiFiConnectionCallback),
+      (override));
   MOCK_METHOD(void,
               RunDnsResolverPresentRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::DnsResolverPresentCallback),
+                   NetworkDiagnosticsRoutines::RunDnsResolverPresentCallback),
               (override));
   MOCK_METHOD(void,
               RunDnsLatencyRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::DnsLatencyCallback),
+                   NetworkDiagnosticsRoutines::RunDnsLatencyCallback),
               (override));
   MOCK_METHOD(void,
               RunDnsResolutionRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::DnsResolutionCallback),
+                   NetworkDiagnosticsRoutines::RunDnsResolutionCallback),
               (override));
   MOCK_METHOD(void,
               RunCaptivePortalRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::CaptivePortalCallback),
+                   NetworkDiagnosticsRoutines::RunCaptivePortalCallback),
               (override));
   MOCK_METHOD(void,
               RunHttpFirewallRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::HttpFirewallCallback),
+                   NetworkDiagnosticsRoutines::RunHttpFirewallCallback),
               (override));
   MOCK_METHOD(void,
               RunHttpsFirewallRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::HttpsFirewallCallback),
+                   NetworkDiagnosticsRoutines::RunHttpsFirewallCallback),
               (override));
   MOCK_METHOD(void,
               RunHttpsLatencyRoutine,
               (chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::HttpsLatencyCallback),
+                   NetworkDiagnosticsRoutines::RunHttpsLatencyCallback),
               (override));
   MOCK_METHOD(void,
               RunVideoConferencingRoutine,
               (const base::Optional<std::string>&,
                chromeos::network_diagnostics::mojom::
-                   NetworkDiagnosticsRoutines::VideoConferencingCallback),
+                   NetworkDiagnosticsRoutines::RunVideoConferencingCallback),
               (override));
 };
 

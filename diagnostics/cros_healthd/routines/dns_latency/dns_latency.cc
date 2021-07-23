@@ -24,15 +24,13 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
 // Parses the results of the DNS latency routine.
-void ParseDnsLatencyResult(
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
-    std::string* status_message,
-    network_diagnostics_ipc::RoutineVerdict verdict,
-    const std::vector<network_diagnostics_ipc::DnsLatencyProblem>& problems) {
+void ParseDnsLatencyResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
+                           std::string* status_message,
+                           network_diagnostics_ipc::RoutineResultPtr result) {
   DCHECK(status);
   DCHECK(status_message);
 
-  switch (verdict) {
+  switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
       *status_message = kDnsLatencyRoutineNoProblemMessage;
@@ -43,6 +41,7 @@ void ParseDnsLatencyResult(
       break;
     case network_diagnostics_ipc::RoutineVerdict::kProblem:
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+      auto problems = result->problems->get_dns_latency_problems();
       DCHECK(!problems.empty());
       switch (problems[0]) {
         case network_diagnostics_ipc::DnsLatencyProblem::kHostResolutionFailure:

@@ -32,63 +32,63 @@ class NetworkDiagnosticsAdapter {
   // Requests that the browser invokes the LanConnectivity routine.
   virtual void RunLanConnectivityRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          LanConnectivityCallback) = 0;
+          RunLanConnectivityCallback) = 0;
 
   // Requests the browser to invoke the SignalStrength routine.
   virtual void RunSignalStrengthRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          SignalStrengthCallback) = 0;
+          RunSignalStrengthCallback) = 0;
 
   // Requests the browser to invoke the GatewayCanBePinged routine.
   virtual void RunGatewayCanBePingedRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          GatewayCanBePingedCallback) = 0;
+          RunGatewayCanBePingedCallback) = 0;
 
   // Requests the browser to invoke the HasSecureWiFiConnection routine.
   virtual void RunHasSecureWiFiConnectionRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HasSecureWiFiConnectionCallback) = 0;
+          RunHasSecureWiFiConnectionCallback) = 0;
 
   // Requests the browser to invoke the DnsResolverPresent routine.
   virtual void RunDnsResolverPresentRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          DnsResolverPresentCallback) = 0;
+          RunDnsResolverPresentCallback) = 0;
 
   // Requests the browser to invoke the DnsLatency routine.
   virtual void RunDnsLatencyRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          DnsLatencyCallback) = 0;
+          RunDnsLatencyCallback) = 0;
 
   // Requests the browser to invoke the DnsResolution routine.
   virtual void RunDnsResolutionRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          DnsResolutionCallback) = 0;
+          RunDnsResolutionCallback) = 0;
 
   // Requests the browser to invoke the CaptivePortal routine.
   virtual void RunCaptivePortalRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          CaptivePortalCallback) = 0;
+          RunCaptivePortalCallback) = 0;
 
   // Requests the browser to invoke the HttpFirewall routine.
   virtual void RunHttpFirewallRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HttpFirewallCallback) = 0;
+          RunHttpFirewallCallback) = 0;
 
   // Requests the browser to invoke the HttpsFirewall routine.
   virtual void RunHttpsFirewallRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HttpsFirewallCallback) = 0;
+          RunHttpsFirewallCallback) = 0;
 
   // Requests the browser to invoke the HttpsLatency routine.
   virtual void RunHttpsLatencyRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HttpsLatencyCallback) = 0;
+          RunHttpsLatencyCallback) = 0;
 
   // Requests the browser to invoke the VideoConferencing routine.
   virtual void RunVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname,
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          VideoConferencingCallback) = 0;
+          RunVideoConferencingCallback) = 0;
 };
 
 }  // namespace diagnostics

@@ -55,15 +55,11 @@ std::string GetProblemMessage(
 void ParseVideoConferencingResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    base::Value* output,
-    network_diagnostics_ipc::RoutineVerdict verdict,
-    const std::vector<network_diagnostics_ipc::VideoConferencingProblem>&
-        problems,
-    const base::Optional<std::string>& support_details) {
+    network_diagnostics_ipc::RoutineResultPtr result) {
   DCHECK(status);
   DCHECK(status_message);
 
-  switch (verdict) {
+  switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
       *status_message = kVideoConferencingRoutineNoProblemMessage;
@@ -74,29 +70,29 @@ void ParseVideoConferencingResult(
       break;
     case network_diagnostics_ipc::RoutineVerdict::kProblem:
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+      auto problems = result->problems->get_video_conferencing_problems();
       DCHECK(!problems.empty());
       *status_message = GetProblemMessage(problems);
       break;
   }
-  if (support_details.has_value())
-    output->SetKey(kVideoConferencingRoutineSupportDetailsKey,
-                   base::Value(support_details.value()));
 }
 
+// We include |output_dict| here to satisfy SimpleRoutine - the video
+// conferencing routine never includes an output.
 void RunVideoConferencingRoutine(
     const base::Optional<std::string>& stun_server_hostname,
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    base::Value* output) {
+    base::Value* output_dict) {
   DCHECK(network_diagnostics_adapter);
   DCHECK(status);
 
   *status = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
 
   network_diagnostics_adapter->RunVideoConferencingRoutine(
-      stun_server_hostname, base::BindOnce(&ParseVideoConferencingResult,
-                                           status, status_message, output));
+      stun_server_hostname,
+      base::BindOnce(&ParseVideoConferencingResult, status, status_message));
 }
 
 }  // namespace
@@ -111,8 +107,6 @@ const char kVideoConferencingRoutineMediaFailureProblemMessage[] =
     "Failed to establish a TLS connection to media hostnames.";
 const char kVideoConferencingRoutineNotRunMessage[] =
     "Video conferencing routine did not run.";
-
-const char kVideoConferencingRoutineSupportDetailsKey[] = "supportDetails";
 
 std::unique_ptr<DiagnosticRoutine> CreateVideoConferencingRoutine(
     const base::Optional<std::string>& stun_server_hostname,

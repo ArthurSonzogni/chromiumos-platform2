@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/lan_connectivity/lan_connectivity.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -71,9 +72,12 @@ class LanConnectivityRoutineTest : public testing::Test {
 TEST_F(LanConnectivityRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunLanConnectivityRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               LanConnectivityCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+                               RunLanConnectivityCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewLanConnectivityProblems({}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -89,9 +93,14 @@ TEST_F(LanConnectivityRoutineTest, RoutineSuccess) {
 TEST_F(LanConnectivityRoutineTest, RoutineFailed) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunLanConnectivityRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               LanConnectivityCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kProblem);
+                               RunLanConnectivityCallback callback) {
+        auto result = CreateResult(
+            network_diagnostics_ipc::RoutineVerdict::kProblem,
+            network_diagnostics_ipc::RoutineProblems::
+                NewLanConnectivityProblems(
+                    {network_diagnostics_ipc::LanConnectivityProblem::
+                         kNoLanConnectivity}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -107,9 +116,12 @@ TEST_F(LanConnectivityRoutineTest, RoutineFailed) {
 TEST_F(LanConnectivityRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunLanConnectivityRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               LanConnectivityCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kNotRun);
+                               RunLanConnectivityCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewLanConnectivityProblems({}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

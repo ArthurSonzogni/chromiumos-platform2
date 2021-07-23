@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/dns_resolution/dns_resolution.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -77,10 +78,12 @@ class DnsResolutionRoutineTest : public testing::Test {
 TEST_F(DnsResolutionRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunDnsResolutionRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               DnsResolutionCallback callback) {
-        std::move(callback).Run(
+                               RunDnsResolutionCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-            /*problems=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -94,10 +97,12 @@ TEST_F(DnsResolutionRoutineTest, RoutineSuccess) {
 TEST_F(DnsResolutionRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunDnsResolutionRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               DnsResolutionCallback callback) {
-        std::move(callback).Run(
+                               RunDnsResolutionCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kNotRun,
-            /*problem=*/{});
+            network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems(
+                {}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -124,10 +129,12 @@ class DnsResolutionProblemTest
 TEST_P(DnsResolutionProblemTest, HandleDnsResolutionProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()), RunDnsResolutionRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               DnsResolutionCallback callback) {
-        std::move(callback).Run(
+                               RunDnsResolutionCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
-            {params().problem_enum});
+            network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems(
+                {params().problem_enum}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

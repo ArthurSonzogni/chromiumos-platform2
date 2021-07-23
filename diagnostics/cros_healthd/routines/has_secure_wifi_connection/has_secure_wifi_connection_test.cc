@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 #include "diagnostics/cros_healthd/routines/has_secure_wifi_connection/has_secure_wifi_connection.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -81,10 +82,12 @@ TEST_F(HasSecureWiFiConnectionRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunHasSecureWiFiConnectionRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HasSecureWiFiConnectionCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-            /*problems=*/{});
+                               RunHasSecureWiFiConnectionCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewHasSecureWifiConnectionProblems({}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -99,10 +102,12 @@ TEST_F(HasSecureWiFiConnectionRoutineTest, RoutineNotRun) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunHasSecureWiFiConnectionRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HasSecureWiFiConnectionCallback callback) {
-        std::move(callback).Run(
-            network_diagnostics_ipc::RoutineVerdict::kNotRun,
-            /*problem=*/{});
+                               RunHasSecureWiFiConnectionCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewHasSecureWifiConnectionProblems({}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
@@ -132,10 +137,12 @@ TEST_P(HasSecureWiFiConnectionProblemTest,
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunHasSecureWiFiConnectionRoutine(_))
       .WillOnce(Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                               HasSecureWiFiConnectionCallback callback) {
-        std::move(callback).Run(
+                               RunHasSecureWiFiConnectionCallback callback) {
+        auto result = CreateResult(
             network_diagnostics_ipc::RoutineVerdict::kProblem,
-            {params().problem_enum});
+            network_diagnostics_ipc::RoutineProblems::
+                NewHasSecureWifiConnectionProblems({params().problem_enum}));
+        std::move(callback).Run(std::move(result));
       }));
 
   mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();

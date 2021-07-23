@@ -1,0 +1,27 @@
+// Copyright 2021 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+//  This file is copied from,
+//  https://cs.chromium.org/chromium/src/mojo/public/mojom/base/time.mojom
+
+module mojo_base.mojom;
+
+[Stable]
+struct Time {
+  // The internal value is expressed in terms of microseconds since a fixed but
+  // intentionally unspecified epoch.
+  int64 internal_value;
+};
+
+[Stable]
+struct TimeDelta {
+  int64 microseconds;
+};
+
+[Stable]
+struct TimeTicks {
+  // The internal value is expressed in terms of microseconds since a fixed but
+  // intentionally unspecified epoch.
+  int64 internal_value;
+};

@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 
 namespace diagnostics {
 
@@ -101,6 +102,79 @@ class MockNetworkDiagnosticsRoutines final
                    VideoConferencingCallback),
               (override));
 
+  MOCK_METHOD(void,
+              RunLanConnectivity,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunLanConnectivityCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunSignalStrength,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunSignalStrengthCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunGatewayCanBePinged,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunGatewayCanBePingedCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunHasSecureWiFiConnection,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunHasSecureWiFiConnectionCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunDnsResolverPresent,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunDnsResolverPresentCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunDnsLatency,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunDnsLatencyCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunDnsResolution,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunDnsResolutionCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunCaptivePortal,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunCaptivePortalCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunHttpFirewall,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunHttpFirewallCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunHttpsFirewall,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunHttpsFirewallCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunHttpsLatency,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunHttpsLatencyCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunVideoConferencing,
+              (const base::Optional<std::string>&,
+               network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunVideoConferencingCallback),
+              (override));
+  MOCK_METHOD(
+      void,
+      GetResult,
+      (const network_diagnostics_ipc::RoutineType type,
+       network_diagnostics_ipc::NetworkDiagnosticsRoutines::GetResultCallback),
+      (override));
+  MOCK_METHOD(void,
+              GetAllResults,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   GetAllResultsCallback),
+              (override));
+
   mojo::PendingRemote<network_diagnostics_ipc::NetworkDiagnosticsRoutines>
   pending_remote() {
     return receiver_.BindNewPipeAndPassRemote();
@@ -136,17 +210,23 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunLanConnectivityRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, LanConnectivity(_))
+  EXPECT_CALL(network_diagnostics_routines, RunLanConnectivity(_))
       .WillOnce(WithArg<0>(
           Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         LanConnectivityCallback callback) {
-            std::move(callback).Run(kNoProblem);
+                         RunLanConnectivityCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewLanConnectivityProblems({}));
+            std::move(callback).Run(std::move(result));
           })));
 
   network_diagnostics_adapter()->RunLanConnectivityRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response) {
-            EXPECT_EQ(response, kNoProblem);
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict, kNoProblem);
+            EXPECT_EQ(result->problems->get_lan_connectivity_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -160,21 +240,24 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunSignalStrengthRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, SignalStrength(_))
+  EXPECT_CALL(network_diagnostics_routines, RunSignalStrength(_))
       .WillOnce(WithArg<0>(
           Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                         SignalStrengthCallback callback) {
-            std::move(callback).Run(kNoProblem, /*problems=*/{});
+                         RunSignalStrengthCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewSignalStrengthProblems({}));
+            std::move(callback).Run(std::move(result));
           })));
 
   network_diagnostics_adapter()->RunSignalStrengthRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::SignalStrengthProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_signal_strength_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -188,23 +271,25 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunGatewayCanBePingedRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, GatewayCanBePinged(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunGatewayCanBePinged(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  GatewayCanBePingedCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunGatewayCanBePingedCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewGatewayCanBePingedProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunGatewayCanBePingedRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::GatewayCanBePingedProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(
+                result->problems->get_gateway_can_be_pinged_problems().size(),
+                0);
             run_loop.Quit();
           }));
 
@@ -218,25 +303,28 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHasSecureWiFiConnectionRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, HasSecureWiFiConnection(testing::_))
+  EXPECT_CALL(network_diagnostics_routines,
+              RunHasSecureWiFiConnection(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  HasSecureWiFiConnectionCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunHasSecureWiFiConnectionCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewHasSecureWifiConnectionProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunHasSecureWiFiConnectionRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::HasSecureWiFiConnectionProblem>&
-                  problems) {
-            EXPECT_EQ(response,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
-            run_loop.Quit();
-          }));
+      base::BindLambdaForTesting([&](network_diagnostics_ipc::RoutineResultPtr
+                                         result) {
+        EXPECT_EQ(result->verdict,
+                  network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+        EXPECT_EQ(
+            result->problems->get_has_secure_wifi_connection_problems().size(),
+            0);
+        run_loop.Quit();
+      }));
 
   run_loop.Run();
 }
@@ -248,23 +336,25 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolverPresentRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, DnsResolverPresent(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunDnsResolverPresent(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  DnsResolverPresentCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunDnsResolverPresentCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewDnsResolverPresentProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunDnsResolverPresentRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::DnsResolverPresentProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(
+                result->problems->get_dns_resolver_present_problems().size(),
+                0);
             run_loop.Quit();
           }));
 
@@ -278,22 +368,23 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, DnsLatency(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunDnsLatency(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  DnsLatencyCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunDnsLatencyCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::NewDnsLatencyProblems(
+                    {}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunDnsLatencyRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::DnsLatencyProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_dns_latency_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -307,22 +398,24 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, DnsResolution(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunDnsResolution(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  DnsResolutionCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunDnsResolutionCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewDnsResolutionProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunDnsResolutionRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::DnsResolutionProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_dns_resolution_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -336,22 +429,24 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, CaptivePortal(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunCaptivePortal(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  CaptivePortalCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunCaptivePortalCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewCaptivePortalProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunCaptivePortalRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::CaptivePortalProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_captive_portal_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -365,22 +460,23 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, HttpFirewall(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHttpFirewall(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  HttpFirewallCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunHttpFirewallCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewHttpFirewallProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunHttpFirewallRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::HttpFirewallProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_http_firewall_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -394,22 +490,24 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, HttpsFirewall(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHttpsFirewall(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  HttpsFirewallCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunHttpsFirewallCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewHttpsFirewallProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunHttpsFirewallRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::HttpsFirewallProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_https_firewall_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -423,22 +521,23 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, HttpsLatency(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHttpsLatency(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  HttpsLatencyCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {});
+                  RunHttpsLatencyCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewHttpsLatencyProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunHttpsLatencyRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::HttpsLatencyProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_https_latency_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -452,27 +551,26 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
       network_diagnostics_routines.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(network_diagnostics_routines, VideoConferencing(_, _))
+  EXPECT_CALL(network_diagnostics_routines, RunVideoConferencing(_, _))
       .WillOnce(testing::Invoke(
           [&](const base::Optional<std::string>& stun_server_hostname,
               network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  VideoConferencingCallback callback) {
-            std::move(callback).Run(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem, {},
-                base::nullopt);
+                  RunVideoConferencingCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::
+                    NewVideoConferencingProblems({}));
+            std::move(callback).Run(std::move(result));
           }));
 
   network_diagnostics_adapter()->RunVideoConferencingRoutine(
       /*stun_server_hostname=*/"http://www.stunserverhostname.com/path?k=v",
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::VideoConferencingProblem>& problems,
-              const base::Optional<std::string>& support_details) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(problems.size(), 0);
-            EXPECT_FALSE(support_details.has_value());
+            EXPECT_EQ(
+                result->problems->get_video_conferencing_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -486,9 +584,11 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunLanConnectivityRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict routine_verdict) {
-            EXPECT_EQ(routine_verdict,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
+            EXPECT_EQ(result->problems->get_lan_connectivity_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -502,12 +602,11 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunSignalStrengthRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::SignalStrengthProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_signal_strength_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -521,13 +620,12 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunGatewayCanBePingedRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::GatewayCanBePingedProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(
+                result->problems->get_gateway_can_be_pinged_problems().size(),
+                0);
             run_loop.Quit();
           }));
 
@@ -540,16 +638,15 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunHasSecureWiFiConnectionRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunHasSecureWiFiConnectionRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::HasSecureWiFiConnectionProblem>&
-                  problems) {
-            EXPECT_EQ(response,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
-            run_loop.Quit();
-          }));
+      base::BindLambdaForTesting([&](network_diagnostics_ipc::RoutineResultPtr
+                                         result) {
+        EXPECT_EQ(result->verdict,
+                  network_diagnostics_ipc::RoutineVerdict::kNotRun);
+        EXPECT_EQ(
+            result->problems->get_has_secure_wifi_connection_problems().size(),
+            0);
+        run_loop.Quit();
+      }));
 
   run_loop.Run();
 }
@@ -561,13 +658,12 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunDnsResolverPresentRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::DnsResolverPresentProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(
+                result->problems->get_dns_resolver_present_problems().size(),
+                0);
             run_loop.Quit();
           }));
 
@@ -580,12 +676,10 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunDnsLatencyRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::DnsLatencyProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_dns_latency_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -598,12 +692,11 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunDnsResolutionRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::DnsResolutionProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_dns_resolution_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -616,12 +709,11 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunCaptivePortalRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::CaptivePortalProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_captive_portal_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -634,12 +726,10 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunHttpFirewallRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::HttpFirewallProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_http_firewall_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -652,12 +742,11 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunHttpsFirewallRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::HttpsFirewallProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_https_firewall_problems().size(),
+                      0);
             run_loop.Quit();
           }));
 
@@ -670,12 +759,10 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutineWithNoRemote) {
   base::RunLoop run_loop;
   network_diagnostics_adapter()->RunHttpsLatencyRoutine(
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<network_diagnostics_ipc::HttpsLatencyProblem>&
-                  problems) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
+            EXPECT_EQ(result->problems->get_https_latency_problems().size(), 0);
             run_loop.Quit();
           }));
 
@@ -690,14 +777,11 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
   network_diagnostics_adapter()->RunVideoConferencingRoutine(
       /*stun_server_hostname=*/"http://www.stunserverhostname.com/path?k=v",
       base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineVerdict response,
-              const std::vector<
-                  network_diagnostics_ipc::VideoConferencingProblem>& problems,
-              const base::Optional<std::string>& support_details) {
-            EXPECT_EQ(response,
+          [&](network_diagnostics_ipc::RoutineResultPtr result) {
+            EXPECT_EQ(result->verdict,
                       network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(problems.size(), 0);
-            EXPECT_FALSE(support_details.has_value());
+            EXPECT_EQ(
+                result->problems->get_video_conferencing_problems().size(), 0);
             run_loop.Quit();
           }));
 

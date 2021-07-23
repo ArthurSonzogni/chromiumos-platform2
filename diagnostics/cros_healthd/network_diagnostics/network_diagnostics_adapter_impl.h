@@ -31,41 +31,41 @@ class NetworkDiagnosticsAdapterImpl final : public NetworkDiagnosticsAdapter {
   bool ServiceRemoteBound() override;
   void RunLanConnectivityRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          LanConnectivityCallback) override;
+          RunLanConnectivityCallback) override;
   void RunSignalStrengthRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          SignalStrengthCallback) override;
+          RunSignalStrengthCallback) override;
   void RunGatewayCanBePingedRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          GatewayCanBePingedCallback) override;
+          RunGatewayCanBePingedCallback) override;
   void RunHasSecureWiFiConnectionRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HasSecureWiFiConnectionCallback) override;
+          RunHasSecureWiFiConnectionCallback) override;
   void RunDnsResolverPresentRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          DnsResolverPresentCallback) override;
+          RunDnsResolverPresentCallback) override;
   void RunDnsLatencyRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          DnsLatencyCallback) override;
+          RunDnsLatencyCallback) override;
   void RunDnsResolutionRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          DnsResolutionCallback) override;
+          RunDnsResolutionCallback) override;
   void RunCaptivePortalRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          CaptivePortalCallback) override;
+          RunCaptivePortalCallback) override;
   void RunHttpFirewallRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HttpFirewallCallback) override;
+          RunHttpFirewallCallback) override;
   void RunHttpsFirewallRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HttpsFirewallCallback) override;
+          RunHttpsFirewallCallback) override;
   void RunHttpsLatencyRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          HttpsLatencyCallback) override;
+          RunHttpsLatencyCallback) override;
   void RunVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname,
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
-          VideoConferencingCallback) override;
+          RunVideoConferencingCallback) override;
 
  private:
   // NetworkDiagnosticsRoutines remote used to run network diagnostics.

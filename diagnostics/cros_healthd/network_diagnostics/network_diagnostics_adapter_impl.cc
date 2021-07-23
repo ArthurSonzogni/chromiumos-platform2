@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
+
 namespace diagnostics {
 
 namespace {
@@ -28,147 +30,167 @@ bool NetworkDiagnosticsAdapterImpl::ServiceRemoteBound() {
 }
 
 void NetworkDiagnosticsAdapterImpl::RunLanConnectivityRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::LanConnectivityCallback
-        callback) {
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        RunLanConnectivityCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun);
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewLanConnectivityProblems(
+            {}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->LanConnectivity(std::move(callback));
+  network_diagnostics_routines_->RunLanConnectivity(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunSignalStrengthRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::SignalStrengthCallback
-        callback) {
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        RunSignalStrengthCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(network_diagnostics_ipc::RoutineVerdict::kNotRun,
-                            /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewSignalStrengthProblems(
+            {}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->SignalStrength(std::move(callback));
+  network_diagnostics_routines_->RunSignalStrength(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunGatewayCanBePingedRoutine(
     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-        GatewayCanBePingedCallback callback) {
+        RunGatewayCanBePingedCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewGatewayCanBePingedProblems(
+            {}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->GatewayCanBePinged(std::move(callback));
+  network_diagnostics_routines_->RunGatewayCanBePinged(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHasSecureWiFiConnectionRoutine(
     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-        HasSecureWiFiConnectionCallback callback) {
+        RunHasSecureWiFiConnectionCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
+                               network_diagnostics_ipc::RoutineProblems::
+                                   NewHasSecureWifiConnectionProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->HasSecureWiFiConnection(std::move(callback));
+  network_diagnostics_routines_->RunHasSecureWiFiConnection(
+      std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunDnsResolverPresentRoutine(
     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-        DnsResolverPresentCallback callback) {
+        RunDnsResolverPresentCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewDnsResolverPresentProblems(
+            {}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->DnsResolverPresent(std::move(callback));
+  network_diagnostics_routines_->RunDnsResolverPresent(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunDnsLatencyRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::DnsLatencyCallback
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunDnsLatencyCallback
         callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewDnsLatencyProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->DnsLatency(std::move(callback));
+  network_diagnostics_routines_->RunDnsLatency(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunDnsResolutionRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::DnsResolutionCallback
-        callback) {
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        RunDnsResolutionCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewDnsResolutionProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->DnsResolution(std::move(callback));
+  network_diagnostics_routines_->RunDnsResolution(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunCaptivePortalRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::CaptivePortalCallback
-        callback) {
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        RunCaptivePortalCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewCaptivePortalProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->CaptivePortal(std::move(callback));
+  network_diagnostics_routines_->RunCaptivePortal(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHttpFirewallRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::HttpFirewallCallback
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunHttpFirewallCallback
         callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewHttpFirewallProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->HttpFirewall(std::move(callback));
+  network_diagnostics_routines_->RunHttpFirewall(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHttpsFirewallRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::HttpsFirewallCallback
-        callback) {
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        RunHttpsFirewallCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewHttpsFirewallProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->HttpsFirewall(std::move(callback));
+  network_diagnostics_routines_->RunHttpsFirewall(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHttpsLatencyRoutine(
-    network_diagnostics_ipc::NetworkDiagnosticsRoutines::HttpsLatencyCallback
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunHttpsLatencyCallback
         callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{});
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewHttpsLatencyProblems({}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->HttpsLatency(std::move(callback));
+  network_diagnostics_routines_->RunHttpsLatency(std::move(callback));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunVideoConferencingRoutine(
     const base::Optional<std::string>& stun_server_hostname,
     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-        VideoConferencingCallback callback) {
+        RunVideoConferencingCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {
-    std::move(callback).Run(
-        chromeos::network_diagnostics::mojom::RoutineVerdict::kNotRun,
-        /*problems=*/{}, /*support_details=*/base::nullopt);
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewVideoConferencingProblems(
+            {}));
+    std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->VideoConferencing(stun_server_hostname,
-                                                   std::move(callback));
+  network_diagnostics_routines_->RunVideoConferencing(stun_server_hostname,
+                                                      std::move(callback));
 }
 
 }  // namespace diagnostics
