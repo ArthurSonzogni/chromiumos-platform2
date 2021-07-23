@@ -4,25 +4,76 @@
 
 #include "federated/example_database.h"
 
+#include <cinttypes>
 #include <string>
 #include <unordered_set>
 
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <base/optional.h>
 #include <gtest/gtest.h>
 #include <sqlite3.h>
 
-#include "federated/example_database_test_utils.h"
+#include "federated/test_utils.h"
 #include "federated/utils.h"
 
 namespace federated {
 namespace {
+
 const std::unordered_set<std::string> kTestClients = {"test_client_1",
                                                       "test_client_2"};
+
+// Opens a (potentially new) database at the given path and creates an example
+// table with the given name.
+int CreateExampleTableForTesting(const base::FilePath& db_path,
+                                 const std::string& table) {
+  constexpr char kCreateDatabaseSql[] =
+      "CREATE TABLE %s ("
+      "  id         INTEGER PRIMARY KEY AUTOINCREMENT"
+      "                     NOT NULL,"
+      "  example    BLOB    NOT NULL,"
+      "  timestamp  INTEGER NOT NULL"
+      ")";
+
+  sqlite3* db = nullptr;
+  const int open_result = sqlite3_open(db_path.MaybeAsASCII().c_str(), &db);
+  std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_ptr(db, &sqlite3_close);
+
+  if (open_result != SQLITE_OK) {
+    return open_result;
+  }
+
+  const int create_result = sqlite3_exec(
+      db_ptr.get(),
+      base::StringPrintf(kCreateDatabaseSql, table.c_str()).c_str(), nullptr,
+      nullptr, nullptr);
+  return create_result;
+}
+
+// Adds `count` entries to `table` to the with entry i having serialized data
+// "example_i" and timestamp "unix epoch + i seconds".
+int PopulateTableForTesting(sqlite3* const db,
+                            const std::string& table,
+                            const int count) {
+  for (int i = 1; i <= count; i++) {
+    const std::string sql = base::StringPrintf(
+        "INSERT INTO %s (example, timestamp) VALUES ('example_%d', "
+        "%" PRId64 ")",
+        table.c_str(), i, SecondsAfterEpoch(i).ToJavaTime());
+    const int result = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
+    if (result != SQLITE_OK) {
+      return result;
+    }
+  }
+
+  return SQLITE_OK;
+}
+
 }  // namespace
 
 class ExampleDatabaseTest : public testing::Test {
@@ -30,7 +81,6 @@ class ExampleDatabaseTest : public testing::Test {
   ExampleDatabaseTest(const ExampleDatabaseTest&) = delete;
   ExampleDatabaseTest& operator=(const ExampleDatabaseTest&) = delete;
 
-  ExampleDatabase* get_db() const { return db_; }
   const base::FilePath& temp_path() const { return temp_dir_.GetPath(); }
 
   // Prepares a database, table test_client_1 has 100 examples (id from 1
@@ -38,235 +88,332 @@ class ExampleDatabaseTest : public testing::Test {
   bool CreateExampleDatabaseAndInitialize() {
     const base::FilePath db_path =
         temp_dir_.GetPath().Append(kDatabaseFileName);
-    if (CreateDatabaseForTesting(db_path) != SQLITE_OK) {
-      LOG(ERROR) << "Failed to create database file.";
+    if (CreateExampleTableForTesting(db_path, "test_client_1") != SQLITE_OK ||
+        !base::PathExists(db_path)) {
+      LOG(ERROR) << "Failed to create initial database";
       return false;
     }
 
-    db_ = new ExampleDatabase(db_path, kTestClients);
-    if (!db_->Init() || !db_->IsOpen() || !db_->CheckIntegrity()) {
-      LOG(ERROR) << "Failed to initialize or check integrity of db_.";
+    db_ = std::make_unique<ExampleDatabase>(db_path);
+    if (!db_->Init(kTestClients) || !db_->IsOpen() || !db_->CheckIntegrity() ||
+        PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_1",
+                                100) != SQLITE_OK) {
+      LOG(ERROR) << "Failed to initialize or check integrity of db_";
       return false;
     }
 
-    return true;
+    return base::PathExists(db_path);
   }
 
  protected:
   ExampleDatabaseTest() = default;
 
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
-  void TearDown() override {
-    ASSERT_TRUE(temp_dir_.Delete());
-    if (db_)
-      delete db_;
-  }
+  void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
 
- private:
   base::ScopedTempDir temp_dir_;
-  ExampleDatabase* db_ = nullptr;
+  std::unique_ptr<ExampleDatabase> db_;
 };
 
 // This test runs the same steps as CreateExampleDatabaseAndInitialize, but
 // checks step by step.
 TEST_F(ExampleDatabaseTest, CreateDatabase) {
   // Prepares a database file.
-  base::FilePath db_path = temp_path().Append(kDatabaseFileName);
-  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
+  const base::FilePath db_path = temp_path().Append(kDatabaseFileName);
+  ASSERT_EQ(CreateExampleTableForTesting(db_path, "test_client_1"), SQLITE_OK);
   EXPECT_TRUE(base::PathExists(db_path));
 
-  // Creates the db instance.
-  ExampleDatabase db(db_path, kTestClients);
-
   // Initializes the db and checks integrity.
-  EXPECT_TRUE(db.Init());
+  ExampleDatabase db(db_path);
+  EXPECT_TRUE(db.Init(kTestClients));
   EXPECT_TRUE(db.IsOpen());
   EXPECT_TRUE(db.CheckIntegrity());
+
+  // Populates examples.
+  EXPECT_EQ(
+      PopulateTableForTesting(db.sqlite3_for_testing(), "test_client_1", 100),
+      SQLITE_OK);
 
   // Closes it.
   EXPECT_TRUE(db.Close());
 }
 
-TEST_F(ExampleDatabaseTest, DatabaseQueryFromNonEmptyTable) {
-  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase& db = *get_db();
+// Test that initialization handles internal SQL errors.
+TEST_F(ExampleDatabaseTest, CreateDatabaseMalformed) {
+  // Prepares a database file.
+  const base::FilePath db_path = temp_path().Append(kDatabaseFileName);
+  ExampleDatabase db(db_path);
 
-  std::string client_name = "test_client_1";
-  // Table test_client_1 has 100 records, limit=50 can return 50 examples.
-  int limit = 50;
-  EXPECT_TRUE(db.PrepareStreamingForClient(client_name, limit));
-  int64_t count = 0;
-  while (true) {  // id from 1 to 50.
-    auto maybe_record = db.GetNextStreamedRecord();
-    if (maybe_record == base::nullopt)
-      break;
-    EXPECT_EQ(maybe_record.value().id, count + 1);
-    EXPECT_EQ(maybe_record.value().serialized_example,
-              base::StringPrintf("example_%zu", count + 1));
-    count++;
-  }
-  EXPECT_EQ(count, 50);
-  db.CloseStreaming();
+  // Inject broken SQL statement.
+  EXPECT_FALSE(db.Init({"test_client_1\""}));
 
-  // Limit=150 only returns 100 examples, that's all in the table.
-  limit = 150;
-  EXPECT_TRUE(db.PrepareStreamingForClient(client_name, limit));
-  count = 0;
-  while (true) {  // id from 1 to 100.
-    auto maybe_record = db.GetNextStreamedRecord();
-    if (maybe_record == base::nullopt)
-      break;
-    EXPECT_EQ(maybe_record.value().id, count + 1);
-    EXPECT_EQ(maybe_record.value().serialized_example,
-              base::StringPrintf("example_%zu", count + 1));
-    count++;
-  }
-  EXPECT_EQ(count, 100);
-  db.CloseStreaming();
+  EXPECT_FALSE(db.IsOpen());
+  EXPECT_FALSE(db.CheckIntegrity());
+  EXPECT_FALSE(db.InsertExample("test_client_1\"",
+                                {-1, "example_1", SecondsAfterEpoch(1)}));
 
   EXPECT_TRUE(db.Close());
 }
 
-TEST_F(ExampleDatabaseTest, PrepareStreamingFailure) {
+TEST_F(ExampleDatabaseTest, DatabaseReadNonEmpty) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase& db = *get_db();
 
-  int limit = 100;
-  // Table test_client_2 is empty, returns false on PrepareStreamingForClient
-  std::string client_name = "test_client_2";
-  EXPECT_FALSE(db.PrepareStreamingForClient(client_name, limit));
-
-  // Table test_client_3 doesn't exist, returns false on
-  // PrepareStreamingForClient.
-  client_name = "test_client_3";
-  EXPECT_FALSE(db.PrepareStreamingForClient(client_name, limit));
-
-  EXPECT_TRUE(db.Close());
-}
-
-// Test that example_database can handle some illegal query operations.
-TEST_F(ExampleDatabaseTest, UnexpectedQuery) {
-  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase& db = *get_db();
-
-  // Insert an example to table test_client_2.
-  ExampleRecord record = {-1 /*placeholder for id*/, "test_client_2",
-                          "manually_inserted_example", base::Time::Now()};
-  EXPECT_TRUE(db.InsertExample(record));
-
-  std::string client_name = "test_client_1";
-
-  // Calls GetNextStreamedRecord without PrepareStreamingForClient, gets
-  // base::nullopt.
-  EXPECT_EQ(db.GetNextStreamedRecord(), base::nullopt);
-
-  // Calls GetNextStreamedRecord after CloseStreaming, gets base::nullopt.
-  EXPECT_TRUE(db.PrepareStreamingForClient(client_name, 10));
-  db.CloseStreaming();
-  EXPECT_EQ(db.GetNextStreamedRecord(), base::nullopt);
-
-  // Calls GetNextStreamedRecord after it already returned base::nullopt.
-  EXPECT_TRUE(db.PrepareStreamingForClient(client_name, 10));
   int count = 0;
-  while (db.GetNextStreamedRecord() != base::nullopt)
-    count++;
+  ExampleDatabase::Iterator it = db_->GetIterator("test_client_1");
+  while (true) {
+    const absl::StatusOr<ExampleRecord> record = it.Next();
+    if (!record.ok()) {
+      EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+      break;
+    }
 
-  EXPECT_EQ(count, 10);
-  EXPECT_EQ(db.GetNextStreamedRecord(), base::nullopt);
-  db.CloseStreaming();
-
-  // A subsequent PrepareStreamingForClient call before CloseStreaming() will
-  // fail and have no influnce on the existing streaming.
-  EXPECT_TRUE(db.PrepareStreamingForClient("test_client_1", 10));
-  count = 0;
-  for (size_t i = 0; i < 5; i++) {
-    EXPECT_NE(db.GetNextStreamedRecord(), base::nullopt);
+    EXPECT_EQ(record->id, count + 1);
+    EXPECT_EQ(record->serialized_example,
+              base::StringPrintf("example_%d", count + 1));
+    EXPECT_EQ(record->timestamp, SecondsAfterEpoch(count + 1));
     count++;
   }
 
-  EXPECT_FALSE(db.PrepareStreamingForClient("test_client_2", 50));
+  EXPECT_EQ(count, 100);
+  EXPECT_TRUE(db_->Close());
+}
 
-  while (db.GetNextStreamedRecord() != base::nullopt)
-    count++;
+TEST_F(ExampleDatabaseTest, DatabaseReadDangle) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+  ExampleDatabase::Iterator it = db_->GetIterator("test_client_1");
 
-  EXPECT_EQ(count, 10);
+  // The iterator sqlite query is ongoing.
+  EXPECT_FALSE(db_->Close());
+}
 
-  // Subsequent PrepareStreamingForClient fails as long as the previous
-  // streaming is not closed by CloseStreaming, even if it already hit the end.
-  EXPECT_FALSE(db.PrepareStreamingForClient("test_client_2", 50));
-  db.CloseStreaming();
-  EXPECT_TRUE(db.PrepareStreamingForClient("test_client_2", 50));
+TEST_F(ExampleDatabaseTest, DatabaseReadAbort) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+  ExampleDatabase::Iterator it = db_->GetIterator("test_client_1");
+
+  // Iterate through 3 of the 100 examples.
+  for (int i = 1; i <= 3; ++i) {
+    const absl::StatusOr<ExampleRecord> record = it.Next();
+    ASSERT_TRUE(record.ok());
+
+    EXPECT_EQ(record->id, i);
+    EXPECT_EQ(record->serialized_example, base::StringPrintf("example_%d", i));
+    EXPECT_EQ(record->timestamp, SecondsAfterEpoch(i));
+  }
+
+  it.Close();
+  EXPECT_TRUE(db_->Close());
+}
+
+// Example of attaching an example iterator to the life of a callback, which
+// could be useful with our library interface.
+TEST_F(ExampleDatabaseTest, DatabaseReadCallback) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Using a manual scope tests that the iterator is successfully closed when
+  // the callback is destroyed.
+  {
+    // Create a callback that owns an iterator.
+    base::RepeatingCallback<void(int)> cb = base::BindRepeating(
+        [](ExampleDatabase::Iterator* const it, const int i) {
+          const absl::StatusOr<ExampleRecord> record = it->Next();
+          ASSERT_TRUE(record.ok());
+          EXPECT_EQ(record->id, i);
+          EXPECT_EQ(record->serialized_example,
+                    base::StringPrintf("example_%d", i));
+          EXPECT_EQ(record->timestamp, SecondsAfterEpoch(i));
+        },
+        base::Owned(
+            new ExampleDatabase::Iterator(db_->GetIterator("test_client_1"))));
+
+    // Run the callback to test sequential use works.
+    for (int i = 1; i <= 3; ++i) {
+      cb.Run(i);
+    }
+
+    // As the sqlite query is ongoing, the callback must correctly close the
+    // iterator here as it falls out of scope.
+  }
+
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, DatabaseReadConcurrent) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Add 50 examples to the second table.
+  ASSERT_EQ(
+      PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_2", 50),
+      SQLITE_OK);
+
+  ExampleDatabase::Iterator it[] = {
+      db_->GetIterator("test_client_1"),
+      db_->GetIterator("test_client_1"),
+      db_->GetIterator("test_client_2"),
+  };
+  int count[] = {0, 0, 0};
+  bool going[] = {true, true, true};
+
+  while (going[0] || going[1] || going[2]) {
+    for (int i = 0; i < 3; ++i) {
+      if (!going[i]) {
+        continue;
+      }
+
+      const absl::StatusOr<ExampleRecord> record = it[i].Next();
+      if (!record.ok()) {
+        EXPECT_TRUE(absl::IsOutOfRange(record.status()));
+        going[i] = false;
+        continue;
+      }
+
+      EXPECT_EQ(record->id, count[i] + 1);
+      EXPECT_EQ(record->serialized_example,
+                base::StringPrintf("example_%d", count[i] + 1));
+      EXPECT_EQ(record->timestamp, SecondsAfterEpoch(count[i] + 1));
+      count[i]++;
+    }
+  }
+
+  EXPECT_EQ(count[0], 100);
+  EXPECT_EQ(count[1], 100);
+  EXPECT_EQ(count[2], 50);
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, DatabaseReadMalformed) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Inject malformed SQL code.
+  ExampleDatabase::Iterator it_invalid = db_->GetIterator("test_client_1\"");
+  EXPECT_TRUE(absl::IsInvalidArgument(it_invalid.Next().status()));
+
+  // Now try a valid read.
+  ExampleDatabase::Iterator it_valid = db_->GetIterator("test_client_1");
+  const absl::StatusOr<ExampleRecord> record = it_valid.Next();
+  EXPECT_TRUE(record.ok());
+  EXPECT_EQ(record->id, 1);
+  EXPECT_EQ(record->serialized_example, "example_1");
+  EXPECT_EQ(record->timestamp, SecondsAfterEpoch(1));
+  it_valid.Close();
+
+  EXPECT_TRUE(db_->Close());
 }
 
 TEST_F(ExampleDatabaseTest, InsertExample) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase& db = *get_db();
 
-  ExampleRecord record;
-  record.serialized_example = "manually_inserted_example";
-  record.timestamp = base::Time::Now();
+  // Before inserting, table test_client_2 is empty.
+  EXPECT_TRUE(
+      absl::IsOutOfRange(db_->GetIterator("test_client_2").Next().status()));
 
-  // Before inserting, table test_client_2 is empty, returns false on
-  // PrepareStreamingForClient.
-  std::string client_name = "test_client_2";
-  record.client_name = client_name;
+  // After inserting, iteration will succeed 1 time.
+  EXPECT_TRUE(db_->InsertExample("test_client_2",
+                                 {-1, "manual_example", SecondsAfterEpoch(0)}));
 
-  EXPECT_FALSE(db.PrepareStreamingForClient(client_name, 100));
+  ExampleDatabase::Iterator it = db_->GetIterator("test_client_2");
+  const absl::StatusOr<ExampleRecord> result = it.Next();
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(result->id, 1);  // First entry in the client 2 table.
+  EXPECT_EQ(result->serialized_example, "manual_example");
+  EXPECT_EQ(result->timestamp, SecondsAfterEpoch(0));
+  EXPECT_TRUE(absl::IsOutOfRange(it.Next().status()));
 
-  EXPECT_TRUE(db.InsertExample(record));
+  EXPECT_TRUE(db_->Close());
+}
 
-  // After inserting, GetNextStreamedRecord will succeed for 1 time.
-  EXPECT_TRUE(db.PrepareStreamingForClient(client_name, 100));
-  int64_t count = 0;
-  while (db.GetNextStreamedRecord() != base::nullopt)
-    count++;
+TEST_F(ExampleDatabaseTest, InsertExampleBad) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
-  EXPECT_EQ(count, 1);
-  db.CloseStreaming();
+  // Client 3 table doesn't exist.
+  EXPECT_FALSE(db_->InsertExample("test_client_3", ExampleRecord()));
+  EXPECT_TRUE(db_->Close());
+}
 
-  // Fails to insert into a non-existing table;
-  client_name = "test_client_3";
-  record.client_name = client_name;
+TEST_F(ExampleDatabaseTest, InsertExampleMalformed) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
-  EXPECT_FALSE(db.InsertExample(record));
+  // Inject malformed SQL code.
+  EXPECT_FALSE(db_->InsertExample("test_client_1\"",
+                                  {-1, "example_1", SecondsAfterEpoch(1)}));
 
-  EXPECT_TRUE(db.Close());
+  // Now try a valid insertion.
+  EXPECT_TRUE(db_->InsertExample("test_client_2",
+                                 {-1, "example_2", SecondsAfterEpoch(2)}));
+  ExampleDatabase::Iterator it = db_->GetIterator("test_client_2");
+  const absl::StatusOr<ExampleRecord> record = it.Next();
+  EXPECT_TRUE(record.ok());
+  EXPECT_EQ(record->id, 1);
+  EXPECT_EQ(record->serialized_example, "example_2");
+  EXPECT_EQ(record->timestamp, SecondsAfterEpoch(2));
+  EXPECT_TRUE(absl::IsOutOfRange(it.Next().status()));
+
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, CountExamples) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+
+  // Client table 3 doesn't exist.
+  EXPECT_EQ(db_->ExampleCount("test_client_3"), 0);
+}
+
+TEST_F(ExampleDatabaseTest, CountExamplesMalformed) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Inject invalid SQL code.
+  EXPECT_EQ(db_->ExampleCount("test_client_1\""), 0);
+
+  // Now try a valid read.
+  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
 }
 
 TEST_F(ExampleDatabaseTest, DeleteExamples) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase& db = *get_db();
 
-  std::string client_name = "test_client_1";
-  // Delete examples with id <= 30 from table test_client_1;
-  EXPECT_TRUE(db.DeleteExamplesWithSmallerIdForClient(client_name, 30));
+  // Populated table.
+  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
+  db_->DeleteAllExamples("test_client_1");
+  EXPECT_EQ(db_->ExampleCount("test_client_1"), 0);
 
-  EXPECT_TRUE(db.PrepareStreamingForClient(client_name, 100));
-  int64_t count = 0;
-  while (true) {  // id from 31 to 100.
-    auto maybe_record = db.GetNextStreamedRecord();
-    if (maybe_record == base::nullopt)
-      break;
-    EXPECT_EQ(maybe_record.value().id, count + 31);
-    EXPECT_EQ(maybe_record.value().serialized_example,
-              base::StringPrintf("example_%zu", count + 31));
-    count++;
-  }
-  EXPECT_EQ(count, 70);
-  db.CloseStreaming();
+  // Unpopulated table.
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
+  db_->DeleteAllExamples("test_client_2");
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
 
-  // No examples with id <= 20 now, returns false;
-  EXPECT_FALSE(db.DeleteExamplesWithSmallerIdForClient(client_name, 20));
+  // Newly-populated table.
+  db_->InsertExample("test_client_2", {-1, "example_1", SecondsAfterEpoch(1)});
+  db_->InsertExample("test_client_2", {-1, "example_2", SecondsAfterEpoch(2)});
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 2);
+  db_->DeleteAllExamples("test_client_2");
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
 
-  client_name = "test_client_2";
-  // Delete examples from an empty table, returns false;
-  EXPECT_FALSE(db.DeleteExamplesWithSmallerIdForClient(client_name, 100));
+  db_->InsertExample("test_client_2", {-1, "example_3", SecondsAfterEpoch(3)});
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 1);
+  db_->DeleteAllExamples("test_client_2");
+  EXPECT_EQ(db_->ExampleCount("test_client_2"), 0);
 
-  client_name = "test_client_3";
-  // Delete examples from a non-existing table, returns false;
-  EXPECT_FALSE(db.DeleteExamplesWithSmallerIdForClient(client_name, 100));
+  // Missing table.
+  db_->DeleteAllExamples("test_client_3");
+  EXPECT_EQ(db_->ExampleCount("test_client_3"), 0);
 
-  EXPECT_TRUE(db.Close());
+  EXPECT_TRUE(db_->Close());
+}
+
+TEST_F(ExampleDatabaseTest, DeleteExamplesMalformed) {
+  ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
+
+  // Inject invalid SQL code.
+  db_->DeleteAllExamples("test_client_1\"");
+
+  // Now test valid deletion still works.
+  EXPECT_EQ(db_->ExampleCount("test_client_1"), 100);
+  db_->DeleteAllExamples("test_client_1");
+  EXPECT_EQ(db_->ExampleCount("test_client_1"), 0);
+
+  EXPECT_TRUE(db_->Close());
 }
 
 }  // namespace federated

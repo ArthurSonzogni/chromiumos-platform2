@@ -13,8 +13,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <absl/status/statusor.h>
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <sqlite3.h>
 
@@ -23,69 +23,84 @@ namespace federated {
 // Example objects stored in corresponding `client_name` tables.
 // An example represents a training example of federated computation.
 struct ExampleRecord {
-  int64_t id;
-  std::string client_name;
+  // The ID of this example in the client table. Only populated in records
+  // being retrieved from (c.f. being inserted into) the example database.
+  int64_t id = -1;
+
   std::string serialized_example;
   base::Time timestamp;
 };
 
 // Provides access to example database.
+//
+// WARNING: Do not pass strings to these methods (e.g. Init, GetIterator) that
+//          have not been carefully sanitized. This class does not perform
+//          string sanitization and is therefore susceptible to SQL code
+//          injection.
+//
 // Example usage:
 // Construct and initialize:
-//    ExampleDatabase db(db_path, kTestClients);
-//    if(!db.Init() || !db.IsOpen() || !db.CheckIntegrity()) {
-//      // Error handling
+//    ExampleDatabase db(db_path);
+//    if(!db.Init(kTestClients) || !db.IsOpen() || !db.CheckIntegrity()) {
+//      // Error handling.
 //    }
 //
 // Insert an example:
 //    ExampleRecord example_record;
-//    example_record.client_name = client_name;
 //    example_record.serialized_example = serialized_example;
 //    example_record.timestamp = base::Time::Now();
-//
-//    db.InsertExample(example_record);
+//    db.InsertExample(client_name, example_record);
 //
 // Query examples:
-//     int limit = 100;
-//     if (db.PrepareStreamingForClient(client_name, limit)) {
-//       // Error handling
-//     } else {
-//       // Call GetNextStreamedRecord() repeatedly until it returns
-//       // a base::nullopt, then CloseStreaming();
-//       while (true) {
-//         auto maybe_example_record = db.GetNextStreamedRecord();
-//         if (maybe_example_record == base::nullopt) {
-//           // end of iterator
-//           break;
-//         } else {
-//           ExampleRecord record = maybe_example_record.value();
-//         }
-//       }
-//       db.CloseStreaming();
-//     }
+//    ExampleDatabase::Iterator it = db.GetIterator("client_1");
+//    while (true) {
+//      const absl::StatusOr<ExampleRecord> result = it.Next();
+//      if (result.ok()) {
+//        // Do something with *result.
 //
-// Delete examples with id smaller than the given id from table `client_name`:
-//     // Keeps track of last_seen_id when querying examples.
-//     if (!db.DeleteExamplesWithSmallerIdForClient(client_name, id)) {
-//       // Error handling
-//     }
+//        continue;
+//      }
+//
+//      if (absl::IsOutOfRange(result)) {
+//        // End of iterator.
+//      } else {
+//        // Handle error.
+//      }
+//    }
+//
 // See example_database_test.cc and storage_manager_impl.cc for more details.
 
 class ExampleDatabase {
  public:
-  struct StmtGroup {
-    sqlite3_stmt* stmt_for_streaming = nullptr;
-    sqlite3_stmt* stmt_for_insert = nullptr;
-    sqlite3_stmt* stmt_for_delete = nullptr;
-    sqlite3_stmt* stmt_for_check = nullptr;
-    // Finalizes the stmts, required before disconnecting the db.
-    void Finalize();
+  // Handles one read-only iteration through a table.
+  struct Iterator final {
+   public:
+    Iterator(sqlite3* db, const std::string& client_name);
+    Iterator(Iterator&& other);
+    Iterator(const Iterator& other) = delete;
+    Iterator& operator=(const Iterator& other) = delete;
+    ~Iterator();
+
+    // Returns the next example, an "out of range" error if the end of the
+    // iteration has been reached, or any other error if example fetching
+    // failed.
+    absl::StatusOr<ExampleRecord> Next();
+
+    // Releases sqlite resources / locks.
+    //
+    // Called automatically when the iteration is complete or the iterator is
+    // destroyed, but must be called manually when iteration is abandoned
+    // early. The database cannot be closed unless all iterators have been
+    // closed by one means or another.
+    void Close();
+
+   private:
+    sqlite3_stmt* stmt_;
   };
 
   // Creates an instance to talk to the database file at `db_path`. Init() must
   // be called to establish connection.
-  explicit ExampleDatabase(const base::FilePath& db_path,
-                           const std::unordered_set<std::string>& clients);
+  explicit ExampleDatabase(const base::FilePath& db_path);
   ExampleDatabase(const ExampleDatabase&) = delete;
   ExampleDatabase& operator=(const ExampleDatabase&) = delete;
 
@@ -93,29 +108,57 @@ class ExampleDatabase {
 
   // Initializes database connection. Must be called before any other queries.
   // Returns true if no error occurred.
-  virtual bool Init();
+  //
+  // WARNING: client names are used to construct SQL statements but are not
+  //          sanitized in any way. Therefore this method is susceptible to
+  //          code injection unless the provided names are carefully vetted or
+  //          sanitized.
+  virtual bool Init(const std::unordered_set<std::string>& clients);
   // Returns true if the database connection is open.
   virtual bool IsOpen() const;
   // Closes database connection. Returns true if no error occurred.
   virtual bool Close();
   // Runs sqlite built-in integrity check. Returns true if no error is found.
   virtual bool CheckIntegrity() const;
-  // Inserts example into database. Returns true if no error occurred.
-  virtual bool InsertExample(const ExampleRecord& example_record);
 
-  // Streaming examples with sqlite3_step, return true if table of client_name
-  // has more than a minimum number of examples and the stmt binds values
-  // successfully. The minimum number now is kMinExampleCount = 1 defined in
-  // utils.h/cc.
-  virtual bool PrepareStreamingForClient(const std::string& client_name,
-                                         const int32_t limit);
-  virtual base::Optional<ExampleRecord> GetNextStreamedRecord();
-  virtual void CloseStreaming();
+  // Returns an iterator through the examples for the given client.
+  //
+  // WARNING: client names are used to construct SQL statements but are not
+  //          sanitized in any way. Therefore this method is susceptible to
+  //          code injection unless the provided names are carefully vetted or
+  //          sanitized.
+  virtual Iterator GetIterator(const std::string& client_name) const;
 
-  // Deletes examples with id <= given id from client table. Returns true if no
-  // error occurred.
-  virtual bool DeleteExamplesWithSmallerIdForClient(
-      const std::string& client_name, const int64_t id);
+  // Inserts example into the table matching its client_name. Returns true
+  // if no error occurred.
+  //
+  // WARNING: client names are used to construct SQL statements but are not
+  //          sanitized in any way. Therefore this method is susceptible to
+  //          code injection unless the provided names are carefully vetted or
+  //          sanitized.
+  virtual bool InsertExample(const std::string& client_name,
+                             const ExampleRecord& example_record);
+
+  // Returns the count of examples in the client's table.
+  //
+  // WARNING: client names are used to construct SQL statements but are not
+  //          sanitized in any way. Therefore this method is susceptible to
+  //          code injection unless the provided names are carefully vetted or
+  //          sanitized.
+  virtual int ExampleCount(const std::string& client_name) const;
+
+  // Deletes all examples in the specified client table. We expose only this
+  // rudimentary functionality since small federated clients typically delete
+  // all training examples at the end of a training session. More sophiscated
+  // behavior can be added if it is later needed.
+  //
+  // WARNING: client names are used to construct SQL statements but are not
+  //          sanitized in any way. Therefore this method is susceptible to
+  //          code injection unless the provided names are carefully vetted or
+  //          sanitized.
+  virtual void DeleteAllExamples(const std::string& client_name);
+
+  sqlite3* sqlite3_for_testing() const { return db_.get(); }
 
  private:
   // Typedef of sqlite3_exec callback, see sqlite doc:
@@ -133,11 +176,9 @@ class ExampleDatabase {
 
   // Returns true if the client's table exists.
   bool ClientTableExists(const std::string& client_name) const;
-  // Returns true if the client's table is created without error.
-  bool CreateClientTable(const std::string& client_name) const;
 
-  // Returns the count of examples in the client's table.
-  int32_t ExampleCountOfClientTable(const std::string& client_name);
+  // Returns true if the client's table is created without error.
+  bool CreateClientTable(const std::string& client_name);
 
   // Executes sql.
   ExecResult ExecSql(const std::string& sql) const;
@@ -147,24 +188,6 @@ class ExampleDatabase {
 
   const base::FilePath db_path_;
   std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;
-
-  // The set of registered client names.
-  std::unordered_set<std::string> clients_;
-  // Mapping client_name to sqlite prepared statement objects for streaming,
-  // inserting and deleting examples.
-  std::unordered_map<std::string, StmtGroup> stmts_;
-  //  The client with open example stream.
-  std::string current_streaming_client_;
-  // Whether there is an open streaming.
-  bool streaming_open_ = false;
-  // Whether current streaming hits SQLITE_DONE, to early return in
-  // GetNextStreamedRecord if current streaming already ends but is not closed.
-  // Relationship between streaming_open_ and end_of_streaming_:
-  // streaming_open_ && !end_of_streaming_: safe to call GetNextStreamedRecord
-  // streaming_open_ && end_of_streaming_: should call CloseStreaming
-  // !streaming_open_ && !end_of_streaming_: ready to PrepareStreamingForClient
-  // !streaming_open_ && end_of_streaming_: invalid, should never happen
-  bool end_of_streaming_ = false;
 };
 
 }  // namespace federated
