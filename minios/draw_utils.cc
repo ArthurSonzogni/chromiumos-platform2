@@ -591,8 +591,7 @@ bool DrawUtils::GetLangConstants(const std::string& locale, int* lang_width) {
 }
 
 bool DrawUtils::IsLocaleRightToLeft() {
-  // TODO(vyshu): Create an unblocked_terms.txt to allow "he" for Hebrew.
-  return (locale_ == "ar" || locale_ == "fa" || locale_ == "he");
+  return (locale_ == "ar" || locale_ == "fa" || locale_ == "he");  // nocheck
 }
 
 bool DrawUtils::IsDetachable() {
