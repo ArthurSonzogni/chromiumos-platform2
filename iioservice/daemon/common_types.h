@@ -47,12 +47,16 @@ class ClientData {
   bool IsSampleActive() const;
   bool IsEventActive() const;
 
+  void ResetTimeout();
+  uint32_t GetTimeout();
+
   const mojo::ReceiverId id;
   DeviceData* const device_data;
 
   std::set<int32_t> enabled_chn_indices;
   double frequency = -1;    // Hz
   uint32_t timeout = 5000;  // millisecond
+  uint32_t consecutive_timeouts_ = 0;
   mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> samples_observer;
 
   std::set<int32_t> enabled_event_indices;

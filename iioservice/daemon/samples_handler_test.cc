@@ -269,6 +269,27 @@ TEST_F(SamplesHandlerTest, NoTimeout) {
   handler_->RemoveClient(&client_data, base::DoNothing());
 }
 
+TEST_F(SamplesHandlerTest, ConsecutiveTimeouts) {
+  // No samples in this test
+  device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
+
+  // ClientData should be valid until |handler_| is destructed.
+  clients_data_.emplace_back(ClientData(0, device_data_.get()));
+  ClientData& client_data = clients_data_[0];
+
+  client_data.frequency = kFooFrequency;
+  client_data.enabled_chn_indices.emplace(3);  // timestamp
+
+  fakes::FakeObserver observer(base::DoNothing());
+  handler_->AddClient(&client_data, observer.GetRemote());
+
+  // Wait until |observer| received |kNumFailures| READ_TIMEOUT.
+  for (int i = 0; i < kNumFailures; ++i)
+    observer.WaitForError(cros::mojom::ObserverErrorType::READ_TIMEOUT);
+
+  handler_->RemoveClient(&client_data, base::DoNothing());
+}
+
 // Add clients with only timestamp channel enabled, enable all other channels,
 // and disable all channels except for accel_x. Enabled channels are checked
 // after each modification.

@@ -4,6 +4,7 @@
 
 #include "iioservice/daemon/common_types.h"
 
+#include <limits>
 #include <optional>
 #include <utility>
 
@@ -54,6 +55,17 @@ bool ClientData::IsSampleActive() const {
 
 bool ClientData::IsEventActive() const {
   return !enabled_event_indices.empty();
+}
+
+void ClientData::ResetTimeout() {
+  consecutive_timeouts_ = 0;
+}
+
+uint32_t ClientData::GetTimeout() {
+  return timeout << (consecutive_timeouts_ !=
+                             std::numeric_limits<uint32_t>::max()
+                         ? consecutive_timeouts_++
+                         : consecutive_timeouts_);
 }
 
 std::vector<std::string> GetGravityChannels() {

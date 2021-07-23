@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/functional/callback.h>
+#include <base/run_loop.h>
 #include <base/sequence_checker.h>
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -64,8 +65,6 @@ class FakeSamplesHandler : public SamplesHandler {
   base::WeakPtrFactory<FakeSamplesHandler> weak_factory_{this};
 };
 
-// An observer that does nothing to samples or errors. Instead, it simply waits
-// for the mojo disconnection and calls |quit_closure|.
 class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
  public:
   explicit FakeObserver(base::RepeatingClosure quit_closure)
@@ -80,20 +79,33 @@ class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
   }
 
   std::optional<cros::mojom::ObserverErrorType>& GetError() { return type_; }
+  void WaitForError(cros::mojom::ObserverErrorType type) {
+    expected_type_ = type;
+
+    base::RunLoop run_loop;
+    quit_closure_ = run_loop.QuitClosure();
+    run_loop.Run();
+  }
 
   // cros::mojom::SensorDeviceSamplesObserver overrides:
   void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override {}
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {
     type_ = type;
+    if (type == expected_type_)
+      quit_closure_.Run();
   }
 
  private:
   void OnObserverDisconnect() {
     receiver_.reset();
-    quit_closure_.Run();
+    if (quit_closure_)
+      quit_closure_.Run();
   }
 
   base::RepeatingClosure quit_closure_;
+
+  cros::mojom::ObserverErrorType expected_type_;
+  base::RepeatingClosure error_quit_closure_;
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
   std::optional<cros::mojom::ObserverErrorType> type_;
 };

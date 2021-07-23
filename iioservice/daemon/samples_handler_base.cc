@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <libmems/common_types.h>
 
 #include "iioservice/daemon/sensor_metrics.h"
@@ -23,9 +24,22 @@ constexpr char kNoBatchChannels[][10] = {"timestamp", "count"};
 }  // namespace
 
 SamplesHandlerBase::SampleData::SampleData(ClientData* client_data)
-    : client_data_(client_data) {}
+    : client_data_(client_data) {
+  task_runner_ = base::SequencedTaskRunnerHandle::Get();
+}
 
 SamplesHandlerBase::SampleData::~SampleData() = default;
+
+void SamplesHandlerBase::SampleData::SetTimeoutTask() {
+  if (!client_data_ || client_data_->timeout == 0)
+    return;
+
+  task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&SamplesHandlerBase::SampleData::SampleTimeout,
+                     weak_factory_.GetWeakPtr(), sample_index_),
+      base::Milliseconds(client_data_->GetTimeout()));
+}
 
 void SamplesHandlerBase::SampleData::SampleTimeout(uint64_t sample_index) {
   if (sample_index != sample_index_ ||
@@ -36,6 +50,9 @@ void SamplesHandlerBase::SampleData::SampleTimeout(uint64_t sample_index) {
   LOGF(WARNING) << "Sample timed out on client with id: " << client_data_->id;
   client_data_->samples_observer->OnErrorOccurred(
       cros::mojom::ObserverErrorType::READ_TIMEOUT);
+
+  // Set the next timeout task.
+  SetTimeoutTask();
 }
 
 SamplesHandlerBase::SamplesHandlerBase(
@@ -217,17 +234,8 @@ void SamplesHandlerBase::SetTimeoutTaskOnThread(ClientData* client_data) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   DCHECK(clients_map_.find(client_data) != clients_map_.end());
 
-  if (client_data->timeout == 0)
-    return;
-
   auto& sample_data = clients_map_[client_data];
-
-  task_runner_->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&SamplesHandlerBase::SampleData::SampleTimeout,
-                     sample_data->weak_factory_.GetWeakPtr(),
-                     sample_data->sample_index_),
-      base::Milliseconds(client_data->timeout));
+  sample_data->SetTimeoutTask();
 }
 
 void SamplesHandlerBase::OnSampleAvailableOnThread(
@@ -309,6 +317,7 @@ void SamplesHandlerBase::OnSampleAvailableOnThread(
       sample_data->chns_.clear();
 
       client_data->samples_observer->OnSampleUpdated(std::move(client_sample));
+      client_data->ResetTimeout();
       SetTimeoutTaskOnThread(client_data);
     }
   }

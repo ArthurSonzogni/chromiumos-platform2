@@ -25,9 +25,12 @@ class SamplesHandlerBase {
     explicit SampleData(ClientData* client_data = nullptr);
     ~SampleData();
 
+    void SetTimeoutTask();
     void SampleTimeout(uint64_t sample_index);
 
     ClientData* client_data_ = nullptr;
+    scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
     // The starting index of the next sample.
     uint64_t sample_index_ = 0;
     // Moving averages of channels except for channels that have no batch mode
