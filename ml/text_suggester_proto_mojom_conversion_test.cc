@@ -111,6 +111,18 @@ TEST(TextSuggesterMojomConversionTest, ExperimentGroupToCorrectProto) {
   EXPECT_EQ(
       MultiWordExperimentGroupToProto(MultiWordExperimentGroup::kGboard),
       chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_GBOARD);
+  EXPECT_EQ(MultiWordExperimentGroupToProto(
+                MultiWordExperimentGroup::kGboardRelaxedA),
+            chrome_knowledge::MultiWordExperiment::
+                MULTI_WORD_EXPERIMENT_GBOARD_RELAXED_A);
+  EXPECT_EQ(MultiWordExperimentGroupToProto(
+                MultiWordExperimentGroup::kGboardRelaxedB),
+            chrome_knowledge::MultiWordExperiment::
+                MULTI_WORD_EXPERIMENT_GBOARD_RELAXED_B);
+  EXPECT_EQ(MultiWordExperimentGroupToProto(
+                MultiWordExperimentGroup::kGboardRelaxedC),
+            chrome_knowledge::MultiWordExperiment::
+                MULTI_WORD_EXPERIMENT_GBOARD_RELAXED_C);
   EXPECT_EQ(
       MultiWordExperimentGroupToProto(MultiWordExperimentGroup::kDefault),
       chrome_knowledge::MultiWordExperiment::MULTI_WORD_EXPERIMENT_UNSPECIFIED);
