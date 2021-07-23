@@ -40,10 +40,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
   // all the actual tasks are carried out and sequenced on the |gpu_thread_|
   // with the internal implementations below.
   bool Initialize(const camera_metadata_t* static_info) override;
-  bool ConfigureStreams(camera3_stream_configuration_t* stream_list,
-                        std::vector<camera3_stream_t*>* streams) override;
-  bool OnConfiguredStreams(
-      camera3_stream_configuration_t* stream_list) override;
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
+  bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       camera_metadata_t* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
@@ -102,10 +100,9 @@ class HdrNetStreamManipulator : public StreamManipulator {
   // Internal implementations of StreamManipulator.  All these methods are
   // sequenced on the |gpu_thread_|.
   bool InitializeOnGpuThread(const camera_metadata_t* static_info);
-  bool ConfigureStreamsOnGpuThread(camera3_stream_configuration_t* stream_list,
-                                   std::vector<camera3_stream_t*>* streams);
+  bool ConfigureStreamsOnGpuThread(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreamsOnGpuThread(
-      camera3_stream_configuration_t* stream_list);
+      Camera3StreamConfiguration* stream_config);
   bool ProcessCaptureRequestOnGpuThread(Camera3CaptureDescriptor* request);
   bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
   bool NotifyOnGpuThread(camera3_notify_msg_t* msg);

@@ -146,12 +146,11 @@ class ZslHelper {
   ~ZslHelper();
 
   // Attaches the ZSL bidirectional stream to the stream configuration.
-  bool AttachZslStream(camera3_stream_configuration_t* stream_list,
-                       std::vector<camera3_stream_t*>* streams);
+  bool AttachZslStream(Camera3StreamConfiguration* stream_config);
 
   // Resets the states of ZSL and releases all buffers from prior sessions.
   // Should be called during ConfigureStreams().
-  bool Initialize(const camera3_stream_configuration_t* stream_list);
+  bool Initialize(Camera3StreamConfiguration* stream_config);
 
   // Processes a capture request by either attaching a RAW output buffer (for
   // queueing the ZSL ring buffer) or transforming the request by adding a RAW
@@ -170,7 +169,7 @@ class ZslHelper {
   friend class tests::ZslHelperTest;
 
   // Whether we can enable ZSL with the list of streams being configured.
-  bool CanEnableZsl(std::vector<camera3_stream_t*>* streams);
+  bool CanEnableZsl(base::span<camera3_stream_t* const> streams);
 
   // Whether ZSL is enabled for this capture request.
   // Note that this function deletes the ANDROID_CONTROL_ENABLE_ZSL if

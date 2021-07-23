@@ -98,25 +98,23 @@ bool HdrNetStreamManipulator::Initialize(const camera_metadata_t* static_info) {
 }
 
 bool HdrNetStreamManipulator::ConfigureStreams(
-    camera3_stream_configuration_t* stream_list,
-    std::vector<camera3_stream_t*>* streams) {
+    Camera3StreamConfiguration* stream_config) {
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
       base::Bind(&HdrNetStreamManipulator::ConfigureStreamsOnGpuThread,
-                 base::Unretained(this), base::Unretained(stream_list),
-                 base::Unretained(streams)),
+                 base::Unretained(this), base::Unretained(stream_config)),
       &ret);
   return ret;
 }
 
 bool HdrNetStreamManipulator::OnConfiguredStreams(
-    camera3_stream_configuration_t* stream_list) {
+    Camera3StreamConfiguration* stream_config) {
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
       base::Bind(&HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread,
-                 base::Unretained(this), base::Unretained(stream_list)),
+                 base::Unretained(this), base::Unretained(stream_config)),
       &ret);
   return ret;
 }
@@ -178,17 +176,24 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
 }
 
 bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
-    camera3_stream_configuration_t* stream_list,
-    std::vector<camera3_stream_t*>* streams) {
+    Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
   // Clear the stream configuration from the previous session.
   ResetStateOnGpuThread();
 
-  VLOGF(1) << "Before stream manipulation:";
-  for (int i = 0; i < stream_list->num_streams; ++i) {
-    camera3_stream_t* s = stream_list->streams[i];
-    VLOGF(1) << GetDebugString(s);
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "Before stream manipulation:";
+    for (const auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << GetDebugString(s);
+    }
+  }
+
+  base::span<camera3_stream_t* const> streams = stream_config->GetStreams();
+  std::vector<camera3_stream_t*> modified_streams(streams.begin(),
+                                                  streams.end());
+  for (size_t i = 0; i < modified_streams.size(); ++i) {
+    camera3_stream_t* s = modified_streams[i];
     if (s->stream_type != CAMERA3_STREAM_OUTPUT ||
         !(s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
           s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
@@ -205,26 +210,38 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
     // TODO(jcliang): See if we need to use 10-bit YUV (i.e. with format
     // HAL_PIXEL_FORMAT_YCBCR_P010);
     context = CreateHdrNetStreamContext(s, HAL_PIXEL_FORMAT_YCbCr_420_888);
-    stream_list->streams[i] = context->hdrnet_stream.get();
+    modified_streams[i] = context->hdrnet_stream.get();
   }
 
-  VLOGF(1) << "After stream manipulation:";
-  for (int i = 0; i < stream_list->num_streams; ++i) {
-    VLOGF(1) << GetDebugString(stream_list->streams[i]);
+  stream_config->SetStreams(modified_streams);
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "After stream manipulation:";
+    for (const auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << GetDebugString(s);
+    }
   }
 
   return true;
 }
 
 bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
-    camera3_stream_configuration_t* stream_list) {
+    Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
   // Restore HDRnet streams to the original streams.
-  VLOGF(1) << "Before stream manipulation:";
-  for (int i = 0; i < stream_list->num_streams; ++i) {
-    camera3_stream_t* s = stream_list->streams[i];
-    VLOGF(1) << GetDebugString(s);
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "Before stream manipulation:";
+    for (const auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << GetDebugString(s);
+    }
+  }
+
+  base::span<camera3_stream_t* const> streams = stream_config->GetStreams();
+  std::vector<camera3_stream_t*> modified_streams(streams.begin(),
+                                                  streams.end());
+  for (size_t i = 0; i < modified_streams.size(); ++i) {
+    camera3_stream_t* s = modified_streams[i];
     if (s->stream_type != CAMERA3_STREAM_OUTPUT ||
         !(s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
           s->format == HAL_PIXEL_FORMAT_YCBCR_P010)) {
@@ -240,18 +257,22 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     original_stream->max_buffers = s->max_buffers;
     original_stream->usage = s->usage;
     original_stream->priv = s->priv;
-    stream_list->streams[i] = original_stream;
+    modified_streams[i] = original_stream;
+  }
+
+  stream_config->SetStreams(modified_streams);
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "After stream manipulation:";
+    for (const auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << GetDebugString(s);
+    }
   }
 
   bool success = SetUpPipelineOnGpuThread();
   if (!success) {
     LOGF(ERROR) << "Cannot set up HDRnet pipeline";
     return false;
-  }
-
-  VLOGF(1) << "After stream manipulation:";
-  for (int i = 0; i < stream_list->num_streams; ++i) {
-    VLOGF(1) << GetDebugString(stream_list->streams[i]);
   }
 
   return true;

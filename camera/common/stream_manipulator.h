@@ -63,14 +63,13 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // |stream_list| requested by the camera client. |streams| carries the set of
   // output streams in |stream_list| and can be used to modify the set of output
   // streams in |stream_list|.
-  virtual bool ConfigureStreams(camera3_stream_configuration_t* stream_list,
-                                std::vector<camera3_stream_t*>* streams) = 0;
+  virtual bool ConfigureStreams(Camera3StreamConfiguration* stream_config) = 0;
 
   // A hook to the lower part of camera3_device_ops::configure_streams().
   // Will be called by CameraDeviceAdapter with the updated stream configuration
   // |stream_list| returned by the camera HAL implementation.
   virtual bool OnConfiguredStreams(
-      camera3_stream_configuration_t* stream_list) = 0;
+      Camera3StreamConfiguration* stream_config) = 0;
 
   // A hook to the camera3_device_ops::construct_default_request_settings().
   // Will be called by CameraDeviceAdapter with the default request settings

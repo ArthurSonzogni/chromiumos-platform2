@@ -27,10 +27,8 @@ class ZslStreamManipulator : public StreamManipulator {
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info) override;
-  bool ConfigureStreams(camera3_stream_configuration_t* stream_list,
-                        std::vector<camera3_stream_t*>* streams) override;
-  bool OnConfiguredStreams(
-      camera3_stream_configuration_t* stream_list) override;
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
+  bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       camera_metadata_t* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;

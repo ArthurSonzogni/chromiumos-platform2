@@ -317,14 +317,14 @@ class ZslHelperTest : public ::testing::Test {
 
     std::vector<camera3_stream_t*> streams = {bi_stream,
                                               &still_capture_stream_};
-    camera3_stream_configuration_t stream_list = {
+    Camera3StreamConfiguration stream_config(camera3_stream_configuration_t{
         .num_streams = static_cast<uint32_t>(streams.size()),
-        .streams = streams.data()};
+        .streams = streams.data()});
 
     EXPECT_CALL(*zsl_buffer_manager_, Initialize).WillOnce(Return(true));
     DoSetZslBufferManagerForTesting(
         std::unique_ptr<MockZslBufferManager>(zsl_buffer_manager_));
-    zsl_helper_->Initialize(&stream_list);
+    zsl_helper_->Initialize(&stream_config);
   }
 
   void FillZslRingBuffer(bool ring_buffer_3a_converged) {
@@ -383,7 +383,7 @@ class ZslHelperTest : public ::testing::Test {
     }
   }
 
-  bool DoCanEnableZsl(std::vector<camera3_stream_t*>* streams) {
+  bool DoCanEnableZsl(base::span<camera3_stream_t* const> streams) {
     return zsl_helper_->CanEnableZsl(streams);
   }
 
@@ -443,16 +443,16 @@ TEST(ZslHelperStaticTest, TryAddEnableZslKeyTest) {
 // configurations.
 TEST_F(ZslHelperTest, AttachZslStreamTest) {
   std::vector<camera3_stream_t*> streams{&still_capture_stream_};
-  EXPECT_TRUE(DoCanEnableZsl(&streams));
+  EXPECT_TRUE(DoCanEnableZsl(streams));
 
-  camera3_stream_configuration_t stream_list = {
+  Camera3StreamConfiguration stream_config(camera3_stream_configuration_t{
       .num_streams = static_cast<uint32_t>(streams.size()),
-      .streams = streams.data()};
-  ASSERT_TRUE(zsl_helper_->AttachZslStream(&stream_list, &streams));
+      .streams = streams.data()});
+  ASSERT_TRUE(zsl_helper_->AttachZslStream(&stream_config));
 
-  EXPECT_EQ(stream_list.num_streams, 2);
-  EXPECT_EQ(streams.back(), GetZslBiStream());
-  EXPECT_NE(streams.back(), &still_capture_stream_);
+  EXPECT_EQ(stream_config.num_streams(), 2);
+  EXPECT_EQ(stream_config.GetStreams().back(), GetZslBiStream());
+  EXPECT_NE(stream_config.GetStreams().back(), &still_capture_stream_);
 }
 
 // Test that ZSL initializes correctly with the given stream configurations and
@@ -476,10 +476,10 @@ TEST_F(ZslHelperTest, InitializeTest) {
 
   std::vector<camera3_stream_t*> streams = {GetZslBiStream(),
                                             &still_capture_stream_};
-  camera3_stream_configuration_t stream_list = {
+  Camera3StreamConfiguration stream_config(camera3_stream_configuration_t{
       .num_streams = static_cast<uint32_t>(streams.size()),
-      .streams = streams.data()};
-  EXPECT_TRUE(zsl_helper_->Initialize(&stream_list));
+      .streams = streams.data()});
+  EXPECT_TRUE(zsl_helper_->Initialize(&stream_config));
 }
 
 // Test that |ZslHelper| correctly attaches a private buffer to a preview
@@ -569,10 +569,10 @@ TEST_F(ZslHelperTest, ProcessZslCaptureResultTest) {
 
 TEST_F(ZslHelperTest, CanEnableZslTest) {
   std::vector<camera3_stream_t*> streams{&still_capture_stream_};
-  EXPECT_TRUE(DoCanEnableZsl(&streams));
+  EXPECT_TRUE(DoCanEnableZsl(streams));
 
   streams = {};
-  EXPECT_FALSE(DoCanEnableZsl(&streams))
+  EXPECT_FALSE(DoCanEnableZsl(streams))
       << "We can't enable ZSL if there isn't a still capture stream";
 
   camera3_stream_t zsl_stream = {};
@@ -580,7 +580,7 @@ TEST_F(ZslHelperTest, CanEnableZslTest) {
   zsl_stream.format = ZslHelper::kZslPixelFormat;
   zsl_stream.usage = GRALLOC_USAGE_HW_CAMERA_ZSL;
   streams = {&still_capture_stream_, &zsl_stream};
-  EXPECT_FALSE(DoCanEnableZsl(&streams))
+  EXPECT_FALSE(DoCanEnableZsl(streams))
       << "We can't enable ZSL if there's already a ZSL output stream";
 
   streams = {&still_capture_stream_};
@@ -589,7 +589,7 @@ TEST_F(ZslHelperTest, CanEnableZslTest) {
     input_streams[i].stream_type = CAMERA3_STREAM_INPUT;
     streams.push_back(&input_streams[i]);
   }
-  EXPECT_FALSE(DoCanEnableZsl(&streams))
+  EXPECT_FALSE(DoCanEnableZsl(streams))
       << "We cannot enable ZSL if the max number of input streams is already "
          "reached";
 }

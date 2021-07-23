@@ -322,36 +322,38 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   }
   streams_.swap(new_streams);
 
-  camera3_stream_configuration_t stream_list;
-  stream_list.num_streams = config->streams.size();
-  std::vector<camera3_stream_t*> streams(stream_list.num_streams);
-  stream_list.streams = streams.data();
-  stream_list.operation_mode =
-      static_cast<camera3_stream_configuration_mode_t>(config->operation_mode);
+  std::vector<camera3_stream_t*> streams_ptr;
+  for (const auto& s : streams_) {
+    streams_ptr.push_back(s.second.get());
+  }
   internal::ScopedCameraMetadata session_parameters;
   if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
     session_parameters =
         internal::DeserializeCameraMetadata(config->session_parameters);
-    stream_list.session_parameters = session_parameters.get();
   }
-  size_t i = 0;
-  for (auto it = streams_.begin(); it != streams_.end(); it++) {
-    stream_list.streams[i++] = it->second.get();
-  }
+  Camera3StreamConfiguration stream_config(camera3_stream_configuration_t{
+      .num_streams = static_cast<uint32_t>(streams_ptr.size()),
+      .streams = streams_ptr.data(),
+      .operation_mode = static_cast<camera3_stream_configuration_mode_t>(
+          config->operation_mode),
+      .session_parameters = session_parameters.get(),
+  });
 
   for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
        ++it) {
-    (*it)->ConfigureStreams(&stream_list, &streams);
+    (*it)->ConfigureStreams(&stream_config);
   }
 
+  camera3_stream_configuration_t* raw_config = stream_config.Lock();
   int32_t result =
-      camera_device_->ops->configure_streams(camera_device_, &stream_list);
+      camera_device_->ops->configure_streams(camera_device_, raw_config);
+  stream_config.Unlock();
 
   // Call OnConfiguredStreams in reverse order so the stream manipulators can
   // unwind the stream modifications.
   for (auto it = stream_manipulators_.rbegin();
        it != stream_manipulators_.rend(); ++it) {
-    (*it)->OnConfiguredStreams(&stream_list);
+    (*it)->OnConfiguredStreams(&stream_config);
   }
 
   if (result == 0) {

@@ -99,7 +99,7 @@ class Camera3Stream {
     };
   }
 
-  const camera3_stream_t* get() const { return &stream_; }
+  camera3_stream_t* get() { return &stream_; }
 
   uint32_t width() const { return stream_.width; }
   uint32_t height() const { return stream_.height; }
@@ -109,40 +109,6 @@ class Camera3Stream {
  private:
   camera3_stream_t stream_ = {};
   buffer_handle_t buffer_ = nullptr;
-};
-
-class Camera3StreamConfig {
- public:
-  explicit Camera3StreamConfig(
-      camera3_stream_configuration_mode_t operation_mode =
-          CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE) {
-    stream_config_.operation_mode = operation_mode;
-    stream_config_.num_streams = 0;
-    stream_config_.streams = stream_ptrs_.data();
-  }
-
-  void AppendStream(const Camera3Stream& stream) {
-    camera3_stream_t* ptr = const_cast<camera3_stream_t*>(stream.get());
-    for (auto* s : stream_ptrs_) {
-      ASSERT_NE(s, ptr);
-    }
-    stream_ptrs_.push_back(ptr);
-    stream_config_.num_streams++;
-    stream_config_.streams = stream_ptrs_.data();
-  }
-
-  void ClearStreams() { stream_ptrs_.clear(); }
-
-  camera3_stream_configuration_t* stream_config() { return &stream_config_; }
-  std::vector<camera3_stream_t*>& stream_ptrs() { return stream_ptrs_; }
-
-  camera3_stream_t** streams() const { return stream_config_.streams; }
-  uint32_t operation_mode() const { return stream_config_.operation_mode; }
-  uint32_t num_streams() const { return stream_config_.num_streams; }
-
- private:
-  camera3_stream_configuration_t stream_config_ = {};
-  std::vector<camera3_stream_t*> stream_ptrs_ = {};
 };
 
 class MockHdrNetProcessor : public HdrNetProcessor {
@@ -246,18 +212,20 @@ class HdrNetStreamManipulatorTest : public Test {
   }
 
   void SetImpl720pStreamInConfig() {
-    stream_config_.AppendStream(impl_720p_stream_);
+    stream_config_.AppendStream(impl_720p_stream_.get());
   }
 
   void SetYuv480pStreamInConfig() {
-    stream_config_.AppendStream(yuv_480p_stream_);
+    stream_config_.AppendStream(yuv_480p_stream_.get());
   }
 
   void SetYuv1080pStreamInConfig() {
-    stream_config_.AppendStream(yuv_1080p_stream_);
+    stream_config_.AppendStream(yuv_1080p_stream_.get());
   }
 
-  void SetBlobStreamInConfig() { stream_config_.AppendStream(blob_stream_); }
+  void SetBlobStreamInConfig() {
+    stream_config_.AppendStream(blob_stream_.get());
+  }
 
   // Set up all three streams for test: one IMPL 720p, one YUV 1080p, and one
   // BLOB.
@@ -265,17 +233,14 @@ class HdrNetStreamManipulatorTest : public Test {
     SetImpl720pStreamInConfig();
     SetYuv1080pStreamInConfig();
     SetBlobStreamInConfig();
-    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-        stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
     std::vector<camera3_stream_t*> modified_streams;
-    for (int i = 0; i < stream_config_.num_streams(); ++i) {
-      camera3_stream_t* stream = stream_config_.streams()[i];
+    for (auto* stream : stream_config_.GetStreams()) {
       stream->max_buffers = max_buffers;
       stream->priv = reinterpret_cast<void*>(kFakePriv);
       modified_streams.push_back(stream);
     }
-    ASSERT_TRUE(stream_manipulator_->OnConfiguredStreams(
-        stream_config_.stream_config()));
+    ASSERT_TRUE(stream_manipulator_->OnConfiguredStreams(&stream_config_));
   }
 
   // Set up three streams, including two YUV/IMPL streams with different aspect
@@ -284,17 +249,14 @@ class HdrNetStreamManipulatorTest : public Test {
     SetImpl720pStreamInConfig();
     SetYuv480pStreamInConfig();
     SetBlobStreamInConfig();
-    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-        stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
     std::vector<camera3_stream_t*> modified_streams;
-    for (int i = 0; i < stream_config_.num_streams(); ++i) {
-      camera3_stream_t* stream = stream_config_.streams()[i];
+    for (auto* stream : stream_config_.GetStreams()) {
       stream->max_buffers = max_buffers;
       stream->priv = reinterpret_cast<void*>(kFakePriv);
       modified_streams.push_back(stream);
     }
-    ASSERT_TRUE(stream_manipulator_->OnConfiguredStreams(
-        stream_config_.stream_config()));
+    ASSERT_TRUE(stream_manipulator_->OnConfiguredStreams(&stream_config_));
   }
 
   // Construct a capture request with three buffers: one IMPL 720p, one YUV
@@ -338,7 +300,7 @@ class HdrNetStreamManipulatorTest : public Test {
   Camera3Stream yuv_480p_stream_;
   Camera3Stream yuv_1080p_stream_;
   Camera3Stream blob_stream_;
-  Camera3StreamConfig stream_config_;
+  Camera3StreamConfiguration stream_config_;
 };
 
 // Test that HdrNetStreamManipulator can handle stream configuration with a
@@ -347,17 +309,14 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureSingleYuvStreamTest) {
   // Prepare a configuration with single IMPL 720p stream.
   SetImpl720pStreamInConfig();
 
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-      stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
 
   // The stream operation mode should remain unchanged.
   EXPECT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
-  // The modified streams should be returned.
-  EXPECT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
   // The modified stream config should have one stream.
   EXPECT_EQ(stream_config_.num_streams(), 1);
-  camera3_stream_t* stream = stream_config_.streams()[0];
+  camera3_stream_t* stream = stream_config_.GetStreams()[0];
   // The modified stream config should replace the original stream with another
   // replacement stream that has the same width and height.
   EXPECT_NE(stream, impl_720p_stream_.get());
@@ -374,18 +333,15 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureMultipleYuvStreamsTest) {
   SetYuv1080pStreamInConfig();
   SetBlobStreamInConfig();
 
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-      stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
-  // The modified streams should be returned.
-  ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
+  // The modified streams should have three streams.
   ASSERT_EQ(stream_config_.num_streams(), 3);
   bool impl_720p_configured = false, yuv_1080p_configured = false;
-  for (int i = 0; i < stream_config_.num_streams(); ++i) {
-    camera3_stream_t* stream = stream_config_.streams()[i];
+  for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
       EXPECT_EQ(stream, blob_stream_.get());
@@ -416,8 +372,7 @@ TEST_F(HdrNetStreamManipulatorTest, OnConfiguredMultipleYuvStreamsTest) {
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
   ASSERT_EQ(stream_config_.num_streams(), 3);
   bool impl_720p_restored = false, yuv_1080p_restored = false;
-  for (int i = 0; i < stream_config_.num_streams(); ++i) {
-    camera3_stream_t* stream = stream_config_.streams()[i];
+  for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
       EXPECT_EQ(stream, blob_stream_.get());
@@ -448,18 +403,15 @@ TEST_F(HdrNetStreamManipulatorTest,
   SetYuv480pStreamInConfig();
   SetBlobStreamInConfig();
 
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-      stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
-  // The modified streams should be returned.
-  ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
+  // The modified streams should have three streams.
   ASSERT_EQ(stream_config_.num_streams(), 3);
   bool impl_720p_replaced = false, yuv_480p_replaced = false;
-  for (int i = 0; i < stream_config_.num_streams(); ++i) {
-    camera3_stream_t* stream = stream_config_.streams()[i];
+  for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
       EXPECT_EQ(stream, blob_stream_.get());
@@ -491,8 +443,7 @@ TEST_F(HdrNetStreamManipulatorTest,
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
   ASSERT_EQ(stream_config_.num_streams(), 3);
   bool impl_720p_restored = false, yuv_480p_restored = false;
-  for (int i = 0; i < stream_config_.num_streams(); ++i) {
-    camera3_stream_t* stream = stream_config_.streams()[i];
+  for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
       EXPECT_EQ(stream, blob_stream_.get());
@@ -517,40 +468,33 @@ TEST_F(HdrNetStreamManipulatorTest,
 TEST_F(HdrNetStreamManipulatorTest, MultipleConfigureStreamsTest) {
   // First configure a single IMPL 720p stream.
   SetImpl720pStreamInConfig();
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-      stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
-  // The modified streams should be returned.
-  ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
   // The modified stream config should have one stream.
   ASSERT_EQ(stream_config_.num_streams(), 1);
-  camera3_stream_t* stream = stream_config_.streams()[0];
+  camera3_stream_t* stream = stream_config_.GetStreams()[0];
   // The modified stream config should replace the original stream with another
   // replacement stream that has the same width and height.
   ASSERT_NE(stream, impl_720p_stream_.get());
   ASSERT_TRUE(impl_720p_stream_.HasSameSize(*stream));
 
   // Call ConfigureStreams the second time with different stream configurations.
-  *stream_config_.stream_config() = {};
-  stream_config_.ClearStreams();
+  stream_config_.SetStreams({});
   SetImpl720pStreamInConfig();
   SetYuv1080pStreamInConfig();
   SetBlobStreamInConfig();
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(
-      stream_config_.stream_config(), &stream_config_.stream_ptrs()));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
             CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE);
   // The modified streams should be returned.
-  ASSERT_EQ(stream_config_.streams(), stream_config_.stream_ptrs().data());
   ASSERT_EQ(stream_config_.num_streams(), 3);
   bool impl_720p_configured = false, yuv_1080p_configured = false;
-  for (int i = 0; i < stream_config_.num_streams(); ++i) {
-    camera3_stream_t* stream = stream_config_.streams()[i];
+  for (auto* stream : stream_config_.GetStreams()) {
     if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
       // The BLOB stream should be left untouched.
       EXPECT_EQ(stream, blob_stream_.get());

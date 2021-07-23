@@ -28,20 +28,19 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info) {
 }
 
 bool ZslStreamManipulator::ConfigureStreams(
-    camera3_stream_configuration_t* stream_list,
-    std::vector<camera3_stream_t*>* streams) {
+    Camera3StreamConfiguration* stream_config) {
   zsl_enabled_ = false;
-  zsl_stream_attached_ = zsl_helper_->AttachZslStream(stream_list, streams);
+  zsl_stream_attached_ = zsl_helper_->AttachZslStream(stream_config);
   if (zsl_stream_attached_) {
-    zsl_stream_ = streams->back();
+    zsl_stream_ = stream_config->GetStreams().back();
   }
   return true;
 }
 
 bool ZslStreamManipulator::OnConfiguredStreams(
-    camera3_stream_configuration_t* stream_list) {
+    Camera3StreamConfiguration* stream_config) {
   if (zsl_stream_attached_) {
-    if (zsl_helper_->Initialize(stream_list)) {
+    if (zsl_helper_->Initialize(stream_config)) {
       zsl_enabled_ = true;
       LOGF(INFO) << "Enabling ZSL";
     } else {

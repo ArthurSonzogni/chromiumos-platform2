@@ -268,48 +268,41 @@ ZslHelper::~ZslHelper() {
   fence_sync_thread_.Stop();
 }
 
-bool ZslHelper::AttachZslStream(camera3_stream_configuration_t* stream_list,
-                                std::vector<camera3_stream_t*>* streams) {
-  if (!CanEnableZsl(streams)) {
+bool ZslHelper::AttachZslStream(Camera3StreamConfiguration* stream_config) {
+  if (!CanEnableZsl(stream_config->GetStreams())) {
     return false;
   }
 
-  stream_list->num_streams++;
-  streams->push_back(bi_stream_.get());
-  // There could be memory reallocation happening after the push_back call.
-  stream_list->streams = streams->data();
+  stream_config->AppendStream(bi_stream_.get());
 
-  VLOGF(1) << "Attached ZSL streams. The list of streams after attaching:";
-  for (size_t i = 0; i < stream_list->num_streams; ++i) {
-    VLOGF(1) << "i = " << i
-             << ", type = " << stream_list->streams[i]->stream_type
-             << ", size = " << stream_list->streams[i]->width << "x"
-             << stream_list->streams[i]->height
-             << ", format = " << stream_list->streams[i]->format;
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "Attached ZSL streams. The list of streams after attaching:";
+    for (const auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << ", type = " << s->stream_type << ", size = " << s->width
+               << "x" << s->height << ", format = " << s->format;
+    }
   }
 
   return true;
 }
 
-bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
-  auto GetStillCaptureMaxBuffers =
-      [&](const camera3_stream_configuration_t* stream_list) {
-        uint32_t max_buffers = 0;
-        for (size_t i = 0; i < stream_list->num_streams; ++i) {
-          auto* stream = stream_list->streams[i];
-          if (!IsOutputStream(stream)) {
-            continue;
-          }
-          // If our private usage flag is specified, we know only this stream
-          // will be used for ZSL capture.
-          if (stream->usage & cros::GRALLOC_USAGE_STILL_CAPTURE) {
-            return stream->max_buffers;
-          } else if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
-            max_buffers += stream->max_buffers;
-          }
-        }
-        return max_buffers;
-      };
+bool ZslHelper::Initialize(Camera3StreamConfiguration* stream_config) {
+  auto GetStillCaptureMaxBuffers = [&]() {
+    uint32_t max_buffers = 0;
+    for (auto* stream : stream_config->GetStreams()) {
+      if (!IsOutputStream(stream)) {
+        continue;
+      }
+      // If our private usage flag is specified, we know only this stream
+      // will be used for ZSL capture.
+      if (stream->usage & cros::GRALLOC_USAGE_STILL_CAPTURE) {
+        return stream->max_buffers;
+      } else if (stream->format == HAL_PIXEL_FORMAT_BLOB) {
+        max_buffers += stream->max_buffers;
+      }
+    }
+    return max_buffers;
+  };
 
   base::AutoLock ring_buffer_lock(ring_buffer_lock_);
 
@@ -318,15 +311,19 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
   zsl_buffer_manager_->Reset();
 
   // Determine at most how many buffers would be selected for private
-  // reprocessing simultaneously.
+  // reprocessing simultaneously, and remove the ZSL stream we attached along
+  // the way.
   bi_stream_max_buffers_ = 0;
-  for (uint32_t i = 0; i < stream_list->num_streams; i++) {
-    auto* stream = stream_list->streams[i];
-    if (stream == bi_stream_.get()) {
-      bi_stream_max_buffers_ = stream->max_buffers;
-      break;
+  base::span<camera3_stream_t* const> streams = stream_config->GetStreams();
+  std::vector<camera3_stream_t*> modified_streams;
+  for (auto* s : streams) {
+    if (s == bi_stream_.get()) {
+      bi_stream_max_buffers_ = s->max_buffers;
+    } else {
+      modified_streams.push_back(s);
     }
   }
+  stream_config->SetStreams(modified_streams);
   if (bi_stream_max_buffers_ == 0) {
     LOGF(ERROR) << "Failed to acquire max_buffers for the private stream";
     return false;
@@ -334,7 +331,7 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
   VLOGF(1) << "Max buffers for private stream = " << bi_stream_max_buffers_;
 
   // Determine at most how many still capture buffers would be in-flight.
-  uint32_t still_max_buffers = GetStillCaptureMaxBuffers(stream_list);
+  uint32_t still_max_buffers = GetStillCaptureMaxBuffers();
   if (still_max_buffers == 0) {
     LOGF(ERROR) << "Failed to acquire max_buffers for the still capture stream";
     return false;
@@ -357,11 +354,11 @@ bool ZslHelper::Initialize(const camera3_stream_configuration_t* stream_list) {
   return true;
 }
 
-bool ZslHelper::CanEnableZsl(std::vector<camera3_stream_t*>* streams) {
+bool ZslHelper::CanEnableZsl(base::span<camera3_stream_t* const> streams) {
   size_t num_input_streams = 0;
   bool has_still_capture_output_stream = false;
   bool has_zsl_output_stream = false;
-  for (auto* stream : (*streams)) {
+  for (auto* stream : streams) {
     if (IsInputStream(stream)) {
       num_input_streams++;
     }
