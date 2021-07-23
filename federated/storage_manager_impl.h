@@ -33,9 +33,8 @@ class StorageManagerImpl : public StorageManager,
   void InitializeSessionManagerProxy(dbus::Bus* bus) override;
   bool OnExampleReceived(const std::string& client_name,
                          const std::string& serialized_example) override;
-  bool PrepareStreamingForClient(const std::string& client_name) override;
-  bool GetNextExample(std::string* example, bool* end_of_iterator) override;
-  bool CloseStreaming(bool clean_examples) override;
+  base::Optional<ExampleDatabase::Iterator> GetExampleIterator(
+      const std::string& client_name) const override;
 
   // SessionManagerObserverInterface:
   void OnSessionStarted() override;
@@ -59,14 +58,6 @@ class StorageManagerImpl : public StorageManager,
   // Current login user hash. The database is connected to
   // /run/daemon-store/federated/<sanitized_username_>/examples.db.
   std::string sanitized_username_;
-
-  // Which client it is streaming examples for.
-  std::string streaming_client_name_;
-
-  // The last seen (i.e. largest) example id for the streaming_client_name_,
-  // after training job succeeds, examples of this client with id <=
-  // last_seen_example_id_ should be removed from the database.
-  int64_t last_seen_example_id_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

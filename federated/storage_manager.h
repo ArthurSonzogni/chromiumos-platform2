@@ -7,6 +7,10 @@
 
 #include <string>
 
+#include <base/optional.h>
+
+#include "federated/example_database.h"
+
 namespace dbus {
 class Bus;
 }  // namespace dbus
@@ -27,21 +31,8 @@ class StorageManager {
   virtual bool OnExampleReceived(const std::string& client_name,
                                  const std::string& serialized_example) = 0;
 
-  // Provides example streaming. We assume there're no parallel streamings.
-  // Usage:
-  // 1. call PrepareStreamingForClient(), if it returns true, then;
-  // 2. call GetNextExample() to get examples, until end_of_iterator = true or
-  //    it returns false, then;
-  // 3. call CloseStreaming() to close the current streaming and clean the used
-  //    examples if clean_examples = true. clean_examples is set true only when
-  //    the training job succeeds, otherwise the examples should be kept for
-  //    future training.
-  virtual bool PrepareStreamingForClient(const std::string& client_name) = 0;
-  // Returns true when call to database.GetNextStreamedRecord succeeds.
-  virtual bool GetNextExample(std::string* example, bool* end_of_iterator) = 0;
-  // Returns true when database closes streaming successfully and deletes used
-  // examples if clean_examples = true.
-  virtual bool CloseStreaming(bool clean_examples) = 0;
+  virtual base::Optional<ExampleDatabase::Iterator> GetExampleIterator(
+      const std::string& client_name) const = 0;
 
  protected:
   StorageManager() = default;

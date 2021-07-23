@@ -4,15 +4,21 @@
 
 #include "federated/storage_manager_impl.h"
 
-#include <gmock/gmock.h>
 #include <memory>
+#include <utility>
+
+#include <base/strings/stringprintf.h>
+#include <gmock/gmock.h>
 
 #include "federated/mock_example_database.h"
+#include "federated/test_utils.h"
+#include "federated/utils.h"
 
 namespace federated {
 namespace {
 
 using testing::_;
+using testing::ByMove;
 using testing::Expectation;
 using testing::ExpectationSet;
 using testing::Mock;
@@ -42,11 +48,11 @@ class StorageManagerImplTest : public testing::Test {
   std::unique_ptr<StorageManagerImpl> storage_manager_impl_;
 };
 
-TEST_F(StorageManagerImplTest, InsertExample) {
+TEST_F(StorageManagerImplTest, ExampleRecieved) {
   EXPECT_CALL(*example_database_, IsOpen())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*example_database_, InsertExample(_))
+  EXPECT_CALL(*example_database_, InsertExample("client", _))
       .WillRepeatedly(Return(true));
 
   // First call will fail due to the database !IsOpen;
@@ -54,86 +60,56 @@ TEST_F(StorageManagerImplTest, InsertExample) {
   EXPECT_TRUE(storage_manager_impl_->OnExampleReceived("client", "example"));
 }
 
+// Test that the databases example iterator is faithfully returned.
 TEST_F(StorageManagerImplTest, ExampleStreaming) {
   EXPECT_CALL(*example_database_, IsOpen())
       .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(*example_database_, PrepareStreamingForClient(_, _))
-      .Times(2)
-      .WillOnce(Return(false))
       .WillOnce(Return(true));
 
-  // Return 10000 examples, then return base::nullopt.
-  int streaming_example_count = 10000;
-  ExampleRecord example_record;
-  Expectation successful_get =
-      EXPECT_CALL(*example_database_, GetNextStreamedRecord())
-          .Times(streaming_example_count)
-          .WillRepeatedly(
-              Return(base::Optional<ExampleRecord>(example_record)));
+  EXPECT_CALL(*example_database_, ExampleCount("fake_client"))
+      .WillOnce(Return(kMinExampleCount));
 
-  EXPECT_CALL(*example_database_, GetNextStreamedRecord())
-      .After(successful_get)
-      .WillOnce(Return(base::nullopt));
-
-  EXPECT_CALL(*example_database_, CloseStreaming()).Times(1);
-  EXPECT_CALL(*example_database_, DeleteExamplesWithSmallerIdForClient(_, _))
-      .Times(1)
-      .WillOnce(Return(true));
+  // Return a valid number of examples, then return absl::OutOfRangeError().
+  auto db_and_it = MockExampleDatabase::FakeIterator(kMinExampleCount);
+  EXPECT_CALL(*example_database_, GetIterator("fake_client"))
+      .WillOnce(Return(ByMove(std::move(std::get<1>(db_and_it)))));
 
   // Fail due to !example_database_->IsOpen.
-  EXPECT_FALSE(storage_manager_impl_->PrepareStreamingForClient("client"));
+  EXPECT_EQ(storage_manager_impl_->GetExampleIterator("fake_client"),
+            base::nullopt);
+  base::Optional<ExampleDatabase::Iterator> it =
+      storage_manager_impl_->GetExampleIterator("fake_client");
+  ASSERT_TRUE(it.has_value());
 
-  // Fail due to !example_database_->PrepareStreamingForClient.
-  EXPECT_FALSE(storage_manager_impl_->PrepareStreamingForClient("client"));
-
-  ASSERT_TRUE(storage_manager_impl_->PrepareStreamingForClient("client"));
-  int cnt = 0;
-  std::string example;
-  bool end_of_iterator = false;
-  // Retrieve an example from example_database_, GetNextExample should always
-  // return true because the example_database_ is valid. end_of_iterator = true
-  // when example streaming reaches the end.
+  // Expect the examples we specified.
+  int count = 0;
   while (true) {
-    EXPECT_TRUE(
-        storage_manager_impl_->GetNextExample(&example, &end_of_iterator));
-    if (end_of_iterator)
+    const absl::StatusOr<ExampleRecord> record = it->Next();
+    if (!record.ok()) {
+      EXPECT_TRUE(absl::IsOutOfRange(record.status()));
       break;
-    cnt++;
+    }
+
+    EXPECT_EQ(record->id, count + 1);
+    EXPECT_EQ(record->serialized_example,
+              base::StringPrintf("example_%d", count + 1));
+    EXPECT_EQ(record->timestamp, SecondsAfterEpoch(count + 1));
+
+    ++count;
   }
 
-  EXPECT_EQ(cnt, streaming_example_count);
-  EXPECT_TRUE(storage_manager_impl_->CloseStreaming(true /* clean_examples */));
+  EXPECT_EQ(count, kMinExampleCount);
 }
 
-TEST_F(StorageManagerImplTest, ExampleStreamingWithSessionStopped) {
-  EXPECT_CALL(*example_database_, IsOpen()).WillRepeatedly(Return(true));
+// Test that minimum example limit is honored.
+TEST_F(StorageManagerImplTest, ExampleStreamingMinimum) {
+  EXPECT_CALL(*example_database_, IsOpen()).WillOnce(Return(true));
 
-  EXPECT_CALL(*example_database_, PrepareStreamingForClient(_, _))
-      .WillRepeatedly(Return(true));
-  ExampleRecord example_record;
+  EXPECT_CALL(*example_database_, ExampleCount("fake_client"))
+      .WillOnce(Return(kMinExampleCount - 1));
 
-  EXPECT_CALL(*example_database_, GetNextStreamedRecord())
-      .WillRepeatedly(Return(base::Optional<ExampleRecord>(example_record)));
-
-  ASSERT_TRUE(storage_manager_impl_->PrepareStreamingForClient("client"));
-  int cnt = 100;
-  std::string example;
-  bool end_of_iterator = false;
-
-  // The example streaming is healthy before we call OnSessionStopped.
-  while (cnt > 0) {
-    EXPECT_TRUE(
-        storage_manager_impl_->GetNextExample(&example, &end_of_iterator));
-    EXPECT_FALSE(end_of_iterator);
-    cnt--;
-  }
-  storage_manager_impl_->OnSessionStopped();
-  // After OnSessionStopped, GetNextExample returns false, which means the
-  // example streaming stopped unexpectedly.
-  EXPECT_FALSE(
-      storage_manager_impl_->GetNextExample(&example, &end_of_iterator));
+  EXPECT_EQ(storage_manager_impl_->GetExampleIterator("fake_client"),
+            base::nullopt);
 }
 
 }  // namespace federated
