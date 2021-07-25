@@ -30,15 +30,16 @@ constexpr size_t kHeaderSize = 40;
 constexpr uint32_t kMaxUnicode = 0x10ffff;
 
 // Read 4 bytes from string |buf| at |offset| as network order uint32_t.
-// Returns false if |offset > buf.size() - 4| or |*result| is not between
-// |min_result| and |max_result|. |field_name| is used in error message.
+// Returns false if |offset > buf.size() - 4| or |offset| is not aligned to a
+// 4-byte word boundary, or |*result| is not between |min_result| and
+// |max_result|. |field_name| is used in error message.
 bool ReadInt(std::string buf,
              uint32_t offset,
              std::string field_name,
              uint32_t min_result,
              uint32_t max_result,
              uint32_t* result) {
-  if (offset > buf.size() - 4) {
+  if (offset > buf.size() - 4 || (offset & 0x3)) {
     LOG(ERROR) << "Invalid offset=" << offset << " for " << field_name
                << ", string size=" << buf.size();
     return false;

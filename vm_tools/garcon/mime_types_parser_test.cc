@@ -109,7 +109,7 @@ TEST_F(MimeTypesParserTest, Empty) {
   EXPECT_FALSE(ParseMimeTypes(TempFilePath(), &map));
 }
 
-//  xxd /tmp/mimetest/mime.cache
+// xxd /tmp/mimetest/mime.cache
 // 00000000: 0001 0002 0000 0060 0000 0064 0000 0068  .......`...d...h
 // 00000010: 0000 0078 0000 01a0 0000 01a4 0000 01b0  ...x............
 // 00000020: 0000 01b4 0000 01b8 0000 01bc 7465 7874  ............text
@@ -149,6 +149,8 @@ TEST_F(MimeTypesParserTest, Invalid) {
   InvalidIf(buf, 6, 0xff);
   // Not null beore alias list.
   InvalidIf(buf, 0x60 - 1, 'X');
+  // Misaligned offset for REVERSE_SUFFIX_TREE_OFFSET.
+  InvalidIf(buf, 0x13, 0x7a);
   // N_ROOTS > kMaxUnicode (0x10ffff).
   InvalidIf(buf, 0x79, 0x20);
   InvalidIf(buf, 0xc1, 0x20);
