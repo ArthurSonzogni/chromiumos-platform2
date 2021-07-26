@@ -30,7 +30,8 @@ enum DocumentScannerResultStatus {
 // Next min field ID: 2
 [Stable]
 struct DetectCornersResult {
-  // Status of the result.
+  // Status of the result. Even when there is no corners detected, the detection
+  // can still be considered successful if there is no error occurs.
   DocumentScannerResultStatus status@0;
 
   // Detected document corners.

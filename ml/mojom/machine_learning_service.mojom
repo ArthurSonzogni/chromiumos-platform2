@@ -40,7 +40,8 @@ enum LoadModelResult {
   LANGUAGE_NOT_SUPPORTED_ERROR = 4,
 };
 
-// Top-level interface between Chromium browser process and the ML Service daemon.
+// Top-level interface between Chromium browser process and the ML Service
+// daemon.
 // Next ordinal: 11
 [Stable, Uuid="9e5e4750-40cc-4eda-ac09-3457d06a45ab"]
 interface MachineLearningService {
