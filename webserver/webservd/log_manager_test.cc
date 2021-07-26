@@ -109,10 +109,9 @@ TEST_F(LogManagerTest, LargeLogs) {
 
   timestamp += base::TimeDelta::FromDays(1);
   // Write a large 2015-02-26.log but with enough room for one more log line.
-  std::vector<char> data(1024 * 1024 - (log_line_len * 3 / 2), ' ');
+  std::string data(1024 * 1024 - (log_line_len * 3 / 2), ' ');
   base::FilePath current_file = temp_dir.GetPath().Append("2015-02-26.log");
-  ASSERT_EQ(static_cast<int>(data.size()),
-            base::WriteFile(current_file, data.data(), data.size()));
+  ASSERT_TRUE(base::WriteFile(current_file, data));
   // Add the line. Should still go to the same file.
   LogEntry(timestamp);
   std::set<std::string> expected_files{
@@ -129,7 +128,7 @@ TEST_F(LogManagerTest, LargeLogs) {
   };
   EXPECT_EQ(expected_files, GetLogFiles());
   // Add some more data to the current file.
-  ASSERT_TRUE(base::AppendToFile(current_file, data.data(), data.size()));
+  ASSERT_TRUE(base::AppendToFile(current_file, data));
   LogEntry(timestamp);
   expected_files = {
       "2015-02-25.log",

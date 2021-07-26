@@ -110,7 +110,7 @@ class FileLogger final : public LogManager::LoggerInterface {
     }
 
     if (exists) {
-      success = base::AppendToFile(file_path, entry.data(), entry.size());
+      success = base::AppendToFile(file_path, entry);
     } else {
       int size = static_cast<int>(entry.size());
       success = (base::WriteFile(file_path, entry.data(), size) == size);
