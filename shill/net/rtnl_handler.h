@@ -162,6 +162,10 @@ class SHILL_EXPORT RTNLHandler {
   // tests.
   void Stop();
 
+  // Called by OnReadError to clear |response_callbacks_|, |stored_requests_|
+  // reset netlink socket, sequence number and create new socket.
+  void ResetSocket();
+
   // Dispatches an rtnl message to all listeners
   void DispatchEvent(int type, const RTNLMessage& msg);
   // Send the next table-dump request to the kernel
@@ -215,6 +219,7 @@ class SHILL_EXPORT RTNLHandler {
   bool in_request_;
 
   int rtnl_socket_;
+  uint32_t netlink_groups_mask_;
   uint32_t request_flags_;
   uint32_t request_sequence_;
   uint32_t last_dump_sequence_;

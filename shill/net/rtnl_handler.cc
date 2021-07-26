@@ -66,6 +66,7 @@ RTNLHandler::RTNLHandler()
     : sockets_(new Sockets()),
       in_request_(false),
       rtnl_socket_(Sockets::kInvalidFileDescriptor),
+      netlink_groups_mask_(0),
       request_flags_(0),
       request_sequence_(0),
       last_dump_sequence_(0),
@@ -85,11 +86,12 @@ RTNLHandler* RTNLHandler::GetInstance() {
 }
 
 void RTNLHandler::Start(uint32_t netlink_groups_mask) {
+  netlink_groups_mask_ = netlink_groups_mask;
   if (rtnl_socket_ != Sockets::kInvalidFileDescriptor)
     return;
 
   rtnl_socket_ =
-      OpenNetlinkSocketFD(sockets_.get(), NETLINK_ROUTE, netlink_groups_mask);
+      OpenNetlinkSocketFD(sockets_.get(), NETLINK_ROUTE, netlink_groups_mask_);
   if (rtnl_socket_ < 0) {
     return;
   }
@@ -122,6 +124,11 @@ void RTNLHandler::Stop() {
   }
   in_request_ = false;
   request_flags_ = 0;
+  request_sequence_ = 0;
+  last_dump_sequence_ = 0;
+  stored_requests_.clear();
+  oldest_request_sequence_ = 0;
+
   SLOG(this, 2) << "RTNLHandler stopped";
 }
 
@@ -537,7 +544,18 @@ bool RTNLHandler::SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
 }
 
 void RTNLHandler::OnReadError(const std::string& error_msg) {
-  LOG(FATAL) << "RTNL Socket read returns error: " << error_msg;
+  LOG(ERROR) << "RTNL Socket read returns error: " << error_msg;
+  ResetSocket();
+}
+
+void RTNLHandler::ResetSocket() {
+  auto it = response_callbacks_.begin();
+  while (it != response_callbacks_.end()) {
+    std::move(it->second).Run(EIO);
+    response_callbacks_.erase(it);
+  }
+  Stop();
+  Start(netlink_groups_mask_);
 }
 
 bool RTNLHandler::IsSequenceInErrorMaskWindow(uint32_t sequence) {
