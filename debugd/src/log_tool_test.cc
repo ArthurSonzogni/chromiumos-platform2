@@ -16,7 +16,8 @@
 #include <dbus/mock_bus.h>
 #include <gtest/gtest.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
-#include <cryptohome-client-test/cryptohome/dbus-proxy-mocks.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
 #include "debugd/src/log_tool.h"
 
@@ -50,7 +51,7 @@ class LogToolTest : public testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     log_tool_ = std::unique_ptr<LogTool>(new LogTool(
         new dbus::MockBus(dbus::Bus::Options()),
-        std::make_unique<org::chromium::CryptohomeInterfaceProxyMock>(),
+        std::make_unique<org::chromium::CryptohomeMiscInterfaceProxyMock>(),
         std::make_unique<FakeLog>(), temp_dir_.GetPath()));
 
     ON_CALL(*GetFakeLog(), GetLogData).WillByDefault(Return("fake"));
@@ -64,8 +65,8 @@ class LogToolTest : public testing::Test {
     return log_tool_->GetArcBugReport(username, is_backup);
   }
 
-  org::chromium::CryptohomeInterfaceProxyMock* GetCryptHomeProxy() {
-    return static_cast<org::chromium::CryptohomeInterfaceProxyMock*>(
+  org::chromium::CryptohomeMiscInterfaceProxyMock* GetCryptHomeProxy() {
+    return static_cast<org::chromium::CryptohomeMiscInterfaceProxyMock*>(
         log_tool_->cryptohome_proxy_.get());
   }
 
@@ -74,6 +75,14 @@ class LogToolTest : public testing::Test {
   }
 };
 
+// This is a helper matcher for matching username when setting up call
+// expectations for cryptohome proxy.
+MATCHER_P(GetSanitizedUsernameEq,
+          username,
+          "Match for username in GetSanitizedUsernameRequest") {
+  return arg.username() == username;
+}
+
 TEST_F(LogToolTest, GetArcBugReport_ReturnsContents_WhenFileExists) {
   std::string userhash = "0abcdef1230abcdef1230abcdef1230abcdef123";
   base::FilePath logPath =
@@ -81,11 +90,13 @@ TEST_F(LogToolTest, GetArcBugReport_ReturnsContents_WhenFileExists) {
   EXPECT_TRUE(CreateDirectoryAndWriteFile(logPath, "test"));
   EXPECT_TRUE(base::PathExists(logPath));
   SetArcBugReportBackup(userhash);
-  EXPECT_CALL(*GetCryptHomeProxy(), GetSanitizedUsername("username", _, _, _))
-      .WillOnce(WithArg<1>(Invoke([&userhash](std::string* out_sanitized) {
-        *out_sanitized = userhash;
-        return true;
-      })));
+  EXPECT_CALL(*GetCryptHomeProxy(),
+              GetSanitizedUsername(GetSanitizedUsernameEq("username"), _, _, _))
+      .WillOnce(WithArg<1>(
+          Invoke([&userhash](user_data_auth::GetSanitizedUsernameReply* reply) {
+            reply->set_sanitized_username(userhash);
+            return true;
+          })));
 
   bool is_backup;
   std::string report = GetArcBugReport("username", &is_backup);
@@ -100,11 +111,13 @@ TEST_F(LogToolTest, GetArcBugReport_Succeeds_WhenIsBackupIsNull) {
       temp_dir_.GetPath().Append(userhash).Append("arc-bugreport.log");
   EXPECT_TRUE(CreateDirectoryAndWriteFile(logPath, "test"));
   SetArcBugReportBackup(userhash);
-  EXPECT_CALL(*GetCryptHomeProxy(), GetSanitizedUsername("username", _, _, _))
-      .WillOnce(WithArg<1>(Invoke([&userhash](std::string* out_sanitized) {
-        *out_sanitized = userhash;
-        return true;
-      })));
+  EXPECT_CALL(*GetCryptHomeProxy(),
+              GetSanitizedUsername(GetSanitizedUsernameEq("username"), _, _, _))
+      .WillOnce(WithArg<1>(
+          Invoke([&userhash](user_data_auth::GetSanitizedUsernameReply* reply) {
+            reply->set_sanitized_username(userhash);
+            return true;
+          })));
 
   std::string report = GetArcBugReport("username", nullptr /*is_backup*/);
 
@@ -118,10 +131,11 @@ TEST_F(LogToolTest, GetArcBugReport_DeletesFile_WhenBackupNotSet) {
   EXPECT_TRUE(CreateDirectoryAndWriteFile(logPath, "test"));
   EXPECT_TRUE(base::PathExists(logPath));
   EXPECT_CALL(*GetFakeLog(), GetLogData);
-  EXPECT_CALL(*GetCryptHomeProxy(), GetSanitizedUsername("username", _, _, _))
-      .WillRepeatedly(
-          WithArg<1>(Invoke([&userhash](std::string* out_sanitized) {
-            *out_sanitized = userhash;
+  EXPECT_CALL(*GetCryptHomeProxy(),
+              GetSanitizedUsername(GetSanitizedUsernameEq("username"), _, _, _))
+      .WillRepeatedly(WithArg<1>(
+          Invoke([&userhash](user_data_auth::GetSanitizedUsernameReply* reply) {
+            reply->set_sanitized_username(userhash);
             return true;
           })));
 
@@ -139,11 +153,13 @@ TEST_F(LogToolTest, DeleteArcBugReportBackup) {
       temp_dir_.GetPath().Append(userhash).Append("arc-bugreport.log");
   EXPECT_TRUE(CreateDirectoryAndWriteFile(logPath, userhash));
   EXPECT_TRUE(base::PathExists(logPath));
-  EXPECT_CALL(*GetCryptHomeProxy(), GetSanitizedUsername("username", _, _, _))
-      .WillOnce(WithArg<1>(Invoke([&userhash](std::string* out_sanitized) {
-        *out_sanitized = userhash;
-        return true;
-      })));
+  EXPECT_CALL(*GetCryptHomeProxy(),
+              GetSanitizedUsername(GetSanitizedUsernameEq("username"), _, _, _))
+      .WillOnce(WithArg<1>(
+          Invoke([&userhash](user_data_auth::GetSanitizedUsernameReply* reply) {
+            reply->set_sanitized_username(userhash);
+            return true;
+          })));
 
   log_tool_->DeleteArcBugReportBackup("username");
 

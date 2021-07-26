@@ -17,8 +17,9 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
-#include <cryptohome-client/cryptohome/dbus-proxies.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "debugd/src/sandboxed_process.h"
 
@@ -117,7 +118,7 @@ class LogTool {
 
   // For testing only.
   LogTool(scoped_refptr<dbus::Bus> bus,
-          std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
+          std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
               cryptohome_proxy,
           const std::unique_ptr<LogTool::Log> arc_bug_report_log,
           const base::FilePath& daemon_store_base_dir);
@@ -132,7 +133,7 @@ class LogTool {
   bool IsUserHashValid(const std::string& userhash);
 
   scoped_refptr<dbus::Bus> bus_;
-  std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
+  std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
       cryptohome_proxy_;
 
   std::unique_ptr<LogTool::Log> arc_bug_report_log_;

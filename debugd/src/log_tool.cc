@@ -835,7 +835,7 @@ gid_t Log::GidForGroup(const std::string& group) {
 
 LogTool::LogTool(
     scoped_refptr<dbus::Bus> bus,
-    std::unique_ptr<org::chromium::CryptohomeInterfaceProxyInterface>
+    std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
         cryptohome_proxy,
     std::unique_ptr<LogTool::Log> arc_bug_report_log,
     const base::FilePath& daemon_store_base_dir)
@@ -845,10 +845,11 @@ LogTool::LogTool(
       daemon_store_base_dir_(daemon_store_base_dir) {}
 
 LogTool::LogTool(scoped_refptr<dbus::Bus> bus)
-    : LogTool(bus,
-              std::make_unique<org::chromium::CryptohomeInterfaceProxy>(bus),
-              std::make_unique<ArcBugReportLog>(),
-              base::FilePath(kDaemonStoreBaseDir)) {}
+    : LogTool(
+          bus,
+          std::make_unique<org::chromium::CryptohomeMiscInterfaceProxy>(bus),
+          std::make_unique<ArcBugReportLog>(),
+          base::FilePath(kDaemonStoreBaseDir)) {}
 
 bool LogTool::IsUserHashValid(const std::string& userhash) {
   return brillo::cryptohome::home::IsSanitizedUserName(userhash) &&
@@ -936,22 +937,24 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
 }
 
 std::string GetSanitizedUsername(
-    org::chromium::CryptohomeInterfaceProxyInterface* cryptohome_proxy,
+    org::chromium::CryptohomeMiscInterfaceProxyInterface* cryptohome_proxy,
     const std::string& username) {
   if (username.empty()) {
     return std::string();
   }
 
-  std::string sanitized_username;
+  user_data_auth::GetSanitizedUsernameRequest request;
+  user_data_auth::GetSanitizedUsernameReply reply;
+  request.set_username(username);
+
   brillo::ErrorPtr error;
-  if (!cryptohome_proxy->GetSanitizedUsername(username, &sanitized_username,
-                                              &error)) {
+  if (!cryptohome_proxy->GetSanitizedUsername(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call GetSanitizedUsername, error: "
                << error->GetMessage();
     return std::string();
   }
 
-  return sanitized_username;
+  return reply.sanitized_username();
 }
 
 std::string LogTool::GetArcBugReport(const std::string& username,
