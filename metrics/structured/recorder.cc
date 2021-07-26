@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/files/important_file_writer.h>
 #include <base/macros.h>
 #include <base/logging.h>
 #include <base/guid.h>
@@ -34,10 +33,6 @@ constexpr mode_t kFilePermissions = 0660;
 // exist. Returns whether the write was successful.
 bool WriteEventsProtoToDir(const std::string& directory,
                            const EventsProto& events) {
-  std::string proto_str;
-  if (!events.SerializeToString(&proto_str))
-    return false;
-
   const std::string guid = base::GenerateGUID();
   if (guid.empty())
     return false;
@@ -58,8 +53,7 @@ bool WriteEventsProtoToDir(const std::string& directory,
     return false;
   }
 
-  if (!base::WriteFileDescriptor(file_descriptor.get(), proto_str.c_str(),
-                                 proto_str.size())) {
+  if (!events.SerializeToFileDescriptor(file_descriptor.get())) {
     PLOG(ERROR) << filepath << " write error";
     return false;
   }
