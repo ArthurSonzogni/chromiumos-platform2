@@ -19,6 +19,11 @@ namespace {
 
 constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
 const char kOnboardingData[] = "fake onboarding data";
+const char kFakeRequestData[] = "fake request metadata";
+const char kFakeHsmPayloadCipherText[] = "fake hsm payload cipher text";
+const char kFakeHsmPayloadAd[] = "fake hsm payload ad";
+const char kFakeHsmPayloadIv[] = "fake hsm payload iv";
+const char kFakeHsmPayloadTag[] = "fake hsm payload tag";
 
 }  // namespace
 
@@ -48,6 +53,24 @@ class HsmPayloadCborHelperTest : public testing::Test {
   brillo::SecureBlob dealer_priv_key_;
 };
 
+class RequestPayloadCborHelperTest : public testing::Test {
+ public:
+  void SetUp() override {
+    context_ = CreateBigNumContext();
+    ASSERT_TRUE(context_);
+    ec_ = EllipticCurve::Create(kCurve, context_.get());
+    ASSERT_TRUE(ec_);
+    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
+        &epoch_pub_key_, &epoch_priv_key_, context_.get()));
+  }
+
+ protected:
+  ScopedBN_CTX context_;
+  base::Optional<EllipticCurve> ec_;
+  brillo::SecureBlob epoch_pub_key_;
+  brillo::SecureBlob epoch_priv_key_;
+};
+
 // Verifies serialization of HSM payload associated data to CBOR.
 TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithoutRsaPublicKey) {
   brillo::SecureBlob rsa_public_key;
@@ -59,10 +82,6 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithoutRsaPublicKey) {
   brillo::SecureBlob deserialized_publisher_pub_key;
   brillo::SecureBlob deserialized_channel_pub_key;
   brillo::SecureBlob deserialized_onboarding_data;
-  int schema_version;
-  ASSERT_TRUE(
-      GetHsmPayloadSchemaVersionForTesting(cbor_output, &schema_version));
-  EXPECT_EQ(schema_version, 1);
   ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kPublisherPublicKey,
                                            &deserialized_publisher_pub_key));
   EXPECT_EQ(publisher_pub_key_, deserialized_publisher_pub_key);
@@ -114,6 +133,50 @@ TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
   brillo::SecureBlob deserialized_dealer_pub_key;
   EXPECT_FALSE(GetHsmCborMapByKeyForTesting(cbor_output, kDealerPublicKey,
                                             &deserialized_dealer_pub_key));
+}
+
+// Verifies serialization of Recovery Request payload associated data to CBOR.
+TEST_F(RequestPayloadCborHelperTest, GenerateAd) {
+  brillo::SecureBlob request_meta_data(kFakeRequestData);
+  brillo::SecureBlob hsm_aead_ct(kFakeHsmPayloadCipherText);
+  brillo::SecureBlob hsm_aead_ad(kFakeHsmPayloadAd);
+  brillo::SecureBlob hsm_aead_iv(kFakeHsmPayloadIv);
+  brillo::SecureBlob hsm_aead_tag(kFakeHsmPayloadTag);
+  brillo::SecureBlob cbor_output;
+  ASSERT_TRUE(SerializeRecoveryRequestAssociatedDataToCbor(
+      hsm_aead_ct, hsm_aead_ad, hsm_aead_iv, hsm_aead_tag, request_meta_data,
+      epoch_pub_key_, &cbor_output));
+  brillo::SecureBlob deserialized_epoch_pub_key;
+  brillo::SecureBlob deserialized_hsm_aead_ct;
+  brillo::SecureBlob deserialized_hsm_aead_ad;
+  brillo::SecureBlob deserialized_hsm_aead_iv;
+  brillo::SecureBlob deserialized_hsm_aead_tag;
+  brillo::SecureBlob deserialized_request_meta_data;
+  int schema_version;
+  ASSERT_TRUE(
+      GetRequestPayloadSchemaVersionForTesting(cbor_output, &schema_version));
+  EXPECT_EQ(schema_version, kProtocolVersion);
+
+  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadCipherText,
+                                           &deserialized_hsm_aead_ct));
+  EXPECT_EQ(deserialized_hsm_aead_ct.to_string(), kFakeHsmPayloadCipherText);
+  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadAd,
+                                           &deserialized_hsm_aead_ad));
+  EXPECT_EQ(deserialized_hsm_aead_ad.to_string(), kFakeHsmPayloadAd);
+  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadIv,
+                                           &deserialized_hsm_aead_iv));
+  EXPECT_EQ(deserialized_hsm_aead_iv.to_string(), kFakeHsmPayloadIv);
+  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadTag,
+                                           &deserialized_hsm_aead_tag));
+  EXPECT_EQ(deserialized_hsm_aead_tag.to_string(), kFakeHsmPayloadTag);
+
+  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kEpochPublicKey,
+                                           &deserialized_epoch_pub_key));
+  EXPECT_EQ(epoch_pub_key_, deserialized_epoch_pub_key);
+
+  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kRequestMetaData,
+                                           &deserialized_request_meta_data));
+  EXPECT_EQ(deserialized_request_meta_data.to_string(), kFakeRequestData);
 }
 
 }  // namespace cryptohome

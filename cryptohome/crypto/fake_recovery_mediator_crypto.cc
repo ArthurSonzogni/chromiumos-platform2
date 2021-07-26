@@ -31,9 +31,14 @@ brillo::SecureBlob GetMediatorShareHkdfInfo() {
   return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
 }
 
+brillo::SecureBlob GetRequestPayloadPlainTextHkdfInfo() {
+  return brillo::SecureBlob(
+      RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
+}
+
 }  // namespace
 
-// Hardcoded fake mediator public and private keys. Do not use them in
+// Hardcoded fake mediator and epoch public and private keys. Do not use them in
 // production! Keys were generated at random using
 // EllipticCurve::GenerateKeysAsSecureBlobs method and converted to hex.
 static const char kFakeMediatorPublicKeyHex[] =
@@ -41,6 +46,11 @@ static const char kFakeMediatorPublicKeyHex[] =
     "5D859B26C5134F1AD00F2230EAB72A47F46DF23407CF68FB18C509DE";
 static const char kFakeMediatorPrivateKeyHex[] =
     "B7A01DA624ECF448D9F7E1B07236EA2930A17C9A31AD60E43E01A8FEA934AB1C";
+static const char kFakeEpochPrivateKeyHex[] =
+    "2DC064DBE7473CE2E617C689E3D1D71568E1B09EA6CEC5CB4463A66C06F1B535";
+static const char kFakeEpochPublicKeyHex[] =
+    "045D8393CDEF671228CB0D8454BBB6F2AAA18E05834BB6DBBD05721FC81ED3BED33D08A8EF"
+    "D44F6786CAE7ADEB8E26A355CD9714F59C78F063A3CA3A7D74877A8A";
 
 std::unique_ptr<FakeRecoveryMediatorCrypto>
 FakeRecoveryMediatorCrypto::Create() {
@@ -61,6 +71,7 @@ FakeRecoveryMediatorCrypto::Create() {
 FakeRecoveryMediatorCrypto::FakeRecoveryMediatorCrypto(EllipticCurve ec)
     : ec_(std::move(ec)) {}
 
+// static
 bool FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
     brillo::SecureBlob* mediator_pub_key) {
   if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeMediatorPublicKeyHex,
@@ -71,10 +82,33 @@ bool FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
   return true;
 }
 
+// static
 bool FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
     brillo::SecureBlob* mediator_priv_key) {
   if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeMediatorPrivateKeyHex,
                                                  mediator_priv_key)) {
+    LOG(ERROR) << "Failed to convert hex to SecureBlob";
+    return false;
+  }
+  return true;
+}
+
+// static
+bool FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(
+    brillo::SecureBlob* epoch_pub_key) {
+  if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeEpochPublicKeyHex,
+                                                 epoch_pub_key)) {
+    LOG(ERROR) << "Failed to convert hex to SecureBlob";
+    return false;
+  }
+  return true;
+}
+
+// static
+bool FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(
+    brillo::SecureBlob* epoch_priv_key) {
+  if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeEpochPrivateKeyHex,
+                                                 epoch_priv_key)) {
     LOG(ERROR) << "Failed to convert hex to SecureBlob";
     return false;
   }
@@ -91,7 +125,8 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
           GetMediatorShareHkdfInfo(),
           /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
           kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key";
+    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for mediator "
+                  "share decryption";
     return false;
   }
 
@@ -121,7 +156,8 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
           ec_, mediator_priv_key, publisher_pub_key, GetMediatorShareHkdfInfo(),
           /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
           kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key";
+    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for HSM "
+                  "plaintext decryption";
     return false;
   }
 
@@ -132,6 +168,75 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     return false;
   }
 
+  return true;
+}
+
+bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
+    const brillo::SecureBlob& epoch_priv_key,
+    const RecoveryCrypto::RequestPayload& request_payload,
+    brillo::SecureBlob* plain_text) const {
+  brillo::SecureBlob hsm_ad;
+  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
+                                    &hsm_ad)) {
+    LOG(ERROR) << "Unable to deserialize hsm_ad from request_payload";
+    return false;
+  }
+  brillo::SecureBlob channel_pub_key;
+  if (!GetHsmCborMapByKeyForTesting(hsm_ad, kChannelPublicKey,
+                                    &channel_pub_key)) {
+    LOG(ERROR) << "Unable to deserialize channel_pub_key from hsm_ad";
+    return false;
+  }
+
+  brillo::SecureBlob aes_gcm_key;
+  if (!GenerateEcdhHkdfRecipientKey(ec_, epoch_priv_key, channel_pub_key,
+                                    GetRequestPayloadPlainTextHkdfInfo(),
+                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    RecoveryCrypto::kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
+    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for request "
+                  "payload decryption";
+    return false;
+  }
+
+  if (!AesGcmDecrypt(request_payload.cipher_text,
+                     request_payload.associated_data, request_payload.tag,
+                     aes_gcm_key, request_payload.iv, plain_text)) {
+    LOG(ERROR) << "Failed to perform AES-GCM decryption of request_payload";
+    return false;
+  }
+
+  return true;
+}
+
+bool FakeRecoveryMediatorCrypto::ExtractHsmPayload(
+    const RecoveryCrypto::RequestPayload& request_payload,
+    RecoveryCrypto::HsmPayload* hsm_payload) const {
+  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
+                                    &hsm_payload->associated_data)) {
+    LOG(ERROR) << "Unable to deserialize associated_data from "
+                  "request_payload.associated_data";
+    return false;
+  }
+  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
+                                    kHsmAeadCipherText,
+                                    &hsm_payload->cipher_text)) {
+    LOG(ERROR) << "Unable to deserialize cipher_text from "
+                  "request_payload.associated_data";
+    return false;
+  }
+  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadIv,
+                                    &hsm_payload->iv)) {
+    LOG(ERROR)
+        << "Unable to deserialize iv from request_payload.associated_data";
+    return false;
+  }
+  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
+                                    kHsmAeadTag, &hsm_payload->tag)) {
+    LOG(ERROR)
+        << "Unable to deserialize tag from request_payload.associated_data";
+    return false;
+  }
   return true;
 }
 
@@ -238,6 +343,35 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   response_payload->associated_data = brillo::SecureBlob(kFakeHsmMetaData);
 
   return true;
+}
+
+bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
+    const brillo::SecureBlob& epoch_priv_key,
+    const brillo::SecureBlob& mediator_priv_key,
+    const RecoveryCrypto::RequestPayload& request_payload,
+    ResponsePayload* response_payload) const {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context.get()) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+
+  // Currently we don't store anything in the plaintext.
+  // TODO(b/194678588): Get G*-x from the plaintext.
+  brillo::SecureBlob plain_text;
+  if (!DecryptRequestPayloadPlainText(epoch_priv_key, request_payload,
+                                      &plain_text)) {
+    LOG(ERROR) << "Unable to decrypt plain_text in request_payload";
+    return false;
+  }
+
+  RecoveryCrypto::HsmPayload hsm_payload;
+  if (!ExtractHsmPayload(request_payload, &hsm_payload)) {
+    LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
+    return false;
+  }
+
+  return MediateHsmPayload(mediator_priv_key, hsm_payload, response_payload);
 }
 
 }  // namespace cryptohome

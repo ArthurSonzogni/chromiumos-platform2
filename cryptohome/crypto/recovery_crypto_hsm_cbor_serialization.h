@@ -13,7 +13,7 @@
 namespace cryptohome {
 
 // Constants that will be used as keys in the CBOR map.
-extern const char kRecoveryCryptoHsmSchemaVersion[];
+extern const char kRecoveryCryptoRequestSchemaVersion[];
 extern const char kMediatorShare[];
 extern const char kMediatedPoint[];
 extern const char kKeyAuthValue[];
@@ -22,6 +22,13 @@ extern const char kPublisherPublicKey[];
 extern const char kChannelPublicKey[];
 extern const char kRsaPublicKey[];
 extern const char kOnboardingMetaData[];
+extern const char kHsmAeadCipherText[];
+extern const char kHsmAeadAd[];
+extern const char kHsmAeadIv[];
+extern const char kHsmAeadTag[];
+extern const char kEphemeralPublicInvKey[];
+extern const char kRequestMetaData[];
+extern const char kEpochPublicKey[];
 
 // Mediation protocol version.
 extern const int kProtocolVersion;
@@ -38,6 +45,23 @@ bool SerializeHsmAssociatedDataToCbor(
     const brillo::SecureBlob& rsa_public_key,
     const brillo::SecureBlob& onboarding_metadata,
     brillo::SecureBlob* ad_cbor);
+
+// Constructs cbor-encoded binary blob with associated data for request payload.
+// Parameters
+//   hsm_aead_ct - ciphertext (CT1).
+//   hsm_aead_ad - HSM associated data (AD1).
+//   hsm_aead_iv - iv for AEAD of the HSM payload (CT1 and AD1).
+//   hsm_aead_tag - tag for AEAD of the HSM payload.
+//   request_meta_data - RMD according to the protocol spec.
+//   epoch_pub_key - current epoch beacon value (G*r).
+bool SerializeRecoveryRequestAssociatedDataToCbor(
+    const brillo::SecureBlob& hsm_aead_ct,
+    const brillo::SecureBlob& hsm_aead_ad,
+    const brillo::SecureBlob& hsm_aead_iv,
+    const brillo::SecureBlob& hsm_aead_tag,
+    const brillo::SecureBlob& request_meta_data,
+    const brillo::SecureBlob& epoch_pub_key,
+    brillo::SecureBlob* request_ad_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in HSM payload. `dealer_pub_key` is an
@@ -85,8 +109,8 @@ bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                   const std::string& map_key,
                                   brillo::SecureBlob* value);
 
-bool GetHsmPayloadSchemaVersionForTesting(const brillo::SecureBlob& input_cbor,
-                                          int* value);
+bool GetRequestPayloadSchemaVersionForTesting(
+    const brillo::SecureBlob& input_cbor, int* value);
 
 }  // namespace cryptohome
 

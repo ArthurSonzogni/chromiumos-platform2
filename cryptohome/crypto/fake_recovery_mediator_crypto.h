@@ -46,6 +46,16 @@ class FakeRecoveryMediatorCrypto {
   // Returns false if error occurred.
   static bool GetFakeMediatorPrivateKey(brillo::SecureBlob* mediator_priv_key);
 
+  // Returns hardcoded fake epoch public key for encrypting request payload.
+  // Do not use this key in production!
+  // Returns false if error occurred.
+  static bool GetFakeEpochPublicKey(brillo::SecureBlob* epoch_pub_key);
+
+  // Returns hardcoded fake epoch private key for decrypting request payload.
+  // Do not use this key in production!
+  // Returns false if error occurred.
+  static bool GetFakeEpochPrivateKey(brillo::SecureBlob* epoch_priv_key);
+
   // Performs mediation. Returns `mediated_publisher_pub_key`, which is
   // `publisher_pub_key` multiplied by secret `mediator_share` that only
   // mediator can decrypt from `encrypted_mediator_share`. Returns false if
@@ -74,6 +84,20 @@ class FakeRecoveryMediatorCrypto {
                          const RecoveryCrypto::HsmPayload& hsm_payload,
                          ResponsePayload* response_payload) const;
 
+  // Receives `request_payload`, performs mediation and generates response
+  // payload. This function consist of the following steps:
+  // 1. Deserialize `channel_pub_key` from `hsm_aead_ad` in
+  // `request_payload.associated_data`.
+  // 2. Perform DH(`epoch_priv_key`, channel_pub_key), decrypt
+  // `cipher_text` (CT2) from `request_payload`.
+  // 3. Extract `hsm_payload` from `request_payload`.
+  // 4. Do `MediateHsmPayload` with `hsm_payload`.
+  bool MediateRequestPayload(
+      const brillo::SecureBlob& epoch_priv_key,
+      const brillo::SecureBlob& mediator_priv_key,
+      const RecoveryCrypto::RequestPayload& request_payload,
+      ResponsePayload* response_payload) const;
+
  private:
   // Constructor is private. Use Create method to instantiate.
   explicit FakeRecoveryMediatorCrypto(EllipticCurve ec);
@@ -90,6 +114,17 @@ class FakeRecoveryMediatorCrypto {
   bool DecryptHsmPayloadPlainText(const brillo::SecureBlob& mediator_priv_key,
                                   const RecoveryCrypto::HsmPayload& hsm_payload,
                                   brillo::SecureBlob* plain_text) const;
+
+  // Decrypt `cipher_text` from `request_payload' using provided
+  // `epoch_priv_key` and store the result in `plain_text`.
+  bool DecryptRequestPayloadPlainText(
+      const brillo::SecureBlob& epoch_priv_key,
+      const RecoveryCrypto::RequestPayload& request_payload,
+      brillo::SecureBlob* plain_text) const;
+
+  // Extract `hsm_payload` from associated data of `request_payload'.
+  bool ExtractHsmPayload(const RecoveryCrypto::RequestPayload& request_payload,
+                         RecoveryCrypto::HsmPayload* hsm_payload) const;
 
   EllipticCurve ec_;
 };

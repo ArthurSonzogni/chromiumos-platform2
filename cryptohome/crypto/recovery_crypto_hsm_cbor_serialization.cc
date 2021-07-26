@@ -58,7 +58,7 @@ base::Optional<cbor::Value> ReadHsmCborPayload(
 // All the consts below are used as keys in the CBOR blog exchanged with the
 // server and must be synced with the server/HSM implementation (or the other
 // party will not be able to decrypt the data).
-const char kRecoveryCryptoHsmSchemaVersion[] = "schema_version";
+const char kRecoveryCryptoRequestSchemaVersion[] = "schema_version";
 const char kMediatorShare[] = "mediator_share";
 const char kMediatedPoint[] = "mediated_point";
 const char kKeyAuthValue[] = "key_auth_value";
@@ -67,6 +67,13 @@ const char kPublisherPublicKey[] = "publisher_pub_key";
 const char kChannelPublicKey[] = "channel_pub_key";
 const char kRsaPublicKey[] = "epoch_rsa_sig_pkey";
 const char kOnboardingMetaData[] = "onboarding_meta_data";
+
+const char kHsmAeadCipherText[] = "hsm_aead_ct";
+const char kHsmAeadAd[] = "hsm_aead_ad";
+const char kHsmAeadIv[] = "hsm_aead_iv";
+const char kHsmAeadTag[] = "hsm_aead_tag";
+const char kRequestMetaData[] = "request_meta_data";
+const char kEpochPublicKey[] = "epoch_pub_key";
 
 const int kProtocolVersion = 1;
 
@@ -78,8 +85,6 @@ bool SerializeHsmAssociatedDataToCbor(
     brillo::SecureBlob* ad_cbor) {
   cbor::Value::MapValue ad_map;
 
-  ad_map.emplace(kRecoveryCryptoHsmSchemaVersion,
-                 /*schema_version=*/kProtocolVersion);
   ad_map.emplace(kPublisherPublicKey, publisher_pub_key);
   ad_map.emplace(kChannelPublicKey, channel_pub_key);
   ad_map.emplace(kRsaPublicKey, rsa_public_key);
@@ -92,6 +97,36 @@ bool SerializeHsmAssociatedDataToCbor(
     return false;
   }
   ad_cbor->assign(serialized.value().begin(), serialized.value().end());
+  return true;
+}
+
+bool SerializeRecoveryRequestAssociatedDataToCbor(
+    const brillo::SecureBlob& hsm_aead_ct,
+    const brillo::SecureBlob& hsm_aead_ad,
+    const brillo::SecureBlob& hsm_aead_iv,
+    const brillo::SecureBlob& hsm_aead_tag,
+    const brillo::SecureBlob& request_meta_data,
+    const brillo::SecureBlob& epoch_pub_key,
+    brillo::SecureBlob* request_ad_cbor) {
+  cbor::Value::MapValue ad_map;
+
+  ad_map.emplace(kRecoveryCryptoRequestSchemaVersion,
+                 /*schema_version=*/kProtocolVersion);
+  ad_map.emplace(kHsmAeadCipherText, hsm_aead_ct);
+  ad_map.emplace(kHsmAeadAd, hsm_aead_ad);
+  ad_map.emplace(kHsmAeadIv, hsm_aead_iv);
+  ad_map.emplace(kHsmAeadTag, hsm_aead_tag);
+  ad_map.emplace(kRequestMetaData, request_meta_data);
+  ad_map.emplace(kEpochPublicKey, epoch_pub_key);
+
+  base::Optional<std::vector<uint8_t>> serialized =
+      cbor::Writer::Write(cbor::Value(std::move(ad_map)));
+  if (!serialized) {
+    LOG(ERROR)
+        << "Failed to serialize Recovery Request Associated Data to CBOR";
+    return false;
+  }
+  request_ad_cbor->assign(serialized.value().begin(), serialized.value().end());
   return true;
 }
 
@@ -247,15 +282,15 @@ bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
   return true;
 }
 
-bool GetHsmPayloadSchemaVersionForTesting(const brillo::SecureBlob& input_cbor,
-                                          int* value) {
+bool GetRequestPayloadSchemaVersionForTesting(
+    const brillo::SecureBlob& input_cbor, int* value) {
   const auto& cbor = ReadHsmCborPayload(input_cbor);
   if (!cbor) {
     return false;
   }
   const cbor::Value::MapValue& cbor_map = cbor->GetMap();
   const auto value_entry =
-      cbor_map.find(cbor::Value(kRecoveryCryptoHsmSchemaVersion));
+      cbor_map.find(cbor::Value(kRecoveryCryptoRequestSchemaVersion));
   if (value_entry == cbor_map.end()) {
     LOG(ERROR) << "No schema version encoded in the HSM cbor.";
     return false;

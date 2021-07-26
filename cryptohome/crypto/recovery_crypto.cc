@@ -31,10 +31,18 @@ brillo::SecureBlob GetMediatorShareHkdfInfo() {
   return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
 }
 
+brillo::SecureBlob GetRequestPayloadPlainTextHkdfInfo() {
+  return brillo::SecureBlob(
+      RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
+}
+
 }  // namespace
 
 const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] =
     "hsm:publisher hsmplaintext";
+
+const char RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue[] =
+    "requestplaintext";
 
 const EllipticCurve::CurveType RecoveryCrypto::kCurve =
     EllipticCurve::CurveType::kPrime256;
@@ -55,13 +63,21 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   ~RecoveryCryptoImpl() override;
 
+  bool GenerateRequestPayload(const HsmPayload& hsm_payload,
+                              const brillo::SecureBlob& ephemeral_pub_inv_key,
+                              const brillo::SecureBlob& request_meta_data,
+                              const brillo::SecureBlob& channel_priv_key,
+                              const brillo::SecureBlob& channel_pub_key,
+                              const brillo::SecureBlob& epoch_pub_key,
+                              RequestPayload* request_payload) const override;
   bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
-                          const brillo::SecureBlob& channel_pub_key,
                           const brillo::SecureBlob& rsa_pub_key,
                           const brillo::SecureBlob& onboarding_metadata,
                           HsmPayload* hsm_payload,
                           brillo::SecureBlob* destination_share,
-                          brillo::SecureBlob* recovery_key) const override;
+                          brillo::SecureBlob* recovery_key,
+                          brillo::SecureBlob* channel_pub_key,
+                          brillo::SecureBlob* channel_priv_key) const override;
   bool GenerateShares(const brillo::SecureBlob& mediator_pub_key,
                       EncryptedMediatorShare* encrypted_mediator_share,
                       brillo::SecureBlob* destination_share,
@@ -165,14 +181,55 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
               /*salt=*/brillo::SecureBlob(), /*result_len=*/0, recovery_key);
 }
 
+bool RecoveryCryptoImpl::GenerateRequestPayload(
+    const HsmPayload& hsm_payload,
+    const brillo::SecureBlob& ephemeral_pub_inv_key,
+    const brillo::SecureBlob& request_meta_data,
+    const brillo::SecureBlob& channel_priv_key,
+    const brillo::SecureBlob& channel_pub_key,
+    const brillo::SecureBlob& epoch_pub_key,
+    RequestPayload* request_payload) const {
+  if (!SerializeRecoveryRequestAssociatedDataToCbor(
+          hsm_payload.cipher_text, hsm_payload.associated_data, hsm_payload.iv,
+          hsm_payload.tag, request_meta_data, epoch_pub_key,
+          &request_payload->associated_data)) {
+    LOG(ERROR) << "Failed to generate associated data cbor";
+    return false;
+  }
+
+  brillo::SecureBlob aes_gcm_key;
+  // |hkdf_salt| can be empty here because the input already has a high entropy.
+  // Bruteforce attacks are not an issue here and as we generate an ephemeral
+  // key as input to HKDF the output will already be non-deterministic.
+  if (!GenerateEcdhHkdfSenderKey(ec_, epoch_pub_key, channel_pub_key,
+                                 channel_priv_key,
+                                 GetRequestPayloadPlainTextHkdfInfo(),
+                                 /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
+                                 kAesGcm256KeySize, &aes_gcm_key)) {
+    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
+    return false;
+  }
+
+  // TODO(b/194678588): Store `ephemeral_pub_inv_key` (G*-x) in the plaintext.
+  brillo::SecureBlob plain_text("");
+  if (!AesGcmEncrypt(plain_text, request_payload->associated_data, aes_gcm_key,
+                     &request_payload->iv, &request_payload->tag,
+                     &request_payload->cipher_text)) {
+    LOG(ERROR) << "Failed to perform AES-GCM encryption";
+    return false;
+  }
+  return true;
+}
+
 bool RecoveryCryptoImpl::GenerateHsmPayload(
     const brillo::SecureBlob& mediator_pub_key,
-    const brillo::SecureBlob& channel_pub_key,
     const brillo::SecureBlob& rsa_pub_key,
     const brillo::SecureBlob& onboarding_metadata,
     HsmPayload* hsm_payload,
     brillo::SecureBlob* destination_share,
-    brillo::SecureBlob* recovery_key) const {
+    brillo::SecureBlob* recovery_key,
+    brillo::SecureBlob* channel_pub_key,
+    brillo::SecureBlob* channel_priv_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -221,11 +278,33 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
+  // Generate channel key pair.
+  // TODO(b/194678588): channel private key should be protected via TPM.
+  crypto::ScopedEC_KEY channel_key_pair = ec_.GenerateKey(context.get());
+  if (!channel_key_pair) {
+    LOG(ERROR) << "Failed to generate channel key pair.";
+    return false;
+  }
+  const EC_POINT* channel_pub_point =
+      EC_KEY_get0_public_key(channel_key_pair.get());
+  if (!ec_.PointToSecureBlob(*channel_pub_point, channel_pub_key,
+                             context.get())) {
+    LOG(ERROR) << "Failed to convert channel_pub_key to a SecureBlob";
+    return false;
+  }
+  const BIGNUM* channel_priv_key_bn =
+      EC_KEY_get0_private_key(channel_key_pair.get());
+  if (!BigNumToSecureBlob(*channel_priv_key_bn, ec_.ScalarSizeInBytes(),
+                          channel_priv_key)) {
+    LOG(ERROR) << "Failed to convert channel_priv_key_bn to a SecureBlob";
+    return false;
+  }
+
   // Construct associated data for HSM payload: AD = CBOR({publisher_pub_key,
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
   brillo::SecureBlob publisher_priv_key;
   brillo::SecureBlob publisher_pub_key;
-  if (!GenerateHsmAssociatedData(channel_pub_key, rsa_pub_key,
+  if (!GenerateHsmAssociatedData(*channel_pub_key, rsa_pub_key,
                                  onboarding_metadata,
                                  &hsm_payload->associated_data,
                                  &publisher_priv_key, &publisher_pub_key)) {
