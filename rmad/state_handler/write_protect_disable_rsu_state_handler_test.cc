@@ -14,6 +14,7 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 #include "rmad/utils/mock_cr50_utils.h"
+#include "rmad/utils/mock_crossystem_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -31,6 +32,11 @@ constexpr char kTestChallengeCode[] = "ABCDEFGH";
 constexpr char kWrongChallengeCode[] = "AAA";
 constexpr char kTestUnlockCode[] = "abcdefgh";
 constexpr char kWrongUnlockCode[] = "aaa";
+constexpr char kHwidProperty[] = "hwid";
+constexpr char kTestHwid[] = "test_hwid";
+constexpr char kTestUrl[] =
+    "https://www.google.com/chromeos/partner/console/"
+    "cr50reset?challenge=ABCDEFGH&hwid=test_hwid";
 
 }  // namespace
 
@@ -46,15 +52,25 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(true));
     ON_CALL(*mock_cr50_utils, PerformRsu(Ne(kTestUnlockCode)))
         .WillByDefault(Return(false));
+    // Mock |CrosSystemUtils|.
+    auto mock_crossystem_utils =
+        std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    ON_CALL(*mock_crossystem_utils, GetString(Eq(kHwidProperty), _))
+        .WillByDefault(DoAll(SetArgPointee<1>(kTestHwid), Return(true)));
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
-        json_store_, std::move(mock_cr50_utils));
+        json_store_, std::move(mock_cr50_utils),
+        std::move(mock_crossystem_utils));
   }
 };
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, InitializeState_Success) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
+            kTestChallengeCode);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(), kTestHwid);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_url(), kTestUrl);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success) {

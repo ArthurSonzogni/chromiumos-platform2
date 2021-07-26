@@ -12,14 +12,17 @@
 namespace rmad {
 
 class Cr50Utils;
+class CrosSystemUtils;
 
 class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cr50_utils_| for testing.
-  WriteProtectDisableRsuStateHandler(scoped_refptr<JsonStore> json_store,
-                                     std::unique_ptr<Cr50Utils> cr50_utils);
+  // Used to inject mock |cr50_utils_| and |crossystem_utils_| for testing.
+  WriteProtectDisableRsuStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<Cr50Utils> cr50_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableRsu);
   SET_REPEATABLE;
@@ -32,6 +35,7 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
 
  private:
   std::unique_ptr<Cr50Utils> cr50_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
 };
 
 }  // namespace rmad

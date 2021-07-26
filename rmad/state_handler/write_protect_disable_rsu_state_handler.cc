@@ -4,35 +4,68 @@
 
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 
+#include <cstdio>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 
 #include <base/logging.h>
 
 namespace rmad {
 
+namespace {
+
+// crossystem HWID property name.
+constexpr char kHwidProperty[] = "hwid";
+
+// RSU server URL.
+constexpr char kRsuUrlFormat[] =
+    "https://www.google.com/chromeos/partner/console/"
+    "cr50reset?challenge=%s&hwid=%s";
+
+}  // namespace
+
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
-    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
-    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    : BaseStateHandler(json_store),
+      cr50_utils_(std::move(cr50_utils)),
+      crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
   if (!state_.has_wp_disable_rsu() && !RetrieveState()) {
     auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
-    if (std::string challenge_code;
-        cr50_utils_->GetRsuChallengeCode(&challenge_code)) {
+    std::string challenge_code;
+    if (cr50_utils_->GetRsuChallengeCode(&challenge_code)) {
       wp_disable_rsu->set_challenge_code(challenge_code);
     } else {
       return RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_NO_CHALLENGE;
     }
+    // Allow unknown HWID as the field might be corrupted.
+    // This is fine since HWID is only used for server side logging. It doesn't
+    // affect RSU functionality.
+    std::string hwid = "";
+    crossystem_utils_->GetString(kHwidProperty, &hwid);
+    wp_disable_rsu->set_hwid(hwid);
+
+    // 256 is enough for the URL.
+    char url[256];
+    int ret = std::snprintf(url, sizeof(url), kRsuUrlFormat,
+                            challenge_code.c_str(), hwid.c_str());
+    DCHECK_GT(ret, 0);
+    wp_disable_rsu->set_challenge_url(std::string(url));
+
     state_.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
   }
   return RMAD_ERROR_OK;
