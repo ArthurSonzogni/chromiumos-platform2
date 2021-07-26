@@ -549,7 +549,7 @@ int GetVmCid(dbus::ObjectProxy* proxy, string owner_id, string name) {
 
 int CreateDiskImage(dbus::ObjectProxy* proxy,
                     string cryptohome_id,
-                    string disk_path,
+                    string vm_name,
                     uint64_t disk_size,
                     string image_type,
                     StorageLocation storage_location,
@@ -559,8 +559,8 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
     return -1;
-  } else if (disk_path.empty()) {
-    LOG(ERROR) << "Disk path cannot be empty";
+  } else if (vm_name.empty()) {
+    LOG(ERROR) << "VM name cannot be empty";
     return -1;
   }
 
@@ -598,7 +598,7 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   }
 
   request.set_cryptohome_id(std::move(cryptohome_id));
-  request.set_disk_path(std::move(disk_path));
+  request.set_vm_name(std::move(vm_name));
   request.set_disk_size(std::move(disk_size));
 
   if (image_type == kImageTypeRaw) {
@@ -683,7 +683,7 @@ int DestroyDiskImage(dbus::ObjectProxy* proxy,
 
   vm_tools::concierge::DestroyDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
-  request.set_disk_path(std::move(name));
+  request.set_vm_name(std::move(name));
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode DestroyDiskImageRequest protobuf";
@@ -765,7 +765,7 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
 
   vm_tools::concierge::ExportDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
-  request.set_disk_path(std::move(vm_name));
+  request.set_vm_name(std::move(vm_name));
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode ExportDiskImageRequest protobuf";
@@ -854,7 +854,7 @@ int ImportDiskImage(dbus::ObjectProxy* proxy,
 
   vm_tools::concierge::ImportDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
-  request.set_disk_path(std::move(vm_name));
+  request.set_vm_name(std::move(vm_name));
   request.set_storage_location(storage_location);
 
   struct stat st;
@@ -1651,7 +1651,6 @@ int main(int argc, char** argv) {
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
-  DEFINE_string(disk_path, "", "Path to the disk image to create");
   DEFINE_uint64(disk_size, 0, "Size of the disk image to create");
   DEFINE_string(image_type, "auto", "Disk image type");
   DEFINE_string(storage_location, "cryptohome-root",
@@ -1748,7 +1747,7 @@ int main(int argc, char** argv) {
                     std::move(FLAGS_name));
   } else if (FLAGS_create_disk) {
     return CreateDiskImage(
-        proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_disk_path),
+        proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
         FLAGS_disk_size, std::move(FLAGS_image_type), storage_location,
         std::move(FLAGS_source_name),
         base::CommandLine::ForCurrentProcess()->GetArgs(), nullptr);

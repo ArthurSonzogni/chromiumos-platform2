@@ -2329,7 +2329,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
   base::FilePath disk_path;
   StorageLocation disk_location;
-  if (CheckVmExists(request.disk_path(), request.cryptohome_id(), &disk_path,
+  if (CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
                     &disk_location)) {
     if (disk_location != request.storage_location()) {
       response.set_status(DISK_STATUS_FAILED);
@@ -2396,7 +2396,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
-  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+  if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
                            request.storage_location(),
                            true, /* create_parent_dir */
                            &disk_path, request.image_type())) {
@@ -2420,7 +2420,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     // Get the name of directory for ISO images. Do not create it - it will be
     // created by the PluginVmCreateOperation code.
     base::FilePath iso_dir;
-    if (!GetPluginIsoDirectory(request.disk_path(), request.cryptohome_id(),
+    if (!GetPluginIsoDirectory(request.vm_name(), request.cryptohome_id(),
                                false /* create */, &iso_dir)) {
       LOG(ERROR) << "Unable to determine directory for ISOs";
 
@@ -2435,7 +2435,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
     auto op = PluginVmCreateOperation::Create(
         std::move(in_fd), iso_dir, request.source_size(),
-        VmId(request.cryptohome_id(), request.disk_path()), std::move(params));
+        VmId(request.cryptohome_id(), request.vm_name()), std::move(params));
 
     response.set_disk_path(disk_path.value());
     response.set_status(op->status());
@@ -2568,7 +2568,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   }
 
   // Stop the associated VM if it is still running.
-  auto iter = FindVm(request.cryptohome_id(), request.disk_path());
+  auto iter = FindVm(request.cryptohome_id(), request.vm_name());
   if (iter != vms_.end()) {
     LOG(INFO) << "Shutting down VM";
 
@@ -2591,7 +2591,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
   base::FilePath disk_path;
   StorageLocation location;
-  if (!CheckVmExists(request.disk_path(), request.cryptohome_id(), &disk_path,
+  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
                      &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("No such image");
@@ -2599,16 +2599,15 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
-  if (!EraseGuestSshKeys(request.cryptohome_id(), request.disk_path())) {
+  if (!EraseGuestSshKeys(request.cryptohome_id(), request.vm_name())) {
     // Don't return a failure here, just log an error because this is only a
     // side effect and not what the real request is about.
-    LOG(ERROR) << "Failed removing guest SSH keys for VM "
-               << request.disk_path();
+    LOG(ERROR) << "Failed removing guest SSH keys for VM " << request.vm_name();
   }
 
   if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
     // Plugin VMs need to be unregistered before we can delete them.
-    VmId vm_id(request.cryptohome_id(), request.disk_path());
+    VmId vm_id(request.cryptohome_id(), request.vm_name());
     bool registered;
     if (!pvm::dispatcher::IsVmRegistered(bus_, vmplugin_service_proxy_, vm_id,
                                          &registered)) {
@@ -2644,7 +2643,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
     // Delete GPU shader disk cache.
     base::FilePath gpu_cache_path =
-        GetVmGpuCachePath(request.cryptohome_id(), request.disk_path());
+        GetVmGpuCachePath(request.cryptohome_id(), request.vm_name());
     if (!base::DeletePathRecursively(gpu_cache_path)) {
       LOG(ERROR) << "Failed to remove GPU cache for VM: " << gpu_cache_path;
     }
@@ -2830,7 +2829,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
 
   base::FilePath disk_path;
   StorageLocation location;
-  if (!CheckVmExists(request.disk_path(), request.cryptohome_id(), &disk_path,
+  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
                      &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Export image doesn't exist");
@@ -2871,7 +2870,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
       return dbus_response;
   }
 
-  VmId vm_id(request.cryptohome_id(), request.disk_path());
+  VmId vm_id(request.cryptohome_id(), request.vm_name());
 
   if (!request.force()) {
     if (FindVm(vm_id) != vms_.end()) {
@@ -2942,7 +2941,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
     return dbus_response;
   }
 
-  if (CheckVmExists(request.disk_path(), request.cryptohome_id())) {
+  if (CheckVmExists(request.vm_name(), request.cryptohome_id())) {
     response.set_status(DISK_STATUS_EXISTS);
     response.set_failure_reason("VM/disk with such name already exists");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -2958,7 +2957,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
   }
 
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+  if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
                            request.storage_location(),
                            true, /* create_parent_dir */
                            &disk_path)) {
@@ -2978,7 +2977,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
 
   auto op = PluginVmImportOperation::Create(
       std::move(in_fd), disk_path, request.source_size(),
-      VmId(request.cryptohome_id(), request.disk_path()), bus_,
+      VmId(request.cryptohome_id(), request.vm_name()), bus_,
       vmplugin_service_proxy_);
 
   response.set_status(op->status());

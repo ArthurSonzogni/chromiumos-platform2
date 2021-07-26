@@ -534,9 +534,8 @@ message CreateDiskImageRequest {
   // The cryptohome id for the user's encrypted storage.
   string cryptohome_id = 1;
 
-  // The path to the disk image. This must be a relative path, and any
-  // directories must already exist.
-  string disk_path = 2;
+  // The name of the VM.
+  string vm_name = 2;
 
   // The logical size of the new disk image, in bytes.
   // If non-zero, the disk will be preallocated and fixed to the given size.
@@ -579,8 +578,8 @@ message DestroyDiskImageRequest {
   // The cryptohome id for the user's encrypted storage.
   string cryptohome_id = 1;
 
-  // The path to the disk image. This must be a relative path.
-  string disk_path = 2;
+  // The name of the VM.
+  string vm_name = 2;
 }
 
 // Response to a DestroyDiskImageRequest.
@@ -619,14 +618,14 @@ message ResizeDiskImageResponse {
 }
 
 // Request to concierge to export a disk image.
-// Must be accompanied by an FD. The contents of `disk_path` will be written to
+// Must be accompanied by an FD, the contents of the image will be written to
 // the passed FD.
 message ExportDiskImageRequest {
   // The cryptohome id for the user's encrypted storage.
   string cryptohome_id = 1;
 
-  // The path to the disk image. This must be a relative path.
-  string disk_path = 2;
+  // The name of the VM.
+  string vm_name = 2;
 
   // Whether we should calculate SHA256 digest of the resulting image. The
   // digest is supposed to be written into the second attached file descriptor.
@@ -649,15 +648,13 @@ message ExportDiskImageResponse {
   string command_uuid = 3;
 }
 
-// Request to concierge to import a disk image.
-// Must be accompanied by an FD. The contents will be written at `disk_path`
-// location.
+// Request to concierge to import a disk image. Must be accompanied by an FD.
 message ImportDiskImageRequest {
   // The cryptohome id for the user's encrypted storage.
   string cryptohome_id = 1;
 
-  // The path to the resulting disk image. This must be a relative path.
-  string disk_path = 2;
+  // The name of the VM that's being imported.
+  string vm_name = 2;
 
   // The storage location for the disk image.
   StorageLocation storage_location = 3;

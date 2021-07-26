@@ -776,7 +776,7 @@ impl Methods {
         user_id_hash: &str,
     ) -> Result<String, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
-        request.disk_path = vm_name.to_owned();
+        request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.image_type = DiskImageType::DISK_IMAGE_AUTO;
         request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT;
@@ -811,7 +811,7 @@ impl Methods {
         params: &[&str],
     ) -> Result<Option<String>, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
-        request.disk_path = vm_name.to_owned();
+        request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.image_type = DiskImageType::DISK_IMAGE_AUTO;
         request.storage_location = if plugin_vm {
@@ -885,7 +885,7 @@ impl Methods {
         user_id_hash: &str,
     ) -> Result<(), Box<dyn Error>> {
         let mut request = DestroyDiskImageRequest::new();
-        request.disk_path = vm_name.to_owned();
+        request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
 
         let response: DestroyDiskImageResponse = self.sync_protobus(
@@ -944,7 +944,7 @@ impl Methods {
             self.create_output_file(user_id_hash, export_name, removable_media)?;
 
         let mut request = ExportDiskImageRequest::new();
-        request.disk_path = vm_name.to_owned();
+        request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.generate_sha256_digest = digest_name.is_some();
         request.force = force;
@@ -1024,7 +1024,7 @@ impl Methods {
         let import_fd = unsafe { OwnedFd::new(import_file.into_raw_fd()) };
 
         let mut request = ImportDiskImageRequest::new();
-        request.disk_path = vm_name.to_owned();
+        request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
         request.storage_location = if plugin_vm {
             StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
