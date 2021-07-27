@@ -23,6 +23,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>
 #include <base/strings/safe_sprintf.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -150,13 +151,21 @@ bool CallUsbControl(std::unique_ptr<brillo::ProcessImpl> crosvm,
   return true;
 }
 
+std::string BooleanParameter(const char* parameter, bool value) {
+  std::string result = base::StrCat({parameter, value ? "true" : "false"});
+  return result;
+}
+
 }  // namespace
 
 Disk::Disk(base::FilePath path, bool writable)
     : path_(std::move(path)), writable_(writable) {}
 
-Disk::Disk(base::FilePath path, bool writable, bool sparse)
-    : path_(std::move(path)), writable_(writable), sparse_(sparse) {}
+Disk::Disk(base::FilePath path, const Disk::Config& config)
+    : path_(std::move(path)),
+      writable_(config.writable),
+      sparse_(config.sparse),
+      o_direct_(config.o_direct) {}
 
 Disk::Disk(Disk&&) = default;
 
@@ -167,13 +176,16 @@ base::StringPairs Disk::GetCrosvmArgs() const {
   else
     first = "--disk";
 
-  std::string sparse_arg;
+  std::string sparse_arg{};
   if (sparse_) {
-    std::string boolean = sparse_.value() ? "true" : "false";
-    sparse_arg = ",sparse=" + boolean;
+    sparse_arg = BooleanParameter(",sparse=", sparse_.value());
+  }
+  std::string o_direct_arg{};
+  if (o_direct_) {
+    o_direct_arg = BooleanParameter(",o_direct=", o_direct_.value());
   }
 
-  std::string second = path_.value() + sparse_arg;
+  std::string second = base::StrCat({path_.value(), sparse_arg, o_direct_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }

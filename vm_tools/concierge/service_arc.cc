@@ -81,7 +81,10 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   std::vector<Disk> disks;
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
-  disks.push_back(Disk(std::move(rootfs), request.rootfs_writable()));
+  Disk::Config config{};
+  config.o_direct = false;
+  config.writable = request.rootfs_writable();
+  disks.push_back(Disk(std::move(rootfs), config));
   for (const auto& disk : request.disks()) {
     if (!base::PathExists(base::FilePath(disk.path()))) {
       LOG(ERROR) << "Missing disk path: " << disk.path();
@@ -89,7 +92,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
-    disks.push_back(Disk(base::FilePath(disk.path()), disk.writable()));
+    config.writable = disk.writable();
+    disks.push_back(Disk(base::FilePath(disk.path()), config));
   }
 
   // Create the runtime directory.

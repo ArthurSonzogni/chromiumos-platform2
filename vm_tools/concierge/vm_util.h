@@ -28,8 +28,14 @@ namespace concierge {
 
 class Disk {
  public:
+  struct Config {
+    bool writable{false};
+    base::Optional<bool> sparse;
+    base::Optional<bool> o_direct;
+  };
+
   Disk(base::FilePath path, bool writable);
-  Disk(base::FilePath path, bool writable, bool sparse);
+  Disk(base::FilePath path, const Config& config);
   Disk(const Disk&) = delete;
   Disk& operator=(const Disk&) = delete;
   Disk(Disk&&);
@@ -48,6 +54,9 @@ class Disk {
 
   // Whether the disk should allow sparse file operations (discard) by the VM.
   base::Optional<bool> sparse_;
+
+  // Whether the disk access should be done with O_DIRECT by the VM.
+  base::Optional<bool> o_direct_;
 };
 
 // Path to the crosvm binary.

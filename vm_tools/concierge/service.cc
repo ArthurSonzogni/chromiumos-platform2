@@ -1487,8 +1487,10 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       return dbus_response;
     }
 
-    disks.push_back(Disk(base::FilePath(disk.path()), disk.writable(),
-                         !IsDiskUserChosenSize(disk.path())));
+    Disk::Config config{};
+    config.writable = disk.writable();
+    config.sparse = !IsDiskUserChosenSize(disk.path());
+    disks.push_back(Disk(base::FilePath(disk.path()), config));
   }
 
   // Check if an opened storage image was passed over D-BUS.
