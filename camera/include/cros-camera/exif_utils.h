@@ -17,6 +17,8 @@ extern "C" {
 #include <libexif/exif-data.h>
 }
 
+#include <base/containers/span.h>
+
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -43,6 +45,7 @@ class CROS_CAMERA_EXPORT ExifUtils {
   // Initialize() can be called multiple times. The setting of Exif tags will be
   // cleared.
   bool Initialize();
+  bool InitializeWithData(base::span<uint8_t> blob);
 
   // Sets the len aperture.
   // Returns false if memory allocation fails.

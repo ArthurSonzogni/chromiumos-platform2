@@ -85,7 +85,7 @@ bool ExifUtils::Initialize() {
   Reset();
   exif_data_ = exif_data_new();
   if (exif_data_ == nullptr) {
-    LOGF(ERROR) << "allocate memory for exif_data_ failed";
+    LOGF(ERROR) << "Cannot allocate ExifData";
     return false;
   }
   // Set the image options.
@@ -95,6 +95,20 @@ bool ExifUtils::Initialize() {
 
   // Set exif version to 2.2.
   if (!SetExifVersion("0220")) {
+    return false;
+  }
+
+  if (!ReadProperty()) {
+    LOGF(WARNING) << "Cannot setup manufacturer and model";
+  }
+  return true;
+}
+
+bool ExifUtils::InitializeWithData(base::span<uint8_t> blob) {
+  Reset();
+  exif_data_ = exif_data_new_from_data(blob.data(), blob.size());
+  if (exif_data_ == nullptr) {
+    LOGF(ERROR) << "Cannot allocate ExifData from blob buffer";
     return false;
   }
 
