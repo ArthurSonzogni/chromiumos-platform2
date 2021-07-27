@@ -9,20 +9,29 @@
 
 #include <memory>
 
+#include <base/timer/timer.h>
+
 namespace rmad {
 
 class Cr50Utils;
 class CrosSystemUtils;
+class PowerManagerClient;
 
 class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
  public:
+  // Wait for 5 seconds before rebooting.
+  static constexpr base::TimeDelta kRebootDelay =
+      base::TimeDelta::FromSeconds(5);
+
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cr50_utils_| and |crossystem_utils_| for testing.
+  // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
+  // |power_manager_client_| for testing.
   WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<Cr50Utils> cr50_utils,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableRsu);
   SET_REPEATABLE;
@@ -34,8 +43,13 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   ~WriteProtectDisableRsuStateHandler() override = default;
 
  private:
+  bool IsFactoryModeEnabled() const;
+  void Reboot();
+
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
+  base::OneShotTimer timer_;
 };
 
 }  // namespace rmad

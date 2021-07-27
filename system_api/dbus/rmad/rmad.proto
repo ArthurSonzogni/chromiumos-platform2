@@ -290,11 +290,12 @@ message WriteProtectDisableMethodState {
 // Disable HWWP with an RSU unlock code.
 message WriteProtectDisableRsuState {
   // Provided by daemon.
-  string challenge_code = 1;
-  string hwid = 2;
-  string challenge_url = 3;
+  bool rsu_done = 1;
+  string challenge_code = 2;
+  string hwid = 3;
+  string challenge_url = 4;
   // Provided by client.
-  string unlock_code = 4;
+  string unlock_code = 5;
 }
 
 // Verify if RSU succeeds.
