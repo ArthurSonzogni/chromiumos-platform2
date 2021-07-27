@@ -47,7 +47,7 @@ bool FetchDmiInfo(const base::FilePath& root_dir,
   ReadAndTrimString(dmi_path, kFileNameBiosVendor, &dmi_info->bios_vendor);
   ReadAndTrimString(dmi_path, kFileNameBiosVersion, &dmi_info->bios_version);
   ReadAndTrimString(dmi_path, kFileNameBoardName, &dmi_info->board_name);
-  ReadAndTrimString(dmi_path, kFileNameBoardVendor, &dmi_info->board_vender);
+  ReadAndTrimString(dmi_path, kFileNameBoardVendor, &dmi_info->board_vendor);
   ReadAndTrimString(dmi_path, kFileNameBoardVersion, &dmi_info->board_version);
   ReadAndTrimString(dmi_path, kFileNameChassisVendor,
                     &dmi_info->chassis_vendor);

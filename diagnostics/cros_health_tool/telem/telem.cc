@@ -736,7 +736,7 @@ void DisplaySystemInfoV2(const SystemResultV2Ptr& system_result) {
     SET_DICT(bios_vendor, dmi_info, out_dmi_info);
     SET_DICT(bios_version, dmi_info, out_dmi_info);
     SET_DICT(board_name, dmi_info, out_dmi_info);
-    SET_DICT(board_vender, dmi_info, out_dmi_info);
+    SET_DICT(board_vendor, dmi_info, out_dmi_info);
     SET_DICT(board_version, dmi_info, out_dmi_info);
     SET_DICT(chassis_vendor, dmi_info, out_dmi_info);
     SET_DICT(chassis_type, dmi_info, out_dmi_info);

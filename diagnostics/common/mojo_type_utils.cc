@@ -70,7 +70,7 @@ template <>
 std::string GetDiffString<mojo_ipc::DmiInfo>(const mojo_ipc::DmiInfo& a,
                                              const mojo_ipc::DmiInfo& b) {
   return FIELD_DS(bios_vendor) + FIELD_DS(bios_version) + FIELD_DS(board_name) +
-         FIELD_DS(board_vender) + FIELD_DS(board_version) +
+         FIELD_DS(board_vendor) + FIELD_DS(board_version) +
          FIELD_DS(chassis_vendor) + FIELD_DS(chassis_type) +
          FIELD_DS(product_family) + FIELD_DS(product_name) +
          FIELD_DS(product_version) + FIELD_DS(sys_vendor);

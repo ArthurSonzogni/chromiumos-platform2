@@ -74,7 +74,7 @@ class SystemUtilsTest : public BaseFileTest {
     dmi_info->bios_vendor = "Google";
     dmi_info->bios_version = "Google_BoardName.12200.68.0";
     dmi_info->board_name = "BoardName";
-    dmi_info->board_vender = "Google";
+    dmi_info->board_vendor = "Google";
     dmi_info->board_version = "rev1234";
     dmi_info->chassis_vendor = "Google";
     dmi_info->chassis_type = mojo_ipc::NullableUint64::New(9);
@@ -129,7 +129,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetMockFile({dmi, kFileNameBiosVendor}, dmi_info->bios_vendor);
     SetMockFile({dmi, kFileNameBiosVersion}, dmi_info->bios_version);
     SetMockFile({dmi, kFileNameBoardName}, dmi_info->board_name);
-    SetMockFile({dmi, kFileNameBoardVendor}, dmi_info->board_vender);
+    SetMockFile({dmi, kFileNameBoardVendor}, dmi_info->board_vendor);
     SetMockFile({dmi, kFileNameBoardVersion}, dmi_info->board_version);
     SetMockFile({dmi, kFileNameChassisVendor}, dmi_info->chassis_vendor);
     SetMockFile({dmi, kFileNameChassisType}, dmi_info->chassis_type);
@@ -272,7 +272,7 @@ TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
 TEST_MISSING_FIELD(dmi_info, bios_vendor);
 TEST_MISSING_FIELD(dmi_info, bios_version);
 TEST_MISSING_FIELD(dmi_info, board_name);
-TEST_MISSING_FIELD(dmi_info, board_vender);
+TEST_MISSING_FIELD(dmi_info, board_vendor);
 TEST_MISSING_FIELD(dmi_info, board_version);
 TEST_MISSING_FIELD(dmi_info, chassis_vendor);
 TEST_MISSING_FIELD(dmi_info, product_family);
