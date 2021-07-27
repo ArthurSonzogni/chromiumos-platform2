@@ -81,8 +81,6 @@ base::span<const uint8_t> Camera3CaptureDescriptor::GetMetadata(
   if (entry.count == 0) {
     return base::span<const uint8_t>();
   }
-  for (int i = 0; i < entry.count; ++i) {
-  }
   return base::span<const uint8_t>(entry.data.u8, entry.count);
 }
 
