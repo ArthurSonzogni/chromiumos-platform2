@@ -29,17 +29,27 @@ class FakeShillClient : public ShillClient {
  public:
   explicit FakeShillClient(scoped_refptr<dbus::Bus> bus) : ShillClient(bus) {}
 
-  Device GetDefaultDevice() override {
-    if (fake_default_ifname_.empty())
-      return {};
-    return {.type = Device::Type::kUnknown, .ifname = fake_default_ifname_};
+  std::pair<Device, Device> GetDefaultDevices() override {
+    Device default_logical_device = {.type = Device::Type::kUnknown,
+                                     .ifname = fake_default_logical_ifname_};
+    Device default_physical_device = {.type = Device::Type::kUnknown,
+                                      .ifname = fake_default_physical_ifname_};
+    return std::make_pair(default_logical_device, default_physical_device);
   }
-  const std::string& default_interface() const override {
-    return fake_default_ifname_;
+  const std::string& default_logical_interface() const override {
+    return fake_default_logical_ifname_;
   }
 
-  void SetFakeDefaultDevice(const std::string& ifname) {
-    fake_default_ifname_ = ifname;
+  const std::string& default_physical_interface() const override {
+    return fake_default_physical_ifname_;
+  }
+
+  void SetFakeDefaultLogicalDevice(const std::string& ifname) {
+    fake_default_logical_ifname_ = ifname;
+  }
+
+  void SetFakeDefaultPhysicalDevice(const std::string& ifname) {
+    fake_default_physical_ifname_ = ifname;
   }
 
   void SetIfname(const std::string& device_path, const std::string& ifname) {
@@ -72,7 +82,8 @@ class FakeShillClient : public ShillClient {
 
  private:
   std::map<std::string, std::string> interface_names_;
-  std::string fake_default_ifname_;
+  std::string fake_default_logical_ifname_;
+  std::string fake_default_physical_ifname_;
   std::set<std::string> get_device_properties_calls_;
 };
 

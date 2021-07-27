@@ -24,20 +24,31 @@ class ShillClientTest : public testing::Test {
   void SetUp() override {
     helper_ = std::make_unique<FakeShillClientHelper>();
     client_ = helper_->FakeClient();
-    client_->RegisterDefaultDeviceChangedHandler(base::Bind(
-        &ShillClientTest::DefaultDeviceChangedHandler, base::Unretained(this)));
+    client_->RegisterDefaultLogicalDeviceChangedHandler(
+        base::Bind(&ShillClientTest::DefaultLogicalDeviceChangedHandler,
+                   base::Unretained(this)));
+    client_->RegisterDefaultPhysicalDeviceChangedHandler(
+        base::Bind(&ShillClientTest::DefaultPhysicalDeviceChangedHandler,
+                   base::Unretained(this)));
     client_->RegisterDevicesChangedHandler(base::Bind(
         &ShillClientTest::DevicesChangedHandler, base::Unretained(this)));
     client_->RegisterIPConfigsChangedHandler(base::Bind(
         &ShillClientTest::IPConfigsChangedHandler, base::Unretained(this)));
-    default_ifname_.clear();
+    default_logical_ifname_.clear();
     added_.clear();
     removed_.clear();
   }
 
-  void DefaultDeviceChangedHandler(const ShillClient::Device& new_device,
-                                   const ShillClient::Device& prev_device) {
-    default_ifname_ = new_device.ifname;
+  void DefaultLogicalDeviceChangedHandler(
+      const ShillClient::Device& new_device,
+      const ShillClient::Device& prev_device) {
+    default_logical_ifname_ = new_device.ifname;
+  }
+
+  void DefaultPhysicalDeviceChangedHandler(
+      const ShillClient::Device& new_device,
+      const ShillClient::Device& prev_device) {
+    default_physical_ifname_ = new_device.ifname;
   }
 
   void DevicesChangedHandler(const std::vector<std::string>& added,
@@ -52,7 +63,8 @@ class ShillClientTest : public testing::Test {
   }
 
  protected:
-  std::string default_ifname_;
+  std::string default_logical_ifname_;
+  std::string default_physical_ifname_;
   std::vector<std::string> added_;
   std::vector<std::string> removed_;
   std::vector<std::pair<std::string, ShillClient::IPConfig>>
@@ -65,7 +77,8 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0"),
                                            dbus::ObjectPath("/device/wlan0")};
   auto value = brillo::Any(devices);
-  client_->SetFakeDefaultDevice("eth0");
+  client_->SetFakeDefaultLogicalDevice("eth0");
+  client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->SetIfname("/device/eth0", "eth0");
   client_->SetIfname("/device/eth1", "eth1");
   client_->SetIfname("/device/wlan0", "wlan0");
@@ -76,8 +89,9 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
   EXPECT_EQ(removed_.size(), 0);
 
   // Implies the default callback was run;
-  EXPECT_EQ(default_ifname_, "eth0");
-  EXPECT_NE(std::find(added_.begin(), added_.end(), default_ifname_),
+  EXPECT_EQ(default_logical_ifname_, "eth0");
+  EXPECT_EQ(default_physical_ifname_, "eth0");
+  EXPECT_NE(std::find(added_.begin(), added_.end(), default_logical_ifname_),
             added_.end());
 
   devices.pop_back();
@@ -93,77 +107,96 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
 TEST_F(ShillClientTest, VerifyDevicesPrefixStripped) {
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0")};
   auto value = brillo::Any(devices);
-  client_->SetFakeDefaultDevice("eth0");
+  client_->SetFakeDefaultLogicalDevice("eth0");
+  client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->SetIfname("/device/eth0", "eth0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), 1);
   EXPECT_EQ(*added_.begin(), "eth0");
   // Implies the default callback was run;
-  EXPECT_EQ(default_ifname_, "eth0");
+  EXPECT_EQ(default_logical_ifname_, "eth0");
+  EXPECT_EQ(default_physical_ifname_, "eth0");
 }
 
 TEST_F(ShillClientTest, DefaultDeviceChangedHandlerCalledOnNewDefaultDevice) {
-  client_->SetFakeDefaultDevice("eth0");
+  client_->SetFakeDefaultLogicalDevice("eth0");
+  client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
-  EXPECT_EQ(default_ifname_, "eth0");
+  EXPECT_EQ(default_logical_ifname_, "eth0");
+  EXPECT_EQ(default_physical_ifname_, "eth0");
 
-  client_->SetFakeDefaultDevice("wlan0");
+  client_->SetFakeDefaultLogicalDevice("wlan0");
+  client_->SetFakeDefaultPhysicalDevice("wlan0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
-  EXPECT_EQ(default_ifname_, "wlan0");
+  EXPECT_EQ(default_logical_ifname_, "wlan0");
+  EXPECT_EQ(default_physical_ifname_, "wlan0");
 }
 
 TEST_F(ShillClientTest, DefaultDeviceChangedHandlerNotCalledForSameDefault) {
-  client_->SetFakeDefaultDevice("eth0");
+  client_->SetFakeDefaultLogicalDevice("eth0");
+  client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
-  EXPECT_EQ(default_ifname_, "eth0");
+  EXPECT_EQ(default_logical_ifname_, "eth0");
+  EXPECT_EQ(default_physical_ifname_, "eth0");
 
-  default_ifname_.clear();
+  default_logical_ifname_.clear();
+  default_physical_ifname_.clear();
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
   // Implies the callback was not run the second time.
-  EXPECT_EQ(default_ifname_, "");
+  EXPECT_EQ(default_logical_ifname_, "");
+  EXPECT_EQ(default_physical_ifname_, "");
 }
 
 TEST_F(ShillClientTest, DefaultDeviceChanges) {
   // One network device appears.
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/wlan0")};
   auto value = brillo::Any(devices);
-  client_->SetFakeDefaultDevice("wlan0");
+  client_->SetFakeDefaultLogicalDevice("wlan0");
+  client_->SetFakeDefaultPhysicalDevice("wlan0");
   client_->SetIfname("/device/eth0", "eth0");
   client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
-  EXPECT_EQ(default_ifname_, "wlan0");
+  EXPECT_EQ(default_logical_ifname_, "wlan0");
+  EXPECT_EQ(default_physical_ifname_, "wlan0");
 
   // A second device appears.
-  default_ifname_.clear();
+  default_logical_ifname_.clear();
+  default_physical_ifname_.clear();
   devices = {dbus::ObjectPath("/device/eth0"),
              dbus::ObjectPath("/device/wlan0")};
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
-  EXPECT_EQ(default_ifname_, "");
+  EXPECT_EQ(default_logical_ifname_, "");
+  EXPECT_EQ(default_physical_ifname_, "");
 
   // The second device becomes the default interface.
-  client_->SetFakeDefaultDevice("eth0");
+  client_->SetFakeDefaultLogicalDevice("eth0");
+  client_->SetFakeDefaultPhysicalDevice("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
                                        brillo::Any() /* ignored */);
-  EXPECT_EQ(default_ifname_, "eth0");
+  EXPECT_EQ(default_logical_ifname_, "eth0");
+  EXPECT_EQ(default_physical_ifname_, "eth0");
 
   // The first device disappears.
   devices = {dbus::ObjectPath("/device/eth0")};
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   // The default device is still the same.
-  EXPECT_EQ(default_ifname_, "eth0");
+  EXPECT_EQ(default_logical_ifname_, "eth0");
+  EXPECT_EQ(default_physical_ifname_, "eth0");
 
   // All devices have disappeared.
   devices = {};
   value = brillo::Any(devices);
-  client_->SetFakeDefaultDevice("");
+  client_->SetFakeDefaultLogicalDevice("");
+  client_->SetFakeDefaultPhysicalDevice("");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
-  EXPECT_EQ(default_ifname_, "");
+  EXPECT_EQ(default_logical_ifname_, "");
+  EXPECT_EQ(default_physical_ifname_, "");
 }
 
 TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {

@@ -9,6 +9,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -93,11 +94,14 @@ class ShillClient {
 
   virtual ~ShillClient() = default;
 
-  // Registers the provided handler for changes in shill default logical network
+  // Registers the provided handler for changes in shill default logical or
+  // physical network.
   // The handler will be called once immediately at registration
-  // with the current default logical network as |new_device| and an empty
-  // Device as |prev_device|.
-  void RegisterDefaultDeviceChangedHandler(
+  // with the current default logical or physical network as |new_device| and
+  // an empty Device as |prev_device|.
+  void RegisterDefaultLogicalDeviceChangedHandler(
+      const DefaultDeviceChangeHandler& handler);
+  void RegisterDefaultPhysicalDeviceChangedHandler(
       const DefaultDeviceChangeHandler& handler);
 
   void RegisterDevicesChangedHandler(const DevicesChangeHandler& handler);
@@ -113,10 +117,16 @@ class ShillClient {
 
   // Returns the cached interface name of the current default logical network;
   // does not initiate a property fetch.
-  virtual const std::string& default_interface() const;
+  virtual const std::string& default_logical_interface() const;
+  // Returns the cached interface name of the current default physical network;
+  // does not initiate a property fetch.
+  virtual const std::string& default_physical_interface() const;
   // Returns the cached default logical shill Device; does not initiate a
   // property fetch.
-  virtual const Device& default_device() const;
+  virtual const Device& default_logical_device() const;
+  // Returns the cached default physical shill Device; does not initiate a
+  // property fetch.
+  virtual const Device& default_physical_device() const;
   // Returns interface names of all known shill Devices.
   const std::vector<std::string> get_interfaces() const;
   // Returns true if |ifname| is the interface name of a known shill Device.
@@ -136,9 +146,10 @@ class ShillClient {
                               const std::string& property_name,
                               const brillo::Any& property_value);
 
-  // Returns the current default logical shill Device for the system, or an
-  // empty shill Device result when the system has no default network.
-  virtual Device GetDefaultDevice();
+  // Returns the current default logical and physical shill Device for the
+  // system, or an empty pair of shill Device result when the system has no
+  // default network.
+  virtual std::pair<Device, Device> GetDefaultDevices();
 
   // Returns the interface name of the shill Device identified by |device|, or
   // returns the empty string if it fails.
@@ -148,9 +159,23 @@ class ShillClient {
   void UpdateDevices(const brillo::Any& property_value);
 
   // Sets the internal variable tracking the system default logical network and
-  // calls the registered client handlers if the default logical network
-  // changed.
-  void SetDefaultDevice(const Device& new_default);
+  // default physical network.
+  // Calls the registered client handlers if the default logical network or the
+  // default physical network changed.
+  // The arguments is a pair of default logical network and default physical
+  // network.
+  void SetDefaultDevices(const std::pair<Device, Device>& devices);
+
+  // Returns a properties given an object path.
+  brillo::VariantDictionary GetServiceProperties(
+      const dbus::ObjectPath& service_path);
+  brillo::VariantDictionary GetDeviceProperties(
+      const dbus::ObjectPath& device_path);
+
+  // Returns a device given its service path, device path, and service type.
+  Device GetDevice(const dbus::ObjectPath& service_path,
+                   const dbus::ObjectPath& device_path,
+                   const std::string& service_type);
 
   // Parses the |property_value| as the IPConfigs property of the shill Device
   // identified by |device|, which
@@ -161,7 +186,9 @@ class ShillClient {
   // Tracks the system default logical network chosen by shill. This corresponds
   // to the physical or virtual shill Device associated with the default logical
   // network service.
-  Device default_device_;
+  Device default_physical_device_;
+  // Tracks the system default physical network chosen by shill.
+  Device default_logical_device_;
   // Tracks all network interfaces managed by shill and maps shill Device
   // identifiers to interface names.
   std::map<std::string, std::string> devices_;
@@ -173,7 +200,9 @@ class ShillClient {
   std::map<std::string, dbus::ObjectPath> known_device_paths_;
 
   // Called when the shill Device used as the default logical network changes.
-  std::vector<DefaultDeviceChangeHandler> default_device_handlers_;
+  std::vector<DefaultDeviceChangeHandler> default_logical_device_handlers_;
+  // Called when the shill Device used as the default physical network changes.
+  std::vector<DefaultDeviceChangeHandler> default_physical_device_handlers_;
   // Called when the list of network interfaces managed by shill changes.
   std::vector<DevicesChangeHandler> device_handlers_;
   // Called when the IPConfigs of any shill Device changes.

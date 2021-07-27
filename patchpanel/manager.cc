@@ -244,8 +244,9 @@ void Manager::InitialSetup() {
   //  - the iptables rules for fwmark based routing.
   if (!USE_JETSTREAM_ROUTING) {
     datapath_->Start();
-    shill_client_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
-        &Manager::OnShillDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
+    shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
+        base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
+                            weak_factory_.GetWeakPtr()));
     shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
         &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
     shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
@@ -333,7 +334,7 @@ void Manager::RestartSubprocess(HelperProcess* subproc) {
   }
 }
 
-void Manager::OnShillDefaultDeviceChanged(
+void Manager::OnShillDefaultLogicalDeviceChanged(
     const ShillClient::Device& new_device,
     const ShillClient::Device& prev_device) {
   // Only take into account interface switches and ignore layer 3 property
@@ -429,7 +430,7 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
     const std::string& upstream_device =
         (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM)
             ? virtual_device.phys_ifname()
-            : shill_client_->default_interface();
+            : shill_client_->default_logical_interface();
 
     if (event == Device::ChangeEvent::ADDED) {
       StartForwarding(upstream_device, virtual_device.host_ifname());
