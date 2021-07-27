@@ -419,6 +419,7 @@ type cros_var_spool_power_manager, file_type, cros_file_type, cros_var_file_type
 type cros_var_tmp, file_type, cros_file_type, cros_var_file_type;
 
 type arc_dir, file_type, cros_file_type, cros_run_file_type; # compatible to pre-work label names for /run/chrome.
+type camera_dir, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type cras_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type cros_ephemeral_mount, file_type, cros_file_type, cros_run_file_type;

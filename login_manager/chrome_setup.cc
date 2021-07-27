@@ -422,27 +422,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // allow threads (Mesa uses threads for this feature).
   builder->AddEnvVar("MESA_GLSL_CACHE_DISABLE", "true");
 
-  // On devices with Chrome OS camera HAL, Chrome needs to host the unix domain
-  // named socket /run/camera/camera3.sock to provide the camera HAL Mojo
-  // service to the system.
-  if (base::PathExists(base::FilePath("/usr/bin/cros_camera_service"))) {
-    // The socket is created and listened on by Chrome, and receives connections
-    // from the camera HAL v3 process and cameraserver process in Android
-    // container which run as group arc-camera.  In addition, the camera HAL v3
-    // process also hosts a unix domain named socket in /run/camera for the
-    // sandboxed camera library process.  Thus the directory is created with
-    // user chronos and group arc-camera with 0770 permission.
-    gid_t arc_camera_gid;
-    CHECK(brillo::userdb::GetGroupInfo("arc-camera", &arc_camera_gid));
-    CHECK(EnsureDirectoryExists(base::FilePath("/run/camera"), uid,
-                                arc_camera_gid, 0770));
-    // The /var/cache/camera folder is used to store camera-related configs and
-    // settings that are either extracted from Android container, or generated
-    // by the camera HAL at runtime.
-    CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/camera"), uid,
-                                arc_camera_gid, 0770));
-  }
-
   // On devices with CUPS proxy daemon, Chrome needs to create the directory so
   // cups_proxy can host a unix domain named socket at
   // /run/cups_proxy/cups_proxy.sock
