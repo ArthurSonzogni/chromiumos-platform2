@@ -26,19 +26,26 @@
 
 namespace webservd {
 
+#if MHD_VERSION >= 0x00097002
+// libmicrohttpd 0.9.71 broke API
+#define MHD_RESULT enum MHD_Result
+#else
+#define MHD_RESULT int
+#endif
+
 // Helper class to provide static callback methods to microhttpd library,
 // with the ability to access private methods of Request class.
 class RequestHelper {
  public:
-  static int PostDataIterator(void* cls,
-                              MHD_ValueKind /* kind */,
-                              const char* key,
-                              const char* filename,
-                              const char* content_type,
-                              const char* transfer_encoding,
-                              const char* data,
-                              uint64_t off,
-                              size_t size) {
+  static MHD_RESULT PostDataIterator(void* cls,
+                                     MHD_ValueKind /* kind */,
+                                     const char* key,
+                                     const char* filename,
+                                     const char* content_type,
+                                     const char* transfer_encoding,
+                                     const char* data,
+                                     uint64_t off,
+                                     size_t size) {
     auto self = reinterpret_cast<Request*>(cls);
     return self->ProcessPostData(key, filename, content_type, transfer_encoding,
                                  data, off, size)
@@ -46,10 +53,10 @@ class RequestHelper {
                : MHD_NO;
   }
 
-  static int ValueCallback(void* cls,
-                           MHD_ValueKind kind,
-                           const char* key,
-                           const char* value) {
+  static MHD_RESULT ValueCallback(void* cls,
+                                  MHD_ValueKind kind,
+                                  const char* key,
+                                  const char* value) {
     auto self = reinterpret_cast<Request*>(cls);
     std::string data;
     if (value)

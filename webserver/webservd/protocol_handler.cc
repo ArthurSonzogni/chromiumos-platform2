@@ -29,18 +29,25 @@
 
 namespace webservd {
 
+#if MHD_VERSION >= 0x00097002
+// libmicrohttpd 0.9.71 broke API
+#define MHD_RESULT enum MHD_Result
+#else
+#define MHD_RESULT int
+#endif
+
 // Helper class to provide static callback methods to libmicrohttpd library,
 // with the ability to access private methods of Server class.
 class ServerHelper final {
  public:
-  static int ConnectionHandler(void* cls,
-                               MHD_Connection* connection,
-                               const char* url,
-                               const char* method,
-                               const char* version,
-                               const char* upload_data,
-                               size_t* upload_data_size,
-                               void** con_cls) {
+  static MHD_RESULT ConnectionHandler(void* cls,
+                                      MHD_Connection* connection,
+                                      const char* url,
+                                      const char* method,
+                                      const char* version,
+                                      const char* upload_data,
+                                      size_t* upload_data_size,
+                                      void** con_cls) {
     auto handler = reinterpret_cast<ProtocolHandler*>(cls);
     if (nullptr == *con_cls) {
       std::string request_handler_id = handler->FindRequestHandler(url, method);
@@ -381,9 +388,6 @@ void ProtocolHandler::DoWork() {
                   watchers_.end());
 
   for (int fd = 0; fd <= max_fd; fd++) {
-    // libmicrohttpd is not using exception FDs, so lets put our expectations
-    // upfront.
-    CHECK(!FD_ISSET(fd, &es));
     if (FD_ISSET(fd, &rs) || FD_ISSET(fd, &ws)) {
       // libmicrohttpd should never use any of stdin/stdout/stderr descriptors.
       CHECK_GT(fd, STDERR_FILENO);
