@@ -31,8 +31,9 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   ~ComponentsRepairStateHandler() override = default;
 
  private:
-  // Check that the provided state properly updates every component.
-  bool ValidateUserSelection(const RmadState& state) const;
+  // Use the provided state to update every component. Return true if all the
+  // components are properly updated.
+  bool ApplyUserSelection(const RmadState& state);
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
 

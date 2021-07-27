@@ -44,8 +44,7 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 
   std::unique_ptr<ComponentsRepairState> CreateDefaultComponentsRepairState() {
     static const std::vector<RmadComponent> default_original_components = {
-        RMAD_COMPONENT_MAINBOARD_REWORK, RMAD_COMPONENT_KEYBOARD,
-        RMAD_COMPONENT_POWER_BUTTON};
+        RMAD_COMPONENT_KEYBOARD, RMAD_COMPONENT_POWER_BUTTON};
     auto components_repair = std::make_unique<ComponentsRepairState>();
     for (auto component : default_original_components) {
       ComponentRepairStatus* component_repair =
@@ -93,6 +92,34 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(
       replaced_components,
       std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
+}
+
+TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success_MlbRework) {
+  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  std::unique_ptr<ComponentsRepairState> components_repair =
+      CreateDefaultComponentsRepairState();
+  components_repair->set_mainboard_rework(true);
+  RmadState state;
+  state.set_allocated_components_repair(components_repair.release());
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kDeviceDestination);
+
+  std::vector<std::string> replaced_components;
+  EXPECT_TRUE(
+      json_store_->GetValue(kReplacedComponentNames, &replaced_components));
+
+  std::set<std::string> replaced_components_set(replaced_components.begin(),
+                                                replaced_components.end());
+  std::set<std::string> expected_replaced_components_set = {
+      RmadComponent_Name(RMAD_COMPONENT_BATTERY),
+      RmadComponent_Name(RMAD_COMPONENT_KEYBOARD),
+      RmadComponent_Name(RMAD_COMPONENT_POWER_BUTTON),
+  };
+  EXPECT_EQ(replaced_components_set, expected_replaced_components_set);
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {

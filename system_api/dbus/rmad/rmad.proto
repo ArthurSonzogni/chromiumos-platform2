@@ -233,7 +233,7 @@ message ComponentsRepairState {
       RMAD_COMPONENT_SCREEN = 17;
       // Reserved for additional runtime_probe supported components.
       reserved 18 to 32;
-      // Mainboard rework is a special case.
+      // TODO(chenghan): Deprecated; Mainboard rework is a special case.
       RMAD_COMPONENT_MAINBOARD_REWORK = 33;
       // Irrelevant components.
       // TODO(chenghan): Do we really need these?
@@ -263,6 +263,8 @@ message ComponentsRepairState {
   repeated ComponentRepairStatus component_repair = 1;
   // TODO(chenghan): Legacy, remove it in the future.
   repeated ComponentRepairState components = 2;
+
+  bool mainboard_rework = 3;
 }
 
 // Select whether the device is returning to original owner or being wiped for
