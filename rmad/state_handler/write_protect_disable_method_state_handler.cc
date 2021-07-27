@@ -14,7 +14,7 @@ WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode WriteProtectDisableMethodStateHandler::InitializeState() {
-  if (!state_.has_wp_disable_method() && !RetrieveState()) {
+  if (!state_.has_wp_disable_method()) {
     state_.set_allocated_wp_disable_method(new WriteProtectDisableMethodState);
   }
   return RMAD_ERROR_OK;
@@ -27,18 +27,11 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |write protection disable method| state.";
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  const WriteProtectDisableMethodState& wp_disable_method =
-      state.wp_disable_method();
-  if (wp_disable_method.disable_method() ==
-      WriteProtectDisableMethodState::RMAD_WP_DISABLE_UNKNOWN) {
-    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-            .state_case = GetStateCase()};
-  }
 
-  state_ = state;
-  StoreState();
-
-  switch (state_.wp_disable_method().disable_method()) {
+  switch (state.wp_disable_method().disable_method()) {
+    case WriteProtectDisableMethodState::RMAD_WP_DISABLE_UNKNOWN:
+      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+              .state_case = GetStateCase()};
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU:
       return {.error = RMAD_ERROR_OK,
               .state_case = RmadState::StateCase::kWpDisableRsu};

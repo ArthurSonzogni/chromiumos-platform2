@@ -40,16 +40,14 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |restock| state.";
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  const RestockState& restock = state.restock();
-  if (restock.choice() == RestockState::RMAD_RESTOCK_UNKNOWN) {
-    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-            .state_case = GetStateCase()};
-  }
 
   state_ = state;
   StoreState();
 
   switch (state_.restock().choice()) {
+    case RestockState::RMAD_RESTOCK_UNKNOWN:
+      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+              .state_case = GetStateCase()};
     case RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK:
       // Set the choice to "Continue", so the device can auto-transition to the
       // next state on next boot.
@@ -67,7 +65,6 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
     default:
       break;
   }
-
   NOTREACHED();
   return {.error = RMAD_ERROR_NOT_SET,
           .state_case = RmadState::StateCase::STATE_NOT_SET};

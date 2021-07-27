@@ -14,7 +14,7 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
-  if (!state_.has_welcome() && !RetrieveState()) {
+  if (!state_.has_welcome()) {
     state_.set_allocated_welcome(new WelcomeState);
   }
   return RMAD_ERROR_OK;
@@ -26,16 +26,11 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
     LOG(ERROR) << "RmadState missing |welcome| state.";
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
-  const WelcomeState& welcome = state.welcome();
-  if (welcome.choice() == WelcomeState::RMAD_CHOICE_UNKNOWN) {
-    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-            .state_case = GetStateCase()};
-  }
 
-  state_ = state;
-  StoreState();
-
-  switch (state_.welcome().choice()) {
+  switch (state.welcome().choice()) {
+    case WelcomeState::RMAD_CHOICE_UNKNOWN:
+      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+              .state_case = GetStateCase()};
     case WelcomeState::RMAD_CHOICE_CANCEL:
       return {.error = RMAD_ERROR_RMA_NOT_REQUIRED,
               .state_case = RmadState::StateCase::STATE_NOT_SET};

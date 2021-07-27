@@ -33,7 +33,7 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
       crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
-  if (!state_.has_wp_enable_physical() && !RetrieveState()) {
+  if (!state_.has_wp_enable_physical()) {
     state_.set_allocated_wp_enable_physical(
         new WriteProtectEnablePhysicalState);
   }
@@ -60,17 +60,12 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
-  // There's nothing in |WriteProtectEnablePhysicalState|.
-  state_ = state;
-  StoreState();
-
-  int wp_status;
-  if (crossystem_utils_->GetInt(kWriteProtectProperty, &wp_status) &&
-      wp_status == 1) {
+  int hwwp_status;
+  if (crossystem_utils_->GetInt(kWriteProtectProperty, &hwwp_status) &&
+      hwwp_status == 1) {
     return {.error = RMAD_ERROR_OK,
             .state_case = RmadState::StateCase::kFinalize};
   }
-
   return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
 }
 
@@ -88,12 +83,12 @@ void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
   DCHECK(write_protect_signal_sender_);
   LOG(INFO) << "Check write protection";
 
-  int wp_status;
-  if (!crossystem_utils_->GetInt(kWriteProtectProperty, &wp_status)) {
+  int hwwp_status;
+  if (!crossystem_utils_->GetInt(kWriteProtectProperty, &hwwp_status)) {
     LOG(ERROR) << "Failed to get HWWP status";
     return;
   }
-  if (wp_status == 1) {
+  if (hwwp_status == 1) {
     write_protect_signal_sender_->Run(true);
     timer_.Stop();
   }
