@@ -631,6 +631,7 @@
                 and "ht_location" parameters above, this paramter specifies the
                 name of a currently connected 802.11 interface.  A packet
                 capture is initated on the same channel as this connection.
+          Frequency-based capture options are only available in developer mode.
           Unrecognized keys return a DBus error and print no output to the
           supplied file descriptor.
         </tp:docstring>

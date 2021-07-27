@@ -5,12 +5,10 @@
 // The dev module handles registration of crosh commands only enabled when Chrome OS is in developer
 // mode.
 
-mod packet_capture;
 mod shell;
 
 use crate::dispatcher::Dispatcher;
 
 pub fn register(dispatcher: &mut Dispatcher) {
-    packet_capture::register(dispatcher);
     shell::register(dispatcher);
 }

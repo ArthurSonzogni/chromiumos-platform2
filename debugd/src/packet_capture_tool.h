@@ -23,7 +23,8 @@ class PacketCaptureTool : public SubprocessTool {
 
   ~PacketCaptureTool() override = default;
 
-  bool Start(const base::ScopedFD& status_fd,
+  bool Start(bool is_dev_mode,
+             const base::ScopedFD& status_fd,
              const base::ScopedFD& output_fd,
              const brillo::VariantDictionary& options,
              std::string* out_id,

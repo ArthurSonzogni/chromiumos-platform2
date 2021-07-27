@@ -202,7 +202,8 @@ PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
   return p;
 }
 
-bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
+bool PacketCaptureTool::Start(bool is_dev_mode,
+                              const base::ScopedFD& status_fd,
                               const base::ScopedFD& output_fd,
                               const brillo::VariantDictionary& options,
                               std::string* out_id,
@@ -224,9 +225,15 @@ bool PacketCaptureTool::Start(const base::ScopedFD& status_fd,
   if (CheckDeviceBasedCaptureMode(options, error)) {
     p = CreateCaptureProcessForDeviceBasedCapture(options, child_output_fd,
                                                   error);
-  } else {
+  } else if (is_dev_mode) {
     p = CreateCaptureProcessForFrequencyBasedCapture(options, child_output_fd,
                                                      error);
+  } else {
+    DEBUGD_ADD_ERROR(
+        error, kPacketCaptureToolErrorString,
+        "The requested capture is frequency-based and it's only available in "
+        "developer mode. Please switch to developer mode to use this option.");
+    return false;
   }
   if (!p) {
     DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,

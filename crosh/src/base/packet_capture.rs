@@ -21,19 +21,26 @@ use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::{
-    clear_signal_handlers, generate_output_file_path, set_signal_handlers, DEFAULT_DBUS_TIMEOUT,
+    clear_signal_handlers, dev_commands_included, generate_output_file_path, set_signal_handlers,
+    DEFAULT_DBUS_TIMEOUT,
 };
 
-const FLAGS: [(&str, &str, &str); 6] = [
-    ("device", "<device>", "device"),
-    ("max-size", "<max size in MiB>", "max_size"),
-    ("frequency", "<frequency>", "frequency"),
-    ("ht-location", "<above|below>", "ht_location"),
-    ("vht-width", "<80|160>", "vht_width"),
+const FLAGS: [(
+    &str,
+    &str,
+    &str,
+    bool, /* option only available in dev-mode */
+); 6] = [
+    ("device", "<device>", "device", false),
+    ("max-size", "<max size in MiB>", "max_size", false),
+    ("frequency", "<frequency>", "frequency", true),
+    ("ht-location", "<above|below>", "ht_location", true),
+    ("vht-width", "<80|160>", "vht_width", true),
     (
         "monitor-connection-on",
         "<monitored_device>",
         "monitor_connection_on",
+        true,
     ),
 ];
 
@@ -45,7 +52,9 @@ Start packet capture.  Start a device-based capture on <device>,
   currently connected <monitored_device>.  Note that over-the-air
   captures are not available with all 802.11 devices. Set <max_size>
   to stop the packet capture if the output .pcap file size exceedes this
-  limit.
+  limit. Only device-based capture options (--device and --max-size) are
+  available in verified mode. Switch to developer mode to use other
+  options.
 "#;
 
 pub fn register(dispatcher: &mut Dispatcher) {
@@ -111,11 +120,17 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
         .map_err(|_| dispatcher::Error::CommandReturnedError)?;
 
     let mut dbus_options = HashMap::new();
+    let dev_mode: bool = dev_commands_included();
     for flag in FLAGS.iter() {
         // Iterate over the argument options.
         let name = flag.2;
         let argument_name = flag.0;
         if let Some(value) = matches.opt_str(argument_name) {
+            // Frequency based capture options are only available for developer mode.
+            if !dev_mode && flag.3 {
+                eprintln!("Option --{} is only available in developer mode. Please switch to developer mode to use.", flag.0);
+                return Err(dispatcher::Error::CommandReturnedError);
+            }
             // The argument will be sent to dbus as int for "frequency" and "max-size" option
             // and String for other options.
             let variant_value: Variant<Box<dyn arg::RefArg>> =

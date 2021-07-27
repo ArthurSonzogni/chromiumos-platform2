@@ -297,8 +297,9 @@ bool DebugdDBusAdaptor::PacketCaptureStart(
     const base::ScopedFD& outfd,
     const brillo::VariantDictionary& options,
     std::string* handle) {
-  bool packet_capture_started =
-      packet_capture_tool_->Start(statfd, outfd, options, handle, error);
+  bool is_dev_mode = dev_features_tool_wrapper_->restriction().InDevMode();
+  bool packet_capture_started = packet_capture_tool_->Start(
+      is_dev_mode, statfd, outfd, options, handle, error);
   if (packet_capture_started) {
     SendPacketCaptureStartSignal();
   }
