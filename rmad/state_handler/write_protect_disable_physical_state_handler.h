@@ -14,7 +14,9 @@
 
 namespace rmad {
 
+class Cr50Utils;
 class CrosSystemUtils;
+class CryptohomeClient;
 
 class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  public:
@@ -24,10 +26,13 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
 
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |crossystem_utils_| for testing.
+  // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
+  // |cryptohome_client_| for testing.
   WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      std::unique_ptr<Cr50Utils> cr50_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<CryptohomeClient> cryptohome_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
@@ -48,7 +53,9 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   void PollUntilWriteProtectOff();
   void CheckWriteProtectOffTask();
 
+  std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<CryptohomeClient> cryptohome_client_;
   std::unique_ptr<base::RepeatingCallback<bool(bool)>>
       write_protect_signal_sender_;
   base::RepeatingTimer timer_;

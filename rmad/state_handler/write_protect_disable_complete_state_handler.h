@@ -12,17 +12,15 @@
 namespace rmad {
 
 class Cr50Utils;
-class CryptohomeClient;
 
 class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cr50_utils_| and |cryptohome_client_| for testing.
+  // Used to inject mock |cr50_utils_| for testing.
   WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<Cr50Utils> cr50_utils,
-      std::unique_ptr<CryptohomeClient> cryptohome_client);
+      std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
   SET_UNREPEATABLE;
@@ -35,7 +33,6 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
 
  private:
   std::unique_ptr<Cr50Utils> cr50_utils_;
-  std::unique_ptr<CryptohomeClient> cryptohome_client_;
 };
 
 }  // namespace rmad

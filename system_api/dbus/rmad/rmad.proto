@@ -312,9 +312,6 @@ message WriteProtectDisablePhysicalState {
 message WriteProtectDisableCompleteState {
   // Provided by daemon.
   bool keep_device_open = 1;
-  bool can_enable_factory_mode = 2;
-  // Provided by client.
-  bool enable_factory_mode = 3;
 }
 
 // Select method to update firmware.

@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include "rmad/system/cryptohome_client_impl.h"
+#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 
 #include <base/logging.h>
@@ -16,25 +18,31 @@ namespace rmad {
 namespace {
 
 // crossystem HWWP property name.
-constexpr char kWriteProtectProperty[] = "wpsw_cur";
+constexpr char kHwwpProperty[] = "wpsw_cur";
 
 }  // namespace
 
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>();
 }
 
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
-        std::unique_ptr<CrosSystemUtils> crossystem_utils)
+        std::unique_ptr<Cr50Utils> cr50_utils,
+        std::unique_ptr<CrosSystemUtils> crossystem_utils,
+        std::unique_ptr<CryptohomeClient> cryptohome_client)
     : BaseStateHandler(json_store),
-      crossystem_utils_(std::move(crossystem_utils)) {}
+      cr50_utils_(std::move(cr50_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
+      cryptohome_client_(std::move(cryptohome_client)) {}
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
-  if (!state_.has_wp_disable_physical() && !RetrieveState()) {
+  if (!state_.has_wp_disable_physical()) {
     state_.set_allocated_wp_disable_physical(
         new WriteProtectDisablePhysicalState);
   }
@@ -61,22 +69,25 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
-  // There's nothing in |WriteProtectDisablePhysicalState|.
-  state_ = state;
-  StoreState();
-
-  int wp_status;
-  if (crossystem_utils_->GetInt(kWriteProtectProperty, &wp_status) &&
-      wp_status == 0) {
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kWpDisableComplete};
+  int hwwp_status;
+  if (crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
+      hwwp_status == 0) {
+    // Enable cr50 factory mode if possible.
+    if (!cr50_utils_->IsFactoryModeEnabled() &&
+        !cryptohome_client_->HasFwmp()) {
+      cr50_utils_->EnableFactoryMode();
+      return {.error = RMAD_ERROR_EXPECT_REBOOT, .state_case = GetStateCase()};
+    } else {
+      return {.error = RMAD_ERROR_OK,
+              .state_case = RmadState::StateCase::kWpDisableComplete};
+    }
   }
 
   return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
 }
 
 void WriteProtectDisablePhysicalStateHandler::PollUntilWriteProtectOff() {
-  LOG(INFO) << "Start polling write protection";
+  VLOG(1) << "Start polling write protection";
   if (timer_.IsRunning()) {
     timer_.Stop();
   }
@@ -87,14 +98,14 @@ void WriteProtectDisablePhysicalStateHandler::PollUntilWriteProtectOff() {
 
 void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
   DCHECK(write_protect_signal_sender_);
-  LOG(INFO) << "Check write protection";
+  VLOG(1) << "Check write protection";
 
-  int wp_status;
-  if (!crossystem_utils_->GetInt(kWriteProtectProperty, &wp_status)) {
+  int hwwp_status;
+  if (!crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status)) {
     LOG(ERROR) << "Failed to get HWWP status";
     return;
   }
-  if (wp_status == 0) {
+  if (hwwp_status == 0) {
     write_protect_signal_sender_->Run(false);
     timer_.Stop();
   }
