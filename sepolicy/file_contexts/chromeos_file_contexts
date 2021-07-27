@@ -329,6 +329,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
+/run/cups_proxy(/.*)?           u:object_r:cros_run_cups_proxy:s0
 /run/daemon-store               u:object_r:cros_run_daemon_store:s0
 /run/dbus                       u:object_r:cros_run_dbus:s0
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
