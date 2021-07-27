@@ -971,8 +971,7 @@ void ArcSetup::SetUpSdcard() {
 
 void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->sdcard_mount_directory));
-  EXIT_IF(!brillo::MkdirRecursively(arc_paths_->sdcard_mount_directory, 0755)
-               .is_valid());
+  EXIT_IF(!base::DirectoryExists(arc_paths_->sdcard_mount_directory));
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->sdcard_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
