@@ -16,6 +16,9 @@ group("all") {
   if (use.test) {
     deps += [ ":tpm_manager_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":tpm_manager_service_fuzzer" ]
+  }
 }
 
 pkg_config("target_default_deps") {
@@ -233,5 +236,45 @@ if (use.test) {
         "server/tpm_nvram_test.cc",
       ]
     }
+  }
+}
+
+if (use.fuzzer) {
+  executable("tpm_manager_service_fuzzer") {
+    sources = [ "server/fuzzers/tpm_manager_service_fuzzer.cc" ]
+    if (use.tpm) {
+      sources += [ "server/fuzzers/tpm_fuzzer_utils_impl.cc" ]
+    }
+    if (use.tpm2) {
+      sources += [ "server/fuzzers/tpm2_fuzzer_utils_impl.cc" ]
+    }
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      "//common-mk:test",
+      ":target_defaults",
+      ":local_proto_include",
+    ]
+    libs = []
+    if (use.tpm2) {
+      libs += [ "trunks_test" ]
+    }
+    deps = [
+      ":server_library",
+      ":tpm_manager_service_fuzzer_data_proto",
+    ]
+    pkg_deps = [
+      "libmetrics",
+      "libprotobuf-mutator",
+    ]
+  }
+  config("local_proto_include") {
+    include_dirs = [ "${sysroot}/usr/include/tpm_manager/proto_bindings/" ]
+  }
+  proto_library("tpm_manager_service_fuzzer_data_proto") {
+    proto_in_dir = "server/fuzzers"
+    proto_out_dir = "include/tpm_manager/server/fuzzers"
+    proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/tpm_manager" ]
+    configs = [ ":local_proto_include" ]
+    sources = [ "${proto_in_dir}/tpm_manager_service_fuzzer_data.proto" ]
   }
 }
