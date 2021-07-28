@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <gtest/gtest.h>
 
 namespace password_provider {
@@ -14,13 +15,13 @@ namespace password_provider {
 namespace {
 
 // Write the given data to a pipe. Returns the read end of the pipe.
-int WriteSizeAndDataToPipe(const std::string& data) {
-  int write_pipe[2];
-  EXPECT_EQ(0, pipe(write_pipe));
-
-  EXPECT_TRUE(base::WriteFileDescriptor(write_pipe[1], data));
-
-  return write_pipe[0];
+base::ScopedFD WriteSizeAndDataToPipe(const std::string& data) {
+  int pipe[2];
+  EXPECT_TRUE(base::CreateLocalNonBlockingPipe(pipe));
+  base::ScopedFD read_pipe(pipe[0]);
+  base::ScopedFD write_pipe(pipe[1]);
+  EXPECT_TRUE(base::WriteFileDescriptor(write_pipe.get(), data));
+  return read_pipe;
 }
 
 }  // namespace
@@ -50,11 +51,11 @@ TEST(Password, CreatePasswordWithNoMemoryAllocation) {
 
 TEST(Password, CreatePasswordFromFileDescriptor) {
   const std::string kTestStringPassword("mypassword");
-  int fd = WriteSizeAndDataToPipe(kTestStringPassword);
+  auto fd = WriteSizeAndDataToPipe(kTestStringPassword);
   EXPECT_NE(-1, fd);
 
   auto password =
-      Password::CreateFromFileDescriptor(fd, kTestStringPassword.size());
+      Password::CreateFromFileDescriptor(fd.get(), kTestStringPassword.size());
   ASSERT_TRUE(password);
   EXPECT_EQ(kTestStringPassword.size(), password->size());
   EXPECT_EQ(0, strncmp(kTestStringPassword.c_str(), password->GetRaw(),
@@ -63,12 +64,12 @@ TEST(Password, CreatePasswordFromFileDescriptor) {
 
 TEST(Password, CreatePasswordGreaterThanMaxSize) {
   const std::string kTestStringPassword("mypassword");
-  int fd = WriteSizeAndDataToPipe(kTestStringPassword);
+  auto fd = WriteSizeAndDataToPipe(kTestStringPassword);
   EXPECT_NE(-1, fd);
 
   // (page size - 1) is the max size of the Password buffer.
   size_t page_size = sysconf(_SC_PAGESIZE);
-  auto password = Password::CreateFromFileDescriptor(fd, page_size);
+  auto password = Password::CreateFromFileDescriptor(fd.get(), page_size);
   EXPECT_EQ(nullptr, password);
 }
 
