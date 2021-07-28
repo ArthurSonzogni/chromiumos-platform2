@@ -66,6 +66,10 @@ class RecoveryCrypto {
   // sync with the server.
   static const char kRequestPayloadPlainTextHkdfInfoValue[];
 
+  // Constant value of hkdf_info for response payload plaintext. Must be kept in
+  // sync with the server.
+  static const char kResponsePayloadPlainTextHkdfInfoValue[];
+
   // Elliptic Curve type used by the protocol.
   static const EllipticCurve::CurveType kCurve;
 
@@ -156,6 +160,20 @@ class RecoveryCrypto {
       const brillo::SecureBlob& destination_share,
       const brillo::SecureBlob& mediated_publisher_pub_key,
       brillo::SecureBlob* destination_recovery_key) const = 0;
+
+  // Decrypt cipher text of response payload `response_payload_ct` and store the
+  // result in `response_plain_text`. The key for decryption is
+  // HKDF(ECDH(channel_priv_key, epoch_pub_key)). The associated data is
+  // `response_payload_ad`. The AES-GCM tag and iv for decryption are
+  // `response_payload_tag` and `response_payload_iv`.
+  virtual bool DecryptResponsePayload(
+      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::SecureBlob& response_payload_ct,
+      const brillo::SecureBlob& response_payload_ad,
+      const brillo::SecureBlob& response_payload_iv,
+      const brillo::SecureBlob& response_payload_tag,
+      brillo::SecureBlob* response_plain_text) const = 0;
 
   // Serialize `encrypted_mediator_share` by simply concatenating fixed-length
   // blobs into `serialized_blob`. Returns false if error occurred.

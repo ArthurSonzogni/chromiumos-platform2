@@ -65,62 +65,20 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
   // Simulates mediation performed by HSM.
   FakeRecoveryMediatorCrypto::ResponsePayload response_payload;
   ASSERT_TRUE(mediator->MediateRequestPayload(
-      epoch_priv_key, mediator_priv_key, request_payload, &response_payload));
+      epoch_pub_key, epoch_priv_key, mediator_priv_key, request_payload,
+      &response_payload));
+
+  brillo::SecureBlob response_plain_text;
+  ASSERT_TRUE(recovery->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key, response_payload.cipher_text,
+      response_payload.associated_data, response_payload.iv,
+      response_payload.tag, &response_plain_text));
 
   brillo::SecureBlob mediated_share;
   brillo::SecureBlob dealer_pub_key;
   brillo::SecureBlob key_auth_value;
   ASSERT_TRUE(DeserializeHsmResponsePayloadFromCbor(
-      response_payload.cipher_text, &mediated_share, &dealer_pub_key,
-      &key_auth_value));
-
-  brillo::SecureBlob mediated_recovery_key;
-  ASSERT_TRUE(recovery->RecoverDestination(dealer_pub_key, destination_share,
-                                           mediated_share,
-                                           &mediated_recovery_key));
-
-  // Checks that cryptohome encryption key generated at enrollment and the
-  // one obtained after migration are identical.
-  EXPECT_EQ(recovery_key, mediated_recovery_key);
-}
-
-TEST(RecoveryCryptoTest, HsmPayloadTest) {
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
-  ASSERT_TRUE(recovery);
-  std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
-      FakeRecoveryMediatorCrypto::Create();
-  ASSERT_TRUE(mediator);
-
-  brillo::SecureBlob mediator_pub_key;
-  brillo::SecureBlob mediator_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
-  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
-
-  // Generates HSM payload that would be persisted on a chromebook.
-  RecoveryCrypto::HsmPayload hsm_payload;
-  brillo::SecureBlob destination_share;
-  brillo::SecureBlob recovery_key;
-  brillo::SecureBlob channel_pub_key;
-  brillo::SecureBlob channel_priv_key;
-  ASSERT_TRUE(recovery->GenerateHsmPayload(
-      mediator_pub_key,
-      /*rsa_pub_key=*/brillo::SecureBlob(),
-      brillo::SecureBlob(kFakeEnrollmentMetaData), &hsm_payload,
-      &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
-
-  // Simulates mediation performed by HSM.
-  FakeRecoveryMediatorCrypto::ResponsePayload response_payload;
-  ASSERT_TRUE(mediator->MediateHsmPayload(mediator_priv_key, hsm_payload,
-                                          &response_payload));
-
-  brillo::SecureBlob mediated_share;
-  brillo::SecureBlob dealer_pub_key;
-  brillo::SecureBlob key_auth_value;
-  ASSERT_TRUE(DeserializeHsmResponsePayloadFromCbor(
-      response_payload.cipher_text, &mediated_share, &dealer_pub_key,
-      &key_auth_value));
+      response_plain_text, &mediated_share, &dealer_pub_key, &key_auth_value));
 
   brillo::SecureBlob mediated_recovery_key;
   ASSERT_TRUE(recovery->RecoverDestination(dealer_pub_key, destination_share,

@@ -36,6 +36,11 @@ brillo::SecureBlob GetRequestPayloadPlainTextHkdfInfo() {
       RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
 }
 
+brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
+  return brillo::SecureBlob(
+      RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue);
+}
+
 }  // namespace
 
 // Hardcoded fake mediator and epoch public and private keys. Do not use them in
@@ -284,6 +289,8 @@ bool FakeRecoveryMediatorCrypto::Mediate(
 
 bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::SecureBlob& mediator_priv_key,
+    const brillo::SecureBlob& epoch_pub_key,
+    const brillo::SecureBlob& epoch_priv_key,
     const RecoveryCrypto::HsmPayload& hsm_payload,
     ResponsePayload* response_payload) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -332,20 +339,47 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  // TODO(mslus): We are currently sending encrypted_plain_text in clear.
-  // It should be updated when the epoch is added.
+  response_payload->associated_data = brillo::SecureBlob(kFakeHsmMetaData);
+
+  brillo::SecureBlob plain_text_cbor;
   if (!SerializeHsmResponsePayloadToCbor(mediated_share, dealer_pub_key,
                                          /*kav=*/brillo::SecureBlob(),
-                                         &response_payload->cipher_text)) {
+                                         &plain_text_cbor)) {
     LOG(ERROR) << "Unable to serialize response payload";
     return false;
   }
-  response_payload->associated_data = brillo::SecureBlob(kFakeHsmMetaData);
+
+  brillo::SecureBlob channel_pub_key;
+  if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
+                                    kChannelPublicKey, &channel_pub_key)) {
+    LOG(ERROR) << "Unable to deserialize channel_pub_key from hsm_payload";
+    return false;
+  }
+
+  brillo::SecureBlob aes_gcm_key;
+  if (!GenerateEcdhHkdfSenderKey(
+          ec_, channel_pub_key, epoch_pub_key, epoch_priv_key,
+          GetResponsePayloadPlainTextHkdfInfo(),
+          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
+          kAesGcm256KeySize, &aes_gcm_key)) {
+    LOG(ERROR)
+        << "Failed to generate ECDH+HKDF recipient key for Recovery Request "
+           "plaintext encryption";
+    return false;
+  }
+
+  if (!AesGcmEncrypt(plain_text_cbor, response_payload->associated_data,
+                     aes_gcm_key, &response_payload->iv, &response_payload->tag,
+                     &response_payload->cipher_text)) {
+    LOG(ERROR) << "Failed to perform AES-GCM encryption of response_payload";
+    return false;
+  }
 
   return true;
 }
 
 bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
+    const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& mediator_priv_key,
     const RecoveryCrypto::RequestPayload& request_payload,
@@ -371,7 +405,8 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     return false;
   }
 
-  return MediateHsmPayload(mediator_priv_key, hsm_payload, response_payload);
+  return MediateHsmPayload(mediator_priv_key, epoch_pub_key, epoch_priv_key,
+                           hsm_payload, response_payload);
 }
 
 }  // namespace cryptohome

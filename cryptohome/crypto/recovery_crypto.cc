@@ -36,6 +36,11 @@ brillo::SecureBlob GetRequestPayloadPlainTextHkdfInfo() {
       RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
 }
 
+brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
+  return brillo::SecureBlob(
+      RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue);
+}
+
 }  // namespace
 
 const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] =
@@ -43,6 +48,9 @@ const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] =
 
 const char RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue[] =
     "requestplaintext";
+
+const char RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue[] =
+    "responseplaintext";
 
 const EllipticCurve::CurveType RecoveryCrypto::kCurve =
     EllipticCurve::CurveType::kPrime256;
@@ -89,6 +97,14 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                           const brillo::SecureBlob& destination_share,
                           const brillo::SecureBlob& mediated_publisher_pub_key,
                           brillo::SecureBlob* destination_dh) const override;
+  bool DecryptResponsePayload(
+      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::SecureBlob& response_payload_ct,
+      const brillo::SecureBlob& response_payload_ad,
+      const brillo::SecureBlob& response_payload_iv,
+      const brillo::SecureBlob& response_payload_tag,
+      brillo::SecureBlob* response_plain_text) const override;
 
  private:
   // Encrypts mediator share and stores as `encrypted_ms` with
@@ -537,6 +553,33 @@ bool RecoveryCryptoImpl::RecoverDestination(
   if (!Hkdf(HkdfHash::kSha256, destination_dh, GetRecoveryKeyHkdfInfo(),
             /*salt=*/brillo::SecureBlob(), /*result_len=*/0,
             destination_recovery_key)) {
+    return false;
+  }
+  return true;
+}
+
+bool RecoveryCryptoImpl::DecryptResponsePayload(
+    const brillo::SecureBlob& channel_priv_key,
+    const brillo::SecureBlob& epoch_pub_key,
+    const brillo::SecureBlob& response_payload_ct,
+    const brillo::SecureBlob& response_payload_ad,
+    const brillo::SecureBlob& response_payload_iv,
+    const brillo::SecureBlob& response_payload_tag,
+    brillo::SecureBlob* response_plain_text) const {
+  brillo::SecureBlob aes_gcm_key;
+  if (!GenerateEcdhHkdfRecipientKey(ec_, channel_priv_key, epoch_pub_key,
+                                    GetResponsePayloadPlainTextHkdfInfo(),
+                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    RecoveryCrypto::kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
+    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for mediator "
+                  "share decryption";
+    return false;
+  }
+  if (!AesGcmDecrypt(response_payload_ct, response_payload_ad,
+                     response_payload_tag, aes_gcm_key, response_payload_iv,
+                     response_plain_text)) {
+    LOG(ERROR) << "Failed to perform AES-GCM decryption";
     return false;
   }
   return true;
