@@ -4,6 +4,7 @@
 
 #include "diagnostics/common/mojo_type_utils.h"
 
+#include <base/check.h>
 #include <base/strings/string_split.h>
 
 namespace diagnostics {
@@ -13,11 +14,6 @@ const auto kEqualStr = "[Equal]";
 const auto kNullStr = "[null]";
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-// Helper macro for defining the |GetDiffString| of mojo structs. See below
-// definitions of |GetDiffString| for the usage.
-#define FIELD_DS(label) \
-  ((#label ":\n") + Indent(GetDiffString(a.label, b.label)))
 
 // For each line, adds a 2-space-indent at the beginning.
 std::string Indent(const std::string& s) {
@@ -33,6 +29,41 @@ std::string Indent(const std::string& s) {
 std::string StringCompareFormat(const std::string& a, const std::string& b) {
   return "'" + a + "' vs '" + b + "'";
 }
+
+template <typename MojoType>
+class CompareHelper {
+ public:
+  CompareHelper(const MojoType& a, const MojoType& b) : a_(a), b_(b) {}
+
+  template <typename Field>
+  CompareHelper& AddField(const std::string& label,
+                          const Field& a_field,
+                          const Field& b_field) {
+    if (a_field != b_field)
+      res_ += label + ":\n" + Indent(GetDiffString(a_field, b_field));
+    return *this;
+  }
+
+  std::string GetResult() {
+    if (res_ == "") {
+      CHECK(a_ == b_)
+          << "The structs do not equal to each other, while all the fields are "
+             "equal. It is possible that some fields are missing in in "
+             "GetDiffString.";
+      res_ = kEqualStr;
+    }
+    return res_;
+  }
+
+ private:
+  const MojoType& a_;
+  const MojoType& b_;
+  std::string res_;
+};
+
+// Helper macro for defining the |GetDiffString| of mojo structs. See below
+// definitions of |GetDiffString| for the usage.
+#define FIELD(label) AddField(#label, a.label, b.label)
 
 }  // namespace
 
@@ -62,38 +93,64 @@ std::string GetDiffString<mojo_ipc::NullableUint64>(
 template <>
 std::string GetDiffString<mojo_ipc::VpdInfo>(const mojo_ipc::VpdInfo& a,
                                              const mojo_ipc::VpdInfo& b) {
-  return FIELD_DS(activate_date) + FIELD_DS(mfg_date) + FIELD_DS(model_name) +
-         FIELD_DS(region) + FIELD_DS(serial_number) + FIELD_DS(sku_number);
+  return CompareHelper(a, b)
+      .FIELD(activate_date)
+      .FIELD(mfg_date)
+      .FIELD(model_name)
+      .FIELD(region)
+      .FIELD(serial_number)
+      .FIELD(sku_number)
+      .GetResult();
 }
 
 template <>
 std::string GetDiffString<mojo_ipc::DmiInfo>(const mojo_ipc::DmiInfo& a,
                                              const mojo_ipc::DmiInfo& b) {
-  return FIELD_DS(bios_vendor) + FIELD_DS(bios_version) + FIELD_DS(board_name) +
-         FIELD_DS(board_vendor) + FIELD_DS(board_version) +
-         FIELD_DS(chassis_vendor) + FIELD_DS(chassis_type) +
-         FIELD_DS(product_family) + FIELD_DS(product_name) +
-         FIELD_DS(product_version) + FIELD_DS(sys_vendor);
+  return CompareHelper(a, b)
+      .FIELD(bios_vendor)
+      .FIELD(bios_version)
+      .FIELD(board_name)
+      .FIELD(board_vendor)
+      .FIELD(board_version)
+      .FIELD(chassis_vendor)
+      .FIELD(chassis_type)
+      .FIELD(product_family)
+      .FIELD(product_name)
+      .FIELD(product_version)
+      .FIELD(sys_vendor)
+      .GetResult();
 }
 
 template <>
 std::string GetDiffString<mojo_ipc::OsVersion>(const mojo_ipc::OsVersion& a,
                                                const mojo_ipc::OsVersion& b) {
-  return FIELD_DS(release_milestone) + FIELD_DS(build_number) +
-         FIELD_DS(patch_number) + FIELD_DS(release_channel);
+  return CompareHelper(a, b)
+      .FIELD(release_milestone)
+      .FIELD(build_number)
+      .FIELD(patch_number)
+      .FIELD(release_channel)
+      .GetResult();
 }
 
 template <>
 std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
                                             const mojo_ipc::OsInfo& b) {
-  return FIELD_DS(code_name) + FIELD_DS(marketing_name) + FIELD_DS(boot_mode) +
-         FIELD_DS(os_version);
+  return CompareHelper(a, b)
+      .FIELD(code_name)
+      .FIELD(marketing_name)
+      .FIELD(boot_mode)
+      .FIELD(os_version)
+      .GetResult();
 }
 
 template <>
 std::string GetDiffString<mojo_ipc::SystemInfoV2>(
     const mojo_ipc::SystemInfoV2& a, const mojo_ipc::SystemInfoV2& b) {
-  return FIELD_DS(vpd_info) + FIELD_DS(dmi_info) + FIELD_DS(os_info);
+  return CompareHelper(a, b)
+      .FIELD(vpd_info)
+      .FIELD(dmi_info)
+      .FIELD(os_info)
+      .GetResult();
 }
 
 }  // namespace diagnostics
