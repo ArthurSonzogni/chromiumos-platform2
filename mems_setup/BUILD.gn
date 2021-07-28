@@ -59,6 +59,9 @@ if (use.test) {
       "test_helper.cc",
       "vpd_loader_test.cc",
     ]
+    if (use.iioservice) {
+      sources += [ "accel_3d_test.cc" ]
+    }
     configs += [
       "//common-mk:test",
       ":mems_setup_testrunner_pkg_deps",

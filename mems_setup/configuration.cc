@@ -91,7 +91,6 @@ constexpr char kFilesToSetWriteAndOwnership[][24] = {"sampling_frequency",
                                                      "frequency"};
 
 constexpr char kScanElementsString[] = "scan_elements";
-constexpr char kChnEnableFormatString[] = "in_%s_en";
 
 }  // namespace
 
@@ -131,11 +130,14 @@ bool Configuration::Configure() {
   // If the buffer is enabled, which means mems_setup has already been used on
   // this sensor and iioservice is reading the samples from it, skip setting the
   // frequency.
-  if (!sensor_->IsBufferEnabled())
+  if (!sensor_->IsBufferEnabled()) {
     sensor_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0);
+    for (auto& channel : sensor_->GetAllChannels())
+      channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0);
+  }
 #endif  // USE_IIOSERVICE
 
-  // Ignores the error as it may fail on kernel 4.4.
+  // Ignores the error as it may fail on kernel 4.4 or HID stack sensors.
   sensor_->WriteStringAttribute("current_timestamp_clock", "boottime");
 
   return true;
@@ -491,6 +493,9 @@ bool Configuration::ConfigureOnKind() {
     case SensorKind::BAROMETER:
       // TODO(chenghaoyang): Setup calibrations for the barometer.
       return true;
+    case SensorKind::HID_OTHERS:
+      // No other configs needed.
+      return true;
     default:
       CHECK(kind_ == SensorKind::OTHERS);
       LOG(ERROR) << sensor_->GetName() << " unimplemented";
@@ -520,7 +525,7 @@ bool Configuration::ConfigAccelerometer() {
   /*
    * Gather gyroscope. If one of them is on the same plane, set
    * accelerometer range to 4g to meet Android 10 CCD Requirements
-   * (Sectiom 7.1.4, C.1.4).
+   * (Section 7.1.4, C.1.4).
    * If no gyro found, set range to 4g on the lid accel.
    */
   int range = 0;
@@ -629,19 +634,17 @@ bool Configuration::SetupPermissions() {
       delegate_->EnumerateAllFiles(sys_dev_path.Append(kScanElementsString));
   files_to_set_read_own.insert(files_to_set_read_own.end(), files.begin(),
                                files.end());
+  for (const base::FilePath& file : files) {
+    std::string name = file.BaseName().value();
+    if (RE2::FullMatch(name, "in_.*_en"))
+      files_to_set_write_own.push_back(file);
+  }
 
   for (auto file : kFilesToSetReadAndOwnership)
     files_to_set_read_own.push_back(sys_dev_path.Append(file));
 
   for (auto file : kFilesToSetWriteAndOwnership)
     files_to_set_write_own.push_back(sys_dev_path.Append(file));
-
-  for (auto channel : sensor_->GetAllChannels()) {
-    files_to_set_write_own.push_back(
-        sys_dev_path.Append(kScanElementsString)
-            .Append(
-                base::StringPrintf(kChnEnableFormatString, channel->GetId())));
-  }
 
   // Set permissions and ownerships.
   bool result = true;

@@ -23,6 +23,10 @@ constexpr char kSyncDeviceName[] = "cros-ec-sync";
 constexpr char kMagnDeviceName[] = "cros-ec-mag";
 constexpr char kLidAngleDeviceName[] = "cros-ec-lid-angle";
 constexpr char kBaroDeviceName[] = "cros-ec-baro";
+
+constexpr char kHidDeviceNames[][13] = {
+    "accel_3d",    "gyro_3d",  "magn_3d",     "als",
+    "temperature", "incli_3d", "dev_rotation"};
 }  // namespace
 
 std::string SensorKindToString(SensorKind kind) {
@@ -41,8 +45,9 @@ std::string SensorKindToString(SensorKind kind) {
       return libmems::kLidAngleName;
     case SensorKind::BAROMETER:
       return libmems::kBaroName;
-    case SensorKind::OTHERS:  // Shouldn't be used
-      return kOthersName;
+    case SensorKind::HID_OTHERS:
+    case SensorKind::OTHERS:
+      return kOthersName;  // Shouldn't be used
   }
 
   NOTREACHED();
@@ -63,6 +68,11 @@ SensorKind SensorKindFromString(const std::string& name) {
     return SensorKind::LID_ANGLE;
   if (name == kBaroDeviceName)
     return SensorKind::BAROMETER;
+
+  for (const auto& hid_device_name : kHidDeviceNames) {
+    if (name.compare(hid_device_name) == 0)
+      return SensorKind::HID_OTHERS;
+  }
 
   return SensorKind::OTHERS;
 }

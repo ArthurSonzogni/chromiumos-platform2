@@ -19,10 +19,12 @@ enum class SensorKind {
   MAGNETOMETER,
   LID_ANGLE,
   BAROMETER,
+  HID_OTHERS,
   OTHERS,
 };
 
 std::string SensorKindToString(SensorKind kind);
+// Used on EC stack sensors.
 SensorKind SensorKindFromString(const std::string& name);
 
 }  // namespace mems_setup

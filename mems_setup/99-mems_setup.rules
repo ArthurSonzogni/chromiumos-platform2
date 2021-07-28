@@ -10,6 +10,15 @@ ACTION=="add", ATTR{name}=="cros-ec-mag", RUN+="/usr/sbin/mems_setup --device_id
 ACTION=="add", ATTR{name}=="cros-ec-lid-angle", RUN+="/usr/sbin/mems_setup --device_id=%n"
 ACTION=="add", ATTR{name}=="cros-ec-baro", RUN+="/usr/sbin/mems_setup --device_id=%n"
 
+# HID stack sensors
+ACTION=="add", ATTR{name}=="accel_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="gyro_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="magn_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="als", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="temperature", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="incli_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION=="add", ATTR{name}=="dev_rotation", RUN+="/usr/sbin/mems_setup --device_id=%n"
+
 # Since the device appears after the selinux policies were applied to /dev,
 # call restorecon.
 ACTION=="add", SUBSYSTEM=="iio", RUN+="/sbin/restorecon $env{DEVNAME}"
