@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "federated/storage_manager_impl.h"
+#include "federated/storage_manager.h"
 
 #include <memory>
 #include <utility>
@@ -27,28 +27,28 @@ using testing::StrictMock;
 
 }  // namespace
 
-class StorageManagerImplTest : public testing::Test {
+class StorageManagerTest : public testing::Test {
  public:
-  StorageManagerImplTest()
+  StorageManagerTest()
       : example_database_(
             new StrictMock<MockExampleDatabase>(base::FilePath(""))),
-        storage_manager_impl_(new StorageManagerImpl()) {}
+        storage_manager_(new StorageManager()) {}
 
   void SetUp() override {
-    storage_manager_impl_->set_example_database_for_testing(example_database_);
+    storage_manager_->set_example_database_for_testing(example_database_);
   }
 
   void TearDown() override {
-    storage_manager_impl_.reset();
+    storage_manager_.reset();
     Mock::VerifyAndClearExpectations(example_database_);
   }
 
  protected:
   MockExampleDatabase* example_database_;
-  std::unique_ptr<StorageManagerImpl> storage_manager_impl_;
+  std::unique_ptr<StorageManager> storage_manager_;
 };
 
-TEST_F(StorageManagerImplTest, ExampleRecieved) {
+TEST_F(StorageManagerTest, ExampleRecieved) {
   EXPECT_CALL(*example_database_, IsOpen())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -56,12 +56,12 @@ TEST_F(StorageManagerImplTest, ExampleRecieved) {
       .WillRepeatedly(Return(true));
 
   // First call will fail due to the database !IsOpen;
-  EXPECT_FALSE(storage_manager_impl_->OnExampleReceived("client", "example"));
-  EXPECT_TRUE(storage_manager_impl_->OnExampleReceived("client", "example"));
+  EXPECT_FALSE(storage_manager_->OnExampleReceived("client", "example"));
+  EXPECT_TRUE(storage_manager_->OnExampleReceived("client", "example"));
 }
 
 // Test that the databases example iterator is faithfully returned.
-TEST_F(StorageManagerImplTest, ExampleStreaming) {
+TEST_F(StorageManagerTest, ExampleStreaming) {
   EXPECT_CALL(*example_database_, IsOpen())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
@@ -75,10 +75,9 @@ TEST_F(StorageManagerImplTest, ExampleStreaming) {
       .WillOnce(Return(ByMove(std::move(std::get<1>(db_and_it)))));
 
   // Fail due to !example_database_->IsOpen.
-  EXPECT_EQ(storage_manager_impl_->GetExampleIterator("fake_client"),
-            base::nullopt);
+  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client"), base::nullopt);
   base::Optional<ExampleDatabase::Iterator> it =
-      storage_manager_impl_->GetExampleIterator("fake_client");
+      storage_manager_->GetExampleIterator("fake_client");
   ASSERT_TRUE(it.has_value());
 
   // Expect the examples we specified.
@@ -102,14 +101,13 @@ TEST_F(StorageManagerImplTest, ExampleStreaming) {
 }
 
 // Test that minimum example limit is honored.
-TEST_F(StorageManagerImplTest, ExampleStreamingMinimum) {
+TEST_F(StorageManagerTest, ExampleStreamingMinimum) {
   EXPECT_CALL(*example_database_, IsOpen()).WillOnce(Return(true));
 
   EXPECT_CALL(*example_database_, ExampleCount("fake_client"))
       .WillOnce(Return(kMinExampleCount - 1));
 
-  EXPECT_EQ(storage_manager_impl_->GetExampleIterator("fake_client"),
-            base::nullopt);
+  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client"), base::nullopt);
 }
 
 }  // namespace federated

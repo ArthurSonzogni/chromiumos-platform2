@@ -1,8 +1,8 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "federated/storage_manager_impl.h"
+#include "federated/storage_manager.h"
 
 #include <cstddef>
 #include <memory>
@@ -10,7 +10,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/no_destructor.h>
 #include <base/optional.h>
 #include <base/strings/stringprintf.h>
 
@@ -20,7 +19,10 @@
 
 namespace federated {
 
-void StorageManagerImpl::InitializeSessionManagerProxy(dbus::Bus* bus) {
+StorageManager::StorageManager() = default;
+StorageManager::~StorageManager() = default;
+
+void StorageManager::InitializeSessionManagerProxy(dbus::Bus* bus) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(!session_manager_proxy_)
       << "session_manager_proxy is already initialized!";
@@ -35,8 +37,8 @@ void StorageManagerImpl::InitializeSessionManagerProxy(dbus::Bus* bus) {
   }
 }
 
-bool StorageManagerImpl::OnExampleReceived(
-    const std::string& client_name, const std::string& serialized_example) {
+bool StorageManager::OnExampleReceived(const std::string& client_name,
+                                       const std::string& serialized_example) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!example_database_ || !example_database_->IsOpen()) {
     VLOG(1) << "No database connection";
@@ -50,8 +52,8 @@ bool StorageManagerImpl::OnExampleReceived(
   return example_database_->InsertExample(client_name, example_record);
 }
 
-base::Optional<ExampleDatabase::Iterator>
-StorageManagerImpl::GetExampleIterator(const std::string& client_name) const {
+base::Optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
+    const std::string& client_name) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!example_database_ || !example_database_->IsOpen()) {
     VLOG(1) << "No database connection";
@@ -67,17 +69,17 @@ StorageManagerImpl::GetExampleIterator(const std::string& client_name) const {
   return example_database_->GetIterator(client_name);
 }
 
-void StorageManagerImpl::OnSessionStarted() {
+void StorageManager::OnSessionStarted() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ConnectToDatabaseIfNecessary();
 }
 
-void StorageManagerImpl::OnSessionStopped() {
+void StorageManager::OnSessionStopped() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   example_database_.reset();
 }
 
-void StorageManagerImpl::ConnectToDatabaseIfNecessary() {
+void StorageManager::ConnectToDatabaseIfNecessary() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   std::string new_sanitized_username =
       session_manager_proxy_->GetSanitizedUsername();
@@ -113,7 +115,7 @@ void StorageManagerImpl::ConnectToDatabaseIfNecessary() {
 }
 
 StorageManager* StorageManager::GetInstance() {
-  static base::NoDestructor<StorageManagerImpl> storage_manager;
+  static base::NoDestructor<StorageManager> storage_manager;
   return storage_manager.get();
 }
 }  // namespace federated

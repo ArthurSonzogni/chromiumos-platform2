@@ -51,7 +51,7 @@ static_library("federated_common") {
     "federated_service_impl.cc",
     "scheduler.cc",
     "session_manager_proxy.cc",
-    "storage_manager_impl.cc",
+    "storage_manager.cc",
     "utils.cc",
   ]
   all_dependent_configs = [ ":federated_common_pkg_deps" ]
@@ -81,7 +81,7 @@ if (use.test) {
       "federated_service_impl_test.cc",
       "mock_example_database.cc",
       "session_manager_proxy_test.cc",
-      "storage_manager_impl_test.cc",
+      "storage_manager_test.cc",
       "test_utils.cc",
       "testrunner.cc",
       "utils_test.cc",
