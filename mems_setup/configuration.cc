@@ -447,12 +447,8 @@ bool Configuration::EnableCalibration(bool enable) {
 }
 
 bool Configuration::EnableKeyboardAngle() {
-  base::FilePath kb_wake_angle;
-  if (sensor_->IsSingleSensor()) {
-    kb_wake_angle = base::FilePath("/sys/class/chromeos/cros_ec/kb_wake_angle");
-  } else {
-    kb_wake_angle = sensor_->GetPath().Append("in_angl_offset");
-  }
+  base::FilePath kb_wake_angle =
+      base::FilePath("/sys/class/chromeos/cros_ec/kb_wake_angle");
 
   if (!delegate_->Exists(kb_wake_angle)) {
     LOG(INFO) << kb_wake_angle.value()

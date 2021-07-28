@@ -355,21 +355,6 @@ TEST_F(AccelerometerTest, SingleSensorKbWakeAnglePermissions) {
   EXPECT_EQ(kPowerGroupId, gid);
 }
 
-TEST_F(AccelerometerTest, SharedSensorKbWakeAnglePermissions) {
-  base::FilePath kb_path = mock_device_->GetPath().Append("in_angl_offset");
-
-  SetSharedSensor();
-  mock_delegate_->CreateFile(kb_path);
-  mock_delegate_->AddGroup("power", kPowerGroupId);
-  EXPECT_TRUE(GetConfiguration()->Configure());
-
-  EXPECT_NE(0, mock_delegate_->GetPermissions(kb_path) &
-                   base::FILE_PERMISSION_WRITE_BY_GROUP);
-  gid_t gid = 0;
-  mock_delegate_->GetOwnership(kb_path, nullptr, &gid);
-  EXPECT_EQ(kPowerGroupId, gid);
-}
-
 TEST_F(AccelerometerTest, OkWithSysfstrigDefined) {
   SetSingleSensor(kLidSensorLocation);
 
