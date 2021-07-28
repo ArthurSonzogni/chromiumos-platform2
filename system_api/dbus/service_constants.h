@@ -608,6 +608,8 @@ constexpr char kBootstrapMojoConnectionForIioServiceMethod[] =
     "BootstrapMojoConnectionForIioService";
 constexpr char kBootstrapMojoConnectionForSensorClientsMethod[] =
     "BootstrapMojoConnectionForSensorClients";
+constexpr char kBootstrapMojoConnectionForRollbackNetworkConfigMethod[] =
+    "BootstrapMojoConnectionForRollbackNetworkConfigService";
 }  // namespace mojo_connection_service
 
 namespace virtual_file_provider {
