@@ -628,6 +628,63 @@ TEST_F(ResourceManagerTest, EvictOneObject) {
   }
 }
 
+TEST_F(ResourceManagerTest, EvictObjectWithContextSaveFailed) {
+  const int kNumObjects = 10;
+  std::map<TPM_HANDLE, TPM_HANDLE> handles;
+  for (int i = 0; i < kNumObjects; ++i) {
+    TPM_HANDLE handle = kArbitraryObjectHandle + i;
+    handles[LoadHandle(handle)] = handle;
+  }
+
+  // The resource manager shouldn't return TCTI_RC_BAD_CONTEXT.
+  for (int i = 0; i < kNumObjects; i++) {
+    std::string command = CreateCommand(TPM_CC_Startup, kNoHandles,
+                                        kNoAuthorization, kNoParameters);
+    std::string response = CreateErrorResponse(TPM_RC_OBJECT_MEMORY);
+    std::string success_response = CreateResponse(
+        TPM_RC_SUCCESS, kNoHandles, kNoAuthorization, kNoParameters);
+    EXPECT_CALL(transceiver_, SendCommandAndWait(_))
+        .WillOnce(Return(response))
+        .WillRepeatedly(Return(success_response));
+    EXPECT_CALL(tpm_, ContextSaveSync(_, _, _, _))
+        .WillRepeatedly(Return(TRUNKS_RC_WRITE_ERROR));
+    EXPECT_CALL(tpm_, FlushContextSync(_, _))
+        .WillRepeatedly(Return(TPM_RC_SUCCESS));
+    std::string command_response =
+        resource_manager_.SendCommandAndWait(command);
+    EXPECT_NE(TCTI_RC_BAD_CONTEXT, GetResponseCode(command_response));
+  }
+}
+
+TEST_F(ResourceManagerTest, EvictObjectWithFlushFailed) {
+  const int kNumObjects = 10;
+  std::map<TPM_HANDLE, TPM_HANDLE> handles;
+  for (int i = 0; i < kNumObjects; ++i) {
+    TPM_HANDLE handle = kArbitraryObjectHandle + i;
+    handles[LoadHandle(handle)] = handle;
+  }
+
+  // The resource manager shouldn't return TCTI_RC_BAD_CONTEXT.
+  for (int i = 0; i < kNumObjects; i++) {
+    std::string command = CreateCommand(TPM_CC_Startup, kNoHandles,
+                                        kNoAuthorization, kNoParameters);
+    std::string response = CreateErrorResponse(TPM_RC_OBJECT_MEMORY);
+    std::string success_response = CreateResponse(
+        TPM_RC_SUCCESS, kNoHandles, kNoAuthorization, kNoParameters);
+    EXPECT_CALL(transceiver_, SendCommandAndWait(_))
+        .WillOnce(Return(response))
+        .WillRepeatedly(Return(success_response));
+    EXPECT_CALL(tpm_, ContextSaveSync(_, _, _, _))
+        .WillRepeatedly(Return(TPM_RC_SUCCESS));
+    EXPECT_CALL(tpm_, FlushContextSync(_, _))
+        .WillRepeatedly(Return(TRUNKS_RC_WRITE_ERROR));
+    resource_manager_.SendCommandAndWait(command);
+    std::string command_response =
+        resource_manager_.SendCommandAndWait(command);
+    EXPECT_NE(TCTI_RC_BAD_CONTEXT, GetResponseCode(command_response));
+  }
+}
+
 TEST_F(ResourceManagerTest, EvictMultipleObjects) {
   const int kNumObjects = 10;
   std::map<TPM_HANDLE, TPM_HANDLE> handles;

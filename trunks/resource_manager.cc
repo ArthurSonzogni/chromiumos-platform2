@@ -379,6 +379,7 @@ void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
       continue;
     }
     VLOG(1) << "EVICT_OBJECT: " << std::hex << info.tpm_handle;
+    info.is_loaded = false;
     tpm_object_handles_.erase(info.tpm_handle);
     unloaded_virtual_object_handles_.emplace(item.handle, std::move(item.info));
     loaded_virtual_object_handles_.erase(
@@ -413,6 +414,7 @@ void ResourceManager::EvictObjects(const MessageInfo& command_info) {
       continue;
     }
     VLOG(1) << "EVICT_OBJECT: " << std::hex << info.tpm_handle;
+    info.is_loaded = false;
     tpm_object_handles_.erase(info.tpm_handle);
     unloaded_virtual_object_handles_.emplace(item.handle, std::move(item.info));
     evict_num++;
@@ -573,7 +575,10 @@ bool ResourceManager::IsSessionHandle(TPM_HANDLE handle) const {
 
 TPM_RC ResourceManager::LoadContext(const MessageInfo& command_info,
                                     HandleInfo* handle_info) {
-  CHECK(!handle_info->is_loaded);
+  if (handle_info->is_loaded) {
+    LOG(ERROR) << __func__ << ": Attempted to load a loaded handle.";
+    return TCTI_RC_BAD_CONTEXT;
+  }
   TPM_RC result = TPM_RC_SUCCESS;
   int attempts = 0;
   while (attempts++ < kMaxCommandAttempts) {
@@ -964,7 +969,10 @@ std::string ResourceManager::ReplaceHandles(
 
 TPM_RC ResourceManager::SaveContext(const MessageInfo& command_info,
                                     HandleInfo* handle_info) {
-  CHECK(handle_info->is_loaded);
+  if (!handle_info->is_loaded) {
+    LOG(ERROR) << __func__ << ": Attempted to save an unloaded handle.";
+    return TCTI_RC_BAD_CONTEXT;
+  }
   TPM_RC result = TPM_RC_SUCCESS;
   int attempts = 0;
   while (attempts++ < kMaxCommandAttempts) {
@@ -979,10 +987,13 @@ TPM_RC ResourceManager::SaveContext(const MessageInfo& command_info,
   }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
-               << ": Failed to load context: " << GetErrorString(result);
+               << ": Failed to save context: " << GetErrorString(result);
     return result;
   }
-  handle_info->is_loaded = false;
+  // We only mark it as loaded when it is a session handle.
+  if (IsSessionHandle(handle_info->tpm_handle)) {
+    handle_info->is_loaded = false;
+  }
   return result;
 }
 
