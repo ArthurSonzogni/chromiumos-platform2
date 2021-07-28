@@ -57,6 +57,8 @@ void ScreenNetwork::Show() {
       draw_utils_->ShowInstructionsWithTitle("MiniOS_password");
       draw_utils_->ShowStepper({"done", "2-done", "3"});
       break;
+    default:
+      break;
   }
   ShowButtons();
 }
@@ -94,6 +96,8 @@ void ScreenNetwork::ShowButtons() {
                               btn_width, false);
       break;
     }
+    default:
+      break;
   }
 }
 
@@ -200,6 +204,8 @@ std::string ScreenNetwork::GetName() {
       return "ScreenExpandedNetwork";
     case NetworkState::kGetPassword:
       return "ScreenPassword";
+    case NetworkState::kWaitForConnection:
+      return "ScreenWaitForConnection";
     default:
       return "";
   }
@@ -245,6 +251,7 @@ void ScreenNetwork::OnConnect(const std::string& ssid, brillo::Error* error) {
                << ". ErrorCode=" << error->GetCode()
                << " ErrorMessage=" << error->GetMessage();
     if (error->GetCode() == shill::kErrorResultInvalidPassphrase) {
+      state_ = NetworkState::kGetPassword;
       screen_controller_->OnError(ScreenType::kPasswordError);
     } else {
       // General network error.
@@ -258,10 +265,16 @@ void ScreenNetwork::OnConnect(const std::string& ssid, brillo::Error* error) {
 }
 
 void ScreenNetwork::GetPassword() {
-  const int kTitleY = (-draw_utils_->GetFreconCanvasSize() / 2) + 238;
+  int frecon_canvas_size = draw_utils_->GetFreconCanvasSize();
+  const int kTitleY = (-frecon_canvas_size / 2) + 238;
   const int kBtnY = kTitleY + 80 + kBtnYStep * 2;
-  draw_utils_->ShowButton("Begin typing", kBtnY, false,
-                          draw_utils_->GetDefaultButtonWidth() * 4, true);
+  const int kButtonWidth = draw_utils_->GetDefaultButtonWidth();
+
+  draw_utils_->ShowButton("Begin typing", kBtnY, false, kButtonWidth * 4, true);
+  draw_utils_->ShowImage(
+      draw_utils_->GetScreenPath().Append("visibility_off.png"),
+      -frecon_canvas_size / 2 + (kButtonWidth * 4) + 32, kBtnY);
+
   CHECK(!chosen_network_.ssid.empty()) << "Cannot connect to an empty network.";
   if (!key_reader_ || !key_reader_->InputSetUp()) {
     LOG(ERROR) << "Unable to set up key reader.";
@@ -281,11 +294,16 @@ void ScreenNetwork::GetPassword() {
     if (!show_password) {
       input = std::string(input.size(), '*');
     }
-    draw_utils_->ShowButton(input, kBtnY, false,
-                            draw_utils_->GetDefaultButtonWidth() * 4, true);
+    draw_utils_->ShowButton(input, kBtnY, false, kButtonWidth * 4, true);
+    auto visibility =
+        show_password ? "visibility_on.png" : "visibility_off.png";
+    draw_utils_->ShowImage(draw_utils_->GetScreenPath().Append(visibility),
+                           -frecon_canvas_size / 2 + (kButtonWidth * 4) + 32,
+                           kBtnY);
   } while (!enter);
   key_reader_->StartWatcher();
   // Wait to connect to network.
+  state_ = NetworkState::kWaitForConnection;
   WaitForConnection();
   network_manager_->Connect(chosen_network_.ssid, plain_text_password);
 }
@@ -305,8 +323,7 @@ void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
                   : screens_path.Append("language_menu_bg.png");
 
   draw_utils_->ShowImage(menu_background, kBgX, kOffsetY);
-  draw_utils_->ShowImage(screens_path.Append("ic_language-globe.png"), kGlobeX,
-                         kOffsetY);
+  draw_utils_->ShowImage(screens_path.Append("wifi.png"), kGlobeX, kOffsetY);
   draw_utils_->ShowImage(screens_path.Append("ic_dropdown.png"), kArrowX,
                          kOffsetY);
   draw_utils_->ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);

@@ -25,6 +25,7 @@ enum class NetworkState {
   kDropdownClosed = 0,
   kDropdownOpen = 1,
   kGetPassword = 2,
+  kWaitForConnection = 3,
 };
 
 class ScreenNetwork : public ScreenBase,
