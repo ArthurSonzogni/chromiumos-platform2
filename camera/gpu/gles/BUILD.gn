@@ -8,7 +8,7 @@ pkg_config("gles_pkgconfig") {
   pkg_deps = [ "glesv2" ]
 }
 
-static_library("libgles") {
+source_set("gles") {
   sources = [
     "//camera/gpu/gles/buffer.cc",
     "//camera/gpu/gles/framebuffer.cc",
@@ -27,5 +27,5 @@ static_library("libgles") {
     ":gles_pkgconfig",
     "//camera/build:cros_camera_common",
   ]
-  deps = [ "//camera/gpu/egl:libegl" ]
+  deps = [ "//camera/gpu/egl" ]
 }

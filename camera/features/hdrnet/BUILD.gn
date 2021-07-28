@@ -5,17 +5,9 @@
 import("//camera/build/cc_embed_data.gni")
 import("//common-mk/pkg_config.gni")
 
-group("all") {
-  deps = [
-    ":hdrnet_processor_impl_test",
-    ":hdrnet_stream_manipulator_test",
-  ]
-}
-
 pkg_config("target_defaults") {
   configs = [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
-    "libcros_camera",
     "libcros_camera_android_deps",
     "libsync",
   ]
@@ -30,7 +22,7 @@ if (use.ipu6ep) {
   }
 }
 
-static_library("libhdrnet") {
+source_set("hdrnet") {
   sources = [
     "//camera/features/hdrnet/hdrnet_ae_controller_impl.cc",
     "//camera/features/hdrnet/hdrnet_ae_device_adapter.cc",
@@ -49,12 +41,8 @@ static_library("libhdrnet") {
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
-  public_deps = [ "//camera/gpu:gpu_base" ]
-  deps = [
-    "//camera/gpu:image_processor",
-    "//camera/gpu/egl:libegl",
-    "//camera/gpu/gles:libgles",
-  ]
+  public_deps = [ "//camera/gpu" ]
+  deps = [ "//camera/gpu:image_processor" ]
 
   if (use.ipu6ep) {
     sources += [
@@ -65,29 +53,4 @@ static_library("libhdrnet") {
     defines += [ "IPU6EP" ]
     deps += [ ":embedded_hdrnet_processor_shaders_ipu6" ]
   }
-}
-
-pkg_config("test_target_defaults") {
-  configs = [
-    ":target_defaults",
-    "//common-mk:test",
-  ]
-  pkg_deps = [ "libchrome-test" ]
-}
-
-executable("hdrnet_processor_impl_test") {
-  sources = [ "//camera/features/hdrnet/hdrnet_processor_impl_test.cc" ]
-  configs += [ ":test_target_defaults" ]
-  deps = [
-    ":libhdrnet",
-    "//camera/gpu:gpu_test_support",
-    "//camera/gpu/egl:libegl",
-    "//camera/gpu/gles:libgles",
-  ]
-}
-
-executable("hdrnet_stream_manipulator_test") {
-  sources = [ "//camera/features/hdrnet/hdrnet_stream_manipulator_test.cc" ]
-  configs += [ ":test_target_defaults" ]
-  deps = [ ":libhdrnet" ]
 }

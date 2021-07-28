@@ -110,7 +110,7 @@ shared_library("libcros_camera") {
   deps = [ ":libcros_camera_mojom" ]
 
   if (use.camera_feature_hdrnet) {
-    deps += [ "//camera/features/hdrnet:libhdrnet" ]
+    deps += [ "//camera/features/hdrnet" ]
   }
 
   if (use.camera_feature_portrait_mode) {

@@ -7,12 +7,11 @@ import("//common-mk/pkg_config.gni")
 pkg_config("egl_pkgconfig") {
   pkg_deps = [
     "egl",
-    "libcros_camera",
     "libcros_camera_android_deps",
   ]
 }
 
-static_library("libegl") {
+source_set("egl") {
   sources = [
     "//camera/gpu/egl/egl_context.cc",
     "//camera/gpu/egl/egl_fence.cc",

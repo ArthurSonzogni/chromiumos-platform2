@@ -5,13 +5,8 @@
 import("//camera/build/cc_embed_data.gni")
 import("//common-mk/pkg_config.gni")
 
-group("all") {
-  deps = [ ":image_processor_test" ]
-}
-
-pkg_config("pkgconfig_targets") {
+pkg_config("target_defaults") {
   pkg_deps = [
-    "libcros_camera",
     "libcros_camera_android_deps",
     "libdrm",
   ]
@@ -30,40 +25,28 @@ cc_embed_data("embedded_gpu_shaders") {
   ]
 }
 
-static_library("gpu_base") {
+source_set("gpu") {
   sources = [ "//camera/gpu/shared_image.cc" ]
   public_configs = [
-    ":pkgconfig_targets",
+    ":target_defaults",
     "//camera/build:cros_camera_common",
   ]
   public_deps = [
-    "//camera/gpu/egl:libegl",
-    "//camera/gpu/gles:libgles",
+    "//camera/gpu/egl",
+    "//camera/gpu/gles",
   ]
 }
 
-static_library("image_processor") {
+source_set("image_processor") {
   sources = [ "//camera/gpu/image_processor.cc" ]
   public_deps = [
     ":embedded_gpu_shaders",
-    ":gpu_base",
+    ":gpu",
   ]
 }
 
-static_library("gpu_test_support") {
+source_set("gpu_test_support") {
   sources = [ "//camera/gpu/test_support/gl_test_fixture.cc" ]
   public_configs = [ "//common-mk:test" ]
-  public_deps = [ ":gpu_base" ]
-}
-
-executable("image_processor_test") {
-  sources = [ "//camera/gpu/image_processor_test.cc" ]
-  configs += [
-    ":pkgconfig_targets",
-    "//camera/build:cros_camera_common",
-  ]
-  deps = [
-    ":gpu_test_support",
-    ":image_processor",
-  ]
+  public_deps = [ ":gpu" ]
 }
