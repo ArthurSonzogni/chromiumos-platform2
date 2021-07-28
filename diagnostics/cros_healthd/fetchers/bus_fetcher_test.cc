@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check_op.h>
 #include <base/strings/stringprintf.h>
 
 #include "diagnostics/common/file_test_utils.h"
@@ -19,18 +20,31 @@ namespace {
 
 constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
 constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
+constexpr char kFakePathUsbDevices[] =
+    "sys/devices/pci0000:00/0000:00:14.0/usb1";
+constexpr char kLinkUsbDevices[] =
+    "../../../devices/pci0000:00/0000:00:14.0/usb1";
 constexpr char kLinkPciDriver[] = "../../../bus/pci/drivers";
+constexpr char kLinkUsbDriver[] = "../../../../../../bus/usb/drivers";
 
 constexpr char kFakePciVendorName[] = "Vendor:12AB";
 constexpr char kFakePciProductName[] = "Device:34CD";
+constexpr char kFakeUsbVendorName[] = "usb:v12ABp34CD";
+constexpr auto kFakeUsbProductName = kFakeUsbVendorName;
+constexpr auto kFakeUsbFallbackProductName = kFakePciProductName;
 constexpr uint8_t kFakeClass = 0x0a;
 constexpr uint8_t kFakeSubclass = 0x1b;
 constexpr uint8_t kFakeProg = 0x2c;
+constexpr uint8_t kFakeProtocol = kFakeProg;
 constexpr uint16_t kFakeVendor = 0x12ab;
 constexpr uint16_t kFakeDevice = 0x34cd;
 constexpr char kFakeDriver[] = "driver";
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+std::string ToFixHexStr(uint8_t val) {
+  return base::StringPrintf("%02x", val);
+}
 
 std::string ToFixHexStr(uint16_t val) {
   return base::StringPrintf("%04x", val);
@@ -66,6 +80,34 @@ class BusFetcherTest : public BaseFileTest {
     return expected_bus_devices_.back();
   }
 
+  mojo_ipc::BusDevicePtr& AddExpectedUsbDevice(size_t interface_count) {
+    CHECK_GE(interface_count, 1);
+    auto device = mojo_ipc::BusDevice::New();
+    auto usb_info = mojo_ipc::UsbBusInfo::New();
+
+    device->vendor_name = kFakeUsbVendorName;
+    device->product_name = kFakeUsbProductName;
+    device->device_class = mojo_ipc::BusDeviceClass::kOthers;
+    usb_info->class_id = kFakeClass;
+    usb_info->subclass_id = kFakeSubclass;
+    usb_info->protocol_id = kFakeProtocol;
+    usb_info->vendor_id = kFakeVendor;
+    usb_info->product_id = kFakeDevice;
+    for (size_t i = 0; i < interface_count; ++i) {
+      auto usb_if_info = mojo_ipc::UsbBusInterfaceInfo::New();
+      usb_if_info->interface_number = static_cast<uint8_t>(i);
+      usb_if_info->class_id = kFakeClass;
+      usb_if_info->subclass_id = kFakeSubclass;
+      usb_if_info->protocol_id = kFakeProtocol;
+      usb_if_info->driver = kFakeDriver;
+      usb_info->interfaces.push_back(std::move(usb_if_info));
+    }
+
+    device->bus_info = mojo_ipc::BusInfo::NewUsbBusInfo(std::move(usb_info));
+    expected_bus_devices_.push_back(std::move(device));
+    return expected_bus_devices_.back();
+  }
+
   void SetExpectedBusDevices() {
     for (size_t i = 0; i < expected_bus_devices_.size(); ++i) {
       const auto& bus_info = expected_bus_devices_[i]->bus_info;
@@ -74,7 +116,7 @@ class BusFetcherTest : public BaseFileTest {
           SetPciBusInfo(bus_info->get_pci_bus_info(), i);
           break;
         case mojo_ipc::BusInfo::Tag::USB_BUS_INFO:
-          // TODO(chungsheng): Add usb info.
+          SetUsbBusInfo(bus_info->get_usb_bus_info(), i);
           break;
       }
     }
@@ -99,6 +141,41 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
+  void SetUsbBusInfo(const mojo_ipc::UsbBusInfoPtr& usb_info, size_t id) {
+    const auto dir = kFakePathUsbDevices;
+    const auto dev = base::StringPrintf("1-%zu", id);
+    SetSymbolicLink({kLinkUsbDevices, dev}, {kPathSysUsb, dev});
+
+    SetFile({dir, dev, kFileUsbDevClass}, ToFixHexStr(usb_info->class_id));
+    SetFile({dir, dev, kFileUsbDevSubclass},
+            ToFixHexStr(usb_info->subclass_id));
+    SetFile({dir, dev, kFileUsbDevProtocol},
+            ToFixHexStr(usb_info->protocol_id));
+    SetFile({dir, dev, kFileUsbVendor}, ToFixHexStr(usb_info->vendor_id));
+    SetFile({dir, dev, kFileUsbProduct}, ToFixHexStr(usb_info->product_id));
+    SetFile({dir, dev, kFileUsbProductName}, kFakeUsbFallbackProductName);
+
+    for (size_t i = 0; i < usb_info->interfaces.size(); ++i) {
+      const auto dev_if = base::StringPrintf("1-%zu:1.%zu", id, i);
+      const mojo_ipc::UsbBusInterfaceInfoPtr& usb_if_info =
+          usb_info->interfaces[i];
+
+      ASSERT_EQ(usb_if_info->interface_number, static_cast<uint8_t>(i));
+      SetFile({dir, dev, dev_if, kFileUsbIFNumber},
+              ToFixHexStr(usb_if_info->interface_number));
+      SetFile({dir, dev, dev_if, kFileUsbIFClass},
+              ToFixHexStr(usb_if_info->class_id));
+      SetFile({dir, dev, dev_if, kFileUsbIFSubclass},
+              ToFixHexStr(usb_if_info->subclass_id));
+      SetFile({dir, dev, dev_if, kFileUsbIFProtocol},
+              ToFixHexStr(usb_if_info->protocol_id));
+      if (usb_if_info->driver) {
+        SetSymbolicLink({kLinkUsbDriver, usb_if_info->driver.value()},
+                        {dir, dev, dev_if, kFileDriver});
+      }
+    }
+  }
+
   void FetchBusDevices() {
     auto res = bus_fetcher_.FetchBusDevices();
     ASSERT_TRUE(res->is_bus_devices());
@@ -120,10 +197,28 @@ TEST_F(BusFetcherTest, TestFetchPci) {
   FetchBusDevices();
 }
 
+TEST_F(BusFetcherTest, TestFetchUsbBusInfo) {
+  AddExpectedUsbDevice(1);
+  SetExpectedBusDevices();
+  FetchBusDevices();
+}
+
 TEST_F(BusFetcherTest, TestFetchMultiple) {
   AddExpectedPciDevice();
   AddExpectedPciDevice();
   AddExpectedPciDevice();
+  AddExpectedUsbDevice(1);
+  AddExpectedUsbDevice(2);
+  AddExpectedUsbDevice(3);
+  SetExpectedBusDevices();
+  FetchBusDevices();
+}
+
+TEST_F(BusFetcherTest, TestUsbFallback) {
+  auto& bus_info = AddExpectedUsbDevice(1);
+  bus_info->vendor_name = "";
+  bus_info->product_name = kFakeUsbFallbackProductName;
+  mock_context_.fake_udev()->fake_udev_hwdb()->SetReturnEmptyProperties(true);
   SetExpectedBusDevices();
   FetchBusDevices();
 }
