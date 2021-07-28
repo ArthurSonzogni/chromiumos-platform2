@@ -49,6 +49,7 @@ cleanup_mounts() {
   chromeos-boot-alert self_repair
   clobber-log -- \
     "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
+  clobber-log --append_logfile "${TMPFILES_LOG}"
   crash_reporter --early --log_to_stderr --clobber_state
   exec clobber-state "fast keepimg"
 }
