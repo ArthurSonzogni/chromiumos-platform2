@@ -80,12 +80,11 @@ SchemeRealmPairList ParseAuthChallenge(const base::StringPiece& http_request) {
   SchemeRealmPairList scheme_realm_pairs;
   std::string scheme;
   std::string realm;
-  std::vector<base::StringPiece> header_lines = base::SplitStringPiece(
+  std::vector<std::string> header_lines = base::SplitString(
       http_request, "\r\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   for (const auto& line : header_lines) {
-    const std::string request_line = line.as_string();
-    base::StringTokenizer tok_challenge(request_line, " ");
+    base::StringTokenizer tok_challenge(line, " ");
     tok_challenge.GetNext();
     if (tok_challenge.token() != kProxyAuthenticate) {
       continue;
@@ -97,8 +96,7 @@ SchemeRealmPairList ParseAuthChallenge(const base::StringPiece& http_request) {
     // Depending on the challenge scheme, the challenge can contain a
     // comma-separated list of authenticatio parameters. See RFC7235,
     // section 4.3.
-    base::StringTokenizer tok_realm(tok_challenge.token_end(),
-                                    request_line.end(), ",");
+    base::StringTokenizer tok_realm(tok_challenge.token_end(), line.end(), ",");
     tok_realm.set_quote_chars("\"");
     while (tok_realm.GetNext()) {
       int pos = tok_realm.token().find(kRealm);

@@ -30,13 +30,12 @@ bool ReadProtobuf(int in_fd, google::protobuf::MessageLite* message) {
 
 bool WriteProtobuf(int out_fd, const google::protobuf::MessageLite& message) {
   size_t size = message.ByteSizeLong();
-  char* size_data = reinterpret_cast<char*>(&size);
-  std::vector<char> buf(size_data, size_data + sizeof(size));
-  buf.resize(size + sizeof(size));
-
-  if (!message.SerializeToArray(buf.data() + sizeof(size), size))
+  constexpr int kSpanSize = 1;
+  if (!base::WriteFileDescriptor(
+          out_fd, base::as_bytes(base::make_span(&size, kSpanSize)))) {
     return false;
+  }
 
-  return base::WriteFileDescriptor(out_fd, buf.data(), buf.size());
+  return message.SerializeToFileDescriptor(out_fd);
 }
 }  // namespace system_proxy
