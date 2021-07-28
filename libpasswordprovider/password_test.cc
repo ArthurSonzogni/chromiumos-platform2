@@ -18,8 +18,7 @@ int WriteSizeAndDataToPipe(const std::string& data) {
   int write_pipe[2];
   EXPECT_EQ(0, pipe(write_pipe));
 
-  EXPECT_TRUE(
-      base::WriteFileDescriptor(write_pipe[1], data.c_str(), data.size()));
+  EXPECT_TRUE(base::WriteFileDescriptor(write_pipe[1], data));
 
   return write_pipe[0];
 }
