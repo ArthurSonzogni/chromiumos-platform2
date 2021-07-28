@@ -63,7 +63,7 @@ void SimpleServiceTool::StartService(
   // callbacks so we can safely call this multiple times if there are multiple
   // pending dbus requests.
   proxy_->WaitForServiceToBeAvailable(
-      base::BindOnce(&ServiceReady, base::Passed(std::move(response))));
+      base::BindOnce(&ServiceReady, std::move(response)));
 }
 
 void SimpleServiceTool::StopService() {
