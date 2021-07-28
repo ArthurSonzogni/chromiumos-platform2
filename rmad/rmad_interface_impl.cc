@@ -50,10 +50,10 @@ bool RmadInterfaceImpl::StoreStateHistory() {
 }
 
 void RmadInterfaceImpl::Initialize() {
-  // Initialize |current state_|, |state_history_|, and |allow_abort_| flag.
+  // Initialize |current state_|, |state_history_|, and |can_abort_| flag.
   current_state_case_ = RmadState::STATE_NOT_SET;
   state_history_.clear();
-  allow_abort_ = true;
+  can_abort_ = true;
   if (json_store_->GetReadError() != JsonStore::READ_ERROR_NO_SUCH_FILE) {
     if (std::vector<int> state_history;
         json_store_->GetReadError() == JsonStore::READ_ERROR_NONE &&
@@ -64,9 +64,7 @@ void RmadInterfaceImpl::Initialize() {
         if (RmadState::StateCase s = RmadState::StateCase(state);
             auto handler = state_handler_manager_->GetStateHandler(s)) {
           state_history_.push_back(s);
-          if (!handler->IsRepeatable()) {
-            allow_abort_ = false;
-          }
+          can_abort_ &= handler->IsRepeatable();
         } else {
           // TODO(chenghan): Return to welcome screen with an error implying
           //                 a fatal file corruption.
@@ -164,6 +162,7 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
     reply.set_error(RMAD_ERROR_OK);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
+    reply.set_can_abort(CanAbort());
   } else {
     reply.set_error(error);
   }
@@ -180,16 +179,21 @@ void RmadInterfaceImpl::TransitionNextState(
 
 GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     const TransitionNextStateRequest& request) {
-  // TODO(chenghan): Add error replies when failed to write |json_store_|.
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> current_state_handler, next_state_handler;
-
   if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
                                                        &current_state_handler);
       error != RMAD_ERROR_OK) {
+    DLOG(FATAL) << "Current state initialization failed";
     reply.set_error(error);
     return reply;
   }
+
+  // Initialize the default reply.
+  reply.set_error(RMAD_ERROR_NOT_SET);
+  reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
+  reply.set_can_go_back(CanGoBack());
+  reply.set_can_abort(CanAbort());
 
   auto [next_state_case_error, next_state_case] =
       current_state_handler->GetNextStateCase(request.state());
@@ -199,8 +203,6 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     CHECK(next_state_case == current_state_case_)
         << "State transition should not happen with errors.";
     reply.set_error(next_state_case_error);
-    reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
-    reply.set_can_go_back(CanGoBack());
     return reply;
   }
 
@@ -211,8 +213,6 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
           GetInitializedStateHandler(next_state_case, &next_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
-    reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
-    reply.set_can_go_back(CanGoBack());
     return reply;
   }
 
@@ -223,19 +223,19 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   // Append next state to stack.
   state_history_.push_back(next_state_case);
   if (!StoreStateHistory()) {
+    // TODO(chenghan): Add error replies when failed to write |json_store_|.
     LOG(ERROR) << "Could not store history";
   }
   // Update state.
   current_state_case_ = next_state_case;
-  if (allow_abort_ && !next_state_handler->IsRepeatable()) {
-    // This is a one-way transition. |allow_abort| cannot go from false to
-    // true, unless we restart the whole RMA process.
-    allow_abort_ = false;
-  }
+  // This is a one-way transition. |can_abort| cannot go from false to
+  // true, unless we restart the whole RMA process.
+  can_abort_ &= next_state_handler->IsRepeatable();
 
   reply.set_error(RMAD_ERROR_OK);
   reply.set_allocated_state(new RmadState(next_state_handler->GetState()));
   reply.set_can_go_back(CanGoBack());
+  reply.set_can_abort(CanAbort());
   return reply;
 }
 
@@ -243,20 +243,24 @@ void RmadInterfaceImpl::TransitionPreviousState(
     const GetStateCallback& callback) {
   GetStateReply reply;
   scoped_refptr<BaseStateHandler> current_state_handler, prev_state_handler;
-
   if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
                                                        &current_state_handler);
       error != RMAD_ERROR_OK) {
+    DLOG(FATAL) << "Current state initialization failed";
     reply.set_error(error);
     callback.Run(reply);
     return;
   }
 
+  // Initialize the default reply.
+  reply.set_error(RMAD_ERROR_NOT_SET);
+  reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
+  reply.set_can_go_back(CanGoBack());
+  reply.set_can_abort(CanAbort());
+
   if (!CanGoBack()) {
-    LOG(INFO) << "Not allowed to go back to previous state";
+    LOG(INFO) << "Cannot go back to previous state";
     reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
-    reply.set_allocated_state(new RmadState(current_state_handler->GetState()));
-    reply.set_can_go_back(false);
     callback.Run(reply);
     return;
   }
@@ -285,13 +289,14 @@ void RmadInterfaceImpl::TransitionPreviousState(
   reply.set_error(RMAD_ERROR_OK);
   reply.set_allocated_state(new RmadState(prev_state_handler->GetState()));
   reply.set_can_go_back(CanGoBack());
+  reply.set_can_abort(CanAbort());
   callback.Run(reply);
 }
 
 void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
   AbortRmaReply reply;
 
-  if (allow_abort_) {
+  if (can_abort_) {
     VLOG(1) << "AbortRma: Abort allowed.";
     if (!json_store_->ClearAndDeleteFile()) {
       LOG(ERROR) << "AbortRma: Failed to clear RMA state file";

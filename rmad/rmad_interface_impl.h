@@ -45,7 +45,7 @@ class RmadInterfaceImpl final : public RmadInterface {
                            const GetStateCallback& callback) override;
   void TransitionPreviousState(const GetStateCallback& callback) override;
   void AbortRma(const AbortRmaCallback& callback) override;
-  bool AllowAbort() const override { return allow_abort_; }
+  bool CanAbort() const override { return can_abort_; }
   void GetLogPath(const GetLogPathCallback& callback) override;
 
  private:
@@ -73,7 +73,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
-  bool allow_abort_;
+  bool can_abort_;
 
   // Utilities
   Cr50UtilsImpl cr50_utils_;

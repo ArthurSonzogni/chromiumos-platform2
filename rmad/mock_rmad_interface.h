@@ -41,7 +41,7 @@ class MockRmadInterface : public RmadInterface {
               (const GetStateCallback&),
               (override));
   MOCK_METHOD(void, AbortRma, (const AbortRmaCallback&), (override));
-  MOCK_METHOD(bool, AllowAbort, (), (const, override));
+  MOCK_METHOD(bool, CanAbort, (), (const, override));
   MOCK_METHOD(void, GetLogPath, (const GetLogPathCallback&), (override));
 };
 

@@ -550,8 +550,9 @@ message TransitionNextStateRequest {
 // Reply for GetCurrentState, GetNextState, GetPreviousState.
 message GetStateReply {
   RmadErrorCode error = 1;
-  bool can_go_back = 2;
-  RmadState state = 3;
+  RmadState state = 2;
+  bool can_go_back = 3;
+  bool can_abort = 4;
 }
 
 // Reply for AbortRma.

@@ -115,7 +115,7 @@ class RmadInterfaceImplTest : public testing::Test {
     // TODO(gavindodd): Work out how to create RmadState objects and have them
     // scoped to the test.
     std::vector<scoped_refptr<BaseStateHandler>> mock_handlers;
-    mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, false,
+    mock_handlers.push_back(CreateMockHandler(json_store, welcome_proto_, true,
                                               RMAD_ERROR_OK,
                                               RmadState::kComponentsRepair));
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
@@ -158,6 +158,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -190,6 +191,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -206,6 +208,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -222,6 +225,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   // TODO(gavindodd): Use mock log to check for expected error.
   rmad_interface.GetCurrentState(base::Bind(callback));
@@ -239,6 +243,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -254,6 +259,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -268,6 +274,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
+    EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
   };
   rmad_interface.GetCurrentState(base::Bind(callback));
 }
@@ -279,24 +286,26 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(json_store,
                                    CreateStateHandlerManager(json_store));
-  EXPECT_EQ(true, rmad_interface.AllowAbort());
+  EXPECT_EQ(true, rmad_interface.CanAbort());
 
   TransitionNextStateRequest request;
   auto callback1 = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
     EXPECT_EQ(true, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.TransitionNextState(request, base::Bind(callback1));
-  EXPECT_EQ(true, rmad_interface.AllowAbort());
+  EXPECT_EQ(true, rmad_interface.CanAbort());
 
   auto callback2 = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kDeviceDestination, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(false, reply.can_abort());
   };
   rmad_interface.TransitionNextState(request, base::Bind(callback2));
-  EXPECT_EQ(false, rmad_interface.AllowAbort());
+  EXPECT_EQ(false, rmad_interface.CanAbort());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
@@ -316,7 +325,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
       "No registered state handler");
 }
 
-TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeStateFail) {
+TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kInitializeNextStateFailJson,
                       std::size(kInitializeNextStateFailJson) - 1);
@@ -327,6 +336,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeStateFail) {
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_DEVICE_INFO_INVALID, reply.error());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_EQ(true, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.TransitionNextState(request, base::Bind(callback));
 }
@@ -343,6 +355,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
@@ -359,6 +372,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
@@ -375,11 +389,13 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
 
-TEST_F(RmadInterfaceImplTest, TransitionPreviousState_InitializeStateFail) {
+TEST_F(RmadInterfaceImplTest,
+       TransitionPreviousState_InitializePreviousStateFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kInitializePreviousStateFailJson,
                       std::size(kInitializePreviousStateFailJson) - 1);
@@ -389,6 +405,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_InitializeStateFail) {
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_EQ(true, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
   };
   rmad_interface.TransitionPreviousState(base::Bind(callback));
 }
