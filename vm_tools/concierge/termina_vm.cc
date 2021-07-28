@@ -205,7 +205,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
                                    vm_permission::VmType::BOREALIS,
                                    &permission_token_)) {
       LOG(ERROR) << "Failed to register with permission service";
-      return false;
+      // TODO(lqu): Add "return false;" after chrome uprevs.
     }
   }
 
