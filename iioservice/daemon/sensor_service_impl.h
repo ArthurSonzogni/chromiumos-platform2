@@ -43,6 +43,7 @@ class SensorServiceImpl : public cros::mojom::SensorService {
       const std::string& description);
 
   void OnDeviceAdded(int iio_device_id);
+  void OnDeviceRemoved(int iio_device_id);
 
   // cros::mojom::SensorService overrides:
   void GetDeviceIds(cros::mojom::DeviceType type,

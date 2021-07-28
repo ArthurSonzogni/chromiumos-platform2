@@ -55,12 +55,19 @@ class LIBMEMS_EXPORT IioContextImpl : public IioContext {
   std::vector<IioDevice*> GetAll(
       std::map<int, std::unique_ptr<T>>* devices_map);
 
+  template <typename T>
+  void Reload(std::map<int, std::unique_ptr<T>>* devices_map);
+
   std::vector<ContextUniquePtr> context_;
 
   // device id to IioDevice
   std::map<int, std::unique_ptr<IioDeviceImpl>> devices_;
   // trigger id to IioDevice
   std::map<int, std::unique_ptr<IioDeviceTriggerImpl>> triggers_;
+
+  // Store the removed devices, whose pointers and memory would still be valid
+  // and usable, while the attributes and samples won't be available.
+  std::vector<std::unique_ptr<IioDevice>> removed_devices_;
 };
 
 }  // namespace libmems

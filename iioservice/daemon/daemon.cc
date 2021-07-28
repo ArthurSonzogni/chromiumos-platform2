@@ -64,6 +64,12 @@ void Daemon::InitDBus() {
       base::BindRepeating(&Daemon::HandleMemsSetupDone,
                           weak_factory_.GetWeakPtr())));
 
+  // Register a handler of the MemsRemoveDone method.
+  CHECK(iioservice_exported_object->ExportMethodAndBlock(
+      ::iioservice::kIioserviceInterface, ::iioservice::kMemsRemoveDoneMethod,
+      base::BindRepeating(&Daemon::HandleMemsRemoveDone,
+                          weak_factory_.GetWeakPtr())));
+
   // Take ownership of the ML service.
   CHECK(bus_->RequestOwnershipAndBlock(::iioservice::kIioserviceServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
@@ -85,6 +91,28 @@ void Daemon::HandleMemsSetupDone(
     }
 
     sensor_hal_server_->OnDeviceAdded(iio_device_id);
+  }
+
+  // Send success response.
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
+}
+
+void Daemon::HandleMemsRemoveDone(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  if (sensor_hal_server_) {
+    dbus::MessageReader reader(method_call);
+    int32_t iio_device_id;
+    if (!reader.PopInt32(&iio_device_id) || iio_device_id < 0) {
+      LOGF(ERROR) << "Couldn't extract iio_device_id (int32_t) from D-Bus call";
+      std::move(response_sender)
+          .Run(dbus::ErrorResponse::FromMethodCall(
+              method_call, DBUS_ERROR_FAILED,
+              "Couldn't extract iio_device_id (int32_t)"));
+      return;
+    }
+
+    sensor_hal_server_->OnDeviceRemoved(iio_device_id);
   }
 
   // Send success response.

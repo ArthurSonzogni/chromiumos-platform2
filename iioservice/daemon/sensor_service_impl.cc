@@ -27,6 +27,8 @@ namespace iioservice {
 // Add a namespace here to not leak |DeviceHasType|.
 namespace {
 
+constexpr char kDeviceRemovedDescription[] = "Device was removed";
+
 // Assume there won't be more than 10000 iio devices.
 constexpr int32_t kFusionDeviceIdDelta = 10000;
 
@@ -195,6 +197,21 @@ void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
   AddDevice(device);
 }
 
+void SensorServiceImpl::OnDeviceRemoved(int iio_device_id) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  if (device_types_map_.find(iio_device_id) == device_types_map_.end()) {
+    // Not using the removed device. Nothing to do.
+    return;
+  }
+  device_types_map_.erase(iio_device_id);
+
+  // Reload to check if device with |iio_device_id| is actually removed.
+  context_->Reload();
+
+  sensor_device_->OnDeviceRemoved(iio_device_id);
+}
+
 void SensorServiceImpl::GetDeviceIds(cros::mojom::DeviceType type,
                                      GetDeviceIdsCallback callback) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
@@ -236,6 +253,10 @@ void SensorServiceImpl::GetDevice(
     auto it = device_types_map_.find(iio_device_id);
     if (it == device_types_map_.end()) {
       LOGF(ERROR) << "No available device with id: " << iio_device_id;
+      device_request.ResetWithReason(
+          static_cast<uint32_t>(
+              cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED),
+          kDeviceRemovedDescription);
       return;
     }
 

@@ -12,6 +12,7 @@ constexpr char kIioserviceServicePath[] = "/org/chromium/Iioservice";
 constexpr char kIioserviceInterface[] = "org.chromium.Iioservice";
 // Methods
 constexpr char kMemsSetupDoneMethod[] = "MemsSetupDone";
+constexpr char kMemsRemoveDoneMethod[] = "MemsRemoveDone";
 
 }  // namespace iioservice
 

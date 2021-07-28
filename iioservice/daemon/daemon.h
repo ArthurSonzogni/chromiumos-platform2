@@ -31,9 +31,14 @@ class Daemon : public brillo::DBusDaemon, public SensorServerDbus {
   // be used.
   void InitDBus();
 
-  // Method called when kMemsSetupDone is received from mems_setup.
+  // Method called when kMemsSetupDoneMethod is received from mems_setup.
   // Handles reporting of a device is setup by mems_setup and ready to be used.
   void HandleMemsSetupDone(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+  // Method called when kMemsRemoveDoneMethod is received from mems_setup.
+  // Handles reporting of a device is setup by mems_setup and ready to be used.
+  void HandleMemsRemoveDone(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 

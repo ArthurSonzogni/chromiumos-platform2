@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":mems_setup" ]
+  if (use.iioservice) {
+    deps += [ ":mems_remove" ]
+  }
   if (use.test) {
     deps += [ ":mems_setup_testrunner" ]
   }
@@ -36,7 +39,13 @@ static_library("libmems_setup") {
 }
 
 executable("mems_setup") {
-  sources = [ "main.cc" ]
+  sources = [ "setup.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libmems_setup" ]
+}
+
+executable("mems_remove") {
+  sources = [ "remove.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libmems_setup" ]
 }

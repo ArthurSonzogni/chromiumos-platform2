@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <set>
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/strings/stringprintf.h>
@@ -28,6 +30,9 @@ void IioContextImpl::Reload() {
   // context that created them (and contexts are themselves static objects that
   // do not update as devices are added and/or removed at runtime).
   context_.push_back({iio_create_local_context(), iio_context_destroy});
+
+  Reload(&devices_);
+  Reload(&triggers_);
 }
 
 bool IioContextImpl::IsValid() const {
@@ -166,6 +171,23 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
   }
 
   return devices;
+}
+
+template <typename T>
+void IioContextImpl::Reload(std::map<int, std::unique_ptr<T>>* devices_map) {
+  std::set<int> ids;
+  for (IioDevice* device : GetAll(devices_map))
+    ids.emplace(device->GetId());
+
+  for (auto it = devices_map->begin(); it != devices_map->end();) {
+    if (ids.find(it->first) == ids.end()) {
+      // Has been removed.
+      removed_devices_.push_back(std::move(it->second));
+      it = devices_map->erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 }  // namespace libmems

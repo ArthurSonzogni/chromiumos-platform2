@@ -37,6 +37,7 @@ class SensorHalServerImpl : public cros::mojom::SensorHalServer {
                          sensor_service_request) override;
 
   void OnDeviceAdded(int iio_device_id);
+  void OnDeviceRemoved(int iio_device_id);
 
  protected:
   SensorHalServerImpl(

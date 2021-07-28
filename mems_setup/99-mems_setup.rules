@@ -27,5 +27,7 @@ SUBSYSTEM=="iio", RUN+="/sbin/restorecon $env{DEVNAME}"
 
 LABEL="end_mems_add"
 
+ACTION=="remove", SUBSYSTEM=="iio", ENV{DEVTYPE}=="iio_device", RUN+="/usr/sbin/mems_remove --device_id=%n"
+
 #TODO(gwendal): not needed when iioservice is running. Remove when iioservice is fully deployed.
 ACTION!="remove", ATTR{name}=="cros-ec-accel*", SYMLINK+="cros-ec-accel/%n", MODE="640", GROUP="chronos"
