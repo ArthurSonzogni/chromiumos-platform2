@@ -368,13 +368,23 @@ void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
       continue;
     }
     TPM_RC result = SaveContext(command_info, &info);
-    if (result != TPM_RC_SUCCESS) {
+    if (result == TPM_RC_REFERENCE_H0 || result == TPM_RC_HANDLE) {
+      LOG(WARNING) << "Attempted to save conext for an unknown handle: "
+                   << GetErrorString(result);
+      // Ignore this result, because the context may be flushed by previous
+      // command.
+    } else if (result != TPM_RC_SUCCESS) {
       LOG(WARNING) << "Failed to save transient object: "
                    << GetErrorString(result);
       continue;
     }
     result = factory_.GetTpm()->FlushContextSync(info.tpm_handle, nullptr);
-    if (result != TPM_RC_SUCCESS) {
+    if (result == TPM_RC_HANDLE) {
+      LOG(WARNING) << "Attempted to flush conext for an unknown handle: "
+                   << GetErrorString(result);
+      // Ignore this result, because the context may be flushed by previous
+      // command.
+    } else if (result != TPM_RC_SUCCESS) {
       LOG(WARNING) << "Failed to evict transient object: "
                    << GetErrorString(result);
       continue;
@@ -403,13 +413,23 @@ void ResourceManager::EvictObjects(const MessageInfo& command_info) {
       continue;
     }
     TPM_RC result = SaveContext(command_info, &info);
-    if (result != TPM_RC_SUCCESS) {
+    if (result == TPM_RC_REFERENCE_H0 || result == TPM_RC_HANDLE) {
+      LOG(WARNING) << "Attempted to save conext for an unknown handle: "
+                   << GetErrorString(result);
+      // Ignore this result, because the context may be flushed by previous
+      // command.
+    } else if (result != TPM_RC_SUCCESS) {
       LOG(WARNING) << "Failed to save transient object: "
                    << GetErrorString(result);
       continue;
     }
     result = factory_.GetTpm()->FlushContextSync(info.tpm_handle, nullptr);
-    if (result != TPM_RC_SUCCESS) {
+    if (result == TPM_RC_HANDLE) {
+      LOG(WARNING) << "Attempted to flush conext for an unknown handle: "
+                   << GetErrorString(result);
+      // Ignore this result, because the context may be flushed by previous
+      // command.
+    } else if (result != TPM_RC_SUCCESS) {
       LOG(WARNING) << "Failed to evict transient object: "
                    << GetErrorString(result);
       continue;
