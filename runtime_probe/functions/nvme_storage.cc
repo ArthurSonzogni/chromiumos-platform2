@@ -9,38 +9,28 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <base/strings/string_number_conversions.h>
-#include <brillo/strings/string_utils.h>
+#include <base/json/json_reader.h>
+#include <brillo/errors/error.h>
+#include <debugd/dbus-proxies.h>
 
+#include "runtime_probe/system/context_instance.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
 
 namespace runtime_probe {
 namespace {
+constexpr auto kNvmeDevicePath = "device/device";
+constexpr auto kNvmeDriverPath = "device/device/driver";
+
 // Storage-speicific fields to probe for NVMe.
 const std::vector<std::string> kNvmeFields{"vendor", "device", "class"};
 constexpr auto kNvmeType = "NVMe";
 constexpr auto kNvmePrefix = "pci_";
 
-// TODO(hmchu): Consider falling back to Smartctl if this fails.
-std::string GetStorageFwVersion(const base::FilePath& node_path) {
-  std::string fw_ver_res;
-  VLOG(2) << "Checking NVMe firmware version of "
-          << node_path.BaseName().value();
-  if (!base::ReadFileToString(node_path.Append("device").Append("firmware_rev"),
-                              &fw_ver_res)) {
-    VLOG(2) << "Failed to read NVMe firmware version from sysfs.";
-    return std::string{""};
-  }
-  return std::string(
-      base::TrimWhitespaceASCII(fw_ver_res, base::TrimPositions::TRIM_ALL));
-}
-
 bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   VLOG(2) << "Checking if \"" << node_path.value() << "\" is NVMe.";
+  const auto nvme_driver_path = node_path.Append(kNvmeDriverPath);
   base::FilePath driver_symlink_target;
-  const auto nvme_driver_path =
-      node_path.Append("device").Append("device").Append("driver");
   if (!base::ReadSymbolicLink(nvme_driver_path, &driver_symlink_target)) {
     VLOG(1) << "\"" << nvme_driver_path.value() << "\" is not a symbolic link";
     VLOG(2) << "\"" << node_path.value() << "\" is not NVMe.";
@@ -50,9 +40,31 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   if (!nvme_driver_re.PartialMatch(driver_symlink_target.value())) {
     return false;
   }
-
   VLOG(2) << "\"" << node_path.value() << "\" is NVMe.";
   return true;
+}
+
+bool NvmeCliList(std::string* output) {
+  brillo::ErrorPtr error;
+  if (ContextInstance::Get()->debugd_proxy()->Nvme(/*option=*/"list", output,
+                                                   &error)) {
+    return true;
+  }
+  LOG(ERROR) << "Debugd::Nvme failed: " << error->GetMessage();
+  return false;
+}
+
+base::Optional<base::Value> GetStorageToolData() {
+  std::string output;
+  if (!NvmeCliList(&output))
+    return base::nullopt;
+
+  auto value = base::JSONReader::Read(output);
+  if (!value) {
+    LOG(ERROR) << "Debugd::Nvme failed to parse output as json:\n" << output;
+    return base::nullopt;
+  }
+  return value;
 }
 
 }  // namespace
@@ -60,41 +72,45 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
 base::Optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
-
   if (!CheckStorageTypeMatch(node_path))
     return base::nullopt;
 
-  // For NVMe device, "<node_path>/device/device/.." is exactly where we want to
-  // look at.
-  const auto nvme_path = node_path.Append("device").Append("device");
-
-  if (!base::PathExists(nvme_path)) {
-    VLOG(1) << "NVMe-speific path does not exist on storage device \""
-            << node_path.value() << "\"";
-    return base::nullopt;
-  }
-
+  const auto nvme_path = node_path.Append(kNvmeDevicePath);
   auto nvme_res = MapFilesToDict(nvme_path, kNvmeFields, {});
-
-  if (!nvme_res) {
-    VLOG(1) << "Cannot find NVMe-specific fields on storage \""
-            << node_path.value() << "\"";
+  if (!nvme_res)
     return base::nullopt;
-  }
   PrependToDVKey(&*nvme_res, kNvmePrefix);
   nvme_res->SetStringKey("type", kNvmeType);
-
-  // TODO(chungsheng): b/181768966: Move FwVersion into ProbeFromStorageTool
-  const std::string storage_fw_version = GetStorageFwVersion(node_path);
-  if (!storage_fw_version.empty())
-    nvme_res->SetStringKey("storage_fw_version", storage_fw_version);
   return nvme_res;
 }
 
 base::Optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
+  auto nvme_data = GetStorageToolData();
+  if (!nvme_data)
+    return base::nullopt;
+  const auto* devices = nvme_data->FindListKey("Devices");
+  if (!devices) {
+    LOG(ERROR) << "Cannot find \"Devices\" in nvme output.";
+    return base::nullopt;
+  }
+
+  const auto& device_name = node_path.BaseName();
   base::Value result(base::Value::Type::DICTIONARY);
-  // TODO(chungsheng): b/181768966: Add probing from debugd storage tool
+  for (const auto& device : devices->GetList()) {
+    const auto* path = device.FindStringKey("DevicePath");
+    if (!path || base::FilePath(*path).BaseName() != device_name)
+      continue;
+    const auto* firmware = device.FindStringKey("Firmware");
+    if (firmware) {
+      result.SetStringKey("storage_fw_version", *firmware);
+    }
+    const auto* model = device.FindStringKey("ModelNumber");
+    if (model) {
+      result.SetStringKey("storage_model", *model);
+    }
+    break;
+  }
   return result;
 }
 
