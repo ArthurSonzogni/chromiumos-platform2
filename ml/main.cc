@@ -7,14 +7,16 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/service_constants.h>
 
+#include "ml/dbus_service/adaptive_charging_service.h"
+#include "ml/dbus_service/dbus_service_daemon.h"
 #include "ml/process.h"
-#include "ml/smart_battery/smart_battery_daemon.h"
 
 namespace {
 
 constexpr char kMojoServiceTask[] = "mojo_service";
-constexpr char kSmartBatteryTask[] = "smart_battery";
+constexpr char kAdaptiveChargingTask[] = "adaptive_charging";
 
 }  // namespace
 
@@ -29,8 +31,12 @@ int main(int argc, char* argv[]) {
   if (task == kMojoServiceTask)
     return ml::Process::GetInstance()->Run();
 
-  if (task == kSmartBatteryTask)
-    return ml::SmartBatteryDaemon().Run();
+  if (task == kAdaptiveChargingTask)
+    return ml::DBusServiceDaemon<
+               ml::AdaptiveChargingService,
+               org::chromium::MachineLearning::AdaptiveChargingAdaptor>(
+               ml::kMachineLearningAdaptiveChargingServiceName)
+        .Run();
 
   LOG(ERROR) << "ml-service received unknown task " << task;
   return 0;

@@ -6,23 +6,13 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 generate_dbus_adaptors("dbus-adaptors") {
-  dbus_service_config =
-      "../dbus_bindings/smart-battery-dbus-service-config.json"
   dbus_adaptors_out_dir = "include/dbus_adaptors"
-  sources = [ "../dbus_bindings/org.chromium.MachineLearningSmartBattery.xml" ]
+  sources =
+      [ "../dbus_bindings/org.chromium.MachineLearning.AdaptiveCharging.xml" ]
 }
 
 static_library("core") {
-  sources = [
-    "smart_battery_daemon.cc",
-    "smart_battery_service.cc",
-  ]
-
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "system_api",
-  ]
+  sources = [ "adaptive_charging_service.cc" ]
 
   deps = [
     ":dbus-adaptors",

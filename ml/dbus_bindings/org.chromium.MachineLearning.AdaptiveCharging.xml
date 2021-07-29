@@ -8,14 +8,14 @@
 
 <!--
   The interface defined in this file is used with the service name
-  "org.chromium.MachineLearningSmartBattery"
+  "org.chromium.MachineLearning.AdaptiveCharging"
   We don't use proto in because we need a non-const one.
 -->
 
-<node name="/org/chromium/MachineLearningSmartBattery"
+<node name="/org/chromium/MachineLearning/AdaptiveCharging"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <interface name="org.chromium.MachineLearningSmartBattery">
-    <method name="RequestSmartBatteryDecision">
+  <interface name="org.chromium.MachineLearning.AdaptiveCharging">
+    <method name="RequestAdaptiveChargingDecision">
       <arg name="serialized_example_proto" type="s" direction="in">
       <tp:docstring>
         A serialized RankerExample proto message that contains features.

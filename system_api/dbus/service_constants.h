@@ -571,15 +571,15 @@ constexpr char kBootstrapMojoConnectionMethod[] = "BootstrapMojoConnection";
 // Token identifying the primordial Mojo pipe passed to BootstrapMojoConnection.
 constexpr char kBootstrapMojoConnectionChannelToken[] = "ml-service-bootstrap";
 
-constexpr char kMachineLearningSmartBatteryServiceName[] =
-    "org.chromium.MachineLearningSmartBattery";
-constexpr char kMachineLearningSmartBatteryServicePath[] =
-    "/org/chromium/MachineLearningSmartBattery";
-constexpr char kMachineLearningSmartBatteryInterfaceName[] =
-    "org.chromium.MachineLearningSmartBattery";
+constexpr char kMachineLearningAdaptiveChargingServiceName[] =
+    "org.chromium.MachineLearning.AdaptiveCharging";
+constexpr char kMachineLearningAdaptiveChargingServicePath[] =
+    "/org/chromium/MachineLearning/AdaptiveCharging";
+constexpr char kMachineLearningAdaptiveChargingInterfaceName[] =
+    "org.chromium.MachineLearning.AdaptiveCharging";
 // Methods
-constexpr char kRequestSmartBatteryDecisionMethod[] =
-    "RequestSmartBatteryDecision";
+constexpr char kRequestAdaptiveChargingDecisionMethod[] =
+    "RequestAdaptiveChargingDecision";
 
 }  // namespace ml
 

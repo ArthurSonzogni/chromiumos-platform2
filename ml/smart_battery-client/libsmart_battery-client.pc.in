@@ -1,6 +1,0 @@
-include_dir=@INCLUDE_DIR@
-
-Name: libsmart_battery-client
-Version: 1.0
-Description: smart_battery client interface library
-Cflags: -I${include_dir}
