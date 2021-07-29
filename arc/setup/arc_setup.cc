@@ -1633,8 +1633,8 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
   const std::string version_codename_str =
       GetSystemBuildPropertyOrDie("ro.build.version.codename");
   if (version_codename_str != "REL") {
-    LOG(INFO) << "Not a release version; classifying as Android Unknown.";
-    return AndroidSdkVersion::UNKNOWN;
+    LOG(INFO) << "Not a release version; classifying as Android Development.";
+    return AndroidSdkVersion::ANDROID_DEVELOPMENT;
   }
   int version;
   if (base::StringToInt(version_str, &version)) {
@@ -1647,8 +1647,6 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
         return AndroidSdkVersion::ANDROID_P;
       case 30:
         return AndroidSdkVersion::ANDROID_R;
-      case 31:
-        return AndroidSdkVersion::ANDROID_S;
     }
   }
 

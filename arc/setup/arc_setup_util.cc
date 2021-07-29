@@ -965,6 +965,14 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
               << static_cast<int>(system_sdk_version) << ").";
     return true;
   }
+  // Upgraded to a development version. (b/195035697)
+  if (system_sdk_version == AndroidSdkVersion::ANDROID_DEVELOPMENT &&
+      data_sdk_version < system_sdk_version) {
+    LOG(INFO) << "Clearing /data dir because ARC was upgraded to a development "
+                 "version from "
+              << static_cast<int>(data_sdk_version) << ".";
+    return true;
+  }
   return false;
 }
 
