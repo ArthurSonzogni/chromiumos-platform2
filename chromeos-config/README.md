@@ -527,6 +527,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | base | string |  | False |  | True | Build target of the base EC firmware for a detachable device, that will be considered dirty when building/testing |
+| bmpblk | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | coreboot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | depthcharge | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |

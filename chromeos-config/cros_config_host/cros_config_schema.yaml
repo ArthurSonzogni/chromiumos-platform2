@@ -536,6 +536,7 @@ properties:
                       items:
                         type: string
                         description: Extra EC build targets to build within chromeos-ec.
+                    bmpblk: *firmware_build_target
                     coreboot: *firmware_build_target
                     gsc: *firmware_build_target
                     depthcharge: *firmware_build_target
