@@ -10,6 +10,22 @@ JOB=$(basename "$0")
 
 DEVICE_SHUTTING_DOWN=4 # Defined in session_manager_service.h
 
+# Check if file exists and is writeable by us. -w is always true under root.
+is_writeable() {
+  local file="$1"
+  local v=0
+
+  if [ -f "${file}" ]; then
+    local wfile=$(ls -l "${file}" | awk '$1 ~ /^.*w.*/ { print $NF; }')
+
+    if [ ! -z "${wfile}" ]; then
+      v=1
+    fi
+  fi
+
+  echo "${v}"
+}
+
 # Read chrome OS configurations
 read_cros_config() {
   local path="$1"
@@ -220,6 +236,23 @@ fi
 # Enable madvise(MADV_HUGEPAGE) for VMs guest mappings
 if [ -f "/sys/kernel/mm/transparent_hugepage/shmem_enabled" ]; then
   echo "advise" > "/sys/kernel/mm/transparent_hugepage/shmem_enabled"
+fi
+
+# Tweak KVM HLT polling only for x86
+if uname -m | grep -q x86; then
+  HALT_POLL_NS_SHRINK=/sys/module/kvm/parameters/halt_poll_ns_shrink
+  HALT_POLL_NS=/sys/module/kvm/parameters/halt_poll_ns
+  # Older kernels (e.g. 4.4) do not permit dynamic halt_poll_ns_shrink and
+  # have this attr as read-only.
+  v=$(is_writeable "${HALT_POLL_NS_SHRINK}")
+  if [ "${v}" != "0" ]; then
+    echo 2 > "${HALT_POLL_NS_SHRINK}"
+  fi
+  # Ditto, just in case
+  v=$(is_writeable "${HALT_POLL_NS}")
+  if [ "${v}" != "0" ]; then
+    echo 160000 > "${HALT_POLL_NS}"
+  fi
 fi
 
 if crossystem "cros_debug?1"; then
