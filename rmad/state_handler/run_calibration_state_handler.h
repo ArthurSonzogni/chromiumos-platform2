@@ -25,8 +25,8 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
 
-  using CalibrationSignalCallback = base::RepeatingCallback<bool(
-      CheckCalibrationState::CalibrationStatus, double)>;
+  using CalibrationSignalCallback =
+      base::RepeatingCallback<bool(CalibrationComponentStatus)>;
   void RegisterSignalSender(
       std::unique_ptr<CalibrationSignalCallback> callback) override {
     calibration_signal_sender_ = std::move(callback);
@@ -44,9 +44,8 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
  private:
   void RetrieveVarsAndCalibrate();
-  bool ShouldRecalibrate();
-  void PollUntilCalibrationDone(
-      CheckCalibrationState::CalibrationStatus::Component component);
+  bool ShouldRecalibrate(RmadErrorCode* error_code);
+  void PollUntilCalibrationDone(RmadComponent component);
   void CheckCalibrationTask(
       CheckCalibrationState::CalibrationStatus::Component component);
 
@@ -54,30 +53,27 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   void CheckBaseAccCalibrationTask();
   void CheckLidAccCalibrationTask();
 
-  void SaveAndSend(
-      CheckCalibrationState::CalibrationStatus::Component component,
-      int progress_percentage);
+  void SaveAndSend(RmadComponent component, double progress);
   bool GetPriorityCalibrationMap();
   bool SetPriorityCalibrationMap();
+  bool IsValidComponent(RmadComponent component) const;
 
-  static bool GetGyroCalibrationProgress(int* progress_percentage);
-  static bool GetBaseAccCalibrationProgress(int* progress_percentage);
-  static bool GetLidAccCalibrationProgress(int* progress_percentage);
+  static bool GetGyroCalibrationProgress(double* progress);
+  static bool GetBaseAccCalibrationProgress(double* progress);
+  static bool GetLidAccCalibrationProgress(double* progress);
 
   base::Lock calibration_mutex_;
   // To ensure that calibration starts from a higher priority, we use an
   // ordered map to traverse it from high to low. Once we find the first
   // sensor to be calibrated, we only calibrate those sensors that have
   // the same priority as it.
-  std::map<int,
-           std::map<CheckCalibrationState::CalibrationStatus::Component,
-                    CheckCalibrationState::CalibrationStatus::Status>>
+  std::map<
+      int,
+      std::map<RmadComponent, CalibrationComponentStatus::CalibrationStatus>>
       priority_components_calibration_map_;
   int running_priority_;
   std::unique_ptr<CalibrationSignalCallback> calibration_signal_sender_;
-  std::map<CheckCalibrationState::CalibrationStatus::Component,
-           std::unique_ptr<base::RepeatingTimer>>
-      timer_map_;
+  std::map<RmadComponent, std::unique_ptr<base::RepeatingTimer>> timer_map_;
 };
 
 }  // namespace rmad

@@ -96,31 +96,40 @@ enum RmadErrorCode {
   RMAD_ERROR_DEVICE_INFO_INVALID = 27;
 
   // Calibration component is missing.
-  RMAD_ERROR_MISSING_CALIBRATION_COMPONENT = 28;
+  RMAD_ERROR_CALIBRATION_COMPONENT_MISSING = 28;
+
+  // Calibration status is missing.
+  RMAD_ERROR_CALIBRATION_STATUS_MISSING = 29;
+
+  // Calibration component cannot be calibrated.
+  RMAD_ERROR_CALIBRATION_COMPONENT_INVALID = 30;
 
   // Calibration failed for a component.
-  RMAD_ERROR_CALIBRATION_FAILED = 29;
+  RMAD_ERROR_CALIBRATION_FAILED = 31;
 
   // Provisioning failed for the device.
-  RMAD_ERROR_PROVISIONING_FAILED = 30;
+  RMAD_ERROR_PROVISIONING_FAILED = 32;
 
   // Device could not be powerwashed.
-  RMAD_ERROR_POWERWASH_FAILED = 31;
+  RMAD_ERROR_POWERWASH_FAILED = 33;
 
   // Device finalization failed.
-  RMAD_ERROR_FINALIZATION_FAILED = 32;
+  RMAD_ERROR_FINALIZATION_FAILED = 34;
 
   // Logs failed to upload because the server could not be reached.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CANNOT_CONNECT = 33;
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CANNOT_CONNECT = 35;
 
   // Logs failed to upload because the server refused the connection.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CONNECTION_REJECTED = 34;
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_CONNECTION_REJECTED = 36;
 
   // Logs failed to upload because the connection was interrupted.
-  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_TRANSFER_FAILED = 35;
+  RMAD_ERROR_LOG_UPLOAD_FTP_SERVER_TRANSFER_FAILED = 37;
 
   // It is not possible to cancel RMA finalization process at this point.
-  RMAD_ERROR_CANNOT_CANCEL_RMA = 36;
+  RMAD_ERROR_CANNOT_CANCEL_RMA = 38;
+
+  // TODO(genechang): Legacy, remove it in the future.
+  RMAD_ERROR_MISSING_CALIBRATION_COMPONENT = 39;
 }
 
 // Defined Rmad components.
@@ -142,17 +151,21 @@ enum RmadComponent {
   RMAD_COMPONENT_ETHERNET = 13;
   RMAD_COMPONENT_WIRELESS = 14;
   // Additional rmad components.
-  RMAD_COMPONENT_GYROSCOPE = 15;
-  RMAD_COMPONENT_ACCELEROMETER = 16;
-  RMAD_COMPONENT_SCREEN = 17;
+  RMAD_COMPONENT_SCREEN = 15;
+  RMAD_COMPONENT_BASE_ACCELEROMETER = 16;
+  RMAD_COMPONENT_LID_ACCELEROMETER = 17;
+  RMAD_COMPONENT_GYROSCOPE = 18;
   // Reserved for additional runtime_probe supported components.
-  reserved 18 to 32;
+  reserved 19 to 32;
   // Mainboard rework is a special case.
   RMAD_COMPONENT_MAINBOARD_REWORK = 33;
   // Irrelevant components.
   // TODO(chenghan): Do we really need these?
   RMAD_COMPONENT_KEYBOARD = 34;
   RMAD_COMPONENT_POWER_BUTTON = 35;
+
+  // TODO(genechang): Remove legacy part
+  RMAD_COMPONENT_ACCELEROMETER = 36;  // Legacy
 }
 
 // Defined Rmad states.
@@ -345,8 +358,29 @@ message UpdateDeviceInfoState {
   uint32 original_sku_index = 8;
 }
 
+// Calibration Component and status used in all calibration-related
+// states (CheckCalibration, SetupCalibration, RunCalibration).
+message CalibrationComponentStatus {
+  enum CalibrationStatus {
+    RMAD_CALIBRATION_UNKNOWN = 0;
+    RMAD_CALIBRATION_WAITING = 1;
+    RMAD_CALIBRATION_IN_PROGRESS = 2;
+    RMAD_CALIBRATION_COMPLETE = 3;
+    RMAD_CALIBRATION_FAILED = 4;
+    RMAD_CALIBRATION_SKIP = 5;
+  }
+
+  RmadComponent component = 1;
+  CalibrationStatus status = 2;
+
+  // The progress of calibration.
+  // Waitting: 0.0, In progress: [0.0, 1.0),
+  // Complete: 1.0, Failed: -1.0, Skip: 1.0
+  double progress = 3;
+}
+
 message CheckCalibrationState {
-  // Calibration status of each component such as an accelerometer.
+  // Legacy. Keep it to be compatible with Chrome.
   message CalibrationStatus {
     enum Component {
       RMAD_CALIBRATION_COMPONENT_UNKNOWN = 0;
@@ -373,7 +407,10 @@ message CheckCalibrationState {
     Status status = 2;
   }
 
+  // TODO(genechang): Legacy, remove it in the future.
   repeated CalibrationStatus components = 1;
+  // TODO(genechang): Rename back to |components|.
+  repeated CalibrationComponentStatus calibration_components = 2;
 }
 
 // Wait for technician to setup device to be ready for calibration.

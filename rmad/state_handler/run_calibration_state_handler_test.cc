@@ -15,7 +15,6 @@
 #include "rmad/state_handler/run_calibration_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 
-using CalibrationStatus = rmad::CheckCalibrationState::CalibrationStatus;
 using testing::_;
 using testing::Assign;
 using testing::DoAll;
@@ -26,8 +25,9 @@ using testing::StrictMock;
 namespace rmad {
 
 MATCHER_P(MatchesCalibrationStatus, calibration_status, "") {
-  return arg.name() == calibration_status.name() &&
-         arg.status() == calibration_status.status();
+  return arg.component() == calibration_status.component() &&
+         arg.status() == calibration_status.status() &&
+         arg.progress() == calibration_status.progress();
 }
 
 class RunCalibrationStateHandlerTest : public StateHandlerTest {
@@ -37,15 +37,15 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
    public:
     MOCK_METHOD(bool,
                 SendCalibrationProgressSignal,
-                (CheckCalibrationState::CalibrationStatus, double),
+                (CalibrationComponentStatus),
                 (const));
   };
 
   scoped_refptr<RunCalibrationStateHandler> CreateStateHandler() {
     auto handler =
         base::MakeRefCounted<RunCalibrationStateHandler>(json_store_);
-    auto callback = std::make_unique<base::RepeatingCallback<bool(
-        CheckCalibrationState::CalibrationStatus, double)>>(
+    auto callback = std::make_unique<
+        base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
         base::BindRepeating(&SignalSender::SendCalibrationProgressSignal,
                             base::Unretained(&signal_sender_)));
     handler->RegisterSignalSender(std::move(callback));
@@ -65,16 +65,16 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     lid_acc_priority = -1;
 
     for (auto calibration_priority : kComponentsCalibrationPriority) {
-      if (calibration_priority[0] ==
-          CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER) {
-        base_acc_priority = calibration_priority[1];
+      if (calibration_priority.first ==
+          RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER) {
+        base_acc_priority = calibration_priority.second;
         break;
       }
     }
     for (auto calibration_priority : kComponentsCalibrationPriority) {
-      if (calibration_priority[0] ==
-          CalibrationStatus::RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER) {
-        lid_acc_priority = calibration_priority[1];
+      if (calibration_priority.first ==
+          RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER) {
+        lid_acc_priority = calibration_priority.second;
         break;
       }
     }
@@ -89,14 +89,15 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(RunCalibrationStateHandlerTest, InitializeState_Success) {
-  CalibrationStatus unknown_failed_signal;
-  unknown_failed_signal.set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN);
-  unknown_failed_signal.set_status(CalibrationStatus::RMAD_CALIBRATE_FAILED);
+  CalibrationComponentStatus unknown_failed_signal;
+  unknown_failed_signal.set_component(RmadComponent::RMAD_COMPONENT_UNKNOWN);
+  unknown_failed_signal.set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  unknown_failed_signal.set_progress(-1.0);
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_,
               SendCalibrationProgressSignal(
-                  MatchesCalibrationStatus(unknown_failed_signal), _))
+                  MatchesCalibrationStatus(unknown_failed_signal)))
       .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
 
   auto handler = CreateStateHandler();
@@ -110,21 +111,18 @@ TEST_F(RunCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
@@ -133,7 +131,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   bool signal_sent = false;
-  EXPECT_CALL(signal_sender_, SendCalibrationProgressSignal(_, _))
+  EXPECT_CALL(signal_sender_, SendCalibrationProgressSignal(_))
       .WillRepeatedly(DoAll(Assign(&signal_sent, true), Return(true)));
   task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
   EXPECT_TRUE(signal_sent);
@@ -145,21 +143,18 @@ TEST_F(RunCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       target_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_EQ(current_calibration_map, target_calibration_map);
 }
@@ -169,21 +164,18 @@ TEST_F(RunCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_FAILED)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_SKIP)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_FAILED)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_SKIP)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
@@ -192,7 +184,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   bool signal_sent = false;
-  EXPECT_CALL(signal_sender_, SendCalibrationProgressSignal(_, _))
+  EXPECT_CALL(signal_sender_, SendCalibrationProgressSignal(_))
       .WillRepeatedly(DoAll(Assign(&signal_sent, true), Return(true)));
   task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
   EXPECT_TRUE(signal_sent);
@@ -204,21 +196,18 @@ TEST_F(RunCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       target_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_SKIP)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_SKIP)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}}};
 
   EXPECT_EQ(current_calibration_map, target_calibration_map);
 }
@@ -228,21 +217,18 @@ TEST_F(RunCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_SKIP)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_SKIP)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
@@ -251,7 +237,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   bool signal_sent = false;
-  EXPECT_CALL(signal_sender_, SendCalibrationProgressSignal(_, _))
+  EXPECT_CALL(signal_sender_, SendCalibrationProgressSignal(_))
       .WillRepeatedly(DoAll(Assign(&signal_sent, true), Return(true)));
   task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
   EXPECT_FALSE(signal_sent);
@@ -263,21 +249,18 @@ TEST_F(RunCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       target_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_SKIP)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_SKIP)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}}};
 
   EXPECT_EQ(current_calibration_map, target_calibration_map);
 
@@ -293,21 +276,18 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
@@ -327,21 +307,18 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
@@ -361,32 +338,30 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnknownComponent) {
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}},
+           {{RmadComponent_Name(RmadComponent::RMAD_COMPONENT_UNKNOWN),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  CalibrationStatus unknown_failed_signal;
-  unknown_failed_signal.set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN);
-  unknown_failed_signal.set_status(CalibrationStatus::RMAD_CALIBRATE_FAILED);
+  CalibrationComponentStatus unknown_failed_signal;
+  unknown_failed_signal.set_component(RmadComponent::RMAD_COMPONENT_UNKNOWN);
+  unknown_failed_signal.set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  unknown_failed_signal.set_progress(-1.0);
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_,
               SendCalibrationProgressSignal(
-                  MatchesCalibrationStatus(unknown_failed_signal), _))
+                  MatchesCalibrationStatus(unknown_failed_signal)))
       .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
 
   auto handler = CreateStateHandler();
@@ -398,7 +373,50 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnknownComponent) {
   state.set_allocated_run_calibration(new RunCalibrationState);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_CALIBRATION_FAILED);
+  EXPECT_EQ(error, RMAD_ERROR_CALIBRATION_COMPONENT_MISSING);
+  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
+}
+
+TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_InvalidComponent) {
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {
+          {base::NumberToString(base_acc_priority),
+           {{RmadComponent_Name(RmadComponent::RMAD_COMPONENT_DRAM),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
+          {base::NumberToString(lid_acc_priority),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
+
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  CalibrationComponentStatus unknown_failed_signal;
+  unknown_failed_signal.set_component(RmadComponent::RMAD_COMPONENT_UNKNOWN);
+  unknown_failed_signal.set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  unknown_failed_signal.set_progress(-1.0);
+  bool signal_sent = false;
+  EXPECT_CALL(signal_sender_,
+              SendCalibrationProgressSignal(
+                  MatchesCalibrationStatus(unknown_failed_signal)))
+      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  EXPECT_TRUE(signal_sent);
+
+  RmadState state;
+  state.set_allocated_run_calibration(new RunCalibrationState);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_CALIBRATION_COMPONENT_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
 }
 
@@ -406,33 +424,31 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnknownStatus) {
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_UNKNOWN)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  CalibrationStatus unknown_failed_signal;
-  unknown_failed_signal.set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN);
-  unknown_failed_signal.set_status(CalibrationStatus::RMAD_CALIBRATE_FAILED);
+  CalibrationComponentStatus unknown_failed_signal;
+  unknown_failed_signal.set_component(RmadComponent::RMAD_COMPONENT_UNKNOWN);
+  unknown_failed_signal.set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  unknown_failed_signal.set_progress(-1.0);
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_,
               SendCalibrationProgressSignal(
-                  MatchesCalibrationStatus(unknown_failed_signal), _))
+                  MatchesCalibrationStatus(unknown_failed_signal)))
       .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
 
   auto handler = CreateStateHandler();
@@ -444,7 +460,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnknownStatus) {
   state.set_allocated_run_calibration(new RunCalibrationState);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_CALIBRATION_FAILED);
+  EXPECT_EQ(error, RMAD_ERROR_CALIBRATION_STATUS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
 }
 

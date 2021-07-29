@@ -24,8 +24,8 @@ class RmadInterface {
       RmadState::StateCase state_case,
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) = 0;
 
-  using CalibrationSignalCallback = base::RepeatingCallback<bool(
-      CheckCalibrationState::CalibrationStatus, double)>;
+  using CalibrationSignalCallback =
+      base::RepeatingCallback<bool(CalibrationComponentStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
       std::unique_ptr<CalibrationSignalCallback> callback) = 0;

@@ -49,8 +49,9 @@ class DBusServiceTest : public testing::Test {
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(
-            _, A<std::unique_ptr<base::RepeatingCallback<bool(
-                   CheckCalibrationState::CalibrationStatus, double)>>>()))
+            _,
+            A<std::unique_ptr<
+                base::RepeatingCallback<bool(CalibrationComponentStatus)>>>()))
         .WillRepeatedly(Return());
   }
   ~DBusServiceTest() override = default;
@@ -94,11 +95,8 @@ class DBusServiceTest : public testing::Test {
     return dbus_service_->SendErrorSignal(error);
   }
 
-  bool SignalCalibration(
-      CheckCalibrationState::CalibrationStatus component_status,
-      double progress) {
-    return dbus_service_->SendCalibrationProgressSignal(component_status,
-                                                        progress);
+  bool SignalCalibration(CalibrationComponentStatus component_status) {
+    return dbus_service_->SendCalibrationProgressSignal(component_status);
   }
 
   bool SignalProvisioning(ProvisionDeviceState::ProvisioningStep step,
@@ -235,24 +233,21 @@ TEST_F(DBusServiceTest, SignalCalibration) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "CalibrationProgress");
         dbus::MessageReader reader(signal);
-        CheckCalibrationState::CalibrationStatus calibration_status;
-        double progress;
+        CalibrationComponentStatus calibration_status;
         EXPECT_TRUE(PopValueFromReader(&reader, &calibration_status));
-        EXPECT_TRUE(reader.PopDouble(&progress));
-        EXPECT_EQ(calibration_status.name(),
-                  CheckCalibrationState::CalibrationStatus::
-                      RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
+        EXPECT_EQ(calibration_status.component(),
+                  RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
         EXPECT_EQ(calibration_status.status(),
-                  CheckCalibrationState::CalibrationStatus::
-                      RMAD_CALIBRATE_IN_PROGRESS);
-        EXPECT_EQ(progress, 0.3);
+                  CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+        EXPECT_EQ(calibration_status.progress(), 0.3);
       }));
-  CheckCalibrationState::CalibrationStatus component_status;
-  component_status.set_name(CheckCalibrationState::CalibrationStatus::
-                                RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
+  CalibrationComponentStatus component_status;
+  component_status.set_component(
+      RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
   component_status.set_status(
-      CheckCalibrationState::CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS);
-  EXPECT_TRUE(SignalCalibration(component_status, 0.3));
+      CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  component_status.set_progress(0.3);
+  EXPECT_TRUE(SignalCalibration(component_status));
 }
 
 TEST_F(DBusServiceTest, SignalProvisioning) {

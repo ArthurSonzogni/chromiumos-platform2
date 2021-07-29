@@ -13,8 +13,6 @@
 #include "rmad/state_handler/check_calibration_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 
-using CalibrationStatus = rmad::CheckCalibrationState::CalibrationStatus;
-
 namespace rmad {
 
 class CheckCalibrationStateHandlerTest : public StateHandlerTest {
@@ -27,11 +25,11 @@ class CheckCalibrationStateHandlerTest : public StateHandlerTest {
   void SetUp() override {
     StateHandlerTest::SetUp();
     base_acc_priority = GetComponentCalibrationPriority(
-        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
+        RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
     EXPECT_GE(base_acc_priority, 0);
 
     lid_acc_priority = GetComponentCalibrationPriority(
-        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER);
+        RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
     EXPECT_GE(lid_acc_priority, 0);
 
     EXPECT_NE(base_acc_priority, lid_acc_priority);
@@ -53,17 +51,19 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_components();
-  base_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
-  base_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_WAITING);
-  auto lid_accelerometer = check_calibration->add_components();
-  lid_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER);
-  lid_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_WAITING);
-  auto gyroscope = check_calibration->add_components();
-  gyroscope->set_name(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE);
-  gyroscope->set_status(CalibrationStatus::RMAD_CALIBRATE_WAITING);
+  auto base_accelerometer = check_calibration->add_calibration_components();
+  base_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
+  base_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  auto lid_accelerometer = check_calibration->add_calibration_components();
+  lid_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
+  lid_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  auto gyroscope = check_calibration->add_calibration_components();
+  gyroscope->set_component(RmadComponent::RMAD_COMPONENT_GYROSCOPE);
+  gyroscope->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
   RmadState state;
   state.set_allocated_check_calibration(check_calibration.release());
@@ -80,21 +80,18 @@ TEST_F(CheckCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       target_priority_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_WAITING)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
 
   EXPECT_EQ(priority_calibration_map, target_priority_calibration_map);
 }
@@ -106,17 +103,19 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_components();
-  base_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
-  base_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_FAILED);
-  auto lid_accelerometer = check_calibration->add_components();
-  lid_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER);
-  lid_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS);
-  auto gyroscope = check_calibration->add_components();
-  gyroscope->set_name(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE);
-  gyroscope->set_status(CalibrationStatus::RMAD_CALIBRATE_COMPLETE);
+  auto base_accelerometer = check_calibration->add_calibration_components();
+  base_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
+  base_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  auto lid_accelerometer = check_calibration->add_calibration_components();
+  lid_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
+  lid_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  auto gyroscope = check_calibration->add_calibration_components();
+  gyroscope->set_component(RmadComponent::RMAD_COMPONENT_GYROSCOPE);
+  gyroscope->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
 
   RmadState state;
   state.set_allocated_check_calibration(check_calibration.release());
@@ -133,21 +132,18 @@ TEST_F(CheckCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       target_priority_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_FAILED)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_FAILED)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS)}}}};
 
   EXPECT_EQ(priority_calibration_map, target_priority_calibration_map);
 }
@@ -159,17 +155,19 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_components();
-  base_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
-  base_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_COMPLETE);
-  auto lid_accelerometer = check_calibration->add_components();
-  lid_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER);
-  lid_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_COMPLETE);
-  auto gyroscope = check_calibration->add_components();
-  gyroscope->set_name(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE);
-  gyroscope->set_status(CalibrationStatus::RMAD_CALIBRATE_SKIP);
+  auto base_accelerometer = check_calibration->add_calibration_components();
+  base_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
+  base_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+  auto lid_accelerometer = check_calibration->add_calibration_components();
+  lid_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
+  lid_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+  auto gyroscope = check_calibration->add_calibration_components();
+  gyroscope->set_component(RmadComponent::RMAD_COMPONENT_GYROSCOPE);
+  gyroscope->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_SKIP);
 
   RmadState state;
   state.set_allocated_check_calibration(check_calibration.release());
@@ -186,21 +184,18 @@ TEST_F(CheckCalibrationStateHandlerTest,
   const std::map<std::string, std::map<std::string, std::string>>
       target_priority_calibration_map = {
           {base::NumberToString(base_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)},
-            {CalibrationStatus::Component_Name(
-                 CalibrationStatus::RMAD_CALIBRATION_COMPONENT_GYROSCOPE),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_SKIP)}}},
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_SKIP)}}},
           {base::NumberToString(lid_acc_priority),
-           {{CalibrationStatus::Component_Name(
-                 CalibrationStatus::
-                     RMAD_CALIBRATION_COMPONENT_LID_ACCELEROMETER),
-             CalibrationStatus::Status_Name(
-                 CalibrationStatus::RMAD_CALIBRATE_COMPLETE)}}}};
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}}};
 
   EXPECT_EQ(priority_calibration_map, target_priority_calibration_map);
 }
@@ -223,15 +218,15 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_UnknownComponent) {
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto unknown = check_calibration->add_components();
-  unknown->set_name(CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN);
-  unknown->set_status(CalibrationStatus::RMAD_CALIBRATE_WAITING);
+  auto unknown = check_calibration->add_calibration_components();
+  unknown->set_component(RmadComponent::RMAD_COMPONENT_UNKNOWN);
+  unknown->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
   RmadState state;
   state.set_allocated_check_calibration(check_calibration.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
 }
 
@@ -241,16 +236,17 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_UnknownStatus) {
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_components();
-  base_accelerometer->set_name(
-      CalibrationStatus::RMAD_CALIBRATION_COMPONENT_BASE_ACCELEROMETER);
-  base_accelerometer->set_status(CalibrationStatus::RMAD_CALIBRATE_UNKNOWN);
+  auto base_accelerometer = check_calibration->add_calibration_components();
+  base_accelerometer->set_component(
+      RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
+  base_accelerometer->set_status(
+      CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN);
 
   RmadState state;
   state.set_allocated_check_calibration(check_calibration.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
 }
 

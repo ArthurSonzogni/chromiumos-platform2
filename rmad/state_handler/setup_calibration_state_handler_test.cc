@@ -13,7 +13,8 @@
 #include "rmad/state_handler/setup_calibration_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 
-using CalibrationStatus = rmad::CheckCalibrationState::CalibrationStatus;
+using CalibrationComponentStatus =
+    rmad::CheckCalibrationState::CalibrationStatus;
 
 namespace rmad {
 

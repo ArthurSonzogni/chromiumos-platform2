@@ -12,8 +12,7 @@
 
 namespace rmad {
 
-int GetComponentCalibrationPriority(
-    CheckCalibrationState::CalibrationStatus::Component component);
+int GetComponentCalibrationPriority(RmadComponent component);
 
 class CheckCalibrationStateHandler : public BaseStateHandler {
  public:
@@ -30,15 +29,16 @@ class CheckCalibrationStateHandler : public BaseStateHandler {
 
  private:
   bool CheckIsCalibrationRequired(const RmadState& state,
-                                  bool* need_calibration);
+                                  bool* need_calibration,
+                                  RmadErrorCode* error_code);
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
 
   // To ensure that calibration starts from a higher priority, we use an ordered
   // map to traverse it from high to low.
-  std::map<int,
-           std::map<CheckCalibrationState::CalibrationStatus::Component,
-                    CheckCalibrationState::CalibrationStatus::Status>>
+  std::map<
+      int,
+      std::map<RmadComponent, CalibrationComponentStatus::CalibrationStatus>>
       priority_components_calibration_map_;
 };
 

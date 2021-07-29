@@ -18,8 +18,9 @@
 namespace brillo {
 namespace dbus_utils {
 
-using rmad::CheckCalibrationState;
+using rmad::CalibrationComponentStatus;
 using rmad::ProvisionDeviceState;
+using rmad::RmadComponent;
 using rmad::RmadErrorCode;
 
 template <>
@@ -44,49 +45,50 @@ struct DBusType<RmadErrorCode> {
 
 // Overload AppendValueToWriter() for "CheckCalibrationState::CalibrationStatus"
 // structure.
-void AppendValueToWriter(
-    dbus::MessageWriter* writer,
-    const CheckCalibrationState::CalibrationStatus& value) {
+void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const CalibrationComponentStatus& value) {
   dbus::MessageWriter struct_writer(nullptr);
   writer->OpenStruct(&struct_writer);
-  AppendValueToWriter(&struct_writer, static_cast<int>(value.name()));
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.component()));
   AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
+  AppendValueToWriter(&struct_writer, value.progress());
   writer->CloseContainer(&struct_writer);
 }
 
 // Overload PopValueFromReader() for "CheckCalibrationState::CalibrationStatus"
 // structure.
 bool PopValueFromReader(dbus::MessageReader* reader,
-                        CheckCalibrationState::CalibrationStatus* value) {
+                        CalibrationComponentStatus* value) {
   dbus::MessageReader struct_reader(nullptr);
   if (!reader->PopStruct(&struct_reader)) {
     return false;
   }
 
-  int name, status;
-  if (!PopValueFromReader(&struct_reader, &name) ||
-      !PopValueFromReader(&struct_reader, &status)) {
+  int component, status;
+  double progress;
+  if (!PopValueFromReader(&struct_reader, &component) ||
+      !PopValueFromReader(&struct_reader, &status) ||
+      !PopValueFromReader(&struct_reader, &progress)) {
     return false;
   }
-  value->set_name(
-      static_cast<CheckCalibrationState::CalibrationStatus::Component>(name));
+  value->set_component(static_cast<RmadComponent>(component));
   value->set_status(
-      static_cast<CheckCalibrationState::CalibrationStatus::Status>(status));
+      static_cast<CalibrationComponentStatus::CalibrationStatus>(status));
+  value->set_progress(progress);
   return true;
 }
 
 template <>
-struct DBusType<CheckCalibrationState::CalibrationStatus> {
+struct DBusType<CalibrationComponentStatus> {
   inline static std::string GetSignature() {
-    return GetStructDBusSignature<int, int>();
+    return GetStructDBusSignature<int, int, double>();
   }
-  inline static void Write(
-      dbus::MessageWriter* writer,
-      const CheckCalibrationState::CalibrationStatus& value) {
+  inline static void Write(dbus::MessageWriter* writer,
+                           const CalibrationComponentStatus& value) {
     AppendValueToWriter(writer, value);
   }
   inline static bool Read(dbus::MessageReader* reader,
-                          CheckCalibrationState::CalibrationStatus* value) {
+                          CalibrationComponentStatus* value) {
     return PopValueFromReader(reader, value);
   }
 };
@@ -169,9 +171,8 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
   calibration_signal_ =
-      dbus_interface
-          ->RegisterSignal<CheckCalibrationState::CalibrationStatus, double>(
-              kCalibrationProgressSignal);
+      dbus_interface->RegisterSignal<CalibrationComponentStatus>(
+          kCalibrationProgressSignal);
   provisioning_signal_ =
       dbus_interface
           ->RegisterSignal<ProvisionDeviceState::ProvisioningStep, double>(
@@ -200,8 +201,8 @@ void DBusService::RegisterSignalSenders() {
           base::Unretained(this))));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
-      std::make_unique<base::RepeatingCallback<bool(
-          CheckCalibrationState::CalibrationStatus status, double)>>(
+      std::make_unique<
+          base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
           base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
                               base::Unretained(this))));
 }
@@ -212,9 +213,9 @@ bool DBusService::SendErrorSignal(RmadErrorCode error) {
 }
 
 bool DBusService::SendCalibrationProgressSignal(
-    CheckCalibrationState::CalibrationStatus status, double progress) {
+    CalibrationComponentStatus status) {
   auto signal = calibration_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(status, progress);
+  return (signal.get() == nullptr) ? false : signal->Send(status);
 }
 
 bool DBusService::SendProvisioningProgressSignal(

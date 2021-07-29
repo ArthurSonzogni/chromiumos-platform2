@@ -14,22 +14,17 @@
 
 namespace rmad {
 
-using CalibrationStatus = CheckCalibrationState::CalibrationStatus;
-
-int GetComponentCalibrationPriority(
-    CheckCalibrationState_CalibrationStatus::Component component) {
+int GetComponentCalibrationPriority(RmadComponent component) {
   int priority = std::numeric_limits<int>::max();
   for (auto calibration_priority : kComponentsCalibrationPriority) {
-    if (calibration_priority[0] == component) {
-      priority = calibration_priority[1];
+    if (calibration_priority.first == component) {
+      priority = calibration_priority.second;
       break;
     }
   }
 
   if (priority == std::numeric_limits<int>::max()) {
-    LOG(WARNING) << "Unknown priority device "
-                 << CheckCalibrationState::CalibrationStatus::Component_Name(
-                        component);
+    LOG(WARNING) << "Unknown priority device " << RmadComponent_Name(component);
   }
 
   return priority;
@@ -49,16 +44,14 @@ RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
 BaseStateHandler::GetNextStateCaseReply
 CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   bool need_calibration;
-  if (!CheckIsCalibrationRequired(state, &need_calibration)) {
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+  RmadErrorCode error_code;
+  if (!CheckIsCalibrationRequired(state, &need_calibration, &error_code)) {
+    return {.error = error_code, .state_case = GetStateCase()};
   }
 
   state_ = state;
   StoreState();
   StoreVars();
-
-  // TODO(genechang): We should check whether we should perform the multiple
-  // rounds of calibration (different setup) here.
 
   if (need_calibration) {
     return {.error = RMAD_ERROR_OK,
@@ -70,20 +63,31 @@ CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
-    const RmadState& state, bool* need_calibration) {
+    const RmadState& state, bool* need_calibration, RmadErrorCode* error_code) {
   if (!state.has_check_calibration()) {
     LOG(ERROR) << "RmadState missing |components calibrate| state.";
+    *error_code = RMAD_ERROR_REQUEST_INVALID;
     return false;
   }
 
   *need_calibration = false;
 
   const CheckCalibrationState& components = state.check_calibration();
-  for (int i = 0; i < components.components_size(); ++i) {
-    const CalibrationStatus& component_status = components.components(i);
-    if (component_status.name() ==
-        CalibrationStatus::RMAD_CALIBRATION_COMPONENT_UNKNOWN) {
-      LOG(ERROR) << "RmadState component missing |name| argument.";
+  for (int i = 0; i < components.calibration_components_size(); ++i) {
+    const CalibrationComponentStatus& component_status =
+        components.calibration_components(i);
+    if (component_status.component() == RmadComponent::RMAD_COMPONENT_UNKNOWN) {
+      *error_code = RMAD_ERROR_REQUEST_ARGS_MISSING;
+      LOG(ERROR) << "RmadState missing |component| argument.";
+      return false;
+    }
+
+    int priority =
+        GetComponentCalibrationPriority(component_status.component());
+    if (priority == std::numeric_limits<int>::max()) {
+      *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_INVALID;
+      LOG_STREAM(ERROR) << RmadComponent_Name(component_status.component())
+                        << " cannot be calibrated.";
       return false;
     }
 
@@ -92,29 +96,30 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
     // (timeout), failed, complete or skip here.
     switch (component_status.status()) {
       // For in progress and failed cases, we also need to calibrate it.
-      case CalibrationStatus::RMAD_CALIBRATE_WAITING:
-      case CalibrationStatus::RMAD_CALIBRATE_IN_PROGRESS:
-      case CalibrationStatus::RMAD_CALIBRATE_FAILED:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_WAITING:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_FAILED:
         *need_calibration = true;
         break;
       // For those already calibrated and skipped component, we don't need to
       // calibrate it.
-      case CalibrationStatus::RMAD_CALIBRATE_COMPLETE:
-      case CalibrationStatus::RMAD_CALIBRATE_SKIP:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_SKIP:
         break;
-      case CalibrationStatus::RMAD_CALIBRATE_UNKNOWN:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN:
       default:
-        LOG(ERROR) << "RmadState component missing |calibrate_state| argument.";
+        *error_code = RMAD_ERROR_REQUEST_ARGS_MISSING;
+        LOG(ERROR)
+            << "RmadState component missing |calibration_status| argument.";
         return false;
     }
 
-    // We don't check whether the priority is unknown, because even if the
-    // priority is unknown (lowest) we can still calibrate it.
-    int priority = GetComponentCalibrationPriority(component_status.name());
-    priority_components_calibration_map_[priority][component_status.name()] =
-        component_status.status();
+    priority_components_calibration_map_[priority]
+                                        [component_status.component()] =
+                                            component_status.status();
   }
 
+  *error_code = RMAD_ERROR_OK;
   return true;
 }
 
@@ -128,10 +133,10 @@ bool CheckCalibrationStateHandler::StoreVars() const {
   for (auto priority_components : priority_components_calibration_map_) {
     std::string priority = base::NumberToString(priority_components.first);
     for (auto component_status : priority_components.second) {
-      std::string component_name =
-          CalibrationStatus::Component_Name(component_status.first);
+      std::string component_name = RmadComponent_Name(component_status.first);
       std::string status_name =
-          CalibrationStatus::Status_Name(component_status.second);
+          CalibrationComponentStatus::CalibrationStatus_Name(
+              component_status.second);
       json_value_map[priority][component_name] = status_name;
     }
   }
