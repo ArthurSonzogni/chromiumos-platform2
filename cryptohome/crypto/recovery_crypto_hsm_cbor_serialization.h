@@ -75,6 +75,14 @@ bool SerializeHsmPlainTextToCbor(const brillo::SecureBlob& mediator_share,
                                  brillo::SecureBlob* plain_text_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
+// be subsequently encrypted and in Request payload. `ephemeral_pub_inv_key` is
+// an elliptic curve point encoded in OpenSSL octet form (a binary encoding of
+// the EC_POINT structure as defined in RFC5480).
+bool SerializeRecoveryRequestPlainTextToCbor(
+    const brillo::SecureBlob& ephemeral_pub_inv_key,
+    brillo::SecureBlob* plain_text_cbor);
+
+// Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in response payload. `dealer_pub_key` and
 // `mediated_point` are elliptic curve points encoded in OpenSSL octet form
 // (a binary encoding of the EC_POINT structure as defined in RFC5480).
@@ -94,6 +102,13 @@ bool DeserializeHsmPlainTextFromCbor(
     brillo::SecureBlob* mediator_share,
     brillo::SecureBlob* dealer_pub_key,
     brillo::SecureBlob* key_auth_value);
+
+// Extracts data from Recovery Request plain text cbor. `ephemeral_pub_inv_key`
+// is an elliptic curve point encoded in OpenSSL octet form (a binary encoding
+// of the EC_POINT structure as defined in RFC5480).
+bool DeserializeRecoveryRequestPlainTextFromCbor(
+    const brillo::SecureBlob& request_plain_text_cbor,
+    brillo::SecureBlob* ephemeral_pub_inv_key);
 
 // Extracts data from response payload cbor. `dealer_pub_key` and
 // `mediated_point` are elliptic curve points encoded in OpenSSL octet form

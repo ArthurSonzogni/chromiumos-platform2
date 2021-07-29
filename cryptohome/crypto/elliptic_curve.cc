@@ -88,6 +88,14 @@ bool EllipticCurve::IsPointValidAndFinite(const EC_POINT& point,
   return IsPointValid(point, context) && !IsPointAtInfinity(point);
 }
 
+bool EllipticCurve::InvertPoint(EC_POINT* point, BN_CTX* context) const {
+  if (EC_POINT_invert(group_.get(), point, context) != 1) {
+    LOG(ERROR) << "Failed to invert EC_POINT: " << GetOpenSSLErrors();
+    return false;
+  }
+  return true;
+}
+
 int EllipticCurve::ScalarSizeInBytes() const {
   return BN_num_bytes(order_.get());
 }

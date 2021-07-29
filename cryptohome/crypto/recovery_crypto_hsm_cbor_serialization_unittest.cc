@@ -179,4 +179,27 @@ TEST_F(RequestPayloadCborHelperTest, GenerateAd) {
   EXPECT_EQ(deserialized_request_meta_data.to_string(), kFakeRequestData);
 }
 
+// Verifies serialization of Recovery Request payload plain text encrypted
+// payload to CBOR.
+TEST_F(RequestPayloadCborHelperTest, GeneratePlainText) {
+  brillo::SecureBlob ephemeral_inverse_key;
+  crypto::ScopedBIGNUM scalar = BigNumFromValue(123u);
+  ASSERT_TRUE(scalar);
+  BN_set_negative(scalar.get(), 1);
+  crypto::ScopedEC_POINT inverse_point =
+      ec_->MultiplyWithGenerator(*scalar, context_.get());
+  ASSERT_TRUE(ec_->PointToSecureBlob(*inverse_point, &ephemeral_inverse_key,
+                                     context_.get()));
+
+  brillo::SecureBlob cbor_output;
+  ASSERT_TRUE(SerializeRecoveryRequestPlainTextToCbor(ephemeral_inverse_key,
+                                                      &cbor_output));
+
+  brillo::SecureBlob deserialized_ephemeral_inverse_key;
+  ASSERT_TRUE(
+      GetHsmCborMapByKeyForTesting(cbor_output, kEphemeralPublicInvKey,
+                                   &deserialized_ephemeral_inverse_key));
+  EXPECT_EQ(ephemeral_inverse_key, deserialized_ephemeral_inverse_key);
+}
+
 }  // namespace cryptohome

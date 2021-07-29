@@ -19,19 +19,19 @@ namespace cryptohome {
 
 namespace {
 
-bool SerializeHsmPayloadToCborHelper(const cbor::Value::MapValue& cbor_map,
-                                     brillo::SecureBlob* payload_cbor) {
+bool SerializeCborMap(const cbor::Value::MapValue& cbor_map,
+                      brillo::SecureBlob* blob_cbor) {
   base::Optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
   if (!serialized) {
-    LOG(ERROR) << "Failed to serialize HSM plain Text to CBOR.";
+    LOG(ERROR) << "Failed to serialize CBOR Map.";
     return false;
   }
-  payload_cbor->assign(serialized.value().begin(), serialized.value().end());
+  blob_cbor->assign(serialized.value().begin(), serialized.value().end());
   return true;
 }
 
-base::Optional<cbor::Value> ReadHsmCborPayload(
+base::Optional<cbor::Value> ReadCborPayload(
     const brillo::SecureBlob& payload_cbor) {
   cbor::Reader::DecoderError error_code;
   base::Optional<cbor::Value> cbor_response =
@@ -74,6 +74,7 @@ const char kHsmAeadIv[] = "hsm_aead_iv";
 const char kHsmAeadTag[] = "hsm_aead_tag";
 const char kRequestMetaData[] = "request_meta_data";
 const char kEpochPublicKey[] = "epoch_pub_key";
+const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 
 const int kProtocolVersion = 1;
 
@@ -90,13 +91,10 @@ bool SerializeHsmAssociatedDataToCbor(
   ad_map.emplace(kRsaPublicKey, rsa_public_key);
   ad_map.emplace(kOnboardingMetaData, onboarding_meta_data);
 
-  base::Optional<std::vector<uint8_t>> serialized =
-      cbor::Writer::Write(cbor::Value(std::move(ad_map)));
-  if (!serialized) {
+  if (!SerializeCborMap(ad_map, ad_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM Associated Data to CBOR";
     return false;
   }
-  ad_cbor->assign(serialized.value().begin(), serialized.value().end());
   return true;
 }
 
@@ -119,14 +117,11 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
   ad_map.emplace(kRequestMetaData, request_meta_data);
   ad_map.emplace(kEpochPublicKey, epoch_pub_key);
 
-  base::Optional<std::vector<uint8_t>> serialized =
-      cbor::Writer::Write(cbor::Value(std::move(ad_map)));
-  if (!serialized) {
+  if (!SerializeCborMap(ad_map, request_ad_cbor)) {
     LOG(ERROR)
         << "Failed to serialize Recovery Request Associated Data to CBOR";
     return false;
   }
-  request_ad_cbor->assign(serialized.value().begin(), serialized.value().end());
   return true;
 }
 
@@ -139,7 +134,25 @@ bool SerializeHsmPlainTextToCbor(const brillo::SecureBlob& mediator_share,
   pt_map.emplace(kDealerPublicKey, dealer_pub_key);
   pt_map.emplace(kMediatorShare, mediator_share);
   pt_map.emplace(kKeyAuthValue, key_auth_value);
-  return SerializeHsmPayloadToCborHelper(pt_map, plain_text_cbor);
+  if (!SerializeCborMap(pt_map, plain_text_cbor)) {
+    LOG(ERROR) << "Failed to serialize HSM plain text to CBOR";
+    return false;
+  }
+  return true;
+}
+
+bool SerializeRecoveryRequestPlainTextToCbor(
+    const brillo::SecureBlob& ephemeral_pub_inv_key,
+    brillo::SecureBlob* plain_text_cbor) {
+  cbor::Value::MapValue pt_map;
+
+  pt_map.emplace(kEphemeralPublicInvKey, ephemeral_pub_inv_key);
+
+  if (!SerializeCborMap(pt_map, plain_text_cbor)) {
+    LOG(ERROR) << "Failed to serialize Recovery Request plain text to CBOR";
+    return false;
+  }
+  return true;
 }
 
 bool SerializeHsmResponsePayloadToCbor(const brillo::SecureBlob& mediated_point,
@@ -151,7 +164,11 @@ bool SerializeHsmResponsePayloadToCbor(const brillo::SecureBlob& mediated_point,
   pt_map.emplace(kDealerPublicKey, dealer_pub_key);
   pt_map.emplace(kMediatedPoint, mediated_point);
   pt_map.emplace(kKeyAuthValue, key_auth_value);
-  return SerializeHsmPayloadToCborHelper(pt_map, response_cbor);
+  if (!SerializeCborMap(pt_map, response_cbor)) {
+    LOG(ERROR) << "Failed to serialize HSM responce payload to CBOR";
+    return false;
+  }
+  return true;
 }
 
 bool DeserializeHsmPlainTextFromCbor(
@@ -159,7 +176,7 @@ bool DeserializeHsmPlainTextFromCbor(
     brillo::SecureBlob* mediator_share,
     brillo::SecureBlob* dealer_pub_key,
     brillo::SecureBlob* key_auth_value) {
-  const auto& cbor = ReadHsmCborPayload(hsm_plain_text_cbor);
+  const auto& cbor = ReadCborPayload(hsm_plain_text_cbor);
   if (!cbor) {
     return false;
   }
@@ -207,12 +224,39 @@ bool DeserializeHsmPlainTextFromCbor(
   return true;
 }
 
+bool DeserializeRecoveryRequestPlainTextFromCbor(
+    const brillo::SecureBlob& request_plain_text_cbor,
+    brillo::SecureBlob* ephemeral_pub_inv_key) {
+  const auto& cbor = ReadCborPayload(request_plain_text_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const cbor::Value::MapValue& request_map = cbor->GetMap();
+  const auto ephemeral_pub_inv_key_entry =
+      request_map.find(cbor::Value(kEphemeralPublicInvKey));
+  if (ephemeral_pub_inv_key_entry == request_map.end()) {
+    LOG(ERROR) << "No ephemeral_pub_inv_key in the Recovery Request map";
+    return false;
+  }
+  if (!ephemeral_pub_inv_key_entry->second.is_bytestring()) {
+    LOG(ERROR) << "Wrongly formatted ephemeral_pub_inv_key in the Recovery "
+                  "Request map";
+    return false;
+  }
+
+  ephemeral_pub_inv_key->assign(
+      ephemeral_pub_inv_key_entry->second.GetBytestring().begin(),
+      ephemeral_pub_inv_key_entry->second.GetBytestring().end());
+  return true;
+}
+
 bool DeserializeHsmResponsePayloadFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
     brillo::SecureBlob* mediated_point,
     brillo::SecureBlob* dealer_pub_key,
     brillo::SecureBlob* key_auth_value) {
-  const auto& cbor = ReadHsmCborPayload(response_payload_cbor);
+  const auto& cbor = ReadCborPayload(response_payload_cbor);
   if (!cbor) {
     return false;
   }
@@ -263,7 +307,7 @@ bool DeserializeHsmResponsePayloadFromCbor(
 bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                   const std::string& map_key,
                                   brillo::SecureBlob* value) {
-  const auto& cbor = ReadHsmCborPayload(input_cbor);
+  const auto& cbor = ReadCborPayload(input_cbor);
   if (!cbor) {
     return false;
   }
@@ -284,7 +328,7 @@ bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
 
 bool GetRequestPayloadSchemaVersionForTesting(
     const brillo::SecureBlob& input_cbor, int* value) {
-  const auto& cbor = ReadHsmCborPayload(input_cbor);
+  const auto& cbor = ReadCborPayload(input_cbor);
   if (!cbor) {
     return false;
   }

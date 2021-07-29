@@ -71,13 +71,15 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   ~RecoveryCryptoImpl() override;
 
-  bool GenerateRequestPayload(const HsmPayload& hsm_payload,
-                              const brillo::SecureBlob& ephemeral_pub_inv_key,
-                              const brillo::SecureBlob& request_meta_data,
-                              const brillo::SecureBlob& channel_priv_key,
-                              const brillo::SecureBlob& channel_pub_key,
-                              const brillo::SecureBlob& epoch_pub_key,
-                              RequestPayload* request_payload) const override;
+  bool GenerateRequestPayload(
+      const HsmPayload& hsm_payload,
+      const brillo::SecureBlob& ephemeral_pub_inv_key,
+      const brillo::SecureBlob& request_meta_data,
+      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& channel_pub_key,
+      const brillo::SecureBlob& epoch_pub_key,
+      RequestPayload* request_payload,
+      brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
                           const brillo::SecureBlob& rsa_pub_key,
                           const brillo::SecureBlob& onboarding_metadata,
@@ -117,6 +119,9 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool GenerateRecoveryKey(const crypto::ScopedEC_POINT& recovery_pub_point,
                            const crypto::ScopedEC_KEY& dealer_key_pair,
                            brillo::SecureBlob* recovery_key) const;
+  // Generate ephemeral public and inverse public keys {G*x, G*-x}
+  bool GenerateEphemeralKey(brillo::SecureBlob* ephemeral_pub_key,
+                            brillo::SecureBlob* ephemeral_inv_pub_key) const;
   bool GenerateHsmAssociatedData(const brillo::SecureBlob& channel_pub_key,
                                  const brillo::SecureBlob& rsa_pub_key,
                                  const brillo::SecureBlob& onboarding_metadata,
@@ -197,6 +202,49 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
               /*salt=*/brillo::SecureBlob(), /*result_len=*/0, recovery_key);
 }
 
+bool RecoveryCryptoImpl::GenerateEphemeralKey(
+    brillo::SecureBlob* ephemeral_pub_key,
+    brillo::SecureBlob* ephemeral_inv_pub_key) const {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context.get()) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+
+  // Generate ephemeral key pair {`ephemeral_secret`, `ephemeral_pub_key`} ({x,
+  // G*x}), and the inverse public key G*-x.
+  crypto::ScopedBIGNUM ephemeral_priv_key_bn =
+      ec_.RandomNonZeroScalar(context.get());
+  if (!ephemeral_priv_key_bn) {
+    LOG(ERROR) << "Failed to generate ephemeral_priv_key_bn";
+    return false;
+  }
+  crypto::ScopedEC_POINT ephemeral_pub_point =
+      ec_.MultiplyWithGenerator(*ephemeral_priv_key_bn, context.get());
+  if (!ephemeral_pub_point) {
+    LOG(ERROR) << "Failed to perform MultiplyWithGenerator operation for "
+                  "ephemeral_priv_key_bn";
+    return false;
+  }
+  if (!ec_.PointToSecureBlob(*ephemeral_pub_point, ephemeral_pub_key,
+                             context.get())) {
+    LOG(ERROR) << "Failed to convert ephemeral_pub_point to a SecureBlob";
+    return false;
+  }
+
+  if (!ec_.InvertPoint(ephemeral_pub_point.get(), context.get())) {
+    LOG(ERROR) << "Failed to invert the ephemeral_pub_point";
+    return false;
+  }
+  if (!ec_.PointToSecureBlob(*ephemeral_pub_point, ephemeral_inv_pub_key,
+                             context.get())) {
+    LOG(ERROR)
+        << "Failed to convert inverse ephemeral_pub_point to a SecureBlob";
+    return false;
+  }
+  return true;
+}
+
 bool RecoveryCryptoImpl::GenerateRequestPayload(
     const HsmPayload& hsm_payload,
     const brillo::SecureBlob& ephemeral_pub_inv_key,
@@ -204,7 +252,8 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
     const brillo::SecureBlob& epoch_pub_key,
-    RequestPayload* request_payload) const {
+    RequestPayload* request_payload,
+    brillo::SecureBlob* ephemeral_pub_key) const {
   if (!SerializeRecoveryRequestAssociatedDataToCbor(
           hsm_payload.cipher_text, hsm_payload.associated_data, hsm_payload.iv,
           hsm_payload.tag, request_meta_data, epoch_pub_key,
@@ -226,12 +275,23 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
     return false;
   }
 
-  // TODO(b/194678588): Store `ephemeral_pub_inv_key` (G*-x) in the plaintext.
-  brillo::SecureBlob plain_text("");
-  if (!AesGcmEncrypt(plain_text, request_payload->associated_data, aes_gcm_key,
-                     &request_payload->iv, &request_payload->tag,
+  brillo::SecureBlob ephemeral_inverse_pub_key;
+  if (!GenerateEphemeralKey(ephemeral_pub_key, &ephemeral_inverse_pub_key)) {
+    LOG(ERROR) << "Failed to generate Ephemeral keys";
+    return false;
+  }
+
+  brillo::SecureBlob plain_text_cbor;
+  if (!SerializeRecoveryRequestPlainTextToCbor(ephemeral_inverse_pub_key,
+                                               &plain_text_cbor)) {
+    LOG(ERROR) << "Failed to generate Recovery Request plain text cbor";
+    return false;
+  }
+
+  if (!AesGcmEncrypt(plain_text_cbor, request_payload->associated_data,
+                     aes_gcm_key, &request_payload->iv, &request_payload->tag,
                      &request_payload->cipher_text)) {
-    LOG(ERROR) << "Failed to perform AES-GCM encryption";
+    LOG(ERROR) << "Failed to perform AES-GCM encryption of plain_text_cbor";
     return false;
   }
   return true;
@@ -351,7 +411,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   if (!SerializeHsmPlainTextToCbor(mediator_share, dealer_pub_key,
                                    /*key_auth_value=*/brillo::SecureBlob(),
                                    &plain_text_cbor)) {
-    LOG(ERROR) << "Failed to generate plain text cbor";
+    LOG(ERROR) << "Failed to generate HSM plain text cbor";
     return false;
   }
 

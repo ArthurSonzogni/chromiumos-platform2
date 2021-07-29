@@ -55,12 +55,13 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
+  brillo::SecureBlob ephemeral_pub_key;
   RecoveryCrypto::RequestPayload request_payload;
   ASSERT_TRUE(recovery->GenerateRequestPayload(
       hsm_payload,
       /*ephemeral_pub_inv_key=*/brillo::SecureBlob(),
       brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
-      channel_pub_key, epoch_pub_key, &request_payload));
+      channel_pub_key, epoch_pub_key, &request_payload, &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
   FakeRecoveryMediatorCrypto::ResponsePayload response_payload;

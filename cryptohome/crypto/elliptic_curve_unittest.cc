@@ -357,4 +357,45 @@ TEST_F(EllipticCurveTest, GenerateKeysAsSecureBlobs) {
   EXPECT_TRUE(ec_->AreEqual(*expected_public_key, *public_key, context_.get()));
 }
 
+TEST_F(EllipticCurveTest, InvertPoint) {
+  crypto::ScopedBIGNUM scalar = BigNumFromValue(123u);
+  ASSERT_TRUE(scalar);
+  crypto::ScopedEC_POINT point =
+      ec_->MultiplyWithGenerator(*scalar, context_.get());
+
+  BN_set_negative(scalar.get(), 1);
+  crypto::ScopedEC_POINT inverse_point =
+      ec_->MultiplyWithGenerator(*scalar, context_.get());
+
+  EXPECT_TRUE(ec_->InvertPoint(point.get(), context_.get()));
+
+  // Validates that the inverted point equals to inverse_point.
+  EXPECT_TRUE(ec_->AreEqual(*inverse_point, *point, context_.get()));
+}
+
+TEST_F(EllipticCurveTest, InversePointAddition) {
+  crypto::ScopedBIGNUM scalar1 = BigNumFromValue(123u);
+  ASSERT_TRUE(scalar1);
+  crypto::ScopedBIGNUM scalar2 = BigNumFromValue(321u);
+  ASSERT_TRUE(scalar2);
+
+  crypto::ScopedEC_POINT point1 =
+      ec_->MultiplyWithGenerator(*scalar1, context_.get());
+  ASSERT_TRUE(point1);
+  crypto::ScopedEC_POINT point2 =
+      ec_->MultiplyWithGenerator(*scalar2, context_.get());
+  ASSERT_TRUE(point2);
+  crypto::ScopedEC_POINT point_sum_12 =
+      ec_->Add(*point1, *point2, context_.get());
+  ASSERT_TRUE(point_sum_12);
+
+  ec_->InvertPoint(point1.get(), context_.get());
+  crypto::ScopedEC_POINT point_sum_all =
+      ec_->Add(*point_sum_12, *point1, context_.get());
+  ASSERT_TRUE(point_sum_all);
+  // Validates that after adding the inverted point1 its contribution
+  // cancels out and we are left with point2.
+  EXPECT_TRUE(ec_->AreEqual(*point2, *point_sum_all, context_.get()));
+}
+
 }  // namespace cryptohome

@@ -42,6 +42,10 @@ class EllipticCurve final {
   // Returns true if point is on a curve and finite (not at infinity).
   bool IsPointValidAndFinite(const EC_POINT& point, BN_CTX* context) const;
 
+  // Calculate the inverse of the supplied `point`. The result is placed back in
+  // `point`.
+  bool InvertPoint(EC_POINT* point, BN_CTX* context) const;
+
   // Returns scalar size in bytes of a curve order.
   int ScalarSizeInBytes() const;
 

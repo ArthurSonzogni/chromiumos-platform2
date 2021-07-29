@@ -83,12 +83,15 @@ class RecoveryCrypto {
 
   // Generates Request payload that will be sent to Recovery Mediator Service
   // during recovery process.
+  // Consist of the following steps:
   // 1. Construct associated data AD2 = {hsm_payload, `ephemeral_pub_inv_key`,
   // `request_metadata`}.
   // 2. Generate symmetric key for encrypting plain text from (G*r)*s
   // (`epoch_pub_key` * `channel_priv_key`).
-  // 3. Construct plain text PT2 = "".
-  // 4. Encrypt {AD2, PT2} using AES-GCM scheme.
+  // 3. Generate ephemeral key pair {x, G*x} and calculate an inverse G*-x.
+  // 4. Save G*x to `ephemeral_pub_key` parameter.
+  // 5. Construct plain text PT2 = {G*-x}.
+  // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
   virtual bool GenerateRequestPayload(
       const HsmPayload& hsm_payload,
       const brillo::SecureBlob& ephemeral_pub_inv_key,
@@ -96,7 +99,8 @@ class RecoveryCrypto {
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      RequestPayload* request_payload) const = 0;
+      RequestPayload* request_payload,
+      brillo::SecureBlob* ephemeral_pub_key) const = 0;
 
   // Generates HSM payload that will be persisted on a chromebook at enrollment
   // to be subsequently used for recovery.
