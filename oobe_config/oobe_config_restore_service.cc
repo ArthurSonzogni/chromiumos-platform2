@@ -47,7 +47,7 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   const bool rollback_success = load_oobe_config_rollback.GetOobeConfigJson(
       &chrome_config_json, &unused_enrollment_domain);
   if (rollback_success) {
-    LOG(INFO) << "Rollback oobe config sent: " << chrome_config_json;
+    LOG(INFO) << "Rollback oobe config sent.";
   } else {
     LOG(INFO) << "No rollback oobe config found.";
   }
