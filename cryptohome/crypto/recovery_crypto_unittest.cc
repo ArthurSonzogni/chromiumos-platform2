@@ -59,7 +59,6 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
   RecoveryCrypto::RequestPayload request_payload;
   ASSERT_TRUE(recovery->GenerateRequestPayload(
       hsm_payload,
-      /*ephemeral_pub_inv_key=*/brillo::SecureBlob(),
       brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
       channel_pub_key, epoch_pub_key, &request_payload, &ephemeral_pub_key));
 
@@ -83,7 +82,7 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
 
   brillo::SecureBlob mediated_recovery_key;
   ASSERT_TRUE(recovery->RecoverDestination(dealer_pub_key, destination_share,
-                                           mediated_share,
+                                           ephemeral_pub_key, mediated_share,
                                            &mediated_recovery_key));
 
   // Checks that cryptohome encryption key generated at enrollment and the
@@ -124,6 +123,7 @@ TEST(RecoveryCryptoTest, RecoverDestination) {
 
   brillo::SecureBlob destination_dh;
   ASSERT_TRUE(recovery->RecoverDestination(publisher_pub_key, destination_share,
+                                           /*ephemeral_pub_key=*/base::nullopt,
                                            mediated_publisher_pub_key,
                                            &destination_dh));
 
@@ -175,8 +175,10 @@ TEST(RecoveryCryptoTest, RecoverDestinationFromInvalidInput) {
 
   brillo::SecureBlob destination_dh;
   EXPECT_FALSE(recovery->RecoverDestination(
-      publisher_pub_key, destination_share, scalar_blob, &destination_dh));
+      publisher_pub_key, destination_share, /*ephemeral_pub_key=*/base::nullopt,
+      scalar_blob, &destination_dh));
   EXPECT_FALSE(recovery->RecoverDestination(scalar_blob, destination_share,
+                                            /*ephemeral_pub_key=*/base::nullopt,
                                             scalar_blob, &destination_dh));
 }
 

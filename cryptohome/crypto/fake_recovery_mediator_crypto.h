@@ -95,7 +95,8 @@ class FakeRecoveryMediatorCrypto {
   // 2. Perform DH(`mediator_priv_key`, publisher_pub_key), decrypt
   // `cipher_text` from `hsm_payload` and get mediator_share and
   // dealer_pub_key
-  // 3. Construct mediated_share = G * dealer_priv_key * mediator_share
+  // 3. Construct mediated_share = G * dealer_priv_key * mediator_share +
+  // `ephemeral_pub_inv_key`.
   // 4. Serialize response payload associated_data and plain_text
   // 5. Generate encryption key as KDF(combine(epoch_pub_key,
   //                                     ECDH(epoch_priv_key, channel_pub_key)))
@@ -103,6 +104,7 @@ class FakeRecoveryMediatorCrypto {
   bool MediateHsmPayload(const brillo::SecureBlob& mediator_priv_key,
                          const brillo::SecureBlob& epoch_pub_key,
                          const brillo::SecureBlob& epoch_priv_key,
+                         const brillo::SecureBlob& ephemeral_pub_inv_key,
                          const RecoveryCrypto::HsmPayload& hsm_payload,
                          ResponsePayload* response_payload) const;
 

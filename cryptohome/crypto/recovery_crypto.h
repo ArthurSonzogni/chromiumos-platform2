@@ -84,8 +84,7 @@ class RecoveryCrypto {
   // Generates Request payload that will be sent to Recovery Mediator Service
   // during recovery process.
   // Consist of the following steps:
-  // 1. Construct associated data AD2 = {hsm_payload, `ephemeral_pub_inv_key`,
-  // `request_metadata`}.
+  // 1. Construct associated data AD2 = {hsm_payload, `request_metadata`}.
   // 2. Generate symmetric key for encrypting plain text from (G*r)*s
   // (`epoch_pub_key` * `channel_priv_key`).
   // 3. Generate ephemeral key pair {x, G*x} and calculate an inverse G*-x.
@@ -94,7 +93,6 @@ class RecoveryCrypto {
   // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
   virtual bool GenerateRequestPayload(
       const HsmPayload& hsm_payload,
-      const brillo::SecureBlob& ephemeral_pub_inv_key,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
@@ -157,11 +155,13 @@ class RecoveryCrypto {
 
   // Recovers destination. Returns false if error occurred.
   // Formula:
+  //   mediated_point = `mediated_publisher_pub_key` + `ephemeral_pub_key`
   //   destination_recovery_key = HKDF((publisher_pub_key * destination_share
-  //                                   + mediated_publisher_pub_key))
+  //                                   + mediated_point))
   virtual bool RecoverDestination(
       const brillo::SecureBlob& publisher_pub_key,
       const brillo::SecureBlob& destination_share,
+      const base::Optional<brillo::SecureBlob>& ephemeral_pub_key,
       const brillo::SecureBlob& mediated_publisher_pub_key,
       brillo::SecureBlob* destination_recovery_key) const = 0;
 

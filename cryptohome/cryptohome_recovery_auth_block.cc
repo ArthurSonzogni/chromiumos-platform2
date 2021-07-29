@@ -136,7 +136,8 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob destination_recovery_key;
   bool result = recovery->RecoverDestination(
       publisher_pub_key, plaintext_destination_share,
-      mediated_publisher_pub_key, &destination_recovery_key);
+      /*ephemeral_pub_key=*/base::nullopt, mediated_publisher_pub_key,
+      &destination_recovery_key);
   if (!result) {
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return false;

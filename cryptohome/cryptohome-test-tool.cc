@@ -170,6 +170,7 @@ bool DoRecoveryCryptoDecryptAction(
   }
   SecureBlob destination_dh;
   if (!recovery_crypto->RecoverDestination(publisher_pub_key, destination_share,
+                                           /*ephemeral_pub_key=*/base::nullopt,
                                            mediated_publisher_pub_key,
                                            &destination_dh)) {
     LOG(ERROR) << "Failed to perform destination recovery.";

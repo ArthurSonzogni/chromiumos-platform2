@@ -73,7 +73,6 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   bool GenerateRequestPayload(
       const HsmPayload& hsm_payload,
-      const brillo::SecureBlob& ephemeral_pub_inv_key,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
@@ -95,10 +94,12 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool GeneratePublisherKeys(const brillo::SecureBlob& dealer_pub_key,
                              brillo::SecureBlob* publisher_pub_key,
                              brillo::SecureBlob* publisher_dh) const override;
-  bool RecoverDestination(const brillo::SecureBlob& publisher_pub_key,
-                          const brillo::SecureBlob& destination_share,
-                          const brillo::SecureBlob& mediated_publisher_pub_key,
-                          brillo::SecureBlob* destination_dh) const override;
+  bool RecoverDestination(
+      const brillo::SecureBlob& publisher_pub_key,
+      const brillo::SecureBlob& destination_share,
+      const base::Optional<brillo::SecureBlob>& ephemeral_pub_key,
+      const brillo::SecureBlob& mediated_publisher_pub_key,
+      brillo::SecureBlob* destination_dh) const override;
   bool DecryptResponsePayload(
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
@@ -247,7 +248,6 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
 
 bool RecoveryCryptoImpl::GenerateRequestPayload(
     const HsmPayload& hsm_payload,
-    const brillo::SecureBlob& ephemeral_pub_inv_key,
     const brillo::SecureBlob& request_meta_data,
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
@@ -566,6 +566,7 @@ bool RecoveryCryptoImpl::GeneratePublisherKeys(
 bool RecoveryCryptoImpl::RecoverDestination(
     const brillo::SecureBlob& publisher_pub_key,
     const brillo::SecureBlob& destination_share,
+    const base::Optional<brillo::SecureBlob>& ephemeral_pub_key,
     const brillo::SecureBlob& mediated_publisher_pub_key,
     brillo::SecureBlob* destination_recovery_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -585,11 +586,27 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
     return false;
   }
-  crypto::ScopedEC_POINT mediated_publisher_pub_point =
+  crypto::ScopedEC_POINT mediator_dh =
       ec_.SecureBlobToPoint(mediated_publisher_pub_key, context.get());
-  if (!mediated_publisher_pub_point) {
+  if (!mediator_dh) {
     LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
     return false;
+  }
+  // TODO(b/194884283): Make ephemeral_pub_key non-optional after old protocol
+  // version is removed.
+  if (ephemeral_pub_key.has_value()) {
+    // Performs addition of mediator_dh and ephemeral_pub_key.
+    crypto::ScopedEC_POINT ephemeral_pub_point =
+        ec_.SecureBlobToPoint(ephemeral_pub_key.value(), context.get());
+    if (!ephemeral_pub_point) {
+      LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
+      return false;
+    }
+    mediator_dh = ec_.Add(*mediator_dh, *ephemeral_pub_point, context.get());
+    if (!mediator_dh) {
+      LOG(ERROR) << "Failed to add mediator_dh and ephemeral_pub_point";
+      return false;
+    }
   }
   // Performs scalar multiplication of publisher_pub_key and destination_share.
   crypto::ScopedEC_POINT point_dh =
@@ -599,7 +616,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
     return false;
   }
   crypto::ScopedEC_POINT point_dest =
-      ec_.Add(*point_dh, *mediated_publisher_pub_point, context.get());
+      ec_.Add(*point_dh, *mediator_dh, context.get());
   if (!point_dest) {
     LOG(ERROR) << "Failed to perform point addition";
     return false;
