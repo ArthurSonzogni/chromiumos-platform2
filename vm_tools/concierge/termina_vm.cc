@@ -259,6 +259,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   for (const std::string& p : features_.kernel_params)
     vm_builder.AppendKernelParam(p);
 
+  // Switch off kmsg throttling so we can log all relevant startup messages
+  vm_builder.AppendKernelParam("printk.devkmsg=on");
+
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
   // cpu cgroup for Termina crosvm processes.
