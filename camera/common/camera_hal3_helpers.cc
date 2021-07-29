@@ -59,7 +59,7 @@ Camera3CaptureDescriptor& Camera3CaptureDescriptor::operator=(
     type_ = other.type_;
     frame_number_ = other.frame_number_;
     if (!other.metadata_.isEmpty()) {
-      metadata_ = other.metadata_.release();
+      metadata_.acquire(other.metadata_.release());
     }
     input_buffer_ = std::move(other.input_buffer_);
     output_buffers_ = std::move(other.output_buffers_);
@@ -163,7 +163,7 @@ bool Camera3CaptureDescriptor::SetMetadata(const camera_metadata_t* metadata) {
     LOGF(ERROR) << "The input metadata is empty";
     return false;
   }
-  metadata_ = clone_camera_metadata(metadata);
+  metadata_.acquire(clone_camera_metadata(metadata));
   return !metadata_.isEmpty();
 }
 
