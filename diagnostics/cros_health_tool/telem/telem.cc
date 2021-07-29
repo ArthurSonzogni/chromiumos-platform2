@@ -769,25 +769,27 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
         "bus_info", base::Value{base::Value::Type::DICTIONARY});
     switch (device->bus_info->which()) {
       case BusInfo::Tag::PCI_BUS_INFO: {
+        auto* out_pci_info = out_bus_info->SetKey(
+            "pci_bus_info", base::Value{base::Value::Type::DICTIONARY});
         const auto& pci_info = device->bus_info->get_pci_bus_info();
-        SetJsonDictValue("type", "pci", out_bus_info);
-        SET_DICT(class_id, pci_info, out_bus_info);
-        SET_DICT(subclass_id, pci_info, out_bus_info);
-        SET_DICT(prog_if_id, pci_info, out_bus_info);
-        SET_DICT(vendor_id, pci_info, out_bus_info);
-        SET_DICT(device_id, pci_info, out_bus_info);
-        SET_DICT(driver, pci_info, out_bus_info);
+        SET_DICT(class_id, pci_info, out_pci_info);
+        SET_DICT(subclass_id, pci_info, out_pci_info);
+        SET_DICT(prog_if_id, pci_info, out_pci_info);
+        SET_DICT(vendor_id, pci_info, out_pci_info);
+        SET_DICT(device_id, pci_info, out_pci_info);
+        SET_DICT(driver, pci_info, out_pci_info);
         break;
       }
       case BusInfo::Tag::USB_BUS_INFO: {
         const auto& usb_info = device->bus_info->get_usb_bus_info();
-        SetJsonDictValue("type", "usb", out_bus_info);
-        SET_DICT(class_id, usb_info, out_bus_info);
-        SET_DICT(subclass_id, usb_info, out_bus_info);
-        SET_DICT(protocol_id, usb_info, out_bus_info);
-        SET_DICT(vendor_id, usb_info, out_bus_info);
-        SET_DICT(product_id, usb_info, out_bus_info);
-        auto* out_usb_ifs = out_bus_info->SetKey(
+        auto* out_usb_info = out_bus_info->SetKey(
+            "usb_bus_info", base::Value{base::Value::Type::DICTIONARY});
+        SET_DICT(class_id, usb_info, out_usb_info);
+        SET_DICT(subclass_id, usb_info, out_usb_info);
+        SET_DICT(protocol_id, usb_info, out_usb_info);
+        SET_DICT(vendor_id, usb_info, out_usb_info);
+        SET_DICT(product_id, usb_info, out_usb_info);
+        auto* out_usb_ifs = out_usb_info->SetKey(
             "interfaces", base::Value{base::Value::Type::LIST});
         for (const auto& usb_if_info : usb_info->interfaces) {
           base::Value out_usb_if{base::Value::Type::DICTIONARY};
