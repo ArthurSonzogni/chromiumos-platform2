@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -155,6 +156,17 @@ class TpmManagerService : public TpmNvramInterface,
   }
 
   void MarkTpmStatusCacheDirty();
+
+#if USE_TPM2
+  // Testing can inject a |TrunksFactory| before calling |Initialize|.
+  void SetTrunksFactoryForTesting(
+      std::unique_ptr<trunks::TrunksFactory> trunks_factory) {
+    // Only allows injection before initialization, otherwise resetting old
+    // |trunks_factory_| will make its references become dangling pointers.
+    CHECK(!tpm_status_ && !tpm_initializer_ && !tpm_nvram_);
+    trunks_factory_ = std::move(trunks_factory);
+  }
+#endif
 
  private:
   // A relay callback which allows the use of weak pointer semantics for a reply
@@ -364,7 +376,7 @@ class TpmManagerService : public TpmNvramInterface,
   };
 
 #if USE_TPM2
-  std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
+  std::unique_ptr<trunks::TrunksFactory> trunks_factory_;
 #endif
 
   std::unique_ptr<TpmStatus> default_tpm_status_;
