@@ -14,14 +14,21 @@ namespace cups_proxy {
 
 namespace {
 
+#if MHD_VERSION >= 0x00097002
+// libmicrohttpd 0.9.71 broke API
+#define MHD_RESULT enum MHD_Result
+#else
+#define MHD_RESULT int
+#endif
+
 // Adds a HTTP header to the MHDHttpRequest.
 //
 // This is called for each header of the request.
 // |cls| is the MHDHttpRequest argument passed from MHD_get_connection_values.
-int AddHeader(void* cls,
-              enum MHD_ValueKind kind,
-              const char* key,
-              const char* value) {
+MHD_RESULT AddHeader(void* cls,
+                     enum MHD_ValueKind kind,
+                     const char* key,
+                     const char* value) {
   DCHECK(kind == MHD_HEADER_KIND);
   auto* request = static_cast<MHDHttpRequest*>(cls);
   request->AddHeader(key, value);
@@ -39,14 +46,14 @@ int AddHeader(void* cls,
 // multiple times (with data in |upload_data| and a non-zero
 // |*upload_data_size|).
 // A final call with |*upload_data_size| zero indicates the end of the request.
-int AccessHandler(void* cls,
-                  struct MHD_Connection* connection,
-                  const char* url,
-                  const char* method,
-                  const char* version,
-                  const char* upload_data,
-                  size_t* upload_data_size,
-                  void** con_cls) {
+MHD_RESULT AccessHandler(void* cls,
+                         struct MHD_Connection* connection,
+                         const char* url,
+                         const char* method,
+                         const char* version,
+                         const char* upload_data,
+                         size_t* upload_data_size,
+                         void** con_cls) {
   auto* request = static_cast<MHDHttpRequest*>(*con_cls);
   if (request == nullptr) {
     request = new MHDHttpRequest();
@@ -73,14 +80,14 @@ int AccessHandler(void* cls,
   }
 
   for (auto& header : response.headers) {
-    int ret = MHD_add_response_header(mhd_resp.get(), header->key.c_str(),
-                                      header->value.c_str());
+    MHD_RESULT ret = MHD_add_response_header(
+        mhd_resp.get(), header->key.c_str(), header->value.c_str());
     if (ret != MHD_YES) {
       return ret;
     }
   }
 
-  int ret =
+  MHD_RESULT ret =
       MHD_queue_response(connection, response.http_status_code, mhd_resp.get());
   return ret;
 }
