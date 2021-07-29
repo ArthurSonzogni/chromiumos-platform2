@@ -48,6 +48,7 @@ static_library("libcrash") {
   sources = [
     "paths.cc",
     "util.cc",
+    "vm_support.cc",
   ]
   all_dependent_configs = [ ":libcrash_config" ]
   defines = [ "USE_DIRENCRYPTION=${use.direncryption}" ]
@@ -87,7 +88,6 @@ static_library("libcrash_reporter") {
     "user_collector.cc",
     "user_collector_base.cc",
     "vm_collector.cc",
-    "vm_support.cc",
   ]
   all_dependent_configs = [ ":libcrash_reporter_config" ]
   defines = [
