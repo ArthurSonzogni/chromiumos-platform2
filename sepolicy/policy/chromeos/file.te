@@ -421,13 +421,14 @@ type cros_var_tmp, file_type, cros_file_type, cros_var_file_type;
 type arc_dir, file_type, cros_file_type, cros_run_file_type; # compatible to pre-work label names for /run/chrome.
 type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type cras_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
+type cros_ephemeral_mount, file_type, cros_file_type, cros_run_file_type;
 type cros_run, file_type, cros_file_type, cros_run_file_type;
+type cros_run_arcvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_avahi_daemon, file_type, cros_file_type, cros_run_file_type;
 type cros_run_camera_tokens, file_type, cros_file_type, cros_run_file_type;
 type cros_run_containers, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;
 type cros_run_cryptohome, file_type, cros_file_type, cros_run_file_type;
-type cros_ephemeral_mount, file_type, cros_file_type, cros_run_file_type;
 type cros_run_daemon_store, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dbus, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dhcpcd, file_type, cros_file_type, cros_run_file_type;
@@ -438,6 +439,9 @@ type cros_run_lock, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock_power_override, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lockbox, file_type, cros_file_type, cros_run_file_type;
 type cros_run_log, file_type, cros_file_type, cros_run_file_type;
+type cros_run_namespaces, file_type, cros_file_type, cros_run_file_type;
+type cros_run_namespaces_mnt_chrome, file_type, cros_file_type, cros_run_file_type;
+type cros_run_namespaces_mnt_concierge, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics_external, file_type, cros_file_type, cros_run_file_type;
 type cros_run_metrics_external_crash, file_type, cros_file_type, cros_run_file_type;
@@ -445,6 +449,7 @@ type cros_run_mount_encrypted, file_type, cros_file_type, cros_run_file_type;
 type cros_run_perfetto, file_type, cros_file_type, cros_run_file_type;
 type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_pvm, file_type, cros_file_type, cros_run_file_type;
+type cros_run_rsyslogd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_seneschal, file_type, cros_file_type, cros_run_file_type;
 type cros_run_session_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_shill, file_type, cros_file_type, cros_run_file_type;
@@ -456,11 +461,6 @@ type cros_run_vm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_vm_cicerone, file_type, cros_file_type, cros_run_file_type;
 type cros_run_vm_cicerone_client, file_type, cros_file_type, cros_run_file_type;
 type cros_run_wireguard, file_type, cros_file_type, cros_run_file_type;
-type cros_run_arcvm, file_type, cros_file_type, cros_run_file_type;
-type cros_run_rsyslogd, file_type, cros_file_type, cros_run_file_type;
-type cros_run_namespaces, file_type, cros_file_type, cros_run_file_type;
-type cros_run_namespaces_mnt_chrome, file_type, cros_file_type, cros_run_file_type;
-type cros_run_namespaces_mnt_concierge, file_type, cros_file_type, cros_run_file_type;
 
 type cros_avahi_socket, file_type, cros_file_type, cros_run_file_type;
 
