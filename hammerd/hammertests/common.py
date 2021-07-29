@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+import atexit
 import os
 import time
 import subprocess
@@ -21,6 +22,8 @@ def cros_config(path, key):
 # The root path of the hammertests.
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 IMAGE_DIR = os.path.join(ROOT_DIR, 'images')
+
+UDEV_RULES_PATH = '/lib/udev/rules.d/99-hammerd.rules'
 
 BASE_TABLE = {
     'coachz': 'zed',
@@ -149,15 +152,17 @@ def sim_disconnect_connect(updater):
 
 def disable_hammerd():
   print('Disabling hammerd')
-  subprocess.call('mount --bind /dev/null /lib/udev/rules.d/99-hammerd.rules',
-                  shell=True)
-  subprocess.call('initctl restart udev', shell=True)
+  if os.path.ismount(UDEV_RULES_PATH):
+    return
+  subprocess.call(['mount', '--bind', '/dev/null', UDEV_RULES_PATH])
+  subprocess.call(['initctl', 'restart', 'udev'])
+  atexit.register(enable_hammerd)
 
 
 def enable_hammerd():
   print('Enabling hammerd')
-  subprocess.call('umount /lib/udev/rules.d/99-hammerd.rules', shell=True)
-  subprocess.call('initctl restart udev', shell=True)
+  subprocess.call(['umount', UDEV_RULES_PATH])
+  subprocess.call(['initctl', 'restart', 'udev'])
 
 
 def reset_stay_ro(updater):

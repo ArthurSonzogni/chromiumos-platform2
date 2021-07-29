@@ -155,19 +155,6 @@ You should also see the following control files
 
 3.  hammertests_control_tp.py
 
-
-Disable verified boot on DUT so that hammerd does not make it’s own decisions.
-The tests disable hammerd but it will be enabled on reboot. We need it to be
-disabled persistently by renaming the ‘hammerd’ file to ‘hammerd.out’ so that
-it doesn’t execute.
-Run the following commands on the DUT console:
-
-    /usr/share/vboot/bin/make_dev_ssd.sh --remove_rootfs_verification --force
-
-**Reboot** the DUT then rename hammerd
-
-    mv /usr/bin/hammerd /usr/bin/hammerd.out
-
 # TEST EXECUTION
 
 To run the tests, simply run each of the **control files** in the DUT from the
