@@ -1113,7 +1113,7 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
   // The device name for /vendor has to match what arc_vm_client_adapter.cc
   // configures.
   constexpr const char kFirstStageFstabTemplate[] =
-      "/dev/block/vdb /vendor squashfs ro,noatime,nosuid,nodev "
+      "/dev/block/vdb /vendor squashfs ro,noatime,nodev "
       "wait,check,formattable,reservedsize=128M\n"
       "#dt-vendor build.prop %s default default\n";
   return WriteToFile(
