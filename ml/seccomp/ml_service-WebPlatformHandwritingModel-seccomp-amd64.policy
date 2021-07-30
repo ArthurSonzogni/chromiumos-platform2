@@ -17,6 +17,7 @@ exit_group: 1
 fcntl: 1
 flock: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getegid: 1
 geteuid: 1
@@ -40,4 +41,3 @@ sched_getaffinity: 1
 sendto: 1
 socket: arg0 == AF_UNIX
 write: 1
-fstatfs: 1

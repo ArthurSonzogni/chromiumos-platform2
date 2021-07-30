@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 # This file lists out the seccomp policy for allowed syscalls on ml_service.
-ARM_set_tls: 1
 _llseek: 1
 access: 1
+ARM_set_tls: 1
 brk: 1
 clock_getres: 1
 clock_getres_time64: 1
@@ -24,6 +24,7 @@ exit_group: 1
 fcntl64: 1
 flock: 1
 fstat64: 1
+fstatfs64: 1
 futex: 1
 futex_time64: 1
 getdents64: 1
@@ -78,4 +79,3 @@ uname: 1
 unshare: 1
 wait4: 1
 write: 1
-fstatfs64: 1

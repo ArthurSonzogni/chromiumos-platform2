@@ -17,6 +17,7 @@ exit_group: 1
 fcntl: 1
 flock: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getdents64: 1
 getegid: 1
@@ -60,4 +61,3 @@ socket: arg0 == AF_UNIX
 sysinfo: 1
 tgkill: 1
 write: 1
-fstatfs: 1
