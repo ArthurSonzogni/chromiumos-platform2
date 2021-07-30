@@ -17,8 +17,8 @@ from __future__ import print_function
 
 import argparse
 import shlex
-import sys
 import subprocess
+import sys
 
 
 def get_parser():

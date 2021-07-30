@@ -19,8 +19,8 @@ from __future__ import print_function
 
 import json
 import shlex
-import sys
 import subprocess
+import sys
 
 
 def get_shell_output(cmd):
