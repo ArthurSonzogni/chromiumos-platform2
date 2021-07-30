@@ -65,6 +65,8 @@ class FuzzChannel : public WaylandChannel {
     receive.data_size = bytes;
     receive.num_fds = 0;
 
+    event_type = WaylandChannelEvent::Receive;
+
     return 0;
   }
 
