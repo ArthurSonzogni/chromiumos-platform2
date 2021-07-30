@@ -353,6 +353,22 @@ TEST_F(ManagerTest, StartScanPng16BitColorSuccess) {
   CompareImages("./test_images/color16.png", output_path_.value());
 }
 
+TEST_F(ManagerTest, StartScanJpegBlackAndWhiteSuccess) {
+  ScanParameters parameters;
+  parameters.format = kGrayscale;
+  parameters.bytes_per_line = 11;
+  parameters.pixels_per_line = 85;
+  parameters.lines = 29;
+  parameters.depth = 1;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/bw.pnm")},
+                  parameters);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanSuccess(kOtherBackend);
+  RunScanSuccess("TestDevice", MODE_LINEART, IMAGE_FORMAT_JPEG);
+  CompareImages("./test_images/bw.jpeg", output_path_.value());
+}
+
 TEST_F(ManagerTest, StartScanJpegGrayscaleSuccess) {
   ScanParameters parameters;
   parameters.format = kGrayscale;

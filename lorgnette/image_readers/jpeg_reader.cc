@@ -5,7 +5,9 @@
 #include "lorgnette/image_readers/jpeg_reader.h"
 
 #include <utility>
+#include <vector>
 
+#include <base/notreached.h>
 #include <dbus/lorgnette/dbus-constants.h>
 
 #include "lorgnette/constants.h"
@@ -38,7 +40,23 @@ JpegReader::~JpegReader() {
 bool JpegReader::ReadRow(brillo::ErrorPtr* error, uint8_t* data) {
   DCHECK(valid_);
 
-  JSAMPROW row_pointer[1] = {data};
+  JSAMPROW row_pointer[1];
+  std::vector<uint8_t> expanded;
+  switch (params_.depth) {
+    case 1:
+      // Expand each bit of `data` to a byte, which is what libjpeg expects.
+      for (int i = 0; i < params_.pixels_per_line; i++) {
+        expanded.push_back((data[i / 8] >> (7 - (i % 8))) & 0x01 ? 0x00 : 0xFF);
+      }
+      row_pointer[0] = expanded.data();
+      break;
+    case 8:
+      row_pointer[0] = data;
+      break;
+    default:
+      NOTREACHED();
+  }
+
   jpeg_write_scanlines(&cinfo_, row_pointer, 1);
 
   return true;
@@ -64,7 +82,7 @@ bool JpegReader::ValidateParams(brillo::ErrorPtr* error) {
     return false;
   }
 
-  if (params_.depth != 8) {
+  if (params_.depth != 1 && params_.depth != 8) {
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                kManagerServiceError,
                                "Invalid JPEG scan bit depth %d", params_.depth);
