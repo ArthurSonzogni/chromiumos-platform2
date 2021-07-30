@@ -180,6 +180,7 @@ const char kEapCaCertIdProperty[] = "EAP.CACertID";
 const char kEapCaCertPemProperty[] = "EAP.CACertPEM";
 const char kEapCaCertProperty[] = "EAP.CACert";
 const char kEapCertIdProperty[] = "EAP.CertID";
+const char kEapDomainSuffixMatchProperty[] = "EAP.DomainSuffixMatch";
 const char kEapIdentityProperty[] = "EAP.Identity";
 const char kEapKeyIdProperty[] = "EAP.KeyID";
 const char kEapKeyMgmtProperty[] = "EAP.KeyMgmt";

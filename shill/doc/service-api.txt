@@ -654,6 +654,18 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			server certificate is only accepted if it contains one
 			of these alternative subject names.
 
+		array{string} EAP.DomainSuffixMatch [readonly]
+
+			(WiFi only) A list of constraints for the server domain name. If
+			set, the entries will be used as suffix match requirements against
+			the dNSName element(s) of the alternative subject name of an
+			authentication server certificate. When multiple match strings are
+			specified, a match with any one of the values is considered a
+			sufficient match for the certificate.
+			For more information about specifying DomainSuffixMatch please
+			refer to:
+			https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf
+
 		string Error [readonly]
 
 			The service error status details.
