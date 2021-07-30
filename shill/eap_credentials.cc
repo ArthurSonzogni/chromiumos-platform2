@@ -100,6 +100,7 @@ const char EapCredentials::kStorageEapUseLoginPassword[] =
     "EAP.UseLoginPassword";
 constexpr char kStorageEapSubjectAlternativeNameMatch[] =
     "EAP.SubjectAlternativeNameMatch";
+constexpr char kStorageEapDomainSuffixMatch[] = "EAP.DomainSuffixMatch";
 
 EapCredentials::EapCredentials()
     : use_system_cas_(true),
@@ -148,6 +149,13 @@ void EapCredentials::PopulateSupplicantProperties(
     propertyvals.push_back(
         KeyVal(WPASupplicant::kNetworkPropertyEapSubjectAlternativeNameMatch,
                altsubject_match.value().c_str()));
+  }
+  base::Optional<std::string> domain_suffix_match =
+      TranslateDomainSuffixMatch(domain_suffix_match_list_);
+  if (domain_suffix_match.has_value()) {
+    propertyvals.push_back(
+        KeyVal(WPASupplicant::kNetworkPropertyEapDomainSuffixMatch,
+               domain_suffix_match.value().c_str()));
   }
   if (use_system_cas_) {
     propertyvals.push_back(
@@ -242,6 +250,8 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
   store->RegisterString(kEapSubjectMatchProperty, &subject_match_);
   store->RegisterStrings(kEapSubjectAlternativeNameMatchProperty,
                          &subject_alternative_name_match_list_);
+  store->RegisterStrings(kEapDomainSuffixMatchProperty,
+                         &domain_suffix_match_list_);
   store->RegisterBool(kEapUseProactiveKeyCachingProperty,
                       &use_proactive_key_caching_);
   store->RegisterBool(kEapUseSystemCasProperty, &use_system_cas_);
@@ -331,6 +341,8 @@ void EapCredentials::Load(const StoreInterface* storage,
   storage->GetString(id, kStorageEapSubjectMatch, &subject_match_);
   storage->GetStringList(id, kStorageEapSubjectAlternativeNameMatch,
                          &subject_alternative_name_match_list_);
+  storage->GetStringList(id, kStorageEapDomainSuffixMatch,
+                         &domain_suffix_match_list_);
   storage->GetBool(id, kStorageEapUseProactiveKeyCaching,
                    &use_proactive_key_caching_);
   storage->GetBool(id, kStorageEapUseSystemCAs, &use_system_cas_);
@@ -408,6 +420,8 @@ void EapCredentials::Save(StoreInterface* storage,
                              subject_match_);
   storage->SetStringList(id, kStorageEapSubjectAlternativeNameMatch,
                          subject_alternative_name_match_list_);
+  storage->SetStringList(id, kStorageEapDomainSuffixMatch,
+                         domain_suffix_match_list_);
   storage->SetBool(id, kStorageEapUseProactiveKeyCaching,
                    use_proactive_key_caching_);
   storage->SetBool(id, kStorageEapUseSystemCAs, use_system_cas_);
@@ -427,6 +441,7 @@ void EapCredentials::Reset() {
   // Non-authentication properties.
   ca_cert_id_ = "";
   ca_cert_pem_.clear();
+  domain_suffix_match_list_.clear();
   eap_ = "";
   inner_eap_ = "";
   subject_match_ = "";
@@ -500,6 +515,62 @@ bool EapCredentials::ValidSubjectAlternativeNameMatchType(
   return type == kEapSubjectAlternativeNameMatchTypeEmail ||
          type == kEapSubjectAlternativeNameMatchTypeDNS ||
          type == kEapSubjectAlternativeNameMatchTypeURI;
+}
+
+// static
+bool EapCredentials::ValidDomainSuffixMatch(
+    const std::string& domain_suffix_match) {
+  if (domain_suffix_match.empty() || domain_suffix_match.size() > 255)
+    return false;
+
+  std::vector<base::StringPiece> labels = base::SplitStringPiece(
+      domain_suffix_match, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  DCHECK(!labels.empty());
+
+  for (const base::StringPiece& label : labels) {
+    if (label.size() == 0 || label.size() > 63)
+      return false;
+    // Labels can't start and end with hyphens.
+    if (label.front() == '-' || label.back() == '-')
+      return false;
+
+    for (auto it = label.begin(); it != label.end(); ++it) {
+      // The top level domain must contain only letters.
+      if (label == labels.back()) {
+        if (!base::IsAsciiAlpha(*it))
+          return false;
+      } else {
+        if (!base::IsAsciiAlpha(*it) && !base::IsAsciiDigit(*it) &&
+            (*it) != '-') {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+// static
+base::Optional<std::string> EapCredentials::TranslateDomainSuffixMatch(
+    const std::vector<std::string>& domain_suffix_match_list) {
+  if (domain_suffix_match_list.empty())
+    return base::nullopt;
+  std::vector<std::string> filtered_domains;
+  for (const std::string& domain : domain_suffix_match_list) {
+    if (ValidDomainSuffixMatch(domain)) {
+      filtered_domains.push_back(domain);
+    } else {
+      LOG(ERROR)
+          << "Ignoring invalid domain name in EAP.DomainSuffixMatch list: "
+          << domain;
+    }
+  }
+  if (filtered_domains.empty())
+    return base::nullopt;
+
+  return base::JoinString(filtered_domains, ";");
 }
 
 // static

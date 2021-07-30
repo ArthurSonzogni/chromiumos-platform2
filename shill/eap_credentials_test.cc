@@ -74,6 +74,9 @@ class EapCredentialsTest : public testing::Test {
       std::vector<std::string> altsubject_match_list) {
     eap_.subject_alternative_name_match_list_ = altsubject_match_list;
   }
+  void SetDomainSuffixMatch(std::vector<std::string> domain_suffix_match_list) {
+    eap_.domain_suffix_match_list_ = domain_suffix_match_list;
+  }
   void SetUseSystemCAs(bool use_system_cas) {
     eap_.use_system_cas_ = use_system_cas;
   }
@@ -88,6 +91,7 @@ class EapCredentialsTest : public testing::Test {
            eap_.eap_.empty() && eap_.inner_eap_.empty() &&
            eap_.tls_version_max_.empty() && eap_.subject_match_.empty() &&
            eap_.subject_alternative_name_match_list_.empty() &&
+           eap_.domain_suffix_match_list_.empty() &&
            eap_.use_system_cas_ == true &&
            eap_.use_proactive_key_caching_ == false &&
            eap_.use_login_password_ == false;
@@ -327,6 +331,46 @@ TEST_F(EapCredentialsTest, PopulateSupplicantProperties) {
   EXPECT_EQ(std::string::npos, phase1.find("disable_tlsv1_0=1"));
   EXPECT_NE(std::string::npos, phase1.find("disable_tlsv1_1=1"));
   EXPECT_NE(std::string::npos, phase1.find("disable_tlsv1_2=1"));
+
+  SetDomainSuffixMatch({"domain1.com", "domain2.com"});
+  PopulateSupplicantProperties();
+  std::string domain_suffix_match_list = params_.Get<std::string>(
+      WPASupplicant::kNetworkPropertyEapDomainSuffixMatch);
+  EXPECT_EQ("domain1.com;domain2.com", domain_suffix_match_list);
+}
+
+// Test that invalid domains in EAP.DomainSuffixMatch are filtered out.
+TEST_F(EapCredentialsTest, DomainSuffixMatch) {
+  SetDomainSuffixMatch(
+      {"domain1.com", "domain2-.com", "domain3", "domain4.com"});
+  PopulateSupplicantProperties();
+  std::string domain_suffix_match_list = params_.Get<std::string>(
+      WPASupplicant::kNetworkPropertyEapDomainSuffixMatch);
+  EXPECT_EQ("domain1.com;domain4.com", domain_suffix_match_list);
+}
+
+TEST_F(EapCredentialsTest, ValidDomainSuffixMatch) {
+  EXPECT_TRUE(EapCredentials::ValidDomainSuffixMatch("com"));
+  EXPECT_TRUE(EapCredentials::ValidDomainSuffixMatch("example.com"));
+  EXPECT_TRUE(EapCredentials::ValidDomainSuffixMatch("a.b.c.example.com"));
+  EXPECT_TRUE(EapCredentials::ValidDomainSuffixMatch("sub-domain.example.com"));
+  EXPECT_TRUE(
+      EapCredentials::ValidDomainSuffixMatch("1subdomain2.examp7e.com"));
+  // False because length = 0.
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch(""));
+  // False because starts with hyphen.
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch("-example.com"));
+  // False because ends with hyphen.
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch("example-.com"));
+  // False because unsupported character.
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch("exam;ple.com"));
+  // False because of numerical character in top level domain.
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch("example.com2"));
+  // Invalid because label size > 63 characters.
+  const std::string invalid_label(64, 'a');
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch(invalid_label + ".com"));
+  // Invalid because label size is 0.
+  EXPECT_FALSE(EapCredentials::ValidDomainSuffixMatch("..com2"));
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNoSystemCAs) {
@@ -482,6 +526,7 @@ TEST_F(EapCredentialsTest, Reset) {
   SetUseProactiveKeyCaching(true);
   SetUseLoginPassword(false);
   SetSubjectAlternativeNameMatch(std::vector<std::string>{"foo"});
+  SetDomainSuffixMatch(std::vector<std::string>{"foo"});
   eap_.SetKeyManagement("foo", nullptr);
   EXPECT_FALSE(IsReset());
   EXPECT_FALSE(GetKeyManagement().empty());

@@ -84,6 +84,26 @@ class EapCredentials {
   // supported by wpa_supplicant.
   static bool ValidSubjectAlternativeNameMatchType(const std::string& type);
 
+  // Returns true if `domain_suffix_match` is a valid FQDN. A FQDN is composed
+  // of labels separated by dots (.), with the following restrictions (according
+  // to rfc1034#section-3.5, rfc2181#section-11, rfc1123#section-2):
+  // - (rfc1034+rfc1123) Labels must start with a letter or digit.
+  // - (rfc1034) Labels must end with a letter or digit
+  // - (rfc1034) Labels must have as interior characters only letters, digits,
+  // and hyphen (-).
+  // - (rfc1034) Labels must be 63 characters or less.
+  // - (rfc2181) The full domain name is limited to 255 octets.
+  // - (rfc1123) The highest-level component (i.e. the top level domain) label
+  // will be alphabetic.
+  static bool ValidDomainSuffixMatch(const std::string& domain_suffix_match);
+
+  // Returns the domain suffix match list in the format used by
+  // wpa_supplicant by translating |domain_suffix_match_list| and filtering out
+  // entries that are not valid domain names according to
+  // `ValidDomainSuffixMatch`.
+  static base::Optional<std::string> TranslateDomainSuffixMatch(
+      const std::vector<std::string>& domain_suffix_match_list);
+
   // Returns subject alternative name match in the format used by
   // wpa_supplicant by translating |subject_alternative_name_match_list|.
   static base::Optional<std::string> TranslateSubjectAlternativeNameMatch(
@@ -187,7 +207,17 @@ class EapCredentials {
   std::string tls_version_max_;
   // If non-empty, string to match remote subject against before connecting.
   std::string subject_match_;
+  // A list of serialized subject alternative names (SANs) to be matched against
+  // the alternative subject name of the authentication server certificate. When
+  // multiple match strings are specified, a match with any one of the values is
+  // considered a sufficient match for the server certificate.
   std::vector<std::string> subject_alternative_name_match_list_;
+  //  A list of constraints for the server domain name. If set, the entries will
+  //  be used as suffix match requirements against the dNSName element(s) of the
+  //  alternative subject name of an authentication server. When multiple match
+  //  strings are specified, a match with any one of the values is considered a
+  //  sufficient match for the server certificate.
+  std::vector<std::string> domain_suffix_match_list_;
   // If true, use the system-wide CA database to authenticate the remote.
   bool use_system_cas_;
   // If true, use per network proactive key caching.

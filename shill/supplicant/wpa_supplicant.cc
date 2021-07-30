@@ -131,6 +131,8 @@ const char WPASupplicant::kNetworkPropertyEapPin[] = "pin";
 const char WPASupplicant::kNetworkPropertyEapSubjectMatch[] = "subject_match";
 const char WPASupplicant::kNetworkPropertyEapSubjectAlternativeNameMatch[] =
     "altsubject_match";
+const char WPASupplicant::kNetworkPropertyEapDomainSuffixMatch[] =
+    "domain_suffix_match";
 const char WPASupplicant::kNetworkPropertyEapolFlags[] = "eapol_flags";
 const char WPASupplicant::kNetworkPropertyEngine[] = "engine";
 const char WPASupplicant::kNetworkPropertyEngineId[] = "engine_id";
