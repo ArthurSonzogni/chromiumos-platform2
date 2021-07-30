@@ -35,9 +35,8 @@ kill: arg1 == SIGKILL
 lseek: 1
 madvise: 1
 memfd_create: 1
-# arg2 must exclude PROT_WRITE ('in 0xfffffffd') or PROT_EXEC ('in 0xfffffffb'):
-mmap: arg2 in 0xfffffffd || arg2 in 0xfffffffb
-mprotect: arg2 in 0xfffffffd || arg2 in 0xfffffffb
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
 newfstatat: 1
