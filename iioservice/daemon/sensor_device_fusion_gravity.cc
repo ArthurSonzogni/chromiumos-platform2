@@ -16,6 +16,7 @@
 namespace iioservice {
 
 // static
+constexpr char SensorDeviceFusionGravity::kName[];
 constexpr double SensorDeviceFusionGravity::kAccelMinFrequency;
 constexpr double SensorDeviceFusionGravity::kGyroMinFrequency;
 
@@ -135,7 +136,7 @@ SensorDeviceFusionGravity::SensorDeviceFusionGravity(
       cros::mojom::kSamplingFrequencyAvailable,
       GetSamplingFrequencyAvailable(kAccelMinFrequency, max_frequency));
   // Reuse "gravity" as the device name.
-  accel_->SetAttribute(cros::mojom::kDeviceName, cros::mojom::kGravityChannel);
+  accel_->SetAttribute(cros::mojom::kDeviceName, kName);
   accel_->GetAttributes(
       {cros::mojom::kScale},
       base::BindOnce(&SensorDeviceFusionGravity::GetScaleCallback,

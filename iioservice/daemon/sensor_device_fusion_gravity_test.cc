@@ -132,7 +132,7 @@ TEST_F(SensorDeviceFusionGravityTest, GetAttributes) {
                           SensorDeviceFusionGravity::kAccelMinFrequency,
                           kMaxFrequency));
             EXPECT_TRUE(values[2].has_value());
-            EXPECT_EQ(values[2].value(), cros::mojom::kGravityChannel);
+            EXPECT_EQ(values[2].value(), SensorDeviceFusionGravity::kName);
             closure.Run();
           },
           loop.QuitClosure()));

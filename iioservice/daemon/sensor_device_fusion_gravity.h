@@ -20,6 +20,7 @@ namespace iioservice {
 
 class SensorDeviceFusionGravity final : public SensorDeviceFusion {
  public:
+  static constexpr char kName[] = "iioservice-gravity";
   static constexpr double kAccelMinFrequency = 20.0;
   static constexpr double kGyroMinFrequency = 20.0;
 
