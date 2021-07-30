@@ -748,20 +748,6 @@ VirtualMachine::CancelImportLxdContainer(
 }
 
 namespace {
-UpgradeContainerRequest::Version VersionFromOsRelease(
-    const OsRelease* os_release) {
-  if (os_release->id() != "debian") {
-    return UpgradeContainerRequest::UNKNOWN;
-  }
-  if (os_release->version_id() == "9") {
-    return UpgradeContainerRequest::DEBIAN_STRETCH;
-  }
-  if (os_release->version_id() == "10") {
-    return UpgradeContainerRequest::DEBIAN_BUSTER;
-  }
-  return UpgradeContainerRequest::UNKNOWN;
-}
-
 vm_tools::tremplin::UpgradeContainerRequest::Version ConvertVersion(
     UpgradeContainerRequest::Version version) {
   switch (version) {
@@ -771,6 +757,8 @@ vm_tools::tremplin::UpgradeContainerRequest::Version ConvertVersion(
       return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_STRETCH;
     case UpgradeContainerRequest::DEBIAN_BUSTER:
       return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_BUSTER;
+    case UpgradeContainerRequest::DEBIAN_BULLSEYE:
+      return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_BULLSEYE;
     default:
       return vm_tools::tremplin::UpgradeContainerRequest::UNKNOWN;
   }
@@ -779,31 +767,15 @@ vm_tools::tremplin::UpgradeContainerRequest::Version ConvertVersion(
 
 VirtualMachine::UpgradeContainerStatus VirtualMachine::UpgradeContainer(
     const Container* container,
-    const UpgradeContainerRequest::Version& source_version,
     const UpgradeContainerRequest::Version& target_version,
     std::string* out_error) {
   DCHECK(container);
   DCHECK(out_error);
-  const OsRelease* os_release = GetOsReleaseForContainer(container->name());
-  if (!os_release) {
-    out_error->assign("No OsRelease data found for container. Can't upgrade.");
-    LOG(ERROR) << *out_error;
-    return VirtualMachine::UpgradeContainerStatus::FAILED;
-  }
-  auto current_version = VersionFromOsRelease(os_release);
-  if (current_version == UpgradeContainerRequest::UNKNOWN) {
-    LOG(ERROR) << "Unknown OsRelease. Can't upgrade.";
-    return VirtualMachine::UpgradeContainerStatus::NOT_SUPPORTED;
-  }
-  if (current_version == target_version) {
-    return VirtualMachine::UpgradeContainerStatus::ALREADY_UPGRADED;
-  }
 
   vm_tools::tremplin::UpgradeContainerRequest request;
   vm_tools::tremplin::UpgradeContainerResponse response;
 
   request.set_container_name(container->name());
-  request.set_source_version(ConvertVersion(source_version));
   request.set_target_version(ConvertVersion(target_version));
 
   grpc::ClientContext ctx;

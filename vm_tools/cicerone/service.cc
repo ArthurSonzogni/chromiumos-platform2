@@ -3088,8 +3088,7 @@ std::unique_ptr<dbus::Response> Service::UpgradeContainer(
 
   std::string error_msg;
   VirtualMachine::UpgradeContainerStatus status =
-      vm->UpgradeContainer(container, request.source_version(),
-                           request.target_version(), &error_msg);
+      vm->UpgradeContainer(container, request.target_version(), &error_msg);
 
   response.set_status(UpgradeContainerResponse::UNKNOWN);
   if (UpgradeContainerResponse::Status_IsValid(static_cast<int>(status))) {

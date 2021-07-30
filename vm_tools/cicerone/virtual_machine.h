@@ -314,7 +314,6 @@ class VirtualMachine {
   // Begins a container OS upgrade (e.g. from debian/stretch to debian/buster).
   UpgradeContainerStatus UpgradeContainer(
       const Container* container,
-      const UpgradeContainerRequest::Version& source_version,
       const UpgradeContainerRequest::Version& target_version,
       std::string* out_error);
 

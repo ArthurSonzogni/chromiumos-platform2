@@ -711,13 +711,18 @@ message UpgradeContainerRequest {
 
     // Debian 10 AKA Buster.
     DEBIAN_BUSTER = 2;
+
+    // Debian 11 AKA Bullseye.
+    DEBIAN_BULLSEYE = 3;
   }
 
   // Name of the container e.g. penguin.
   string container_name = 1;
 
   // Source version to upgrade from.
-  Version source_version = 2;
+  // Ignored, since tremplin is in a better place to determine this
+  // then the caller.
+  Version source_version = 2 [deprecated = true];
 
   // Version to upgrade to.
   Version target_version = 3;

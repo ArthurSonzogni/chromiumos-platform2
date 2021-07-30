@@ -139,38 +139,5 @@ class UpgradeContainerTest : public VirtualMachineTest {
   const Container* container_;
 };
 
-TEST_F(UpgradeContainerTest, UpgradeContainer_NoOsRelease) {
-  std::string error_msg;
-  VirtualMachine::UpgradeContainerStatus status = termina_vm_.UpgradeContainer(
-      container_, UpgradeContainerRequest::DEBIAN_STRETCH,
-      UpgradeContainerRequest::DEBIAN_BUSTER, &error_msg);
-  EXPECT_EQ(status, VirtualMachine::UpgradeContainerStatus::FAILED);
-}
-
-TEST_F(UpgradeContainerTest, UpgradeContainer_UnknownOsRelease) {
-  OsRelease os_release;
-  os_release.set_id("not debian");
-  termina_vm_.SetOsReleaseForTesting(kFakeContainerName1, os_release);
-
-  std::string error_msg;
-  VirtualMachine::UpgradeContainerStatus status = termina_vm_.UpgradeContainer(
-      container_, UpgradeContainerRequest::DEBIAN_STRETCH,
-      UpgradeContainerRequest::DEBIAN_BUSTER, &error_msg);
-  EXPECT_EQ(status, VirtualMachine::UpgradeContainerStatus::NOT_SUPPORTED);
-}
-
-TEST_F(UpgradeContainerTest, UpgradeContainer_AlreadyUpgraded) {
-  OsRelease os_release;
-  os_release.set_id("debian");
-  os_release.set_version_id("10");
-  termina_vm_.SetOsReleaseForTesting(kFakeContainerName1, os_release);
-
-  std::string error_msg;
-  VirtualMachine::UpgradeContainerStatus status = termina_vm_.UpgradeContainer(
-      container_, UpgradeContainerRequest::DEBIAN_STRETCH,
-      UpgradeContainerRequest::DEBIAN_BUSTER, &error_msg);
-  EXPECT_EQ(status, VirtualMachine::UpgradeContainerStatus::ALREADY_UPGRADED);
-}
-
 }  // namespace cicerone
 }  // namespace vm_tools
