@@ -212,6 +212,123 @@ mojo_ipc::BusDevicePtr FetchUsbDevice(const base::FilePath& path,
   return device;
 }
 
+mojo_ipc::ThunderboltBusInterfaceInfoPtr FetchThunderboltBusInterfaceInfo(
+    const base::FilePath& path, const std::string& domain_id) {
+  std::vector<std::string> components;
+  // Check sysfs directory for interface attached to same domain.
+  path.GetComponents(&components);
+  // Get interface directory name which is the last component in path.
+  auto interface_dir_name = components.back();
+  // Check interface directory name starting with same domain number.
+  auto interface_domain_id = interface_dir_name.substr(0, domain_id.length());
+
+  if (interface_domain_id != domain_id)
+    return nullptr;
+
+  auto info = mojo_ipc::ThunderboltBusInterfaceInfo::New();
+  std::string rx_speed, tx_speed;
+  if (!ReadInteger(path, kFileThunderboltAuthorized, &HexToU8,
+                   reinterpret_cast<uint8_t*>(&info->authorized)) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltRxSpeed), &rx_speed) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltTxSpeed), &tx_speed) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltVendorName),
+                         &info->vendor_name) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltDeviceName),
+                         &info->device_name) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltDeviceType),
+                         &info->device_type) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltUUID),
+                         &info->device_uuid) ||
+      !ReadAndTrimString(path.Append(kFileThunderboltFWVer),
+                         &info->device_fw_version))
+    return nullptr;
+
+  // Thunderbolt sysfs populate rx_speed and tx_speed value
+  // as string "20.0 Gb/s" so reading first integer value.
+  base::StringToUint(rx_speed.substr(0, rx_speed.find(".")),
+                     &info->rx_speed_gbs);
+  base::StringToUint(tx_speed.substr(0, tx_speed.find(".")),
+                     &info->tx_speed_gbs);
+
+  return info;
+}
+
+mojo_ipc::ThunderboltSecurityLevel StrToEnumThunderboltSecurity(
+    const std::string& str) {
+  if (str == "none")
+    return mojo_ipc::ThunderboltSecurityLevel::kNone;
+  if (str == "user")
+    return mojo_ipc::ThunderboltSecurityLevel::kUserLevel;
+  if (str == "secure")
+    return mojo_ipc::ThunderboltSecurityLevel::kSecureLevel;
+  if (str == "dponly")
+    return mojo_ipc::ThunderboltSecurityLevel::kDpOnlyLevel;
+  if (str == "usbonly")
+    return mojo_ipc::ThunderboltSecurityLevel::kUsbOnlyLevel;
+  if (str == "nopcie")
+    return mojo_ipc::ThunderboltSecurityLevel::kNoPcieLevel;
+
+  return mojo_ipc::ThunderboltSecurityLevel::kNone;
+}
+
+mojo_ipc::ThunderboltBusInfoPtr FetchThunderboltBusInfo(
+    const base::FilePath& thunderbolt_path, const base::FilePath& dev_path) {
+  auto info = mojo_ipc::ThunderboltBusInfo::New();
+  std::string security;
+
+  // Since thunderbolt sysfs has controller and connected interfaces in same
+  // directory level, it is required to iterate interface directories which
+  // are connected to same controller only. e.g. domain0 is directory for
+  // controller 0 and connected interface directory is 0-0:1:0.
+  std::vector<std::string> components;
+  dev_path.GetComponents(&components);
+  auto domain_dir = components.back();
+  std::string domain_id;
+
+  if (domain_dir.find("domain") == 0)
+    domain_id = domain_dir.substr(strlen("domain"));
+  else
+    return nullptr;
+
+  if (ReadAndTrimString(dev_path.Append(kFileThunderboltSecurity), &security))
+    info->security_level = StrToEnumThunderboltSecurity(security);
+  else
+    return nullptr;
+
+  for (const auto& if_path : ListDirectory(thunderbolt_path)) {
+    auto if_info = FetchThunderboltBusInterfaceInfo(if_path, domain_id);
+    if (if_info) {
+      info->thunderbolt_interfaces.push_back(std::move(if_info));
+    }
+  }
+
+  return info;
+}
+
+mojo_ipc::BusDevicePtr FetchThunderboltDevice(
+    const base::FilePath& thunderbolt_path, const base::FilePath& dev_path) {
+  auto thunderbolt_bus_info =
+      FetchThunderboltBusInfo(thunderbolt_path, dev_path);
+  if (thunderbolt_bus_info.is_null())
+    return nullptr;
+  auto device = mojo_ipc::BusDevice::New();
+  device->device_class = mojo_ipc::BusDeviceClass::kThunderboltController;
+  device->bus_info =
+      mojo_ipc::BusInfo::NewThunderboltBusInfo(std::move(thunderbolt_bus_info));
+  for (const auto& path : ListDirectory(dev_path)) {
+    if (PathExists(path.Append(kFileThunderboltDeviceName))) {
+      ReadAndTrimString(path.Append(kFileThunderboltDeviceName),
+                        &device->product_name);
+    }
+    if (PathExists(path.Append(kFileThunderboltVendorName))) {
+      ReadAndTrimString(path.Append(kFileThunderboltVendorName),
+                        &device->vendor_name);
+    }
+  }
+
+  return device;
+}
+
 }  // namespace
 
 mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
@@ -228,6 +345,13 @@ mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
   auto hwdb = context_->udev()->CreateHwdb();
   for (const auto& path : ListDirectory(root.Append(kPathSysUsb))) {
     auto device = FetchUsbDevice(path, hwdb);
+    if (device) {
+      res.push_back(std::move(device));
+    }
+  }
+  auto thunderbolt_path = root.Append(kPathSysThunderbolt);
+  for (const auto& dev_path : ListDirectory(thunderbolt_path)) {
+    auto device = FetchThunderboltDevice(thunderbolt_path, dev_path);
     if (device) {
       res.push_back(std::move(device));
     }

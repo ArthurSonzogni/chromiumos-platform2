@@ -18,10 +18,13 @@
 namespace diagnostics {
 namespace {
 
+using chromeos::cros_healthd::mojom::ThunderboltSecurityLevel;
+
 constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
 constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
 constexpr char kFakePathUsbDevices[] =
     "sys/devices/pci0000:00/0000:00:14.0/usb1";
+constexpr char kFakeThunderboltDevices[] = "sys/bus/thunderbolt/devices";
 constexpr char kLinkUsbDevices[] =
     "../../../devices/pci0000:00/0000:00:14.0/usb1";
 constexpr char kLinkPciDriver[] = "../../../bus/pci/drivers";
@@ -40,6 +43,17 @@ constexpr uint8_t kFakeProtocol = kFakeProg;
 constexpr uint16_t kFakeVendor = 0x12ab;
 constexpr uint16_t kFakeDevice = 0x34cd;
 constexpr char kFakeDriver[] = "driver";
+
+constexpr char kFakeThunderboltDeviceVendorName[] =
+    "FakeThunderboltDeviceVendor";
+constexpr char kFakeThunderboltDeviceName[] = "FakeThunderboltDevice";
+constexpr uint8_t kFakeThunderboltDeviceAuthorized = false;
+constexpr char kFakeThunderboltDeviceSpeedStr[] = "20.0 Gb/s";
+constexpr uint32_t kFakeThunderboltDeviceSpeed = 20;
+constexpr char kFakeThunderboltDeviceType[] = "0x4257";
+constexpr char kFakeThunderboltDeviceUUID[] =
+    "d5010000-0060-6508-2304-61066ed3f91e";
+constexpr char kFakeThunderboltDeviceFWVer[] = "29.0";
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
@@ -108,6 +122,31 @@ class BusFetcherTest : public BaseFileTest {
     return expected_bus_devices_.back();
   }
 
+  mojo_ipc::BusDevicePtr& AddExpectedThunderboltDevice(size_t interface_count) {
+    CHECK_GE(interface_count, 1);
+    auto device = mojo_ipc::BusDevice::New();
+    auto tbt_info = mojo_ipc::ThunderboltBusInfo::New();
+
+    device->device_class = mojo_ipc::BusDeviceClass::kThunderboltController;
+    tbt_info->security_level = mojo_ipc::ThunderboltSecurityLevel::kNone;
+    for (size_t i = 0; i < interface_count; ++i) {
+      auto tbt_if_info = mojo_ipc::ThunderboltBusInterfaceInfo::New();
+      tbt_if_info->authorized = kFakeThunderboltDeviceAuthorized;
+      tbt_if_info->rx_speed_gbs = kFakeThunderboltDeviceSpeed;
+      tbt_if_info->tx_speed_gbs = kFakeThunderboltDeviceSpeed;
+      tbt_if_info->vendor_name = kFakeThunderboltDeviceVendorName;
+      tbt_if_info->device_name = kFakeThunderboltDeviceName;
+      tbt_if_info->device_type = kFakeThunderboltDeviceType;
+      tbt_if_info->device_uuid = kFakeThunderboltDeviceUUID;
+      tbt_if_info->device_fw_version = kFakeThunderboltDeviceFWVer;
+      tbt_info->thunderbolt_interfaces.push_back(std::move(tbt_if_info));
+    }
+    device->bus_info =
+        mojo_ipc::BusInfo::NewThunderboltBusInfo(std::move(tbt_info));
+    expected_bus_devices_.push_back(std::move(device));
+    return expected_bus_devices_.back();
+  }
+
   void SetExpectedBusDevices() {
     for (size_t i = 0; i < expected_bus_devices_.size(); ++i) {
       const auto& bus_info = expected_bus_devices_[i]->bus_info;
@@ -117,6 +156,9 @@ class BusFetcherTest : public BaseFileTest {
           break;
         case mojo_ipc::BusInfo::Tag::USB_BUS_INFO:
           SetUsbBusInfo(bus_info->get_usb_bus_info(), i);
+          break;
+        case mojo_ipc::BusInfo::Tag::THUNDERBOLT_BUS_INFO:
+          SetThunderboltBusInfo(bus_info->get_thunderbolt_bus_info(), i);
           break;
       }
     }
@@ -177,6 +219,52 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
+  std::string EnumToString(ThunderboltSecurityLevel level) {
+    switch (level) {
+      case ThunderboltSecurityLevel::kNone:
+        return "None";
+      case ThunderboltSecurityLevel::kUserLevel:
+        return "User";
+      case ThunderboltSecurityLevel::kSecureLevel:
+        return "Secure";
+      case ThunderboltSecurityLevel::kDpOnlyLevel:
+        return "DpOnly";
+      case ThunderboltSecurityLevel::kUsbOnlyLevel:
+        return "UsbOnly";
+      case ThunderboltSecurityLevel::kNoPcieLevel:
+        return "NoPcie";
+    }
+  }
+
+  void SetThunderboltBusInfo(const mojo_ipc::ThunderboltBusInfoPtr& tbt_info,
+                             size_t id) {
+    const auto dir = kFakeThunderboltDevices;
+    const auto dev = base::StringPrintf("domain%zu/", id);
+    SetFile({dir, dev, kFileThunderboltSecurity},
+            EnumToString(tbt_info->security_level));
+
+    for (size_t i = 0; i < tbt_info->thunderbolt_interfaces.size(); ++i) {
+      const auto dev_if = base::StringPrintf("%zu-%zu:%zu.%zu", id, id, id, i);
+      const mojo_ipc::ThunderboltBusInterfaceInfoPtr& tbt_if_info =
+          tbt_info->thunderbolt_interfaces[i];
+      SetFile({dir, dev_if, kFileThunderboltAuthorized},
+              tbt_if_info->authorized ? "1" : "0");
+      SetFile({dir, dev_if, kFileThunderboltRxSpeed},
+              kFakeThunderboltDeviceSpeedStr);
+      SetFile({dir, dev_if, kFileThunderboltTxSpeed},
+              kFakeThunderboltDeviceSpeedStr);
+      SetFile({dir, dev_if, kFileThunderboltVendorName},
+              tbt_if_info->vendor_name);
+      SetFile({dir, dev_if, kFileThunderboltDeviceName},
+              tbt_if_info->device_name);
+      SetFile({dir, dev_if, kFileThunderboltDeviceType},
+              tbt_if_info->device_type);
+      SetFile({dir, dev_if, kFileThunderboltUUID}, tbt_if_info->device_uuid);
+      SetFile({dir, dev_if, kFileThunderboltFWVer},
+              tbt_if_info->device_fw_version);
+    }
+  }
+
   void FetchBusDevices() {
     auto res = bus_fetcher_.FetchBusDevices();
     ASSERT_TRUE(res->is_bus_devices());
@@ -204,6 +292,12 @@ TEST_F(BusFetcherTest, TestFetchUsbBusInfo) {
   FetchBusDevices();
 }
 
+TEST_F(BusFetcherTest, TestFetchThunderboltBusInfo) {
+  AddExpectedThunderboltDevice(1);
+  SetExpectedBusDevices();
+  FetchBusDevices();
+}
+
 TEST_F(BusFetcherTest, TestFetchMultiple) {
   AddExpectedPciDevice();
   AddExpectedPciDevice();
@@ -211,6 +305,8 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
   AddExpectedUsbDevice(1);
   AddExpectedUsbDevice(2);
   AddExpectedUsbDevice(3);
+  AddExpectedThunderboltDevice(1);
+  AddExpectedThunderboltDevice(2);
   SetExpectedBusDevices();
   FetchBusDevices();
 }

@@ -19,6 +19,8 @@ bool operator<(const BusInfo& a, const BusInfo& b) {
       return a.get_pci_bus_info() < b.get_pci_bus_info();
     case BusInfo::Tag::USB_BUS_INFO:
       return a.get_usb_bus_info() < b.get_usb_bus_info();
+    case BusInfo::Tag::THUNDERBOLT_BUS_INFO:
+      return a.get_thunderbolt_bus_info() < b.get_thunderbolt_bus_info();
   }
 }
 }  // namespace mojom
@@ -221,6 +223,7 @@ std::string GetDiffString<mojo_ipc::BusInfo>(const mojo_ipc::BusInfo& a,
   return CompareHelper(a, b)
       .UNION(pci_bus_info)
       .UNION(usb_bus_info)
+      .UNION(thunderbolt_bus_info)
       .GetResult();
 }
 
@@ -263,4 +266,29 @@ std::string GetDiffString<mojo_ipc::UsbBusInterfaceInfo>(
       .GetResult();
 }
 
+template <>
+std::string GetDiffString<mojo_ipc::ThunderboltBusInfo>(
+    const mojo_ipc::ThunderboltBusInfo& a,
+    const mojo_ipc::ThunderboltBusInfo& b) {
+  return CompareHelper(a, b)
+      .FIELD(security_level)
+      .FIELD(thunderbolt_interfaces)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::ThunderboltBusInterfaceInfo>(
+    const mojo_ipc::ThunderboltBusInterfaceInfo& a,
+    const mojo_ipc::ThunderboltBusInterfaceInfo& b) {
+  return CompareHelper(a, b)
+      .FIELD(authorized)
+      .FIELD(rx_speed_gbs)
+      .FIELD(tx_speed_gbs)
+      .FIELD(vendor_name)
+      .FIELD(device_name)
+      .FIELD(device_type)
+      .FIELD(device_uuid)
+      .FIELD(device_fw_version)
+      .GetResult();
+}
 }  // namespace diagnostics

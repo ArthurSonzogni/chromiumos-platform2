@@ -66,6 +66,7 @@ using chromeos::cros_healthd::mojom::StatefulPartitionResultPtr;
 using chromeos::cros_healthd::mojom::SystemResultPtr;
 using chromeos::cros_healthd::mojom::SystemResultV2Ptr;
 using chromeos::cros_healthd::mojom::TelemetryInfoPtr;
+using chromeos::cros_healthd::mojom::ThunderboltSecurityLevel;
 using chromeos::cros_healthd::mojom::TimezoneResultPtr;
 using chromeos::cros_healthd::mojom::TpmGSCVersion;
 using chromeos::cros_healthd::mojom::TpmResultPtr;
@@ -219,6 +220,8 @@ std::string EnumToString(BusDeviceClass device_class) {
       return "wireless controller";
     case BusDeviceClass::kBluetoothAdapter:
       return "bluetooth controller";
+    case BusDeviceClass::kThunderboltController:
+      return "thunderbolt controller";
   }
 }
 
@@ -245,6 +248,23 @@ std::string EnumToString(TpmGSCVersion version) {
       return "Cr50";
     case TpmGSCVersion::kTi50:
       return "Ti50";
+  }
+}
+
+std::string EnumToString(ThunderboltSecurityLevel level) {
+  switch (level) {
+    case ThunderboltSecurityLevel::kNone:
+      return "None";
+    case ThunderboltSecurityLevel::kUserLevel:
+      return "User";
+    case ThunderboltSecurityLevel::kSecureLevel:
+      return "Secure";
+    case ThunderboltSecurityLevel::kDpOnlyLevel:
+      return "DpOnly";
+    case ThunderboltSecurityLevel::kUsbOnlyLevel:
+      return "UsbOnly";
+    case ThunderboltSecurityLevel::kNoPcieLevel:
+      return "NoPcie";
   }
 }
 
@@ -855,6 +875,38 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
           SET_DICT(protocol_id, usb_if_info, &out_usb_if);
           SET_DICT(driver, usb_if_info, &out_usb_if);
           out_usb_ifs->Append(std::move(out_usb_if));
+        }
+        break;
+      }
+      case BusInfo::Tag::THUNDERBOLT_BUS_INFO: {
+        const auto& thunderbolt_info =
+            device->bus_info->get_thunderbolt_bus_info();
+        auto* out_thunderbolt_info = out_bus_info->SetKey(
+            "thunderbolt_bus_info", base::Value{base::Value::Type::DICTIONARY});
+        SET_DICT(security_level, thunderbolt_info, out_thunderbolt_info);
+        auto* out_thunderbolt_interfaces = out_thunderbolt_info->SetKey(
+            "thunderbolt_interfaces", base::Value{base::Value::Type::LIST});
+        for (const auto& thunderbolt_interface :
+             thunderbolt_info->thunderbolt_interfaces) {
+          base::Value out_thunderbolt_interface{base::Value::Type::DICTIONARY};
+          SET_DICT(vendor_name, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(device_name, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(device_type, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(device_uuid, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(tx_speed_gbs, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(rx_speed_gbs, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(authorized, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          SET_DICT(device_fw_version, thunderbolt_interface,
+                   &out_thunderbolt_interface);
+          out_thunderbolt_interfaces->Append(
+              std::move(out_thunderbolt_interface));
         }
         break;
       }

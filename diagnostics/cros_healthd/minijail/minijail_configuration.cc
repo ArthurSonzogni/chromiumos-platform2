@@ -124,6 +124,10 @@ void ConfigureAndEnterMinijail() {
       jail.get(),
       base::FilePath("/sys/bus/usb"));  // Files related to the
                                         // USB information.
+  BindMountIfPathExists(
+      jail.get(),
+      base::FilePath("/sys/bus/thunderbolt"));  // Files related to the
+                                                // Thunderbolt information.
 
   BindMountIfPathExists(
       jail.get(),
