@@ -19,8 +19,6 @@ use system_api::client::OrgChromiumFlimflamService;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
 
-// TODO(b/177877310): Add private-key and preshared-key for set command.
-// TODO(b/177877310): Consider default values.
 const USAGE: &str = r#"wireguard <cmd> [<args>]
 
 Available subcommands:
@@ -44,6 +42,9 @@ set <name> [local-ip <ip>] [private-key] [mtu <mtu>] [dns <ip1>[,<ip2>]...]
     are:
     - Only IPv4 is supported for the VPN overlay, so `local-ip`, `dns`, and `allowed-ips`
       should be set to IPv4 address(es).
+    - If `dns` is not set, it will be defaulted to "8.8.8.8,8.8.4.4".
+    - If `mtu` is not set, it will be determined automatically. Set it to 0 to reset the
+      existing value.
     - `endpoint` must be set before using `connect` command.
     - `private-key` and `preshared-key` take no parameters. If they are used, this command
       will prompt you to change the key (or remove the key) via stdin, to avoid leaving
@@ -329,6 +330,11 @@ impl WireGuardService {
         }
         if let Some(name_servers) = &self.name_servers {
             insert_ip_field(PROPERTY_NAME_SERVERS, Box::new(name_servers.clone()));
+        } else {
+            insert_ip_field(
+                PROPERTY_NAME_SERVERS,
+                Box::new(vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()]),
+            );
         }
         if let Some(mtu) = self.mtu {
             insert_ip_field(PROPERTY_MTU, Box::new(mtu));
@@ -399,8 +405,8 @@ impl WireGuardService {
 
             match *key {
                 "local-ip" => self.local_ip = Some(parse_local_ip(get_next_as_val()?)?),
-                "dns" => self.name_servers = Some(parse_dns(get_next_as_val()?)?),
-                "mtu" => self.mtu = Some(parse_mtu(get_next_as_val()?)?),
+                "dns" => self.name_servers = parse_dns(get_next_as_val()?)?,
+                "mtu" => self.mtu = parse_mtu(get_next_as_val()?)?,
                 "private-key" => {
                     let lines = [
                         "Change private key for this service (or press <Enter> directly",
@@ -574,11 +580,16 @@ mod option_util {
             })
     }
 
-    pub(super) fn parse_dns(val: &str) -> Result<Vec<String>, Error> {
+    pub(super) fn parse_dns(val: &str) -> Result<Option<Vec<String>>, Error> {
+        if val.is_empty() {
+            return Ok(None);
+        }
+
         val.split(',')
             .map(|x| x.parse::<Ipv4Addr>())
             .map(|x| x.map(|y| y.to_string()))
             .collect::<Result<Vec<_>, _>>()
+            .map(Some)
             .map_err(|_| {
                 Error::InvalidArguments(format!(
                     "'dns' should be a comma-separated list of valid IPv4 addresses, but got '{}'",
@@ -587,10 +598,15 @@ mod option_util {
             })
     }
 
-    pub(super) fn parse_mtu(val: &str) -> Result<i32, Error> {
+    pub(super) fn parse_mtu(val: &str) -> Result<Option<i32>, Error> {
+        if val.is_empty() {
+            return Ok(None);
+        }
+
         match val.parse::<i32>() {
+            Ok(0) => Ok(None),
             // [576, 65536) as per wireguard-tools.
-            Ok(x) if (576..65536).contains(&x) => Ok(x),
+            Ok(x) if (576..65536).contains(&x) => Ok(Some(x)),
             _ => Err(Error::InvalidArguments(format!(
                 "'mtu' should be in range from 576 to 65535, but got '{}'",
                 val
@@ -624,6 +640,10 @@ mod option_util {
     }
 
     pub(super) fn parse_allowed_ips(val: &str) -> Result<String, Error> {
+        if val.is_empty() {
+            return Ok("".to_string());
+        }
+
         // Currently, only IPv4 addresses are allowed.
         let err = || {
             Error::InvalidArguments(format!("'allowed-ips' should be a common-separated list of IPv4 addresses with CIDR notation, but got '{}'", val))
@@ -876,8 +896,8 @@ mod tests {
                 local_ip: Some("192.168.1.2".to_string()),
                 private_key: None,
                 public_key: "".to_string(),
-                name_servers: None,
-                mtu: None,
+                name_servers: Some(vec!["4.3.2.1".to_string()]),
+                mtu: Some(1234),
                 peers: vec![peer_a.clone(), peer_b.clone()],
             };
             TestVars {
@@ -953,9 +973,21 @@ mod tests {
     }
 
     #[test]
+    fn test_update_dns_default() {
+        let vars = TestVars::new();
+        let mut expected = vars.service.clone();
+        expected.name_servers = None;
+        let mut actual = vars.service;
+        actual
+            .update_from_args(&["dns", ""], "".as_bytes())
+            .unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
     fn test_update_dns_invalid() {
         let vars = TestVars::new();
-        let cases = ["", "192.168.1", "abcdabcd", "fe80::1", "8.8.8.8,abc"];
+        let cases = ["192.168.1", "abcdabcd", "fe80::1", "8.8.8.8,abc"];
         for c in cases.iter() {
             let mut actual = vars.service.clone();
             let args = ["dns", c];
@@ -977,9 +1009,22 @@ mod tests {
     }
 
     #[test]
+    fn test_update_mtu_default() {
+        let vars = TestVars::new();
+        let cases = ["0", ""];
+        for c in cases.iter() {
+            let mut expected = vars.service.clone();
+            expected.mtu = None;
+            let mut actual = vars.service.clone();
+            actual.update_from_args(&["mtu", c], "".as_bytes()).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
     fn test_update_mtu_invalid() {
         let vars = TestVars::new();
-        let cases = ["", "-1", "0", "575", "1000.0", "65536", "abcde"];
+        let cases = ["-1", "575", "1000.0", "65536", "abcde"];
         for c in cases.iter() {
             let mut actual = vars.service.clone();
             let args = ["mtu", c];
@@ -1034,6 +1079,7 @@ mod tests {
 
         // Inputs and expected outputs.
         let cases = [
+            ("", ""),
             ("0.0.0.0/0", "0.0.0.0/0"),
             ("192.168.12.13/0", "0.0.0.0/0"),
             ("192.168.0.1/32", "192.168.0.1/32"),
@@ -1060,7 +1106,6 @@ mod tests {
     fn test_update_peer_allowed_ips_invalid() {
         let vars = TestVars::new();
         let cases = [
-            "",
             "fe80::0/32",     // IPv6 is not supported
             "192.168.1.0/-1", // bad CIDR
             "192.168.1.0/256",
@@ -1220,7 +1265,7 @@ mod tests {
             private_key, preshared_key_a, preshared_key_new
         );
 
-        let mut actual = vars.service.clone();
+        let mut actual = vars.service;
         actual.update_from_args(&cmd, input.as_bytes()).unwrap();
         assert_eq!(expected, actual);
     }
