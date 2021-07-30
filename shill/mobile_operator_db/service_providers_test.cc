@@ -59,14 +59,6 @@ class ServiceProvidersTest : public testing::Test {
     mvnos_.clear();
   }
 
-  void ValidateUuid(const shill::mobile_operator_db::Data& data,
-                    std::set<std::string>* uuids) {
-    ASSERT_TRUE(data.has_uuid());
-    EXPECT_EQ(uuids->count(data.uuid()), 0)
-        << "Non unique uuid: " << data.uuid();
-    uuids->emplace(data.uuid());
-  }
-
   // Expensive resource shared by all tests.
   static std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;
   static std::vector<MvnoMnoPair> mvnos_;
@@ -81,13 +73,17 @@ TEST_F(ServiceProvidersTest, CheckUniqueUUIDs) {
   // This is a common mistake when copy/pasting carrier info.
   std::set<std::string> uuids;
   for (const auto& mno : database_->mno()) {
-    ValidateUuid(mno.data(), &uuids);
-    for (const auto& mvno : mno.mvno()) {
-      ValidateUuid(mvno.data(), &uuids);
-    }
+    ASSERT_TRUE(mno.data().has_uuid());
+    EXPECT_EQ(uuids.count(mno.data().uuid()), 0)
+        << "Non unique uuid: " << mno.data().uuid();
+    uuids.emplace(mno.data().uuid());
   }
-  for (const auto& mvno : database_->mvno()) {
-    ValidateUuid(mvno.data(), &uuids);
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    ASSERT_TRUE(mvno->data().has_uuid());
+    EXPECT_EQ(uuids.count(mvno->data().uuid()), 0)
+        << "Non unique uuid: " << mvno->data().uuid();
+    uuids.emplace(mvno->data().uuid());
   }
 }
 
