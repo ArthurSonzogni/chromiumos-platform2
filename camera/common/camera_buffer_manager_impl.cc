@@ -105,6 +105,43 @@ size_t GetChromaStep(uint32_t drm_format) {
   return 0;
 }
 
+uint8_t* GetPlaneAddr(const android_ycbcr& ycbcr,
+                      uint32_t drm_format,
+                      size_t plane) {
+  void* result = nullptr;
+  if (plane == 0) {
+    result = ycbcr.y;
+  } else if (plane == 1) {
+    switch (drm_format) {
+      case DRM_FORMAT_NV12:
+      case DRM_FORMAT_P010:
+      case DRM_FORMAT_YUV420:
+        result = ycbcr.cb;
+        break;
+
+      case DRM_FORMAT_NV21:
+      case DRM_FORMAT_YVU420:
+        result = ycbcr.cr;
+        break;
+    }
+  } else if (plane == 2) {
+    switch (drm_format) {
+      case DRM_FORMAT_YUV420:
+        result = ycbcr.cr;
+        break;
+
+      case DRM_FORMAT_YVU420:
+        result = ycbcr.cb;
+        break;
+    }
+  }
+  if (result == nullptr) {
+    LOGF(ERROR) << "Unsupported DRM pixel format: "
+                << FormatToString(drm_format);
+  }
+  return reinterpret_cast<uint8_t*>(result);
+}
+
 }  // namespace
 
 void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
@@ -116,6 +153,112 @@ void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
     delete handle;
   }
 }
+
+//
+// ScopedMapping implementations.
+//
+
+ScopedMapping::ScopedMapping(buffer_handle_t buffer) : buf_(buffer) {
+  for (size_t i = 0; i < num_planes(); ++i) {
+    planes_[i] = {
+        .stride = CameraBufferManager::GetPlaneStride(buf_, i),
+        .size = CameraBufferManager::GetPlaneSize(buf_, i),
+    };
+  }
+  auto* buf_mgr = CameraBufferManager::GetInstance();
+  if (buf_mgr->Register(buf_) != 0) {
+    LOGF(ERROR) << "Cannot register buffer";
+    Invalidate();
+    return;
+  }
+  if (num_planes() == 1) {
+    void** addr_to_void = reinterpret_cast<void**>(&planes_[0].addr);
+    if (buf_mgr->Lock(buf_, 0, 0, 0, width(), height(), addr_to_void) != 0) {
+      LOGF(ERROR) << "Cannot Lock buffer";
+      Invalidate();
+      return;
+    }
+  } else {
+    android_ycbcr ycbcr = {};
+    if (buf_mgr->LockYCbCr(buf_, 0, 0, 0, width(), height(), &ycbcr) != 0) {
+      LOGF(ERROR) << "Cannot Lock buffer";
+      Invalidate();
+      return;
+    }
+    for (size_t i = 0; i < num_planes(); ++i) {
+      planes_[i].addr = GetPlaneAddr(ycbcr, drm_format(), i);
+    }
+  }
+}
+
+ScopedMapping::~ScopedMapping() {
+  Invalidate();
+}
+
+ScopedMapping::ScopedMapping(ScopedMapping&& other) {
+  *this = std::move(other);
+}
+
+ScopedMapping& ScopedMapping::operator=(ScopedMapping&& other) {
+  if (this != &other) {
+    Invalidate();
+    planes_ = other.planes_;
+    buf_ = other.buf_;
+    other.planes_.fill(Plane());
+    other.buf_ = nullptr;
+  }
+  return *this;
+}
+
+uint32_t ScopedMapping::width() const {
+  return CameraBufferManager::GetWidth(buf_);
+}
+
+uint32_t ScopedMapping::height() const {
+  return CameraBufferManager::GetHeight(buf_);
+}
+
+uint32_t ScopedMapping::drm_format() const {
+  return CameraBufferManager::GetDrmPixelFormat(buf_);
+}
+
+uint32_t ScopedMapping::v4l2_format() const {
+  return CameraBufferManager::GetV4L2PixelFormat(buf_);
+}
+
+uint32_t ScopedMapping::hal_pixel_format() const {
+  return CameraBufferManager::GetHalPixelFormat(buf_);
+}
+
+uint32_t ScopedMapping::num_planes() const {
+  return CameraBufferManager::GetNumPlanes(buf_);
+}
+
+ScopedMapping::Plane ScopedMapping::plane(int plane) const {
+  if (plane > planes_.size()) {
+    return Plane();
+  }
+  return planes_[plane];
+}
+
+bool ScopedMapping::is_valid() const {
+  return buf_ != nullptr;
+}
+
+void ScopedMapping::Invalidate() {
+  if (buf_ == nullptr) {
+    return;
+  }
+  auto* buf_mgr = CameraBufferManager::GetInstance();
+  buf_mgr->Unlock(buf_);
+  buf_mgr->Deregister(buf_);
+  planes_.fill(Plane());
+  buf_ = nullptr;
+}
+
+//
+// CameraBufferManagerImpl implementations.
+//
 
 // static
 CameraBufferManager* CameraBufferManager::GetInstance() {

@@ -7,6 +7,7 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_BUFFER_MANAGER_H_
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -29,6 +30,47 @@ const uint32_t GRALLOC_USAGE_FORCE_I420 = 0x10000000U;
 namespace cros {
 
 class GbmDevice;
+
+// RAII class for handling the CPU memory mapping of a camera buffer.  All the
+// planes of the camera buffer is mapped when the ScopedMapping is constructed,
+// and the address and size of each mapped plane can be accessed through
+// ScopedMapping::plane().
+class CROS_CAMERA_EXPORT ScopedMapping {
+ public:
+  struct Plane {
+    // The address pointing to the start of the plane.
+    uint8_t* addr = nullptr;
+
+    // The byte stride of the plane.
+    size_t stride = 0;
+
+    // The size of the mapped memory region of the plane.
+    size_t size = 0;
+  };
+
+  explicit ScopedMapping(buffer_handle_t buffer);
+  ~ScopedMapping();
+  ScopedMapping(const ScopedMapping& other) = delete;
+  ScopedMapping& operator=(const ScopedMapping& other) = delete;
+  ScopedMapping(ScopedMapping&& other);
+  ScopedMapping& operator=(ScopedMapping&& other);
+
+  uint32_t width() const;
+  uint32_t height() const;
+  uint32_t drm_format() const;
+  uint32_t v4l2_format() const;
+  uint32_t hal_pixel_format() const;
+  uint32_t num_planes() const;
+  Plane plane(int plane) const;
+  bool is_valid() const;
+
+ private:
+  static constexpr size_t kMaxPlanes = 4;
+  void Invalidate();
+
+  std::array<Plane, kMaxPlanes> planes_;
+  buffer_handle_t buf_ = nullptr;
+};
 
 // Generic camera buffer manager.  The class is for a camera HAL to map and
 // unmap the buffer handles received in camera3_stream_buffer_t.

@@ -18,47 +18,6 @@
 
 namespace cros {
 
-namespace {
-
-char* GetPlaneAddr(const android_ycbcr& ycbcr,
-                   uint32_t drm_format,
-                   size_t plane) {
-  void* result = nullptr;
-  if (plane == 0) {
-    result = ycbcr.y;
-  } else if (plane == 1) {
-    switch (drm_format) {
-      case DRM_FORMAT_NV12:
-      case DRM_FORMAT_P010:
-      case DRM_FORMAT_YUV420:
-        result = ycbcr.cb;
-        break;
-
-      case DRM_FORMAT_NV21:
-      case DRM_FORMAT_YVU420:
-        result = ycbcr.cr;
-        break;
-    }
-  } else if (plane == 2) {
-    switch (drm_format) {
-      case DRM_FORMAT_YUV420:
-        result = ycbcr.cr;
-        break;
-
-      case DRM_FORMAT_YVU420:
-        result = ycbcr.cb;
-        break;
-    }
-  }
-  if (result == nullptr) {
-    LOGF(ERROR) << "Unsupported DRM pixel format: "
-                << FormatToString(drm_format);
-  }
-  return reinterpret_cast<char*>(result);
-}
-
-}  // namespace
-
 bool ReadFileIntoBuffer(buffer_handle_t buffer, base::FilePath file_to_read) {
   if (!base::PathExists(file_to_read)) {
     LOGF(ERROR) << "File " << file_to_read << " does not exist";
@@ -72,10 +31,15 @@ bool ReadFileIntoBuffer(buffer_handle_t buffer, base::FilePath file_to_read) {
     return false;
   }
 
-  size_t num_planes = CameraBufferManager::GetNumPlanes(buffer);
+  ScopedMapping mapping(buffer);
+  if (!mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to mmap buffer";
+    input_file.close();
+    return false;
+  }
   size_t total_plane_size = 0;
-  for (size_t p = 0; p < num_planes; ++p) {
-    total_plane_size += CameraBufferManager::GetPlaneSize(buffer, p);
+  for (size_t p = 0; p < mapping.num_planes(); ++p) {
+    total_plane_size += mapping.plane(p).size;
   }
   input_file.seekg(0, input_file.end);
   size_t length = input_file.tellg();
@@ -86,43 +50,14 @@ bool ReadFileIntoBuffer(buffer_handle_t buffer, base::FilePath file_to_read) {
     return false;
   }
 
-  CameraBufferManager* buf_mgr = CameraBufferManager::GetInstance();
-  size_t width = CameraBufferManager::GetWidth(buffer);
-  size_t height = CameraBufferManager::GetHeight(buffer);
-  struct android_ycbcr ycbcr = {};
-  void* buf_addr = nullptr;
-  {
-    int ret;
-    if (num_planes == 1) {
-      ret = buf_mgr->Lock(buffer, 0, 0, 0, width, height, &buf_addr);
-    } else {
-      ret = buf_mgr->LockYCbCr(buffer, 0, 0, 0, width, height, &ycbcr);
-    }
-    if (ret != 0) {
-      LOGF(ERROR) << "Failed to mmap buffer";
-      input_file.close();
-      return false;
-    }
-  }
-
   size_t offset = 0;
-  for (size_t p = 0; p < num_planes; ++p) {
+  for (size_t p = 0; p < mapping.num_planes(); ++p) {
     input_file.seekg(offset, input_file.beg);
-    char* dst;
-    if (num_planes == 1) {
-      dst = reinterpret_cast<char*>(buf_addr);
-    } else {
-      dst = GetPlaneAddr(ycbcr, CameraBufferManager::GetDrmPixelFormat(buffer),
-                         p);
-      CHECK(dst);
-    }
-    size_t plane_size = CameraBufferManager::GetPlaneSize(buffer, p);
-    input_file.read(dst, plane_size);
-    offset += plane_size;
+    auto plane = mapping.plane(p);
+    input_file.read(reinterpret_cast<char*>(plane.addr), plane.size);
+    offset += plane.size;
   }
   input_file.close();
-
-  buf_mgr->Unlock(buffer);
 
   return true;
 }
@@ -135,40 +70,18 @@ bool WriteBufferIntoFile(buffer_handle_t buffer, base::FilePath file_to_write) {
     return false;
   }
 
-  CameraBufferManager* buf_mgr = CameraBufferManager::GetInstance();
-  size_t num_planes = CameraBufferManager::GetNumPlanes(buffer);
-  size_t width = CameraBufferManager::GetWidth(buffer);
-  size_t height = CameraBufferManager::GetHeight(buffer);
-  struct android_ycbcr ycbcr = {};
-  void* buf_addr = nullptr;
-  {
-    int ret;
-    if (num_planes == 1) {
-      ret = buf_mgr->Lock(buffer, 0, 0, 0, width, height, &buf_addr);
-    } else {
-      ret = buf_mgr->LockYCbCr(buffer, 0, 0, 0, width, height, &ycbcr);
-    }
-    if (ret != 0) {
-      LOGF(ERROR) << "Failed to mmap buffer";
-      output_file.close();
-      return false;
-    }
+  ScopedMapping mapping(buffer);
+  if (!mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to mmap buffer";
+    output_file.close();
+    return false;
   }
 
-  for (size_t p = 0; p < num_planes; ++p) {
-    char* src;
-    if (num_planes == 1) {
-      src = reinterpret_cast<char*>(buf_addr);
-    } else {
-      src = GetPlaneAddr(ycbcr, CameraBufferManager::GetDrmPixelFormat(buffer),
-                         p);
-    }
-    size_t plane_size = CameraBufferManager::GetPlaneSize(buffer, p);
-    output_file.write(src, plane_size);
+  for (size_t p = 0; p < mapping.num_planes(); ++p) {
+    auto plane = mapping.plane(p);
+    output_file.write(reinterpret_cast<char*>(plane.addr), plane.size);
   }
   output_file.close();
-
-  buf_mgr->Unlock(buffer);
 
   return true;
 }
