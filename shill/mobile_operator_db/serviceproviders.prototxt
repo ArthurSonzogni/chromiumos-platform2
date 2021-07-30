@@ -14112,6 +14112,10 @@ mno {
       type : IMSI
       range {
         start: 311580712000000
+        end:   311580712188709 # 1 less than Kajeet
+      }
+      range {
+        start: 311580712193710 # 1 more than Kajeet
         end:   311580716999999
       }
       range {
