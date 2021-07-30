@@ -31,9 +31,6 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
     case WelcomeState::RMAD_CHOICE_UNKNOWN:
       return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
               .state_case = GetStateCase()};
-    case WelcomeState::RMAD_CHOICE_CANCEL:
-      return {.error = RMAD_ERROR_RMA_NOT_REQUIRED,
-              .state_case = RmadState::StateCase::STATE_NOT_SET};
     case WelcomeState::RMAD_CHOICE_FINALIZE_REPAIR:
       return {.error = RMAD_ERROR_OK,
               .state_case = RmadState::StateCase::kComponentsRepair};

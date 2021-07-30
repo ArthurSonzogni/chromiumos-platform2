@@ -20,6 +20,7 @@ enum RmadErrorCode {
   // No error, and wait for a signal.
   RMAD_ERROR_WAIT = 2;
 
+  // TODO(chenghan): Deprecated, remove it in the future.
   // Need a reboot to continue.
   RMAD_ERROR_NEED_REBOOT = 3;
 
@@ -172,9 +173,13 @@ enum RmadComponent {
 
 // Confirm RMA is required.
 message WelcomeState {
+  // This enum is not really necessary. This acts as a confirmation that the
+  // client wants to start RMA, To cancel RMA, the client should call |AbortRma|
+  // method instead.
   enum FinalizeChoice {
     RMAD_CHOICE_UNKNOWN = 0;
     RMAD_CHOICE_FINALIZE_REPAIR = 1;
+    // TODO(chenghan): Deprecated. Remove it in the future.
     RMAD_CHOICE_CANCEL = 2;
   }
   FinalizeChoice choice = 1;

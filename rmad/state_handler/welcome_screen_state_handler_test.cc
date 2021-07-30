@@ -67,18 +67,4 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingArgs) {
   EXPECT_EQ(state_case, RmadState::StateCase::kWelcome);
 }
 
-TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Cancel) {
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  auto welcome = std::make_unique<WelcomeState>();
-  welcome->set_choice(WelcomeState::RMAD_CHOICE_CANCEL);
-  RmadState state;
-  state.set_allocated_welcome(welcome.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_RMA_NOT_REQUIRED);
-  EXPECT_EQ(state_case, RmadState::StateCase::STATE_NOT_SET);
-}
-
 }  // namespace rmad
