@@ -9,6 +9,7 @@
 from __future__ import division
 from __future__ import print_function
 
+import logging
 from pathlib import Path
 import sys
 
@@ -20,7 +21,6 @@ sys.path.insert(0, str(TOP_DIR.parent.parent))
 # pylint: disable=wrong-import-position
 from chromite.lib import commandline
 from chromite.lib import git
-from chromite.lib import cros_logging as logging
 # pylint: enable=wrong-import-position
 
 

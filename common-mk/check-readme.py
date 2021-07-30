@@ -9,6 +9,7 @@
 from __future__ import print_function
 
 import difflib
+import logging
 import os
 import re
 import sys
@@ -20,7 +21,6 @@ sys.path.insert(0, os.path.join(TOP_DIR, '..', '..'))
 
 from chromite.lib import commandline
 from chromite.lib import git
-from chromite.lib import cros_logging as logging
 from chromite.lib import osutils
 
 

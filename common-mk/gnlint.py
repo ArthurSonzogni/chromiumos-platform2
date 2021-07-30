@@ -67,6 +67,7 @@ from __future__ import print_function
 
 import collections
 import json
+import logging
 import os
 import re
 import subprocess
@@ -80,7 +81,6 @@ sys.path.insert(0, chromite_root)
 # pylint: disable=wrong-import-position
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 # pylint: enable=wrong-import-position
 
 

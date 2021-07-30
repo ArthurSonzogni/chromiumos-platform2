@@ -8,6 +8,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import sys
 import unittest
@@ -20,7 +21,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 # pylint: disable=wrong-import-position
 from chromite.lib import commandline
-from chromite.lib import cros_logging as logging
 from chromite.lib import cros_test_lib
 from chromite.lib import osutils
 # pylint: enable=wrong-import-position
