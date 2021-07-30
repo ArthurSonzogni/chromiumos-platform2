@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -21,8 +20,6 @@ python generate-pc.py \
   --requires="${requires}"
   ...
 """
-
-from __future__ import print_function
 
 # TODO(crbug.com/868820): chromite.lib.commandline may be a good alternate
 # but is concerned the loading performance. Considering this is a part of

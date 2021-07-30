@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -16,8 +15,6 @@ Since the intention of this wrapper is to generate arguments passed to the
 shell, the output of the program is unescaped by the shell and spaces in it
 are replaced with newlines.
 """
-
-from __future__ import print_function
 
 import subprocess
 import sys

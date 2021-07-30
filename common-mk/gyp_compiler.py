@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -13,8 +12,6 @@ have to install a copy of gyp itself in their system.
 Last synced from:
 https://chromium.googlesource.com/external/gyp/aca1e2c3d346d704adfa60944e6b4dd06f4728be
 """
-
-from __future__ import print_function
 
 import ast
 

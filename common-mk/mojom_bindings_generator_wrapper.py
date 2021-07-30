@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -21,8 +20,6 @@ Usage:
     ${MOJOM_BINDINGS_GENERATOR} \
     [... and more args/flags to be passed to the mojom_bindings_generator.py]
 """
-
-from __future__ import print_function
 
 import subprocess
 import sys

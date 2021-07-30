@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2020 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -9,8 +8,6 @@
 Default values follow the default values of ebuild (see manpage of ebuild).
 https://dev.gentoo.org/~zmedico/portage/doc/man/ebuild.5.html
 """
-
-from __future__ import print_function
 
 import os
 import sys

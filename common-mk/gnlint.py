@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -62,8 +61,6 @@
 # }
 # The tree structure is expressed by "child" key having list of nodes in it.
 # Every dict in the nested structure represents a single node.
-
-from __future__ import print_function
 
 import collections
 import json
