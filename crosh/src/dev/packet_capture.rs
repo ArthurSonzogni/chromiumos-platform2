@@ -139,6 +139,7 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
         remove_capture_file_on_error(&capture_file_path);
     } else {
         println!("Capture file stored in: {}", &capture_file_path);
+        println!("Output file may contain personal information. Don't share it with people you don't trust.");
     }
     Ok(())
 }
