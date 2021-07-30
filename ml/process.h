@@ -49,6 +49,7 @@ class Process {
     kWorkerDisconnectWithControl = 1,
     kInvalidProcessType = 2,
     kUnexpectedCommandLine = 3,
+    kModelNameNotSpecified = 4,
   };
 
   // The worker process info, containing object to contact and measure worker
@@ -152,6 +153,14 @@ class Process {
   // The file descriptor to bootstrap the mojo connection of current process.
   // Only meaningful for worker process.
   int mojo_bootstrap_fd_;
+
+  // The name of the model to be run. Used for finding the appropriate
+  // seccomp policy.  Only meaningful for worker process.
+  std::string model_name_;
+
+  // Whether to disable seccomp sandboxing for the purposes of testing. Only
+  // meaningful for worker processes.
+  bool disable_seccomp_for_test_;
 
   // Path to the ml_service binary. Normally (and by default) it is
   // "/usr/bin/ml_service". We may change the value here for testing.

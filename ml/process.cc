@@ -43,6 +43,10 @@ constexpr char kMojoBootstrapFdSwitchName[] = "mojo-bootstrap-fd";
 
 constexpr char kInternalMojoPrimordialPipeName[] = "cros_ml";
 
+constexpr char kModelNameSwitchName[] = "model-name";
+
+constexpr char kDisableSeccompForTestSwitchName[] = "disable-seccomp-for-test";
+
 constexpr char kDefaultMlServiceBinaryPath[] = "/usr/bin/ml_service";
 
 constexpr uid_t kMlServiceDBusUid = 20177;
@@ -58,8 +62,14 @@ std::string GetSeccompPolicyPath(const std::string& model_name) {
   return "/usr/share/policy/ml_service-" + model_name + "-seccomp.policy";
 }
 
-std::string GetArgumentForWorkerProcess(int fd) {
+std::string GetFileDescriptorArgumentForWorkerProcess(int fd) {
   return base::StringPrintf("--%s=%d", kMojoBootstrapFdSwitchName, fd);
+}
+
+std::string GetModelNameArgumentForWorkerProcess(
+    const std::string& model_name) {
+  return base::StringPrintf("--%s=%s", kModelNameSwitchName,
+                            model_name.c_str());
 }
 
 }  // namespace
@@ -84,6 +94,13 @@ int Process::Run() {
     process_type_ = Type::kControl;
   } else {
     process_type_ = Type::kWorker;
+    if (!command_line->HasSwitch(kModelNameSwitchName)) {
+      LOG(ERROR) << "Model name not provided to worker process";
+      return ExitCode::kModelNameNotSpecified;
+    }
+    model_name_ = command_line->GetSwitchValueASCII(kModelNameSwitchName);
+    disable_seccomp_for_test_ =
+        command_line->HasSwitch(kDisableSeccompForTestSwitchName);
   }
 
   if (!command_line->GetArgs().empty()) {
@@ -129,11 +146,11 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
   // The following sandboxing makes unit test crash so we do not use them in
   // unit tests.
   if (process_type_ != Type::kControlForTest) {
+    // There is no seccomp set-up here because this takes place in the worker
+    // process itself. See comment in WorkerProcessRun(), or further
+    // context in crbug.com/1229376
     minijail_namespace_pids(jail.get());
     minijail_namespace_vfs(jail.get());
-    std::string seccomp_policy_path = GetSeccompPolicyPath(model_name);
-    minijail_parse_seccomp_filters(jail.get(), seccomp_policy_path.c_str());
-    minijail_use_seccomp_filter(jail.get());
   }
 
   // This is the file descriptor used to bootstrap mojo connection between
@@ -151,10 +168,19 @@ bool Process::SpawnWorkerProcessAndGetPid(const mojo::PlatformChannel& channel,
   minijail_preserve_fd(jail.get(), mojo_bootstrap_fd, mojo_bootstrap_fd);
   minijail_close_open_fds(jail.get());
 
-  std::string fd_argv = GetArgumentForWorkerProcess(mojo_bootstrap_fd);
   std::string task_argv = kMojoServiceTaskArgv;
-  char* const argv[4] = {&ml_service_path_[0], &task_argv[0], &fd_argv[0],
-                         nullptr};
+  std::string fd_argv =
+      GetFileDescriptorArgumentForWorkerProcess(mojo_bootstrap_fd);
+  std::string model_argv = GetModelNameArgumentForWorkerProcess(model_name);
+
+  char* argv[6] = {&ml_service_path_[0], &task_argv[0], &fd_argv[0],
+                   &model_argv[0],       nullptr,       nullptr};
+
+  std::string is_test_argv;
+  if (process_type_ == Type::kControlForTest) {
+    is_test_argv = base::StringPrintf("--%s", kDisableSeccompForTestSwitchName);
+    argv[4] = &is_test_argv[0];
+  }
 
   if (minijail_run_pid(jail.get(), &ml_service_path_[0], argv, worker_pid) !=
       0) {
@@ -214,6 +240,7 @@ void Process::UnregisterWorkerProcess(pid_t pid) {
 Process::Process()
     : process_type_(Type::kUnset),
       mojo_bootstrap_fd_(-1),
+      disable_seccomp_for_test_(false),
       ml_service_path_(kDefaultMlServiceBinaryPath) {}
 Process::~Process() = default;
 
@@ -258,6 +285,23 @@ void Process::WorkerProcessRun() {
           chromeos::machine_learning::mojom::MachineLearningService>(
           std::move(pipe)),
       message_loop.QuitClosure());
+  // Here we apply the model's seccomp policy. We are entering this sandbox as
+  // close as possible to where it is needed. This allows for a smaller seccomp
+  // policy than would otherwise be needed if applied earlier (as the policy
+  // would then have to include syscalls related to IPC setup, etc).
+
+  // TODO(crbug.com/1237302): Investigate why multi-process unit tests fail when
+  // seccomp is enabled, and if possible, enable seccomp for tests.
+  if (disable_seccomp_for_test_) {
+    LOG(WARNING) << "Note: seccomp disabled for testing. This should only "
+                    "happen in a test environment, and not in production.";
+  } else {
+    ScopedMinijail jail(minijail_new());
+    const std::string seccomp_policy_path = GetSeccompPolicyPath(model_name_);
+    minijail_parse_seccomp_filters(jail.get(), seccomp_policy_path.c_str());
+    minijail_use_seccomp_filter(jail.get());
+    minijail_enter(jail.get());
+  }
   message_loop.Run();
 }
 
