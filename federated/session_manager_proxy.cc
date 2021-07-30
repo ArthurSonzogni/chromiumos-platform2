@@ -37,8 +37,10 @@ SessionManagerProxy::SessionManagerProxy(
       base::BindOnce(&OnSignalConnected));
 }
 
+SessionManagerProxy::~SessionManagerProxy() = default;
+
 void SessionManagerProxy::AddObserver(
-    SessionManagerObserverInterface* observer) {
+    SessionManagerObserverInterface* const observer) {
   CHECK(observer) << "Invalid observer object";
   observer_list_.AddObserver(observer);
 }
@@ -60,7 +62,7 @@ std::string SessionManagerProxy::RetrieveSessionState() {
   std::string state;
   brillo::ErrorPtr error;
   if (!proxy_->RetrieveSessionState(&state, &error)) {
-    const char* error_msg =
+    const char* const error_msg =
         error ? error->GetMessage().c_str() : kUnknownErrorMsg;
     LOG(ERROR) << "Call to RetrieveSessionState failed. " << error_msg;
     return std::string();

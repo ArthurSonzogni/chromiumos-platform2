@@ -28,7 +28,7 @@ using testing::Return;
 using testing::StrictMock;
 
 TEST(FederatedServiceImplTest, TestReportExample) {
-  std::unique_ptr<MockStorageManager> storage_manager(
+  const std::unique_ptr<MockStorageManager> storage_manager(
       new StrictMock<MockStorageManager>());
 
   const std::string registered_client_name = *GetClientNames().begin();
@@ -50,7 +50,7 @@ TEST(FederatedServiceImplTest, TestReportExample) {
 }
 
 TEST(FederatedServiceImplTest, TestClone) {
-  std::unique_ptr<MockStorageManager> storage_manager(
+  const std::unique_ptr<MockStorageManager> storage_manager(
       new StrictMock<MockStorageManager>());
 
   const std::string registered_client_name = *GetClientNames().begin();

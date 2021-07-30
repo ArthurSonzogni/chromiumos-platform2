@@ -22,6 +22,9 @@ class FederatedServiceImpl
  public:
   // Creates an instance bound to `pipe`. The specified `disconnect_handler`
   // will be invoked if the binding encounters a connection error or is closed.
+  //
+  // Ownership is not taken of `storage_manager` and it must therefore outlive
+  // this instance.
   FederatedServiceImpl(mojo::ScopedMessagePipeHandle pipe,
                        base::OnceClosure disconnect_handler,
                        StorageManager* storage_manager);

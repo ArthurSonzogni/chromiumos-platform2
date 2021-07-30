@@ -11,12 +11,12 @@
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);
-  base::AtExitManager at_exit;
+  const base::AtExitManager at_exit;
 
   (new brillo::BaseMessageLoop())->SetAsCurrent();
 
   mojo::core::Init();
-  mojo::core::ScopedIPCSupport _(
+  const mojo::core::ScopedIPCSupport ipc_support(
       base::ThreadTaskRunnerHandle::Get(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 

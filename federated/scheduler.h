@@ -23,8 +23,7 @@ class Scheduler {
   Scheduler(StorageManager* storage_manager, dbus::Bus* bus);
   Scheduler(const Scheduler&) = delete;
   Scheduler& operator=(const Scheduler&) = delete;
-
-  virtual ~Scheduler() = default;
+  ~Scheduler();
 
   // For each client, posts a delayed task with default retry window.
   void Schedule();

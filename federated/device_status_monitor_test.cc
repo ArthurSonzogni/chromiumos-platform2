@@ -19,14 +19,15 @@
 #include "federated/device_status_monitor.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
-using power_manager::kPowerManagerInterface;
-using power_manager::kPowerSupplyPollSignal;
+namespace federated {
+namespace {
+
+using ::power_manager::kPowerManagerInterface;
+using ::power_manager::kPowerSupplyPollSignal;
 using ::testing::_;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
-
-namespace federated {
-namespace {
+using ::testing::Test;
 
 // Generates a PowerSupplyProperties proto with the given battery percent and
 // state.
@@ -51,7 +52,7 @@ void WriteSerializedProtoToSignal(const std::string& serialized_proto,
 
 }  // namespace
 
-class DeviceStatusMonitorTest : public ::testing::Test {
+class DeviceStatusMonitorTest : public Test {
  public:
   DeviceStatusMonitorTest()
       : mock_dbus_(new StrictMock<dbus::MockBus>(dbus::Bus::Options())),

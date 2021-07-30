@@ -25,20 +25,24 @@
 namespace federated {
 namespace {
 
-const std::unordered_set<std::string> kTestClients = {"test_client_1",
-                                                      "test_client_2"};
+using ::testing::Test;
+
+constexpr std::array<const char*, 2> kTestClients = {{
+    "test_client_1",
+    "test_client_2",
+}};
 
 // Opens a (potentially new) database at the given path and creates an example
 // table with the given name.
 int CreateExampleTableForTesting(const base::FilePath& db_path,
                                  const std::string& table) {
-  constexpr char kCreateDatabaseSql[] =
-      "CREATE TABLE %s ("
-      "  id         INTEGER PRIMARY KEY AUTOINCREMENT"
-      "                     NOT NULL,"
-      "  example    BLOB    NOT NULL,"
-      "  timestamp  INTEGER NOT NULL"
-      ")";
+  constexpr char kCreateDatabaseSql[] = R"(
+      CREATE TABLE %s (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT
+                           NOT NULL,
+        example    BLOB    NOT NULL,
+        timestamp  INTEGER NOT NULL
+      ))";
 
   sqlite3* db = nullptr;
   const int open_result = sqlite3_open(db_path.MaybeAsASCII().c_str(), &db);
@@ -55,7 +59,7 @@ int CreateExampleTableForTesting(const base::FilePath& db_path,
   return create_result;
 }
 
-// Adds `count` entries to `table` to the with entry i having serialized data
+// Adds `count` entries to `table` with entry i having serialized data
 // "example_i" and timestamp "unix epoch + i seconds".
 int PopulateTableForTesting(sqlite3* const db,
                             const std::string& table,
@@ -76,7 +80,7 @@ int PopulateTableForTesting(sqlite3* const db,
 
 }  // namespace
 
-class ExampleDatabaseTest : public testing::Test {
+class ExampleDatabaseTest : public Test {
  public:
   ExampleDatabaseTest(const ExampleDatabaseTest&) = delete;
   ExampleDatabaseTest& operator=(const ExampleDatabaseTest&) = delete;
@@ -94,8 +98,10 @@ class ExampleDatabaseTest : public testing::Test {
       return false;
     }
 
+    const std::unordered_set<std::string> clients(kTestClients.begin(),
+                                                  kTestClients.end());
     db_ = std::make_unique<ExampleDatabase>(db_path);
-    if (!db_->Init(kTestClients) || !db_->IsOpen() || !db_->CheckIntegrity() ||
+    if (!db_->Init(clients) || !db_->IsOpen() || !db_->CheckIntegrity() ||
         PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_1",
                                 100) != SQLITE_OK) {
       LOG(ERROR) << "Failed to initialize or check integrity of db_";
@@ -124,8 +130,10 @@ TEST_F(ExampleDatabaseTest, CreateDatabase) {
   EXPECT_TRUE(base::PathExists(db_path));
 
   // Initializes the db and checks integrity.
+  const std::unordered_set<std::string> clients(kTestClients.begin(),
+                                                kTestClients.end());
   ExampleDatabase db(db_path);
-  EXPECT_TRUE(db.Init(kTestClients));
+  EXPECT_TRUE(db.Init(clients));
   EXPECT_TRUE(db.IsOpen());
   EXPECT_TRUE(db.CheckIntegrity());
 

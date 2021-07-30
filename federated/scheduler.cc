@@ -28,6 +28,7 @@ Scheduler::Scheduler(StorageManager* storage_manager, dbus::Bus* bus)
 
 // TODO(alanlxl): create a destructor or finalize method that deletes examples
 //                from the database.
+Scheduler::~Scheduler() = default;
 
 void Scheduler::Schedule() {
   for (const auto& client_name : registered_clients_) {
@@ -45,7 +46,7 @@ void Scheduler::PostDelayedTask(const std::string& client_name,
 }
 
 void Scheduler::TryToStartJobForClient(const std::string& client_name) {
-  base::TimeDelta next_retry_delay = kDefaultRetryWindow;
+  const base::TimeDelta next_retry_delay = kDefaultRetryWindow;
   if (!device_status_monitor_.TrainingConditionsSatisfied()) {
     DVLOG(1) << "Device is not in a good condition for training now.";
     PostDelayedTask(client_name, next_retry_delay);

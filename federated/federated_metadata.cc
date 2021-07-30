@@ -4,7 +4,7 @@
 
 #include "federated/federated_metadata.h"
 
-#include <vector>
+#include <array>
 
 #include "base/no_destructor.h"
 
@@ -12,22 +12,23 @@ namespace federated {
 namespace {
 
 // TODO(alanlxl): just for testing.
-const std::vector<ClientConfigMetadata> kClientMetaVector = {
+constexpr std::array<const char* [3], 1> kClientMetadata = {{
     {
         "analytics_test_population",
         "/tmp/",
         "",
     },
-};
+}};
 
 }  // namespace
 
-const std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig() {
+std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig() {
   static const base::NoDestructor<
       std::unordered_map<std::string, ClientConfigMetadata>>
       client_config_map([] {
         std::unordered_map<std::string, ClientConfigMetadata> map;
-        for (const auto& meta : kClientMetaVector) {
+        for (const auto& data : kClientMetadata) {
+          const ClientConfigMetadata meta{data[0], data[1], data[2]};
           map[meta.name] = meta;
         }
         return map;
@@ -36,12 +37,12 @@ const std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig() {
   return *client_config_map;
 }
 
-const std::unordered_set<std::string> GetClientNames() {
+std::unordered_set<std::string> GetClientNames() {
   static const base::NoDestructor<std::unordered_set<std::string>> client_names(
       [] {
         std::unordered_set<std::string> set;
-        for (const auto& meta : kClientMetaVector) {
-          set.insert(meta.name);
+        for (const auto& data : kClientMetadata) {
+          set.insert(data[0]);
         }
         return set;
       }());

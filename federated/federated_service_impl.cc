@@ -14,9 +14,10 @@
 
 namespace federated {
 
-FederatedServiceImpl::FederatedServiceImpl(mojo::ScopedMessagePipeHandle pipe,
-                                           base::OnceClosure disconnect_handler,
-                                           StorageManager* storage_manager)
+FederatedServiceImpl::FederatedServiceImpl(
+    mojo::ScopedMessagePipeHandle pipe,
+    base::OnceClosure disconnect_handler,
+    StorageManager* const storage_manager)
     : storage_manager_(storage_manager),
       registered_clients_(GetClientNames()),
       receiver_(
@@ -34,8 +35,8 @@ void FederatedServiceImpl::Clone(
 
 void FederatedServiceImpl::ReportExample(
     const std::string& client_name,
-    chromeos::federated::mojom::ExamplePtr example) {
-  DCHECK(storage_manager_) << "storage_manager_ is not ready!";
+    const chromeos::federated::mojom::ExamplePtr example) {
+  DCHECK_NE(storage_manager_, nullptr) << "storage_manager_ is not ready!";
   if (registered_clients_.find(client_name) == registered_clients_.end()) {
     VLOG(1) << "Unknown client_name: " << client_name;
     return;

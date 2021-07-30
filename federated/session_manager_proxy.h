@@ -28,8 +28,7 @@ class SessionManagerProxy {
           proxy);
   SessionManagerProxy(const SessionManagerProxy&) = delete;
   SessionManagerProxy& operator=(const SessionManagerProxy&) = delete;
-
-  ~SessionManagerProxy() = default;
+  ~SessionManagerProxy();
 
   void AddObserver(SessionManagerObserverInterface* observer);
 
@@ -48,9 +47,11 @@ class SessionManagerProxy {
   // Handles the SessionStateChanged DBus signal.
   void OnSessionStateChanged(const std::string& state);
 
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
+  const std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      proxy_;
   base::ObserverList<SessionManagerObserverInterface> observer_list_;
-  base::WeakPtrFactory<SessionManagerProxy> weak_ptr_factory_;
+
+  const base::WeakPtrFactory<SessionManagerProxy> weak_ptr_factory_;
 };
 
 }  // namespace federated

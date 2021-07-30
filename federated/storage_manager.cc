@@ -22,11 +22,11 @@ namespace federated {
 StorageManager::StorageManager() = default;
 StorageManager::~StorageManager() = default;
 
-void StorageManager::InitializeSessionManagerProxy(dbus::Bus* bus) {
+void StorageManager::InitializeSessionManagerProxy(dbus::Bus* const bus) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!session_manager_proxy_)
+  DCHECK_NE(session_manager_proxy_, nullptr)
       << "session_manager_proxy is already initialized!";
-  DCHECK(bus);
+  DCHECK_NE(bus, nullptr);
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(
       std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus));
 
@@ -40,7 +40,7 @@ void StorageManager::InitializeSessionManagerProxy(dbus::Bus* bus) {
 bool StorageManager::OnExampleReceived(const std::string& client_name,
                                        const std::string& serialized_example) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!example_database_ || !example_database_->IsOpen()) {
+  if (example_database_ == nullptr || !example_database_->IsOpen()) {
     VLOG(1) << "No database connection";
     return false;
   }
@@ -55,7 +55,7 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
 base::Optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     const std::string& client_name) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!example_database_ || !example_database_->IsOpen()) {
+  if (example_database_ == nullptr || !example_database_->IsOpen()) {
     VLOG(1) << "No database connection";
     return base::nullopt;
   }
@@ -89,7 +89,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
     return;
   }
 
-  if (example_database_ && example_database_->IsOpen() &&
+  if (example_database_ != nullptr && example_database_->IsOpen() &&
       new_sanitized_username == sanitized_username_) {
     VLOG(1) << "Database for user " << sanitized_username_
             << " is already connected, nothing changed";
@@ -97,7 +97,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
   }
 
   sanitized_username_ = new_sanitized_username;
-  auto db_path = GetDatabasePath(sanitized_username_);
+  const auto db_path = GetDatabasePath(sanitized_username_);
   example_database_.reset(new ExampleDatabase(db_path));
 
   if (!example_database_->Init(GetClientNames())) {

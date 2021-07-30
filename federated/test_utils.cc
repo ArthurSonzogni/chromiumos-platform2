@@ -9,14 +9,15 @@
 
 namespace federated {
 namespace {
-using chromeos::federated::mojom::Example;
-using chromeos::federated::mojom::ExamplePtr;
-using chromeos::federated::mojom::Features;
-using chromeos::federated::mojom::FloatList;
-using chromeos::federated::mojom::Int64List;
-using chromeos::federated::mojom::StringList;
-using chromeos::federated::mojom::ValueList;
-using chromeos::federated::mojom::ValueListPtr;
+
+using ::chromeos::federated::mojom::Example;
+using ::chromeos::federated::mojom::ExamplePtr;
+using ::chromeos::federated::mojom::Features;
+using ::chromeos::federated::mojom::FloatList;
+using ::chromeos::federated::mojom::Int64List;
+using ::chromeos::federated::mojom::StringList;
+using ::chromeos::federated::mojom::ValueList;
+using ::chromeos::federated::mojom::ValueListPtr;
 
 ValueListPtr CreateInt64List(const std::vector<int64_t>& values) {
   ValueListPtr value_list = ValueList::New();

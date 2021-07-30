@@ -32,8 +32,9 @@ DeviceStatusMonitor::DeviceStatusMonitor(dbus::Bus* bus)
     : powerd_dbus_proxy_(bus->GetObjectProxy(
           power_manager::kPowerManagerServiceName,
           dbus::ObjectPath(power_manager::kPowerManagerServicePath))),
+      enough_battery_(false),
       weak_ptr_factory_(this) {
-  DCHECK(powerd_dbus_proxy_);
+  DCHECK_NE(powerd_dbus_proxy_, nullptr);
   // Updates the battery status when receiving the kPowerSupplyPollSignal.
   powerd_dbus_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
@@ -43,14 +44,16 @@ DeviceStatusMonitor::DeviceStatusMonitor(dbus::Bus* bus)
       base::BindOnce(&OnSignalConnected));
 }
 
+DeviceStatusMonitor::~DeviceStatusMonitor() = default;
+
 bool DeviceStatusMonitor::TrainingConditionsSatisfied() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return enough_battery_;
 }
 
-void DeviceStatusMonitor::OnPowerSupplyReceived(dbus::Signal* signal) {
+void DeviceStatusMonitor::OnPowerSupplyReceived(dbus::Signal* const signal) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!signal) {
+  if (signal == nullptr) {
     DVLOG(1) << "Received a null signal in OnPowerSupplyReceived.";
     enough_battery_ = false;
     return;
@@ -65,15 +68,12 @@ void DeviceStatusMonitor::OnPowerSupplyReceived(dbus::Signal* signal) {
   }
 
   // When battery is enough, or the device is plugged-in.
-  if ((power_supply_proto.has_battery_percent() &&
+  enough_battery_ =
+      (power_supply_proto.has_battery_percent() &&
        power_supply_proto.battery_percent() > kMinimumAdequateBatteryLevel) ||
       (power_supply_proto.has_battery_state() &&
        power_supply_proto.battery_state() !=
-           power_manager::PowerSupplyProperties::DISCHARGING)) {
-    enough_battery_ = true;
-  } else {
-    enough_battery_ = false;
-  }
+           power_manager::PowerSupplyProperties::DISCHARGING);
 }
 
 }  // namespace federated

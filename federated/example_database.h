@@ -5,8 +5,7 @@
 #ifndef FEDERATED_EXAMPLE_DATABASE_H_
 #define FEDERATED_EXAMPLE_DATABASE_H_
 
-#include <bits/stdint-intn.h>
-#include <stdint.h>
+#include <cstdint>
 
 #include <memory>
 #include <string>

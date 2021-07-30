@@ -21,14 +21,15 @@
 
 #include "federated/utils.h"
 
+namespace federated {
+namespace {
+
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
-
-namespace federated {
-namespace {
+using ::testing::Test;
 
 class MockSessionManagerObserver : public SessionManagerObserverInterface {
  public:
@@ -40,7 +41,7 @@ class MockSessionManagerObserver : public SessionManagerObserverInterface {
 
 }  // namespace
 
-class SessionManagerProxyTest : public ::testing::Test {
+class SessionManagerProxyTest : public Test {
  public:
   SessionManagerProxyTest()
       : mock_session_manager_interface_proxy_(
@@ -71,7 +72,7 @@ class SessionManagerProxyTest : public ::testing::Test {
   }
 
   SessionManagerProxy* session_manager_proxy() const {
-    DCHECK(session_manager_proxy_);
+    CHECK_NE(session_manager_proxy_, nullptr);
     return session_manager_proxy_.get();
   }
 
@@ -101,11 +102,10 @@ class SessionManagerProxyTest : public ::testing::Test {
  private:
   // Invoked when SessionManagerInterfaceProxyMock::RetrievePrimarySession() is
   // called.
-  bool RetrievePrimarySessionImpl(
-      std::string* username,
-      std::string* sanitized_username,
-      brillo::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+  bool RetrievePrimarySessionImpl(std::string* const username,
+                                  std::string* const sanitized_username,
+                                  brillo::ErrorPtr* /* error */,
+                                  int /* timeout_ms */) const {
     *username = primary_session_.first;  // Set in SetPrimarySession().
     *sanitized_username = primary_session_.second;
 
@@ -114,10 +114,9 @@ class SessionManagerProxyTest : public ::testing::Test {
 
   // Invoked when SessionManagerInterfaceProxyMock::RetrieveSessionState() is
   // called.
-  bool RetrieveSessionStateImpl(
-      std::string* state,
-      brillo::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+  bool RetrieveSessionStateImpl(std::string* const state,
+                                brillo::ErrorPtr* /* error */,
+                                int /* timeout_ms */) const {
     *state = session_state_;  // Set in SetSessionState().
     return true;
   }
@@ -126,7 +125,7 @@ class SessionManagerProxyTest : public ::testing::Test {
   std::pair<std::string, std::string> primary_session_;
   std::string session_state_;
 
-  org::chromium::SessionManagerInterfaceProxyMock*
+  org::chromium::SessionManagerInterfaceProxyMock* const
       mock_session_manager_interface_proxy_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
@@ -175,9 +174,9 @@ TEST_F(SessionManagerProxyTest, OnSessionStateChanged) {
 
   const std::vector<std::string> available_states = {
       kSessionStartedState, kSessionStoppedState, "unknown_state"};
-  static unsigned int seed = time(NULL) + getpid();
+  static unsigned int seed = time(NULL) + 1234;
   for (size_t i = 0; i < 100; i++) {
-    int index = rand_r(&seed) % 3;
+    const int index = rand_r(&seed) % 3;
     if (index == 0)
       started_state_count++;
     else if (index == 1)

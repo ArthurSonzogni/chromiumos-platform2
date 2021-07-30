@@ -25,8 +25,7 @@ class DeviceStatusMonitor {
   explicit DeviceStatusMonitor(dbus::Bus* bus);
   DeviceStatusMonitor(const DeviceStatusMonitor&) = delete;
   DeviceStatusMonitor& operator=(const DeviceStatusMonitor&) = delete;
-
-  ~DeviceStatusMonitor() = default;
+  ~DeviceStatusMonitor();
 
   // Called before training to see if the device is in a good condition, and
   // during the training to see if it should be aborted.
@@ -37,14 +36,14 @@ class DeviceStatusMonitor {
   void OnPowerSupplyReceived(dbus::Signal* signal);
 
   // Obtained from dbus, should never delete it.
-  dbus::ObjectProxy* powerd_dbus_proxy_ = nullptr;
+  dbus::ObjectProxy* const powerd_dbus_proxy_;
 
   // Whether the device has enough battery for a federated computation task.
   // Updated in `OnPowerSupplyReceived` and used in
   // `TrainingConditionsSatisfied`.
-  bool enough_battery_ = false;
+  bool enough_battery_;
 
-  base::WeakPtrFactory<DeviceStatusMonitor> weak_ptr_factory_;
+  const base::WeakPtrFactory<DeviceStatusMonitor> weak_ptr_factory_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

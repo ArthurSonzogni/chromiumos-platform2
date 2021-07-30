@@ -53,7 +53,7 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<Scheduler> scheduler_;
 
   // Must be last class member.
-  base::WeakPtrFactory<Daemon> weak_ptr_factory_;
+  const base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 
 }  // namespace federated

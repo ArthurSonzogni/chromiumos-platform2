@@ -315,14 +315,14 @@ bool ExampleDatabase::CreateClientTable(const std::string& client_name) {
     return false;
   }
 
-  const std::string sql = base::StringPrintf(
-      "CREATE TABLE %s ("
-      "  id         INTEGER PRIMARY KEY AUTOINCREMENT"
-      "                     NOT NULL,"
-      "  example    BLOB    NOT NULL,"
-      "  timestamp  INTEGER NOT NULL"
-      ")",
-      client_name.c_str());
+  const std::string sql = base::StringPrintf(R"(
+      CREATE TABLE %s (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT
+                           NOT NULL,
+        example    BLOB    NOT NULL,
+        timestamp  INTEGER NOT NULL
+      ))",
+                                             client_name.c_str());
   const ExecResult result = ExecSql(sql);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to create table: " << result.error_msg;

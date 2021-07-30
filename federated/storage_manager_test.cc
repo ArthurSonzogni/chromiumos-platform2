@@ -17,17 +17,18 @@
 namespace federated {
 namespace {
 
-using testing::_;
-using testing::ByMove;
-using testing::Expectation;
-using testing::ExpectationSet;
-using testing::Mock;
-using testing::Return;
-using testing::StrictMock;
+using ::testing::_;
+using ::testing::ByMove;
+using ::testing::Expectation;
+using ::testing::ExpectationSet;
+using ::testing::Mock;
+using ::testing::Return;
+using ::testing::StrictMock;
+using ::testing::Test;
 
 }  // namespace
 
-class StorageManagerTest : public testing::Test {
+class StorageManagerTest : public Test {
  public:
   StorageManagerTest()
       : example_database_(
@@ -39,13 +40,12 @@ class StorageManagerTest : public testing::Test {
   }
 
   void TearDown() override {
-    storage_manager_.reset();
     Mock::VerifyAndClearExpectations(example_database_);
   }
 
  protected:
-  MockExampleDatabase* example_database_;
-  std::unique_ptr<StorageManager> storage_manager_;
+  MockExampleDatabase* const example_database_;
+  const std::unique_ptr<StorageManager> storage_manager_;
 };
 
 TEST_F(StorageManagerTest, ExampleRecieved) {

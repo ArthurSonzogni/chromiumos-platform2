@@ -21,10 +21,10 @@ struct ClientConfigMetadata {
 };
 
 // Returns a map from client_name to ClientConfigMetadata.
-const std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig();
+std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig();
 
 // Returns a set of all registered client names;
-const std::unordered_set<std::string> GetClientNames();
+std::unordered_set<std::string> GetClientNames();
 
 }  // namespace federated
 

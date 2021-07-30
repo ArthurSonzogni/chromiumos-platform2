@@ -16,15 +16,16 @@
 
 namespace federated {
 namespace {
-using chromeos::federated::mojom::Example;
-using chromeos::federated::mojom::ExamplePtr;
-using chromeos::federated::mojom::Features;
-using testing::ElementsAre;
+
+using ::chromeos::federated::mojom::Example;
+using ::chromeos::federated::mojom::ExamplePtr;
+using ::chromeos::federated::mojom::Features;
+using ::testing::ElementsAre;
 
 TEST(UtilsTest, ConvertToTensorFlowExampleProto) {
-  auto example = CreateExamplePtr();
+  const auto example = CreateExamplePtr();
 
-  tensorflow::Example tf_example_converted =
+  const tensorflow::Example tf_example_converted =
       ConvertToTensorFlowExampleProto(example);
   const auto& tf_feature_map = tf_example_converted.features().feature();
 
