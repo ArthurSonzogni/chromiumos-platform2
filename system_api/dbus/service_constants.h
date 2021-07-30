@@ -453,6 +453,7 @@ const char kResendBluetoothBattery[] = "ResendBluetoothBattery";
 const char kGetDeprioritizeBtWbsMic[] = "GetDeprioritizeBtWbsMic";
 const char kSetNoiseCancellationEnabled[] = "SetNoiseCancellationEnabled";
 const char kIsNoiseCancellationSupported[] = "IsNoiseCancellationSupported";
+const char kSetFlossEnabled[] = "SetFlossEnabled";
 
 // Names of properties returned by GetNodes() and GetNodeInfos()
 const char kIsInputProperty[] = "IsInput";
