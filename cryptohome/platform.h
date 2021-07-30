@@ -32,6 +32,11 @@ extern "C" {
 #include <keyutils.h>
 }
 
+#ifndef MS_NOSYMFOLLOW
+// Added locally in kernels 4.x+.
+#define MS_NOSYMFOLLOW 256
+#endif
+
 #include "cryptohome/dircrypto_util.h"
 
 namespace base {

@@ -475,7 +475,14 @@ bool MountHelper::MountAndPush(const base::FilePath& src,
                                const base::FilePath& dest,
                                const std::string& type,
                                const std::string& options) {
-  if (!platform_->Mount(src, dest, type, kDefaultMountFlags, options)) {
+  // MS_NOSYMFOLLOW works only in 4.x+ kernels so far.
+  uint32_t mount_flags = kDefaultMountFlags | MS_NOSYMFOLLOW;
+  std::string mount_options = "nosymfollow";
+  if (!options.empty()) {
+    mount_options += "," + options;
+  }
+
+  if (!platform_->Mount(src, dest, type, mount_flags, mount_options)) {
     PLOG(ERROR) << "Mount failed: " << src.value() << " -> " << dest.value();
     return false;
   }

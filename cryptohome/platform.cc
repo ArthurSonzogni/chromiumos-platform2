@@ -34,11 +34,6 @@
 
 #include <base/check_op.h>
 
-#ifndef MS_NOSYMFOLLOW
-// Added locally in kernels 4.x+.
-#define MS_NOSYMFOLLOW 256
-#endif
-
 #include <ios>
 #include <limits>
 #include <sstream>
