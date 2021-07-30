@@ -42,7 +42,10 @@ const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;        // NOLINT
 const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;   // NOLINT
 const long NetlinkManager::kResponseTimeoutSeconds = 5;             // NOLINT
 const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;        // NOLINT
-const long NetlinkManager::kPendingDumpTimeoutMilliseconds = 500;   // NOLINT
+// TODO(dankit): Further enhancement, -kPendingDumpTimeoutMilliseconds timer
+// should be able to tune using the experiment config, if more number of
+// stations connected to AP. (Ref bug - b/186899140)
+const long NetlinkManager::kPendingDumpTimeoutMilliseconds = 1000;  // NOLINT
 const long NetlinkManager::kNlMessageRetryDelayMilliseconds = 300;  // NOLINT
 const int NetlinkManager::kMaxNlMessageRetries = 1;                 // NOLINT
 
