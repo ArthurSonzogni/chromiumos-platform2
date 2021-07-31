@@ -20,6 +20,9 @@ import sys
 import threading
 import time
 
+# The following imports will be available on the test image, but will usually
+# be missing in the SDK.
+# pylint: disable=import-error
 import cherrypy
 import gnupg
 from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
@@ -164,7 +167,9 @@ class FingerWebSocket(WebSocket):
 
     def save_to_file(self, data: bytes, file_path: str):
         """Save data bytes to file at file_path.
-        If GPG is enabled, the .gpg suffix is added to file_path."""
+
+        If GPG is enabled, the .gpg suffix is added to file_path.
+        """
 
         if self.gpg:
             file_path += '.gpg'
@@ -180,10 +185,10 @@ class FingerWebSocket(WebSocket):
         with open(file_path, 'wb') as f:
             f.write(data)
 
-    def ectool(self, command: str, *params) -> bytes:
-        """Run the ectool command and return its stdout as bytes"""
+    def ectool(self, command: str, *args) -> bytes:
+        """Run the ectool command and return its stdout as bytes."""
 
-        cmdline = [ECTOOL, '--name=cros_fp', command] + list(params)
+        cmdline = [ECTOOL, '--name=cros_fp', command] + list(args)
         stdout = b''
         while not self.abort_request:
             try:
@@ -194,8 +199,8 @@ class FingerWebSocket(WebSocket):
                 stdout = b''
         return stdout
 
-    def ectool_fpmode(self, *params) -> int:
-        mode = self.ectool('fpmode', *params).decode('utf-8')
+    def ectool_fpmode(self, *args) -> int:
+        mode = self.ectool('fpmode', *args).decode('utf-8')
         match_mode = self.FP_MODE_RE.search(mode)
         return int(match_mode.group(1), 16) if match_mode else -1
 
@@ -312,7 +317,7 @@ def main(argv: list):
                         help='User IDs of GPG recipients separated by space')
     args = parser.parse_args(argv)
 
-    # GPG can only be used when both gpg-keyring and gpg-recipient are specified.
+    # GPG can only be used when gpg-keyring and gpg-recipient are specified.
     if args.gpg_keyring and not args.gpg_recipients:
         parser.error('gpg-recipients must be specified with gpg-keyring')
     if args.gpg_recipients and not args.gpg_keyring:

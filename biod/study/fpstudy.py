@@ -23,6 +23,9 @@ import subprocess
 import sys
 import tempfile
 
+# The following imports will be available on the test image, but will usually
+# be missing in the SDK.
+# pylint: disable=import-error
 import gnupg
 
 
@@ -68,11 +71,15 @@ CAPTURE_FILE_EXTS = [
 
 
 def find_files(path: str, ext: str) -> list:
-    """
-    Find all files under the given path that have the specified file extension.
+    """Find all files that have the specified file extension.
 
-    The path may be a directory or a single file. If the path is a single file,
-    the extension will be checked.
+    Args:
+        path: A directory or single file path, where we will search for file(s)
+            of the given |ext|.
+        ext: The file extension.
+
+    Returns:
+        A list of file paths that matching |path| and |ext|.
     """
 
     files = []
@@ -242,7 +249,8 @@ def cmd_convert(args: argparse.Namespace) -> int:
                 # mogrify -format png *.pgm
                 p = subprocess.run(['mogrify', '-format', args.outtype, '-'],
                                    capture_output=True,
-                                   input=bytes(pgm_buffer, 'utf-8'))
+                                   input=bytes(pgm_buffer, 'utf-8'),
+                                   check=False)
                 if p.returncode != 0:
                     print('mogrify:', str(p.stderr, 'utf-8'))
                     print(f'Error - mogrify returned {p.returncode}.')
@@ -280,7 +288,7 @@ def cmd_rm(args: argparse.Namespace) -> int:
     files_list = '\n'.join(files) + '\n'
     print(f'Shredding {len(files)} files.')
     p = subprocess.run(['xargs', 'shred', '-v'], capture_output=True,
-                       input=bytes(files_list, 'utf-8'))
+                       input=bytes(files_list, 'utf-8'), check=False)
     if p.returncode != 0:
         print('shred stdout:\n', str(p.stdout, 'utf-8'))
         print('shred stderr:\n', str(p.stderr, 'utf-8'))
