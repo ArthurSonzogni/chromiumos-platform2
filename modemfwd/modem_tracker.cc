@@ -29,14 +29,14 @@ void OnSignalConnected(const std::string& interface_name,
 
 ModemTracker::ModemTracker(
     scoped_refptr<dbus::Bus> bus,
-    const OnModemCarrierIdReadyCallback& on_modem_carrier_id_ready_callback,
-    const OnModemDeviceSeenCallback& on_modem_device_seen_callback)
+    OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback,
+    OnModemDeviceSeenCallback on_modem_device_seen_callback)
     : bus_(bus),
       shill_proxy_(new org::chromium::flimflam::ManagerProxy(bus)),
       on_modem_carrier_id_ready_callback_(on_modem_carrier_id_ready_callback),
       on_modem_device_seen_callback_(on_modem_device_seen_callback),
       weak_ptr_factory_(this) {
-  shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::Bind(
+  shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
       &ModemTracker::OnServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -48,9 +48,9 @@ void ModemTracker::OnServiceAvailable(bool available) {
   }
 
   shill_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ModemTracker::OnManagerPropertyChanged,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&OnSignalConnected));
+      base::BindRepeating(&ModemTracker::OnManagerPropertyChanged,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&OnSignalConnected));
 
   brillo::ErrorPtr error;
   brillo::VariantDictionary properties;
@@ -151,9 +151,9 @@ void ModemTracker::OnDeviceListChanged(
     // Listen to the Device HomeProvider property in order to detect future SIM
     // swaps.
     device->RegisterPropertyChangedSignalHandler(
-        base::Bind(&ModemTracker::OnDevicePropertyChanged,
-                   weak_ptr_factory_.GetWeakPtr(), device_path),
-        base::Bind(&OnSignalConnected));
+        base::BindRepeating(&ModemTracker::OnDevicePropertyChanged,
+                            weak_ptr_factory_.GetWeakPtr(), device_path),
+        base::BindRepeating(&OnSignalConnected));
 
     // Try to update only if we already know the carrier
     if (!carrier_id.empty())

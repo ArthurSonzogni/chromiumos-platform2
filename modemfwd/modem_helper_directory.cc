@@ -72,7 +72,7 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
   }
 
   void ForEachHelper(
-      const base::Callback<void(const std::string&, ModemHelper*)>& callback)
+      base::RepeatingCallback<void(const std::string&, ModemHelper*)> callback)
       override {
     for (const auto& entry : helpers_by_id_)
       callback.Run(entry.first, entry.second);

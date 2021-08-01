@@ -155,13 +155,15 @@ int Daemon::CompleteInitialization() {
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
-      base::Bind(&Daemon::OnModemCarrierIdReady,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Daemon::OnModemDeviceSeen, weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Daemon::OnModemCarrierIdReady,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Daemon::OnModemDeviceSeen,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&Daemon::CheckForWedgedModems, weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&Daemon::CheckForWedgedModems,
+                     weak_ptr_factory_.GetWeakPtr()),
       GetModemWedgeCheckDelay());
 
   return EX_OK;
@@ -180,7 +182,7 @@ void Daemon::OnModemDeviceSeen(std::string device_id,
   device_ids_seen_.insert(device_id);
 
   if (modem_reappear_callbacks_.count(equipment_id) > 0) {
-    modem_reappear_callbacks_[equipment_id].Run();
+    std::move(modem_reappear_callbacks_[equipment_id]).Run();
     modem_reappear_callbacks_.erase(equipment_id);
   }
 }
@@ -196,9 +198,9 @@ void Daemon::OnModemCarrierIdReady(
   ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
              << " and device ID [" << device_id << "] ready to flash";
 
-  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get());
   if (!cb.is_null())
-    modem_reappear_callbacks_[equipment_id] = cb;
+    modem_reappear_callbacks_[equipment_id] = std::move(cb);
 }
 
 void Daemon::RegisterDBusObjectsAsync(
@@ -214,20 +216,21 @@ bool Daemon::ForceFlash(const std::string& device_id) {
     return false;
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
-  base::Closure cb = modem_flasher_->TryFlash(stub_modem.get());
+  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get());
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
   // got one.
-  if (!cb.is_null())
-    cb.Run();
-  return !cb.is_null();
+  bool is_null = cb.is_null();
+  if (!is_null)
+    std::move(cb).Run();
+  return !is_null;
 }
 
 void Daemon::CheckForWedgedModems() {
   EVLOG(1) << "Running wedged modems check...";
   helper_directory_->ForEachHelper(
-      base::Bind(&Daemon::ForceFlashIfWedged, base::Unretained(this)));
+      base::BindRepeating(&Daemon::ForceFlashIfWedged, base::Unretained(this)));
 }
 
 void Daemon::ForceFlashIfWedged(const std::string& device_id,
@@ -240,8 +243,8 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     if (helper->Reboot()) {
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
           FROM_HERE,
-          base::Bind(&Daemon::ForceFlashIfNeverAppeared,
-                     weak_ptr_factory_.GetWeakPtr(), device_id),
+          base::BindOnce(&Daemon::ForceFlashIfNeverAppeared,
+                         weak_ptr_factory_.GetWeakPtr(), device_id),
           kRebootCheckDelay);
     } else {
       EVLOG(1) << "Couldn't reboot modem with device ID [" << device_id

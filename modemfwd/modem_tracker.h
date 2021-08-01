@@ -19,18 +19,17 @@
 
 namespace modemfwd {
 
-using OnModemCarrierIdReadyCallback =
-    base::Callback<void(std::unique_ptr<org::chromium::flimflam::DeviceProxy>)>;
+using OnModemCarrierIdReadyCallback = base::RepeatingCallback<void(
+    std::unique_ptr<org::chromium::flimflam::DeviceProxy>)>;
 
 using OnModemDeviceSeenCallback =
-    base::Callback<void(std::string, std::string)>;
+    base::RepeatingCallback<void(std::string, std::string)>;
 
 class ModemTracker {
  public:
-  ModemTracker(
-      scoped_refptr<dbus::Bus> bus,
-      const OnModemCarrierIdReadyCallback& on_modem_carrier_id_ready_callback,
-      const OnModemDeviceSeenCallback& on_modem_device_seen_callback);
+  ModemTracker(scoped_refptr<dbus::Bus> bus,
+               OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback,
+               OnModemDeviceSeenCallback on_modem_device_seen_callback);
   ModemTracker(const ModemTracker&) = delete;
   ModemTracker& operator=(const ModemTracker&) = delete;
 

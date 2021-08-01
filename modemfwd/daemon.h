@@ -100,7 +100,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
 
-  std::map<std::string, base::Closure> modem_reappear_callbacks_;
+  std::map<std::string, base::OnceClosure> modem_reappear_callbacks_;
   std::set<std::string> device_ids_seen_;
 
   std::unique_ptr<DBusAdaptor> dbus_adaptor_;

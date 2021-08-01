@@ -29,7 +29,7 @@ class ModemFlasher {
   ModemFlasher& operator=(const ModemFlasher&) = delete;
 
   // Returns a callback that should be executed when the modem reappears.
-  base::Closure TryFlash(Modem* modem);
+  base::OnceClosure TryFlash(Modem* modem);
 
  private:
   class FlashState {

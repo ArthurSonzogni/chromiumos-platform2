@@ -25,7 +25,7 @@ class ModemHelperDirectory {
   // Calls |callback| for each pair of {device_id, helper} known to the
   // ModemHelperDirectory.
   virtual void ForEachHelper(
-      const base::Callback<void(const std::string&, ModemHelper*)>&
+      base::RepeatingCallback<void(const std::string&, ModemHelper*)>
           callback) = 0;
 };
 

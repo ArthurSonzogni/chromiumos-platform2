@@ -520,10 +520,10 @@ TEST_F(ModemFlasherTest, WritesToJournal) {
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(only_main_, kDeviceId1, _))
       .Times(1);
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, _)).Times(1);
-  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get());
   // The cleanup callback marks the end of flashing the firmware.
   ASSERT_FALSE(cb.is_null());
-  cb.Run();
+  std::move(cb).Run();
 }
 
 TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
@@ -540,7 +540,7 @@ TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
       .Times(1);
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, _)).Times(1);
   // There should be no journal cleanup after the flashing fails.
-  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get());
   ASSERT_TRUE(cb.is_null());
 }
 
@@ -566,9 +566,9 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
       .Times(1);
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, kCarrier2))
       .Times(1);
-  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get());
   ASSERT_FALSE(cb.is_null());
-  cb.Run();
+  std::move(cb).Run();
 
   // After the modem reboots, the helper hopefully reports the new carrier.
   SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
@@ -592,7 +592,7 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
       .Times(1);
   cb = modem_flasher_->TryFlash(modem.get());
   ASSERT_FALSE(cb.is_null());
-  cb.Run();
+  std::move(cb).Run();
 }
 
 TEST_F(ModemFlasherTest, CarrierSwitchingMainFirmware) {

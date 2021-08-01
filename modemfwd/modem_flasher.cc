@@ -67,10 +67,10 @@ ModemFlasher::ModemFlasher(
     : firmware_directory_(std::move(firmware_directory)),
       journal_(std::move(journal)) {}
 
-base::Closure ModemFlasher::TryFlash(Modem* modem) {
+base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   if (IsAutoUpdateDisabledByPref()) {
     LOG(INFO) << "Update disabled by pref";
-    return base::Closure();
+    return base::OnceClosure();
   }
 
   std::string equipment_id = modem->GetEquipmentId();
@@ -78,7 +78,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
   if (!flash_state->ShouldFlash()) {
     LOG(WARNING) << "Modem with equipment ID \"" << equipment_id
                  << "\" failed to flash too many times; not flashing";
-    return base::Closure();
+    return base::OnceClosure();
   }
 
   std::string device_id = modem->GetDeviceId();
@@ -109,7 +109,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(file_info))
-        return base::Closure();
+        return base::OnceClosure();
 
       // We found different firmware!
       // record to flash the main firmware binary.
@@ -130,7 +130,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(file_info))
-        return base::Closure();
+        return base::OnceClosure();
 
       flash_cfg.push_back(
           {kFwOem, firmware_file->path_on_filesystem(), file_info.version});
@@ -167,7 +167,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
         carrier_fw_version != file_info.version) {
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(file_info))
-        return base::Closure();
+        return base::OnceClosure();
 
       flash_cfg.push_back(
           {kFwCarrier, firmware_file->path_on_filesystem(), file_info.version});
@@ -189,7 +189,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
 
   // Flash if we have new firmwares
   if (flash_cfg.empty())
-    return base::Closure();
+    return base::OnceClosure();
 
   std::vector<std::string> fw_types;
   std::transform(flash_cfg.begin(), flash_cfg.end(),
@@ -201,7 +201,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
   if (!modem->FlashFirmwares(flash_cfg)) {
     flash_state->OnFlashFailed();
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
-    return base::Closure();
+    return base::OnceClosure();
   }
 
   for (const auto& info : flash_cfg) {
@@ -216,9 +216,9 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     ELOG(INFO) << "Flashed " << fw_type << " firmware (" << path_for_logging
                << ") to the modem";
   }
-  return base::Bind(&Journal::MarkEndOfFlashingFirmware,
-                    base::Unretained(journal_.get()), device_id,
-                    current_carrier);
+  return base::BindOnce(&Journal::MarkEndOfFlashingFirmware,
+                        base::Unretained(journal_.get()), device_id,
+                        current_carrier);
 }
 
 }  // namespace modemfwd
