@@ -769,7 +769,10 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   bool drivefs_mount_name_required =
       request.storage_location() == SharePathRequest::DRIVEFS_MY_DRIVE ||
       request.storage_location() == SharePathRequest::DRIVEFS_TEAM_DRIVES ||
-      request.storage_location() == SharePathRequest::DRIVEFS_COMPUTERS;
+      request.storage_location() == SharePathRequest::DRIVEFS_COMPUTERS ||
+      request.storage_location() == SharePathRequest::DRIVEFS_FILES_BY_ID ||
+      request.storage_location() ==
+          SharePathRequest::DRIVEFS_SHORTCUT_TARGETS_BY_ID;
   if (drivefs_mount_name.ReferencesParent() ||
       drivefs_mount_name.BaseName() != drivefs_mount_name ||
       (drivefs_mount_name_required &&
@@ -836,6 +839,18 @@ std::unique_ptr<dbus::Response> Service::SharePath(
                 .Append(drivefs_mount_name)
                 .Append("Computers");
       dst = dst.Append("GoogleDrive").Append("Computers");
+      break;
+    case SharePathRequest::DRIVEFS_FILES_BY_ID:
+      src = base::FilePath("/media/fuse/")
+                .Append(drivefs_mount_name)
+                .Append(".files-by-id");
+      dst = dst.Append("GoogleDrive").Append("SharedWithMe");
+      break;
+    case SharePathRequest::DRIVEFS_SHORTCUT_TARGETS_BY_ID:
+      src = base::FilePath("/media/fuse/")
+                .Append(drivefs_mount_name)
+                .Append(".shortcut-targets-by-id");
+      dst = dst.Append("GoogleDrive").Append("ShortcutsSharedWithMe");
       break;
     // Note: DriveFs .Trash directory must not ever be shared since it would
     // allow linux apps to make permanent deletes to Drive.
