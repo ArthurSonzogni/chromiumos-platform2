@@ -112,3 +112,4 @@ mlock: 1
 munlock: 1
 sysinfo: 1
 fstatfs64: 1
+fstatfs: 1

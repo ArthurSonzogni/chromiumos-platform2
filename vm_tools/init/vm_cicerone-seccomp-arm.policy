@@ -105,3 +105,4 @@ getrandom: 1
 sched_setattr: 1
 sched_getattr: 1
 fstatfs64: 1
+fstatfs: 1

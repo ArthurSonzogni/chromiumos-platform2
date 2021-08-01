@@ -57,3 +57,4 @@ gettimeofday: 1
 clock_gettime: 1
 clock_gettime64: 1
 fstatfs64: 1
+fstatfs: 1

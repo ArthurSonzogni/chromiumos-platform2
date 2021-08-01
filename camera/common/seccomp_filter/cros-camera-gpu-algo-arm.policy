@@ -24,6 +24,7 @@ exit_group: 1
 fcntl64: 1
 fstat64: 1
 fstatfs64: 1
+fstatfs: 1
 futex: arg1 == 0x0 || arg1 == 0x80 || arg1 == 0x81 || arg1 == 0x189
 futex_time64: arg1 == 0x0 || arg1 == 0x80 || arg1 == 0x81 || arg1 == 0x189
 getdents64: 1

@@ -20,6 +20,8 @@ exit_group: 1
 fcntl64: 1
 fdatasync: 1
 fstat64: 1
+fstatfs64: 1
+fstatfs: 1
 futex: 1
 futex_time64: 1
 getdents64: 1
@@ -63,4 +65,3 @@ tgkill: 1
 uname: 1
 unlink: 1
 write: 1
-fstatfs64: 1

@@ -25,6 +25,8 @@ exit_group: 1
 fcntl64: 1
 flock: 1
 fstat64: 1
+fstatfs64: 1
+fstatfs: 1
 futex: 1
 futex_time64: 1
 getcwd: 1
@@ -98,4 +100,3 @@ unlink: 1
 wait4: 1
 write: 1
 writev: 1
-fstatfs64: 1

@@ -16,6 +16,7 @@ exit_group: 1
 fcntl64: arg1 == F_GETFL || arg1 == F_SETFL
 fstat64: 1
 fstatfs64: 1
+fstatfs: 1
 geteuid32: 1
 getresgid32: 1
 getresuid32: 1

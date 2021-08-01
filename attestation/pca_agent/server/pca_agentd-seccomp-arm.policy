@@ -60,6 +60,9 @@ _llseek: 1
 fcntl64: 1
 access: 1
 
+fstatfs64: 1
+fstatfs: 1
+
 futex: 1
 futex_time64: 1
 set_robust_list: 1
@@ -115,4 +118,3 @@ shmdt: 1
 ioctl: return 1
 prctl: return 1
 prlimit64: arg2 == 0 && arg3 != 0
-fstatfs64: 1

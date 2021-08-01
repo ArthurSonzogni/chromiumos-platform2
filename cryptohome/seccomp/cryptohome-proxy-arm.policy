@@ -16,6 +16,8 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 fstat64: 1
 fstatat64: 1
+fstatfs64: 1
+fstatfs: 1
 poll: 1
 stat64: 1
 statx: 1
@@ -70,4 +72,3 @@ flock: 1
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT
-fstatfs64: 1
