@@ -102,7 +102,7 @@ usage.
 [Keep Awake extension]: https://chrome.google.com/webstore/detail/keep-awake-extension/bijihlabcfdnabacffofojgmehjdielb
 [chrome.power API]: https://developer.chrome.com/extensions/power
 [PowerPrefChanger]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/client/cros/power/power_utils.py
-[suspend.proto]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/power_manager/suspend.proto
+[suspend.proto]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/suspend.proto
 [suspend_delay_sample]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/tools/suspend_delay_sample.cc
 [chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/
 

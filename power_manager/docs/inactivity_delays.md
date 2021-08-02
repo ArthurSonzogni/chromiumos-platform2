@@ -70,7 +70,7 @@ accessible via `chrome://system` or by browsing to `file://var/log`.
 
 ## Further reading
 
--   `src/platform/system_api/dbus/power_manager/policy.proto`: definition of
+-   `src/platform2/system_api/dbus/power_manager/policy.proto`: definition of
     `PowerManagementPolicy` protocol buffer
 -   `src/platform2/power_manager/powerd/policy/state_controller.{h,cc}`:
     `StateController` class in power manager; responsible for managing delays

@@ -176,7 +176,7 @@ displays to get re-connected.
 
 The value is specified in seconds, and its default is 0 (which disables it).
 
-[suspend delays]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/power_manager/suspend.proto
+[suspend delays]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/suspend.proto
 [/sys/power/wakeup_count]: https://lwn.net/Articles/393314/
 [flashrom]: https://dev.chromium.org/chromium-os/packages/cros-flashrom
 [power states]: https://www.kernel.org/doc/Documentation/power/states.txt

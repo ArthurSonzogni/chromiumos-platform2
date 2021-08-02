@@ -98,7 +98,7 @@ After other jobs have completed, the `halt` or `reboot` job executes the
 Finally, the `halt` or `reboot` job executes the `halt` or `reboot` command with
 `--force` to instruct the kernel to immediately halt or reboot the system.
 
-[powerd constants file]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/power_manager/dbus-constants.h
+[powerd constants file]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/dbus-constants.h
 [current log file]: logging.md
 [Daemon]: ../powerd/daemon.cc
 [powerd_setuid_helper]: ../powerd/powerd_setuid_helper.cc

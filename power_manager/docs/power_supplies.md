@@ -131,6 +131,6 @@ battery is connected or disconnected.
 [sysfs]: https://en.wikipedia.org/wiki/Sysfs
 [kernel documentation]: https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-power
 [udev]: https://en.wikipedia.org/wiki/Udev
-[PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/power_manager/power_supply_properties.proto
+[PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/power_supply_properties.proto
 [Battery Notifications]: battery_notifications.md
 [CrOS EC]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md
