@@ -269,7 +269,12 @@ class Platform2Test(object):
     passwd_db = os.path.join(self.sysroot, 'etc', 'passwd')
     def _user_exists():
       """See if the user has already been registered in the db."""
-      data = osutils.ReadFile(passwd_db)
+
+      try:
+        data = osutils.ReadFile(passwd_db)
+      except FileNotFoundError:
+        return False
+
       accts = data.splitlines()
       for acct in accts:
         passwd = acct.split(':')
@@ -306,9 +311,12 @@ class Platform2Test(object):
           'homedir': home,
           'shell': '/bin/bash',
       }
-      with open(passwd_db, 'r+') as f:
+
+      # Create /etc/passwd if it does not already exist
+      mode = 'r+' if os.path.exists(passwd_db) else 'x+'
+      with open(passwd_db, mode) as f:
         data = f.read()
-        if data[-1] != '\n':
+        if data and data[-1] != '\n':
           f.write('\n')
         f.write('%s\n' % acct)
 
