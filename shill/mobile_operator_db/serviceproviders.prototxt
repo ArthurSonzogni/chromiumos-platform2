@@ -14911,6 +14911,7 @@ mno {
     mccmnc : "00101"
     mobile_apn {
       apn : "internet"
+      ip_type: IPV4V6
     }
   }
 }
