@@ -619,11 +619,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*/ui/ozone/*=1");
 
   // Turn on basic logging for enrollment flow.
-  builder->AddVmodulePattern("*/browser/chromeos/login/enrollment/*=1");
+  builder->AddVmodulePattern("*/browser/ash/login/enrollment/*=1");
   builder->AddVmodulePattern("enrollment_screen_handler=1");
 
   // Turn on OOBE/Login logs.
-  builder->AddVmodulePattern("*/browser/chromeos/login/screens/*=1");
+  builder->AddVmodulePattern("*/browser/ash/login/screens/*=1");
   builder->AddVmodulePattern("*/webui/chromeos/login/*=1");
   builder->AddVmodulePattern("wizard_controller=1");
 
