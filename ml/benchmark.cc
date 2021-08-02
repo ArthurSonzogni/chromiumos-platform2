@@ -40,6 +40,7 @@ using ::chrome::ml_benchmark::CrOSBenchmarkConfig;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
+using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::Model;
 using ::chromeos::machine_learning::mojom::TensorPtr;
@@ -134,9 +135,12 @@ bool ConstructModel(const FlatBufferModelSpecProto& model_proto,
 
 // Constructs `graph_executor`; returns whether the construction is successful.
 bool ConstructGraphExecutor(const mojo::Remote<Model>& model,
+                            const TfliteBenchmarkConfig& tflite_config,
                             mojo::Remote<GraphExecutor>* const graph_executor) {
   bool succeeded = false;
-  model->CreateGraphExecutor(
+  model->CreateGraphExecutorWithOptions(
+      GraphExecutorOptions::New(/*use_nnapi=*/false,
+                                /*use_gpu=*/tflite_config.use_gpu()),
       graph_executor->BindNewPipeAndPassReceiver(),
       base::Bind(
           [](bool* succeeded, const CreateGraphExecutorResult result) {
@@ -288,7 +292,7 @@ BenchmarkResults InferenceForTfliteModel(
 
   // Step 2: construct the graph executor.
   mojo::Remote<GraphExecutor> graph_executor;
-  if (!ConstructGraphExecutor(model, &graph_executor)) {
+  if (!ConstructGraphExecutor(model, tflite_config, &graph_executor)) {
     benchmark_result.set_status(BenchmarkReturnStatus::INITIALIZATION_FAILED);
     benchmark_result.set_results_message(
         "Can't construct the GraphExecutor from the model.");

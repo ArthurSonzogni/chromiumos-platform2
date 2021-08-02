@@ -14,6 +14,8 @@ message TfliteBenchmarkConfig {
   string input_output_filepath = 2;
   // number of times to test each input file
   int32 num_runs = 3;
+  // delegate to gpu
+  bool use_gpu = 4;
 }
 
 // FlatBufferModelSpecProto contains full information of a tflite model.
