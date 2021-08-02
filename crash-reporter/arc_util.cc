@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sysexits.h>
 
+#include <base/logging.h>
 #include <brillo/process/process.h>
 
 #include "crash-reporter/util.h"

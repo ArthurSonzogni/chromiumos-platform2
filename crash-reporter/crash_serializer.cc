@@ -13,6 +13,7 @@
 #include <base/compiler_specific.h>  // FALLTHROUGH
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/optional.h>
 #include <base/strings/string_util.h>

@@ -9,6 +9,7 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 

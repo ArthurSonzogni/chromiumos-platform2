@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/logging.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>

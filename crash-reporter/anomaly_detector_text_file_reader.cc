@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 
 #include <base/check_op.h>
+#include <base/logging.h>
 
 namespace anomaly {
 

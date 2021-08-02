@@ -13,6 +13,7 @@
 #include <memory>
 
 #include <base/check_op.h>
+#include <base/logging.h>
 
 #if USE_DIRENCRYPTION
 #include <keyutils.h>

@@ -15,6 +15,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 
 using base::Histogram;
 using base::HistogramBase;

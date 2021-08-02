@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>
+#include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include <base/files/file.h>
+#include <base/logging.h>
 #include <base/time/default_clock.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>

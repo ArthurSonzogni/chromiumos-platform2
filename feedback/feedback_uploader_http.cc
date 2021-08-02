@@ -4,6 +4,7 @@
 
 #include "feedback/feedback_uploader_http.h"
 
+#include <base/logging.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
 
