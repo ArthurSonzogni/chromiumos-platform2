@@ -18,7 +18,7 @@ const char kInstallAttributesPath[] = "/run/lockbox/install_attributes.pb";
 }  // namespace
 
 // The source of truth for these constants is Chromium
-// //chrome/browser/chromeos/settings/install_attributes.cc.
+// //chromeos/tpm/install_attributes.cc.
 const char InstallAttributesReader::kAttrMode[] = "enterprise.mode";
 const char InstallAttributesReader::kDeviceModeConsumer[] = "consumer";
 const char InstallAttributesReader::kDeviceModeEnterprise[] = "enterprise";
