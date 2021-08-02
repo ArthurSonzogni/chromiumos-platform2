@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include <brillo/file_utils.h>
 
@@ -222,7 +223,7 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
   std::string product_uuid;
   if (base::ReadFileToStringWithMaxSize(base::FilePath(paths::kProductUUID),
                                         &product_uuid, kMaxReadSize)) {
-    system_key_ = Sha256(product_uuid);
+    system_key_ = Sha256(base::ToUpperASCII(product_uuid));
     LOG(INFO) << "Using UUID as system key.";
     system_key_status_ = SystemKeyStatus::kProductUUID;
     return RESULT_SUCCESS;
