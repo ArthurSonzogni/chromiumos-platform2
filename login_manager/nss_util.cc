@@ -40,7 +40,7 @@ using crypto::ScopedSECKEYPublicKey;
 
 namespace {
 // This should match the same constant in Chrome tree:
-// chrome/browser/chromeos/settings/owner_key_util.cc
+// chromeos/dbus/constants/dbus_paths.cc
 const char kOwnerKeyFile[] = "/var/lib/whitelist/owner.key";
 
 // TODO(hidehiko): Move this to scoped_nss_types.h.
