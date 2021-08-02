@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <trunks/mock_hmac_session.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_state.h>
@@ -120,6 +121,7 @@ class TPM2UtilityTest : public testing::Test {
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
   NiceMock<trunks::MockHmacSession> mock_session_;
+  NiceMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility_;
 };
 
 TEST(TPM2Utility_DeathTest, LoadKeyParentBadParent) {
@@ -137,24 +139,36 @@ TEST(TPM2Utility_DeathTest, LoadKeyParentBadParent) {
 
 TEST_F(TPM2UtilityTest, InitSuccess) {
   TPM2UtilityImpl utility(factory_.get());
+  utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)));
   EXPECT_TRUE(utility.Init());
 }
 
 TEST_F(TPM2UtilityTest, InitTpmStateInitializationFail) {
   TPM2UtilityImpl utility(factory_.get());
-  EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_FAILURE));
+  utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(Return(false));
   EXPECT_FALSE(utility.Init());
 }
 
 TEST_F(TPM2UtilityTest, InitTpmNotOwned) {
   TPM2UtilityImpl utility(factory_.get());
-  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet()).WillOnce(Return(false));
+  utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(false), Return(true)));
   EXPECT_FALSE(utility.Init());
 }
 
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
 TEST_F(TPM2UtilityTest, InitTpmNoSession) {
   TPM2UtilityImpl utility(factory_.get());
+  utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.Init());
@@ -163,34 +177,20 @@ TEST_F(TPM2UtilityTest, InitTpmNoSession) {
 
 TEST_F(TPM2UtilityTest, IsTPMAvailable) {
   TPM2UtilityImpl utility(factory_.get());
-  utility.is_enabled_ready_ = true;
-  utility.is_enabled_ = true;
-  EXPECT_TRUE(utility.IsTPMAvailable());
-
-  utility.is_enabled_ready_ = true;
-  utility.is_enabled_ = false;
-  EXPECT_FALSE(utility.IsTPMAvailable());
+  utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
 
   utility.is_initialized_ = true;
-  utility.is_enabled_ready_ = false;
   EXPECT_TRUE(utility.IsTPMAvailable());
-  EXPECT_EQ(utility.is_enabled_, true);
-  EXPECT_EQ(utility.is_enabled_ready_, true);
 
   utility.is_initialized_ = false;
-  utility.is_enabled_ready_ = false;
-  EXPECT_CALL(mock_tpm_state_, Initialize())
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(Return(false));
   EXPECT_FALSE(utility.IsTPMAvailable());
 
   utility.is_initialized_ = false;
-  utility.is_enabled_ready_ = false;
-  EXPECT_CALL(mock_tpm_state_, Initialize())
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_state_, IsEnabled()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(utility.IsTPMAvailable());
-  EXPECT_EQ(utility.is_enabled_, false);
-  EXPECT_EQ(utility.is_enabled_ready_, true);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
+  EXPECT_TRUE(utility.IsTPMAvailable());
 }
 
 TEST_F(TPM2UtilityTest, AuthenticateSuccess) {

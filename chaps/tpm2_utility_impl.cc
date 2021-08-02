@@ -27,7 +27,6 @@
 #include <trunks/command_transceiver.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
-#include <trunks/tpm_state.h>
 #include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory_impl.h>
 
@@ -245,7 +244,8 @@ class ScopedSession {
 
 TPM2UtilityImpl::TPM2UtilityImpl()
     : default_factory_(new trunks::TrunksFactoryImpl()),
-      factory_(default_factory_.get()) {
+      factory_(default_factory_.get()),
+      tpm_manager_utility_(nullptr) {
   if (!default_factory_->Initialize()) {
     LOG(ERROR) << "Unable to initialize trunks.";
     return;
@@ -259,7 +259,8 @@ TPM2UtilityImpl::TPM2UtilityImpl()
 TPM2UtilityImpl::TPM2UtilityImpl(
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
     : task_runner_(task_runner),
-      default_trunks_proxy_(new trunks::TrunksDBusProxy) {
+      default_trunks_proxy_(new trunks::TrunksDBusProxy),
+      tpm_manager_utility_(nullptr) {
   task_runner->PostNonNestableTask(
       FROM_HERE, base::Bind(&InitTransceiver,
                             base::Unretained(default_trunks_proxy_.get()),
@@ -285,7 +286,8 @@ TPM2UtilityImpl::TPM2UtilityImpl(TrunksFactory* factory)
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
       session_(factory_->GetHmacSession()),
 #endif
-      trunks_tpm_utility_(factory_->GetTpmUtility()) {
+      trunks_tpm_utility_(factory_->GetTpmUtility()),
+      tpm_manager_utility_(nullptr) {
 }
 
 TPM2UtilityImpl::~TPM2UtilityImpl() {
@@ -313,23 +315,26 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
 }
 
 bool TPM2UtilityImpl::Init() {
-  AutoLock lock(lock_);
-  std::unique_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
-  TPM_RC result;
-  result = tpm_state->Initialize();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting TPM state information: "
-               << trunks::GetErrorString(result);
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION &&
-                      is_trunks_proxy_initialized_)
-        << "Fatal failure - initialization failed due to TPM daemon becoming "
-           "unavailable.";
+  if (!tpm_manager_utility_) {
+    tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
+    if (!tpm_manager_utility_) {
+      LOG(ERROR) << __func__ << ": Failed to get TpmManagerUtility singleton!";
+      return false;
+    }
+  }
+
+  bool is_enabled = false;
+  bool is_owned = false;
+  bool is_owner_password_present = false;
+  bool has_reset_lock_permissions = false;
+  if (!tpm_manager_utility_.load()->GetTpmNonsensitiveStatus(
+          &is_enabled, &is_owned, &is_owner_password_present,
+          &has_reset_lock_permissions)) {
+    LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
     return false;
   }
-  // Check if ownership is taken. If not, TPMUtility initialization fails.
-  if (!tpm_state->IsOwnerPasswordSet() ||
-      !tpm_state->IsEndorsementPasswordSet() ||
-      !tpm_state->IsLockoutPasswordSet()) {
+
+  if (!is_owned) {
     LOG(ERROR) << "TPM2Utility cannot be ready if the TPM is not owned.";
     return false;
   }
@@ -351,30 +356,27 @@ bool TPM2UtilityImpl::Init() {
 }
 
 bool TPM2UtilityImpl::IsTPMAvailable() {
-  AutoLock lock(lock_);
-  if (is_enabled_ready_) {
-    return is_enabled_;
-  }
-  // If the TPM works, it is available.
   if (is_initialized_) {
-    is_enabled_ready_ = true;
-    is_enabled_ = true;
     return true;
   }
-  std::unique_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
-  TPM_RC result = tpm_state->Initialize();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting TPM state information: "
-               << trunks::GetErrorString(result);
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION &&
-                      is_trunks_proxy_initialized_)
-        << "Fatal failure - initialization failed due to TPM daemon becoming "
-           "unavailable.";
+  if (!tpm_manager_utility_) {
+    tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
+    if (!tpm_manager_utility_) {
+      LOG(ERROR) << __func__ << ": Failed to get TpmManagerUtility singleton!";
+      return false;
+    }
+  }
+  bool is_enabled = false;
+  bool is_owned = false;
+  bool is_owner_password_present = false;
+  bool has_reset_lock_permissions = false;
+  if (!tpm_manager_utility_.load()->GetTpmNonsensitiveStatus(
+          &is_enabled, &is_owned, &is_owner_password_present,
+          &has_reset_lock_permissions)) {
+    LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
     return false;
   }
-  is_enabled_ = tpm_state->IsEnabled();
-  is_enabled_ready_ = true;
-  return is_enabled_;
+  return is_enabled;
 }
 
 TPMVersion TPM2UtilityImpl::GetTPMVersion() {

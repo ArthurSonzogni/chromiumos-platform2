@@ -7,6 +7,7 @@
 
 #include "chaps/tpm_utility.h"
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <set>
@@ -16,6 +17,7 @@
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>
 #include <gtest/gtest_prod.h>
+#include <tpm_manager/client/tpm_manager_utility.h>
 #include <trunks/hmac_session.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_utility.h>
@@ -122,6 +124,11 @@ class TPM2UtilityImpl : public TPMUtility {
   static crypto::ScopedRSA PublicAreaToScopedRsa(
       const trunks::TPMT_PUBLIC& public_data);
 
+  void set_tpm_manager_utility_for_testing(
+      tpm_manager::TpmManagerUtility* tpm_manager_utility) {
+    tpm_manager_utility_ = tpm_manager_utility;
+  }
+
  private:
   // These internal methods implement the LoadKeyWithParent and Unbind methods.
   // They are implemented with no locking to allow the public methods above to
@@ -150,15 +157,17 @@ class TPM2UtilityImpl : public TPMUtility {
   std::unique_ptr<trunks::TrunksFactoryImpl> default_factory_;
   trunks::TrunksFactory* factory_;
   bool is_trunks_proxy_initialized_ = false;
-  bool is_initialized_ = false;
-  bool is_enabled_ready_ = false;
-  bool is_enabled_ = false;
+  std::atomic<bool> is_initialized_ = false;
   base::Lock lock_;
   std::unique_ptr<trunks::HmacSession> session_;
   std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
   std::map<int, std::set<int>> slot_handles_;
   std::map<int, brillo::SecureBlob> handle_auth_data_;
   std::map<int, std::string> handle_name_;
+  // The |tpm_manager_utility_| may be used in |Init| & |IsTPMAvailable| in
+  // the same time, using std::atomic here could prevent the potential race
+  // condition.
+  std::atomic<tpm_manager::TpmManagerUtility*> tpm_manager_utility_;
 
   FRIEND_TEST(TPM2UtilityTest, IsTPMAvailable);
   FRIEND_TEST(TPM2UtilityTest, LoadKeySuccess);
