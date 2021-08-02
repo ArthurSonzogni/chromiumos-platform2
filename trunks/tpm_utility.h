@@ -1045,6 +1045,10 @@ class TRUNKS_EXPORT TpmUtility {
   // Send an arbitrary command to the TPM and wait for the response.
   // Returns the response packet.
   virtual std::string SendCommandAndWait(const std::string& command) = 0;
+
+  // This method creates an RSA/ECC decryption key to be used for salting
+  // sessions.
+  virtual TPM_RC CreateSaltingKey(TPM_HANDLE* key, TPM2B_NAME* key_name) = 0;
 };
 
 }  // namespace trunks

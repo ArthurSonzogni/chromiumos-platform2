@@ -107,8 +107,8 @@ class TpmUtilityTest : public testing::Test {
     return utility_.CreateStorageRootKeys(owner_password);
   }
 
-  TPM_RC CreateSaltingKey(const std::string& owner_password) {
-    return utility_.CreateSaltingKey(owner_password);
+  TPM_RC CreatePersistentSaltingKey(const std::string& owner_password) {
+    return utility_.CreatePersistentSaltingKey(owner_password);
   }
 
   void SetExistingKeyHandleExpectation(TPM_HANDLE handle) {
@@ -3315,7 +3315,7 @@ TEST_F(TpmUtilityTest, SaltingKeyRsaSuccess) {
   TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreatePersistentSaltingKey("password"));
   EXPECT_EQ(TPM_ALG_RSA, public_area.public_area.type);
   EXPECT_EQ(TPM_ALG_SHA256, public_area.public_area.name_alg);
 }
@@ -3326,7 +3326,7 @@ TEST_F(TpmUtilityTest, SaltingKeyEccSuccess) {
   TPM2B_PUBLIC public_area = kTpm2bPublic;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreatePersistentSaltingKey("password"));
   EXPECT_EQ(TPM_ALG_ECC, public_area.public_area.type);
 }
 
@@ -3335,7 +3335,7 @@ TEST_F(TpmUtilityTest, SaltingKeyTypeUnsupported) {
       .WillOnce(Return(TPM_ALG_ERROR));
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .Times(0);
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreatePersistentSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
@@ -3345,30 +3345,30 @@ TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
           DoAll(SetArgPointee<4>(test_handle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreatePersistentSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreatePersistentSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreatePersistentSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreatePersistentSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyAlreadyExists) {
   SetExistingKeyHandleExpectation(kSaltingKey);
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreatePersistentSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SetDictionaryAttackParametersSuccess) {

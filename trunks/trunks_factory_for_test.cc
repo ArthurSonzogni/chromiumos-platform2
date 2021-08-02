@@ -739,6 +739,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->SendCommandAndWait(command);
   }
 
+  TPM_RC CreateSaltingKey(TPM_HANDLE* key, TPM2B_NAME* key_name) override {
+    return target_->CreateSaltingKey(key, key_name);
+  }
+
  private:
   TpmUtility* target_;
 };

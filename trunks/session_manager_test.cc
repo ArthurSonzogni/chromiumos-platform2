@@ -17,6 +17,8 @@
 #include "trunks/error_codes.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_cache.h"
+#include "trunks/mock_tpm_utility.h"
+#include "trunks/tpm_constants.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -49,6 +51,7 @@ class SessionManagerTest : public testing::Test {
   void SetUp() override {
     factory_.set_tpm(&mock_tpm_);
     factory_.set_tpm_cache(&mock_tpm_cache_);
+    factory_.set_tpm_utility(&mock_tpm_utility_);
   }
 
   void SetHandle(TPM_HANDLE handle) {
@@ -90,6 +93,7 @@ class SessionManagerTest : public testing::Test {
   TrunksFactoryForTest factory_;
   NiceMock<MockTpm> mock_tpm_;
   NiceMock<MockTpmCache> mock_tpm_cache_;
+  NiceMock<MockTpmUtility> mock_tpm_utility_;
 
   // TODO(b/150265750): Create MockHmacAuthorizationDelegate and add unit tests
   // for the RSA and ECC session secret generation workflow.
@@ -122,10 +126,14 @@ TEST_F(SessionManagerTest, GetSessionHandleTest) {
 TEST_F(SessionManagerTest, StartRsaSessionSuccess) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPMT_PUBLIC public_area;
+  public_area.object_attributes = trunks::kSensitiveDataOrigin |
+                                  trunks::kUserWithAuth | trunks::kNoDA |
+                                  trunks::kDecrypt;
   public_area.type = TPM_ALG_RSA;
   public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _)).Times(0);
   TPM_HANDLE handle = TPM_RH_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = 20;
@@ -140,11 +148,15 @@ TEST_F(SessionManagerTest, StartRsaSessionSuccess) {
 TEST_F(SessionManagerTest, StartEccSessionSuccess) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPMT_PUBLIC public_area;
+  public_area.object_attributes = trunks::kSensitiveDataOrigin |
+                                  trunks::kUserWithAuth | trunks::kNoDA |
+                                  trunks::kDecrypt;
   public_area.type = TPM_ALG_ECC;
   public_area.name_alg = TPM_ALG_SHA256;
   public_area.unique.ecc = GetValidEccPoint();
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _)).Times(0);
   TPM_HANDLE handle = TPM_RH_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = 20;
@@ -161,6 +173,58 @@ TEST_F(SessionManagerTest, StartSessionGetSaltingKeyError) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", true,
                                           false, &delegate_),
+            TPM_RC_FAILURE);
+}
+
+TEST_F(SessionManagerTest, StartTempSaltingKeySession) {
+  TPM_SE session_type = TPM_SE_TRIAL;
+  TPM_HANDLE handle = TPM_RH_FIRST;
+  EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
+      .WillOnce(Return(TPM_RC_HANDLE));
+  EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _))
+      .WillOnce(DoAll(SetArgPointee<0>(handle), Return(TPM_RC_SUCCESS)));
+
+  TPMT_PUBLIC public_area;
+  public_area.type = TPM_ALG_ECC;
+  public_area.name_alg = TPM_ALG_SHA256;
+  public_area.unique.ecc = GetValidEccPoint();
+  TPM2B_PUBLIC public_data{.public_area = public_area};
+
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_data), Return(TPM_RC_SUCCESS)));
+
+  TPM2B_NONCE nonce;
+  nonce.size = 20;
+  EXPECT_CALL(mock_tpm_, StartAuthSessionSyncShort(_, handle, _, _,
+                                                   session_type, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<8>(nonce), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_EQ(session_manager_.StartSession(session_type, handle, "", true, false,
+                                          &delegate_),
+            TPM_RC_SUCCESS);
+}
+
+TEST_F(SessionManagerTest, StartTempSaltingKeySessionFail) {
+  TPM_SE session_type = TPM_SE_TRIAL;
+  TPM_HANDLE handle = TPM_RH_FIRST;
+  EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
+      .WillOnce(Return(TPM_RC_HANDLE));
+  EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _))
+      .WillOnce(DoAll(SetArgPointee<0>(handle), Return(TPM_RC_SUCCESS)));
+
+  TPMT_PUBLIC public_area;
+  public_area.type = TPM_ALG_ECC;
+  public_area.name_alg = TPM_ALG_SHA256;
+  public_area.unique.ecc = GetValidEccPoint();
+  TPM2B_PUBLIC public_data{.public_area = public_area};
+
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_data), Return(TPM_RC_FAILURE)));
+
+  EXPECT_EQ(session_manager_.StartSession(session_type, handle, "", true, false,
+                                          &delegate_),
             TPM_RC_FAILURE);
 }
 

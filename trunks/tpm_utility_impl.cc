@@ -36,6 +36,7 @@
 #include "trunks/hmac_session.h"
 #include "trunks/policy_session.h"
 #include "trunks/tpm_constants.h"
+#include "trunks/tpm_generated.h"
 #include "trunks/tpm_pinweaver.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_u2f.h"
@@ -440,7 +441,7 @@ TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
     return result;
   }
 
-  result = CreateSaltingKey(kWellKnownPassword);
+  result = CreatePersistentSaltingKey(kWellKnownPassword);
   if (result) {
     LOG(ERROR) << __func__
                << ": Error creating salting key: " << GetErrorString(result);
@@ -2557,18 +2558,9 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
-  bool exists = false;
-  TPM_RC result = DoesPersistentKeyExist(kSaltingKey, &exists);
-  if (result != TPM_RC_SUCCESS) {
-    return result;
-  }
-  if (exists) {
-    LOG(INFO) << __func__ << ": Salting key already exists.";
-    return TPM_RC_SUCCESS;
-  }
+TPM_RC TpmUtilityImpl::CreateSaltingKey(TPM_HANDLE* key, TPM2B_NAME* key_name) {
   std::string parent_name;
-  result = GetKeyName(kStorageRootKey, &parent_name);
+  TPM_RC result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting Key name for SRK: "
                << GetErrorString(result);
@@ -2619,23 +2611,46 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   const std::string key_type_str = key_type == TPM_ALG_ECC ? "ECC" : "RSA";
   LOG(INFO) << __func__ << ": Created " << key_type_str << " salting key.";
 
-  TPM2B_NAME key_name;
-  key_name.size = 0;
+  key_name->size = 0;
   TPM_HANDLE key_handle;
   result = factory_.GetTpm()->LoadSync(kStorageRootKey, parent_name,
                                        out_private, out_public, &key_handle,
-                                       &key_name, delegate.get());
+                                       key_name, delegate.get());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error loading salting key: " << GetErrorString(result);
     return result;
   }
 
+  *key = key_handle;
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::CreatePersistentSaltingKey(
+    const std::string& owner_password) {
+  bool exists = false;
+  TPM_RC result = DoesPersistentKeyExist(kSaltingKey, &exists);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  if (exists) {
+    LOG(INFO) << __func__ << ": Salting key already exists.";
+    return TPM_RC_SUCCESS;
+  }
+
+  TPM2B_NAME key_name;
+  TPM_HANDLE key_handle;
+  result = CreateSaltingKey(&key_handle, &key_name);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+
   ScopedKeyHandle key(factory_, key_handle);
+
   std::unique_ptr<AuthorizationDelegate> owner_delegate =
       factory_.GetPasswordAuthorization(owner_password);
   result = factory_.GetTpm()->EvictControlSync(
-      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), key_handle,
+      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), key.get(),
       StringFrom_TPM2B_NAME(key_name), kSaltingKey, owner_delegate.get());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__

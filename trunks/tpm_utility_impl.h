@@ -377,6 +377,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   std::string SendCommandAndWait(const std::string& command) override;
 
+  TPM_RC CreateSaltingKey(TPM_HANDLE* key, TPM2B_NAME* key_name) override;
+
  private:
   friend class TpmUtilityTest;
   friend class NVTpmUtilityTest;
@@ -418,10 +420,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // with an empty authorization value until the TPM is cleared.
   TPM_RC CreateStorageRootKeys(const std::string& owner_password);
 
-  // This method creates an RSA decryption key to be used for salting sessions.
-  // This method also makes the salting key permanent under the storage
-  // hierarchy.
-  TPM_RC CreateSaltingKey(const std::string& owner_password);
+  // This method creates an RSA/ECC decryption key to be used for salting
+  // sessions. This method also makes the salting key permanent under the
+  // storage hierarchy.
+  TPM_RC CreatePersistentSaltingKey(const std::string& owner_password);
 
   // Creates and persists the salting key for CSME. If the key is already
   // persisted, performs no-ops.

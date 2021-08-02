@@ -377,6 +377,7 @@ class MockTpmUtility : public TpmUtility {
               SendCommandAndWait,
               (const std::string& command),
               (override));
+  MOCK_METHOD(TPM_RC, CreateSaltingKey, (TPM_HANDLE*, TPM2B_NAME*), (override));
 };
 
 }  // namespace trunks
