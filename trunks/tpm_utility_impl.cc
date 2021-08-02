@@ -558,7 +558,10 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
     LOG(ERROR) << __func__ << ": TPM did not return the requested PCR";
     return TPM_RC_FAILURE;
   }
-  CHECK_GE(pcr_values.count, 1U);
+  if (pcr_values.count < 1U) {
+    LOG(ERROR) << __func__ << ": Unexpected TPM reply";
+    return TPM_RC_FAILURE;
+  }
   pcr_value->assign(StringFrom_TPM2B_DIGEST(pcr_values.digests[0]));
   return TPM_RC_SUCCESS;
 }
