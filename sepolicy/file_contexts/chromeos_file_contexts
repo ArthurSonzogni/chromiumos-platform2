@@ -370,6 +370,7 @@ has_arc(`
 /dev/input(/.*)?                u:object_r:input_device:s0
 /dev/kmsg                       u:object_r:kmsg_device:s0
 /dev/log                        u:object_r:logger_device:s0
+/dev/mei[0-9]*                  u:object_r:mei_device:s0
 /dev/null                       u:object_r:null_device:s0
 /dev/ptmx                       u:object_r:ptmx_device:s0
 # This needs to match arc++. See: device/google/bertha/sepolicy/file_contexts.

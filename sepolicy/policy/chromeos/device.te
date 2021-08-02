@@ -6,6 +6,7 @@ type iio_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type input_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type kmsg_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type logger_device, dev_type, cros_dev_type, cros_labeled_dev_type;
+type mei_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type ptmx_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type random_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type tpm_device, dev_type, cros_dev_type, cros_labeled_dev_type;
