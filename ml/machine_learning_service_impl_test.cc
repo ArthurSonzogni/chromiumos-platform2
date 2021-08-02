@@ -1845,7 +1845,7 @@ TEST_F(DocumentScannerTest, DetectFromNV12Image) {
   }
   ConnectDocumentScanner();
 
-  constexpr int kNv12ImageSize = 256 * 256;
+  constexpr int kNv12ImageSize = 256 * 256 * 3 / 2;
   std::vector<uint8_t> fake_nv12_data(kNv12ImageSize, 0);
 
   bool infer_callback_done = false;
