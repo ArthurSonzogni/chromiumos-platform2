@@ -575,11 +575,6 @@ void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
 
 // Adds patterns to the --vmodule flag.
 void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
-  // Turn on logging about external displays being connected and disconnected.
-  // Different behavior is seen from different displays and these messages are
-  // used to determine what happened within feedback reports.
-  builder->AddVmodulePattern("*/ui/display/manager/chromeos/*=1");
-
   // Turn on basic logging for Ozone platform implementations.
   builder->AddVmodulePattern("*/ui/ozone/*=1");
 
