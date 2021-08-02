@@ -21,7 +21,7 @@ namespace oobe_config {
 // staging was successful.
 // Note that clobber_state does the actual appending to pstore right before
 // wiping the device.
-bool StoreInPstore(const std::string& data, const base::FilePath& root_path);
+bool StageForPstore(const std::string& data, const base::FilePath& root_path);
 
 // Loads data directly from pstore. Returns `base::nullopt` if
 // no rollback data was found.

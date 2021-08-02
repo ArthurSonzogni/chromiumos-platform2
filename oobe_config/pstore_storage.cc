@@ -68,7 +68,7 @@ base::Optional<std::string> HexToBinary(const std::string& hex) {
 
 }  // namespace
 
-bool StoreInPstore(const std::string& data, const base::FilePath& root_path) {
+bool StageForPstore(const std::string& data, const base::FilePath& root_path) {
   std::string hex_data_with_header = base::StrCat(
       {kRollbackDataKey, " ", base::HexEncode(data.data(), data.size())});
 

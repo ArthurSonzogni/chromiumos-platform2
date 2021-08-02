@@ -139,8 +139,8 @@ bool OobeConfig::EncryptedRollbackSave() const {
     return false;
   }
 
-  if (!StoreInPstore(encrypted_rollback_data->key.to_string(),
-                     prefix_path_for_testing_)) {
+  if (!StageForPstore(encrypted_rollback_data->key.to_string(),
+                      prefix_path_for_testing_)) {
     LOG(ERROR)
         << "Failed to prepare data for storage in the encrypted reboot vault";
     return false;
