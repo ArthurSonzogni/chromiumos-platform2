@@ -18,7 +18,7 @@ related components include:
    info).
 *  [ippusb\_bridge](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/ippusb_bridge/):
    Allows eSCL to be used over USB on IPP-USB-capable devices.
-*  Scanning support in [Chrome](https://source.chromium.org/chromium/chromium/src/+/HEAD:chrome/browser/chromeos/scanning/)
+*  Scanning support in [Chrome](https://source.chromium.org/chromium/chromium/src/+/HEAD:chrome/browser/ash/scanning/)
    handles mDNS resolution and provides the Scan app UI.
 *  [virtual-usb-printer](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/virtual-usb-printer):
    A virtual USB printer and scanner that allows testing without a physical

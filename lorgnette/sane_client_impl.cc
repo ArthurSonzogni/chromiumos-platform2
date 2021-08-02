@@ -238,7 +238,7 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
 
       // These values correspond to the values of Chromium's
       // ScanJobSettingsResolution enum in
-      // src/chromeos/components/scanning/scanning_uma.h. Before adding values
+      // src/ash/webui/scanning/scanning_uma.h. Before adding values
       // here, add them to the ScanJobSettingsResolution enum.
       const std::vector<uint32_t> supported_resolutions = {75,  100, 150,
                                                            200, 300, 600};
