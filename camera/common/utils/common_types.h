@@ -13,9 +13,6 @@
 
 #include <hardware/camera3.h>
 
-#include "camera/mojo/cros_camera_service.mojom.h"
-#include "common/camera_buffer_handle.h"
-
 namespace cros {
 namespace internal {
 

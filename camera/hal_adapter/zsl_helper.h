@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include <base/synchronization/lock.h>
+#include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata.h>
 #include "common/utils/common_types.h"

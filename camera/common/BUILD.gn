@@ -30,6 +30,10 @@ pkg_config("target_defaults") {
     "libcros_camera_android_deps",
     "libdrm",
   ]
+  defines = [
+    "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}",
+    "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
+  ]
 }
 
 generate_mojom_bindings("libcros_camera_mojom") {
@@ -52,25 +56,126 @@ generate_mojom_bindings("libcros_camera_mojom") {
   standalone = true
 }
 
-shared_library("libcros_camera") {
-  output_name = "libcros_camera"
+pkg_config("pkg_config_base") {
+  pkg_deps = [
+    "gbm",
+    "libbrillo",
+    "libexif",
+    "libsync",
+    "libudev",
+    "libyuv",
+  ]
+}
+
+source_set("base") {
   sources = [
-    "//camera/common/camera_algorithm_bridge_impl.cc",
-    "//camera/common/camera_algorithm_callback_ops_impl.cc",
     "//camera/common/camera_buffer_manager_impl.cc",
     "//camera/common/camera_buffer_manager_internal.cc",
     "//camera/common/camera_buffer_utils.cc",
-    "//camera/common/camera_face_detection.cc",
     "//camera/common/camera_hal3_helpers.cc",
-    "//camera/common/camera_metrics_impl.cc",
-    "//camera/common/camera_mojo_channel_manager_impl.cc",
     "//camera/common/embed_file_toc.cc",
     "//camera/common/exif_utils.cc",
     "//camera/common/future.cc",
     "//camera/common/ipc_util.cc",
+    "//camera/common/metadata_logger.cc",
+    "//camera/common/stream_manipulator.cc",
+    "//camera/common/timezone.cc",
+    "//camera/common/udev_watcher.cc",
+    "//camera/common/utils/camera_config_impl.cc",
+  ]
+  public_configs = [
+    ":pkg_config_base",
+    ":target_defaults",
+  ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+}
+
+pkg_config("pkg_config_mojo_base") {
+  pkg_deps = [
+    "libmetrics",
+    "libmojo",
+  ]
+}
+
+source_set("mojo_base") {
+  sources = [
+    "//camera/common/camera_metrics_impl.cc",
+    "//camera/common/camera_mojo_channel_manager_impl.cc",
+  ]
+  public_configs = [
+    ":pkg_config_mojo_base",
+    ":target_defaults",
+  ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [
+    ":base",
+    ":libcros_camera_mojom",
+  ]
+}
+
+source_set("camera_algo_bridge") {
+  sources = [
+    "//camera/common/camera_algorithm_bridge_impl.cc",
+    "//camera/common/camera_algorithm_callback_ops_impl.cc",
+  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
+}
+
+source_set("sensor_client") {
+  sources = [
+    "//camera/common/sensor_hal_client_impl.cc",
+    "//camera/common/sensor_reader.cc",
+  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
+}
+
+source_set("face_detection") {
+  sources = [ "//camera/common/camera_face_detection.cc" ]
+  libs = [ "facessd_cros" ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [ ":base" ]
+}
+
+source_set("jpeg") {
+  sources = [
     "//camera/common/jpeg/jpeg_decode_accelerator_impl.cc",
     "//camera/common/jpeg/jpeg_encode_accelerator_impl.cc",
     "//camera/common/jpeg_compressor_impl.cc",
+  ]
+  libs = [ "jpeg" ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
+}
+
+source_set("camera_connector") {
+  sources = [
     "//camera/common/libcamera_connector/camera_client.cc",
     "//camera/common/libcamera_connector/camera_client_ops.cc",
     "//camera/common/libcamera_connector/camera_metadata_utils.cc",
@@ -79,43 +184,60 @@ shared_library("libcros_camera") {
     "//camera/common/libcamera_connector/camera_service_connector_impl.cc",
     "//camera/common/libcamera_connector/stream_buffer_manager.cc",
     "//camera/common/libcamera_connector/supported_formats.cc",
-    "//camera/common/metadata_logger.cc",
-    "//camera/common/sensor_hal_client_impl.cc",
-    "//camera/common/sensor_reader.cc",
-    "//camera/common/stream_manipulator.cc",
-    "//camera/common/timezone.cc",
-    "//camera/common/udev_watcher.cc",
-    "//camera/common/utils/camera_config_impl.cc",
+  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
+}
+
+source_set("v4l2_device") {
+  sources = [
     "//camera/common/v4l2_device/v4l2_device.cc",
     "//camera/common/v4l2_device/v4l2_subdevice.cc",
     "//camera/common/v4l2_device/v4l2_video_node.cc",
-    "//camera/mojo/cros_camera_mojo_verifier.cc",
   ]
-  libs = [
-    "facessd_cros",
-    "jpeg",
-  ]
-  pkg_deps = [
-    "gbm",
-    "libbrillo",
-    "libexif",
-    "libmetrics",
-    "libmojo",
-    "libsync",
-    "libudev",
-    "libyuv",
-  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [ ":base" ]
+}
+
+source_set("camera_gpu_algorithm") {
+  sources = [ "//camera/common/camera_gpu_algorithm.cc" ]
+  libs = [ "portrait_cros" ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [ ":base" ]
+}
+
+shared_library("libcros_camera") {
+  output_name = "libcros_camera"
   configs += [ ":target_defaults" ]
-  defines = [ "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}" ]
-  deps = [ ":libcros_camera_mojom" ]
+  deps = [
+    ":base",
+    ":camera_algo_bridge",
+    ":camera_connector",
+    ":face_detection",
+    ":jpeg",
+    ":mojo_base",
+    ":sensor_client",
+    ":v4l2_device",
+  ]
 
   if (use.camera_feature_hdrnet) {
     deps += [ "//camera/features/hdrnet" ]
   }
 
   if (use.camera_feature_portrait_mode) {
-    sources += [ "//camera/common/camera_gpu_algorithm.cc" ]
-    libs += [ "portrait_cros" ]
+    deps += [ ":camera_gpu_algorithm" ]
   }
 }
 

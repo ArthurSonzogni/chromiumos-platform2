@@ -6,7 +6,7 @@
 
 #include "features/hdrnet/hdrnet_ae_device_adapter.h"
 
-#if defined(IPU6EP)
+#if USE_IPU6EP
 #include "features/hdrnet/hdrnet_ae_device_adapter_ipu6.h"
 #endif
 
@@ -14,7 +14,7 @@ namespace cros {
 
 // static
 std::unique_ptr<HdrNetAeDeviceAdapter> HdrNetAeDeviceAdapter::CreateInstance() {
-#if defined(IPU6EP)
+#if USE_IPU6EP
   return std::make_unique<HdrNetAeDeviceAdapterIpu6>();
 #else
   return std::make_unique<HdrNetAeDeviceAdapter>();
