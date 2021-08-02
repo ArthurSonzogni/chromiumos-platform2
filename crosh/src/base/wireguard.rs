@@ -73,6 +73,10 @@ enum Error {
     InvalidArguments(String),
     ServiceNotFound(String),
     ServiceAlreadyExists(String),
+    ServiceNotConnectable {
+        service_name: String,
+        reason: String,
+    },
     Internal(String),
 }
 
@@ -97,6 +101,16 @@ fn execute_wireguard(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
         }
         Error::ServiceAlreadyExists(val) => {
             println!("WireGuard service with name {} already exists", val);
+            dispatcher::Error::CommandReturnedError
+        }
+        Error::ServiceNotConnectable {
+            service_name,
+            reason,
+        } => {
+            println!(
+                "WireGuard service with name {} is not connectable: {}",
+                service_name, reason
+            );
             dispatcher::Error::CommandReturnedError
         }
         Error::Internal(val) => {
@@ -498,6 +512,23 @@ impl WireGuardService {
             println!();
         }
     }
+
+    // Checks if every required field is filled. We do not check the service state here (i.e., if
+    // the service is "Idle", "Connected", or in other states), since shill will return a failure
+    // with a proper message immediately if the service is not connectable because of its state.
+    fn check_connectability(&self) -> Result<(), Error> {
+        for p in &self.peers {
+            // `endpoint` is the only required field.
+            if p.endpoint.is_empty() {
+                return Err(Error::ServiceNotConnectable {
+                    service_name: self.name.clone(),
+                    reason: format!("Peer {} does not have a valid endpoint", p.public_key),
+                });
+            }
+        }
+
+        Ok(())
+    }
 }
 
 mod option_util {
@@ -809,7 +840,7 @@ fn wireguard_set(service_name: &str, args: &[&str]) -> Result<(), Error> {
 fn wireguard_connect(service_name: &str) -> Result<(), Error> {
     let connection = make_dbus_connection()?;
     let service = get_wireguard_service_by_name(&connection, service_name)?;
-    // TODO(b/177877310): Need to check if the service has all fields configured.
+    service.check_connectability()?;
     make_service_proxy(&connection, &service.path.unwrap())
         .connect()
         .map_err(|err| Error::Internal(format!("Failed to connect service: {}", err)))?;
@@ -1268,5 +1299,14 @@ mod tests {
         let mut actual = vars.service;
         actual.update_from_args(&cmd, input.as_bytes()).unwrap();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_check_connectability() {
+        let mut vars = TestVars::new();
+        let service = &mut vars.service;
+        service.check_connectability().unwrap();
+        service.peers[0].endpoint = "".to_string();
+        service.check_connectability().unwrap_err();
     }
 }
