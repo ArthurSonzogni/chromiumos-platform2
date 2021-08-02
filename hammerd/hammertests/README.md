@@ -217,9 +217,13 @@ the ec console that RW update fails due to failed signature verification.
 
 **Keyboard:**
 
-Run command `evtest` on DUT and check that each key works.
+- Run command `evtest` on DUT and check that each key works.
 (https://docs.google.com/document/d/1tA8QknZ37TBrZelneOWtzHtPNGbC5aDDel6PeOV5tZQ/edit#heading=h.vagnagl3dytt).
 
+- (Vivaldi keyboard only) Check that function key works in Chrome.
+Use a web page like
+[keyboard event viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html)
+to verify that Chrome can detect F1~F10 by pressing search + top row keys.
 
 
 **Keyboard backlight works**
