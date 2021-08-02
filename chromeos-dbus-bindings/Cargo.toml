@@ -4,3 +4,6 @@ version = "0.24.52"
 authors = ["The Chromium OS Authors"]
 edition = "2018"
 include = ["Cargo.toml", "src/lib.rs"]
+
+[dependencies]
+which = "4.0.0"

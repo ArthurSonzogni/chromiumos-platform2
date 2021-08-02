@@ -7,6 +7,7 @@
 // path or the ebuild. See the README.md for usage.
 
 use std::env;
+use std::ffi::OsStr;
 use std::fmt::{self, Debug, Display};
 use std::fs::{create_dir_all, remove_dir_all, File};
 use std::io::{self, Write};
@@ -31,6 +32,7 @@ pub enum Error {
     Create(io::Error),
     CreateDirAll(io::Error),
     Generate(String),
+    MissingCodegen(which::Error),
     Open(io::Error),
     SourceDoesntExist(PathBuf),
     Spawn(io::Error),
@@ -51,6 +53,7 @@ impl Display for Error {
             Create(e) => write!(f, "create failed: {}", e),
             CreateDirAll(e) => write!(f, "create_dir_all failed: {}", e),
             Generate(s) => write!(f, "generate failed: {}", s),
+            MissingCodegen(e) => write!(f, "dbus-codegen-rust required, but not found: {:?}", e),
             Open(e) => write!(f, "open failed: {}", e),
             SourceDoesntExist(file) => match file.to_str() {
                 None => write!(f, "empty path"),
@@ -87,6 +90,9 @@ pub fn generate_module(
 
     let mut errors: String = String::new();
 
+    // Check that dbus-bindgen-rust is available.
+    let codegen = get_dbus_codgen()?;
+
     // If the bindings exist and it is a release build exit early.
     if bindings_dir.exists() {
         if env::var("PROFILE").map_or(false, |v| &v == "release") {
@@ -119,9 +125,12 @@ pub mod client {{"#
         // Generate bindings if they don't already exist.
         let destination = client_dir.join(format!("{}.rs", module));
         if !destination.exists() {
-            if let Err(err) =
-                generate_bindings(&source_dir.join(source), &destination, DEFAULT_CLIENT_OPTS)
-            {
+            if let Err(err) = generate_bindings(
+                &codegen,
+                &source_dir.join(source),
+                &destination,
+                DEFAULT_CLIENT_OPTS,
+            ) {
                 errors.push_str(&format!(
                     "Failed to generate {:?} from {:?}: {}\n",
                     module, source, err
@@ -150,9 +159,12 @@ pub mod server {{"#
         // Generate bindings if they don't already exist.
         let destination = server_dir.join(format!("{}.rs", module));
         if !destination.exists() {
-            if let Err(err) =
-                generate_bindings(&source_dir.join(source), &destination, DEFAULT_SERVER_OPTS)
-            {
+            if let Err(err) = generate_bindings(
+                &codegen,
+                &source_dir.join(source),
+                &destination,
+                DEFAULT_SERVER_OPTS,
+            ) {
                 errors.push_str(&format!(
                     "Failed to generate {:?} from {:?}: {}\n",
                     module, source, err
@@ -172,11 +184,29 @@ pub mod server {{"#
     }
 }
 
-fn generate_bindings(source: &Path, destination: &Path, opts: &[&str]) -> Result<()> {
+fn get_dbus_codgen() -> Result<PathBuf> {
+    let mut ret = which::which("dbus-codegen-rust").map_err(Error::MissingCodegen);
+    if ret.is_err() {
+        if let Some(dir) = std::env::var_os("HOME") {
+            let alternative = Path::new(&dir).join(".cargo/bin/dbus-codegen-rust");
+            if alternative.exists() {
+                ret = Ok(alternative)
+            }
+        }
+    }
+    ret
+}
+
+fn generate_bindings<A: AsRef<OsStr>>(
+    codegen: A,
+    source: &Path,
+    destination: &Path,
+    opts: &[&str],
+) -> Result<()> {
     if !source.exists() {
         return Err(Error::SourceDoesntExist(source.to_path_buf()));
     }
-    let status = Command::new("dbus-codegen-rust")
+    let status = Command::new(codegen)
         .args(opts)
         .stdin(File::open(source).map_err(Error::Open)?)
         .stdout(File::create(destination).map_err(Error::Create)?)
