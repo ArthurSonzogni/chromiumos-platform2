@@ -25,8 +25,8 @@ namespace {
 
 // These values are logged to UMA. Entries should not be renumbered and numeric
 // values should never be reused. Please keep in sync with
-// CrostiniFailureClasses in src/tools/metrics/histograms/enums.xml and the copy
-// in src/chrome/browser/chromeos/crostini/crostini_stability_monitor.h
+// GuestOsFailureClasses in src/tools/metrics/histograms/enums.xml and the copy
+// in src/chrome/browser/ash/guest_os/guest_os_stability_monitor.h
 enum class FailureClasses {
   ConciergeStopped = 0,
   CiceroneStopped = 1,
