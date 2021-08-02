@@ -89,7 +89,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
 bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
                                             string* config) {
   // Possible values are defined in
-  // chrome/browser/resources/chromeos/login/oobe_types.js.
+  // chrome/browser/resources/chromeos/login/components/oobe_types.js.
   // TODO(zentaro): Export these strings as constants.
   base::Value dictionary(base::Value::Type::DICTIONARY);
   // Always skip next screen.
