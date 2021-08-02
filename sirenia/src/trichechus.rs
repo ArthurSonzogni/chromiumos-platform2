@@ -42,7 +42,7 @@ use libsirenia::{
 };
 use sirenia::{
     app_info::{
-        self, AppManifest, AppManifestEntry, ExececutableInfo, SandboxType, StorageParameters,
+        self, AppManifest, AppManifestEntry, ExecutableInfo, SandboxType, StorageParameters,
     },
     compute_sha256,
     secrets::{
@@ -211,7 +211,7 @@ struct TrichechusState {
 
 impl TrichechusState {
     fn new(platform_secret: PlatformSecret, gsc_secret: GscSecret) -> Self {
-        let app_manifest = AppManifest::new();
+        let app_manifest = AppManifest::load_default().unwrap();
         // There isn't any way to recover if the secret derivation process fails.
         let secret_manager =
             SecretManager::new(platform_secret, gsc_secret, &app_manifest).unwrap();
@@ -382,7 +382,7 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> Result<()> {
         .app_manifest
         .get_app_manifest_entry(app_id)
         .map_err(Error::AppManifest)?;
-    if let ExececutableInfo::Digest(expected) = &app_info.exec_info {
+    if let ExecutableInfo::Digest(expected) = &app_info.exec_info {
         let actual = compute_sha256(&elf).map_err(|err| Error::Sha256(format!("{:?}", err)))?;
         if expected.deref() != &*actual {
             Err(Error::DigestMismatch)
@@ -434,12 +434,12 @@ fn spawn_tee_app(
     ];
 
     match &app_info.exec_info {
-        ExececutableInfo::Path(path) => {
+        ExecutableInfo::Path(path) => {
             sandbox
                 .run(Path::new(&path), &[&path], &keep_fds)
                 .map_err(Error::RunSandbox)?;
         }
-        ExececutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {
+        ExecutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {
             Some(shared_mem) => {
                 let fd_path = fd_to_path(shared_mem.as_raw_fd())
                     .map(|p| p.to_string_lossy().to_string())

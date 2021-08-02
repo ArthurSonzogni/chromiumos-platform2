@@ -16,13 +16,26 @@ members = [
     "manatee-runtime",
 ]
 
+[features]
+default = ["guest", "hypervisor"]
+guest = []
+hypervisor = []
+sdk = []
+
 [[bin]]
 name = "dugong"
 path = "src/dugong.rs"
+required-features = ["guest"]
 
 [[bin]]
 name = "trichechus"
 path = "src/trichechus.rs"
+required-features = ["hypervisor"]
+
+[[bin]]
+name = "tee_app_info_lint"
+path = "src/tee_app_info_lint.rs"
+required-features = ["sdk"]
 
 [profile.release]
 panic = "abort"
@@ -32,13 +45,17 @@ overflow-checks = true
 chromeos-dbus-bindings = { path = "../chromeos-dbus-bindings"} # provided by ebuild
 
 [dependencies]
+anyhow = "1.0.0"
 base64 = "0.13.0"
 dbus = "0.8"
 flexbuffers = "0.1.1"
 getopts = "0.2"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "libsirenia" } # provided by ebuild
+log = "0.4.0"
 openssl = "0.10.25"
 serde = { version = "1.0.114", features = ["derive"] }
+serde_json = "1.0.64"
+stderrlog = "0.5.0"
 sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
