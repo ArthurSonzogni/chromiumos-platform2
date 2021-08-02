@@ -15,8 +15,6 @@
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory_impl.h>
 
-#include "tpm_manager/server/openssl_crypto_util_impl.h"
-
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
@@ -34,7 +32,7 @@ Tpm2InitializerImpl::Tpm2InitializerImpl(const trunks::TrunksFactory& factory,
                                          LocalDataStore* local_data_store,
                                          TpmStatus* tpm_status)
     : trunks_factory_(factory),
-      openssl_util_(new OpensslCryptoUtilImpl()),
+      openssl_util_(&default_openssl_util_),
       local_data_store_(local_data_store),
       tpm_status_(tpm_status) {}
 

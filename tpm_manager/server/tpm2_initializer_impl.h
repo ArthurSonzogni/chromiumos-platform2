@@ -16,6 +16,7 @@
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/openssl_crypto_util.h"
+#include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
@@ -69,6 +70,7 @@ class Tpm2InitializerImpl : public TpmInitializer {
   bool GetTpmRandomData(size_t num_bytes, std::string* random_data);
 
   const trunks::TrunksFactory& trunks_factory_;
+  OpensslCryptoUtilImpl default_openssl_util_;
   OpensslCryptoUtil* openssl_util_;
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;
