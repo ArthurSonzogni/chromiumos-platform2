@@ -56,10 +56,23 @@ bool AddValidatedStringOption(debugd::ProcessWithId* p,
   return true;
 }
 
-bool DevicePacketCaptureAllowedByPolicy(brillo::ErrorPtr* error) {
+// Returns true when packet capture is allowed in device. Packet capture is
+// allowed in all devices (consumer-owned devices, enterprise-enrolled devices
+// and OOBE) by default and can be disabled by the
+// DeviceDebugPacketCaptureAllowed policy by the administrator for
+// enterprise-enrolled devices.
+bool IsDevicePacketCaptureAllowed(brillo::ErrorPtr* error) {
   policy::PolicyProvider policy_provider;
-  policy_provider.Reload();
 
+  // Return true without trying to check the policy if the device is not
+  // enrolled as unenrolled devices won't have policies and packet capture
+  // should be available by default. This means packet capture will be
+  // allowed in consumer-owned devices and in OOBE state.
+  if (!policy_provider.IsEnterpriseEnrolledDevice()) {
+    return true;
+  }
+
+  policy_provider.Reload();
   // No available policies.
   if (!policy_provider.device_policy_is_loaded()) {
     DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
@@ -69,9 +82,10 @@ bool DevicePacketCaptureAllowedByPolicy(brillo::ErrorPtr* error) {
   }
 
   const policy::DevicePolicy* policy = &policy_provider.GetDevicePolicy();
-  bool packet_capture_allowed;
+  bool packet_capture_allowed = false;
+  // Check if packet captures are allowed by policy for the device.
   if (!policy->GetDeviceDebugPacketCaptureAllowed(&packet_capture_allowed)) {
-    // This means policy was not set in the device. Return true since the
+    // This means policy was not set for the device. Return true since the
     // default value of the policy is defined as true in the policy
     // documentation.
     return true;
@@ -208,9 +222,10 @@ bool PacketCaptureTool::Start(bool is_dev_mode,
                               const brillo::VariantDictionary& options,
                               std::string* out_id,
                               brillo::ErrorPtr* error) {
-  if (!DevicePacketCaptureAllowedByPolicy(error)) {
+  if (!IsDevicePacketCaptureAllowed(error)) {
     DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
-                     "Packet capture is not allowed by device policy.");
+                     "Packet capture is not allowed on device. Please check "
+                     "your policy settings to enable.");
     return false;
   }
 

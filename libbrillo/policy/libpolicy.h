@@ -47,6 +47,10 @@ class PolicyProvider {
   // is still in OOBE (so device mode is not determined yet).
   virtual bool IsConsumerDevice() const;
 
+  // Returns true if the device is enterprise enrolled device. Returns false if
+  // the device is consumer device or is in OOBE.
+  virtual bool IsEnterpriseEnrolledDevice() const;
+
   void SetDevicePolicyForTesting(std::unique_ptr<DevicePolicy> device_policy);
   void SetInstallAttributesReaderForTesting(
       std::unique_ptr<InstallAttributesReader> install_attributes_reader);
