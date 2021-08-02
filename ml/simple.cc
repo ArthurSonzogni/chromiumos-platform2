@@ -48,7 +48,10 @@ TensorPtr NewSingleValueTensor(const double value) {
 
 }  // namespace
 
-AddResult Add(const double x, const double y, const bool use_nnapi) {
+AddResult Add(const double x,
+              const double y,
+              const bool use_nnapi,
+              const bool use_gpu) {
   AddResult result = {"Not completed.", -1.0};
 
   // Create ML Service
@@ -77,7 +80,7 @@ AddResult Add(const double x, const double y, const bool use_nnapi) {
   // Get graph executor for model.
   mojo::Remote<GraphExecutor> graph_executor;
   bool graph_executor_ok = false;
-  auto options = GraphExecutorOptions::New(use_nnapi);
+  auto options = GraphExecutorOptions::New(use_nnapi, use_gpu);
   model->CreateGraphExecutorWithOptions(
       std::move(options), graph_executor.BindNewPipeAndPassReceiver(),
       base::Bind(

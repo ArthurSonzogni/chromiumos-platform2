@@ -30,13 +30,18 @@ int main(int argc, char** argv) {
   DEFINE_double(x, 1.0, "First operand for add");
   DEFINE_double(y, 4.0, "Second operand for add");
   DEFINE_bool(nnapi, false, "Whether to use NNAPI");
+  DEFINE_bool(gpu, false, "Whether to use GPU");
   brillo::FlagHelper::Init(argc, argv, "ML Service commandline tool");
 
   // TODO(avg): add ability to run arbitrary models
-  std::string processing = FLAGS_nnapi ? "NNAPI" : "CPU";
+  std::string processing = "CPU";
+  if (FLAGS_nnapi)
+    processing = "NNAPI";
+  if (FLAGS_gpu)
+    processing = "GPU";
   std::cout << "Adding " << FLAGS_x << " and " << FLAGS_y << " with "
             << processing << std::endl;
-  auto result = ml::simple::Add(FLAGS_x, FLAGS_y, FLAGS_nnapi);
+  auto result = ml::simple::Add(FLAGS_x, FLAGS_y, FLAGS_nnapi, FLAGS_gpu);
   std::cout << "Status: " << result.status << std::endl;
   std::cout << "Sum: " << result.sum << std::endl;
 

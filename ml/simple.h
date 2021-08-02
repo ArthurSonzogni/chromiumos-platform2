@@ -20,7 +20,7 @@ struct AddResult {
 };
 
 // Add two numbers. Returns result and a status message.
-AddResult Add(double x, double y, bool use_nnapi);
+AddResult Add(double x, double y, bool use_nnapi, bool use_gpu);
 
 }  // namespace simple
 }  // namespace ml

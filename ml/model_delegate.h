@@ -71,7 +71,9 @@ class ModelDelegate {
   // no error happens and `*graph_executor_delegate` will be pointed to the
   // created object. Otherwise returns the error type.
   CreateGraphExecutorResult CreateGraphExecutorDelegate(
-      const bool use_nnapi, GraphExecutorDelegate** graph_executor_delegate);
+      bool use_nnapi,
+      bool use_gpu,
+      GraphExecutorDelegate** graph_executor_delegate);
 
  private:
   const std::map<std::string, int> required_inputs_;

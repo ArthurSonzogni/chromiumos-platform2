@@ -47,6 +47,7 @@ enum BuiltinModelId {
 [Stable]
 struct GraphExecutorOptions {
   bool use_nnapi = false;
+  bool use_gpu = false;
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -58,6 +59,10 @@ enum CreateGraphExecutorResult {
   MEMORY_ALLOCATION_ERROR = 2,
   NNAPI_UNAVAILABLE = 3,
   NNAPI_USE_ERROR = 4,
+  GPU_UNAVAILABLE = 5,
+  GPU_USE_ERROR = 6,
+  DELEGATE_CONFIG_ERROR = 7,
+  NOT_FULLY_DELEGABLE = 8,
 };
 
 // Model specification for builtin models.

@@ -57,7 +57,8 @@ int ModelImpl::num_graph_executors_for_testing() const {
 void ModelImpl::CreateGraphExecutor(
     mojo::PendingReceiver<GraphExecutor> receiver,
     CreateGraphExecutorCallback callback) {
-  auto options = GraphExecutorOptions::New(/*use_nnapi=*/false);
+  auto options = GraphExecutorOptions::New(
+      /*use_nnapi=*/false, /*use_gpu=*/false);
   CreateGraphExecutorWithOptions(std::move(options), std::move(receiver),
                                  std::move(callback));
 }
@@ -68,7 +69,7 @@ void ModelImpl::CreateGraphExecutorWithOptions(
     CreateGraphExecutorCallback callback) {
   GraphExecutorDelegate* graph_executor_delegate;
   auto result = model_delegate_->CreateGraphExecutorDelegate(
-      options->use_nnapi, &graph_executor_delegate);
+      options->use_nnapi, options->use_gpu, &graph_executor_delegate);
   if (result != CreateGraphExecutorResult::OK) {
     std::move(callback).Run(result);
     return;

@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <tensorflow/lite/context.h>
 #include <tensorflow/lite/delegates/nnapi/nnapi_delegate.h>
+#include <tensorflow/lite/delegates/gpu/delegate.h>
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
 
@@ -69,7 +70,9 @@ ModelDelegate::ModelDelegate(std::map<std::string, int> required_inputs,
                     metrics_model_name) {}
 
 CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
-    const bool use_nnapi, GraphExecutorDelegate** graph_executor_delegate) {
+    const bool use_nnapi,
+    const bool use_gpu,
+    GraphExecutorDelegate** graph_executor_delegate) {
   DCHECK(!metrics_model_name_.empty());
 
   RequestMetrics request_metrics(metrics_model_name_, kMetricsRequestName);
@@ -94,6 +97,14 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
     return CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR;
   }
 
+  // Check that any chosen delegates are mutually exclusive
+  if (use_nnapi && use_gpu) {
+    LOG(ERROR) << "Cannot specify GPU and NNAPI delegates simultaneously.";
+    request_metrics.RecordRequestEvent(
+        CreateGraphExecutorResult::DELEGATE_CONFIG_ERROR);
+    return CreateGraphExecutorResult::DELEGATE_CONFIG_ERROR;
+  }
+
   // If requested, load and apply NNAPI
   if (use_nnapi) {
     TfLiteDelegate* delegate = tflite::NnApiDelegate();
@@ -108,6 +119,44 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
       request_metrics.RecordRequestEvent(
           CreateGraphExecutorResult::NNAPI_USE_ERROR);
       return CreateGraphExecutorResult::NNAPI_USE_ERROR;
+    }
+  }
+
+  // If requested, load and apply GPU
+  if (use_gpu) {
+    TfLiteDelegate* delegate = TfLiteGpuDelegateV2Create(/*options=*/nullptr);
+    if (!delegate) {
+      LOG(ERROR) << "GPU requested but not available.";
+      request_metrics.RecordRequestEvent(
+          CreateGraphExecutorResult::GPU_UNAVAILABLE);
+      return CreateGraphExecutorResult::GPU_UNAVAILABLE;
+    }
+    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
+      LOG(ERROR) << "Could not use GPU delegate.";
+      request_metrics.RecordRequestEvent(
+          CreateGraphExecutorResult::GPU_USE_ERROR);
+      return CreateGraphExecutorResult::GPU_USE_ERROR;
+    }
+  }
+
+  // If delegating, fail unless delegate can process the entire model.
+  // We don't want partitioned execution (for now).
+  if (use_nnapi || use_gpu) {
+    bool fully_delegated = false;
+    // A fully delegated model should have only one node that has a delegate.
+    if (interpreter->execution_plan().size() == 1) {
+      int node_id = interpreter->execution_plan()[0];
+      const TfLiteNode& node =
+          interpreter->node_and_registration(node_id)->first;
+      if (node.delegate != nullptr) {
+        fully_delegated = true;
+      }
+    }
+    if (!fully_delegated) {
+      LOG(ERROR) << "Model couldn't be fully delegated.";
+      request_metrics.RecordRequestEvent(
+          CreateGraphExecutorResult::NOT_FULLY_DELEGABLE);
+      return CreateGraphExecutorResult::NOT_FULLY_DELEGABLE;
     }
   }
 
