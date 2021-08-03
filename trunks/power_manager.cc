@@ -4,6 +4,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <google/protobuf/message_lite.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 

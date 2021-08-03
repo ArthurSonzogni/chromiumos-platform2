@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <base/check_op.h>
 #include <base/hash/sha1.h>
+#include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
 #include <trousers/scoped_tss_type.h>

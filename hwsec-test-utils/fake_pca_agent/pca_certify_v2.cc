@@ -14,6 +14,8 @@
 #include "hwsec-test-utils/fake_pca_agent/issue_certificate.h"
 #include "hwsec-test-utils/fake_pca_agent/tpm2_struct_utils.h"
 
+#include <base/logging.h>
+
 namespace hwsec_test_utils {
 namespace fake_pca_agent {
 

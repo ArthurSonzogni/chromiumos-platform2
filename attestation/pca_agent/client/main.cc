@@ -11,6 +11,7 @@
 #include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>

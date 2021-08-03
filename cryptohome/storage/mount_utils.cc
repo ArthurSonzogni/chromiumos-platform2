@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <chromeos/constants/cryptohome.h>
 
 namespace {

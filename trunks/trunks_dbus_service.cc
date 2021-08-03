@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"

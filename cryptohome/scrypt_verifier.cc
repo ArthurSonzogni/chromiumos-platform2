@@ -4,6 +4,7 @@
 
 #include "cryptohome/scrypt_verifier.h"
 
+#include <base/logging.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/scrypt.h"

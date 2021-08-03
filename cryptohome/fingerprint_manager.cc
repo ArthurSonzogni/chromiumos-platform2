@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 

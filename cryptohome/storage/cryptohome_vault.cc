@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <dbus/cryptohome/dbus-constants.h>
 

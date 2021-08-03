@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
 

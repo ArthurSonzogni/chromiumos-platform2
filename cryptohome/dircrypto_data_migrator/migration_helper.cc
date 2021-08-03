@@ -20,11 +20,12 @@
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
-#include <base/timer/elapsed_timer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
 #include <base/threading/thread.h>
+#include <base/timer/elapsed_timer.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/cryptohome_metrics.h"

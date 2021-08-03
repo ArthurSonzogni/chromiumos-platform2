@@ -9,8 +9,9 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/values.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/values.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/blkdev_utils/lvm_device.h>
 

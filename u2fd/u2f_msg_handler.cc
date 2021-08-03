@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <trunks/cr50_headers/u2f.h>
 

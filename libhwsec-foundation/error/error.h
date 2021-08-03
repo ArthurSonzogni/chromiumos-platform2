@@ -10,6 +10,8 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
+
 namespace hwsec_foundation {
 namespace error {
 

@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "libhwsec-foundation/error/error.h"

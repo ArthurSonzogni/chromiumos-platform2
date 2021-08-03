@@ -12,6 +12,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/key_value_store.h>
 
 #include "cryptohome/crypto/secure_blob_util.h"

@@ -14,6 +14,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 

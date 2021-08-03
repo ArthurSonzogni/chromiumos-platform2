@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/timer/elapsed_timer.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/dbus.h>

@@ -9,6 +9,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>

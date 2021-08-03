@@ -10,6 +10,8 @@
 
 #include "trunks/csme/pinweaver_csme_types.h"
 
+#include <base/logging.h>
+
 // TODO(b/190621192): Support variable length request and response, and further
 // refactor all the consumers into one single template.
 namespace trunks {

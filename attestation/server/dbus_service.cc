@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <dbus/attestation/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>

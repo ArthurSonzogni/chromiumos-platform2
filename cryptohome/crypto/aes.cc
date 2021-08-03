@@ -12,6 +12,8 @@
 
 #include "cryptohome/crypto/secure_blob_util.h"
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 // AES block size in bytes.

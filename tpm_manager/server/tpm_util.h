@@ -9,6 +9,8 @@
 
 #include <trousers/tss.h>
 
+#include <base/logging.h>
+
 namespace tpm_manager {
 
 #define TPM_LOG(severity, result)                               \

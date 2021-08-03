@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/ecryptfs_container.h"
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/platform.h"

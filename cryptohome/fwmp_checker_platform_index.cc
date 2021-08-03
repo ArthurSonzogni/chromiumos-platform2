@@ -9,6 +9,8 @@
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 namespace {

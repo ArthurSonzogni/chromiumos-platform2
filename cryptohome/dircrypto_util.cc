@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <base/check_op.h>
+#include <base/logging.h>
 
 extern "C" {
 #include <ext2fs/ext2_fs.h>

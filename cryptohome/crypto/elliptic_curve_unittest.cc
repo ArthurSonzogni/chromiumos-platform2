@@ -9,6 +9,8 @@
 
 #include <gtest/gtest.h>
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 namespace {

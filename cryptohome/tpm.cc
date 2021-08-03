@@ -5,6 +5,7 @@
 #include "cryptohome/tpm.h"
 
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <inttypes.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>

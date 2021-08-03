@@ -7,6 +7,7 @@
 #include <utility>
 #include <openssl/err.h>
 
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
 

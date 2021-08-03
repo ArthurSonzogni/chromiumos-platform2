@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_TPM_TPM_VERSION_H_
 #define LIBHWSEC_FOUNDATION_TPM_TPM_VERSION_H_
 
+#include <base/logging.h>
 #include <base/optional.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"

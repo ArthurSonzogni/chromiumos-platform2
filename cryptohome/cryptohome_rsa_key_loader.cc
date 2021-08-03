@@ -6,6 +6,8 @@
 
 #include "cryptohome/crypto/rsa.h"
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 namespace {

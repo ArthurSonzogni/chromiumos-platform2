@@ -13,6 +13,7 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-constants.h>
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <base/synchronization/waitable_event.h>
 #include <dbus/u2f/dbus-constants.h>

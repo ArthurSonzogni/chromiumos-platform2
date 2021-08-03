@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/notreached.h>
 #include <base/stl_util.h>

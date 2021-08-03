@@ -11,6 +11,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>

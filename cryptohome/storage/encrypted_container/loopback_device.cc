@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/loop_device.h>
 

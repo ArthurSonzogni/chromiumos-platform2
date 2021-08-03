@@ -8,6 +8,8 @@
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/cryptohome_rsa_key_loader.h"
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 namespace {

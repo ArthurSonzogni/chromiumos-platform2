@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 

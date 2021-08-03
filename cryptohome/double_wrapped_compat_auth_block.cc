@@ -14,6 +14,7 @@
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 namespace cryptohome {
 

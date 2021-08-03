@@ -23,6 +23,7 @@
 #include "hwsec-test-utils/well_known_key_pairs/well_known_key_pairs.h"
 
 #include <base/check_op.h>
+#include <base/logging.h>
 
 namespace hwsec_test_utils {
 namespace fake_pca_agent {

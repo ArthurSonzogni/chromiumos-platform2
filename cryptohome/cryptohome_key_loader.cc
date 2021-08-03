@@ -4,6 +4,8 @@
 
 #include "cryptohome/cryptohome_key_loader.h"
 
+#include <base/logging.h>
+
 using brillo::SecureBlob;
 
 namespace cryptohome {

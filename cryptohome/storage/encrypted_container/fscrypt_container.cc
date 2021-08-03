@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/fscrypt_container.h"
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"

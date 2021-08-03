@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"

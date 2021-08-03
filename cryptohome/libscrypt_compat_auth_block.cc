@@ -15,6 +15,8 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/libscrypt_compat.h"
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 namespace {

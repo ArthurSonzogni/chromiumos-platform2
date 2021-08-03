@@ -7,6 +7,7 @@
 #include <base/big_endian.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/cbor/diagnostic_writer.h>
 #include <chromeos/cbor/reader.h>

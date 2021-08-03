@@ -10,6 +10,7 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>

@@ -6,6 +6,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libtpmcrypto/tpm.h>

@@ -14,6 +14,7 @@
 #include "tpm_manager/server/tpm_status.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 namespace tpm_manager {
 

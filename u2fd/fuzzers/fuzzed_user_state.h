@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>

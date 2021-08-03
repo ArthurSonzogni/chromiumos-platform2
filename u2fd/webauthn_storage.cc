@@ -15,6 +15,7 @@
 #include <base/files/important_file_writer.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_string_value_serializer.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 

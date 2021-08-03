@@ -8,6 +8,8 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock()

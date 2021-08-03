@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <base/threading/thread.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
