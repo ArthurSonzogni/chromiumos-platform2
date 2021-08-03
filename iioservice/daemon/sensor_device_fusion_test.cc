@@ -357,25 +357,6 @@ TEST_F(IioDeviceHandlerInvalidTest, MissingChannel) {
   loop.Run();
 }
 
-TEST_F(IioDeviceHandlerInvalidTest, MojoDisconnect) {
-  auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
-      nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
-
-  // Missing attribute "sampling_frequency_available".
-  for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
-    auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
-        libmems::fakes::kFakeAccelChns[i], true);
-    device->AddChannel(std::move(chn));
-  }
-
-  SetUpBase(std::move(device));
-
-  // Mojo pipe cros::mojom::SensorDeviceSamplesObserver will be disconnected, as
-  // SamplesHandler cannot be created.
-  base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(invalid_);
-}
-
 class SensorDeviceFusionTest : public ::testing::Test {
  protected:
   void SetUp() override {

@@ -31,6 +31,9 @@ constexpr char kHWFifoFlushPath[] = "buffer/hwfifo_flush";
 constexpr double kAcpiAlsMinFrequency = 0.1;
 constexpr double kAcpiAlsMaxFrequency = 2.0;
 
+constexpr double kHidMinFrequency = 0.1;
+constexpr double kHidMaxFrequency = 200.0;
+
 constexpr cros::mojom::DeviceType kOnChangeDeviceTypes[] = {
     cros::mojom::DeviceType::LIGHT};
 
@@ -66,8 +69,10 @@ void SamplesHandler::SamplesHandlerDeleter(SamplesHandler* handler) {
 // static
 bool SamplesHandler::DisableBufferAndEnableChannels(
     libmems::IioDevice* iio_device) {
-  if (iio_device->IsBufferEnabled() && !iio_device->DisableBuffer())
+  if (iio_device->IsBufferEnabled() && !iio_device->DisableBuffer()) {
+    LOGF(ERROR) << "Failed to disable buffer";
     return false;
+  }
 
   iio_device->EnableAllChannels();
 
@@ -81,10 +86,11 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     libmems::IioDevice* iio_device) {
   ScopedSamplesHandler handler(nullptr, SamplesHandlerDeleter);
 
-  if (!iio_device->HasFifo() && !iio_device->GetHrtimer()) {
-    LOGF(ERROR)
-        << "Device " << iio_device->GetId()
-        << " has neither fifo nor hrtimer. Cannot read samples from it.";
+  if (!iio_device->HasFifo() && !iio_device->GetTrigger() &&
+      !iio_device->GetHrtimer()) {
+    LOGF(ERROR) << "Device " << iio_device->GetId()
+                << " has neither fifo, nor trigger, nor hrtimer. Cannot read "
+                   "samples from it.";
     return handler;
   }
 
@@ -96,7 +102,8 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     min_freq = kAcpiAlsMinFrequency;
     max_freq = kAcpiAlsMaxFrequency;
   } else if (!iio_device->GetMinMaxFrequency(&min_freq, &max_freq)) {
-    return handler;
+    min_freq = kHidMinFrequency;
+    max_freq = kHidMaxFrequency;
   }
 
   handler.reset(new SamplesHandler(std::move(ipc_task_runner),
@@ -228,9 +235,9 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   if (iio_device_->HasFifo()) {
     if (!iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n"))
       LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
-  } else {
-    DCHECK(iio_device_->GetHrtimer());
-    if (!iio_device_->SetTrigger(iio_device_->GetHrtimer())) {
+  } else if (iio_device_->GetHrtimer()) {
+    auto* hrtimer = iio_device_->GetHrtimer();
+    if (hrtimer && !iio_device_->SetTrigger(hrtimer)) {
       LOGF(ERROR) << "Failed to set trigger";
       return;
     }
@@ -268,7 +275,8 @@ void SamplesHandler::StopSampleWatcherOnThread() {
 
   watcher_.reset();
   iio_device_->FreeBuffer();
-  iio_device_->SetTrigger(nullptr);
+  if (iio_device_->GetHrtimer())
+    iio_device_->SetTrigger(nullptr);
 }
 
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
@@ -401,6 +409,12 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
 
   requested_frequency_ = frequency;
 
+  // HID sensors require to set sampling frequency in channels' attributes.
+  for (auto& channel : iio_device_->GetAllChannels()) {
+    if (channel->IsEnabled())
+      channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, frequency);
+  }
+
   if (!iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
                                          frequency)) {
     /*
@@ -433,10 +447,9 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
     return true;
   }
 
-  DCHECK(iio_device_->GetHrtimer());
-
-  // |iio_device_| has a trigger that needs to be setup.
-  if (!iio_device_->GetHrtimer()->WriteDoubleAttribute(
+  // If |iio_device_| has a hrtimer, set up its sampling frequency attribute.
+  if (iio_device_->GetHrtimer() &&
+      !iio_device_->GetHrtimer()->WriteDoubleAttribute(
           libmems::kSamplingFrequencyAttr, frequency)) {
     LOGF(ERROR) << "Failed to set hrtimer's frequency";
     return false;
