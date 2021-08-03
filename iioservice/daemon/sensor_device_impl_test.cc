@@ -157,6 +157,7 @@ TEST_F(SensorDeviceImplTest, StartAndStopReadingSamples) {
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
   double frequency = libmems::fakes::kFakeSamplingFrequency;
+  remote_->SetTimeout(0);
   remote_->SetFrequency(frequency, base::BindOnce([](double result_freq) {
                           EXPECT_EQ(result_freq,
                                     libmems::fakes::kFakeSamplingFrequency);

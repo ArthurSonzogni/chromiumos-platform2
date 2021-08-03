@@ -199,6 +199,7 @@ void SamplesHandlerBase::SampleTimeout(ClientData* client_data,
   if (it == clients_map_.end() || it->second.sample_index != sample_index)
     return;
 
+  LOGF(WARNING) << "Sample timed out on client with id: " << client_data->id;
   client_data->observer->OnErrorOccurred(
       cros::mojom::ObserverErrorType::READ_TIMEOUT);
 }
