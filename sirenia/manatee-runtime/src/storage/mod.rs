@@ -87,7 +87,7 @@ pub mod tests {
 
     use libsirenia::communication::StorageRpcServer;
     use std::cell::RefCell;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap as Map;
     use std::rc::Rc;
     use std::result::Result as StdResult;
     use std::thread::spawn;
@@ -102,7 +102,7 @@ pub mod tests {
 
     #[derive(Clone)]
     struct StorageRpcServerImpl {
-        map: Rc<RefCell<HashMap<String, Vec<u8>>>>,
+        map: Rc<RefCell<Map<String, Vec<u8>>>>,
     }
 
     impl StorageRpc for StorageRpcServerImpl {
@@ -134,7 +134,7 @@ pub mod tests {
         let (server_transport, client_transport) = create_transport_from_pipes().unwrap();
 
         let handler: Box<dyn StorageRpcServer> = Box::new(StorageRpcServerImpl {
-            map: Rc::new(RefCell::new(HashMap::new())),
+            map: Rc::new(RefCell::new(Map::new())),
         });
         let dispatcher = RpcDispatcher::new(handler, server_transport);
 

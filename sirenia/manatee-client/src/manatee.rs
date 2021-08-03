@@ -30,7 +30,6 @@ use libsirenia::{
 };
 use log::{self, error, info};
 use manatee_client::client::OrgChromiumManaTEEInterface;
-use stderrlog;
 use sys_util::{wait_for_interrupt, KillOnDrop};
 use thiserror::Error as ThisError;
 

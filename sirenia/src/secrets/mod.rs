@@ -7,7 +7,7 @@
 pub mod storage_encryption;
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
 use std::mem::size_of;
 use std::ops::Deref;
@@ -471,7 +471,7 @@ pub type SecretVersion = <Intermediate as VersionedSecret>::Version;
 
 /// Provides key derivation from a main_secret.
 pub struct SecretManager {
-    intermediates: HashMap<Vec<u8>, Intermediate>,
+    intermediates: Map<Vec<u8>, Intermediate>,
 }
 
 impl SecretManager {
@@ -486,7 +486,7 @@ impl SecretManager {
     ) -> Result<Self> {
         let main_secret = MainSecret::new(&platform_secret, &gsc_secret)?;
         let parent_version = main_secret.version();
-        let mut intermediates = HashMap::<Vec<u8>, Intermediate>::new();
+        let mut intermediates = Map::<Vec<u8>, Intermediate>::new();
 
         for entry in app_manifest.iter() {
             let app_name = &entry.app_name;

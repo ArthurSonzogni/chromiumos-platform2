@@ -5,7 +5,7 @@
 //! Defines messages used for communication between Trichechus and Cronista for storing and
 //! retrieving persistent data.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap as Map, VecDeque};
 use std::ops::{Deref, DerefMut};
 use std::sync::Mutex;
 
@@ -28,7 +28,7 @@ pub enum Status {
 
 /// Should the data be globally available or only available within the users' sessions.
 /// Values are assigned to make it easier to interface with D-Bus.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
 pub enum Scope {
     System = 0,
     Session = 1,
@@ -55,7 +55,7 @@ pub trait Cronista {
     ) -> std::result::Result<(Status, Vec<u8>), Self::Error>;
 }
 
-#[derive(Clone, Hash, Eq, PartialEq)]
+#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 struct CronistaIdentifier {
     scope: Scope,
     domain: String,
@@ -74,7 +74,7 @@ impl CronistaIdentifier {
 
 /// A in memory implementation of the Cronista interface for unit tests.
 pub struct MockCronista {
-    storage: Mutex<HashMap<CronistaIdentifier, Vec<u8>>>,
+    storage: Mutex<Map<CronistaIdentifier, Vec<u8>>>,
     next_error: Mutex<VecDeque<rpc::Error>>,
     fail_next: bool,
 }
@@ -82,7 +82,7 @@ pub struct MockCronista {
 impl MockCronista {
     pub fn new() -> Self {
         MockCronista {
-            storage: Mutex::new(HashMap::new()),
+            storage: Mutex::new(Map::new()),
             next_error: Mutex::new(VecDeque::new()),
             fail_next: false,
         }

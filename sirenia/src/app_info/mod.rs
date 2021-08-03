@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 //! The module that defines the app_manifest.
-use std::collections::HashMap;
+use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
 use std::result::Result as StdResult;
 
@@ -22,7 +22,7 @@ pub enum Error {
 pub type Result<T> = StdResult<T, Error>;
 
 pub struct AppManifest {
-    entries: HashMap<String, AppManifestEntry>,
+    entries: Map<String, AppManifestEntry>,
 }
 
 /// Defines the type of isolation given to the TEE app instance.
@@ -64,7 +64,7 @@ pub struct AppManifestEntry {
 impl AppManifest {
     pub fn new() -> Self {
         let mut manifest = AppManifest {
-            entries: HashMap::new(),
+            entries: Map::new(),
         };
         // TODO: Manifests are hardcoded here for now while we determine the
         // best way to store manifests.

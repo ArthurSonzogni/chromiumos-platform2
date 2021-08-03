@@ -8,7 +8,7 @@ use std::io::stderr;
 use std::os::unix::io::AsRawFd;
 
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap as Map, VecDeque};
 use std::env;
 use std::fmt::Debug;
 use std::mem::swap;
@@ -180,8 +180,8 @@ impl StorageRpc for TeeAppHandler {
 
 struct TrichechusState {
     expected_port: u32,
-    pending_apps: HashMap<TransportType, String>,
-    running_apps: HashMap<TransportType, Rc<RefCell<TeeApp>>>,
+    pending_apps: Map<TransportType, String>,
+    running_apps: Map<TransportType, Rc<RefCell<TeeApp>>>,
     log_queue: VecDeque<Vec<u8>>,
     persistence_uri: TransportType,
     persistence: RefCell<Option<CronistaClient>>,
@@ -198,8 +198,8 @@ impl TrichechusState {
 
         TrichechusState {
             expected_port: DEFAULT_CLIENT_PORT,
-            pending_apps: HashMap::new(),
-            running_apps: HashMap::new(),
+            pending_apps: Map::new(),
+            running_apps: Map::new(),
             log_queue: VecDeque::new(),
             persistence_uri: TransportType::VsockConnection(VSocketAddr {
                 cid: CROS_CID,

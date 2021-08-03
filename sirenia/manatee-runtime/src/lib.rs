@@ -5,7 +5,7 @@
 //! API endpoint library for the TEE apps to communicate with Trichechus.
 
 use std::borrow::{Borrow, BorrowMut};
-use std::collections::HashMap;
+use std::collections::BTreeMap as Map;
 use std::fmt::{self, Debug, Display};
 use std::marker::PhantomData;
 
@@ -130,7 +130,7 @@ impl<S: Storable, T: Storage, R: BorrowMut<T>> ScopedData<S, T, R> {
 pub type ExclusiveScopedData<'a, S, T> = ScopedData<S, T, &'a mut T>;
 
 /// Represents an entire key value store for one identifier.
-pub type ScopedKeyValueStore<S, T, R> = ScopedData<HashMap<String, S>, T, R>;
+pub type ScopedKeyValueStore<S, T, R> = ScopedData<Map<String, S>, T, R>;
 
 /// A helper type for when the storage implementation doesn't need to be shared.
 /// See ScopedKeyValueStore.
@@ -146,12 +146,12 @@ mod tests {
     const TEST_ID: &str = "id";
 
     struct MockStorage {
-        map: HashMap<String, StorableMember>,
+        map: Map<String, StorableMember>,
     }
 
     impl MockStorage {
         fn new() -> Self {
-            let map = HashMap::new();
+            let map = Map::new();
             MockStorage { map }
         }
     }
@@ -277,10 +277,8 @@ mod tests {
     fn mut_and_drop_kvstore() {
         let mut store = MockStorage::new();
         let id = "id";
-        let map = HashMap::new();
-        store
-            .write_data::<HashMap<String, String>>(&id, &map)
-            .unwrap();
+        let map = Map::new();
+        store.write_data::<Map<String, String>>(&id, &map).unwrap();
 
         {
             let fun = |_h: &str| panic!();
@@ -292,7 +290,7 @@ mod tests {
             assert!(kvstore.as_mut().contains_key(key));
         }
 
-        let res_map = store.read_data::<HashMap<String, String>>(&id).unwrap();
+        let res_map = store.read_data::<Map<String, String>>(&id).unwrap();
         assert!(res_map.contains_key("key"));
         assert_eq!("value", res_map.get("key").unwrap())
     }
