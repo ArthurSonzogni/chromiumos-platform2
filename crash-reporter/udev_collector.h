@@ -38,6 +38,8 @@ class UdevCollector : public CrashCollector {
   // could be omitted, in which case it would be treated as a wildcard (*).
   bool HandleCrash(const std::string& udev_event);
 
+  static CollectorInfo GetHandlerInfo(const std::string& udev_event);
+
  protected:
   std::string dev_coredump_directory_;
 

@@ -31,6 +31,8 @@ class SELinuxViolationCollector : public CrashCollector {
   // Collects warning.
   bool Collect();
 
+  static CollectorInfo GetHandlerInfo(bool selinux_violation);
+
  protected:
   void set_violation_report_path_for_testing(const base::FilePath& file_path) {
     violation_report_path_ = file_path;

@@ -35,6 +35,11 @@ class ArcJavaCollector : public CrashCollector {
                    const arc_util::BuildProperty& build_property,
                    base::TimeDelta uptime);
 
+  static CollectorInfo GetHandlerInfo(
+      const std::string& arc_java_crash,
+      const arc_util::BuildProperty& build_property,
+      int64_t uptime_millis);
+
  private:
   FRIEND_TEST(ArcJavaCollectorTest, AddArcMetaData);
   FRIEND_TEST(ArcJavaCollectorTest, CreateReportForJavaCrash);

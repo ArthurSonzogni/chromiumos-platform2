@@ -4,8 +4,10 @@
 
 #include "crash-reporter/vm_collector.h"
 
+#include <memory>
 #include <string>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -61,4 +63,15 @@ bool VmCollector::Collect(pid_t pid) {
   // ourselves.
   WriteNewFile(meta_path, extra_metadata_);
   return true;
+}
+
+// static
+CollectorInfo VmCollector::GetHandlerInfo(bool vm_crash, int32_t vm_pid) {
+  auto vm_collector = std::make_shared<VmCollector>();
+  return {.collector = vm_collector,
+          .handlers = {{
+              .should_handle = vm_crash,
+              .cb = base::BindRepeating(&VmCollector::Collect, vm_collector,
+                                        vm_pid),
+          }}};
 }

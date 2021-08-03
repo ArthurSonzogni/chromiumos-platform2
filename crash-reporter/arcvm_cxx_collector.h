@@ -44,6 +44,12 @@ class ArcvmCxxCollector : public CrashCollector {
                    const CrashInfo& crash_info,
                    base::TimeDelta uptime);
 
+  static CollectorInfo GetHandlerInfo(
+      bool arc_native,
+      const arc_util::BuildProperty& build_property,
+      const CrashInfo& crash_info,
+      int64_t uptime_millis);
+
  private:
   friend class ArcvmCxxCollectorMock;
   friend class ArcvmCxxCollectorTest;

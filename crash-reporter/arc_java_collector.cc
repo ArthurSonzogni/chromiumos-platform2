@@ -5,8 +5,10 @@
 #include "crash-reporter/arc_java_collector.h"
 
 #include <ctime>
+#include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/time/time.h>
@@ -166,6 +168,25 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
   FinishCrash(meta_path, process, log_path.BaseName().value());
   return true;
+}
+
+// static
+CollectorInfo ArcJavaCollector::GetHandlerInfo(
+    const std::string& arc_java_crash,
+    const arc_util::BuildProperty& build_property,
+    int64_t uptime_millis) {
+  auto arc_java_collector = std::make_shared<ArcJavaCollector>();
+  return {
+      .collector = arc_java_collector,
+      .handlers = {{
+          // This handles Java app crashes of ARC++ and ARCVM.
+          .should_handle = !arc_java_crash.empty(),
+          .cb = base::BindRepeating(
+              &ArcJavaCollector::HandleCrash, arc_java_collector,
+              arc_java_crash, build_property,
+              base::TimeDelta::FromMilliseconds(uptime_millis)),
+      }},
+  };
 }
 
 namespace {

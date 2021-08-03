@@ -11,6 +11,7 @@
 #include <map>
 #include <string>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
@@ -215,13 +216,13 @@ bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
   return true;
 }
 
-bool ChromeCollector::HandleCrash(const FilePath& file_path,
+bool ChromeCollector::HandleCrash(const FilePath& dump_file_path,
                                   pid_t pid,
                                   uid_t uid,
                                   const std::string& exe_name) {
   std::string data;
-  if (!base::ReadFileToString(base::FilePath(file_path), &data)) {
-    PLOG(ERROR) << "Can't read crash log: " << file_path.value();
+  if (!base::ReadFileToString(base::FilePath(dump_file_path), &data)) {
+    PLOG(ERROR) << "Can't read crash log: " << dump_file_path.value();
     return false;
   }
 
@@ -505,6 +506,42 @@ bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
   }
 
   return true;
+}
+
+// static
+CollectorInfo ChromeCollector::GetHandlerInfo(
+    CrashSendingMode mode,
+    const std::string& dump_file_path,
+    int memfd,
+    pid_t pid,
+    uid_t uid,
+    const std::string& executable_name,
+    const std::string& non_exe_error_key,
+    const std::string& chrome_dump_dir) {
+  CHECK(dump_file_path.empty() || memfd == -1)
+      << "--chrome= and --chrome_memfd= cannot be both set";
+  if (memfd == -1) {
+    CHECK(non_exe_error_key.empty())
+        << "--error_key is only for --chrome_memfd crashes";
+  }
+
+  auto chrome_collector = std::make_shared<ChromeCollector>(mode);
+  return {
+      .collector = chrome_collector,
+      .handlers = {{
+                       .should_handle = !dump_file_path.empty(),
+                       .cb = base::BindRepeating(
+                           &ChromeCollector::HandleCrash, chrome_collector,
+                           FilePath(dump_file_path), pid, uid, executable_name),
+                   },
+                   {
+                       .should_handle = memfd >= 0,
+                       .cb = base::BindRepeating(
+                           &ChromeCollector::HandleCrashThroughMemfd,
+                           chrome_collector, memfd, pid, uid, executable_name,
+                           non_exe_error_key, chrome_dump_dir),
+                   }},
+  };
 }
 
 // See chrome's src/components/crash/content/app/breakpad_linux.cc.

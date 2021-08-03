@@ -5,7 +5,9 @@
 #include "crash-reporter/selinux_violation_collector.h"
 
 #include <map>
+#include <memory>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -141,4 +143,17 @@ bool SELinuxViolationCollector::Collect() {
   FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 
   return true;
+}
+
+// static
+CollectorInfo SELinuxViolationCollector::GetHandlerInfo(
+    bool selinux_violation) {
+  auto selinux_violation_collector =
+      std::make_shared<SELinuxViolationCollector>();
+  return {.collector = selinux_violation_collector,
+          .handlers = {{
+              .should_handle = selinux_violation,
+              .cb = base::BindRepeating(&SELinuxViolationCollector::Collect,
+                                        selinux_violation_collector),
+          }}};
 }

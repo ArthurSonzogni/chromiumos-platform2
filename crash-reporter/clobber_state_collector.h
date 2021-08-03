@@ -23,6 +23,8 @@ class ClobberStateCollector : public CrashCollector {
 
   bool Collect();
 
+  static CollectorInfo GetHandlerInfo(bool clobber_state);
+
  protected:
   base::FilePath tmpfiles_log_;
 };

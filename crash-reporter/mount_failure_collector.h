@@ -35,6 +35,11 @@ class MountFailureCollector : public CrashCollector {
   static StorageDeviceType ValidateStorageDeviceType(const std::string& device);
   static std::string StorageDeviceTypeToString(StorageDeviceType device_type);
 
+  static CollectorInfo GetHandlerInfo(const std::string& mount_device,
+                                      bool testonly_send_all,
+                                      bool mount_failure,
+                                      bool umount_failure);
+
  private:
   StorageDeviceType device_type_;
   const bool testonly_send_all_;

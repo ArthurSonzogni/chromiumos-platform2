@@ -4,9 +4,11 @@
 
 #include "crash-reporter/clobber_state_collector.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
@@ -57,4 +59,17 @@ bool ClobberStateCollector::Collect() {
   }
 
   return result;
+}
+
+// static
+CollectorInfo ClobberStateCollector::GetHandlerInfo(bool clobber_state) {
+  auto clobber_state_collector = std::make_shared<ClobberStateCollector>();
+  return {
+      .collector = clobber_state_collector,
+      .handlers = {{
+          .should_handle = clobber_state,
+          .cb = base::BindRepeating(&ClobberStateCollector::Collect,
+                                    clobber_state_collector),
+      }},
+  };
 }

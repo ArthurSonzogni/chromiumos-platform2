@@ -33,6 +33,12 @@ class MissedCrashCollector : public CrashCollector {
     input_file_ = input_file;
   }
 
+  static CollectorInfo GetHandlerInfo(bool missed_chrome_crash,
+                                      int32_t pid,
+                                      int32_t recent_miss_count,
+                                      int32_t recent_match_count,
+                                      int32_t pending_miss_count);
+
  private:
   // FILE we can read from that contains the logs to attach to this crash
   // report. Default is stdin. Class does not own the FILE and will not close

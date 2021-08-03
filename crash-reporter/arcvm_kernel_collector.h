@@ -29,6 +29,9 @@ class ArcvmKernelCollector : public CrashCollector {
   // Handles a kernel crash of ARCVM.
   bool HandleCrash(const arc_util::BuildProperty& build_property);
 
+  static CollectorInfo GetHandlerInfo(
+      bool arc_kernel, const arc_util::BuildProperty& build_property);
+
  private:
   friend class ArcvmKernelCollectorTest;
   FRIEND_TEST(ArcvmKernelCollectorTest,

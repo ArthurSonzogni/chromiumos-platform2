@@ -4,9 +4,11 @@
 
 #include "crash-reporter/mount_failure_collector.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -126,4 +128,22 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
   }
 
   return true;
+}
+
+// static
+CollectorInfo MountFailureCollector::GetHandlerInfo(
+    const std::string& mount_device,
+    bool testonly_send_all,
+    bool mount_failure,
+    bool umount_failure) {
+  auto mount_failure_collector = std::make_shared<MountFailureCollector>(
+      ValidateStorageDeviceType(mount_device), testonly_send_all);
+  return {
+      .collector = mount_failure_collector,
+      .handlers = {{
+          .should_handle = mount_failure || umount_failure,
+          .cb = base::BindRepeating(&MountFailureCollector::Collect,
+                                    mount_failure_collector, mount_failure),
+      }},
+  };
 }

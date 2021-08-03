@@ -15,6 +15,8 @@ class VmCollector : public CrashCollector {
   VmCollector();
   bool Collect(pid_t pid);
 
+  static CollectorInfo GetHandlerInfo(bool vm_crash, int32_t vm_pid);
+
   VmCollector(const VmCollector&) = delete;
   VmCollector& operator=(const VmCollector&) = delete;
 };

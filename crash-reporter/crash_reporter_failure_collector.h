@@ -28,6 +28,8 @@ class CrashReporterFailureCollector : public CrashCollector {
 
   // Collect crash reporter failures.
   bool Collect();
+
+  static CollectorInfo GetHandlerInfo(bool crash_reporter_crashed);
 };
 
 #endif  // CRASH_REPORTER_CRASH_REPORTER_FAILURE_COLLECTOR_H_

@@ -48,11 +48,10 @@ class GenericFailureCollector : public CrashCollector {
                    const std::string& log_key_name,
                    base::Optional<int> weight);
 
-  static const char* const kGenericFailure;
-  static const char* const kAuthFailure;
-  static const char* const kSuspendFailure;
-  static const char* const kServiceFailure;
-  static const char* const kArcServiceFailure;
+  static CollectorInfo GetHandlerInfo(bool suspend_failure,
+                                      bool auth_failure,
+                                      const std::string& arc_service_failure,
+                                      const std::string& service_failure);
 
  protected:
   std::string failure_report_path_;
@@ -63,6 +62,15 @@ class GenericFailureCollector : public CrashCollector {
  private:
   friend class GenericFailureCollectorTest;
   friend class ArcGenericFailureCollectorTest;
+  FRIEND_TEST(GenericFailureCollectorTest, SuspendExecName);
+  FRIEND_TEST(GenericFailureCollectorTest, CollectOKMainServiceFailure);
+  FRIEND_TEST(GenericFailureCollectorTest, CollectOKPreStart);
+
+  static const char* const kGenericFailure;
+  static const char* const kAuthFailure;
+  static const char* const kSuspendFailure;
+  static const char* const kServiceFailure;
+  static const char* const kArcServiceFailure;
 
   // Generic failure dump consists only of the signature.
   bool LoadGenericFailure(std::string* content, std::string* signature);

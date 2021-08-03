@@ -4,8 +4,10 @@
 
 #include "crash-reporter/arcvm_cxx_collector.h"
 
+#include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -125,4 +127,24 @@ bool ArcvmCxxCollector::DumpFdToFile(base::ScopedFD src_fd,
 
 std::string ArcvmCxxCollector::GetProductVersion() const {
   return arc_util::GetProductVersion();
+}
+
+// static
+CollectorInfo ArcvmCxxCollector::GetHandlerInfo(
+    bool arc_native,
+    const arc_util::BuildProperty& build_property,
+    const CrashInfo& crash_info,
+    int64_t uptime_millis) {
+  auto arcvm_cxx_collector = std::make_shared<ArcvmCxxCollector>();
+  return {
+      .collector = arcvm_cxx_collector,
+      .handlers = {{
+          // This handles C++ crashes of ARCVM.
+          .should_handle = arc_native,
+          .cb = base::BindRepeating(
+              &ArcvmCxxCollector::HandleCrash, arcvm_cxx_collector,
+              build_property, crash_info,
+              base::TimeDelta::FromMilliseconds(uptime_millis)),
+      }},
+  };
 }

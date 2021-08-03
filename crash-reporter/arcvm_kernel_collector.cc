@@ -4,9 +4,11 @@
 
 #include "crash-reporter/arcvm_kernel_collector.h"
 
+#include <memory>
 #include <sstream>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -112,4 +114,19 @@ void ArcvmKernelCollector::AddArcMetadata(
 
 std::string ArcvmKernelCollector::GetProductVersion() const {
   return arc_util::GetProductVersion();
+}
+
+// static
+CollectorInfo ArcvmKernelCollector::GetHandlerInfo(
+    bool arc_kernel, const arc_util::BuildProperty& build_property) {
+  auto arcvm_kernel_collector = std::make_shared<ArcvmKernelCollector>();
+  return {
+      .collector = arcvm_kernel_collector,
+      .handlers = {{
+          // This handles kernel crashes of ARCVM.
+          .should_handle = arc_kernel,
+          .cb = base::BindRepeating(&ArcvmKernelCollector::HandleCrash,
+                                    arcvm_kernel_collector, build_property),
+      }},
+  };
 }

@@ -4,8 +4,12 @@
 
 #include "crash-reporter/generic_failure_collector.h"
 
+#include <memory>
+
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "crash-reporter/util.h"
 
@@ -75,4 +79,46 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
   }
 
   return true;
+}
+
+// static
+CollectorInfo GenericFailureCollector::GetHandlerInfo(
+    bool suspend_failure,
+    bool auth_failure,
+    const std::string& arc_service_failure,
+    const std::string& service_failure) {
+  auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
+  return {
+      .collector = generic_failure_collector,
+      .handlers = {{
+                       .should_handle = suspend_failure,
+                       .cb = base::BindRepeating(
+                           &GenericFailureCollector::CollectWithWeight,
+                           generic_failure_collector, kSuspendFailure,
+                           util::GetSuspendFailureWeight()),
+                   },
+                   {
+                       .should_handle = auth_failure,
+                       .cb = base::BindRepeating(
+                           &GenericFailureCollector::Collect,
+                           generic_failure_collector, kAuthFailure),
+                   },
+                   {
+                       .should_handle = !arc_service_failure.empty(),
+                       .cb = base::BindRepeating(
+                           &GenericFailureCollector::CollectFull,
+                           generic_failure_collector,
+                           StringPrintf("%s-%s", kArcServiceFailure,
+                                        arc_service_failure.c_str()),
+                           kArcServiceFailure, util::GetServiceFailureWeight()),
+                   },
+                   {
+                       .should_handle = !service_failure.empty(),
+                       .cb = base::BindRepeating(
+                           &GenericFailureCollector::CollectFull,
+                           generic_failure_collector,
+                           StringPrintf("%s-%s", kServiceFailure,
+                                        service_failure.c_str()),
+                           kServiceFailure, util::GetServiceFailureWeight()),
+                   }}};
 }

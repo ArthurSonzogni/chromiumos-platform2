@@ -5,9 +5,11 @@
 #include "crash-reporter/udev_collector.h"
 
 #include <map>
+#include <memory>
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -260,4 +262,15 @@ std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
     name = ExtractFailingDeviceDriverName(failing_uevent_path);
   }
   return name;
+}
+
+// static
+CollectorInfo UdevCollector::GetHandlerInfo(const std::string& udev_event) {
+  auto udev_collector = std::make_shared<UdevCollector>();
+  return {.collector = udev_collector,
+          .handlers = {{
+              .should_handle = !udev_event.empty(),
+              .cb = base::BindRepeating(&UdevCollector::HandleCrash,
+                                        udev_collector, udev_event),
+          }}};
 }

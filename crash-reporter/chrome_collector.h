@@ -33,7 +33,7 @@ class ChromeCollector : public CrashCollector {
   static const char kSuccessMagic[];
 
   // Handle a specific chrome crash.  Returns true on success.
-  bool HandleCrash(const base::FilePath& file_path,
+  bool HandleCrash(const base::FilePath& dump_file_path,
                    pid_t pid,
                    uid_t uid,
                    const std::string& exe_name);
@@ -46,6 +46,15 @@ class ChromeCollector : public CrashCollector {
                                const std::string& executable_name,
                                const std::string& non_exe_error_key,
                                const std::string& dump_dir);
+
+  static CollectorInfo GetHandlerInfo(CrashSendingMode mode,
+                                      const std::string& dump_file_path,
+                                      int memfd,
+                                      pid_t pid,
+                                      uid_t uid,
+                                      const std::string& executable_name,
+                                      const std::string& non_exe_error_key,
+                                      const std::string& chrome_dump_dir);
 
   void set_max_upload_bytes_for_test(int max_upload_bytes) {
     max_upload_bytes_ = max_upload_bytes;

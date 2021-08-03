@@ -4,6 +4,9 @@
 
 #include "crash-reporter/missed_crash_collector.h"
 
+#include <memory>
+
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -95,4 +98,21 @@ bool MissedCrashCollector::Collect(int pid,
   FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 
   return true;
+}
+
+CollectorInfo MissedCrashCollector::GetHandlerInfo(bool missed_chrome_crash,
+                                                   int32_t pid,
+                                                   int32_t recent_miss_count,
+                                                   int32_t recent_match_count,
+                                                   int32_t pending_miss_count) {
+  auto missed_crash_collector = std::make_shared<MissedCrashCollector>();
+  return {
+      .collector = missed_crash_collector,
+      .handlers = {{
+          .should_handle = missed_chrome_crash,
+          .cb = base::BindRepeating(
+              &MissedCrashCollector::Collect, missed_crash_collector, pid,
+              recent_miss_count, recent_match_count, pending_miss_count),
+      }},
+  };
 }
