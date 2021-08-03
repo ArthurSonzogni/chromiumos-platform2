@@ -4677,27 +4677,6 @@ mno {
       ip_type : IPV4V6
     }
   }
-  mvno {
-    mvno_filter {
-      type : MCCMNC
-      regex : "23433"
-    }
-    mvno_filter {
-      type : OPERATOR_NAME
-      regex : "HP MobileConnect"
-    }
-    data {
-      uuid : "d80426a8-736c-40fc-973e-ba6f0b9f8826"
-      localized_name {
-        name : "HP MobileConnect"
-      }
-      mobile_apn {
-        apn : "internet"
-        username : "hpdatasim"
-        password : "hpdatasim"
-      }
-    }
-  }
 }
 
 mno {
@@ -9714,28 +9693,6 @@ mno {
       }
       username : "web"
       password : "web"
-    }
-  }
-
-  mvno {
-    mvno_filter {
-      type : MCCMNC
-      regex : "20404"
-    }
-    mvno_filter {
-      type : OPERATOR_NAME
-      regex : "HP MobileConnect"
-    }
-    data {
-      uuid : "2f45b257-245a-48a4-8e5c-aafd0f42f312"
-      localized_name {
-        name : "HP MobileConnect"
-      }
-      mobile_apn {
-        apn : "internet"
-        username : "hpdatasim"
-        password : "hpdatasim"
-      }
     }
   }
 }
@@ -14904,38 +14861,6 @@ mno {
     }
     data {
       uuid : "4b78b3aa-4c6e-4093-af6f-79a0370e5fc5"
-    }
-  }
-}
-
-# - We add a fake MNO since we don't support international MVNOs yet.
-# - There is fallback filter based on ICCID ranges that is not yet included
-#   (crosbug.com/p/30803).
-# - The same MVNO also exists under the MNOs with MCCMNC 23433 and 20404.
-mno {
-  data {
-    uuid : "9dc58081-6edd-42b9-9d3b-3e2846949f7b"
-    localized_name {
-      name : "AT&T"
-    }
-    mccmnc : "29506"
-  }
-  # If the MVNO filter(s) match, we still want to treat this as an MVNO.
-  mvno {
-    mvno_filter {
-      type : OPERATOR_NAME
-      regex : "HP MobileConnect"
-    }
-    data {
-      uuid : "8ef766f8-1f50-4fbb-b89d-ab4805ccd355"
-      localized_name {
-        name : "HP MobileConnect"
-      }
-      mobile_apn {
-        apn : "internet"
-        username : "hpdatasim"
-        password : "hpdatasim"
-      }
     }
   }
 }
