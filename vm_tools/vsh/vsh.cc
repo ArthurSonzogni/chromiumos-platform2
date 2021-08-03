@@ -17,10 +17,11 @@
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/process/process.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
-#include <base/process/process.h>
 #include <brillo/flag_helper.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>

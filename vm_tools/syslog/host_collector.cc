@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
 #include "vm_tools/syslog/log_pipe.h"

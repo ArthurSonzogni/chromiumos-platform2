@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>

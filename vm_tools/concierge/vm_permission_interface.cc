@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>

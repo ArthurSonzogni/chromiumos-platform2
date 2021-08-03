@@ -10,8 +10,9 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
+#include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/icon_index_file.h"
 #include "vm_tools/garcon/xdg_util.h"

@@ -16,6 +16,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>

@@ -7,6 +7,7 @@
 
 #include <base/check_op.h>
 #include <base/guid.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_proxy_util.h>

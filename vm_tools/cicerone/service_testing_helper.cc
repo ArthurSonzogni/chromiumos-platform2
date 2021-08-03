@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>

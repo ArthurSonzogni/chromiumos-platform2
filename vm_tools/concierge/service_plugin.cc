@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>
+#include <base/logging.h>
 
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"

@@ -7,6 +7,8 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <base/logging.h>
+
 namespace vm_tools {
 namespace concierge {
 

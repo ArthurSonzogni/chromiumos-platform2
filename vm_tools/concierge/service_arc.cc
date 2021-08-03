@@ -5,6 +5,7 @@
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 
 #include "vm_tools/common/pstore.h"
 #include "vm_tools/concierge/arc_vm.h"

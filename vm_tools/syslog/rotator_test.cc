@@ -6,11 +6,12 @@
 
 #include <base/check.h>
 #include <base/environment.h>
-#include <base/format_macros.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/format_macros.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>

@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/shared_data.h"
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 
 #include "vm_tools/common/naming.h"
 

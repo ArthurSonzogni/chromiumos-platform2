@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 
+#include <base/logging.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>

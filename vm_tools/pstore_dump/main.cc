@@ -11,8 +11,9 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <brillo/flag_helper.h>
+#include <base/logging.h>
 #include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>

@@ -16,10 +16,11 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/files/scoped_file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/format_macros.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread_task_runner_handle.h>
