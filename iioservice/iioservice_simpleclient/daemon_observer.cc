@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "iioservice/iioservice_simpleclient/daemon.h"
+#include "iioservice/iioservice_simpleclient/daemon_observer.h"
 
 #include <sysexits.h>
 
@@ -17,12 +17,12 @@
 
 namespace iioservice {
 
-TestDaemon::TestDaemon(int device_id,
-                       cros::mojom::DeviceType device_type,
-                       std::vector<std::string> channel_ids,
-                       double frequency,
-                       int timeout,
-                       int samples)
+DaemonObserver::DaemonObserver(int device_id,
+                               cros::mojom::DeviceType device_type,
+                               std::vector<std::string> channel_ids,
+                               double frequency,
+                               int timeout,
+                               int samples)
     : device_id_(device_id),
       device_type_(device_type),
       channel_ids_(std::move(channel_ids)),
@@ -31,9 +31,9 @@ TestDaemon::TestDaemon(int device_id,
       samples_(samples),
       weak_ptr_factory_(this) {}
 
-TestDaemon::~TestDaemon() {}
+DaemonObserver::~DaemonObserver() {}
 
-int TestDaemon::OnInit() {
+int DaemonObserver::OnInit() {
   int exit_code = DBusDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
@@ -46,22 +46,22 @@ int TestDaemon::OnInit() {
   SetBus(bus_.get());
   BootstrapMojoConnection();
 
-  observer_ = iioservice::ObserverImpl::Create(
+  observer_ = ObserverImpl::Create(
       base::ThreadTaskRunnerHandle::Get(), device_id_, device_type_,
       std::move(channel_ids_), frequency_, timeout_, samples_,
-      base::BindOnce(&TestDaemon::OnMojoDisconnect,
+      base::BindOnce(&DaemonObserver::OnMojoDisconnect,
                      weak_ptr_factory_.GetWeakPtr()));
 
   return exit_code;
 }
 
-void TestDaemon::OnClientReceived(
+void DaemonObserver::OnClientReceived(
     mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
   observer_->BindClient(std::move(client));
 }
 
-void TestDaemon::OnMojoDisconnect() {
-  LOGF(INFO) << "Quiting this process.";
+void DaemonObserver::OnMojoDisconnect() {
+  LOGF(INFO) << "Quitting this process.";
   Quit();
 }
 

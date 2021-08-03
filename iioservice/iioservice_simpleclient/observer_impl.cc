@@ -11,10 +11,10 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/time/time.h>
+#include <libmems/common_types.h>
 
-#include "base/time/time.h"
 #include "iioservice/include/common.h"
-#include "libmems/common_types.h"
 
 namespace iioservice {
 
@@ -31,21 +31,6 @@ constexpr base::TimeDelta kMaximumBaseLatencyTolerance =
 }  // namespace
 
 // static
-void ObserverImpl::ObserverImplDeleter(ObserverImpl* observer) {
-  if (observer == nullptr)
-    return;
-
-  if (!observer->ipc_task_runner_->RunsTasksInCurrentSequence()) {
-    observer->ipc_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ObserverImpl::ObserverImplDeleter, observer));
-    return;
-  }
-
-  delete observer;
-}
-
-// static
 ObserverImpl::ScopedObserverImpl ObserverImpl::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     int device_id,
@@ -59,34 +44,9 @@ ObserverImpl::ScopedObserverImpl ObserverImpl::Create(
       new ObserverImpl(ipc_task_runner, device_id, device_type,
                        std::move(channel_ids), frequency, timeout, samples,
                        std::move(quit_callback)),
-      ObserverImplDeleter);
+      SensorClientDeleter);
 
   return observer;
-}
-
-void ObserverImpl::BindClient(
-    mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(!client_.is_bound());
-
-  client_.Bind(std::move(client));
-  client_.set_disconnect_handler(base::BindOnce(
-      &ObserverImpl::OnClientDisconnect, weak_factory_.GetWeakPtr()));
-}
-
-void ObserverImpl::SetUpChannel(
-    mojo::PendingRemote<cros::mojom::SensorService> pending_remote) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(!sensor_service_remote_.is_bound());
-
-  sensor_service_remote_.Bind(std::move(pending_remote));
-  sensor_service_remote_.set_disconnect_handler(base::BindOnce(
-      &ObserverImpl::OnServiceDisconnect, weak_factory_.GetWeakPtr()));
-
-  if (device_id_ < 0)
-    GetDeviceIdsByType();
-  else
-    GetSensorDevice();
 }
 
 void ObserverImpl::OnSampleUpdated(
@@ -186,20 +146,26 @@ ObserverImpl::ObserverImpl(
     int timeout,
     int samples,
     QuitCallback quit_callback)
-    : ipc_task_runner_(ipc_task_runner),
+    : SensorClient(std::move(ipc_task_runner), std::move(quit_callback)),
       device_id_(device_id),
       device_type_(device_type),
       channel_ids_(std::move(channel_ids)),
       frequency_(frequency),
       timeout_(timeout),
       samples_(samples),
-      quit_callback_(std::move(quit_callback)),
       receiver_(this) {
   ipc_task_runner_->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&ObserverImpl::SetUpChannelTimeout,
                      weak_factory_.GetWeakPtr()),
       base::TimeDelta::FromMilliseconds(kSetUpChannelTimeoutInMilliseconds));
+}
+
+void ObserverImpl::Start() {
+  if (device_id_ < 0)
+    GetDeviceIdsByType();
+  else
+    GetSensorDevice();
 }
 
 mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver>
@@ -213,41 +179,13 @@ ObserverImpl::GetRemote() {
   return remote;
 }
 
-void ObserverImpl::SetUpChannelTimeout() {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  if (sensor_service_remote_.is_bound())
-    return;
-
-  // Don't Change: Used as a check sentence in the tast test.
-  LOGF(ERROR) << "SetUpChannelTimeout";
-  Reset();
-}
-
 void ObserverImpl::Reset() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  client_.reset();
-  sensor_service_remote_.reset();
   sensor_device_remote_.reset();
   receiver_.reset();
 
-  if (quit_callback_)
-    std::move(quit_callback_).Run();
-}
-
-void ObserverImpl::OnClientDisconnect() {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  LOGF(ERROR) << "SensorHalClient disconnected";
-  Reset();
-}
-
-void ObserverImpl::OnServiceDisconnect() {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  LOGF(ERROR) << "SensorService disconnected";
-  Reset();
+  SensorClient::Reset();
 }
 
 void ObserverImpl::OnDeviceDisconnect() {

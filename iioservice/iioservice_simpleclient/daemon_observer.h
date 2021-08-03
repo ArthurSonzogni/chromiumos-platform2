@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IIOSERVICE_IIOSERVICE_SIMPLECLIENT_DAEMON_H_
-#define IIOSERVICE_IIOSERVICE_SIMPLECLIENT_DAEMON_H_
+#ifndef IIOSERVICE_IIOSERVICE_SIMPLECLIENT_DAEMON_OBSERVER_H_
+#define IIOSERVICE_IIOSERVICE_SIMPLECLIENT_DAEMON_OBSERVER_H_
 
 #include <memory>
 #include <string>
@@ -18,15 +18,15 @@
 
 namespace iioservice {
 
-class TestDaemon : public brillo::DBusDaemon, public SensorClientDbus {
+class DaemonObserver : public brillo::DBusDaemon, public SensorClientDbus {
  public:
-  TestDaemon(int device_id,
-             cros::mojom::DeviceType device_type,
-             std::vector<std::string> channel_ids,
-             double frequency,
-             int timeout,
-             int samples);
-  ~TestDaemon() override;
+  DaemonObserver(int device_id,
+                 cros::mojom::DeviceType device_type,
+                 std::vector<std::string> channel_ids,
+                 double frequency,
+                 int timeout,
+                 int samples);
+  ~DaemonObserver() override;
 
  protected:
   // brillo::DBusDaemon overrides:
@@ -48,15 +48,15 @@ class TestDaemon : public brillo::DBusDaemon, public SensorClientDbus {
   int samples_;
 
   ObserverImpl::ScopedObserverImpl observer_ = {
-      nullptr, ObserverImpl::ObserverImplDeleter};
+      nullptr, SensorClient::SensorClientDeleter};
 
   // IPC Support
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Must be last class member.
-  base::WeakPtrFactory<TestDaemon> weak_ptr_factory_;
+  base::WeakPtrFactory<DaemonObserver> weak_ptr_factory_;
 };
 
 }  // namespace iioservice
 
-#endif  // IIOSERVICE_IIOSERVICE_SIMPLECLIENT_DAEMON_H_
+#endif  // IIOSERVICE_IIOSERVICE_SIMPLECLIENT_DAEMON_OBSERVER_H_

@@ -10,23 +10,22 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "iioservice/iioservice_simpleclient/sensor_client.h"
 #include "iioservice/mojo/cros_sensor_service.mojom.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 
-class ObserverImpl final : public cros::mojom::SensorHalClient,
+class ObserverImpl final : public SensorClient,
                            public cros::mojom::SensorDeviceSamplesObserver {
  public:
-  using QuitCallback = base::OnceCallback<void()>;
-
-  static void ObserverImplDeleter(ObserverImpl* observer);
   using ScopedObserverImpl =
-      std::unique_ptr<ObserverImpl, decltype(&ObserverImplDeleter)>;
+      std::unique_ptr<ObserverImpl, decltype(&SensorClientDeleter)>;
 
   // The task runner should be the same as the one provided to SensorClient.
   static ScopedObserverImpl Create(
@@ -38,12 +37,6 @@ class ObserverImpl final : public cros::mojom::SensorHalClient,
       int timeout,
       int samples,
       QuitCallback quit_callback);
-
-  void BindClient(mojo::PendingReceiver<cros::mojom::SensorHalClient> client);
-
-  // cros::mojom::SensorHalClient overrides:
-  void SetUpChannel(
-      mojo::PendingRemote<cros::mojom::SensorService> pending_remote) override;
 
   // cros::mojom::SensorDeviceSamplesObserver overrides:
   void OnSampleUpdated(const base::flat_map<int32_t, int64_t>& sample) override;
@@ -59,13 +52,12 @@ class ObserverImpl final : public cros::mojom::SensorHalClient,
                int samples,
                QuitCallback quit_callback);
 
-  void SetUpChannelTimeout();
+  // SensorClient overrides:
+  void Start() override;
+  void Reset() override;
+
   mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote();
 
-  void Reset();
-
-  void OnClientDisconnect();
-  void OnServiceDisconnect();
   void OnDeviceDisconnect();
   void OnObserverDisconnect();
 
@@ -80,8 +72,6 @@ class ObserverImpl final : public cros::mojom::SensorHalClient,
   void SetFrequencyCallback(double result_freq);
   void SetChannelsEnabledCallback(const std::vector<int32_t>& failed_indices);
 
-  scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
-
   int device_id_ = -1;
   cros::mojom::DeviceType device_type_ = cros::mojom::DeviceType::NONE;
   const std::vector<std::string> channel_ids_;
@@ -89,7 +79,6 @@ class ObserverImpl final : public cros::mojom::SensorHalClient,
   double result_freq_ = 0.0;
   int timeout_;
   int samples_;
-  QuitCallback quit_callback_;
 
   std::vector<int32_t> channel_indices_;
   std::vector<std::string> iio_chn_ids_;
@@ -101,9 +90,6 @@ class ObserverImpl final : public cros::mojom::SensorHalClient,
   base::TimeDelta total_latency_;
   std::vector<base::TimeDelta> latencies_;
 
-  mojo::Receiver<cros::mojom::SensorHalClient> client_{this};
-
-  mojo::Remote<cros::mojom::SensorService> sensor_service_remote_;
   mojo::Remote<cros::mojom::SensorDevice> sensor_device_remote_;
 
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_;

@@ -8,22 +8,20 @@
 
 #include <base/logging.h>
 #include <base/strings/string_split.h>
-#include <base/threading/thread.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
-#include <mojo/core/embedder/embedder.h>
-#include <mojo/core/embedder/scoped_ipc_support.h>
 
-#include "iioservice/iioservice_simpleclient/daemon.h"
-#include "iioservice/iioservice_simpleclient/observer_impl.h"
+#include "iioservice/iioservice_simpleclient/common.h"
+#include "iioservice/iioservice_simpleclient/daemon_observer.h"
 #include "iioservice/include/common.h"
+#include "iioservice/mojo/sensor.mojom.h"
 
 namespace {
 
 static const int kNumSuccessReads = 100;
 
 std::atomic<bool> daemon_running(false);
-std::unique_ptr<iioservice::TestDaemon> exec_daemon;
+std::unique_ptr<iioservice::DaemonObserver> exec_daemon;
 
 void quit_daemon() {
   if (!daemon_running)
@@ -46,10 +44,11 @@ int main(int argc, char** argv) {
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
   DEFINE_int32(device_id, -1, "The IIO device id to test.");
-  DEFINE_int32(device_type, 0,
-               "The IIO device type to test. It follows the mojo interface's "
-               "order: NONE: 0, ACCEL: 1, ANGLVEL: 2, LIGHT: 3, COUNT: 4, "
-               "MAGN: 5, ANGL: 6, ACPI_ALS: 7, BARO: 8");
+
+  std::string device_types =
+      "The IIO device type to test. It follows the mojo interface's order: " +
+      iioservice::GetDeviceTypesInString();
+  DEFINE_int32(device_type, 0, device_types.c_str());
   DEFINE_string(channels, "", "Specify space separated channels to be enabled");
   DEFINE_double(frequency, -1.0, "frequency in Hz set to the device.");
   DEFINE_uint64(timeout, 1000, "Timeout for I/O operations. 0 as no timeout");
@@ -78,7 +77,7 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  exec_daemon = std::make_unique<iioservice::TestDaemon>(
+  exec_daemon = std::make_unique<iioservice::DaemonObserver>(
       FLAGS_device_id, static_cast<cros::mojom::DeviceType>(FLAGS_device_type),
       std::move(channel_ids), FLAGS_frequency, FLAGS_timeout, FLAGS_samples);
   signal(SIGTERM, signal_handler_stop);
