@@ -72,8 +72,6 @@ bool ArchiveManager::Initialize() {
       "gz",       //
       "iso",      //
       "tar",      //
-      "tar.bz2",  //
-      "tar.gz",   //
       "tbz",      //
       "tbz2",     //
       "tgz",      //

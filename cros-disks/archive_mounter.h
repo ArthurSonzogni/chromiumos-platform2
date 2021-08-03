@@ -65,6 +65,17 @@ class ArchiveMounter : public FUSEMounter {
   // but aren't archives (multiple source files rolled into one). It calls
   // these formats "raw" and treats them as a single-element archive.
   //
+  // Note that while "bar.qux.gz" is raw, "bar.tar.gz" is not (it is a
+  // compressed archive). However, the archive_type argument passed to the
+  // constructor is just "gz", since we cannot practically enumerate all
+  // two-part extensions ("a.gz", "b.gz", ..., "qux.gz", ..., "tar.gz", ...),
+  //
+  // This format_raw_ field being true, based only on the archive_type
+  // constructor argument and not the archive's actual path name (passed to
+  // FormatInvocationCommand, possibly a different value for each
+  // FormatInvocationCommand call), means that it *can* be raw, but
+  // FormatInvocationCommand might override that and state that it's not raw.
+  //
   // "archivemount" in this comment means a specific program
   // (https://github.com/cybernoid/archivemount). This C++ class is also called
   // "ArchiveMounter", but that name uses the "archive mounter" words in their

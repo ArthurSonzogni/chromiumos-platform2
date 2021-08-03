@@ -18,8 +18,34 @@ namespace cros_disks {
 namespace {
 constexpr char kOptionPassword[] = "password";
 
+bool IsCompressedTar(const base::FilePath& path) {
+  // Note that this calls the Extension method, not FinalExtension.
+  std::string ext = path.Extension();
+  return (ext.size() > 5) &&
+         base::LowerCaseEqualsASCII(ext.substr(0, 5), ".tar.");
+}
+
 bool IsFormatRaw(const std::string& archive_type) {
   return (archive_type == "bz2") || (archive_type == "gz");
+}
+
+void RecordArchiveTypeMetrics(Metrics* const metrics,
+                              const std::string& archive_type,
+                              bool format_raw,
+                              const std::string& source) {
+  if (format_raw) {
+    // Discriminate between kArchiveOtherGzip and kArchiveTarGzip, and ditto
+    // for the Bzip2 flavors.
+    std::string ext = base::FilePath(source).Extension();
+    if (base::LowerCaseEqualsASCII(ext, ".tar.bz2")) {
+      metrics->RecordArchiveType("tar.bz2");
+      return;
+    } else if (base::LowerCaseEqualsASCII(ext, ".tar.gz")) {
+      metrics->RecordArchiveType("tar.gz");
+      return;
+    }
+  }
+  metrics->RecordArchiveType(archive_type);
 }
 }  // namespace
 
@@ -47,8 +73,8 @@ bool ArchiveMounter::CanMount(const std::string& source,
                               const std::vector<std::string>& /*params*/,
                               base::FilePath* suggested_dir_name) const {
   base::FilePath path(source);
-  if (path.IsAbsolute() &&
-      base::CompareCaseInsensitiveASCII(path.Extension(), extension_) == 0) {
+  if (path.IsAbsolute() && base::CompareCaseInsensitiveASCII(
+                               path.FinalExtension(), extension_) == 0) {
     *suggested_dir_name = path.BaseName();
     return true;
   }
@@ -69,7 +95,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     const base::FilePath& /*target_path*/,
     std::vector<std::string> params,
     MountErrorType* error) const {
-  metrics_->RecordArchiveType(archive_type_);
+  RecordArchiveTypeMetrics(metrics_, archive_type_, format_raw_, source);
 
   base::FilePath path(source);
   if (!path.IsAbsolute() || path.ReferencesParent()) {
@@ -149,7 +175,7 @@ MountErrorType ArchiveMounter::FormatInvocationCommand(
   std::vector<std::string> opts = {
       "ro", "umask=0222", base::StringPrintf("uid=%d", kChronosUID),
       base::StringPrintf("gid=%d", kChronosAccessGID)};
-  if (format_raw_) {
+  if (format_raw_ && !IsCompressedTar(archive)) {
     opts.push_back("formatraw");
   }
 
