@@ -37,17 +37,6 @@ pkg_config("target_defaults") {
   ]
 }
 
-proto_library("modemfw-protos") {
-  proto_in_dir = "."
-  proto_out_dir = "include/modemfwd/proto_bindings"
-  sources = [
-    "${proto_in_dir}/firmware_manifest.proto",
-    "${proto_in_dir}/firmware_manifest_v2.proto",
-    "${proto_in_dir}/helper_manifest.proto",
-    "${proto_in_dir}/journal_entry.proto",
-  ]
-}
-
 generate_dbus_proxies("modemmanager_proxies") {
   modemmanager_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
   proxy_output_file = "include/modemmanager/dbus-proxies.h"
@@ -81,8 +70,8 @@ static_library("libmodemfw") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
-    ":modemfw-protos",
     ":modemmanager_proxies",
+    "//modemfwd//proto:modemfw-protos",
   ]
 }
 
