@@ -10,8 +10,9 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_piece.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 
 namespace runtime_probe {
@@ -106,7 +107,7 @@ std::unique_ptr<ConverterType> BuildNumericConverter(
         op == ValidatorOperator::GT || op == ValidatorOperator::GE ||
         op == ValidatorOperator::LT || op == ValidatorOperator::LE) {
       typename ConverterType::OperandType operand;
-      if (ConverterType::StringToOperand(std::string(rest), &operand)) {
+      if (ConverterType::StringToOperand(rest, &operand)) {
         return std::make_unique<ConverterType>(op, operand);
       } else {
         LOG(ERROR) << "Can't convert to operand: " << rest;

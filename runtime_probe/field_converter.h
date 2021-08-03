@@ -11,6 +11,7 @@
 
 #include <pcrecpp.h>
 
+#include <base/strings/string_piece.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -139,7 +140,7 @@ class IntegerFieldConverter : public FieldConverter {
   IntegerFieldConverter(ValidatorOperator op, OperandType operand)
       : operator_(op), operand_(operand) {}
 
-  static bool StringToOperand(const std::string& s, OperandType* output) {
+  static bool StringToOperand(base::StringPiece s, OperandType* output) {
     return StringToInt(s, output);
   }
 
@@ -176,7 +177,7 @@ class HexFieldConverter : public FieldConverter {
   HexFieldConverter(ValidatorOperator op, OperandType operand)
       : operator_(op), operand_(operand) {}
 
-  static bool StringToOperand(const std::string& s, OperandType* output) {
+  static bool StringToOperand(base::StringPiece s, OperandType* output) {
     return HexStringToInt64(s, output);
   }
 
@@ -210,7 +211,7 @@ class DoubleFieldConverter : public FieldConverter {
   DoubleFieldConverter(ValidatorOperator op, OperandType operand)
       : operator_(op), operand_(operand) {}
 
-  static bool StringToOperand(const std::string& s, OperandType* output) {
+  static bool StringToOperand(base::StringPiece s, OperandType* output) {
     return StringToDouble(s, output);
   }
 
