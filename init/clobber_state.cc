@@ -252,8 +252,7 @@ void MoveRollbackFileToPstore() {
     }
     return;
   }
-  if (!base::AppendToFile(base::FilePath(kPstoreInputPath), data.c_str(),
-                          data.size())) {
+  if (!base::AppendToFile(base::FilePath(kPstoreInputPath), data)) {
     if (errno != ENOENT) {
       PLOG(WARNING)
           << "Could not write rollback data because /dev/pmsg0 does not exist.";
