@@ -1,0 +1,43 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":fusebox",
+    ":libfusebox",
+  ]
+}
+
+pkg_config("target_defaults") {
+  # NOSORT
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libcap",
+    "fuse",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+
+  # Define needed to configure <fuse_lowlevel.h>.
+  defines = [ "FUSE_USE_VERSION=26" ]
+}
+
+static_library("libfusebox") {
+  sources = []
+  configs += [ ":target_defaults" ]
+  deps = []
+}
+
+executable("fusebox") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libfusebox" ]
+}

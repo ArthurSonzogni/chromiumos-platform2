@@ -63,6 +63,7 @@ copies.
 | [feedback](./feedback/) | Daemon for headless systems that want to gather feedback (normally Chrome manages it) |
 | [fitpicker](./fitpicker/) ||
 | [foomatic_shell](./foomatic_shell/) | Simple shell used by the foomatic-rip package |
+| [fusebox](./fusebox/) | FuseBox service |
 | [glib-bridge](./glib-bridge/) | library for libchrome-glib message loop interoperation |
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
