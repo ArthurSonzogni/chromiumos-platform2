@@ -14,9 +14,9 @@ namespace smbprovider {
 class KerberosArtifactClientInterface {
  public:
   using GetUserKerberosFilesCallback =
-      base::Callback<void(bool success,
-                          const std::string& krb5_ccache,
-                          const std::string& krb5_conf)>;
+      base::OnceCallback<void(bool success,
+                              const std::string& krb5_ccache,
+                              const std::string& krb5_conf)>;
 
   virtual ~KerberosArtifactClientInterface() = default;
 

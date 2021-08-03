@@ -27,7 +27,7 @@ namespace smbprovider {
 // up-to-date by connecting to AuthPolicy's or Kerberos's D-Bus signal.
 class KerberosArtifactSynchronizer {
  public:
-  using SetupKerberosCallback = base::Callback<void(bool setup_success)>;
+  using SetupKerberosCallback = base::OnceCallback<void(bool setup_success)>;
 
   KerberosArtifactSynchronizer(
       const std::string& krb5_conf_path,

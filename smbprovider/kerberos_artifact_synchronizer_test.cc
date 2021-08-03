@@ -75,7 +75,7 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosCallsGetFiles) {
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
 
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
@@ -88,7 +88,7 @@ TEST_F(KerberosArtifactSynchronizerTest, KerberosFilesWriteToCorrectLocation) {
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
 
   ExpectFileEqual(krb5_conf_path_, krb5conf);
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
@@ -104,7 +104,7 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosConnectsToSignal) {
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
 
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   EXPECT_TRUE(fake_artifact_client_->IsConnected());
 }
 
@@ -117,10 +117,10 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesRunsOnSignalFire) {
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   int setup_callback_count = 0;
   synchronizer_->SetupKerberos(
-      user, base::Bind(&IncrementInt, &setup_callback_count, true));
+      user, base::BindOnce(&IncrementInt, &setup_callback_count, true));
 
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 
@@ -143,10 +143,10 @@ TEST_F(KerberosArtifactSynchronizerTest,
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   int setup_callback_count = 0;
   synchronizer_->SetupKerberos(
-      user, base::Bind(&IncrementInt, &setup_callback_count, true));
+      user, base::BindOnce(&IncrementInt, &setup_callback_count, true));
 
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 
@@ -167,10 +167,10 @@ TEST_F(KerberosArtifactSynchronizerTest,
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   int setup_callback_count = 0;
   synchronizer_->SetupKerberos(
-      user, base::Bind(&IncrementInt, &setup_callback_count, true));
+      user, base::BindOnce(&IncrementInt, &setup_callback_count, true));
 
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 
@@ -190,7 +190,7 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesOverwritesOldFiles) {
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
 
   ExpectFileEqual(krb5_conf_path_, krb5conf);
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
@@ -217,7 +217,7 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosFailsKerberosFilesEmpty) {
   authpolicy::KerberosFiles kerberos_files;
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
 
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupFailure));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupFailure));
 }
 
 // SetupKerberos is called twice for the same user.
@@ -230,8 +230,8 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosCalledTwice) {
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
 
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
@@ -248,8 +248,8 @@ TEST_F(KerberosArtifactSynchronizerTest,
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
   fake_artifact_client_->AddKerberosFiles(user2, kerberos_files);
 
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
-  synchronizer_->SetupKerberos(user2, base::Bind(&ExpectSetupFailure));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user2, base::BindOnce(&ExpectSetupFailure));
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
@@ -269,8 +269,8 @@ TEST_F(KerberosArtifactSynchronizerTest,
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
   fake_artifact_client_->AddKerberosFiles(user2, kerberos_files);
 
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
-  synchronizer_->SetupKerberos(user2, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user2, base::BindOnce(&ExpectSetupSuccess));
   EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
@@ -285,14 +285,14 @@ TEST_F(KerberosArtifactSynchronizerTest, RemoveFilesUpdateAllowed) {
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
 
   ExpectFileEqual(krb5_conf_path_, krb5conf);
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
 
   // Remove by passing empty |account_identifier|.
   synchronizer_->SetupKerberos(std::string() /* account_identifier */,
-                               base::Bind(&ExpectSetupSuccess));
+                               base::BindOnce(&ExpectSetupSuccess));
 
   // Expect credentials files not exist.
   EXPECT_FALSE(base::PathExists(base::FilePath(krb5_conf_path_)));
@@ -308,14 +308,14 @@ TEST_F(KerberosArtifactSynchronizerTest, RemoveFilesUpdateNotAllowed) {
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
 
   ExpectFileEqual(krb5_conf_path_, krb5conf);
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
 
   // Try to remove by passing empty |account_identifier|, expect to fail.
   synchronizer_->SetupKerberos(std::string() /* account_identifier */,
-                               base::Bind(&ExpectSetupFailure));
+                               base::BindOnce(&ExpectSetupFailure));
 
   // Expect files to be unchanged.
   ExpectFileEqual(krb5_conf_path_, krb5conf);
@@ -329,7 +329,7 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosNoTicketUpdateAllowed) {
 
   // Setup first time with empty |account_identifier|, expect success.
   synchronizer_->SetupKerberos(std::string() /* account_identifier */,
-                               base::Bind(&ExpectSetupSuccess));
+                               base::BindOnce(&ExpectSetupSuccess));
 
   // Expect credentials files not exist.
   EXPECT_FALSE(base::PathExists(base::FilePath(krb5_conf_path_)));
@@ -344,7 +344,7 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosNoTicketUpdateAllowed) {
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
 
   // Setup again with valid ticket, expect success.
-  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
 
   ExpectFileEqual(krb5_conf_path_, krb5conf);
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
@@ -358,7 +358,7 @@ TEST_F(KerberosArtifactSynchronizerTest,
   // from the start. Therefore, setting up Kerberos with empty
   // |account_identifier| should fail.
   synchronizer_->SetupKerberos(std::string() /* account_identifier */,
-                               base::Bind(&ExpectSetupFailure));
+                               base::BindOnce(&ExpectSetupFailure));
 
   // Expect credentials files not exist.
   EXPECT_FALSE(base::PathExists(base::FilePath(krb5_conf_path_)));

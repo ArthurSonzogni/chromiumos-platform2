@@ -69,8 +69,8 @@ void KerberosArtifactSynchronizer::SetupKerberos(
 void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
   client_->GetUserKerberosFiles(
       account_identifier_,
-      base::Bind(&KerberosArtifactSynchronizer::OnGetFilesResponse,
-                 base::Unretained(this), std::move(callback)));
+      base::BindOnce(&KerberosArtifactSynchronizer::OnGetFilesResponse,
+                     base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::OnGetFilesResponse(
@@ -131,9 +131,9 @@ void KerberosArtifactSynchronizer::WriteFiles(const std::string& krb5_ccache,
 void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
     SetupKerberosCallback callback) {
   client_->ConnectToKerberosFilesChangedSignal(
-      base::Bind(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
-                 base::Unretained(this)),
-      base::Bind(
+      base::BindRepeating(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
+                          base::Unretained(this)),
+      base::BindOnce(
           &KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected,
           base::Unretained(this), std::move(callback)));
 }
@@ -147,7 +147,7 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
   // base::DoNothing, but it's not working with a parameter.
   // TODO(tomdobro): switch to base::DoNothing once libchrome is updated.
   auto files_stored_callback = [](bool /* setup_success */) {};
-  GetFiles(base::Bind(files_stored_callback));
+  GetFiles(base::BindOnce(files_stored_callback));
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(

@@ -136,8 +136,8 @@ bool CreateSmbConfFile() {
 std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
     MountManager* mount_manager, const MountConfig& mount_config) {
   return SambaInterfaceImpl::Create(
-      base::Bind(base::IgnoreResult(&MountManager::GetAuthentication),
-                 mount_manager->AsWeakPtr()),
+      base::BindRepeating(base::IgnoreResult(&MountManager::GetAuthentication),
+                          mount_manager->AsWeakPtr()),
       mount_config);
 }
 
@@ -183,10 +183,11 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto mount_tracker = std::make_unique<MountTracker>(
         std::move(tick_clock), true /* enable_metadata_cache*/);
 
-    auto samba_interface_factory = base::Bind(&SambaInterfaceFactoryFunction);
+    auto samba_interface_factory =
+        base::BindRepeating(&SambaInterfaceFactoryFunction);
 
     auto mount_manager = std::make_unique<MountManager>(
-        std::move(mount_tracker), std::move(samba_interface_factory));
+        std::move(mount_tracker), samba_interface_factory);
 
     smb_provider_ = std::make_unique<SmbProvider>(
         std::move(dbus_object), std::move(mount_manager),

@@ -98,11 +98,11 @@ class SmbProviderTest : public testing::Test {
                                                         enable_metadata_cache);
 
     auto samba_interface_factory =
-        base::Bind(&SmbProviderTest::SambaInterfaceFactoryFunction,
-                   base::Unretained(this), fake_samba_.get());
+        base::BindRepeating(&SmbProviderTest::SambaInterfaceFactoryFunction,
+                            base::Unretained(this), fake_samba_.get());
 
     auto mount_manager_ptr = std::make_unique<MountManager>(
-        std::move(mount_tracker), std::move(samba_interface_factory));
+        std::move(mount_tracker), samba_interface_factory);
 
     mount_manager_ = mount_manager_ptr.get();
 
@@ -355,7 +355,7 @@ TEST_F(SmbProviderTest, SetupKerberosWritesKerberosFilesSuccessfully) {
   SmbProvider::SetupKerberosCallback callback =
       std::make_unique<brillo::dbus_utils::DBusMethodResponse<bool>>(
           &method_call,
-          base::Bind(&ExpectKerberosCallback, true /* expected_result*/));
+          base::BindOnce(&ExpectKerberosCallback, true /* expected_result*/));
 
   smbprovider_->SetupKerberos(std::move(callback), user);
 
@@ -372,7 +372,7 @@ TEST_F(SmbProviderTest, SetupKerberosFailsWhenKerberosFilesDoNotExist) {
   SmbProvider::SetupKerberosCallback callback =
       std::make_unique<brillo::dbus_utils::DBusMethodResponse<bool>>(
           &method_call,
-          base::Bind(&ExpectKerberosCallback, false /* expected_result*/));
+          base::BindOnce(&ExpectKerberosCallback, false /* expected_result*/));
 
   smbprovider_->SetupKerberos(std::move(callback), user);
 }

@@ -22,14 +22,15 @@ namespace smbprovider {
 class SambaInterfaceImpl : public SambaInterface {
  public:
   // SMB authentication callback.
-  using AuthCallback = base::Callback<void(SambaInterfaceId samba_interface_id,
-                                           const std::string& share_path,
-                                           char* workgroup,
-                                           int32_t workgroup_length,
-                                           char* username,
-                                           int32_t username_length,
-                                           char* password,
-                                           int32_t password_length)>;
+  using AuthCallback =
+      base::RepeatingCallback<void(SambaInterfaceId samba_interface_id,
+                                   const std::string& share_path,
+                                   char* workgroup,
+                                   int32_t workgroup_length,
+                                   char* username,
+                                   int32_t username_length,
+                                   char* password,
+                                   int32_t password_length)>;
   ~SambaInterfaceImpl() override;
 
   // Creates a SambaInterfaceImpl.

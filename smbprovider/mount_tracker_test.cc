@@ -36,14 +36,14 @@ constexpr char kPassword[] = "admin";
 class MountTrackerTest : public testing::Test {
  public:
   using SambaInterfaceFactory =
-      base::Callback<std::unique_ptr<SambaInterface>()>;
+      base::RepeatingCallback<std::unique_ptr<SambaInterface>()>;
 
   MountTrackerTest() {
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
 
     auto fake_samba_ = std::make_unique<FakeSambaInterface>();
     samba_interface_factory_ =
-        base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
+        base::BindRepeating(&SambaInterfaceFactoryFunction, fake_samba_.get());
 
     mount_tracker_ = std::make_unique<MountTracker>(
         std::move(tick_clock), false /* metadata_cache_enabled */);

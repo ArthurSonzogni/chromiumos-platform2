@@ -51,11 +51,11 @@ class MountManagerTest : public testing::Test {
 
     auto fake_samba_ = std::make_unique<FakeSambaInterface>();
     auto samba_interface_factory =
-        base::Bind(&MountManagerTest::SambaInterfaceFactoryFunction,
-                   base::Unretained(this), fake_samba_.get());
+        base::BindRepeating(&MountManagerTest::SambaInterfaceFactoryFunction,
+                            base::Unretained(this), fake_samba_.get());
 
-    mounts_ = std::make_unique<MountManager>(
-        std::move(mount_tracker), std::move(samba_interface_factory));
+    mounts_ = std::make_unique<MountManager>(std::move(mount_tracker),
+                                             samba_interface_factory);
   }
   MountManagerTest(const MountManagerTest&) = delete;
   MountManagerTest& operator=(const MountManagerTest&) = delete;

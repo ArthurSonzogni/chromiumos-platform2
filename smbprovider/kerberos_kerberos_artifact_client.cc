@@ -60,8 +60,8 @@ void KerberosKerberosArtifactClient::GetUserKerberosFiles(
   writer.AppendProtoAsArrayOfBytes(request);
   kerberos_object_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-      base::Bind(&KerberosKerberosArtifactClient::HandleGetUserKeberosFiles,
-                 weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+      base::BindOnce(&KerberosKerberosArtifactClient::HandleGetUserKeberosFiles,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void KerberosKerberosArtifactClient::ConnectToKerberosFilesChangedSignal(
@@ -84,8 +84,8 @@ void KerberosKerberosArtifactClient::HandleGetUserKeberosFiles(
     success = false;
   }
 
-  callback.Run(success, response_proto.files().krb5cc(),
-               response_proto.files().krb5conf());
+  std::move(callback).Run(success, response_proto.files().krb5cc(),
+                          response_proto.files().krb5conf());
 }
 
 }  // namespace smbprovider

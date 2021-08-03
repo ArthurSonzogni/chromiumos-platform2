@@ -111,8 +111,9 @@ void SmbProvider::SetupKerberos(SetupKerberosCallback callback,
                                 const std::string& account_identifier) {
   kerberos_artifact_synchronizer_->SetupKerberos(
       account_identifier,
-      base::Bind(&SmbProvider::HandleSetupKerberosResponse,
-                 base::Unretained(this), base::Passed(std::move(callback))));
+      base::BindOnce(&SmbProvider::HandleSetupKerberosResponse,
+                     base::Unretained(this),
+                     base::Passed(std::move(callback))));
 }
 
 void SmbProvider::HandleSetupKerberosResponse(SetupKerberosCallback callback,
