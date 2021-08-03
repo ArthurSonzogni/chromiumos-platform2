@@ -141,9 +141,15 @@ void HPS::HandleState() {
   switch (this->state_) {
     case kBoot: {
       // Wait for magic number.
-      if (this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) {
+      int magic = this->device_->ReadReg(HpsReg::kMagic);
+      if (magic == kHpsMagic) {
         this->Go(State::kBootCheckFault);
+      } else if (magic != -1) {
+        LOG(INFO) << "Bad magic number: " << magic;
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kBadMagic);
+        this->Go(State::kFailed);
       } else if (this->retries_++ >= 50) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kNoResponse);
         this->Reboot("Timeout waiting for boot magic number");
       }
       break;
@@ -152,6 +158,7 @@ void HPS::HandleState() {
     case kBootCheckFault: {
       // Wait for OK or Fault.
       if (this->retries_++ >= 50) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
         this->Reboot("Timeout waiting for boot OK/Fault");
         break;
       }
@@ -159,6 +166,7 @@ void HPS::HandleState() {
         int status = this->device_->ReadReg(HpsReg::kSysStatus);
         if (status >= 0) {
           if (status & R2::kFault) {
+            hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kFault);
             this->Fault();
           } else if (status & R2::kOK) {
             // Module has reported OK.
@@ -178,34 +186,36 @@ void HPS::HandleState() {
 
     case kBootOK: {
       if (this->retries_++ >= 50) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
         this->Reboot("Timeout boot appl verification");
         break;
       }
       // Wait for application verified or not.
-      {
-        int status = this->device_->ReadReg(HpsReg::kSysStatus);
-        if (status >= 0) {
-          // Check if the MCU flash verified or not.
-          if (status & R2::kApplNotVerified) {
-            // Appl not verified, so need to update it.
-            LOG(INFO) << "Appl flash not verified, updating";
-            this->Go(State::kUpdateAppl);
-          } else if (status & R2::kApplVerified) {
-            // Verified, so now check the version. If it is
-            // different, update it.
-            int version = this->device_->ReadReg(HpsReg::kApplVers);
-            if (version >= 0) {
-              if (version == this->appl_version_) {
-                // Application is verified, launch it.
-                VLOG(1) << "Launching to stage1";
-                this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch);
-                this->Go(State::kStage1);
-              } else {
-                // Versions do not match, need to update.
-                LOG(INFO) << "Appl version mismatch, module: " << version
-                          << " expected: " << this->appl_version_;
-                this->Go(State::kUpdateAppl);
-              }
+      int status = this->device_->ReadReg(HpsReg::kSysStatus);
+      if (status >= 0) {
+        // Check if the MCU flash verified or not.
+        if (status & R2::kApplNotVerified) {
+          // Appl not verified, so need to update it.
+          LOG(INFO) << "Appl flash not verified, updating";
+          hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
+          this->Go(State::kUpdateAppl);
+        } else if (status & R2::kApplVerified) {
+          // Verified, so now check the version. If it is
+          // different, update it.
+          int version = this->device_->ReadReg(HpsReg::kApplVers);
+          if (version >= 0) {
+            if (version == this->appl_version_) {
+              // Application is verified, launch it.
+              VLOG(1) << "Launching to stage1";
+              this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch);
+              this->Go(State::kStage1);
+            } else {
+              // Versions do not match, need to update.
+              LOG(INFO) << "Appl version mismatch, module: " << version
+                        << " expected: " << this->appl_version_;
+              hps_metrics_.SendHpsTurnOnResult(
+                  HpsTurnOnResult::kMcuVersionMismatch);
+              this->Go(State::kUpdateAppl);
             }
           }
         }
@@ -239,6 +249,7 @@ void HPS::HandleState() {
           (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kStage1)) {
         this->Go(State::kSpiVerify);
       } else if (this->retries_++ >= 50) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
         this->Reboot("Timeout stage1");
       }
       break;
@@ -247,6 +258,7 @@ void HPS::HandleState() {
     case kSpiVerify: {
       // Wait for SPI verified or not.
       if (this->retries_++ >= 50) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
         this->Reboot("Timeout SPI verify");
       }
       {
@@ -256,6 +268,7 @@ void HPS::HandleState() {
           if (status & R2::kSpiNotVerified) {
             // Spi not verified, so need to update it.
             LOG(INFO) << "SPI flash not verified, updating";
+            hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
             this->Go(State::kUpdateSpi);
           } else if (status & R2::kSpiVerified) {
             VLOG(1) << "Enabling application";
@@ -272,18 +285,23 @@ void HPS::HandleState() {
       int status = this->device_->ReadReg(HpsReg::kSysStatus);
       if (this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic && status >= 0 &&
           status & R2::kAppl) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
         this->Go(State::kReady);
       } else if (this->retries_++ >= 50) {
+        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
         this->Reboot("Timeout application");
       }
     } break;
 
     case kReady: {
+      // The state machine is not run in this state
+      NOTREACHED();
       break;
     }
 
     case kFailed: {
-      // Nothing to do. Wait until module re-initialised.
+      // The state machine is not run in this state
+      NOTREACHED();
       break;
     }
   }

@@ -17,6 +17,7 @@
 #include <base/synchronization/lock.h>
 
 #include "hps/dev.h"
+#include "hps/hps_metrics.h"
 
 namespace hps {
 
@@ -98,6 +99,7 @@ class HPS {
   bool WaitForBankReady(int bank);
   bool WriteFile(int bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
+  HpsMetrics hps_metrics_;
   base::Lock lock_;  // Exclusive module access lock
   State state_;      // Current state
   int retries_;      // Common retry counter for states.

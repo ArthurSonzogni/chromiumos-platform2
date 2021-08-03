@@ -10,6 +10,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":dev_test",
+      ":hps_metrics_test",
       ":hps_test",
     ]
   }
@@ -21,8 +22,11 @@ generate_dbus_adaptors("hpsd-adaptors") {
   sources = [ "daemon/dbus_bindings/org.chromium.Hps.xml" ]
 }
 
-static_library("hps-core") {
-  sources = [ "daemon/hps_daemon.cc" ]
+executable("hpsd") {
+  sources = [
+    "daemon/hps_daemon.cc",
+    "daemon/main.cc",
+  ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -35,21 +39,15 @@ static_library("hps-core") {
   ]
 }
 
-executable("hpsd") {
-  sources = [ "daemon/main.cc" ]
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-  ]
-  deps = [ ":hps-core" ]
-}
-
 static_library("hpslib") {
   sources = [
     "hps.cc",
-    "hps.h",
+    "hps_metrics.cc",
   ]
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libchrome",
+    "libmetrics",
+  ]
 
   deps = [
     ":dev",
@@ -117,5 +115,15 @@ if (use.test) {
       ":hpslib",
       "//common-mk/testrunner:testrunner",
     ]
+  }
+
+  executable("hps_metrics_test") {
+    sources = [
+      "hps_metrics.cc",
+      "hps_metrics_test.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [ "libmetrics" ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
   }
 }
