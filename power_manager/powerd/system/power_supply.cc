@@ -1392,6 +1392,15 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   CopyPowerStatusToProtocolBuffer(power_status_, &protobuf);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 
+  dbus::Signal signal(kPowerManagerInterface, kBatteryStatePollSignal);
+  dbus::MessageWriter writer(&signal);
+  writer.AppendUint32(static_cast<uint32_t>(
+      ExternalPowerToExternalPowerEnum(power_status_.external_power)));
+  writer.AppendUint32(static_cast<uint32_t>(
+      BatteryStateToUpowerEnum(power_status_.battery_state)));
+  writer.AppendDouble(power_status_.display_battery_percentage);
+  dbus_wrapper_->EmitSignal(&signal);
+
   return true;
 }
 

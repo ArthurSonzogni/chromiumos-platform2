@@ -65,6 +65,7 @@ const char kScreenBrightnessChangedSignal[] = "ScreenBrightnessChanged";
 const char kKeyboardBrightnessChangedSignal[] = "KeyboardBrightnessChanged";
 const char kPeripheralBatteryStatusSignal[] = "PeripheralBatteryStatus";
 const char kPowerSupplyPollSignal[] = "PowerSupplyPoll";
+const char kBatteryStatePollSignal[] = "BatteryStatePoll";
 const char kSuspendImminentSignal[] = "SuspendImminent";
 const char kDarkSuspendImminentSignal[] = "DarkSuspendImminent";
 const char kSuspendDoneSignal[] = "SuspendDone";
