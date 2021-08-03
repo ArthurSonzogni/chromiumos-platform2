@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/values.h>
 
 #include "runtime_probe/functions/sysfs.h"

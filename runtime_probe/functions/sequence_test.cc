@@ -9,8 +9,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/values.h>
 #include <base/json/json_reader.h>
+#include <base/logging.h>
+#include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

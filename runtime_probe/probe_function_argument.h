@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/values.h>
 
 namespace runtime_probe {

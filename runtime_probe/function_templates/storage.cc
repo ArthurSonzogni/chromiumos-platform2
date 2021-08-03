@@ -7,8 +7,9 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <base/strings/string_number_conversions.h>
+#include <base/logging.h>
 #include <base/optional.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/strings/string_utils.h>
 
 #include "runtime_probe/utils/file_utils.h"

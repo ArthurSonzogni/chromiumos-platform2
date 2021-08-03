@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/values.h>
 
 #include "runtime_probe/field_converter.h"

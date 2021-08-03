@@ -10,6 +10,8 @@
 
 #include "runtime_probe/probe_function.h"
 
+#include <base/logging.h>
+
 namespace runtime_probe {
 
 class ShellFunction : public ProbeFunction {

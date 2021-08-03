@@ -13,6 +13,7 @@
 
 #include <base/check_op.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

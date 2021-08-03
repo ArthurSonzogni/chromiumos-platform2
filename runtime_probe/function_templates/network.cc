@@ -11,6 +11,7 @@
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/values.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/variant_dictionary.h>

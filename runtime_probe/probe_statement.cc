@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include <base/logging.h>
 #include <base/values.h>
 
 #include "runtime_probe/probe_statement.h"

@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/values.h>
 #include <brillo/map_utils.h>
 

@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/logging.h>
+
 namespace runtime_probe {
 
 SequenceFunction::DataType SequenceFunction::EvalImpl() const {

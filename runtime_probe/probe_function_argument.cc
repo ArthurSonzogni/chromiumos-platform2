@@ -9,6 +9,8 @@
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/probe_function_argument.h"
 
+#include <base/logging.h>
+
 namespace runtime_probe {
 
 #define _DEFINE_PARSE_ARGUMENT(type, GetType)                             \
