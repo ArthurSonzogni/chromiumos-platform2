@@ -9,7 +9,6 @@ use flexbuffers::{from_slice, to_vec, DeserializationError, SerializationError};
 use libchromeos::secure_blob::SecureBlob;
 use openssl::{
     error::ErrorStack,
-    hash::{hash, MessageDigest},
     symm::{Cipher, Crypter, Mode},
 };
 use serde::{Deserialize, Serialize};
@@ -26,7 +25,9 @@ use libsirenia::{
 
 use crate::{
     app_info::AppManifestEntry,
+    compute_sha256,
     secrets::{self, SecretManager, SecretVersion},
+    Digest,
 };
 
 const DEFAULT_STORAGE_MAJOR_VERSION: usize = 0;
@@ -123,8 +124,8 @@ struct WrappedData {
 }
 
 /// A one-way operation to convert a storage domain or identifier to a hash.
-fn hash_identifier(identifier: &str) -> Result<Vec<u8>, ErrorStack> {
-    hash(MessageDigest::sha256(), identifier.as_bytes()).map(|digest| digest.to_vec())
+fn hash_identifier(identifier: &str) -> Result<Digest, ErrorStack> {
+    compute_sha256(identifier.as_bytes())
 }
 
 /// Convert a digest to a string that can be used as a filename.
@@ -224,8 +225,8 @@ impl<'a> StorageEncryption<'a> {
             key_version: Some(version),
 
             scope: Some(scope.clone()),
-            domain_hash: Some(domain_hash.clone()),
-            identifier_hash: Some(identifier_hash.clone()),
+            domain_hash: Some(domain_hash.to_vec()),
+            identifier_hash: Some(identifier_hash.to_vec()),
         })
         .map_err(Error::SerializeAuthenticatedData)?;
 
@@ -253,8 +254,8 @@ impl<'a> StorageEncryption<'a> {
         self.storage_client
             .persist(
                 scope,
-                digest_to_filename(&domain_hash),
-                digest_to_filename(&identifier_hash),
+                digest_to_filename(&*domain_hash),
+                digest_to_filename(&*identifier_hash),
                 wrapped_data,
             )
             .map_err(Error::Persist)
@@ -272,8 +273,8 @@ impl<'a> StorageEncryption<'a> {
             .storage_client
             .retrieve(
                 scope.clone(),
-                digest_to_filename(&domain_hash),
-                digest_to_filename(&identifier_hash),
+                digest_to_filename(&*domain_hash),
+                digest_to_filename(&*identifier_hash),
             )
             .map_err(Error::Retrieve)?;
         if data.is_empty() || !matches!(status, Status::Success) {
@@ -299,8 +300,8 @@ impl<'a> StorageEncryption<'a> {
             || !matches!(&aad.key_version, Some(a) if *a <= max_version)
             || !matches!(&aad.salt, Some(a) if a.len() == DEFAULT_KEY_SIZE)
             || !matches!(&aad.scope, Some(a) if a == &scope)
-            || !matches!(&aad.domain_hash, Some(a) if a == &domain_hash)
-            || !matches!(&aad.identifier_hash, Some(a) if a == &identifier_hash)
+            || !matches!(&aad.domain_hash, Some(a) if a == &*domain_hash)
+            || !matches!(&aad.identifier_hash, Some(a) if a == &*identifier_hash)
             || wrapped_data.mac.len() != MAC_SIZE
         {
             return Err(Error::ValidationFailure);
@@ -433,8 +434,8 @@ mod tests {
 
         // Make sure the encoding is reversible.
         let digest = hash_identifier(TEST_IDENTIFIER).unwrap();
-        let filename = digest_to_filename(&digest);
-        assert_eq!(&filename_to_digest(&filename).unwrap(), &digest);
+        let filename = digest_to_filename(&*digest);
+        assert_eq!(&filename_to_digest(&filename).unwrap(), &*digest);
 
         // Perform some basic checks on the encoded name.
         let file_path_component = Path::new(&filename);
@@ -530,8 +531,8 @@ mod tests {
             key_version: Some(key_version),
 
             scope: Some(Scope::Test),
-            domain_hash: Some(domain_hash),
-            identifier_hash: Some(identifier_hash),
+            domain_hash: Some(domain_hash.to_vec()),
+            identifier_hash: Some(identifier_hash.to_vec()),
         };
 
         let associated_data = to_vec(aad.clone()).unwrap();
