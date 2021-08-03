@@ -86,7 +86,7 @@ class IPP_EXPORT Group {
   size_t GetSize() const { return groups_.size(); }
 
   // Resizes a sequence of IPP groups.
-  // Does nothing if (IsASet() == false) and (|new_size| > 0).
+  // Does nothing if (IsASet() == false) and (|new_size| > 1).
   void Resize(size_t new_size) {
     if (!is_a_set_ && new_size > 1)
       return;
