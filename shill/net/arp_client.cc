@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 
 #include "shill/logging.h"

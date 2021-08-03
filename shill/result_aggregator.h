@@ -6,6 +6,7 @@
 #define SHILL_RESULT_AGGREGATOR_H_
 
 #include <base/cancelable_callback.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>

@@ -20,6 +20,7 @@
 
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/logging.h>
 
 namespace shill {
 

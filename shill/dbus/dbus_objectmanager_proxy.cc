@@ -8,6 +8,8 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

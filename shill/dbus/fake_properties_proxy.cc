@@ -4,6 +4,7 @@
 
 #include "shill/dbus/fake_properties_proxy.h"
 
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>

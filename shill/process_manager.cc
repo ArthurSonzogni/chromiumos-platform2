@@ -16,6 +16,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 
 #include "shill/event_dispatcher.h"

@@ -8,6 +8,7 @@
 #include <sysexits.h>
 
 #include <base/bind.h>
+#include <base/logging.h>
 
 namespace shill {
 

@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <base/files/file.h>
+#include <base/logging.h>
 
 namespace modemfwd {
 

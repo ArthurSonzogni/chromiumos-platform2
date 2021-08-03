@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/unix_domain_socket.h>
 #include <brillo/daemons/daemon.h>

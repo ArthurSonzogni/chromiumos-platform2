@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/check.h>
+#include <base/logging.h>
 
 #include "shill/callbacks.h"
 #include "shill/dbus/dbus_service_watcher_factory.h"

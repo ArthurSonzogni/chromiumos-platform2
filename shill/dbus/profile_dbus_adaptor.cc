@@ -9,6 +9,8 @@
 #include "shill/profile.h"
 #include "shill/service.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

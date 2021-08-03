@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>

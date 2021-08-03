@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
 using google::protobuf::io::CopyingInputStream;

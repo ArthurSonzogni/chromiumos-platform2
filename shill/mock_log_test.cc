@@ -9,6 +9,8 @@
 
 #include "shill/logging.h"
 
+#include <base/logging.h>
+
 using ::std::string;
 using ::testing::_;
 

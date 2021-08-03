@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/strings/pattern.h>
 
 #include "power_manager/powerd/system/backlight_observer.h"

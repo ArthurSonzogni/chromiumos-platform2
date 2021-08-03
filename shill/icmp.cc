@@ -8,6 +8,7 @@
 #include <netinet/ip_icmp.h>
 
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 
 #include "shill/logging.h"

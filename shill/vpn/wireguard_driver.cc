@@ -18,10 +18,11 @@
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/strcat.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>

@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/process/process_mock.h>
 #include <brillo/test_helpers.h>

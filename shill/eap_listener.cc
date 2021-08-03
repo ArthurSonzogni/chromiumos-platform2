@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/compiler_specific.h>
+#include <base/logging.h>
 
 #include "shill/eap_protocol.h"
 #include "shill/event_dispatcher.h"

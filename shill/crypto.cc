@@ -7,6 +7,7 @@
 #include <string_view>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 
 #include "shill/logging.h"

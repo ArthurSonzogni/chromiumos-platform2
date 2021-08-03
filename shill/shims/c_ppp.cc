@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/logging.h>
 
 #include "shill/shims/ppp.h"
 

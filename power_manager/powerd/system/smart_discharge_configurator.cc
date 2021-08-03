@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/smart_discharge_configurator.h"
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 
 #include "power_manager/powerd/system/cros_ec_ioctl.h"
 

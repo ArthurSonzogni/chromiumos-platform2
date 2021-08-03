@@ -9,6 +9,8 @@
 #include "shill/cellular/mobile_operator_info_impl.h"
 #include "shill/logging.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

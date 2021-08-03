@@ -8,6 +8,8 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include <base/logging.h>
+
 namespace power_manager {
 namespace policy {
 namespace {

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>

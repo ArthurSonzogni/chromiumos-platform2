@@ -15,6 +15,7 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
 #include "shill/error.h"
 #include "shill/process_manager.h"

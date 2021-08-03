@@ -7,6 +7,8 @@
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

@@ -4,6 +4,7 @@
 
 #include "shill/ephemeral_profile.h"
 
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <chromeos/dbus/service_constants.h>
 

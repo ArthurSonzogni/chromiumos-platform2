@@ -4,6 +4,7 @@
 
 #include "shill/dbus/ipconfig_dbus_adaptor.h"
 
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/error.h"

@@ -5,6 +5,7 @@
 #include "shill/portal_detector.h"
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/pattern.h>
 #include <base/strings/string_number_conversions.h>

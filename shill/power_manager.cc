@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <linux/nl80211.h>

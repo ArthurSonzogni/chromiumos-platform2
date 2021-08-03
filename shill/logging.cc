@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "shill/scope_logger.h"

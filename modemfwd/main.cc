@@ -4,6 +4,7 @@
 
 #include <sysexits.h>
 
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 

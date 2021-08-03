@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>

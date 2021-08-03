@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/logging.h>
 #include <base/notreached.h>
 
 #include "shill/logging.h"

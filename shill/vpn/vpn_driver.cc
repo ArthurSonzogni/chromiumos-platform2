@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 

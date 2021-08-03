@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/logging.h>
 
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"

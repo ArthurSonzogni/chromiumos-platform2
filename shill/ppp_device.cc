@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/containers/contains.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
 extern "C" {

@@ -11,6 +11,8 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

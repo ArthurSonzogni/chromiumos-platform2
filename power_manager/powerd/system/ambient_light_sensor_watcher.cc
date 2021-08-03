@@ -9,6 +9,8 @@
 
 #include "power_manager/powerd/system/udev.h"
 
+#include <base/logging.h>
+
 namespace power_manager {
 namespace system {
 

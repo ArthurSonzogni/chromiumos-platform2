@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/process/process.h>
 #include <base/process/process_iterator.h>
 #include <base/strings/stringprintf.h>

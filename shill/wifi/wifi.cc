@@ -24,6 +24,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>

@@ -7,6 +7,8 @@
 #include "shill/logging.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 SupplicantEAPStateHandler::SupplicantEAPStateHandler()

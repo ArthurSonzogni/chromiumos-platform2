@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -22,12 +22,13 @@
 #include <base/check_op.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
 #include <base/strings/pattern.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>

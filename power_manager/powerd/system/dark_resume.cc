@@ -11,6 +11,7 @@
 #include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 namespace power_manager {
 namespace system {

@@ -10,6 +10,8 @@
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

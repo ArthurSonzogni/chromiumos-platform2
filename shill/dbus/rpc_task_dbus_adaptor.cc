@@ -8,6 +8,8 @@
 #include "shill/logging.h"
 #include "shill/rpc_task.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

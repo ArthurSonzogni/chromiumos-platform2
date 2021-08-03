@@ -8,6 +8,7 @@
 #include <linux/input.h>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
 #include "power_manager/common/power_constants.h"

@@ -7,6 +7,7 @@
 #include <utility>
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "power_manager/common/power_constants.h"

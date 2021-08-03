@@ -20,6 +20,8 @@
 #include "shill/net/shill_time.h"
 #include "shill/static_ip_parameters.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 namespace Logging {

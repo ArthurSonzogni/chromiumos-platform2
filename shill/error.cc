@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>

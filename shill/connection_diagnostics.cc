@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/device_info.h"

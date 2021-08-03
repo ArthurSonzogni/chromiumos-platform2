@@ -13,9 +13,10 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/time/time.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cros_config/cros_config.h>
 

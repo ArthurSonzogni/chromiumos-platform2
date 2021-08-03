@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/logging.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"

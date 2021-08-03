@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>

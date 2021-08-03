@@ -5,6 +5,7 @@
 #include "shill/dbus/dhcpcd_proxy.h"
 
 #include <base/callback_helpers.h>
+#include <base/logging.h>
 
 #include "shill/logging.h"
 

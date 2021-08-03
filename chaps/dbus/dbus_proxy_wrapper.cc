@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <brillo/errors/error.h>
 
 #include "chaps/dbus/dbus_proxy_wrapper.h"

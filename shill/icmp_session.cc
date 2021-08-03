@@ -9,6 +9,7 @@
 #include <netinet/ip.h>
 
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/default_tick_clock.h>
 

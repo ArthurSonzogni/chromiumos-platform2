@@ -11,8 +11,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback_helpers.h>
 #include <base/callback_forward.h>
+#include <base/callback_helpers.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>

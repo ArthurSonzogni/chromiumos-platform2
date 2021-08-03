@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 
 #include "timberslide/timberslide.h"

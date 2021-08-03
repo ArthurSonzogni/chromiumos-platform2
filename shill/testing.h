@@ -14,6 +14,8 @@
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 
+#include <base/logging.h>
+
 namespace shill {
 
 MATCHER(IsSuccess, "") {

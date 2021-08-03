@@ -27,6 +27,7 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 

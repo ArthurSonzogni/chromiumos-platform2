@@ -28,6 +28,7 @@
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_interface.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <dbus/message.h>
 

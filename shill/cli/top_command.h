@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/logging.h>
 
 #include "shill/cli/command.h"
 
