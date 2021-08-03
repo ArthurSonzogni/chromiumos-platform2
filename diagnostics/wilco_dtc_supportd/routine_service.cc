@@ -16,6 +16,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 namespace diagnostics {

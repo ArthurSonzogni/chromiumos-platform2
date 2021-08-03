@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>

@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
