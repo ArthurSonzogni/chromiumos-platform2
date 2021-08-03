@@ -112,7 +112,6 @@ def CheckSubdirs():
       'init',
       'libchromeos-ui',
       'libcontainer',
-      'lorgnette',
       'modem-utilities',
       'mtpd',
       'salsa',
