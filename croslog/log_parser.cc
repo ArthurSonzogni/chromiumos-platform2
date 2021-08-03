@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
+
 namespace {
 
 std::string StripLeadingNull(std::string&& entire_line) {
