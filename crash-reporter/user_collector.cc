@@ -268,10 +268,22 @@ UserCollector::ErrorType UserCollector::ValidateCoreFile(
   return kErrorNone;
 }
 
+// Copy off all stdin to a core file.
 bool UserCollector::CopyStdinToCoreFile(const FilePath& core_path) {
-  // Copy off all stdin to a core file.
-  FilePath stdin_path("/dev/fd/0");
-  if (base::CopyFile(stdin_path, core_path)) {
+  // We need to write to an actual file here for core2md.
+  // If we're in memfd mode, fail out.
+  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+    LOG(ERROR) << "Cannot call CopyFdToNewFile in kCrashLoopSendingMode";
+    return false;
+  }
+  // We don't directly create a ScopedFD with STDIN_FILENO because the
+  // destructor would close() that file descriptor, and we don't want to close
+  // stdin.
+  base::ScopedFD stdin_copy(dup(STDIN_FILENO));
+  if (!stdin_copy.is_valid()) {
+    return false;
+  }
+  if (CopyFdToNewFile(std::move(stdin_copy), core_path)) {
     return true;
   }
 

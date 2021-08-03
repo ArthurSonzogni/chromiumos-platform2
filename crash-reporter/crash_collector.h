@@ -232,6 +232,9 @@ class CrashCollector {
               DISABLED_RemoveNewFileRemovesNormalFilesInCrashLoopMode);
   FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
+  FRIEND_TEST(CrashCollectorTest, CopyToNewFile);
+  FRIEND_TEST(CrashCollectorTest, GetNewFileHandle);
+  FRIEND_TEST(CrashCollectorTest, GetNewFileHandle_Symlink);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists);
 
@@ -256,6 +259,15 @@ class CrashCollector {
   // If the file already exists or writing fails, return a negative value.
   // Otherwise returns the number of bytes written.
   int WriteNewFile(const base::FilePath& filename, base::StringPiece data);
+
+  // Copies |source_fd| to |target_path|, which must be a new file.
+  // If the file already exists or writing fails, return false.
+  // Otherwise returns true.
+  // Does _not_ incerement get_bytes_written().
+  // Probably does not do what you want in kCrashLoopSendingMode (will create a
+  // memfd file)
+  bool CopyFdToNewFile(base::ScopedFD source_fd,
+                       const base::FilePath& target_path);
 
   // Writes |data| of |size| to |filename|, which must be a new file ending in
   // ".gz". File will be a gzip-compressed file. Returns true on success,

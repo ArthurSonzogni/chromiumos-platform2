@@ -105,6 +105,51 @@ TEST_F(CrashCollectorTest, WriteNewFile) {
   EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
 }
 
+TEST_F(CrashCollectorTest, CopyToNewFile) {
+  // Set up
+  FilePath source_file = test_dir_.Append("test_source");
+  const char expected_contents[] = "buffer";
+  ASSERT_TRUE(base::WriteFile(source_file, expected_contents));
+  base::File source(source_file, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ASSERT_TRUE(source.IsValid());
+  base::ScopedFD fd(source.TakePlatformFile());
+  base::ScopedFD fd_dup(dup(fd.get()));
+  ASSERT_TRUE(fd_dup.is_valid());
+
+  // First copy should succeed and give expected contents
+  FilePath target_file = test_dir_.Append("test_dest");
+  EXPECT_TRUE(collector_.CopyFdToNewFile(std::move(fd), target_file));
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(target_file, &contents));
+  EXPECT_EQ(contents, expected_contents);
+
+  // Second copy should fail, and contents should remain.
+  ASSERT_TRUE(base::WriteFile(source_file, "notbuffer_asdf"));
+  EXPECT_FALSE(collector_.CopyFdToNewFile(std::move(fd_dup), target_file));
+  ASSERT_TRUE(base::ReadFileToString(target_file, &contents));
+  EXPECT_EQ(contents, expected_contents);
+}
+
+TEST_F(CrashCollectorTest, GetNewFileHandle) {
+  FilePath source_file = test_dir_.Append("file");
+  {
+    base::ScopedFD fd = collector_.GetNewFileHandle(source_file);
+    EXPECT_TRUE(fd.is_valid());
+  }
+
+  ASSERT_TRUE(base::WriteFile(source_file, ""));
+  base::ScopedFD fd = collector_.GetNewFileHandle(source_file);
+  EXPECT_FALSE(fd.is_valid());
+}
+
+TEST_F(CrashCollectorTest, GetNewFileHandle_Symlink) {
+  FilePath source_file = test_dir_.Append("link");
+  FilePath target_file = test_dir_.Append("target");
+  ASSERT_TRUE(base::CreateSymbolicLink(target_file, source_file));
+  base::ScopedFD fd = collector_.GetNewFileHandle(source_file);
+  EXPECT_FALSE(fd.is_valid());
+}
+
 TEST_F(CrashCollectorTest,
        DISABLED_ON_QEMU_FOR_MEMFD_CREATE(CrashLoopModeCreatesInMemoryFiles)) {
   CrashCollectorMock collector(

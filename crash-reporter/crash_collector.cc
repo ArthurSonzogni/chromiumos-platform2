@@ -507,6 +507,17 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
   return size;
 }
 
+bool CrashCollector::CopyFdToNewFile(base::ScopedFD source_fd,
+                                     const base::FilePath& target_path) {
+  base::File source = base::File(std::move(source_fd));
+  base::ScopedFD target_fd = GetNewFileHandle(target_path);
+  if (!target_fd.is_valid()) {
+    return false;
+  }
+  base::File target = base::File(std::move(target_fd));
+  return base::CopyFileContents(source, target);
+}
+
 bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
                                             const char* data,
                                             size_t size) {
