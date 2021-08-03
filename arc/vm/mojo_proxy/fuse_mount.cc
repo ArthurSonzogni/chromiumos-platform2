@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 
 namespace arc {

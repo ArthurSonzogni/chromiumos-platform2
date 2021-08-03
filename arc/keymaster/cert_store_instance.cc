@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/logging.h>
 
 namespace arc {
 namespace keymaster {

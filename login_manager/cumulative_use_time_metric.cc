@@ -13,6 +13,7 @@
 #include <base/hash/hash.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/values.h>
 #include <metrics/metrics_library.h>
 

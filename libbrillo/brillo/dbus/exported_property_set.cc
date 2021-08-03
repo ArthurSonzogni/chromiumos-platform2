@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/dbus/exported_property_set.h>
 
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/logging.h>
 #include <dbus/bus.h>
 #include <dbus/property.h>  // For kPropertyInterface
 

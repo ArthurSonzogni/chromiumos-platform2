@@ -21,6 +21,7 @@
 
 #include "brillo/blkdev_utils/lvm.h"
 
+#include <base/logging.h>
 #include <base/optional.h>
 
 namespace brillo {

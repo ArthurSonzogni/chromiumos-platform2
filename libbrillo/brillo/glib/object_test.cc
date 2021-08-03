@@ -11,6 +11,8 @@
 #include <iterator>
 #include <string>
 
+#include <base/logging.h>
+
 using brillo::Resetter;
 using brillo::glib::Retrieve;
 using brillo::glib::ScopedError;

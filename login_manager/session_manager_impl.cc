@@ -22,6 +22,7 @@
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>

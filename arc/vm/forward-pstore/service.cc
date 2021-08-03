@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>

@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 

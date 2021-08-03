@@ -18,6 +18,7 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/process/process.h>
 #include <chromeos/libminijail.h>
 #include <scoped_minijail.h>

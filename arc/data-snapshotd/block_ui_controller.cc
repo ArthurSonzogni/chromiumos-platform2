@@ -10,6 +10,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/process/launch.h>
 #include <base/time/time.h>

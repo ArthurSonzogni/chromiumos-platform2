@@ -7,6 +7,7 @@
 #include <limits>
 #include <tuple>
 
+#include <base/logging.h>
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
 

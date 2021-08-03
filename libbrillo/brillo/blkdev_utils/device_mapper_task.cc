@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <brillo/blkdev_utils/device_mapper.h>
 
 namespace brillo {

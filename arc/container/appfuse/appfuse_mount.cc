@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 namespace arc {

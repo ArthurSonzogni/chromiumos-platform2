@@ -30,6 +30,8 @@
 #include <string_view>
 #include <optional>
 
+#include <base/logging.h>
+
 namespace brillo {
 
 namespace vcsid_internal {

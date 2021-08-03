@@ -4,6 +4,8 @@
 
 #include "login_manager/fake_container_manager.h"
 
+#include <base/logging.h>
+
 namespace login_manager {
 
 FakeContainerManager::FakeContainerManager(pid_t pid) : pid_(pid) {}

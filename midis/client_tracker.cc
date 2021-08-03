@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

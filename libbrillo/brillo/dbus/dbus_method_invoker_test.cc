@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/scoped_dbus_error.h>

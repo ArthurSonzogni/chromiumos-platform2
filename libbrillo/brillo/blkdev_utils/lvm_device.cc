@@ -15,6 +15,7 @@
 #include <lvm2cmd.h>
 
 #include <base/json/json_reader.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>

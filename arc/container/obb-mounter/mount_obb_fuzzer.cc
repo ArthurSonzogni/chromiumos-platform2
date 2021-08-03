@@ -13,6 +13,7 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "arc/container/obb-mounter/volume.h"

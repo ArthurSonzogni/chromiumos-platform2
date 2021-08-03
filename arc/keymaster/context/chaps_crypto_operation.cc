@@ -6,6 +6,8 @@
 
 #include <chaps/pkcs11/cryptoki.h>
 
+#include <base/logging.h>
+
 #include "arc/keymaster/context/chaps_client.h"
 #include "arc/keymaster/context/context_adaptor.h"
 

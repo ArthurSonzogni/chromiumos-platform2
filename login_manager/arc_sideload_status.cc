@@ -11,6 +11,7 @@
 #include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>

@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/dbus/exported_object_manager.h>
 
 #include <vector>
 
+#include <base/check.h>
+#include <base/logging.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_manager.h>
 

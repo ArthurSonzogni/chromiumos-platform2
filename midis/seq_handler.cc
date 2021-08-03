@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <poll.h>
 
 #include "media/midi/message_util.h"

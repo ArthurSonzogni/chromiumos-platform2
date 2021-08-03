@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/logging.h>
 #include <brillo/errors/error.h>
 
 namespace login_manager {

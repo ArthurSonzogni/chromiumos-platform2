@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/cryptohome.h>
 
 #include "login_manager/generator_job.h"

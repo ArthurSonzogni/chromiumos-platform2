@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/dbus/dbus_param_writer.h>

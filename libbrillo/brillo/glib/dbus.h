@@ -9,6 +9,7 @@
 // bindings. See https://goo.gl/EH3MmR for more details.
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 
@@ -16,7 +17,6 @@
 #include <string>
 #include <utility>
 
-#include "base/logging.h"
 #include <brillo/brillo_export.h>
 #include <brillo/glib/object.h>
 

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/streams/stream_utils.h>
 

@@ -4,6 +4,8 @@
 
 #include <brillo/dbus/dbus_connection.h>
 
+#include <base/logging.h>
+
 namespace brillo {
 
 DBusConnection::DBusConnection() {}

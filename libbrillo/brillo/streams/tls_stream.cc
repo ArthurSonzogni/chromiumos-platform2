@@ -14,6 +14,7 @@
 #include <openssl/ssl.h>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/secure_blob.h>

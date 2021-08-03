@@ -9,9 +9,10 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <mojo/public/cpp/system/platform_handle.h>
 #include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "midis/constants.h"
 

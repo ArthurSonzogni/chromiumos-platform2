@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/message_loops/base_message_loop.h>
 
 #include <fcntl.h>
@@ -22,8 +21,10 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>

@@ -4,6 +4,7 @@
 
 #include "arc/vm/libvda/decode/test/encoded_data_helper.h"
 
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/stl_util.h>
 

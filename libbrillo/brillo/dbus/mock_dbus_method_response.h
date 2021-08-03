@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>

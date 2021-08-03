@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
 #include "midis/constants.h"

@@ -12,6 +12,7 @@
 #include <base/file_descriptor_posix.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/memory/read_only_shared_memory_region.h>
 #include <base/process/process_handle.h>
 #include <base/strings/string_number_conversions.h>

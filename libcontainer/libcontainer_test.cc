@@ -23,6 +23,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>

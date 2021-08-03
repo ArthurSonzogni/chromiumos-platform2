@@ -8,6 +8,7 @@
 
 #include <arc/data-snapshotd/upstart_client.h>
 #include <arc/data-snapshotd/worker_client.h>
+#include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 namespace arc {

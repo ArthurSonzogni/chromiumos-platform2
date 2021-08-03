@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/process/process_reaper.h>
 
 #include <signal.h>
@@ -10,7 +9,9 @@
 #include <unistd.h>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/message_loops/base_message_loop.h>

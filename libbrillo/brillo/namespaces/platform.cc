@@ -17,6 +17,7 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
 using base::FilePath;
 
