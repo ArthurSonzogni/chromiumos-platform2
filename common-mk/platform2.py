@@ -85,7 +85,6 @@ _IUSE = [
     'lvm_stateful_partition',
     'metrics_uploader',
     'ml_benchmark_drivers',
-    'mm_dynamic_sar',
     'mojo',
     'mount_oop',
     'msan',
