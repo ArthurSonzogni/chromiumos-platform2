@@ -686,7 +686,12 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    UpgradeContainerExpectationsBuilder& SetManagementTransition(int v) {
+    UpgradeContainerExpectationsBuilder& SetEnableArcNearbyShare(int v) {
+      enable_arc_nearby_share_ = v;
+      return *this;
+    }
+
+    UpgradeContainerExpectationsBuilder& SetManagementTransition(bool v) {
       management_transition_ = v;
       return *this;
     }
@@ -703,6 +708,7 @@ class SessionManagerImplTest : public ::testing::Test,
           "IS_DEMO_SESSION=" + std::to_string(is_demo_session_),
           "MANAGEMENT_TRANSITION=" + std::to_string(management_transition_),
           "ENABLE_ADB_SIDELOAD=" + std::to_string(enable_adb_sideload_),
+          "ENABLE_ARC_NEARBY_SHARE=" + std::to_string(enable_arc_nearby_share_),
           ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
           ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
           ExpectedSkipGmsCoreCacheSetupFlagValue(skip_gms_core_cache_),
@@ -721,6 +727,7 @@ class SessionManagerImplTest : public ::testing::Test,
     std::string preferred_languages_;
     int management_transition_ = 0;
     bool enable_adb_sideload_ = false;
+    bool enable_arc_nearby_share_ = false;
   };
 #endif
 
@@ -3214,6 +3221,52 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   upgrade_request.set_locale("fr_FR");
   upgrade_request.add_preferred_languages("ru");
   upgrade_request.add_preferred_languages("en");
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
+  EXPECT_FALSE(error.get());
+  EXPECT_TRUE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest, UpgradeArcContainer_ArcNearbyShareEnabled) {
+  ExpectAndRunStartSession(kSaneEmail);
+  SetUpArcMiniContainer();
+
+  // Expect continue-arc-boot and start-arc-network impulses.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder()
+                                 .SetEnableArcNearbyShare(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_enable_arc_nearby_share(true);
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
+  EXPECT_FALSE(error.get());
+  EXPECT_TRUE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest, UpgradeArcContainer_ArcNearbyShareDisabled) {
+  ExpectAndRunStartSession(kSaneEmail);
+  SetUpArcMiniContainer();
+
+  // Expect continue-arc-boot and start-arc-network impulses.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder()
+                                 .SetEnableArcNearbyShare(false)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_enable_arc_nearby_share(false);
+
+  brillo::ErrorPtr error;
   EXPECT_TRUE(
       impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());

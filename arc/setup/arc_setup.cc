@@ -1936,8 +1936,9 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       // "--management-transition" here and on ARC side.
       "--supervision-transition",
       config_.GetStringOrDie("MANAGEMENT_TRANSITION"),
-      "--enable-adb-sideloading",
-      config_.GetStringOrDie("ENABLE_ADB_SIDELOAD")};
+      "--enable-adb-sideloading", config_.GetStringOrDie("ENABLE_ADB_SIDELOAD"),
+      "--enable-arc-nearby-share",
+      config_.GetStringOrDie("ENABLE_ARC_NEARBY_SHARE")};
 
   base::ElapsedTimer timer;
   if (!LaunchAndWait(command_line)) {

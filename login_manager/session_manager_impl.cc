@@ -1943,7 +1943,9 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
                          request.management_transition()),
       base::StringPrintf("ENABLE_ADB_SIDELOAD=%d",
                          arc_sideload_status_->IsAdbSideloadAllowed() &&
-                             is_adb_sideloading_allowed_for_request)};
+                             is_adb_sideloading_allowed_for_request),
+      base::StringPrintf("ENABLE_ARC_NEARBY_SHARE=%d",
+                         request.enable_arc_nearby_share())};
 
   switch (request.packages_cache_mode()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
