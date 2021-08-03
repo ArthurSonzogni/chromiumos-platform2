@@ -8,16 +8,7 @@
 #include <base/strings/string_split.h>
 
 namespace diagnostics {
-namespace {
-
-const auto kEqualStr = "[Equal]";
-const auto kNullStr = "[null]";
-
-const auto kMissingMessage =
-    "It is possible that some fields are missing in GetDiffString.";
-
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
+namespace internal {
 // For each line, adds a 2-space-indent at the beginning.
 std::string Indent(const std::string& s) {
   const auto prefix = "  ";
@@ -32,6 +23,18 @@ std::string Indent(const std::string& s) {
 std::string StringCompareFormat(const std::string& a, const std::string& b) {
   return "'" + a + "' vs '" + b + "'";
 }
+}  // namespace internal
+namespace {
+
+using internal::Indent;
+using internal::kEqualStr;
+using internal::kNullStr;
+using internal::StringCompareFormat;
+
+const auto kMissingMessage =
+    "It is possible that some fields are missing in GetDiffString.";
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 template <typename MojoType>
 class CompareHelper {

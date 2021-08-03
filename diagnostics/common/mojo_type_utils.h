@@ -7,12 +7,22 @@
 
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+namespace internal {
+constexpr auto kEqualStr = "[Equal]";
+constexpr auto kNullStr = "[Null]";
+constexpr auto kNotNullStr = "[Not Null]";
+
+std::string Indent(const std::string& s);
+
+std::string StringCompareFormat(const std::string& a, const std::string& b);
+}  // namespace internal
 
 // Type traits templates for identifying the mojo StructPtr types.
 template <typename>
@@ -36,6 +46,12 @@ class HasWhichFunction {
 template <typename T>
 class IsMojoUnion : public HasWhichFunction<T> {};
 
+// Type traits templates for identifying the vector.
+template <typename>
+class IsVector : public std::false_type {};
+template <typename T>
+class IsVector<std::vector<T>> : public std::true_type {};
+
 // Helper type for better compiler error message.
 template <typename T>
 class UndefinedMojoType : public std::false_type {};
@@ -53,16 +69,34 @@ class UndefinedMojoType : public std::false_type {};
 template <typename T>
 std::string GetDiffString(const T& a, const T& b) {
   if (a == b)
-    return "[Equal]";
+    return internal::kEqualStr;
   if constexpr (IsStructPtr<T>::value) {
-    if (a.is_null())
-      return "[null] vs [non-null]";
-    if (b.is_null())
-      return "[non-null] vs [null]";
+    if (a.is_null()) {
+      return internal::StringCompareFormat(internal::kNullStr,
+                                           internal::kNotNullStr);
+    }
+    if (b.is_null()) {
+      return internal::StringCompareFormat(internal::kNotNullStr,
+                                           internal::kNullStr);
+    }
     return GetDiffString(*a, *b);
   } else if constexpr (std::is_enum_v<T>) {
     return GetDiffString("[Enum]:" + std::to_string(static_cast<int>(a)),
                          "[Enum]:" + std::to_string(static_cast<int>(b)));
+  } else if constexpr (IsVector<T>::value) {  // NOLINT(readability/braces)
+                                              // b/194872701
+    if (a.size() != b.size()) {
+      return internal::StringCompareFormat(
+          "Vector[size: " + std::to_string(a.size()) + "]",
+          "Vector[size: " + std::to_string(b.size()) + "]");
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+      if (a[i] != b[i]) {
+        return "Vector[" + std::to_string(i) + "]:\n" +
+               internal::Indent(GetDiffString(a[i], b[i]));
+      }
+    }
+    return internal::kEqualStr;
   } else if constexpr (std::is_arithmetic_v<T>) {
     return GetDiffString(std::to_string(a), std::to_string(b));
   } else {
