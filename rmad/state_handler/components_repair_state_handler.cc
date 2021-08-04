@@ -15,6 +15,8 @@
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;

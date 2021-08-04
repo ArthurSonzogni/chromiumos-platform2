@@ -11,6 +11,8 @@
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 namespace {

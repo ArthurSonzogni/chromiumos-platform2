@@ -4,7 +4,8 @@
 
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
 
-#include "base/notreached.h"
+#include <base/logging.h>
+#include <base/notreached.h>
 
 namespace rmad {
 

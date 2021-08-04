@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/provision_device_state_handler.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(

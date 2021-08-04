@@ -10,6 +10,8 @@
 
 #include "rmad/utils/cr50_utils_impl.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(

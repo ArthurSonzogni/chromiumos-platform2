@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/runtime_probe/dbus-constants.h>

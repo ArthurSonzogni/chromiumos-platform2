@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/finalize_state_handler.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)

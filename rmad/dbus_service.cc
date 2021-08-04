@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <brillo/dbus/data_serialization.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>

@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/update_device_info_state_handler.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(

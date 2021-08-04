@@ -11,6 +11,8 @@
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 
+#include <base/logging.h>
+
 namespace rmad {
 
 using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;

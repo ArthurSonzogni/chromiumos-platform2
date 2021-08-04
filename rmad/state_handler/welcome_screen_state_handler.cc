@@ -4,7 +4,8 @@
 
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
-#include "base/notreached.h"
+#include <base/logging.h>
+#include <base/notreached.h>
 
 namespace rmad {
 

@@ -5,6 +5,7 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
