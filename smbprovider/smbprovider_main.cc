@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/time/default_tick_clock.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>

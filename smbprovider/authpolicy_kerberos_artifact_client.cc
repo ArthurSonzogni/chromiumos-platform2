@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>

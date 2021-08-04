@@ -5,6 +5,7 @@
 #include "smbprovider/fake_kerberos_artifact_client.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
 namespace smbprovider {
