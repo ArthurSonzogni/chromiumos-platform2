@@ -12,7 +12,7 @@ ACTION=="add", ATTR{name}=="cros-ec-baro", RUN+="/usr/sbin/mems_setup --device_i
 
 # Since the device appears after the selinux policies were applied to /dev,
 # call restorecon.
-ACTION=="add", RUN+="/sbin/restorecon $env{DEVNAME}"
+ACTION=="add", SUBSYSTEM=="iio", RUN+="/sbin/restorecon $env{DEVNAME}"
 
 #TODO(gwendal): not needed when iioservice is running. Remove when iioservice is fully deployed.
 ACTION!="remove", ATTR{name}=="cros-ec-accel*", SYMLINK+="cros-ec-accel/%n", MODE="640", GROUP="chronos"
