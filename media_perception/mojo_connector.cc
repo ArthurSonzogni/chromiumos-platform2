@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/invitation.h>
 

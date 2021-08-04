@@ -5,10 +5,10 @@
 #include "media_perception/media_perception_controller_impl.h"
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <memory>
 #include <utility>
 
-#include "base/logging.h"
 #include "media_perception/media_perception_impl.h"
 
 namespace mri {

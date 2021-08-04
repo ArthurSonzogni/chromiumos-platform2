@@ -5,6 +5,7 @@
 #include "media_perception/output_manager.h"
 
 #include <functional>
+#include <base/logging.h>
 #include <dbus/object_proxy.h>
 
 #include "media_perception/frame_perception.pb.h"

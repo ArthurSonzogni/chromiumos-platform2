@@ -5,6 +5,7 @@
 #include "media_perception/media_perception_service_impl.h"
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <utility>
 
 #include "media_perception/media_perception_controller_impl.h"

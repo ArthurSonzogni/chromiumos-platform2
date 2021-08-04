@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <base/logging.h>
 #include <memory>
 
-#include "base/logging.h"
 #include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/chrome_audio_service_client_impl.h"
 #include "media_perception/cros_dbus_service.h"
