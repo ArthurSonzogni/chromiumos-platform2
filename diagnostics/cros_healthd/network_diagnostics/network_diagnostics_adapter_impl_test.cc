@@ -165,6 +165,11 @@ class MockNetworkDiagnosticsRoutines final
               (override));
   MOCK_METHOD(
       void,
+      RunArcHttp,
+      (network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunArcHttpCallback),
+      (override));
+  MOCK_METHOD(
+      void,
       GetResult,
       (const network_diagnostics_ipc::RoutineType type,
        network_diagnostics_ipc::NetworkDiagnosticsRoutines::GetResultCallback),
