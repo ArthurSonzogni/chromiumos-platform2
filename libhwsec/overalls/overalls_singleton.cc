@@ -7,14 +7,17 @@
 namespace hwsec {
 namespace overalls {
 
-Overalls* OverallsSingleton::overalls_ = new Overalls();
+Overalls* OverallsSingleton::overalls_ = nullptr;
 
 Overalls* OverallsSingleton::GetInstance() {
+  if (overalls_ == nullptr) {
+    overalls_ = new Overalls();
+  }
   return overalls_;
 }
 
 Overalls* OverallsSingleton::SetInstance(Overalls* ins) {
-  Overalls* old_instance = overalls_;
+  Overalls* old_instance = GetInstance();
   overalls_ = ins;
   return old_instance;
 }
