@@ -46,6 +46,7 @@ class MockWaylandChannel : public WaylandChannel {
   MOCK_METHOD(int32_t,
               handle_pipe,
               (int read_fd, bool readable, bool& hang_up));
+  MOCK_METHOD(size_t, max_send_size, ());
 
  protected:
   ~MockWaylandChannel() override {}

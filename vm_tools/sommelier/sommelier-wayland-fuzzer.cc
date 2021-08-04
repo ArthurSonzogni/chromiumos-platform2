@@ -55,8 +55,8 @@ class FuzzChannel : public WaylandChannel {
   int32_t handle_channel_event(enum WaylandChannelEvent& event_type,
                                struct WaylandSendReceive& receive,
                                int& out_read_pipe) override {
-    uint8_t* buffer = static_cast<uint8_t*>(malloc(4096));
-    int bytes = recv(receive.channel_fd, buffer, 4096, 0);
+    uint8_t* buffer = static_cast<uint8_t*>(malloc(DEFAULT_BUFFER_SIZE));
+    int bytes = recv(receive.channel_fd, buffer, DEFAULT_BUFFER_SIZE, 0);
     if (bytes < 0) {
       return -errno;
     }
@@ -79,6 +79,8 @@ class FuzzChannel : public WaylandChannel {
   int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override {
     return 0;
   }
+
+  size_t max_send_size(void) override { return DEFAULT_BUFFER_SIZE; }
 };
 
 void null_logger(const char*, va_list) {}
@@ -113,8 +115,8 @@ static int handle_host_to_sommelier_event(int fd, uint32_t mask, void* data) {
 }
 
 int drain_socket(int fd, uint32_t mask, void* data) {
-  uint8_t buffer[4096];
-  return recv(fd, buffer, 4096, 0) > 0;
+  uint8_t buffer[DEFAULT_BUFFER_SIZE];
+  return recv(fd, buffer, DEFAULT_BUFFER_SIZE, 0) > 0;
 }
 
 // Count the number of open file descriptors to make sure we don't leak any.
@@ -209,7 +211,7 @@ int LLVMFuzzerTestOneInput_real(const uint8_t* data, size_t size) {
     // the boundaries of a message from shifting when the fuzzer inserts or
     // removed bytes. This is (probably) better then consuming a length and then
     // consuming that many characters.
-    std::string data = source.ConsumeRandomLengthString(4096);
+    std::string data = source.ConsumeRandomLengthString(DEFAULT_BUFFER_SIZE);
 
     int sent = send(fd, data.data(), data.length(), 0);
     assert(sent == data.length());

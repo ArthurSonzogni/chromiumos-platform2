@@ -17,6 +17,7 @@
 #include "wayland_channel.h"       // NOLINT(build/include_directory)
 
 #define VIRTWL_DEVICE "/dev/wl0"
+#define MAX_SEND_SIZE (DEFAULT_BUFFER_SIZE - sizeof(struct virtwl_ioctl_txn))
 
 VirtWaylandChannel::~VirtWaylandChannel() {
   if (virtwl_ >= 0)
@@ -94,13 +95,12 @@ int32_t VirtWaylandChannel::create_pipe(int& out_pipe_fd) {
 
 int32_t VirtWaylandChannel::send(const struct WaylandSendReceive& send) {
   int ret;
-  uint8_t ioctl_buffer[4096];
+  uint8_t ioctl_buffer[DEFAULT_BUFFER_SIZE];
 
   struct virtwl_ioctl_txn* txn = (struct virtwl_ioctl_txn*)ioctl_buffer;
-  size_t max_send_size = sizeof(ioctl_buffer) - sizeof(struct virtwl_ioctl_txn);
   void* send_data = &txn->data;
 
-  if (send.data_size > max_send_size)
+  if (send.data_size > max_send_size())
     return -EINVAL;
 
   memcpy(send_data, send.data, send.data_size);
@@ -126,7 +126,7 @@ int32_t VirtWaylandChannel::handle_channel_event(
     struct WaylandSendReceive& receive,
     int& out_read_pipe) {
   int ret;
-  uint8_t ioctl_buffer[4096];
+  uint8_t ioctl_buffer[DEFAULT_BUFFER_SIZE];
 
   struct virtwl_ioctl_txn* txn = (struct virtwl_ioctl_txn*)ioctl_buffer;
   size_t max_recv_size = sizeof(ioctl_buffer) - sizeof(struct virtwl_ioctl_txn);
@@ -218,4 +218,8 @@ int32_t VirtWaylandChannel::handle_pipe(int read_fd,
                                         bool readable,
                                         bool& hang_up) {
   return 0;
+}
+
+size_t VirtWaylandChannel::max_send_size(void) {
+  return MAX_SEND_SIZE;
 }

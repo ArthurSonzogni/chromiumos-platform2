@@ -291,7 +291,7 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   struct sl_context* ctx = (struct sl_context*)data;
   struct WaylandSendReceive send = {0};
   char fd_buffer[CMSG_LEN(sizeof(int) * WAYLAND_MAX_FDs)];
-  uint8_t data_buffer[4096];
+  uint8_t data_buffer[DEFAULT_BUFFER_SIZE];
 
   struct iovec buffer_iov;
   struct msghdr msg = {0};
@@ -308,7 +308,7 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   }
 
   buffer_iov.iov_base = data_buffer;
-  buffer_iov.iov_len = sizeof(data_buffer);
+  buffer_iov.iov_len = ctx->channel->max_send_size();
 
   msg.msg_iov = &buffer_iov;
   msg.msg_iovlen = 1;

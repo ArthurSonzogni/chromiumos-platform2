@@ -35,8 +35,10 @@
 // DRM Render nodes start at 128
 #define DRM_RENDER_NODE_START 128
 
-#define MAX_SEND_SIZE PAGE_SIZE - sizeof(struct CrossDomainSendReceive)
-#define MAX_WRITE_SIZE PAGE_SIZE - sizeof(struct CrossDomainReadWrite)
+#define MAX_SEND_SIZE \
+  (DEFAULT_BUFFER_SIZE - sizeof(struct CrossDomainSendReceive))
+#define MAX_WRITE_SIZE \
+  (DEFAULT_BUFFER_SIZE - sizeof(struct CrossDomainReadWrite))
 
 struct virtgpu_param {
   uint64_t param;
@@ -288,7 +290,7 @@ int32_t VirtGpuChannel::create_pipe(int& out_pipe_fd) {
 
 int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
   int32_t ret;
-  uint8_t cmd_buffer[4096];
+  uint8_t cmd_buffer[DEFAULT_BUFFER_SIZE];
 
   struct CrossDomainSendReceive* cmd_send =
       (struct CrossDomainSendReceive*)cmd_buffer;
@@ -297,7 +299,7 @@ int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
 
   memset(cmd_send, 0, sizeof(struct CrossDomainSendReceive));
 
-  if (send.data_size > MAX_SEND_SIZE)
+  if (send.data_size > max_send_size())
     return -EINVAL;
 
   if (send.num_fds > CROSS_DOMAIN_MAX_IDENTIFIERS)
@@ -380,7 +382,7 @@ int32_t VirtGpuChannel::sync(int dmabuf_fd, uint64_t flags) {
 }
 
 int32_t VirtGpuChannel::handle_pipe(int read_fd, bool readable, bool& hang_up) {
-  uint8_t cmd_buffer[4096];
+  uint8_t cmd_buffer[DEFAULT_BUFFER_SIZE];
   ssize_t bytes_read;
   int ret;
   size_t index;
@@ -817,4 +819,8 @@ int32_t VirtGpuChannel::pipe_lookup(uint32_t identifier_type,
   }
 
   return -EINVAL;
+}
+
+size_t VirtGpuChannel::max_send_size(void) {
+  return MAX_SEND_SIZE;
 }

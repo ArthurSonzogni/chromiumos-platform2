@@ -14,6 +14,9 @@
  */
 #define WAYLAND_MAX_FDs 28
 
+// Default buffer size based on the size of a typical page.
+#define DEFAULT_BUFFER_SIZE 4096
+
 struct WaylandSendReceive {
   int channel_fd;
 
@@ -153,6 +156,10 @@ class WaylandChannel {
   // `read_fd` *must* be a read pipe given by `handle_channel_event` when the
   // `event_type` is WaylandChannelEvent::ReceiveAndProxy.
   virtual int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) = 0;
+
+  // Returns the maximum size of opaque data that the channel is able to handle
+  // in the `send` function.  Must be less than or equal to DEFAULT_BUFFER_SIZE.
+  virtual size_t max_send_size(void) = 0;
 };
 
 class VirtWaylandChannel : public WaylandChannel {
@@ -174,6 +181,7 @@ class VirtWaylandChannel : public WaylandChannel {
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override;
   int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override;
+  size_t max_send_size(void) override;
 
  private:
   // virtwl device file descriptor
@@ -205,6 +213,7 @@ class VirtGpuChannel : public WaylandChannel {
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override;
   int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override;
+  size_t max_send_size(void) override;
 
  private:
   /*

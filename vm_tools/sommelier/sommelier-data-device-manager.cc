@@ -42,7 +42,7 @@ struct sl_data_transfer {
   int write_fd;
   size_t offset;
   size_t bytes_left;
-  uint8_t data[4096];
+  uint8_t data[DEFAULT_BUFFER_SIZE];
   std::unique_ptr<struct wl_event_source> read_event_source;
   std::unique_ptr<struct wl_event_source> write_event_source;
 };

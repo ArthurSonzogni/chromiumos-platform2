@@ -2221,7 +2221,7 @@ static void sl_get_selection_targets(struct sl_context* ctx) {
       ctx->connection,
       xcb_get_property(ctx->connection, 1, ctx->selection_window,
                        ctx->atoms[ATOM_WL_SELECTION].value,
-                       XCB_GET_PROPERTY_TYPE_ANY, 0, 4096),
+                       XCB_GET_PROPERTY_TYPE_ANY, 0, DEFAULT_BUFFER_SIZE),
       NULL);
   if (!reply)
     return;
