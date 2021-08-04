@@ -22,8 +22,7 @@ namespace {
 
 constexpr char kUnknownValue[] = "unknown";
 
-const char kCrashLog[] = R"(
-Process: com.arc.app
+const char kCrashLog[] = R"(Process: com.arc.app
 Flags: 0xcafebabe
 Package: com.arc.app v1 (1.0)
 Build: fingerprint
@@ -36,37 +35,30 @@ Line 3
 }  // namespace
 
 TEST(ArcUtilTest, ParseCrashLog) {
-  std::stringstream stream;
   CrashLogHeaderMap map;
   std::string exception_info, log;
 
   // Crash log should not be empty.
   EXPECT_FALSE(
-      ParseCrashLog("system_app_crash", &stream, &map, &exception_info, &log));
+      ParseCrashLog("system_app_crash", "", &map, &exception_info, &log));
 
   // Header key should be followed by a colon.
-  stream.clear();
-  stream.str("Key");
   EXPECT_FALSE(
-      ParseCrashLog("system_app_crash", &stream, &map, &exception_info, &log));
+      ParseCrashLog("system_app_crash", "Key", &map, &exception_info, &log));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
 
   // Header value should not be empty.
-  stream.clear();
-  stream.str("Key:   ");
-  EXPECT_FALSE(
-      ParseCrashLog("system_app_crash", &stream, &map, &exception_info, &log));
+  EXPECT_FALSE(ParseCrashLog("system_app_crash", "Key:   ", &map,
+                             &exception_info, &log));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
 
   // Parse a crash log with exception info.
-  stream.clear();
-  stream.str(kCrashLog + 1);  // Skip EOL.
-  EXPECT_TRUE(
-      ParseCrashLog("system_app_crash", &stream, &map, &exception_info, &log));
+  EXPECT_TRUE(ParseCrashLog("system_app_crash", kCrashLog, &map,
+                            &exception_info, &log));
 
   EXPECT_TRUE(GetLog().empty());
 
@@ -76,12 +68,10 @@ TEST(ArcUtilTest, ParseCrashLog) {
   EXPECT_EQ("Line 1\nLine 2\nLine 3\n", exception_info);
 
   // Parse a crash log without exception info.
-  stream.clear();
-  stream.seekg(0);
   map.clear();
   exception_info.clear();
   EXPECT_TRUE(
-      ParseCrashLog("system_app_anr", &stream, &map, &exception_info, &log));
+      ParseCrashLog("system_app_anr", kCrashLog, &map, &exception_info, &log));
 
   EXPECT_TRUE(GetLog().empty());
 

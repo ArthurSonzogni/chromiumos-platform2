@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <unistd.h>
+
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -41,7 +43,8 @@ bool ArcvmCxxCollector::HandleCrash(
     const CrashInfo& crash_info,
     base::TimeDelta uptime) {
   return HandleCrashWithMinidumpFD(build_property, crash_info, uptime,
-                                   base::ScopedFD(STDIN_FILENO));
+                                   // use dup() to avoid closing STDIN_FILENO
+                                   base::ScopedFD(dup(STDIN_FILENO)));
 }
 
 bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
@@ -52,6 +55,10 @@ bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
   const std::string message =
       "Received crash notification for " + crash_info.exec_name;
   LogCrash(message, "handling");
+  if (!minidump_fd.is_valid()) {
+    LOG(ERROR) << "Failed to dup(STDIN_FILENO)";
+    return false;
+  }
 
   bool out_of_capacity = false;
   base::FilePath crash_dir;
@@ -69,7 +76,7 @@ bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
       FormatDumpBasename(crash_info.exec_name, crash_info.time, crash_info.pid);
   const base::FilePath minidump_path = GetCrashPath(
       crash_dir, basename_without_ext, constants::kMinidumpExtension);
-  if (!DumpFdToFile(std::move(minidump_fd), minidump_path)) {
+  if (!CopyFdToNewFile(std::move(minidump_fd), minidump_path)) {
     LOG(ERROR) << "Failed to write minidump file";
     return false;
   }
@@ -99,29 +106,6 @@ void ArcvmCxxCollector::AddArcMetadata(
   if (!uptime.is_zero()) {
     AddCrashMetaUploadData(arc_util::kUptimeField,
                            arc_util::FormatDuration(uptime));
-  }
-}
-
-bool ArcvmCxxCollector::DumpFdToFile(base::ScopedFD src_fd,
-                                     const base::FilePath& dst_path) {
-  base::ScopedFD dst_fd = GetNewFileHandle(dst_path);
-  if (!dst_fd.is_valid())
-    return false;
-
-  base::File src_file(src_fd.release());
-  constexpr size_t kBufferSize = 4096;
-  char buffer[kBufferSize];
-
-  while (true) {
-    ssize_t bytes_written =
-        src_file.ReadAtCurrentPosNoBestEffort(buffer, kBufferSize);
-    if (bytes_written < 0)
-      return false;
-    if (bytes_written == 0)
-      return true;
-    if (!base::WriteFileDescriptor(dst_fd.get(),
-                                   base::StringPiece(buffer, bytes_written)))
-      return false;
   }
 }
 

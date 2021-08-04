@@ -4,6 +4,8 @@
 
 #include "crash-reporter/arc_util.h"
 
+#include <sstream>
+
 #include <stdint.h>
 #include <sysexits.h>
 
@@ -99,14 +101,15 @@ base::Optional<std::string> GetVersionFromFingerprint(
 }
 
 bool ParseCrashLog(const std::string& type,
-                   std::stringstream* stream,
+                   const std::string& contents,
                    std::unordered_map<std::string, std::string>* map,
                    std::string* exception_info,
                    std::string* log) {
   std::string line;
 
+  std::stringstream stream(contents);
   // The last header is followed by an empty line.
-  while (std::getline(*stream, line) && !line.empty()) {
+  while (std::getline(stream, line) && !line.empty()) {
     const auto end = line.find(':');
 
     if (end != std::string::npos) {
@@ -125,15 +128,15 @@ bool ParseCrashLog(const std::string& type,
     LOG(WARNING) << "Header has unexpected format: " << line;
   }
 
-  if (stream->fail())
+  if (stream.fail())
     return false;
 
   if (HasExceptionInfo(type)) {
     std::ostringstream out;
-    out << stream->rdbuf();
+    out << stream.rdbuf();
     *exception_info = out.str();
   }
-  *log = stream->str();
+  *log = stream.str();
 
   return true;
 }

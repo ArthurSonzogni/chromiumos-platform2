@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/files/file.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 
@@ -22,9 +23,6 @@ using base::FilePath;
 namespace {
 
 constexpr char kArcJavaCollectorName[] = "ARC_java";
-constexpr size_t kBufferSize = 4096;
-
-bool ReadCrashLogFromStdin(std::stringstream* stream);
 
 }  // namespace
 
@@ -41,15 +39,19 @@ bool ArcJavaCollector::HandleCrash(
   std::ostringstream message;
   message << "Received " << crash_type << " notification";
 
-  std::stringstream stream;
-  if (!ReadCrashLogFromStdin(&stream)) {
+  std::string contents;
+  if (!base::ReadStreamToString(stdin, &contents)) {
     PLOG(ERROR) << "Failed to read crash log";
+    return false;
+  }
+  if (contents.empty()) {
+    LOG(ERROR) << "crash log was empty";
     return false;
   }
 
   CrashLogHeaderMap map;
   std::string exception_info, log;
-  if (!arc_util::ParseCrashLog(crash_type, &stream, &map, &exception_info,
+  if (!arc_util::ParseCrashLog(crash_type, contents, &map, &exception_info,
                                &log)) {
     LOG(ERROR) << "Failed to parse crash log";
     return false;
@@ -188,23 +190,3 @@ CollectorInfo ArcJavaCollector::GetHandlerInfo(
       }},
   };
 }
-
-namespace {
-
-bool ReadCrashLogFromStdin(std::stringstream* stream) {
-  File src(STDIN_FILENO);
-  char buffer[kBufferSize];
-
-  while (true) {
-    const int count = src.ReadAtCurrentPosNoBestEffort(buffer, kBufferSize);
-    if (count < 0)
-      return false;
-
-    if (count == 0)
-      return stream->tellp() > 0;  // Crash log should not be empty.
-
-    stream->write(buffer, count);
-  }
-}
-
-}  // namespace

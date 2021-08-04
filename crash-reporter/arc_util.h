@@ -66,7 +66,7 @@ base::Optional<std::string> GetVersionFromFingerprint(
     const std::string& fingerprint);
 
 bool ParseCrashLog(const std::string& type,
-                   std::stringstream* stream,
+                   const std::string& contents,
                    CrashLogHeaderMap* map,
                    std::string* exception_info,
                    std::string* log);

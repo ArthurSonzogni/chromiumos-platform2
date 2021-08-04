@@ -71,9 +71,6 @@ class ArcvmCxxCollector : public CrashCollector {
   void AddArcMetadata(const arc_util::BuildProperty& build_property,
                       const CrashInfo& crash_info,
                       base::TimeDelta uptime);
-
-  // Reads the content from FD and writes it to the specified path.
-  bool DumpFdToFile(base::ScopedFD fd, const base::FilePath& path);
 };
 
 #endif  // CRASH_REPORTER_ARCVM_CXX_COLLECTOR_H_
