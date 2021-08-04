@@ -24,7 +24,7 @@ StorageManager::~StorageManager() = default;
 
 void StorageManager::InitializeSessionManagerProxy(dbus::Bus* const bus) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK_NE(session_manager_proxy_, nullptr)
+  DCHECK_EQ(session_manager_proxy_, nullptr)
       << "session_manager_proxy is already initialized!";
   DCHECK_NE(bus, nullptr);
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(
