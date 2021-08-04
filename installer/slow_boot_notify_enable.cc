@@ -7,6 +7,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/process/process.h>
 #include <vboot/crossystem.h>
 

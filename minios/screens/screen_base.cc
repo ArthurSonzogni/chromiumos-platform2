@@ -4,6 +4,8 @@
 
 #include "minios/screens/screen_base.h"
 
+#include <base/logging.h>
+
 #include "minios/key_reader.h"
 
 namespace minios {

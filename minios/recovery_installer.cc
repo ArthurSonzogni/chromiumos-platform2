@@ -6,6 +6,8 @@
 
 #include <errno.h>
 
+#include <base/logging.h>
+
 #include "minios/minios.h"
 
 namespace minios {

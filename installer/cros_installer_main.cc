@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 
 #include "installer/chromeos_install_config.h"

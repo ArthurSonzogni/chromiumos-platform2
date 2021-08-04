@@ -4,6 +4,7 @@
 
 #include "minios/update_engine_proxy.h"
 
+#include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
 
 namespace minios {

@@ -6,6 +6,7 @@
 
 #include <linux/limits.h>
 
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <rootdev/rootdev.h>
 

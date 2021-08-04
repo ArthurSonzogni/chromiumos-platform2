@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/logging.h>
+
 #include "minios/draw_utils.h"
 #include "minios/utils.h"
 

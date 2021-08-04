@@ -8,6 +8,8 @@
 
 #include "installer/cgpt_manager.h"
 
+#include <base/logging.h>
+
 using std::string;
 
 bool StrToBiosType(string name, BiosType* bios_type) {

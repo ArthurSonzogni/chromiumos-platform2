@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "minios/draw_utils.h"
-
 #include "minios/screens/screen_error.h"
+
+#include <base/logging.h>
+
+#include "minios/draw_utils.h"
 
 namespace minios {
 

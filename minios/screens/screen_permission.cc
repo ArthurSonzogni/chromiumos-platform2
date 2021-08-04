@@ -4,6 +4,8 @@
 
 #include "minios/screens/screen_permission.h"
 
+#include <base/logging.h>
+
 #include "minios/draw_utils.h"
 
 namespace minios {

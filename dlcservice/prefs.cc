@@ -10,6 +10,8 @@
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
 
+#include <base/logging.h>
+
 using base::FilePath;
 using std::string;
 

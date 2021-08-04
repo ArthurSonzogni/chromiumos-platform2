@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>

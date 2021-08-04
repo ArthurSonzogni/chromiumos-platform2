@@ -4,6 +4,7 @@
 
 #include "minios/screens/screen_network.h"
 
+#include <base/logging.h>
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/draw_utils.h"
