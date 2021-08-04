@@ -55,6 +55,8 @@ namespace {
 
 const char kRoot[] = "root";
 const char kShell[] = "/bin/sh";
+constexpr char kLpAdmin[] = "lpadmin";
+constexpr char kLpGroup[] = "lp";
 constexpr char kLsbReleasePath[] = "/etc/lsb-release";
 constexpr char kArcBugReportBackupFileName[] = "arc-bugreport.log";
 constexpr char kArcBugReportBackupKey[] = "arc-bugreport-backup";
@@ -275,6 +277,7 @@ const std::vector<Log> kCommandLogs {
 #endif  // USE_IWLWIFI_DUMP
   {kGlob, "kernel-crashes", "/var/spool/crash/kernel.*.kcrash",
     SandboxedProcess::kDefaultUser, "crash-access"},
+  {kCommand, "lpstat", "/usr/bin/lpstat -l -r -v -a -p -o", kLpAdmin, kLpGroup},
   {kCommand, "lsblk", "timeout -s KILL 5s lsblk -a", kRoot, kRoot,
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},

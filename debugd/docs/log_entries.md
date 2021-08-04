@@ -170,6 +170,11 @@ Expected size is ~20 KiB.
 
 ## logcat
 
+## lpstat
+
+Information about connected printer and scanner devices produced by `lpstat -l
+-r -v -a -p -o`. Produces ~22 lines of output for each device.
+
 ## lsblk
 
 ## lsmod
