@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/logging.h>
 #include <brillo/dbus/dbus_object.h>
 
 #include <dbus/cryptohome/dbus-constants.h>

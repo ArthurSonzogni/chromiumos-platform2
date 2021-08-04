@@ -13,6 +13,7 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/json/json_reader.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <components/policy/core/common/registry_dict.h>

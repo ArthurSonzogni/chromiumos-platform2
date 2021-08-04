@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/test/test_mock_time_task_runner.h>

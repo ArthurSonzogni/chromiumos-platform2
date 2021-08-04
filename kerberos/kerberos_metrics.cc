@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/clock.h>
 #include "base/time/default_clock.h"

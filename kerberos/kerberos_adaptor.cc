@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>

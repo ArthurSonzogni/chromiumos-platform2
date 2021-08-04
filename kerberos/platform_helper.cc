@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/optional.h>
 
 namespace kerberos {

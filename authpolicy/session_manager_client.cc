@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <base/callback.h>
+#include <base/logging.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <dbus/login_manager/dbus-constants.h>

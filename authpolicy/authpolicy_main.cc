@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>

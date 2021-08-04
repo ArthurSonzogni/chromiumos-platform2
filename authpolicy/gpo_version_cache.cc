@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/logging.h"
 #include "base/time/clock.h"
 #include "base/time/default_clock.h"
 
