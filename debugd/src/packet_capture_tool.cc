@@ -4,6 +4,7 @@
 
 #include "debugd/src/packet_capture_tool.h"
 
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <string>
 

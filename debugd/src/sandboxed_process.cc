@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 namespace debugd {

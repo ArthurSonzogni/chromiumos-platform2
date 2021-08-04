@@ -6,6 +6,8 @@
 
 #include "debugd/src/process_with_id.h"
 
+#include <base/logging.h>
+
 namespace debugd {
 
 namespace {

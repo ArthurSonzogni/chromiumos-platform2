@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/process/process_iterator.h>
 #include <base/threading/thread_task_runner_handle.h>

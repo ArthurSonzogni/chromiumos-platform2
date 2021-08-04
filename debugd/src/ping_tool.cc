@@ -10,6 +10,8 @@
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/variant_utils.h"
 
+#include <base/logging.h>
+
 namespace debugd {
 
 namespace {

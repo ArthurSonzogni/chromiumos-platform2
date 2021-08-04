@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 

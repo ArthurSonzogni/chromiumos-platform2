@@ -10,6 +10,7 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <brillo/process/process.h>
 #include <dbus/object_path.h>
 

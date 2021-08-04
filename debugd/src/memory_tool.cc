@@ -4,6 +4,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 
 #include "debugd/src/memory_tool.h"
 
