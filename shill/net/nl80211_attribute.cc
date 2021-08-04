@@ -771,6 +771,9 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_RX_PACKETS,
                    NestedData(kTypeU32, "NL80211_STA_INFO_RX_PACKETS", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_STA_INFO_RX_DROP_MISC,
+      NestedData(kTypeU64, "NL80211_STA_INFO_RX_DROP_MISC", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_TX_PACKETS,
                    NestedData(kTypeU32, "NL80211_STA_INFO_TX_PACKETS", false)));
