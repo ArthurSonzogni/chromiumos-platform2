@@ -33,6 +33,9 @@ struct ArcVmFeatures {
 
   // Use development configuration directives in the started VM.
   bool use_dev_conf;
+
+  // Use the LimitCacheBalloonPolicy.
+  base::Optional<LimitCacheBalloonPolicy::Params> balloon_policy_params;
 };
 
 // Represents a single instance of a running termina VM.
@@ -120,6 +123,11 @@ class ArcVm final : public VmBaseImpl {
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel, VmBuilder vm_builder);
 
+  // Selects which balloon policy to use, and tries to initialize it, which may
+  // fail.
+  void InitializeBalloonPolicy(const MemoryMargins& margins,
+                               const std::string& vm);
+
   std::vector<patchpanel::NetworkDevice> network_devices_;
 
   // Proxy to the server providing shared directory access for this VM.
@@ -130,6 +138,10 @@ class ArcVm final : public VmBaseImpl {
 
   // This is set to true once ARCVM has been upgraded.
   bool vm_upgraded_ = false;
+
+  // It may take a few tries to initialize a LimitCacheBalloonPolicy, but give
+  // up and log an error after too many failures.
+  int balloon_init_attempts_ = 30;
 };
 
 }  // namespace concierge

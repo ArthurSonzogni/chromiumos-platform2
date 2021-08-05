@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <string>
 
+#include <base/optional.h>
+
 namespace vm_tools {
 namespace concierge {
 
@@ -80,6 +82,71 @@ class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
   BalanceAvailableBalloonPolicy& operator=(
       const BalanceAvailableBalloonPolicy&) = delete;
 };
+
+class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
+ public:
+  struct Params {
+    // The maximum amount of page cache the guest should have if ChromeOS is
+    // reclaiming.
+    int64_t reclaim_target_cache;
+
+    // The maximum amount of page cache the guest should have if ChromeOS has
+    // critical memory pressure.
+    int64_t critical_target_cache;
+
+    // The maximum amount of page cache the guest should have if ChromeOS has
+    // moderate memory pressure.
+    int64_t moderate_target_cache;
+  };
+  LimitCacheBalloonPolicy(const MemoryMargins& margins,
+                          int64_t host_lwm,
+                          int64_t guest_lwm,
+                          const Params& params,
+                          const std::string& vm);
+
+  int64_t ComputeBalloonDelta(const BalloonStats& stats,
+                              uint64_t host_available,
+                              bool game_mode,
+                              const std::string& vm) override;
+
+  int64_t ComputeBalloonDeltaImpl(int64_t host_free,
+                                  const BalloonStats& stats,
+                                  int64_t host_available,
+                                  bool game_mode,
+                                  const std::string& vm);
+
+  // Expose the minimum target for guest free memory for testing. The balloon
+  // will be sized so that guest free memory is not below this amount.
+  int64_t MinFree() { return guest_lwm_ - MIB; }
+
+  // Expose the maximum target for guest free memory for testing. The balloon
+  // will be sized so that guest free memory is not above this amount.
+  int64_t MaxFree() { return guest_lwm_ * 3; }
+
+ private:
+  // ChromeOS's memory margins.
+  const MemoryMargins margins_;
+
+  // The sum of all the host's zone's low memory watermarks.
+  const int64_t host_lwm_;
+
+  // The sum of all the guest's zone's low memory watermarks.
+  const int64_t guest_lwm_;
+
+  // Tunable parameters of the policy.
+  const Params params_;
+
+  LimitCacheBalloonPolicy(const LimitCacheBalloonPolicy&) = delete;
+  LimitCacheBalloonPolicy& operator=(const LimitCacheBalloonPolicy&) = delete;
+};
+
+// Computes the sum of all of ChromeOS's zone's low watermarks. To help
+// initialize LimitCacheBalloonPolicy. Returns base::nullopt on error.
+base::Optional<uint64_t> HostZoneLowSum(bool log_on_error);
+
+// Computes the sum of all the zone low watermarks from the contents of
+// /proc/zoneinfo.
+uint64_t ZoneLowSumFromZoneInfo(const std::string& zoneinfo);
 
 }  // namespace concierge
 }  // namespace vm_tools

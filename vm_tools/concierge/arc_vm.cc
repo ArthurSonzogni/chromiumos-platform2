@@ -393,12 +393,70 @@ bool ArcVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
                                               response);
 }
 
+namespace {
+
+base::Optional<uint64_t> ArcVmZoneLowSum(uint32_t cid, bool log_on_error) {
+  brillo::ProcessImpl vsh;
+  vsh.AddArg("/usr/bin/vsh");
+  vsh.AddArg(base::StringPrintf("--cid=%u", cid));
+  vsh.AddArg("--user=root");
+  vsh.AddArg("--");
+  vsh.AddArg("cat");
+  vsh.AddArg("/proc/zoneinfo");
+  vsh.RedirectUsingMemory(STDOUT_FILENO);
+  vsh.RedirectUsingMemory(STDERR_FILENO);
+
+  if (vsh.Run() != 0) {
+    if (log_on_error) {
+      LOG(ERROR) << "Failed to run vsh: " << vsh.GetOutputString(STDERR_FILENO);
+    }
+    return base::nullopt;
+  }
+
+  std::string zoneinfo = vsh.GetOutputString(STDOUT_FILENO);
+  const uint64_t zone_low_sum = ZoneLowSumFromZoneInfo(zoneinfo);
+  if (zone_low_sum == 0) {
+    if (log_on_error) {
+      LOG(ERROR) << "Failed to find any non-zero low watermark lines";
+    }
+    return base::nullopt;
+  }
+  return base::Optional<uint64_t>(zone_low_sum);
+}
+
+}  // namespace
+
+void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
+                                    const std::string& vm) {
+  balloon_init_attempts_--;
+  if (features_.balloon_policy_params) {
+    // Only log on error if this is our last attempt. We expect some failures
+    // early in boot, so we shouldn't spam the log with them.
+    auto guest_lwm = ArcVmZoneLowSum(vsock_cid_, balloon_init_attempts_ == 0);
+    auto host_lwm = HostZoneLowSum(balloon_init_attempts_ == 0);
+    if (guest_lwm && host_lwm) {
+      balloon_policy_ = std::make_unique<LimitCacheBalloonPolicy>(
+          margins, *host_lwm, *guest_lwm, *features_.balloon_policy_params, vm);
+      return;
+    } else if (balloon_init_attempts_ > 0) {
+      // We still have attempts left. Leave balloon_policy_ uninitialized, and
+      // we will try again next time.
+      return;
+    } else {
+      LOG(ERROR) << "Failed to initialize LimitCacheBalloonPolicy, falling "
+                 << "back to BalanceAvailableBalloonPolicy";
+    }
+  }
+  // No balloon policy parameters, so fall back to older policy.
+  // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
+  balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
+      margins.critical, 48 * MIB, vm);
+}
+
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
     const MemoryMargins& margins, const std::string& vm) {
   if (!balloon_policy_) {
-    // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
-    balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
-        margins.critical, 48 * MIB, vm);
+    InitializeBalloonPolicy(margins, vm);
   }
   return balloon_policy_;
 }

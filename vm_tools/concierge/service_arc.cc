@@ -160,6 +160,14 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   features.rootfs_writable = request.rootfs_writable();
   features.use_dev_conf = !request.ignore_dev_conf();
 
+  if (request.has_balloon_policy()) {
+    const auto& params = request.balloon_policy();
+    features.balloon_policy_params = (LimitCacheBalloonPolicy::Params){
+        .reclaim_target_cache = params.reclaim_target_cache(),
+        .critical_target_cache = params.critical_target_cache(),
+        .moderate_target_cache = params.moderate_target_cache()};
+  }
+
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
   if (!base::PathExists(data_dir)) {
     LOG(WARNING) << "Android data directory does not exist";
