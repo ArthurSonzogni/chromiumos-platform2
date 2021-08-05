@@ -204,11 +204,13 @@ if (use.fuzzer) {
       "fuzzers/u2fhid_fuzzer.cc",
       "u2f_apdu.cc",
       "u2fhid.cc",
+      "util.cc",
     ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
+    pkg_deps = [ "openssl" ]
   }
 
   executable("u2f_msg_handler_fuzzer") {
