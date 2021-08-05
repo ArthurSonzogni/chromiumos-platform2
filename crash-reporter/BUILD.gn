@@ -5,6 +5,15 @@
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
+shared_defines = [
+  "USE_DIRENCRYPTION=${use.direncryption}",
+  "USE_KVM_GUEST=${use.kvm_guest}",
+  "USE_ARCPP=${use.arcpp}",
+  "USE_ARCVM=${use.arcvm}",
+  "USE_KVM_GUEST=${use.kvm_guest}",
+  "USE_CHROMELESS_TTY=${use.chromeless_tty}",
+]
+
 group("all") {
   deps = [
     ":anomaly_detector",
@@ -51,7 +60,7 @@ static_library("libcrash") {
     "vm_support.cc",
   ]
   all_dependent_configs = [ ":libcrash_config" ]
-  defines = [ "USE_DIRENCRYPTION=${use.direncryption}" ]
+  defines = shared_defines
 
   if (use.direncryption) {
     libs = [ "keyutils" ]
@@ -90,10 +99,7 @@ static_library("libcrash_reporter") {
     "vm_collector.cc",
   ]
   all_dependent_configs = [ ":libcrash_reporter_config" ]
-  defines = [
-    "USE_DIRENCRYPTION=${use.direncryption}",
-    "USE_KVM_GUEST=${use.kvm_guest}",
-  ]
+  defines = shared_defines
   libs = [ "policy" ]
   deps = [ "//common-mk/external_dependencies:policy-protos" ]
 
@@ -143,11 +149,7 @@ proto_library("crash_reporter_proto") {
 executable("crash_reporter") {
   sources = [ "crash_reporter.cc" ]
   configs += [ ":crash_reporter_config" ]
-  defines = [
-    "USE_ARCPP=${use.arcpp}",
-    "USE_ARCVM=${use.arcvm}",
-    "USE_KVM_GUEST=${use.kvm_guest}",
-  ]
+  defines = shared_defines
   deps = [
     ":crash_reporter_proto",
     ":libcrash",
@@ -183,7 +185,7 @@ static_library("libcrash_sender") {
     "crash_sender_util.cc",
   ]
   all_dependent_configs = [ ":libcrash_sender_config" ]
-  defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
+  defines = shared_defines
   deps = [ ":crash_sender_proto" ]
 }
 
@@ -389,10 +391,7 @@ if (use.test) {
       "//common-mk:test",
       ":crash_reporter_test_config",
     ]
-    defines = [
-      "USE_KVM_GUEST=${use.kvm_guest}",
-      "USE_CHROMELESS_TTY=${use.chromeless_tty}",
-    ]
+    defines = shared_defines
     deps = [
       ":crash_reporter_proto",
       ":crash_serializer_proto",
