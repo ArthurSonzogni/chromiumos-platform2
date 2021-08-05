@@ -108,7 +108,7 @@ base::Optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
     }
     const auto* model = device.FindStringKey("ModelNumber");
     if (model) {
-      result.SetStringKey("storage_model", *model);
+      result.SetStringKey("nvme_model", *model);
     }
     break;
   }
