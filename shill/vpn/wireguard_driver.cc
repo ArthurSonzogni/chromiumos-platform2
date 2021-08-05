@@ -176,6 +176,13 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
   return std::string{buf, std::string::size_type{kWgBase64KeyLength}};
 }
 
+// Checks if the input string value for a property contains any invalid
+// characters which can pollute the config file. Currently only '\n' is checked,
+// which may generate a new parsable line.
+bool ValidateInputString(const std::string& value) {
+  return value.find('\n') == value.npos;
+}
+
 }  // namespace
 
 // static
@@ -426,6 +433,10 @@ bool WireGuardDriver::GenerateConfigFile() {
   lines.push_back("[Interface]");
   const std::string private_key =
       args()->Lookup<std::string>(kWireGuardPrivateKey, "");
+  if (!ValidateInputString(private_key)) {
+    LOG(ERROR) << "PrivateKey contains invalid characters.";
+    return false;
+  }
   if (private_key.empty()) {
     LOG(ERROR) << "PrivateKey is required but is empty or not set.";
     return false;
@@ -442,6 +453,10 @@ bool WireGuardDriver::GenerateConfigFile() {
     lines.push_back("[Peer]");
     for (const auto& property : kPeerProperties) {
       const std::string val = peer[property.name];
+      if (!ValidateInputString(val)) {
+        LOG(ERROR) << property.name << " contains invalid characters.";
+        return false;
+      }
       if (!val.empty()) {
         lines.push_back(base::StrCat({property.name, "=", val}));
       } else if (property.is_required) {
