@@ -3127,6 +3127,9 @@ void AttestationService::SignEnterpriseChallengeTask(
   }
   key_info.set_device_id(request.device_id());
 
+  if (request.has_device_trust_signals())
+    *key_info.mutable_device_trust_signals() = request.device_trust_signals();
+
   base::Optional<CertifiedKey> key_for_certificate_and_spkac;
   if (is_user_specific) {
     // Always include the EUK certificate if an EUK is being challenged.
