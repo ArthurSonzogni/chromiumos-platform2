@@ -1154,7 +1154,10 @@ int ClobberState::Run() {
   }
 
   // Try to mount encrypted stateful to save some files from there.
-  bool encrypted_stateful_mounted = MountEncryptedStateful();
+  bool encrypted_stateful_mounted = false;
+
+  encrypted_stateful_mounted =
+      USE_ENCRYPTED_STATEFUL && MountEncryptedStateful();
 
   if (args_.safe_wipe) {
     IncrementFileCounter(stateful_.Append(kPowerWashCountPath));

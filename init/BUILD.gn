@@ -25,7 +25,10 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  defines = [ "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}" ]
+  defines = [
+    "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
+    "USE_ENCRYPTED_STATEFUL=${use.encrypted_stateful}",
+  ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
