@@ -27,7 +27,6 @@ class SystemMounter : public Mounter {
 
   ~SystemMounter() override;
 
-  const std::string& filesystem_type() const { return filesystem_type_; }
   bool read_only() const { return (flags_ & MS_RDONLY) == MS_RDONLY; }
   const std::vector<std::string>& options() const { return options_; }
 
