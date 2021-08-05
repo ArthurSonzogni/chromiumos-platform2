@@ -42,8 +42,8 @@ namespace policy {
 const int kMaxRollbackAllowedMilestones = 4;
 
 namespace {
-const char kPolicyPath[] = "/var/lib/whitelist/policy";
-const char kPublicKeyPath[] = "/var/lib/whitelist/owner.key";
+const char kPolicyPath[] = "/var/lib/devicesettings/policy";
+const char kPublicKeyPath[] = "/var/lib/devicesettings/owner.key";
 
 // Reads the public key used to sign the policy from |key_file| and stores it
 // in |public_key|. Returns true on success.
