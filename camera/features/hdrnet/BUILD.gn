@@ -11,10 +11,13 @@ pkg_config("target_defaults") {
     "libcros_camera_android_deps",
     "libsync",
   ]
-  defines = [ "USE_IPU6EP=${use.ipu6ep}" ]
+  defines = [
+    "USE_IPU6=${use.ipu6}",
+    "USE_IPU6EP=${use.ipu6ep}",
+  ]
 }
 
-if (use.ipu6ep) {
+if (use.ipu6 || use.ipu6ep) {
   cc_embed_data("embedded_hdrnet_processor_shaders_ipu6") {
     sources = [
       "//camera/features/hdrnet/shaders/postprocess_ipu6.frag",
@@ -44,7 +47,7 @@ source_set("hdrnet") {
   public_deps = [ "//camera/gpu" ]
   deps = [ "//camera/gpu:image_processor" ]
 
-  if (use.ipu6ep) {
+  if (use.ipu6 || use.ipu6ep) {
     sources += [
       "//camera/features/hdrnet/hdrnet_ae_device_adapter_ipu6.cc",
       "//camera/features/hdrnet/hdrnet_processor_device_adapter_ipu6.cc",

@@ -77,6 +77,7 @@ _IUSE = [
     'hwid_override',
     'iioservice',
     'intel_oemcrypto',
+    'ipu6',
     'ipu6ep',
     'ipu6se',
     'iwlwifi_dump',
