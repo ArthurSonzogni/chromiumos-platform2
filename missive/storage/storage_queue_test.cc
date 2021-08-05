@@ -100,6 +100,7 @@ class MockUploadClient : public ::testing::NiceMock<UploaderInterface> {
     if (!generation_id_.has_value()) {
       generation_id_ = sequencing_information.generation_id();
     }
+
     // Verify compression information is enabled or disabled.
     if (CompressionModule::is_enabled()) {
       EXPECT_TRUE(encrypted_record.has_compression_information());
@@ -562,6 +563,59 @@ TEST_P(StorageQueueTest,
   task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
 }
 
+TEST_P(
+    StorageQueueTest,
+    WriteIntoNewStorageQueueReopenWithMissingLastMetadataWriteMoreAndUpload) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
+  WriteStringOrDie(kData[0]);
+  WriteStringOrDie(kData[1]);
+  WriteStringOrDie(kData[2]);
+
+  // Save copy of options.
+  const QueueOptions options = storage_queue_->options();
+
+  ResetTestStorageQueue();
+
+  // Delete all metadata files.
+  base::FileEnumerator dir_enum(options.directory(),
+                                /*recursive=*/false,
+                                base::FileEnumerator::FILES,
+                                base::StrCat({METADATA_NAME, ".2"}));
+  base::FilePath full_name = dir_enum.Next();
+  ASSERT_FALSE(full_name.empty());
+  base::DeleteFile(full_name);
+  ASSERT_TRUE(dir_enum.Next().empty());
+
+  // Reopen, starting a new generation.
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
+  WriteStringOrDie(kMoreData[0]);
+  WriteStringOrDie(kMoreData[1]);
+  WriteStringOrDie(kMoreData[2]);
+
+  // Set uploader expectations. Previous data is all lost.
+  test::TestCallbackAutoWaiter waiter;
+  EXPECT_CALL(set_mock_uploader_expectations_, Call(NotNull()))
+      .WillOnce(Invoke([&waiter](MockUploadClient* mock_upload_client) {
+        MockUploadClient::SetUp(mock_upload_client, &waiter)
+            .Required(0, kMoreData[0])
+            .Required(1, kMoreData[1])
+            .Required(2, kMoreData[2]);
+        return Status::StatusOK();
+      }))
+      .WillRepeatedly(Invoke(&DoNotUpload));
+
+  // Trigger upload.
+  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
+}
+
+// TODO(crbug.com/1194878) - Test is flaky on CrOS and Linux.
+#if defined(OS_CHROMEOS) || defined(OS_LINUX)
+#define MAYBE_WriteIntoNewStorageQueueReopenWithMissingDataWriteMoreAndUpload \
+  DISABLED_WriteIntoNewStorageQueueReopenWithMissingDataWriteMoreAndUpload
+#else
+#define MAYBE_WriteIntoNewStorageQueueReopenWithMissingDataWriteMoreAndUpload \
+  WriteIntoNewStorageQueueReopenWithMissingDataWriteMoreAndUpload
+#endif
 TEST_P(StorageQueueTest,
        WriteIntoNewStorageQueueReopenWithMissingDataWriteMoreAndUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
