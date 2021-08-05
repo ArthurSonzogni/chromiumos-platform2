@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/fake_message_loop.h>
@@ -15,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/login_metrics.h"
 #include "login_manager/mock_process_manager_service.h"
 
 using ::base::TimeDelta;
@@ -38,8 +40,13 @@ class LivenessCheckerImplTest : public ::testing::Test {
     manager_.reset(new StrictMock<MockProcessManagerService>);
     object_proxy_ =
         new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/fake/path"));
+
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    metrics_.reset(new LoginMetrics(tmpdir_.GetPath()));
+
     checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
-                                           true, TimeDelta::FromSeconds(10)));
+                                           true, TimeDelta::FromSeconds(10),
+                                           metrics_.get()));
   }
 
   void ExpectUnAckedLivenessPing() {
@@ -71,6 +78,9 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
   std::unique_ptr<LivenessCheckerImpl> checker_;
 
+  base::ScopedTempDir tmpdir_;
+  std::unique_ptr<LoginMetrics> metrics_;
+
  private:
   void Respond(dbus::MethodCall* method_call,
                int timeout_ms,
@@ -96,7 +106,8 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
                                          false,  // Disable aborting
-                                         TimeDelta::FromSeconds(10)));
+                                         TimeDelta::FromSeconds(10),
+                                         metrics_.get()));
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!
   checker_->CheckAndSendLivenessPing(TimeDelta::FromSeconds(1));

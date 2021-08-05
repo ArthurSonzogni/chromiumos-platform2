@@ -19,6 +19,7 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
+class LoginMetrics;
 class ProcessManagerServiceInterface;
 
 // An implementation of LivenessChecker that pings a service (owned by Chrome)
@@ -32,7 +33,8 @@ class LivenessCheckerImpl : public LivenessChecker {
   LivenessCheckerImpl(ProcessManagerServiceInterface* manager,
                       dbus::ObjectProxy* dbus_proxy,
                       bool enable_aborting,
-                      base::TimeDelta interval);
+                      base::TimeDelta interval,
+                      LoginMetrics* metrics);
   LivenessCheckerImpl(const LivenessCheckerImpl&) = delete;
   LivenessCheckerImpl& operator=(const LivenessCheckerImpl&) = delete;
 
@@ -66,6 +68,8 @@ class LivenessCheckerImpl : public LivenessChecker {
   const base::TimeDelta interval_;
   bool last_ping_acked_ = true;
   base::CancelableClosure liveness_check_;
+  base::TimeTicks ping_sent_;
+  LoginMetrics* metrics_ = nullptr;
   base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_{this};
 };
 }  // namespace login_manager

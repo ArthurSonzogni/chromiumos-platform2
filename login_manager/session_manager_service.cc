@@ -216,9 +216,9 @@ bool SessionManagerService::Initialize() {
   dbus::ObjectProxy* liveness_proxy =
       bus_->GetObjectProxy(chromeos::kLivenessServiceName,
                            dbus::ObjectPath(chromeos::kLivenessServicePath));
-  liveness_checker_.reset(new LivenessCheckerImpl(this, liveness_proxy,
-                                                  enable_browser_abort_on_hang_,
-                                                  liveness_checking_interval_));
+  liveness_checker_.reset(new LivenessCheckerImpl(
+      this, liveness_proxy, enable_browser_abort_on_hang_,
+      liveness_checking_interval_, login_metrics_));
 
 #if USE_ARC_ADB_SIDELOADING
   boot_lockbox_dbus_proxy_ = bus_->GetObjectProxy(

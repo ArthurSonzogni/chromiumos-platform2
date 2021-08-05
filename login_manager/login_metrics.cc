@@ -54,6 +54,8 @@ const char kLoginMountNamespaceMetric[] = "Login.MountNamespaceCreationSuccess";
 const char kSwitchToFeatureFlagMappingStatus[] =
     "Login.SwitchToFeatureFlagMappingStatus";
 
+const char kLivenessPingResponseTimeMetric[] =
+    "ChromeOS.Liveness.PingResponseTime";
 }  // namespace
 
 // static
@@ -181,6 +183,14 @@ void LoginMetrics::SendSwitchToFeatureFlagMappingStatus(
       kSwitchToFeatureFlagMappingStatus, static_cast<int>(status),
       static_cast<int>(
           SwitchToFeatureFlagMappingStatus::NUM_SWITCHES_STATUSES));
+}
+
+void LoginMetrics::SendLivenessPingResponseTime(base::TimeDelta response_time) {
+  metrics_lib_.SendToUMA(
+      kLivenessPingResponseTimeMetric,
+      static_cast<int>(response_time.InMilliseconds()),
+      static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
+      static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
 }
 
 void LoginMetrics::ReportCrosEvent(const std::string& event) {

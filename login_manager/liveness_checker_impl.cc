@@ -24,6 +24,7 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "login_manager/login_metrics.h"
 #include "login_manager/process_manager_service_interface.h"
 
 namespace login_manager {
@@ -32,11 +33,13 @@ LivenessCheckerImpl::LivenessCheckerImpl(
     ProcessManagerServiceInterface* manager,
     dbus::ObjectProxy* dbus_proxy,
     bool enable_aborting,
-    base::TimeDelta interval)
+    base::TimeDelta interval,
+    LoginMetrics* metrics)
     : manager_(manager),
       dbus_proxy_(dbus_proxy),
       enable_aborting_(enable_aborting),
-      interval_(interval) {}
+      interval_(interval),
+      metrics_(metrics) {}
 
 LivenessCheckerImpl::~LivenessCheckerImpl() {
   Stop();
@@ -97,6 +100,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
 
   DVLOG(1) << "Sending a liveness ping to the browser.";
   last_ping_acked_ = false;
+  ping_sent_ = base::TimeTicks::Now();
   dbus::MethodCall ping(chromeos::kLivenessServiceInterface,
                         chromeos::kLivenessServiceCheckLivenessMethod);
   dbus_proxy_->CallMethod(&ping, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
@@ -113,6 +117,10 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
 
 void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
   last_ping_acked_ = (response != nullptr);
+  if (response != nullptr) {
+    base::TimeDelta ping_response_time = base::TimeTicks::Now() - ping_sent_;
+    metrics_->SendLivenessPingResponseTime(ping_response_time);
+  }
 }
 
 }  // namespace login_manager

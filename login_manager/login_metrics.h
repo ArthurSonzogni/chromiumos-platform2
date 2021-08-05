@@ -158,6 +158,10 @@ class LoginMetrics {
   virtual void SendSwitchToFeatureFlagMappingStatus(
       SwitchToFeatureFlagMappingStatus status);
 
+  // Submits to UMA the time it took for a response to be received after a
+  // liveness ping was sent.
+  virtual void SendLivenessPingResponseTime(base::TimeDelta response_time);
+
   // CrOS events are translated to an enum and reported to the generic
   // "Platform.CrOSEvent" enum histogram. The |event| string must be registered
   // in metrics/metrics_library.cc:kCrosEventNames.
