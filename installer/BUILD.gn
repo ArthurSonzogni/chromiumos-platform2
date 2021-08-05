@@ -7,7 +7,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [ ":cros_installer" ]
   if (!use.cros_host) {
-    deps += [ ":evwaitkey" ]
+    deps += [
+      ":cros_oobe_crypto",
+      ":evwaitkey",
+    ]
   }
   if (use.mtd) {
     deps += [ ":nand_partition" ]
@@ -60,6 +63,18 @@ executable("cros_installer") {
 executable("evwaitkey") {
   sources = [ "util/evwaitkey.c" ]
   configs += [ ":target_defaults" ]
+}
+
+pkg_config("cros_oobe_crypto_config") {
+  pkg_deps = [ "libcrypto" ]
+}
+
+executable("cros_oobe_crypto") {
+  sources = [ "util/cros_oobe_crypto.c" ]
+  configs += [
+    ":cros_oobe_crypto_config",
+    ":target_defaults",
+  ]
 }
 
 if (use.mtd) {
