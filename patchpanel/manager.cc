@@ -38,6 +38,8 @@
 namespace patchpanel {
 namespace {
 constexpr int kSubprocessRestartDelayMs = 900;
+// Delay to restart IPv6 in a namespace to trigger SLAAC in the kernel.
+constexpr int kIPv6RestartDelayMs = 300;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns nullptr, an empty response is
@@ -377,6 +379,14 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     nsinfo.tracked_outbound_ifname = new_device.ifname;
     StartForwarding(new_device.ifname, nsinfo.host_ifname,
                     ForwardingSet{.ipv6 = true});
+
+    // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
+    // kernel to send RS. Add a delay for the forwarding to be set up.
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                       nsinfo.netns_name),
+        base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
   }
 }
 
@@ -402,6 +412,26 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
     nsinfo.tracked_outbound_ifname = new_device.ifname;
     StartForwarding(new_device.ifname, nsinfo.host_ifname,
                     ForwardingSet{.ipv6 = true});
+
+    // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
+    // kernel to send RS. Add a delay for the forwarding to be set up.
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                       nsinfo.netns_name),
+        base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
+  }
+}
+
+void Manager::RestartIPv6(const std::string& netns_name) {
+  auto ns = ScopedNS::EnterNetworkNS(netns_name);
+  if (!ns) {
+    LOG(ERROR) << "Invalid namespace name " << netns_name;
+    return;
+  }
+
+  if (datapath_) {
+    datapath_->RestartIPv6();
   }
 }
 
@@ -428,6 +458,11 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
       }
       StartForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
                       ForwardingSet{.ipv6 = true});
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                         nsinfo.netns_name),
+          base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
     }
     datapath_->StartConnectionPinning(ifname);
     ShillClient::Device shill_device;
@@ -1205,6 +1240,11 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   // Start forwarding for IPv6.
   StartForwarding(nsinfo.tracked_outbound_ifname, nsinfo.host_ifname,
                   ForwardingSet{.ipv6 = true});
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                     nsinfo.netns_name),
+      base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
 
   // Store ConnectedNamespace
   connected_namespaces_next_id_++;

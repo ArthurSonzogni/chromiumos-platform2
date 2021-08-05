@@ -23,6 +23,7 @@
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
+#include "patchpanel/scoped_ns.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"
 
@@ -161,6 +162,9 @@ class Datapath {
                                uint32_t remote_ipv4_addr,
                                uint32_t remote_ipv4_prefix_len,
                                bool remote_multicast_flag);
+
+  // Disable and re-enable IPv6.
+  virtual void RestartIPv6();
 
   virtual void RemoveInterface(const std::string& ifname);
 

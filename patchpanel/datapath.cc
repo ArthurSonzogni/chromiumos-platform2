@@ -28,7 +28,6 @@
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
-#include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
 
@@ -661,6 +660,15 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
   }
 
   return true;
+}
+
+void Datapath::RestartIPv6() {
+  if (!system_->SysNetSet(System::SysNet::IPv6Disable, "1")) {
+    LOG(ERROR) << "Failed to disable IPv6";
+  }
+  if (!system_->SysNetSet(System::SysNet::IPv6Disable, "0")) {
+    LOG(ERROR) << "Failed to re-enable IPv6";
+  }
 }
 
 bool Datapath::AddVirtualInterfacePair(const std::string& netns_name,

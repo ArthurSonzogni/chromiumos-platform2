@@ -194,6 +194,9 @@ class Manager final : public brillo::DBusDaemon {
   bool RedirectDns(base::ScopedFD client_fd,
                    const patchpanel::SetDnsRedirectionRuleRequest& request);
 
+  // Disable and re-enable IPv6 inside a namespace.
+  void RestartIPv6(const std::string& netns_name);
+
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 

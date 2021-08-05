@@ -41,6 +41,8 @@ class System {
     IPv6Forward,
     // Used for enabling netfilter connection tracking helper modules.
     ConntrackHelper,
+    // Used for modifying "net.ipv6.conf.all.disable_ipv6"
+    IPv6Disable,
   };
 
   System() = default;

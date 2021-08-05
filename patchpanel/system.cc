@@ -26,6 +26,9 @@ constexpr const char kSysNetIPv4ForwardingPath[] =
 // /proc/sys path for controlling connection tracking helper modules
 constexpr const char kSysNetConntrackHelperPath[] =
     "/proc/sys/net/netfilter/nf_conntrack_helper";
+// Enables/Disables IPv6.
+constexpr const char kSysNetDisableIPv6Path[] =
+    "/proc/sys/net/ipv6/conf/all/disable_ipv6";
 // Prefix for IPv4 interface configuration.
 constexpr const char kSysNetIPv4ConfPrefix[] = "/proc/sys/net/ipv4/conf/";
 // Suffix for allowing localhost as a source or destination when routing IPv4.
@@ -89,6 +92,8 @@ bool System::SysNetSet(SysNet target,
                    content);
     case ConntrackHelper:
       return Write(kSysNetConntrackHelperPath, content);
+    case SysNet::IPv6Disable:
+      return Write(kSysNetDisableIPv6Path, content);
     default:
       LOG(ERROR) << "Unknown SysNet value " << target;
       return false;
