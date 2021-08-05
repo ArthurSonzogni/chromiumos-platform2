@@ -11,6 +11,7 @@
 #include <sync/sync.h>
 
 #include "camera3_test/camera3_perf_log.h"
+#include "cros-camera/common.h"
 
 namespace camera3_test {
 
@@ -182,9 +183,10 @@ int Camera3DeviceImpl::WaitShutter(const struct timespec& timeout) {
     return -ENODEV;
   }
   if (!process_capture_result_cb_.is_null()) {
-    LOG(ERROR) << "Test has registered its own process_capture_result callback "
-                  "function and thus must provide its own "
-               << __func__;
+    LOGF(ERROR)
+        << "Test has registered its own process_capture_result callback "
+           "function and thus must provide its own "
+        << __func__;
     return -EINVAL;
   }
   return sem_timedwait(&shutter_sem_, &timeout);
@@ -195,9 +197,10 @@ int Camera3DeviceImpl::WaitCaptureResult(const struct timespec& timeout) {
     return -ENODEV;
   }
   if (!process_capture_result_cb_.is_null()) {
-    LOG(ERROR) << "Test has registered its own process_capture_result callback "
-                  "function and thus must provide its own "
-               << __func__;
+    LOGF(ERROR)
+        << "Test has registered its own process_capture_result callback "
+           "function and thus must provide its own "
+        << __func__;
     return -EINVAL;
   }
   return sem_timedwait(&capture_result_sem_, &timeout);
@@ -213,7 +216,7 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
                                            int* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   if (initialized_) {
-    LOG(ERROR) << "Device " << cam_id_ << " is already initialized";
+    LOGF(ERROR) << "Device " << cam_id_ << " is already initialized";
     *result = -EINVAL;
     return;
   }
@@ -419,7 +422,7 @@ void Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread(
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it->height, it->format,
         it->usage);
     if (!buffer) {
-      LOG(ERROR) << "Gralloc allocation fails";
+      LOGF(ERROR) << "Gralloc allocation fails";
       *result = -ENOMEM;
       return;
     }
@@ -696,7 +699,7 @@ int Camera3DeviceImpl::GetOutputStreamBufferHandles(
     if (!output_buffer.buffer ||
         stream_buffer_map_.find(output_buffer.stream) ==
             stream_buffer_map_.end()) {
-      LOG(ERROR) << "Failed to find configured stream or buffer is invalid";
+      LOGF(ERROR) << "Failed to find configured stream or buffer is invalid";
       return -EINVAL;
     }
 
@@ -709,7 +712,7 @@ int Camera3DeviceImpl::GetOutputStreamBufferHandles(
       unique_buffers->push_back(std::move(*it));
       stream_buffers->erase(it);
     } else {
-      LOG(ERROR) << "Failed to find output buffer";
+      LOGF(ERROR) << "Failed to find output buffer";
       return -EINVAL;
     }
   }

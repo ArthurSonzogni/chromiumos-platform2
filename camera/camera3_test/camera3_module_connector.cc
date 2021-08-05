@@ -22,6 +22,7 @@
 
 #include "camera/mojo/unguessable_token.mojom.h"
 #include "camera3_test/camera3_device_connector.h"
+#include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"

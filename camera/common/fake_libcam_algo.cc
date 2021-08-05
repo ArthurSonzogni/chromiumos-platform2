@@ -14,6 +14,7 @@
 
 #include "common/libcab_test_internal.h"
 #include "cros-camera/camera_algorithm.h"
+#include "cros-camera/common.h"
 #include "cros-camera/future.h"
 
 namespace libcab_test {

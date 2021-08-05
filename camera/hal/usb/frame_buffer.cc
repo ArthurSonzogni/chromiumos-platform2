@@ -69,8 +69,8 @@ bool SharedFrameBuffer::Reallocate(uint32_t width,
   (*frame)->SetHeight(height);
   size_t data_size = ImageProcessor::GetConvertedSize(**frame);
   if (data_size == 0 || (*frame)->SetDataSize(data_size) != 0) {
-    LOG(ERROR) << "Set data size failed: " << width << "x" << height << " "
-               << FormatToString(fourcc) << ", " << data_size;
+    LOGF(ERROR) << "Set data size failed: " << width << "x" << height << " "
+                << FormatToString(fourcc) << ", " << data_size;
     return false;
   }
   return true;

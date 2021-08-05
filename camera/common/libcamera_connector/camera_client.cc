@@ -65,8 +65,8 @@ base::flat_set<int32_t> GetAvailableFramerates(
   if (available_fps_ranges.empty()) {
     // If there is no available target fps ranges listed in metadata, we set a
     // default fps as candidate.
-    LOG(WARNING) << "No available fps ranges in metadata. Set default fps as "
-                    "candidate.";
+    LOGF(WARNING) << "No available fps ranges in metadata. Set default fps as "
+                     "candidate.";
     candidates.insert(kDefaultFps);
     return candidates;
   }

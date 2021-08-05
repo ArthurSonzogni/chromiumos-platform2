@@ -14,6 +14,8 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "cros-camera/common.h"
+
 namespace camera3_test {
 
 void Camera3StillCaptureFixture::SetUp() {

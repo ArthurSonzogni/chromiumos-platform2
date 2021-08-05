@@ -7,6 +7,7 @@
 #include "features/zsl/zsl_stream_manipulator.h"
 
 #include "cros-camera/camera_metadata_utils.h"
+#include "cros-camera/common.h"
 
 namespace cros {
 

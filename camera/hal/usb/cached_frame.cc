@@ -228,7 +228,7 @@ int CachedFrame::Convert(
       return ret;
   } else {
     if (nv12_frame->Map()) {
-      LOG(ERROR) << "Failed to map frame";
+      LOGF(ERROR) << "Failed to map frame";
       return -EINVAL;
     }
     int ret = image_processor_->ConvertFormat(in_frame, nv12_frame);
@@ -262,7 +262,7 @@ int CachedFrame::Convert(
       continue;
     }
     if (out_frames[i]->Map()) {
-      LOG(ERROR) << "Failed to map frame";
+      LOGF(ERROR) << "Failed to map frame";
       (*out_frame_status)[i] = -EINVAL;
       continue;
     }
@@ -315,7 +315,7 @@ int CachedFrame::ConvertFromNV12(
         return -EINVAL;
       }
       if (temp_nv12_frame2_->Map()) {
-        LOG(ERROR) << "Failed to map frame";
+        LOGF(ERROR) << "Failed to map frame";
         return -EINVAL;
       }
       int ret =
@@ -357,7 +357,7 @@ int CachedFrame::DecodeToNV12(const FrameBuffer& in_frame,
   // SW decoding. If this fails, the input frame is likely invalid. Return
   // -EAGAIN so HAL can skip this frame.
   if (out_frame->Map()) {
-    LOG(ERROR) << "Failed to map frame";
+    LOGF(ERROR) << "Failed to map frame";
     return -EINVAL;
   }
   if (!SharedFrameBuffer::Reallocate(in_frame.GetWidth(), in_frame.GetHeight(),
@@ -401,7 +401,7 @@ int CachedFrame::DecodeByJDA(const FrameBuffer& in_frame,
   // TODO(kamesan): simplify the map/unmap logics when we figure out a proper
   // way to sync mapped addresses (probably inside JDA implementation).
   if (out_frame->Unmap()) {
-    LOG(ERROR) << "Failed to unmap frame";
+    LOGF(ERROR) << "Failed to unmap frame";
     return -EINVAL;
   }
   // TODO(kamesan): pass the buffer offset from V4L2 to here.
@@ -411,7 +411,7 @@ int CachedFrame::DecodeByJDA(const FrameBuffer& in_frame,
   switch (error) {
     case JpegDecodeAccelerator::Error::NO_ERRORS:
       if (out_frame->Map()) {
-        LOG(ERROR) << "Failed to map frame";
+        LOGF(ERROR) << "Failed to map frame";
         return -EINVAL;
       }
       return 0;

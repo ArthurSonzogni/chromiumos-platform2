@@ -19,7 +19,6 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
@@ -31,6 +30,7 @@
 
 #include "common/camera_buffer_handle.h"
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
 #include "cros-camera/utils/camera_config.h"
@@ -786,7 +786,7 @@ bool CameraDeviceAdapter::AllocateBuffersForStreams(
       status = find_camera_metadata_ro_entry(static_info_,
                                              ANDROID_JPEG_MAX_SIZE, &entry);
       if (status) {
-        LOG(ERROR) << "No Jpeg max size information in metadata.";
+        LOGF(ERROR) << "No Jpeg max size information in metadata.";
         return false;
       }
       buffer_width = entry.data.i32[0];

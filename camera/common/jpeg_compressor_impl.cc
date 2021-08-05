@@ -405,7 +405,7 @@ bool JpegCompressorImpl::EncodeHwLegacy(const uint8_t* input_buffer,
       static_cast<uint32_t>(out_buffer_size), out_data_size);
   if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
     // There might be some mojo errors. We will give a second try.
-    LOG(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
+    LOGF(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
     hw_encoder_started_ = hw_encoder_->Start();
     if (hw_encoder_started_) {
       status = hw_encoder_->EncodeSync(
@@ -494,10 +494,10 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
   base::ElapsedTimer timer;
   if (input_handle == nullptr || output_handle == nullptr) {
     if (input_handle == nullptr) {
-      LOG(INFO) << "Input handle is nullptr.";
+      LOGF(INFO) << "Input handle is nullptr.";
     }
     if (output_handle == nullptr) {
-      LOG(INFO) << "Output handle is nullptr.";
+      LOGF(INFO) << "Output handle is nullptr.";
     }
     return false;
   }
@@ -511,7 +511,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
   uint32_t input_num_planes =
       cros::CameraBufferManager::GetNumPlanes(input_handle);
   if (input_num_planes == 0) {
-    LOG(INFO) << "Input buffer handle is invalid.";
+    LOGF(INFO) << "Input buffer handle is invalid.";
     return false;
   } else {
     for (int i = 0; i < input_num_planes; i++) {
@@ -528,7 +528,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
   uint32_t output_num_planes =
       cros::CameraBufferManager::GetNumPlanes(output_handle);
   if (output_num_planes == 0) {
-    LOG(INFO) << "Output buffer handle is invalid.";
+    LOGF(INFO) << "Output buffer handle is invalid.";
     return false;
   } else {
     for (int i = 0; i < output_num_planes; i++) {
@@ -550,7 +550,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
   }
 
   if (!hw_encoder_ || !hw_encoder_started_) {
-    LOG(INFO) << "Hw encoder is not started";
+    LOGF(INFO) << "Hw encoder is not started";
     return false;
   }
 
@@ -560,7 +560,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
                                        app1_size, width, height, out_data_size);
   if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
     // There might be some mojo errors. We will give a second try.
-    LOG(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
+    LOGF(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
     hw_encoder_started_ = hw_encoder_->Start();
     if (hw_encoder_started_) {
       status = hw_encoder_->EncodeSync(input_format, std::move(input_planes),

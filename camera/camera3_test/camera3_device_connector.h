@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/threading/thread_checker.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

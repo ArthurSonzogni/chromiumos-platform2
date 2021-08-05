@@ -13,7 +13,6 @@
 #include <tuple>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <cros-camera/camera_thread.h>
 #include <gtest/gtest.h>

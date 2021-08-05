@@ -20,6 +20,7 @@
 
 #include "camera3_test/camera3_module_connector.h"
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
 

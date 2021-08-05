@@ -22,6 +22,7 @@
 #include <libyuv.h>
 
 #include "camera3_test/camera3_perf_log.h"
+#include "cros-camera/common.h"
 
 namespace camera3_test {
 
@@ -152,7 +153,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
     void* buf_addr = nullptr;
     if (gralloc->Lock(handle, 0, 0, 0, jpeg_max_size, 1, &buf_addr) != 0 ||
         !buf_addr) {
-      LOG(ERROR) << "Failed to lock input buffer";
+      LOGF(ERROR) << "Failed to lock input buffer";
       return ScopedImage(nullptr);
     }
     auto jpeg_blob = reinterpret_cast<camera3_jpeg_blob_t*>(
@@ -161,7 +162,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
     if (static_cast<void*>(jpeg_blob) < buf_addr ||
         jpeg_blob->jpeg_blob_id != CAMERA3_JPEG_BLOB_ID) {
       gralloc->Unlock(handle);
-      LOG(ERROR) << "Invalid JPEG BLOB ID";
+      LOGF(ERROR) << "Invalid JPEG BLOB ID";
       return ScopedImage(nullptr);
     }
     if ((format == ImageFormat::IMAGE_FORMAT_I420 &&
@@ -176,7 +177,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
                             jpeg_blob->jpeg_size, out_buffer->planes[0].addr,
                             out_buffer->planes[0].stride, width, height, width,
                             height) != 0)) {
-      LOG(ERROR) << "Failed to convert image from JPEG";
+      LOGF(ERROR) << "Failed to convert image from JPEG";
       out_buffer.reset();
     }
     gralloc->Unlock(handle);
@@ -184,7 +185,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
     struct android_ycbcr in_ycbcr_info;
     if (gralloc->LockYCbCr(handle, 0, 0, 0, width, height, &in_ycbcr_info) !=
         0) {
-      LOG(ERROR) << "Failed to lock input buffer";
+      LOGF(ERROR) << "Failed to lock input buffer";
       return ScopedImage(nullptr);
     }
     uint32_t v4l2_format =
@@ -206,7 +207,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
                  static_cast<uint8_t*>(in_ycbcr_info.cb), in_ycbcr_info.cstride,
                  out_buffer->planes[0].addr, out_buffer->planes[0].stride,
                  width, height) != 0)) {
-          LOG(ERROR) << "Failed to convert image from NV12";
+          LOGF(ERROR) << "Failed to convert image from NV12";
           out_buffer.reset();
         }
         break;
@@ -226,7 +227,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
                  static_cast<uint8_t*>(in_ycbcr_info.cr), in_ycbcr_info.cstride,
                  out_buffer->planes[0].addr, out_buffer->planes[0].stride,
                  width, height) != 0)) {
-          LOG(ERROR) << "Failed to convert image from NV21";
+          LOGF(ERROR) << "Failed to convert image from NV21";
           out_buffer.reset();
         }
         break;
@@ -250,7 +251,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
                  static_cast<uint8_t*>(in_ycbcr_info.cr), in_ycbcr_info.cstride,
                  out_buffer->planes[0].addr, out_buffer->planes[0].stride,
                  width, height) != 0)) {
-          LOG(ERROR) << "Failed to convert image from YUV420 or YVU420";
+          LOGF(ERROR) << "Failed to convert image from YUV420 or YVU420";
           out_buffer.reset();
         }
         break;
@@ -271,12 +272,12 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImageAndRotate(
     int32_t rotation) {
   ScopedImage image = ConvertToImage(std::move(buffer), width, height, format);
   if (image == nullptr) {
-    LOG(ERROR) << "Failed to convert image before rotate";
+    LOGF(ERROR) << "Failed to convert image before rotate";
     return image;
   }
   if (format != ImageFormat::IMAGE_FORMAT_I420) {
-    LOG(ERROR) << "Do not support rotate image with format: "
-               << static_cast<int>(format);
+    LOGF(ERROR) << "Do not support rotate image with format: "
+                << static_cast<int>(format);
     return image;
   }
 
@@ -394,7 +395,7 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::CropRotateScale(
       rotation_mode = libyuv::RotationMode::kRotate270;
       break;
     default:
-      LOG(ERROR) << "Invalid rotation degree: " << rotation_degrees;
+      LOGF(ERROR) << "Invalid rotation degree: " << rotation_degrees;
       return nullptr;
   }
   int cropped_width;
@@ -497,7 +498,7 @@ double Camera3FrameFixture::ComputeSsim(const Image& buffer_a,
 void GetTimeOfTimeout(int32_t ms, struct timespec* ts) {
   memset(ts, 0, sizeof(*ts));
   if (clock_gettime(CLOCK_REALTIME, ts)) {
-    LOG(ERROR) << "Failed to get clock time";
+    LOGF(ERROR) << "Failed to get clock time";
   }
   ts->tv_sec += ms / 1000;
   ts->tv_nsec += (ms % 1000) * 1000;

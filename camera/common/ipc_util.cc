@@ -114,20 +114,20 @@ bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
 
   // Delete any old FS instances.
   if (unlink(socket_name.c_str()) < 0 && errno != ENOENT) {
-    PLOG(ERROR) << "unlink " << socket_name;
+    PLOGF(ERROR) << "unlink " << socket_name;
     return false;
   }
 
   // Bind the socket.
   if (bind(fd.get(), reinterpret_cast<const sockaddr*>(&unix_addr),
            unix_addr_len) < 0) {
-    PLOG(ERROR) << "bind " << socket_path.value();
+    PLOGF(ERROR) << "bind " << socket_path.value();
     return false;
   }
 
   // Start listening on the socket.
   if (listen(fd.get(), SOMAXCONN) < 0) {
-    PLOG(ERROR) << "listen " << socket_path.value();
+    PLOGF(ERROR) << "listen " << socket_path.value();
     unlink(socket_name.c_str());
     return false;
   }
@@ -144,7 +144,7 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket) {
   if (!accept_fd.is_valid())
     return IsRecoverableError(errno);
   if (HANDLE_EINTR(fcntl(accept_fd.get(), F_SETFL, O_NONBLOCK)) < 0) {
-    PLOG(ERROR) << "fcntl(O_NONBLOCK) " << accept_fd.get();
+    PLOGF(ERROR) << "fcntl(O_NONBLOCK) " << accept_fd.get();
     // It's safe to keep listening on |server_listen_fd| even if the attempt to
     // set O_NONBLOCK failed on the client fd.
     return true;

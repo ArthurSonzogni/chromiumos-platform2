@@ -19,7 +19,7 @@ std::unique_ptr<EglContext> EglContext::GetSurfacelessContext() {
   EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
   if (eglInitialize(egl_display, /*major=*/nullptr, /*minor=*/nullptr) !=
       EGL_TRUE) {
-    LOG(FATAL) << "Failed to create EGL display";
+    LOGF(FATAL) << "Failed to create EGL display";
   }
   // This will leak |egl_display|, but it should be okay.
   return std::make_unique<EglContext>(egl_display);
@@ -76,8 +76,8 @@ bool EglContext::MakeCurrent() {
       eglMakeCurrent(display_, draw_surface, read_surface, context_);
   EGLint error = eglGetError();
   if (error != EGL_SUCCESS) {
-    LOG(ERROR) << "Failed to make context current: "
-               << EglGetErrorString(error);
+    LOGF(ERROR) << "Failed to make context current: "
+                << EglGetErrorString(error);
   }
   return ok == EGL_TRUE;
 }

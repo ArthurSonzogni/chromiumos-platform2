@@ -4,6 +4,8 @@
 
 #include "camera3_test/camera3_recording_fixture.h"
 
+#include "cros-camera/common.h"
+
 namespace camera3_test {
 
 void Camera3RecordingFixture::SetUp() {

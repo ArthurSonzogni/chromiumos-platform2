@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include "cros-camera/common.h"
 #include "cros-camera/future.h"
 
 namespace cros {
@@ -126,8 +127,8 @@ void CameraHalTestAdapter::StartOnThread(base::Callback<void(bool)> callback) {
                  << enable_camera_ids_.size();
       enable_camera_ids_.push_back(cam_id);
     } else {
-      LOG(INFO) << "Filter out camera " << internal_id << " facing "
-                << info.facing << " of module " << m->common.name;
+      LOGF(INFO) << "Filter out camera " << internal_id << " facing "
+                 << info.facing << " of module " << m->common.name;
     }
   }
   LOGF(INFO) << "Enable total " << enable_camera_ids_.size() << " cameras";

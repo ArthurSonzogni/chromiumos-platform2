@@ -138,10 +138,10 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
   if ((input_nv12.y_texture().width() / 2 != input_nv12.uv_texture().width()) ||
       (input_nv12.y_texture().height() / 2 !=
        input_nv12.uv_texture().height())) {
-    LOG(ERROR) << "Invalid Y (" << input_nv12.y_texture().width() << ", "
-               << input_nv12.y_texture().height() << ") and UV ("
-               << input_nv12.uv_texture().width() << ", "
-               << input_nv12.uv_texture().height() << ") output dimension";
+    LOGF(ERROR) << "Invalid Y (" << input_nv12.y_texture().width() << ", "
+                << input_nv12.y_texture().height() << ") and UV ("
+                << input_nv12.uv_texture().width() << ", "
+                << input_nv12.uv_texture().height() << ") output dimension";
     return false;
   }
 
@@ -221,10 +221,10 @@ bool HdrNetProcessorDeviceAdapterIpu6::Postprocess(
        output_nv12.uv_texture().width()) ||
       (output_nv12.y_texture().height() / 2 !=
        output_nv12.uv_texture().height())) {
-    LOG(ERROR) << "Invalid Y (" << output_nv12.y_texture().width() << ", "
-               << output_nv12.y_texture().height() << ") and UV ("
-               << output_nv12.uv_texture().width() << ", "
-               << output_nv12.uv_texture().height() << ") output dimension";
+    LOGF(ERROR) << "Invalid Y (" << output_nv12.y_texture().width() << ", "
+                << output_nv12.y_texture().height() << ") and UV ("
+                << output_nv12.uv_texture().width() << ", "
+                << output_nv12.uv_texture().height() << ") output dimension";
     return false;
   }
 

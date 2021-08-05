@@ -21,7 +21,6 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/logging.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"
@@ -69,7 +68,7 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
   auto get_elapsed_ms = [](struct timespec& start) {
     struct timespec stop = {};
     if (clock_gettime(CLOCK_MONOTONIC, &stop)) {
-      LOG(ERROR) << "Failed to get clock time";
+      LOGF(ERROR) << "Failed to get clock time";
       return 0L;
     }
     return (stop.tv_sec - start.tv_sec) * 1000 +
@@ -77,7 +76,7 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
   };
   struct timespec start_ts = {};
   if (clock_gettime(CLOCK_MONOTONIC, &start_ts)) {
-    LOG(ERROR) << "Failed to get clock time";
+    LOGF(ERROR) << "Failed to get clock time";
   }
   int ret = 0;
   do {

@@ -27,6 +27,7 @@
 #include "camera3_test/camera3_test_data_forwarder.h"
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
 
 namespace {
@@ -1378,7 +1379,7 @@ bool InitializeTest(int* argc,
 
   if (facing != -ENOENT) {
     if (facing == -EINVAL) {
-      LOG(ERROR) << "Invalid camera facing name.";
+      LOGF(ERROR) << "Invalid camera facing name.";
       return false;
     } else if (!camera_hal_path.empty() ||
                !camera3_test::GetCmdLineTestCameraIds().empty()) {
@@ -1440,7 +1441,7 @@ bool InitializeTest(int* argc,
   std::string model = config.has_value() ? config->model_name : "";
   if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
       base::Contains(kIgnoreSensorOrientationTestModels, model)) {
-    LOG(INFO) << "Ignore SensorOrientationTest on " << board << "/" << model;
+    LOGF(INFO) << "Ignore SensorOrientationTest on " << board << "/" << model;
     AddGtestFilterNegativePattern("*SensorOrientationTest/*");
   }
 

@@ -17,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "camera3_test/camera3_perf_log.h"
+#include "cros-camera/common.h"
 
 namespace camera3_test {
 
@@ -57,7 +58,7 @@ int Camera3Service::Initialize(
     ProcessPreviewResultCallback preview_cb) {
   base::AutoLock l(lock_);
   if (initialized_) {
-    LOG(ERROR) << "Camera service is already initialized";
+    LOGF(ERROR) << "Camera service is already initialized";
     return -EINVAL;
   }
   for (const auto& it : cam_ids_) {
@@ -65,7 +66,7 @@ int Camera3Service::Initialize(
         it, still_capture_cb, recording_cb, preview_cb));
     int result = cam_dev_service_map_[it]->Initialize();
     if (result != 0) {
-      LOG(ERROR) << "Camera device " << it << " service initialization fails";
+      LOGF(ERROR) << "Camera device " << it << " service initialization fails";
       cam_dev_service_map_.clear();
       return result;
     }
@@ -227,11 +228,11 @@ const camera_metadata_t* Camera3Service::ConstructDefaultRequestSettings(
 int Camera3Service::Camera3DeviceService::Initialize() {
   Camera3Module cam_module;
   if (cam_device_.Initialize(&cam_module) != 0) {
-    LOG(ERROR) << "Camera device initialization fails";
+    LOGF(ERROR) << "Camera device initialization fails";
     return -ENODEV;
   }
   if (!service_thread_.Start()) {
-    LOG(ERROR) << "Failed to start thread";
+    LOGF(ERROR) << "Failed to start thread";
     return -EINVAL;
   }
   cam_device_.RegisterResultMetadataOutputBufferCallback(base::Bind(
@@ -240,7 +241,7 @@ int Camera3Service::Camera3DeviceService::Initialize() {
   repeating_preview_metadata_.reset(clone_camera_metadata(
       cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
   if (!repeating_preview_metadata_) {
-    LOG(ERROR) << "Failed to create preview metadata";
+    LOGF(ERROR) << "Failed to create preview metadata";
     return -ENOMEM;
   }
   sem_init(&preview_frame_sem_, 0, 0);
@@ -277,7 +278,7 @@ void Camera3Service::Camera3DeviceService::StopPreview() {
           &Camera3Service::Camera3DeviceService::StopPreviewOnServiceThread,
           base::Unretained(this), cros::GetFutureCallback(future)));
   if (!future->Wait(kWaitForStopPreviewTimeoutMs)) {
-    LOG(ERROR) << "Timeout stopping preview";
+    LOGF(ERROR) << "Timeout stopping preview";
   }
 }
 
@@ -435,7 +436,7 @@ void Camera3Service::Camera3DeviceService::StopRecording() {
           &Camera3Service::Camera3DeviceService::StopRecordingOnServiceThread,
           base::Unretained(this), cros::GetFutureCallback(future)));
   if (!future->Wait(kWaitForStopRecordingTimeoutMs)) {
-    LOG(ERROR) << "Timeout stopping preview";
+    LOGF(ERROR) << "Timeout stopping preview";
   }
 }
 
@@ -491,7 +492,7 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
   DCHECK(service_thread_.IsCurrentThread());
   VLOGF_ENTER();
   if (preview_state_ != PREVIEW_STOPPED) {
-    LOG(ERROR) << "Failed to start preview because it is not stopped";
+    LOGF(ERROR) << "Failed to start preview because it is not stopped";
     *result = -EAGAIN;
     return;
   }
@@ -660,7 +661,7 @@ void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
   DCHECK(service_thread_.IsCurrentThread());
   VLOGF_ENTER();
   if (!metadata) {
-    LOG(ERROR) << "Invalid metadata settings";
+    LOGF(ERROR) << "Invalid metadata settings";
     cb.Run(-EINVAL);
     return;
   }

@@ -1534,7 +1534,7 @@ bool V4L2CameraDevice::IsManualExposureTimeSupported(
     return false;
 
   if (QueryControl(device_path, kControlExposureTime, &info) != 0) {
-    LOG(WARNING) << "Can't get exposure time range";
+    LOGF(WARNING) << "Can't get exposure time range";
     return false;
   }
   *exposure_time_range = info.range;
