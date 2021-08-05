@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -84,17 +85,15 @@ class VmInterface {
   // Information about the VM.
   virtual Info GetInfo() = 0;
 
-  // Returns if the balloon policy enabled for this vm.
-  virtual bool IsBalloonPolicyEnabled() = 0;
-
   // Returns balloon stats info retrieved from virtio-balloon device.
   virtual base::Optional<BalloonStats> GetBalloonStats() = 0;
 
   // Resize the balloon size.
   virtual void SetBalloonSize(int64_t byte_size) = 0;
 
-  // Runs memory balloon policy and resize the ballon accordingly.
-  virtual int64_t RunBalloonPolicy(const BalloonPolicyParams& params) = 0;
+  // Get the virtio_balloon sizing policy for this VM.
+  virtual const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
+      const MemoryMargins& margins, const std::string& vm) = 0;
 
   // Attach an usb device at host bus:addr, with vid, pid and an opened fd.
   virtual bool AttachUsbDevice(uint8_t bus,

@@ -56,7 +56,11 @@ class PluginVm final : public VmBaseImpl {
   // VmInterface overrides.
   bool Shutdown() override;
   VmInterface::Info GetInfo() override;
-  bool IsBalloonPolicyEnabled() override { return false; };
+  const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
+      const MemoryMargins& margins, const std::string& vm) override {
+    // Never initialized, so a balloon policy will not run.
+    return balloon_policy_;
+  }
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;

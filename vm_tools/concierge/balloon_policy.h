@@ -5,6 +5,7 @@
 #define VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 
 #include <stdint.h>
+#include <string>
 
 namespace vm_tools {
 namespace concierge {
@@ -24,56 +25,43 @@ struct BalloonStats {
   int64_t total_memory;
 };
 
-struct BalloonPolicyParams {
-  // values referenced by the policy
-
-  // retrieved from ballon stats
-  int64_t actual_balloon_size;
-
-  // Originally retrieved from
-  // /sys/kernel/mm/chromeos-low_mem/margin in crosvm.
-  // In concierge, resourced will provide this value via
-  // GetMemoryMarginKB::critical_margin
-  int64_t critical_host_available;
-
-  // passed on launching crosvm
-  int64_t guest_available_bias;
-
-  // retrieved from balloon stats
-  int64_t guest_cached;
-
-  // retrieved from balloon stats
-  int64_t guest_free;
-
-  // /sys/kernel/mm/chromeos-low_mem/available or provided by
-  // resourced via Get[Foreground]AvailableMemoryKB::available
-  int64_t host_available;
-
-  static BalloonPolicyParams FromBalloonStats(const BalloonStats& stats,
-                                              int64_t critical_host_available,
-                                              int64_t guest_available_bias,
-                                              int64_t host_available) {
-    BalloonPolicyParams params;
-    params.actual_balloon_size = stats.balloon_actual;
-    params.critical_host_available = critical_host_available;
-    params.guest_available_bias = guest_available_bias;
-    params.guest_cached = stats.disk_caches;
-    params.guest_free = stats.free_memory;
-    params.host_available = host_available;
-    return params;
-  }
+struct MemoryMargins {
+  uint64_t critical;
+  uint64_t moderate;
 };
 
-class BalloonPolicy {
+class BalloonPolicyInterface {
  public:
-  BalloonPolicy() : critical_guest_available_(400 * MIB) {}
+  virtual ~BalloonPolicyInterface() {}
 
   // Calculates the amount of memory to be shifted between a VM and the host.
   // Positive value means that the policy wants to move that amount of memory
   // from the guest to the host.
-  int64_t ComputeBalloonDelta(const BalloonPolicyParams&);
+  virtual int64_t ComputeBalloonDelta(const BalloonStats& stats,
+                                      uint64_t host_available,
+                                      bool game_mode,
+                                      const std::string& vm) = 0;
+};
+
+class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
+ public:
+  BalanceAvailableBalloonPolicy(int64_t critical_host_available,
+                                int64_t guest_available_bias,
+                                const std::string& vm);
+
+  int64_t ComputeBalloonDelta(const BalloonStats& stats,
+                              uint64_t host_available,
+                              bool game_mode,
+                              const std::string& vm) override;
 
  private:
+  // ChromeOS's critical margin.
+  const int64_t critical_host_available_;
+
+  // How much to bias the balance of available memory, depending on how full
+  // the balloon is.
+  const int64_t guest_available_bias_;
+
   // The max actual balloon size observed.
   int64_t max_balloon_actual_;
 
@@ -88,8 +76,9 @@ class BalloonPolicy {
 
   // This class keeps the state of a balloon and modified only via
   // ComputeBalloonDelta() so no copy/assign operations are needed.
-  BalloonPolicy(const BalloonPolicy&) = delete;
-  BalloonPolicy& operator=(const BalloonPolicy&) = delete;
+  BalanceAvailableBalloonPolicy(const BalanceAvailableBalloonPolicy&) = delete;
+  BalanceAvailableBalloonPolicy& operator=(
+      const BalanceAvailableBalloonPolicy&) = delete;
 };
 
 }  // namespace concierge

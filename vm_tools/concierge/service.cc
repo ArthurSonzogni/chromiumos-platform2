@@ -706,7 +706,7 @@ base::Optional<int64_t> Service::GetForegroundAvailableMemory() {
   return available_kb * KIB;
 }
 
-base::Optional<int64_t> Service::GetCriticalMargin() {
+base::Optional<MemoryMargins> Service::GetMemoryMargins() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetMemoryMarginsKBMethod);
   auto dbus_response = brillo::dbus_utils::CallDBusMethod(
@@ -717,13 +717,20 @@ base::Optional<int64_t> Service::GetCriticalMargin() {
     return base::nullopt;
   }
   dbus::MessageReader reader(dbus_response.get());
-  uint64_t critical_margin_kb;
-  if (!reader.PopUint64(&critical_margin_kb)) {
+  MemoryMargins margins;
+  if (!reader.PopUint64(&margins.critical)) {
     LOG(ERROR)
         << "Failed to read available critical margin from the D-Bus response";
     return base::nullopt;
   }
-  return critical_margin_kb * KIB;
+  if (!reader.PopUint64(&margins.moderate)) {
+    LOG(ERROR)
+        << "Failed to read available moderate margin from the D-Bus response";
+    return base::nullopt;
+  }
+  margins.critical *= KIB;
+  margins.moderate *= KIB;
+  return margins;
 }
 
 base::Optional<resource_manager::GameMode> Service::GetGameMode() {
@@ -763,12 +770,19 @@ static base::Optional<std::string> GameModeToForegroundVmName(
 void Service::RunBalloonPolicy() {
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
+  if (!memory_margins_) {
+    // Lazily initialize memory_margins_. Done here so we don't delay VM startup
+    // with a D-Bus call.
+    memory_margins_ = GetMemoryMargins();
+    if (!memory_margins_) {
+      LOG(ERROR) << "Failed to get ChromeOS memory margins, stopping balloon "
+                 << "policy";
+      balloon_resizing_timer_.Stop();
+      return;
+    }
+  }
   const auto available_memory = GetAvailableMemory();
   if (!available_memory.has_value()) {
-    return;
-  }
-  const auto critical_margin = GetCriticalMargin();
-  if (!critical_margin.has_value()) {
     return;
   }
   const auto game_mode = GetGameMode();
@@ -786,13 +800,17 @@ void Service::RunBalloonPolicy() {
   const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
-    if (!vm->IsBalloonPolicyEnabled()) {
-      continue;
-    }
     if (vm->IsSuspended()) {
       // Skip suspended VMs since there is no effect.
       continue;
     }
+    const std::unique_ptr<BalloonPolicyInterface>& policy =
+        vm->GetBalloonPolicy(*memory_margins_, vm_entry.first.name());
+    if (!policy) {
+      // Skip VMs that don't have a memory policy. It may just not be ready yet.
+      continue;
+    }
+
     // Switch available memory for this VM based on the current game mode.
     bool is_in_game_mode = foreground_vm_name.has_value() &&
                            vm_entry.first.name() == foreground_vm_name;
@@ -804,28 +822,12 @@ void Service::RunBalloonPolicy() {
       continue;
     }
     BalloonStats stats = *stats_opt;
-    // bias is tuned for ARCVM on 4/8G hatch devices with
-    // multivm.Lifecycle tests.
-    // TODO(hikalium): remove this bias once the balloon policy is updated.
-    const int64_t bias = vm_entry.first.name() == "arcvm" ? 48 * MIB : 0;
-    BalloonPolicyParams params = BalloonPolicyParams::FromBalloonStats(
-        stats, *critical_margin, bias, available_memory_for_vm);
-    int64_t delta = vm->RunBalloonPolicy(params);
-    if (delta != 0) {
-      LOG(INFO) << "BalloonTrace: { "
-                << "\"vm_name\": \"" << vm_entry.first.name() << "\", "
-                << "\"is_in_game_mode\": "
-                << (is_in_game_mode ? "true" : "false") << ", "
-                << "\"actual_balloon_size\": " << params.actual_balloon_size
-                << ", "
-                << "\"critical_host_available\": "
-                << params.critical_host_available << ", "
-                << "\"guest_available_bias\": " << params.guest_available_bias
-                << ", "
-                << "\"guest_cached\": " << params.guest_cached << ", "
-                << "\"guest_free\": " << params.guest_free << ", "
-                << "\"host_available\": " << params.host_available << ", "
-                << "\"delta\": " << delta << " }";
+
+    int64_t delta = policy->ComputeBalloonDelta(
+        stats, available_memory_for_vm, is_in_game_mode, vm_entry.first.name());
+    int64_t target = std::max(INT64_C(0), stats.balloon_actual + delta);
+    if (target != stats.balloon_actual) {
+      vm->SetBalloonSize(target);
     }
   }
 }

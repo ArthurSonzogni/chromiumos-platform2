@@ -293,7 +293,7 @@ class Service final {
 
   base::Optional<int64_t> GetAvailableMemory();
   base::Optional<int64_t> GetForegroundAvailableMemory();
-  base::Optional<int64_t> GetCriticalMargin();
+  base::Optional<MemoryMargins> GetMemoryMargins();
   base::Optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
 
@@ -405,6 +405,10 @@ class Service final {
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
+
+  // A cache for the result of GetMemoryMargins, so we don't need to query it
+  // every balloon_resizing_timer_ tick.
+  base::Optional<MemoryMargins> memory_margins_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

@@ -48,10 +48,11 @@ class VmBaseImpl : public VmInterface {
   pid_t pid() { return process_.pid(); }
 
   // VmInterface overrides.
-  bool IsBalloonPolicyEnabled() override { return true; };
   base::Optional<BalloonStats> GetBalloonStats() override;
   void SetBalloonSize(int64_t byte_size) override;
-  int64_t RunBalloonPolicy(const BalloonPolicyParams& params) override;
+  const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
+      const MemoryMargins& margins, const std::string& vm) override;
+
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,
@@ -95,15 +96,15 @@ class VmBaseImpl : public VmInterface {
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_ = 0;
 
+  // Balloon policy with its state.
+  std::unique_ptr<BalloonPolicyInterface> balloon_policy_;
+
  private:
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
 
   // Name of the socket to communicate to the crosvm binary.
   const std::string cros_vm_socket_;
-
-  // Balloon policy with its state.
-  BalloonPolicy balloon_policy_;
 };
 
 }  // namespace concierge

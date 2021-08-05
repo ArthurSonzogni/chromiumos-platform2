@@ -52,12 +52,13 @@ void VmBaseImpl::SetBalloonSize(int64_t byte_size) {
       {"balloon", std::to_string(byte_size), GetVmSocketPath()});
 }
 
-int64_t VmBaseImpl::RunBalloonPolicy(const BalloonPolicyParams& params) {
-  int64_t delta = balloon_policy_.ComputeBalloonDelta(params);
-  if (delta != 0) {
-    SetBalloonSize(params.actual_balloon_size + delta);
+const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
+    const MemoryMargins& margins, const std::string& vm) {
+  if (!balloon_policy_) {
+    balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
+        margins.critical, 0, vm);
   }
-  return delta;
+  return balloon_policy_;
 }
 
 bool VmBaseImpl::AttachUsbDevice(uint8_t bus,

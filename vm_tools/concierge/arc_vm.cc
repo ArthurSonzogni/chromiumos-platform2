@@ -393,6 +393,16 @@ bool ArcVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
                                               response);
 }
 
+const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
+    const MemoryMargins& margins, const std::string& vm) {
+  if (!balloon_policy_) {
+    // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
+    balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
+        margins.critical, 48 * MIB, vm);
+  }
+  return balloon_policy_;
+}
+
 bool ArcVm::ListUsbDevice(std::vector<UsbDevice>* devices) {
   return vm_tools::concierge::ListUsbDevice(GetVmSocketPath(), devices);
 }
