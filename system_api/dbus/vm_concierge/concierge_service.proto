@@ -238,6 +238,21 @@ message StartPluginVmRequest {
   NetworkOptions net_options = 8;
 }
 
+// Optional fields for LimitCacheBalloonPolicy configuration.
+message BalloonPolicyOptions {
+  // The maximum amount of page cache the guest should have if ChromeOS is
+  // reclaiming.
+  int64 reclaim_target_cache = 1;
+
+  // The maximum amount of page cache the guest should have if ChromeOS has
+  // critical memory pressure.
+  int64 critical_target_cache = 2;
+
+  // The maximum amount of page cache the guest should have if ChromeOS has
+  // moderate memory pressure.
+  int64 moderate_target_cache = 3;
+}
+
 // Information that must be included with every StartArcVm request.
 message StartArcVmRequest {
   // The VM that should be started.
@@ -276,6 +291,10 @@ message StartArcVmRequest {
 
   // How much memory to give ARCVM, in MiB. Optional.
   uint32 memory_mib = 12;
+
+  // How to configure the balloon policy. If set, LimitCacheBalloonPolicy is
+  // used, otherwise BalanceAvailableBalloonPolicy is used.
+  BalloonPolicyOptions balloon_policy = 13;
 }
 
 enum VmStatus {
