@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "oobe_config/network_exporter.h"
 #include "oobe_config/pstore_storage.h"
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
@@ -86,6 +87,17 @@ void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
     // If |kMetricsReportingEnabledFile| exists, metrics are enabled.
     rollback_data->set_eula_send_statistics(true);
   }
+
+  if (network_config_for_testing_.empty()) {
+    base::Optional<std::string> network_config =
+        oobe_config::ExportNetworkConfig();
+    if (network_config.has_value()) {
+      rollback_data->set_network_config(*network_config);
+    }
+  } else {
+    rollback_data->set_network_config(network_config_for_testing_);
+  }
+
   return;
 }
 

@@ -45,6 +45,12 @@ class OobeConfig {
     prefix_path_for_testing_ = prefix_path;
   }
 
+  // Sets a network config which is used instead of requesting network
+  // configuration via mojo from Chrome.
+  void set_network_config_for_testing(const std::string& config) {
+    network_config_for_testing_ = config;
+  }
+
   // Reads the content of the file at |file_path| (inside the testing prefix if
   // set) and returns it in |out_content|.
   // Returns true if reading the file succeeded.
@@ -94,6 +100,10 @@ class OobeConfig {
   // We're prefixing all paths for testing with a temp directory. Empty (no
   // prefix) by default.
   base::FilePath prefix_path_for_testing_;
+
+  // Network configuration to be used in unit tests instead of requesting
+  // network configuration from Chrome.
+  std::string network_config_for_testing_;
 };
 
 }  // namespace oobe_config

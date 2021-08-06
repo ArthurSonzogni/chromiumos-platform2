@@ -17,6 +17,17 @@
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 
+namespace {
+const char kNetworkConfig[] = R"({"NetworkConfigurations":[{
+    "GUID":"wpa-psk-network-guid",
+    "Type": "WiFi",
+    "Name": "WiFi",
+    "WiFi": {
+      "Security": "WPA-PSK",
+      "Passphrase": "wpa-psk-network-passphrase"
+  }}]})";
+}  // namespace
+
 namespace oobe_config {
 
 class OobeConfigTest : public ::testing::Test {
@@ -25,6 +36,7 @@ class OobeConfigTest : public ::testing::Test {
     oobe_config_ = std::make_unique<OobeConfig>();
     ASSERT_TRUE(fake_root_dir_.CreateUniqueTempDir());
     oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
+    oobe_config_->set_network_config_for_testing(kNetworkConfig);
   }
 
   void CheckSaveAndRestore(bool encrypted) {
