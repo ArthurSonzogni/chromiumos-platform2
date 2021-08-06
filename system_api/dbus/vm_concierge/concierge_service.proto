@@ -508,6 +508,24 @@ message GetVmEnterpriseReportingInfoResponse {
   string vm_kernel_version = 3;
 }
 
+// Request for creating RT vCPUs.
+message MakeRtVcpuRequest {
+  // The name of the VM.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+}
+
+// Response sent back by vm_concierge for a MakeRtVcpuRequest dbus message.
+message MakeRtVcpuResponse {
+  // If true, the request succeeded.
+  bool success = 1;
+
+  // The failure_reason if the request could not be processed.
+  string failure_reason = 2;
+}
+
 // The type of storage location for a disk image.
 enum StorageLocation {
   // Subdirectory under /home/root/<id>/crosvm.
