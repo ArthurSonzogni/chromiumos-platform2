@@ -4,6 +4,8 @@
 
 #include "crash-reporter/udev_collector.h"
 
+#include <fcntl.h>
+
 #include <map>
 #include <memory>
 #include <utility>
@@ -13,6 +15,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -186,7 +189,20 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
 
   // Collect coredump data.
-  if (!base::CopyFile(coredump_path, core_path)) {
+  // We expect /sys/class/devcoredump/devcdN (the path we typically use to
+  // access the dump) to be a symlink. devcdN/data, however, should not be a
+  // symlink. This means we can't use functionality (e.g. SafeFD) that verifies
+  // that no path components are symlinks, but we can use O_NOFOLLOW.
+  const char* filename_cstr = coredump_path.value().c_str();
+  int source_fd =
+      HANDLE_EINTR(open(filename_cstr, O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
+  if (source_fd < 0) {
+    PLOG(ERROR) << "Failed to open " << filename_cstr;
+    return false;
+  }
+  // Similarly, the core_path will be of form /proc/self/fd/<n>/foo.devcore,
+  // where /proc/self is a symlink, but foo.devcore should not be.
+  if (!CopyFdToNewFile(base::ScopedFD(source_fd), core_path)) {
     PLOG(ERROR) << "Failed to copy device coredump file from "
                 << coredump_path.value() << " to " << core_path.value();
     return false;
