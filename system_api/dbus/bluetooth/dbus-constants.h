@@ -591,6 +591,12 @@ constexpr char kUnregisterMonitor[] = "UnregisterMonitor";
 // Bluetooth advertisement monitor manager properties.
 constexpr char kSupportedMonitorTypes[] = "SupportedMonitorTypes";
 constexpr char kSupportedFeatures[] = "SupportedFeatures";
+
+// Possible values for the "SupportedMonitorTypes" property.
+constexpr char kSupportedMonitorTypesOrPatterns[] = "or_patterns";
+
+// Possible values for the "SupportedFeatures" property.
+constexpr char kSupportedFeaturesControllerPatterns[] = "controller-patterns";
 }  // namespace bluetooth_advertisement_monitor_manager
 
 // https://chromium.googlesource.com/chromiumos/third_party/bluez/+/HEAD/doc/advertising-api.txt
