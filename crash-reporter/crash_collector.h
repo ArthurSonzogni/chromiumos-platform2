@@ -33,6 +33,10 @@
 
 constexpr mode_t kSystemCrashFilesMode = 0660;
 
+// Walk the directory tree to make sure we avoid symlinks.
+// All parent parts must already exist else we return false.
+bool ValidatePathAndOpen(const base::FilePath& dir, int* outfd);
+
 // User crash collector.
 class CrashCollector {
  public:

@@ -147,8 +147,6 @@ using base::FileEnumerator;
 using base::FilePath;
 using base::StringPrintf;
 
-// Walk the directory tree to make sure we avoid symlinks.
-// All parent parts must already exist else we abort.
 bool ValidatePathAndOpen(const FilePath& dir, int* outfd) {
   std::vector<FilePath::StringType> components;
   dir.GetComponents(&components);
@@ -332,7 +330,8 @@ bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
     return false;
   }
   base::ScopedFD scoped_parentfd(parentfd);
-  int fd = openat(parentfd, file.value().c_str(), O_CLOEXEC | O_NOFOLLOW);
+  int fd = HANDLE_EINTR(openat(parentfd, file.value().c_str(),
+                               O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
   if (fd < 0) {
     PLOG(ERROR) << "Failed to open " << file.value();
     return false;

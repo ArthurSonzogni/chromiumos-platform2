@@ -206,12 +206,47 @@ bool UserCollector::CopyOffProcFiles(pid_t pid, const FilePath& container_dir) {
     LOG(ERROR) << "Path " << process_path.value() << " does not exist";
     return false;
   }
+
+  // NB: We can't (yet) use brillo::SafeFD here because it does not support
+  // reading /proc files, due to the fact that they report 0 size.
+  // TODO(b/195787611): Use SafeFD.
+  int processpath_fd;
+  if (!ValidatePathAndOpen(process_path, &processpath_fd)) {
+    LOG(ERROR) << "Failed to open process path dir: " << process_path.value();
+    return false;
+  }
+  base::ScopedFD scoped_processpath_fd(processpath_fd);
+
+  int containerpath_fd;
+  if (!ValidatePathAndOpen(container_dir, &containerpath_fd)) {
+    LOG(ERROR) << "Failed to open container dir:" << container_dir.value();
+    return false;
+  }
+  base::ScopedFD scoped_containerpath_fd(containerpath_fd);
+
   static const char* const kProcFiles[] = {"auxv", "cmdline", "environ", "maps",
                                            "status"};
-  for (std::string proc_file : kProcFiles) {
-    if (!base::CopyFile(process_path.Append(proc_file),
-                        container_dir.Append(proc_file))) {
-      PLOG(ERROR) << "Could not copy " << proc_file << " file";
+  for (const auto& proc_file : kProcFiles) {
+    int source_fd = HANDLE_EINTR(
+        openat(processpath_fd, proc_file, O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
+    if (source_fd < 0) {
+      PLOG(ERROR) << "Failed to open " << process_path << "/" << proc_file;
+      return false;
+    }
+    base::File source(source_fd);
+
+    int dest_fd = HANDLE_EINTR(
+        openat(containerpath_fd, proc_file,
+               O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
+               kSystemCrashFilesMode));
+    if (dest_fd < 0) {
+      PLOG(ERROR) << "Failed to open " << container_dir << "/" << proc_file;
+      return false;
+    }
+    base::File dest(dest_fd);
+
+    if (!base::CopyFileContents(source, dest)) {
+      LOG(ERROR) << "Failed to copy " << proc_file;
       return false;
     }
   }
