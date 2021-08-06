@@ -60,8 +60,8 @@ gaming_defines = [ "GAMEPAD_SUPPORT" ]
 gaming_deps = [ ":libgaming" ]
 
 tracing_defines = [ "PERFETTO_TRACING" ]
-tracing_deps = [ ":libperfetto" ]
-tracing_includes = [ "perfetto/sdk" ]
+tracing_pkg_deps = [ "perfetto" ]
+tracing_libs = [ "pthread" ]
 
 sommelier_defines = [
                       "_GNU_SOURCE",
@@ -71,13 +71,6 @@ sommelier_defines = [
                       "FRAME_COLOR=${frame_color}",
                       "DARK_FRAME_COLOR=${dark_frame_color}",
                     ] + gaming_defines + tracing_defines
-
-static_library("libperfetto") {
-  sources = [ "perfetto/sdk/perfetto.cc" ]
-  include_dirs = tracing_includes
-  defines = tracing_defines
-  libs = [ "pthread" ]
-}
 
 static_library("libgaming") {
   sources = [ "sommelier-gaming.cc" ]
@@ -114,7 +107,7 @@ static_library("libsommelier") {
     "virtualization/virtgpu_channel.cc",
     "virtualization/virtwl_channel.cc",
   ]
-  include_dirs = tracing_includes
+  include_dirs = []
   defines = sommelier_defines
   pkg_deps = [
     "gbm",
@@ -126,9 +119,9 @@ static_library("libsommelier") {
     "xcb-composite",
     "xcb-xfixes",
     "xkbcommon",
-  ]
-  libs = [ "m" ]
-  deps = [ ":sommelier-protocol" ] + gaming_deps + tracing_deps
+  ] + tracing_pkg_deps
+  libs = [ "m" ] + tracing_libs
+  deps = [ ":sommelier-protocol" ] + gaming_deps
 }
 
 executable("sommelier") {

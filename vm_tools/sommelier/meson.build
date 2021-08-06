@@ -66,14 +66,11 @@ tracing_sources = []
 tracing_dependencies = []
 
 if get_option('tracing')
-  tracing_sources = [
-    'perfetto/sdk/perfetto.cc',
-  ]
   tracing_dependencies = [
     dependency('threads'),
+    dependency('perfetto'),
   ]
   cpp_args += '-DPERFETTO_TRACING'
-  includes += include_directories('perfetto/sdk')
 endif
 
 #=================#
