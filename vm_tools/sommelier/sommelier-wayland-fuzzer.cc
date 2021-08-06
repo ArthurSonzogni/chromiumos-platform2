@@ -58,6 +58,7 @@ class FuzzChannel : public WaylandChannel {
     uint8_t* buffer = static_cast<uint8_t*>(malloc(DEFAULT_BUFFER_SIZE));
     int bytes = recv(receive.channel_fd, buffer, DEFAULT_BUFFER_SIZE, 0);
     if (bytes < 0) {
+      free(buffer);
       return -errno;
     }
 
