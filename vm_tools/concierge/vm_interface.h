@@ -159,6 +159,9 @@ class VmInterface {
   // Notes that SetVmId() has been called for the VM.
   virtual void VmIdChanged() {}
 
+  // Makes RT vCPU for the VM.
+  virtual void MakeRtVcpu() = 0;
+
  private:
   // Handle the device going to suspend.
   virtual void HandleSuspendImminent() = 0;

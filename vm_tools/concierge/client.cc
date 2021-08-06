@@ -1596,6 +1596,54 @@ int ReclaimVmMemory(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
   return 0;
 }
 
+int MakeRtVcpu(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
+  if (vm_name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  if (owner_id.empty()) {
+    LOG(ERROR) << "--cryptohome_id is required";
+    return -1;
+  }
+
+  LOG(INFO) << "Make RT vCPU.";
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kMakeRtVcpuMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::MakeRtVcpuRequest request;
+  request.set_name(vm_name);
+  request.set_owner_id(owner_id);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode MakeRtVcpuRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::MakeRtVcpuResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Could not make RT vCPU: " << response.failure_reason();
+    return -1;
+  }
+
+  LOG(INFO) << "Successfully made RT vCPU.";
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1631,6 +1679,7 @@ int main(int argc, char** argv) {
               "Enterprise reporting info for the given VM");
   DEFINE_bool(set_vm_cpu_restriction, false, "Set VM CPU restriction");
   DEFINE_bool(reclaim_vm_memory, false, "Reclaim VM memory");
+  DEFINE_bool(make_rt_vcpu, false, "Make RT vCPU");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -1703,7 +1752,8 @@ int main(int argc, char** argv) {
       FLAGS_sync_time + FLAGS_attach_usb + FLAGS_detach_usb +
       FLAGS_list_usb_devices + FLAGS_start_plugin_vm + FLAGS_start_arc_vm +
       FLAGS_get_vm_enterprise_reporting_info +
-      FLAGS_set_vm_cpu_restriction + FLAGS_reclaim_vm_memory != 1) {
+      FLAGS_set_vm_cpu_restriction + FLAGS_reclaim_vm_memory +
+      FLAGS_make_rt_vcpu != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --suspend, --resume, "
@@ -1712,8 +1762,8 @@ int main(int argc, char** argv) {
         << "--import_disk --list_disks, --start_termina_vm, --sync_time, "
         << "--attach_usb, --detach_usb, "
         << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, "
-        << "--get_vm_enterprise_reporting_info, --set_vm_cpu_restriction, or "
-        << "--reclaim_vm_memory must be provided";
+        << "--get_vm_enterprise_reporting_info, --set_vm_cpu_restriction, "
+        << "--reclaim_vm_memory, or --make_rt_vcpu must be provided";
     return -1;
   }
 
@@ -1805,6 +1855,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_reclaim_vm_memory) {
     return ReclaimVmMemory(proxy, std::move(FLAGS_name),
                            std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_make_rt_vcpu) {
+    return MakeRtVcpu(proxy, std::move(FLAGS_name),
+                      std::move(FLAGS_cryptohome_id));
   }
 
   // Unreachable.

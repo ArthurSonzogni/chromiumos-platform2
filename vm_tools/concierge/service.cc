@@ -1064,6 +1064,7 @@ bool Service::Init() {
       {kGetVmInfoMethod, &Service::GetVmInfo},
       {kGetVmEnterpriseReportingInfoMethod,
        &Service::GetVmEnterpriseReportingInfo},
+      {kMakeRtVcpuMethod, &Service::MakeRtVcpu},
       {kAdjustVmMethod, &Service::AdjustVm},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
@@ -2156,6 +2157,45 @@ std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
     LOG(ERROR) << "Failed to get VM enterprise reporting info";
   }
   writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::MakeRtVcpu(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received MakeRtVcpu request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  MakeRtVcpuRequest request;
+  MakeRtVcpuResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse MakeRtVcpuRequest from message";
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.name());
+  if (iter == vms_.end()) {
+    const std::string error_message = "Requested VM does not exist";
+    LOG(ERROR) << error_message;
+    response.set_failure_reason(error_message);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto& vm = iter->second;
+  vm->MakeRtVcpu();
+
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+
   return dbus_response;
 }
 

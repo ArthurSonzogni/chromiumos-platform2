@@ -129,6 +129,10 @@ class Service final {
   std::unique_ptr<dbus::Response> GetVmEnterpriseReportingInfo(
       dbus::MethodCall* method_call);
 
+  // Handles a request to make RT vCPU.  |method_call| must have a
+  // MakeRtVcpuRequest protobuf serialized as an array of bytes.
+  std::unique_ptr<dbus::Response> MakeRtVcpu(dbus::MethodCall* method_call);
+
   // Handles a request to update all VMs' times to the current host time.
   std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
 

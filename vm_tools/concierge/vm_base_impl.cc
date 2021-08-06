@@ -133,5 +133,9 @@ void VmBaseImpl::HandleSuspendDone() {
   RunCrosvmCommand("resume");
 }
 
+void VmBaseImpl::MakeRtVcpu() {
+  RunCrosvmCommand("make_rt");
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

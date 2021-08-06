@@ -60,6 +60,7 @@ class VmBaseImpl : public VmInterface {
                        UsbControlResponse* response) override;
   bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
   bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+  void MakeRtVcpu() override;
 
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
