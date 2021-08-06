@@ -59,6 +59,7 @@ config("compiler_defaults") {
     "-Wstring-compare",
     "-Wstring-plus-int",
     "-Wxor-used-as-pow",
+    "-Wimplicit-int-float-conversion",
 
     # We use C99 array designators in C++ code.  Our compilers support this
     # extension since C++ has no equivalent yet (as of C++20).
