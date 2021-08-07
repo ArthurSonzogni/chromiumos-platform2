@@ -155,4 +155,40 @@ TEST(DiskUsageUtilTest, OverprovisionedVolumeSpace) {
   EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 16777216);
 }
 
+class DiskUsageRootdevMock : public DiskUsageUtil {
+ public:
+  DiskUsageRootdevMock(uint64_t size, const base::FilePath& path)
+      : rootdev_size_(size), rootdev_path_(path) {}
+
+ protected:
+  base::Optional<base::FilePath> GetRootDevice() override {
+    return rootdev_path_;
+  }
+
+  uint64_t GetBlockDeviceSize(const base::FilePath& device) override {
+    // At the moment, only the root device size is queried from spaced.
+    // Once more block devices are queried, move this into a map.
+    if (device == rootdev_path_)
+      return rootdev_size_;
+
+    return 0;
+  }
+
+ private:
+  uint64_t rootdev_size_;
+  base::FilePath rootdev_path_;
+};
+
+TEST(DiskUsageUtilTest, InvalidRootDeviceTest) {
+  DiskUsageRootdevMock disk_usage_mock(0, base::FilePath("/dev/foo"));
+
+  EXPECT_EQ(disk_usage_mock.GetRootDeviceSize(), 0);
+}
+
+TEST(DiskUsageUtilTest, RootDeviceSizeTest) {
+  DiskUsageRootdevMock disk_usage_mock(500, base::FilePath("/dev/foo"));
+
+  EXPECT_EQ(disk_usage_mock.GetRootDeviceSize(), 500);
+}
+
 }  // namespace spaced

@@ -42,6 +42,10 @@ uint64_t DBusAdaptor::GetTotalDiskSpace(const std::string& path) {
   return disk_usage_util_->GetTotalDiskSpace(base::FilePath(path));
 }
 
+uint64_t DBusAdaptor::GetRootDeviceSize() {
+  return disk_usage_util_->GetRootDeviceSize();
+}
+
 Daemon::Daemon() : DBusServiceDaemon(kSpacedServiceName) {}
 
 void Daemon::RegisterDBusObjectsAsync(

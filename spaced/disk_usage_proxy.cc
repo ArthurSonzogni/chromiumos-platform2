@@ -50,4 +50,18 @@ uint64_t DiskUsageProxy::GetTotalDiskSpace(const base::FilePath& path) {
   return total_disk_space;
 }
 
+uint64_t DiskUsageProxy::GetRootDeviceSize() {
+  uint64_t root_device_size;
+
+  brillo::ErrorPtr error;
+  // Return false if call fails.
+  if (!spaced_proxy_->GetRootDeviceSize(&root_device_size, &error)) {
+    LOG(ERROR) << "Failed to call GetRootDeviceSize, error: "
+               << error->GetMessage();
+    return 0;
+  }
+
+  return root_device_size;
+}
+
 }  // namespace spaced

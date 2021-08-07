@@ -8,9 +8,14 @@
 #include <memory>
 #include <string>
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/statvfs.h>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
@@ -25,7 +30,7 @@ int DiskUsageUtil::StatVFS(const base::FilePath& path, struct statvfs* st) {
   return HANDLE_EINTR(statvfs(path.value().c_str(), st));
 }
 
-base::Optional<brillo::Thinpool> DiskUsageUtil::GetThinpool() {
+base::Optional<base::FilePath> DiskUsageUtil::GetRootDevice() {
   // Get the root device.
   char root_device[PATH_MAX];
   int ret = rootdev(root_device, sizeof(root_device),
@@ -36,11 +41,22 @@ base::Optional<brillo::Thinpool> DiskUsageUtil::GetThinpool() {
     return base::nullopt;
   }
 
+  return base::FilePath(root_device);
+}
+
+base::Optional<brillo::Thinpool> DiskUsageUtil::GetThinpool() {
+  base::Optional<base::FilePath> root_device = GetRootDevice();
+
+  if (!root_device) {
+    LOG(WARNING) << "Failed to get root device";
+    return base::nullopt;
+  }
+
   // For some storage devices (eg. eMMC), the path ends in a digit
   // (eg. /dev/mmcblk0). Use 'p' as the partition separator while generating
   // the partition's block device path. For other types of paths (/dev/sda), we
   // directly append the partition number.
-  std::string stateful_dev(root_device);
+  std::string stateful_dev(root_device->value());
   if (base::IsAsciiDigit(stateful_dev[stateful_dev.size() - 1]))
     stateful_dev += 'p';
   stateful_dev += '1';
@@ -99,6 +115,33 @@ uint64_t DiskUsageUtil::GetTotalDiskSpace(const base::FilePath& path) {
   }
 
   return total_disk_space;
+}
+
+uint64_t DiskUsageUtil::GetBlockDeviceSize(const base::FilePath& device) {
+  base::ScopedFD fd(HANDLE_EINTR(
+      open(device.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "open " << device.value();
+    return 0;
+  }
+
+  uint64_t size;
+  if (ioctl(fd.get(), BLKGETSIZE64, &size)) {
+    PLOG(ERROR) << "ioctl(BLKGETSIZE): " << device.value();
+    return 0;
+  }
+  return size;
+}
+
+uint64_t DiskUsageUtil::GetRootDeviceSize() {
+  base::Optional<base::FilePath> root_device = GetRootDevice();
+
+  if (!root_device) {
+    LOG(WARNING) << "Failed to get root device";
+    return 0;
+  }
+
+  return GetBlockDeviceSize(*root_device);
 }
 
 }  // namespace spaced

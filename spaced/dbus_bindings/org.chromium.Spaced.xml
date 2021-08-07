@@ -22,5 +22,12 @@
       <arg name="reply" type="t" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetRootDeviceSize">
+      <tp:docstring>
+        Get the size of the root storage device.
+      </tp:docstring>
+      <arg name="reply" type="t" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

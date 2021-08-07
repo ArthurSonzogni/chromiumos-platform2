@@ -23,6 +23,7 @@ class BRILLO_EXPORT DiskUsageUtil {
 
   virtual uint64_t GetFreeDiskSpace(const base::FilePath& path);
   virtual uint64_t GetTotalDiskSpace(const base::FilePath& path);
+  virtual uint64_t GetRootDeviceSize();
 
  protected:
   // Runs statvfs() on a given path.
@@ -30,6 +31,12 @@ class BRILLO_EXPORT DiskUsageUtil {
 
   // Retrieves the stateful partition's thinpool.
   virtual base::Optional<brillo::Thinpool> GetThinpool();
+
+  // Retrieves the root device.
+  virtual base::Optional<base::FilePath> GetRootDevice();
+
+  // Gets the block device size in bytes for a given device.
+  virtual uint64_t GetBlockDeviceSize(const base::FilePath& device);
 
  private:
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
