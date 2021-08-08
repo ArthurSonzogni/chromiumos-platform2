@@ -132,10 +132,10 @@ void MissiveDaemon::EnqueueRecord(
     return;
   }
 
-  scheduler_.EnqueueJob(std::make_unique<EnqueueJob>(
-      storage_module_, in_request,
-      std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
-          std::move(response))));
+  scheduler_.EnqueueJob(
+      EnqueueJob::Create(storage_module_, in_request,
+                         std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
+                             std::move(response))));
 }
 
 void MissiveDaemon::FlushPriority(

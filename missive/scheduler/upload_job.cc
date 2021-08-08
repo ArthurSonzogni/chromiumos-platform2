@@ -8,13 +8,14 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/bind_post_task.h>
 #include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/memory/ptr_util.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"
@@ -61,14 +62,9 @@ void UploadJob::UploadDelegate::SetRecords(Records records) {
   records_ = std::move(records);
 }
 
-UploadJob::RecordProcessor::RecordProcessor(
-    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-    DoneCb done_cb,
-    const base::WeakPtr<UploadJob>& job)
-    : sequenced_task_runner_(sequenced_task_runner),
-      done_cb_(std::move(done_cb)),
-      records_(std::make_unique<std::vector<EncryptedRecord>>()),
-      job_(job) {
+UploadJob::RecordProcessor::RecordProcessor(DoneCb done_cb)
+    : done_cb_(std::move(done_cb)),
+      records_(std::make_unique<std::vector<EncryptedRecord>>()) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   DCHECK(done_cb_);
 }
@@ -78,10 +74,6 @@ UploadJob::RecordProcessor::~RecordProcessor() = default;
 void UploadJob::RecordProcessor::ProcessRecord(
     EncryptedRecord record, base::OnceCallback<void(bool)> processed_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
-  if (!job_) {
-    std::move(processed_cb).Run(false);
-    return;
-  }
   size_t record_size = record.ByteSizeLong();
   // We have to allow a single record through even if it is too large.
   // Otherwise the whole system will backup.
@@ -99,10 +91,6 @@ void UploadJob::RecordProcessor::ProcessGap(
     uint64_t count,
     base::OnceCallback<void(bool)> processed_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
-  if (!job_) {
-    std::move(processed_cb).Run(false);
-    return;
-  }
   // We'll process the whole gap request, even if it goes over our max.
   for (uint64_t i = 0; i < count; ++i) {
     records_->emplace_back();
@@ -115,9 +103,6 @@ void UploadJob::RecordProcessor::ProcessGap(
 
 void UploadJob::RecordProcessor::Completed(Status final_status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
-  if (!job_) {
-    return;
-  }
   DCHECK(done_cb_);
   if (!final_status.ok()) {
     // Destroy the records to regain system memory now.
@@ -129,7 +114,7 @@ void UploadJob::RecordProcessor::Completed(Status final_status) {
 }
 
 // static
-StatusOr<std::unique_ptr<UploadJob>> UploadJob::Create(
+StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
     scoped_refptr<UploadClient> upload_client,
     bool need_encryption_key,
     UploaderInterface::UploaderInterfaceResultCb start_cb) {
@@ -144,23 +129,24 @@ StatusOr<std::unique_ptr<UploadJob>> UploadJob::Create(
       std::make_unique<UploadDelegate>(upload_client, need_encryption_key);
   SetRecordsCb set_records_callback = upload_delegate->GetSetRecordsCb();
 
-  return base::WrapUnique<UploadJob>(
-      new UploadJob(std::move(upload_delegate), std::move(set_records_callback),
-                    std::move(start_cb)));
+  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner(
+          {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+  return std::unique_ptr<UploadJob, base::OnTaskRunnerDeleter>(
+      new UploadJob(std::move(upload_delegate), sequenced_task_runner,
+                    std::move(set_records_callback), std::move(start_cb)),
+      base::OnTaskRunnerDeleter(sequenced_task_runner));
 }
 
 void UploadJob::StartImpl() {
   DCHECK(base::SequencedTaskRunnerHandle::IsSet());
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // Currently running tasks are not destroyable under normal circumstances, so
-  // base::Unretained is safe here.
-  std::move(start_cb_).Run(std::make_unique<RecordProcessor>(
-      base::SequencedTaskRunnerHandle::Get(),
-      base::BindOnce(&UploadJob::Done, base::Unretained(this)),
-      weak_ptr_factory_.GetWeakPtr()));
+  std::move(start_cb_).Run(std::make_unique<RecordProcessor>(base::BindPostTask(
+      sequenced_task_runner(),
+      base::BindOnce(&UploadJob::Done, weak_ptr_factory_.GetWeakPtr()))));
 }
 
 void UploadJob::Done(StatusOr<Records> records_result) {
+  CheckValidSequence();
   if (!records_result.ok()) {
     Finish(records_result.status());
     return;
@@ -169,17 +155,13 @@ void UploadJob::Done(StatusOr<Records> records_result) {
   Finish(Status::StatusOK());
 }
 
-UploadJob::UploadJob(std::unique_ptr<UploadDelegate> upload_delegate,
-                     SetRecordsCb set_records_cb,
-                     UploaderInterface::UploaderInterfaceResultCb start_cb)
-    : Job(std::move(upload_delegate)),
+UploadJob::UploadJob(
+    std::unique_ptr<UploadDelegate> upload_delegate,
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+    SetRecordsCb set_records_cb,
+    UploaderInterface::UploaderInterfaceResultCb start_cb)
+    : Job(std::move(upload_delegate), sequenced_task_runner),
       set_records_cb_(std::move(set_records_cb)),
-      start_cb_(std::move(start_cb)) {
-  DETACH_FROM_SEQUENCE(sequence_checker_);
-}
-
-UploadJob::~UploadJob() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-}
+      start_cb_(std::move(start_cb)) {}
 
 }  // namespace reporting

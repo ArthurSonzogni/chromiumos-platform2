@@ -8,7 +8,6 @@
 #include <base/bind.h>
 #include <base/check_op.h>
 #include <base/run_loop.h>
-#include <base/sequence_checker.h>
 #include <base/memory/weak_ptr.h>
 #include <base/test/task_environment.h>
 #include <base/threading/sequenced_task_runner_handle.h>
@@ -65,27 +64,34 @@ class FakeJob : public Scheduler::Job {
     CancelCallback cancel_callback_;
   };
 
-  explicit FakeJob(std::unique_ptr<FakeJobDelegate> fake_job_delegate)
-      : Job(std::move(fake_job_delegate)) {
-    DETACH_FROM_SEQUENCE(sequence_checker_);
+  static SmartPtr<FakeJob> Create(
+      std::unique_ptr<FakeJobDelegate> fake_job_delegate) {
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
+        base::ThreadPool::CreateSequencedTaskRunner(
+            {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+    return std::unique_ptr<FakeJob, base::OnTaskRunnerDeleter>(
+        new FakeJob(std::move(fake_job_delegate), sequenced_task_runner),
+        base::OnTaskRunnerDeleter(sequenced_task_runner));
   }
-
-  ~FakeJob() override { DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_); }
 
   void SetFinishStatus(Status status) { finish_status_ = status; }
 
  protected:
   void StartImpl() override {
     DCHECK(base::SequencedTaskRunnerHandle::IsSet());
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+    sequenced_task_runner()->PostTask(
         FROM_HERE,
         base::BindOnce(&FakeJob::Finish, weak_ptr_factory_.GetWeakPtr(),
                        finish_status_));
   }
 
+ private:
+  FakeJob(std::unique_ptr<FakeJobDelegate> fake_job_delegate,
+          scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
+      : Job(std::move(fake_job_delegate), sequenced_task_runner) {}
+
   Status finish_status_{Status::StatusOK()};
-  SEQUENCE_CHECKER(sequence_checker_);
+
   base::WeakPtrFactory<FakeJob> weak_ptr_factory_{this};
 };
 
@@ -127,10 +133,10 @@ class JobTest : public ::testing::Test {
 TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   auto delegate = std::make_unique<FakeJob::FakeJobDelegate>(
       report_completion_callback_, cancel_callback_);
-  FakeJob job(std::move(delegate));
+  auto job = FakeJob::Create(std::move(delegate));
 
   TestCallbackWaiter waiter;
-  job.Start(base::BindOnce(
+  job->Start(base::BindOnce(
       [](TestCallbackWaiter* waiter, Status status) {
         EXPECT_TRUE(status.ok());
         waiter->Signal();
@@ -142,12 +148,12 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   // The job should have finished successfully.
   EXPECT_EQ(completion_counter_, 1u);
   EXPECT_EQ(cancel_counter_, 0u);
-  EXPECT_EQ(job.GetJobState(), Scheduler::Job::JobState::COMPLETED);
+  EXPECT_EQ(job->GetJobState(), Scheduler::Job::JobState::COMPLETED);
 
   // Now that the job has completed successfully, it shouldn't be startable, or
   // cancellable.
   TestCallbackWaiter waiter2;
-  job.Start(base::BindOnce(
+  job->Start(base::BindOnce(
       [](TestCallbackWaiter* waiter, Status status) {
         EXPECT_TRUE(!status.ok());
         waiter->Signal();
@@ -158,23 +164,23 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   // Nothing should have changed from before.
   EXPECT_EQ(completion_counter_, 1u);
   EXPECT_EQ(cancel_counter_, 0u);
-  EXPECT_EQ(job.GetJobState(), Scheduler::Job::JobState::COMPLETED);
+  EXPECT_EQ(job->GetJobState(), Scheduler::Job::JobState::COMPLETED);
 
-  EXPECT_FALSE(job.Cancel(Status(error::INTERNAL, "Failing for tests")).ok());
+  EXPECT_FALSE(job->Cancel(Status(error::INTERNAL, "Failing for tests")).ok());
 
   // Nothing should have changed from before.
   EXPECT_EQ(completion_counter_, 1u);
   EXPECT_EQ(cancel_counter_, 0u);
-  EXPECT_EQ(job.GetJobState(), Scheduler::Job::JobState::COMPLETED);
+  EXPECT_EQ(job->GetJobState(), Scheduler::Job::JobState::COMPLETED);
 }
 
 TEST_F(JobTest, CancelsWhenJobFails) {
-  FakeJob job(std::make_unique<FakeJob::FakeJobDelegate>(
+  auto job = FakeJob::Create(std::make_unique<FakeJob::FakeJobDelegate>(
       report_completion_callback_, cancel_callback_));
-  job.SetFinishStatus(Status(error::INTERNAL, "Failing for tests"));
+  job->SetFinishStatus(Status(error::INTERNAL, "Failing for tests"));
 
   TestCallbackWaiter waiter;
-  job.Start(base::BindOnce(
+  job->Start(base::BindOnce(
       [](TestCallbackWaiter* waiter, Status status) {
         EXPECT_TRUE(status.ok());
         waiter->Signal();
@@ -186,17 +192,17 @@ TEST_F(JobTest, CancelsWhenJobFails) {
   // The job should have finished successfully.
   EXPECT_EQ(completion_counter_, 0u);
   EXPECT_EQ(cancel_counter_, 1u);
-  EXPECT_EQ(job.GetJobState(), Scheduler::Job::JobState::CANCELLED);
+  EXPECT_EQ(job->GetJobState(), Scheduler::Job::JobState::CANCELLED);
 }
 
 TEST_F(JobTest, WillNotStartWithNonOKStatusAndCancels) {
-  FakeJob job(std::make_unique<FakeJob::FakeJobDelegate>(
+  auto job = FakeJob::Create(std::make_unique<FakeJob::FakeJobDelegate>(
       report_completion_callback_, cancel_callback_));
 
-  EXPECT_TRUE(job.Cancel(Status(error::INTERNAL, "Failing For Tests")).ok());
+  EXPECT_TRUE(job->Cancel(Status(error::INTERNAL, "Failing For Tests")).ok());
 
   TestCallbackWaiter waiter;
-  job.Start(base::BindOnce(
+  job->Start(base::BindOnce(
       [](TestCallbackWaiter* waiter, Status status) {
         EXPECT_TRUE(!status.ok());
         waiter->Signal();
@@ -307,13 +313,25 @@ TEST_F(SchedulerTest, SchedulesAndRunsJobs) {
       &cancel_counter, &complete_waiter);
 
   for (size_t i = 0; i < kNumJobs; i++) {
-    std::unique_ptr<FakeJob> job =
-        std::make_unique<FakeJob>(std::make_unique<FakeJob::FakeJobDelegate>(
-            report_completion_callback, cancel_callback));
-    if (i % 2u == 0) {
-      job->SetFinishStatus(Status(error::INTERNAL, "Failing for tests"));
-    }
-    scheduler_.EnqueueJob(std::move(job));
+    auto sequenced_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+    sequenced_task_runner->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](size_t i, Scheduler* scheduler,
+               base::RepeatingCallback<Status()> report_completion_callback,
+               base::RepeatingCallback<Status(Status)> cancel_callback) {
+              auto job =
+                  FakeJob::Create(std::make_unique<FakeJob::FakeJobDelegate>(
+                      report_completion_callback, cancel_callback));
+              if (i % 2u == 0) {
+                job->SetFinishStatus(
+                    Status(error::INTERNAL, "Failing for tests"));
+              }
+              scheduler->EnqueueJob(std::move(job));
+            },
+            i, base::Unretained(&scheduler_), report_completion_callback,
+            cancel_callback));
   }
   complete_waiter.Wait();
   task_environment_.RunUntilIdle();

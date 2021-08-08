@@ -31,7 +31,6 @@ using ::testing::Invoke;
 using ::testing::NotNull;
 using ::testing::WithArgs;
 
-
 MATCHER_P(EqualsProto,
           message,
           "Match a proto Message equal to the matcher's argument.") {
@@ -111,10 +110,10 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
         std::move(cb).Run(Status::StatusOK());
       })));
 
-  EnqueueJob job(storage_module_, request, std::move(delegate));
+  auto job = EnqueueJob::Create(storage_module_, request, std::move(delegate));
 
   test::TestEvent<Status> enqueued;
-  job.Start(enqueued.cb());
+  job->Start(enqueued.cb());
   const Status status = enqueued.result();
   EXPECT_OK(status) << status;
 }
@@ -133,9 +132,9 @@ TEST_F(EnqueueJobTest, CancelsSuccessfully) {
   *request.mutable_record() = std::move(record_);
   request.set_priority(Priority::BACKGROUND_BATCH);
 
-  EnqueueJob job(storage_module_, request, std::move(delegate));
+  auto job = EnqueueJob::Create(storage_module_, request, std::move(delegate));
 
-  auto status = job.Cancel(failure_status);
+  auto status = job->Cancel(failure_status);
   EXPECT_TRUE(status.ok());
 }
 

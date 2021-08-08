@@ -34,8 +34,26 @@ using CompleteJobResponse = Status;
 using CompleteJobCallback = base::OnceCallback<void(CompleteJobResponse)>;
 using Notification = Scheduler::SchedulerObserver::Notification;
 
-Scheduler::Job::Job(std::unique_ptr<JobDelegate> job_response_delegate)
-    : job_response_delegate_(std::move(job_response_delegate)) {}
+Scheduler::Job::Job(
+    std::unique_ptr<JobDelegate> job_response_delegate,
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
+    : job_response_delegate_(std::move(job_response_delegate)),
+      sequenced_task_runner_(sequenced_task_runner) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+}
+
+Scheduler::Job::~Job() {
+  CheckValidSequence();
+}
+
+void Scheduler::Job::CheckValidSequence() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
+
+scoped_refptr<base::SequencedTaskRunner> Scheduler::Job::sequenced_task_runner()
+    const {
+  return sequenced_task_runner_;
+}
 
 void Scheduler::Job::Start(base::OnceCallback<void(Status)> complete_cb) {
   DCHECK(complete_cb);
@@ -78,6 +96,8 @@ Scheduler::Job::JobState Scheduler::Job::GetJobState() const {
 }
 
 void Scheduler::Job::Finish(Status status) {
+  CheckValidSequence();
+
   if (!status.ok()) {
     job_state_ = JobState::CANCELLED;
     std::move(complete_cb_).Run(job_response_delegate_->Cancel(status));
@@ -89,7 +109,7 @@ void Scheduler::Job::Finish(Status status) {
 
 class Scheduler::JobContext : public TaskRunnerContext<CompleteJobResponse> {
  public:
-  JobContext(std::unique_ptr<Job> job,
+  JobContext(Job::SmartPtr<Job> job,
              std::unique_ptr<JobBlocker> job_blocker,
              CompleteJobCallback job_completion_callback,
              scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
@@ -118,7 +138,7 @@ class Scheduler::JobContext : public TaskRunnerContext<CompleteJobResponse> {
     Schedule(&Scheduler::JobContext::Response, base::Unretained(this), status);
   }
 
-  std::unique_ptr<Scheduler::Job> job_;
+  Job::SmartPtr<Scheduler::Job> job_;
 
   // Will be held until Response() is called, the semaphore will be released
   // once it is destroyed.
@@ -204,7 +224,7 @@ Scheduler::Scheduler()
       job_semaphore_(std::make_unique<JobSemaphore>(sequenced_task_runner_,
                                                     TaskLimit::NORMAL)),
       jobs_queue_(
-          SharedQueue<std::unique_ptr<Job>>::Create(sequenced_task_runner_)) {}
+          SharedQueue<Job::SmartPtr<Job>>::Create(sequenced_task_runner_)) {}
 
 Scheduler::~Scheduler() = default;
 
@@ -218,7 +238,7 @@ void Scheduler::NotifyObservers(Notification notification) {
   }
 }
 
-void Scheduler::EnqueueJob(std::unique_ptr<Job> job) {
+void Scheduler::EnqueueJob(Job::SmartPtr<Job> job) {
   if (!job_semaphore_->IsAcceptingJobs()) {
     NotifyObservers(Notification::REJECTED_JOB);
     Status cancel_status =
@@ -258,7 +278,7 @@ void Scheduler::StartJobs() {
 }
 
 void Scheduler::OnJobPop(std::unique_ptr<JobBlocker> job_blocker,
-                         StatusOr<std::unique_ptr<Job>> job_result) {
+                         StatusOr<Job::SmartPtr<Job>> job_result) {
   // job_result may be empty, if so just drop the request, releasing the
   // blocker.
   if (!job_result.ok()) {
@@ -291,12 +311,12 @@ void Scheduler::OnJobPop(std::unique_ptr<JobBlocker> job_blocker,
 
 void Scheduler::ClearQueue() {
   jobs_queue_->Swap(
-      base::queue<std::unique_ptr<Job>>(),
+      base::queue<Job::SmartPtr<Job>>(),
       base::BindOnce(&Scheduler::OnJobQueueSwap, base::Unretained(this)));
 }
 
 void Scheduler::OnJobQueueSwap(
-    base::queue<std::unique_ptr<Job>> job_queue) const {
+    base::queue<Job::SmartPtr<Job>> job_queue) const {
   while (!job_queue.empty()) {
     auto& job = job_queue.front();
     Status cancel_status =

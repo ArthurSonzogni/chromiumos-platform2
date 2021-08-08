@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_method_response.h>
 
 #include "missive/proto/interface.pb.h"
@@ -44,9 +45,13 @@ class EnqueueJob : public Scheduler::Job {
         response_;
   };
 
-  EnqueueJob(scoped_refptr<StorageModuleInterface> storage_module,
-             EnqueueRecordRequest request,
-             std::unique_ptr<EnqueueResponseDelegate> delegate);
+  EnqueueJob(const EnqueueJob& other) = delete;
+  EnqueueJob& operator=(const EnqueueJob& other) = delete;
+
+  static SmartPtr<EnqueueJob> Create(
+      scoped_refptr<StorageModuleInterface> storage_module,
+      EnqueueRecordRequest request,
+      std::unique_ptr<EnqueueResponseDelegate> delegate);
 
  protected:
   // EnqueueJob::StartImpl expects EnqueueRecordRequest to include a valid file
@@ -60,8 +65,14 @@ class EnqueueJob : public Scheduler::Job {
   void StartImpl() override;
 
  private:
+  EnqueueJob(scoped_refptr<StorageModuleInterface> storage_module,
+             scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+             EnqueueRecordRequest request,
+             std::unique_ptr<EnqueueResponseDelegate> delegate);
+
   scoped_refptr<StorageModuleInterface> storage_module_;
   const EnqueueRecordRequest request_;
+  base::WeakPtrFactory<EnqueueJob> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/sequence_checker.h>
 #include <base/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
@@ -55,10 +54,7 @@ class UploadJob : public Scheduler::Job {
 
   class RecordProcessor : public UploaderInterface {
    public:
-    RecordProcessor(
-        scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
-        DoneCb done_cb,
-        const base::WeakPtr<UploadJob>& job);
+    explicit RecordProcessor(DoneCb done_cb);
     RecordProcessor(const RecordProcessor& other) = delete;
     RecordProcessor& operator=(const RecordProcessor& other) = delete;
     ~RecordProcessor() override;
@@ -73,7 +69,6 @@ class UploadJob : public Scheduler::Job {
     void Completed(Status final_status) override;
 
    private:
-    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
     DoneCb done_cb_;
 
     Records records_;
@@ -81,12 +76,12 @@ class UploadJob : public Scheduler::Job {
     size_t current_size_{0};
 
     SEQUENCE_CHECKER(sequence_checker_);
-    const base::WeakPtr<UploadJob> job_;
   };
 
-  ~UploadJob() override;
+  UploadJob(const UploadJob& other) = delete;
+  UploadJob& operator=(const UploadJob& other) = delete;
 
-  static StatusOr<std::unique_ptr<UploadJob>> Create(
+  static StatusOr<SmartPtr<UploadJob>> Create(
       scoped_refptr<UploadClient> upload_client,
       bool need_encryption_key,
       UploaderInterface::UploaderInterfaceResultCb start_cb);
@@ -97,14 +92,14 @@ class UploadJob : public Scheduler::Job {
 
  private:
   UploadJob(std::unique_ptr<UploadDelegate> upload_delegate,
-            SetRecordsCb set_records_cb_,
+            scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+            SetRecordsCb set_records_cb,
             UploaderInterface::UploaderInterfaceResultCb start_cb);
 
   SetRecordsCb set_records_cb_;
   UploaderInterface::UploaderInterfaceResultCb start_cb_;
 
   std::unique_ptr<UploadDelegate> upload_delegate_;
-  SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<UploadJob> weak_ptr_factory_{this};
 };
 

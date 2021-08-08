@@ -31,15 +31,29 @@ class Scheduler {
   // overridden to implement the specific job functionality ending up calling
   // |Finish|. To protect work from being corrupted, most of the public
   // functions only work when the job is in the NOT_RUNNING state.
+  // It is likely to have weak pointer factory, so it requires a special
+  // smart pointer Job::SmartPtr returned by a factory method rather than
+  // raw constructor.
   class Job {
    public:
-    // NOT_RUNNING is the inital state of a Job, no methods have been called and
-    // it is waiting for the Scheduler to Start it.
-    // RUNNING is a protected state for the job, only the job can move it to
-    // another state.
-    // COMPLETED is a successful terminal state for the job.
-    // CANCELLED is an unsuccessful terminal state for the job.
-    enum class JobState { NOT_RUNNING, RUNNING, COMPLETED, CANCELLED };
+    // Smart pointer class. Job objects should never be created by 'new' - only
+    // by a factory method returning such a smart pointer.
+    template <typename T>
+    using SmartPtr = std::unique_ptr<T, base::OnTaskRunnerDeleter>;
+
+    // States the Job can be in.
+    enum class JobState {
+      // Initial state of a Job, no methods have been called and it is waiting
+      // for the Scheduler to Start it.
+      NOT_RUNNING,
+      // Protected state of the job, only the Job itself can move to another
+      // state.
+      RUNNING,
+      // Successful terminal state of the Job.
+      COMPLETED,
+      // Unsuccessful terminal state of the Job.
+      CANCELLED,
+    };
 
     // JobDelegate is responsible for sending responses to any
     // listeners.
@@ -52,14 +66,13 @@ class Scheduler {
       // Job should be the only class calling Complete or Cancel;
       friend Job;
 
-      // Comple and Cancel will be called by Job::Finish and should notify
+      // Complete and Cancel will be called by Job::Finish and should notify
       // listeners of the Jobs completion.
       virtual Status Complete() = 0;
       virtual Status Cancel(Status status) = 0;
     };
 
-    explicit Job(std::unique_ptr<JobDelegate> job_response_delegate);
-    virtual ~Job() = default;
+    virtual ~Job();
 
     Job(const Job&) = delete;
     Job& operator=(const Job&) = delete;
@@ -78,6 +91,10 @@ class Scheduler {
     JobState GetJobState() const;
 
    protected:
+    // Constructor to be used by subcalss constructors only.
+    Job(std::unique_ptr<JobDelegate> job_response_delegate,
+        scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
+
     // StartImpl should perform the unit of work for the Job and call Finish
     // upon completion.
     virtual void StartImpl() = 0;
@@ -87,9 +104,19 @@ class Scheduler {
     // appropriately.
     void Finish(Status status);
 
+    // Checks that we are on a right sequenced task runner.
+    void CheckValidSequence() const;
+
+    // Accesses sequenced task runner assigned to the Job.
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
+
     std::unique_ptr<JobDelegate> job_response_delegate_;
 
    private:
+    // Must be first members in the class.
+    const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+    SEQUENCE_CHECKER(sequence_checker_);
+
     std::atomic<JobState> job_state_{JobState::NOT_RUNNING};
 
     // |complete_cb_| is set by |Start| and called by |Finish|.
@@ -139,7 +166,7 @@ class Scheduler {
 
   // EnqueueJob will store the job in the |job_queue_|, and it will be executed
   // as long as system memory remains above CRITICAL.
-  void EnqueueJob(std::unique_ptr<Job> job);
+  void EnqueueJob(Job::SmartPtr<Job> job);
 
  private:
   class JobContext;
@@ -150,10 +177,10 @@ class Scheduler {
 
   void StartJobs();
   void OnJobPop(std::unique_ptr<JobBlocker> job_blocker,
-                StatusOr<std::unique_ptr<Job>> job_result);
+                StatusOr<Job::SmartPtr<Job>> job_result);
 
   void ClearQueue();
-  void OnJobQueueSwap(base::queue<std::unique_ptr<Job>> job_queue) const;
+  void OnJobQueueSwap(base::queue<Job::SmartPtr<Job>> job_queue) const;
 
   // TODO(1174889) Currently unused, once resourced implements
   // MemoryPressureLevels update. Also initialize JobSemaphorePool at
@@ -168,7 +195,7 @@ class Scheduler {
   SEQUENCE_CHECKER(sequence_checker_);
 
   std::unique_ptr<JobSemaphore> job_semaphore_;
-  scoped_refptr<SharedQueue<std::unique_ptr<Job>>> jobs_queue_;
+  scoped_refptr<SharedQueue<Job::SmartPtr<Job>>> jobs_queue_;
 
   std::vector<SchedulerObserver*> observers_;
 };

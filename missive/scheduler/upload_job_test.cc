@@ -212,7 +212,8 @@ TEST_F(UploadJobTest, UploadsRecords) {
                         base::BindOnce(&TestRecordUploader::StartUpload,
                                        base::Unretained(&record_uploader)));
   ASSERT_TRUE(job_result.ok()) << job_result.status();
-  std::unique_ptr<UploadJob> job = std::move(job_result.ValueOrDie());
+  Scheduler::Job::SmartPtr<Scheduler::Job> job =
+      std::move(job_result.ValueOrDie());
 
   test::TestEvent<Status> uploaded;
   job->Start(uploaded.cb());
