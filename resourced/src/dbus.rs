@@ -62,15 +62,21 @@ fn set_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
 fn create_pressure_chrome_signal(f: &Factory<MTFn<()>, ()>) -> Signal<()> {
     f.signal("MemoryPressureChrome", ())
         .sarg::<u8, _>("pressure_level")
-        .sarg::<u64, _>("memory_delta")
+        .sarg::<u64, _>("reclaim_target_kb")
 }
 
-fn send_pressure_chrome_signal(conn: &Connection, signal: &Signal<()>, level: u8, delta: u64) {
+fn create_pressure_arcvm_signal(f: &Factory<MTFn<()>, ()>) -> Signal<()> {
+    f.signal("MemoryPressureArcvm", ())
+        .sarg::<u8, _>("pressure_level")
+        .sarg::<u64, _>("reclaim_target_kb")
+}
+
+fn send_pressure_signal(conn: &Connection, signal: &Signal<()>, level: u8, reclaim_target_kb: u64) {
     let msg = signal
         .msg(&PATH_NAME.into(), &INTERFACE_NAME.into())
-        .append2(level, delta);
+        .append2(level, reclaim_target_kb);
     if conn.send(msg).is_err() {
-        error!("Send pressure chrome signal failed.");
+        error!("Send pressure signal failed.");
     }
 }
 
@@ -110,7 +116,8 @@ pub fn service_main() -> Result<()> {
                     f.method("SetGameMode", (), set_game_mode)
                         .inarg::<u8, _>("game_mode"),
                 )
-                .add_s(create_pressure_chrome_signal(&f)),
+                .add_s(create_pressure_chrome_signal(&f))
+                .add_s(create_pressure_arcvm_signal(&f)),
         ),
     );
 
@@ -118,6 +125,7 @@ pub fn service_main() -> Result<()> {
     conn.add_handler(tree);
 
     let pressure_chrome_signal = create_pressure_chrome_signal(&f);
+    let pressure_arcvm_signal = create_pressure_arcvm_signal(&f);
     let check_timer = TimerFd::new()?;
     let check_interval = Duration::from_millis(1000);
     check_timer.reset(check_interval, Some(check_interval))?;
@@ -150,14 +158,24 @@ pub fn service_main() -> Result<()> {
                     // wait() reads the fd. It's necessary to read periodic timerfd after each
                     // timerout.
                     check_timer.wait()?;
-                    match memory::get_memory_pressure_status_chrome() {
-                        Ok((level, delta)) => send_pressure_chrome_signal(
-                            &conn,
-                            &pressure_chrome_signal,
-                            level as u8,
-                            delta,
-                        ),
-                        Err(e) => error!("get_memory_pressure_status_chrome() failed: {}", e),
+                    match memory::get_memory_pressure_status() {
+                        Ok(pressure_status) => {
+                            send_pressure_signal(
+                                &conn,
+                                &pressure_chrome_signal,
+                                pressure_status.chrome_level as u8,
+                                pressure_status.chrome_reclaim_target_kb,
+                            );
+                            if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
+                                send_pressure_signal(
+                                    &conn,
+                                    &pressure_arcvm_signal,
+                                    pressure_status.arcvm_level as u8,
+                                    pressure_status.arcvm_reclaim_target_kb,
+                                );
+                            }
+                        }
+                        Err(e) => error!("get_memory_pressure_status() failed: {}", e),
                     }
                 }
                 Token::DBusMsg(fd) => {

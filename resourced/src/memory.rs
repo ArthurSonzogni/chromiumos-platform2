@@ -313,6 +313,25 @@ pub fn get_memory_margins_kb() -> (u64, u64) {
     *MARGINS
 }
 
+struct ComponentMarginsKb {
+    chrome_critical: u64,
+    chrome_moderate: u64,
+    arcvm_foreground: u64,
+    arcvm_perceptible: u64,
+    arcvm_cached: u64,
+}
+
+fn get_component_margins_kb() -> ComponentMarginsKb {
+    let (critical, moderate) = get_memory_margins_kb();
+    ComponentMarginsKb {
+        chrome_critical: critical,
+        chrome_moderate: moderate,
+        arcvm_foreground: critical * 3 / 4,  // 75 % of critical
+        arcvm_perceptible: critical * 3 / 2, // 150 % of critical
+        arcvm_cached: moderate,
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum PressureLevelChrome {
     // There is enough memory to use.
@@ -324,14 +343,63 @@ pub enum PressureLevelChrome {
     Critical = 2,
 }
 
-pub fn get_memory_pressure_status_chrome() -> Result<(PressureLevelChrome, u64)> {
+#[derive(Clone, Copy, PartialEq)]
+pub enum PressureLevelArcvm {
+    // There is enough memory to use.
+    None = 0,
+    // ARCVM is advised to kill cached processes to free memory.
+    Cached = 1,
+    // ARCVM is advised to kill perceptible processes to free memory.
+    Perceptible = 2,
+    // ARCVM is advised to kill foreground processes to free memory.
+    Foreground = 3,
+}
+
+pub struct PressureStatus {
+    pub chrome_level: PressureLevelChrome,
+    pub chrome_reclaim_target_kb: u64,
+    pub arcvm_level: PressureLevelArcvm,
+    pub arcvm_reclaim_target_kb: u64,
+}
+
+pub fn get_memory_pressure_status() -> Result<PressureStatus> {
     let available = get_background_available_memory_kb()?;
-    let (critical, moderate) = get_memory_margins_kb();
-    if available < critical {
-        Ok((PressureLevelChrome::Critical, critical - available))
-    } else if available < moderate {
-        Ok((PressureLevelChrome::Moderate, moderate - available))
+    let margins = get_component_margins_kb();
+
+    let (chrome_level, chrome_reclaim_target_kb) = if available < margins.chrome_critical {
+        (
+            PressureLevelChrome::Critical,
+            margins.chrome_critical - available,
+        )
+    } else if available < margins.chrome_moderate {
+        (
+            PressureLevelChrome::Moderate,
+            margins.chrome_moderate - available,
+        )
     } else {
-        Ok((PressureLevelChrome::None, 0))
-    }
+        (PressureLevelChrome::None, 0)
+    };
+
+    let (arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_foreground {
+        (
+            PressureLevelArcvm::Foreground,
+            margins.arcvm_foreground - available,
+        )
+    } else if available < margins.arcvm_perceptible {
+        (
+            PressureLevelArcvm::Perceptible,
+            margins.arcvm_perceptible - available,
+        )
+    } else if available < margins.arcvm_cached {
+        (PressureLevelArcvm::Cached, margins.arcvm_cached - available)
+    } else {
+        (PressureLevelArcvm::None, 0)
+    };
+
+    Ok(PressureStatus {
+        chrome_level,
+        chrome_reclaim_target_kb,
+        arcvm_level,
+        arcvm_reclaim_target_kb,
+    })
 }
