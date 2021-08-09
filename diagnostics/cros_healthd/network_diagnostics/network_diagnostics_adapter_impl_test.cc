@@ -168,6 +168,11 @@ class MockNetworkDiagnosticsRoutines final
       RunArcHttp,
       (network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunArcHttpCallback),
       (override));
+  MOCK_METHOD(void,
+              RunArcDnsResolution,
+              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                   RunArcDnsResolutionCallback),
+              (override));
   MOCK_METHOD(
       void,
       GetResult,
