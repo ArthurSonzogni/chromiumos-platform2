@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 #include "crash-reporter/util.h"
 
@@ -34,7 +35,7 @@ constexpr char kLsbContents[] =
     "CHROMEOS_RELEASE_TRACK=beta-channel\n"
     "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
 const base::Time kFakeOsTime =
-    base::Time::UnixEpoch() + base::TimeDelta::FromDays(123456);
+    base::Time::UnixEpoch() + base::TimeDelta::FromDays(1234);
 
 }  // namespace
 
@@ -63,6 +64,8 @@ class ArcJavaCollectorTest : public ::testing::Test {
     test_crash_directory_ =
         scoped_temp_dir_.GetPath().Append(kTestCrashDirectory);
     ASSERT_TRUE(base::CreateDirectory(test_crash_directory_));
+
+    paths::SetPrefixForTesting(scoped_temp_dir_.GetPath());
     collector_ = std::make_unique<TestArcJavaCollector>(test_crash_directory_);
 
     std::unique_ptr<base::SimpleTestClock> test_clock =
@@ -73,7 +76,7 @@ class ArcJavaCollectorTest : public ::testing::Test {
     collector_->set_test_kernel_info(kKernelName, kKernelVersion);
 
     base::FilePath lsb_release =
-        scoped_temp_dir_.GetPath().Append("lsb-release");
+        paths::Get(paths::kEtcDirectory).Append("lsb-release");
     ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
     ASSERT_TRUE(base::TouchFile(lsb_release, kFakeOsTime, kFakeOsTime));
     collector_->set_lsb_release_for_test(lsb_release);
@@ -160,7 +163,6 @@ TEST_F(ArcJavaCollectorTest, CreateReportForJavaCrash) {
 
   // check .meta file
   const std::string product_version = arc_util::GetProductVersion();
-  const base::Time os_timestamp = util::GetOsTimestamp();
   const std::string meta_expected = base::StringPrintf(
       "upload_var_collector=ARC_java\n"
       "upload_var_prod=ChromeOS_ARC\n"
@@ -191,7 +193,7 @@ TEST_F(ArcJavaCollectorTest, CreateReportForJavaCrash) {
       "done=1\n",
       uptime_formatted.c_str(), info_path.BaseName().value().c_str(), kFakeNow,
       product_version.c_str(),
-      (os_timestamp - base::Time::UnixEpoch()).InMilliseconds(), kKernelName,
+      (kFakeOsTime - base::Time::UnixEpoch()).InMilliseconds(), kKernelName,
       kKernelVersion, log_path.BaseName().value().c_str());
   base::FilePath meta_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
