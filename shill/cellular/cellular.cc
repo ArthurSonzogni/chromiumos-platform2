@@ -2055,39 +2055,65 @@ void Cellular::SetSimProperties(
   }
 }
 
+void Cellular::OnProfilesChanged() {
+  if (!service_) {
+    LOG(ERROR) << "3GPP profiles were updated with no service.";
+    return;
+  }
+
+  // Rebuild the APN try list.
+  OnOperatorChanged();
+
+  if (!StateIsConnected()) {
+    return;
+  }
+
+  LOG(INFO) << "Reconnecting for OTA profile update";
+  Disconnect(nullptr, "OTA profile update");
+  SetPendingConnect(service_->iccid());
+}
+
 std::deque<Stringmap> Cellular::BuildApnTryList() const {
   std::deque<Stringmap> apn_try_list;
+  bool add_last_good_apn = true;
 
   const Stringmap* custom_apn_info = nullptr;
   const Stringmap* last_good_apn_info = nullptr;
   if (service_) {
     custom_apn_info = service_->GetUserSpecifiedApn();
+    last_good_apn_info = service_->GetLastGoodApn();
     if (custom_apn_info) {
       apn_try_list.push_back(*custom_apn_info);
       SLOG(this, 3) << __func__ << " Adding User Specified APN:"
                     << GetStringmapValue(*custom_apn_info, kApnProperty)
                     << " Is attach:"
                     << GetStringmapValue(*custom_apn_info, kApnAttachProperty);
-    }
-    last_good_apn_info = service_->GetLastGoodApn();
-    if (last_good_apn_info &&
-        (!custom_apn_info || *last_good_apn_info != *custom_apn_info)) {
-      apn_try_list.push_back(*last_good_apn_info);
-      SLOG(this, 3) << __func__ << " Adding last good APN:"
-                    << GetStringmapValue(*last_good_apn_info, kApnProperty)
-                    << " Is attach:"
-                    << GetStringmapValue(*last_good_apn_info,
-                                         kApnAttachProperty);
+      if (last_good_apn_info && *last_good_apn_info == *custom_apn_info) {
+        add_last_good_apn = false;
+      }
     }
   }
 
   for (auto apn : apn_list_) {
-    if ((custom_apn_info && *custom_apn_info == apn) ||
-        (last_good_apn_info && *last_good_apn_info == apn)) {
+    if (custom_apn_info && *custom_apn_info == apn) {
       continue;
+    }
+    if (last_good_apn_info && *last_good_apn_info == apn) {
+      add_last_good_apn = false;
     }
     apn_try_list.push_back(apn);
   }
+
+  // The last good APN will be a last-ditch effort to connect in case the APN
+  // list is misconfigured somehow.
+  if (last_good_apn_info && add_last_good_apn) {
+    apn_try_list.push_back(*last_good_apn_info);
+    LOG(INFO) << __func__ << " Adding last good APN (fallback):"
+              << GetStringmapValue(*last_good_apn_info, kApnProperty)
+              << " Is attach:"
+              << GetStringmapValue(*last_good_apn_info, kApnAttachProperty);
+  }
+
   return apn_try_list;
 }
 

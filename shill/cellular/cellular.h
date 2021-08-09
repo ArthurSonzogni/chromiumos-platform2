@@ -245,13 +245,16 @@ class Cellular : public Device,
   void SetSimProperties(const std::vector<SimProperties>& slot_properties,
                         size_t primary_slot);
 
+  // Called when an OTA profile update arrives from the network.
+  void OnProfilesChanged();
+
   // Returns a list of APNs to try, in the following order:
-  // - the last APN that resulted in a successful connection attempt on the
-  //   current network (if any)
   // - the APN, if any, that was set by the user
   // - APNs that the modem reports as provisioned profiles
   // - the list of APNs found in the mobile broadband provider DB for the
   //   home provider associated with the current SIM
+  // - the last APN that resulted in a successful connection attempt on the
+  //   current network (if any)
   std::deque<Stringmap> BuildApnTryList() const;
 
   // Update the home provider from the information in |operator_info|. This

@@ -1734,7 +1734,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   }
 
   // The cellular object may need to update the APN list now.
-  cellular()->OnOperatorChanged();
+  cellular()->OnProfilesChanged();
 
   // Bail-out early if we don't want to setup the attach APN
   // or the APN parameters are not ready yet.
