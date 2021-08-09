@@ -27,9 +27,9 @@
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
-#include <vboot/crossystem.h>
 #include <zlib.h>
 
+#include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/vm_support.h"
 
@@ -289,10 +289,8 @@ std::string GetHardwareClass() {
   std::string hw_class;
   if (base::ReadFileToString(paths::Get(kHwClassPath), &hw_class))
     return hw_class;
-  char hw_class_arr[VB_MAX_STRING_PROPERTY];
-  if (!VbGetSystemPropertyString("hwid", hw_class_arr, sizeof(hw_class_arr)))
-    return "undefined";
-  return hw_class_arr;
+  auto vb_value = crossystem::GetInstance()->VbGetSystemPropertyString("hwid");
+  return vb_value ? vb_value.value() : "undefined";
 }
 
 std::string GetBootModeString() {
@@ -301,12 +299,12 @@ std::string GetBootModeString() {
   if (IsCrashTestInProgress())
     return "";
 
-  int vb_value = VbGetSystemPropertyInt(kDevSwBoot);
-  if (vb_value < 0) {
+  auto vb_value = crossystem::GetInstance()->VbGetSystemPropertyInt(kDevSwBoot);
+  if (!vb_value) {
     LOG(ERROR) << "Error trying to determine boot mode";
     return "missing-crossystem";
   }
-  if (vb_value == 1)
+  if (vb_value.value() == 1)
     return kDevMode;
 
   return "";

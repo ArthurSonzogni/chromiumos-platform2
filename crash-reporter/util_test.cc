@@ -19,11 +19,13 @@
 #include <base/rand_util.h>
 #include <base/test/simple_test_clock.h>
 #include <base/time/time.h>
+#include <brillo/crossystem/crossystem_fake.h>
 #include <brillo/process/process.h>
 #include <brillo/streams/memory_stream.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_sender_paths.h"
+#include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 #include "metrics/metrics_library_mock.h"
@@ -270,22 +272,46 @@ TEST_F(CrashCommonUtilTest, IsOsTimestampTooOldForUploads) {
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {
+  std::unique_ptr<brillo::fake::CrossystemFake> stub_crossystem =
+      std::make_unique<brillo::fake::CrossystemFake>();
+  auto old_instance = crossystem::ReplaceInstanceForTest(stub_crossystem.get());
+
+  // HWID file not found and failed to get the "hwid" system property.
   EXPECT_EQ("undefined", GetHardwareClass());
 
+  // HWID file not found and but manage to get the "hwid" system property.
+  stub_crossystem->VbSetSystemPropertyString("hwid", "TEST_HWID_123");
+  EXPECT_EQ("TEST_HWID_123", GetHardwareClass());
+
+  // When the HWID file exists, it should prioritize to return the file content.
   ASSERT_TRUE(test_util::CreateFile(
       paths::Get("/sys/devices/platform/chromeos_acpi/HWID"),
       kHwClassContents));
   EXPECT_EQ(kHwClassContents, GetHardwareClass());
+
+  crossystem::ReplaceInstanceForTest(old_instance);
 }
 
 TEST_F(CrashCommonUtilTest, GetBootModeString) {
+  std::unique_ptr<brillo::fake::CrossystemFake> stub_crossystem =
+      std::make_unique<brillo::fake::CrossystemFake>();
+  auto old_instance = crossystem::ReplaceInstanceForTest(stub_crossystem.get());
+
   EXPECT_EQ("missing-crossystem", GetBootModeString());
+
+  stub_crossystem->VbSetSystemPropertyInt("devsw_boot", 1);
+  EXPECT_EQ("dev", GetBootModeString());
+
+  stub_crossystem->VbSetSystemPropertyInt("devsw_boot", 123);
+  EXPECT_EQ("", GetBootModeString());
 
   ASSERT_TRUE(
       test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
                                          paths::kCrashTestInProgress),
                             ""));
   EXPECT_EQ("", GetBootModeString());
+
+  crossystem::ReplaceInstanceForTest(old_instance);
 }
 
 TEST_F(CrashCommonUtilTest, GetCachedKeyValue) {

@@ -55,6 +55,7 @@ pkg_config("libcrash_config") {
 
 static_library("libcrash") {
   sources = [
+    "crossystem.cc",
     "paths.cc",
     "util.cc",
     "vm_support.cc",
