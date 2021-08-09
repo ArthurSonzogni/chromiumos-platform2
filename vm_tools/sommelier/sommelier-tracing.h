@@ -41,6 +41,7 @@ void perfetto_annotate_size_hints(const perfetto::EventContext& perfetto,
 void perfetto_annotate_cardinal_list(const perfetto::EventContext& perfetto,
                                      const char* event_name,
                                      xcb_get_property_reply_t* reply);
+void perfetto_annotate_time_sync(const perfetto::EventContext& perfetto);
 
 #else
 #define TRACE_EVENT(category, name, ...)

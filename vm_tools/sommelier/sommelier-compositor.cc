@@ -606,7 +606,9 @@ static void copy_damaged_rect(sl_host_surface* host,
 static void sl_host_surface_commit(struct wl_client* client,
                                    struct wl_resource* resource) {
   auto resource_id = try_wl_resource_get_id(resource);
-  TRACE_EVENT("surface", "sl_host_surface_commit", "resource_id", resource_id);
+  TRACE_EVENT(
+      "surface", "sl_host_surface_commit", "resource_id", resource_id,
+      [&](perfetto::EventContext p) { perfetto_annotate_time_sync(p); });
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
   if (host->ctx->timing != NULL) {

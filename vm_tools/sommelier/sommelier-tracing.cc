@@ -11,11 +11,27 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <vector>
 #include <xcb/xproto.h>
 
 #include "sommelier.h"      // NOLINT(build/include_directory)
 #include "sommelier-ctx.h"  // NOLINT(build/include_directory)
+
+#if defined(_M_IA64) || defined(_M_IX86) || defined(__ia64__) ||      \
+    defined(__i386__) || defined(__amd64__) || defined(__x86_64__) || \
+    defined(_M_AMD64)
+#define HAS_RDTSC
+#ifdef _MSC_VER
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
+#endif
+#if defined(_M_ARM) || defined(_M_ARMT) || defined(__arm__) || \
+    defined(__thumb__) || defined(__aarch64__)
+// TODO(jbates): support ARM CPU counter
+#endif
 
 #if defined(PERFETTO_TRACING)
 PERFETTO_TRACK_EVENT_STATIC_STORAGE();
@@ -419,6 +435,40 @@ void perfetto_annotate_cardinal_list(const perfetto::EventContext& perfetto,
   }
   str << ']';
   dbg->set_string_value(str.str());
+}
+
+static inline uint64_t get_cpu_ticks() {
+#ifdef HAS_RDTSC
+  return __rdtsc();
+#else
+  return 0;
+#endif
+}
+
+static inline uint64_t get_timestamp_ns(clockid_t cid) {
+  struct timespec ts = {};
+  clock_gettime(cid, &ts);
+  return static_cast<uint64_t>(ts.tv_sec * 1000000000LL + ts.tv_nsec);
+}
+
+void perfetto_annotate_time_sync(const perfetto::EventContext& perfetto) {
+  uint64_t boot_time = get_timestamp_ns(CLOCK_BOOTTIME);
+  uint64_t cpu_time = get_cpu_ticks();
+  uint64_t monotonic_time = get_timestamp_ns(CLOCK_MONOTONIC);
+  // Read again to avoid cache miss overhead.
+  boot_time = get_timestamp_ns(CLOCK_BOOTTIME);
+  cpu_time = get_cpu_ticks();
+  monotonic_time = get_timestamp_ns(CLOCK_MONOTONIC);
+
+  auto* dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("clock_sync_boottime");
+  dbg->set_uint_value(boot_time);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("clock_sync_monotonic");
+  dbg->set_uint_value(monotonic_time);
+  dbg = perfetto.event()->add_debug_annotations();
+  dbg->set_name("clock_sync_cputime");
+  dbg->set_uint_value(cpu_time);
 }
 
 #else
