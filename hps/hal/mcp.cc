@@ -18,6 +18,8 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 
+#define BIT(x) (1ULL << (x))
+
 namespace {
 
 // USB parameters.
@@ -44,10 +46,11 @@ static constexpr size_t kBlockSize =
 enum : uint8_t {
   kCmdStatus = 0x10,
   kCmdReadData = 0x40,
+  kCmdGetGpio = 0x51,
+  kCmdSetSram = 0x60,
   kCmdWriteData = 0x90,
   kCmdReadRepeatStart = 0x93,
   kCmdWriteNoStop = 0x94,
-  kCmdReadFlash = 0xB0,
 };
 
 /*
@@ -131,6 +134,32 @@ bool Mcp::Init(uint32_t speedKHz) {
           "MCP2221 at bus %d port %d H/W rev %c.%c f/w %c.%c",
           libusb_get_bus_number(dev), libusb_get_port_number(dev),
           this->in_[46], this->in_[47], this->in_[48], this->in_[49]);
+
+      /* Set GPIO0 high to enable the level converter */
+      this->Clear();
+      this->out_[0] = kCmdSetSram;
+      /* alter GP settings */
+      /* The old datasheet says this must be 1, 2020 datasheet says (1<<7). */
+      this->out_[7] = BIT(7);
+      /* GP0 settings: GPIO mode, output, set high */
+      this->out_[8] = BIT(4);
+      if (!this->Cmd() || this->in_[1] != 0) {
+        LOG(INFO) << base::StringPrintf("MCP2221A SetSram failure 0x%x 0x%x",
+                                        this->in_[0], this->in_[1]);
+        break;
+      }
+
+      /* Check the GPIO0 setting */
+      this->Clear();
+      this->out_[0] = kCmdGetGpio;
+      if (!this->Cmd() || this->in_[1] != 0 || this->in_[2] != 1 ||
+          this->in_[3] != 0) {
+        LOG(INFO) << base::StringPrintf("MCP2221A Bad GPIO 0x%x 0x%x 0x%x",
+                                        this->in_[0], this->in_[2],
+                                        this->in_[3]);
+        break;
+      }
+
       ret = true;
       break;
     }
