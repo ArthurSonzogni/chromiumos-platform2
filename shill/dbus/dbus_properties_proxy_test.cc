@@ -29,8 +29,10 @@ class DBusPropertiesProxyTest : public testing::Test {
  public:
   DBusPropertiesProxyTest()
       : dbus_properties_proxy_(
-            DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting()) {
-    dbus_properties_proxy_->GetFakePropertiesProxyForTesting()
+            DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+                std::make_unique<FakePropertiesProxy>())) {
+    static_cast<FakePropertiesProxy*>(
+        dbus_properties_proxy_->GetDBusPropertiesProxyForTesting())
         ->SetDictionaryForTesting(kInterface, kTestDictionary);
   }
   ~DBusPropertiesProxyTest() override = default;

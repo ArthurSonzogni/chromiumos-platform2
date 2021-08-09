@@ -18,8 +18,6 @@
 
 namespace shill {
 
-class FakePropertiesProxy;
-
 // This is a cellular-specific DBus Properties interface, as it supports
 // cellular-specific signal (ModemManagerPropertiesChanged).
 // For asynchronous calls, the class instance should outlive the success
@@ -64,10 +62,12 @@ class DBusPropertiesProxy {
       const ModemManagerPropertiesChangedCallback& callback);
 
   static std::unique_ptr<DBusPropertiesProxy>
-  CreateDBusPropertiesProxyForTesting();
+  CreateDBusPropertiesProxyForTesting(
+      std::unique_ptr<org::freedesktop::DBus::PropertiesProxyInterface> proxy);
 
   // Only use this with CreateDBusPropertiesProxyForTesting().
-  FakePropertiesProxy* GetFakePropertiesProxyForTesting();
+  org::freedesktop::DBus::PropertiesProxyInterface*
+  GetDBusPropertiesProxyForTesting();
 
  private:
   // Test only constructor.

@@ -12,6 +12,8 @@
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/mock_modem_info.h"
+#include "shill/dbus/dbus_properties_proxy.h"
+#include "shill/dbus/fake_properties_proxy.h"
 #include "shill/fake_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -240,7 +242,8 @@ TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   // expected. This requires creating a DBusPropertiesProxy for the Capability.
   static_cast<CellularCapability3gpp*>(cellular->capability_for_testing())
       ->SetDBusPropertiesProxyForTesting(
-          DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting());
+          DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+              std::make_unique<FakePropertiesProxy>()));
   cellular->set_state_for_testing(Cellular::State::kEnabled);
 
   Cellular::SimProperties sim1_properties;

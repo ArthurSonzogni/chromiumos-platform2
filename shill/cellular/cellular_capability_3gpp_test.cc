@@ -484,9 +484,10 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     std::unique_ptr<DBusPropertiesProxy> CreateDBusPropertiesProxy(
         const RpcIdentifier& path, const std::string& /*service*/) override {
       std::unique_ptr<DBusPropertiesProxy> properties_proxy =
-          DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting();
-      FakePropertiesProxy* fake_properties =
-          properties_proxy->GetFakePropertiesProxyForTesting();
+          DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+              std::make_unique<FakePropertiesProxy>());
+      FakePropertiesProxy* fake_properties = static_cast<FakePropertiesProxy*>(
+          properties_proxy->GetDBusPropertiesProxyForTesting());
       if (path.value().find(kSimPathPrefix) != std::string::npos) {
         fake_properties->SetDictionaryForTesting(MM_DBUS_INTERFACE_SIM,
                                                  test_->GetSimProperties(path));

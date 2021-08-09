@@ -154,9 +154,10 @@ TEST_F(CellularBearerTest, Constructor) {
 
 TEST_F(CellularBearerTest, Init) {
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy =
-      DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting();
-  SetBearerProperties(
-      dbus_properties_proxy->GetFakePropertiesProxyForTesting());
+      DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+          std::make_unique<FakePropertiesProxy>());
+  SetBearerProperties(static_cast<FakePropertiesProxy*>(
+      dbus_properties_proxy->GetDBusPropertiesProxyForTesting()));
   EXPECT_CALL(*control_,
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
       .WillOnce(Return(ByMove(std::move(dbus_properties_proxy))));

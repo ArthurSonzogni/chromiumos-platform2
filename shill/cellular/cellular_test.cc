@@ -191,9 +191,10 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   void CreatePropertiesProxy() {
     dbus_properties_proxy_ =
-        DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting();
-    FakePropertiesProxy* fake_properties =
-        dbus_properties_proxy_->GetFakePropertiesProxyForTesting();
+        DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+            std::make_unique<FakePropertiesProxy>());
+    FakePropertiesProxy* fake_properties = static_cast<FakePropertiesProxy*>(
+        dbus_properties_proxy_->GetDBusPropertiesProxyForTesting());
     // Ensure that GetAll calls to MM_DBUS_INTERFACE_MODEM and
     // MM_DBUS_INTERFACE_MODEM_MODEM3GPP succeed and return a valid dictionary.
     fake_properties->SetDictionaryForTesting(MM_DBUS_INTERFACE_MODEM,
@@ -1948,7 +1949,8 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*mm1_modem_proxy, SetPowerState(_, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeSetPowerState));
-  dbus_properties_proxy->GetFakePropertiesProxyForTesting()
+  static_cast<FakePropertiesProxy*>(
+      dbus_properties_proxy->GetDBusPropertiesProxyForTesting())
       ->SetDictionaryForTesting(MM_DBUS_INTERFACE_MODEM,
                                 modem_properties.properties());
   dispatcher_.DispatchPendingEvents();
@@ -2038,7 +2040,8 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
 
   // Let the enable complete.
   ASSERT_TRUE(error.IsSuccess());
-  dbus_properties_proxy->GetFakePropertiesProxyForTesting()
+  static_cast<FakePropertiesProxy*>(
+      dbus_properties_proxy->GetDBusPropertiesProxyForTesting())
       ->SetDictionaryForTesting(MM_DBUS_INTERFACE_MODEM,
                                 modem_properties.properties());
   ASSERT_TRUE(!modem_proxy_enable_callback.is_null());

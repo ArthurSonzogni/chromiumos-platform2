@@ -10,7 +10,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
-#include "shill/dbus/fake_properties_proxy.h"
 #include "shill/logging.h"
 
 namespace shill {
@@ -52,14 +51,15 @@ DBusPropertiesProxy::DBusPropertiesProxy(
 
 // static
 std::unique_ptr<DBusPropertiesProxy>
-DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting() {
+DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+    std::unique_ptr<org::freedesktop::DBus::PropertiesProxyInterface> proxy) {
   // Use WrapUnique to allow test constructor to be private.
-  return base::WrapUnique(
-      new DBusPropertiesProxy(std::make_unique<FakePropertiesProxy>()));
+  return base::WrapUnique(new DBusPropertiesProxy(std::move(proxy)));
 }
 
-FakePropertiesProxy* DBusPropertiesProxy::GetFakePropertiesProxyForTesting() {
-  return static_cast<FakePropertiesProxy*>(proxy_.get());
+org::freedesktop::DBus::PropertiesProxyInterface*
+DBusPropertiesProxy::GetDBusPropertiesProxyForTesting() {
+  return proxy_.get();
 }
 
 KeyValueStore DBusPropertiesProxy::GetAll(const std::string& interface_name) {

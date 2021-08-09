@@ -58,7 +58,8 @@ class CellularCapabilityCdmaTest : public testing::Test {
         modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
         sim_proxy_(new NiceMock<mm1::MockSimProxy>()),
         properties_proxy_(
-            DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting()),
+            DBusPropertiesProxy::CreateDBusPropertiesProxyForTesting(
+                std::make_unique<FakePropertiesProxy>())),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
 
