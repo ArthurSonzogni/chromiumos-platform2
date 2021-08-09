@@ -6,6 +6,10 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/files/safe_fd.h>
+
+using base::FilePath;
+using brillo::SafeFD;
 
 namespace {
 
@@ -19,9 +23,72 @@ const char kPowerdTracePath[] = "/var/lib/power_manager";
 // Presence of this file indicates that the system was suspended
 const char kPowerdSuspended[] = "powerd_suspended";
 
+bool SafelyDeleteFile(FilePath file_path) {
+  auto root_res = SafeFD::Root();
+  if (SafeFD::IsError(root_res.second)) {
+    LOG(ERROR) << "Failed to open root: " << static_cast<int>(root_res.second);
+    return false;
+  }
+  auto dir_res = root_res.first.OpenExistingDir(file_path.DirName());
+  if (SafeFD::IsError(dir_res.second)) {
+    if (dir_res.second == SafeFD::Error::kDoesNotExist) {
+      return true;
+    }
+    LOG(ERROR) << "Failed to open " << file_path.DirName() << ": "
+               << static_cast<int>(dir_res.second);
+    return false;
+  }
+  auto unlink_result = dir_res.first.Unlink(file_path.BaseName().value());
+  if (SafeFD::IsError(unlink_result) &&
+      unlink_result != SafeFD::Error::kDoesNotExist &&
+      !(unlink_result == SafeFD::Error::kIOError && errno == ENOENT)) {
+    // Don't fail if the file didn't exist; that's fine.
+    LOG(ERROR) << "Failed to delete file " << file_path.value() << ": "
+               << static_cast<int>(unlink_result);
+    return false;
+  }
+  return true;
+}
+
+bool SafelyCopyFile(FilePath source, FilePath dest) {
+  // We cannot use SafeFD because the permissions on /var/lib/crash_reporter/
+  // are 0700 but the permissions on the lsb-release / os-release files are
+  // 0644. SafeFD expects consistent permissions, and will fail otherwise.
+  int source_parent_fd;
+  if (!ValidatePathAndOpen(source.DirName(), &source_parent_fd)) {
+    LOG(ERROR) << "Failed to open " << source.DirName();
+    return false;
+  }
+  base::ScopedFD scoped_source_parent(source_parent_fd);
+  int source_fd =
+      HANDLE_EINTR(openat(source_parent_fd, source.BaseName().value().c_str(),
+                          O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
+  if (source_fd < 0) {
+    PLOG(ERROR) << "Failed to open " << source;
+    return false;
+  }
+  base::File source_file(source_fd);
+
+  int dest_parent_fd;
+  if (!ValidatePathAndOpen(dest.DirName(), &dest_parent_fd)) {
+    LOG(ERROR) << "Failed to open " << dest.DirName();
+    return false;
+  }
+  base::ScopedFD scoped_dest_parent(dest_parent_fd);
+  int dest_fd =
+      HANDLE_EINTR(openat(dest_parent_fd, dest.BaseName().value().c_str(),
+                          O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0644));
+  if (dest_fd < 0) {
+    PLOG(ERROR) << "Failed to open " << dest;
+    return false;
+  }
+  base::File dest_file(dest_fd);
+
+  return base::CopyFileContents(source_file, dest_file);
+}
+
 }  // namespace
 
-using base::FilePath;
 
 UncleanShutdownCollector::UncleanShutdownCollector()
     : CrashCollector("unclean_shutdown"),
@@ -33,23 +100,29 @@ UncleanShutdownCollector::UncleanShutdownCollector()
 UncleanShutdownCollector::~UncleanShutdownCollector() {}
 
 bool UncleanShutdownCollector::Enable() {
+  auto root_res = SafeFD::Root();
+  if (SafeFD::IsError(root_res.second)) {
+    LOG(ERROR) << "Failed to open root: " << static_cast<int>(root_res.second);
+    return false;
+  }
   FilePath file_path(unclean_shutdown_file_);
-  base::CreateDirectory(file_path.DirName());
-  if (base::WriteFile(file_path, "", 0) != 0) {
-    PLOG(ERROR) << "Unable to create shutdown check file";
+  auto file_res = root_res.first.MakeFile(file_path, 0700);
+  if (SafeFD::IsError(file_res.second)) {
+    LOG(ERROR) << "Unable to create shutdown check file: "
+               << static_cast<int>(file_res.second);
     return false;
   }
   return true;
 }
 
 bool UncleanShutdownCollector::DeleteUncleanShutdownFiles() {
-  if (!base::DeleteFile(FilePath(unclean_shutdown_file_))) {
-    PLOG(ERROR) << "Failed to delete unclean shutdown file "
-                << unclean_shutdown_file_;
+  if (!SafelyDeleteFile(FilePath(unclean_shutdown_file_))) {
     return false;
   }
   // Delete power manager state file if it exists.
-  base::DeleteFile(powerd_suspended_file_);
+  if (!SafelyDeleteFile(powerd_suspended_file_)) {
+    return false;
+  }
   return true;
 }
 
@@ -76,17 +149,17 @@ bool UncleanShutdownCollector::Disable() {
 bool UncleanShutdownCollector::SaveVersionData() {
   FilePath crash_directory(crash_reporter_state_path_);
   FilePath saved_lsb_release = crash_directory.Append(lsb_release_.BaseName());
-  if (!base::CopyFile(lsb_release_, saved_lsb_release)) {
-    PLOG(ERROR) << "Failed to copy " << lsb_release_.value() << " to "
-                << saved_lsb_release.value();
+  if (!SafelyCopyFile(lsb_release_, saved_lsb_release)) {
+    LOG(ERROR) << "Failed to copy " << lsb_release_.value() << " to "
+               << saved_lsb_release.value();
     return false;
   }
 
   FilePath saved_os_release =
       crash_directory.Append(os_release_path_.BaseName());
-  if (!base::CopyFile(os_release_path_, saved_os_release)) {
-    PLOG(ERROR) << "Failed to copy " << os_release_path_.value() << " to "
-                << saved_os_release.value();
+  if (!SafelyCopyFile(os_release_path_, saved_os_release)) {
+    LOG(ERROR) << "Failed to copy " << os_release_path_.value() << " to "
+               << saved_os_release.value();
     return false;
   }
 
