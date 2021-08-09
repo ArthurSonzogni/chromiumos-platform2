@@ -36,7 +36,7 @@ Command* Command::list_;
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
-  DEFINE_uint32(speed, 400, "I2C bus speed in KHz");
+  DEFINE_uint32(speed, 200, "I2C bus speed in KHz");
   DEFINE_uint32(retries, 0, "Max I2C retries");
   DEFINE_uint32(retry_delay, 10, "Delay in ms between retries");
   DEFINE_bool(ftdi, false, "Use FTDI connection");

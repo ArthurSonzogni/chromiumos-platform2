@@ -24,7 +24,7 @@
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
-  DEFINE_uint32(speed, 400, "I2C bus speed in KHz");
+  DEFINE_uint32(speed, 200, "I2C bus speed in KHz");
   DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
