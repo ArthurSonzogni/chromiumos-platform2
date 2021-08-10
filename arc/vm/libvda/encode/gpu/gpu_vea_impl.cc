@@ -181,7 +181,7 @@ void GpuVeaContext::Initialize(vea_config_t* config,
   remote_vea_->Initialize(
       std::move(mojo_config), std::move(remote_client),
       base::BindOnce(&GpuVeaContext::OnInitialized, base::Unretained(this),
-                     base::Passed(std::move(callback))));
+                     std::move(callback)));
 }
 
 void GpuVeaContext::OnInitialized(
