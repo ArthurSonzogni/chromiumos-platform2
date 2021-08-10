@@ -108,8 +108,7 @@ bool WritePersistentRamBufferToFd(const persistent_ram_buffer* buf, int fd) {
     return false;
   }
 
-  if (!base::WriteFileDescriptor(STDOUT_FILENO, content.c_str(),
-                                 content.size())) {
+  if (!base::WriteFileDescriptor(fd, content)) {
     PLOG(ERROR) << "Failed to write data to stdout";
     return false;
   }
