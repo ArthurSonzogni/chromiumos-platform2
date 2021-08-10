@@ -98,7 +98,7 @@ const VMSTAT_VALUES_COUNT: usize = 5; // Number of vmstat values we're tracking.
 #[rustfmt::skip]
 const VMSTATS: [(&str, bool, bool); VMSTAT_VALUES_COUNT] = [
     // name                 mandatory   accumulate
-    ("pswpin",              true, 	false),
+    ("pswpin",              true,       false),
     ("pswpout",             true,       false),
     ("pgalloc",             true,       true),   // pgalloc_dma, pgalloc_normal, etc.
     ("pgmajfault",          true,       false),
@@ -118,6 +118,7 @@ pub enum Error {
     DbusWatchError(Box<dyn std::error::Error>),
     LowMemFDWatchError(Box<dyn std::error::Error>),
     LowMemWatcherError(Box<dyn std::error::Error>),
+    InitSyslogError(Box<dyn std::error::Error>),
 }
 
 impl std::error::Error for Error {
@@ -145,6 +146,7 @@ impl fmt::Display for Error {
             &Error::DbusWatchError(ref e) => write!(f, "cannot watch dbus fd: {}", e),
             &Error::LowMemFDWatchError(ref e) => write!(f, "cannot watch low-mem fd: {}", e),
             &Error::LowMemWatcherError(ref e) => write!(f, "cannot set low-mem watcher: {}", e),
+            &Error::InitSyslogError(ref e) => write!(f, "cannot init syslog: {}", e),
         }
     }
 }
@@ -1394,7 +1396,7 @@ fn build_sample_header() -> String {
     s + "\n"
 }
 
-fn main() {
+fn main() -> Result<()> {
     let mut always_poll_fast = false;
     let mut debug_log = false;
 
@@ -1412,7 +1414,8 @@ fn main() {
     } else {
         log::LevelFilter::Warn
     };
-    syslog::init_unix(syslog::Facility::LOG_USER, log_level).expect("cannot initialize syslog");
+    syslog::init_unix(syslog::Facility::LOG_USER, log_level)
+        .map_err(|e| Error::InitSyslogError(Box::new(e)))?;
 
     // Unlike log!(), warn!() etc., panic!() is not redirected by the syslog
     // facility, instead always goes to stderr, which can get lost.  Here we
@@ -1425,7 +1428,7 @@ fn main() {
     }));
 
     warn!("memd started");
-    run_memory_daemon(always_poll_fast).expect("memd failed");
+    run_memory_daemon(always_poll_fast)
 }
 
 // Creates a directory for testing, if testing.  Otherwise
