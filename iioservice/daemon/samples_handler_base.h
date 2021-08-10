@@ -28,6 +28,9 @@ class SamplesHandlerBase {
 
   void OnSamplesObserverDisconnect(ClientData* client_data);
 
+  void ResetWithReasonOnThread(cros::mojom::SensorDeviceDisconnectReason reason,
+                               std::string description);
+
   void AddClientOnThread(
       ClientData* client_data,
       mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer);

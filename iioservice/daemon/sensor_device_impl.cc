@@ -16,6 +16,12 @@
 
 namespace iioservice {
 
+namespace {
+
+constexpr char kDeviceRemovedDescription[] = "Device was removed";
+
+}
+
 // static
 void SensorDeviceImpl::SensorDeviceImplDeleter(SensorDeviceImpl* device) {
   if (device == nullptr)
@@ -60,6 +66,31 @@ SensorDeviceImpl::~SensorDeviceImpl() {
   sample_thread_->Stop();
   receiver_set_.Clear();
   clients_.clear();
+}
+
+void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  for (auto it = clients_.begin(); it != clients_.end();) {
+    if (it->second.iio_device->GetId() == iio_device_id) {
+      auto it_handler = samples_handlers_.find(it->second.iio_device);
+      if (it_handler != samples_handlers_.end()) {
+        it_handler->second->ResetWithReason(
+            cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+            kDeviceRemovedDescription);
+        samples_handlers_.erase(it_handler);
+      }
+
+      receiver_set_.RemoveWithReason(
+          it->first,
+          static_cast<uint32_t>(
+              cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED),
+          kDeviceRemovedDescription);
+      it = clients_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void SensorDeviceImpl::AddReceiver(

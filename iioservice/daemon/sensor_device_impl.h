@@ -39,6 +39,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
 
   ~SensorDeviceImpl();
 
+  void OnDeviceRemoved(int iio_device_id);
+
   void AddReceiver(int32_t iio_device_id,
                    mojo::PendingReceiver<cros::mojom::SensorDevice> request,
                    const std::set<cros::mojom::DeviceType>& types);

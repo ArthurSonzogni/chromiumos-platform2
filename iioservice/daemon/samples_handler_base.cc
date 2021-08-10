@@ -46,6 +46,29 @@ void SamplesHandlerBase::OnSamplesObserverDisconnect(ClientData* client_data) {
   RemoveClientOnThread(client_data);
 }
 
+void SamplesHandlerBase::ResetWithReasonOnThread(
+    cros::mojom::SensorDeviceDisconnectReason reason, std::string description) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+
+  for (ClientData* client : inactive_clients_) {
+    if (client->observer.is_bound()) {
+      SensorMetrics::GetInstance()->SendSensorObserverClosed();
+      client->observer.ResetWithReason(static_cast<uint32_t>(reason),
+                                       description);
+    }
+  }
+  inactive_clients_.clear();
+
+  for (auto& [client, _] : clients_map_) {
+    if (client->observer.is_bound()) {
+      SensorMetrics::GetInstance()->SendSensorObserverClosed();
+      client->observer.ResetWithReason(static_cast<uint32_t>(reason),
+                                       description);
+    }
+  }
+  clients_map_.clear();
+}
+
 void SamplesHandlerBase::AddClientOnThread(
     ClientData* client_data,
     mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {

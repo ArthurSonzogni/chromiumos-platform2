@@ -130,6 +130,14 @@ SamplesHandler::~SamplesHandler() {
   }
 }
 
+void SamplesHandler::ResetWithReason(
+    cros::mojom::SensorDeviceDisconnectReason reason, std::string description) {
+  sample_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SamplesHandler::ResetWithReasonOnThread,
+                     weak_factory_.GetWeakPtr(), reason, description));
+}
+
 void SamplesHandler::AddClient(
     ClientData* client_data,
     mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {

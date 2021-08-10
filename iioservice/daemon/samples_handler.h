@@ -42,6 +42,9 @@ class SamplesHandler : public SamplesHandlerBase {
 
   virtual ~SamplesHandler();
 
+  void ResetWithReason(cros::mojom::SensorDeviceDisconnectReason reason,
+                       std::string description);
+
   // It's the user's responsibility to maintain |client_data| before being
   // removed or this class being destructed.
   // |client_data.iio_device| should be the same as |iio_device_|.
