@@ -81,7 +81,7 @@ void HandleVpdUpdateCompletion(bool ignore_error,
 // files. Any change in format or location of those files that is not backwards
 // compatible might break rollback.
 // static
-const char DevicePolicyService::kPolicyDir[] = "/var/lib/whitelist";
+const char DevicePolicyService::kPolicyDir[] = "/var/lib/devicesettings";
 // static
 const char DevicePolicyService::kDevicePolicyType[] = "google/chromeos/device";
 // static

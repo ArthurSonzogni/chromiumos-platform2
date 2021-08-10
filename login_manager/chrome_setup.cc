@@ -349,6 +349,8 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // content of known files inside the directory. The policy-readers group is
   // composed of the chronos user and other daemon accessing the device policies
   // but not anything else.
+  // TODO(b/187793661) Change to /var/lib/devicesettings once it's a folder
+  // and not a bind mount anymore.
   gid_t policy_readers_gid;
   CHECK(brillo::userdb::GetGroupInfo("policy-readers", &policy_readers_gid));
   CHECK(EnsureDirectoryExists(base::FilePath("/var/lib/whitelist"), kRootUid,

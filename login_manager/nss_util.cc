@@ -41,7 +41,7 @@ using crypto::ScopedSECKEYPublicKey;
 namespace {
 // This should match the same constant in Chrome tree:
 // chromeos/dbus/constants/dbus_paths.cc
-const char kOwnerKeyFile[] = "/var/lib/whitelist/owner.key";
+const char kOwnerKeyFile[] = "/var/lib/devicesettings/owner.key";
 
 // TODO(hidehiko): Move this to scoped_nss_types.h.
 struct CERTSubjectPublicKeyInfoDeleter {
