@@ -68,6 +68,7 @@ class VmBuilder {
   VmBuilder& EnableVideoEncoder(bool enable);
   VmBuilder& EnableBattery(bool enable);
   VmBuilder& EnableSmt(bool enable);
+  VmBuilder& EnableDelayRt(bool enable);
 
   // Builds the command line required to start a VM.
   base::StringPairs BuildVmArgs() const;
@@ -96,6 +97,7 @@ class VmBuilder {
   bool enable_video_encoder_ = false;
   bool enable_battery_ = false;
   base::Optional<bool> enable_smt_ = false;
+  bool enable_delay_rt_ = false;
 
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;

@@ -162,6 +162,11 @@ VmBuilder& VmBuilder::EnableSmt(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableDelayRt(bool enable) {
+  enable_delay_rt_ = enable;
+  return *this;
+}
+
 base::StringPairs VmBuilder::BuildVmArgs() const {
   base::StringPairs args = {{kCrosvmBin, "run"}};
 
@@ -195,6 +200,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     if (!enable_smt_.value())
       args.emplace_back("--no-smt", "");
   }
+
+  if (enable_delay_rt_)
+    args.emplace_back("--delay-rt", "");
 
   if (kernel_params_.size() > 0)
     args.emplace_back("--params", base::JoinString(kernel_params_, " "));

@@ -267,7 +267,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
       .AppendSharedDir(shared_fonts)
-      .EnableBattery(true /* enable */);
+      .EnableBattery(true /* enable */)
+      .EnableDelayRt(true /* enable */);
 
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   // Enable vulkan only in dev mode for now.
