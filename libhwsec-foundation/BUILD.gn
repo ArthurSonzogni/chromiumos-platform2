@@ -45,6 +45,10 @@ shared_library("libhwsec-foundation") {
     "system_api",
   ]
   configs += [ ":target_defaults" ]
+  if (use.fuzzer && use.tpm) {
+    sources += [ "fuzzed_trousers_utils.cc" ]
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+  }
 }
 
 executable("tpm_version_client") {
