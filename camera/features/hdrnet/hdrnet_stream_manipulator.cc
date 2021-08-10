@@ -120,7 +120,7 @@ bool HdrNetStreamManipulator::OnConfiguredStreams(
 }
 
 bool HdrNetStreamManipulator::ConstructDefaultRequestSettings(
-    camera_metadata_t* default_request_settings, int type) {
+    android::CameraMetadata* default_request_settings, int type) {
   return true;
 }
 

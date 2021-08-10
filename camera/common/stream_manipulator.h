@@ -76,7 +76,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // |default_request_settings| prepared by the camera HAL implementation for
   // type |type|.
   virtual bool ConstructDefaultRequestSettings(
-      camera_metadata_t* default_request_settings, int type) = 0;
+      android::CameraMetadata* default_request_settings, int type) = 0;
 
   // A hook to the camera3_device_ops::process_capture_request(). Will be called
   // by CameraDeviceAdapter for each incoming capture request |request|.

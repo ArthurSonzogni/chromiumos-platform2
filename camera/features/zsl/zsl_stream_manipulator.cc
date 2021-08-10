@@ -52,17 +52,13 @@ bool ZslStreamManipulator::OnConfiguredStreams(
 }
 
 bool ZslStreamManipulator::ConstructDefaultRequestSettings(
-    camera_metadata_t* default_request_settings, int type) {
-  if (!zsl_enabled_) {
-    return true;
-  }
-  base::Optional<uint8_t*> enable_zsl = GetMetadata<uint8_t>(
-      default_request_settings, ANDROID_CONTROL_ENABLE_ZSL);
-  if (!enable_zsl) {
+    android::CameraMetadata* default_request_settings, int type) {
+  uint8_t zsl_enable = ANDROID_CONTROL_ENABLE_ZSL_TRUE;
+  if (default_request_settings->update(ANDROID_CONTROL_ENABLE_ZSL, &zsl_enable,
+                                       1) != 0) {
     LOGF(WARNING) << "Failed to add ENABLE_ZSL to template " << type;
     return false;
   }
-  **enable_zsl = ANDROID_CONTROL_ENABLE_ZSL_TRUE;
   LOGF(INFO) << "Added ENABLE_ZSL to template " << type;
   return true;
 }

@@ -429,9 +429,14 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
   }
   android::CameraMetadata& request_template = request_templates_[type_index];
   if (request_template.isEmpty()) {
+    int32_t request_type = static_cast<int32_t>(type);
     request_template.acquire(clone_camera_metadata(
-        camera_device_->ops->construct_default_request_settings(
-            camera_device_, static_cast<int32_t>(type))));
+        camera_device_->ops->construct_default_request_settings(camera_device_,
+                                                                request_type)));
+    for (auto it = stream_manipulators_.begin();
+         it != stream_manipulators_.end(); ++it) {
+      (*it)->ConstructDefaultRequestSettings(&request_template, request_type);
+    }
   }
   return internal::SerializeCameraMetadata(request_template.getAndLock());
 }
