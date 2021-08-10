@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <linux/capability.h>
 #include <net/route.h>
 #include <signal.h>
@@ -189,6 +190,8 @@ constexpr const char kL1TFFilePath[] =
 // File path that reports the MDS vulnerability status.
 constexpr const char kMDSFilePath[] =
     "/sys/devices/system/cpu/vulnerabilities/mds";
+
+constexpr gid_t kCrosvmUGid = 299;
 
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
@@ -975,6 +978,39 @@ void Service::OnSignalReadable() {
 }
 
 bool Service::Init() {
+  // It's not possible to ask minijail to set up a user namespace and switch to
+  // a non-0 uid/gid, or to set up supplemental groups. Concierge needs both
+  // supplemental groups and to run as a user whose id is unchanged from the
+  // root namespace (dbus authentication requires this), so we configure this
+  // here.
+  if (setresuid(kCrosvmUGid, kCrosvmUGid, kCrosvmUGid) < 0) {
+    PLOG(ERROR) << "Failed to set uid to crosvm";
+    return false;
+  }
+  if (setresgid(kCrosvmUGid, kCrosvmUGid, kCrosvmUGid) < 0) {
+    PLOG(ERROR) << "Failed to set gid to crosvm";
+    return false;
+  }
+  // Ideally we would just call initgroups("crosvm") here, but internally glibc
+  // interprets EINVAL as signaling that the list of supplemental groups is too
+  // long and truncates the list, when it could also indicate that some of the
+  // gids are unmapped in the current namespace. Instead we look up the groups
+  // ourselves so we can log a useful error if the mapping is wrong.
+  int ngroups = 0;
+  getgrouplist("crosvm", kCrosvmUGid, nullptr, &ngroups);
+  std::vector<gid_t> groups(ngroups);
+  if (getgrouplist("crosvm", kCrosvmUGid, groups.data(), &ngroups) < 0) {
+    PLOG(ERROR) << "Failed to get supplemental groups for user crosvm";
+    return false;
+  }
+  if (setgroups(ngroups, groups.data()) < 0) {
+    PLOG(ERROR)
+        << "Failed to set supplemental groups. This probably means you have "
+           "added user crosvm to groups that are not mapped in the concierge "
+           "user namespace and need to update vm_concierge.conf.";
+    return false;
+  }
+
   // Change the umask so that the runtime directory for each VM will get the
   // right permissions.
   umask(002);
