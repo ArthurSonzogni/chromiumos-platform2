@@ -6,8 +6,8 @@ access: 1
 brk: 1
 clock_getres: 1
 clock_getres_time64: 1
-clock_gettime: 1
 clock_gettime64: 1
+clock_gettime: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
 clone: 1
@@ -26,7 +26,10 @@ flock: 1
 fstat64: 1
 futex: 1
 getdents64: 1
+getegid: 1
 geteuid32: 1
+geteuid: 1
+getgid: 1
 getpid: 1
 getppid: 1
 getresgid32: 1
@@ -47,6 +50,7 @@ mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 openat: 1
+pipe2: 1
 poll: 1
 pread64: 1
 read: 1
@@ -62,15 +66,16 @@ sendmsg: 1
 set_robust_list: 1
 set_tid_address: 1
 sigaltstack: 1
+signalfd4: 1
 socket: arg0 == AF_UNIX
 stat: 1
 statfs: 1
 sysinfo: 1
-ugetrlimit: 1
 tgkill: 1
 timerfd_create: 1
 timerfd_settime64: 1
 timerfd_settime: 1
+ugetrlimit: 1
 umask: 1
 uname: 1
 unlink: 1
