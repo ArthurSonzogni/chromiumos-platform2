@@ -89,21 +89,23 @@ TEST_F(HPSTest, Download) {
   auto f = temp_dir.GetPath().Append("blob");
   const int len = 1024;
   CreateBlob(f, len);
-  // Download allowed to bank 0 in pre-booted state.
-  ASSERT_TRUE(hps_->Download(0, f));
+  // Download allowed to mcu flash in pre-booted state.
+  ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // Make sure the right amount was written.
-  EXPECT_EQ(fake_->GetBankLen(0), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
   // Fail the memory write and confirm that the request fails.
   // TODO(amcrae): Refactor to use enum directly.
   fake_->Set(hps::FakeDev::Flags::kMemFail);
-  ASSERT_FALSE(hps_->Download(0, f));
+  ASSERT_FALSE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // No change to length.
-  EXPECT_EQ(fake_->GetBankLen(0), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
   fake_->Clear(hps::FakeDev::Flags::kMemFail);
-  EXPECT_FALSE(hps_->Download(1, f));
+  // Download not allowed to spi flash in pre-booted state.
+  EXPECT_FALSE(hps_->Download(hps::HpsBank::kSpiFlash, f));
   fake_->SkipBoot();
   // No downloads allowed when running.
-  EXPECT_FALSE(hps_->Download(0, f));
+  EXPECT_FALSE(hps_->Download(hps::HpsBank::kMcuFlash, f));
+  EXPECT_FALSE(hps_->Download(hps::HpsBank::kSpiFlash, f));
 }
 
 /*
@@ -116,10 +118,10 @@ TEST_F(HPSTest, DownloadSmallBlocks) {
   const int len = 1024;
   CreateBlob(f, len);
   fake_->SetBlockSizeBytes(32);
-  // Download allowed to bank 0 in pre-booted state.
-  ASSERT_TRUE(hps_->Download(0, f));
+  // Download allowed to mcu flash in pre-booted state.
+  ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // Make sure the right amount was written.
-  EXPECT_EQ(fake_->GetBankLen(0), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
 }
 
 /*
@@ -164,8 +166,8 @@ TEST_F(HPSTest, NormalBoot) {
 
   // Ensure that features can be enabled.
   EXPECT_TRUE(hps_->Enable(0));
-  EXPECT_EQ(fake_->GetBankLen(0), 0);
-  EXPECT_EQ(fake_->GetBankLen(1), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
 }
 
 /*
@@ -203,8 +205,8 @@ TEST_F(HPSTest, McuUpdate) {
   ASSERT_TRUE(hps_->Boot());
 
   // Check that MCU was downloaded.
-  EXPECT_EQ(fake_->GetBankLen(0), len);
-  EXPECT_EQ(fake_->GetBankLen(1), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
 }
 
 /*
@@ -242,8 +244,8 @@ TEST_F(HPSTest, SpiUpdate) {
   ASSERT_TRUE(hps_->Boot());
 
   // Check that SPI was downloaded.
-  EXPECT_EQ(fake_->GetBankLen(0), 0);
-  EXPECT_EQ(fake_->GetBankLen(1), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
 }
 
 /*
@@ -290,8 +292,8 @@ TEST_F(HPSTest, BothUpdate) {
   ASSERT_TRUE(hps_->Boot());
 
   // Check that both MCU and SPI blobs were updated.
-  EXPECT_EQ(fake_->GetBankLen(0), len);
-  EXPECT_EQ(fake_->GetBankLen(1), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
 }
 
 /*
@@ -337,8 +339,8 @@ TEST_F(HPSTest, VersionUpdate) {
   ASSERT_TRUE(hps_->Boot());
 
   // Check that both MCU and SPI were downloaded.
-  EXPECT_EQ(fake_->GetBankLen(0), len);
-  EXPECT_EQ(fake_->GetBankLen(1), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
 }
 
 }  //  namespace

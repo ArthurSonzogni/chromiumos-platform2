@@ -10,6 +10,12 @@
 
 namespace hps {
 
+// Memory bank numbers for the download operation
+enum class HpsBank {
+  kMcuFlash = 0,
+  kSpiFlash = 1,
+};
+
 // Register numbers for HPS module interface.
 enum HpsReg {
   kMagic = 0,

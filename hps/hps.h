@@ -18,6 +18,7 @@
 
 #include "hps/dev.h"
 #include "hps/hps_metrics.h"
+#include "hps/hps_reg.h"
 
 namespace hps {
 
@@ -76,7 +77,7 @@ class HPS {
    * must be between 0-63 inclusive.
    * Returns true on success, false on failure.
    */
-  bool Download(int bank, const base::FilePath& source);
+  bool Download(hps::HpsBank bank, const base::FilePath& source);
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib) {

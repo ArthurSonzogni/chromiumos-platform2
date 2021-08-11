@@ -345,14 +345,15 @@ void HPS::Go(State newstate) {
  * Download data to the bank specified.
  * The HPS/Host I2C Interface Memory Write is used.
  */
-bool HPS::Download(int bank, const base::FilePath& source) {
+bool HPS::Download(hps::HpsBank bank, const base::FilePath& source) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
-  if (bank < 0 || bank >= kNumBanks) {
-    LOG(ERROR) << "Download: Illegal bank: " << bank << ": " << source;
+  int ibank = static_cast<int>(bank);
+  if (ibank < 0 || ibank >= kNumBanks) {
+    LOG(ERROR) << "Download: Illegal bank: " << ibank << ": " << source;
     return -1;
   }
-  return this->WriteFile(bank, source);
+  return this->WriteFile(ibank, source);
 }
 
 /*
@@ -370,8 +371,7 @@ bool HPS::WriteFile(int bank, const base::FilePath& source) {
   int rd;
   do {
     if (!this->WaitForBankReady(bank)) {
-      LOG(ERROR) << "WriteFile: " << source << ": "
-                 << "bank not ready";
+      LOG(ERROR) << "WriteFile: bank not ready: " << bank;
       return false;
     }
     /*
@@ -393,8 +393,7 @@ bool HPS::WriteFile(int bank, const base::FilePath& source) {
     if (rd > 0) {
       if (!this->device_->Write(I2cMemWrite(bank), &buf[0],
                                 rd + sizeof(uint32_t))) {
-        LOG(ERROR) << "WriteFile: " << source << ": "
-                   << " device write error";
+        LOG(ERROR) << "WriteFile: device write error. bank: " << bank;
         return false;
       }
       address += rd;

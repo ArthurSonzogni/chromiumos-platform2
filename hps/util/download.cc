@@ -34,7 +34,7 @@ int Download(std::unique_ptr<hps::HPS> hps,
     return 1;
   }
   // Assume downloading to start of bank.
-  if (hps->Download(bank, base::FilePath(args[2]))) {
+  if (hps->Download(hps::HpsBank(bank), base::FilePath(args[2]))) {
     std::cout << "Successful download" << std::endl;
     return 0;
   } else {

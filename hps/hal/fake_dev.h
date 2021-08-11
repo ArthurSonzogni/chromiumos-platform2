@@ -76,7 +76,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
   void SetF1Result(uint16_t result) { this->f1_result_ = result & 0x7FFF; }
   void SetF2Result(uint16_t result) { this->f2_result_ = result & 0x7FFF; }
-  size_t GetBankLen(int bank);
+  size_t GetBankLen(hps::HpsBank bank);
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
   // Create an instance of a simulator.

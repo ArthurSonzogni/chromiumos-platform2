@@ -380,9 +380,9 @@ uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
   return 0;
 }
 
-size_t FakeDev::GetBankLen(int bank) {
+size_t FakeDev::GetBankLen(hps::HpsBank bank) {
   base::AutoLock l(this->bank_lock_);
-  return this->bank_len_[bank];
+  return this->bank_len_[static_cast<int>(bank)];
 }
 
 void FakeDev::MsgStop() {
