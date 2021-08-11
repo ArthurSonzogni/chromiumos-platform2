@@ -46,7 +46,6 @@ some_base_config: &some_base_config
       build-path: "some/media_profiles.xml"
       system-path: "/etc/some_media_profiles.xml"
     build-properties:
-      first-api-level: "27"
       product: "{{$name}}"
       device: "{{$name}}_cheets"
       metrics-tag: "abc123"

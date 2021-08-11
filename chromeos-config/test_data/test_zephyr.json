@@ -5,7 +5,6 @@
         "arc": {
           "build-properties": {
             "device": "some2_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "some2"
           },

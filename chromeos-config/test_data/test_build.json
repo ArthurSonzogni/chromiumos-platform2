@@ -5,7 +5,6 @@
         "arc": {
           "build-properties": {
             "device": "some_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "some"
           },
@@ -154,7 +153,6 @@
         "arc": {
           "build-properties": {
             "device": "some_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "some"
           },
@@ -299,7 +297,6 @@
         "arc": {
           "build-properties": {
             "device": "some2_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "some2"
           },
@@ -532,7 +529,6 @@
         "arc": {
           "build-properties": {
             "device": "whitelabel_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "whitelabel"
           },
@@ -629,7 +625,6 @@
         "arc": {
           "build-properties": {
             "device": "whitelabel_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "whitelabel"
           },
@@ -726,7 +721,6 @@
         "arc": {
           "build-properties": {
             "device": "whitelabel_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "whitelabel"
           },
@@ -823,7 +817,6 @@
         "arc": {
           "build-properties": {
             "device": "whitelabel_cheets",
-            "first-api-level": "27",
             "metrics-tag": "abc123",
             "product": "whitelabel"
           },

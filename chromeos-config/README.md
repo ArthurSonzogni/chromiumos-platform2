@@ -368,7 +368,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | device | string |  | True |  | False | Device name to report in 'ro.product.device'. This is often '{product}_cheets' but it can be something else if desired. |
-| first-api-level | string |  | True |  | False | The first Android API level that this model shipped with.  |
+| first-api-level | string |  | False |  | False | The first Android API level that this model shipped with. Deprecated since M94 (b/187778952).  |
 | marketing-name | string |  | False |  | False | Name of this model as it is called in the market, reported in 'ro.product.model'. This often starts with '{oem}'. |
 | metrics-tag | string |  | True |  | False | Tag to use to track metrics for this model. The tag can be shared across many devices if desired, but this will result in larger granularity for metrics reporting.  Ideally the metrics system should support collation of metrics with different tags into groups, but if this is not supported, this tag can be used to achieve the same end.  This is reported in 'ro.product.metrics.tag'. |
 | oem | string |  | False |  | False | Original Equipment Manufacturer for this model. This generally means the OEM name printed on the device. |

@@ -285,7 +285,6 @@ properties:
                 build-properties:
                   type: object
                   required:
-                    - first-api-level
                     - product
                     - device
                     - metrics-tag
@@ -321,6 +320,7 @@ properties:
                     first-api-level:
                       description: |
                         The first Android API level that this model shipped with.
+                        Deprecated since M94 (b/187778952).
                       type: string
                     pai-regions:
                       description: |
