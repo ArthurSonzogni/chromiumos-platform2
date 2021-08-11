@@ -1025,10 +1025,11 @@ TEST_F(CrashSenderUtilTest, ChooseAction_SetsHwtestSuiteRun) {
   // The file should be sent.
   EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
   std::string out;
-  EXPECT_EQ(info.metadata.GetString("hwtest_suite_run", &out), true);
+  EXPECT_EQ(info.metadata.GetString("upload_var_hwtest_suite_run", &out), true);
   EXPECT_EQ(out, "true");
 
-  EXPECT_EQ(info.metadata.GetString("hwtest_sender_direct", &out), true);
+  EXPECT_EQ(info.metadata.GetString("upload_var_hwtest_sender_direct", &out),
+            true);
   EXPECT_EQ(out, "true");
 }
 
@@ -1051,8 +1052,10 @@ TEST_F(CrashSenderUtilTest, ChooseAction_NonForceNoHwTestSuiteRun) {
   // The file should be sent.
   EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
   std::string out;
-  EXPECT_EQ(info.metadata.GetString("hwtest_suite_run", &out), false);
-  EXPECT_EQ(info.metadata.GetString("hwtest_sender_direct", &out), false);
+  EXPECT_EQ(info.metadata.GetString("upload_var_hwtest_suite_run", &out),
+            false);
+  EXPECT_EQ(info.metadata.GetString("upload_var_hwtest_sender_direct", &out),
+            false);
 }
 
 TEST_F(CrashSenderUtilDeathTest, ChooseActionCrash) {

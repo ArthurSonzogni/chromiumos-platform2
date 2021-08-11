@@ -59,8 +59,8 @@ constexpr char kJsonLogKeySource[] = "source";
 // Keys used in CrashDetails::metadata.
 constexpr char kMetadataKeyCaptureTimeMillis[] = "upload_var_reportTimeMillis";
 constexpr char kMetadataKeySource[] = "exec_name";
-constexpr char kHwTestSuiteRun[] = "hwtest_suite_run";
-constexpr char kHwTestSenderUpload[] = "hwtest_sender_direct";
+constexpr char kHwTestSuiteRun[] = "upload_var_hwtest_suite_run";
+constexpr char kHwTestSenderUpload[] = "upload_var_hwtest_sender_direct";
 
 // Values used for kJsonLogKeySource.
 constexpr char kMetadataValueRedacted[] = "REDACTED";
