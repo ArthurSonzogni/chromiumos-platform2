@@ -12,7 +12,11 @@
 
 #include "hps/hal/fake_dev.h"
 #include "hps/hps.h"
+#include "hps/hps_metrics.h"
 #include "hps/hps_reg.h"
+#include "metrics/metrics_library_mock.h"
+
+using ::testing::_;
 
 namespace {
 
@@ -21,11 +25,19 @@ class HPSTest : public testing::Test {
   virtual void SetUp() {
     fake_ = hps::FakeDev::Create();
     hps_ = std::make_unique<hps::HPS>(fake_->CreateDevInterface());
+
+    hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
   }
+
   void CreateBlob(const base::FilePath& file, int len) {
     base::File f(file, base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
     ASSERT_TRUE(f.IsValid());
     f.SetLength(len);
+  }
+
+  MetricsLibraryMock* GetMetricsLibraryMock() {
+    return static_cast<MetricsLibraryMock*>(
+        hps_->metrics_library_for_testing());
   }
 
   scoped_refptr<hps::FakeDev> fake_;
@@ -111,7 +123,7 @@ TEST_F(HPSTest, DownloadSmallBlocks) {
 }
 
 /*
- * Boot testing.
+ * Features cannot be enabled until after boot
  */
 TEST_F(HPSTest, SkipBoot) {
   // Make sure features can't be enabled.
@@ -135,13 +147,21 @@ TEST_F(HPSTest, NormalBoot) {
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
   auto spi = temp_dir.GetPath().Append("spi");
+
   // Set the expected version
   const uint16_t version = 1234;
   fake_->SetVersion(version);
   // Set up the version and files.
   hps_->Init(version, mcu, spi);
+
   // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
   ASSERT_TRUE(hps_->Boot());
+
   // Ensure that features can be enabled.
   EXPECT_TRUE(hps_->Enable(0));
   EXPECT_EQ(fake_->GetBankLen(0), 0);
@@ -160,6 +180,7 @@ TEST_F(HPSTest, McuUpdate) {
   auto spi = temp_dir.GetPath().Append("spi");
   const int len = 1024;
   CreateBlob(mcu, len);
+
   // Set the expected version
   const uint16_t version = 1234;
   fake_->SetVersion(version);
@@ -167,8 +188,20 @@ TEST_F(HPSTest, McuUpdate) {
   fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
   // Set up the version and files.
   hps_->Init(version, mcu, spi);
+
   // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kMcuNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
   ASSERT_TRUE(hps_->Boot());
+
   // Check that MCU was downloaded.
   EXPECT_EQ(fake_->GetBankLen(0), len);
   EXPECT_EQ(fake_->GetBankLen(1), 0);
@@ -186,6 +219,7 @@ TEST_F(HPSTest, SpiUpdate) {
   auto spi = temp_dir.GetPath().Append("spi");
   const int len = 1024;
   CreateBlob(spi, len);
+
   // Set the expected version
   const uint16_t version = 1234;
   fake_->SetVersion(version);
@@ -193,8 +227,20 @@ TEST_F(HPSTest, SpiUpdate) {
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
   // Set up the version and files.
   hps_->Init(version, mcu, spi);
+
   // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
   ASSERT_TRUE(hps_->Boot());
+
   // Check that SPI was downloaded.
   EXPECT_EQ(fake_->GetBankLen(0), 0);
   EXPECT_EQ(fake_->GetBankLen(1), len);
@@ -214,6 +260,7 @@ TEST_F(HPSTest, BothUpdate) {
   const int len = 1024;
   CreateBlob(spi, len);
   CreateBlob(mcu, len);
+
   // Set the expected version
   const uint16_t version = 1234;
   fake_->SetVersion(version);
@@ -223,8 +270,25 @@ TEST_F(HPSTest, BothUpdate) {
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
   // Set up the version and files.
   hps_->Init(version, mcu, spi);
+
   // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kMcuNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
   ASSERT_TRUE(hps_->Boot());
+
   // Check that both MCU and SPI blobs were updated.
   EXPECT_EQ(fake_->GetBankLen(0), len);
   EXPECT_EQ(fake_->GetBankLen(1), len);
@@ -243,6 +307,7 @@ TEST_F(HPSTest, VersionUpdate) {
   const int len = 1024;
   CreateBlob(spi, len);
   CreateBlob(mcu, len);
+
   // Set the current version
   const uint16_t version = 1234;
   fake_->SetVersion(version);
@@ -251,8 +316,26 @@ TEST_F(HPSTest, VersionUpdate) {
   fake_->Set(hps::FakeDev::Flags::kIncrementVersion);
   // Set up the version to be the next version.
   hps_->Init(version + 1, mcu, spi);
+
   // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kMcuVersionMismatch),
+                    _))
+      .Times(1);
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
   ASSERT_TRUE(hps_->Boot());
+
   // Check that both MCU and SPI were downloaded.
   EXPECT_EQ(fake_->GetBankLen(0), len);
   EXPECT_EQ(fake_->GetBankLen(1), len);

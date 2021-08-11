@@ -78,6 +78,15 @@ class HPS {
    */
   bool Download(int bank, const base::FilePath& source);
 
+  void SetMetricsLibraryForTesting(
+      std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
+    hps_metrics_.SetMetricsLibraryForTesting(std::move(metrics_lib));
+  }
+
+  MetricsLibraryInterface* metrics_library_for_testing() {
+    return hps_metrics_.metrics_library_for_testing();
+  }
+
  private:
   // Boot states.
   enum State {
