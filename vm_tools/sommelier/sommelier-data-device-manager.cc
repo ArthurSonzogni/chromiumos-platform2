@@ -48,11 +48,9 @@ struct sl_data_transfer {
 };
 
 static void sl_data_transfer_destroy(struct sl_data_transfer* transfer) {
-  transfer->read_event_source.reset();
-  transfer->write_event_source.reset();
   close(transfer->read_fd);
   close(transfer->write_fd);
-  free(transfer);
+  delete transfer;
 }
 
 static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
@@ -147,13 +145,13 @@ static void sl_data_transfer_create(struct wl_event_loop* event_loop,
   UNUSED(rv);
 
   // Start out the transfer in the reading state.
-  struct sl_data_transfer* transfer =
-      static_cast<sl_data_transfer*>(calloc(1, sizeof(*transfer)));
+  struct sl_data_transfer* transfer = new sl_data_transfer;
   assert(transfer);
   transfer->read_fd = read_fd;
   transfer->write_fd = write_fd;
   transfer->offset = 0;
   transfer->bytes_left = 0;
+  memset(transfer->data, 0, DEFAULT_BUFFER_SIZE);
   transfer->read_event_source.reset(
       wl_event_loop_add_fd(event_loop, read_fd, WL_EVENT_READABLE,
                            sl_handle_data_transfer_read, transfer));
