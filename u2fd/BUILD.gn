@@ -203,6 +203,7 @@ if (use.fuzzer) {
       "fuzzers/fake_u2f_msg_handler.cc",
       "fuzzers/fake_uhid_device.cc",
       "fuzzers/u2fhid_fuzzer.cc",
+      "tpm_vendor_cmd.cc",
       "u2f_apdu.cc",
       "u2fhid.cc",
       "util.cc",
@@ -211,7 +212,10 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",
     ]
-    pkg_deps = [ "openssl" ]
+    pkg_deps = [
+      "libtrunks",
+      "openssl",
+    ]
   }
 
   executable("u2f_msg_handler_fuzzer") {
