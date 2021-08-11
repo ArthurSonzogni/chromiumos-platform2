@@ -138,7 +138,8 @@ int FirmwareUpdate(const string& install_dir, bool is_update) {
   string command = install_dir + "/usr/sbin/chromeos-firmwareupdate";
   if (access(command.c_str(), X_OK) != 0) {
     LOG(INFO) << "No firmware updates available.";
-    return true;
+    // Return success.
+    return 0;
   }
 
   string mode;
