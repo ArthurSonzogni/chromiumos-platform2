@@ -93,6 +93,12 @@ class DoHCurlClient : public DoHCurlClientInterface {
   void SetNameServers(const std::vector<std::string>& name_servers) override;
   void SetDoHProviders(const std::vector<std::string>& doh_providers) override;
 
+  // Returns a weak pointer to ensure that callbacks don't run after this class
+  // is destroyed.
+  base::WeakPtr<DoHCurlClient> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
  private:
   // State of an individual query.
   struct State {

@@ -86,6 +86,7 @@ DoHCurlClient::~DoHCurlClient() {
     CancelRequest(requests.second);
   }
   curl_multi_cleanup(curlm_);
+  curlm_ = nullptr;
   curl_global_cleanup();
 }
 
@@ -197,6 +198,9 @@ int DoHCurlClient::SocketCallback(
 }
 
 void DoHCurlClient::TimeoutCallback() {
+  if (!curlm_) {
+    return;
+  }
   int still_running;
   curl_multi_socket_action(curlm_, CURL_SOCKET_TIMEOUT, 0, &still_running);
   CheckMultiInfo();
@@ -210,7 +214,7 @@ int DoHCurlClient::TimerCallback(CURLM* multi,
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
         base::BindRepeating(&DoHCurlClient::TimeoutCallback,
-                            base::Unretained(client)),
+                            client->GetWeakPtr()),
         base::TimeDelta::FromMilliseconds(timeout_ms));
   } else if (timeout_ms == 0) {
     client->TimeoutCallback();
