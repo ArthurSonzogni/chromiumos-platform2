@@ -528,6 +528,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    StartArcInstanceExpectationsBuilder& SetDisableUreadahead(bool v) {
+      disable_ureadahead_ = v;
+      return *this;
+    }
+
     StartArcInstanceExpectationsBuilder& SetArcGeneratePai(bool v) {
       arc_generate_pai_ = v;
       return *this;
@@ -566,6 +571,7 @@ class SessionManagerImplTest : public ::testing::Test,
               std::to_string(disable_media_store_maintenance_),
           "DISABLE_DOWNLOAD_PROVIDER=" +
               std::to_string(disable_download_provider_),
+          "DISABLE_UREADAHEAD=" + std::to_string(disable_ureadahead_),
       });
 
       if (arc_generate_pai_)
@@ -617,6 +623,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool disable_system_default_app_ = false;
     bool disable_media_store_maintenance_ = false;
     bool disable_download_provider_ = false;
+    bool disable_ureadahead_ = false;
     bool arc_generate_pai_ = false;
     StartArcMiniContainerRequest_PlayStoreAutoUpdate play_store_auto_update_ =
         StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT;
@@ -691,6 +698,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    UpgradeContainerExpectationsBuilder& SetDisableUreadahead(bool v) {
+      disable_ureadahead_ = v;
+      return *this;
+    }
+
     UpgradeContainerExpectationsBuilder& SetManagementTransition(bool v) {
       management_transition_ = v;
       return *this;
@@ -709,6 +721,7 @@ class SessionManagerImplTest : public ::testing::Test,
           "MANAGEMENT_TRANSITION=" + std::to_string(management_transition_),
           "ENABLE_ADB_SIDELOAD=" + std::to_string(enable_adb_sideload_),
           "ENABLE_ARC_NEARBY_SHARE=" + std::to_string(enable_arc_nearby_share_),
+          "DISABLE_UREADAHEAD=" + std::to_string(disable_ureadahead_),
           ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
           ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
           ExpectedSkipGmsCoreCacheSetupFlagValue(skip_gms_core_cache_),
@@ -728,6 +741,7 @@ class SessionManagerImplTest : public ::testing::Test,
     int management_transition_ = 0;
     bool enable_adb_sideload_ = false;
     bool enable_arc_nearby_share_ = false;
+    bool disable_ureadahead_ = false;
   };
 #endif
 
@@ -2702,6 +2716,25 @@ TEST_F(SessionManagerImplTest, DisableDownloadProvider) {
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
 }
 
+TEST_F(SessionManagerImplTest, DisableUreadahead) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  StartArcMiniContainerRequest request;
+  request.set_disable_ureadahead(true);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetDisableUreadahead(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
+}
+
 TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   ExpectAndRunStartSession(kSaneEmail);
 
@@ -3265,6 +3298,28 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer_ArcNearbyShareDisabled) {
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_enable_arc_nearby_share(false);
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
+  EXPECT_FALSE(error.get());
+  EXPECT_TRUE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest, UpgradeArcContainer_DisableUreadahead) {
+  ExpectAndRunStartSession(kSaneEmail);
+  SetUpArcMiniContainer();
+
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder()
+                                 .SetDisableUreadahead(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_disable_ureadahead(true);
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(

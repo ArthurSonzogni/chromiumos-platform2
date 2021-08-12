@@ -1331,7 +1331,9 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("DISABLE_MEDIA_STORE_MAINTENANCE=%d",
                          request.disable_media_store_maintenance()),
       base::StringPrintf("DISABLE_DOWNLOAD_PROVIDER=%d",
-                         request.disable_download_provider())};
+                         request.disable_download_provider()),
+      base::StringPrintf("DISABLE_UREADAHEAD=%d",
+                         request.disable_ureadahead())};
 
   if (request.arc_generate_pai())
     env_vars.push_back("ARC_GENERATE_PAI=1");
@@ -1946,7 +1948,9 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
                          arc_sideload_status_->IsAdbSideloadAllowed() &&
                              is_adb_sideloading_allowed_for_request),
       base::StringPrintf("ENABLE_ARC_NEARBY_SHARE=%d",
-                         request.enable_arc_nearby_share())};
+                         request.enable_arc_nearby_share()),
+      base::StringPrintf("DISABLE_UREADAHEAD=%d",
+                         request.disable_ureadahead())};
 
   switch (request.packages_cache_mode()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
