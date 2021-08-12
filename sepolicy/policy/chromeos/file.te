@@ -363,6 +363,7 @@ type cros_var_db_pkg, file_type, cros_file_type, cros_var_file_type;
 # var/lib
 type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_chaps, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_cras, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_crash_reporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;
@@ -426,10 +427,12 @@ type arc_dir, file_type, cros_file_type, cros_run_file_type; # compatible to pre
 type camera_dir, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type cras_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
+type cros_bluetooth_audio_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_ephemeral_mount, file_type, cros_file_type, cros_run_file_type;
 type cros_run, file_type, cros_file_type, cros_run_file_type;
 type cros_run_arcvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_avahi_daemon, file_type, cros_file_type, cros_run_file_type;
+type cros_run_bluetooth, file_type, cros_file_type, cros_run_file_type;
 type cros_run_camera_tokens, file_type, cros_file_type, cros_run_file_type;
 type cros_run_containers, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;

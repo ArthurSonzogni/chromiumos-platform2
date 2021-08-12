@@ -245,6 +245,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib                        u:object_r:cros_var_lib:s0
 /var/lib/bluetooth(/.*)?        u:object_r:cros_var_lib_bluetooth:s0
 /var/lib/chaps(/.*)?            u:object_r:cros_var_lib_chaps:s0
+/var/lib/cras(/.*)?            u:object_r:cros_var_lib_cras:s0
 /var/lib/crash_reporter(/.*)?   u:object_r:cros_var_lib_crash_reporter:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
@@ -334,10 +335,13 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/arcvm/android-data/.*      u:object_r:system_data_file:s0
 /run/arcvm/apkcache(/.*)?       u:object_r:apkcache_file:s0
 /run/arcvm/host_generated(/.*)? u:object_r:oem_fs:s0
+/run/bluetooth                  u:object_r:cros_run_bluetooth:s0
+/run/bluetooth/audio(/.*)?      u:object_r:cros_bluetooth_audio_socket:s0
 # /run/camera requires labels from Android.
 /run/camera                     u:object_r:camera_dir:s0
 /run/camera/.*\.sock            u:object_r:camera_socket:s0
 /run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
+/run/cras(/.*)?                 u:object_r:cras_socket:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
 /run/cups(/.*)?                 u:object_r:cros_run_cups:s0

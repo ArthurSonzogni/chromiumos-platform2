@@ -15,6 +15,8 @@ allow cros_cras sysfs:dir r_dir_perms;
 allow cros_cras cras_socket:dir create_dir_perms;
 allow cros_cras cras_socket:sock_file create_file_perms;
 
+allow cros_cras cros_var_lib_cras:file create_file_perms;
+
 allow cros_cras self:netlink_kobject_uevent_socket create_socket_perms_no_ioctl;
 
 r_dir_file(cros_cras, cros_run_udev);
