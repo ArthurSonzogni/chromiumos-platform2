@@ -69,8 +69,8 @@ if (use.test) {
       "-Wl,-wrap=umount",
       "-Wl,-wrap=umount2",
       "-Wl,-wrap=unlink",
-      "-Wl,-wrap=__xmknod",
-      "-Wl,-wrap=__xstat",
+      "-Wl,-wrap=mknod",
+      "-Wl,-wrap=stat",
     ]
     deps = [ "//common-mk/testrunner" ]
   }

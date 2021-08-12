@@ -481,17 +481,17 @@ int __wrap_unlink(const char* pathname) {
   return 0;
 }
 
-extern decltype(__xmknod) __real___xmknod;
-int __wrap___xmknod(int ver, const char* pathname, mode_t mode, dev_t* dev) {
+extern decltype(mknod) __real_mknod;
+int __wrap_mknod(const char* pathname, mode_t mode, dev_t dev) {
   if (!libcontainer::g_mock_posix_state)
-    return __real___xmknod(ver, pathname, mode, dev);
+    return __real_mknod(pathname, mode, dev);
   return 0;
 }
 
-extern decltype(__xstat) __real___xstat;
-int __wrap___xstat(int ver, const char* path, struct stat* buf) {
+extern decltype(stat) __real_stat;
+int __wrap_stat(const char* path, struct stat* buf) {
   if (!libcontainer::g_mock_posix_state)
-    return __real___xstat(ver, path, buf);
+    return __real_stat(path, buf);
   buf->st_rdev = libcontainer::g_mock_posix_state->stat_rdev_ret;
   return 0;
 }
