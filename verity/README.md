@@ -25,13 +25,6 @@ out.  The root hash, tree depth, number of hashed blocks, and cryptographic
 hash algorithm used must be supplied to the dm-verity when configuring a
 device.
 
-## Building
-
-To build outside of Chromium OS:
-```sh
-make
-```
-
 ## Example Usage
 
 To use:
