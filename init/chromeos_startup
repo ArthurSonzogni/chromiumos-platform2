@@ -540,13 +540,6 @@ fi
 rm -f "${MOUNT_ENCRYPTED_FAILED_FILE}"
 remember_mount "${ENCRYPTED_STATEFUL_MNT}"
 
-# Creates a bind mount of /var/lib/devicesettings -> /var/lib/whitelist to
-# allow code to migrate from /var/lib/whitelist to /var/lib/devicesettings.
-if [ -d "/var/lib/whitelist" ] && [ -d "/var/lib/devicesettings" ]; then
-  mount --bind /var/lib/whitelist /var/lib/devicesettings
-  remember_mount /var/lib/devicesettings
-fi
-
 # Setup the encrypted reboot vault once the encrypted stateful partition
 # is available. If unlocking the encrypted reboot vault failed (due to power
 # loss/reboot/invalid vault), attempt to recreate the encrypted reboot vault.
@@ -635,6 +628,15 @@ fi
   --prefix /home \
   --prefix /var 2>>"${TMPFILES_LOG}" ||
     cleanup_mounts "tmpfiles.d for /home and /var failed"
+
+# Creates a bind mount of /var/lib/devicesettings -> /var/lib/whitelist to
+# allow code to migrate from /var/lib/whitelist to /var/lib/devicesettings.
+# Both folders are created with tmpfiles.d configurations. The bind mount needs
+# to run after tmpfiles.d configuration.
+if [ -d "/var/lib/whitelist" ] && [ -d "/var/lib/devicesettings" ]; then
+  mount --bind /var/lib/whitelist /var/lib/devicesettings
+  remember_mount /var/lib/devicesettings
+fi
 
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
 # bind-mounted to /run and /run/lock respectively for backwards compatibility.
