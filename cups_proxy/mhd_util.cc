@@ -80,10 +80,13 @@ MHD_RESULT AccessHandler(void* cls,
   }
 
   for (auto& header : response.headers) {
-    MHD_RESULT ret = MHD_add_response_header(
-        mhd_resp.get(), header->key.c_str(), header->value.c_str());
-    if (ret != MHD_YES) {
-      return ret;
+    if (header->key != "Content-Length") {
+      MHD_RESULT ret = MHD_add_response_header(
+          mhd_resp.get(), header->key.c_str(), header->value.c_str());
+      if (ret != MHD_YES) {
+        LOG(WARNING) << "Discarding header: " << header->key << "="
+                     << header->value;
+      }
     }
   }
 
