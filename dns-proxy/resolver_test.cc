@@ -100,50 +100,50 @@ TEST_F(ResolverTest, Resolve_DNSDoHServers) {
 }
 
 TEST_F(ResolverTest, Resolve_DNSServers) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(1);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
-  resolver_->Resolve(sock_fd);
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  resolver_->Resolve(&sock_fd);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallback) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(1);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
-  resolver_->Resolve(sock_fd, true);
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
+  resolver_->Resolve(&sock_fd, true);
 }
 
 TEST_F(ResolverTest, CurlResult_CURLFail) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(1);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_COULDNT_CONNECT, 0 /* http_code */,
                                 0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0);
+  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
 TEST_F(ResolverTest, CurlResult_HTTPError) {
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(1);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   resolver_->SetNameServers(kTestNameServers);
   resolver_->SetDoHProviders(kTestDoHProviders);
 
-  Resolver::SocketFd* sock_fd = new Resolver::SocketFd(SOCK_STREAM, 0);
+  Resolver::SocketFd sock_fd(SOCK_STREAM, 0);
   DoHCurlClient::CurlResult res(CURLE_OK, 403 /* http_code */, 0 /* timeout */);
-  resolver_->HandleCurlResult(static_cast<void*>(sock_fd), res, nullptr, 0);
+  resolver_->HandleCurlResult(&sock_fd, res, nullptr, 0);
   task_environment_.RunUntilIdle();
 }
 
