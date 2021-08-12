@@ -13,6 +13,7 @@
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 #include "diagnostics/cros_health_tool/event/power_subscriber.h"
 #include "diagnostics/cros_health_tool/event/thunderbolt_subscriber.h"
+#include "diagnostics/cros_health_tool/event/usb_subscriber.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
 
 namespace diagnostics {
@@ -48,6 +49,10 @@ class EventSubscriber final {
 
   bool SubscribeToThunderboltEvents();
 
+  // Subscribes to cros_healthd's USB events. Returns true on success and
+  // false on failure.
+  bool SubscribeToUsbEvents();
+
  private:
   // Allows mojo communication with cros_healthd.
   std::unique_ptr<CrosHealthdMojoAdapter> mojo_adapter_;
@@ -64,6 +69,8 @@ class EventSubscriber final {
   std::unique_ptr<AudioSubscriber> audio_subscriber_;
   // Used to subscribe to thunderbolt events.
   std::unique_ptr<ThunderboltSubscriber> thunderbolt_subscriber_;
+  // Used to subscribe to USB events.
+  std::unique_ptr<UsbSubscriber> usb_subscriber_;
 };
 
 }  // namespace diagnostics

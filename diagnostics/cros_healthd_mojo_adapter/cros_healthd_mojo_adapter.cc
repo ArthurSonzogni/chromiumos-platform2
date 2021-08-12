@@ -224,6 +224,11 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
           chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
           observer) override;
 
+  // Subscribes the client to USB events.
+  bool AddUsbObserver(
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+          observer) override;
+
  private:
   // Establishes a mojo connection with cros_healthd.
   bool Connect();
@@ -970,6 +975,16 @@ bool CrosHealthdMojoAdapterImpl::AddThunderboltObserver(
     return false;
 
   cros_healthd_event_service_->AddThunderboltObserver(std::move(observer));
+  return true;
+}
+
+bool CrosHealthdMojoAdapterImpl::AddUsbObserver(
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+        observer) {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
+
+  cros_healthd_event_service_->AddUsbObserver(std::move(observer));
   return true;
 }
 

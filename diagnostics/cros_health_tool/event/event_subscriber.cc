@@ -72,4 +72,11 @@ bool EventSubscriber::SubscribeToThunderboltEvents() {
   return mojo_adapter_->AddThunderboltObserver(std::move(remote));
 }
 
+bool EventSubscriber::SubscribeToUsbEvents() {
+  mojo::PendingRemote<mojo_ipc::CrosHealthdUsbObserver> remote;
+  usb_subscriber_ =
+      std::make_unique<UsbSubscriber>(remote.InitWithNewPipeAndPassReceiver());
+  return mojo_adapter_->AddUsbObserver(std::move(remote));
+}
+
 }  // namespace diagnostics

@@ -28,5 +28,6 @@ source_set("libevent") {
     "network_subscriber.cc",
     "power_subscriber.cc",
     "thunderbolt_subscriber.cc",
+    "usb_subscriber.cc",
   ]
 }

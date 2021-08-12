@@ -227,6 +227,11 @@ class CrosHealthdMojoAdapter {
       mojo::PendingRemote<
           chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
           observer) = 0;
+
+  // Subscribes the client to USB events.
+  virtual bool AddUsbObserver(
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics
