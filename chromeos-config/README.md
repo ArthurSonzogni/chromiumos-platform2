@@ -26,6 +26,82 @@ There are two CLIs built for Chrome OS configuration access, cros_config for use
 on the target, and cros_config_host for use on the host/during building. See the
 --help for each tool respectively for help on usage.
 
+## Chrome OS Firmware Build Targets
+
+As Chrome OS firmware continues to evolve, this document is intended to provide
+guidance for developers on best practices for managing build targets for a given
+[project](#project).
+
+There are currently 6 firmware build targets that may be applicable to any given
+project.
+
+### AP Firmware
+
+1. coreboot
+
+ - `coreboot_target_name` for boxster projects
+ - `coreboot` for `model.yaml` based projects
+
+This is applicable to every project.
+
+2. depthcharge
+
+- `depthcharge_target_name` for boxster projects
+- `depthcharge` for `model.yaml` based projects
+
+If depthcharge is required to use `FW_CONFIG` to probe for peripherals that
+depthcharge uses (such as storage, audio, etc.), then each coreboot build target
+will require a matching depthcharge target. There are two approaches to this:
+
+   - Organize the `board.c` file such that most setup code is shared
+      and the `defconfig` board file and a `${VARIANT}.c` setup file
+      provide the differences.
+   - Each build target has its own `board.c` setup file
+      If `FW_CONFIG` is not used by the program, then a single build target
+      may be appropriate for an entire program.
+
+3. bmpblk
+
+- `bmpblk_target_name` for boxster projects
+- `bmpblk` for `model.yaml` based projects
+
+This project used to typically be built once per-program, but given the
+desire more flexibility (e.g., matching firmware screen resolution to
+native device resolution), many programs are supporting building this on
+a pre-project basis.
+
+4. libpayload
+
+- `libpayload_target_name` for boxster projects
+- `libpayload` for `model.yaml` projects
+
+This project is typically built to support one target per-program. The
+Kconfig options and the linker do a fine job of removing unused code
+from the resulting binary.
+
+### EC Firmware
+
+Only 1 of the 2 is used for each program
+
+- ChromiumOS EC
+
+  This is the custom RTOS used by previous generations of Chrome OS devices.
+
+- Zephyr
+  [Google recently joined Zephyr OS](https://zephyrproject.org/google-and-facebook-select-zephyr-rtos-for-next-generation-products/),
+  therefore the EC team is rapidly moving towards using it as the
+  primary EC choice for new platforms. This should become the
+  default choice beginning with programs where lead devices ship
+  after 2H '22.
+
+### Notes
+
+1) {#project} A project here means all mainboards supported by a single logical
+`config.star` file (including the public and private parts).
+
+**NB. Projects which share a coreboot target must also share all other firmware
+build targets (including EC).**
+
 ## Debugging
 
 libcros_config will emit a lot of debugging log messages if you set the
