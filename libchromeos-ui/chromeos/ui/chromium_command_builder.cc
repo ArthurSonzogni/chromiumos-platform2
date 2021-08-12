@@ -525,6 +525,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
 
   if (UseFlagIsSet("arc_uses_cros_video_decoder"))
     AddFeatureEnableOverride("ArcVideoDecoder");
+  if (UseFlagIsSet("arc_disable_cros_video_decoder"))
+    AddFeatureDisableOverride("ArcVideoDecoder");
 
   // TODO(dcastagna): Get rid of the following code once the proper
   // configuration will be chosen at runtime on DRM atomic boards.
