@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+#include "rmad/utils/calibration_utils.h"
+
 namespace rmad {
 
 SetupCalibrationStateHandler::SetupCalibrationStateHandler(
@@ -16,6 +18,8 @@ RmadErrorCode SetupCalibrationStateHandler::InitializeState() {
   if (!state_.has_setup_calibration() && !RetrieveState()) {
     state_.set_allocated_setup_calibration(new SetupCalibrationState);
   }
+
+  RetrieveVarsAndSetup();
 
   return RMAD_ERROR_OK;
 }
@@ -31,8 +35,27 @@ SetupCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
+  if (running_setup_instruction_ ==
+      RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+    return {.error = RMAD_ERROR_OK,
+            .state_case = RmadState::StateCase::kProvisionDevice};
+  }
+
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kRunCalibration};
+}
+
+void SetupCalibrationStateHandler::RetrieveVarsAndSetup() {
+  if (!GetCalibrationMap(json_store_, &calibration_map_)) {
+    running_setup_instruction_ = RMAD_CALIBRATION_INSTRUCTION_UNKNOWN;
+    LOG(ERROR) << "Failed to read calibration variables";
+  } else if (!GetCurrentSetupInstruction(calibration_map_,
+                                         &running_setup_instruction_)) {
+    running_setup_instruction_ = RMAD_CALIBRATION_INSTRUCTION_UNKNOWN;
+    LOG(ERROR) << "Failed to get setup instruction for calibration";
+  }
+
+  calibration_setup_signal_sender_->Run(running_setup_instruction_);
 }
 
 }  // namespace rmad
