@@ -177,12 +177,10 @@ TEST_F(SensorDeviceImplTest, StartAndStopReadingSamples) {
 
   mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> pending_remote;
   auto pending_receiver = pending_remote.InitWithNewPipeAndPassReceiver();
-  // Check SensorDeviceImpl::OnSamplesObserverDisconnect works.
+  // Check SensorDevice::StopReadingSamples works.
   remote_->StartReadingSamples(std::move(pending_remote));
+  remote_->StopReadingSamples();
   pending_receiver.reset();
-
-  // Wait until the remote of SensorDeviceSamplesObserver is disconnected.
-  base::RunLoop().RunUntilIdle();
 
   remote_->StartReadingSamples(fake_observer->GetRemote());
 
