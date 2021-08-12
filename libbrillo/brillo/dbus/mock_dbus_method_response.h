@@ -126,7 +126,7 @@ class MockDBusMethodResponse
                   LOG(WARNING)
                       << "Unexpected Response sent in MockDBusMethodResponse.";
                 })),
-        return_callback_(base::Bind([](const Types&...) {
+        return_callback_(base::BindRepeating([](const Types&...) {
           // By default, unsolicited Return() call during testing will trigger
           // warning.
           LOG(WARNING) << "Unexpected Return in MockDBusMethodResponse";
@@ -175,8 +175,8 @@ class MockDBusMethodResponse
   // Set the return callback, a callback that is called whenever Return() is
   // called.
   void set_return_callback(
-      base::Callback<void(const Types&...)> return_callback) {
-    return_callback_ = return_callback;
+      base::RepeatingCallback<void(const Types&...)> return_callback) {
+    return_callback_ = std::move(return_callback);
   }
 
   // Set the return callback to save all arguments passed to the return callback
@@ -201,7 +201,7 @@ class MockDBusMethodResponse
   // The callback to call when Return() is called. Note that it's not mocked
   // because Return() is a variadic template member, and cannot be mocked with
   // gmock.
-  base::Callback<void(const Types&...)> return_callback_;
+  base::RepeatingCallback<void(const Types&...)> return_callback_;
 
   // Usually |method_call_| is owned by DBus and will have its life cycle
   // managed outside of DBusMethodResponse. However, during testing, we'll need
