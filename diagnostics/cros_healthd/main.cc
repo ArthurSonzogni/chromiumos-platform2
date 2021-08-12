@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_monitor.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
 
@@ -50,11 +52,24 @@ int main(int argc, char** argv) {
     // Run the root-level executor.
     return diagnostics::Executor(channel.TakeLocalEndpoint()).Run();
   } else {
+    auto udev = brillo::Udev::Create();
+    if (!udev) {
+      LOG(FATAL) << "Failed to initialize udev object.";
+      return -1;
+    }
+
+    auto udev_monitor = udev->CreateMonitorFromNetlink("udev");
+    if (!udev_monitor) {
+      LOG(FATAL) << "Failed to create udev monitor.";
+      return -1;
+    }
+
     // Sandbox the child process.
     diagnostics::ConfigureAndEnterMinijail();
 
     // Set up the context cros_healthd will run in.
-    diagnostics::Context context{channel.TakeRemoteEndpoint()};
+    diagnostics::Context context{channel.TakeRemoteEndpoint(),
+                                 std::move(udev_monitor)};
 
     // Run the cros_healthd daemon.
     return diagnostics::CrosHealthd(&context).Run();

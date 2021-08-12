@@ -66,6 +66,8 @@ void ConfigureAndEnterMinijail() {
   minijail_bind(jail.get(), "/run/chromeos-config/v1",
                 "/run/chromeos-config/v1",
                 0);  // Needed for access to chromeos-config.
+  minijail_bind(jail.get(), "/run/udev", "/run/udev",
+                0);  // Needed for udev events.
 
   // Create a new tmpfs filesystem for /sys and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/sys", "tmpfs", 0, "");

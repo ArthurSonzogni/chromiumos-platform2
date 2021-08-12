@@ -27,8 +27,11 @@ namespace diagnostics {
 
 Context::Context() = default;
 
-Context::Context(mojo::PlatformChannelEndpoint endpoint)
-    : endpoint_(std::move(endpoint)), root_dir_(base::FilePath("/")) {}
+Context::Context(mojo::PlatformChannelEndpoint endpoint,
+                 std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
+    : endpoint_(std::move(endpoint)),
+      udev_monitor_(std::move(udev_monitor)),
+      root_dir_(base::FilePath("/")) {}
 
 Context::~Context() = default;
 
@@ -112,6 +115,10 @@ PowerdAdapter* Context::powerd_adapter() const {
 
 const base::FilePath& Context::root_dir() const {
   return root_dir_;
+}
+
+const std::unique_ptr<brillo::UdevMonitor>& Context::udev_monitor() const {
+  return udev_monitor_;
 }
 
 const base::Time Context::time() const {

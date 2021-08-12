@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
+#include "diagnostics/cros_healthd/events/udev_events_impl.h"
 
 namespace diagnostics {
 
@@ -50,6 +51,8 @@ CrosHealthd::CrosHealthd(Context* context)
 
   audio_events_ = std::make_unique<AudioEventsImpl>(context_);
 
+  udev_events_ = std::make_unique<UdevEventsImpl>(context_);
+
   routine_factory_ = std::make_unique<CrosHealthdRoutineFactoryImpl>(context_);
 
   routine_service_ = std::make_unique<CrosHealthdRoutineService>(
@@ -57,7 +60,8 @@ CrosHealthd::CrosHealthd(Context* context)
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
       context_, fetch_aggregator_.get(), bluetooth_events_.get(),
-      lid_events_.get(), power_events_.get(), audio_events_.get());
+      lid_events_.get(), power_events_.get(), audio_events_.get(),
+      udev_events_.get());
 
   service_factory_receiver_set_.set_disconnect_handler(
       base::Bind(&CrosHealthd::OnDisconnect, base::Unretained(this)));

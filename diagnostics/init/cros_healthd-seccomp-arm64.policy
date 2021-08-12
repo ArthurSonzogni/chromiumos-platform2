@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+bind: 1
 brk: 1
 capget: 1
 chdir: 1
@@ -76,7 +77,10 @@ setgroups: 1
 setresgid: 1
 setresuid: 1
 signalfd4: 1
-socket: arg0 == AF_UNIX
+setsockopt: arg1 == SOL_SOCKET && arg2 == SO_ATTACH_FILTER || \
+            arg1 == SOL_SOCKET && arg2 == SO_PASSCRED
+# Use hex value 0xF to substitute the constant: NETLINK_KOBJECT_UEVENT
+socket: arg0 == AF_UNIX || arg0 == AF_NETLINK && arg2 == 0xF
 socketpair: 1
 statfs: 1
 sysinfo: 1

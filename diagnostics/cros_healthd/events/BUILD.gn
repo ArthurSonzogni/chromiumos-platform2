@@ -27,6 +27,7 @@ source_set("libcros_healthd_events") {
     "bluetooth_events_impl.cc",
     "lid_events_impl.cc",
     "power_events_impl.cc",
+    "udev_events_impl.cc",
   ]
 }
 

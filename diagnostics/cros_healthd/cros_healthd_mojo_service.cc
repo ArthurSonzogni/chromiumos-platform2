@@ -24,19 +24,22 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     BluetoothEvents* bluetooth_events,
     LidEvents* lid_events,
     PowerEvents* power_events,
-    AudioEvents* audio_events)
+    AudioEvents* audio_events,
+    UdevEvents* udev_events)
     : context_(context),
       fetch_aggregator_(fetch_aggregator),
       bluetooth_events_(bluetooth_events),
       lid_events_(lid_events),
       power_events_(power_events),
-      audio_events_(audio_events) {
+      audio_events_(audio_events),
+      udev_events_(udev_events) {
   DCHECK(context_);
   DCHECK(fetch_aggregator_);
   DCHECK(bluetooth_events_);
   DCHECK(lid_events_);
   DCHECK(power_events_);
   DCHECK(audio_events_);
+  DCHECK(udev_events_);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;

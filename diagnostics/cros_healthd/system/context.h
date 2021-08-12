@@ -11,6 +11,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/time/tick_clock.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <brillo/udev/udev_monitor.h>
 #include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
@@ -45,7 +46,8 @@ class Context {
   // Mojo endpoint.
   Context();
   // All production uses should use this constructor.
-  explicit Context(mojo::PlatformChannelEndpoint endpoint);
+  explicit Context(mojo::PlatformChannelEndpoint endpoint,
+                   std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
   virtual ~Context();
@@ -88,6 +90,8 @@ class Context {
   // Use the object returned by root_dir() to determine the root directory of
   // the system.
   const base::FilePath& root_dir() const;
+  // Use the object returned by udev_monitor() to receive udev events.
+  const std::unique_ptr<brillo::UdevMonitor>& udev_monitor() const;
   // Use the object returned by system_config() to determine which conditional
   // features a device supports.
   SystemConfigInterface* system_config() const;
@@ -119,6 +123,9 @@ class Context {
   // Used by this object to initialize the SystemConfig. Used for reading
   // cros_config properties to determine device feature support.
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
+
+  // Used to watch udev events.
+  std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
 
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<BluetoothClient> bluetooth_client_;

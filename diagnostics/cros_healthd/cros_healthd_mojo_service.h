@@ -16,6 +16,7 @@
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
+#include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/network_health.mojom.h"
@@ -36,12 +37,14 @@ class CrosHealthdMojoService final
   // |lid_events| - LidEvents implementation.
   // |power_events| - PowerEvents implementation.
   // |audio_events| - AudioEvents implementation.
+  // |udev_events| - UdevEvents implementation.
   CrosHealthdMojoService(Context* context,
                          FetchAggregator* fetch_aggregator,
                          BluetoothEvents* bluetooth_events,
                          LidEvents* lid_events,
                          PowerEvents* power_events,
-                         AudioEvents* audio_events);
+                         AudioEvents* audio_events,
+                         UdevEvents* udev_events);
   CrosHealthdMojoService(const CrosHealthdMojoService&) = delete;
   CrosHealthdMojoService& operator=(const CrosHealthdMojoService&) = delete;
   ~CrosHealthdMojoService() override;
@@ -102,6 +105,7 @@ class CrosHealthdMojoService final
   LidEvents* const lid_events_ = nullptr;
   PowerEvents* const power_events_ = nullptr;
   AudioEvents* const audio_events_ = nullptr;
+  UdevEvents* const udev_events_ = nullptr;
 };
 
 }  // namespace diagnostics
