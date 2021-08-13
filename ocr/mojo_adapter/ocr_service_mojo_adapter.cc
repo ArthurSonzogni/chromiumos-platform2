@@ -59,7 +59,7 @@ class OcrServiceMojoAdapterImpl final : public OcrServiceMojoAdapter {
 // Saves |response| to |response_destination|.
 template <class T>
 void OnMojoResponseReceived(T* response_destination,
-                            base::Closure quit_closure,
+                            base::RepeatingClosure quit_closure,
                             T response) {
   *response_destination = std::move(response);
   quit_closure.Run();
@@ -90,9 +90,10 @@ OcrServiceMojoAdapterImpl::GenerateSearchablePdfFromImage(
   ocr_service_->GenerateSearchablePdfFromImage(
       std::move(input_fd_handle), std::move(output_fd_handle),
       std::move(ocr_config), std::move(pdf_renderer_config),
-      base::Bind(&OnMojoResponseReceived<
-                     mojo_ipc::OpticalCharacterRecognitionServiceResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(
+          &OnMojoResponseReceived<
+              mojo_ipc::OpticalCharacterRecognitionServiceResponsePtr>,
+          &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
