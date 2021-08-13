@@ -27,6 +27,9 @@ const char kForceStartCrosCameraPath[] = "/run/camera/force_start_cros_camera";
 const char kForceEnableFaceAePath[] = "/run/camera/force_enable_face_ae";
 const char kForceDisableFaceAePath[] = "/run/camera/force_disable_face_ae";
 
+const char kForceEnableHdrNetPath[] = "/run/camera/force_enable_hdrnet";
+const char kForceDisableHdrNetPath[] = "/run/camera/force_disable_hdrnet";
+
 // ------Configuration for |kCrosCameraTestConfigPathString|-------
 // boolean value used in test mode for forcing hardware jpeg encode/decode in
 // USB HAL (won't fallback to SW encode/decode).
