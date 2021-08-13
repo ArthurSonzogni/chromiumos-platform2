@@ -1345,7 +1345,7 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
     uint32_t slot_id =
         properties.Get<uint32_t>(MM_MODEM_PROPERTY_PRIMARYSIMSLOT);
     if (slot_id < 1) {
-      LOG(ERROR) << "Invalid PrimarySimSlot: " << slot_id << ", Using 1.";
+      LOG(INFO) << "Invalid PrimarySimSlot: " << slot_id << ", Using 1.";
       slot_id = 1;
     }
     primary_sim_slot_ = slot_id - 1;
