@@ -165,6 +165,16 @@ void PortManager::OnPartnerChanged(int port_num) {
   RunModeEntry(port_num);
 }
 
+void PortManager::OnPortChanged(int port_num) {
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING) << "Port change detected for non-existent port " << port_num;
+    return;
+  }
+
+  LOG(INFO) << "Change detected for port: " << port_num;
+}
+
 void PortManager::OnScreenIsLocked() {
   SetUserActive(false);
 }

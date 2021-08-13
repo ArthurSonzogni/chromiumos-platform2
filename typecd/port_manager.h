@@ -84,6 +84,7 @@ class PortManager : public UdevMonitor::Observer,
   void OnCablePlugAdded(const base::FilePath& path, int port_num) override;
   void OnCableAltModeAdded(const base::FilePath& path, int port_num) override;
   void OnPartnerChanged(int port_num) override;
+  void OnPortChanged(int port_num) override;
 
   // SessionManagerObserverInterface overrides.
   void OnScreenIsLocked() override;

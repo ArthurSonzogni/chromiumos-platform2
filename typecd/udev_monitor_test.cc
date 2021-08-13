@@ -69,6 +69,9 @@ class TestObserver : public UdevMonitor::Observer {
   };
 
   void OnPartnerChanged(int port_num) override { num_partner_change_events_++; }
+  void OnPortChanged(int port_num) override {
+    port_change_tracker_[port_num] = true;
+  }
 
   int GetNumPorts() { return num_ports_; }
   int GetNumPartners() { return num_partners_; }
@@ -76,12 +79,31 @@ class TestObserver : public UdevMonitor::Observer {
   int GetNumCableAltModes() { return num_cable_altmodes_; }
   int GetNumPartnerChangeEvents() { return num_partner_change_events_; }
 
+  // Helper to return whether a port change event was received for |port_num|.
+  bool PortChanged(int port_num) {
+    if (port_change_tracker_.find(port_num) == port_change_tracker_.end())
+      return false;
+    else
+      return port_change_tracker_[port_num];
+  }
+
+  // Helper to reset |port_change_tracker_| state for |port_num|.
+  void ResetPortChanged(int port_num) {
+    port_change_tracker_[port_num] = false;
+  }
+
  private:
   int num_partners_;
   int num_ports_;
   int num_cables_;
   int num_cable_altmodes_;
   int num_partner_change_events_;
+  // Map to check whether a change was detected for a particular port:
+  // Key = port number, Value = boolean value indicating whether a change event
+  // was received.
+  //
+  // The map entries should be cleared before checking for any changes.
+  std::map<int, bool> port_change_tracker_;
 };
 
 }  // namespace
@@ -333,6 +355,50 @@ TEST_F(UdevMonitorTest, TestPartnerChanged) {
   // triggering the event handler using the FileDescriptorWatcher.
   monitor_->HandleUdevEvent();
   EXPECT_THAT(1, observer_->GetNumPartnerChangeEvents());
+}
+
+// Check that a basic port change event gets detected correctly.
+TEST_F(UdevMonitorTest, TestPortChanged) {
+  // Create a socket-pair; to help poke the udev monitoring logic.
+  auto fds = std::make_unique<brillo::ScopedSocketPair>();
+
+  // Fake the calls for port change.
+  auto device_port_change = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*device_port_change, GetSysPath())
+      .WillOnce(Return(kFakePort0SysPath));
+  EXPECT_CALL(*device_port_change, GetAction()).WillOnce(Return("change"));
+
+  // Create the Mock Udev objects and function invocation expectations.
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
+  EXPECT_CALL(*monitor, FilterAddMatchSubsystemDeviceType(
+                            StrEq(kTypeCSubsystem), nullptr))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*monitor, EnableReceiving()).WillOnce(Return(true));
+  EXPECT_CALL(*monitor, GetFileDescriptor()).WillOnce(Return(fds->left));
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device_port_change))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
+      .WillOnce(Return(ByMove(std::move(monitor))));
+
+  monitor_->SetUdev(std::move(udev));
+
+  // Prep the observer state for future events.
+  observer_->ResetPortChanged(0);
+  EXPECT_FALSE(observer_->PortChanged(0));
+
+  // Skip initial scanning, since we are only interested in testing the change
+  // event.
+  ASSERT_TRUE(monitor_->BeginMonitoring());
+
+  // It's too tedious to poke the socket pair to actually trigger the
+  // FileDescriptorWatcher without it running repeatedly.
+  //
+  // Instead we manually call HandleUdevEvent. Effectively this is equivalent to
+  // triggering the event handler using the FileDescriptorWatcher.
+  monitor_->HandleUdevEvent();
+  EXPECT_TRUE(observer_->PortChanged(0));
 }
 
 }  // namespace typecd

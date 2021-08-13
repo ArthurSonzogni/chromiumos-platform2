@@ -135,6 +135,8 @@ void UdevMonitor::HandleDeviceChange(const base::FilePath& path) {
   for (auto& observer : observer_list_) {
     if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
       observer.OnPartnerChanged(port_num);
+    else if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
+      observer.OnPortChanged(port_num);
   }
 }
 

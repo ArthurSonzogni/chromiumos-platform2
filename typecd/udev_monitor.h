@@ -105,6 +105,11 @@ class UdevMonitor {
     //
     // The |port_num| argument refers to the port's index number.
     virtual void OnPartnerChanged(int port_num) = 0;
+
+    // Callback that is executed when a port "change" event is received.
+    //
+    // The |port_num| argument refers to the port's index number.
+    virtual void OnPortChanged(int port_num) = 0;
   };
 
   void AddObserver(Observer* obs);
@@ -117,6 +122,7 @@ class UdevMonitor {
   FRIEND_TEST(UdevMonitorTest, TestInvalidPortSyspath);
   FRIEND_TEST(UdevMonitorTest, TestCableAndAltModeAddition);
   FRIEND_TEST(UdevMonitorTest, TestPartnerChanged);
+  FRIEND_TEST(UdevMonitorTest, TestPortChanged);
 
   // Set the |udev_| pointer to a MockUdev device. *Only* used by unit tests.
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {
