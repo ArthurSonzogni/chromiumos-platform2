@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 
 namespace patchpanel {
 

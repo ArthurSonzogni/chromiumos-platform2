@@ -5,6 +5,7 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 

@@ -8,6 +8,8 @@
 
 #include <utility>
 
+#include <base/logging.h>
+
 #include "patchpanel/minijailed_process_runner.h"
 
 namespace patchpanel {

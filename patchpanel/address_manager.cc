@@ -4,6 +4,8 @@
 
 #include "patchpanel/address_manager.h"
 
+#include <base/logging.h>
+
 #include "patchpanel/net_util.h"
 
 namespace patchpanel {

@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
 namespace patchpanel {
