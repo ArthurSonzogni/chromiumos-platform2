@@ -15,6 +15,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/public/cpp/bindings/self_owned_receiver.h>

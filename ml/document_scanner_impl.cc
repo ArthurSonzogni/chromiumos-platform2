@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "ml/request_metrics.h"

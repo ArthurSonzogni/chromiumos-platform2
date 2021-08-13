@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
 

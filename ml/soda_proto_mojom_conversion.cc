@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <base/logging.h>
 #include <base/time/time.h>
 
 using chromeos::machine_learning::mojom::EndpointerType;

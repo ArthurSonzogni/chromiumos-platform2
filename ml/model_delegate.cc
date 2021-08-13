@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <tensorflow/lite/context.h>
 #include <tensorflow/lite/delegates/nnapi/nnapi_delegate.h>
 #include <tensorflow/lite/delegates/gpu/delegate.h>

@@ -16,6 +16,7 @@
 #include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>
 #include <base/task/current_thread.h>

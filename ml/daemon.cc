@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>

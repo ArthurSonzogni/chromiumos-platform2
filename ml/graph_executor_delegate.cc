@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/logging.h>
 
 #include "ml/mojom/tensor.mojom.h"
 #include "ml/request_metrics.h"
