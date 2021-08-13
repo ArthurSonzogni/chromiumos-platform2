@@ -18,6 +18,7 @@
 #include <base/base64.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>

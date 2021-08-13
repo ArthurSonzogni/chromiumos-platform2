@@ -8,8 +8,9 @@
 #include <cstdlib>
 
 #include <base/command_line.h>
-#include <brillo/syslog_logging.h>
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 

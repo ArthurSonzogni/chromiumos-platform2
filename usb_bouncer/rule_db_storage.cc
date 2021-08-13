@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/files/safe_fd.h>
 
 #include "usb_bouncer/util.h"
