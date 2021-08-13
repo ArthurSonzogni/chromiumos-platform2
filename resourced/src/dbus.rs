@@ -59,6 +59,25 @@ fn set_game_mode(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     }
 }
 
+fn get_rtc_audio_active(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+    match common::get_rtc_audio_active() {
+        Ok(mode) => Ok(vec![m.msg.method_return().append1(mode as u8)]),
+        Err(_) => Err(MethodErr::failed("Failed to get RTC audio activity")),
+    }
+}
+
+fn set_rtc_audio_active(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
+    let mode = match m.msg.read1::<u8>()? {
+        0 => common::RTCAudioActive::Inactive,
+        1 => common::RTCAudioActive::Active,
+        _ => return Err(MethodErr::failed("Unsupported RTC audio active value")),
+    };
+    match common::set_rtc_audio_active(mode) {
+        Ok(()) => Ok(vec![m.msg.method_return()]),
+        Err(_) => Err(MethodErr::failed("Failed to set RTC audio activity")),
+    }
+}
+
 fn create_pressure_chrome_signal(f: &Factory<MTFn<()>, ()>) -> Signal<()> {
     f.signal("MemoryPressureChrome", ())
         .sarg::<u8, _>("pressure_level")
@@ -117,7 +136,15 @@ pub fn service_main() -> Result<()> {
                         .inarg::<u8, _>("game_mode"),
                 )
                 .add_s(create_pressure_chrome_signal(&f))
-                .add_s(create_pressure_arcvm_signal(&f)),
+                .add_s(create_pressure_arcvm_signal(&f))
+                .add_m(
+                    f.method("GetRTCAudioActive", (), get_rtc_audio_active)
+                        .outarg::<u8, _>("mode"),
+                )
+                .add_m(
+                    f.method("SetRTCAudioActive", (), set_rtc_audio_active)
+                        .inarg::<u8, _>("mode"),
+                ),
         ),
     );
 

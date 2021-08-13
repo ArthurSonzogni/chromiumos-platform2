@@ -50,3 +50,30 @@ pub fn get_game_mode() -> Result<GameMode> {
         Err(_) => bail!("Failed to get game mode"),
     }
 }
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum RTCAudioActive {
+    // RTC is not active.
+    Inactive = 0,
+    // RTC is active, RTC audio is playing and recording.
+    Active = 1,
+}
+
+static RTC_ACTIVE: Lazy<Mutex<RTCAudioActive>> = Lazy::new(|| Mutex::new(RTCAudioActive::Inactive));
+
+pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
+    match RTC_ACTIVE.lock() {
+        Ok(mut data) => {
+            *data = mode;
+            Ok(())
+        }
+        Err(_) => bail!("Failed to set RTC audio activity"),
+    }
+}
+
+pub fn get_rtc_audio_active() -> Result<RTCAudioActive> {
+    match RTC_ACTIVE.lock() {
+        Ok(data) => Ok(*data),
+        Err(_) => bail!("Failed to get status of RTC audio activity"),
+    }
+}
