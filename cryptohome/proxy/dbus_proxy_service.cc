@@ -17,6 +17,15 @@
 
 namespace cryptohome {
 
+namespace {
+
+// The constants below are only defined here to ensure nobody else uses them.
+// Interface exposed by the cryptohome daemon.
+const char kCryptohomeServicePath[] = "/org/chromium/Cryptohome";
+const char kCryptohomeServiceName[] = "org.chromium.Cryptohome";
+
+}  // namespace
+
 using brillo::dbus_utils::AsyncEventSequencer;
 
 constexpr char kBlockerThreadName[] = "BlockerDBusThread";
