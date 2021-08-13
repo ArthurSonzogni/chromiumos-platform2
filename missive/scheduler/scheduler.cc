@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/sequence_checker.h>
 #include <base/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>

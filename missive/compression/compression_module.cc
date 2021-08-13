@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/feature_list.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/optional.h>
 #include <base/strings/string_piece.h>
