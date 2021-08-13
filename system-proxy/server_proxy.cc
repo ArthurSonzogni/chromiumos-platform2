@@ -13,8 +13,9 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread.h>

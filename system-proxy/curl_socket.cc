@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
+
 namespace system_proxy {
 
 CurlSocket::CurlSocket(base::ScopedFD fd, ScopedCurlEasyhandle curl_easyhandle)
