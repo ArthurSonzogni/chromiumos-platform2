@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/logging.h>
 
 #include "hermes/socket_qrtr.h"
 

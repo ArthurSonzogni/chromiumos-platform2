@@ -10,6 +10,7 @@
 
 #include <base/callback_helpers.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
 

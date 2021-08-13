@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>

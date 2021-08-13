@@ -4,8 +4,9 @@
 
 #include <utility>
 
-#include "base/logging.h"
 #include "hermes/hermes_common.h"
+
+#include <base/logging.h>
 
 namespace hermes {
 

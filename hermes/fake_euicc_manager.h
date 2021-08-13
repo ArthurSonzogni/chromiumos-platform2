@@ -10,6 +10,8 @@
 
 #include "hermes/euicc_manager_interface.h"
 
+#include <base/logging.h>
+
 namespace hermes {
 
 class FakeEuiccManager : public EuiccManagerInterface {
