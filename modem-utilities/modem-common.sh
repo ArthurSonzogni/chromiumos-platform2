@@ -111,6 +111,9 @@ HERMES_MANAGER_IFACE=org.chromium.Hermes.Manager
 HERMES_EUICC_IFACE=org.chromium.Hermes.Euicc
 HERMES_PROFILE_IFACE=org.chromium.Hermes.Profile
 
+# Timeout for Hermes esim operations (in milliseconds)
+HERMES_DBUS_TIMEOUT=120000
+
 esim() {
   local command="$1"
   shift
@@ -271,7 +274,7 @@ esim_install() {
   local confirmation_code="$3"
   [ -z "${activation_code}" ] && error_exit "No activation_code provided."
 
-  dbus_call "${HERMES}" "${euicc}" \
+  dbus_call_with_timeout "${HERMES}" "${HERMES_DBUS_TIMEOUT}" "${euicc}" \
             "${HERMES_EUICC_IFACE}.InstallProfileFromActivationCode" \
             string:"${activation_code}" string:"${confirmation_code}"
 }
@@ -280,7 +283,7 @@ esim_install_pending_profile() {
   local euicc="$1"
   local profile
   profile=$(esim_profile_from_iccid "$@")
-  dbus_call "${HERMES}" "${euicc}" \
+  dbus_call_with_timeout "${HERMES}" "${HERMES_DBUS_TIMEOUT}" "${euicc}" \
             "${HERMES_EUICC_IFACE}.InstallPendingProfile" \
             objpath:"${profile}" string:"${confirmation_code}"
 }
@@ -290,7 +293,7 @@ esim_uninstall() {
   local profile
   profile=$(esim_profile_from_iccid "$@")
   [ -z "${profile}" ] && exit 1
-  dbus_call "${HERMES}" "${euicc}" \
+  dbus_call_with_timeout "${HERMES}" "${HERMES_DBUS_TIMEOUT}" "${euicc}" \
             "${HERMES_EUICC_IFACE}.UninstallProfile" objpath:"${profile}"
 }
 
@@ -298,7 +301,7 @@ esim_request_pending_profiles() {
   local euicc="$1"
   local smds="$2"
 
-  dbus_call "${HERMES}" "${euicc}" \
+  dbus_call_with_timeout "${HERMES}" "${HERMES_DBUS_TIMEOUT}" "${euicc}" \
             "${HERMES_EUICC_IFACE}.RequestPendingProfiles" string:"${smds}"
 }
 
@@ -306,12 +309,14 @@ esim_enable() {
   local profile
   profile=$(esim_profile_from_iccid "$@")
   [ -z "${profile}" ] && exit 1
-  dbus_call "${HERMES}" "${profile}" "${HERMES_PROFILE_IFACE}.Enable"
+  dbus_call_with_timeout "${HERMES}" "${HERMES_DBUS_TIMEOUT}" \
+                         "${profile}" "${HERMES_PROFILE_IFACE}.Enable"
 }
 
 esim_disable() {
   local profile
   profile=$(esim_profile_from_iccid "$@")
   [ -z "${profile}" ] && exit 1
-  dbus_call "${HERMES}" "${profile}" "${HERMES_PROFILE_IFACE}.Disable"
+  dbus_call_with_timeout "${HERMES}" "${HERMES_DBUS_TIMEOUT}" "${profile}" \
+            "${HERMES_PROFILE_IFACE}.Disable"
 }
