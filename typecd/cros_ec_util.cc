@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>

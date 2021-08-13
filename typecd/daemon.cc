@@ -7,6 +7,7 @@
 #include "typecd/daemon.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <dbus/typecd/dbus-constants.h>
 
 namespace {

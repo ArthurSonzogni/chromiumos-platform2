@@ -4,6 +4,8 @@
 
 #include "typecd/metrics.h"
 
+#include <base/logging.h>
+
 namespace {
 constexpr char kPartnerTypeMetricName[] = "ChromeOS.TypeC.PartnerType";
 constexpr char kCableSpeedMetricName[] = "ChromeOS.TypeC.CableSpeed";

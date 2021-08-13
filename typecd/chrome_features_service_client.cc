@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
