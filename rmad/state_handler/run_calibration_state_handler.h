@@ -25,11 +25,14 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
 
-  using CalibrationSignalCallback =
-      base::RepeatingCallback<bool(CalibrationComponentStatus)>;
   void RegisterSignalSender(
-      std::unique_ptr<CalibrationSignalCallback> callback) override {
-    calibration_signal_sender_ = std::move(callback);
+      std::unique_ptr<CalibrationOverallSignalCallback> callback) override {
+    calibration_overall_signal_sender_ = std::move(callback);
+  }
+
+  void RegisterSignalSender(
+      std::unique_ptr<CalibrationComponentSignalCallback> callback) override {
+    calibration_component_signal_sender_ = std::move(callback);
   }
 
   ASSIGN_STATE(RmadState::StateCase::kRunCalibration);
@@ -72,7 +75,10 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       std::map<RmadComponent, CalibrationComponentStatus::CalibrationStatus>>
       priority_components_calibration_map_;
   int running_priority_;
-  std::unique_ptr<CalibrationSignalCallback> calibration_signal_sender_;
+  std::unique_ptr<CalibrationOverallSignalCallback>
+      calibration_overall_signal_sender_;
+  std::unique_ptr<CalibrationComponentSignalCallback>
+      calibration_component_signal_sender_;
   std::map<RmadComponent, std::unique_ptr<base::RepeatingTimer>> timer_map_;
 };
 

@@ -51,10 +51,20 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual void RegisterSignalSender(
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {}
 
-  using CalibrationSignalCallback =
+  using CalibrationSetupSignalCallback =
+      base::RepeatingCallback<bool(CalibrationSetupInstruction)>;
+  virtual void RegisterSignalSender(
+      std::unique_ptr<CalibrationSetupSignalCallback> callback) {}
+
+  using CalibrationOverallSignalCallback =
+      base::RepeatingCallback<bool(CalibrationOverallStatus)>;
+  virtual void RegisterSignalSender(
+      std::unique_ptr<CalibrationOverallSignalCallback> callback) {}
+
+  using CalibrationComponentSignalCallback =
       base::RepeatingCallback<bool(CalibrationComponentStatus)>;
   virtual void RegisterSignalSender(
-      std::unique_ptr<CalibrationSignalCallback> callback) {}
+      std::unique_ptr<CalibrationComponentSignalCallback> callback) {}
 
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition

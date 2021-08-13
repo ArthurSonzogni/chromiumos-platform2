@@ -51,6 +51,19 @@ class DBusServiceTest : public testing::Test {
         RegisterSignalSender(
             _,
             A<std::unique_ptr<
+                base::RepeatingCallback<bool(CalibrationSetupInstruction)>>>()))
+        .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
+        RegisterSignalSender(
+            _, A<std::unique_ptr<
+                   base::RepeatingCallback<bool(CalibrationOverallStatus)>>>()))
+        .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
+        RegisterSignalSender(
+            _,
+            A<std::unique_ptr<
                 base::RepeatingCallback<bool(CalibrationComponentStatus)>>>()))
         .WillRepeatedly(Return());
   }
@@ -95,7 +108,15 @@ class DBusServiceTest : public testing::Test {
     return dbus_service_->SendErrorSignal(error);
   }
 
-  bool SignalCalibration(CalibrationComponentStatus component_status) {
+  bool SignalCalibrationSetup(CalibrationSetupInstruction setup_instruction) {
+    return dbus_service_->SendCalibrationSetupSignal(setup_instruction);
+  }
+
+  bool SignalCalibrationOverall(CalibrationOverallStatus overall_status) {
+    return dbus_service_->SendCalibrationOverallSignal(overall_status);
+  }
+
+  bool SignalCalibrationComponent(CalibrationComponentStatus component_status) {
     return dbus_service_->SendCalibrationProgressSignal(component_status);
   }
 
@@ -222,7 +243,39 @@ TEST_F(DBusServiceTest, SignalError) {
   EXPECT_TRUE(SignalError(RMAD_ERROR_RMA_NOT_REQUIRED));
 }
 
-TEST_F(DBusServiceTest, SignalCalibration) {
+TEST_F(DBusServiceTest, SignalCalibrationSetup) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "CalibrationSetup");
+        dbus::MessageReader reader(signal);
+        int setup_instruction;
+        EXPECT_TRUE(reader.PopInt32(&setup_instruction));
+        EXPECT_EQ(setup_instruction,
+                  RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE);
+      }));
+  EXPECT_TRUE(SignalCalibrationSetup(
+      RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE));
+}
+
+TEST_F(DBusServiceTest, SignalCalibrationOverall) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "CalibrationOverall");
+        dbus::MessageReader reader(signal);
+        int overall_status;
+        EXPECT_TRUE(reader.PopInt32(&overall_status));
+        EXPECT_EQ(overall_status,
+                  RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
+      }));
+  EXPECT_TRUE(SignalCalibrationOverall(
+      RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE));
+}
+
+TEST_F(DBusServiceTest, SignalCalibrationComponent) {
   RegisterDBusObjectAsync();
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
@@ -243,7 +296,7 @@ TEST_F(DBusServiceTest, SignalCalibration) {
   component_status.set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
   component_status.set_progress(0.3);
-  EXPECT_TRUE(SignalCalibration(component_status));
+  EXPECT_TRUE(SignalCalibrationComponent(component_status));
 }
 
 TEST_F(DBusServiceTest, SignalProvisioning) {

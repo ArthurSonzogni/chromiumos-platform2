@@ -258,7 +258,7 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
   component_status.set_component(component);
   component_status.set_status(status);
   component_status.set_progress(progress);
-  calibration_signal_sender_->Run(std::move(component_status));
+  calibration_component_signal_sender_->Run(std::move(component_status));
 }
 
 bool RunCalibrationStateHandler::GetPriorityCalibrationMap() {

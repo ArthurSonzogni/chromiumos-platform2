@@ -43,6 +43,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   ~DBusService() override = default;
 
   bool SendErrorSignal(RmadErrorCode error);
+  bool SendCalibrationSetupSignal(CalibrationSetupInstruction instruction);
+  bool SendCalibrationOverallSignal(CalibrationOverallStatus status);
   bool SendCalibrationProgressSignal(CalibrationComponentStatus status);
   bool SendProvisioningProgressSignal(
       ProvisionDeviceState::ProvisioningStep step, double progress);
@@ -128,8 +130,12 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<RmadErrorCode>> error_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationSetupInstruction>>
+      calibration_setup_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationOverallStatus>>
+      calibration_overall_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationComponentStatus>>
-      calibration_signal_;
+      calibration_component_signal_;
   std::weak_ptr<brillo::dbus_utils::
                     DBusSignal<ProvisionDeviceState::ProvisioningStep, double>>
       provisioning_signal_;

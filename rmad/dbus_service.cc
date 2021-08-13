@@ -20,6 +20,8 @@ namespace brillo {
 namespace dbus_utils {
 
 using rmad::CalibrationComponentStatus;
+using rmad::CalibrationOverallStatus;
+using rmad::CalibrationSetupInstruction;
 using rmad::ProvisionDeviceState;
 using rmad::RmadComponent;
 using rmad::RmadErrorCode;
@@ -37,6 +39,48 @@ struct DBusType<RmadErrorCode> {
     int v;
     if (DBusType<int>::Read(reader, &v)) {
       *value = static_cast<rmad::RmadErrorCode>(v);
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
+template <>
+struct DBusType<CalibrationSetupInstruction> {
+  inline static std::string GetSignature() {
+    return DBusType<int>::GetSignature();
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const CalibrationSetupInstruction value) {
+    DBusType<int>::Write(writer, static_cast<int>(value));
+  }
+  inline static bool Read(dbus::MessageReader* reader,
+                          CalibrationSetupInstruction* value) {
+    int v;
+    if (DBusType<int>::Read(reader, &v)) {
+      *value = static_cast<CalibrationSetupInstruction>(v);
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
+template <>
+struct DBusType<CalibrationOverallStatus> {
+  inline static std::string GetSignature() {
+    return DBusType<int>::GetSignature();
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const CalibrationOverallStatus value) {
+    DBusType<int>::Write(writer, static_cast<int>(value));
+  }
+  inline static bool Read(dbus::MessageReader* reader,
+                          CalibrationOverallStatus* value) {
+    int v;
+    if (DBusType<int>::Read(reader, &v)) {
+      *value = static_cast<CalibrationOverallStatus>(v);
       return true;
     } else {
       return false;
@@ -179,7 +223,13 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
                                          &DBusService::HandleGetLogMethod);
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
-  calibration_signal_ =
+  calibration_setup_signal_ =
+      dbus_interface->RegisterSignal<CalibrationSetupInstruction>(
+          kCalibrationSetupSignal);
+  calibration_overall_signal_ =
+      dbus_interface->RegisterSignal<CalibrationOverallStatus>(
+          kCalibrationOverallSignal);
+  calibration_component_signal_ =
       dbus_interface->RegisterSignal<CalibrationComponentStatus>(
           kCalibrationProgressSignal);
   provisioning_signal_ =
@@ -209,6 +259,17 @@ void DBusService::RegisterSignalSenders() {
           &DBusService::SendHardwareWriteProtectionStateSignal,
           base::Unretained(this))));
   rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kSetupCalibration,
+      std::make_unique<
+          base::RepeatingCallback<bool(CalibrationSetupInstruction)>>(
+          base::BindRepeating(&DBusService::SendCalibrationSetupSignal,
+                              base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kRunCalibration,
+      std::make_unique<base::RepeatingCallback<bool(CalibrationOverallStatus)>>(
+          base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
+                              base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
       std::make_unique<
           base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
@@ -237,9 +298,21 @@ bool DBusService::SendErrorSignal(RmadErrorCode error) {
   return (signal.get() == nullptr) ? false : signal->Send(error);
 }
 
+bool DBusService::SendCalibrationSetupSignal(
+    CalibrationSetupInstruction instruction) {
+  auto signal = calibration_setup_signal_.lock();
+  return (signal.get() == nullptr) ? false : signal->Send(instruction);
+}
+
+bool DBusService::SendCalibrationOverallSignal(
+    CalibrationOverallStatus status) {
+  auto signal = calibration_overall_signal_.lock();
+  return (signal.get() == nullptr) ? false : signal->Send(status);
+}
+
 bool DBusService::SendCalibrationProgressSignal(
     CalibrationComponentStatus status) {
-  auto signal = calibration_signal_.lock();
+  auto signal = calibration_component_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(status);
 }
 

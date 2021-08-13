@@ -32,9 +32,18 @@ class RmadInterfaceImpl final : public RmadInterface {
   void RegisterSignalSender(
       RmadState::StateCase state_case,
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override;
+
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<CalibrationSignalCallback> callback) override;
+      std::unique_ptr<CalibrationSetupSignalCallback> callback) override;
+
+  void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<CalibrationOverallSignalCallback> callback) override;
+
+  void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<CalibrationComponentSignalCallback> callback) override;
 
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;
