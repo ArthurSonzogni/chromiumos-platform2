@@ -377,7 +377,15 @@ Properties	string Address [readonly]
 
 				If this string is empty, the SIM card is not
 				PIN-locked. Otherwise, it specifies the type
-				of lock in effect: "sim-pin" or "sim-puk".
+				of lock in effect: "sim-pin", "sim-puk", "sim-puk2" or
+				one of the modem personalization locks:
+					"network-pin", "network-puk",
+					"service-provider-pin", "service-provider-puk",
+					"dedicated-sim",
+					"corporate-pin", "corporate-puk",
+					"network-subset-pin", "network-subset-puk".
+				Active personalization lock means the SIM card is
+				incompatible with modem configuration.
 
 			int32 RetriesLeft
 
@@ -396,6 +404,10 @@ Properties	string Address [readonly]
 				card must be replaced. This state is indicated
 				when LockType is "sim-puk" and RetriesLeft is
 				zero.
+
+				For other values of LockType, this property gives the
+				number of attempts remaining to supply a correct PIN or
+				PUK before the modem becomes blocked.
 
 			boolean LockEnabled
 

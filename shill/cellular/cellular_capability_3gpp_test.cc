@@ -1955,7 +1955,45 @@ TEST_F(CellularCapability3gppTest, SimLockStatusToProperty) {
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.Get<std::string>(kSIMLockTypeProperty).empty());
+  EXPECT_EQ("sim-puk2", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_SP_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("service-provider-pin",
+            store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_SP_PUK;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("service-provider-puk",
+            store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_NET_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("network-pin", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_NET_PUK;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("network-puk", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_SIM_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("dedicated-sim", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_CORP_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("corporate-pin", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_CORP_PUK;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("corporate-puk", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_NETSUB_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("network-subset-pin", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_NETSUB_PUK;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("network-subset-puk", store.Get<std::string>(kSIMLockTypeProperty));
 }
 
 TEST_F(CellularCapability3gppTest, OnLockRetriesChanged) {
@@ -1981,8 +2019,8 @@ TEST_F(CellularCapability3gppTest, OnLockRetriesChanged) {
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
   capability_->OnLockRetriesChanged(data);
-  // retries_left should always indicate the number of SIM_PIN retries if the
-  // lock is not SIM_PUK
+  // retries_left should indicate the number of SIM_PIN retries if the
+  // lock is SIM_PIN or SIM_PIN2
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
   data.clear();

@@ -254,6 +254,36 @@ KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
     case MM_MODEM_LOCK_SIM_PUK:
       lock_type = "sim-puk";
       break;
+    case MM_MODEM_LOCK_SIM_PUK2:
+      lock_type = "sim-puk2";
+      break;
+    case MM_MODEM_LOCK_PH_SP_PIN:
+      lock_type = "service-provider-pin";
+      break;
+    case MM_MODEM_LOCK_PH_SP_PUK:
+      lock_type = "service-provider-puk";
+      break;
+    case MM_MODEM_LOCK_PH_NET_PIN:
+      lock_type = "network-pin";
+      break;
+    case MM_MODEM_LOCK_PH_NET_PUK:
+      lock_type = "network-puk";
+      break;
+    case MM_MODEM_LOCK_PH_SIM_PIN:
+      lock_type = "dedicated-sim";
+      break;
+    case MM_MODEM_LOCK_PH_CORP_PIN:
+      lock_type = "corporate-pin";
+      break;
+    case MM_MODEM_LOCK_PH_CORP_PUK:
+      lock_type = "corporate-puk";
+      break;
+    case MM_MODEM_LOCK_PH_NETSUB_PIN:
+      lock_type = "network-subset-pin";
+      break;
+    case MM_MODEM_LOCK_PH_NETSUB_PUK:
+      lock_type = "network-subset-puk";
+      break;
     default:
       lock_type = "";
       break;
@@ -1629,13 +1659,12 @@ void CellularCapability3gpp::OnLockRetriesChanged(
   // UI uses lock_retries to indicate the number of attempts remaining
   // for enable pin/disable pin/change pin
   // By default, the UI operates on PIN1, thus lock_retries should return
-  // number of PIN1 retries. The only exception is PUK lock, where the UI needs
-  // to report the number of PUK retries.
-  // TODO(pholla): Personalization requires the UI to display multiple locks,
-  // so shill needs to communicate an array of sim_lock_status (b/169615875)
-  auto retry_lock_type = (sim_lock_status_.lock_type == MM_MODEM_LOCK_SIM_PUK)
-                             ? MM_MODEM_LOCK_SIM_PUK
-                             : MM_MODEM_LOCK_SIM_PIN;
+  // number of PIN1 retries when the PIN2 lock is active.
+  // For PUK, PUK2 and modem personalization locks, the UI should return
+  // corresponding number of retries
+  auto retry_lock_type = (sim_lock_status_.lock_type <= MM_MODEM_LOCK_SIM_PIN2)
+                             ? MM_MODEM_LOCK_SIM_PIN
+                             : sim_lock_status_.lock_type;
   auto it = lock_retries.find(retry_lock_type);
 
   sim_lock_status_.retries_left =
