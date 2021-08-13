@@ -1,0 +1,75 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <cstddef>
+
+#include <absl/status/status.h>
+#include <base/files/file_path.h>
+#include <base/logging.h>
+#include <base/native_library.h>
+#include <base/no_destructor.h>
+
+#include "federated/federated_library.h"
+#include "federated/federated_session.h"
+
+namespace federated {
+
+namespace {
+// TODO(alanlxl): this path is temporary until DLC.
+constexpr char kFederatedComputationLibraryPath[] = "/usr/lib64/libfcp.so";
+}  // namespace
+
+FederatedLibrary* FederatedLibrary::GetInstance() {
+  static base::NoDestructor<FederatedLibrary> instance;
+  return instance.get();
+}
+
+FederatedLibrary::FederatedLibrary()
+    : run_plan_(nullptr), free_run_plan_result_(nullptr) {
+  base::NativeLibraryOptions native_library_options;
+  native_library_options.prefer_own_symbols = true;
+  library_.emplace(base::LoadNativeLibraryWithOptions(
+      base::FilePath(kFederatedComputationLibraryPath), native_library_options,
+      /* error */ nullptr));
+  if (!library_->is_valid()) {
+    status_ = absl::FailedPreconditionError("Failed to load library");
+    return;
+  }
+
+// Helper macro to look up functions from the library, assuming the function
+// pointer type is named as (name+"Fn"), which is the case in
+// <fcp/fcp.h>.
+#define FEDERATED_LOOKUP_FUNCTION(function_ptr, name)                  \
+  function_ptr =                                                       \
+      reinterpret_cast<name##Fn>(library_->GetFunctionPointer(#name)); \
+  if (function_ptr == nullptr) {                                       \
+    LOG(ERROR) << "Failed to lookup function " << #name;               \
+    status_ = absl::InternalError("Failed to lookup function");        \
+    return;                                                            \
+  }
+  // Look up the function pointers.
+  FEDERATED_LOOKUP_FUNCTION(run_plan_, FlRunPlan);
+  FEDERATED_LOOKUP_FUNCTION(free_run_plan_result_, FlFreeRunPlanResult);
+#undef FEDERATED_LOOKUP_FUNCTION
+
+  status_ = absl::OkStatus();
+}
+
+FederatedLibrary::~FederatedLibrary() = default;
+
+absl::Status FederatedLibrary::GetStatus() const {
+  return status_;
+}
+
+FederatedSession FederatedLibrary::CreateSession(
+    const std::string& service_uri,
+    const std::string& api_key,
+    const ClientConfigMetadata client_config,
+    DeviceStatusMonitor* const device_status_monitor) {
+  DCHECK(status_.ok());
+  return FederatedSession(run_plan_, free_run_plan_result_, service_uri,
+                          api_key, client_config, device_status_monitor);
+}
+
+}  // namespace federated

@@ -9,9 +9,9 @@
 
 #include <base/files/file_path.h>
 
-#include "chrome/knowledge/federated/example.pb.h"
-#include "chrome/knowledge/federated/feature.pb.h"
 #include "federated/mojom/example.mojom.h"
+#include "federated/protos/example.pb.h"
+#include "federated/protos/feature.pb.h"
 
 namespace federated {
 

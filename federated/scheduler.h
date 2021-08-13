@@ -7,13 +7,14 @@
 
 #include <memory>
 #include <string>
-#include <unordered_set>
+#include <vector>
 
 #include <base/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 
 #include "federated/device_status_monitor.h"
+#include "federated/federated_session.h"
 
 namespace federated {
 class StorageManager;
@@ -25,30 +26,27 @@ class Scheduler {
   Scheduler& operator=(const Scheduler&) = delete;
   ~Scheduler();
 
-  // For each client, posts a delayed task with default retry window.
+  // Creates a federated session and schedules job for each client.
   void Schedule();
 
  private:
-  // Posts the TryToStartJobForClient task for client with delay.
-  void PostDelayedTask(const std::string& client_name,
-                       const base::TimeDelta& delay);
+  // Posts the TryToStartJobForSession task for the given session.
+  void KeepSchedulingJobForSession(FederatedSession* const federated_session);
 
   // Tries to check-in the server and starts a federated task if training
-  // conditions are satisfied, uses the retry-window from the server as the next
-  // delay and posts the next delayed try task. Otherwise posts the next delayed
-  // try task with the default retry window.
-  void TryToStartJobForClient(const std::string& client_name);
+  // conditions are satisfied, updates the session object if receiving response
+  // from server and posts next try to task_runner_ with the updated session.
+  void TryToStartJobForSession(FederatedSession* const federated_session);
 
-  // Obtained from daemon.cc, should not delete it.
-  StorageManager* storage_manager_;
+  // Not owned
+  StorageManager* const storage_manager_;
 
   // Device status monitor that answers whether training conditions are
   // satisfied.
   DeviceStatusMonitor device_status_monitor_;
 
-  // Registered clients.
-  // TODO(alanlxl): need to be a map from client to its config.
-  std::unordered_set<std::string> registered_clients_;
+  // Registered client sessions.
+  std::vector<FederatedSession> sessions_;
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };

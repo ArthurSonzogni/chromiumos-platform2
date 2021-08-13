@@ -4,26 +4,27 @@
 
 #include "federated/scheduler.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/threading/sequenced_task_runner_handle.h>
+#include <base/time/time.h>
 
-#include "federated/device_status_monitor.h"
+#include "federated/federated_library.h"
 #include "federated/federated_metadata.h"
 #include "federated/storage_manager.h"
 
 namespace federated {
 namespace {
 
-// TODO(alanlxl): discussion required about the default window.
-constexpr base::TimeDelta kDefaultRetryWindow =
-    base::TimeDelta::FromSeconds(60 * 5);
+constexpr char kServiceUri[] = "https+test://127.0.0.1:8888";
+constexpr char kApiKey[] = "";
 
 }  // namespace
 
 Scheduler::Scheduler(StorageManager* storage_manager, dbus::Bus* bus)
     : storage_manager_(storage_manager),
       device_status_monitor_(bus),
-      registered_clients_(GetClientNames()),
       task_runner_(base::SequencedTaskRunnerHandle::Get()) {}
 
 // TODO(alanlxl): create a destructor or finalize method that deletes examples
@@ -31,42 +32,59 @@ Scheduler::Scheduler(StorageManager* storage_manager, dbus::Bus* bus)
 Scheduler::~Scheduler() = default;
 
 void Scheduler::Schedule() {
-  for (const auto& client_name : registered_clients_) {
-    PostDelayedTask(client_name, kDefaultRetryWindow);
+  if (!FederatedLibrary::GetInstance()->GetStatus().ok()) {
+    LOG(ERROR) << "FederatedLibrary failed to initialized with error "
+               << FederatedLibrary::GetInstance()->GetStatus();
+    return;
+  }
+
+  auto client_configs = GetClientConfig();
+
+  // Pointers to elements of `sessions_` are passed to
+  // KeepSchedulingJobForSession, which can be invalid if the capacity of
+  // `sessions_` needs to be increased. Reserves the necessary capacity upfront.
+  sessions_.reserve(client_configs.size());
+
+  for (const auto& kv : client_configs) {
+    // TODO(alanlxl): it uses a copy constructor for now, needs to investigate
+    // how to avoid copy.
+    sessions_.push_back(FederatedLibrary::GetInstance()->CreateSession(
+        kServiceUri, kApiKey, kv.second, &device_status_monitor_));
+    KeepSchedulingJobForSession(&sessions_.back());
   }
 }
 
-void Scheduler::PostDelayedTask(const std::string& client_name,
-                                const base::TimeDelta& delay) {
+void Scheduler::KeepSchedulingJobForSession(
+    FederatedSession* const federated_session) {
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Scheduler::TryToStartJobForClient, base::Unretained(this),
-                     client_name),
-      delay);
+      base::BindOnce(&Scheduler::TryToStartJobForSession,
+                     base::Unretained(this), federated_session),
+      federated_session->next_retry_delay());
 }
 
-void Scheduler::TryToStartJobForClient(const std::string& client_name) {
-  const base::TimeDelta next_retry_delay = kDefaultRetryWindow;
+void Scheduler::TryToStartJobForSession(
+    FederatedSession* const federated_session) {
+  federated_session->ResetRetryDelay();
   if (!device_status_monitor_.TrainingConditionsSatisfied()) {
     DVLOG(1) << "Device is not in a good condition for training now.";
-    PostDelayedTask(client_name, next_retry_delay);
+    KeepSchedulingJobForSession(federated_session);
     return;
   }
 
-  const base::Optional<ExampleDatabase::Iterator> examples =
-      storage_manager_->GetExampleIterator(client_name);
-  if (!examples.has_value()) {
-    DVLOG(1) << "Client " << client_name << " failed to prepare examples.";
-    PostDelayedTask(client_name, next_retry_delay);
+  base::Optional<ExampleDatabase::Iterator> example_iterator =
+      storage_manager_->GetExampleIterator(federated_session->GetSessionName());
+  if (!example_iterator.has_value()) {
+    DVLOG(1) << "Client " << federated_session->GetSessionName()
+             << " failed to prepare examples.";
+    KeepSchedulingJobForSession(federated_session);
     return;
   }
 
-  // TODO(alanlxl): the real federated task happens here.
-  // `next_retry_delay` should be updated according to the response from the
-  // server.
+  federated_session->RunPlan(std::move(example_iterator.value()));
 
   // Posts next task.
-  PostDelayedTask(client_name, next_retry_delay);
+  KeepSchedulingJobForSession(federated_session);
 }
 
 }  // namespace federated

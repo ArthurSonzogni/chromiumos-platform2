@@ -35,11 +35,17 @@ generate_mojom_bindings("federated_mojo_bindings") {
 
 proto_library("tf_example_proto") {
   proto_in_dir = "./protos"
-  proto_out_dir = "chrome/knowledge/federated/"
+  proto_out_dir = "federated/protos/"
   sources = [
     "${proto_in_dir}/example.proto",
     "${proto_in_dir}/feature.proto",
   ]
+}
+
+proto_library("cros_event_proto") {
+  proto_in_dir = "${sysroot}/usr/include/fcp"
+  proto_out_dir = "federated/protos/"
+  sources = [ "${proto_in_dir}/cros_events.proto" ]
 }
 
 static_library("federated_common") {
@@ -47,8 +53,10 @@ static_library("federated_common") {
     "daemon.cc",
     "device_status_monitor.cc",
     "example_database.cc",
+    "federated_library.cc",
     "federated_metadata.cc",
     "federated_service_impl.cc",
+    "federated_session.cc",
     "scheduler.cc",
     "session_manager_proxy.cc",
     "storage_manager.cc",
@@ -57,6 +65,7 @@ static_library("federated_common") {
   all_dependent_configs = [ ":federated_common_pkg_deps" ]
   pkg_deps = [ "protobuf" ]
   deps = [
+    ":cros_event_proto",
     ":federated_mojo_bindings",
     ":tf_example_proto",
   ]

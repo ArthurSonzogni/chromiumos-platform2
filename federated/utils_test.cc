@@ -9,9 +9,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chrome/knowledge/federated/example.pb.h"
-#include "chrome/knowledge/federated/feature.pb.h"
 #include "federated/mojom/example.mojom.h"
+#include "federated/protos/example.pb.h"
+#include "federated/protos/feature.pb.h"
 #include "federated/test_utils.h"
 
 namespace federated {

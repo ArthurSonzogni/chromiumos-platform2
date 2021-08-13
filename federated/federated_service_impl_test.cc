@@ -11,11 +11,11 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "chrome/knowledge/federated/example.pb.h"
 #include "federated/federated_metadata.h"
 #include "federated/federated_service_impl.h"
 #include "federated/mock_storage_manager.h"
 #include "federated/mojom/federated_service.mojom.h"
+#include "federated/protos/example.pb.h"
 #include "federated/test_utils.h"
 #include "federated/utils.h"
 
