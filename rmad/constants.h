@@ -30,12 +30,6 @@ inline constexpr std::array<RmadComponent, 3> kComponentsNeedAutoCalibration = {
     RMAD_COMPONENT_MAINBOARD_REWORK,
 };
 
-inline constexpr std::array<std::pair<RmadComponent, int>, 3>
-    kComponentsCalibrationPriority = {
-        {{RmadComponent::RMAD_COMPONENT_GYROSCOPE, 1},
-         {RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER, 1},
-         {RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER, 2}}};
-
 }  // namespace rmad
 
 #endif  // RMAD_CONSTANTS_H_

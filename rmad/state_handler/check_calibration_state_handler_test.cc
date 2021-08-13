@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/check_calibration_state_handler.h"
+
 #include <map>
 #include <memory>
 #include <string>
 
-#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
-#include "rmad/constants.h"
-#include "rmad/state_handler/check_calibration_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 
 namespace rmad {
@@ -24,19 +23,19 @@ class CheckCalibrationStateHandlerTest : public StateHandlerTest {
  protected:
   void SetUp() override {
     StateHandlerTest::SetUp();
-    base_acc_priority = GetComponentCalibrationPriority(
+    base_acc_setup_instruction = GetCalibrationSetupInstruction(
         RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
-    EXPECT_GE(base_acc_priority, 0);
+    EXPECT_GT(base_acc_setup_instruction, RMAD_CALIBRATION_INSTRUCTION_UNKNOWN);
 
-    lid_acc_priority = GetComponentCalibrationPriority(
+    lid_acc_setup_instruction = GetCalibrationSetupInstruction(
         RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
-    EXPECT_GE(lid_acc_priority, 0);
+    EXPECT_GT(lid_acc_setup_instruction, RMAD_CALIBRATION_INSTRUCTION_UNKNOWN);
 
-    EXPECT_NE(base_acc_priority, lid_acc_priority);
+    EXPECT_NE(base_acc_setup_instruction, lid_acc_setup_instruction);
   }
 
-  int base_acc_priority;
-  int lid_acc_priority;
+  CalibrationSetupInstruction base_acc_setup_instruction;
+  CalibrationSetupInstruction lid_acc_setup_instruction;
 };
 
 TEST_F(CheckCalibrationStateHandlerTest, InitializeState_Success) {
@@ -79,7 +78,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   const std::map<std::string, std::map<std::string, std::string>>
       target_priority_calibration_map = {
-          {base::NumberToString(base_acc_priority),
+          {CalibrationSetupInstruction_Name(base_acc_setup_instruction),
            {{RmadComponent_Name(
                  RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
@@ -87,7 +86,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
             {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
-          {base::NumberToString(lid_acc_priority),
+          {CalibrationSetupInstruction_Name(lid_acc_setup_instruction),
            {{RmadComponent_Name(
                  RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
@@ -131,7 +130,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   const std::map<std::string, std::map<std::string, std::string>>
       target_priority_calibration_map = {
-          {base::NumberToString(base_acc_priority),
+          {CalibrationSetupInstruction_Name(base_acc_setup_instruction),
            {{RmadComponent_Name(
                  RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
@@ -139,7 +138,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
             {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE)}}},
-          {base::NumberToString(lid_acc_priority),
+          {CalibrationSetupInstruction_Name(lid_acc_setup_instruction),
            {{RmadComponent_Name(
                  RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
@@ -183,7 +182,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   const std::map<std::string, std::map<std::string, std::string>>
       target_priority_calibration_map = {
-          {base::NumberToString(base_acc_priority),
+          {CalibrationSetupInstruction_Name(base_acc_setup_instruction),
            {{RmadComponent_Name(
                  RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
@@ -191,7 +190,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
             {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_SKIP)}}},
-          {base::NumberToString(lid_acc_priority),
+          {CalibrationSetupInstruction_Name(lid_acc_setup_instruction),
            {{RmadComponent_Name(
                  RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(

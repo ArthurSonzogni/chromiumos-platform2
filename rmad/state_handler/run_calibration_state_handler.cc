@@ -5,13 +5,11 @@
 #include "rmad/state_handler/run_calibration_state_handler.h"
 
 #include <algorithm>
-#include <limits>
 #include <memory>
 
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 
-#include "rmad/constants.h"
+#include "rmad/utils/calibration_utils.h"
 
 namespace rmad {
 
@@ -23,7 +21,7 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
   if (!state_.has_run_calibration() && !RetrieveState()) {
     state_.set_allocated_run_calibration(new RunCalibrationState);
   }
-  running_priority_ = std::numeric_limits<int>::max();
+  running_group_ = CalibrationSetupInstruction_MAX;
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
   RetrieveVarsAndCalibrate();
@@ -80,85 +78,62 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
-  if (!GetPriorityCalibrationMap()) {
-    SaveAndSend(RmadComponent::RMAD_COMPONENT_UNKNOWN, -1);
+  if (!GetCalibrationMap(json_store_, &calibration_map_)) {
+    calibration_overall_signal_sender_->Run(
+        RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     LOG(ERROR) << "Failed to read calibration variables";
     return;
   }
 
-  for (auto priority_components : priority_components_calibration_map_) {
-    int priority = priority_components.first;
-    for (auto component_status : priority_components.second) {
-      switch (component_status.second) {
-        // Under normal circumstances, we expect that the first calibration has
-        // been completed, and the status here is waiting. However, it may fail
-        // or get stuck (still in progress) and we should retry the calibration
-        // here.
-        case CalibrationComponentStatus::RMAD_CALIBRATION_WAITING:
-        case CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS:
-        case CalibrationComponentStatus::RMAD_CALIBRATION_FAILED:
-          // We start parsing from first priority by ordered map structure.
-          if (running_priority_ >= priority) {
-            // TODO(genechang): Should execute calibration here.
-            PollUntilCalibrationDone(component_status.first);
-            running_priority_ = priority;
-          }
-          break;
-        // For those sensors that are calibrated or skipped, we do not need to
-        // re-calibrate them.
-        case CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE:
-        case CalibrationComponentStatus::RMAD_CALIBRATION_SKIP:
-          break;
-        case CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN:
-        default:
-          SaveAndSend(RmadComponent::RMAD_COMPONENT_UNKNOWN, -1);
-          LOG(ERROR)
-              << "Rmad calibration component calibrate_state is missing.";
-          return;
-      }
+  if (!GetCurrentSetupInstruction(calibration_map_, &running_group_)) {
+    calibration_overall_signal_sender_->Run(
+        RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
+    LOG(ERROR) << "Failed to get components to be calibrated.";
+    return;
+  }
+
+  if (running_group_ == RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+    calibration_overall_signal_sender_->Run(RMAD_CALIBRATION_OVERALL_COMPLETE);
+    return;
+  }
+
+  for (auto component_status : calibration_map_[running_group_]) {
+    if (ShouldCalibrate(component_status.second)) {
+      // TODO(genechang): Should execute calibration here.
+      PollUntilCalibrationDone(component_status.first);
     }
   }
 }
 
 bool RunCalibrationStateHandler::ShouldRecalibrate(RmadErrorCode* error_code) {
   *error_code = RMAD_ERROR_OK;
-  for (auto priority_components : priority_components_calibration_map_) {
-    int priority = priority_components.first;
-    for (auto component_status : priority_components.second) {
+  for (auto instruction_components : calibration_map_) {
+    CalibrationSetupInstruction setup_instruction =
+        instruction_components.first;
+    for (auto component_status : instruction_components.second) {
       if (component_status.first == RmadComponent::RMAD_COMPONENT_UNKNOWN) {
         *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_MISSING;
         return true;
       }
-      if (!IsValidComponent(component_status.first)) {
+      if (component_status.second ==
+          CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN) {
+        *error_code = RMAD_ERROR_CALIBRATION_STATUS_MISSING;
+        return true;
+      }
+      if (!IsValidCalibrationComponent(component_status.first)) {
         *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_INVALID;
         return true;
       }
 
-      // Under normal situations, we expect that the calibration has been
-      // completed here, but it may fail, stuck or signal loss. Therefore, we
-      // expect Chrome to still send the request after the timeout. This is why
-      // we allow different statuses here.
-      switch (component_status.second) {
-        // For those sensors that are calibrated or skipped, we do not need to
-        // re-calibrate them.
-        case CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE:
-        case CalibrationComponentStatus::RMAD_CALIBRATION_SKIP:
-          break;
-        // For all incomplete, unskipped, or unknown statuses, we should
-        // re-calibrate them.
-        case CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS:
-        case CalibrationComponentStatus::RMAD_CALIBRATION_WAITING:
-        case CalibrationComponentStatus::RMAD_CALIBRATION_FAILED:
-          // All components with the same priority as the running priority
-          // should have been calibrated or skipped.
-          if (priority == running_priority_) {
-            *error_code = RMAD_ERROR_CALIBRATION_FAILED;
-          }
-          return true;
-        case CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN:
-        default:
-          *error_code = RMAD_ERROR_CALIBRATION_STATUS_MISSING;
-          return true;
+      if (ShouldCalibrate(component_status.second)) {
+        // Under normal situations, we expect that the calibration has been
+        // completed here, but it may fail, stuck or signal loss. Therefore, we
+        // expect Chrome to still send the request after the timeout. This is
+        // why we allow different statuses here.
+        if (setup_instruction == running_group_) {
+          *error_code = RMAD_ERROR_CALIBRATION_FAILED;
+        }
+        return true;
       }
     }
   }
@@ -247,11 +222,10 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
     }
   }
 
-  if (priority_components_calibration_map_[running_priority_][component] !=
-      status) {
+  if (calibration_map_[running_group_][component] != status) {
     base::AutoLock lock_scope(calibration_mutex_);
-    priority_components_calibration_map_[running_priority_][component] = status;
-    SetPriorityCalibrationMap();
+    calibration_map_[running_group_][component] = status;
+    SetCalibrationMap(json_store_, calibration_map_);
   }
 
   CalibrationComponentStatus component_status;
@@ -259,84 +233,6 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
   component_status.set_status(status);
   component_status.set_progress(progress);
   calibration_component_signal_sender_->Run(std::move(component_status));
-}
-
-bool RunCalibrationStateHandler::GetPriorityCalibrationMap() {
-  base::AutoLock lock_scope(calibration_mutex_);
-  priority_components_calibration_map_.clear();
-
-  std::map<std::string, std::map<std::string, std::string>> json_value_map;
-  if (!json_store_->GetValue(kCalibrationMap, &json_value_map)) {
-    return false;
-  }
-
-  for (auto priority_components : json_value_map) {
-    int priority;
-    if (!base::StringToInt(priority_components.first, &priority)) {
-      return false;
-    }
-    for (auto component_status : priority_components.second) {
-      RmadComponent component;
-      if (!RmadComponent_Parse(component_status.first, &component)) {
-        LOG(ERROR) << "Failed to parse component name from variables";
-        return false;
-      }
-      CalibrationComponentStatus::CalibrationStatus status;
-      if (!CalibrationComponentStatus::CalibrationStatus_Parse(
-              component_status.second, &status)) {
-        LOG(ERROR) << "Failed to parse status name from variables";
-        return false;
-      }
-      priority_components_calibration_map_[priority][component] = status;
-      if (component == RmadComponent::RMAD_COMPONENT_UNKNOWN) {
-        LOG(ERROR) << "Rmad: Calibration component is missing.";
-        return false;
-      }
-      if (status == CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN) {
-        LOG(ERROR) << "Rmad: Calibration status for " << component_status.first
-                   << " is missing.";
-        return false;
-      }
-      if (!IsValidComponent(component)) {
-        LOG(ERROR) << "Rmad: " << component_status.first
-                   << " cannot be calibrated.";
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-bool RunCalibrationStateHandler::SetPriorityCalibrationMap() {
-  // In order to save dictionary style variables to json, currently only
-  // variables whose keys are strings are supported. This is why we converted
-  // it to a string. In addition, in order to ensure that the file is still
-  // readable after the enum sequence is updated, we also convert its value
-  // into a readable string to deal with possible updates.
-  std::map<std::string, std::map<std::string, std::string>> json_value_map;
-  for (auto priority_components : priority_components_calibration_map_) {
-    std::string priority = base::NumberToString(priority_components.first);
-    for (auto component_status : priority_components.second) {
-      std::string component_name = RmadComponent_Name(component_status.first);
-      std::string status_name =
-          CalibrationComponentStatus::CalibrationStatus_Name(
-              component_status.second);
-      json_value_map[priority][component_name] = status_name;
-    }
-  }
-
-  return json_store_->SetValue(kCalibrationMap, json_value_map);
-}
-
-bool RunCalibrationStateHandler::IsValidComponent(
-    RmadComponent component) const {
-  for (auto component_priority : kComponentsCalibrationPriority) {
-    if (component == component_priority.first) {
-      return true;
-    }
-  }
-  return false;
 }
 
 // TODO(genechang): This is currently fake. Should check gyroscope calibration

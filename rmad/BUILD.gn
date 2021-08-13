@@ -40,6 +40,7 @@ static_library("libsystem") {
 
 static_library("libutils") {
   sources = [
+    "utils/calibration_utils.cc",
     "utils/cbi_utils_impl.cc",
     "utils/cr50_utils_impl.cc",
     "utils/crossystem_utils_impl.cc",

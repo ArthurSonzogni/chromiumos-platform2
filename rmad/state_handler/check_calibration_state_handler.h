@@ -8,11 +8,10 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <map>
-#include <string>
+
+#include "rmad/utils/calibration_utils.h"
 
 namespace rmad {
-
-int GetComponentCalibrationPriority(RmadComponent component);
 
 class CheckCalibrationStateHandler : public BaseStateHandler {
  public:
@@ -37,9 +36,9 @@ class CheckCalibrationStateHandler : public BaseStateHandler {
   // To ensure that calibration starts from a higher priority, we use an ordered
   // map to traverse it from high to low.
   std::map<
-      int,
+      CalibrationSetupInstruction,
       std::map<RmadComponent, CalibrationComponentStatus::CalibrationStatus>>
-      priority_components_calibration_map_;
+      setup_instruction_calibration_map_;
 };
 
 }  // namespace rmad

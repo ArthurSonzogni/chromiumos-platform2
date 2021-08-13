@@ -6,29 +6,11 @@
 
 #include <limits>
 #include <memory>
+#include <string>
 
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
-
-#include "rmad/constants.h"
 
 namespace rmad {
-
-int GetComponentCalibrationPriority(RmadComponent component) {
-  int priority = std::numeric_limits<int>::max();
-  for (auto calibration_priority : kComponentsCalibrationPriority) {
-    if (calibration_priority.first == component) {
-      priority = calibration_priority.second;
-      break;
-    }
-  }
-
-  if (priority == std::numeric_limits<int>::max()) {
-    LOG(WARNING) << "Unknown priority device " << RmadComponent_Name(component);
-  }
-
-  return priority;
-}
 
 CheckCalibrationStateHandler::CheckCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -82,9 +64,9 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
       return false;
     }
 
-    int priority =
-        GetComponentCalibrationPriority(component_status.component());
-    if (priority == std::numeric_limits<int>::max()) {
+    CalibrationSetupInstruction instruction =
+        GetCalibrationSetupInstruction(component_status.component());
+    if (instruction == RMAD_CALIBRATION_INSTRUCTION_UNKNOWN) {
       *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_INVALID;
       LOG_STREAM(ERROR) << RmadComponent_Name(component_status.component())
                         << " cannot be calibrated.";
@@ -114,9 +96,9 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
         return false;
     }
 
-    priority_components_calibration_map_[priority]
-                                        [component_status.component()] =
-                                            component_status.status();
+    setup_instruction_calibration_map_[instruction]
+                                      [component_status.component()] =
+                                          component_status.status();
   }
 
   *error_code = RMAD_ERROR_OK;
@@ -130,14 +112,15 @@ bool CheckCalibrationStateHandler::StoreVars() const {
   // readable after the enum sequence is updated, we also convert its value
   // into a readable string to deal with possible updates.
   std::map<std::string, std::map<std::string, std::string>> json_value_map;
-  for (auto priority_components : priority_components_calibration_map_) {
-    std::string priority = base::NumberToString(priority_components.first);
-    for (auto component_status : priority_components.second) {
+  for (auto setup_instruction_components : setup_instruction_calibration_map_) {
+    std::string instruction =
+        CalibrationSetupInstruction_Name(setup_instruction_components.first);
+    for (auto component_status : setup_instruction_components.second) {
       std::string component_name = RmadComponent_Name(component_status.first);
       std::string status_name =
           CalibrationComponentStatus::CalibrationStatus_Name(
               component_status.second);
-      json_value_map[priority][component_name] = status_name;
+      json_value_map[instruction][component_name] = status_name;
     }
   }
 
