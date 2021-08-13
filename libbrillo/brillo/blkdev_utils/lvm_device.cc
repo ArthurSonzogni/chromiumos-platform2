@@ -4,6 +4,8 @@
 
 #include "brillo/blkdev_utils/lvm_device.h"
 
+#include <utility>
+
 // lvm2 has multiple options for managing LVM objects:
 // - liblvm2app: deprecated.
 // - liblvm2cmd: simple interface to directly parse cli commands into functions.
@@ -209,26 +211,35 @@ uint64_t Thinpool::GetTotalSpace() {
 
   base::Optional<base::Value> report_contents =
       lvm_->UnwrapReportContents(output, "lv");
-  base::DictionaryValue* lv_dictionary;
 
-  if (!report_contents || !report_contents->GetAsDictionary(&lv_dictionary)) {
+  if (!report_contents || !report_contents->is_dict()) {
     LOG(ERROR) << "Failed to get report contents.";
     return 0;
   }
 
   // Get the thinpool size.
-  std::string thinpool_size;
-  if (!lv_dictionary->GetString("lv_size", &thinpool_size)) {
+  std::string* thinpool_size = report_contents->FindStringKey("lv_size");
+  if (!thinpool_size) {
     LOG(ERROR) << "Failed to get thinpool size.";
     return 0;
   }
 
-  // Use base::StringToUint64 to validate the returned thinpool size.
-  // Last character for size is always "B".
-  thinpool_size.pop_back();
-  uint64_t size;
+  if (thinpool_size->empty()) {
+    LOG(ERROR) << "Empty thinpool size string.";
+    return 0;
+  }
 
-  if (!base::StringToUint64(thinpool_size, &size)) {
+  // Last character for size is always "B".
+  if (thinpool_size->back() != 'B') {
+    LOG(ERROR) << "Last character of thinpool size string should always be B.";
+    return 0;
+  }
+
+  // Use base::StringToUint64 to validate the returned thinpool size.
+  uint64_t size;
+  if (!base::StringToUint64(
+          base::StringPiece(thinpool_size->data(), thinpool_size->length() - 1),
+          &size)) {
     LOG(ERROR) << "Failed to convert thinpool size to a numeric value";
     return 0;
   }
@@ -252,23 +263,23 @@ uint64_t Thinpool::GetFreeSpace() {
 
   base::Optional<base::Value> report_contents =
       lvm_->UnwrapReportContents(output, "lv");
-  base::DictionaryValue* lv_dictionary;
 
-  if (!report_contents || !report_contents->GetAsDictionary(&lv_dictionary)) {
+  if (!report_contents || !report_contents->is_dict()) {
     LOG(ERROR) << "Failed to get report contents.";
     return 0;
   }
 
   // Get the percentage of used data from the thinpool. The value is stored as a
   // string in the json.
-  std::string data_used_percent;
-  if (!lv_dictionary->GetString("data_percent", &data_used_percent)) {
+  std::string* data_used_percent =
+      report_contents->FindStringKey("data_percent");
+  if (!data_used_percent) {
     LOG(ERROR) << "Failed to get percentage size of thinpool used.";
     return 0;
   }
 
   double used_percent;
-  if (!base::StringToDouble(data_used_percent, &used_percent)) {
+  if (!base::StringToDouble(*data_used_percent, &used_percent)) {
     LOG(ERROR) << "Failed to convert used percentage string to double.";
     return 0;
   }
@@ -332,47 +343,45 @@ bool LvmCommandRunner::RunProcess(const std::vector<std::string>& cmd,
 base::Optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     const std::string& output, const std::string& key) {
   auto report = base::JSONReader::Read(output);
-  base::DictionaryValue* dictionary_report;
-  if (!report || !report->is_dict() ||
-      !report->GetAsDictionary(&dictionary_report)) {
+  if (!report || !report->is_dict()) {
     LOG(ERROR) << "Failed to get report as dictionary";
     return base::nullopt;
   }
 
-  base::ListValue* report_list;
-  if (!dictionary_report->GetList("report", &report_list)) {
+  base::Value* report_list = report->FindListKey("report");
+  if (!report_list) {
     LOG(ERROR) << "Failed to find 'report' list";
     return base::nullopt;
   }
 
-  if (report_list->GetSize() != 1) {
-    LOG(ERROR) << "Unexpected size: " << report_list->GetSize();
+  if (report_list->GetList().size() != 1) {
+    LOG(ERROR) << "Unexpected size: " << report_list->GetList().size();
     return base::nullopt;
   }
 
-  base::DictionaryValue* report_dictionary;
-  if (!report_list->GetDictionary(0, &report_dictionary)) {
+  base::Value& report_dictionary = report_list->GetList()[0];
+  if (!report_dictionary.is_dict()) {
     LOG(ERROR) << "Failed to find 'report' dictionary";
     return base::nullopt;
   }
 
-  base::ListValue* key_list;
-  if (!report_dictionary->GetList(key, &key_list)) {
+  base::Value* key_list = report_dictionary.FindListKey(key);
+  if (!key_list) {
     LOG(ERROR) << "Failed to find " << key << " list";
     return base::nullopt;
   }
 
   // If the list has just a single dictionary element, return it directly.
-  if (key_list && key_list->GetSize() == 1) {
-    base::DictionaryValue* key_dictionary;
-    if (!key_list->GetDictionary(0, &key_dictionary)) {
+  if (key_list->GetList().size() == 1) {
+    base::Value& key_dictionary = key_list->GetList()[0];
+    if (!key_dictionary.is_dict()) {
       LOG(ERROR) << "Failed to get " << key << " dictionary";
       return base::nullopt;
     }
-    return key_dictionary->Clone();
+    return std::move(key_dictionary);
   }
 
-  return key_list->Clone();
+  return std::move(*key_list);
 }
 
 }  // namespace brillo
