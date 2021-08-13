@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/logging.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/streams/memory_stream.h>
