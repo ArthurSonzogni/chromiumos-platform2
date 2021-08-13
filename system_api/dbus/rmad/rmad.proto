@@ -172,6 +172,27 @@ enum RmadComponent {
   RMAD_COMPONENT_ACCELEROMETER = 36;  // Legacy
 }
 
+// Defined steup instructions for Calibration.
+// This is used in SetupCalibration.
+enum CalibrationSetupInstruction {
+  RMAD_CALIBRATION_INSTRUCTION_UNKNOWN = 0;
+  RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE = 1;
+  RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE = 2;
+  // Reserved for additional setup instructions.
+  reserved 3 to 9;
+  RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION = 10;
+}
+
+// Defined overall status for Calibration.
+// This is used in calibration related states.
+enum CalibrationOverallStatus {
+  RMAD_CALIBRATION_OVERALL_UNKNOWN = 0;
+  RMAD_CALIBRATION_OVERALL_COMPLETE = 1;
+  RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE = 2;
+  RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED = 3;
+  RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED = 4;
+}
+
 // Defined Rmad states.
 
 // Confirm RMA is required.
@@ -427,12 +448,12 @@ message CheckCalibrationState {
 
 // Wait for technician to setup device to be ready for calibration.
 message SetupCalibrationState {
-  // No state. Waits for the technician to check the setup.
+  CalibrationSetupInstruction instruction = 1;
 }
 
 // Wait for calibration.
 message RunCalibrationState {
-  // No state. Waits for the calibration of the devices.
+  CalibrationOverallStatus status = 1;
 }
 
 // Provision the device.
