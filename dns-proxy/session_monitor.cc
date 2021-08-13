@@ -4,6 +4,7 @@
 
 #include "dns-proxy/session_monitor.h"
 #include <base/bind.h>
+#include <base/logging.h>
 
 namespace dns_proxy {
 

@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
