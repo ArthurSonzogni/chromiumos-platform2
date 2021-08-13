@@ -6,6 +6,8 @@
 
 #include <sysexits.h>
 
+#include <base/logging.h>
+
 namespace pciguard {
 
 void* Authorizer::AuthorizerThread(void* ptr) {

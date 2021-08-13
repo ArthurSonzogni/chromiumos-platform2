@@ -6,6 +6,7 @@
 #include "pciguard/sysfs_utils.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <dbus/pciguard/dbus-constants.h>
 #include <sysexits.h>
 

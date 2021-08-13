@@ -4,6 +4,7 @@
 
 #include "pciguard/session_monitor.h"
 #include <base/bind.h>
+#include <base/logging.h>
 
 namespace pciguard {
 

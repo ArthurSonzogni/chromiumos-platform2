@@ -5,6 +5,8 @@
 #include "pciguard/udev_monitor.h"
 #include "pciguard/daemon.h"
 
+#include <base/logging.h>
+
 namespace pciguard {
 
 namespace {

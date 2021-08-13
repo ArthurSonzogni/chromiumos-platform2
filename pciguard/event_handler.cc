@@ -5,6 +5,7 @@
 #include "pciguard/event_handler.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 namespace pciguard {
 
