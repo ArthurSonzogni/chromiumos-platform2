@@ -8,32 +8,20 @@ brk: 1
 clock_gettime: 1
 close: 1
 connect: 1
-epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
-eventfd2: 1
 exit: 1
 exit_group: 1
-fcntl: 1
 flock: 1
 fstat: 1
-fstatfs: 1
-futex: 1
-getegid: 1
-geteuid: 1
-getgid: 1
 getpid: 1
 getrandom: 1
 gettid: 1
-getuid: 1
-ioctl: arg1 == TCGETS
 lseek: 1
-memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC
 munmap: 1
 openat: 1
-pipe2: 1
 read: 1
 recvmsg: 1
 rt_sigprocmask: 1
