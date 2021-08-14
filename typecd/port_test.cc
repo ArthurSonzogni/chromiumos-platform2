@@ -65,18 +65,26 @@ TEST_F(PortTest, TestGetDataRole) {
 
   ASSERT_TRUE(base::WriteFile(data_role_path, kValidDataRole2,
                               strlen(kValidDataRole2)));
+  // Fake a port changed event.
+  port->PortChanged();
   EXPECT_EQ("host", port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kValidDataRole3,
                               strlen(kValidDataRole3)));
+  // Fake a port changed event.
+  port->PortChanged();
   EXPECT_EQ("device", port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kInvalidDataRole1,
                               strlen(kInvalidDataRole1)));
+  // Fake a port changed event.
+  port->PortChanged();
   EXPECT_EQ("", port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kInvalidDataRole2,
                               strlen(kInvalidDataRole2)));
+  // Fake a port changed event.
+  port->PortChanged();
   EXPECT_EQ("", port->GetDataRole());
 }
 

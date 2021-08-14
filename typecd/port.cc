@@ -24,7 +24,9 @@ Port::Port(const base::FilePath& syspath, int port_num)
       port_num_(port_num),
       user_active_on_mode_entry_(false),
       current_mode_(TypeCMode::kNone),
-      metrics_reported_(false) {
+      metrics_reported_(false),
+      data_role_("") {
+  PortChanged();
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
 }
 
@@ -120,34 +122,12 @@ void Port::PartnerChanged() {
   partner_->UpdatePDInfoFromSysfs();
 }
 
+void Port::PortChanged() {
+  ParseDataRole();
+}
+
 std::string Port::GetDataRole() {
-  std::string data_role;
-  std::string sysfs_str;
-  auto path = syspath_.Append("data_role");
-
-  if (!base::ReadFileToString(path, &sysfs_str)) {
-    LOG(ERROR) << "Couldn't read sysfs path " << path;
-    goto end;
-  }
-
-  // First check for a dual role port, in which case the current role is in
-  // box-brackets. For example: [host] device
-  if (!RE2::PartialMatch(sysfs_str, kDataRoleDRPRegex, &data_role)) {
-    LOG(INFO)
-        << "Couldn't determine role, assuming DRP(Dual Role Port) for port "
-        << port_num_;
-  }
-
-  if (data_role == "")
-    data_role = sysfs_str;
-
-  base::TrimWhitespaceASCII(data_role, base::TRIM_ALL, &data_role);
-
-  if (data_role != "host" && data_role != "device")
-    data_role = "";
-
-end:
-  return data_role;
+  return data_role_;
 }
 
 bool Port::CanEnterDPAltMode() {
@@ -319,6 +299,36 @@ bool Port::IsCableDiscoveryComplete() {
   }
 
   return cable_->DiscoveryComplete();
+}
+
+void Port::ParseDataRole() {
+  std::string role;
+  std::string sysfs_str;
+  auto path = syspath_.Append("data_role");
+
+  if (!base::ReadFileToString(path, &sysfs_str)) {
+    LOG(ERROR) << "Couldn't read sysfs path " << path;
+    goto end;
+  }
+
+  // First check for a dual role port, in which case the current role is in
+  // box-brackets. For example: [host] device
+  if (!RE2::PartialMatch(sysfs_str, kDataRoleDRPRegex, &role)) {
+    LOG(INFO)
+        << "Couldn't determine role, assuming DRP(Dual Role Port) for port "
+        << port_num_;
+  }
+
+  if (role == "")
+    role = sysfs_str;
+
+  base::TrimWhitespaceASCII(role, base::TRIM_ALL, &role);
+
+  if (role != "host" && role != "device")
+    role = "";
+
+end:
+  data_role_ = role;
 }
 
 void Port::ReportPartnerMetrics(Metrics* metrics) {

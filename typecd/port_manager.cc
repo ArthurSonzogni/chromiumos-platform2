@@ -172,7 +172,8 @@ void PortManager::OnPortChanged(int port_num) {
     return;
   }
 
-  LOG(INFO) << "Change detected for port: " << port_num;
+  auto port = it->second.get();
+  port->PortChanged();
 }
 
 void PortManager::OnScreenIsLocked() {

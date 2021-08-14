@@ -48,6 +48,8 @@ class Port {
 
   void PartnerChanged();
 
+  void PortChanged();
+
   void SetCurrentMode(TypeCMode mode) { current_mode_ = mode; }
 
   TypeCMode GetCurrentMode() { return current_mode_; }
@@ -57,7 +59,7 @@ class Port {
   }
   bool GetActiveStateOnModeEntry() { return user_active_on_mode_entry_; }
 
-  // Read and return the current port data role from sysfs.
+  // Returns the current data role for the port.
   // Returns either "host" or "device" on success, empty string on failure.
   virtual std::string GetDataRole();
 
@@ -121,6 +123,9 @@ class Port {
 
   bool IsCableAltModePresent(uint16_t altmode_sid);
 
+  // Reads the current port data role from sysfs and stores it in |data_role_|.
+  void ParseDataRole();
+
   // Sysfs path used to access partner PD information.
   base::FilePath syspath_;
   // Port number as described by the Type C connector class framework.
@@ -133,6 +138,7 @@ class Port {
   // Field which tracks whether port metrics have been reported. This
   // prevents duplicate reporting.
   bool metrics_reported_;
+  std::string data_role_;
 };
 
 }  // namespace typecd
