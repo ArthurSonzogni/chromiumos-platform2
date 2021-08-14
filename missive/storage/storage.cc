@@ -124,10 +124,13 @@ class Storage::QueueUploaderInterface : public UploaderInterface {
   static void AsyncProvideUploader(
       Priority priority,
       Storage* storage,
+      UploaderInterface::UploadReason reason,
       UploaderInterfaceResultCb start_uploader_cb) {
     storage->async_start_upload_cb_.Run(
-        /*need_encryption_key=*/EncryptionModuleInterface::is_enabled() &&
-            storage->encryption_module_->need_encryption_key(),
+        (/*need_encryption_key=*/EncryptionModuleInterface::is_enabled() &&
+         storage->encryption_module_->need_encryption_key())
+            ? UploaderInterface::KEY_DELIVERY
+            : reason,
         base::BindOnce(&QueueUploaderInterface::WrapInstantiatedUploader,
                        priority, std::move(start_uploader_cb)));
   }
@@ -214,7 +217,7 @@ class Storage::KeyDelivery {
         base::BindOnce(&KeyDelivery::EncryptionKeyReceiverReady,
                        base::Unretained(this));
     async_start_upload_cb_.Run(
-        /*need_encryption_key=*/true,
+        UploaderInterface::KEY_DELIVERY,
         base::BindOnce(&KeyDelivery::WrapInstantiatedKeyUploader,
                        /*priority=*/MANUAL_BATCH,
                        std::move(start_uploader_cb)));
