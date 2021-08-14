@@ -532,6 +532,11 @@ void DisplayCpuInfo(const CpuResultPtr& result) {
   SET_DICT(num_total_threads, info, &output);
   SET_DICT(architecture, info, &output);
 
+  if (info->keylocker_info) {
+    auto* out_keylocker = output.SetKey(
+        "keylocker_info", base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(keylocker_configured, info->keylocker_info, out_keylocker);
+  }
   OutputJson(output);
 }
 

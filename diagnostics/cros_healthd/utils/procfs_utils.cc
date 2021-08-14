@@ -33,4 +33,8 @@ base::FilePath GetProcUptimePath(const base::FilePath& root_dir) {
   return root_dir.Append("proc/uptime");
 }
 
+base::FilePath GetProcCryptoPath(const base::FilePath& root_dir) {
+  return root_dir.Append("proc/crypto");
+}
+
 }  // namespace diagnostics

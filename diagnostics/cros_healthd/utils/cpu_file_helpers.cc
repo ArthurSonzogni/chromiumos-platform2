@@ -20,6 +20,8 @@ constexpr char kCpuIdleSubdir[] = "cpuidle";
 constexpr char kCpufreqSubdir[] = "cpufreq";
 // The policy subdirectory of kCpufreqSubdir.
 constexpr char kCpuPolicySubdir[] = "policy";
+// Relative path to crypto file.
+constexpr char kRelativeCryptoDir[] = "proc";
 
 }  // namespace
 
@@ -29,6 +31,7 @@ const char kCStateTimeFile[] = "time";
 const char kCpuScalingMaxFreqFile[] = "scaling_max_freq";
 const char kCpuScalingCurFreqFile[] = "scaling_cur_freq";
 const char kCpuinfoMaxFreqFile[] = "cpuinfo_max_freq";
+const char kCryptoFile[] = "crypto";
 
 base::FilePath GetCpuDirectoryPath(const base::FilePath& root_dir) {
   return root_dir.Append(kRelativeCpuDir);
@@ -56,6 +59,10 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
         .Append(kCpuSubdir + logical_id)
         .Append(kCpufreqSubdir);
   }
+}
+
+base::FilePath GetCryptoDirectoryPath(const base::FilePath& root_dir) {
+  return root_dir.Append(kRelativeCryptoDir);
 }
 
 }  // namespace diagnostics

@@ -126,6 +126,11 @@ constexpr int32_t kSecondFakeCpuTemperatureMilliDegrees =
     kSecondFakeCpuTemperature * 1000;
 constexpr char kSecondFakeCpuTemperatureLabel[] = "Second Temperature Label";
 
+constexpr char kFakeCryptoContents[] =
+    "name\t: crypto_name\n"
+    "driver\t: driver_name\n"
+    "module\t: module_name\n";
+
 // Workaround matchers for UnorderedElementsAreArray not accepting
 // move-only types.
 
@@ -272,6 +277,9 @@ class CpuFetcherTest : public testing::Test {
         second_temp_dir.AppendASCII(kSecondFakeCpuTemperatureLabelFile),
         kSecondFakeCpuTemperatureLabel));
 
+    // Write /proc/crypto.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCryptoPath(root_dir()),
+                                             kFakeCryptoContents));
     // Set the fake uname response.
     fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineX86_64);
   }
@@ -651,6 +659,16 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
           .Append(kFirstCStateDir)
           .Append(kCStateTimeFile),
       kNonIntegralFileContents));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test that we handle missing crypto file.
+TEST_F(CpuFetcherTest, MissingCryptoFile) {
+  ASSERT_TRUE(base::DeleteFile(GetProcCryptoPath(root_dir())));
 
   auto cpu_result = FetchCpuInfo();
 

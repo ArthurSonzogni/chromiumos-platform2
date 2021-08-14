@@ -46,6 +46,10 @@ base::FilePath GetProcStatPath(const base::FilePath& root_dir);
 // will be /proc/uptime.
 base::FilePath GetProcUptimePath(const base::FilePath& root_dir);
 
+// Returns an absolute path to the crypto file in procfs. On a real device,
+// this will be /proc/crypto.
+base::FilePath GetProcCryptoPath(const base::FilePath& root_dir);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_PROCFS_UTILS_H_

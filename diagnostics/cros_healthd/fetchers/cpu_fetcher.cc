@@ -60,6 +60,8 @@ const char kDeviceDir[] = "device";
 const char kHwmonDirectoryPattern[] = "hwmon*";
 // Matches all files containing CPU temperatures.
 const char kCPUTempFilePattern[] = "temp*_input";
+// String "aeskl" indicates keylocker support.
+const char kKeylockerAeskl[] = "aeskl";
 
 // Contains the values parsed from /proc/stat for a single logical CPU.
 struct ParsedStatContents {
@@ -277,6 +279,33 @@ bool ParseProcessor(const std::string& processor,
   return (!processor_id->empty() && !physical_id->empty());
 }
 
+// Fetch Keylocker information.
+base::Optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
+    const base::FilePath& root_dir,
+    mojo_ipc::KeylockerInfoPtr* keylocker_info) {
+  std::string file_contents;
+  auto keylocker_dir = GetCryptoDirectoryPath(root_dir);
+  // Crypto file is commmon for all CPU architects. However, crypto algorithms
+  // populated in crypto file could be hardware dependent.
+  if (!ReadAndTrimString(keylocker_dir, kCryptoFile, &file_contents)) {
+    return CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kFileReadError,
+        "Unable to read file: " + keylocker_dir.Append(kCryptoFile).value());
+  }
+  // aeskl algorithm populated in crypto file is the indication that keylocker
+  // driver had been loaded, the hardware had been configured and ready for use.
+  std::size_t found = file_contents.find(kKeylockerAeskl);
+  if (found == std::string::npos) {
+    *keylocker_info = nullptr;
+    return base::nullopt;
+  }
+  auto info = mojo_ipc::KeylockerInfo::New();
+  info->keylocker_configured = true;
+  *keylocker_info = std::move(info);
+
+  return base::nullopt;
+}
+
 // Aggregates data from |processor_info| and |logical_ids_to_stat_contents| to
 // form the final CpuResultPtr. It's assumed that all CPUs on the device share
 // the same |architecture|.
@@ -371,6 +400,10 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
   }
 
   cpu_info.architecture = architecture;
+  auto& keylocker_info = cpu_info.keylocker_info;
+  auto error = FetchKeylockerInfo(root_dir, &keylocker_info);
+  if (error.has_value())
+    return mojo_ipc::CpuResult::NewError(std::move(error.value()));
 
   for (const auto& temperature : GetCpuTemperatures(root_dir))
     cpu_info.temperature_channels.push_back(temperature.Clone());

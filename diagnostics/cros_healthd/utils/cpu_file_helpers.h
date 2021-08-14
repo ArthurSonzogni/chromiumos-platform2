@@ -20,6 +20,8 @@ extern const char kCStateTimeFile[];
 extern const char kCpuScalingMaxFreqFile[];
 extern const char kCpuScalingCurFreqFile[];
 extern const char kCpuinfoMaxFreqFile[];
+// File to read Keylocker information.
+extern const char kCryptoFile[];
 
 // Returns an absolute path to the CPU directory. On a real device, this will be
 // /sys/devices/system/cpu.
@@ -37,6 +39,9 @@ base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
 // policy, or sys/devices/system/cpu/|logical_id|/cpufreq without.
 base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
                                        const std::string& logical_id);
+
+// Return an absolute path to crypto file (/proc).
+base::FilePath GetCryptoDirectoryPath(const base::FilePath& root_dir);
 
 }  // namespace diagnostics
 
