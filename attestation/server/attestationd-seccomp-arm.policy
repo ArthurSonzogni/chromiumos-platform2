@@ -62,6 +62,8 @@ _llseek: 1
 fcntl64: 1
 access: 1
 flock: 1
+fstatfs: 1
+fstatfs64: 1
 
 futex: 1
 futex_time64: 1
