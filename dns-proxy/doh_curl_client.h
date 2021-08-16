@@ -199,7 +199,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
   //
   // |userp| is owned by DoHCurlClient and should be cleaned properly upon
   // query completion.
-  static int TimerCallback(CURLM* multi, int64_t timeout_ms, void* userp);
+  static int TimerCallback(CURLM* multi, long timeout_ms, void* userp);
 
   // Methods to update CURL socket watchers for asynchronous CURL events.
   // When an action is observed, `CheckMultiInfo()` will be called.

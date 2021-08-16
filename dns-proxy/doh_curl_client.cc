@@ -207,9 +207,7 @@ void DoHCurlClient::TimeoutCallback() {
   CheckMultiInfo();
 }
 
-int DoHCurlClient::TimerCallback(CURLM* multi,
-                                 int64_t timeout_ms,
-                                 void* userp) {
+int DoHCurlClient::TimerCallback(CURLM* multi, long timeout_ms, void* userp) {
   DoHCurlClient* client = static_cast<DoHCurlClient*>(userp);
   if (timeout_ms > 0) {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
