@@ -19,43 +19,69 @@ TEST(VMUtilTest, LoadCustomParametersSupportsEmptyInput) {
 
 TEST(VMUtilTest, LoadCustomParametersParsesManyPairs) {
   base::StringPairs args;
-  LoadCustomParameters("Key1=Value1\nKey2=Value2\nKey3=Value3", &args);
+  LoadCustomParameters(R"(--Key1=Value1
+--Key2=Value2
+--Key3=Value3)",
+                       &args);
   base::StringPairs expected = {
-      {"Key1", "Value1"}, {"Key2", "Value2"}, {"Key3", "Value3"}};
+      {"--Key1", "Value1"}, {"--Key2", "Value2"}, {"--Key3", "Value3"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
 TEST(VMUtilTest, LoadCustomParametersSkipsComments) {
   base::StringPairs args;
-  LoadCustomParameters("Key1=Value1\n#Key2=Value2\nKey3=Value3", &args);
-  base::StringPairs expected{{"Key1", "Value1"}, {"Key3", "Value3"}};
+  LoadCustomParameters(R"(--Key1=Value1
+#--Key2=Value2
+--Key3=Value3)",
+                       &args);
+  base::StringPairs expected{{"--Key1", "Value1"}, {"--Key3", "Value3"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
 TEST(VMUtilTest, LoadCustomParametersSkipsEmptyLines) {
   base::StringPairs args;
-  LoadCustomParameters("Key1=Value1\n\n\n\n\n\n\nKey2=Value2\n\n\n\n", &args);
-  base::StringPairs expected{{"Key1", "Value1"}, {"Key2", "Value2"}};
+  LoadCustomParameters(R"(--Key1=Value1
+
+
+
+
+--Key2=Value2
+
+
+
+)",
+                       &args);
+  base::StringPairs expected{{"--Key1", "Value1"}, {"--Key2", "Value2"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
 TEST(VMUtilTest, LoadCustomParametersSupportsKeyWithoutValue) {
   base::StringPairs args;
-  LoadCustomParameters("Key1=Value1\nKey2\n\n\n\nKey3", &args);
-  base::StringPairs expected{{"Key1", "Value1"}, {"Key2", ""}, {"Key3", ""}};
+  LoadCustomParameters(R"(--Key1=Value1
+--Key2
+
+
+
+--Key3)",
+                       &args);
+  base::StringPairs expected{
+      {"--Key1", "Value1"}, {"--Key2", ""}, {"--Key3", ""}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
 TEST(VMUtilTest, LoadCustomParametersSupportsRemoving) {
-  base::StringPairs args = {{"KeyToBeReplaced", "OldValue"},
-                            {"KeyToBeKept", "ValueToBeKept"}};
+  base::StringPairs args = {{"--KeyToBeReplaced", "OldValue"},
+                            {"--KeyToBeKept", "ValueToBeKept"}};
   LoadCustomParameters(
-      "Key1=Value1\nKey2=Value2\n!KeyToBeReplaced\nKeyToBeReplaced=NewValue",
+      R"(--Key1=Value1
+--Key2=Value2
+!--KeyToBeReplaced
+--KeyToBeReplaced=NewValue)",
       &args);
-  base::StringPairs expected{{"KeyToBeKept", "ValueToBeKept"},
-                             {"Key1", "Value1"},
-                             {"Key2", "Value2"},
-                             {"KeyToBeReplaced", "NewValue"}};
+  base::StringPairs expected{{"--KeyToBeKept", "ValueToBeKept"},
+                             {"--Key1", "Value1"},
+                             {"--Key2", "Value2"},
+                             {"--KeyToBeReplaced", "NewValue"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
@@ -71,27 +97,37 @@ TEST(VMUtilTest, LoadCustomParametersSupportsRemovingByPrefix) {
 }
 
 TEST(VMUtilTest, RemoveParametersWithKeyReturnsFoundValue) {
-  base::StringPairs args = {{"KERNEL_PATH", "/a/b/c"}, {"Key1", "Value1"}};
-  LoadCustomParameters("Key2=Value2\nKey3=Value3", &args);
+  base::StringPairs args = {{"--Key1", "Value1"}};
+  LoadCustomParameters(R"(--Key2=Value2
+--Key3=Value3
+KERNEL_PATH=/a/b/c
+)",
+                       &args);
   const std::string resolved_kernel_path =
       RemoveParametersWithKey("KERNEL_PATH", "default_path", &args);
 
   base::StringPairs expected{
-      {"Key1", "Value1"}, {"Key2", "Value2"}, {"Key3", "Value3"}};
+      {"--Key1", "Value1"}, {"--Key2", "Value2"}, {"--Key3", "Value3"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
   EXPECT_THAT(resolved_kernel_path, "/a/b/c");
 }
 
 TEST(VMUtilTest, RemoveParametersWithKeyReturnsDefaultValue) {
-  base::StringPairs args = {{"SOME_OTHER_PATH", "/a/b/c"}, {"Key1", "Value1"}};
-  LoadCustomParameters("Key2=Value2\nKey3=Value3", &args);
+  base::StringPairs args = {{"--Key1", "Value1"}};
+  LoadCustomParameters(R"(--Key2=Value2
+--Key3=Value3
+SOME_OTHER_PATH=/a/b/c
+)",
+                       &args);
   const std::string resolved_kernel_path =
       RemoveParametersWithKey("KERNEL_PATH", "default_path", &args);
 
-  base::StringPairs expected{{"SOME_OTHER_PATH", "/a/b/c"},
-                             {"Key1", "Value1"},
-                             {"Key2", "Value2"},
-                             {"Key3", "Value3"}};
+  base::StringPairs expected{
+      {"--Key1", "Value1"},
+      {"--Key2", "Value2"},
+      {"--Key3", "Value3"},
+      {"SOME_OTHER_PATH", "/a/b/c"},
+  };
   EXPECT_THAT(args, testing::ContainerEq(expected));
   EXPECT_THAT(resolved_kernel_path, "default_path");
 }
