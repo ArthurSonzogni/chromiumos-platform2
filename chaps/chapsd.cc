@@ -44,6 +44,7 @@
 #include "chaps/slot_manager_impl.h"
 
 #include "chaps/tpm_utility.h"
+#include "chaps/tpm_utility_stub.h"
 
 #if USE_TPM2
 #include "chaps/tpm2_utility_impl.h"
@@ -161,7 +162,7 @@ class Daemon : public brillo::DBusServiceDaemon {
       // Instantiate a TPM1.2 Utility.
       tpm_.reset(new TPMUtilityImpl(srk_auth_data_));
     });
-    OTHER_TPM_SECTION();
+    OTHER_TPM_SECTION({ tpm_.reset(new TPMUtilityStub()); });
     TPM_SELECT_END;
 
     factory_.reset(new ChapsFactoryImpl);
