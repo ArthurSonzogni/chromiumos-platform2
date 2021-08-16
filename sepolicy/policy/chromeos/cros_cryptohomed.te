@@ -25,8 +25,12 @@ allow cros_cryptohomed {
   cros_home_shadow_uid_user
 }:dir mounton;
 
-allow cros_cryptohomed cros_home_shadow_uid_root:dir relabelfrom;
-allow cros_cryptohomed cros_home_shadow_uid_user:{ dir file } relabelfrom;
+allow cros_cryptohomed cros_home_shadow_uid_root:dir { relabelfrom relabelto };
+# Access rules for relabelling the mounted, unlabeled root for a newly created
+# ext4 filesystem. Cryptohome creates and mounts ext4 filesystems for dm-crypt
+# containers: cryptohome/storage/encrypted_container/dmcrypt_container.cc:128
+allow cros_cryptohomed unlabeled:{ dir file } relabelfrom;
+allow cros_cryptohomed cros_home_shadow_uid_user:{ dir file } { relabelto relabelfrom };
 create_dir_file(cros_cryptohomed, {
   cros_downloads_file
   cros_home
@@ -134,7 +138,7 @@ has_arc(`
     FS_IOC_FSGETXATTR
     FS_IOC_FSSETXATTR
   };
-  allow cros_cryptohomed media_rw_data_file:dir relabelfrom;
+  allow cros_cryptohomed media_rw_data_file:dir { relabelfrom relabelto };
 ')
 
 r_dir_file(cros_cryptohomed {
@@ -183,6 +187,7 @@ allow cros_cryptohomed cros_initctl_exec:file rx_file_perms;
 
 # Dm-crypt cryptohome related labels.
 allow cros_cryptohomed cros_run_udev:dir search;
+allow cros_cryptohomed cros_var_lock:dir { getattr search };
 allow cros_cryptohomed cros_run_lock:dir { add_name remove_name write };
 allow cros_cryptohomed cros_run_lock:file { append create getattr lock open read unlink };
 allow cros_cryptohomed device:lnk_file { create unlink };
