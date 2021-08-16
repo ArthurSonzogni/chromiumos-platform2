@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/*
- * Definitions for HPS host interface.
- */
+//
+// Definitions for HPS host interface.
+//
 #ifndef HPS_HPS_REG_H_
 #define HPS_HPS_REG_H_
 
@@ -27,7 +27,7 @@ enum HpsReg {
 };
 
 // Register 2 (RO) - System status register.
-enum R2 {
+enum R2 : uint16_t {
   kOK = 1 << 0,
   kFault = 1 << 1,
   kApplVerified = 1 << 2,
@@ -43,30 +43,30 @@ enum R2 {
 };
 
 // Register 3 (WO) - System command register.
-enum R3 {
+enum R3 : uint16_t {
   kReset = 1 << 0,
   kLaunch = 1 << 1,
   kEnable = 1 << 2,
 };
 
 // Register 7 (RW) - Feature enable bit mask.
-enum R7 {
+enum R7 : uint16_t {
   kFeature1Enable = 1 << 0,
   kFeature2Enable = 1 << 1,
 };
 
 // Feature result registers (R8 & R9).
-enum RFeat {
+enum RFeat : uint16_t {
   kValid = 1 << 15,  // Feature result is valid.
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;
 inline constexpr int kFeatures = 2;  // Maximum of 2 features at this stage.
-/*
- * The interface allows up to 64 banks, but only 16 are
- * usable at this stage because of the requirement to check
- * if the bank is ready via a register.
- */
+
+// The interface allows up to 64 banks, but only 16 are
+// usable at this stage because of the requirement to check
+// if the bank is ready via a register.
+
 inline constexpr int kNumBanks = 16;
 
 inline uint8_t I2cMemWrite(int bank) {
