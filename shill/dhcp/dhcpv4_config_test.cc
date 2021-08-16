@@ -331,7 +331,7 @@ MATCHER_P4(IsDHCPCDArgs,
   }
 
   if (has_arp_gateway) {
-    if (arg[end_offset] != "-R" || arg[end_offset + 1] != "--unicast") {
+    if (arg[end_offset] != "-R" || arg[end_offset + 1] != "-P") {
       return false;
     }
     end_offset += 2;

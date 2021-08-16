@@ -6,8 +6,6 @@
 
 #include <arpa/inet.h>
 
-#include <utility>
-
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -234,7 +232,7 @@ std::vector<std::string> DHCPv4Config::GetFlags() {
 
   if (arp_gateway_) {
     flags.push_back("-R");  // ARP for default gateway.
-    flags.push_back("--unicast");  // Enable unicast ARP on renew.
+    flags.push_back("-P");  // Enable unicast ARP on renew.
   }
   return flags;
 }
