@@ -966,12 +966,13 @@ class SignatureSealedSecretTestCase final {
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, {wrong_algorithm},
             delegate_blob_, delegate_secret_, &unsealing_session)) {
+      // TODO(b/174816474): check the error message is expected.
+      return true;
+    } else {
       LOG(ERROR) << "Error: unsealing session creation completed with a "
-                    "wrong algorithm: "
-                 << *err;
+                    "wrong algorithm";
       return false;
     }
-    return true;
   }
 
   bool CheckUnsealingFailsWithWrongKey(
@@ -987,12 +988,13 @@ class SignatureSealedSecretTestCase final {
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
             delegate_blob_, delegate_secret_, &unsealing_session)) {
+      // TODO(b/174816474): check the error message is expected.
+      return true;
+    } else {
       LOG(ERROR)
-          << "Error: unsealing session creation completed with a wrong key: "
-          << *err;
+          << "Error: unsealing session creation completed with a wrong key";
       return false;
     }
-    return true;
   }
 
   bool CheckUnsealingFailsWithChangedPcrs(
