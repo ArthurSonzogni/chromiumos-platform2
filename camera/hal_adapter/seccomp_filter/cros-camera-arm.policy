@@ -65,6 +65,7 @@ ppoll_time64: 1
 prctl: 1
 prlimit64: 1
 pselect6: 1
+pselect6_time64: 1
 read: 1
 readlink: 1
 readlinkat: 1

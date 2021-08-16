@@ -54,6 +54,7 @@ restart_syscall: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
 select: 1
+pselect6: 1
 sendmsg: 1
 sendto: 1
 set_robust_list: 1

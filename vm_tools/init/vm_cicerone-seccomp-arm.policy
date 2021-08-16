@@ -78,6 +78,8 @@ recvfrom: 1
 getpeername: 1
 mkdir: 1
 _newselect: 1
+pselect6: 1
+pselect6_time64: 1
 wait4: 1
 nanosleep: 1
 clock_nanosleep: 1

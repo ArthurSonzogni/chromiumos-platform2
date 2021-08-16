@@ -48,6 +48,7 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 select: 1
+pselect6: 1
 socketpair: 1
 uname: 1
 clone: 1

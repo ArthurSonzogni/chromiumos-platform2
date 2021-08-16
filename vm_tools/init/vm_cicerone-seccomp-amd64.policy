@@ -77,6 +77,7 @@ recvfrom: 1
 getpeername: 1
 mkdir: 1
 select: 1
+pselect6: 1
 clock_gettime: 1
 gettimeofday: 1
 wait4: 1

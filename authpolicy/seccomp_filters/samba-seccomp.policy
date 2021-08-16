@@ -74,6 +74,7 @@ rt_sigprocmask: 1
 rt_sigreturn: 1
 rt_sigsuspend: 1
 select: 1
+pselect6: 1
 sendmmsg: 1
 sendmsg: 1
 sendto: 1

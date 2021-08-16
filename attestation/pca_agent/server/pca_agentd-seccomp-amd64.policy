@@ -48,6 +48,7 @@ inotify_init: 1
 inotify_add_watch: 1
 inotify_rm_watch: 1
 select: 1
+pselect6: 1
 
 fstat: 1
 newfstatat: 1
