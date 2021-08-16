@@ -23,6 +23,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -308,6 +309,10 @@ static const char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
 static const char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
 static const char kUseDBus[] = "use_dbus";
 static const char kAuthSessionId[] = "auth_session_id";
+static const char kChallengeAlgorithm[] = "challenge_alg";
+static const char kChallengeSPKI[] = "challenge_spki";
+static const char kKeyDelegateName[] = "key_delegate_name";
+static const char kKeyDelegatePath[] = "key_delegate_path";
 }  // namespace switches
 
 brillo::SecureBlob GetSystemSalt(
@@ -500,11 +505,64 @@ bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier* id) {
 
 bool BuildAuthorization(base::CommandLine* cl,
                         org::chromium::CryptohomeMiscInterfaceProxy* proxy,
-                        bool need_password,
+                        bool need_credential,
                         cryptohome::AuthorizationRequest* auth) {
-  if (need_password) {
-    // Check if restore key is provided
-    if (cl->HasSwitch(switches::kRestoreKeyInHexSwitch)) {
+  if (need_credential) {
+    if (cl->HasSwitch(switches::kChallengeAlgorithm) ||
+        cl->HasSwitch(switches::kChallengeSPKI) ||
+        cl->HasSwitch(switches::kKeyDelegateName) ||
+        cl->HasSwitch(switches::kKeyDelegatePath)) {
+      // We're doing challenge response auth.
+      // Parameters for challenge response auth:
+      // --challenge_alg=<Algorithm>: See ChallengeSignatureAlgorithm in
+      //   key.proto for valid values.
+      //   Example: "CHALLENGE_RSASSA_PKCS1_V1_5_SHA1".
+      // --challenge_spki=<DER Encoded SPKI Public Key in hex>
+      // --key_delegate_name=<Key Delegate DBus Service Name>
+      // --key_delegate_path=<Key Delegate DBus Object Path>
+
+      // Check that all parameters are supplied.
+      if (!(cl->HasSwitch(switches::kChallengeAlgorithm) &&
+            cl->HasSwitch(switches::kChallengeSPKI) &&
+            cl->HasSwitch(switches::kKeyDelegateName) &&
+            cl->HasSwitch(switches::kKeyDelegatePath))) {
+        printf(
+            "One or more of the switches for challenge response auth is "
+            "missing.\n");
+        return false;
+      }
+
+      auth->mutable_key()->mutable_data()->set_type(
+          cryptohome::KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+      cryptohome::ChallengeSignatureAlgorithm challenge_alg;
+      if (!ChallengeSignatureAlgorithm_Parse(
+              cl->GetSwitchValueASCII(switches::kChallengeAlgorithm),
+              &challenge_alg)) {
+        printf("Invalid challenge response algorithm.\n");
+        return false;
+      }
+      auto* challenge_response_key = auth->mutable_key()
+                                         ->mutable_data()
+                                         ->mutable_challenge_response_key()
+                                         ->Add();
+      challenge_response_key->add_signature_algorithm(challenge_alg);
+
+      std::string challenge_spki;
+      if (!base::HexStringToString(
+              cl->GetSwitchValueASCII(switches::kChallengeSPKI),
+              &challenge_spki)) {
+        printf("Challenge SPKI Public Key DER is not hex encoded.\n");
+        return false;
+      }
+      challenge_response_key->set_public_key_spki_der(challenge_spki);
+
+      auth->mutable_key_delegate()->set_dbus_service_name(
+          cl->GetSwitchValueASCII(switches::kKeyDelegateName));
+      auth->mutable_key_delegate()->set_dbus_object_path(
+          cl->GetSwitchValueASCII(switches::kKeyDelegatePath));
+    } else if (cl->HasSwitch(switches::kRestoreKeyInHexSwitch)) {
+      // Restore key is provided
       brillo::SecureBlob raw_byte(
           cl->GetSwitchValueASCII(switches::kRestoreKeyInHexSwitch));
       if (raw_byte.to_string().length() == 0) {
@@ -733,7 +791,7 @@ int main(int argc, char** argv) {
     user_data_auth::RemoveKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -819,7 +877,7 @@ int main(int argc, char** argv) {
           ->mutable_key()
           ->mutable_data()
           ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
-    } else if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
+    } else if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
                                    req.mutable_authorization_request())) {
       return 1;
     }
@@ -846,7 +904,7 @@ int main(int argc, char** argv) {
     user_data_auth::AddDataRestoreKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -877,7 +935,7 @@ int main(int argc, char** argv) {
     user_data_auth::MassRemoveKeysRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -953,7 +1011,7 @@ int main(int argc, char** argv) {
     user_data_auth::AddKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))
       return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_password */,
+    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
                             req.mutable_authorization_request()))
       return 1;
 
@@ -2877,7 +2935,7 @@ int main(int argc, char** argv) {
 
     if (!BuildAuthorization(
             cl, &misc_proxy,
-            !cl->HasSwitch(switches::kPublicMount) /* need_password */,
+            !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
             req.mutable_authorization()))
       return 1;
 
@@ -2911,7 +2969,7 @@ int main(int argc, char** argv) {
 
     if (!BuildAuthorization(
             cl, &misc_proxy,
-            !cl->HasSwitch(switches::kPublicMount) /* need_password */,
+            !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
             req.mutable_authorization()))
       return 1;
 
