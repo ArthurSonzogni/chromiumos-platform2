@@ -4,7 +4,7 @@
 
 [Unit]
 Description=Start the Chaps daemon (chapsd)
-After=tcsd.service boot-services.target
+After=tpm_managerd.service boot-services.target
 PartOf=boot-services.target
 
 [Service]
