@@ -36,6 +36,7 @@ getgid: 1
 getegid: 1
 sendto: 1
 faccessat: 1
+faccessat2: 1
 epoll_ctl: 1
 rt_sigaction: 1
 lseek: 1

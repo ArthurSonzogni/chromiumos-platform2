@@ -18,6 +18,7 @@ execve: 1
 exit_group: 1
 exit: 1
 faccessat: 1
+faccessat2: 1
 fallocate: 1
 fchdir: 1
 fchownat: 1

@@ -26,6 +26,7 @@ munmap: 1
 brk: 1
 lseek: 1
 faccessat: 1
+faccessat2: 1
 prlimit64: 1
 madvise: 1
 exit: 1

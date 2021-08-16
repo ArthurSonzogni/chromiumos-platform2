@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 faccessat: 1
+faccessat2: 1
 brk: 1
 epoll_create1: 1
 epoll_ctl: 1

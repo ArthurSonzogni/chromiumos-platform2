@@ -26,6 +26,7 @@ rt_sigaction: 1
 lseek: 1
 exit_group: 1
 faccessat: 1
+faccessat2: 1
 set_tid_address: 1
 rt_sigprocmask: 1
 prlimit64: 1

@@ -35,6 +35,7 @@ fcntl: 1
 execve: 1
 uname: 1
 faccessat: 1
+faccessat2: 1
 munmap: 1
 set_tid_address: 1
 set_robust_list: 1

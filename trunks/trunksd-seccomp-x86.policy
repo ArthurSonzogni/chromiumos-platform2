@@ -40,6 +40,7 @@ lseek: 1
 fcntl64: 1
 readlinkat: 1
 faccessat: 1
+faccessat2: 1
 pipe2: 1
 socketcall: 1
 getsockname: 1

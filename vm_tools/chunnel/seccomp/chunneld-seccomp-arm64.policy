@@ -33,6 +33,7 @@ accept4: 1
 shutdown: 1
 uname: 1
 faccessat: 1
+faccessat2: 1
 set_tid_address: 1
 eventfd2: 1
 dup: 1

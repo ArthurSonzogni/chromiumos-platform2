@@ -37,6 +37,7 @@ lseek: 1
 fcntl64: 1
 readlinkat: 1
 faccessat: 1
+faccessat2: 1
 pipe2: 1
 socket: arg0 == AF_UNIX
 connect: 1

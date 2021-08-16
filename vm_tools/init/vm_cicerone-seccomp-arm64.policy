@@ -63,6 +63,7 @@ tgkill: 1
 kill: 1
 execve: 1
 faccessat: 1
+faccessat2: 1
 set_tid_address: 1
 umask: 1
 recvfrom: 1

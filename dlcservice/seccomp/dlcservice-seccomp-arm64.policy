@@ -21,6 +21,7 @@ ppoll: 1
 unlinkat: 1
 epoll_ctl: 1
 faccessat: 1
+faccessat2: 1
 fcntl: 1
 rt_sigprocmask: 1
 lseek: 1

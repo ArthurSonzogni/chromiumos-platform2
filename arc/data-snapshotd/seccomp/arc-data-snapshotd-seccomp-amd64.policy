@@ -102,6 +102,7 @@ capset: 1
 getppid: 1
 getpgrp: 1
 faccessat: 1
+faccessat2: 1
 unlinkat: 1
 newfstatat: 1
 pipe: 1
