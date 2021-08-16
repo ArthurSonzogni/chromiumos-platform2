@@ -56,13 +56,25 @@ const uint32_t FirmwareManagementParameters::kCrcDataOffset = 2;
 // static
 std::unique_ptr<FirmwareManagementParameters>
 FirmwareManagementParameters::CreateInstance(Tpm* tpm) {
-  if (PLATFORM_FWMP_INDEX) {
+  std::unique_ptr<FwmpChecker> fwmp_checker_platform_index(
+      new FwmpCheckerPlatformIndex());
+
+  // NOTE: Following are the cases that the checker tells it's NOT platform
+  // index, while it's NOT an owner index either:
+  // 1. It's PLATFORM_CREATE, but other attributes, e.g., WRITE_AUTHORIZATION,
+  // are wrong.
+  // 2. The index doesn't exist due to error when creating FWMP index.
+  // 3. Other unexpected error, e.g., D-Bus communication error, or TPM
+  // connection error.
+  const bool is_platform_index =
+      PLATFORM_FWMP_INDEX ||
+      fwmp_checker_platform_index->IsValidForWrite(kNvramIndex);
+  if (is_platform_index) {
     return std::make_unique<FirmwareManagementParameters>(
         ResetMethod::kStoreDefaultFlags,
         WriteProtectionMethod::kOwnerAuthorization, tpm,
-        std::unique_ptr<FwmpChecker>(new FwmpCheckerPlatformIndex()));
+        std::move(fwmp_checker_platform_index));
   } else {
-    // TPM1.2 and cr50 cases.
     return std::make_unique<FirmwareManagementParameters>(
         ResetMethod::kRecreateSpace, WriteProtectionMethod::kWriteLock, tpm,
         std::unique_ptr<FwmpChecker>(new FwmpCheckerOwnerIndex()));
