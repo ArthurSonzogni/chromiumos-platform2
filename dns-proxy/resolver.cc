@@ -204,7 +204,7 @@ void Resolver::OnTCPConnection() {
 
 void Resolver::HandleAresResult(void* ctx,
                                 int status,
-                                uint8_t* msg,
+                                unsigned char* msg,
                                 size_t len) {
   std::unique_ptr<SocketFd> sock_fd(static_cast<SocketFd*>(ctx));
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
@@ -221,7 +221,7 @@ void Resolver::HandleAresResult(void* ctx,
 
 void Resolver::HandleCurlResult(void* ctx,
                                 const DoHCurlClient::CurlResult& res,
-                                uint8_t* msg,
+                                unsigned char* msg,
                                 size_t len) {
   SocketFd* sock_fd = static_cast<SocketFd*>(ctx);
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
@@ -289,7 +289,7 @@ void Resolver::HandleCurlResult(void* ctx,
   }
 }
 
-void Resolver::ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len) {
+void Resolver::ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len) {
   sock_fd->timer.StartReply();
   // For TCP, DNS messages have an additional 2-bytes header representing
   // the length of the query. Add the additional header for the reply.
@@ -416,7 +416,8 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
   // Construct and send a response indicating that there is a failure.
   patchpanel::DnsResponse response =
       ConstructServFailResponse(sock_fd->msg, sock_fd->len);
-  ReplyDNS(sock_fd, reinterpret_cast<uint8_t*>(response.io_buffer()->data()),
+  ReplyDNS(sock_fd,
+           reinterpret_cast<unsigned char*>(response.io_buffer()->data()),
            response.io_buffer_size());
   // |sock_fd| pointer must be deleted when the request associated with the
   // pointer is done. Normally, the pointer is deleted after c-ares or CURL

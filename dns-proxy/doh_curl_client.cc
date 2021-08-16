@@ -233,13 +233,13 @@ size_t DoHCurlClient::WriteCallback(char* ptr,
   return len;
 }
 
-size_t DoHCurlClient::HeaderCallback(void* data,
+size_t DoHCurlClient::HeaderCallback(char* data,
                                      size_t size,
                                      size_t nitems,
                                      void* userp) {
   State* state = static_cast<State*>(userp);
   size_t len = size * nitems;
-  std::string header(static_cast<char*>(data), len);
+  std::string header(data, len);
   state->header.emplace_back(header);
   return len;
 }

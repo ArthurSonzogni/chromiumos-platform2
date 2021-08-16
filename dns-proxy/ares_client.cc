@@ -95,7 +95,7 @@ void AresClient::SetNameServers(const std::vector<std::string>& name_servers) {
 }
 
 void AresClient::AresCallback(
-    void* ctx, int status, int timeouts, uint8_t* msg, int len) {
+    void* ctx, int status, int timeouts, unsigned char* msg, int len) {
   State* state = static_cast<State*>(ctx);
   // The query is cancelled in-flight. Cleanup the state.
   if (status == ARES_ECANCELLED || status == ARES_EDESTRUCTION) {
@@ -103,7 +103,7 @@ void AresClient::AresCallback(
     return;
   }
 
-  auto buf = std::make_unique<uint8_t[]>(len);
+  auto buf = std::make_unique<unsigned char[]>(len);
   memcpy(buf.get(), msg, len);
   // Handle the result outside this function to avoid undefined behaviors.
   base::ThreadTaskRunnerHandle::Get()->PostTask(

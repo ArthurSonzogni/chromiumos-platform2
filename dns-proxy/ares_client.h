@@ -36,7 +36,7 @@ class AresClient {
   // response of the ares query.
   // This function follows ares's ares_callback signature.
   using QueryCallback = base::RepeatingCallback<void(
-      void* ctx, int status, uint8_t* msg, size_t len)>;
+      void* ctx, int status, unsigned char* msg, size_t len)>;
 
   AresClient(base::TimeDelta timeout,
              int max_num_retries,
@@ -92,7 +92,7 @@ class AresClient {
   // |msg| is owned by ares, AresClient and the caller of `Resolve(...)` do not
   // need to handle the lifecycle of |msg|.
   static void AresCallback(
-      void* ctx, int status, int timeouts, uint8_t* msg, int len);
+      void* ctx, int status, int timeouts, unsigned char* msg, int len);
 
   // Handle result of `AresCallback(...)`. Running ares functions on the
   // callback results in an undefined behavior, use another function

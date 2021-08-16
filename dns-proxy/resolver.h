@@ -112,7 +112,7 @@ class Resolver {
   // |status| is the ares response status. |msg| is the wire-format response
   // of the DNS query given through `Resolve(...)` with the len |len|.
   // |msg| and its lifecycle is owned by ares.
-  void HandleAresResult(void* ctx, int status, uint8_t* msg, size_t len);
+  void HandleAresResult(void* ctx, int status, unsigned char* msg, size_t len);
 
   // Handle DoH result queried through curl.
   // This function will check the response and proxies it to the client upon
@@ -126,7 +126,7 @@ class Resolver {
   // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
   void HandleCurlResult(void* ctx,
                         const DoHCurlClient::CurlResult& res,
-                        uint8_t* msg,
+                        unsigned char* msg,
                         size_t len);
 
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
@@ -154,7 +154,7 @@ class Resolver {
   void OnDNSQuery(int fd, int type);
 
   // Send back data taken from CURL or Ares to the client.
-  void ReplyDNS(SocketFd* sock_fd, uint8_t* msg, size_t len);
+  void ReplyDNS(SocketFd* sock_fd, unsigned char* msg, size_t len);
 
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;

@@ -44,7 +44,7 @@ class DoHCurlClientInterface {
   // |msg| and |len| respectively stores the response and length of the
   // response of the CURL query.
   using QueryCallback = base::RepeatingCallback<void(
-      void* ctx, const CurlResult& res, uint8_t* msg, size_t len)>;
+      void* ctx, const CurlResult& res, unsigned char* msg, size_t len)>;
 
   virtual ~DoHCurlClientInterface() = default;
 
@@ -180,7 +180,7 @@ class DoHCurlClient : public DoHCurlClientInterface {
                               void* userdata);
 
   // Callback necessary for CURL to write header data.
-  static size_t HeaderCallback(void* data,
+  static size_t HeaderCallback(char* data,
                                size_t len,
                                size_t nitems,
                                void* userp);
