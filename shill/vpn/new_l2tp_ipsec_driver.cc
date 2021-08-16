@@ -4,9 +4,18 @@
 
 #include "shill/vpn/new_l2tp_ipsec_driver.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 
+#include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
+
+#include "shill/error.h"
+#include "shill/ipconfig.h"
+#include "shill/manager.h"
+#include "shill/vpn/ipsec_connection.h"
+#include "shill/vpn/vpn_service.h"
 
 namespace shill {
 
@@ -21,6 +30,15 @@ const char kL2TPIPsecRekeyProperty[] = "L2TPIPsec.Rekey";
 const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
+
+std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
+    const KeyValueStore& args) {
+  auto config = std::make_unique<IPsecConnection::Config>();
+
+  // TODO(b/165170125): Add fields.
+
+  return config;
+}
 
 }  // namespace
 
@@ -61,19 +79,52 @@ NewL2TPIPsecDriver::~NewL2TPIPsecDriver() {}
 base::TimeDelta NewL2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
 
-  // TODO(b/165170125): Implement ConnectAsync.
-  // TODO(b/165170125): Use the correct timeout value.
-  return base::TimeDelta::FromSeconds(0);
+  dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(&NewL2TPIPsecDriver::StartIPsecConnection,
+                                weak_factory_.GetWeakPtr()));
+
+  // TODO(165170125): Use a large value for debugging now.
+  return base::TimeDelta::FromSeconds(120);
+}
+
+void NewL2TPIPsecDriver::StartIPsecConnection() {
+  if (ipsec_connection_) {
+    LOG(ERROR) << "The previous IPsecConnection is still running.";
+    NotifyServiceOfFailure(Service::kFailureInternal);
+    return;
+  }
+
+  auto callbacks = std::make_unique<IPsecConnection::Callbacks>(
+      base::BindRepeating(&NewL2TPIPsecDriver::OnIPsecConnected,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&NewL2TPIPsecDriver::OnIPsecFailure,
+                     weak_factory_.GetWeakPtr()),
+      base::BindOnce(&NewL2TPIPsecDriver::OnIPsecStopped,
+                     weak_factory_.GetWeakPtr()));
+
+  ipsec_connection_ = std::make_unique<IPsecConnection>(
+      MakeIPsecConfig(*const_args()), std::move(callbacks),
+      manager()->dispatcher());
+
+  ipsec_connection_->Connect();
 }
 
 void NewL2TPIPsecDriver::Disconnect() {
   event_handler_ = nullptr;
-  // TODO(b/165170125): Implement Disconnect;
+  if (!ipsec_connection_) {
+    LOG(ERROR) << "Disconnect() called but IPsecConnection is not running";
+    return;
+  }
+  if (!ipsec_connection_->IsConnectingOrConnected()) {
+    LOG(ERROR) << "Disconnect() called but IPsecConnection is in "
+               << ipsec_connection_->state() << " state";
+    return;
+  }
+  ipsec_connection_->Disconnect();
 }
 
 IPConfig::Properties NewL2TPIPsecDriver::GetIPProperties() const {
-  // TODO(b/165170125): Implement GetIPProperties;
-  return IPConfig::Properties();
+  return ip_properties_;
 }
 
 std::string NewL2TPIPsecDriver::GetProviderType() const {
@@ -81,30 +132,75 @@ std::string NewL2TPIPsecDriver::GetProviderType() const {
 }
 
 void NewL2TPIPsecDriver::OnConnectTimeout() {
-  // TODO(b/165170125): Implement OnConnectTimeout.
+  LOG(INFO) << "Connect timeout";
+  if (!ipsec_connection_) {
+    LOG(ERROR)
+        << "OnConnectTimeout() called but IPsecConnection is not running";
+    return;
+  }
+  if (!ipsec_connection_->IsConnectingOrConnected()) {
+    LOG(ERROR) << "OnConnectTimeout() called but IPsecConnection is in "
+               << ipsec_connection_->state() << " state";
+    return;
+  }
+  ipsec_connection_->Disconnect();
+  NotifyServiceOfFailure(Service::kFailureConnect);
 }
 
 void NewL2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
-  // TODO(b/165170125): Check state.
-  // ipsec_connection_->Disconnect();
+  if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
+    ipsec_connection_->Disconnect();
+  }
   callback.Run(Error(Error::kSuccess));
 }
 
 void NewL2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
-  // TODO(b/165170125): Check state.
+  if (!ipsec_connection_ || !ipsec_connection_->IsConnectingOrConnected()) {
+    return;
+  }
   switch (event) {
     case kDefaultPhysicalServiceUp:
       return;
     case kDefaultPhysicalServiceDown:
-      // ipsec_connection_->Disconnect();
+      ipsec_connection_->Disconnect();
       return;
     case kDefaultPhysicalServiceChanged:
-      // ipsec_connection_->Disconnect();
+      ipsec_connection_->Disconnect();
       return;
     default:
       NOTREACHED();
   }
+}
+
+void NewL2TPIPsecDriver::NotifyServiceOfFailure(
+    Service::ConnectFailure failure) {
+  LOG(ERROR) << "Driver failure due to "
+             << Service::ConnectFailureToString(failure);
+  if (event_handler_) {
+    event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
+    event_handler_ = nullptr;
+  }
+}
+
+void NewL2TPIPsecDriver::OnIPsecConnected(
+    const std::string& link_name,
+    int interface_index,
+    const IPConfig::Properties& ip_properties) {
+  if (!event_handler_) {
+    LOG(ERROR) << "OnIPsecConnected() triggered in illegal service state";
+    return;
+  }
+  ip_properties_ = ip_properties;
+  event_handler_->OnDriverConnected(link_name, interface_index);
+}
+
+void NewL2TPIPsecDriver::OnIPsecFailure(Service::ConnectFailure failure) {
+  NotifyServiceOfFailure(failure);
+}
+
+void NewL2TPIPsecDriver::OnIPsecStopped() {
+  ipsec_connection_ = nullptr;
 }
 
 }  // namespace shill

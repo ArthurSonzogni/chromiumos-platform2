@@ -83,6 +83,10 @@ void VPNConnection::Disconnect() {
                                                   weak_factory_.GetWeakPtr()));
 }
 
+bool VPNConnection::IsConnectingOrConnected() const {
+  return state_ == State::kConnecting || state_ == State::kConnected;
+}
+
 void VPNConnection::NotifyConnected(const std::string& link_name,
                                     int interface_index,
                                     const IPConfig::Properties& ip_properties) {

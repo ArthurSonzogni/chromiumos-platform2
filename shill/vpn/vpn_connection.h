@@ -73,6 +73,7 @@ class VPNConnection {
   void Disconnect();
 
   State state() { return state_; }
+  bool IsConnectingOrConnected() const;
 
  private:
   // Implemented by the derived class for the real connect/disconnect logic.

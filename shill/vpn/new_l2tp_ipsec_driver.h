@@ -5,11 +5,13 @@
 #ifndef SHILL_VPN_NEW_L2TP_IPSEC_DRIVER_H_
 #define SHILL_VPN_NEW_L2TP_IPSEC_DRIVER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
 
 #include "shill/manager.h"
+#include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
@@ -41,7 +43,18 @@ class NewL2TPIPsecDriver : public VPNDriver {
  private:
   static const VPNDriver::Property kProperties[];
 
+  void NotifyServiceOfFailure(Service::ConnectFailure failure);
+
+  void StartIPsecConnection();
+  void OnIPsecConnected(const std::string& link_name,
+                        int interface_index,
+                        const IPConfig::Properties& ip_properties);
+  void OnIPsecFailure(Service::ConnectFailure failure);
+  void OnIPsecStopped();
+
   EventHandler* event_handler_ = nullptr;
+  std::unique_ptr<IPsecConnection> ipsec_connection_;
+  IPConfig::Properties ip_properties_;
 
   base::WeakPtrFactory<NewL2TPIPsecDriver> weak_factory_{this};
 };
