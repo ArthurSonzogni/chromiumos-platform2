@@ -502,7 +502,7 @@ class SessionManagerImpl
   RegenMitigator mitigator_;
 
   // Callbacks passed to RequestServerBackedStateKeys() while
-  // |system_clock_synchrononized_| was false. They will be run by
+  // |system_clock_synchronized_| was false. They will be run by
   // OnGotSystemClockLastSyncInfo() once the clock is synchronized.
   std::vector<ServerBackedStateKeyGenerator::StateKeyCallback>
       pending_state_key_callbacks_;

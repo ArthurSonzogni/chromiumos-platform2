@@ -178,7 +178,7 @@ constexpr char kGetPolicyServiceFailMessage[] = "Failed to get policy service.";
 constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
 
 // A path of the directory that contains all the key-value pairs stored to the
-// pesistent login screen storage.
+// persistent login screen storage.
 const char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
 
 const char* ToSuccessSignal(bool success) {
