@@ -71,6 +71,7 @@ setresgid: 1
 uname: 1
 stat: 1
 statfs: 1
+newfstatat: 1
 umask: 1
 recvfrom: 1
 getpeername: 1
