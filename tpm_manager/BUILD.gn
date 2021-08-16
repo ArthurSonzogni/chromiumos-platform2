@@ -69,6 +69,7 @@ static_library("server_library") {
     "server/local_data_migration.cc",
     "server/local_data_store_impl.cc",
     "server/openssl_crypto_util_impl.cc",
+    "server/tpm_allow_list_impl.cc",
     "server/tpm_manager_metrics.cc",
     "server/tpm_manager_service.cc",
   ]

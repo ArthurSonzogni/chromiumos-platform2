@@ -15,8 +15,10 @@
 #include <base/threading/platform_thread.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
+#include "tpm_manager/server/mock_tpm_allow_list.h"
 #include "tpm_manager/server/mock_tpm_initializer.h"
 #include "tpm_manager/server/mock_tpm_manager_metrics.h"
 #include "tpm_manager/server/mock_tpm_nvram.h"
@@ -65,6 +67,8 @@ class TpmManagerServiceTestBase : public testing::Test {
         wait_for_ownership, perform_preinit, &mock_local_data_store_,
         &mock_tpm_status_, &mock_tpm_initializer_, &mock_tpm_nvram_,
         &mock_tpm_manager_metrics_));
+    service_->set_tpm_allow_list_for_testing(&mock_tpm_allow_list_);
+    ON_CALL(mock_tpm_allow_list_, IsAllowed()).WillByDefault(Return(true));
     DisablePeriodicDictionaryAttackReset();
     if (shall_setup_service) {
       SetupService();
@@ -84,6 +88,7 @@ class TpmManagerServiceTestBase : public testing::Test {
     auto callback = [](TpmManagerServiceTestBase* self,
                        const GetTpmStatusReply& reply) { self->Quit(); };
     GetTpmStatusRequest request;
+    request.set_ignore_cache(true);
     service_->GetTpmStatus(request, base::BindOnce(callback, this));
     Run();
   }
@@ -101,6 +106,7 @@ class TpmManagerServiceTestBase : public testing::Test {
   NiceMock<MockTpmInitializer> mock_tpm_initializer_;
   NiceMock<MockTpmNvram> mock_tpm_nvram_;
   NiceMock<MockTpmStatus> mock_tpm_status_;
+  NiceMock<MockTpmAllowList> mock_tpm_allow_list_;
   NiceMock<MockTpmManagerMetrics> mock_tpm_manager_metrics_;
   std::unique_ptr<TpmManagerService> service_;
 
@@ -1164,6 +1170,66 @@ TEST_F(TpmManagerServiceTest, ReadWriteSpaceSuccess) {
   ReadSpaceRequest read_request;
   read_request.set_index(nvram_index);
   service_->ReadSpace(read_request, base::BindOnce(read_callback, nvram_data));
+  RunServiceWorkerAndQuit();
+}
+
+#if USE_TPM_DYNAMIC || (!USE_TPM1 && !USE_TPM2)
+TEST_F(TpmManagerServiceTest, TpmManagerNoCrash) {
+  SET_NO_TPM_FOR_TESTING;
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_))
+      .Times(AtMost(1));
+  service_.reset(new TpmManagerService(true, true, &mock_local_data_store_));
+  DisablePeriodicDictionaryAttackReset();
+  SetupService();
+  service_->GetVersionInfo(GetVersionInfoRequest(), base::DoNothing());
+  service_->GetSupportedFeatures(GetSupportedFeaturesRequest(),
+                                 base::DoNothing());
+  service_->ResetDictionaryAttackLock(ResetDictionaryAttackLockRequest(),
+                                      base::DoNothing());
+  service_->TakeOwnership(TakeOwnershipRequest(), base::DoNothing());
+  service_->RemoveOwnerDependency(RemoveOwnerDependencyRequest(),
+                                  base::DoNothing());
+  service_->ClearStoredOwnerPassword(ClearStoredOwnerPasswordRequest(),
+                                     base::DoNothing());
+  service_->DefineSpace(DefineSpaceRequest(), base::DoNothing());
+  service_->ListSpaces(ListSpacesRequest(), base::DoNothing());
+  service_->GetSpaceInfo(GetSpaceInfoRequest(), base::DoNothing());
+  service_->DestroySpace(DestroySpaceRequest(), base::DoNothing());
+  service_->WriteSpace(WriteSpaceRequest(), base::DoNothing());
+  service_->LockSpace(LockSpaceRequest(), base::DoNothing());
+  service_->ReadSpace(ReadSpaceRequest(), base::DoNothing());
+  service_->GetTpmStatus(GetTpmStatusRequest(), base::DoNothing());
+  service_->GetTpmNonsensitiveStatus(GetTpmNonsensitiveStatusRequest(),
+                                     base::DoNothing());
+  RunServiceWorkerAndQuit();
+}
+#endif
+
+TEST_F(TpmManagerServiceTest_Preinit, TpmManagerTpmNotAllowedNoCrash) {
+  EXPECT_CALL(mock_tpm_allow_list_, IsAllowed()).WillRepeatedly(Return(false));
+
+  SetupService();
+
+  service_->GetVersionInfo(GetVersionInfoRequest(), base::DoNothing());
+  service_->GetSupportedFeatures(GetSupportedFeaturesRequest(),
+                                 base::DoNothing());
+  service_->ResetDictionaryAttackLock(ResetDictionaryAttackLockRequest(),
+                                      base::DoNothing());
+  service_->TakeOwnership(TakeOwnershipRequest(), base::DoNothing());
+  service_->RemoveOwnerDependency(RemoveOwnerDependencyRequest(),
+                                  base::DoNothing());
+  service_->ClearStoredOwnerPassword(ClearStoredOwnerPasswordRequest(),
+                                     base::DoNothing());
+  service_->DefineSpace(DefineSpaceRequest(), base::DoNothing());
+  service_->ListSpaces(ListSpacesRequest(), base::DoNothing());
+  service_->GetSpaceInfo(GetSpaceInfoRequest(), base::DoNothing());
+  service_->DestroySpace(DestroySpaceRequest(), base::DoNothing());
+  service_->WriteSpace(WriteSpaceRequest(), base::DoNothing());
+  service_->LockSpace(LockSpaceRequest(), base::DoNothing());
+  service_->ReadSpace(ReadSpaceRequest(), base::DoNothing());
+  service_->GetTpmStatus(GetTpmStatusRequest(), base::DoNothing());
+  service_->GetTpmNonsensitiveStatus(GetTpmNonsensitiveStatusRequest(),
+                                     base::DoNothing());
   RunServiceWorkerAndQuit();
 }
 

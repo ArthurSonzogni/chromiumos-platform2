@@ -23,6 +23,8 @@
 #include <inttypes.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
+#include "tpm_manager/server/tpm_allow_list_impl.h"
+
 namespace {
 
 constexpr int kDictionaryAttackResetPeriodInHours = 1;
@@ -210,9 +212,30 @@ void TpmManagerService::InitializeTask(
       default_tpm_nvram_ = std::make_unique<TpmNvramImpl>(local_data_store_);
       tpm_nvram_ = default_tpm_nvram_.get();
     });
-    OTHER_TPM_SECTION();
+    OTHER_TPM_SECTION({
+      LOG(WARNING) << __func__ << ": No TPM on the device.";
+      tpm_allowed_ = false;
+      reply->set_enabled(false);
+      reply->set_status(STATUS_SUCCESS);
+      return;
+    });
     TPM_SELECT_END;
   }
+
+  if (!tpm_allow_list_) {
+    default_tpm_allow_list_ = std::make_unique<TpmAllowListImpl>(tpm_status_);
+    tpm_allow_list_ = default_tpm_allow_list_.get();
+  }
+
+  tpm_allowed_ = tpm_allow_list_->IsAllowed();
+
+  if (!tpm_allowed_) {
+    LOG(WARNING) << __func__ << ": The TPM is not allowed on the device.";
+    reply->set_enabled(false);
+    reply->set_status(STATUS_SUCCESS);
+    return;
+  }
+
   if (!tpm_status_->IsTpmEnabled()) {
     LOG(WARNING) << __func__ << ": TPM is disabled.";
     reply->set_enabled(false);
@@ -398,6 +421,12 @@ void TpmManagerService::GetTpmStatusTask(
     const std::shared_ptr<GetTpmStatusReply>& reply) {
   VLOG(1) << __func__;
 
+  if (!tpm_allowed_) {
+    reply->set_enabled(false);
+    reply->set_status(STATUS_SUCCESS);
+    return;
+  }
+
   if (!tpm_status_) {
     LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
     reply->set_status(STATUS_NOT_AVAILABLE);
@@ -510,6 +539,12 @@ void TpmManagerService::GetSupportedFeaturesTask(
     return;
   }
 
+  if (!tpm_status_) {
+    LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
   reply->set_support_u2f(tpm_status_->SupportU2f());
   reply->set_status(STATUS_SUCCESS);
 
@@ -579,6 +614,11 @@ void TpmManagerService::ResetDictionaryAttackLockTask(
     const std::shared_ptr<ResetDictionaryAttackLockReply>& reply) {
   VLOG(1) << __func__;
 
+  if (!tpm_allowed_) {
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
   if (!tpm_initializer_) {
     LOG(ERROR) << __func__ << ": request received before tpm manager service "
                << "is initialized.";
@@ -612,7 +652,13 @@ void TpmManagerService::TakeOwnershipTask(
     const TakeOwnershipRequest& request,
     const std::shared_ptr<TakeOwnershipReply>& reply) {
   VLOG(1) << __func__;
-  if (!tpm_status_->IsTpmEnabled()) {
+
+  if (!tpm_allowed_) {
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
+  if (!tpm_status_ || !tpm_status_->IsTpmEnabled()) {
     reply->set_status(STATUS_NOT_AVAILABLE);
     return;
   }
@@ -653,6 +699,12 @@ void TpmManagerService::RemoveOwnerDependencyTask(
     const RemoveOwnerDependencyRequest& request,
     const std::shared_ptr<RemoveOwnerDependencyReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
   LocalData local_data;
   if (!local_data_store_->Read(&local_data)) {
     reply->set_status(STATUS_DEVICE_ERROR);
@@ -695,6 +747,12 @@ void TpmManagerService::ClearStoredOwnerPasswordTask(
     const ClearStoredOwnerPasswordRequest& request,
     const std::shared_ptr<ClearStoredOwnerPasswordReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
   LocalData local_data;
   if (!local_data_store_->Read(&local_data)) {
     reply->set_status(STATUS_DEVICE_ERROR);
@@ -720,6 +778,12 @@ void TpmManagerService::DefineSpaceTask(
     const DefineSpaceRequest& request,
     const std::shared_ptr<DefineSpaceReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   std::vector<NvramSpaceAttribute> attributes;
   for (int i = 0; i < request.attributes_size(); ++i) {
     attributes.push_back(request.attributes(i));
@@ -740,6 +804,12 @@ void TpmManagerService::DestroySpaceTask(
     const DestroySpaceRequest& request,
     const std::shared_ptr<DestroySpaceReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   reply->set_result(tpm_nvram_->DestroySpace(request.index()));
   MarkTpmStatusCacheDirty();
 }
@@ -754,6 +824,12 @@ void TpmManagerService::WriteSpaceTask(
     const WriteSpaceRequest& request,
     const std::shared_ptr<WriteSpaceReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   std::string authorization_value = request.authorization_value();
   if (request.use_owner_authorization()) {
     authorization_value = GetOwnerPassword();
@@ -777,6 +853,12 @@ void TpmManagerService::ReadSpaceTask(
     const ReadSpaceRequest& request,
     const std::shared_ptr<ReadSpaceReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   std::string authorization_value = request.authorization_value();
   if (request.use_owner_authorization()) {
     authorization_value = GetOwnerPassword();
@@ -799,6 +881,12 @@ void TpmManagerService::LockSpaceTask(
     const LockSpaceRequest& request,
     const std::shared_ptr<LockSpaceReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   std::string authorization_value = request.authorization_value();
   if (request.use_owner_authorization()) {
     authorization_value = GetOwnerPassword();
@@ -822,6 +910,12 @@ void TpmManagerService::ListSpacesTask(
     const ListSpacesRequest& request,
     const std::shared_ptr<ListSpacesReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   std::vector<uint32_t> index_list;
   reply->set_result(tpm_nvram_->ListSpaces(&index_list));
   if (reply->result() == NVRAM_RESULT_SUCCESS) {
@@ -841,6 +935,12 @@ void TpmManagerService::GetSpaceInfoTask(
     const GetSpaceInfoRequest& request,
     const std::shared_ptr<GetSpaceInfoReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    reply->set_result(NVRAM_RESULT_OPERATION_DISABLED);
+    return;
+  }
+
   std::vector<NvramSpaceAttribute> attributes;
   uint32_t size = 0;
   bool is_read_locked = false;
@@ -874,6 +974,12 @@ bool TpmManagerService::ResetDictionaryAttackCounterIfNeeded() {
   uint32_t threshold = 0;
   bool lockout = false;
   uint32_t time_remaining = 0;
+
+  if (!tpm_allowed_) {
+    // Do nothing if the TPM is not allowed.
+    return false;
+  }
+
   if (!tpm_status_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
                                             &time_remaining)) {
     // Reports the metrics but no early return since reset itself might work.
@@ -894,6 +1000,12 @@ bool TpmManagerService::ResetDictionaryAttackCounterIfNeeded() {
 
 void TpmManagerService::PeriodicResetDictionaryAttackCounterTask() {
   VLOG(1) << __func__;
+
+  if (!tpm_allowed_) {
+    // Do nothing if the TPM is not allowed.
+    return;
+  }
+
   base::TimeDelta time_remaining = dictionary_attack_timer_.TimeRemaining();
   // if the timer is up, run the task and reset the timer.
   if (time_remaining.is_zero()) {
@@ -917,6 +1029,12 @@ void TpmManagerService::PeriodicResetDictionaryAttackCounterTask() {
 
 void TpmManagerService::DisableDictionaryAttackMitigationIfNeeded() {
   bool is_enabled = false;
+
+  if (!tpm_allowed_) {
+    // Do nothing if the TPM is not allowed.
+    return;
+  }
+
   if (!tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled)) {
     LOG(WARNING) << __func__
                  << ": Failed to check if DA mitigation mechanism is "

@@ -22,6 +22,7 @@
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/passive_timer.h"
+#include "tpm_manager/server/tpm_allow_list.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
 #include "tpm_manager/server/tpm_nvram.h"
@@ -147,6 +148,10 @@ class TpmManagerService : public TpmNvramInterface,
   void set_dictionary_attack_reset_timer_for_testing(
       const PassiveTimer& timer) {
     dictionary_attack_timer_ = timer;
+  }
+
+  void set_tpm_allow_list_for_testing(TpmAllowList* allow_list) {
+    tpm_allow_list_ = allow_list;
   }
 
   void MarkTpmStatusCacheDirty();
@@ -306,6 +311,7 @@ class TpmManagerService : public TpmNvramInterface,
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;
+  TpmAllowList* tpm_allow_list_ = nullptr;
 
   TpmManagerMetrics default_tpm_manager_metrics_;
   TpmManagerMetrics* tpm_manager_metrics_{nullptr};
@@ -364,6 +370,7 @@ class TpmManagerService : public TpmNvramInterface,
   std::unique_ptr<TpmStatus> default_tpm_status_;
   std::unique_ptr<TpmInitializer> default_tpm_initializer_;
   std::unique_ptr<TpmNvram> default_tpm_nvram_;
+  std::unique_ptr<TpmAllowList> default_tpm_allow_list_;
 
   // Whether to clear the stored owner password automatically upon removing all
   // dependencies.
@@ -374,6 +381,8 @@ class TpmManagerService : public TpmNvramInterface,
   // Whether to perform pre-initialization (where available) if initialization
   // itself needs to wait for 'TakeOwnership' first.
   bool perform_preinit_;
+  // Whether the TPM is allowed to use or not.
+  bool tpm_allowed_ = false;
   // Origin task runner to run the task on origin thread.
   scoped_refptr<base::TaskRunner> origin_task_runner_;
   // Background thread to allow processing of potentially lengthy TPM requests
