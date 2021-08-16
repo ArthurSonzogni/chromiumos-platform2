@@ -25,11 +25,15 @@ namespace typecd {
 Partner::Partner(const base::FilePath& syspath)
     : Peripheral(syspath, "Partner"),
       num_alt_modes_(-1),
+      supports_pd_(false),
       metrics_reported_(false) {
   // Search for all alt modes which were already registered prior to daemon
   // init.
   base::FileEnumerator iter(GetSysPath(), false,
                             base::FileEnumerator::DIRECTORIES);
+  // This needs to be called explicitly since it's not in the base Peripheral
+  // class.
+  UpdateSupportsPD();
   for (auto path = iter.Next(); !path.empty(); path = iter.Next())
     AddAltMode(path);
 
@@ -95,6 +99,7 @@ void Partner::UpdatePDInfoFromSysfs() {
     SetNumAltModes(ParseNumAltModes());
   UpdatePDIdentityVDOs();
   UpdatePDRevision();
+  UpdateSupportsPD();
 }
 
 int Partner::ParseNumAltModes() {
@@ -124,6 +129,21 @@ AltMode* Partner::GetAltMode(int index) {
 
 bool Partner::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
+}
+
+void Partner::UpdateSupportsPD() {
+  auto path = GetSysPath().Append("supports_usb_power_delivery");
+  std::string val_str;
+  if (!base::ReadFileToString(path, &val_str)) {
+    LOG(ERROR) << "Couldn't read value from path " << path;
+    return;
+  }
+
+  base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
+  if (val_str == "yes")
+    supports_pd_ = true;
+  else
+    supports_pd_ = false;
 }
 
 PartnerTypeMetric Partner::GetPartnerTypeMetric() {

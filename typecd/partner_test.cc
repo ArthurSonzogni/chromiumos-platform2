@@ -169,4 +169,29 @@ TEST_F(PartnerTest, TestPDIdentityScan) {
   EXPECT_EQ(0, p.GetNumAltModes());
 }
 
+// Test that a partner's "supports_usb_power_delivery" sysfs attribute gets
+// parsed correctly.
+TEST_F(PartnerTest, TestSupportsPD) {
+  // Set up fake sysfs paths.
+  auto partner_path = temp_dir_.Append(std::string("port0-partner"));
+  ASSERT_TRUE(base::CreateDirectory(partner_path));
+
+  auto val = std::string("0xasdfads0");
+  auto pd_path = partner_path.Append("supports_usb_power_delivery");
+  ASSERT_TRUE(base::WriteFile(pd_path, val.c_str(), val.length()));
+
+  Partner p(partner_path);
+  EXPECT_FALSE(p.GetSupportsPD());
+
+  val = std::string("yes");
+  ASSERT_TRUE(base::WriteFile(pd_path, val.c_str(), val.length()));
+  p.UpdateSupportsPD();
+  EXPECT_TRUE(p.GetSupportsPD());
+
+  val = std::string("yesno");
+  ASSERT_TRUE(base::WriteFile(pd_path, val.c_str(), val.length()));
+  p.UpdateSupportsPD();
+  EXPECT_FALSE(p.GetSupportsPD());
+}
+
 }  // namespace typecd
