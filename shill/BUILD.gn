@@ -383,6 +383,7 @@ static_library("libshill") {
       "vpn/openvpn_driver.cc",
       "vpn/openvpn_management_server.cc",
       "vpn/third_party_vpn_driver.cc",
+      "vpn/vpn_connection.cc",
       "vpn/wireguard_driver.cc",
     ]
   }
@@ -700,6 +701,7 @@ if (use.test) {
         "vpn/openvpn_driver_test.cc",
         "vpn/openvpn_management_server_test.cc",
         "vpn/third_party_vpn_driver_test.cc",
+        "vpn/vpn_connection_test.cc",
         "vpn/vpn_driver_test.cc",
         "vpn/vpn_provider_test.cc",
         "vpn/vpn_service_test.cc",
