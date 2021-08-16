@@ -63,6 +63,10 @@ class Port {
   // Returns either "host" or "device" on success, empty string on failure.
   virtual std::string GetDataRole();
 
+  // Returns the current power role for the port.
+  // Returns either "source" or "sink" on success, empty string on failure.
+  virtual std::string GetPowerRole();
+
   // Check whether we can enter DP Alt Mode. This should check for the presence
   // of required attributes on the Partner and (if applicable) Cable.
   virtual bool CanEnterDPAltMode();
@@ -125,6 +129,9 @@ class Port {
 
   // Reads the current port data role from sysfs and stores it in |data_role_|.
   void ParseDataRole();
+  // Reads the current port power role from sysfs and stores it in
+  // |power_role_|.
+  void ParsePowerRole();
 
   // Sysfs path used to access partner PD information.
   base::FilePath syspath_;
@@ -139,6 +146,7 @@ class Port {
   // prevents duplicate reporting.
   bool metrics_reported_;
   std::string data_role_;
+  std::string power_role_;
 };
 
 }  // namespace typecd

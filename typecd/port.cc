@@ -13,7 +13,7 @@
 
 namespace {
 
-constexpr char kDataRoleDRPRegex[] = R"(\[(\w+)\])";
+constexpr char kDualRoleRegex[] = R"(\[(\w+)\])";
 
 }  // namespace
 
@@ -25,7 +25,8 @@ Port::Port(const base::FilePath& syspath, int port_num)
       user_active_on_mode_entry_(false),
       current_mode_(TypeCMode::kNone),
       metrics_reported_(false),
-      data_role_("") {
+      data_role_(""),
+      power_role_("") {
   PortChanged();
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
 }
@@ -124,10 +125,15 @@ void Port::PartnerChanged() {
 
 void Port::PortChanged() {
   ParseDataRole();
+  ParsePowerRole();
 }
 
 std::string Port::GetDataRole() {
   return data_role_;
+}
+
+std::string Port::GetPowerRole() {
+  return power_role_;
 }
 
 bool Port::CanEnterDPAltMode() {
@@ -313,7 +319,7 @@ void Port::ParseDataRole() {
 
   // First check for a dual role port, in which case the current role is in
   // box-brackets. For example: [host] device
-  if (!RE2::PartialMatch(sysfs_str, kDataRoleDRPRegex, &role)) {
+  if (!RE2::PartialMatch(sysfs_str, kDualRoleRegex, &role)) {
     LOG(INFO)
         << "Couldn't determine role, assuming DRP(Dual Role Port) for port "
         << port_num_;
@@ -329,6 +335,36 @@ void Port::ParseDataRole() {
 
 end:
   data_role_ = role;
+}
+
+void Port::ParsePowerRole() {
+  std::string role;
+  std::string sysfs_str;
+  auto path = syspath_.Append("power_role");
+
+  if (!base::ReadFileToString(path, &sysfs_str)) {
+    LOG(ERROR) << "Couldn't read sysfs path " << path;
+    goto end;
+  }
+
+  // First check for a dual role port, in which case the current role is in
+  // box-brackets. For example: [source] sink
+  if (!RE2::PartialMatch(sysfs_str, kDualRoleRegex, &role)) {
+    LOG(INFO)
+        << "Couldn't determine role, assuming DRP(Dual Role Port) for port "
+        << port_num_;
+  }
+
+  if (role == "")
+    role = sysfs_str;
+
+  base::TrimWhitespaceASCII(role, base::TRIM_ALL, &role);
+
+  if (role != "source" && role != "sink")
+    role = "";
+
+end:
+  power_role_ = role;
 }
 
 void Port::ReportPartnerMetrics(Metrics* metrics) {

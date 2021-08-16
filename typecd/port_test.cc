@@ -20,6 +20,10 @@ constexpr char kInvalidDataRole2[] = "]asdf[ dsdd";
 constexpr char kValidDataRole1[] = "device";
 constexpr char kValidDataRole2[] = "[host] device";
 constexpr char kValidDataRole3[] = "host [device]";
+
+constexpr char kValidPowerRole1[] = "[source] sink";
+constexpr char kValidPowerRole2[] = "source [sink]";
+constexpr char kInvalidPowerRole1[] = "asdf#//%sxdfa";
 }  // namespace
 
 namespace typecd {
@@ -86,6 +90,35 @@ TEST_F(PortTest, TestGetDataRole) {
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ("", port->GetDataRole());
+}
+
+// Check GetPowerRole() for various sysfs values.
+TEST_F(PortTest, TestGetPowerRole) {
+  // Set up fake sysfs directory for the port..
+  auto port_path = temp_dir_.Append("port0");
+  ASSERT_TRUE(base::CreateDirectory(port_path));
+
+  auto data_role_path = port_path.Append("power_role");
+  ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole1,
+                              strlen(kValidPowerRole1)));
+
+  // Create a port.
+  auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
+  ASSERT_NE(nullptr, port);
+
+  EXPECT_EQ("source", port->GetPowerRole());
+
+  ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole2,
+                              strlen(kValidPowerRole2)));
+  // Fake a port changed event.
+  port->PortChanged();
+  EXPECT_EQ("sink", port->GetPowerRole());
+
+  ASSERT_TRUE(base::WriteFile(data_role_path, kInvalidPowerRole1,
+                              strlen(kInvalidPowerRole1)));
+  // Fake a port changed event.
+  port->PortChanged();
+  EXPECT_EQ("", port->GetPowerRole());
 }
 
 // Check that DP Alt Mode Entry checks work as expected for a true case:
