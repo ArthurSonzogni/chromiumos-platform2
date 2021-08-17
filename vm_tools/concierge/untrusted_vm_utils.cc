@@ -53,12 +53,10 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
 
   if (num_statuses >= 2) {
     const base::StringPiece& vmx_mitigation_status = l1tf_statuses[1];
-    if (vmx_mitigation_status == "VMX: vulnerable")
+    if ((vmx_mitigation_status != "VMX: cache flushes") &&
+        (vmx_mitigation_status != "VMX: flush not necessary")) {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE;
-    if (vmx_mitigation_status == "VMX: conditional cache flushes")
-      return UntrustedVMUtils::MitigationStatus::VULNERABLE;
-    if (vmx_mitigation_status != "VMX: cache flushes")
-      return UntrustedVMUtils::MitigationStatus::VULNERABLE;
+    }
   }
 
   // Only a maximum of 3 statuses are expected.

@@ -98,6 +98,10 @@ TEST_F(UntrustedVMUtilsTest, CheckL1TFStatus) {
 
   CheckL1TFStatus("Mitigation: PTE Inversion; VMX: cache flushes, SMT disabled",
                   UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+
+  CheckL1TFStatus(
+      "Mitigation: PTE Inversion; VMX: flush not necessary, SMT disabled",
+      UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 }
 
 // Checks mitigation status for all MDS statuses.
