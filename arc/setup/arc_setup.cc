@@ -2418,10 +2418,16 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
   if (!is_arcvm)
     return;
 
+  // CACHE_PARTITION is set when a dedicated cache partition is used
+  // (b/182953041). The set value is the device number to be used.
+  // This option is for test build only, and is not used in production.
+  const std::string cache_partition = config_.GetStringOrDie("CACHE_PARTITION");
+
   // For ARCVM, the first stage fstab file needs to be generated.
   EXIT_IF(!GenerateFirstStageFstab(
       property_files_dest_path,
-      base::FilePath(kGeneratedPropertyFilesPathVm).Append("fstab")));
+      base::FilePath(kGeneratedPropertyFilesPathVm).Append("fstab"),
+      cache_partition));
 }
 
 void ArcSetup::OnApplyPerBoardConfig() {

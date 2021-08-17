@@ -1110,7 +1110,8 @@ bool SafeCopyFile(const base::FilePath& src_path,
 }
 
 bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
-                             const base::FilePath& fstab_path) {
+                             const base::FilePath& fstab_path,
+                             const std::string& cache_partition) {
   // The file is exposed to the guest by crosvm via /sys/firmware/devicetree,
   // which in turn allows the guest's init process to mount /vendor very early,
   // in its first stage (device) initialization step. crosvm also special-cases
@@ -1120,14 +1121,32 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
   //
   // The device name for /vendor has to match what arc_vm_client_adapter.cc
   // configures.
-  constexpr const char kFirstStageFstabTemplate[] =
+  std::string firstStageFstabTemplate =
       "/dev/block/vdb /vendor squashfs ro,noatime,nodev "
-      "wait,check,formattable,reservedsize=128M\n"
-      "#dt-vendor build.prop %s default default\n";
-  return WriteToFile(
-      fstab_path, 0644,
-      base::StringPrintf(kFirstStageFstabTemplate,
-                         combined_property_file_name.value().c_str()));
+      "wait,check,formattable,reservedsize=128M\n";
+
+  // A dedicated cache partition needs to be mounted in the first stage init
+  // process. This is required for the adb remount / sync feature to work on
+  // Android R+, optionally used in the dev process (b/182953041). The dedicated
+  // partition is used as the mount point for upper layer of overlayfs backing.
+  // Since the demo app partition is optionally mounted before the cache
+  // partition, there is a need to determine the device number dynamically.
+  // The device number is determined beforehand by checking the existence of the
+  // demo partition, and are stored to |cache_partition|. Note that this check
+  // would not be required once we switch to use virtiofs as the cache
+  // partition.
+  if (!cache_partition.empty()) {
+    firstStageFstabTemplate += base::StringPrintf(
+        "/dev/block/%s /cache ext4 rw,noatime,nodev "
+        "wait,check,formattable,reservedsize=128M\n",
+        cache_partition.c_str());
+  }
+
+  firstStageFstabTemplate +=
+      base::StringPrintf("#dt-vendor build.prop %s default default\n",
+                         combined_property_file_name.value().c_str());
+
+  return WriteToFile(fstab_path, 0644, firstStageFstabTemplate);
 }
 
 base::Optional<std::string> FilterMediaProfile(

@@ -1233,24 +1233,54 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab) {
   constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
   constexpr const char kAnotherFakeCombinedBuildPropPath[] =
       "/foo/bar/baz.prop";
+  constexpr const char kCachePartition[] = "/cache";
+
+  std::string content;
+  base::ScopedTempDir dir;
+  ASSERT_TRUE(dir.CreateUniqueTempDir());
+  const base::FilePath fstab(dir.GetPath().Append("fstab"));
+  std::string cache_partition;
+
+  // Generate the fstab and verify the content.
+  EXPECT_TRUE(GenerateFirstStageFstab(
+      base::FilePath(kFakeCombinedBuildPropPath), fstab, cache_partition));
+  EXPECT_TRUE(base::ReadFileToString(fstab, &content));
+  EXPECT_NE(std::string::npos, content.find(kFakeCombinedBuildPropPath));
+  EXPECT_EQ(std::string::npos, content.find(kCachePartition));
+
+  // Generate the fstab again with the other prop file and verify the content.
+  EXPECT_TRUE(
+      GenerateFirstStageFstab(base::FilePath(kAnotherFakeCombinedBuildPropPath),
+                              fstab, cache_partition));
+  EXPECT_TRUE(base::ReadFileToString(fstab, &content));
+  EXPECT_EQ(std::string::npos, content.find(kFakeCombinedBuildPropPath));
+  EXPECT_NE(std::string::npos, content.find(kAnotherFakeCombinedBuildPropPath));
+  EXPECT_EQ(std::string::npos, content.find(kCachePartition));
+}
+
+TEST(ArcSetupUtil, GenerateFirstStageFstab_WithCachePartition) {
+  constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
 
   std::string content;
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   const base::FilePath fstab(dir.GetPath().Append("fstab"));
 
-  // Generate the fstab and verify the content.
+  const std::string cache_partition = "vdc";
+  // Generate the fstab and verify if the disk number for cache is correctly set
   EXPECT_TRUE(GenerateFirstStageFstab(
-      base::FilePath(kFakeCombinedBuildPropPath), fstab));
+      base::FilePath(kFakeCombinedBuildPropPath), fstab, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
-  EXPECT_NE(std::string::npos, content.find(kFakeCombinedBuildPropPath));
+  EXPECT_NE(std::string::npos, content.find(cache_partition));
 
-  // Generate the fstab again with the other prop file and verify the content.
-  EXPECT_TRUE(GenerateFirstStageFstab(
-      base::FilePath(kAnotherFakeCombinedBuildPropPath), fstab));
+  const std::string cache_partition_with_demo = "vdd";
+  // Generate the fstab again with another disk number and verify the disk
+  // number
+  EXPECT_TRUE(
+      GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
+                              cache_partition_with_demo));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
-  EXPECT_EQ(std::string::npos, content.find(kFakeCombinedBuildPropPath));
-  EXPECT_NE(std::string::npos, content.find(kAnotherFakeCombinedBuildPropPath));
+  EXPECT_NE(std::string::npos, content.find(cache_partition_with_demo));
 }
 
 TEST_P(FilterMediaProfileTest, All) {
