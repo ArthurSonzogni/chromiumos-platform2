@@ -272,7 +272,7 @@ void DBusService::PostQuitTask() {
   if (bus_) {
     VLOG(1) << "Stopping DBus service";
     bus_->GetOriginTaskRunner()->PostTask(
-        FROM_HERE, base::Bind(&Daemon::Quit, base::Unretained(this)));
+        FROM_HERE, base::BindOnce(&Daemon::Quit, base::Unretained(this)));
   }
 }
 

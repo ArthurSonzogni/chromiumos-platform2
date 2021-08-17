@@ -66,9 +66,9 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   // Template for handling D-Bus methods.
   template <typename RequestProtobufType, typename ReplyType>
-  using HandlerFunction =
-      void (RmadInterface::*)(const RequestProtobufType&,
-                              const base::Callback<void(const ReplyType&)>&);
+  using HandlerFunction = void (RmadInterface::*)(
+      const RequestProtobufType&,
+      const base::RepeatingCallback<void(const ReplyType&)>&);
 
   template <typename RequestProtobufType,
             typename ReplyType,
@@ -79,15 +79,15 @@ class DBusService : public brillo::DBusServiceDaemon {
     using SharedResponsePointer =
         std::shared_ptr<DBusMethodResponse<ReplyType>>;
     (rmad_interface_->*func)(
-        request,
-        base::Bind(&DBusService::SendReply<ReplyType>, base::Unretained(this),
-                   SharedResponsePointer(std::move(response))));
+        request, base::BindRepeating(
+                     &DBusService::SendReply<ReplyType>, base::Unretained(this),
+                     SharedResponsePointer(std::move(response))));
   }
 
   // Template for handling D-Bus methods without request protobuf.
   template <typename ReplyType>
-  using HandlerFunctionEmptyRequest =
-      void (RmadInterface::*)(const base::Callback<void(const ReplyType&)>&);
+  using HandlerFunctionEmptyRequest = void (RmadInterface::*)(
+      const base::RepeatingCallback<void(const ReplyType&)>&);
 
   template <typename ReplyType,
             DBusService::HandlerFunctionEmptyRequest<ReplyType> func>
@@ -95,9 +95,9 @@ class DBusService : public brillo::DBusServiceDaemon {
     // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
     using SharedResponsePointer =
         std::shared_ptr<DBusMethodResponse<ReplyType>>;
-    (rmad_interface_->*func)(
-        base::Bind(&DBusService::SendReply<ReplyType>, base::Unretained(this),
-                   SharedResponsePointer(std::move(response))));
+    (rmad_interface_->*func)(base::BindRepeating(
+        &DBusService::SendReply<ReplyType>, base::Unretained(this),
+        SharedResponsePointer(std::move(response))));
   }
 
   std::string HandleGetLogPathMethod();
