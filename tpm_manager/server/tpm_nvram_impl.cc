@@ -160,6 +160,10 @@ NvramResult TpmNvramImpl::DefineSpace(
 
   TpmConnection owner_connection(owner_password);
   TSS_HCONTEXT connection_context = owner_connection.GetContext();
+  if (!connection_context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
 
   // Bind to PCR0.
   ScopedTssPcrs scoped_pcr_handle(connection_context);
@@ -223,7 +227,12 @@ NvramResult TpmNvramImpl::DestroySpace(uint32_t index) {
     return nvram_result;
   }
 
-  ScopedTssNvStore nv_handle(owner_connection.GetContext());
+  auto context = owner_connection.GetContext();
+  if (!context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  ScopedTssNvStore nv_handle(context);
   if (!InitializeNvramHandle(index, &nv_handle, &owner_connection)) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
@@ -246,6 +255,10 @@ NvramResult TpmNvramImpl::WriteSpace(uint32_t index,
   }
 
   TSS_HCONTEXT connection_context = tpm_connection_.GetContext();
+  if (!connection_context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
   ScopedTssNvStore nv_handle(connection_context);
   trousers::ScopedTssPolicy policy_handle(connection_context);
 
@@ -316,7 +329,12 @@ NvramResult TpmNvramImpl::LockSpace(uint32_t index,
 
 NvramResult TpmNvramImpl::ListSpaces(std::vector<uint32_t>* index_list) {
   uint32_t nv_list_data_length = 0;
-  ScopedTssMemory nv_list_data(tpm_connection_.GetContext());
+  auto context = tpm_connection_.GetContext();
+  if (!context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  ScopedTssMemory nv_list_data(context);
   TSS_RESULT result = GetOveralls()->Ospi_TPM_GetCapability(
       tpm_connection_.GetTpm(), TSS_TPMCAP_NV_LIST, 0, nullptr,
       &nv_list_data_length, nv_list_data.ptr());
@@ -343,7 +361,12 @@ NvramResult TpmNvramImpl::GetSpaceInfo(
     std::vector<NvramSpaceAttribute>* attributes,
     NvramSpacePolicy* policy) {
   UINT32 nv_index_data_length = 0;
-  ScopedTssMemory nv_index_data(tpm_connection_.GetContext());
+  auto context = tpm_connection_.GetContext();
+  if (!context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  ScopedTssMemory nv_index_data(context);
   TSS_RESULT result = GetOveralls()->Ospi_TPM_GetCapability(
       tpm_connection_.GetTpm(), TSS_TPMCAP_NV_INDEX, sizeof(index),
       reinterpret_cast<BYTE*>(&index), &nv_index_data_length,
@@ -410,6 +433,10 @@ NvramResult TpmNvramImpl::ReadSpaceInternal(
   }
 
   TSS_HCONTEXT connection_context = tpm_connection_.GetContext();
+  if (!connection_context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
   ScopedTssNvStore nv_handle(connection_context);
   trousers::ScopedTssPolicy policy_handle(connection_context);
 
@@ -463,8 +490,13 @@ NvramResult TpmNvramImpl::ReadSpaceInternal(
 bool TpmNvramImpl::InitializeNvramHandle(uint32_t index,
                                          ScopedTssNvStore* nv_handle,
                                          TpmConnection* connection) {
+  TSS_HCONTEXT connection_context = connection->GetContext();
+  if (!connection_context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
   TSS_RESULT result = GetOveralls()->Ospi_Context_CreateObject(
-      connection->GetContext(), TSS_OBJECT_TYPE_NV, 0, nv_handle->ptr());
+      connection_context, TSS_OBJECT_TYPE_NV, 0, nv_handle->ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
     return false;
@@ -494,8 +526,13 @@ bool TpmNvramImpl::InitializeNvramHandleWithPolicy(
   }
 
   TSS_RESULT result;
+  TSS_HCONTEXT connection_context = connection->GetContext();
+  if (!connection_context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
   result = GetOveralls()->Ospi_Context_CreateObject(
-      connection->GetContext(), TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE,
+      connection_context, TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE,
       policy_handle->ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result)
@@ -524,15 +561,20 @@ bool TpmNvramImpl::InitializeNvramHandleWithPolicy(
 
 bool TpmNvramImpl::SetCompositePcr0(ScopedTssPcrs* pcr_handle,
                                     TpmConnection* connection) {
+  TSS_HCONTEXT connection_context = connection->GetContext();
+  if (!connection_context) {
+    LOG(ERROR) << "Error calling TpmConnection::GetContext().";
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
   TSS_RESULT result = GetOveralls()->Ospi_Context_CreateObject(
-      connection->GetContext(), TSS_OBJECT_TYPE_PCRS,
-      TSS_PCRS_STRUCT_INFO_SHORT, pcr_handle->ptr());
+      connection_context, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO_SHORT,
+      pcr_handle->ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not acquire PCR object handle";
     return false;
   }
   uint32_t pcr_len;
-  ScopedTssMemory pcr_value(connection->GetContext());
+  ScopedTssMemory pcr_value(connection_context);
   result = GetOveralls()->Ospi_TPM_PcrRead(connection->GetTpm(), kTpmBootPCR,
                                            &pcr_len, pcr_value.ptr());
   if (TPM_ERROR(result)) {
