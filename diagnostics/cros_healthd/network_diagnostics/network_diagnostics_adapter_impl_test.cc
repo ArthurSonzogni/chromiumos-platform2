@@ -41,68 +41,6 @@ class MockNetworkDiagnosticsRoutines final
       const MockNetworkDiagnosticsRoutines&) = delete;
 
   MOCK_METHOD(void,
-              LanConnectivity,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   LanConnectivityCallback),
-              (override));
-  MOCK_METHOD(void,
-              SignalStrength,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   SignalStrengthCallback),
-              (override));
-  MOCK_METHOD(void,
-              GatewayCanBePinged,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   GatewayCanBePingedCallback),
-              (override));
-  MOCK_METHOD(void,
-              HasSecureWiFiConnection,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   HasSecureWiFiConnectionCallback),
-              (override));
-  MOCK_METHOD(void,
-              DnsResolverPresent,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   DnsResolverPresentCallback),
-              (override));
-  MOCK_METHOD(
-      void,
-      DnsLatency,
-      (network_diagnostics_ipc::NetworkDiagnosticsRoutines::DnsLatencyCallback),
-      (override));
-  MOCK_METHOD(void,
-              DnsResolution,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   DnsResolutionCallback),
-              (override));
-  MOCK_METHOD(void,
-              CaptivePortal,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   CaptivePortalCallback),
-              (override));
-  MOCK_METHOD(void,
-              HttpFirewall,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   HttpFirewallCallback),
-              (override));
-  MOCK_METHOD(void,
-              HttpsFirewall,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   HttpsFirewallCallback),
-              (override));
-  MOCK_METHOD(void,
-              HttpsLatency,
-              (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   HttpsLatencyCallback),
-              (override));
-  MOCK_METHOD(void,
-              VideoConferencing,
-              (const base::Optional<std::string>&,
-               network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                   VideoConferencingCallback),
-              (override));
-
-  MOCK_METHOD(void,
               RunLanConnectivity,
               (network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                    RunLanConnectivityCallback),
