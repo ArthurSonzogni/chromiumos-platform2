@@ -118,9 +118,9 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
 
   // By now it's unlikely something to go wrong here, so disconnect
   // from in/out.
-  HANDLE_EINTR(close(STDIN_FILENO));
-  HANDLE_EINTR(close(STDOUT_FILENO));
-  HANDLE_EINTR(close(STDERR_FILENO));
+  IGNORE_EINTR(close(STDIN_FILENO));
+  IGNORE_EINTR(close(STDOUT_FILENO));
+  IGNORE_EINTR(close(STDERR_FILENO));
 
   // This loop will only end when either there are no processes left inside
   // our PID namespace or we get a signal.
