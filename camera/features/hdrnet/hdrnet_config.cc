@@ -22,7 +22,7 @@ constexpr char kAeFrameIntervalKey[] = "ae_frame_interval";
 constexpr char kAeOverrideModeKey[] = "ae_override_mode";
 constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
 constexpr char kDumpBufferKey[] = "dump_buffer";
-constexpr char kExpCompKey[] = "exp_comp";
+constexpr char kExposureCompensationKey[] = "exp_comp";
 constexpr char kFaceDetectionEnableKey[] = "face_detection_enable";
 constexpr char kFdFrameIntervalKey[] = "fd_frame_interval";
 constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
@@ -122,9 +122,9 @@ bool HdrNetConfig::ReadConfigFile() {
   if (hdr_ratio) {
     options_.hdr_ratio = *hdr_ratio;
   }
-  auto exp_comp = json_values->FindIntKey(kExpCompKey);
+  auto exp_comp = json_values->FindDoubleKey(kExposureCompensationKey);
   if (exp_comp) {
-    options_.exp_comp = *exp_comp;
+    options_.exposure_compensation = *exp_comp;
   }
   auto dump_buffer = json_values->FindBoolKey(kDumpBufferKey);
   if (dump_buffer) {
@@ -145,7 +145,7 @@ bool HdrNetConfig::ReadConfigFile() {
            << static_cast<int>(options_.ae_stats_input_mode)
            << " use_cros_face_detector=" << options_.use_cros_face_detector
            << " fd_frame_interval=" << options_.fd_frame_interval
-           << " exp_comp=" << options_.exp_comp
+           << " exposure_compensation=" << options_.exposure_compensation
            << " dump_buffer=" << options_.dump_buffer
            << " log_frame_metadata=" << options_.log_frame_metadata;
 

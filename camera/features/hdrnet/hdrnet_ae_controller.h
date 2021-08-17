@@ -52,6 +52,9 @@ class HdrNetAeController {
     // The mechanism used to override AE decisions from the camera HAL.
     base::Optional<AeOverrideMode> ae_override_mode;
 
+    // The exposure compensation in stops applied to Gcam AE results.
+    base::Optional<float> exposure_compensation;
+
     // Whether to log and dump per-frame metadata.  Mainly used for testing and
     // debugging.
     base::Optional<bool> log_frame_metadata;

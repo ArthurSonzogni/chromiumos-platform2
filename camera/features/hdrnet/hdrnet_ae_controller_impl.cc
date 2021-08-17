@@ -337,6 +337,10 @@ void HdrNetAeControllerImpl::SetOptions(const Options& options) {
     ae_override_mode_ = *options.ae_override_mode;
   }
 
+  if (options.exposure_compensation) {
+    base_exposure_compensation_ = *options.exposure_compensation;
+  }
+
   if (options.log_frame_metadata) {
     bool start_logging = *options.log_frame_metadata;
     if (start_logging) {
@@ -400,10 +404,11 @@ bool HdrNetAeControllerImpl::WriteRequestAeParameters(
   frame_info.targeted_short_tet = latest_ae_parameters_.short_tet;
   frame_info.targeted_long_tet = latest_ae_parameters_.long_tet;
 
+  frame_info.targeted_ae_compensation = base_exposure_compensation_;
   base::span<const int32_t> ae_comp =
       request->GetMetadata<int32_t>(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
   if (!ae_comp.empty()) {
-    frame_info.targeted_ae_compensation = ae_comp[0] * ae_compensation_step_;
+    frame_info.targeted_ae_compensation += ae_comp[0] * ae_compensation_step_;
   }
 
   if (use_cros_face_detector_) {

@@ -54,8 +54,8 @@ class HdrNetConfig {
     // running.
     float hdr_ratio = 3.0;
 
-    // The manual exposure compensation set to every capture request.
-    int32_t exp_comp = 0;
+    // The exposure compensation in stops set to every capture request.
+    float exposure_compensation = 0.0f;
 
     // Dumps intermediate processing buffers for debugging.
     bool dump_buffer = false;

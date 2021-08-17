@@ -876,6 +876,7 @@ void HdrNetStreamManipulator::RecordCaptureMetadataOnGpuThread(
       .fd_frame_interval = options.fd_frame_interval,
       .ae_stats_input_mode = options.ae_stats_input_mode,
       .ae_override_mode = options.ae_override_mode,
+      .exposure_compensation = options.exposure_compensation,
       .log_frame_metadata = options.log_frame_metadata,
   };
   ae_controller_->SetOptions(ae_controller_options);

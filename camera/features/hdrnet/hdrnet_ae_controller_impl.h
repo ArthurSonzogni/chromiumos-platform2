@@ -83,6 +83,7 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
 
   // AE algorithm input parameters.
   float max_hdr_ratio_ = 10.0f;
+  float base_exposure_compensation_ = 0.0f;
   AeStatsInputMode ae_stats_input_mode_ = AeStatsInputMode::kFromVendorAeStats;
 
   // AE algorithm outputs.
