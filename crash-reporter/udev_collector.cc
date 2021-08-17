@@ -184,7 +184,8 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
 
   std::string dump_basename =
       FormatDumpBasename(coredump_prefix, time(nullptr), instance_number);
-  FilePath core_path = GetCrashPath(crash_directory, dump_basename, "devcore");
+  FilePath core_path =
+      GetCrashPath(crash_directory, dump_basename, "devcore.gz");
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
 
@@ -202,7 +203,7 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
   }
   // Similarly, the core_path will be of form /proc/self/fd/<n>/foo.devcore,
   // where /proc/self is a symlink, but foo.devcore should not be.
-  if (!CopyFdToNewFile(base::ScopedFD(source_fd), core_path)) {
+  if (!CopyFdToNewCompressedFile(base::ScopedFD(source_fd), core_path)) {
     PLOG(ERROR) << "Failed to copy device coredump file from "
                 << coredump_path.value() << " to " << core_path.value();
     return false;

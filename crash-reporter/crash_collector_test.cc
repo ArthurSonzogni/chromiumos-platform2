@@ -255,6 +255,75 @@ TEST_F(CrashCollectorTest,
   ASSERT_EQ(collector.get_in_memory_files_for_test().size(), 1);
 }
 
+TEST_F(CrashCollectorTest, CopyToNewCompressedFile) {
+  FilePath source_file = test_dir_.Append("test_source");
+  const char expected_contents[] = "uncompressed buffer contents";
+  ASSERT_TRUE(base::WriteFile(source_file, expected_contents));
+  base::File source(source_file, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ASSERT_TRUE(source.IsValid());
+  base::ScopedFD fd(source.TakePlatformFile());
+
+  FilePath target_file = test_dir_.Append("test_dest.gz");
+  EXPECT_TRUE(collector_.CopyFdToNewCompressedFile(std::move(fd), target_file));
+  EXPECT_TRUE(base::PathExists(target_file));
+  int64_t file_size = -1;
+  EXPECT_TRUE(base::GetFileSize(target_file, &file_size));
+  EXPECT_EQ(collector_.get_bytes_written(), file_size);
+
+  int decompress_result = system(("gunzip " + target_file.value()).c_str());
+  EXPECT_TRUE(WIFEXITED(decompress_result));
+  EXPECT_EQ(WEXITSTATUS(decompress_result), 0);
+
+  FilePath test_file_uncompressed = target_file.RemoveFinalExtension();
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(test_file_uncompressed, &contents));
+  EXPECT_EQ(expected_contents, contents);
+}
+
+TEST_F(CrashCollectorTest, CopyToNewCompressedFileFailsIfFileExists) {
+  FilePath source_file = test_dir_.Append("test_source");
+  const char expected_contents[] = "uncompressed buffer contents";
+  ASSERT_TRUE(base::WriteFile(source_file, expected_contents));
+  base::File source(source_file, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ASSERT_TRUE(source.IsValid());
+  base::ScopedFD fd(source.TakePlatformFile());
+
+  FilePath target_file = test_dir_.Append("test_dest.gz");
+  base::File touch_target_file(
+      target_file, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(touch_target_file.IsValid());
+  touch_target_file.Close();
+
+  EXPECT_FALSE(
+      collector_.CopyFdToNewCompressedFile(std::move(fd), target_file));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
+}
+
+TEST_F(CrashCollectorTest, CopyToNewCompressedFileZeroSize) {
+  FilePath source_file = test_dir_.Append("test_source");
+  base::File source(source_file, base::File::FLAG_CREATE |
+                                     base::File::FLAG_OPEN |
+                                     base::File::FLAG_READ);
+  ASSERT_TRUE(source.IsValid());
+  base::ScopedFD fd(source.TakePlatformFile());
+
+  FilePath target_file = test_dir_.Append("test_dest.gz");
+  EXPECT_TRUE(collector_.CopyFdToNewCompressedFile(std::move(fd), target_file));
+  EXPECT_TRUE(base::PathExists(target_file));
+  int64_t file_size = -1;
+  EXPECT_TRUE(base::GetFileSize(target_file, &file_size));
+  EXPECT_EQ(collector_.get_bytes_written(), file_size);
+
+  int decompress_result = system(("gunzip " + target_file.value()).c_str());
+  EXPECT_TRUE(WIFEXITED(decompress_result));
+  EXPECT_EQ(WEXITSTATUS(decompress_result), 0);
+
+  FilePath test_file_uncompressed = target_file.RemoveFinalExtension();
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(test_file_uncompressed, &contents));
+  EXPECT_EQ(0, contents.length());
+}
+
 TEST_F(CrashCollectorTest, WriteNewCompressedFile) {
   FilePath test_file = test_dir_.Append("test_compressed_new.gz");
   const char kBuffer[] = "buffer";

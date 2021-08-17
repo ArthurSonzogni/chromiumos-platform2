@@ -33,7 +33,7 @@ const char kLogConfigFileContents[] =
     "cros_installer=echo not for udev";
 
 const char kCrashLogFilePattern[] = "*.log.gz";
-const char kDevCoredumpFilePattern[] = "*.devcore";
+const char kDevCoredumpFilePattern[] = "*.devcore.gz";
 
 // Dummy content for device coredump data file.
 const char kDevCoredumpDataContents[] = "coredump";

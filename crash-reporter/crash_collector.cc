@@ -517,15 +517,14 @@ bool CrashCollector::CopyFdToNewFile(base::ScopedFD source_fd,
   return base::CopyFileContents(source, target);
 }
 
-bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
-                                            const char* data,
-                                            size_t size) {
+base::ScopedFD CrashCollector::OpenNewCompressedFileForWriting(
+    const base::FilePath& filename, gzFile* compressed_output) {
   DCHECK_EQ(filename.FinalExtension(), ".gz")
       << filename.value() << " must end in .gz";
   base::ScopedFD fd = GetNewFileHandle(filename);
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open " << filename.value();
-    return false;
+    return fd;
   }
   // No way to stop gzclose_w from closing the file descriptor, but we need a
   // copy to send to debugd if crash_sending_mode_ == kCrashLoopSendingMode, so
@@ -535,22 +534,32 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
   base::ScopedFD fd_dup(dup(fd.get()));
   if (!fd_dup.is_valid()) {
     PLOG(ERROR) << "Failed to dup file descriptor";
-    return false;
+    return fd_dup;
   }
 
-  gzFile compressed_output = gzdopen(fd.get(), "wb");
-  if (compressed_output == nullptr) {
+  *compressed_output = gzdopen(fd.get(), "wba");
+  if (*compressed_output == nullptr) {
     LOG(ERROR) << "Failed to gzip " << filename.value();
-    return false;
+    return base::ScopedFD();
   }
 
   // zlib now owns the file descriptor; we must not close it past this point.
   // Note that if gzdopen fails, we are still responsible for closing the file,
   // so we can't just put the release() call inside gzdopen().
   (void)fd.release();
-  int result = gzwrite(compressed_output, data, size);
-  if (result != size) {
-    if (result <= 0) {
+
+  return fd_dup;
+}
+
+bool CrashCollector::WriteCompressedFile(gzFile compressed_output,
+                                         const char* data,
+                                         size_t bytes) {
+  // Allow for partial writes
+  ssize_t bytes_written_per_read = 0;
+  do {
+    int result = gzwrite(compressed_output, &data[bytes_written_per_read],
+                         bytes - bytes_written_per_read);
+    if (result < 0) {
       int saved_errno = errno;
       int errnum = 0;
       const char* error_msg = gzerror(compressed_output, &errnum);
@@ -561,14 +570,19 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
         LOG(ERROR) << "gzwrite failed: error code " << errnum << ", error msg: "
                    << (error_msg == nullptr ? "None" : error_msg);
       }
-    } else {
-      LOG(ERROR) << "gzwrite wrote partial output";
+      gzclose_w(compressed_output);
+      return false;
     }
-    gzclose_w(compressed_output);
-    return false;
-  }
+    bytes_written_per_read += result;
+  } while (bytes_written_per_read < bytes);
+  return true;
+}
 
-  result = gzclose_w(compressed_output);
+bool CrashCollector::CloseCompressedFileAndUpdateStats(
+    gzFile compressed_output,
+    base::ScopedFD fd_dup,
+    const base::FilePath& filename) {
+  int result = gzclose_w(compressed_output);
   if (result != Z_OK) {
     LOG(ERROR) << "gzclose_w failed with error code " << result;
     return false;
@@ -593,6 +607,51 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
   }
   bytes_written_ += compressed_output_stats.st_size;
   return true;
+}
+
+bool CrashCollector::CopyFdToNewCompressedFile(
+    base::ScopedFD source_fd, const base::FilePath& target_path) {
+  static constexpr size_t kBufferSize = 32768;
+  std::vector<char> buffer(kBufferSize);
+  base::File source = base::File(std::move(source_fd));
+  base::ScopedFD fd_dup;
+  gzFile compressed_output;
+
+  fd_dup = OpenNewCompressedFileForWriting(target_path, &compressed_output);
+  if (!fd_dup.is_valid())
+    return false;
+
+  ssize_t bytes_read;
+
+  do {
+    bytes_read = source.ReadAtCurrentPos(buffer.data(), buffer.size());
+    if (bytes_read < 0) {
+      gzclose_w(compressed_output);
+      return false;
+    }
+    if (!WriteCompressedFile(compressed_output, buffer.data(), bytes_read))
+      return false;
+  } while (bytes_read > 0);
+
+  return CloseCompressedFileAndUpdateStats(compressed_output, std::move(fd_dup),
+                                           target_path);
+}
+
+bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
+                                            const char* data,
+                                            size_t size) {
+  base::ScopedFD fd_dup;
+  gzFile compressed_output;
+
+  fd_dup = OpenNewCompressedFileForWriting(filename, &compressed_output);
+  if (!fd_dup.is_valid())
+    return false;
+
+  if (!WriteCompressedFile(compressed_output, data, size))
+    return false;
+
+  return CloseCompressedFileAndUpdateStats(compressed_output, std::move(fd_dup),
+                                           filename);
 }
 
 bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {

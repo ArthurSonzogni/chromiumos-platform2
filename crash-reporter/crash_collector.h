@@ -30,6 +30,7 @@
 #include <metrics/metrics_library.h>
 #include <policy/device_policy.h>
 #include <session_manager/dbus-proxies.h>
+#include <zlib.h>
 
 constexpr mode_t kSystemCrashFilesMode = 0660;
 
@@ -237,6 +238,9 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
   FRIEND_TEST(CrashCollectorTest, CopyToNewFile);
+  FRIEND_TEST(CrashCollectorTest, CopyToNewCompressedFile);
+  FRIEND_TEST(CrashCollectorTest, CopyToNewCompressedFileFailsIfFileExists);
+  FRIEND_TEST(CrashCollectorTest, CopyToNewCompressedFileZeroSize);
   FRIEND_TEST(CrashCollectorTest, GetNewFileHandle);
   FRIEND_TEST(CrashCollectorTest, GetNewFileHandle_Symlink);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
@@ -272,6 +276,13 @@ class CrashCollector {
   // memfd file)
   bool CopyFdToNewFile(base::ScopedFD source_fd,
                        const base::FilePath& target_path);
+
+  // Copies |source_fd| to |target_path|, which must be a new file ending in
+  // ".gz". File will be a gzip-compressed file.
+  // If the file already exists or writing fails, return false.
+  // Otherwise returns true.
+  bool CopyFdToNewCompressedFile(base::ScopedFD source_fd,
+                                 const base::FilePath& target_path);
 
   // Writes |data| of |size| to |filename|, which must be a new file ending in
   // ".gz". File will be a gzip-compressed file. Returns true on success,
@@ -499,6 +510,25 @@ class CrashCollector {
   // Returns true if there is already a file in in_memory_files_ with
   // filename.BaseName().
   bool InMemoryFileExists(const base::FilePath& filename) const;
+
+  // Opens a new compressed file for writing. Returns a valid fd for the
+  // compressed file on success, and an invalid fd on failure.
+  // |compressed_output| holds the pointer to the compressed file descriptor.
+  base::ScopedFD OpenNewCompressedFileForWriting(const base::FilePath& filename,
+                                                 gzFile* compressed_output);
+
+  // Writes |bytes| amount of |data| to |compressed_output| as compressed data.
+  // Returns true on success and false on failure. The |compressed_output| file
+  // is closed on failure.
+  bool WriteCompressedFile(gzFile compressed_output,
+                           const char* data,
+                           size_t bytes);
+
+  // Closes the compressed file and increments get_bytes_written(). Returns true
+  // on success.
+  bool CloseCompressedFileAndUpdateStats(gzFile compressed_output,
+                                         base::ScopedFD fd_dup,
+                                         const base::FilePath& filename);
 
   // Returns an error type signature for a given |error_type| value,
   // which is reported to the crash server along with the
