@@ -26,7 +26,10 @@ constexpr char kLibDocumentScannerDefaultDir[] =
 
 struct DocumentScannerLibraryParams {
   base::FilePath root_dir = base::FilePath(kLibDocumentScannerDefaultDir);
-  float score_threshold = 0.0;
+  // TODO(b/196931992): Update this value if there is any better value. And
+  // consider set the value via Finch framework if we are not confident about
+  // current value and need more experiments.
+  float score_threshold = 2.0;
 };
 
 // A singleton proxy class for the document scanner DSO.
