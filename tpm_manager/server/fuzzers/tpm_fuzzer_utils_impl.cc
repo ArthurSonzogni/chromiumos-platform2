@@ -4,12 +4,12 @@
 
 #include "tpm_manager/server/fuzzers/tpm_fuzzer_utils_impl.h"
 
-#include <libhwsec/overalls/overalls_singleton.h>
+#include <libhwsec-foundation/fuzzed_trousers_utils.h>
 
 namespace tpm_manager {
 
 void TpmFuzzerUtilsImpl::SetupTpm(TpmManagerService* tpm_manager) {
-  hwsec::overalls::OverallsSingleton::SetInstance(&mock_overalls_);
+  hwsec_foundation::FuzzedTrousersSetup(data_provider_);
 }
 
 }  // namespace tpm_manager

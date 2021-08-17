@@ -6,8 +6,6 @@
 #define TPM_MANAGER_SERVER_FUZZERS_TPM_FUZZER_UTILS_IMPL_H_
 
 #include <fuzzer/FuzzedDataProvider.h>
-#include <gmock/gmock.h>
-#include <libhwsec/overalls/mock_overalls.h>
 
 #include "tpm_manager/server/fuzzers/tpm_fuzzer_utils.h"
 #include "tpm_manager/server/tpm_manager_service.h"
@@ -16,11 +14,12 @@ namespace tpm_manager {
 
 class TpmFuzzerUtilsImpl : public TpmFuzzerUtils {
  public:
-  explicit TpmFuzzerUtilsImpl(FuzzedDataProvider*) {}
+  explicit TpmFuzzerUtilsImpl(FuzzedDataProvider* data_provider)
+      : data_provider_(data_provider) {}
   void SetupTpm(TpmManagerService* tpm_manager) override;
 
  private:
-  testing::NaggyMock<hwsec::overalls::MockOveralls> mock_overalls_;
+  FuzzedDataProvider* const data_provider_;
 };
 
 }  // namespace tpm_manager
