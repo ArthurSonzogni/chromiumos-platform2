@@ -49,16 +49,15 @@ AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
                                          int fd) {
   long flags;  // NOLINT(runtime/int)
   if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != 0) {
-    PLOG(WARNING) << "Getting flags on " << path.value() << " failed";
+    PLOG(WARNING) << "Getting flags failed";
     return AttributeCheckStatus::ERROR;
   }
 
   if (flags & FS_IMMUTABLE_FL) {
-    LOG(WARNING) << "Immutable bit found on " << path.value()
-                 << "; clearing it";
+    LOG(WARNING) << "Immutable bit found, clearing it";
     flags &= ~FS_IMMUTABLE_FL;
     if (ioctl(fd, FS_IOC_SETFLAGS, &flags) != 0) {
-      PLOG(ERROR) << "Unable to clear immutable bit on " << path.value();
+      PLOG(ERROR) << "Unable to clear immutable bit";
       return AttributeCheckStatus::CLEAR_FAILED;
     }
     return AttributeCheckStatus::CLEARED;
@@ -78,8 +77,7 @@ AttributeCheckStatus RemoveURLExtendedAttributes(const base::FilePath& path) {
       found_xattr = true;
       bool res = removexattr(path.value().c_str(), attr_name) == 0;
       if (!res) {
-        PLOG(ERROR) << "Unable to remove extended attribute '" << attr_name
-                    << "' from " << path.value();
+        PLOG(ERROR) << "Unable to remove extended attribute";
       }
       xattr_success &= res;
     }
@@ -119,7 +117,7 @@ bool ScanDir(const base::FilePath& dir,
 
   ScopedDir dirp(opendir(dir.value().c_str()));
   if (dirp.get() == nullptr) {
-    PLOG(WARNING) << "Unable to open directory " << dir.value();
+    PLOG(WARNING) << "Unable to open directory";
     // This is a best effort routine so don't fail if the directory cannot be
     // opened.
     return true;
@@ -158,75 +156,88 @@ bool ScanDir(const base::FilePath& dir,
       continue;
 
     const base::FilePath path = dir.Append(de->d_name);
-    if (de->d_type == DT_DIR) {
-      // Don't cross mountpoints.
-      if (!have_dirst) {
-        // Load this on demand so leaf dirs don't waste time.
-        have_dirst = true;
-        if (fstat(dfd, &dirst) != 0) {
-          PLOG(ERROR) << "Unable to stat " << dir.value();
+    switch (de->d_type) {
+      case DT_DIR: {
+        // Don't cross mountpoints.
+        if (!have_dirst) {
+          // Load this on demand so leaf dirs don't waste time.
+          have_dirst = true;
+          if (fstat(dfd, &dirst) != 0) {
+            PLOG(ERROR) << "Unable to stat dir";
+            ret = false;
+            continue;
+          }
+        }
+
+        struct stat subdirst;
+        if (fstatat(dfd, de->d_name, &subdirst, 0) != 0) {
+          PLOG(ERROR) << "Unable to stat subdir";
           ret = false;
           continue;
         }
+
+        if (dirst.st_dev != subdirst.st_dev) {
+          DVLOG(1) << "Skipping mounted directory " << path.value();
+          continue;
+        }
+
+        // Enqueue this directory for recursing.
+        // Recursing here is problematic because it means that |dirp| remains
+        // open for the lifetime of the process. Having a handle to the
+        // directory open for that long causes problems if the tool is still
+        // running when a user logs in. This can happen if the user has a lot of
+        // files in their home directory.
+        subdirs.push_back(path);
+        break;
       }
+      case DT_REG: {
+        // Check the settings on this file.
 
-      struct stat subdirst;
-      if (fstatat(dfd, de->d_name, &subdirst, 0) != 0) {
-        PLOG(ERROR) << "Unable to stat " << path.value();
-        ret = false;
-        continue;
+        // Extended attributes can be read even on encrypted files, so remove
+        // them by path and not by file descriptor. Since the removal is
+        // best-effort anyway, TOCTOU issues should not be a problem.
+        AttributeCheckStatus status = RemoveURLExtendedAttributes(path);
+        ret &= CheckSucceeded(status);
+        if (status == AttributeCheckStatus::CLEARED)
+          ++(*url_xattrs_count);
+
+        base::ScopedFD fd(openat(
+            dfd, de->d_name, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC));
+
+        if (!fd.is_valid()) {
+          // This routine can be executed over encrypted filesystems.
+          // ENOKEY is normal for encrypted files, so don't log in that case.
+          // We might be running in parallel with other programs which might
+          // delete paths on the fly, so ignore ENOENT too.
+          if (errno != ENOKEY || errno != ENOENT)
+            PLOG(WARNING) << "Skipping path";
+
+          // This is a best effort routine so don't fail if the path cannot be
+          // opened.
+          continue;
+        }
+
+        ret &= CheckSucceeded(
+            CheckFileAttributes(path, false /*is_dir*/, fd.get()));
+
+        break;
       }
-
-      if (dirst.st_dev != subdirst.st_dev) {
-        DVLOG(1) << "Skipping mounted directory " << path.value();
-        continue;
-      }
-
-      // Enqueue this directory for recursing.
-      // Recursing here is problematic because it means that |dirp| remains
-      // open for the lifetime of the process. Having a handle to the directory
-      // open for that long causes problems if the tool is still running when
-      // a user logs in. This can happen if the user has a lot of files in
-      // their home directory.
-      subdirs.push_back(path);
-    } else if (de->d_type == DT_REG) {
-      // Check the settings on this file.
-
-      // Extended attributes can be read even on encrypted files, so remove
-      // them by path and not by file descriptor. Since the removal is
-      // best-effort anyway, TOCTOU issues should not be a problem.
-      AttributeCheckStatus status = RemoveURLExtendedAttributes(path);
-      ret &= CheckSucceeded(status);
-      if (status == AttributeCheckStatus::CLEARED)
-        ++(*url_xattrs_count);
-
-      base::ScopedFD fd(openat(dfd, de->d_name,
-                               O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC));
-
-      if (!fd.is_valid()) {
-        // This routine can be executed over encrypted filesystems.
-        // ENOKEY is normal for encrypted files, so don't log in that case.
-        // We might be running in parallel with other programs which might
-        // delete paths on the fly, so ignore ENOENT too.
-        if (errno != ENOKEY || errno != ENOENT)
-          PLOG(WARNING) << "Skipping path: " << path.value();
-
-        // This is a best effort routine so don't fail if the path cannot be
-        // opened.
-        continue;
-      }
-
-      ret &=
-          CheckSucceeded(CheckFileAttributes(path, false /*is_dir*/, fd.get()));
-
-    } else {
-      LOG(WARNING) << "Skipping path: " << path.value() << ": unknown type "
-                   << de->d_type;
+      case DT_FIFO:
+      case DT_CHR:
+      case DT_BLK:
+      case DT_LNK:
+      case DT_SOCK:
+      case DT_WHT:
+        // no action needed.
+        break;
+      default:
+        LOG(WARNING) << "Skipping path due to unsupported type " << de->d_type;
+        break;
     }
   }
 
   if (closedir(dirp.release()) != 0)
-    PLOG(ERROR) << "Unable to close directory " << dir.value();
+    PLOG(ERROR) << "Unable to close directory";
 
   int sub_xattrs_count = 0;
   for (const auto& subdir : subdirs) {
