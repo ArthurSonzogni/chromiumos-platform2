@@ -9,6 +9,12 @@
 
 namespace vm_tools {
 namespace concierge {
+namespace {
+void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
+  CustomParametersForDev custom(data);
+  custom.Apply(args);
+}
+}  // namespace
 
 TEST(VMUtilTest, LoadCustomParametersSupportsEmptyInput) {
   base::StringPairs args;
@@ -96,15 +102,14 @@ TEST(VMUtilTest, LoadCustomParametersSupportsRemovingByPrefix) {
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
-TEST(VMUtilTest, RemoveParametersWithKeyReturnsFoundValue) {
+TEST(CustomParametersForDevTest, KernelWithCustom) {
   base::StringPairs args = {{"--Key1", "Value1"}};
-  LoadCustomParameters(R"(--Key2=Value2
---Key3=Value3
+  CustomParametersForDev custom(R"(--Key2=Value2
 KERNEL_PATH=/a/b/c
-)",
-                       &args);
+--Key3=Value3)");
+  custom.Apply(&args);
   const std::string resolved_kernel_path =
-      RemoveParametersWithKey("KERNEL_PATH", "default_path", &args);
+      custom.ObtainSpecialParameter("KERNEL_PATH").value_or("default_path");
 
   base::StringPairs expected{
       {"--Key1", "Value1"}, {"--Key2", "Value2"}, {"--Key3", "Value3"}};
@@ -112,24 +117,36 @@ KERNEL_PATH=/a/b/c
   EXPECT_THAT(resolved_kernel_path, "/a/b/c");
 }
 
-TEST(VMUtilTest, RemoveParametersWithKeyReturnsDefaultValue) {
+TEST(CustomParametersForDevTest, KernelWithDefault) {
   base::StringPairs args = {{"--Key1", "Value1"}};
-  LoadCustomParameters(R"(--Key2=Value2
+  CustomParametersForDev custom(R"(--Key2=Value2
 --Key3=Value3
-SOME_OTHER_PATH=/a/b/c
-)",
-                       &args);
+SOME_OTHER_PATH=/a/b/c)");
+  custom.Apply(&args);
   const std::string resolved_kernel_path =
-      RemoveParametersWithKey("KERNEL_PATH", "default_path", &args);
+      custom.ObtainSpecialParameter("KERNEL_PATH").value_or("default_path");
 
   base::StringPairs expected{
       {"--Key1", "Value1"},
       {"--Key2", "Value2"},
       {"--Key3", "Value3"},
-      {"SOME_OTHER_PATH", "/a/b/c"},
   };
   EXPECT_THAT(args, testing::ContainerEq(expected));
   EXPECT_THAT(resolved_kernel_path, "default_path");
+}
+
+TEST(CustomParametersForDevTest, ODirect) {
+  base::StringPairs args = {{"--Key1", "Value1"}};
+  CustomParametersForDev custom(R"(O_DIRECT=true)");
+  custom.Apply(&args);
+  const std::string o_direct =
+      custom.ObtainSpecialParameter("O_DIRECT").value_or("false");
+
+  base::StringPairs expected{
+      {"--Key1", "Value1"},
+  };
+  EXPECT_THAT(args, testing::ContainerEq(expected));
+  EXPECT_THAT(o_direct, "true");
 }
 
 TEST(VMUtilTest, GetCpuAffinityFromClustersNoGroups) {

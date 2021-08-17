@@ -70,6 +70,9 @@ class VmBuilder {
   VmBuilder& EnableSmt(bool enable);
   VmBuilder& EnableDelayRt(bool enable);
 
+  // Override flags for O_DIRECT for already appended disks.
+  VmBuilder& EnableODirect(bool enable);
+
   // Builds the command line required to start a VM.
   base::StringPairs BuildVmArgs() const;
 

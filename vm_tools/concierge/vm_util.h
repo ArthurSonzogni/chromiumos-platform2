@@ -14,7 +14,9 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
+#include <base/optional.h>
 #include <brillo/process/process.h>
 #include <vm_tools/concierge/usb_control.h>
 #include <vm_tools/concierge/balloon_policy.h>
@@ -44,6 +46,8 @@ class Disk {
   // Gets the command line argument that needs to be passed to crosvm
   // corresponding to this disk.
   base::StringPairs GetCrosvmArgs() const;
+
+  void EnableODirect(bool enable);
 
  private:
   // Path to the disk image on the host.
@@ -141,17 +145,32 @@ bool CrosvmDiskResize(std::string socket_path,
 // Updates |cpu_cgroup|'s cpu.shares to |cpu_shares|.
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares);
 
-// Loads custom parameters from a string. The result is appended to parameter
-// |args| as a vector of string pairs. Please check vm_tools/init/arcvm_dev.conf
-// for the list of supported directives.
-void LoadCustomParameters(const std::string& data, base::StringPairs* args);
+class CustomParametersForDev {
+ public:
+  // By default this class would do nothing.
+  CustomParametersForDev() = default;
 
-// Removes all parameters with |key| from |args|. If it exists, the value of
-// its last occurrence in |args| will be returned. Otherwise, |default_value|
-// will be returned.
-std::string RemoveParametersWithKey(const std::string& key,
-                                    const std::string& default_value,
-                                    base::StringPairs* args);
+  // Allow custom parameters on development devices with arcvm_dev.conf.
+  // Loads custom parameters from a string. Please check
+  // vm_tools/init/arcvm_dev.conf for the list of supported directives.
+  explicit CustomParametersForDev(const std::string& data);
+
+  // Apply the parsed result of configuration files to |args| as a vector of
+  // string pairs.
+  void Apply(base::StringPairs* args);
+
+  base::Optional<const std::string> ObtainSpecialParameter(
+      const std::string& key);
+
+ private:
+  // Command line parameter prefix to crosvm to remove.
+  std::vector<std::string> prefix_to_remove_{};
+  // Command line parameters to crosvm to add.
+  base::StringPairs params_to_add_{};
+  // Other special handling.
+  std::map<std::string, std::string> special_parameters_{};
+  bool initialized_{false};
+};
 
 // Creates shared data parameter for crovm.
 std::string CreateSharedDataParam(const base::FilePath& data_dir,

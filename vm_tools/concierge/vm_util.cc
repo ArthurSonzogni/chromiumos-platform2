@@ -169,6 +169,10 @@ Disk::Disk(base::FilePath path, const Disk::Config& config)
 
 Disk::Disk(Disk&&) = default;
 
+void Disk::EnableODirect(bool enable) {
+  o_direct_ = enable;
+}
+
 base::StringPairs Disk::GetCrosvmArgs() const {
   std::string first;
   if (writable_)
@@ -524,7 +528,7 @@ bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
                          cpu_shares_str.size()) == cpu_shares_str.size();
 }
 
-void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
+CustomParametersForDev::CustomParametersForDev(const std::string& data) {
   std::vector<base::StringPiece> lines = base::SplitStringPiece(
       data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -535,16 +539,14 @@ void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
     // Line contains a prefix key. Remove all args with this prefix.
     if (line[0] == '!' && line.size() > 1) {
       const base::StringPiece prefix = line.substr(1, line.size() - 1);
-      base::EraseIf(*args, [&prefix](const auto& pair) {
-        return base::StartsWith(pair.first, prefix);
-      });
+      prefix_to_remove_.emplace_back(prefix);
       continue;
     }
 
     // Line contains a key only. Append the whole line.
     base::StringPairs pairs;
     if (!base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs)) {
-      args->emplace_back(std::move(line), "");
+      params_to_add_.emplace_back(std::move(line), "");
       continue;
     }
 
@@ -552,23 +554,39 @@ void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
     base::TrimWhitespaceASCII(pairs[0].first, base::TRIM_ALL, &pairs[0].first);
     base::TrimWhitespaceASCII(pairs[0].second, base::TRIM_ALL,
                               &pairs[0].second);
-    args->emplace_back(std::move(pairs[0].first), std::move(pairs[0].second));
+    if (pairs[0].first[0] == '-') {
+      params_to_add_.emplace_back(std::move(pairs[0].first),
+                                  std::move(pairs[0].second));
+    } else {
+      special_parameters_.emplace(std::move(pairs[0].first),
+                                  std::move(pairs[0].second));
+    }
+  }
+  initialized_ = true;
+}
+
+void CustomParametersForDev::Apply(base::StringPairs* args) {
+  if (!initialized_)
+    return;
+  for (const auto& prefix : prefix_to_remove_) {
+    base::EraseIf(*args, [&prefix](const auto& pair) {
+      return base::StartsWith(pair.first, prefix);
+    });
+  }
+  for (const auto& param : params_to_add_) {
+    args->emplace_back(param.first, param.second);
   }
 }
 
-std::string RemoveParametersWithKey(const std::string& key,
-                                    const std::string& default_value,
-                                    base::StringPairs* args) {
-  std::string target_value(default_value);
-  base::StringPairs::reverse_iterator result =
-      std::find_if(args->rbegin(), args->rend(),
-                   [&key](const auto& pair) { return pair.first == key; });
-  if (result != args->rend()) {
-    target_value = result->second;
-    base::EraseIf(*args,
-                  [&key](const auto& pair) { return pair.first == key; });
+base::Optional<const std::string>
+CustomParametersForDev::ObtainSpecialParameter(const std::string& key) {
+  if (!initialized_)
+    return base::nullopt;
+  if (special_parameters_.find(key) != special_parameters_.end()) {
+    return special_parameters_[key];
+  } else {
+    return base::nullopt;
   }
-  return target_value;
 }
 
 std::string CreateSharedDataParam(const base::FilePath& data_dir,

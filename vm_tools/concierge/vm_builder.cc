@@ -167,6 +167,13 @@ VmBuilder& VmBuilder::EnableDelayRt(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableODirect(bool enable) {
+  for (auto& d : disks_) {
+    d.EnableODirect(enable);
+  }
+  return *this;
+}
+
 base::StringPairs VmBuilder::BuildVmArgs() const {
   base::StringPairs args = {{kCrosvmBin, "run"}};
 

@@ -70,6 +70,9 @@ constexpr char kDevConfFilePath[] = "/usr/local/vms/etc/arcvm_dev.conf";
 // Custom parameter key to override the kernel path
 constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 
+// Custom parameter key to override the o_direct= disk parameter.
+constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
+
 // Shared directories and their tags
 constexpr char kOemEtcSharedDir[] = "/run/arcvm/host_generated/oem/etc";
 constexpr char kOemEtcSharedDirTag[] = "oem_etc";
@@ -276,7 +279,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVulkan(true);
   }
 
-  auto args = vm_builder.BuildVmArgs();
+  CustomParametersForDev custom_parameters;
 
   // Load any custom parameters from the development configuration file if the
   // feature is turned on (default) and path exists (dev mode only).
@@ -288,13 +291,23 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
         PLOG(ERROR) << "Failed to read file " << dev_conf.value();
         return false;
       }
-      LoadCustomParameters(data, &args);
+      custom_parameters = CustomParametersForDev(data);
     }
   }
 
+  if (custom_parameters.ObtainSpecialParameter(kKeyToOverrideODirect)
+          .value_or("false") == "true") {
+    vm_builder.EnableODirect(true);
+  }
+
+  auto args = vm_builder.BuildVmArgs();
+
+  custom_parameters.Apply(&args);
+
   // Finally list the path to the kernel.
   const std::string kernel_path =
-      RemoveParametersWithKey(kKeyToOverrideKernelPath, kernel.value(), &args);
+      custom_parameters.ObtainSpecialParameter(kKeyToOverrideKernelPath)
+          .value_or(kernel.value());
   args.emplace_back(kernel_path, "");
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
