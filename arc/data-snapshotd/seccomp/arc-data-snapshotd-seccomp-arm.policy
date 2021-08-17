@@ -111,5 +111,6 @@ unlinkat: 1
 newfstatat: 1
 pipe: 1
 fstatfs: 1
+fstatfs64: 1
 renameat: 1
 renameat2: 1
