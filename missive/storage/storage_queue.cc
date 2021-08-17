@@ -1617,7 +1617,7 @@ void StorageQueue::CheckBackUpload(Status status, int64_t next_sequencing_id) {
   if (!first_unconfirmed_sequencing_id_.has_value() ||
       first_unconfirmed_sequencing_id_.value() < next_sequencing_id) {
     // Not all uploaded events were confirmed after upload, retry.
-    Start<ReadContext>(UploaderInterface::IMCOMPLETE_RETRY, this);
+    Start<ReadContext>(UploaderInterface::INCOMPLETE_RETRY, this);
     return;
   }
 

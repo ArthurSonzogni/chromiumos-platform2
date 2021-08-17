@@ -96,8 +96,8 @@ if (use.test) {
       "scheduler/upload_job_test.cc",
       "storage/resources/resource_interface_test.cc",
       "storage/storage_queue_stress_test.cc",
-      # "storage/storage_queue_test.cc", flakiness, disabled by sheriff (b/194224371)
-      # "storage/storage_test.cc", flakiness, disabled by sheriff (b/194224371)
+      "storage/storage_queue_test.cc",
+      "storage/storage_test.cc",
       "util/shared_queue_test.cc",
       "util/status_macros_test.cc",
       "util/status_test.cc",
