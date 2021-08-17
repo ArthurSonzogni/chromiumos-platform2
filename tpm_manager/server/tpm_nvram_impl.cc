@@ -353,17 +353,13 @@ NvramResult TpmNvramImpl::GetSpaceInfo(
     return MapTpmError(result);
   }
   UINT64 offset = 0;
-  Trspi_UnloadBlob_NV_DATA_PUBLIC(&offset, nv_index_data.value(), nullptr);
-  if (nv_index_data_length < offset) {
-    LOG(ERROR) << "Not enough data from GetOveralls()->Ospi_TPM_GetCapability.";
-    return NVRAM_RESULT_DEVICE_ERROR;
-  }
   TPM_NV_DATA_PUBLIC info;
-  offset = 0;
-  result =
-      Trspi_UnloadBlob_NV_DATA_PUBLIC(&offset, nv_index_data.value(), &info);
+  result = Trspi_UnloadBlob_NV_DATA_PUBLIC_s(&offset, nv_index_data.value(),
+                                             nv_index_data_length, &info);
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Error calling Trspi_UnloadBlob_NV_DATA_PUBLIC";
+    TPM_LOG(ERROR, result)
+        << "Error calling Trspi_UnloadBlob_NV_DATA_PUBLIC. Maybe there are not "
+           "enough data from GetOveralls()->Ospi_TPM_GetCapability.";
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   if (size) {
