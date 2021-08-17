@@ -422,7 +422,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
 
   // Cancel access to the file.
-  HANDLE_EINTR(close(lifeline_fd.release()));
+  IGNORE_EINTR(close(lifeline_fd.release()));
 
   // Let DlpAdaptor process that lifeline_fd is closed.
   base::RunLoop().RunUntilIdle();
