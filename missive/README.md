@@ -15,14 +15,9 @@ Note: This is a complementary daemon to the
 
 ```
 # HOST (inside chroot)
-~$ cros_workon-${BOARD} start missive
+~$ cros-workon-${BOARD} start missive
 ~$ emerge-${BOARD} missive
-~$ cros deploy root@${IP_ADDRESS} missive
-
-# Until the missived ebuild is added to the overlay
-# before starting missived copy the passwd/group
-~$ scp /build/${BOARD}/etc/passwd  root@{IP_ADDRESS}:/etc/passwd
-~$ scp /build/${BOARD}/etc/group  root@{IP_ADDRESS}:/etc/group
+~$ cros deploy ssh://localhost:9222 missive
 
 # DUT
 ~# start missived
@@ -43,6 +38,7 @@ were written.
 The code in the following folders originally comes from
 chromium://components/reporting:
 
+- compression
 - encryption
 - proto
 - storage

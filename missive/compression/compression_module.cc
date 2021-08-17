@@ -77,7 +77,6 @@ void CompressionModule::CompressRecord(
       break;
     }
     case CompressionInformation::COMPRESSION_SNAPPY: {
-      LOG(ERROR) << "Record is compressed!";
       CompressionModule::CompressRecordSnappy(std::move(record), std::move(cb));
       break;
     }
