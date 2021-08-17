@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -362,6 +363,10 @@ NvramResult TpmNvramImpl::GetSpaceInfo(
            "enough data from GetOveralls()->Ospi_TPM_GetCapability.";
     return NVRAM_RESULT_DEVICE_ERROR;
   }
+  std::unique_ptr<BYTE, decltype(std::free)*> pcr_info_read_mem(
+      info.pcrInfoRead.pcrSelection.pcrSelect, std::free);
+  std::unique_ptr<BYTE, decltype(std::free)*> pcr_info_write_mem(
+      info.pcrInfoWrite.pcrSelection.pcrSelect, std::free);
   if (size) {
     *size = info.dataSize;
   }
