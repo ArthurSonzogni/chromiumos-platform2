@@ -258,7 +258,7 @@ bool AuthorizeAllImpl(SafeFD* dir,
   if (!listing.is_valid()) {
     PLOG(ERROR) << "fdopendir failed for '" << GetFDPath(dir->get()).value()
                 << "'";
-    HANDLE_EINTR(close(dup_fd));
+    IGNORE_EINTR(close(dup_fd));
     return false;
   }
 
