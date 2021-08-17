@@ -36,8 +36,8 @@ TEST(UserSecretStashTest, GetEncryptedUSS) {
   brillo::SecureBlob main_key(kAesGcm256KeySize);
   memset(main_key.data(), 0xA, main_key.size());
 
-  auto wrapped_uss = stash.GetAesGcmEncrypted(main_key);
-  EXPECT_NE(base::nullopt, wrapped_uss);
+  auto wrapped_uss = stash.GetEncryptedContainer(main_key);
+  ASSERT_NE(base::nullopt, wrapped_uss);
 
   // No raw secrets in the encrypted USS, which is written to disk.
   brillo::SecureBlob wrapped_blob(wrapped_uss->begin(), wrapped_uss->end());
@@ -52,11 +52,11 @@ TEST(UserSecretStashTest, EncryptAndDecryptUSS) {
   brillo::SecureBlob main_key(kAesGcm256KeySize);
   memset(main_key.data(), 0xA, main_key.size());
 
-  auto wrapped_uss = stash.GetAesGcmEncrypted(main_key);
-  EXPECT_NE(base::nullopt, wrapped_uss);
+  auto wrapped_uss = stash.GetEncryptedContainer(main_key);
+  ASSERT_NE(base::nullopt, wrapped_uss);
 
   UserSecretStash stash2;
-  EXPECT_TRUE(stash2.FromAesGcmEncrypted(wrapped_uss.value(), main_key));
+  ASSERT_TRUE(stash2.FromEncryptedContainer(wrapped_uss.value(), main_key));
 
   EXPECT_EQ(stash.GetFileSystemKey(), stash2.GetFileSystemKey());
   EXPECT_EQ(stash.GetResetSecret(), stash2.GetResetSecret());

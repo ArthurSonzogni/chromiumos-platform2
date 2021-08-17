@@ -54,9 +54,17 @@ pkg_config("cryptohome-proto_config") {
 
 flatbuffer("cryptohome-flatbuffers") {
   flatc_out_dir = "include/cryptohome"
+  flatc_args = [
+    # Default flatbuffer flags used in Chrome OS.
+    "--cpp",
+    "--keep-prefix",
+
+    # Generate code for enums using C++11 scoped enums.
+    "--scoped-enums",
+  ]
   sources = [
-    "../flatbuffer_schemas/aes_gcm_encrypted_uss.fbs",
-    "../flatbuffer_schemas/user_secret_stash.fbs",
+    "../flatbuffer_schemas/user_secret_stash_container.fbs",
+    "../flatbuffer_schemas/user_secret_stash_payload.fbs",
   ]
 }
 

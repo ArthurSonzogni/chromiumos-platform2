@@ -12,7 +12,6 @@
 #include <memory>
 
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
-#include "cryptohome/user_secret_stash_generated.h"
 
 namespace cryptohome {
 
@@ -40,15 +39,15 @@ class UserSecretStash {
   // This uses the |main_key|, which should be 256-bit as of right now, to
   // encrypted this UserSecretStash class. The object is converted to a
   // UserSecretStashProto, serialized, and then encrypted with AES-GCM-256.
-  base::Optional<brillo::SecureBlob> GetAesGcmEncrypted(
+  base::Optional<brillo::SecureBlob> GetEncryptedContainer(
       const brillo::SecureBlob& main_key);
 
-  // This deserializes the |flatbuffer| into a AesGcmEncryptedUSS table.
+  // This deserializes the |flatbuffer| into a UserSecretStashContainer table.
   // That table is contains a ciphertext, which is decrypted with the |main_key|
   // using AES-GMC-256. It doesn't return the plaintext, it populates the fields
   // of the class with the encrypted message.
-  bool FromAesGcmEncrypted(const brillo::SecureBlob& flatbuffer,
-                           const brillo::SecureBlob& main_key);
+  bool FromEncryptedContainer(const brillo::SecureBlob& flatbuffer,
+                              const brillo::SecureBlob& main_key);
 
  private:
   // A key registered with the kernel to decrypt files.
