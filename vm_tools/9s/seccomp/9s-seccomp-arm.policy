@@ -56,6 +56,7 @@ listen: 1
 # Disallow clone's other than new threads.
 clone: arg0 & 0x00010000
 fstatfs64: 1
+fstatfs: 1
 linkat: 1
 unlinkat: 1
 fsync: 1
