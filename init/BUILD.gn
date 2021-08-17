@@ -20,6 +20,7 @@ group("all") {
       ":file_attrs_cleaner_test",
       ":periodic_scheduler_test",
       ":usermode-helper_test",
+      ":utils_test",
     ]
   }
 }
@@ -51,14 +52,28 @@ static_library("libcrossystem") {
   configs += [ ":target_defaults" ]
 }
 
-executable("clobber-state") {
+static_library("utils") {
+  sources = [ "utils.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+static_library("libclobber") {
   sources = [
     "clobber_state.cc",
-    "clobber_state_main.cc",
     "clobber_ui.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libcrossystem" ]
+  deps = [ ":utils" ]
+}
+
+executable("clobber-state") {
+  sources = [ "clobber_state_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libclobber",
+    ":libcrossystem",
+    ":utils",
+  ]
 }
 
 static_library("file_attrs_cleaner_lib") {
@@ -114,9 +129,7 @@ if (use.test) {
 
   executable("clobber_state_test") {
     sources = [
-      "clobber_state.cc",
       "clobber_state_test.cc",
-      "clobber_ui.cc",
       "clobber_ui_test.cc",
     ]
     configs += [
@@ -125,7 +138,9 @@ if (use.test) {
       ":test_config",
     ]
     deps = [
+      ":libclobber",
       ":libcrossystem",
+      ":utils",
       "//common-mk/testrunner",
     ]
   }
@@ -165,6 +180,19 @@ if (use.test) {
     ]
     deps = [
       ":usermode-helper_lib",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("utils_test") {
+    sources = [ "utils_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    deps = [
+      ":utils",
       "//common-mk/testrunner",
     ]
   }

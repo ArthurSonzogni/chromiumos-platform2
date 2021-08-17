@@ -46,6 +46,7 @@
 #include <chromeos/secure_erase_file/secure_erase_file.h>
 
 #include "init/crossystem.h"
+#include "init/utils.h"
 
 namespace {
 
@@ -102,31 +103,23 @@ void CgptFindShowFunctionNoOp(struct CgptFindParams*,
                               int,
                               GptEntry*) {}
 
-bool ReadFileToInt(const base::FilePath& path, int* value) {
-  std::string str;
-  if (!base::ReadFileToString(path, &str)) {
-    return false;
-  }
-  base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str);
-  return base::StringToInt(str, value);
-}
-
 // Calculate the maximum number of bad blocks per 1024 blocks for UBI.
 int CalculateUBIMaxBadBlocksPer1024(int partition_number) {
   // The max bad blocks per 1024 is based on total device size,
   // not the partition size.
   int mtd_size = 0;
-  ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/size"), &mtd_size);
+  utils::ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/size"), &mtd_size);
 
   int erase_size;
-  ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/erasesize"), &erase_size);
+  utils::ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/erasesize"),
+                       &erase_size);
 
   int block_count = mtd_size / erase_size;
 
   int reserved_error_blocks = 0;
   base::FilePath reserved_for_bad(base::StringPrintf(
       "/sys/class/ubi/ubi%d/reserved_for_bad", partition_number));
-  ReadFileToInt(reserved_for_bad, &reserved_error_blocks);
+  utils::ReadFileToInt(reserved_for_bad, &reserved_error_blocks);
   return reserved_error_blocks * 1024 / block_count;
 }
 
@@ -209,16 +202,6 @@ void CollectClobberCrashReports() {
     LOG(WARNING) << "Unable to collect logs and crashes from current run.";
 
   return;
-}
-
-bool CreateEncryptedRebootVault() {
-  brillo::ProcessImpl create_erv;
-  create_erv.AddArg("/usr/sbin/encrypted-reboot-vault");
-  create_erv.AddArg("--action=create");
-  if (create_erv.Run() != 0)
-    return false;
-
-  return true;
 }
 
 bool MountEncryptedStateful() {
@@ -323,7 +306,7 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
 // static
 bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
   int value;
-  if (!ReadFileToInt(path, &value) || value < 0 || value >= INT_MAX) {
+  if (!utils::ReadFileToInt(path, &value) || value < 0 || value >= INT_MAX) {
     return base::WriteFile(path, "1\n", 2) == 2;
   }
 
@@ -460,7 +443,7 @@ bool ClobberState::IsRotational(const base::FilePath& device_path) {
                                            .Append("queue/rotational");
 
       int value;
-      if (ReadFileToInt(rotational_file, &value)) {
+      if (utils::ReadFileToInt(rotational_file, &value)) {
         return value == 1;
       }
     }
@@ -630,7 +613,7 @@ bool ClobberState::WipeMTDDevice(
   int volume_size;
   base::FilePath data_bytes(base::StringPrintf(
       "/sys/class/ubi/ubi%d_0/data_bytes", partition_number));
-  ReadFileToInt(data_bytes, &volume_size);
+  utils::ReadFileToInt(data_bytes, &volume_size);
 
   brillo::ProcessImpl ubidetach;
   ubidetach.AddArg("/bin/ubidetach");
@@ -1362,7 +1345,7 @@ int ClobberState::Run() {
   // Attempt to collect crashes into the reboot vault crash directory. Do not
   // collect crashes if this is a user triggered powerwash.
   if (preserve_sensitive_files) {
-    if (CreateEncryptedRebootVault())
+    if (utils::CreateEncryptedRebootVault())
       CollectClobberCrashReports();
   }
 
