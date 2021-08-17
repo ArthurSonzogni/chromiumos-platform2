@@ -313,9 +313,10 @@ TEST(DatapathTest, Start) {
       {Dual, "nat -F OUTPUT -w"},
       // Asserts for SNAT rules of traffic forwarded from downstream interfaces.
       {IPv4,
-       "filter -A FORWARD -m mark --mark 0x00000001/0x00000001 -m state "
+       "filter -I FORWARD -m mark --mark 0x00000001/0x00000001 -m state "
        "--state INVALID -j DROP "
        "-w"},
+      {IPv4, "filter -I FORWARD -p tcp --tcp-flags FIN,PSH FIN,PSH -j DROP -w"},
       {IPv4,
        "nat -A POSTROUTING -m mark --mark 0x00000001/0x00000001 -j MASQUERADE "
        "-w"},

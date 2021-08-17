@@ -156,27 +156,6 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
   }
 
-  // chromium:898210: Drop any locally originated traffic that would exit a
-  // physical interface with a source IPv4 address from the subnet of IPs used
-  // for VMs, containers, and connected namespaces This is needed to prevent
-  // packets leaking with an incorrect src IP when a local process binds to the
-  // wrong interface.
-  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain)) {
-    LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
-               << " filter chain";
-  }
-  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "OUTPUT",
-                      kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/)) {
-    LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
-               << kDropGuestIpv4PrefixChain;
-  }
-  for (const auto& oif : kPhysicalIfnamePrefixes) {
-    if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet)) {
-      LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
-                   << kGuestIPv4Subnet << " exiting " << oif;
-    }
-  }
-
   // Create filter subchains for managing the egress firewall rules associated
   // with VPN lockdown. When VPN lockdown is enabled, a REJECT rule must stop
   // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark. This
@@ -205,17 +184,52 @@ void Datapath::Start() {
     }
   }
 
+  // chromium:898210: Drop any locally originated traffic that would exit a
+  // physical interface with a source IPv4 address from the subnet of IPs used
+  // for VMs, containers, and connected namespaces This is needed to prevent
+  // packets leaking with an incorrect src IP when a local process binds to the
+  // wrong interface.
+  // b/196898241: To ensure that the drop_guest_ipv4_prefix chain is traversed
+  // before vpn_accept and vpn_lockdown, drop_guest_ipv4_prefix is inserted in
+  // front of the OUTPUT chain last.
+  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain)) {
+    LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
+               << " filter chain";
+  }
+  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "OUTPUT",
+                      kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/)) {
+    LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
+               << kDropGuestIpv4PrefixChain;
+  }
+  for (const auto& oif : kPhysicalIfnamePrefixes) {
+    if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet)) {
+      LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
+                   << kGuestIPv4Subnet << " exiting " << oif;
+    }
+  }
+
   // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
   // Crostini, ...) or a connected namespace.
   // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
   // need to be explicitly dropped as SNAT cannot be applied to them.
+  // b/196898241: To ensure that the INVALID DROP rule is traversed before
+  // vpn_accept and vpn_lockdown, insert it in front of the FORWARD chain last.
   std::string snatMark =
       kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
   if (process_runner_->iptables(
-          "filter", {"-A", "FORWARD", "-m", "mark", "--mark", snatMark, "-m",
+          "filter", {"-I", "FORWARD", "-m", "mark", "--mark", snatMark, "-m",
                      "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install SNAT mark rules.";
+    LOG(ERROR) << "Failed to install FORWARD rule to drop INVALID packets";
   }
+  // b/196899048: IPv4 TCP packets with TCP flags FIN,PSH coming from downstream
+  // guests need to be dropped explicitly because SNAT will not apply to them
+  // but the --state INVALID rule above will also not match for these packets.
+  if (process_runner_->iptables(
+          "filter", {"-I", "FORWARD", "-p", "tcp", "--tcp-flags", "FIN,PSH",
+                     "FIN,PSH", "-j", "DROP", "-w"}) != 0) {
+    LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH packets";
+  }
+
   if (process_runner_->iptables(
           "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", snatMark, "-j",
                   "MASQUERADE", "-w"}) != 0) {
