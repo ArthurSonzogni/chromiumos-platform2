@@ -93,13 +93,13 @@ class ScanHandler {
  public:
   ScanHandler(base::RepeatingClosure quit_closure,
               ManagerProxy* manager,
-              std::string scanner_name)
+              std::string scanner_name,
+              std::string output_pattern)
       : cvar_(&lock_),
         quit_closure_(quit_closure),
         manager_(manager),
         scanner_name_(scanner_name),
-        base_output_path_("/tmp/scan-" + EscapeScannerName(scanner_name) +
-                          ".png"),
+        output_pattern_(output_pattern),
         current_page_(1),
         connected_callback_called_(false),
         connection_status_(false) {
@@ -135,7 +135,7 @@ class ScanHandler {
 
   ManagerProxy* manager_;  // Not owned.
   std::string scanner_name_;
-  base::FilePath base_output_path_;
+  std::string output_pattern_;
   base::Optional<std::string> scan_uuid_;
   int current_page_;
 
@@ -273,8 +273,16 @@ base::Optional<lorgnette::GetNextImageResponse> ScanHandler::GetNextImage(
 }
 
 void ScanHandler::RequestNextPage() {
-  base::FilePath output_path = base_output_path_.InsertBeforeExtension(
-      base::StringPrintf("_page%d", current_page_));
+  std::string expanded_path = output_pattern_;
+  base::ReplaceFirstSubstringAfterOffset(
+      &expanded_path, 0, "%n", base::StringPrintf("%d", current_page_));
+  base::ReplaceFirstSubstringAfterOffset(&expanded_path, 0, "%s",
+                                         EscapeScannerName(scanner_name_));
+  base::FilePath output_path = base::FilePath(expanded_path);
+  if (current_page_ > 1 && output_pattern_.find("%n") == std::string::npos) {
+    output_path = output_path.InsertBeforeExtension(
+        base::StringPrintf("_page%d", current_page_));
+  }
 
   base::Optional<lorgnette::GetNextImageResponse> response =
       GetNextImage(output_path);
@@ -412,7 +420,8 @@ class ScanRunner {
     color_mode_ = color_mode;
   }
 
-  bool RunScanner(const std::string& scanner);
+  bool RunScanner(const std::string& scanner,
+                  const std::string& output_pattern);
 
  private:
   ManagerProxy* manager_;  // Not owned.
@@ -422,7 +431,8 @@ class ScanRunner {
   lorgnette::ColorMode color_mode_;
 };
 
-bool ScanRunner::RunScanner(const std::string& scanner) {
+bool ScanRunner::RunScanner(const std::string& scanner,
+                            const std::string& output_pattern) {
   std::cout << "Getting device capabilities for " << scanner << std::endl;
   base::Optional<lorgnette::ScannerCapabilities> capabilities =
       GetScannerCapabilities(manager_, scanner);
@@ -479,7 +489,8 @@ bool ScanRunner::RunScanner(const std::string& scanner) {
 
   // Implicitly uses this thread's executor as defined in main.
   base::RunLoop run_loop;
-  ScanHandler handler(run_loop.QuitClosure(), manager_, scanner);
+  ScanHandler handler(run_loop.QuitClosure(), manager_, scanner,
+                      output_pattern);
 
   if (!handler.WaitUntilConnected()) {
     return false;
@@ -531,12 +542,9 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
             lorgnette::SourceType source_type,
             const lorgnette::ScanRegion& region,
             lorgnette::ColorMode color_mode,
-            bool scan_from_all_scanners) {
-  std::vector<std::string> scanners = BuildScannerList(manager.get());
-  if (scanners.empty()) {
-    return false;
-  }
-
+            bool scan_from_all_scanners,
+            const std::string& forced_scanner,
+            const std::string& output_pattern) {
   ScanRunner runner(manager.get());
   runner.SetResolution(scan_resolution);
   runner.SetSource(source_type);
@@ -545,6 +553,15 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
   if (region.top_left_x() != -1.0 || region.top_left_y() != -1.0 ||
       region.bottom_right_x() != -1.0 || region.bottom_right_y() != -1.0) {
     runner.SetScanRegion(region);
+  }
+
+  if (!forced_scanner.empty()) {
+    return runner.RunScanner(forced_scanner, output_pattern);
+  }
+
+  std::vector<std::string> scanners = BuildScannerList(manager.get());
+  if (scanners.empty()) {
+    return false;
   }
 
   std::cout << "Choose a scanner (blank to quit):" << std::endl;
@@ -561,14 +578,14 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
     }
 
     std::string scanner = scanners[index];
-    return !runner.RunScanner(scanner);
+    return runner.RunScanner(scanner, output_pattern);
   }
 
   std::cout << "Scanning from all scanners." << std::endl;
   std::vector<std::string> successes;
   std::vector<std::string> failures;
   for (const std::string& scanner : scanners) {
-    if (runner.RunScanner(scanner)) {
+    if (runner.RunScanner(scanner, output_pattern)) {
       successes.push_back(scanner);
     } else {
       failures.push_back(scanner);
@@ -644,6 +661,10 @@ int main(int argc, char** argv) {
                 "Bottom-right X position of the scan region (mm)");
   DEFINE_double(bottom_right_y, -1.0,
                 "Bottom-right Y position of the scan region (mm)");
+  DEFINE_string(output, "/tmp/scan-%s_page%n.png",
+                "Pattern for output files. If present, %s will be replaced "
+                "with the scanner name, and %n will be replaced with the "
+                "page number.");
 
   // Cancel Scan options
   DEFINE_string(uuid, "", "UUID of the scan job to cancel.");
@@ -721,8 +742,9 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    bool success = DoScan(std::move(manager), FLAGS_scan_resolution,
-                          source_type.value(), region, color_mode, FLAGS_all);
+    bool success =
+        DoScan(std::move(manager), FLAGS_scan_resolution, source_type.value(),
+               region, color_mode, FLAGS_all, FLAGS_scanner, FLAGS_output);
     return success ? 0 : 1;
   } else if (command == "list") {
     std::vector<std::string> scanners = BuildScannerList(manager.get());
