@@ -62,4 +62,47 @@ TEST(UserSecretStashTest, EncryptAndDecryptUSS) {
   EXPECT_EQ(stash.GetResetSecret(), stash2.GetResetSecret());
 }
 
+// Test that deserialization fails on an empty blob.
+TEST(UserSecretStashTest, DecryptErrorEmptyBuf) {
+  brillo::SecureBlob main_key(kAesGcm256KeySize);
+  UserSecretStash stash;
+  EXPECT_FALSE(stash.FromEncryptedContainer(brillo::SecureBlob(), main_key));
+}
+
+// Test that deserialization fails on a corrupted flatbuffer.
+TEST(UserSecretStashTest, DecryptErrorCorruptedBuf) {
+  UserSecretStash stash;
+  stash.InitializeRandom();
+
+  brillo::SecureBlob main_key(kAesGcm256KeySize);
+  memset(main_key.data(), 0xA, main_key.size());
+
+  auto wrapped_uss = stash.GetEncryptedContainer(main_key);
+  ASSERT_NE(base::nullopt, wrapped_uss);
+
+  auto corrupted_uss_flatbuffer = *wrapped_uss;
+  for (uint8_t& byte : corrupted_uss_flatbuffer)
+    byte ^= 1;
+
+  EXPECT_FALSE(
+      stash.FromEncryptedContainer(corrupted_uss_flatbuffer, main_key));
+}
+
+// Test that decryption fails on a wrong decryption key.
+TEST(UserSecretStashTest, DecryptErrorWrongKey) {
+  UserSecretStash stash;
+  stash.InitializeRandom();
+
+  brillo::SecureBlob main_key(kAesGcm256KeySize);
+  memset(main_key.data(), 0xA, main_key.size());
+
+  auto wrapped_uss = stash.GetEncryptedContainer(main_key);
+  ASSERT_NE(base::nullopt, wrapped_uss);
+
+  auto wrong_main_key = main_key;
+  wrong_main_key[0] ^= 1;
+
+  EXPECT_FALSE(stash.FromEncryptedContainer(*wrapped_uss, wrong_main_key));
+}
+
 }  // namespace cryptohome
