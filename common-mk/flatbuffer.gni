@@ -6,7 +6,7 @@
 #
 #   flatc_args (optional)
 #       Arguments passed to flatc. If not specified, the default value is
-#       ["-c", "--keep-prefix"]. If specified, will overwrite the default
+#       ["--cpp", "--keep-prefix"]. If specified, will overwrite the default
 #       arguments.
 #       "-I" and "-o" options should not be specified here. Use "flatc_out_dir"
 #       and "flatc_include_dirs" to specify.
@@ -87,7 +87,7 @@ template("flatbuffer") {
       args += invoker.flatc_args
     } else {
       args += [
-        "-c",
+        "--cpp",
         "--keep-prefix",
       ]
     }
