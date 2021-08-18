@@ -24,10 +24,11 @@ extern const char kPublisherPublicKey[];
 extern const char kChannelPublicKey[];
 extern const char kRsaPublicKey[];
 extern const char kOnboardingMetaData[];
-extern const char kHsmAeadCipherText[];
-extern const char kHsmAeadAd[];
-extern const char kHsmAeadIv[];
-extern const char kHsmAeadTag[];
+extern const char kHsmAead[];
+extern const char kAeadCipherText[];
+extern const char kAeadAd[];
+extern const char kAeadIv[];
+extern const char kAeadTag[];
 extern const char kEphemeralPublicInvKey[];
 extern const char kRequestMetaData[];
 extern const char kEpochPublicKey[];
@@ -93,6 +94,10 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
 bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                   const std::string& map_key,
                                   brillo::SecureBlob* value);
+
+bool GetHsmPayloadFromRequestAdForTesting(
+    const brillo::SecureBlob& request_payload_cbor,
+    cryptorecovery::HsmPayload* hsm_payload);
 
 bool GetRequestPayloadSchemaVersionForTesting(
     const brillo::SecureBlob& input_cbor, int* value);

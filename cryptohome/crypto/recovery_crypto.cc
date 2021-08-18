@@ -18,6 +18,7 @@
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
 #include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/crypto/recovery_crypto_util.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 
@@ -258,10 +259,7 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
     cryptorecovery::RequestPayload* request_payload,
     brillo::SecureBlob* ephemeral_pub_key) const {
   cryptorecovery::RecoveryRequestAssociatedData request_ad;
-  request_ad.hsm_aead_ct = hsm_payload.cipher_text;
-  request_ad.hsm_aead_ad = hsm_payload.associated_data;
-  request_ad.hsm_aead_iv = hsm_payload.iv;
-  request_ad.hsm_aead_tag = hsm_payload.tag;
+  request_ad.hsm_payload = hsm_payload;
   request_ad.request_meta_data = request_meta_data;
   request_ad.epoch_pub_key = epoch_pub_key;
   request_ad.request_payload_salt = CreateSecureRandomBlob(kHkdfSaltLength);

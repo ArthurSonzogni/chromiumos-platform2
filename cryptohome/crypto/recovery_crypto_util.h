@@ -72,14 +72,8 @@ struct HsmPlainText {
 
 // `associated_data` for the Request payload.
 struct RecoveryRequestAssociatedData {
-  // HSM payload ciphertext (CT1).
-  brillo::SecureBlob hsm_aead_ct;
-  // HSM payload associated data (AD1).
-  brillo::SecureBlob hsm_aead_ad;
-  // AES-GCM iv for AEAD of the HSM payload.
-  brillo::SecureBlob hsm_aead_iv;
-  // AES-GCM tag for AEAD of the HSM payload.
-  brillo::SecureBlob hsm_aead_tag;
+  // HSM payload.
+  HsmPayload hsm_payload;
   // The metadata generated during the Recovery flow on a Chromebook (RMD).
   brillo::SecureBlob request_meta_data;
   // Current epoch beacon value (G*r).

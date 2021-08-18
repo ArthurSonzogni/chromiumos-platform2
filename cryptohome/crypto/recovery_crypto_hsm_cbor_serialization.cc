@@ -52,6 +52,18 @@ base::Optional<cbor::Value> ReadCborPayload(
   return cbor_response;
 }
 
+cbor::Value::MapValue CreateHsmPayloadMap(
+    const cryptorecovery::HsmPayload& payload) {
+  cbor::Value::MapValue result;
+
+  result.emplace(kAeadCipherText, payload.cipher_text);
+  result.emplace(kAeadAd, payload.associated_data);
+  result.emplace(kAeadIv, payload.iv);
+  result.emplace(kAeadTag, payload.tag);
+
+  return result;
+}
+
 }  // namespace
 
 // !!! DO NOT MODIFY !!!
@@ -67,10 +79,11 @@ const char kPublisherPublicKey[] = "publisher_pub_key";
 const char kChannelPublicKey[] = "channel_pub_key";
 const char kRsaPublicKey[] = "epoch_rsa_sig_pkey";
 const char kOnboardingMetaData[] = "onboarding_meta_data";
-const char kHsmAeadCipherText[] = "hsm_aead_ct";
-const char kHsmAeadAd[] = "hsm_aead_ad";
-const char kHsmAeadIv[] = "hsm_aead_iv";
-const char kHsmAeadTag[] = "hsm_aead_tag";
+const char kHsmAead[] = "hsm_aead";
+const char kAeadCipherText[] = "ct";
+const char kAeadAd[] = "ad";
+const char kAeadIv[] = "iv";
+const char kAeadTag[] = "tag";
 const char kRequestMetaData[] = "request_meta_data";
 const char kEpochPublicKey[] = "epoch_pub_key";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
@@ -104,10 +117,7 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
 
   ad_map.emplace(kRecoveryCryptoRequestSchemaVersion,
                  /*schema_version=*/kProtocolVersion);
-  ad_map.emplace(kHsmAeadCipherText, args.hsm_aead_ct);
-  ad_map.emplace(kHsmAeadAd, args.hsm_aead_ad);
-  ad_map.emplace(kHsmAeadIv, args.hsm_aead_iv);
-  ad_map.emplace(kHsmAeadTag, args.hsm_aead_tag);
+  ad_map.emplace(kHsmAead, CreateHsmPayloadMap(args.hsm_payload));
   ad_map.emplace(kRequestMetaData, args.request_meta_data);
   ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
   ad_map.emplace(kRequestPayloadSalt, args.request_payload_salt);
@@ -185,6 +195,10 @@ bool DeserializeHsmPlainTextFromCbor(
   if (!cbor) {
     return false;
   }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "HSM plain text is not a cbor map.";
+    return false;
+  }
 
   const cbor::Value::MapValue& response_map = cbor->GetMap();
   const auto dealer_pub_key_entry =
@@ -239,6 +253,10 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
   if (!cbor) {
     return false;
   }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "Request plain text is not a cbor map.";
+    return false;
+  }
 
   const cbor::Value::MapValue& request_map = cbor->GetMap();
   const auto ephemeral_pub_inv_key_entry =
@@ -264,6 +282,10 @@ bool DeserializeHsmResponsePlainTextFromCbor(
     cryptorecovery::HsmResponsePlainText* response_payload) {
   const auto& cbor = ReadCborPayload(response_payload_cbor);
   if (!cbor) {
+    return false;
+  }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "HSM plain text is not a cbor map.";
     return false;
   }
 
@@ -320,6 +342,10 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
   if (!cbor) {
     return false;
   }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "HSM associated data is not a cbor map.";
+    return false;
+  }
 
   const cbor::Value::MapValue& response_map = cbor->GetMap();
   const auto response_payload_salt_entry =
@@ -364,18 +390,101 @@ bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
   if (!cbor) {
     return false;
   }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "Provided cbor is not a map.";
+    return false;
+  }
+
   const cbor::Value::MapValue& cbor_map = cbor->GetMap();
   const auto value_entry = cbor_map.find(cbor::Value(map_key));
   if (value_entry == cbor_map.end()) {
-    LOG(ERROR) << "No keyed entry in the HSM response map.";
+    LOG(ERROR) << "No keyed entry in the cbor map.";
     return false;
   }
   if (!value_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Keyed entry in the HSM response has a wrong format.";
+    LOG(ERROR) << "Keyed entry in the cbor map has a wrong format.";
     return false;
   }
   value->assign(value_entry->second.GetBytestring().begin(),
                 value_entry->second.GetBytestring().end());
+  return true;
+}
+
+bool GetHsmPayloadFromRequestAdForTesting(
+    const brillo::SecureBlob& request_payload_cbor,
+    cryptorecovery::HsmPayload* hsm_payload) {
+  const auto& cbor = ReadCborPayload(request_payload_cbor);
+  if (!cbor) {
+    return false;
+  }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "Request associated data is not a cbor map.";
+    return false;
+  }
+
+  const cbor::Value::MapValue& cbor_map = cbor->GetMap();
+  const auto hsm_payload_entry = cbor_map.find(cbor::Value(kHsmAead));
+  if (hsm_payload_entry == cbor_map.end()) {
+    LOG(ERROR) << "No HSM payload entry in the Request cbor map.";
+    return false;
+  }
+  if (!hsm_payload_entry->second.is_map()) {
+    LOG(ERROR)
+        << "HSM payload entry in the Request cbor map has a wrong format.";
+    return false;
+  }
+
+  const cbor::Value::MapValue& hsm_map = hsm_payload_entry->second.GetMap();
+
+  const auto ct_entry = hsm_map.find(cbor::Value(kAeadCipherText));
+  if (ct_entry == hsm_map.end()) {
+    LOG(ERROR) << "No cipher text entry in the HSM cbor map.";
+    return false;
+  }
+  if (!ct_entry->second.is_bytestring()) {
+    LOG(ERROR) << "Cipher text entry in the HSM cbor map has a wrong format.";
+    return false;
+  }
+
+  const auto ad_entry = hsm_map.find(cbor::Value(kAeadAd));
+  if (ad_entry == hsm_map.end()) {
+    LOG(ERROR) << "No associated data entry in the HSM cbor map.";
+    return false;
+  }
+  if (!ad_entry->second.is_bytestring()) {
+    LOG(ERROR)
+        << "Associated data entry in the HSM cbor map has a wrong format.";
+    return false;
+  }
+
+  const auto iv_entry = hsm_map.find(cbor::Value(kAeadIv));
+  if (iv_entry == hsm_map.end()) {
+    LOG(ERROR) << "No iv entry in the HSM cbor map.";
+    return false;
+  }
+  if (!iv_entry->second.is_bytestring()) {
+    LOG(ERROR) << "Iv entry in the HSM cbor map has a wrong format.";
+    return false;
+  }
+
+  const auto tag_entry = hsm_map.find(cbor::Value(kAeadTag));
+  if (tag_entry == hsm_map.end()) {
+    LOG(ERROR) << "No tag entry in the HSM cbor map.";
+    return false;
+  }
+  if (!tag_entry->second.is_bytestring()) {
+    LOG(ERROR) << "Tag entry in the HSM cbor map has a wrong format.";
+    return false;
+  }
+
+  hsm_payload->cipher_text.assign(ct_entry->second.GetBytestring().begin(),
+                                  ct_entry->second.GetBytestring().end());
+  hsm_payload->associated_data.assign(ad_entry->second.GetBytestring().begin(),
+                                      ad_entry->second.GetBytestring().end());
+  hsm_payload->iv.assign(iv_entry->second.GetBytestring().begin(),
+                         iv_entry->second.GetBytestring().end());
+  hsm_payload->tag.assign(tag_entry->second.GetBytestring().begin(),
+                          tag_entry->second.GetBytestring().end());
   return true;
 }
 
@@ -385,15 +494,21 @@ bool GetRequestPayloadSchemaVersionForTesting(
   if (!cbor) {
     return false;
   }
+  if (!cbor->is_map()) {
+    LOG(ERROR) << "Request associated data is not a cbor map.";
+    return false;
+  }
+
   const cbor::Value::MapValue& cbor_map = cbor->GetMap();
   const auto value_entry =
       cbor_map.find(cbor::Value(kRecoveryCryptoRequestSchemaVersion));
   if (value_entry == cbor_map.end()) {
-    LOG(ERROR) << "No schema version encoded in the HSM cbor.";
+    LOG(ERROR) << "No schema version encoded in the Request associated data.";
     return false;
   }
   if (!value_entry->second.is_integer()) {
-    LOG(ERROR) << "Schema version in HSM payload is incorrectly encoded.";
+    LOG(ERROR)
+        << "Schema version in Request associated data is incorrectly encoded.";
     return false;
   }
   *value = value_entry->second.GetInteger();

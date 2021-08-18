@@ -118,11 +118,6 @@ class FakeRecoveryMediatorCrypto {
       const brillo::SecureBlob& epoch_priv_key,
       const cryptorecovery::RequestPayload& request_payload,
       brillo::SecureBlob* plain_text) const;
-
-  // Extract `hsm_payload` from associated data of `request_payload'.
-  bool ExtractHsmPayload(const cryptorecovery::RequestPayload& request_payload,
-                         cryptorecovery::HsmPayload* hsm_payload) const;
-
   EllipticCurve ec_;
 };
 

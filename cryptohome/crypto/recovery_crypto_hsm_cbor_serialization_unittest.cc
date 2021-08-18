@@ -4,6 +4,8 @@
 
 #include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
 
+#include <utility>
+
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -142,37 +144,34 @@ TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
 // Verifies serialization of Recovery Request payload associated data to CBOR.
 TEST_F(RequestPayloadCborHelperTest, GenerateAd) {
   brillo::SecureBlob cbor_output;
-  cryptorecovery::RecoveryRequestAssociatedData args;
-  args.hsm_aead_ct = brillo::SecureBlob(kFakeHsmPayloadCipherText);
-  args.hsm_aead_ad = brillo::SecureBlob(kFakeHsmPayloadAd);
-  args.hsm_aead_iv = brillo::SecureBlob(kFakeHsmPayloadIv);
-  args.hsm_aead_tag = brillo::SecureBlob(kFakeHsmPayloadTag);
-  args.request_meta_data = brillo::SecureBlob(kFakeRequestData);
-  args.epoch_pub_key = epoch_pub_key_;
-  ASSERT_TRUE(SerializeRecoveryRequestAssociatedDataToCbor(args, &cbor_output));
+  cryptorecovery::HsmPayload hsm_payload;
+  hsm_payload.cipher_text = brillo::SecureBlob(kFakeHsmPayloadCipherText);
+  hsm_payload.associated_data = brillo::SecureBlob(kFakeHsmPayloadAd);
+  hsm_payload.iv = brillo::SecureBlob(kFakeHsmPayloadIv);
+  hsm_payload.tag = brillo::SecureBlob(kFakeHsmPayloadTag);
+  cryptorecovery::RecoveryRequestAssociatedData request_ad;
+  request_ad.hsm_payload = std::move(hsm_payload);
+  request_ad.request_meta_data = brillo::SecureBlob(kFakeRequestData);
+  request_ad.epoch_pub_key = epoch_pub_key_;
+  ASSERT_TRUE(
+      SerializeRecoveryRequestAssociatedDataToCbor(request_ad, &cbor_output));
+
+  cryptorecovery::HsmPayload deserialized_hsm_payload;
   brillo::SecureBlob deserialized_epoch_pub_key;
-  brillo::SecureBlob deserialized_hsm_aead_ct;
-  brillo::SecureBlob deserialized_hsm_aead_ad;
-  brillo::SecureBlob deserialized_hsm_aead_iv;
-  brillo::SecureBlob deserialized_hsm_aead_tag;
   brillo::SecureBlob deserialized_request_meta_data;
   int schema_version;
   ASSERT_TRUE(
       GetRequestPayloadSchemaVersionForTesting(cbor_output, &schema_version));
   EXPECT_EQ(schema_version, kProtocolVersion);
 
-  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadCipherText,
-                                           &deserialized_hsm_aead_ct));
-  EXPECT_EQ(deserialized_hsm_aead_ct.to_string(), kFakeHsmPayloadCipherText);
-  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadAd,
-                                           &deserialized_hsm_aead_ad));
-  EXPECT_EQ(deserialized_hsm_aead_ad.to_string(), kFakeHsmPayloadAd);
-  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadIv,
-                                           &deserialized_hsm_aead_iv));
-  EXPECT_EQ(deserialized_hsm_aead_iv.to_string(), kFakeHsmPayloadIv);
-  ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kHsmAeadTag,
-                                           &deserialized_hsm_aead_tag));
-  EXPECT_EQ(deserialized_hsm_aead_tag.to_string(), kFakeHsmPayloadTag);
+  ASSERT_TRUE(GetHsmPayloadFromRequestAdForTesting(cbor_output,
+                                                   &deserialized_hsm_payload));
+  EXPECT_EQ(deserialized_hsm_payload.cipher_text.to_string(),
+            kFakeHsmPayloadCipherText);
+  EXPECT_EQ(deserialized_hsm_payload.associated_data.to_string(),
+            kFakeHsmPayloadAd);
+  EXPECT_EQ(deserialized_hsm_payload.iv.to_string(), kFakeHsmPayloadIv);
+  EXPECT_EQ(deserialized_hsm_payload.tag.to_string(), kFakeHsmPayloadTag);
 
   ASSERT_TRUE(GetHsmCborMapByKeyForTesting(cbor_output, kEpochPublicKey,
                                            &deserialized_epoch_pub_key));

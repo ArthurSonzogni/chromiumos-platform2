@@ -21,6 +21,7 @@
 #include "cryptohome/crypto/error_util.h"
 #include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/crypto/recovery_crypto_util.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 
@@ -188,16 +189,17 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     LOG(ERROR) << "Unable to deserialize salt from request_payload";
     return false;
   }
-  brillo::SecureBlob hsm_ad;
-  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
-                                    &hsm_ad)) {
-    LOG(ERROR) << "Unable to deserialize hsm_ad from request_payload";
+  cryptorecovery::HsmPayload hsm_payload;
+  if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
+                                            &hsm_payload)) {
+    LOG(ERROR) << "Unable to deserialize hsm_payload from request_payload";
     return false;
   }
   brillo::SecureBlob channel_pub_key;
-  if (!GetHsmCborMapByKeyForTesting(hsm_ad, kChannelPublicKey,
-                                    &channel_pub_key)) {
-    LOG(ERROR) << "Unable to deserialize channel_pub_key from hsm_ad";
+  if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
+                                    kChannelPublicKey, &channel_pub_key)) {
+    LOG(ERROR) << "Unable to deserialize channel_pub_key from "
+                  "hsm_payload.associated_data";
     return false;
   }
 
@@ -218,37 +220,6 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     return false;
   }
 
-  return true;
-}
-
-bool FakeRecoveryMediatorCrypto::ExtractHsmPayload(
-    const cryptorecovery::RequestPayload& request_payload,
-    cryptorecovery::HsmPayload* hsm_payload) const {
-  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
-                                    &hsm_payload->associated_data)) {
-    LOG(ERROR) << "Unable to deserialize associated_data from "
-                  "request_payload.associated_data";
-    return false;
-  }
-  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
-                                    kHsmAeadCipherText,
-                                    &hsm_payload->cipher_text)) {
-    LOG(ERROR) << "Unable to deserialize cipher_text from "
-                  "request_payload.associated_data";
-    return false;
-  }
-  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadIv,
-                                    &hsm_payload->iv)) {
-    LOG(ERROR)
-        << "Unable to deserialize iv from request_payload.associated_data";
-    return false;
-  }
-  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
-                                    kHsmAeadTag, &hsm_payload->tag)) {
-    LOG(ERROR)
-        << "Unable to deserialize tag from request_payload.associated_data";
-    return false;
-  }
   return true;
 }
 
@@ -440,7 +411,8 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
   }
 
   cryptorecovery::HsmPayload hsm_payload;
-  if (!ExtractHsmPayload(request_payload, &hsm_payload)) {
+  if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
+                                            &hsm_payload)) {
     LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
     return false;
   }
