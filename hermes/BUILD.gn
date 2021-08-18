@@ -95,10 +95,10 @@ if (use.test) {
   }
 
   executable("hermes_test") {
-    sources = [
-      "apdu_test.cc",
-      "modem_qrtr_test.cc",
-    ]
+    sources = [ "apdu_test.cc" ]
+    if (use.qrtr) {
+      sources += [ "modem_qrtr_test.cc" ]
+    }
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845
       # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
