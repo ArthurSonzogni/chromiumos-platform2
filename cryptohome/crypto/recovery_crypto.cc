@@ -18,13 +18,15 @@
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
 #include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/crypto/secure_blob_util.h"
+#include "cryptohome/cryptohome_common.h"
 
 namespace cryptohome {
 
 namespace {
 
 brillo::SecureBlob GetRecoveryKeyHkdfInfo() {
-  return brillo::SecureBlob("recovery_key");
+  return brillo::SecureBlob("CryptoHome Wrapping Key");
 }
 
 brillo::SecureBlob GetMediatorShareHkdfInfo() {
@@ -43,19 +45,20 @@ brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
 
 }  // namespace
 
-const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] =
-    "hsm:publisher hsmplaintext";
+const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] = "HSM-Payload Key";
 
 const char RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue[] =
-    "requestplaintext";
+    "REQUEST-Payload Key";
 
 const char RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue[] =
-    "responseplaintext";
+    "RESPONSE-Payload Key";
 
 const EllipticCurve::CurveType RecoveryCrypto::kCurve =
     EllipticCurve::CurveType::kPrime256;
 
 const HkdfHash RecoveryCrypto::kHkdfHash = HkdfHash::kSha256;
+
+const unsigned int RecoveryCrypto::kHkdfSaltLength = 32;
 
 // Size of public/private key for EllipticCurve::CurveType::kPrime256.
 constexpr size_t kEc256PubKeySize = 65;
@@ -261,6 +264,7 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
   request_ad.hsm_aead_tag = hsm_payload.tag;
   request_ad.request_meta_data = request_meta_data;
   request_ad.epoch_pub_key = epoch_pub_key;
+  request_ad.request_payload_salt = CreateSecureRandomBlob(kHkdfSaltLength);
   if (!SerializeRecoveryRequestAssociatedDataToCbor(
           request_ad, &request_payload->associated_data)) {
     LOG(ERROR) << "Failed to generate associated data cbor";
@@ -268,14 +272,13 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
   }
 
   brillo::SecureBlob aes_gcm_key;
-  // |hkdf_salt| can be empty here because the input already has a high entropy.
-  // Bruteforce attacks are not an issue here and as we generate an ephemeral
-  // key as input to HKDF the output will already be non-deterministic.
-  if (!GenerateEcdhHkdfSenderKey(ec_, epoch_pub_key, channel_pub_key,
-                                 channel_priv_key,
-                                 GetRequestPayloadPlainTextHkdfInfo(),
-                                 /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
-                                 kAesGcm256KeySize, &aes_gcm_key)) {
+  // The static nature of `channel_pub_key` (G*s) and `epoch_pub_key` (G*r)
+  // requires the need to utilize a randomized salt value in the HKDF
+  // computation.
+  if (!GenerateEcdhHkdfSenderKey(
+          ec_, epoch_pub_key, channel_pub_key, channel_priv_key,
+          GetRequestPayloadPlainTextHkdfInfo(), request_ad.request_payload_salt,
+          kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
     return false;
   }
@@ -650,10 +653,16 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& response_payload_iv,
     const brillo::SecureBlob& response_payload_tag,
     brillo::SecureBlob* response_plain_text) const {
+  cryptorecovery::HsmResponseAssociatedData response_ad;
+  if (!DeserializeHsmResponseAssociatedDataFromCbor(response_payload_ad,
+                                                    &response_ad)) {
+    LOG(ERROR) << "Unable to deserialize response_payload_ad";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
   if (!GenerateEcdhHkdfRecipientKey(ec_, channel_priv_key, epoch_pub_key,
                                     GetResponsePayloadPlainTextHkdfInfo(),
-                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    response_ad.response_payload_salt,
                                     RecoveryCrypto::kHkdfHash,
                                     kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for mediator "

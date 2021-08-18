@@ -58,6 +58,9 @@ class RecoveryCrypto {
   // Hash used by HKDF for encrypting mediator share.
   static const HkdfHash kHkdfHash;
 
+  // Length of the salt (in bytes) used by HKDF for encrypting mediator share.
+  static const unsigned int kHkdfSaltLength;
+
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<RecoveryCrypto> Create();
 

@@ -75,8 +75,8 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
       response_payload.tag, &response_plain_text_cbor));
 
   cryptorecovery::HsmResponsePlainText response_plain_text;
-  ASSERT_TRUE(DeserializeHsmResponsePayloadFromCbor(response_plain_text_cbor,
-                                                    &response_plain_text));
+  ASSERT_TRUE(DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
+                                                      &response_plain_text));
 
   brillo::SecureBlob mediated_recovery_key;
   ASSERT_TRUE(recovery->RecoverDestination(

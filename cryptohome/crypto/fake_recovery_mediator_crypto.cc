@@ -21,6 +21,8 @@
 #include "cryptohome/crypto/error_util.h"
 #include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/crypto/secure_blob_util.h"
+#include "cryptohome/cryptohome_common.h"
 
 namespace cryptohome {
 namespace {
@@ -180,6 +182,12 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     const brillo::SecureBlob& epoch_priv_key,
     const cryptorecovery::RequestPayload& request_payload,
     brillo::SecureBlob* plain_text) const {
+  brillo::SecureBlob salt;
+  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
+                                    kRequestPayloadSalt, &salt)) {
+    LOG(ERROR) << "Unable to deserialize salt from request_payload";
+    return false;
+  }
   brillo::SecureBlob hsm_ad;
   if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
                                     &hsm_ad)) {
@@ -195,8 +203,7 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
 
   brillo::SecureBlob aes_gcm_key;
   if (!GenerateEcdhHkdfRecipientKey(ec_, epoch_priv_key, channel_pub_key,
-                                    GetRequestPayloadPlainTextHkdfInfo(),
-                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    GetRequestPayloadPlainTextHkdfInfo(), salt,
                                     RecoveryCrypto::kHkdfHash,
                                     kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for request "
@@ -351,7 +358,16 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  response_payload->associated_data = brillo::SecureBlob(kFakeHsmMetaData);
+  brillo::SecureBlob salt =
+      CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
+  cryptorecovery::HsmResponseAssociatedData response_ad;
+  response_ad.response_meta_data = brillo::SecureBlob(kFakeHsmMetaData);
+  response_ad.response_payload_salt = salt;
+  if (!SerializeHsmResponseAssociatedDataToCbor(
+          response_ad, &response_payload->associated_data)) {
+    LOG(ERROR) << "Unable to serialize response payload associated data";
+    return false;
+  }
 
   brillo::SecureBlob response_plain_text_cbor;
   cryptorecovery::HsmResponsePlainText response_plain_text;
@@ -372,11 +388,13 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   }
 
   brillo::SecureBlob aes_gcm_key;
+  // The static nature of `channel_pub_key` (G*s) and `epoch_pub_key` (G*r)
+  // requires the need to utilize a randomized salt value in the HKDF
+  // computation.
   if (!GenerateEcdhHkdfSenderKey(
           ec_, channel_pub_key, epoch_pub_key, epoch_priv_key,
-          GetResponsePayloadPlainTextHkdfInfo(),
-          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
-          kAesGcm256KeySize, &aes_gcm_key)) {
+          GetResponsePayloadPlainTextHkdfInfo(), salt,
+          RecoveryCrypto::kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR)
         << "Failed to generate ECDH+HKDF recipient key for Recovery Request "
            "plaintext encryption";

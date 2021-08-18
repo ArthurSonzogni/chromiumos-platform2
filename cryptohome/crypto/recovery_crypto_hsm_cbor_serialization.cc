@@ -67,7 +67,6 @@ const char kPublisherPublicKey[] = "publisher_pub_key";
 const char kChannelPublicKey[] = "channel_pub_key";
 const char kRsaPublicKey[] = "epoch_rsa_sig_pkey";
 const char kOnboardingMetaData[] = "onboarding_meta_data";
-
 const char kHsmAeadCipherText[] = "hsm_aead_ct";
 const char kHsmAeadAd[] = "hsm_aead_ad";
 const char kHsmAeadIv[] = "hsm_aead_iv";
@@ -75,6 +74,9 @@ const char kHsmAeadTag[] = "hsm_aead_tag";
 const char kRequestMetaData[] = "request_meta_data";
 const char kEpochPublicKey[] = "epoch_pub_key";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
+const char kRequestPayloadSalt[] = "request_salt";
+const char kResponseMetaData[] = "response_meta_data";
+const char kResponsePayloadSalt[] = "response_salt";
 
 const int kProtocolVersion = 1;
 
@@ -108,10 +110,26 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
   ad_map.emplace(kHsmAeadTag, args.hsm_aead_tag);
   ad_map.emplace(kRequestMetaData, args.request_meta_data);
   ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
+  ad_map.emplace(kRequestPayloadSalt, args.request_payload_salt);
 
   if (!SerializeCborMap(ad_map, request_ad_cbor)) {
     LOG(ERROR)
         << "Failed to serialize Recovery Request Associated Data to CBOR";
+    return false;
+  }
+  return true;
+}
+
+bool SerializeHsmResponseAssociatedDataToCbor(
+    const cryptorecovery::HsmResponseAssociatedData& response_ad,
+    brillo::SecureBlob* response_ad_cbor) {
+  cbor::Value::MapValue ad_map;
+
+  ad_map.emplace(kResponseMetaData, response_ad.response_meta_data);
+  ad_map.emplace(kResponsePayloadSalt, response_ad.response_payload_salt);
+
+  if (!SerializeCborMap(ad_map, response_ad_cbor)) {
+    LOG(ERROR) << "Failed to serialize HSM Response Associated Data to CBOR";
     return false;
   }
   return true;
@@ -241,7 +259,7 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
   return true;
 }
 
-bool DeserializeHsmResponsePayloadFromCbor(
+bool DeserializeHsmResponsePlainTextFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
     cryptorecovery::HsmResponsePlainText* response_payload) {
   const auto& cbor = ReadCborPayload(response_payload_cbor);
@@ -292,6 +310,50 @@ bool DeserializeHsmResponsePayloadFromCbor(
   response_payload->key_auth_value.assign(
       key_auth_value_entry->second.GetBytestring().begin(),
       key_auth_value_entry->second.GetBytestring().end());
+  return true;
+}
+
+bool DeserializeHsmResponseAssociatedDataFromCbor(
+    const brillo::SecureBlob& response_ad_cbor,
+    cryptorecovery::HsmResponseAssociatedData* response_ad) {
+  const auto& cbor = ReadCborPayload(response_ad_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const cbor::Value::MapValue& response_map = cbor->GetMap();
+  const auto response_payload_salt_entry =
+      response_map.find(cbor::Value(kResponsePayloadSalt));
+  if (response_payload_salt_entry == response_map.end()) {
+    LOG(ERROR)
+        << "No response_payload_salt in the HSM response associated data map.";
+    return false;
+  }
+  if (!response_payload_salt_entry->second.is_bytestring()) {
+    LOG(ERROR) << "Wrongly formatted response_payload_salt in the HSM response "
+                  "associated data map.";
+    return false;
+  }
+
+  const auto response_metadata_entry =
+      response_map.find(cbor::Value(kResponseMetaData));
+  if (response_metadata_entry == response_map.end()) {
+    LOG(ERROR)
+        << "No response_metadata in the HSM response associated data map.";
+    return false;
+  }
+  if (!response_metadata_entry->second.is_bytestring()) {
+    LOG(ERROR) << "Wrongly formatted response_metadata in the HSM response "
+                  "associated data map.";
+    return false;
+  }
+
+  response_ad->response_payload_salt.assign(
+      response_payload_salt_entry->second.GetBytestring().begin(),
+      response_payload_salt_entry->second.GetBytestring().end());
+  response_ad->response_meta_data.assign(
+      response_metadata_entry->second.GetBytestring().begin(),
+      response_metadata_entry->second.GetBytestring().end());
   return true;
 }
 
