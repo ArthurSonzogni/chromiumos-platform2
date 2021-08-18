@@ -154,7 +154,11 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
   if (static_cast<uint16_t>(capability_data[1]) == TPM_TAG_DA_INFO) {
     TPM_DA_INFO da_info;
     uint64_t offset = 0;
-    Trspi_UnloadBlob_DA_INFO(&offset, capability_data.data(), &da_info);
+    if (Trspi_UnloadBlob_DA_INFO_s(&offset, capability_data.data(),
+                                   capability_data.size(), &da_info)) {
+      LOG(ERROR) << "Trspi_UnloadBlob_DA_INFO_s failed.";
+      return false;
+    }
     *counter = da_info.currentCount;
     *threshold = da_info.thresholdCount;
     *lockout = (da_info.state == TPM_DA_STATE_ACTIVE);
@@ -174,7 +178,11 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
 
   uint32_t manufacturer;
   uint64_t offset = 0;
-  Trspi_UnloadBlob_UINT32(&offset, &manufacturer, capability_data.data());
+  if (Trspi_UnloadBlob_UINT32_s(&offset, &manufacturer, capability_data.data(),
+                                capability_data.size())) {
+    LOG(ERROR) << "Trspi_UnloadBlob_UINT32_s failed.";
+    return false;
+  }
   if (manufacturer != kInfineonManufacturerCode) {
     return true;
   }
@@ -231,8 +239,12 @@ bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
 
   TPM_CAP_VERSION_INFO tpm_version;
   uint64_t offset = 0;
-  Trspi_UnloadBlob_CAP_VERSION_INFO(&offset, capability_data.data(),
-                                    &tpm_version);
+  if (Trspi_UnloadBlob_CAP_VERSION_INFO_s(&offset, capability_data.data(),
+                                          capability_data.size(),
+                                          &tpm_version)) {
+    LOG(ERROR) << "Trspi_UnloadBlob_CAP_VERSION_INFO_s failed.";
+    return false;
+  }
   *family = 0x312e3200;
   *spec_level = (static_cast<uint64_t>(tpm_version.specLevel) << 32) |
                 tpm_version.errataRev;
