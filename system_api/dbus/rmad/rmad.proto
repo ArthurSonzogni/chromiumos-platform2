@@ -290,23 +290,38 @@ message RestockState {
 
 // Allow device info to be updated if necessary.
 message UpdateDeviceInfoState {
-  // Chosen serial number of device.
+  // User provided serial number of device.
   string serial_number = 1;
-  // Chosen region index for the current choice. See region_list below.
+  // Chosen region index for the current choice. See |region_list| below.
   uint32 region_index = 2;
-  // Chosen SKU index of device. See sku_list below.
+  // Chosen SKU index of device. See |sku_list| below.
   uint32 sku_index = 3;
+  // Chosen whitelabel index of device. See |whitelabel_list| below.
+  uint32 whitelabel_index = 4;
+  // User provided dram part number of device.
+  string dram_part_number = 5;
+
   // Read only data.
   // List of all valid regions for this device.
-  repeated string region_list = 4;
+  repeated string region_list = 102;
   // List of all valid skus for this device.
-  repeated string sku_list = 5;
+  repeated uint64 sku_list = 103;
+  // List of all valid whitelabel-tags for this device.
+  repeated string whitelabel_list = 104;
+
   // Serial number of device at beginning of RMA finalization.
-  string original_serial_number = 6;
+  string original_serial_number = 201;
   // Region index of device at beginning of RMA finalization.
-  uint32 original_region_index = 7;
+  uint32 original_region_index = 202;
   // SKU index of device at beginning of RMA finalization.
-  uint32 original_sku_index = 8;
+  uint32 original_sku_index = 203;
+  // WL index of device at beginning of RMA finalization.
+  uint32 original_whitelabel_index = 204;
+  // DRAM part number of device at beginning of RMA finalization.
+  string original_dram_part_number = 205;
+
+  // MLB repair mode.
+  bool mlb_repair = 301;
 }
 
 // Calibration Component and status used in all calibration-related
