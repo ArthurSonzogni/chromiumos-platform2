@@ -6,14 +6,16 @@
 
 #include <utility>
 
+#include "ml/tensor_view.h"
+
 namespace ml {
 namespace {
 
 using ::chromeos::machine_learning::mojom::BuiltinModelId;
 using ::chromeos::machine_learning::mojom::TensorPtr;
-// TODO(alanlxl): replace with adaptive charging pb config (and BuiltinModelId).
+
 constexpr char kPreprocessorFileName[] =
-    "mlservice-model-smart_dim-20190521-preprocessor.pb";
+    "mlservice-model-adaptive_charging-20211105-preprocessor.pb";
 
 }  // namespace
 
@@ -22,7 +24,7 @@ AdaptiveChargingService::AdaptiveChargingService(
     : org::chromium::MachineLearning::AdaptiveChargingAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       tf_model_graph_executor_(new TfModelGraphExecutor(
-          BuiltinModelId::SMART_DIM_20190521, kPreprocessorFileName)) {}
+          BuiltinModelId::ADAPTIVE_CHARGING_20211105, kPreprocessorFileName)) {}
 
 AdaptiveChargingService::~AdaptiveChargingService() = default;
 
@@ -59,8 +61,13 @@ void AdaptiveChargingService::RequestAdaptiveChargingDecision(
     return;
   }
 
-  // TODO(alanlxl): deal with the output_tensors and return
-  response->Return(true, std::vector<double>{4.0, 4.0, 4.0});
+  DCHECK_EQ(output_tensors.size(), 1u);
+  // Extracts output values and returns with dbus response.
+  const TensorView<double> out_tensor_view(output_tensors[0]);
+  DCHECK(out_tensor_view.IsValidType());
+  DCHECK(out_tensor_view.IsValidFormat());
+
+  response->Return(true, out_tensor_view.GetValues());
 }
 
 }  // namespace ml

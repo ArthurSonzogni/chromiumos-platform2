@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Next MinVersion: 2
+
 // Datatypes and interfaces of models for the Machine Learning API.
 
 // NOTE: This mojom exists in two places and must be kept in sync:
@@ -40,6 +42,8 @@ enum BuiltinModelId {
   SMART_DIM_20190521 = 5,
   // The Search Ranker (20190923) ML model.
   SEARCH_RANKER_20190923 = 6,
+  // The Adaptive Charging (20211105) ML model.
+  [MinVersion=1] ADAPTIVE_CHARGING_20211105 = 7,
 };
 
 // Options for creating the executor.  Options are used for testing and

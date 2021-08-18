@@ -127,7 +127,10 @@ bool TfModelGraphExecutor::Execute(
 
   const int preprocessor_result = assist_ranker::ExamplePreprocessor::Process(
       *config_, example, clear_other_features);
-  if (preprocessor_result != assist_ranker::ExamplePreprocessor::kSuccess) {
+  // kNoFeatureIndexFound can occur normally and is not treated as an error.
+  if (preprocessor_result != assist_ranker::ExamplePreprocessor::kSuccess &&
+      preprocessor_result !=
+          assist_ranker::ExamplePreprocessor::kNoFeatureIndexFound) {
     LOG(ERROR) << "Preprocess example failed! Error type = "
                << preprocessor_result;
     return false;
@@ -150,7 +153,7 @@ bool TfModelGraphExecutor::Execute(
   tensor->data->set_float_list(FloatList::New());
   tensor->data->get_float_list()->value = std::vector<double>(
       std::begin(vectorized_features), std::end(vectorized_features));
-  // TODO(alanlxl): input node name
+  // "input" is the input node name hardcoded in ../model_metadata.cc.
   inputs.emplace("input", std::move(tensor));
 
   auto execute_result = graph_executor_delegate_->Execute(

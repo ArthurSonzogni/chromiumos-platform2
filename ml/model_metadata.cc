@@ -60,6 +60,16 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
               "SearchRankerModel",
           },
       },
+      {
+          BuiltinModelId::ADAPTIVE_CHARGING_20211105,
+          {
+              BuiltinModelId::ADAPTIVE_CHARGING_20211105,
+              "mlservice-model-adaptive_charging-20211105.tflite",
+              {{"input", 0}},
+              {{"output", 13}},
+              "AdaptiveChargingModel",
+          },
+      },
   };
 }
 
