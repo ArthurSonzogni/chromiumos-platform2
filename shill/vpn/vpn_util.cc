@@ -16,7 +16,9 @@ namespace shill {
 class VPNUtilImpl : public VPNUtil {
  public:
   bool WriteConfigFile(const base::FilePath& filename,
-                       const std::string& contents) const;
+                       const std::string& contents) const override;
+  base::ScopedTempDir CreateScopedTempDir(
+      const base::FilePath& parent_path) const override;
 };
 
 bool VPNUtilImpl::WriteConfigFile(const base::FilePath& filename,
@@ -37,6 +39,27 @@ bool VPNUtilImpl::WriteConfigFile(const base::FilePath& filename,
   }
 
   return true;
+}
+
+base::ScopedTempDir VPNUtilImpl::CreateScopedTempDir(
+    const base::FilePath& parent_path) const {
+  base::ScopedTempDir temp_dir;
+
+  if (!temp_dir.CreateUniqueTempDirUnderPath(parent_path)) {
+    PLOG(ERROR) << "Failed to create temp dir under path " << parent_path;
+    return base::ScopedTempDir{};
+  }
+
+  if (chmod(temp_dir.GetPath().value().c_str(), S_IRWXU | S_IRWXG) != 0) {
+    PLOG(ERROR) << "Failed to change the permission of temp dir";
+    return base::ScopedTempDir{};
+  }
+
+  if (chown(temp_dir.GetPath().value().c_str(), -1, VPNUtil::kVPNGid) != 0) {
+    PLOG(ERROR) << "Failed to change gid of temp dir";
+    return base::ScopedTempDir{};
+  }
+  return temp_dir;
 }
 
 std::unique_ptr<VPNUtil> VPNUtil::New() {

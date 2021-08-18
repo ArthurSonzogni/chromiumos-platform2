@@ -27,6 +27,10 @@ class FakeVPNUtil : public VPNUtil {
   // permissions.
   bool WriteConfigFile(const base::FilePath& filename,
                        const std::string& contents) const override;
+
+  // Creates a ScopedTempDir under |parent_path| without changing permissions.
+  base::ScopedTempDir CreateScopedTempDir(
+      const base::FilePath& parent_path) const override;
 };
 
 }  // namespace shill

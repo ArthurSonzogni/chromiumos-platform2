@@ -8,8 +8,13 @@
 #include <memory>
 
 #include <base/callback.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 
+#include "shill/mockable.h"
+#include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -58,6 +63,9 @@ class IPsecConnection : public VPNConnection {
   // Tasks scheduled by ScheduleConnectTask(). Each function should call
   // ScheduleConnectTask() (either directly or using a callback) on the task
   // done, or call NoitfyFailure() to indicate a failure.
+
+  // Generates strongswan.conf. On success, this function will trigger
+  // |kStrongSwanConfigWritten| step and set |strongswan_conf_path_|.
   void WriteStrongSwanConfig();
   void StartCharon();
   void WriteSwanctlConfig();
@@ -65,6 +73,11 @@ class IPsecConnection : public VPNConnection {
   void SwanctlInitiateConnection();
 
   std::unique_ptr<Config> config_;
+
+  base::ScopedTempDir temp_dir_;
+  base::FilePath strongswan_conf_path_;
+
+  std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<IPsecConnection> weak_factory_{this};
 };

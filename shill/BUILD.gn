@@ -52,6 +52,7 @@ pkg_config("target_defaults") {
     "-Wno-deprecated-copy",
   ]
   defines = [
+    "PKCS11_LIB=\"${libdir}/libchaps.so\"",
     "RUNDIR=\"/run/shill\"",
     "SHIMDIR=\"${libdir}/shill/shims\"",
   ]

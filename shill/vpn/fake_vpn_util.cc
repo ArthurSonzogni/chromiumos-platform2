@@ -13,4 +13,14 @@ bool FakeVPNUtil::WriteConfigFile(const base::FilePath& filename,
   return base::WriteFile(filename, contents);
 }
 
+base::ScopedTempDir FakeVPNUtil::CreateScopedTempDir(
+    const base::FilePath& parent_path) const {
+  base::ScopedTempDir temp_dir;
+  if (!temp_dir.CreateUniqueTempDirUnderPath(parent_path)) {
+    LOG(ERROR) << "Failed to create temp dir under path " << parent_path;
+    return base::ScopedTempDir{};
+  }
+  return temp_dir;
+}
+
 }  // namespace shill

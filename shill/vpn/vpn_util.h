@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 
 namespace shill {
 
@@ -39,6 +40,13 @@ class VPNUtil {
   // group to "vpn" here since "shill" is a member of "vpn".
   virtual bool WriteConfigFile(const base::FilePath& filename,
                                const std::string& contents) const = 0;
+
+  // Creates a scoped temp directory under |parent_path|, changes its group to
+  // "vpn", and give it group RWX permission. This directory can be used to
+  // share the config files between shill and the vpn process, or as the run
+  // directory for the vpn process. If failed, returns an invalid ScopedTmpDir.
+  virtual base::ScopedTempDir CreateScopedTempDir(
+      const base::FilePath& parent_path) const = 0;
 
  protected:
   VPNUtil() = default;
