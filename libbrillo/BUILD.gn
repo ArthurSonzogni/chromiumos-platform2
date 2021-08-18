@@ -9,7 +9,6 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":libbrillo",
-    ":libbrillo-glib",
     ":libbrillo-test",
     ":libinstallattributes",
     ":libpolicy",
@@ -400,45 +399,6 @@ shared_library("libpolicy") {
   ]
 }
 
-libbrillo_glib_pkg_deps = [
-  "glib-2.0",
-  "gobject-2.0",
-]
-if (use.dbus) {
-  libbrillo_glib_pkg_deps += [
-    "dbus-1",
-    "dbus-glib-1",
-  ]
-}
-
-generate_pkg_config("libbrillo-glib_pc") {
-  name = "libbrillo-glib"
-  output_name = "libbrillo-glib"
-  description = "brillo glib wrapper library"
-  version = libbase_ver
-  requires_private = libbrillo_glib_pkg_deps
-  libs = [ "-lbrillo-glib" ]
-}
-
-shared_library("libbrillo-glib") {
-  configs += [ ":target_defaults" ]
-  cflags = [
-    # glib uses the deprecated "register" attribute in some header files.
-    "-Wno-deprecated-register",
-  ]
-  deps = [
-    ":libbrillo",
-    ":libbrillo-glib_pc",
-  ]
-  all_dependent_pkg_deps = libbrillo_glib_pkg_deps
-  if (use.dbus) {
-    sources = [
-      "brillo/glib/abstract_dbus_service.cc",
-      "brillo/glib/dbus.cc",
-    ]
-  }
-}
-
 if (use.test) {
   static_library("libbrillo_static") {
     configs += [ ":target_defaults" ]
@@ -477,7 +437,6 @@ if (use.test) {
       "brillo/files/file_util_test.cc",
       "brillo/files/safe_fd_test.cc",
       "brillo/flag_helper_test.cc",
-      "brillo/glib/object_test.cc",
       "brillo/http/http_connection_curl_test.cc",
       "brillo/http/http_form_data_test.cc",
       "brillo/http/http_request_test.cc",
@@ -545,7 +504,6 @@ if (use.test) {
     cflags = [ "-Wno-format-zero-length" ]
     pkg_deps = [ "libchrome-test" ]
     deps = [
-      ":libbrillo-glib",
       ":libbrillo-test",
       ":libbrillo_static",
       ":libbrillo_tests_proto",
