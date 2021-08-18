@@ -14,7 +14,6 @@
 #include <base/location.h>
 #include <base/strings/string_util.h>
 #include <base/task/post_task.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 namespace shill {
 
@@ -97,13 +96,19 @@ void VPNConnection::NotifyConnected(const std::string& link_name,
                                        interface_index, ip_properties));
 }
 
-void VPNConnection::NotifyFailure(Service::ConnectFailure reason) {
+void VPNConnection::NotifyFailure(Service::ConnectFailure reason,
+                                  const std::string& detail) {
   CheckCallWithState(
       __func__, state_,
       {State::kConnecting, State::kConnected, State::kDisconnecting});
+  LOG(ERROR) << "VPN connection failed, current state: " << state_
+             << ", reason: " << Service::ConnectFailureToString(reason)
+             << ", detail: " << detail;
   state_ = State::kDisconnecting;
   dispatcher_->PostTask(
       FROM_HERE, base::BindOnce(std::move(callbacks_->on_failure_cb), reason));
+  dispatcher_->PostTask(FROM_HERE, base::BindOnce(&VPNConnection::OnDisconnect,
+                                                  weak_factory_.GetWeakPtr()));
 }
 
 void VPNConnection::NotifyStopped() {

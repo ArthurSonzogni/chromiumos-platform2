@@ -67,6 +67,10 @@ class VPNConnection {
 
   explicit VPNConnection(std::unique_ptr<Callbacks> callbacks,
                          EventDispatcher* dispatcher);
+
+  // Note that we cannot guarantee that when destructor is called, the state is
+  // kIdle or kStopped, so the derived class should check the state and release
+  // resources (e.g., call OnDisconnect()) if needed.
   virtual ~VPNConnection() = default;
 
   void Connect();
@@ -79,7 +83,15 @@ class VPNConnection {
   // Implemented by the derived class for the real connect/disconnect logic.
   // Note that these functions will be invoked asynchronously by a PostTask() in
   // Connect()/Disconnect().
+  // In OnConnect(), the derived class is supposed to initiate the connection,
+  // and call NotifyConnected() on connected, or NotifyFailure() on a failure.
   virtual void OnConnect() = 0;
+  // In OnDisconnect(), the derived class is supposed to disconnect the
+  // connection (if connected) or stop the connecting procedure (if connecting),
+  // and clean up all the resources used in this connection. Once the cleanup is
+  // done, the derived class should call NotifyStopped(). Note that this
+  // function will be called not only when the user initiates the disconnection,
+  // but also in NotifyFailure().
   virtual void OnDisconnect() = 0;
 
  protected:
@@ -91,7 +103,10 @@ class VPNConnection {
   void NotifyConnected(const std::string& link_name,
                        int interface_index,
                        const IPConfig::Properties& ip_properties);
-  void NotifyFailure(Service::ConnectFailure reason);
+  // Note that NotifyFailure() will also invoke OnDisconnect() on the derived
+  // class (by a PostTask()), and thus the derived class don't need to do any
+  // clean up other than calling this function on failures.
+  void NotifyFailure(Service::ConnectFailure reason, const std::string& detail);
   void NotifyStopped();
 
  private:

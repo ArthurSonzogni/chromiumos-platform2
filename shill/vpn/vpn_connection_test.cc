@@ -45,7 +45,10 @@ class VPNConnectionUnderTest : public VPNConnection {
                         const IPConfig::Properties& ip_properties) {
     NotifyConnected(link_name, interface_index, ip_properties);
   }
-  void TriggerFailure(Service::ConnectFailure reason) { NotifyFailure(reason); }
+  void TriggerFailure(Service::ConnectFailure reason,
+                      const std::string& detail) {
+    NotifyFailure(reason, detail);
+  }
   void TriggerStopped() { NotifyStopped(); }
 };
 
@@ -114,8 +117,9 @@ TEST_F(VPNConnectionTest, ConnectingFailure) {
   vpn_connection_->Connect();
   dispatcher_.task_environment().RunUntilIdle();
 
-  vpn_connection_->TriggerFailure(Service::kFailureInternal);
+  vpn_connection_->TriggerFailure(Service::kFailureInternal, "");
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
+  EXPECT_CALL(*vpn_connection_, OnDisconnect());
   EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
@@ -129,8 +133,9 @@ TEST_F(VPNConnectionTest, ConnectedFailure) {
                                     test_ip_properties_);
   dispatcher_.task_environment().RunUntilIdle();
 
-  vpn_connection_->TriggerFailure(Service::kFailureInternal);
+  vpn_connection_->TriggerFailure(Service::kFailureInternal, "");
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
+  EXPECT_CALL(*vpn_connection_, OnDisconnect());
   EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
