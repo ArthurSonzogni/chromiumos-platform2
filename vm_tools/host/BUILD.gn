@@ -325,6 +325,7 @@ if (use.test) {
 
   executable("concierge_test") {
     sources = [
+      "../concierge/balloon_policy_test.cc",
       "../concierge/dlc_helper_test.cc",
       "../concierge/future_test.cc",
       "../concierge/power_manager_client_test.cc",
