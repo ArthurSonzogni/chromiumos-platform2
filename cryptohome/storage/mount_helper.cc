@@ -255,6 +255,10 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
       if (!correct) {
         LOG(ERROR) << "Group mismatch in user directory: " << user_path.value()
                    << " " << st.st_gid << " != " << default_access_gid_;
+        if (!platform_->SafeDirChown(user_path, default_uid_,
+                                     default_access_gid_)) {
+          LOG(ERROR) << "Failed to fix ownership of user directory";
+        }
       }
     }
     return;

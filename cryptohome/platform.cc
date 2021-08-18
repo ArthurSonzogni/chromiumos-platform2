@@ -768,6 +768,28 @@ bool Platform::SafeDirChmod(const base::FilePath& path, mode_t mode) {
   return true;
 }
 
+bool Platform::SafeDirChown(const base::FilePath& path,
+                            uid_t user_id,
+                            gid_t group_id) {
+  auto root_fd_result = brillo::SafeFD::Root();
+  if (root_fd_result.second != brillo::SafeFD::Error::kNoError) {
+    return false;
+  }
+
+  auto path_result = root_fd_result.first.OpenExistingDir(path);
+  if (path_result.second != brillo::SafeFD::Error::kNoError) {
+    return false;
+  }
+
+  if (HANDLE_EINTR(fchown(path_result.first.get(), user_id, group_id)) != 0) {
+    PLOG(ERROR) << "Failed to set ownership in SafeDirChown() for \""
+                << path.value() << '"';
+    return false;
+  }
+
+  return true;
+}
+
 bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
     const base::FilePath& path, mode_t mode, uid_t user_id, gid_t group_id) {
   // Reset mask since we are setting the mode explicitly.

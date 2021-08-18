@@ -922,6 +922,11 @@ class Platform {
   // Safely change a directory's mode.
   virtual bool SafeDirChmod(const base::FilePath& path, mode_t mode);
 
+  // Safely change a directory's owner.
+  virtual bool SafeDirChown(const base::FilePath& path,
+                            uid_t user_id,
+                            gid_t group_id);
+
   virtual bool SafeCreateDirAndSetOwnershipAndPermissions(
       const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid);
 
