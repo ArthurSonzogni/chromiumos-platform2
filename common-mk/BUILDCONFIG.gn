@@ -134,6 +134,17 @@ set_default_toolchain("//common-mk/toolchain")
 # to support pkg-config.
 # src_install and src_test settings are also written in the same way.
 #
+# install_path exports metadata for installing the file built by the target.
+# For example,
+# - executable("my_executable")  # template invocation
+# is expanded to:
+# - executable("my_executable")  # GN built-in function invocation
+# - install_config("my_executable-install_config")
+# In this case ":my_executable" is usually joined to the dependency chain from
+# the root (":all") by the BUILD.gn that uses this template. However, the
+# ":my_executable-install_config" is not. So we chain it by adding to deps.
+# ":all" --> ":my_executable" -(add this dep)-> ":my_executable-install_config"
+#
 # Args:
 #   pkg_deps(optional): A list of package names to be depend.
 #     A corresponding config is created, and then injected to |configs|.
@@ -230,6 +241,10 @@ template("_generate_config_rule") {
       all_dependent_configs += [ ":${_all_dependent_pkg_deps_name}" ]
     }
     if (defined(_install_config_name)) {
+      # Add deps to have install_config rule joined to the dependency chain.
+      # The dependency direction is opposite to the real information flow, but
+      # it does not matter here because the installation is done in the
+      # src_install ebuild phase after all build is finished.
       if (!defined(deps)) {
         deps = []
       }
@@ -297,6 +312,8 @@ template("action") {
   action(target_name) {
     forward_variables_from(invoker, "*", [ "install_configs" ])
     if (defined(_installs)) {
+      # Add deps so that data export is added to the dependency chain.
+      # See the comments in _generate_config_rule.
       if (!defined(deps)) {
         deps = []
       }
