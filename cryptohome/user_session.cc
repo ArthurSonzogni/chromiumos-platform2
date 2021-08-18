@@ -41,7 +41,7 @@ MountError UserSession::MountVault(const Credentials& credentials,
 
   // TODO(chromium:1140868, dlunev): once re-recreation logic is removed, this
   // can be moved to the service level.
-  MountError error;
+  MountError error = MOUNT_ERROR_NONE;
   if (!homedirs_->CryptohomeExists(obfuscated_username, &error)) {
     if (error != MOUNT_ERROR_NONE) {
       LOG(ERROR) << "Failed to check cryptohome existence for : "

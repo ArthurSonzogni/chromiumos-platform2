@@ -2485,43 +2485,50 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   // invalid argument error.
 
   bool called;
+  user_data_auth::CryptohomeErrorCode error_code;
 
   // This calls DoMount and check that the result is reported (i.e. the callback
   // is called), and is CRYPTOHOME_ERROR_INVALID_ARGUMENT.
-  auto CallDoMountAndCheckResultIsInvalidArgument = [&called, this]() {
+  auto CallDoMountAndGetError = [&called, &error_code, this]() {
     called = false;
+    error_code = user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     {
       TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
       userdataauth_->DoMount(
-          *mount_req_,
-          base::BindOnce(
-              [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-                *called_ptr = true;
-                EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
-                          reply.error());
-              },
-              base::Unretained(&called)));
+          *mount_req_, base::BindOnce(
+                           [](bool& called_ptr,
+                              user_data_auth::CryptohomeErrorCode& error_code,
+                              const user_data_auth::MountReply& reply) {
+                             called_ptr = true;
+                             error_code = reply.error();
+                           },
+                           std::ref(called), std::ref(error_code)));
     }
-    EXPECT_TRUE(called);
   };
 
   // Test for case with no email.
   PrepareArguments();
 
-  CallDoMountAndCheckResultIsInvalidArgument();
+  CallDoMountAndGetError();
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error_code, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for case with no secrets.
   PrepareArguments();
   mount_req_->mutable_account()->set_account_id("foo@gmail.com");
 
-  CallDoMountAndCheckResultIsInvalidArgument();
+  CallDoMountAndGetError();
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error_code, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for case with empty secret.
   PrepareArguments();
   mount_req_->mutable_account()->set_account_id("foo@gmail.com");
   mount_req_->mutable_authorization()->mutable_key()->set_secret("");
 
-  CallDoMountAndCheckResultIsInvalidArgument();
+  CallDoMountAndGetError();
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error_code, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for create request given but without key.
   PrepareArguments();
@@ -2529,7 +2536,9 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   mount_req_->mutable_authorization()->mutable_key()->set_secret("blerg");
   mount_req_->mutable_create();
 
-  CallDoMountAndCheckResultIsInvalidArgument();
+  CallDoMountAndGetError();
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error_code, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for create request given but with an empty key.
   PrepareArguments();
@@ -2538,7 +2547,20 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   mount_req_->mutable_create()->add_keys();
   // TODO(wad) Add remaining missing field tests and NULL tests
 
-  CallDoMountAndCheckResultIsInvalidArgument();
+  CallDoMountAndGetError();
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error_code, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Test for create request given with multiple keys.
+  PrepareArguments();
+  mount_req_->mutable_account()->set_account_id("foo@gmail.com");
+  mount_req_->mutable_authorization()->mutable_key()->set_secret("blerg");
+  mount_req_->mutable_create()->add_keys()->set_secret("");
+  mount_req_->mutable_create()->add_keys()->set_secret("");
+
+  CallDoMountAndGetError();
+  EXPECT_TRUE(called);
+  EXPECT_EQ(error_code, user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
 }
 
 TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
@@ -2596,6 +2618,75 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
             base::Unretained(&called)));
   }
   EXPECT_TRUE(called);
+}
+
+TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
+  constexpr char kUser[] = "chromeos-user";
+  PrepareArguments();
+
+  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+  Key* add_key = mount_req_->mutable_create()->add_keys();
+  add_key->mutable_data()->set_label("public_mount");
+
+  SetupMount(kUser);
+  EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).WillOnce(Return(true));
+  auto vk = std::make_unique<VaultKeyset>();
+  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+      .WillOnce(Return(ByMove(std::move(vk))));
+  EXPECT_CALL(*mount_, MountCryptohome(_, _, _, _, _)).WillOnce(Return(true));
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error_code =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool& called, user_data_auth::CryptohomeErrorCode& error_code,
+               const user_data_auth::MountReply& reply) {
+              called = true;
+              error_code = reply.error();
+            },
+            std::ref(called), std::ref(error_code)));
+  }
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error_code);
+}
+
+TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyError) {
+  constexpr char kUser[] = "chromeos-user";
+  PrepareArguments();
+
+  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+  SecureBlob empty_blob;
+  EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
+      .WillOnce(Return(ByMove(empty_blob)));
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error_code =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool& called, user_data_auth::CryptohomeErrorCode& error_code,
+               const user_data_auth::MountReply& reply) {
+              called = true;
+              error_code = reply.error();
+            },
+            std::ref(called), std::ref(error_code)));
+  }
+  EXPECT_TRUE(called);
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+            error_code);
 }
 
 TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
