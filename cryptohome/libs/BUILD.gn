@@ -62,6 +62,11 @@ flatbuffer("cryptohome-flatbuffers") {
     # Generate code for enums using C++11 scoped enums.
     "--scoped-enums",
   ]
+  if (use.test) {
+    # Tests use Flatbuffers Object based API (which is more convenient but
+    # doesn't allow to use a secure allocator).
+    flatc_args += [ "--gen-object-api" ]
+  }
   sources = [
     "../flatbuffer_schemas/user_secret_stash_container.fbs",
     "../flatbuffer_schemas/user_secret_stash_payload.fbs",

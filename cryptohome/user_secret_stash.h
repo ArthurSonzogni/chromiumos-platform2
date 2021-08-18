@@ -26,9 +26,11 @@ class UserSecretStash {
   UserSecretStash(const UserSecretStash&) = delete;
   UserSecretStash& operator=(const UserSecretStash&) = delete;
 
+  bool HasFileSystemKey() const;
   const brillo::SecureBlob& GetFileSystemKey() const;
   void SetFileSystemKey(const brillo::SecureBlob& key);
 
+  bool HasResetSecret() const;
   const brillo::SecureBlob& GetResetSecret() const;
   void SetResetSecret(const brillo::SecureBlob& secret);
 

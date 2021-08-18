@@ -57,12 +57,20 @@ brillo::SecureBlob GenerateAesGcmEncryptedUSS(
 
 }  // namespace
 
+bool UserSecretStash::HasFileSystemKey() const {
+  return file_system_key_.has_value();
+}
+
 const brillo::SecureBlob& UserSecretStash::GetFileSystemKey() const {
   return file_system_key_.value();
 }
 
 void UserSecretStash::SetFileSystemKey(const brillo::SecureBlob& key) {
   file_system_key_ = key;
+}
+
+bool UserSecretStash::HasResetSecret() const {
+  return reset_secret_.has_value();
 }
 
 const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
