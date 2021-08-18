@@ -37,7 +37,10 @@ static_library("libfusebox") {
 }
 
 executable("fusebox") {
-  sources = [ "main.cc" ]
+  sources = [
+    "fuse_frontend.h",
+    "main.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [ ":libfusebox" ]
 }
