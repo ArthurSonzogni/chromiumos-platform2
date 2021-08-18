@@ -525,6 +525,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
 
   const char* vid = "";
   const char* pid = "";
+  const char* bcdDevice = "";
 
   bool is_vivid = IsVivid(dev.get());
   if (!is_vivid) {
@@ -544,6 +545,16 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     pid = udev_device_get_sysattr_value(parent_dev, "idProduct");
     if (!pid) {
       LOGF(ERROR) << "Failed to get pid";
+      return;
+    }
+
+    // Usually, this attribute corresponds to the firmware version, but it
+    // might not be set properly on all modules currently. We may have a better
+    // way to determine the firmware version after landing the new USB camera
+    // firmware update requirements.
+    bcdDevice = udev_device_get_sysattr_value(parent_dev, "bcdDevice");
+    if (!bcdDevice) {
+      LOGF(ERROR) << "Failed to get bcdDevice";
       return;
     }
   }
@@ -574,8 +585,8 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   if (is_vivid) {
     LOGF(INFO) << "New vivid camera device at " << path;
   } else {
-    LOGF(INFO) << "New usb camera device at " << path << " vid: " << vid
-               << " pid: " << pid;
+    LOGF(INFO) << "New usb camera device at " << path << ", vid:pid = " << vid
+               << ":" << pid << ", bcdDevice = " << bcdDevice;
   }
 
   DeviceInfo info;
