@@ -70,6 +70,7 @@ using chromeos::cros_healthd::mojom::TpmResultPtr;
 using chromeos::network_config::mojom::NetworkType;
 using chromeos::network_config::mojom::PortalState;
 using chromeos::network_health::mojom::NetworkState;
+using chromeos::network_health::mojom::SignalStrengthStatsPtr;
 using chromeos::network_health::mojom::UInt32ValuePtr;
 
 // Value printed for optional fields when they aren't populated.
@@ -583,6 +584,12 @@ void DisplayNetworkInfo(const NetworkResultPtr& result) {
     SET_DICT(mac_address, info, &data);
     SET_DICT(ipv4_address, info, &data);
     SET_DICT(signal_strength, info, &data);
+    if (info->signal_strength_stats) {
+      auto* stats = data.SetKey("signal_strength_stats",
+                                base::Value{base::Value::Type::DICTIONARY});
+      SET_DICT(average, info->signal_strength_stats, stats);
+      SET_DICT(deviation, info->signal_strength_stats, stats);
+    }
     if (info->ipv6_addresses.size()) {
       SetJsonDictValue("ipv6_addresses",
                        base::JoinString(info->ipv6_addresses, ":"), &data);
