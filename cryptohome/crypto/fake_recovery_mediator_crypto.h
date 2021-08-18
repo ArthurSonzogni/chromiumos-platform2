@@ -11,6 +11,7 @@
 
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/crypto/recovery_crypto_util.h"
 
 namespace cryptohome {
 
@@ -22,17 +23,6 @@ namespace cryptohome {
 // implemented for testing purposes only.
 class FakeRecoveryMediatorCrypto {
  public:
-  // Fake HSM response. Contains response associated data AD3 = {kav, HMD}
-  // (where kav is Key Auth Value and HMD is HSM Metadata) and plain text
-  // response PT3 = {dealer_pub_key, mediated_share} encrypted with
-  // DH of epoch and channel_pub_key.
-  struct ResponsePayload {
-    brillo::SecureBlob tag;
-    brillo::SecureBlob iv;
-    brillo::SecureBlob associated_data;
-    brillo::SecureBlob cipher_text;
-  };
-
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<FakeRecoveryMediatorCrypto> Create();
 
@@ -82,8 +72,8 @@ class FakeRecoveryMediatorCrypto {
       const brillo::SecureBlob& epoch_pub_key,
       const brillo::SecureBlob& epoch_priv_key,
       const brillo::SecureBlob& mediator_priv_key,
-      const RecoveryCrypto::RequestPayload& request_payload,
-      ResponsePayload* response_payload) const;
+      const cryptorecovery::RequestPayload& request_payload,
+      cryptorecovery::ResponsePayload* response_payload) const;
 
  private:
   // Constructor is private. Use Create method to instantiate.
@@ -101,12 +91,13 @@ class FakeRecoveryMediatorCrypto {
   // 5. Generate encryption key as KDF(combine(epoch_pub_key,
   //                                     ECDH(epoch_priv_key, channel_pub_key)))
   // 6. Encrypt plain_text and generate `response_payload`
-  bool MediateHsmPayload(const brillo::SecureBlob& mediator_priv_key,
-                         const brillo::SecureBlob& epoch_pub_key,
-                         const brillo::SecureBlob& epoch_priv_key,
-                         const brillo::SecureBlob& ephemeral_pub_inv_key,
-                         const RecoveryCrypto::HsmPayload& hsm_payload,
-                         ResponsePayload* response_payload) const;
+  bool MediateHsmPayload(
+      const brillo::SecureBlob& mediator_priv_key,
+      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::SecureBlob& epoch_priv_key,
+      const brillo::SecureBlob& ephemeral_pub_inv_key,
+      const cryptorecovery::HsmPayload& hsm_payload,
+      cryptorecovery::ResponsePayload* response_payload) const;
 
   // Decrypts `mediator_share` using `mediator_priv_key` from
   // `encrypted_mediator_share`. Returns false if error occurred.
@@ -118,19 +109,19 @@ class FakeRecoveryMediatorCrypto {
   // Decrypt `cipher_text` from `hsm_payload' using provided
   // `mediator_priv_key`.
   bool DecryptHsmPayloadPlainText(const brillo::SecureBlob& mediator_priv_key,
-                                  const RecoveryCrypto::HsmPayload& hsm_payload,
+                                  const cryptorecovery::HsmPayload& hsm_payload,
                                   brillo::SecureBlob* plain_text) const;
 
   // Decrypt `cipher_text` from `request_payload' using provided
   // `epoch_priv_key` and store the result in `plain_text`.
   bool DecryptRequestPayloadPlainText(
       const brillo::SecureBlob& epoch_priv_key,
-      const RecoveryCrypto::RequestPayload& request_payload,
+      const cryptorecovery::RequestPayload& request_payload,
       brillo::SecureBlob* plain_text) const;
 
   // Extract `hsm_payload` from associated data of `request_payload'.
-  bool ExtractHsmPayload(const RecoveryCrypto::RequestPayload& request_payload,
-                         RecoveryCrypto::HsmPayload* hsm_payload) const;
+  bool ExtractHsmPayload(const cryptorecovery::RequestPayload& request_payload,
+                         cryptorecovery::HsmPayload* hsm_payload) const;
 
   EllipticCurve ec_;
 };

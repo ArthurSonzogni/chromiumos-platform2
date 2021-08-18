@@ -43,7 +43,7 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
       FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
   // Generates HSM payload that would be persisted on a chromebook.
-  RecoveryCrypto::HsmPayload hsm_payload;
+  cryptorecovery::HsmPayload hsm_payload;
   brillo::SecureBlob destination_share;
   brillo::SecureBlob recovery_key;
   brillo::SecureBlob channel_pub_key;
@@ -56,34 +56,32 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
 
   // Start recovery process.
   brillo::SecureBlob ephemeral_pub_key;
-  RecoveryCrypto::RequestPayload request_payload;
+  cryptorecovery::RequestPayload request_payload;
   ASSERT_TRUE(recovery->GenerateRequestPayload(
       hsm_payload,
       brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
       channel_pub_key, epoch_pub_key, &request_payload, &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
-  FakeRecoveryMediatorCrypto::ResponsePayload response_payload;
+  cryptorecovery::ResponsePayload response_payload;
   ASSERT_TRUE(mediator->MediateRequestPayload(
       epoch_pub_key, epoch_priv_key, mediator_priv_key, request_payload,
       &response_payload));
 
-  brillo::SecureBlob response_plain_text;
+  brillo::SecureBlob response_plain_text_cbor;
   ASSERT_TRUE(recovery->DecryptResponsePayload(
       channel_priv_key, epoch_pub_key, response_payload.cipher_text,
       response_payload.associated_data, response_payload.iv,
-      response_payload.tag, &response_plain_text));
+      response_payload.tag, &response_plain_text_cbor));
 
-  brillo::SecureBlob mediated_share;
-  brillo::SecureBlob dealer_pub_key;
-  brillo::SecureBlob key_auth_value;
-  ASSERT_TRUE(DeserializeHsmResponsePayloadFromCbor(
-      response_plain_text, &mediated_share, &dealer_pub_key, &key_auth_value));
+  cryptorecovery::HsmResponsePlainText response_plain_text;
+  ASSERT_TRUE(DeserializeHsmResponsePayloadFromCbor(response_plain_text_cbor,
+                                                    &response_plain_text));
 
   brillo::SecureBlob mediated_recovery_key;
-  ASSERT_TRUE(recovery->RecoverDestination(dealer_pub_key, destination_share,
-                                           ephemeral_pub_key, mediated_share,
-                                           &mediated_recovery_key));
+  ASSERT_TRUE(recovery->RecoverDestination(
+      response_plain_text.dealer_pub_key, destination_share, ephemeral_pub_key,
+      response_plain_text.mediated_point, &mediated_recovery_key));
 
   // Checks that cryptohome encryption key generated at enrollment and the
   // one obtained after migration are identical.

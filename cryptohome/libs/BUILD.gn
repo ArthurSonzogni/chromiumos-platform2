@@ -135,6 +135,7 @@ static_library("libcrosplatform") {
     "../crypto/hmac.cc",
     "../crypto/recovery_crypto.cc",
     "../crypto/recovery_crypto_hsm_cbor_serialization.cc",
+    "../crypto/recovery_crypto_util.h",
     "../crypto/rsa.cc",
     "../crypto/scrypt.cc",
     "../crypto/secure_blob_util.cc",

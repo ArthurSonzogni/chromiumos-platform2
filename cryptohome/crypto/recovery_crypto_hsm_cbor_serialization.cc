@@ -79,17 +79,14 @@ const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 const int kProtocolVersion = 1;
 
 bool SerializeHsmAssociatedDataToCbor(
-    const brillo::SecureBlob& publisher_pub_key,
-    const brillo::SecureBlob& channel_pub_key,
-    const brillo::SecureBlob& rsa_public_key,
-    const brillo::SecureBlob& onboarding_meta_data,
+    const cryptorecovery::HsmAssociatedData& args,
     brillo::SecureBlob* ad_cbor) {
   cbor::Value::MapValue ad_map;
 
-  ad_map.emplace(kPublisherPublicKey, publisher_pub_key);
-  ad_map.emplace(kChannelPublicKey, channel_pub_key);
-  ad_map.emplace(kRsaPublicKey, rsa_public_key);
-  ad_map.emplace(kOnboardingMetaData, onboarding_meta_data);
+  ad_map.emplace(kPublisherPublicKey, args.publisher_pub_key);
+  ad_map.emplace(kChannelPublicKey, args.channel_pub_key);
+  ad_map.emplace(kRsaPublicKey, args.rsa_public_key);
+  ad_map.emplace(kOnboardingMetaData, args.onboarding_meta_data);
 
   if (!SerializeCborMap(ad_map, ad_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM Associated Data to CBOR";
@@ -99,23 +96,18 @@ bool SerializeHsmAssociatedDataToCbor(
 }
 
 bool SerializeRecoveryRequestAssociatedDataToCbor(
-    const brillo::SecureBlob& hsm_aead_ct,
-    const brillo::SecureBlob& hsm_aead_ad,
-    const brillo::SecureBlob& hsm_aead_iv,
-    const brillo::SecureBlob& hsm_aead_tag,
-    const brillo::SecureBlob& request_meta_data,
-    const brillo::SecureBlob& epoch_pub_key,
+    const cryptorecovery::RecoveryRequestAssociatedData& args,
     brillo::SecureBlob* request_ad_cbor) {
   cbor::Value::MapValue ad_map;
 
   ad_map.emplace(kRecoveryCryptoRequestSchemaVersion,
                  /*schema_version=*/kProtocolVersion);
-  ad_map.emplace(kHsmAeadCipherText, hsm_aead_ct);
-  ad_map.emplace(kHsmAeadAd, hsm_aead_ad);
-  ad_map.emplace(kHsmAeadIv, hsm_aead_iv);
-  ad_map.emplace(kHsmAeadTag, hsm_aead_tag);
-  ad_map.emplace(kRequestMetaData, request_meta_data);
-  ad_map.emplace(kEpochPublicKey, epoch_pub_key);
+  ad_map.emplace(kHsmAeadCipherText, args.hsm_aead_ct);
+  ad_map.emplace(kHsmAeadAd, args.hsm_aead_ad);
+  ad_map.emplace(kHsmAeadIv, args.hsm_aead_iv);
+  ad_map.emplace(kHsmAeadTag, args.hsm_aead_tag);
+  ad_map.emplace(kRequestMetaData, args.request_meta_data);
+  ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
 
   if (!SerializeCborMap(ad_map, request_ad_cbor)) {
     LOG(ERROR)
@@ -125,15 +117,13 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
   return true;
 }
 
-bool SerializeHsmPlainTextToCbor(const brillo::SecureBlob& mediator_share,
-                                 const brillo::SecureBlob& dealer_pub_key,
-                                 const brillo::SecureBlob& key_auth_value,
+bool SerializeHsmPlainTextToCbor(const cryptorecovery::HsmPlainText& plain_text,
                                  brillo::SecureBlob* plain_text_cbor) {
   cbor::Value::MapValue pt_map;
 
-  pt_map.emplace(kDealerPublicKey, dealer_pub_key);
-  pt_map.emplace(kMediatorShare, mediator_share);
-  pt_map.emplace(kKeyAuthValue, key_auth_value);
+  pt_map.emplace(kDealerPublicKey, plain_text.dealer_pub_key);
+  pt_map.emplace(kMediatorShare, plain_text.mediator_share);
+  pt_map.emplace(kKeyAuthValue, plain_text.key_auth_value);
   if (!SerializeCborMap(pt_map, plain_text_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM plain text to CBOR";
     return false;
@@ -142,11 +132,11 @@ bool SerializeHsmPlainTextToCbor(const brillo::SecureBlob& mediator_share,
 }
 
 bool SerializeRecoveryRequestPlainTextToCbor(
-    const brillo::SecureBlob& ephemeral_pub_inv_key,
+    const cryptorecovery::RecoveryRequestPlainText& plain_text,
     brillo::SecureBlob* plain_text_cbor) {
   cbor::Value::MapValue pt_map;
 
-  pt_map.emplace(kEphemeralPublicInvKey, ephemeral_pub_inv_key);
+  pt_map.emplace(kEphemeralPublicInvKey, plain_text.ephemeral_pub_inv_key);
 
   if (!SerializeCborMap(pt_map, plain_text_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Request plain text to CBOR";
@@ -155,15 +145,14 @@ bool SerializeRecoveryRequestPlainTextToCbor(
   return true;
 }
 
-bool SerializeHsmResponsePayloadToCbor(const brillo::SecureBlob& mediated_point,
-                                       const brillo::SecureBlob& dealer_pub_key,
-                                       const brillo::SecureBlob& key_auth_value,
-                                       brillo::SecureBlob* response_cbor) {
+bool SerializeHsmResponsePlainTextToCbor(
+    const cryptorecovery::HsmResponsePlainText& plain_text,
+    brillo::SecureBlob* response_cbor) {
   cbor::Value::MapValue pt_map;
 
-  pt_map.emplace(kDealerPublicKey, dealer_pub_key);
-  pt_map.emplace(kMediatedPoint, mediated_point);
-  pt_map.emplace(kKeyAuthValue, key_auth_value);
+  pt_map.emplace(kDealerPublicKey, plain_text.dealer_pub_key);
+  pt_map.emplace(kMediatedPoint, plain_text.mediated_point);
+  pt_map.emplace(kKeyAuthValue, plain_text.key_auth_value);
   if (!SerializeCborMap(pt_map, response_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM responce payload to CBOR";
     return false;
@@ -173,9 +162,7 @@ bool SerializeHsmResponsePayloadToCbor(const brillo::SecureBlob& mediated_point,
 
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,
-    brillo::SecureBlob* mediator_share,
-    brillo::SecureBlob* dealer_pub_key,
-    brillo::SecureBlob* key_auth_value) {
+    cryptorecovery::HsmPlainText* hsm_plain_text) {
   const auto& cbor = ReadCborPayload(hsm_plain_text_cbor);
   if (!cbor) {
     return false;
@@ -215,18 +202,21 @@ bool DeserializeHsmPlainTextFromCbor(
     return false;
   }
 
-  dealer_pub_key->assign(dealer_pub_key_entry->second.GetBytestring().begin(),
-                         dealer_pub_key_entry->second.GetBytestring().end());
-  mediator_share->assign(mediator_share_entry->second.GetBytestring().begin(),
-                         mediator_share_entry->second.GetBytestring().end());
-  key_auth_value->assign(key_auth_value_entry->second.GetBytestring().begin(),
-                         key_auth_value_entry->second.GetBytestring().end());
+  hsm_plain_text->dealer_pub_key.assign(
+      dealer_pub_key_entry->second.GetBytestring().begin(),
+      dealer_pub_key_entry->second.GetBytestring().end());
+  hsm_plain_text->mediator_share.assign(
+      mediator_share_entry->second.GetBytestring().begin(),
+      mediator_share_entry->second.GetBytestring().end());
+  hsm_plain_text->key_auth_value.assign(
+      key_auth_value_entry->second.GetBytestring().begin(),
+      key_auth_value_entry->second.GetBytestring().end());
   return true;
 }
 
 bool DeserializeRecoveryRequestPlainTextFromCbor(
     const brillo::SecureBlob& request_plain_text_cbor,
-    brillo::SecureBlob* ephemeral_pub_inv_key) {
+    cryptorecovery::RecoveryRequestPlainText* request_plain_text) {
   const auto& cbor = ReadCborPayload(request_plain_text_cbor);
   if (!cbor) {
     return false;
@@ -245,7 +235,7 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
     return false;
   }
 
-  ephemeral_pub_inv_key->assign(
+  request_plain_text->ephemeral_pub_inv_key.assign(
       ephemeral_pub_inv_key_entry->second.GetBytestring().begin(),
       ephemeral_pub_inv_key_entry->second.GetBytestring().end());
   return true;
@@ -253,9 +243,7 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
 
 bool DeserializeHsmResponsePayloadFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
-    brillo::SecureBlob* mediated_point,
-    brillo::SecureBlob* dealer_pub_key,
-    brillo::SecureBlob* key_auth_value) {
+    cryptorecovery::HsmResponsePlainText* response_payload) {
   const auto& cbor = ReadCborPayload(response_payload_cbor);
   if (!cbor) {
     return false;
@@ -295,12 +283,15 @@ bool DeserializeHsmResponsePayloadFromCbor(
     return false;
   }
 
-  dealer_pub_key->assign(dealer_pub_key_entry->second.GetBytestring().begin(),
-                         dealer_pub_key_entry->second.GetBytestring().end());
-  mediated_point->assign(mediator_share_entry->second.GetBytestring().begin(),
-                         mediator_share_entry->second.GetBytestring().end());
-  key_auth_value->assign(key_auth_value_entry->second.GetBytestring().begin(),
-                         key_auth_value_entry->second.GetBytestring().end());
+  response_payload->dealer_pub_key.assign(
+      dealer_pub_key_entry->second.GetBytestring().begin(),
+      dealer_pub_key_entry->second.GetBytestring().end());
+  response_payload->mediated_point.assign(
+      mediator_share_entry->second.GetBytestring().begin(),
+      mediator_share_entry->second.GetBytestring().end());
+  response_payload->key_auth_value.assign(
+      key_auth_value_entry->second.GetBytestring().begin(),
+      key_auth_value_entry->second.GetBytestring().end());
   return true;
 }
 

@@ -72,17 +72,17 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   ~RecoveryCryptoImpl() override;
 
   bool GenerateRequestPayload(
-      const HsmPayload& hsm_payload,
+      const cryptorecovery::HsmPayload& hsm_payload,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      RequestPayload* request_payload,
+      cryptorecovery::RequestPayload* request_payload,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
                           const brillo::SecureBlob& rsa_pub_key,
                           const brillo::SecureBlob& onboarding_metadata,
-                          HsmPayload* hsm_payload,
+                          cryptorecovery::HsmPayload* hsm_payload,
                           brillo::SecureBlob* destination_share,
                           brillo::SecureBlob* recovery_key,
                           brillo::SecureBlob* channel_pub_key,
@@ -247,17 +247,22 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
 }
 
 bool RecoveryCryptoImpl::GenerateRequestPayload(
-    const HsmPayload& hsm_payload,
+    const cryptorecovery::HsmPayload& hsm_payload,
     const brillo::SecureBlob& request_meta_data,
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
     const brillo::SecureBlob& epoch_pub_key,
-    RequestPayload* request_payload,
+    cryptorecovery::RequestPayload* request_payload,
     brillo::SecureBlob* ephemeral_pub_key) const {
+  cryptorecovery::RecoveryRequestAssociatedData request_ad;
+  request_ad.hsm_aead_ct = hsm_payload.cipher_text;
+  request_ad.hsm_aead_ad = hsm_payload.associated_data;
+  request_ad.hsm_aead_iv = hsm_payload.iv;
+  request_ad.hsm_aead_tag = hsm_payload.tag;
+  request_ad.request_meta_data = request_meta_data;
+  request_ad.epoch_pub_key = epoch_pub_key;
   if (!SerializeRecoveryRequestAssociatedDataToCbor(
-          hsm_payload.cipher_text, hsm_payload.associated_data, hsm_payload.iv,
-          hsm_payload.tag, request_meta_data, epoch_pub_key,
-          &request_payload->associated_data)) {
+          request_ad, &request_payload->associated_data)) {
     LOG(ERROR) << "Failed to generate associated data cbor";
     return false;
   }
@@ -282,8 +287,9 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
   }
 
   brillo::SecureBlob plain_text_cbor;
-  if (!SerializeRecoveryRequestPlainTextToCbor(ephemeral_inverse_pub_key,
-                                               &plain_text_cbor)) {
+  cryptorecovery::RecoveryRequestPlainText plain_text;
+  plain_text.ephemeral_pub_inv_key = ephemeral_inverse_pub_key;
+  if (!SerializeRecoveryRequestPlainTextToCbor(plain_text, &plain_text_cbor)) {
     LOG(ERROR) << "Failed to generate Recovery Request plain text cbor";
     return false;
   }
@@ -301,7 +307,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     const brillo::SecureBlob& mediator_pub_key,
     const brillo::SecureBlob& rsa_pub_key,
     const brillo::SecureBlob& onboarding_metadata,
-    HsmPayload* hsm_payload,
+    cryptorecovery::HsmPayload* hsm_payload,
     brillo::SecureBlob* destination_share,
     brillo::SecureBlob* recovery_key,
     brillo::SecureBlob* channel_pub_key,
@@ -408,9 +414,10 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // TPM 2.0). In the next iteration we will generate kav if a non-empty value
   // of `rsa_pub_key` is provided.
   brillo::SecureBlob plain_text_cbor;
-  if (!SerializeHsmPlainTextToCbor(mediator_share, dealer_pub_key,
-                                   /*key_auth_value=*/brillo::SecureBlob(),
-                                   &plain_text_cbor)) {
+  cryptorecovery::HsmPlainText hsm_plain_text;
+  hsm_plain_text.mediator_share = mediator_share;
+  hsm_plain_text.dealer_pub_key = dealer_pub_key;
+  if (!SerializeHsmPlainTextToCbor(hsm_plain_text, &plain_text_cbor)) {
     LOG(ERROR) << "Failed to generate HSM plain text cbor";
     return false;
   }
@@ -698,9 +705,12 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
     LOG(ERROR) << "Failed to convert publisher_priv_key to a SecureBlob";
     return false;
   }
-  if (!SerializeHsmAssociatedDataToCbor(*publisher_pub_key, channel_pub_key,
-                                        rsa_pub_key, onboarding_metadata,
-                                        hsm_associated_data)) {
+  cryptorecovery::HsmAssociatedData hsm_ad;
+  hsm_ad.publisher_pub_key = *publisher_pub_key;
+  hsm_ad.channel_pub_key = channel_pub_key;
+  hsm_ad.rsa_public_key = rsa_pub_key;
+  hsm_ad.onboarding_meta_data = onboarding_metadata;
+  if (!SerializeHsmAssociatedDataToCbor(hsm_ad, hsm_associated_data)) {
     LOG(ERROR) << "Failed to generate associated data cbor";
     return false;
   }

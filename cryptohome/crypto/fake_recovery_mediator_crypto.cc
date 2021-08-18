@@ -148,7 +148,7 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
 
 bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     const brillo::SecureBlob& mediator_priv_key,
-    const RecoveryCrypto::HsmPayload& hsm_payload,
+    const cryptorecovery::HsmPayload& hsm_payload,
     brillo::SecureBlob* plain_text) const {
   brillo::SecureBlob publisher_pub_key;
   if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
@@ -178,7 +178,7 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
 
 bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     const brillo::SecureBlob& epoch_priv_key,
-    const RecoveryCrypto::RequestPayload& request_payload,
+    const cryptorecovery::RequestPayload& request_payload,
     brillo::SecureBlob* plain_text) const {
   brillo::SecureBlob hsm_ad;
   if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
@@ -215,8 +215,8 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
 }
 
 bool FakeRecoveryMediatorCrypto::ExtractHsmPayload(
-    const RecoveryCrypto::RequestPayload& request_payload,
-    RecoveryCrypto::HsmPayload* hsm_payload) const {
+    const cryptorecovery::RequestPayload& request_payload,
+    cryptorecovery::HsmPayload* hsm_payload) const {
   if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data, kHsmAeadAd,
                                     &hsm_payload->associated_data)) {
     LOG(ERROR) << "Unable to deserialize associated_data from "
@@ -292,37 +292,35 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& ephemeral_pub_inv_key,
-    const RecoveryCrypto::HsmPayload& hsm_payload,
-    ResponsePayload* response_payload) const {
+    const cryptorecovery::HsmPayload& hsm_payload,
+    cryptorecovery::ResponsePayload* response_payload) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return false;
   }
 
-  brillo::SecureBlob plain_text;
+  brillo::SecureBlob hsm_plain_text_cbor;
   if (!DecryptHsmPayloadPlainText(mediator_priv_key, hsm_payload,
-                                  &plain_text)) {
-    LOG(ERROR) << "Unable to decrypt plain_text in hsm_payload";
+                                  &hsm_plain_text_cbor)) {
+    LOG(ERROR) << "Unable to decrypt hsm_plain_text_cbor in hsm_payload";
     return false;
   }
 
-  brillo::SecureBlob mediator_share;
-  brillo::SecureBlob dealer_pub_key;
-  brillo::SecureBlob kav;
-  if (!DeserializeHsmPlainTextFromCbor(plain_text, &mediator_share,
-                                       &dealer_pub_key, &kav)) {
-    LOG(ERROR) << "Unable to deserialize  plain_text";
+  cryptorecovery::HsmPlainText hsm_plain_text;
+  if (!DeserializeHsmPlainTextFromCbor(hsm_plain_text_cbor, &hsm_plain_text)) {
+    LOG(ERROR) << "Unable to deserialize hsm_plain_text_cbor";
     return false;
   }
 
-  crypto::ScopedBIGNUM mediator_share_bn = SecureBlobToBigNum(mediator_share);
+  crypto::ScopedBIGNUM mediator_share_bn =
+      SecureBlobToBigNum(hsm_plain_text.mediator_share);
   if (!mediator_share_bn) {
     LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
     return false;
   }
   crypto::ScopedEC_POINT dealer_pub_point =
-      ec_.SecureBlobToPoint(dealer_pub_key, context.get());
+      ec_.SecureBlobToPoint(hsm_plain_text.dealer_pub_key, context.get());
   if (!dealer_pub_point) {
     LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
     return false;
@@ -355,11 +353,14 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
 
   response_payload->associated_data = brillo::SecureBlob(kFakeHsmMetaData);
 
-  brillo::SecureBlob plain_text_cbor;
-  if (!SerializeHsmResponsePayloadToCbor(mediator_dh, dealer_pub_key,
-                                         /*kav=*/brillo::SecureBlob(),
-                                         &plain_text_cbor)) {
-    LOG(ERROR) << "Unable to serialize response payload";
+  brillo::SecureBlob response_plain_text_cbor;
+  cryptorecovery::HsmResponsePlainText response_plain_text;
+  response_plain_text.mediated_point = mediator_dh;
+  response_plain_text.dealer_pub_key = hsm_plain_text.dealer_pub_key;
+  response_plain_text.key_auth_value = brillo::SecureBlob();
+  if (!SerializeHsmResponsePlainTextToCbor(response_plain_text,
+                                           &response_plain_text_cbor)) {
+    LOG(ERROR) << "Unable to serialize response plain text";
     return false;
   }
 
@@ -382,8 +383,9 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  if (!AesGcmEncrypt(plain_text_cbor, response_payload->associated_data,
-                     aes_gcm_key, &response_payload->iv, &response_payload->tag,
+  if (!AesGcmEncrypt(response_plain_text_cbor,
+                     response_payload->associated_data, aes_gcm_key,
+                     &response_payload->iv, &response_payload->tag,
                      &response_payload->cipher_text)) {
     LOG(ERROR) << "Failed to perform AES-GCM encryption of response_payload";
     return false;
@@ -396,36 +398,37 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& mediator_priv_key,
-    const RecoveryCrypto::RequestPayload& request_payload,
-    ResponsePayload* response_payload) const {
+    const cryptorecovery::RequestPayload& request_payload,
+    cryptorecovery::ResponsePayload* response_payload) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return false;
   }
 
-  brillo::SecureBlob plain_text;
+  brillo::SecureBlob request_plain_text_cbor;
   if (!DecryptRequestPayloadPlainText(epoch_priv_key, request_payload,
-                                      &plain_text)) {
-    LOG(ERROR) << "Unable to decrypt plain_text in request_payload";
+                                      &request_plain_text_cbor)) {
+    LOG(ERROR) << "Unable to decrypt plain text in request_payload";
     return false;
   }
 
-  brillo::SecureBlob ephemeral_pub_inv_key;
-  if (!DeserializeRecoveryRequestPlainTextFromCbor(plain_text,
-                                                   &ephemeral_pub_inv_key)) {
-    LOG(ERROR) << "Unable to deserialize Recovery Request plain_text";
+  cryptorecovery::RecoveryRequestPlainText plain_text;
+  if (!DeserializeRecoveryRequestPlainTextFromCbor(request_plain_text_cbor,
+                                                   &plain_text)) {
+    LOG(ERROR)
+        << "Unable to deserialize Recovery Request request_plain_text_cbor";
     return false;
   }
 
-  RecoveryCrypto::HsmPayload hsm_payload;
+  cryptorecovery::HsmPayload hsm_payload;
   if (!ExtractHsmPayload(request_payload, &hsm_payload)) {
     LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
     return false;
   }
 
   return MediateHsmPayload(mediator_priv_key, epoch_pub_key, epoch_priv_key,
-                           ephemeral_pub_inv_key, hsm_payload,
+                           plain_text.ephemeral_pub_inv_key, hsm_payload,
                            response_payload);
 }
 

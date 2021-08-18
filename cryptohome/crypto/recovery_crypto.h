@@ -11,6 +11,7 @@
 
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
+#include "cryptohome/crypto/recovery_crypto_util.h"
 
 namespace cryptohome {
 
@@ -37,25 +38,6 @@ class RecoveryCrypto {
     brillo::SecureBlob iv;
     brillo::SecureBlob ephemeral_pub_key;
     brillo::SecureBlob encrypted_data;
-  };
-
-  // HSM Payload is created at onboarding and contains all the data that are
-  // persisted on a chromebook and will be eventually used for recovery.
-  struct HsmPayload {
-    brillo::SecureBlob tag;
-    brillo::SecureBlob iv;
-    brillo::SecureBlob associated_data;
-    brillo::SecureBlob cipher_text;
-  };
-
-  // Recovery Request Payload is created during recovery flow.
-  // `associated_data` contains data from `HsmPayload`, request metadata (RMD),
-  // and epoch public key (G*r).
-  struct RequestPayload {
-    brillo::SecureBlob tag;
-    brillo::SecureBlob iv;
-    brillo::SecureBlob associated_data;
-    brillo::SecureBlob cipher_text;
   };
 
   // Constant value of hkdf_info for mediator share. Must be kept in sync with
@@ -92,12 +74,12 @@ class RecoveryCrypto {
   // 5. Construct plain text PT2 = {G*-x}.
   // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
   virtual bool GenerateRequestPayload(
-      const HsmPayload& hsm_payload,
+      const cryptorecovery::HsmPayload& hsm_payload,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      RequestPayload* request_payload,
+      cryptorecovery::RequestPayload* request_payload,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
 
   // Generates HSM payload that will be persisted on a chromebook at enrollment
@@ -126,7 +108,7 @@ class RecoveryCrypto {
       const brillo::SecureBlob& mediator_pub_key,
       const brillo::SecureBlob& rsa_pub_key,
       const brillo::SecureBlob& onboarding_metadata,
-      HsmPayload* hsm_payload,
+      cryptorecovery::HsmPayload* hsm_payload,
       brillo::SecureBlob* destination_share,
       brillo::SecureBlob* recovery_key,
       brillo::SecureBlob* channel_pub_key,
