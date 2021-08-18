@@ -99,8 +99,9 @@ class GpuImageProcessor {
                   const Texture2D& uv_input,
                   const Texture2D& rgba_output);
 
-  // Convert the input NV12 |y_input| and |uv_input| textures to NV12 with GPU
-  // downsampling.
+  // Convert the input YUV |y_input| and |uv_input| textures to YUV with GPU
+  // downsampling.  This can be used for conversion between NV12 and P010 pixel
+  // formats.
   //
   // Args:
   //    |y_input|:
@@ -120,10 +121,10 @@ class GpuImageProcessor {
   //
   // Returns:
   //    true if GL commands are successfully submitted; false otherwise.
-  bool NV12ToNV12(const Texture2D& y_input,
-                  const Texture2D& uv_input,
-                  const Texture2D& y_output,
-                  const Texture2D& uv_output);
+  bool YUVToYUV(const Texture2D& y_input,
+                const Texture2D& uv_input,
+                const Texture2D& y_output,
+                const Texture2D& uv_output);
 
   // Apply the Gamma curve: OUT = pow(IN, 1/|gamma_value|) to each of the RGB
   // channels of |rgba_input|.  The results are written to |rgba_output|.

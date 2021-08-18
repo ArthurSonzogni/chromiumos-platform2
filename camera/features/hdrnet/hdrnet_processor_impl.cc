@@ -227,7 +227,7 @@ void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
                                     const SharedImage& output_nv12) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  bool result = image_processor_->NV12ToNV12(
+  bool result = image_processor_->YUVToYUV(
       input_yuv.y_texture(), input_yuv.uv_texture(), output_nv12.y_texture(),
       output_nv12.uv_texture());
   if (!result) {

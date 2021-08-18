@@ -244,7 +244,7 @@ TEST_F(GlImageProcessorTest, NV12ToNV12Test) {
   DumpInputBuffer();
 
   AllocateNV12Output();
-  EXPECT_TRUE(image_processor_.NV12ToNV12(
+  EXPECT_TRUE(image_processor_.YUVToYUV(
       input_image_.y_texture(), input_image_.uv_texture(),
       output_image_.y_texture(), output_image_.uv_texture()));
   glFinish();

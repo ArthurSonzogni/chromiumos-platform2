@@ -27,7 +27,7 @@ constexpr const char* kRgbaToNv12Filename = "rgba_to_nv12.frag";
 constexpr const char* kExternalYuvToNv12Filename = "external_yuv_to_nv12.frag";
 constexpr const char* kExternalYuvToRgbaFilename = "external_yuv_to_rgba.frag";
 constexpr const char* kNv12ToRgbaFilename = "nv12_to_rgba.frag";
-constexpr const char* kNv12ToNv12Filename = "nv12_to_nv12.frag";
+constexpr const char* kYuvToYuvFilename = "yuv_to_yuv.frag";
 constexpr const char* kGammaCorrectionFilename = "gamma_correction.frag";
 constexpr const char* kLutFilename = "lut.frag";
 
@@ -74,7 +74,7 @@ GpuImageProcessor::GpuImageProcessor()
     nv12_to_rgba_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
   }
   {
-    base::span<const char> src = gpu_shaders.Get(kNv12ToNv12Filename);
+    base::span<const char> src = gpu_shaders.Get(kYuvToYuvFilename);
     Shader fragment_shader(GL_FRAGMENT_SHADER,
                            std::string(src.data(), src.size()));
     CHECK(fragment_shader.IsValid());
@@ -310,10 +310,10 @@ bool GpuImageProcessor::NV12ToRGBA(const Texture2D& y_input,
   return true;
 }
 
-bool GpuImageProcessor::NV12ToNV12(const Texture2D& y_input,
-                                   const Texture2D& uv_input,
-                                   const Texture2D& y_output,
-                                   const Texture2D& uv_output) {
+bool GpuImageProcessor::YUVToYUV(const Texture2D& y_input,
+                                 const Texture2D& uv_input,
+                                 const Texture2D& y_output,
+                                 const Texture2D& uv_output) {
   if ((y_input.width() / 2 != uv_input.width()) ||
       (y_input.height() / 2 != uv_input.height())) {
     LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()

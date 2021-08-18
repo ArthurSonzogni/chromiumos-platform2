@@ -31,7 +31,7 @@ class HdrNetProcessorDeviceAdapterIpu6 : public HdrNetProcessorDeviceAdapter {
   void TearDown() override;
   void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
   bool Preprocess(const HdrNetConfig::Options& options,
-                  const SharedImage& input_nv12,
+                  const SharedImage& input_yuv,
                   const SharedImage& output_rgba) override;
   bool Postprocess(const HdrNetConfig::Options& options,
                    const SharedImage& input_rgba,

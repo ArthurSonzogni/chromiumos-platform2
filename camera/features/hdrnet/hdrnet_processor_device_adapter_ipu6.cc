@@ -119,7 +119,7 @@ void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
 
 bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
     const HdrNetConfig::Options& options,
-    const SharedImage& input_nv12,
+    const SharedImage& input_yuv,
     const SharedImage& output_rgba) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
@@ -130,18 +130,17 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
   // Intel's GLES implementation always samples the YUV image with narrow range
   // color space and it's crushing the shadow areas on the images. Before we
   // have a fix in mesa, sample and covert the YUV image to RGB ourselves.
-  if (!input_nv12.y_texture().IsValid() || !input_nv12.uv_texture().IsValid() ||
+  if (!input_yuv.y_texture().IsValid() || !input_yuv.uv_texture().IsValid() ||
       !output_rgba.texture().IsValid()) {
     LOGF(ERROR) << "Invalid input or output textures";
     return false;
   }
-  if ((input_nv12.y_texture().width() / 2 != input_nv12.uv_texture().width()) ||
-      (input_nv12.y_texture().height() / 2 !=
-       input_nv12.uv_texture().height())) {
-    LOGF(ERROR) << "Invalid Y (" << input_nv12.y_texture().width() << ", "
-                << input_nv12.y_texture().height() << ") and UV ("
-                << input_nv12.uv_texture().width() << ", "
-                << input_nv12.uv_texture().height() << ") output dimension";
+  if ((input_yuv.y_texture().width() / 2 != input_yuv.uv_texture().width()) ||
+      (input_yuv.y_texture().height() / 2 != input_yuv.uv_texture().height())) {
+    LOG(ERROR) << "Invalid Y (" << input_yuv.y_texture().width() << ", "
+               << input_yuv.y_texture().height() << ") and UV ("
+               << input_yuv.uv_texture().width() << ", "
+               << input_yuv.uv_texture().height() << ") output dimension";
     return false;
   }
 
@@ -158,10 +157,10 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
   constexpr int kInverseGtmLutBinding = 3;
 
   glActiveTexture(GL_TEXTURE0 + kYInputBinding);
-  input_nv12.y_texture().Bind();
+  input_yuv.y_texture().Bind();
   nearest_clamp_to_edge_.Bind(kYInputBinding);
   glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
-  input_nv12.uv_texture().Bind();
+  input_yuv.uv_texture().Bind();
   nearest_clamp_to_edge_.Bind(kUvInputBinding);
   glActiveTexture(GL_TEXTURE0 + kInverseGammaLutBinding);
   inverse_gamma_lut_.Bind();
@@ -178,7 +177,7 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
       preprocessor_program_.GetUniformLocation("uTextureMatrix");
   glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
   GLint uTexelWidth = preprocessor_program_.GetUniformLocation("uTexelWidth");
-  glUniform1f(uTexelWidth, input_nv12.y_texture().width());
+  glUniform1f(uTexelWidth, input_yuv.y_texture().width());
 
   Framebuffer fb;
   fb.Bind();
@@ -189,10 +188,10 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
 
   // Clean up.
   glActiveTexture(GL_TEXTURE0 + kYInputBinding);
-  input_nv12.y_texture().Unbind();
+  input_yuv.y_texture().Unbind();
   Sampler::Unbind(kYInputBinding);
   glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
-  input_nv12.uv_texture().Unbind();
+  input_yuv.uv_texture().Unbind();
   Sampler::Unbind(kUvInputBinding);
   glActiveTexture(GL_TEXTURE0 + kInverseGammaLutBinding);
   inverse_gamma_lut_.Unbind();
