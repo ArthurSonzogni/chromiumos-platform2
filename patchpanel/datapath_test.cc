@@ -810,15 +810,6 @@ TEST(DatapathTest, StartRoutingDevice_Arc) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
   Verify_iptables(*runner, IPv4,
                   "filter -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
   Verify_iptables(*runner, IPv4,
@@ -876,15 +867,6 @@ TEST(DatapathTest, StopRoutingDevice_Arc) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -D PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -D PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -D PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
   Verify_iptables(*runner, IPv4,
                   "filter -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
   Verify_iptables(*runner, IPv4,

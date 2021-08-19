@@ -300,6 +300,15 @@ class Datapath {
   // Adds all |modules| into the kernel using modprobe.
   virtual bool ModprobeAll(const std::vector<std::string>& modules);
 
+  // Create (or delete) DNAT rules for sending unsollicited traffic inbound on
+  // interface |ifname| to |ipv4_addr|. This is used for implementing
+  // transparent ARC inbound connections to Android Apps listening on the
+  // network.
+  virtual void AddInboundIPv4DNAT(const std::string& ifname,
+                                  const std::string& ipv4_addr);
+  virtual void RemoveInboundIPv4DNAT(const std::string& ifname,
+                                     const std::string& ipv4_addr);
+
   // Create (or delete) DNAT rules for redirecting DNS queries from system
   // services to the nameservers of a particular physical networks. These
   // DNAT rules are only applied if a VPN is connected and allows system
@@ -363,12 +372,6 @@ class Datapath {
                           bool enable_multicast);
   // Sets the link status.
   bool ToggleInterface(const std::string& ifname, bool up);
-  // Create (or delete) pre-routing rules allowing direct ingress on |ifname|
-  // to guest destination |ipv4_addr|.
-  bool AddInboundIPv4DNAT(const std::string& ifname,
-                          const std::string& ipv4_addr);
-  void RemoveInboundIPv4DNAT(const std::string& ifname,
-                             const std::string& ipv4_addr);
   bool ModifyChromeDnsRedirect(IpFamily family,
                                const DnsRedirectionRule& rule,
                                const std::string& op);

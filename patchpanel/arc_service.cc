@@ -414,6 +414,9 @@ void ArcService::AddDevice(const std::string& ifname,
   datapath_->StartRoutingDevice(device->phys_ifname(), device->host_ifname(),
                                 device->config().guest_ipv4_addr(),
                                 TrafficSource::ARC, false /*route_on_vpn*/);
+  datapath_->AddInboundIPv4DNAT(
+      device->phys_ifname(),
+      IPv4AddressToString(device->config().guest_ipv4_addr()));
 
   std::string virtual_device_ifname;
   if (guest_ == GuestMessage::ARC_VM) {
@@ -475,6 +478,9 @@ void ArcService::RemoveDevice(const std::string& ifname) {
   datapath_->StopRoutingDevice(device->phys_ifname(), device->host_ifname(),
                                device->config().guest_ipv4_addr(),
                                TrafficSource::ARC, false /*route_on_vpn*/);
+  datapath_->RemoveInboundIPv4DNAT(
+      device->phys_ifname(),
+      IPv4AddressToString(device->config().guest_ipv4_addr()));
   datapath_->RemoveBridge(device->host_ifname());
 
   if (IsAdbAllowed(type))

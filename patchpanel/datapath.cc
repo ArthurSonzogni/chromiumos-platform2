@@ -1032,13 +1032,6 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   TrafficSource source,
                                   bool route_on_vpn,
                                   uint32_t peer_ipv4_addr) {
-  if (source == TrafficSource::ARC && !ext_ifname.empty() &&
-      int_ipv4_addr != 0 &&
-      !AddInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr))) {
-    LOG(ERROR) << "Failed to configure ingress traffic rules for " << ext_ifname
-               << "->" << int_ifname;
-  }
-
   if (!ModifyIpForwarding(IpFamily::IPv4, "-A", ext_ifname, int_ifname)) {
     LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "->"
                << int_ifname;
@@ -1132,10 +1125,6 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                                  uint32_t int_ipv4_addr,
                                  TrafficSource source,
                                  bool route_on_vpn) {
-  if (source == TrafficSource::ARC && !ext_ifname.empty() &&
-      int_ipv4_addr != 0) {
-    RemoveInboundIPv4DNAT(ext_ifname, IPv4AddressToString(int_ipv4_addr));
-  }
   ModifyIpForwarding(IpFamily::IPv4, "-D", ext_ifname, int_ifname);
   ModifyIpForwarding(IpFamily::IPv4, "-D", int_ifname, ext_ifname);
 
@@ -1146,30 +1135,33 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
   RemoveChain(IpFamily::Dual, "mangle", subchain);
 }
 
-bool Datapath::AddInboundIPv4DNAT(const std::string& ifname,
+void Datapath::AddInboundIPv4DNAT(const std::string& ifname,
                                   const std::string& ipv4_addr) {
   // Direct ingress IP traffic to existing sockets.
+  bool success = true;
   if (process_runner_->iptables(
           "nat", {"-A", "PREROUTING", "-i", ifname, "-m", "socket",
                   "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
-    return false;
+    success = false;
   }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(
           "nat", {"-A", "PREROUTING", "-i", ifname, "-p", "tcp", "-j", "DNAT",
                   "--to-destination", ipv4_addr, "-w"}) != 0) {
-    RemoveInboundIPv4DNAT(ifname, ipv4_addr);
-    return false;
+    success = false;
   }
   if (process_runner_->iptables(
           "nat", {"-A", "PREROUTING", "-i", ifname, "-p", "udp", "-j", "DNAT",
                   "--to-destination", ipv4_addr, "-w"}) != 0) {
-    RemoveInboundIPv4DNAT(ifname, ipv4_addr);
-    return false;
+    success = false;
   }
 
-  return true;
+  if (!success) {
+    LOG(ERROR) << "Failed to configure ingress DNAT rules on " << ifname
+               << " to " << ipv4_addr;
+    RemoveInboundIPv4DNAT(ifname, ipv4_addr);
+  }
 }
 
 void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
