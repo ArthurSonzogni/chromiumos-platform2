@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/optional.h>
+#include <cros_config/cros_config_interface.h>
 
 namespace biod {
 
