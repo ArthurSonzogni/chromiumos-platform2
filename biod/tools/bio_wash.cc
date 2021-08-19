@@ -6,6 +6,7 @@
 // |BiometricsManager|s, so as to render useless templates and other user data
 // encrypted with old secrets.
 
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -15,8 +16,10 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <cros_config/cros_config.h>
 #include <dbus/bus.h>
 
+#include "biod/biod_config.h"
 #include "biod/biod_storage.h"
 #include "biod/biod_version.h"
 #include "biod/cros_fp_biometrics_manager.h"
@@ -28,6 +31,19 @@ namespace {
 static int64_t kTimeoutSeconds = 30;
 
 constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
+
+bool IsFingerprintUnsupported() {
+  brillo::CrosConfig cros_config;
+  if (!cros_config.Init()) {
+    LOG(WARNING) << "Cros config is not supported on this model, continuing "
+                    "in legacy mode.";
+    return false;
+  }
+  if (biod::FingerprintUnsupported(&cros_config)) {
+    return true;
+  }
+  return false;
+}
 
 int DoBioWash(const bool factory_init = false) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
@@ -71,10 +87,17 @@ int DoBioWash(const bool factory_init = false) {
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(factory_init, false, "First time initialisation in the factory.");
+  DEFINE_bool(force, false, "Override cros config fingerprint system check.");
 
   brillo::FlagHelper::Init(argc, argv, kHelpMessage);
 
   biod::LogVersion();
+
+  // Check if model supports fingerprint
+  if (!FLAGS_force && IsFingerprintUnsupported()) {
+    LOG(INFO) << "Fingerprint is not supported on this model, exiting.";
+    return EXIT_SUCCESS;
+  }
 
   pid_t pid;
   pid = fork();
