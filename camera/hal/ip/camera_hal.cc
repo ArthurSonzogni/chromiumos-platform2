@@ -3,6 +3,7 @@
  * found in the LICENSE file.
  */
 
+#include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <mojo/core/embedder/embedder.h>
@@ -114,6 +115,13 @@ int CameraHal::Init() {
   if (initialized_.IsSet()) {
     LOGF(ERROR) << "Init called more than once";
     return -EBUSY;
+  }
+
+  // Do not try to connect to the IP peripheral on devices where the IGB driver
+  // does not exist.
+  if (!base::DirectoryExists(base::FilePath("/sys/bus/pci/drivers/igb"))) {
+    LOGF(INFO) << "IGB driver not found, IP cameras won't work";
+    return 0;
   }
 
   auto return_val = Future<int>::Create(nullptr);
