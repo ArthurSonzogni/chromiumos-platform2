@@ -33,6 +33,11 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
+  // Perform necessary initialization for dbus
+  // NOTE: If this declaration moves to _after_ the service->Start() call,
+  // service->Start segfaults.
+  FeatureDaemon daemon;
+
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
@@ -41,7 +46,6 @@ int main(int argc, char** argv) {
 
   CHECK(service->Start(bus.get(), service)) << "Failed to start featured!";
 
-  FeatureDaemon daemon;
   int rc = daemon.Run();
   return rc == EX_UNAVAILABLE ? EX_OK : rc;
 }

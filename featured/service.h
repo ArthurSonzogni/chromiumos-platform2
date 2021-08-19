@@ -23,6 +23,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <optional>
+#include <utility>
 #include <vector>
 
 namespace featured {
@@ -71,23 +73,23 @@ class AlwaysSupportedCommand : public FeatureCommand {
 
 class PlatformFeature {
  public:
-  PlatformFeature() = default;
+  PlatformFeature(const std::string& name,
+                  std::vector<std::unique_ptr<FeatureCommand>>&& query_cmds,
+                  std::vector<std::unique_ptr<FeatureCommand>>&& feature_cmds)
+      : exec_cmds_(std::move(feature_cmds)),
+        support_check_cmds_(std::move(query_cmds)),
+        name_(name) {}
   PlatformFeature(PlatformFeature&& other) = default;
   PlatformFeature(const PlatformFeature& other) = delete;
   PlatformFeature& operator=(const PlatformFeature& other) = delete;
 
   std::string name() { return name_; }
-  void SetName(std::string name) { name_ = name; }
 
   // Check if feature is supported on the device
   bool IsSupported() const;
 
   // Execute a sequence of commands to enable a feature
   bool Execute() const;
-
-  // Used by the parser to add commands to a feature
-  void AddCmd(std::unique_ptr<FeatureCommand> cmd);
-  void AddQueryCmd(std::unique_ptr<FeatureCommand> cmd);
 
  private:
   std::vector<std::unique_ptr<FeatureCommand>> exec_cmds_;
@@ -115,9 +117,8 @@ class JsonFeatureParser : public FeatureParserBase {
 
  private:
   // Helper to build a PlatformFeature object by parsing a JSON feature object
-  bool MakeFeatureObject(const base::Value* feature_obj,
-                         std::string* err_str,
-                         PlatformFeature* kf);
+  std::optional<PlatformFeature> MakeFeatureObject(
+      const base::Value& feature_obj, std::string* err_str);
 };
 
 class DbusFeaturedService {
