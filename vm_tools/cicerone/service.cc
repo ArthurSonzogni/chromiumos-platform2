@@ -341,7 +341,10 @@ ConvertPrivilegeLevelFromCiceroneToTremplin(
 class CiceroneGrpcCallbacks final : public grpc::Server::GlobalCallbacks {
  public:
   static void Register() {
-    static base::NoDestructor<CiceroneGrpcCallbacks> callbacks;
+    // GRPC wants to put this in a std::shared_ptr which will eventually get
+    // reset during static destruction, so we need to allocate using new rather
+    // then using base::NoDestructor.
+    grpc::Server::SetGlobalCallbacks(new CiceroneGrpcCallbacks);
   }
   void PreSynchronousRequest(grpc::ServerContext* context) override {}
   void PostSynchronousRequest(grpc::ServerContext* context) override {}
@@ -359,12 +362,7 @@ class CiceroneGrpcCallbacks final : public grpc::Server::GlobalCallbacks {
  private:
   friend class base::NoDestructor<CiceroneGrpcCallbacks>;
 
-  CiceroneGrpcCallbacks() {
-    // Note that GRPC library requires global callbacks installed once in
-    // application lifetime. Because CiceroneGrpcCallbacks is a singleton,
-    // it will be created at most once, thus satisfying GRPC requirement.
-    grpc::Server::SetGlobalCallbacks(this);
-  }
+  CiceroneGrpcCallbacks() = default;
   CiceroneGrpcCallbacks(const CiceroneGrpcCallbacks&) = delete;
   CiceroneGrpcCallbacks& operator=(const CiceroneGrpcCallbacks&) = delete;
 };
