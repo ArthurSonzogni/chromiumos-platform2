@@ -76,12 +76,9 @@ void ModemMbim::Initialize(EuiccManagerInterface* euicc_manager,
 
 void ModemMbim::Shutdown() {
   LOG(INFO) << __func__;
-  if (device_) {
-    if (g_signal_handler_is_connected(device_.get(), indication_id_)) {
-      g_signal_handler_disconnect(device_.get(), indication_id_);
-    }
-    device_.reset();
-  }
+  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
+    g_signal_handler_disconnect(device_.get(), indication_id_);
+  device_.reset();
   channel_ = kInvalidChannel;
   pending_response_ = false;
   ready_state_ = MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED,
@@ -149,7 +146,10 @@ void ModemMbim::MbimCreateNewDeviceCb(GObject* source,
       mbim_device_new_finish(res, &error));
   modem_mbim->device_ = std::move(mbimdevice);
   if (!modem_mbim->device_.get() || error != NULL) {
-    LOG(WARNING) << "Failed due to error: " << error->message;
+    // TODO(pholla): Gate initialization until a modem dbus object appears.
+    // (b/197256318)
+    LOG(INFO) << __func__ << ": " << error->message
+              << ". The modem may be booting ...";
     modem_mbim->RetryInitialization(std::move(modem_mbim->init_done_cb_));
     return;
   }
@@ -172,7 +172,14 @@ void ModemMbim::MbimDeviceOpenReadyCb(MbimDevice* device,
   modem_mbim->indication_id_ = g_signal_connect(
       modem_mbim->device_.get(), MBIM_DEVICE_SIGNAL_INDICATE_STATUS,
       G_CALLBACK(ClientIndicationCb), modem_mbim);
-  LOG(INFO) << "Mbim Device is ready, complete the initialization process";
+
+  if (modem_mbim->current_state_ == State::kMbimStarted) {
+    VLOG(2) << "Opened device. Reusing previous EID and IMEI";
+    std::move(modem_mbim->init_done_cb_).Run(kModemSuccess);
+    return;
+  }
+
+  LOG(INFO) << "Mbim device is ready, acquire eid and imei";
   auto get_imei = base::BindOnce(&ModemMbim::QueryCurrentMbimCapabilities,
                                  modem_mbim->weak_factory_.GetWeakPtr());
 
@@ -669,14 +676,19 @@ bool ModemMbim::State::Transition(ModemMbim::State::Value value) {
 
 void ModemMbim::StoreAndSetActiveSlot(const uint32_t physical_slot,
                                       ResultCallback cb) {
-  // Get the slot from libmbim
   LOG(INFO) << __func__ << " physical_slot:" << physical_slot;
+  // The modem may be reset, causing device_ to be invalid. Reopen to be
+  // safe. Then acquire a channel.
+  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
+    g_signal_handler_disconnect(device_.get(), indication_id_);
+  device_.reset();
+
   auto reacquire_channel = base::BindOnce(
       &ModemMbim::ReacquireChannel, weak_factory_.GetWeakPtr(), physical_slot);
-  // The modem may be reset, causing device_ to be invalid. Retry init to be
-  // safe.
-  RetryInitialization(base::BindOnce(&RunNextStep, std::move(reacquire_channel),
-                                     std::move(cb)));
+  init_done_cb_ =
+      base::BindOnce(&RunNextStep, std::move(reacquire_channel), std::move(cb));
+  mbim_device_new(file_, /* cancellable */ NULL,
+                  (GAsyncReadyCallback)MbimCreateNewDeviceCb, this);
 }
 
 void ModemMbim::StartProfileOp(uint32_t physical_slot, ResultCallback cb) {
