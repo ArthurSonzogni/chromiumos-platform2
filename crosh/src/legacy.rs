@@ -70,15 +70,15 @@ const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "systrace"];
 const USB_COMMANDS: &[&str] = &["update_firmware", "install", "upgrade"];
 
 pub fn register(dispatcher: &mut Dispatcher) {
-    register_legacy_commands(&BASE_COMMANDS, dispatcher)
+    register_legacy_commands(BASE_COMMANDS, dispatcher)
 }
 
 pub fn register_dev_mode_commands(dispatcher: &mut Dispatcher) {
-    register_legacy_commands(&DEV_COMMANDS, dispatcher)
+    register_legacy_commands(DEV_COMMANDS, dispatcher)
 }
 
 pub fn register_removable_commands(dispatcher: &mut Dispatcher) {
-    register_legacy_commands(&USB_COMMANDS, dispatcher)
+    register_legacy_commands(USB_COMMANDS, dispatcher)
 }
 
 fn register_legacy_commands(commands: &[&str], dispatcher: &mut Dispatcher) {

@@ -141,9 +141,9 @@ impl Dispatcher {
         }
 
         for cb in flag_callbacks {
-            (cb)(&command, entry)?;
+            (cb)(command, entry)?;
         }
-        (command.command_callback.unwrap())(&command, entry)
+        (command.command_callback.unwrap())(command, entry)
     }
 
     pub fn validate(&mut self) -> Result<(), Error> {
@@ -305,7 +305,7 @@ impl Command {
     fn find_flag(&self, flag: &str) -> Option<&Flag> {
         for f in &self.flags {
             if f.name == flag {
-                return Some(&f);
+                return Some(f);
             }
         }
         None
@@ -343,7 +343,7 @@ impl Command {
 pub fn default_help_callback(cmd: &Command, w: &mut dyn Write, level: usize) {
     let mut prefix = INDENT.repeat(level);
     write!(w, "{}{}", &prefix, &cmd.name).unwrap();
-    prefix.push_str(&INDENT);
+    prefix.push_str(INDENT);
     if !cmd.usage.is_empty() {
         write!(w, " {}", &cmd.usage).unwrap();
     }

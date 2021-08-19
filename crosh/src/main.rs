@@ -80,7 +80,7 @@ impl Completer for ReadLineHelper {
         _pos: usize,
         _ctx: &Context<'_>,
     ) -> Result<(usize, Vec<String>), ReadlineError> {
-        let tokens: Vec<String> = match shell_words::split(&line) {
+        let tokens: Vec<String> = match shell_words::split(line) {
             Ok(v) => v,
             Err(shell_words::ParseError) => {
                 // Don't provide completion if the given line ends in the middle of a token.
