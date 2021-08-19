@@ -20,7 +20,6 @@
 
 namespace biod {
 
-constexpr char kCrosConfigFPPath[] = "/fingerprint";
 constexpr char kFingerprintSensorTypePrefName[] = "fingerprint-sensor-type";
 constexpr char kFingerprintSensorTypeOverlapped[] = "on-power-button";
 constexpr char kFingerprintSensorTypeStandAlone[] = "stand-alone";

@@ -11,6 +11,7 @@
 #include <base/time/default_tick_clock.h>
 #include <cros_config/cros_config.h>
 
+#include "biod/biod_config.h"
 #include "biod/power_manager_client.h"
 
 namespace biod {

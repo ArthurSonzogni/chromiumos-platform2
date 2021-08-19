@@ -10,6 +10,7 @@
 #include <cros_config/fake_cros_config.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
+#include "biod/biod_config.h"
 #include "biod/fake_power_manager_client.h"
 
 namespace biod {
