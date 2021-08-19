@@ -1341,12 +1341,18 @@ int MetadataHandler::PostHandleRequest(
     Rect<int> largest_face;
     int largest_size = 0;
     for (auto& face : faces) {
-      float x1 = std::max(face.bounding_box.x1, 0.0F);
-      float x2 = std::min(face.bounding_box.x2,
-                          static_cast<float>(resolution.width - 1));
-      float y1 = std::max(face.bounding_box.y1, 0.0F);
-      float y2 = std::min(face.bounding_box.y2,
-                          static_cast<float>(resolution.height - 1));
+      float x1 = std::max(face.bounding_box.x1,
+                          static_cast<float>(active_array_size.data.i32[0]));
+      float x2 =
+          std::min(face.bounding_box.x2,
+                   static_cast<float>(active_array_size.data.i32[0] +
+                                      active_array_size.data.i32[2] - 1));
+      float y1 = std::max(face.bounding_box.y1,
+                          static_cast<float>(active_array_size.data.i32[1]));
+      float y2 =
+          std::min(face.bounding_box.y2,
+                   static_cast<float>(active_array_size.data.i32[1] +
+                                      active_array_size.data.i32[3] - 1));
       face_rectangles.push_back(x1);
       face_rectangles.push_back(y1);
       face_rectangles.push_back(x2);
