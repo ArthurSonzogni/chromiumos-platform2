@@ -255,6 +255,43 @@ std::string BiosCrashSignature(const std::string& dump) {
   return StringPrintf("bios-(%s)-%s", type, elr.c_str());
 }
 
+std::string ComputeNoCErrorSignature(const std::string& dump) {
+  RE2 line_re("(.+)");
+  re2::StringPiece dump_piece = dump;
+
+  // Match lines such as the following and grab out the type of NoC (MMSS)
+  // and the register contents
+  //
+  // QTISECLIB [1727120e379]MMSS_NOC ERROR: ERRLOG0_LOW = 0x00000105
+  //
+  RE2 noc_entry_re(R"(QTISECLIB \[[[:xdigit:]]+\]([a-zA-Z]+)_NOC ERROR: )"
+                   R"(ERRLOG[0-9]_(?:(LOW|HIGH)) = ([[:xdigit:]]+))");
+  std::string line;
+  std::string hashable;
+  std::string noc_name;
+  std::string first_noc;
+  std::string regval;
+
+  // Look at each line of the bios log for the NOC errors and compute a hash
+  // of all the registers
+  while (RE2::FindAndConsume(&dump_piece, line_re, &line)) {
+    if (RE2::PartialMatch(line, noc_entry_re, &noc_name, &regval)) {
+      if (!hashable.empty())
+        hashable.append("|");
+      if (first_noc.empty())
+        first_noc = noc_name;
+      hashable.append(noc_name);
+      hashable.append("|");
+      hashable.append(regval);
+    }
+  }
+
+  unsigned hash = util::HashString(StringPiece(hashable));
+
+  return StringPrintf("%s-(NOC-Error)-%s-%08X", kKernelExecName,
+                      first_noc.c_str(), hash);
+}
+
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
 // of the last log line instead (minus the timestamp ended by ']').
 std::string WatchdogSignature(const std::string& console_ramoops) {

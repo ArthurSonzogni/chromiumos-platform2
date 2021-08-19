@@ -263,6 +263,14 @@ bool KernelCollector::LastRebootWasBiosCrash(const std::string& dump) {
       dump, RE2("(PANIC|Unhandled( Interrupt)? Exception) in EL3"));
 }
 
+bool KernelCollector::LastRebootWasNoCError(const std::string& dump) {
+  // NoC errors are only on Qualcomm platforms for now.
+  if (dump.empty())
+    return false;
+
+  return RE2::PartialMatch(dump, RE2("QTISECLIB.*NOC ERROR: ERRLOG"));
+}
+
 // We can't always trust kernel watchdog drivers to correctly report the boot
 // reason, since on some platforms our BIOS has to reinitialize the hardware
 // registers in a way that clears this information. Instead read the BIOS
@@ -578,6 +586,8 @@ bool KernelCollector::CollectRamoopsCrash() {
     LoadConsoleRamoops(&kernel_dump);
     if (LastRebootWasBiosCrash(bios_dump))
       signature = kernel_util::BiosCrashSignature(bios_dump);
+    else if (LastRebootWasNoCError(bios_dump))
+      signature = kernel_util::ComputeNoCErrorSignature(bios_dump);
     else if (LastRebootWasWatchdog())
       signature = kernel_util::WatchdogSignature(kernel_dump);
     else

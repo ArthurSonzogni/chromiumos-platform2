@@ -34,6 +34,9 @@ std::string ComputeKernelStackSignature(const std::string& kernel_dump,
 // BIOS crashes use a simple signature containing the crash PC.
 std::string BiosCrashSignature(const std::string& dump);
 
+// Compute a signature string from a NoC error.
+std::string ComputeNoCErrorSignature(const std::string& dump);
+
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
 // of the last log line instead (minus the timestamp ended by ']').
 std::string WatchdogSignature(const std::string& console_ramoops);

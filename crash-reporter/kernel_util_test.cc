@@ -774,6 +774,22 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86_64) {
       kernel_util::ComputeKernelStackSignature(kStackTraceWithNewRIP, arch));
 }
 
+TEST(KernelUtilTest, ComputeNoCErrorSignature) {
+  const char kNoCError[] =
+      "QTISECLIB [1727120e379]MMSS_NOC ERROR: ERRLOG0_LOW = 0x00000105\n"
+      "QTISECLIB [1727120e445]MMSS_NOC ERROR: ERRLOG0_HIGH = 0x0000007f\n"
+      "QTISECLIB [1727120e49c]MMSS_NOC ERROR: ERRLOG1_LOW = 0x00000019\n"
+      "QTISECLIB [1727120e4fa]MMSS_NOC ERROR: ERRLOG1_HIGH = 0x00007300\n"
+      "QTISECLIB [1727120e580]MMSS_NOC ERROR: ERRLOG3_LOW = 0x00004008\n"
+      "QTISECLIB [1727120e617]MMSS_NOC ERROR: SBM0 FAULTINSTATUS0_LOW = "
+      "0x00000001\n"
+      "QTISECLIB [17271210311]CONFIG_NOC ERROR: ERRLOG1_LOW = 0x00000003\n"
+      "";
+
+  EXPECT_EQ("kernel-(NOC-Error)-MMSS-2CBA847E",
+            kernel_util::ComputeNoCErrorSignature(kNoCError));
+}
+
 TEST(KernelUtilTest, ComputeKernelStackSignatureCommonAllArches) {
   ComputeKernelStackSignatureCommon(kernel_util::kArchArm);
   ComputeKernelStackSignatureCommon(kernel_util::kArchMips);

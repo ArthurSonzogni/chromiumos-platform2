@@ -126,6 +126,7 @@ class KernelCollector : public CrashCollector {
   FRIEND_TEST(KernelCollectorTest, ParseEfiCrashId);
   FRIEND_TEST(KernelCollectorTest, GetEfiCrashType);
   FRIEND_TEST(KernelCollectorTest, LoadEfiCrash);
+  FRIEND_TEST(KernelCollectorTest, LastRebootWasNoCError);
 
   virtual bool DumpDirMounted();
 
@@ -133,6 +134,7 @@ class KernelCollector : public CrashCollector {
   bool LoadLastBootBiosLog(std::string* contents);
 
   bool LastRebootWasBiosCrash(const std::string& dump);
+  bool LastRebootWasNoCError(const std::string& dump);
   bool LastRebootWasWatchdog();
   bool LoadConsoleRamoops(std::string* contents);
 
