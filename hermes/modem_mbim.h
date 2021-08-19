@@ -102,7 +102,7 @@ class ModemMbim : public Modem<MbimCmd> {
   // State Diagram //
   ///////////////////
   //
-  //       Uninitialized --------------> InitializeStarted
+  //       Uninitialized --------------------------------> InitializeStarted
   //                              Initialize()
   //       InitializeStarted ----------------------------> MbimStarted
   //                              GetEidFromSim()
@@ -123,7 +123,6 @@ class ModemMbim : public Modem<MbimCmd> {
     bool operator==(Value value) const { return value_ == value; }
     bool operator!=(Value value) const { return value_ != value; }
     friend std::ostream& operator<<(std::ostream& os, const State state) {
-      os << state.value_;
       switch (state.value_) {
         case kMbimUninitialized:
           os << "Uninitialized";
