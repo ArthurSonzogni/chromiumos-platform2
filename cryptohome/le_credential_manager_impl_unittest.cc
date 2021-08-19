@@ -192,8 +192,10 @@ TEST_F(LECredentialManagerImplUnitTest, CheckPcrAuth) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria valid_pcr_criteria;
   ValidPcrValue value;
-  value.bitmask[0] = 1 << cryptohome::kTpmSingleUserPCR;
+  value.bitmask[0] = 0;
   value.bitmask[1] = 0;
+  value.bitmask[cryptohome::kTpmSingleUserPCR / 8] =
+      1 << (cryptohome::kTpmSingleUserPCR % 8);
   value.digest = "digest";
   valid_pcr_criteria.push_back(value);
   uint64_t label1;
