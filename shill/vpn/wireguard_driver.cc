@@ -74,7 +74,7 @@ constexpr PeerProperty kPeerProperties[] = {
     {kWireGuardPeerPublicKey, true},
     {kWireGuardPeerPresharedKey, false},
     {kWireGuardPeerEndpoint, true},
-    {kWireGuardPeerAllowedIPs, true},
+    {kWireGuardPeerAllowedIPs, false},
     {kWireGuardPeerPersistentKeepalive, false},
 };
 

@@ -1914,16 +1914,16 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			string AllowedIPs [writeonly]
 				A comma-separated list of IPv4 addresses with CIDR masks
 				which controls the allowed incoming and outgoing traffic
-				for this peer.
+				for this peer. Can be an emtpy string.
 			string Endpoint [writeonly]
 				The underlay IP address or hostname of this peer,
 				followed by a colon, and then the listening port.
-			string PersistentKeepalive [writeonly, optional]
+			string PersistentKeepalive [writeonly]
 				A seconds interval, between 1 and 65535 inclusive, of
 				how often to send an authenticated empty packet to the
 				peer for the purpose of keeping a stateful firewall or
-				NAT mapping valid persistently. Leave it unset, or set
-				to "0" or "off" will disable this feature.
+				NAT mapping valid persistently. Set it to an empty
+				string, "0", or "off" will disable this feature.
 
 		string WireGuard.PrivateKey [writeonly, optional]
 
