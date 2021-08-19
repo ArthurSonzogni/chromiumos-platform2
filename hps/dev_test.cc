@@ -11,7 +11,6 @@ using hps::DevInterface;
 
 namespace {
 
-static int const kRetry = 5;
 static int const kBlockSizeBytes = 128;
 
 // Fake that implements a DevInterface.
@@ -98,50 +97,6 @@ TEST_F(DevInterfaceTest, WriteReg) {
   EXPECT_EQ(dev_.data_[1], 0xAB);
   EXPECT_EQ(dev_.cmd_, 0x80 | 32);
   EXPECT_EQ(dev_.len_, 2);
-  EXPECT_EQ(dev_.writes_, 2);
-}
-
-/*
- * Verify that a Read will fail once the retries are exceeded.
- */
-TEST_F(DevInterfaceTest, ReadFail) {
-  dev_.fails_ = kRetry;
-  int d = dev_.ReadReg(hps::HpsReg::kMagic);
-  EXPECT_EQ(d, -1);
-  EXPECT_EQ(dev_.reads_, kRetry);
-}
-
-/*
- * Verify that a Write will fail once the retries are exceeded.
- */
-TEST_F(DevInterfaceTest, WriteFail) {
-  dev_.fails_ = kRetry;
-  EXPECT_FALSE(dev_.WriteReg(hps::HpsReg::kMagic, 0x1234));
-  EXPECT_EQ(dev_.writes_, kRetry);
-}
-
-/*
- * Verify that a failed Read will be retried and succeed with
- * the second attempt.
- */
-TEST_F(DevInterfaceTest, ReadRetry) {
-  dev_.fails_ = 1;
-  dev_.data_[0] = 0x12;
-  dev_.data_[1] = 0x34;
-  int d = dev_.ReadReg(hps::HpsReg::kMagic);
-  EXPECT_EQ(d, 0x1234);
-  // One failed read, one success.
-  EXPECT_EQ(dev_.reads_, 2);
-}
-
-/*
- * Verify that a failed Write will be retried and succeed with
- * the second attempt.
- */
-TEST_F(DevInterfaceTest, WriteRetry) {
-  dev_.fails_ = 1;
-  EXPECT_TRUE(dev_.WriteReg(hps::HpsReg::kMagic, 0x1234));
-  // One failed write, one success.
   EXPECT_EQ(dev_.writes_, 2);
 }
 

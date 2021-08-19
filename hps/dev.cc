@@ -14,12 +14,6 @@
 
 namespace hps {
 
-/*
- * TODO(amcrae): It is questionable whether this layer should be using
- * retries, since a retry shim layer can be added separately.
- */
-static const int kIoRetries = 5;
-
 bool DevInterface::Read(uint8_t cmd, uint8_t* data, size_t len) {
   if (this->ReadDevice(cmd, data, len)) {
     VLOG(2) << "Read: " << cmd << " " << len << " OK";
@@ -45,7 +39,9 @@ bool DevInterface::Write(uint8_t cmd, const uint8_t* data, size_t len) {
 int DevInterface::ReadReg(HpsReg r) {
   uint8_t res[2];
 
-  for (int i = 0; i < kIoRetries; i++) {
+  // TODO(evanbenn) MCP hal requires a retry on kBankReady
+  // b/191716856
+  for (int i = 0; i < 2; i++) {
     if (this->ReadDevice(I2cReg(r), res, sizeof(res))) {
       int ret = (static_cast<int>(res[0]) << 8) | static_cast<int>(res[1]);
       VLOG(2) << "ReadReg: " << HpsRegToString(r) << " " << ret << " OK";
@@ -62,17 +58,19 @@ int DevInterface::ReadReg(HpsReg r) {
  */
 bool DevInterface::WriteReg(HpsReg r, uint16_t data) {
   uint8_t buf[2];
+
   buf[0] = data >> 8;
   buf[1] = data & 0xFF;
-  for (int i = 0; i < kIoRetries; i++) {
-    if (this->WriteDevice(I2cReg(r), buf, sizeof(buf))) {
-      VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " OK";
-      return true;
-    }
+
+  if (this->WriteDevice(I2cReg(r), buf, sizeof(buf))) {
+    VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " OK";
+    return true;
+  } else {
+    VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " FAILED";
+    return false;
   }
-  VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " FAILED";
-  return false;
 }
+
 /*
  * Return the maximum download block size (in bytes).
  * Default is 256 bytes.
