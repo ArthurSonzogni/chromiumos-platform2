@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
 #include <string>
 #include <utility>
@@ -16,6 +16,7 @@
 #include <chromeos/cbor/writer.h>
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 namespace {
 
@@ -52,8 +53,7 @@ base::Optional<cbor::Value> ReadCborPayload(
   return cbor_response;
 }
 
-cbor::Value::MapValue CreateHsmPayloadMap(
-    const cryptorecovery::HsmPayload& payload) {
+cbor::Value::MapValue CreateHsmPayloadMap(const HsmPayload& payload) {
   cbor::Value::MapValue result;
 
   result.emplace(kAeadCipherText, payload.cipher_text);
@@ -93,9 +93,8 @@ const char kResponsePayloadSalt[] = "response_salt";
 
 const int kProtocolVersion = 1;
 
-bool SerializeHsmAssociatedDataToCbor(
-    const cryptorecovery::HsmAssociatedData& args,
-    brillo::SecureBlob* ad_cbor) {
+bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
+                                      brillo::SecureBlob* ad_cbor) {
   cbor::Value::MapValue ad_map;
 
   ad_map.emplace(kPublisherPublicKey, args.publisher_pub_key);
@@ -111,7 +110,7 @@ bool SerializeHsmAssociatedDataToCbor(
 }
 
 bool SerializeRecoveryRequestAssociatedDataToCbor(
-    const cryptorecovery::RecoveryRequestAssociatedData& args,
+    const RecoveryRequestAssociatedData& args,
     brillo::SecureBlob* request_ad_cbor) {
   cbor::Value::MapValue ad_map;
 
@@ -131,7 +130,7 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
 }
 
 bool SerializeHsmResponseAssociatedDataToCbor(
-    const cryptorecovery::HsmResponseAssociatedData& response_ad,
+    const HsmResponseAssociatedData& response_ad,
     brillo::SecureBlob* response_ad_cbor) {
   cbor::Value::MapValue ad_map;
 
@@ -145,7 +144,7 @@ bool SerializeHsmResponseAssociatedDataToCbor(
   return true;
 }
 
-bool SerializeHsmPlainTextToCbor(const cryptorecovery::HsmPlainText& plain_text,
+bool SerializeHsmPlainTextToCbor(const HsmPlainText& plain_text,
                                  brillo::SecureBlob* plain_text_cbor) {
   cbor::Value::MapValue pt_map;
 
@@ -160,7 +159,7 @@ bool SerializeHsmPlainTextToCbor(const cryptorecovery::HsmPlainText& plain_text,
 }
 
 bool SerializeRecoveryRequestPlainTextToCbor(
-    const cryptorecovery::RecoveryRequestPlainText& plain_text,
+    const RecoveryRequestPlainText& plain_text,
     brillo::SecureBlob* plain_text_cbor) {
   cbor::Value::MapValue pt_map;
 
@@ -173,9 +172,8 @@ bool SerializeRecoveryRequestPlainTextToCbor(
   return true;
 }
 
-bool SerializeHsmResponsePlainTextToCbor(
-    const cryptorecovery::HsmResponsePlainText& plain_text,
-    brillo::SecureBlob* response_cbor) {
+bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
+                                         brillo::SecureBlob* response_cbor) {
   cbor::Value::MapValue pt_map;
 
   pt_map.emplace(kDealerPublicKey, plain_text.dealer_pub_key);
@@ -190,7 +188,7 @@ bool SerializeHsmResponsePlainTextToCbor(
 
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,
-    cryptorecovery::HsmPlainText* hsm_plain_text) {
+    HsmPlainText* hsm_plain_text) {
   const auto& cbor = ReadCborPayload(hsm_plain_text_cbor);
   if (!cbor) {
     return false;
@@ -248,7 +246,7 @@ bool DeserializeHsmPlainTextFromCbor(
 
 bool DeserializeRecoveryRequestPlainTextFromCbor(
     const brillo::SecureBlob& request_plain_text_cbor,
-    cryptorecovery::RecoveryRequestPlainText* request_plain_text) {
+    RecoveryRequestPlainText* request_plain_text) {
   const auto& cbor = ReadCborPayload(request_plain_text_cbor);
   if (!cbor) {
     return false;
@@ -279,7 +277,7 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
 
 bool DeserializeHsmResponsePlainTextFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
-    cryptorecovery::HsmResponsePlainText* response_payload) {
+    HsmResponsePlainText* response_payload) {
   const auto& cbor = ReadCborPayload(response_payload_cbor);
   if (!cbor) {
     return false;
@@ -337,7 +335,7 @@ bool DeserializeHsmResponsePlainTextFromCbor(
 
 bool DeserializeHsmResponseAssociatedDataFromCbor(
     const brillo::SecureBlob& response_ad_cbor,
-    cryptorecovery::HsmResponseAssociatedData* response_ad) {
+    HsmResponseAssociatedData* response_ad) {
   const auto& cbor = ReadCborPayload(response_ad_cbor);
   if (!cbor) {
     return false;
@@ -411,8 +409,7 @@ bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
 }
 
 bool GetHsmPayloadFromRequestAdForTesting(
-    const brillo::SecureBlob& request_payload_cbor,
-    cryptorecovery::HsmPayload* hsm_payload) {
+    const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload) {
   const auto& cbor = ReadCborPayload(request_payload_cbor);
   if (!cbor) {
     return false;
@@ -515,4 +512,5 @@ bool GetRequestPayloadSchemaVersionForTesting(
   return true;
 }
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome

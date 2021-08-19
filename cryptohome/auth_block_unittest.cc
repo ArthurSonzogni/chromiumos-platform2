@@ -15,11 +15,11 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
-#include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_recovery_auth_block.h"
+#include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -31,6 +31,8 @@
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.h"
 
+using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
+using cryptohome::cryptorecovery::RecoveryCrypto;
 using ::hwsec::error::TPMError;
 using ::hwsec::error::TPMErrorBase;
 using ::hwsec::error::TPMRetryAction;

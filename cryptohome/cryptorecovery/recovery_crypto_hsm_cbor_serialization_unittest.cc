@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
 #include <utility>
 
@@ -14,9 +14,10 @@
 
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/recovery_crypto_util.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 namespace {
 
@@ -77,7 +78,7 @@ class RequestPayloadCborHelperTest : public testing::Test {
 // Verifies serialization of HSM payload associated data to CBOR.
 TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithoutRsaPublicKey) {
   brillo::SecureBlob cbor_output;
-  cryptorecovery::HsmAssociatedData args;
+  HsmAssociatedData args;
   args.publisher_pub_key = publisher_pub_key_;
   args.channel_pub_key = channel_pub_key_;
   args.onboarding_meta_data = brillo::SecureBlob(kOnboardingData);
@@ -106,7 +107,7 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
   ASSERT_TRUE(BigNumToSecureBlob(*scalar, 10, &mediator_share));
 
   // Serialize plain text payload with empty kav.
-  cryptorecovery::HsmPlainText hsm_plain_text;
+  HsmPlainText hsm_plain_text;
   hsm_plain_text.mediator_share = mediator_share;
   hsm_plain_text.dealer_pub_key = dealer_pub_key_;
   hsm_plain_text.key_auth_value = brillo::SecureBlob();
@@ -131,7 +132,7 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
 // associated data.
 TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
   brillo::SecureBlob cbor_output;
-  cryptorecovery::HsmAssociatedData args;
+  HsmAssociatedData args;
   args.publisher_pub_key = publisher_pub_key_;
   args.channel_pub_key = channel_pub_key_;
   args.onboarding_meta_data = brillo::SecureBlob(kOnboardingData);
@@ -144,19 +145,19 @@ TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
 // Verifies serialization of Recovery Request payload associated data to CBOR.
 TEST_F(RequestPayloadCborHelperTest, GenerateAd) {
   brillo::SecureBlob cbor_output;
-  cryptorecovery::HsmPayload hsm_payload;
+  HsmPayload hsm_payload;
   hsm_payload.cipher_text = brillo::SecureBlob(kFakeHsmPayloadCipherText);
   hsm_payload.associated_data = brillo::SecureBlob(kFakeHsmPayloadAd);
   hsm_payload.iv = brillo::SecureBlob(kFakeHsmPayloadIv);
   hsm_payload.tag = brillo::SecureBlob(kFakeHsmPayloadTag);
-  cryptorecovery::RecoveryRequestAssociatedData request_ad;
+  RecoveryRequestAssociatedData request_ad;
   request_ad.hsm_payload = std::move(hsm_payload);
   request_ad.request_meta_data = brillo::SecureBlob(kFakeRequestData);
   request_ad.epoch_pub_key = epoch_pub_key_;
   ASSERT_TRUE(
       SerializeRecoveryRequestAssociatedDataToCbor(request_ad, &cbor_output));
 
-  cryptorecovery::HsmPayload deserialized_hsm_payload;
+  HsmPayload deserialized_hsm_payload;
   brillo::SecureBlob deserialized_epoch_pub_key;
   brillo::SecureBlob deserialized_request_meta_data;
   int schema_version;
@@ -195,7 +196,7 @@ TEST_F(RequestPayloadCborHelperTest, GeneratePlainText) {
                                      context_.get()));
 
   brillo::SecureBlob cbor_output;
-  cryptorecovery::RecoveryRequestPlainText plain_text;
+  RecoveryRequestPlainText plain_text;
   plain_text.ephemeral_pub_inv_key = ephemeral_inverse_key;
   ASSERT_TRUE(
       SerializeRecoveryRequestPlainTextToCbor(plain_text, &cbor_output));
@@ -207,4 +208,5 @@ TEST_F(RequestPayloadCborHelperTest, GeneratePlainText) {
   EXPECT_EQ(ephemeral_inverse_key, deserialized_ephemeral_inverse_key);
 }
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome

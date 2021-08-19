@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_CRYPTO_FAKE_RECOVERY_MEDIATOR_CRYPTO_H_
-#define CRYPTOHOME_CRYPTO_FAKE_RECOVERY_MEDIATOR_CRYPTO_H_
+#ifndef CRYPTOHOME_CRYPTORECOVERY_FAKE_RECOVERY_MEDIATOR_CRYPTO_H_
+#define CRYPTOHOME_CRYPTORECOVERY_FAKE_RECOVERY_MEDIATOR_CRYPTO_H_
 
 #include <memory>
 
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/recovery_crypto.h"
-#include "cryptohome/crypto/recovery_crypto_util.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 // Cryptographic operations for fake mediator for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination.
@@ -68,12 +69,11 @@ class FakeRecoveryMediatorCrypto {
   // 3. Extract `hsm_payload` from `request_payload`.
   // 4. Do `MediateHsmPayload` with `hsm_payload` and keys (`epoch_pub_key`,
   // `epoch_priv_key`, `mediator_priv_key`).
-  bool MediateRequestPayload(
-      const brillo::SecureBlob& epoch_pub_key,
-      const brillo::SecureBlob& epoch_priv_key,
-      const brillo::SecureBlob& mediator_priv_key,
-      const cryptorecovery::RequestPayload& request_payload,
-      cryptorecovery::ResponsePayload* response_payload) const;
+  bool MediateRequestPayload(const brillo::SecureBlob& epoch_pub_key,
+                             const brillo::SecureBlob& epoch_priv_key,
+                             const brillo::SecureBlob& mediator_priv_key,
+                             const RequestPayload& request_payload,
+                             ResponsePayload* response_payload) const;
 
  private:
   // Constructor is private. Use Create method to instantiate.
@@ -91,13 +91,12 @@ class FakeRecoveryMediatorCrypto {
   // 5. Generate encryption key as KDF(combine(epoch_pub_key,
   //                                     ECDH(epoch_priv_key, channel_pub_key)))
   // 6. Encrypt plain_text and generate `response_payload`
-  bool MediateHsmPayload(
-      const brillo::SecureBlob& mediator_priv_key,
-      const brillo::SecureBlob& epoch_pub_key,
-      const brillo::SecureBlob& epoch_priv_key,
-      const brillo::SecureBlob& ephemeral_pub_inv_key,
-      const cryptorecovery::HsmPayload& hsm_payload,
-      cryptorecovery::ResponsePayload* response_payload) const;
+  bool MediateHsmPayload(const brillo::SecureBlob& mediator_priv_key,
+                         const brillo::SecureBlob& epoch_pub_key,
+                         const brillo::SecureBlob& epoch_priv_key,
+                         const brillo::SecureBlob& ephemeral_pub_inv_key,
+                         const HsmPayload& hsm_payload,
+                         ResponsePayload* response_payload) const;
 
   // Decrypts `mediator_share` using `mediator_priv_key` from
   // `encrypted_mediator_share`. Returns false if error occurred.
@@ -109,18 +108,18 @@ class FakeRecoveryMediatorCrypto {
   // Decrypt `cipher_text` from `hsm_payload' using provided
   // `mediator_priv_key`.
   bool DecryptHsmPayloadPlainText(const brillo::SecureBlob& mediator_priv_key,
-                                  const cryptorecovery::HsmPayload& hsm_payload,
+                                  const HsmPayload& hsm_payload,
                                   brillo::SecureBlob* plain_text) const;
 
   // Decrypt `cipher_text` from `request_payload' using provided
   // `epoch_priv_key` and store the result in `plain_text`.
-  bool DecryptRequestPayloadPlainText(
-      const brillo::SecureBlob& epoch_priv_key,
-      const cryptorecovery::RequestPayload& request_payload,
-      brillo::SecureBlob* plain_text) const;
+  bool DecryptRequestPayloadPlainText(const brillo::SecureBlob& epoch_priv_key,
+                                      const RequestPayload& request_payload,
+                                      brillo::SecureBlob* plain_text) const;
   EllipticCurve ec_;
 };
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_CRYPTO_FAKE_RECOVERY_MEDIATOR_CRYPTO_H_
+#endif  // CRYPTOHOME_CRYPTORECOVERY_FAKE_RECOVERY_MEDIATOR_CRYPTO_H_

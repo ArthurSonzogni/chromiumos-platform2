@@ -12,10 +12,12 @@
 
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hkdf.h"
-#include "cryptohome/crypto/recovery_crypto.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
+
+using cryptohome::cryptorecovery::RecoveryCrypto;
 
 namespace cryptohome {
 

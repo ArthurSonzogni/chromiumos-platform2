@@ -16,13 +16,13 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 
-#include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
-#include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
-using cryptohome::FakeRecoveryMediatorCrypto;
-using cryptohome::RecoveryCrypto;
+using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
+using cryptohome::cryptorecovery::RecoveryCrypto;
 
 namespace {
 

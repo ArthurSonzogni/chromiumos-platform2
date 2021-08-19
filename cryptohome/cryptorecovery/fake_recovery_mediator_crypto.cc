@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 
 #include <algorithm>
 #include <utility>
@@ -19,13 +19,14 @@
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
-#include "cryptohome/crypto/recovery_crypto.h"
-#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
-#include "cryptohome/crypto/recovery_crypto_util.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
+namespace cryptorecovery {
 namespace {
 
 const char kFakeHsmMetaData[] = "fake-hsm-metadata";
@@ -151,7 +152,7 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
 
 bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     const brillo::SecureBlob& mediator_priv_key,
-    const cryptorecovery::HsmPayload& hsm_payload,
+    const HsmPayload& hsm_payload,
     brillo::SecureBlob* plain_text) const {
   brillo::SecureBlob publisher_pub_key;
   if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
@@ -181,7 +182,7 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
 
 bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     const brillo::SecureBlob& epoch_priv_key,
-    const cryptorecovery::RequestPayload& request_payload,
+    const RequestPayload& request_payload,
     brillo::SecureBlob* plain_text) const {
   brillo::SecureBlob salt;
   if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
@@ -189,7 +190,7 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     LOG(ERROR) << "Unable to deserialize salt from request_payload";
     return false;
   }
-  cryptorecovery::HsmPayload hsm_payload;
+  HsmPayload hsm_payload;
   if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
                                             &hsm_payload)) {
     LOG(ERROR) << "Unable to deserialize hsm_payload from request_payload";
@@ -270,8 +271,8 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& ephemeral_pub_inv_key,
-    const cryptorecovery::HsmPayload& hsm_payload,
-    cryptorecovery::ResponsePayload* response_payload) const {
+    const HsmPayload& hsm_payload,
+    ResponsePayload* response_payload) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -285,7 +286,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  cryptorecovery::HsmPlainText hsm_plain_text;
+  HsmPlainText hsm_plain_text;
   if (!DeserializeHsmPlainTextFromCbor(hsm_plain_text_cbor, &hsm_plain_text)) {
     LOG(ERROR) << "Unable to deserialize hsm_plain_text_cbor";
     return false;
@@ -331,7 +332,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
 
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
-  cryptorecovery::HsmResponseAssociatedData response_ad;
+  HsmResponseAssociatedData response_ad;
   response_ad.response_meta_data = brillo::SecureBlob(kFakeHsmMetaData);
   response_ad.response_payload_salt = salt;
   if (!SerializeHsmResponseAssociatedDataToCbor(
@@ -341,7 +342,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   }
 
   brillo::SecureBlob response_plain_text_cbor;
-  cryptorecovery::HsmResponsePlainText response_plain_text;
+  HsmResponsePlainText response_plain_text;
   response_plain_text.mediated_point = mediator_dh;
   response_plain_text.dealer_pub_key = hsm_plain_text.dealer_pub_key;
   response_plain_text.key_auth_value = brillo::SecureBlob();
@@ -387,8 +388,8 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& mediator_priv_key,
-    const cryptorecovery::RequestPayload& request_payload,
-    cryptorecovery::ResponsePayload* response_payload) const {
+    const RequestPayload& request_payload,
+    ResponsePayload* response_payload) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -402,7 +403,7 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     return false;
   }
 
-  cryptorecovery::RecoveryRequestPlainText plain_text;
+  RecoveryRequestPlainText plain_text;
   if (!DeserializeRecoveryRequestPlainTextFromCbor(request_plain_text_cbor,
                                                    &plain_text)) {
     LOG(ERROR)
@@ -410,7 +411,7 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     return false;
   }
 
-  cryptorecovery::HsmPayload hsm_payload;
+  HsmPayload hsm_payload;
   if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
                                             &hsm_payload)) {
     LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
@@ -422,4 +423,5 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
                            response_payload);
 }
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome

@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_
-#define CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_
+#ifndef CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_
+#define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_
 
 #include <string>
 
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/values.h>
 
-#include "cryptohome/crypto/recovery_crypto_util.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 // Constants that will be used as keys in the CBOR map.
 extern const char kRecoveryCryptoRequestSchemaVersion[];
@@ -40,68 +41,67 @@ extern const char kResponsePayloadSalt[];
 extern const int kProtocolVersion;
 
 // Constructs cbor-encoded binary blob with associated data.
-bool SerializeHsmAssociatedDataToCbor(
-    const cryptorecovery::HsmAssociatedData& ad, brillo::SecureBlob* ad_cbor);
+bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& ad,
+                                      brillo::SecureBlob* ad_cbor);
 
 // Constructs cbor-encoded binary blob with associated data for request payload.
 bool SerializeRecoveryRequestAssociatedDataToCbor(
-    const cryptorecovery::RecoveryRequestAssociatedData& request_ad,
+    const RecoveryRequestAssociatedData& request_ad,
     brillo::SecureBlob* request_ad_cbor);
 
 // Constructs cbor-encoded binary blob with associated data for response
 // payload.
 bool SerializeHsmResponseAssociatedDataToCbor(
-    const cryptorecovery::HsmResponseAssociatedData& response_ad,
+    const HsmResponseAssociatedData& response_ad,
     brillo::SecureBlob* response_ad_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in HSM payload.
-bool SerializeHsmPlainTextToCbor(const cryptorecovery::HsmPlainText& plain_text,
+bool SerializeHsmPlainTextToCbor(const HsmPlainText& plain_text,
                                  brillo::SecureBlob* plain_text_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in Request payload.
 bool SerializeRecoveryRequestPlainTextToCbor(
-    const cryptorecovery::RecoveryRequestPlainText& plain_text,
+    const RecoveryRequestPlainText& plain_text,
     brillo::SecureBlob* plain_text_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in response payload.
-bool SerializeHsmResponsePlainTextToCbor(
-    const cryptorecovery::HsmResponsePlainText& plain_text,
-    brillo::SecureBlob* plain_text_cbor);
+bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
+                                         brillo::SecureBlob* plain_text_cbor);
 
 // Extracts data from HSM plain text cbor.
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,
-    cryptorecovery::HsmPlainText* hsm_plain_text);
+    HsmPlainText* hsm_plain_text);
 
 // Extracts data from Recovery Request plain text cbor.
 bool DeserializeRecoveryRequestPlainTextFromCbor(
     const brillo::SecureBlob& request_plain_text_cbor,
-    cryptorecovery::RecoveryRequestPlainText* request_plain_text);
+    RecoveryRequestPlainText* request_plain_text);
 
 // Extracts data from response plain text cbor.
 bool DeserializeHsmResponsePlainTextFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
-    cryptorecovery::HsmResponsePlainText* response_payload);
+    HsmResponsePlainText* response_payload);
 
 // Extracts data from HSM Response associated data cbor.
 bool DeserializeHsmResponseAssociatedDataFromCbor(
     const brillo::SecureBlob& response_ad_cbor,
-    cryptorecovery::HsmResponseAssociatedData* response_ad);
+    HsmResponseAssociatedData* response_ad);
 
 bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                   const std::string& map_key,
                                   brillo::SecureBlob* value);
 
 bool GetHsmPayloadFromRequestAdForTesting(
-    const brillo::SecureBlob& request_payload_cbor,
-    cryptorecovery::HsmPayload* hsm_payload);
+    const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload);
 
 bool GetRequestPayloadSchemaVersionForTesting(
     const brillo::SecureBlob& input_cbor, int* value);
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_
+#endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_

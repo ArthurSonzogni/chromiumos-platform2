@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
 
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/fake_recovery_mediator_crypto.h"
-#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/crypto/secure_blob_util.h"
+#include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
 #include <gtest/gtest.h>
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 namespace {
 
@@ -43,7 +44,7 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
       FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
   // Generates HSM payload that would be persisted on a chromebook.
-  cryptorecovery::HsmPayload hsm_payload;
+  HsmPayload hsm_payload;
   brillo::SecureBlob destination_share;
   brillo::SecureBlob recovery_key;
   brillo::SecureBlob channel_pub_key;
@@ -56,14 +57,13 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
 
   // Start recovery process.
   brillo::SecureBlob ephemeral_pub_key;
-  cryptorecovery::RequestPayload request_payload;
+  RequestPayload request_payload;
   ASSERT_TRUE(recovery->GenerateRequestPayload(
-      hsm_payload,
-      brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
+      hsm_payload, brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
       channel_pub_key, epoch_pub_key, &request_payload, &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
-  cryptorecovery::ResponsePayload response_payload;
+  ResponsePayload response_payload;
   ASSERT_TRUE(mediator->MediateRequestPayload(
       epoch_pub_key, epoch_priv_key, mediator_priv_key, request_payload,
       &response_payload));
@@ -74,7 +74,7 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
       response_payload.associated_data, response_payload.iv,
       response_payload.tag, &response_plain_text_cbor));
 
-  cryptorecovery::HsmResponsePlainText response_plain_text;
+  HsmResponsePlainText response_plain_text;
   ASSERT_TRUE(DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
                                                       &response_plain_text));
 
@@ -212,4 +212,5 @@ TEST(RecoveryCryptoTest, SerializeEncryptedMediatorShare) {
             encrypted_mediator_share2.encrypted_data);
 }
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome

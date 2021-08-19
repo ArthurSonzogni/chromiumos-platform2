@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_UTIL_H_
-#define CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_UTIL_H_
+#ifndef CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_UTIL_H_
+#define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_UTIL_H_
 
 #include <brillo/secure_blob.h>
 
@@ -115,4 +115,4 @@ struct HsmResponsePlainText {
 }  // namespace cryptorecovery
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_UTIL_H_
+#endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_UTIL_H_

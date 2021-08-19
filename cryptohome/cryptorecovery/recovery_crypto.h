@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_H_
-#define CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_H_
+#ifndef CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_H_
+#define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_H_
 
 #include <memory>
 
@@ -11,9 +11,10 @@
 
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/recovery_crypto_util.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 // Cryptographic operations for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination. The
@@ -77,12 +78,12 @@ class RecoveryCrypto {
   // 5. Construct plain text PT2 = {G*-x}.
   // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
   virtual bool GenerateRequestPayload(
-      const cryptorecovery::HsmPayload& hsm_payload,
+      const HsmPayload& hsm_payload,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      cryptorecovery::RequestPayload* request_payload,
+      RequestPayload* request_payload,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
 
   // Generates HSM payload that will be persisted on a chromebook at enrollment
@@ -111,7 +112,7 @@ class RecoveryCrypto {
       const brillo::SecureBlob& mediator_pub_key,
       const brillo::SecureBlob& rsa_pub_key,
       const brillo::SecureBlob& onboarding_metadata,
-      cryptorecovery::HsmPayload* hsm_payload,
+      HsmPayload* hsm_payload,
       brillo::SecureBlob* destination_share,
       brillo::SecureBlob* recovery_key,
       brillo::SecureBlob* channel_pub_key,
@@ -178,6 +179,7 @@ class RecoveryCrypto {
       EncryptedMediatorShare* encrypted_mediator_share);
 };
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_CRYPTO_RECOVERY_CRYPTO_H_
+#endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_H_

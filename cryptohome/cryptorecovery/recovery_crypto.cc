@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/crypto/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto.h"
 
 #include <algorithm>
 #include <utility>
@@ -17,12 +17,13 @@
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
-#include "cryptohome/crypto/recovery_crypto_hsm_cbor_serialization.h"
-#include "cryptohome/crypto/recovery_crypto_util.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
+namespace cryptorecovery {
 
 namespace {
 
@@ -76,17 +77,17 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   ~RecoveryCryptoImpl() override;
 
   bool GenerateRequestPayload(
-      const cryptorecovery::HsmPayload& hsm_payload,
+      const HsmPayload& hsm_payload,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      cryptorecovery::RequestPayload* request_payload,
+      RequestPayload* request_payload,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
                           const brillo::SecureBlob& rsa_pub_key,
                           const brillo::SecureBlob& onboarding_metadata,
-                          cryptorecovery::HsmPayload* hsm_payload,
+                          HsmPayload* hsm_payload,
                           brillo::SecureBlob* destination_share,
                           brillo::SecureBlob* recovery_key,
                           brillo::SecureBlob* channel_pub_key,
@@ -251,14 +252,14 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
 }
 
 bool RecoveryCryptoImpl::GenerateRequestPayload(
-    const cryptorecovery::HsmPayload& hsm_payload,
+    const HsmPayload& hsm_payload,
     const brillo::SecureBlob& request_meta_data,
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
     const brillo::SecureBlob& epoch_pub_key,
-    cryptorecovery::RequestPayload* request_payload,
+    RequestPayload* request_payload,
     brillo::SecureBlob* ephemeral_pub_key) const {
-  cryptorecovery::RecoveryRequestAssociatedData request_ad;
+  RecoveryRequestAssociatedData request_ad;
   request_ad.hsm_payload = hsm_payload;
   request_ad.request_meta_data = request_meta_data;
   request_ad.epoch_pub_key = epoch_pub_key;
@@ -288,7 +289,7 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
   }
 
   brillo::SecureBlob plain_text_cbor;
-  cryptorecovery::RecoveryRequestPlainText plain_text;
+  RecoveryRequestPlainText plain_text;
   plain_text.ephemeral_pub_inv_key = ephemeral_inverse_pub_key;
   if (!SerializeRecoveryRequestPlainTextToCbor(plain_text, &plain_text_cbor)) {
     LOG(ERROR) << "Failed to generate Recovery Request plain text cbor";
@@ -308,7 +309,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     const brillo::SecureBlob& mediator_pub_key,
     const brillo::SecureBlob& rsa_pub_key,
     const brillo::SecureBlob& onboarding_metadata,
-    cryptorecovery::HsmPayload* hsm_payload,
+    HsmPayload* hsm_payload,
     brillo::SecureBlob* destination_share,
     brillo::SecureBlob* recovery_key,
     brillo::SecureBlob* channel_pub_key,
@@ -415,7 +416,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // TPM 2.0). In the next iteration we will generate kav if a non-empty value
   // of `rsa_pub_key` is provided.
   brillo::SecureBlob plain_text_cbor;
-  cryptorecovery::HsmPlainText hsm_plain_text;
+  HsmPlainText hsm_plain_text;
   hsm_plain_text.mediator_share = mediator_share;
   hsm_plain_text.dealer_pub_key = dealer_pub_key;
   if (!SerializeHsmPlainTextToCbor(hsm_plain_text, &plain_text_cbor)) {
@@ -651,7 +652,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& response_payload_iv,
     const brillo::SecureBlob& response_payload_tag,
     brillo::SecureBlob* response_plain_text) const {
-  cryptorecovery::HsmResponseAssociatedData response_ad;
+  HsmResponseAssociatedData response_ad;
   if (!DeserializeHsmResponseAssociatedDataFromCbor(response_payload_ad,
                                                     &response_ad)) {
     LOG(ERROR) << "Unable to deserialize response_payload_ad";
@@ -712,7 +713,7 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
     LOG(ERROR) << "Failed to convert publisher_priv_key to a SecureBlob";
     return false;
   }
-  cryptorecovery::HsmAssociatedData hsm_ad;
+  HsmAssociatedData hsm_ad;
   hsm_ad.publisher_pub_key = *publisher_pub_key;
   hsm_ad.channel_pub_key = channel_pub_key;
   hsm_ad.rsa_public_key = rsa_pub_key;
@@ -811,4 +812,5 @@ bool RecoveryCrypto::DeserializeEncryptedMediatorShareForTesting(
   return true;
 }
 
+}  // namespace cryptorecovery
 }  // namespace cryptohome
