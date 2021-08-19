@@ -11,10 +11,6 @@ set -ex
 # Use defaults for everything, we don't support answering prompts.
 export DEBIAN_FRONTEND=noninteractive
 
-# No longer need to backport GPU support packages.
-rm -f /etc/apt/sources.list.d/cros-gpu.list \
-           /etc/apt/preferences.d/cros-gpu.pref
-
 # Make sure apt-keys are up to date. We don't use keyring.debian.org because it
 # only serves debian-specific keys and that's not enough when we want the
 # Google package signing key. however most people don't need this so ignore
@@ -22,6 +18,14 @@ rm -f /etc/apt/sources.list.d/cros-gpu.list \
 APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 apt-key adv --batch \
     --refresh-keys --keyserver keyserver.ubuntu.com \
     EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796 || true
+
+# If a previous run of this script was killed, it might have left packages in a
+# half-configured state. Complete the configurations.
+dpkg --configure -a || true
+
+# No longer need to backport GPU support packages.
+rm -f /etc/apt/sources.list.d/cros-gpu.list \
+           /etc/apt/preferences.d/cros-gpu.pref
 
 # The actual flip to buster.
 sed -i 's/stretch/buster/g' /etc/apt/sources.list \
@@ -33,10 +37,6 @@ sed -i 's/stretch/buster/g' /etc/apt/sources.list \
 # DEBIAN_FRONTEND above for a truly noninteractive upgrade experience.
 APT_OPTIONS="-o Dpkg::Options::=--force-confdef
  -o Dpkg::Options::=--force-confold"
-
-# If a previous run of this script was killed, it might have left packages in a
-# half-configured state. Complete the configurations.
-dpkg --configure -a || true
 
 # Upgrade everything to Buster versions.
 apt-get ${APT_OPTIONS} update -y
