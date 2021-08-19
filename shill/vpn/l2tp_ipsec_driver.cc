@@ -46,6 +46,7 @@
 #include "shill/process_manager.h"
 #include "shill/scope_logger.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -231,9 +232,9 @@ bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
   uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
                      CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                      CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
-  if (!external_task_local->StartInMinijail(base::FilePath(kL2TPIPsecVPNPath),
-                                            &options, kVpnUser, kVpnGroup,
-                                            capmask, true, true, error)) {
+  if (!external_task_local->StartInMinijail(
+          base::FilePath(kL2TPIPsecVPNPath), &options, VPNUtil::kVPNUser,
+          VPNUtil::kVPNGroup, capmask, true, true, error)) {
     return false;
   }
   external_task_ = std::move(external_task_local);

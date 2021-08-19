@@ -33,6 +33,7 @@
 #include "shill/process_manager.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -45,13 +46,15 @@ static std::string ObjectID(const WireGuardDriver*) {
 
 namespace {
 
-const char kWireGuardPath[] = "/usr/sbin/wireguard";
-const char kWireGuardToolsPath[] = "/usr/bin/wg";
-const char kDefaultInterfaceName[] = "wg0";
+constexpr char kWireGuardPath[] = "/usr/sbin/wireguard";
+constexpr char kWireGuardToolsPath[] = "/usr/bin/wg";
+constexpr char kDefaultInterfaceName[] = "wg0";
 
 // Directory where wireguard configuration files are exported. The owner of this
 // directory is vpn:vpn, so both shill and wireguard client can access it.
-const char kWireGuardConfigDir[] = "/run/wireguard";
+constexpr char kWireGuardConfigDir[] = "/run/wireguard";
+
+constexpr char kWireGuardConfigFile[] = "wg0.conf";
 
 // Timeout value for spawning the userspace wireguard process and configuring
 // the interface via wireguard-tools.
@@ -125,7 +128,7 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
   int stdout_fd = -1;
   pid_t pid = process_manager->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), {"pubkey"},
-      /*environment=*/{}, VPNDriver::kVpnUser, VPNDriver::kVpnGroup, /*caps=*/0,
+      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, /*caps=*/0,
       /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
       /*exit_callback=*/base::DoNothing(),
       {.stdin_fd = &stdin_fd, .stdout_fd = &stdout_fd});
@@ -203,7 +206,7 @@ WireGuardDriver::WireGuardDriver(Manager* manager,
                                  ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
       config_directory_(kWireGuardConfigDir),
-      vpn_gid_(kVpnGid) {}
+      vpn_util_(VPNUtil::New()) {}
 
 WireGuardDriver::~WireGuardDriver() {
   Cleanup();
@@ -411,7 +414,7 @@ bool WireGuardDriver::SpawnWireGuard() {
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   wireguard_pid_ = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardPath), args,
-      /*environment=*/{}, kVpnUser, kVpnGroup, kCapMask,
+      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, kCapMask,
       /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
       base::BindRepeating(&WireGuardDriver::WireGuardProcessExited,
                           weak_factory_.GetWeakPtr()));
@@ -474,23 +477,10 @@ bool WireGuardDriver::GenerateConfigFile() {
     return false;
   }
 
+  config_file_ = config_directory_.Append(kWireGuardConfigFile);
   std::string contents = base::JoinString(lines, "\n");
-  if (!base::WriteFile(config_file_, contents)) {
+  if (!vpn_util_->WriteConfigFile(config_file_, contents)) {
     LOG(ERROR) << "Failed to write wireguard config file";
-    return false;
-  }
-
-  // Makes the config file group-readable and change its group to "vpn". Note
-  // that the owner of a file may change the group of the file to any group of
-  // which that owner is a member, so we can change the group to "vpn" here
-  // since "shill" is a member of "vpn". Keeps the file as user-readable to make
-  // it readable in unit tests.
-  if (chmod(config_file_.value().c_str(), S_IRUSR | S_IRGRP) != 0) {
-    PLOG(ERROR) << "Failed to make config file group-readable";
-    return false;
-  }
-  if (chown(config_file_.value().c_str(), -1, vpn_gid_) != 0) {
-    PLOG(ERROR) << "Failed to change gid of config file";
     return false;
   }
 
@@ -523,7 +513,8 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   pid_t pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
-      /*environment=*/{}, kVpnUser, kVpnGroup, kCapMask, true, true,
+      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, kCapMask, true,
+      true,
       base::BindRepeating(&WireGuardDriver::OnConfigurationDone,
                           weak_factory_.GetWeakPtr()));
   if (pid == -1) {

@@ -21,6 +21,7 @@
 #include "shill/mock_process_manager.h"
 #include "shill/property_store.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_vpn_driver.h"
 
 namespace shill {
@@ -41,8 +42,7 @@ class WireGuardDriverTestPeer {
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     driver_->config_directory_ = scoped_temp_dir_.GetPath();
 
-    // Deactivates chown() calls.
-    driver_->vpn_gid_ = -1;
+    driver->vpn_util_ = std::make_unique<FakeVPNUtil>();
   }
 
   const Stringmaps& peers() { return driver_->peers_; }

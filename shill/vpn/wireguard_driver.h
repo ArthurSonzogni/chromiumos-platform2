@@ -5,6 +5,7 @@
 #ifndef SHILL_VPN_WIREGUARD_DRIVER_H_
 #define SHILL_VPN_WIREGUARD_DRIVER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -119,10 +121,10 @@ class WireGuardDriver : public VPNDriver {
   // we need to re-calculate the public key in Save().
   std::string saved_private_key_;
 
-  // The following two fields are constants. Makes them member variables for
-  // testing.
+  // |config_directory_| is a constant. Makes it a member variable for testing.
   base::FilePath config_directory_;
-  gid_t vpn_gid_;
+
+  std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<WireGuardDriver> weak_factory_{this};
 };
