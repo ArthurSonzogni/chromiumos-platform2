@@ -4,15 +4,20 @@
 
 #include "shill/vpn/ipsec_connection.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
-#include <base/strings/string_util.h>
+#include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
+#include "shill/process_manager.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -21,15 +26,20 @@ namespace {
 
 constexpr char kBaseRunDir[] = "/run/ipsec";
 constexpr char kStrongSwanConfFileName[] = "strongswan.conf";
+constexpr char kCharonPath[] = "/usr/libexec/ipsec/charon";
+constexpr char kViciSocketPath[] = "/run/ipsec/charon.vici";
 constexpr char kSmartcardModuleName[] = "crypto_module";
 
 }  // namespace
 
 IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
                                  std::unique_ptr<Callbacks> callbacks,
-                                 EventDispatcher* dispatcher)
+                                 EventDispatcher* dispatcher,
+                                 ProcessManager* process_manager)
     : VPNConnection(std::move(callbacks), dispatcher),
       config_(std::move(config)),
+      vici_socket_path_(kViciSocketPath),
+      process_manager_(process_manager),
       vpn_util_(VPNUtil::New()) {}
 
 IPsecConnection::~IPsecConnection() {
@@ -125,8 +135,47 @@ void IPsecConnection::WriteSwanctlConfig() {
 }
 
 void IPsecConnection::StartCharon() {
-  // TODO(b/165170125): Implement StartCharon().
-  ScheduleConnectTask(ConnectStep::kCharonStarted);
+  // TODO(b/165170125): Check the behavior when shill crashes (if charon is
+  // still running).
+  // TODO(b/165170125): May need to increase RLIMIT_AS to run charon. See
+  // https://crrev.com/c/1757203.
+  std::vector<std::string> args = {};
+  std::map<std::string, std::string> env = {
+      {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
+  };
+  // TODO(b/197199752): Consider removing CAP_SETGID.
+  constexpr uint64_t kCapMask =
+      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+      CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
+  charon_pid_ = process_manager_->StartProcessInMinijail(
+      FROM_HERE, base::FilePath(kCharonPath), args, env, VPNUtil::kVPNUser,
+      VPNUtil::kVPNGroup, kCapMask,
+      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds*/ true,
+      base::BindRepeating(&IPsecConnection::OnCharonExitedUnexpectedly,
+                          weak_factory_.GetWeakPtr()));
+
+  if (charon_pid_ == -1) {
+    NotifyFailure(Service::kFailureInternal, "Failed to start charon");
+    return;
+  }
+
+  LOG(INFO) << "charon started";
+
+  if (!base::PathExists(vici_socket_path_)) {
+    vici_socket_watcher_ = std::make_unique<base::FilePathWatcher>();
+    auto callback = base::BindRepeating(&IPsecConnection::OnViciSocketPathEvent,
+                                        weak_factory_.GetWeakPtr());
+    if (!vici_socket_watcher_->Watch(vici_socket_path_,
+                                     base::FilePathWatcher::Type::kNonRecursive,
+                                     callback)) {
+      NotifyFailure(Service::kFailureInternal,
+                    "Failed to set up FilePathWatcher for the vici socket");
+      return;
+    }
+  } else {
+    LOG(INFO) << "vici socket is already here";
+    ScheduleConnectTask(ConnectStep::kCharonStarted);
+  }
 }
 
 void IPsecConnection::SwanctlLoadConfig() {
@@ -139,8 +188,45 @@ void IPsecConnection::SwanctlInitiateConnection() {
   ScheduleConnectTask(ConnectStep::kIPsecConnected);
 }
 
+void IPsecConnection::OnViciSocketPathEvent(const base::FilePath& /*path*/,
+                                            bool error) {
+  if (state() != State::kConnecting) {
+    LOG(WARNING) << "OnViciSocketPathEvent triggered on state " << state();
+    return;
+  }
+
+  if (error) {
+    NotifyFailure(Service::kFailureInternal,
+                  "FilePathWatcher error for the vici socket");
+    return;
+  }
+
+  if (!base::PathExists(vici_socket_path_)) {
+    // This is kind of unexpected, since the first event should be the creation
+    // of this file. Waits for the next event.
+    LOG(WARNING) << "vici socket is still not ready";
+    return;
+  }
+
+  LOG(INFO) << "vici socket is ready";
+
+  vici_socket_watcher_ = nullptr;
+  ScheduleConnectTask(ConnectStep::kCharonStarted);
+}
+
+void IPsecConnection::OnCharonExitedUnexpectedly(int exit_code) {
+  charon_pid_ = -1;
+  NotifyFailure(Service::kFailureInternal,
+                base::StringPrintf(
+                    "charon exited unexpectedly with exit code %d", exit_code));
+  return;
+}
+
 void IPsecConnection::OnDisconnect() {
   // TODO(b/165170125): Implement OnDisconnect().
+  if (charon_pid_ != -1) {
+    process_manager_->StopProcess(charon_pid_);
+  }
 }
 
 }  // namespace shill

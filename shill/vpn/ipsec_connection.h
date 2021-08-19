@@ -9,9 +9,11 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/files/file_path_watcher.h>
 #include <base/files/scoped_temp_dir.h>
 
 #include "shill/mockable.h"
+#include "shill/process_manager.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_util.h"
@@ -48,7 +50,8 @@ class IPsecConnection : public VPNConnection {
 
   explicit IPsecConnection(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
-                           EventDispatcher* dispatcher);
+                           EventDispatcher* dispatcher,
+                           ProcessManager* process_manager);
   ~IPsecConnection();
 
  private:
@@ -67,16 +70,29 @@ class IPsecConnection : public VPNConnection {
   // Generates strongswan.conf. On success, this function will trigger
   // |kStrongSwanConfigWritten| step and set |strongswan_conf_path_|.
   void WriteStrongSwanConfig();
+  // Starts charon process with minijail. The charon process will create the
+  // vici socket file and then listen on it. This function will trigger
+  // |kCharonStarted| step after that socket it ready. |charon_pid_| will be set
+  // if charon is started successfully.
   void StartCharon();
   void WriteSwanctlConfig();
   void SwanctlLoadConfig();
   void SwanctlInitiateConnection();
 
+  void OnCharonExitedUnexpectedly(int exit_code);
+  void OnViciSocketPathEvent(const base::FilePath& path, bool error);
+
   std::unique_ptr<Config> config_;
 
+  // Runtime variables.
   base::ScopedTempDir temp_dir_;
   base::FilePath strongswan_conf_path_;
+  pid_t charon_pid_;
+  base::FilePath vici_socket_path_;
+  std::unique_ptr<base::FilePathWatcher> vici_socket_watcher_;
 
+  // External dependencies.
+  ProcessManager* process_manager_;
   std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<IPsecConnection> weak_factory_{this};

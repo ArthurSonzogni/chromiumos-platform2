@@ -13,6 +13,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
+#include "shill/mockable.h"
 #include "shill/process_manager.h"
 #include "shill/service.h"
 
@@ -106,10 +107,14 @@ class VPNConnection {
   // Note that NotifyFailure() will also invoke OnDisconnect() on the derived
   // class (by a PostTask()), and thus the derived class don't need to do any
   // clean up other than calling this function on failures.
-  void NotifyFailure(Service::ConnectFailure reason, const std::string& detail);
+  mockable void NotifyFailure(Service::ConnectFailure reason,
+                              const std::string& detail);
   void NotifyStopped();
 
  private:
+  // For able to modify |state_| in the tests.
+  friend class IPsecConnectionUnderTest;
+
   std::unique_ptr<Callbacks> callbacks_;
   State state_;
   EventDispatcher* dispatcher_;

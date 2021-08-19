@@ -4,15 +4,20 @@
 
 #include "shill/vpn/ipsec_connection.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include <base/files/scoped_temp_dir.h>
+#include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
 
@@ -22,8 +27,12 @@ class IPsecConnectionUnderTest : public IPsecConnection {
  public:
   IPsecConnectionUnderTest(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
-                           EventDispatcher* dispatcher)
-      : IPsecConnection(std::move(config), std::move(callbacks), dispatcher) {
+                           EventDispatcher* dispatcher,
+                           ProcessManager* process_manager)
+      : IPsecConnection(std::move(config),
+                        std::move(callbacks),
+                        dispatcher,
+                        process_manager) {
     vpn_util_ = std::make_unique<FakeVPNUtil>();
   }
 
@@ -39,12 +48,31 @@ class IPsecConnectionUnderTest : public IPsecConnection {
     IPsecConnection::ScheduleConnectTask(step);
   }
 
+  void set_strongswan_conf_path(const base::FilePath& path) {
+    strongswan_conf_path_ = path;
+  }
+
+  void set_vici_socket_path(const base::FilePath& path) {
+    vici_socket_path_ = path;
+  }
+
+  void set_state(State state) { state_ = state; }
+
   MOCK_METHOD(void, ScheduleConnectTask, (ConnectStep), (override));
+  MOCK_METHOD(void,
+              NotifyFailure,
+              (Service::ConnectFailure, const std::string&),
+              (override));
 };
 
 namespace {
 
 using ConnectStep = IPsecConnection::ConnectStep;
+
+using testing::_;
+using testing::DoAll;
+using testing::Return;
+using testing::SaveArg;
 
 // Note that there is a MACRO in this string so we cannot use raw string literal
 // here.
@@ -96,12 +124,14 @@ class IPsecConnectionTest : public testing::Test {
                        base::Unretained(&callbacks_)));
     ipsec_connection_ = std::make_unique<IPsecConnectionUnderTest>(
         std::make_unique<IPsecConnection::Config>(), std::move(callbacks),
-        &dispatcher_);
+        &dispatcher_, &process_manager_);
   }
 
  protected:
   EventDispatcherForTest dispatcher_;
   MockCallbacks callbacks_;
+  MockProcessManager process_manager_;
+
   std::unique_ptr<IPsecConnectionUnderTest> ipsec_connection_;
 };
 
@@ -128,12 +158,67 @@ TEST_F(IPsecConnectionTest, WriteStrongSwanConfig) {
 }
 
 TEST_F(IPsecConnectionTest, StartCharon) {
-  // Signal should be send out at the end of the execution.
-  EXPECT_CALL(*ipsec_connection_,
-              ScheduleConnectTask(ConnectStep::kCharonStarted));
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
+  const base::FilePath kStrongSwanConfPath("/tmp/strongswan.conf");
+  ipsec_connection_->set_strongswan_conf_path(kStrongSwanConfPath);
+
+  // Prepares the file path under the scoped temp dir. The actual file will be
+  // created later to simulate the case that it is created by the charon
+  // process.
+  const auto tmp_dir = ipsec_connection_->SetTempDir();
+  const base::FilePath kViciSocketPath = tmp_dir.Append("charon.vici");
+  ipsec_connection_->set_vici_socket_path(kViciSocketPath);
+
+  // Expects call for starting charon process.
+  const base::FilePath kExpectedProgramPath("/usr/libexec/ipsec/charon");
+  const std::vector<std::string> kExpectedArgs = {};
+  const std::map<std::string, std::string> kExpectedEnv = {
+      {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
+  constexpr uint64_t kExpectedCapMask =
+      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+      CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, kExpectedProgramPath, kExpectedArgs,
+                                     kExpectedEnv, "vpn", "vpn",
+                                     kExpectedCapMask, true, true, _))
+      .WillOnce(Return(123));
+
+  // Triggers the task.
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kStrongSwanConfigWritten);
+
+  // Creates the socket file, and then IPsecConnection should be notified and
+  // forward the step. We use a RunLoop here instead of RunUtilIdle() since it
+  // cannot be guaranteed that FilePathWatcher posted the task before
+  // RunUtilIdle() is called.
+  CHECK(base::WriteFile(kViciSocketPath, ""));
+  base::RunLoop run_loop;
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kCharonStarted))
+      .WillOnce([&](ConnectStep) { run_loop.Quit(); });
+  run_loop.Run();
+}
+
+TEST_F(IPsecConnectionTest, StartCharonFailWithStartProcess) {
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
+                                                       _, true, true, _))
+      .WillOnce(Return(-1));
+  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
+  ipsec_connection_->InvokeScheduleConnectTask(
+      ConnectStep::kStrongSwanConfigWritten);
+}
+
+TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
+  base::OnceCallback<void(int)> exit_cb;
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
+                                                       _, true, true, _))
+      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+  ipsec_connection_->InvokeScheduleConnectTask(
+      ConnectStep::kStrongSwanConfigWritten);
+
+  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
+  std::move(exit_cb).Run(1);
 }
 
 TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {

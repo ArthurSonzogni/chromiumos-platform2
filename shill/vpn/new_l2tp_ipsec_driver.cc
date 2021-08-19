@@ -104,7 +104,7 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
 
   ipsec_connection_ = std::make_unique<IPsecConnection>(
       MakeIPsecConfig(*const_args()), std::move(callbacks),
-      manager()->dispatcher());
+      manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();
 }
