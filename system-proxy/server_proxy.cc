@@ -256,18 +256,22 @@ int ServerProxy::GetStdoutPipe() {
 void ServerProxy::CreateListeningSocket() {
   listening_fd_ = std::make_unique<patchpanel::Socket>(
       AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
+  if (!listening_fd_->is_valid()) {
+    PLOG(ERROR) << "Cannot created listening socket";
+    return;
+  }
 
   struct sockaddr_in addr = {0};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(listening_port_);
   addr.sin_addr.s_addr = listening_addr_;
   if (!listening_fd_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
-    LOG(ERROR) << "Cannot bind source socket" << std::endl;
+    PLOG(ERROR) << "Cannot bind source socket" << std::endl;
     return;
   }
 
   if (!listening_fd_->Listen(kMaxConn)) {
-    LOG(ERROR) << "Cannot listen on source socket." << std::endl;
+    PLOG(ERROR) << "Cannot listen on source socket." << std::endl;
     return;
   }
 
@@ -291,6 +295,8 @@ void ServerProxy::OnConnectionAccept() {
                        base::Unretained(this)));
     if (connect_job->Start())
       pending_connect_jobs_[connect_job.get()] = std::move(connect_job);
+  } else {
+    PLOG(ERROR) << "Failed to accept incoming connection";
   }
   // Cleanup any defunct forwarders.
   // TODO(acostinas, chromium:1064536) Monitor the client and server sockets

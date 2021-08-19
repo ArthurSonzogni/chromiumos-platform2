@@ -402,6 +402,10 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
   }
 
   patchpanel::Socket temp_socket(dst->sa_family, SOCK_DGRAM);
+  if (!temp_socket.is_valid()) {
+    PLOG(ERROR) << "Failed to create UDP socket to forward to " << *dst;
+    return false;
+  }
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
@@ -440,10 +444,12 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
     return false;
   }
 
-  if (!temp_socket.Bind(bind_addr, sizeof(struct sockaddr_storage)))
+  if (!temp_socket.Bind(bind_addr, sizeof(struct sockaddr_storage))) {
+    PLOG(ERROR) << "Failed to bind to " << bind_addr_storage;
     return false;
+  }
 
-  if (!temp_socket.SendTo(data, len, dst, dst_len)) {
+  if (temp_socket.SendTo(data, len, dst, dst_len) < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured
     if (errno != ENETDOWN) {
       PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_

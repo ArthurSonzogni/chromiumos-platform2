@@ -26,46 +26,26 @@ bool WouldBlock() {
 }
 }  // namespace
 
-Socket::Socket(int family, int type) : fd_(socket(family, type, 0)) {
-  if (!fd_.is_valid())
-    PLOG(ERROR) << "socket failed (" << family << ", " << type << ")";
-}
+Socket::Socket(int family, int type) : fd_(socket(family, type, 0)) {}
 
-Socket::Socket(base::ScopedFD fd) : fd_(std::move(fd)) {
-  if (!fd_.is_valid())
-    LOG(ERROR) << "invalid fd";
-}
+Socket::Socket(base::ScopedFD fd) : fd_(std::move(fd)) {}
 
 bool Socket::Bind(const struct sockaddr* addr, socklen_t addrlen) {
-  if (bind(fd_.get(), addr, addrlen) < 0) {
-    PLOG(WARNING) << "bind failed: " << *addr;
-    return false;
-  }
-  return true;
+  return bind(fd_.get(), addr, addrlen) == 0;
 }
 
 bool Socket::Connect(const struct sockaddr* addr, socklen_t addrlen) {
-  if (connect(fd_.get(), addr, addrlen) < 0) {
-    PLOG(WARNING) << "connect failed: " << *addr;
-    return false;
-  }
-  return true;
+  return connect(fd_.get(), addr, addrlen) == 0;
 }
 
 bool Socket::Listen(int backlog) const {
-  if (listen(fd_.get(), backlog) != 0) {
-    PLOG(WARNING) << "listen failed";
-    return false;
-  }
-  return true;
+  return listen(fd_.get(), backlog) == 0;
 }
 
 std::unique_ptr<Socket> Socket::Accept(struct sockaddr* addr,
                                        socklen_t* addrlen) const {
   base::ScopedFD fd(accept(fd_.get(), addr, addrlen));
   if (!fd.is_valid()) {
-    if (!WouldBlock())
-      PLOG(WARNING) << "accept failed";
     return nullptr;
   }
   return std::make_unique<Socket>(std::move(fd));
@@ -91,7 +71,6 @@ ssize_t Socket::SendTo(const void* data,
   if (WouldBlock())
     return 0;
 
-  PLOG(WARNING) << "sendto failed";
   return bytes;
 }
 
@@ -103,15 +82,13 @@ ssize_t Socket::RecvFrom(void* data,
   ssize_t bytes = recvfrom(fd_.get(), data, len, 0, addr, &recvlen);
   if (bytes >= 0) {
     if (recvlen != addrlen)
-      PLOG(WARNING) << "recvfrom failed: unexpected src addr length "
-                    << recvlen;
+      LOG(WARNING) << "recvfrom failed: unexpected src addr length " << recvlen;
     return bytes;
   }
 
   if (WouldBlock())
     return 0;
 
-  PLOG(WARNING) << "recvfrom failed";
   return bytes;
 }
 

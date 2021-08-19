@@ -43,6 +43,8 @@ class BRILLO_EXPORT Socket {
                    struct sockaddr* addr = nullptr,
                    socklen_t addrlen = 0);
 
+  bool is_valid() const { return fd_.is_valid(); }
+
   int fd() const { return fd_.get(); }
 
   // Releases the underlying fd rendering the Socket instance invalid.

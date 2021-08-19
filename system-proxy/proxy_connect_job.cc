@@ -152,8 +152,10 @@ bool ProxyConnectJob::Start() {
   // Make the socket non-blocking.
   if (!base::SetNonBlocking(client_socket_->fd())) {
     PLOG(ERROR) << *this << " Failed to mark the socket as non-blocking";
-    client_socket_->SendTo(kHttpInternalServerError.data(),
-                           kHttpInternalServerError.size());
+    if (client_socket_->SendTo(kHttpInternalServerError.data(),
+                               kHttpInternalServerError.size()) < 0) {
+      PLOG(ERROR) << *this << " Failed to send back 500 Server Error response";
+    }
     return false;
   }
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
@@ -179,7 +181,7 @@ void ProxyConnectJob::OnClientReadReady() {
 
   read_byte_count = client_socket_->RecvFrom(buf.data(), buf.size());
   if (read_byte_count < 0) {
-    LOG(ERROR) << *this << " Failure to read client request";
+    PLOG(ERROR) << *this << " Failure to read client request";
     OnError(kHttpBadRequest);
     return;
   }
@@ -375,7 +377,9 @@ void ProxyConnectJob::DoCurlServerConnection() {
   }
   // Send the buffered playload data to the remote server.
   if (!connect_data_.empty()) {
-    server_conn->SendTo(connect_data_.data(), connect_data_.size());
+    if (server_conn->SendTo(connect_data_.data(), connect_data_.size()) < 0) {
+      PLOG(ERROR) << *this << " Failed to send back FIXME";
+    }
     connect_data_.clear();
   }
 
@@ -392,38 +396,56 @@ bool ProxyConnectJob::SendHttpResponseToClient(
     const std::vector<char>& http_response_body) {
   if (http_response_code_ == 0) {
     // No HTTP CONNECT response code is available.
-    return client_socket_->SendTo(kHttpInternalServerError.data(),
-                                  kHttpInternalServerError.size());
+    if (client_socket_->SendTo(kHttpInternalServerError.data(),
+                               kHttpInternalServerError.size()) < 0) {
+      PLOG(ERROR) << *this << " Failed to send back 500 Server Error response";
+      return false;
+    }
+    return true;
   }
 
   if (http_response_code_ == kHttpCodeProxyAuthRequired) {
     // This will be a hint for the user to authenticate via the Browser or
     // acquire a Kerberos ticket.
-    return client_socket_->SendTo(kHttpProxyAuthRequired.data(),
-                                  kHttpProxyAuthRequired.size());
+    if (client_socket_->SendTo(kHttpProxyAuthRequired.data(),
+                               kHttpProxyAuthRequired.size()) < 0) {
+      PLOG(ERROR) << *this
+                  << " Failed to send back 407 Credential required response";
+      return false;
+    }
+    return true;
   }
 
   if (http_response_code_ >= 400) {
     VLOG(1) << "Failed to set up HTTP tunnel with code " << http_response_code_;
     std::string http_error = base::StringPrintf(
         kHttpErrorTunnelFailed, std::to_string(http_response_code_).c_str());
-    return client_socket_->SendTo(http_error.c_str(), http_error.size());
+    if (client_socket_->SendTo(http_error.c_str(), http_error.size()) < 0) {
+      PLOG(ERROR) << *this << " Failed to send back " << http_response_code_
+                  << " Error creating tunnel response";
+      return false;
+    }
+    return true;
   }
 
   if (http_response_headers.empty()) {
-    return client_socket_->SendTo(kHttpInternalServerError.data(),
-                                  kHttpInternalServerError.size());
+    if (client_socket_->SendTo(kHttpInternalServerError.data(),
+                               kHttpInternalServerError.size()) < 0) {
+      PLOG(ERROR) << *this << " Failed to send back 500 Server Error response";
+      return false;
+    }
+    return true;
   }
 
   VLOG(1) << "Sending server reply to client";
-  if (!client_socket_->SendTo(http_response_headers.data(),
-                              http_response_headers.size())) {
+  if (client_socket_->SendTo(http_response_headers.data(),
+                             http_response_headers.size()) < 0) {
     PLOG(ERROR) << "Failed to send HTTP server response headers to client";
     return false;
   }
   if (!http_response_body.empty()) {
-    if (!client_socket_->SendTo(http_response_body.data(),
-                                http_response_body.size())) {
+    if (client_socket_->SendTo(http_response_body.data(),
+                               http_response_body.size()) < 0) {
       PLOG(ERROR) << "Failed to send HTTP server response payload to client";
       return false;
     }
@@ -432,7 +454,10 @@ bool ProxyConnectJob::SendHttpResponseToClient(
 }
 
 void ProxyConnectJob::OnError(const std::string_view& http_error_message) {
-  client_socket_->SendTo(http_error_message.data(), http_error_message.size());
+  if (client_socket_->SendTo(http_error_message.data(),
+                             http_error_message.size()) < 0) {
+    PLOG(ERROR) << "Failed to send back error response: " << http_error_message;
+  }
   std::move(setup_finished_callback_).Run(nullptr, this);
 }
 

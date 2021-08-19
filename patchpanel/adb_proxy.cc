@@ -115,6 +115,8 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
       fwd->Start();
       fwd_.emplace_back(std::move(fwd));
     }
+  } else {
+    PLOG(ERROR) << "Failed to accept incoming adb connection";
   }
 
   // Cleanup any defunct forwarders.
@@ -134,21 +136,31 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
       snprintf(addr_un.sun_path, sizeof(addr_un.sun_path), "%s",
                kUnixConnectAddr);
       auto dst = std::make_unique<Socket>(AF_UNIX, SOCK_STREAM);
+      if (!dst->is_valid()) {
+        PLOG(ERROR) << "Failed to create UNIX domain socket";
+        return nullptr;
+      }
       if (dst->Connect((const struct sockaddr*)&addr_un, sizeof(addr_un))) {
         LOG(INFO) << "Established adbd connection to " << addr_un;
         return dst;
+      } else {
+        PLOG(WARNING) << "Failed to connect UNIX domain socket to adbd: "
+                      << kUnixConnectAddr << " - falling back to TCP";
       }
-
-      LOG(WARNING) << "Failed to connect to UNIX domain socket: "
-                   << kUnixConnectAddr << " - falling back to TCP";
 
       struct sockaddr_in addr_in = {0};
       addr_in.sin_family = AF_INET;
       addr_in.sin_port = htons(kTcpConnectPort);
       addr_in.sin_addr.s_addr = kTcpAddr;
       dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
-      if (!dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in)))
+      if (!dst->is_valid()) {
+        PLOG(ERROR) << "Failed to create TCP socket";
         return nullptr;
+      }
+      if (!dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in))) {
+        PLOG(ERROR) << "Failed to connect TCP socket to adbd at " << addr_in;
+        return nullptr;
+      }
       LOG(INFO) << "Established adbd connection to " << addr_in;
       return dst;
     }
@@ -158,13 +170,19 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
       addr_vm.svm_port = kVsockPort;
       addr_vm.svm_cid = arcvm_vsock_cid_;
       auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
-      if (!dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm)))
+      if (!dst->is_valid()) {
+        PLOG(ERROR) << "Failed to create VSOCK socket";
         return nullptr;
+      }
+      if (!dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
+        PLOG(ERROR) << "Failed to connect VSOCK socket to adbd at " << addr_vm;
+        return nullptr;
+      }
       LOG(INFO) << "Established adbd connection to " << addr_vm;
       return dst;
     }
     default:
-      LOG(DFATAL) << "Unexpected connect - no ARC guest";
+      LOG(DFATAL) << "Unexpected ARC guest type";
       return nullptr;
   }
 }
@@ -208,6 +226,10 @@ void AdbProxy::Listen() {
   // explicitly turned on in the codebase.
   std::unique_ptr<Socket> src =
       std::make_unique<Socket>(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK);
+  if (!src->is_valid()) {
+    PLOG(ERROR) << "Failed to created TCP listening socket";
+    return;
+  }
   // Need to set this to reuse the port.
   int on = 1;
   if (setsockopt(src->fd(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int)) < 0) {

@@ -162,8 +162,10 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
     }
 
     ssize_t bytes = dst->SendTo(buf, *len);
-    if (bytes < 0)
+    if (bytes < 0) {
+      PLOG(ERROR) << "Failed to send data to " << dst;
       return false;
+    }
 
     // Still unavailable.
     if (bytes == 0)
@@ -202,15 +204,19 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
 
   if (events & EPOLLIN) {
     *len = src->RecvFrom(buf, kBufSize);
-    if (*len < 0)
+    if (*len < 0) {
+      PLOG(ERROR) << "Failed to receive data from " << src;
       return false;
+    }
 
     if (*len == 0)
       return HandleConnectionClosed(src, dst, cfd);
 
     ssize_t bytes = dst->SendTo(buf, *len);
-    if (bytes < 0)
+    if (bytes < 0) {
+      PLOG(ERROR) << "Failed to send data to " << dst;
       return false;
+    }
 
     if (bytes > 0) {
       // Partial write.
