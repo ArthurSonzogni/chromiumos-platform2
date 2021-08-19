@@ -6,6 +6,7 @@
 brk: 1
 clock_getres: 1
 clock_gettime: 1
+clone: 1
 close: 1
 connect: 1
 epoll_create1: 1
