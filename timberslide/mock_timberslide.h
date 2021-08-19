@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "timberslide/string_transformer.h"
 #include "timberslide/timberslide.h"
 
 namespace timberslide {
@@ -15,7 +16,8 @@ namespace timberslide {
 class MockTimberSlide : public TimberSlide {
  public:
   explicit MockTimberSlide(std::unique_ptr<LogListener> log_listener = nullptr)
-      : TimberSlide(std::move(log_listener)) {}
+      : TimberSlide(std::move(log_listener),
+                    std::make_unique<StringTransformer>()) {}
   ~MockTimberSlide() override = default;
   MOCK_METHOD(bool, GetEcUptime, (int64_t*), (override));
 };

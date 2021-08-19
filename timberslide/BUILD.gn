@@ -23,6 +23,7 @@ pkg_config("target_defaults") {
 static_library("libtimberslide") {
   sources = [
     "fingerprint_log_listener_impl.cc",
+    "string_transformer.cc",
     "timberslide.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -41,6 +42,7 @@ if (use.test) {
   executable("timberslide_test_runner") {
     sources = [
       "fingerprint_log_listener_impl_test.cc",
+      "string_transformer_test.cc",
       "timberslide_test.cc",
       "timberslide_testrunner.cc",
     ]

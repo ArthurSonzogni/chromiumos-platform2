@@ -24,6 +24,10 @@ const char kExpectedLogsWithUptime[] =
     "0101/000000.001000 [0.001000 UART initialized after sysjump]\n"
     "0101/000001.000000 [1.000000 Sensor create: 0x0]\n";
 
+const char kExpectedLogsWithoutUptime[] =
+    "0101/000000.000000 [0.001000 UART initialized after sysjump]\n"
+    "0101/000000.000000 [1.000000 Sensor create: 0x0]\n";
+
 class LogListenerImplMock : public LogListener {
  public:
   MOCK_METHOD(void, OnLogLine, (const std::string&), (override));
@@ -45,7 +49,7 @@ TEST(TimberslideTest, ProcessLogBuffer_GetEcUptimeNotSupported) {
   NiceMock<MockTimberSlide> mock;
   EXPECT_CALL(mock, GetEcUptime).WillOnce(Return(false));
   std::string ret = mock.ProcessLogBuffer(kSampleLogs, now);
-  EXPECT_EQ(ret, kSampleLogs);
+  EXPECT_EQ(ret, kExpectedLogsWithoutUptime);
 }
 
 class TimberslideLogLineTest : public testing::TestWithParam<bool> {};

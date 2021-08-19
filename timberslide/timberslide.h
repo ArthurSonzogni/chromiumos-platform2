@@ -13,6 +13,7 @@
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
 #include "timberslide/log_listener.h"
+#include "timberslide/string_transformer.h"
 
 namespace timberslide {
 
@@ -28,7 +29,8 @@ class TimberSlide : public brillo::Daemon {
 
  protected:
   // For testing
-  explicit TimberSlide(std::unique_ptr<LogListener> log_listener);
+  explicit TimberSlide(std::unique_ptr<LogListener> log_listener,
+                       std::unique_ptr<StringTransformer> xfrm);
 
  private:
   int OnInit() override;
@@ -48,6 +50,7 @@ class TimberSlide : public brillo::Daemon {
   base::File uptime_file_;
   bool uptime_file_valid_ = false;
   std::unique_ptr<LogListener> log_listener_;
+  std::unique_ptr<StringTransformer> xfrm_;
 };
 
 }  // namespace timberslide

@@ -15,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
@@ -45,59 +44,6 @@ class LineExtractor {
   std::string str_;
 };
 
-//
-// Has a member function which adds the host timestamp
-// to the beginning of each line passed to it.
-//
-class StringTransformer {
- public:
-  explicit StringTransformer(int64_t ec_uptime_ms, const base::Time& now)
-      : ec_current_uptime_ms_(ec_uptime_ms), timestamp_(now) {}
-
-  // Matching lines look like: [1234.5678 EC message goes here] .
-  std::string add_host_ts(const std::string& s) {
-    const base::TimeDelta ec_sync(
-        base::TimeDelta::FromMilliseconds(ec_current_uptime_ms_));
-
-    std::string::size_type bracket = s.find('[');
-    if (bracket == std::string::npos)
-      return s;
-
-    std::string::size_type space = s.find(' ', bracket + 1);
-    if (space == std::string::npos)
-      return s;
-
-    double ec_ts;
-    const std::string potential_ts(s.substr(bracket + 1, space - bracket - 1));
-
-    if (!base::StringToDouble(potential_ts, &ec_ts)) {
-      LOG(WARNING) << "Unable to convert " << potential_ts << " to a double";
-      return s;
-    }
-
-    // Calculate delta from EC's uptime.
-    const base::TimeDelta logline_tm(base::TimeDelta::FromSecondsD(ec_ts));
-    const base::TimeDelta logline_delta(ec_sync - logline_tm);
-    const base::Time logline_host_tm = timestamp_ - logline_delta;
-
-    return FormatTime(logline_host_tm).append(" ").append(s);
-  }
-
- private:
-  std::string FormatTime(const base::Time& time) {
-    base::Time::Exploded e;
-
-    // This format matches the format in libchrome/base/logging.cc
-    time.UTCExplode(&e);
-    return base::StringPrintf("%02d%02d/%02d%02d%02d.%06d", e.month,
-                              e.day_of_month, e.hour, e.minute, e.second,
-                              e.millisecond * 1000);
-  }
-
-  int64_t ec_current_uptime_ms_;
-  base::Time timestamp_;
-};
-
 }  // namespace
 
 TimberSlide::TimberSlide(const std::string& ec_type,
@@ -111,10 +57,12 @@ TimberSlide::TimberSlide(const std::string& ec_type,
   current_log_ = log_dir.Append(ec_type + kCurrentLogExt);
   previous_log_ = log_dir.Append(ec_type + kPreviousLogExt);
   log_listener_ = LogListenerFactory::Create(ec_type);
+  xfrm_ = std::make_unique<StringTransformer>();
 }
 
-TimberSlide::TimberSlide(std::unique_ptr<LogListener> log_listener)
-    : log_listener_(std::move(log_listener)) {}
+TimberSlide::TimberSlide(std::unique_ptr<LogListener> log_listener,
+                         std::unique_ptr<StringTransformer> xfrm)
+    : log_listener_(std::move(log_listener)), xfrm_(std::move(xfrm)) {}
 
 int TimberSlide::OnInit() {
   LOG(INFO) << "Starting timberslide daemon";
@@ -122,10 +70,14 @@ int TimberSlide::OnInit() {
   if (ret != EX_OK)
     return ret;
 
-  if (uptime_file_valid_)
+  int64_t ec_uptime_ms;
+  if (uptime_file_valid_) {
     LOG(INFO) << "EC uptime file is valid";
-  else
+    if (GetEcUptime(&ec_uptime_ms))
+      xfrm_->UpdateTimestamps(ec_uptime_ms, base::Time::Now());
+  } else {
     LOG(WARNING) << "EC uptime file is not valid; ignoring";
+  }
 
   RotateLogs(previous_log_, current_log_);
 
@@ -172,18 +124,14 @@ std::string TimberSlide::ProcessLogBuffer(const std::string& buffer,
   int64_t ec_current_uptime_ms = 0;
   std::istringstream iss(buffer);
 
-  bool have_ec_uptime = GetEcUptime(&ec_current_uptime_ms);
+  if (GetEcUptime(&ec_current_uptime_ms))
+    xfrm_->UpdateTimestamps(ec_current_uptime_ms, now);
 
-  auto fn_xfrm = [this, ec_current_uptime_ms, have_ec_uptime,
-                  now](const std::string& line) {
+  auto fn_xfrm = [this](const std::string& line) {
     if (log_listener_) {
       log_listener_->OnLogLine(line);
     }
-    if (!have_ec_uptime) {
-      return line;
-    }
-    StringTransformer xfrm(ec_current_uptime_ms, now);
-    return xfrm.add_host_ts(line);
+    return xfrm_->AddHostTs(line);
   };
 
   // Iterate over each line and prepend the corresponding host timestamp if we
