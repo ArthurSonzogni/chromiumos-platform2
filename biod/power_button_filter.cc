@@ -103,6 +103,6 @@ void PowerButtonFilter::Init(
             << "overlapped on powerbutton.";
   if (fp_on_power_button_ && !power_manager_client_->HasObserver(this))
     power_manager_client_->AddObserver(this);
-}  // namespace biod
+}
 
 }  // namespace biod
