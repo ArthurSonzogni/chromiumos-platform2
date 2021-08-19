@@ -23,7 +23,7 @@
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/passive_timer.h"
-#include "tpm_manager/server/tpm_allow_list.h"
+#include "tpm_manager/server/tpm_allowlist.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
 #include "tpm_manager/server/tpm_nvram.h"
@@ -151,8 +151,8 @@ class TpmManagerService : public TpmNvramInterface,
     dictionary_attack_timer_ = timer;
   }
 
-  void set_tpm_allow_list_for_testing(TpmAllowList* allow_list) {
-    tpm_allow_list_ = allow_list;
+  void set_tpm_allowlist_for_testing(TpmAllowlist* allowlist) {
+    tpm_allowlist_ = allowlist;
   }
 
   void MarkTpmStatusCacheDirty();
@@ -323,7 +323,7 @@ class TpmManagerService : public TpmNvramInterface,
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;
-  TpmAllowList* tpm_allow_list_ = nullptr;
+  TpmAllowlist* tpm_allowlist_ = nullptr;
 
   TpmManagerMetrics default_tpm_manager_metrics_;
   TpmManagerMetrics* tpm_manager_metrics_{nullptr};
@@ -382,7 +382,7 @@ class TpmManagerService : public TpmNvramInterface,
   std::unique_ptr<TpmStatus> default_tpm_status_;
   std::unique_ptr<TpmInitializer> default_tpm_initializer_;
   std::unique_ptr<TpmNvram> default_tpm_nvram_;
-  std::unique_ptr<TpmAllowList> default_tpm_allow_list_;
+  std::unique_ptr<TpmAllowlist> default_tpm_allowlist_;
 
   // Whether to clear the stored owner password automatically upon removing all
   // dependencies.

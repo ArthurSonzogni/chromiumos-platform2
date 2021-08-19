@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TPM_MANAGER_SERVER_TPM_ALLOW_LIST_H_
-#define TPM_MANAGER_SERVER_TPM_ALLOW_LIST_H_
+#ifndef TPM_MANAGER_SERVER_TPM_ALLOWLIST_H_
+#define TPM_MANAGER_SERVER_TPM_ALLOWLIST_H_
 
 namespace tpm_manager {
 
-class TpmAllowList {
+class TpmAllowlist {
  public:
-  TpmAllowList() = default;
-  virtual ~TpmAllowList() = default;
+  TpmAllowlist() = default;
+  virtual ~TpmAllowlist() = default;
   virtual bool IsAllowed() = 0;
 };
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_SERVER_TPM_ALLOW_LIST_H_
+#endif  // TPM_MANAGER_SERVER_TPM_ALLOWLIST_H_

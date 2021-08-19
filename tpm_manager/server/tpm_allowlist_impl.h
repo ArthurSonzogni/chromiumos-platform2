@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TPM_MANAGER_SERVER_TPM_ALLOW_LIST_IMPL_H_
-#define TPM_MANAGER_SERVER_TPM_ALLOW_LIST_IMPL_H_
+#ifndef TPM_MANAGER_SERVER_TPM_ALLOWLIST_IMPL_H_
+#define TPM_MANAGER_SERVER_TPM_ALLOWLIST_IMPL_H_
 
-#include "tpm_manager/server/tpm_allow_list.h"
+#include "tpm_manager/server/tpm_allowlist.h"
 #include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
 
-class TpmAllowListImpl : public TpmAllowList {
+class TpmAllowlistImpl : public TpmAllowlist {
  public:
-  explicit TpmAllowListImpl(TpmStatus* tpm_status);
-  ~TpmAllowListImpl() override = default;
+  explicit TpmAllowlistImpl(TpmStatus* tpm_status);
+  ~TpmAllowlistImpl() override = default;
   bool IsAllowed() override;
 
  private:
@@ -22,4 +22,4 @@ class TpmAllowListImpl : public TpmAllowList {
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_SERVER_TPM_ALLOW_LIST_IMPL_H_
+#endif  // TPM_MANAGER_SERVER_TPM_ALLOWLIST_IMPL_H_

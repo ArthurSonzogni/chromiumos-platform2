@@ -23,7 +23,7 @@
 #include <inttypes.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
-#include "tpm_manager/server/tpm_allow_list_impl.h"
+#include "tpm_manager/server/tpm_allowlist_impl.h"
 
 namespace {
 
@@ -227,12 +227,12 @@ void TpmManagerService::InitializeTask(
     TPM_SELECT_END;
   }
 
-  if (!tpm_allow_list_) {
-    default_tpm_allow_list_ = std::make_unique<TpmAllowListImpl>(tpm_status_);
-    tpm_allow_list_ = default_tpm_allow_list_.get();
+  if (!tpm_allowlist_) {
+    default_tpm_allowlist_ = std::make_unique<TpmAllowlistImpl>(tpm_status_);
+    tpm_allowlist_ = default_tpm_allowlist_.get();
   }
 
-  tpm_allowed_ = tpm_allow_list_->IsAllowed();
+  tpm_allowed_ = tpm_allowlist_->IsAllowed();
 
   if (!tpm_allowed_) {
     LOG(WARNING) << __func__ << ": The TPM is not allowed on the device.";

@@ -18,7 +18,7 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
-#include "tpm_manager/server/mock_tpm_allow_list.h"
+#include "tpm_manager/server/mock_tpm_allowlist.h"
 #include "tpm_manager/server/mock_tpm_initializer.h"
 #include "tpm_manager/server/mock_tpm_manager_metrics.h"
 #include "tpm_manager/server/mock_tpm_nvram.h"
@@ -67,8 +67,8 @@ class TpmManagerServiceTestBase : public testing::Test {
         wait_for_ownership, perform_preinit, &mock_local_data_store_,
         &mock_tpm_status_, &mock_tpm_initializer_, &mock_tpm_nvram_,
         &mock_tpm_manager_metrics_));
-    service_->set_tpm_allow_list_for_testing(&mock_tpm_allow_list_);
-    ON_CALL(mock_tpm_allow_list_, IsAllowed()).WillByDefault(Return(true));
+    service_->set_tpm_allowlist_for_testing(&mock_tpm_allowlist_);
+    ON_CALL(mock_tpm_allowlist_, IsAllowed()).WillByDefault(Return(true));
     DisablePeriodicDictionaryAttackReset();
     if (shall_setup_service) {
       SetupService();
@@ -106,7 +106,7 @@ class TpmManagerServiceTestBase : public testing::Test {
   NiceMock<MockTpmInitializer> mock_tpm_initializer_;
   NiceMock<MockTpmNvram> mock_tpm_nvram_;
   NiceMock<MockTpmStatus> mock_tpm_status_;
-  NiceMock<MockTpmAllowList> mock_tpm_allow_list_;
+  NiceMock<MockTpmAllowlist> mock_tpm_allowlist_;
   NiceMock<MockTpmManagerMetrics> mock_tpm_manager_metrics_;
   std::unique_ptr<TpmManagerService> service_;
 
@@ -1209,7 +1209,7 @@ TEST_F(TpmManagerServiceTest, TpmManagerNoCrash) {
 #endif
 
 TEST_F(TpmManagerServiceTest_Preinit, TpmManagerTpmNotAllowedNoCrash) {
-  EXPECT_CALL(mock_tpm_allow_list_, IsAllowed()).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_allowlist_, IsAllowed()).WillRepeatedly(Return(false));
 
   SetupService();
 
