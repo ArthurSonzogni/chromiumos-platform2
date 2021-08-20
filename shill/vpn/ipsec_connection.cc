@@ -27,6 +27,7 @@ namespace {
 constexpr char kBaseRunDir[] = "/run/ipsec";
 constexpr char kStrongSwanConfFileName[] = "strongswan.conf";
 constexpr char kSwanctlConfFileName[] = "swanctl.conf";
+constexpr char kSwanctlPath[] = "/usr/sbin/swanctl";
 constexpr char kCharonPath[] = "/usr/libexec/ipsec/charon";
 constexpr char kViciSocketPath[] = "/run/ipsec/charon.vici";
 constexpr char kSmartcardModuleName[] = "crypto_module";
@@ -283,13 +284,24 @@ void IPsecConnection::StartCharon() {
 }
 
 void IPsecConnection::SwanctlLoadConfig() {
-  // TODO(b/165170125): Implement SwanctlLoadConfig().
-  ScheduleConnectTask(ConnectStep::kSwanctlConfigLoaded);
+  const std::vector<std::string> args = {"--load-all", "--file",
+                                         swanctl_conf_path_.value()};
+  RunSwanctl(args,
+             base::BindOnce(&IPsecConnection::ScheduleConnectTask,
+                            weak_factory_.GetWeakPtr(),
+                            ConnectStep::kSwanctlConfigLoaded),
+             "Failed to load swanctl.conf");
 }
 
 void IPsecConnection::SwanctlInitiateConnection() {
-  // TODO(b/165170125): Implement SwanctlInitiateConnection().
-  ScheduleConnectTask(ConnectStep::kIPsecConnected);
+  // This is a blocking call: if the execution returns with 0, then it means the
+  // IPsec connection has been established.
+  const std::vector<std::string> args = {"--initiate", "-c", kChildSAName};
+  RunSwanctl(
+      args,
+      base::BindOnce(&IPsecConnection::ScheduleConnectTask,
+                     weak_factory_.GetWeakPtr(), ConnectStep::kIPsecConnected),
+      "Failed to initiate IPsec connection");
 }
 
 void IPsecConnection::OnViciSocketPathEvent(const base::FilePath& /*path*/,
@@ -324,6 +336,40 @@ void IPsecConnection::OnCharonExitedUnexpectedly(int exit_code) {
                 base::StringPrintf(
                     "charon exited unexpectedly with exit code %d", exit_code));
   return;
+}
+
+void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
+                                 base::OnceClosure on_success,
+                                 const std::string& message_on_failure) {
+  std::map<std::string, std::string> env = {
+      {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
+  };
+
+  constexpr uint64_t kCapMask = 0;
+
+  pid_t pid = process_manager_->StartProcessInMinijail(
+      FROM_HERE, base::FilePath(kSwanctlPath), args, env, VPNUtil::kVPNUser,
+      VPNUtil::kVPNGroup, kCapMask,
+      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds*/ true,
+      base::BindRepeating(
+          &IPsecConnection::OnSwanctlExited, weak_factory_.GetWeakPtr(),
+          base::AdaptCallbackForRepeating(std::move(on_success)),
+          message_on_failure));
+  if (pid == -1) {
+    NotifyFailure(Service::kFailureInternal, message_on_failure);
+  }
+}
+
+void IPsecConnection::OnSwanctlExited(base::OnceClosure on_success,
+                                      const std::string& message_on_failure,
+                                      int exit_code) {
+  if (exit_code == 0) {
+    std::move(on_success).Run();
+  } else {
+    NotifyFailure(Service::kFailureInternal,
+                  base::StringPrintf("%s, exit_code=%d",
+                                     message_on_failure.c_str(), exit_code));
+  }
 }
 
 void IPsecConnection::OnDisconnect() {

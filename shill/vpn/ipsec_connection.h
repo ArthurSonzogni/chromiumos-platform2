@@ -6,12 +6,15 @@
 #define SHILL_VPN_IPSEC_CONNECTION_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_temp_dir.h>
 
+#include "shill/certificate_file.h"
 #include "shill/mockable.h"
 #include "shill/process_manager.h"
 #include "shill/service.h"
@@ -78,11 +81,23 @@ class IPsecConnection : public VPNConnection {
   // Writes swanctl.conf. On success, this function will trigger
   // |kSwanctlConfigWritten| step and set |swanctl_conf_path_|.
   void WriteSwanctlConfig();
+  // Executes `swanctl --load-all`. Trigger |kSwanctlConfigLoaded| on success.
   void SwanctlLoadConfig();
+  // Executes `swanctl --initiate`. Trigger |kIPsecConnected| on success.
   void SwanctlInitiateConnection();
 
   void OnCharonExitedUnexpectedly(int exit_code);
   void OnViciSocketPathEvent(const base::FilePath& path, bool error);
+
+  // Helper functions to run swanctl. RunSwanctl() executes `swanctl` with
+  // |args|, and invokes |on_success| if the execution succeeds and the exit
+  // code is 0, otherwise invokes NoitfyFailure() with |message_on_failure|.
+  void RunSwanctl(const std::vector<std::string>& args,
+                  base::OnceClosure on_success,
+                  const std::string& message_on_failure);
+  void OnSwanctlExited(base::OnceClosure on_success,
+                       const std::string& message_on_failure,
+                       int exit_code);
 
   std::unique_ptr<Config> config_;
 

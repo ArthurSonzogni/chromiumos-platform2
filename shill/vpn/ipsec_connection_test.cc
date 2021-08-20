@@ -52,6 +52,10 @@ class IPsecConnectionUnderTest : public IPsecConnection {
     strongswan_conf_path_ = path;
   }
 
+  void set_swanctl_conf_path(const base::FilePath& path) {
+    swanctl_conf_path_ = path;
+  }
+
   void set_vici_socket_path(const base::FilePath& path) {
     vici_socket_path_ = path;
   }
@@ -245,21 +249,84 @@ TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
 }
 
 TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
-  // Signal should be send out at the end of the execution.
+  const base::FilePath kStrongSwanConfPath("/tmp/strongswan.conf");
+  ipsec_connection_->set_strongswan_conf_path(kStrongSwanConfPath);
+
+  const base::FilePath kSwanctlConfPath("/tmp/swanctl.conf");
+  ipsec_connection_->set_swanctl_conf_path(kSwanctlConfPath);
+
+  // Expects call for starting swanctl process.
+  base::OnceCallback<void(int)> exit_cb;
+  const base::FilePath kExpectedProgramPath("/usr/sbin/swanctl");
+  const std::vector<std::string> kExpectedArgs = {"--load-all", "--file",
+                                                  kSwanctlConfPath.value()};
+  const std::map<std::string, std::string> kExpectedEnv = {
+      {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
+  constexpr uint64_t kExpectedCapMask = 0;
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, kExpectedProgramPath, kExpectedArgs,
+                                     kExpectedEnv, "vpn", "vpn",
+                                     kExpectedCapMask, true, true, _))
+      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+
+  ipsec_connection_->InvokeScheduleConnectTask(
+      ConnectStep::kSwanctlConfigWritten);
+
+  // Signal should be sent out if swanctl exits with 0.
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kSwanctlConfigLoaded));
+  std::move(exit_cb).Run(0);
+}
 
+TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExecution) {
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
+                                                       _, true, true, _))
+      .WillOnce(Return(-1));
+  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
 }
 
+TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExitCodeNonZero) {
+  base::OnceCallback<void(int)> exit_cb;
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
+                                                       _, true, true, _))
+      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+  ipsec_connection_->InvokeScheduleConnectTask(
+      ConnectStep::kSwanctlConfigWritten);
+
+  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
+  std::move(exit_cb).Run(1);
+}
+
 TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
-  // Signal should be send out at the end of the execution.
-  EXPECT_CALL(*ipsec_connection_,
-              ScheduleConnectTask(ConnectStep::kIPsecConnected));
+  const base::FilePath kStrongSwanConfPath("/tmp/strongswan.conf");
+  ipsec_connection_->set_strongswan_conf_path(kStrongSwanConfPath);
+
+  const base::FilePath kSwanctlConfPath("/tmp/swanctl.conf");
+  ipsec_connection_->set_swanctl_conf_path(kSwanctlConfPath);
+
+  // Expects call for starting swanctl process.
+  base::OnceCallback<void(int)> exit_cb;
+  const base::FilePath kExpectedProgramPath("/usr/sbin/swanctl");
+  const std::vector<std::string> kExpectedArgs = {"--initiate", "-c",
+                                                  "managed"};
+  const std::map<std::string, std::string> kExpectedEnv = {
+      {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
+  constexpr uint64_t kExpectedCapMask = 0;
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, kExpectedProgramPath, kExpectedArgs,
+                                     kExpectedEnv, "vpn", "vpn",
+                                     kExpectedCapMask, true, true, _))
+      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
 
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigLoaded);
+
+  // Signal should be sent out if swanctl exits with 0.
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kIPsecConnected));
+  std::move(exit_cb).Run(0);
 }
 
 }  // namespace
