@@ -24,6 +24,7 @@ fchmod: 1
 fcntl: 1
 fdatasync: 1
 fstat: 1
+fstatfs: 1
 fsync: 1
 ftruncate: 1
 futex: 1
