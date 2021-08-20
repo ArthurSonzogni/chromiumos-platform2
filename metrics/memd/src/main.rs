@@ -39,14 +39,16 @@ use std::cmp::max;
 use std::fmt;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::prelude::*;
+use std::mem::{self, MaybeUninit};
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 #[cfg(not(test))]
 use std::thread;
-use std::{io, mem, str};
+use std::{io, str};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
+
 use tempfile::TempDir;
 
 #[cfg(test)]
@@ -162,23 +164,35 @@ fn errno() -> i32 {
 
 // Returns the string for posix error number |err|.
 fn strerror(err: i32) -> String {
-    // safe to leave |buffer| uninitialized because we initialize it from strerror_r.
-    let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
+    let mut buffer = vec![0u8; 128];
     // |err| is valid because it is the libc errno at all call sites.  |buffer|
     // is converted to a valid address, and |buffer.len()| is a valid length.
-    let n = unsafe {
+    let ret = unsafe {
         libc::strerror_r(
             err,
             &mut buffer[0] as *mut u8 as *mut libc::c_char,
             buffer.len(),
         )
-    } as usize;
-    match str::from_utf8(&buffer[..n]) {
-        Ok(s) => s.to_string(),
+    };
+    if ret != 0 {
+        panic!(
+            "strerror_r failed with '{}'; the original error number was '{}'",
+            ret, err
+        );
+    }
+    buffer.resize(
+        buffer
+            .iter()
+            .position(|&a| a == 0u8)
+            .unwrap_or(buffer.len()),
+        0u8,
+    );
+    match String::from_utf8(buffer) {
+        Ok(s) => s,
         Err(e) => {
             // Ouch---an error while trying to process another error.
             // Very unlikely so we just panic.
-            panic!("error {:?} converting {:?}", e, &buffer[..n]);
+            panic!("error {:?} converting to UTF8", e);
         }
     }
 }
@@ -247,13 +261,15 @@ struct GenuineTimer {}
 impl Timer for GenuineTimer {
     // Returns current uptime (active time since boot, in milliseconds)
     fn now(&self) -> i64 {
-        let mut ts: libc::timespec;
-        // clock_gettime is safe when passed a valid address and a valid enum.
-        let result = unsafe {
-            ts = mem::uninitialized();
-            libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts as *mut libc::timespec)
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
         };
+        // clock_gettime is safe when passed a valid address and a valid enum.
+        let result =
+            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts as *mut libc::timespec) };
         assert_eq!(result, 0, "clock_gettime() failed!");
+        // Safe because the value was initialized by clock_gettime.
         ts.tv_sec as i64 * 1000 + ts.tv_nsec as i64 / 1_000_000
     }
 
@@ -290,6 +306,17 @@ impl Timer for GenuineTimer {
     }
 }
 
+fn default_fd_set() -> libc::fd_set {
+    let mut m = MaybeUninit::<libc::fd_set>::uninit();
+    // The fd set don't need to be initialized to known values because
+    // they are cleared by the following FD_ZERO calls, which are safe
+    // because we're passing libc::fd_sets to them.
+    unsafe {
+        libc::FD_ZERO(m.as_mut_ptr());
+        m.assume_init()
+    }
+}
+
 struct FileWatcher {
     read_fds: libc::fd_set,
     inout_read_fds: libc::fd_set,
@@ -299,17 +326,8 @@ struct FileWatcher {
 // Interface to the select(2) system call, for ready-to-read only.
 impl FileWatcher {
     fn new() -> FileWatcher {
-        // The fd sets don't need to be initialized to known values because
-        // they are cleared by the following FD_ZERO calls, which are safe
-        // because we're passing libc::fd_sets to them.
-        let mut read_fds = unsafe { mem::uninitialized::<libc::fd_set>() };
-        let mut inout_read_fds = unsafe { mem::uninitialized::<libc::fd_set>() };
-        unsafe {
-            libc::FD_ZERO(&mut read_fds);
-        };
-        unsafe {
-            libc::FD_ZERO(&mut inout_read_fds);
-        };
+        let read_fds = default_fd_set();
+        let inout_read_fds = default_fd_set();
         FileWatcher {
             read_fds,
             inout_read_fds,
@@ -536,10 +554,7 @@ impl SampleQueue {
 // Returns number of tasks in the run queue as reported in /proc/loadavg, which
 // must be accessible via runnables_file.
 pub fn get_runnables(runnables_file: &File) -> Result<u32> {
-    // It is safe to leave the content of buffer uninitialized because we read
-    // into it and only look at the part of it initialized by reading.
-    let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
-    let content = pread(runnables_file, &mut buffer[..])?;
+    let content = pread(runnables_file)?;
     // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).
     let slash_pos = content.find('/').ok_or("cannot find '/'")?;
     let space_pos = &content[..slash_pos].rfind(' ').ok_or("cannot find ' '")?;
@@ -576,10 +591,7 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
 // as specified in |VMSTATS|, and stores them in |vmstat_values|.  The format of
 // the vmstat file is (<name> <integer-value>\n)+.
 fn get_vmstats(file: &File, vmstat_values: &mut [u64]) -> Result<()> {
-    // Safe because we read into the buffer, then borrow the part of it that
-    // was filled.
-    let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
-    let content = pread(file, &mut buffer[..])?;
+    let content = pread(file)?;
     let mut lines = content.split('\n');
     let mut targets = VMSTATS.iter().enumerate();
     let mut line = None;
@@ -675,14 +687,15 @@ fn pread_u32(f: &File) -> Result<u32> {
         .parse::<u32>()?)
 }
 
-// Reads the content of file |f| starting at offset 0, up to |PAGE_SIZE|,
-// stores it in |read_buffer|, and returns a slice of it as a string.
-fn pread<'a>(f: &File, buffer: &'a mut [u8]) -> Result<&'a str> {
+// Reads the content of file |f| starting at offset 0, up to PAGE_SIZE and
+// returns it as a string.
+fn pread(f: &File) -> Result<String> {
+    let mut buffer = vec![0u8; PAGE_SIZE];
     // pread is safe to call with valid addresses and buffer length.
     let length = unsafe {
         libc::pread(
             f.as_raw_fd(),
-            &mut buffer[0] as *mut u8 as *mut c_void,
+            buffer.as_mut_ptr() as *mut c_void,
             buffer.len(),
             0,
         )
@@ -693,10 +706,12 @@ fn pread<'a>(f: &File, buffer: &'a mut [u8]) -> Result<&'a str> {
     if length < 0 {
         return Err(format!("pread failed: {}", strerror(errno())).into());
     }
+    buffer.resize(length as usize, 0u8);
+
     // Sysfs files contain only single-byte characters, so from_utf8_unchecked
     // would be safe for those files.  However, there's no guarantee that this
     // is only called on sysfs files.
-    Ok(str::from_utf8(&buffer[..length as usize])?)
+    Ok(String::from_utf8(buffer)?)
 }
 
 struct Watermarks {

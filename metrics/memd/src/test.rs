@@ -507,7 +507,7 @@ fn trim_descriptor(descriptor: &str) -> Vec<Vec<u8>> {
     // Find indentation amount.  Unwrap() cannot fail because of previous assert.
     let indent = valid_lines
         .iter()
-        .map(|s| s.len() - s.trim_left().len())
+        .map(|s| s.len() - s.trim_start().len())
         .min()
         .unwrap();
     // Remove indentation.
