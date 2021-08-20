@@ -222,11 +222,26 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
 }
 
 TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
-  // Signal should be send out at the end of the execution.
+  base::FilePath temp_dir = ipsec_connection_->SetTempDir();
+
+  // Signal should be sent out at the end of the execution.
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kSwanctlConfigWritten));
 
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kCharonStarted);
+
+  // IPsecConnection should write the config to the `swanctl.conf` file under
+  // the temp dir it created.
+  base::FilePath expected_path = temp_dir.Append("swanctl.conf");
+  ASSERT_TRUE(base::PathExists(expected_path));
+  std::string actual_content;
+  ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
+
+  // TODO(b/165170125): Check file contents.
+
+  // The file should be deleted after destroying the IPsecConnection object.
+  ipsec_connection_ = nullptr;
+  ASSERT_FALSE(base::PathExists(expected_path));
 }
 
 TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {

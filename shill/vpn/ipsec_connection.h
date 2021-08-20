@@ -75,6 +75,8 @@ class IPsecConnection : public VPNConnection {
   // |kCharonStarted| step after that socket it ready. |charon_pid_| will be set
   // if charon is started successfully.
   void StartCharon();
+  // Writes swanctl.conf. On success, this function will trigger
+  // |kSwanctlConfigWritten| step and set |swanctl_conf_path_|.
   void WriteSwanctlConfig();
   void SwanctlLoadConfig();
   void SwanctlInitiateConnection();
@@ -87,6 +89,7 @@ class IPsecConnection : public VPNConnection {
   // Runtime variables.
   base::ScopedTempDir temp_dir_;
   base::FilePath strongswan_conf_path_;
+  base::FilePath swanctl_conf_path_;
   pid_t charon_pid_;
   base::FilePath vici_socket_path_;
   std::unique_ptr<base::FilePathWatcher> vici_socket_watcher_;
