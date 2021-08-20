@@ -185,7 +185,8 @@ where
 }
 
 fn is_end_to_end(header: &Header) -> bool {
-    match header.field.as_str().as_str() {
+    !matches!(
+        header.field.as_str().as_str(),
         "Connection"
         | "Expect" // Technically end-to-end, but we want to filter it.
         | "Keep-Alive"
@@ -194,16 +195,15 @@ fn is_end_to_end(header: &Header) -> bool {
         | "TE"
         | "Trailers"
         | "Transfer-Encoding"
-        | "Upgrade" => false,
-        _ => true,
-    }
+        | "Upgrade"
+    )
 }
 
 fn supports_request_body(method: &Method) -> bool {
-    match method {
-        Method::Get | Method::Head | Method::Delete | Method::Options | Method::Trace => false,
-        _ => true,
-    }
+    !matches!(
+        method,
+        Method::Get | Method::Head | Method::Delete | Method::Options | Method::Trace
+    )
 }
 
 #[derive(Eq)]

@@ -49,7 +49,7 @@ pub fn read_until_delimiter(reader: &mut dyn BufRead, delimiter: &[u8]) -> io::R
 
         // Otherwise just copy the entire buffer into result.
         let consumed = buf.len();
-        result.extend_from_slice(&buf);
+        result.extend_from_slice(buf);
         reader.consume(consumed);
     }
 }

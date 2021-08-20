@@ -34,7 +34,7 @@ pub enum Error {
     NoDevice,
     NoFreeInterface,
     NotIppUsb,
-    PollError(sys_util::Error),
+    Poll(sys_util::Error),
 }
 
 impl std::error::Error for Error {}
@@ -61,7 +61,7 @@ impl fmt::Display for Error {
             NoDevice => write!(f, "No valid IPP USB device found."),
             NoFreeInterface => write!(f, "There is no free IPP USB interface to claim."),
             NotIppUsb => write!(f, "The specified device is not an IPP USB device."),
-            PollError(err) => write!(f, "Error polling shutdown fd: {}", err),
+            Poll(err) => write!(f, "Error polling shutdown fd: {}", err),
         }
     }
 }
@@ -522,9 +522,9 @@ impl CallbackHandler {
 
         info!("Waiting for shutdown signal");
         let timeout = Duration::from_secs(2);
-        let ctx: PollContext<u32> = PollContext::new().map_err(Error::PollError)?;
-        ctx.add(&self.shutdown_fd, 1).map_err(Error::PollError)?;
-        ctx.wait_timeout(timeout).map_err(Error::PollError)?;
+        let ctx: PollContext<u32> = PollContext::new().map_err(Error::Poll)?;
+        ctx.add(&self.shutdown_fd, 1).map_err(Error::Poll)?;
+        ctx.wait_timeout(timeout).map_err(Error::Poll)?;
         Ok(())
     }
 }
@@ -738,28 +738,24 @@ impl Read for &UsbConnection {
             .map_err(to_io_error);
         let mut zero_reads = 0;
 
-        loop {
-            match result {
-                // USB reads cannot hit EOF. We will retry after a short delay so that higher-level
-                // readers can pretend this doesn't exist.
-                Ok(0) => {
-                    zero_reads += 1;
-                    if start.elapsed() > USB_TRANSFER_TIMEOUT {
-                        result = Err(io::Error::new(
-                            io::ErrorKind::TimedOut,
-                            "Timed out waiting for non-zero USB read",
-                        ));
-                        break;
-                    }
-                    thread::sleep(Duration::from_millis(10));
-                    result = interface
-                        .handle
-                        .read_bulk(endpoint, buf, USB_TRANSFER_TIMEOUT)
-                        .map_err(to_io_error);
-                }
-                _ => break,
+        // USB reads cannot hit EOF. We will retry after a short delay so that higher-level
+        // readers can pretend this doesn't exist.
+        while let Ok(0) = result {
+            zero_reads += 1;
+            if start.elapsed() > USB_TRANSFER_TIMEOUT {
+                result = Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "Timed out waiting for non-zero USB read",
+                ));
+                break;
             }
+            thread::sleep(Duration::from_millis(10));
+            result = interface
+                .handle
+                .read_bulk(endpoint, buf, USB_TRANSFER_TIMEOUT)
+                .map_err(to_io_error);
         }
+
         if zero_reads > 0 {
             debug!(
                 "Spent {}ms waiting for {} 0-byte USB reads",
