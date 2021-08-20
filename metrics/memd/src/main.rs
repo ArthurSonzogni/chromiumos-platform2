@@ -131,22 +131,22 @@ impl std::error::Error for Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Error::LowMemFileError(ref e) => write!(f, "cannot opening low-mem file: {}", e),
-            &Error::VmstatFileError(ref e) => write!(f, "cannot open vmstat: {}", e),
-            &Error::RunnablesFileError(ref e) => write!(f, "cannot open loadavg: {}", e),
-            &Error::AvailableFileError(ref e) => write!(f, "cannot open available file: {}", e),
-            &Error::CreateLogDirError(ref e) => write!(f, "cannot create log directory: {}", e),
-            &Error::StartingClipCounterMissingError(ref e) => {
+        match *self {
+            Error::LowMemFileError(ref e) => write!(f, "cannot opening low-mem file: {}", e),
+            Error::VmstatFileError(ref e) => write!(f, "cannot open vmstat: {}", e),
+            Error::RunnablesFileError(ref e) => write!(f, "cannot open loadavg: {}", e),
+            Error::AvailableFileError(ref e) => write!(f, "cannot open available file: {}", e),
+            Error::CreateLogDirError(ref e) => write!(f, "cannot create log directory: {}", e),
+            Error::StartingClipCounterMissingError(ref e) => {
                 write!(f, "cannot find starting clip counter: {}", e)
             }
-            &Error::LogStaticParametersError(ref e) => {
+            Error::LogStaticParametersError(ref e) => {
                 write!(f, "cannot log static parameters: {}", e)
             }
-            &Error::DbusWatchError(ref e) => write!(f, "cannot watch dbus fd: {}", e),
-            &Error::LowMemFDWatchError(ref e) => write!(f, "cannot watch low-mem fd: {}", e),
-            &Error::LowMemWatcherError(ref e) => write!(f, "cannot set low-mem watcher: {}", e),
-            &Error::InitSyslogError(ref e) => write!(f, "cannot init syslog: {}", e),
+            Error::DbusWatchError(ref e) => write!(f, "cannot watch dbus fd: {}", e),
+            Error::LowMemFDWatchError(ref e) => write!(f, "cannot watch low-mem fd: {}", e),
+            Error::LowMemWatcherError(ref e) => write!(f, "cannot set low-mem watcher: {}", e),
+            Error::InitSyslogError(ref e) => write!(f, "cannot init syslog: {}", e),
         }
     }
 }
@@ -274,7 +274,7 @@ impl Timer for GenuineTimer {
     ) -> i32 {
         let mut libc_timeout = libc::timeval {
             tv_sec: timeout.as_secs() as libc::time_t,
-            tv_usec: (timeout.subsec_nanos() / 1000) as libc::suseconds_t,
+            tv_usec: timeout.subsec_micros() as libc::suseconds_t,
         };
         let null = std::ptr::null_mut();
         // Safe because we're passing valid values and addresses.
@@ -361,7 +361,7 @@ impl FileWatcher {
 
     fn watch(&mut self, timeout: &Duration, timer: &mut dyn Timer) -> Result<usize> {
         self.inout_read_fds = self.read_fds;
-        let n = timer.select(self.max_fd + 1, &mut self.inout_read_fds, &timeout);
+        let n = timer.select(self.max_fd + 1, &mut self.inout_read_fds, timeout);
         match n {
             // into() puts the io::Error in a Box.
             -1 => Err(io::Error::last_os_error().into()),
@@ -541,10 +541,8 @@ pub fn get_runnables(runnables_file: &File) -> Result<u32> {
     let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
     let content = pread(runnables_file, &mut buffer[..])?;
     // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).
-    let slash_pos = content.find('/').ok_or_else(|| "cannot find '/'")?;
-    let space_pos = &content[..slash_pos]
-        .rfind(' ')
-        .ok_or_else(|| "cannot find ' '")?;
+    let slash_pos = content.find('/').ok_or("cannot find '/'")?;
+    let space_pos = &content[..slash_pos].rfind(' ').ok_or("cannot find ' '")?;
     let (value, _) = parse_int_prefix(&content[space_pos + 1..])?;
     Ok(value)
 }
@@ -588,8 +586,8 @@ fn get_vmstats(file: &File, vmstat_values: &mut [u64]) -> Result<()> {
     let mut target = None;
     let mut advance_line = true;
     let mut advance_target = true;
-    for i in 0..VMSTAT_VALUES_COUNT {
-        vmstat_values[i] = 0;
+    for item in vmstat_values.iter_mut() {
+        *item = 0;
     }
     loop {
         if advance_target {
@@ -620,8 +618,8 @@ fn get_vmstats(file: &File, vmstat_values: &mut [u64]) -> Result<()> {
         match line {
             Some(string) => {
                 let mut pair = string.split(' ');
-                let found_name = pair.next().ok_or_else(|| "missing name in vmstat")?;
-                let found_value = pair.next().ok_or_else(|| "missing value in vmstat")?;
+                let found_name = pair.next().ok_or("missing name in vmstat")?;
+                let found_value = pair.next().ok_or("missing value in vmstat")?;
                 // First check accumulative targets.
                 if accumulate {
                     if found_name.starts_with(wanted_name) {
@@ -861,12 +859,12 @@ impl<'a> Sampler<'a> {
         let mut watcher = FileWatcher::new();
         let mut low_mem_watcher = FileWatcher::new();
 
-        if let Some(ref low_mem_file) = low_mem_file_option.as_ref() {
+        if let Some(low_mem_file) = low_mem_file_option.as_ref() {
             watcher
-                .set(&low_mem_file)
+                .set(low_mem_file)
                 .map_err(|e| Error::LowMemFDWatchError(e))?;
             low_mem_watcher
-                .set(&low_mem_file)
+                .set(low_mem_file)
                 .map_err(|e| Error::LowMemWatcherError(e))?;
         }
         for fd in dbus.get_fds().iter().by_ref() {
@@ -1004,7 +1002,7 @@ impl<'a> Sampler<'a> {
             };
             debug!("fired count: {} at {}", fired_count, self.timer.now());
             self.quit_request = self.timer.quit_request();
-            if let Some(ref available_file) = self.files.available_file_option.as_ref() {
+            if let Some(available_file) = self.files.available_file_option.as_ref() {
                 self.current_available = pread_u32(available_file)?;
             }
             self.refresh_time();
@@ -1055,7 +1053,7 @@ impl<'a> Sampler<'a> {
                 watcher.watch(&FAST_POLL_PERIOD_DURATION, &mut *self.timer)?
             };
             self.quit_request = self.timer.quit_request();
-            if let Some(ref available_file) = self.files.available_file_option.as_ref() {
+            if let Some(available_file) = self.files.available_file_option.as_ref() {
                 self.current_available = pread_u32(available_file)?;
             }
             self.refresh_time();
@@ -1094,7 +1092,7 @@ impl<'a> Sampler<'a> {
                 in_low_mem = false;
                 self.enqueue_sample(SampleType::LeaveLowMem)?;
                 self.watcher
-                    .set(&self.files.low_mem_file_option.as_ref().unwrap())?;
+                    .set(self.files.low_mem_file_option.as_ref().unwrap())?;
             }
 
             if fired_count == 0 {
@@ -1120,7 +1118,7 @@ impl<'a> Sampler<'a> {
 
                 // Check for dbus events.
                 let events = self.dbus.process_dbus_events(&mut self.watcher)?;
-                if events.len() > 0 {
+                if !events.is_empty() {
                     debug!("dbus events at {}: {:?}", self.current_time, events);
                     event_is_interesting = true;
                 }

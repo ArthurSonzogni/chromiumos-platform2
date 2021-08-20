@@ -77,6 +77,7 @@ fn read_nonblocking_pipe(file: &mut File, mut buf: &mut [u8]) -> Result<usize> {
 }
 
 fn non_blocking_select(high_fd: i32, inout_read_fds: &mut libc::fd_set) -> i32 {
+    #[allow(clippy::unnecessary_cast)]
     let mut null_timeout = libc::timeval {
         tv_sec: 0 as libc::time_t,
         tv_usec: 0 as libc::suseconds_t,
@@ -98,7 +99,7 @@ fn non_blocking_select(high_fd: i32, inout_read_fds: &mut libc::fd_set) -> i32 {
     n
 }
 
-fn mkfifo(path: &PathBuf) -> Result<()> {
+fn mkfifo(path: &Path) -> Result<()> {
     let path_name = path.to_str().unwrap();
     let c_path = std::ffi::CString::new(path_name).unwrap();
     // Safe because c_path points to a valid C string.
@@ -134,13 +135,13 @@ impl TestEvent {
         debug!("delivering {:?}", self);
         match self.event_type {
             TestEventType::EnterLowPressure => {
-                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, &paths, low_mem_device)
+                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, paths, low_mem_device)
             }
             TestEventType::EnterMediumPressure => {
-                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, &paths, low_mem_device)
+                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, paths, low_mem_device)
             }
             TestEventType::EnterHighPressure => {
-                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, &paths, low_mem_device)
+                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, paths, low_mem_device)
             }
             TestEventType::OomKillBrowser => self.send_signal("oom-kill", time, dbus_fifo),
             TestEventType::TabDiscard => self.send_signal("tab-discard", time, dbus_fifo),
@@ -163,7 +164,7 @@ impl TestEvent {
     }
 
     fn send_signal(&self, signal: &str, time: i64, dbus_fifo: &mut File) {
-        write!(dbus_fifo, "{} {}\n", signal, time).expect("mock dbus: write failed");
+        writeln!(dbus_fifo, "{} {}", signal, time).expect("mock dbus: write failed");
     }
 }
 
@@ -226,12 +227,12 @@ impl Timer for MockTimer {
         // First check for existing active fds (for instance, the low-mem
         // device).  We must save the original fd_set because when
         // non_blocking_select returns 0, the fd_set is cleared.
-        let saved_inout_read_fds = inout_read_fds.clone();
+        let saved_inout_read_fds = *inout_read_fds;
         let n = non_blocking_select(high_fd, inout_read_fds);
         if n != 0 {
             return n;
         }
-        let timeout_ms = duration_to_millis(&timeout);
+        let timeout_ms = duration_to_millis(timeout);
         let end_time = self.current_time + timeout_ms;
         // Assume no events occur and we hit the timeout.  Fix later as needed.
         self.current_time = end_time;
@@ -265,7 +266,7 @@ impl Timer for MockTimer {
             } {}
             // One or more events were delivered, and some of them may fire a
             // select.  First restore the original fd_set.
-            *inout_read_fds = saved_inout_read_fds.clone();
+            *inout_read_fds = saved_inout_read_fds;
             let n = non_blocking_select(high_fd, inout_read_fds);
             if n > 0 {
                 debug!("returning at {} with {} events", first_event_time, n);
@@ -279,7 +280,7 @@ impl Timer for MockTimer {
     // updates the time.
     fn sleep(&mut self, sleep_time: &Duration) {
         let start_time = self.current_time;
-        let end_time = start_time + duration_to_millis(&sleep_time);
+        let end_time = start_time + duration_to_millis(sleep_time);
         while self.event_index < self.test_events.len()
             && self.test_events[self.event_index].time <= end_time
         {
@@ -372,7 +373,7 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
             paths.clone(),
             dbus.fifo_out.take().unwrap(),
         ));
-        let mut sampler = Sampler::new(false, &paths, timer, dbus).expect("sampler creation error");
+        let mut sampler = Sampler::new(false, paths, timer, dbus).expect("sampler creation error");
         loop {
             // Alternate between slow and fast poll.
             sampler.slow_poll().expect("slow poll error");
@@ -385,7 +386,7 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
             }
         }
         verify_test_results(test_desc, &paths.log_directory)
-            .expect(&format!("test:{}failed.", test_desc));
+            .unwrap_or_else(|_| panic!("test:{}failed.", test_desc));
         println!("test succeeded\n--------------");
     }
 }
@@ -611,7 +612,7 @@ macro_rules! assert_approx_eq {
     }}
 }
 
-fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent>) -> Result<()> {
+fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &[TestEvent]) -> Result<()> {
     let clip_name = clip_path.to_string_lossy();
     let mut clip_file = File::open(&clip_path)?;
     let mut file_content = String::new();
@@ -626,9 +627,9 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
     assert_eq!(name_count, value_count);
 
     // Check first and last time stamps.
-    let start_time = time_from_sample_string(&lines[2]).expect("cannot parse first timestamp");
+    let start_time = time_from_sample_string(lines[2]).expect("cannot parse first timestamp");
     let end_time =
-        time_from_sample_string(&lines[lines.len() - 1]).expect("cannot parse last timestamp");
+        time_from_sample_string(lines[lines.len() - 1]).expect("cannot parse last timestamp");
     let expected_start_time = clip_times.0;
     let expected_end_time = clip_times.1;
     // Milliseconds of slack allowed on start/stop times.  We allow one full
@@ -697,7 +698,7 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
     Ok(())
 }
 
-fn verify_test_results(descriptor: &str, log_directory: &PathBuf) -> Result<()> {
+fn verify_test_results(descriptor: &str, log_directory: &Path) -> Result<()> {
     let all_descriptors = trim_descriptor(descriptor);
     let result_descriptor = &all_descriptors[all_descriptors.len() - 1];
     let clips = expected_clips(result_descriptor);
@@ -708,11 +709,9 @@ fn verify_test_results(descriptor: &str, log_directory: &PathBuf) -> Result<()> 
     // Subtract one for the memd.parameters file.
     assert_eq!(clips.len(), files_count - 1, "wrong number of clip files");
 
-    let mut clip_number = 0;
-    for clip in clips {
+    for (clip_number, clip) in clips.iter().enumerate() {
         let clip_path = log_directory.join(format!("memd.clip{:03}.log", clip_number));
-        check_clip(clip, clip_path, &events)?;
-        clip_number += 1;
+        check_clip(*clip, clip_path, &events)?;
     }
     Ok(())
 }
@@ -726,17 +725,17 @@ fn create_dir_all(path: &Path) -> Result<()> {
 }
 
 pub fn teardown_test_environment(paths: &Paths) {
-    std::fs::remove_dir_all(&paths.testing_root).expect(&format!(
-        "teardown: could not remove {}",
-        paths.testing_root.to_str().unwrap()
-    ));
+    std::fs::remove_dir_all(&paths.testing_root).unwrap_or_else(|_| {
+        panic!(
+            "teardown: could not remove {}",
+            paths.testing_root.to_str().unwrap()
+        )
+    });
 }
 
 pub fn setup_test_environment(paths: &Paths) {
-    std::fs::create_dir(&paths.testing_root).expect(&format!(
-        "cannot create {}",
-        paths.testing_root.to_str().unwrap()
-    ));
+    std::fs::create_dir(&paths.testing_root)
+        .unwrap_or_else(|_| panic!("cannot create {}", paths.testing_root.to_str().unwrap()));
     mkfifo(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME)).expect("failed to make mock dbus fifo");
     create_dir_all(paths.vmstat.parent().unwrap()).expect("cannot create /proc");
     create_dir_all(paths.available.parent().unwrap()).expect("cannot create ../chromeos-low-mem");
@@ -780,7 +779,7 @@ pub fn read_loadavg() {
         .open(&temp_file_name)
         .expect("cannot create");
     // Unlink file immediately for more reliable cleanup.
-    std::fs::remove_file(&temp_file_name).expect(&format!("cannot remove"));
+    std::fs::remove_file(&temp_file_name).expect("cannot remove");
 
     temp_file
         .write_all("0.42 0.31 1.50 44/1234 56789".as_bytes())
@@ -808,11 +807,13 @@ pub fn queue_loop() {
         .create_new(false)
         .open("/dev/null")
         .unwrap();
-    let mut s: Sample = Default::default();
     // We'll compare this uptime against the start_time of 0 in |output_from_time|, to ensure that
     // we don't stop looping in the array due to uptime.
-    s.uptime = 1;
-    s.sample_type = SampleType::EnterLowMem;
+    let s = Sample {
+        uptime: 1,
+        sample_type: SampleType::EnterLowMem,
+        ..Default::default()
+    };
 
     sq.samples = [s; SAMPLE_QUEUE_LENGTH];
     sq.head = 30;
@@ -821,7 +822,7 @@ pub fn queue_loop() {
 }
 
 pub fn read_vmstat(paths: &Paths) {
-    setup_test_environment(&paths);
+    setup_test_environment(paths);
     let mut vmstat_values: [u64; VMSTAT_VALUES_COUNT] = [0, 0, 0, 0, 0];
     get_vmstats(
         &File::open(&paths.vmstat).expect("cannot open vmstat"),
@@ -831,5 +832,5 @@ pub fn read_vmstat(paths: &Paths) {
     // Check one simple and one accumulated value.
     assert_eq!(vmstat_values[1], 678);
     assert_eq!(vmstat_values[2], 66);
-    teardown_test_environment(&paths);
+    teardown_test_environment(paths);
 }
