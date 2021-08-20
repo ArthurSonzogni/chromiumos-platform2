@@ -123,7 +123,7 @@ impl VersionedSecret for HashedVersionedSecret {
         let mut secret = self.secret.clone();
         for _ in version..self.version {
             secret = SecureBlob::from(
-                openssl::hash::hash(self.message_digest, &secret.as_ref())
+                openssl::hash::hash(self.message_digest, secret.as_ref())
                     .map_err(Error::Hash)?
                     .to_vec(),
             );
@@ -248,7 +248,7 @@ impl<P: VersionedSecret> VersionedSecret for DerivedHashedVersionedSecret<P> {
             let mut secret = self.secret.clone();
             for _ in version.1..self.version.1 {
                 secret = SecureBlob::from(
-                    openssl::hash::hash(self.message_digest, &secret.as_ref())
+                    openssl::hash::hash(self.message_digest, secret.as_ref())
                         .map_err(Error::Hash)?
                         .to_vec(),
                 );
@@ -668,10 +668,10 @@ pub mod tests {
         let manifest = AppManifest::new();
         let gen = SecretManager::new(platform_secret, gsc_secret, &manifest).unwrap();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let version = gen.get_storage_secret_version(&app_info).unwrap();
+        let version = gen.get_storage_secret_version(app_info).unwrap();
         let key = gen
             .derive_storage_secret(
-                &app_info,
+                app_info,
                 version,
                 TEST_SALT,
                 TEST_DOMAIN,
@@ -703,12 +703,12 @@ pub mod tests {
         let (gen, manifest, key1) = setup_test();
 
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let mut version = gen.get_storage_secret_version(&app_info).unwrap();
+        let mut version = gen.get_storage_secret_version(app_info).unwrap();
         version.0 -= 1;
 
         let key2 = gen
             .derive_storage_secret(
-                &app_info,
+                app_info,
                 version,
                 TEST_SALT,
                 TEST_DOMAIN,
@@ -725,12 +725,12 @@ pub mod tests {
         let (gen, manifest, key1) = setup_test();
 
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let mut version = gen.get_storage_secret_version(&app_info).unwrap();
+        let mut version = gen.get_storage_secret_version(app_info).unwrap();
         version.1 -= 1;
 
         let key2 = gen
             .derive_storage_secret(
-                &app_info,
+                app_info,
                 version,
                 TEST_SALT,
                 TEST_DOMAIN,
@@ -747,11 +747,11 @@ pub mod tests {
         let (gen, manifest, key1) = setup_test();
 
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let version = gen.get_storage_secret_version(&app_info).unwrap();
+        let version = gen.get_storage_secret_version(app_info).unwrap();
 
         let key2 = gen
             .derive_storage_secret(
-                &app_info,
+                app_info,
                 version,
                 TEST_SALT,
                 &TEST_DOMAIN[1..],

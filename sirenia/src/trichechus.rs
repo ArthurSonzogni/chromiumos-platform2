@@ -144,7 +144,7 @@ impl TeeAppHandler {
             if let Some(persistence) = (*state.persistence.borrow().deref()).as_ref() {
                 let encryption: StorageEncryption;
                 let ret = cb(
-                    &params,
+                    params,
                     match params.encryption_key_version {
                         Some(_) => {
                             // TODO Move this to TrichechusState.
@@ -383,7 +383,7 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> Result<()> {
         .get_app_manifest_entry(app_id)
         .map_err(Error::AppManifest)?;
     if let ExecutableInfo::Digest(expected) = &app_info.exec_info {
-        let actual = compute_sha256(&elf).map_err(|err| Error::Sha256(format!("{:?}", err)))?;
+        let actual = compute_sha256(elf).map_err(|err| Error::Sha256(format!("{:?}", err)))?;
         if expected.deref() != &*actual {
             Err(Error::DigestMismatch)
         } else {
@@ -436,7 +436,7 @@ fn spawn_tee_app(
     match &app_info.exec_info {
         ExecutableInfo::Path(path) => {
             sandbox
-                .run(Path::new(&path), &[&path], &keep_fds)
+                .run(Path::new(&path), &[path], &keep_fds)
                 .map_err(Error::RunSandbox)?;
         }
         ExecutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {

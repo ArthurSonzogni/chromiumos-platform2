@@ -456,7 +456,7 @@ mod tests {
         let (manager, manifest) = get_test_secret_manager();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
         let cronista = MockCronista::new();
-        let storage = StorageEncryption::new(&app_info, &manager, &cronista);
+        let storage = StorageEncryption::new(app_info, &manager, &cronista);
 
         let ret = storage
             .persist(
@@ -485,7 +485,7 @@ mod tests {
         let (manager, manifest) = get_test_secret_manager();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
         let cronista = MockCronista::new();
-        let storage = StorageEncryption::new(&app_info, &manager, &cronista);
+        let storage = StorageEncryption::new(app_info, &manager, &cronista);
 
         let ret = storage
             .retrieve(
@@ -503,7 +503,7 @@ mod tests {
         let (manager, manifest) = get_test_secret_manager();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
         let cronista = MockCronista::new();
-        let key_version = manager.get_storage_secret_version(&app_info).unwrap();
+        let key_version = manager.get_storage_secret_version(app_info).unwrap();
 
         let domain_hash = hash_identifier(TEST_DOMAIN).unwrap();
         let identifier_hash = hash_identifier(TEST_IDENTIFIER).unwrap();
@@ -513,7 +513,7 @@ mod tests {
 
         let key = manager
             .derive_storage_secret(
-                &app_info,
+                app_info,
                 key_version,
                 &salt,
                 TEST_DOMAIN,
@@ -539,7 +539,7 @@ mod tests {
 
         let mut cipher_text = vec![0; TEST_DATA.len()];
         let mut mac = vec![0u8; MAC_SIZE];
-        let storage = StorageEncryption::new(&app_info, &manager, &cronista);
+        let storage = StorageEncryption::new(app_info, &manager, &cronista);
         storage
             .do_crypto(
                 ModeArgs::Encrypt { tag: &mut mac },

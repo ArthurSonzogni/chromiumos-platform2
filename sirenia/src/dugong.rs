@@ -131,7 +131,7 @@ fn handle_manatee_logs(dugong_device: &DugongDevice) -> Result<()> {
     let raw_syslog = UnixDatagram::unbound().map_err(Error::RawSyslogConnect)?;
     for entry in logs.as_slice() {
         raw_syslog
-            .send_to(&entry, LOG_PATH)
+            .send_to(entry, LOG_PATH)
             .map_err(Error::RawSyslogWrite)?;
     }
 
@@ -159,7 +159,7 @@ pub fn start_dbus_handler(
     let interface: Interface<MTFn<TData>, TData> =
         org_chromium_mana_teeinterface_server(&f, (), |m| {
             let a: &Rc<DugongDevice> = m.path.get_data();
-            let b: &DugongDevice = &a;
+            let b: &DugongDevice = a;
             b
         });
 

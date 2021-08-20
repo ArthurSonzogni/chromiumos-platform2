@@ -103,7 +103,7 @@ impl StorableMember {
 
     pub fn interpret<S: Storable>(&mut self) -> Result<&mut Self> {
         if let StorableMember::Serialized(data) = self {
-            let ser_reader = flexbuffers::Reader::get_root(&data).map_err(to_read_data_error)?;
+            let ser_reader = flexbuffers::Reader::get_root(data).map_err(to_read_data_error)?;
             *self = StorableMember::new_deserialized(
                 S::deserialize(ser_reader).map_err(to_read_data_error)?,
             );

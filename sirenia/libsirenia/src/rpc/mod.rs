@@ -44,7 +44,7 @@ pub fn register_server<H: MessageHandler + 'static>(
     transport: &TransportType,
     handler: H,
 ) -> Result<Option<TransportType>> {
-    let server = TransportServer::new(&transport, SingleRpcConnectionHandler::new(handler))?;
+    let server = TransportServer::new(transport, SingleRpcConnectionHandler::new(handler))?;
     let listen_addr = server.bound_to().ok();
     let boxed: Box<dyn EventSource> = Box::new(server);
     event_multiplexer
