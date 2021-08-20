@@ -120,7 +120,7 @@ mod tests {
 
         // Put some traffic in from London.
         let greeting = b"hello";
-        london.write(greeting).unwrap();
+        london.write_all(greeting).unwrap();
 
         // Expect forwarding from the local end not to have reached EOF.
         assert!(!forwarder.forward_from_local().unwrap());
@@ -140,7 +140,7 @@ mod tests {
 
         // Forward traffic from the remote end.
         let salutation = b"bonjour";
-        paris.write(salutation).unwrap();
+        paris.write_all(salutation).unwrap();
 
         // Expect forwarding from the remote end not to have reached EOF.
         assert!(!forwarder.forward_from_remote().unwrap());

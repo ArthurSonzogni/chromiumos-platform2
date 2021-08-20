@@ -213,7 +213,7 @@ mod tests {
         let (unix_stream, _dummy) = UnixStream::pair().unwrap();
         let mut stream: StreamSocket = unix_stream.into();
 
-        stream.write(b"hello").unwrap();
+        stream.write_all(b"hello").unwrap();
 
         stream.shut_down_write().unwrap();
 

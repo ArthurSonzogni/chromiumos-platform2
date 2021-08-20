@@ -267,7 +267,7 @@ impl ForwarderSessions {
             if !active_ports.contains(port) {
                 // Remove the PortListeners struct first - on error we want to drop it and the
                 // fds it contains.
-                let _listening_port = self.listening_ports.remove(&port);
+                let _listening_port = self.listening_ports.remove(port);
                 // Release the locked down port.
                 let (allowed,): (bool,) = self
                     .dbus_conn
@@ -443,7 +443,7 @@ fn launch_chunnel(
         )
         .map_err(Error::DBusMessageSend)?;
     let response: cicerone_service::ConnectChunnelResponse =
-        protobuf::parse_from_bytes(&raw_buffer).map_err(Error::ProtobufDeserialize)?;
+        ProtoMessage::parse_from_bytes(&raw_buffer).map_err(Error::ProtobufDeserialize)?;
 
     match response.status {
         cicerone_service::ConnectChunnelResponse_Status::SUCCESS => Ok(()),
@@ -560,8 +560,9 @@ fn dbus_thread(
         .method(UPDATE_LISTENING_PORTS_METHOD, (), move |m| {
             let reply = m.msg.method_return();
             let raw_buf: Vec<u8> = m.msg.read1().map_err(|_| tree::MethodErr::no_arg())?;
-            let mut proto: UpdateListeningPortsRequest = protobuf::parse_from_bytes(&raw_buf)
-                .map_err(|e| tree::MethodErr::invalid_arg(&e))?;
+            let mut proto: UpdateListeningPortsRequest =
+                ProtoMessage::parse_from_bytes(&raw_buf)
+                    .map_err(|e| tree::MethodErr::invalid_arg(&e))?;
 
             let response = update_listening_ports(&mut proto, &update_queue, &update_evt);
             Ok(vec![reply.append1(
