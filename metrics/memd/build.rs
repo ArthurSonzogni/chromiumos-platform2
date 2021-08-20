@@ -9,8 +9,6 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use protoc_rust::Customize;
-
 /// Outputs rerun-if-changed directives to cargo, as described
 /// in https://doc.rust-lang.org/cargo/reference/build-scripts.html. These are required if we want
 /// `cargo` to rerun this script when external dependencies (e.g., proto files) get updated.
@@ -43,21 +41,23 @@ fn main() {
         note_rerun_if_changed(file);
     }
 
-    protoc_rust::run(protoc_rust::Args {
-        out_dir: out_dir.as_os_str().to_str().unwrap(),
-        input: &input_files
-            .iter()
-            .map(|x| x.to_str().unwrap())
-            .collect::<Vec<&str>>(),
-        includes: &includes_files
-            .iter()
-            .map(|x| x.to_str().unwrap())
-            .collect::<Vec<&str>>(),
-        customize: Customize {
-            ..Default::default()
-        },
-    })
-    .expect("protoc");
+    protoc_rust::Codegen::new()
+        .out_dir(out_dir.as_os_str().to_str().unwrap())
+        .inputs(
+            &input_files
+                .iter()
+                .map(|x| x.to_str().unwrap())
+                .collect::<Vec<&str>>(),
+        )
+        .includes(
+            &includes_files
+                .iter()
+                .map(|x| x.to_str().unwrap())
+                .collect::<Vec<&str>>(),
+        )
+        .customize(Default::default())
+        .run()
+        .expect("protoc");
 
     let mut mod_out = fs::File::create(out_dir.join("proto_include.rs")).unwrap();
     writeln!(
