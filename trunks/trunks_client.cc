@@ -78,6 +78,7 @@ void PrintUsage() {
   puts("  --allocate_pcr - Configures PCR 0-15 under the SHA256 bank.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --csme_test_pcr --index=<INDEX>.");
+  puts("  --csme_read_pcr --index=<INDEX>.");
   puts("  --help - Prints this message.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
@@ -649,6 +650,18 @@ int CsmeTestPcr(const TrunksFactory& factory, int index) {
   return 0;
 }
 
+int CsmeReadPcr(const TrunksFactory& factory, int index) {
+  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
+  std::string csme_pcr_value;
+  trunks::TPM_RC rc = tpm_utility->ReadPCRFromCSME(index, &csme_pcr_value);
+  if (rc != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to read CSME PCR: " << trunks::GetErrorString(rc);
+    return -1;
+  }
+  printf("CSME PCR value: %s\n", HexEncode(csme_pcr_value).c_str());
+  return 0;
+}
+
 int PrintIndexNameInHex(const TrunksFactory& factory, int index) {
   // Mask out the nv index handle so the user can either add or not add it
   // themselves.
@@ -1216,6 +1229,10 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch("csme_test_pcr") && cl->HasSwitch("index")) {
     uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
     return CsmeTestPcr(factory, index);
+  }
+  if (cl->HasSwitch("csme_read_pcr") && cl->HasSwitch("index")) {
+    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
+    return CsmeReadPcr(factory, index);
   }
   if (cl->HasSwitch("index_name") && cl->HasSwitch("index")) {
     uint32_t nv_index =
