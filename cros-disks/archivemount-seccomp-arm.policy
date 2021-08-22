@@ -25,6 +25,7 @@ getdents64: 1
 geteuid32: 1
 getgid32: 1
 getpid: 1
+gettid: 1
 gettimeofday: 1
 getuid32: 1
 ioctl: 1

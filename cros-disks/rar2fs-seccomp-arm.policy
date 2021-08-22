@@ -30,6 +30,7 @@ getdents: 1
 geteuid32: 1
 getgid32: 1
 getpid: 1
+gettid: 1
 gettimeofday: 1
 getuid32: 1
 ioctl: arg1 == TCGETS
