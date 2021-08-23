@@ -135,6 +135,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
     uint32_t exif_buffer_size,
     int coded_size_width,
     int coded_size_height,
+    int quality,
     uint32_t* output_data_size) {
   int32_t task_id = task_id_;
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
@@ -151,7 +152,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
                             ipc_bridge_->GetWeakPtr(), task_id, input_format,
                             std::move(input_planes), std::move(output_planes),
                             exif_buffer, exif_buffer_size, coded_size_width,
-                            coded_size_height, std::move(callback)));
+                            coded_size_height, quality, std::move(callback)));
 
   if (!future->Wait()) {
     if (!ipc_bridge_->IsReady()) {
@@ -309,6 +310,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
     uint32_t exif_buffer_size,
     int coded_size_width,
     int coded_size_height,
+    int quality,
     EncodeWithDmaBufCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
@@ -364,10 +366,10 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
   std::vector<cros::mojom::DmaBufPlanePtr> mojo_output_planes =
       WrapToMojoPlanes(output_planes);
 
-  jea_->EncodeWithDmaBuf(
+  jea_->EncodeWithDmaBufAndQuality(
       task_id, input_format, std::move(mojo_input_planes),
       std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
-      coded_size_width, coded_size_height,
+      coded_size_width, coded_size_height, quality,
       base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeDmaBufAck,
                  GetWeakPtr(), callback));
 }

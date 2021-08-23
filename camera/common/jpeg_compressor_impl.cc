@@ -163,7 +163,7 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
   auto method_used = [&]() -> const char* {
     if (enable_hw_encode) {
       // Try HW encode.
-      if (EncodeHw(input, output, width, height, app1_ptr, app1_size,
+      if (EncodeHw(input, output, width, height, quality, app1_ptr, app1_size,
                    out_data_size)) {
         return "hardware";
       }
@@ -488,6 +488,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
                                   buffer_handle_t output_handle,
                                   int width,
                                   int height,
+                                  int quality,
                                   const void* app1_ptr,
                                   uint32_t app1_size,
                                   uint32_t* out_data_size) {
@@ -554,19 +555,19 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
     return false;
   }
 
-  int status = hw_encoder_->EncodeSync(input_format, std::move(input_planes),
-                                       std::move(output_planes),
-                                       static_cast<const uint8_t*>(app1_ptr),
-                                       app1_size, width, height, out_data_size);
+  int status = hw_encoder_->EncodeSync(
+      input_format, std::move(input_planes), std::move(output_planes),
+      static_cast<const uint8_t*>(app1_ptr), app1_size, width, height, quality,
+      out_data_size);
   if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
     // There might be some mojo errors. We will give a second try.
     LOGF(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
     hw_encoder_started_ = hw_encoder_->Start();
     if (hw_encoder_started_) {
-      status = hw_encoder_->EncodeSync(input_format, std::move(input_planes),
-                                       std::move(output_planes),
-                                       static_cast<const uint8_t*>(app1_ptr),
-                                       app1_size, width, height, out_data_size);
+      status = hw_encoder_->EncodeSync(
+          input_format, std::move(input_planes), std::move(output_planes),
+          static_cast<const uint8_t*>(app1_ptr), app1_size, width, height,
+          quality, out_data_size);
     } else {
       LOGF(ERROR) << "JPEG encode accelerator can't be started.";
     }

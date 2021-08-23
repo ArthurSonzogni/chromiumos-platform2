@@ -112,6 +112,7 @@ class JpegCompressorImpl : public JpegCompressor {
                 buffer_handle_t output_handle,
                 int width,
                 int height,
+                int jpeg_quality,
                 const void* app1_ptr,
                 uint32_t app1_size,
                 uint32_t* out_data_size);

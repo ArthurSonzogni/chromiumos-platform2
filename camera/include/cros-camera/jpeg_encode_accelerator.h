@@ -133,6 +133,7 @@ class CROS_CAMERA_EXPORT JpegEncodeAccelerator {
   //    |coded_size_height|: Height of I420 image.
   //    |output_data_size|: Actual size of the encoded image. Will be filled by
   //    the method.
+  //    |quality| is the quality of JPEG image. The range is from 1~100.
   //
   // Returns:
   //    Returns |status| to notify the encode status.
@@ -146,6 +147,7 @@ class CROS_CAMERA_EXPORT JpegEncodeAccelerator {
       uint32_t exif_buffer_size,
       int coded_size_width,
       int coded_size_height,
+      int quality,
       uint32_t* output_data_size) = 0;
 };
 

@@ -354,7 +354,8 @@ void JpegEncodeAcceleratorTest::EncodeTest(Frame* frame) {
   status = jpeg_encoder_->EncodeSync(
       cros::CameraBufferManager::GetV4L2PixelFormat(frame->input_handle),
       std::move(input_planes), std::move(output_planes), utils.GetApp1Buffer(),
-      utils.GetApp1Length(), frame->width, frame->height, &frame->hw_out_size);
+      utils.GetApp1Length(), frame->width, frame->height, kJpegDefaultQuality,
+      &frame->hw_out_size);
   EXPECT_EQ(status, JpegEncodeAccelerator::ENCODE_OK);
   if (status == static_cast<int>(JpegEncodeAccelerator::ENCODE_OK)) {
     if (g_env->save_to_file_) {
