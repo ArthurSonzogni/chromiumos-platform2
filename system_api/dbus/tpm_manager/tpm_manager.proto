@@ -105,6 +105,18 @@ enum GscVersion {
   GSC_VERSION_TI50 = 2;
 }
 
+// The status of whether last AP reboot is triggered by RO verification.
+enum RoVerificationStatus {
+  // Not triggered by RO verification.
+  RO_STATUS_NOT_TRIGGERED = 0;
+  // Triggered by RO verification, and it passed.
+  RO_STATUS_PASS = 1;
+  // Triggered by RO verification, and it failed.
+  RO_STATUS_FAIL = 2;
+  // There is not data to tell the RO verification status.
+  RO_STATUS_UNSUPPORTED = 3;
+}
+
 // Tracks the expected policy for a particular NVRAM space.
 message NvramPolicyRecord {
   optional uint32 index = 1;
@@ -337,6 +349,16 @@ message GetDictionaryAttackInfoReply {
   optional bool dictionary_attack_lockout_in_effect = 4;
   // The number of seconds remaining in the lockout.
   optional uint32 dictionary_attack_lockout_seconds_remaining = 5;
+}
+
+message GetRoVerificationStatusRequest {}
+
+message GetRoVerificationStatusReply {
+  // The success or error code of the call GetRoVerificationStatus.
+  optional TpmManagerStatus status = 1;
+
+  // The status about if the last reboot was triggered by RO verification.
+  optional RoVerificationStatus ro_verification_status = 2;
 }
 
 message ResetDictionaryAttackLockRequest {
