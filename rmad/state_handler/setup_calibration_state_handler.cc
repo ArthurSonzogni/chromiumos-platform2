@@ -15,7 +15,7 @@ SetupCalibrationStateHandler::SetupCalibrationStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode SetupCalibrationStateHandler::InitializeState() {
-  if (!state_.has_setup_calibration() && !RetrieveState()) {
+  if (!state_.has_setup_calibration()) {
     state_.set_allocated_setup_calibration(new SetupCalibrationState);
   }
 
@@ -33,7 +33,6 @@ SetupCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 
   // There's nothing in |SetupCalibrationState|.
   state_ = state;
-  StoreState();
 
   if (running_setup_instruction_ ==
       RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {

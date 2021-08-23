@@ -18,7 +18,7 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
-  if (!state_.has_run_calibration() && !RetrieveState()) {
+  if (!state_.has_run_calibration()) {
     state_.set_allocated_run_calibration(new RunCalibrationState);
   }
   running_group_ = CalibrationSetupInstruction_MAX;
@@ -68,7 +68,6 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 
   // There's nothing in |RunCalibrations|.
   state_ = state;
-  StoreState();
 
   // TODO(genechang): We should check whether we should perform the next round
   // of calibration (different setup) here.

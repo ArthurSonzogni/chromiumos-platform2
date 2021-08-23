@@ -13,7 +13,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
-  if (!state_.has_provision_device() && !RetrieveState()) {
+  if (!state_.has_provision_device()) {
     state_.set_allocated_provision_device(new ProvisionDeviceState);
   }
   return RMAD_ERROR_OK;
@@ -28,7 +28,6 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
 
   // There's nothing in |ProvisionDeviceState|.
   state_ = state;
-  StoreState();
 
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,

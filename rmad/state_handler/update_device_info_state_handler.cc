@@ -13,7 +13,7 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
-  if (!state_.has_update_device_info() && !RetrieveState()) {
+  if (!state_.has_update_device_info()) {
     state_.set_allocated_update_device_info(new UpdateDeviceInfoState);
   }
   return RMAD_ERROR_OK;
@@ -28,7 +28,6 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
   // TODO(chenghan): Validate the values.
 
   state_ = state;
-  StoreState();
 
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,

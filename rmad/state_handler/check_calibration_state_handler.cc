@@ -17,7 +17,7 @@ CheckCalibrationStateHandler::CheckCalibrationStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
-  if (!state_.has_check_calibration() && !RetrieveState()) {
+  if (!state_.has_check_calibration()) {
     state_.set_allocated_check_calibration(new CheckCalibrationState);
   }
   return RMAD_ERROR_OK;
@@ -32,7 +32,6 @@ CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
-  StoreState();
   StoreVars();
 
   if (need_calibration) {

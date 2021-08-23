@@ -22,7 +22,7 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode DeviceDestinationStateHandler::InitializeState() {
-  if (!state_.has_device_destination() && !RetrieveState()) {
+  if (!state_.has_device_destination()) {
     state_.set_allocated_device_destination(new DeviceDestinationState);
   }
   return RMAD_ERROR_OK;
@@ -43,7 +43,6 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
-  StoreState();
   StoreVars();
 
   // Check if conditions are met to skip disabling write protection and directly

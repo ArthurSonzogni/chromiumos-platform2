@@ -16,7 +16,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
-  if (!state_.has_update_ro_firmware() && !RetrieveState()) {
+  if (!state_.has_update_ro_firmware()) {
     auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
     // TODO(chenghan): Set to false when RO verification is not supported.
     update_ro_firmware->set_optional(true);
@@ -51,7 +51,6 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
   }
 
   state_ = state;
-  StoreState();
 
   // TODO(chenghan): This is currently a mock.
   switch (state_.update_ro_firmware().update()) {

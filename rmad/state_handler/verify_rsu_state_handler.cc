@@ -38,7 +38,7 @@ VerifyRsuStateHandler::VerifyRsuStateHandler(
       crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode VerifyRsuStateHandler::InitializeState() {
-  if (!state_.has_verify_rsu() && !RetrieveState()) {
+  if (!state_.has_verify_rsu()) {
     auto verify_rsu = std::make_unique<VerifyRsuState>();
     verify_rsu->set_success(VerifyFactoryModeEnabled());
     state_.set_allocated_verify_rsu(verify_rsu.release());
@@ -54,7 +54,6 @@ BaseStateHandler::GetNextStateCaseReply VerifyRsuStateHandler::GetNextStateCase(
   }
 
   state_ = state;
-  StoreState();
 
   if (!VerifyFactoryModeEnabled()) {
     return {.error = RMAD_ERROR_TRANSITION_FAILED,

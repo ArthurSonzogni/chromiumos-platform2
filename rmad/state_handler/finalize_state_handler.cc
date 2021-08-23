@@ -12,7 +12,7 @@ FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
-  if (!state_.has_finalize() && !RetrieveState()) {
+  if (!state_.has_finalize()) {
     state_.set_allocated_finalize(new FinalizeState);
   }
   return RMAD_ERROR_OK;
@@ -32,7 +32,6 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
   }
 
   state_ = state;
-  StoreState();
 
   // TODO(chenghan): This is currently fake.
   return {.error = RMAD_ERROR_OK,
