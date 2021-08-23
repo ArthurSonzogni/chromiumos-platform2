@@ -88,7 +88,8 @@ message SequencingInformation {
   optional Priority priority = 3;
 }
 
-// |WrappedRecord| as it is stored on disc, and sent to the server.
+// Envelope for the |WrappedRecord| and associated metadata as it is stored on
+// disk and sent to the server.
 message EncryptedRecord {
   // Encrypted Wrapped Record
   // |WrappedRecord| encrypted with the |encryption_key| in |encryption_info|.

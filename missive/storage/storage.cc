@@ -47,6 +47,9 @@ namespace {
 // Parameters of individual queues.
 // TODO(b/159352842): Deliver space and upload parameters from outside.
 
+constexpr char kSecurityQueueSubdir[] = "Security";
+constexpr char kSecurityQueuePrefix[] = "P_Security";
+
 constexpr char kImmediateQueueSubdir[] = "Immediate";
 constexpr char kImmediateQueuePrefix[] = "P_Immediate";
 
@@ -83,6 +86,11 @@ constexpr base::TimeDelta kFailedUploadRetryDelay =
 std::vector<std::pair<Priority, QueueOptions>> ExpectedQueues(
     const StorageOptions& options) {
   return {
+      std::make_pair(SECURITY,
+                     QueueOptions(options)
+                         .set_subdirectory(kSecurityQueueSubdir)
+                         .set_file_prefix(kSecurityQueuePrefix)
+                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
       std::make_pair(IMMEDIATE,
                      QueueOptions(options)
                          .set_subdirectory(kImmediateQueueSubdir)
