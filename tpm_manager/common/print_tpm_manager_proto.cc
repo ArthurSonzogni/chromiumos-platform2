@@ -152,6 +152,27 @@ std::string GetProtoDebugStringWithIndent(GscVersion value, int indent_size) {
   return "<unknown>";
 }
 
+std::string GetProtoDebugString(RoVerificationStatus value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(RoVerificationStatus value,
+                                          int indent_size) {
+  if (value == RO_STATUS_NOT_TRIGGERED) {
+    return "RO_STATUS_NOT_TRIGGERED";
+  }
+  if (value == RO_STATUS_PASS) {
+    return "RO_STATUS_PASS";
+  }
+  if (value == RO_STATUS_FAIL) {
+    return "RO_STATUS_FAIL";
+  }
+  if (value == RO_STATUS_UNSUPPORTED) {
+    return "RO_STATUS_UNSUPPORTED";
+  }
+  return "<unknown>";
+}
+
 std::string GetProtoDebugString(const NvramPolicyRecord& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }
@@ -1073,6 +1094,49 @@ std::string GetProtoDebugStringWithIndent(
     base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
                         value.dictionary_attack_lockout_seconds_remaining(),
                         value.dictionary_attack_lockout_seconds_remaining());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetRoVerificationStatusRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetRoVerificationStatusRequest& value, int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetRoVerificationStatusReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetRoVerificationStatusReply& value, int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_ro_verification_status()) {
+    output += indent + "  ro_verification_status: ";
+    base::StringAppendF(&output, "%s",
+                        GetProtoDebugStringWithIndent(
+                            value.ro_verification_status(), indent_size + 2)
+                            .c_str());
     output += "\n";
   }
   output += indent + "}\n";

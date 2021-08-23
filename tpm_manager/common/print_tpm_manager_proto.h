@@ -32,6 +32,9 @@ std::string GetProtoDebugStringWithIndent(NvramSpacePolicy value,
 BRILLO_EXPORT std::string GetProtoDebugString(NvramSpacePolicy value);
 std::string GetProtoDebugStringWithIndent(GscVersion value, int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(GscVersion value);
+std::string GetProtoDebugStringWithIndent(RoVerificationStatus value,
+                                          int indent_size);
+BRILLO_EXPORT std::string GetProtoDebugString(RoVerificationStatus value);
 std::string GetProtoDebugStringWithIndent(const NvramPolicyRecord& value,
                                           int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(const NvramPolicyRecord& value);
@@ -124,6 +127,14 @@ std::string GetProtoDebugStringWithIndent(
     const GetDictionaryAttackInfoReply& value, int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(
     const GetDictionaryAttackInfoReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetRoVerificationStatusRequest& value, int indent_size);
+BRILLO_EXPORT std::string GetProtoDebugString(
+    const GetRoVerificationStatusRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetRoVerificationStatusReply& value, int indent_size);
+BRILLO_EXPORT std::string GetProtoDebugString(
+    const GetRoVerificationStatusReply& value);
 std::string GetProtoDebugStringWithIndent(
     const ResetDictionaryAttackLockRequest& value, int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(
