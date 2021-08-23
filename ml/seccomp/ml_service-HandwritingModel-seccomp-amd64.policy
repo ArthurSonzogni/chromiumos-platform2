@@ -17,6 +17,7 @@ exit_group: 1
 fcntl: 1
 flock: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getegid: 1
 geteuid: 1
