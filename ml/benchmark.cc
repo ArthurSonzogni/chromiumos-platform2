@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
 #include <base/task/current_thread.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -38,6 +39,7 @@
 using ::chrome::ml_benchmark::BenchmarkResults;
 using ::chrome::ml_benchmark::BenchmarkReturnStatus;
 using ::chrome::ml_benchmark::CrOSBenchmarkConfig;
+using ::chrome::ml_benchmark::Metric;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
@@ -67,8 +69,10 @@ struct AccumulativeResult {
   bool has_failure = false;
   // Total error for all inference.
   float total_error = 0.0;
-  // Time of each run.
-  std::vector<int64_t> times_in_us;
+  // Cputime of each run.
+  std::vector<int64_t> cputimes_in_us;
+  // Walltime of each run.
+  std::vector<int64_t> walltimes_in_us;
   // Error message.
   std::string error_message;
 };
@@ -188,25 +192,23 @@ base::flat_map<std::string, TensorPtr> TensorMapFromExample(
 // Converts the `accumulative_result` into BenchmarkResults.
 BenchmarkResults ToBenchmarkResults(AccumulativeResult* accumulative_result) {
   BenchmarkResults benchmark_result;
-  if (accumulative_result->times_in_us.empty()) {
+  if (accumulative_result->cputimes_in_us.empty()) {
     benchmark_result.set_status(BenchmarkReturnStatus::RUNTIME_ERROR);
-    benchmark_result.set_results_message("times_in_us is empty");
+    benchmark_result.set_results_message("cputimes_in_us is empty");
     return benchmark_result;
   }
 
   benchmark_result.set_status(BenchmarkReturnStatus::OK);
 
-  // Sorts all times_in_us for all the successful runs.
-  std::sort(accumulative_result->times_in_us.begin(),
-            accumulative_result->times_in_us.end());
-
-  // Gets percentile for times_in_us.
+  // Sorts all walltimes_in_us for all the successful runs.
+  std::sort(accumulative_result->walltimes_in_us.begin(),
+            accumulative_result->walltimes_in_us.end());
+  // Gets percentile for walltimes_in_us.
   for (const int i : kLatencyPercentile) {
-    const int pos = i * accumulative_result->times_in_us.size() / 100;
-    CHECK(pos < accumulative_result->times_in_us.size())
-        << "percentile can't be 100";
+    const int pos = i * accumulative_result->walltimes_in_us.size() / 100;
+    // Add walltime as default time metrics.
     (*benchmark_result.mutable_percentile_latencies_in_us())[i] =
-        accumulative_result->times_in_us[pos];
+        accumulative_result->walltimes_in_us[pos];
   }
 
   auto& error_metric = *benchmark_result.add_metrics();
@@ -215,7 +217,22 @@ BenchmarkResults ToBenchmarkResults(AccumulativeResult* accumulative_result) {
   error_metric.set_direction(chrome::ml_benchmark::Metric::SMALLER_IS_BETTER);
   error_metric.set_cardinality(chrome::ml_benchmark::Metric::SINGLE);
   error_metric.add_values(accumulative_result->total_error /
-                          accumulative_result->times_in_us.size());
+                          accumulative_result->cputimes_in_us.size());
+
+  // Sorts all cputimes_in_us for all the successful runs.
+  std::sort(accumulative_result->cputimes_in_us.begin(),
+            accumulative_result->cputimes_in_us.end());
+  // Gets percentile for cputimes_in_us.
+  for (const int i : kLatencyPercentile) {
+    const int pos = i * accumulative_result->cputimes_in_us.size() / 100;
+    // Add cputime as extra metrics.
+    auto& metric = *benchmark_result.add_metrics();
+    metric.set_name(base::StringPrintf("%dth_perc_cpu_time", i));
+    metric.set_units(Metric::MS);
+    metric.set_direction(Metric::SMALLER_IS_BETTER);
+    metric.set_cardinality(Metric::SINGLE);
+    metric.add_values(accumulative_result->cputimes_in_us[pos]);
+  }
 
   return benchmark_result;
 }
@@ -313,7 +330,8 @@ BenchmarkResults InferenceForTfliteModel(
 
   for (int i = 0; i < tflite_config.num_runs(); ++i) {
     // Starts the timer.
-    const std::clock_t start_time = std::clock();
+    const std::clock_t start_cputime = std::clock();
+    const auto start_walltime = base::TimeTicks::Now();
     // Run infernce.
     graph_executor->Execute(
         TensorMapFromExample(input_output.input(),
@@ -357,8 +375,11 @@ BenchmarkResults InferenceForTfliteModel(
 
     // Records time.
     const int64_t cpu_time_us = static_cast<int64_t>(
-        (std::clock() - start_time) * 1000000.0 / CLOCKS_PER_SEC);
-    accumulative_result.times_in_us.push_back(cpu_time_us);
+        (std::clock() - start_cputime) * 1000000.0 / CLOCKS_PER_SEC);
+    accumulative_result.cputimes_in_us.push_back(cpu_time_us);
+    const int64_t wall_time_us =
+        (base::TimeTicks::Now() - start_walltime).InMicroseconds();
+    accumulative_result.walltimes_in_us.push_back(wall_time_us);
   }
 
   // Converts accumulative_result into BenchmarkResults.
