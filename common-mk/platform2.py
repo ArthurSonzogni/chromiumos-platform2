@@ -49,6 +49,7 @@ _IUSE = [
     'chromeless_tty',
     'containers',
     'coverage',
+    'cr2',
     'cros_arm64',
     'cros_host',
     'cros_i686',
