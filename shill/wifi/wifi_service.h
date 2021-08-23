@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_WIFI_SERVICE_H_
 #define SHILL_WIFI_WIFI_SERVICE_H_
 
+#include <limits>
 #include <memory>
 #include <set>
 #include <string>
@@ -12,6 +13,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
+#include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -32,6 +34,9 @@ class WiFiService : public Service {
   static const char kStorageSecurityClass[];
   static const char kStorageSSID[];
 
+  // Default signal level value without any endpoint.
+  static const int16_t SignalLevelMin = std::numeric_limits<int16_t>::min();
+
   WiFiService(Manager* manager,
               WiFiProvider* provider,
               const std::vector<uint8_t>& ssid,
@@ -46,17 +51,17 @@ class WiFiService : public Service {
   // Inherited from Service.
   bool Is8021x() const override;
 
-  virtual void AddEndpoint(const WiFiEndpointConstRefPtr& endpoint);
-  virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint);
-  virtual int GetEndpointCount() const { return endpoints_.size(); }
+  mockable void AddEndpoint(const WiFiEndpointConstRefPtr& endpoint);
+  mockable void RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint);
+  mockable int GetEndpointCount() const { return endpoints_.size(); }
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with
   // |endpoint| set to nullptr.
-  virtual void NotifyCurrentEndpoint(const WiFiEndpointConstRefPtr& endpoint);
+  mockable void NotifyCurrentEndpoint(const WiFiEndpointConstRefPtr& endpoint);
   // Called to inform of changes in the properties of an endpoint.
   // (Not necessarily the currently connected endpoint.)
-  virtual void NotifyEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint);
+  mockable void NotifyEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const override;
@@ -111,7 +116,7 @@ class WiFiService : public Service {
   void SetIsRekeyInProgress(bool is_rekey_in_progress);
   bool is_rekey_in_progress() const { return is_rekey_in_progress_; }
 
-  virtual bool HasEndpoints() const { return !endpoints_.empty(); }
+  mockable bool HasEndpoints() const { return !endpoints_.empty(); }
   bool IsVisible() const override;
   bool IsSecurityMatch(const std::string& security) const;
 
@@ -122,8 +127,8 @@ class WiFiService : public Service {
   // considered suspect by default, while those which have been used
   // successfully in the past must have this method called a number of times
   // since the last time ResetSuspectedCredentialsFailures() was called.
-  virtual bool AddSuspectedCredentialFailure();
-  virtual void ResetSuspectedCredentialFailures();
+  mockable bool AddSuspectedCredentialFailure();
+  mockable void ResetSuspectedCredentialFailures();
 
   bool hidden_ssid() const { return hidden_ssid_; }
 
@@ -152,7 +157,7 @@ class WiFiService : public Service {
   virtual void ResetWiFi();
 
   // Called by WiFi to retrieve configuration parameters for wpa_supplicant.
-  virtual KeyValueStore GetSupplicantConfigurationParameters() const;
+  mockable KeyValueStore GetSupplicantConfigurationParameters() const;
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
@@ -164,7 +169,7 @@ class WiFiService : public Service {
 
   // Signal level in dBm.  If no current endpoint, returns
   // std::numeric_limits<int>::min().
-  int16_t SignalLevel() const;
+  mockable int16_t SignalLevel() const;
 
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }

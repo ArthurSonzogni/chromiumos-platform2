@@ -755,7 +755,7 @@ void WiFiService::UpdateFromEndpoints() {
   if (current_endpoint_) {
     representative_endpoint = current_endpoint_.get();
   } else {
-    int16_t best_signal = std::numeric_limits<int16_t>::min();
+    int16_t best_signal = WiFiService::SignalLevelMin;
     for (const auto& endpoint : endpoints_) {
       if (endpoint->signal_strength() >= best_signal) {
         best_signal = endpoint->signal_strength();
@@ -794,7 +794,7 @@ void WiFiService::UpdateFromEndpoints() {
     cipher_8021x_ = ComputeCipher8021x(endpoints_);
 
   uint16_t frequency = 0;
-  int16_t signal = std::numeric_limits<int16_t>::min();
+  int16_t signal = WiFiService::SignalLevelMin;
   std::string bssid;
   std::string country_code;
   Stringmap vendor_information;
@@ -1068,8 +1068,7 @@ int16_t WiFiService::SignalLevel() const {
   // have. If we don't have any endpoints then return -32768 dBm
   // on the theory that the service probably exists somewhere in
   // the world but is too far away to hear.
-  return HasEndpoints() ? raw_signal_strength_
-                        : std::numeric_limits<int16_t>::min();
+  return HasEndpoints() ? raw_signal_strength_ : WiFiService::SignalLevelMin;
 }
 
 // static

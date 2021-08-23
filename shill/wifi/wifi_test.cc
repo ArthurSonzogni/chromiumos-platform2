@@ -1854,6 +1854,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
   EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
+  EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-90));
   ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
   InitiateDisconnect(service);
   Mock::VerifyAndClearExpectations(service.get());
@@ -1960,6 +1961,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-80));
   InitiateDisconnect(service);
 
   // |current_service_| should not change until supplicant reports
@@ -2129,6 +2131,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   // DisconnectFrom() should not be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
+  EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-80));
 
   // Innocuous redundant call to NotifyDeviceScanFinished.
   ExpectFoundNothing();
@@ -2162,6 +2165,10 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   EXPECT_CALL(*service,
               DisconnectWithFailure(Service::kFailureOutOfRange, _,
                                     HasSubstr("PendingTimeoutHandler")));
+  // current_endpoint_ == nullptr so, without endpoint,
+  // the service should return min possible value of int16_t
+  EXPECT_CALL(*service, SignalLevel())
+      .WillRepeatedly(Return(WiFiService::SignalLevelMin));
   // DisconnectFrom() should be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());

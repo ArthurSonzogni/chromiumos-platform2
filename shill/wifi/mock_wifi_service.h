@@ -70,6 +70,7 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD(bool, HasStaticIPAddress, (), (const, override));
   MOCK_METHOD(bool, ShouldIgnoreFailure, (), (const, override));
   MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
+  MOCK_METHOD(int16_t, SignalLevel, (), (const, override));
 };
 
 }  // namespace shill
