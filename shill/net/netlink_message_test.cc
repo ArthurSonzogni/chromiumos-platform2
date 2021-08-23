@@ -804,6 +804,18 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
     EXPECT_TRUE(nested->GetU32AttributeValue(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
                                              &pkt_loss_event));
     EXPECT_EQ(kExpectedCqmNotAcked, pkt_loss_event);
+    bool beacon_loss;
+    EXPECT_FALSE(nested->GetFlagAttributeValue(
+        NL80211_ATTR_CQM_BEACON_LOSS_EVENT, &beacon_loss));
+    uint32_t txe_pkt;
+    EXPECT_FALSE(
+        nested->GetU32AttributeValue(NL80211_ATTR_CQM_TXE_PKTS, &txe_pkt));
+    uint32_t txe_rate;
+    EXPECT_FALSE(
+        nested->GetU32AttributeValue(NL80211_ATTR_CQM_TXE_RATE, &txe_rate));
+    uint32_t txe_intvl;
+    EXPECT_FALSE(
+        nested->GetU32AttributeValue(NL80211_ATTR_CQM_TXE_INTVL, &txe_intvl));
   }
 }
 

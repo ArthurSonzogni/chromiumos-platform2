@@ -414,6 +414,18 @@ Nl80211AttributeCqm::Nl80211AttributeCqm()
   nested_template_.insert(AttrDataPair(
       NL80211_ATTR_CQM_PKT_LOSS_EVENT,
       NestedData(kTypeU32, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_ATTR_CQM_BEACON_LOSS_EVENT,
+      NestedData(kTypeFlag, "NL80211_ATTR_CQM_BEACON_LOSS_EVENT", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_ATTR_CQM_TXE_PKTS,
+                   NestedData(kTypeU32, "NL80211_ATTR_CQM_TXE_PKTS", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_ATTR_CQM_TXE_RATE,
+                   NestedData(kTypeU32, "NL80211_ATTR_CQM_TXE_RATE", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_ATTR_CQM_TXE_INTVL,
+                   NestedData(kTypeU32, "NL80211_ATTR_CQM_TXE_INTVL", false)));
 }
 
 const int Nl80211AttributeDeviceApSme::kName = NL80211_ATTR_DEVICE_AP_SME;
