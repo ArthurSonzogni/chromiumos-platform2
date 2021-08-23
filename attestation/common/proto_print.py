@@ -122,55 +122,51 @@ def ParseProto(input_file):
     line = line.strip()
     if not line or line.startswith('//'):
       continue
-    # Close off the current scope. Enums first because they can't be nested.
-    if line == '}':
-      if current_enum:
-        enums.append(current_enum)
-        current_enum = None
-      if current_message_stack:
-        messages.append(current_message_stack.pop())
-      continue
+    msg_match = message_re.search(line)
+    enum_match = enum_re.search(line)
+    field_match = field_re.search(line)
+    package_match = package_re.search(line)
+    import_match = import_re.search(line)
     # Look for a message definition.
-    match = message_re.search(line)
-    if match:
+    if msg_match:
       prefix = ''
       if current_message_stack:
         prefix = '::'.join([m.name for m in current_message_stack]) + '::'
-      current_message_stack.append(Message(prefix + match.group(1)))
-      continue
+      current_message_stack.append(Message(prefix + msg_match.group(1)))
     # Look for a message field definition.
-    if current_message_stack:
-      match = field_re.search(line)
-      if match:
-        current_message_stack[-1].AddField(match.group(1),
-                                           match.group(2),
-                                           match.group(3))
-        continue
+    elif current_message_stack and field_match:
+      current_message_stack[-1].AddField(field_match.group(1),
+                                         field_match.group(2),
+                                         field_match.group(3))
     # Look for an enum definition.
-    match = enum_re.search(line)
-    if match:
+    elif enum_match:
       prefix = ''
       if current_message_stack:
         prefix = '_'.join([m.name for m in current_message_stack]) + '_'
-      current_enum = Enum(prefix + match.group(1))
+      current_enum = Enum(prefix + enum_match.group(1))
       continue
     # Look for an enum value.
-    if current_enum:
+    elif current_enum:
       match = enum_value_re.search(line)
       if match:
         prefix = ''
         if current_message_stack:
           prefix = current_enum.name + '_'
         current_enum.AddValue(prefix + match.group(1))
-        continue
     # Look for a package statement.
-    match = package_re.search(line)
-    if match:
-      package = match.group(1)
+    elif package_match:
+      package = package_match.group(1)
     # Look for an import statement.
-    match = import_re.search(line)
-    if match:
-      imports.append(match.group(2))
+    elif import_match:
+      imports.append(import_match.group(2))
+
+    # Close off the current scope. Enums first because they can't be nested.
+    if line[-1] == '}':
+      if current_enum:
+        enums.append(current_enum)
+        current_enum = None
+      if current_message_stack:
+        messages.append(current_message_stack.pop())
   return package, imports, messages, enums
 
 

@@ -212,8 +212,7 @@ message LockSpaceReply {
   optional NvramResult result = 1;
 }
 
-message ListSpacesRequest {
-}
+message ListSpacesRequest {}
 
 message ListSpacesReply {
   optional NvramResult result = 1;
@@ -281,8 +280,7 @@ message GetTpmNonsensitiveStatusReply {
   optional bool is_srk_default_auth = 6;
 }
 
-message GetVersionInfoRequest {
-}
+message GetVersionInfoRequest {}
 
 message GetVersionInfoReply {
   // The success or error code of the call GetVersionInfo.
@@ -325,8 +323,7 @@ message GetSupportedFeaturesReply {
   optional bool is_allowed = 5;
 }
 
-message GetDictionaryAttackInfoRequest {
-}
+message GetDictionaryAttackInfoRequest {}
 
 message GetDictionaryAttackInfoReply {
   // The success or error code of the call GetDictionaryAttackInfo.
@@ -370,8 +367,7 @@ message RemoveOwnerDependencyReply {
   optional TpmManagerStatus status = 1;
 }
 
-message ClearStoredOwnerPasswordRequest {
-}
+message ClearStoredOwnerPasswordRequest {}
 
 message ClearStoredOwnerPasswordReply {
   optional TpmManagerStatus status = 1;
