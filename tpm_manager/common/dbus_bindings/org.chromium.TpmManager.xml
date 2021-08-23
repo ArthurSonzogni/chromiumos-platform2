@@ -173,6 +173,19 @@
       </arg>
     </method>
 
+    <method name="GetRoVerificationStatus">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="tpm_manager::GetRoVerificationStatusRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="tpm_manager::GetRoVerificationStatusReply" />
+      </arg>
+    </method>
+
     <method name="ResetDictionaryAttackLock">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

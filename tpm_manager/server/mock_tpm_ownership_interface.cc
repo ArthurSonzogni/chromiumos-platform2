@@ -36,6 +36,9 @@ MockTpmOwnershipInterface::MockTpmOwnershipInterface() {
   ON_CALL(*this, GetDictionaryAttackInfo(_, _))
       .WillByDefault(
           WithArgs<1>(Invoke(RunCallback<GetDictionaryAttackInfoReply>)));
+  ON_CALL(*this, GetRoVerificationStatus(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(RunCallback<GetRoVerificationStatusReply>)));
   ON_CALL(*this, ResetDictionaryAttackLock(_, _))
       .WillByDefault(
           WithArgs<1>(Invoke(RunCallback<ResetDictionaryAttackLockReply>)));

@@ -33,6 +33,7 @@ constexpr char kGetTpmStatusCommand[] = "status";
 constexpr char kGetVersionInfoCommand[] = "get_version_info";
 constexpr char kGetSupportedFeatures[] = "get_supported_features";
 constexpr char kGetDictionaryAttackInfoCommand[] = "get_da_info";
+constexpr char kGetRoVerificationStatusCommand[] = "get_ro_verification_status";
 constexpr char kResetDictionaryAttackLockCommand[] = "reset_da_lock";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
 constexpr char kRemoveOwnerDependencyCommand[] = "remove_dependency";
@@ -69,6 +70,8 @@ Commands:
       Prints TPM supported features.
   get_da_info
       Prints TPM dictionary attack information.
+  get_ro_verification_status
+      Prints whether last reboot was triggered by RO verification
   reset_da_lock
       Resets dictionary attack lock
   take_ownership
@@ -235,6 +238,9 @@ class ClientLoop : public ClientLoopBase {
     } else if (command == kGetDictionaryAttackInfoCommand) {
       task = base::Bind(&ClientLoop::HandleGetDictionaryAttackInfo,
                         weak_factory_.GetWeakPtr());
+    } else if (command == kGetRoVerificationStatusCommand) {
+      task = base::Bind(&ClientLoop::HandleGetRoVerificationStatus,
+                        weak_factory_.GetWeakPtr());
     } else if (command == kResetDictionaryAttackLockCommand) {
       task = base::Bind(&ClientLoop::HandleResetDictionaryAttackLock,
                         weak_factory_.GetWeakPtr());
@@ -381,6 +387,16 @@ class ClientLoop : public ClientLoopBase {
     tpm_ownership_->GetDictionaryAttackInfoAsync(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetDictionaryAttackInfoReply>,
+                   weak_factory_.GetWeakPtr()),
+        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        kDefaultTimeout.InMilliseconds());
+  }
+
+  void HandleGetRoVerificationStatus() {
+    GetRoVerificationStatusRequest request;
+    tpm_ownership_->GetRoVerificationStatusAsync(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<GetRoVerificationStatusReply>,
                    weak_factory_.GetWeakPtr()),
         base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());

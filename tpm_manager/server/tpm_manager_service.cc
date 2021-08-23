@@ -601,6 +601,28 @@ void TpmManagerService::GetDictionaryAttackInfoTask(
   reply->set_status(STATUS_SUCCESS);
 }
 
+void TpmManagerService::GetRoVerificationStatus(
+    const GetRoVerificationStatusRequest& request,
+    GetRoVerificationStatusCallback callback) {
+  PostTaskToWorkerThread<GetRoVerificationStatusReply>(
+      request, std::move(callback),
+      &TpmManagerService::GetRoVerificationStatusTask);
+}
+
+void TpmManagerService::GetRoVerificationStatusTask(
+    const GetRoVerificationStatusRequest& request,
+    const std::shared_ptr<GetRoVerificationStatusReply>& reply) {
+  VLOG(1) << __func__;
+
+  tpm_manager::RoVerificationStatus ro_status;
+  if (!tpm_status_->GetRoVerificationStatus(&ro_status)) {
+    LOG(ERROR) << __func__ << ": failed to get RO verification status.";
+    reply->set_status(STATUS_DEVICE_ERROR);
+  }
+  reply->set_ro_verification_status(ro_status);
+  reply->set_status(STATUS_SUCCESS);
+}
+
 void TpmManagerService::ResetDictionaryAttackLock(
     const ResetDictionaryAttackLockRequest& request,
     ResetDictionaryAttackLockCallback callback) {

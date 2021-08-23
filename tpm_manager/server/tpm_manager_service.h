@@ -115,6 +115,9 @@ class TpmManagerService : public TpmNvramInterface,
   void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
       GetDictionaryAttackInfoCallback callback) override;
+  void GetRoVerificationStatus(
+      const GetRoVerificationStatusRequest& request,
+      GetRoVerificationStatusCallback callback) override;
   void ResetDictionaryAttackLock(
       const ResetDictionaryAttackLockRequest& request,
       ResetDictionaryAttackLockCallback callback) override;
@@ -232,6 +235,12 @@ class TpmManagerService : public TpmNvramInterface,
   void GetDictionaryAttackInfoTask(
       const GetDictionaryAttackInfoRequest& request,
       const std::shared_ptr<GetDictionaryAttackInfoReply>& result);
+
+  // Blocking implementation of GetRoVerificationStatus that can be executed on
+  // the background worker thread.
+  void GetRoVerificationStatusTask(
+      const GetRoVerificationStatusRequest& request,
+      const std::shared_ptr<GetRoVerificationStatusReply>& result);
 
   // Blocking implementation of ResetDictionaryAttackLock that can be executed
   // on the background worker thread.

@@ -40,6 +40,11 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
                GetDictionaryAttackInfoCallback),
               (override));
   MOCK_METHOD(void,
+              GetRoVerificationStatus,
+              (const GetRoVerificationStatusRequest&,
+               GetRoVerificationStatusCallback),
+              (override));
+  MOCK_METHOD(void,
               ResetDictionaryAttackLock,
               (const ResetDictionaryAttackLockRequest&,
                ResetDictionaryAttackLockCallback),

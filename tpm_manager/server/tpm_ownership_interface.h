@@ -57,6 +57,14 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
       const GetDictionaryAttackInfoRequest& request,
       GetDictionaryAttackInfoCallback callback) = 0;
 
+  // Gets RO verification status. Processes |request| and calls |callback|
+  // with a reply when the process is done.
+  using GetRoVerificationStatusCallback =
+      base::OnceCallback<void(const GetRoVerificationStatusReply&)>;
+  virtual void GetRoVerificationStatus(
+      const GetRoVerificationStatusRequest& request,
+      GetRoVerificationStatusCallback callback) = 0;
+
   // Resets dictionary attack (DA) lock. Processes |request| and calls
   // |callback| with a reply when the process is done.
   using ResetDictionaryAttackLockCallback =
