@@ -80,6 +80,12 @@ void CrosHealthdMojoService::AddThunderboltObserver(
   udev_events_->AddThunderboltObserver(std::move(observer));
 }
 
+void CrosHealthdMojoService::AddUsbObserver(
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+        observer) {
+  udev_events_->AddUsbObserver(std::move(observer));
+}
+
 void CrosHealthdMojoService::ProbeProcessInfo(
     uint32_t process_id, ProbeProcessInfoCallback callback) {
   ProcessFetcher(context_, static_cast<pid_t>(process_id))

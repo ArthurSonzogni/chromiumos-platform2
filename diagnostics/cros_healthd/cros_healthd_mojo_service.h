@@ -71,6 +71,9 @@ class CrosHealthdMojoService final
       mojo::PendingRemote<
           chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
           observer) override;
+  void AddUsbObserver(
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+          observer) override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeProcessInfo(uint32_t process_id,

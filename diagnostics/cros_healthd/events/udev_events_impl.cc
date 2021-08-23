@@ -14,6 +14,7 @@
 #include <brillo/udev/udev_device.h>
 
 #include "diagnostics/cros_healthd/utils/file_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 
@@ -106,6 +107,12 @@ void UdevEventsImpl::OnThunderboltAuthorizedEvent() {
 void UdevEventsImpl::OnThunderboltUnAuthorizedEvent() {
   for (auto& observer : thunderbolt_observers_)
     observer->OnUnAuthorized();
+}
+
+void UdevEventsImpl::AddUsbObserver(
+    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+        observer) {
+  usb_observers_.Add(std::move(observer));
 }
 
 }  // namespace diagnostics

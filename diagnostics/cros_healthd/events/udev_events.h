@@ -25,6 +25,10 @@ class UdevEvents {
       mojo::PendingRemote<
           chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
           observer) = 0;
+  // Adds a new observer to be notified when USB related events occur.
+  virtual void AddUsbObserver(
+      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics
