@@ -91,15 +91,19 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
     const brillo::SecureBlob& response_ad_cbor,
     HsmResponseAssociatedData* response_ad);
 
-bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
-                                  const std::string& map_key,
-                                  brillo::SecureBlob* value);
+bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
+                                        const std::string& map_key,
+                                        brillo::SecureBlob* value);
 
 bool GetHsmPayloadFromRequestAdForTesting(
     const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload);
 
 bool GetRequestPayloadSchemaVersionForTesting(
     const brillo::SecureBlob& input_cbor, int* value);
+
+// Returns number of values in CBOR map. Returns -1 if provided blob is not a
+// CBOR map.
+int GetCborMapSize(const brillo::SecureBlob& input_cbor);
 
 }  // namespace cryptorecovery
 }  // namespace cryptohome

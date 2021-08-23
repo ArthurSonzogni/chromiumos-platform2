@@ -155,8 +155,9 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     const HsmPayload& hsm_payload,
     brillo::SecureBlob* plain_text) const {
   brillo::SecureBlob publisher_pub_key;
-  if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
-                                    kPublisherPublicKey, &publisher_pub_key)) {
+  if (!GetValueFromCborMapByKeyForTesting(hsm_payload.associated_data,
+                                          kPublisherPublicKey,
+                                          &publisher_pub_key)) {
     LOG(ERROR) << "Unable to deserialize publisher_pub_key from hsm_payload";
     return false;
   }
@@ -185,8 +186,8 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     const RequestPayload& request_payload,
     brillo::SecureBlob* plain_text) const {
   brillo::SecureBlob salt;
-  if (!GetHsmCborMapByKeyForTesting(request_payload.associated_data,
-                                    kRequestPayloadSalt, &salt)) {
+  if (!GetValueFromCborMapByKeyForTesting(request_payload.associated_data,
+                                          kRequestPayloadSalt, &salt)) {
     LOG(ERROR) << "Unable to deserialize salt from request_payload";
     return false;
   }
@@ -197,8 +198,8 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     return false;
   }
   brillo::SecureBlob channel_pub_key;
-  if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
-                                    kChannelPublicKey, &channel_pub_key)) {
+  if (!GetValueFromCborMapByKeyForTesting(
+          hsm_payload.associated_data, kChannelPublicKey, &channel_pub_key)) {
     LOG(ERROR) << "Unable to deserialize channel_pub_key from "
                   "hsm_payload.associated_data";
     return false;
@@ -353,8 +354,8 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   }
 
   brillo::SecureBlob channel_pub_key;
-  if (!GetHsmCborMapByKeyForTesting(hsm_payload.associated_data,
-                                    kChannelPublicKey, &channel_pub_key)) {
+  if (!GetValueFromCborMapByKeyForTesting(
+          hsm_payload.associated_data, kChannelPublicKey, &channel_pub_key)) {
     LOG(ERROR) << "Unable to deserialize channel_pub_key from hsm_payload";
     return false;
   }

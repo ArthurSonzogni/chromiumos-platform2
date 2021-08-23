@@ -32,25 +32,42 @@ bool SerializeCborMap(const cbor::Value::MapValue& cbor_map,
   return true;
 }
 
-base::Optional<cbor::Value> ReadCborPayload(
-    const brillo::SecureBlob& payload_cbor) {
+base::Optional<cbor::Value> ReadCborMap(const brillo::SecureBlob& map_cbor) {
   cbor::Reader::DecoderError error_code;
   base::Optional<cbor::Value> cbor_response =
-      cbor::Reader::Read(payload_cbor, &error_code);
+      cbor::Reader::Read(map_cbor, &error_code);
   if (!cbor_response) {
-    LOG(ERROR) << "Unable to create HSM cbor reader.";
+    LOG(ERROR) << "Unable to create CBOR reader.";
     return base::nullopt;
   }
   if (error_code != cbor::Reader::DecoderError::CBOR_NO_ERROR) {
-    LOG(ERROR) << "Error when parsing HSM cbor payload: "
+    LOG(ERROR) << "Error when parsing CBOR input: "
                << cbor::Reader::ErrorCodeToString(error_code);
     return base::nullopt;
   }
   if (!cbor_response->is_map()) {
-    LOG(ERROR) << "HSM cbor input is not a map.";
+    LOG(ERROR) << "CBOR input is not a map.";
     return base::nullopt;
   }
   return cbor_response;
+}
+
+bool FindBytestringValueInCborMap(const cbor::Value::MapValue& map,
+                                  const std::string& key,
+                                  brillo::SecureBlob* blob) {
+  const auto entry = map.find(cbor::Value(key));
+  if (entry == map.end()) {
+    LOG(ERROR) << "No `" + key + "` entry in the CBOR map.";
+    return false;
+  }
+  if (!entry->second.is_bytestring()) {
+    LOG(ERROR) << "Wrongly formatted `" + key + "` entry in the CBOR map.";
+    return false;
+  }
+
+  blob->assign(entry->second.GetBytestring().begin(),
+               entry->second.GetBytestring().end());
+  return true;
 }
 
 cbor::Value::MapValue CreateHsmPayloadMap(const HsmPayload& payload) {
@@ -189,233 +206,149 @@ bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,
     HsmPlainText* hsm_plain_text) {
-  const auto& cbor = ReadCborPayload(hsm_plain_text_cbor);
+  const auto& cbor = ReadCborMap(hsm_plain_text_cbor);
   if (!cbor) {
-    return false;
-  }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "HSM plain text is not a cbor map.";
     return false;
   }
 
   const cbor::Value::MapValue& response_map = cbor->GetMap();
-  const auto dealer_pub_key_entry =
-      response_map.find(cbor::Value(kDealerPublicKey));
-  if (dealer_pub_key_entry == response_map.end()) {
-    LOG(ERROR) << "No dealer public key in the HSM response map.";
+  brillo::SecureBlob dealer_pub_key;
+  if (!FindBytestringValueInCborMap(response_map, kDealerPublicKey,
+                                    &dealer_pub_key)) {
+    LOG(ERROR) << "Failed to get dealer public key from the HSM response map.";
     return false;
   }
-  if (!dealer_pub_key_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted dealer key in the HSM response map.";
+  brillo::SecureBlob mediator_share;
+  if (!FindBytestringValueInCborMap(response_map, kMediatorShare,
+                                    &mediator_share)) {
+    LOG(ERROR) << "Failed to get mediator share from the HSM response map.";
     return false;
   }
-
-  const auto mediator_share_entry =
-      response_map.find(cbor::Value(kMediatorShare));
-  if (mediator_share_entry == response_map.end()) {
-    LOG(ERROR) << "No share entry in the HSM response map.";
-    return false;
-  }
-  if (!mediator_share_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted share entry in the HSM response map.";
+  brillo::SecureBlob key_auth_value;
+  if (!FindBytestringValueInCborMap(response_map, kKeyAuthValue,
+                                    &key_auth_value)) {
+    LOG(ERROR) << "Failed to get key auth value from the HSM response map.";
     return false;
   }
 
-  const auto key_auth_value_entry =
-      response_map.find(cbor::Value(kKeyAuthValue));
-  if (key_auth_value_entry == response_map.end()) {
-    LOG(ERROR) << "No key auth value in the HSM response map.";
-    return false;
-  }
-  if (!key_auth_value_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted key auth value in the HSM response map.";
-    return false;
-  }
-
-  hsm_plain_text->dealer_pub_key.assign(
-      dealer_pub_key_entry->second.GetBytestring().begin(),
-      dealer_pub_key_entry->second.GetBytestring().end());
-  hsm_plain_text->mediator_share.assign(
-      mediator_share_entry->second.GetBytestring().begin(),
-      mediator_share_entry->second.GetBytestring().end());
-  hsm_plain_text->key_auth_value.assign(
-      key_auth_value_entry->second.GetBytestring().begin(),
-      key_auth_value_entry->second.GetBytestring().end());
+  hsm_plain_text->dealer_pub_key = std::move(dealer_pub_key);
+  hsm_plain_text->mediator_share = std::move(mediator_share);
+  hsm_plain_text->key_auth_value = std::move(key_auth_value);
   return true;
 }
 
 bool DeserializeRecoveryRequestPlainTextFromCbor(
     const brillo::SecureBlob& request_plain_text_cbor,
     RecoveryRequestPlainText* request_plain_text) {
-  const auto& cbor = ReadCborPayload(request_plain_text_cbor);
+  const auto& cbor = ReadCborMap(request_plain_text_cbor);
   if (!cbor) {
-    return false;
-  }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "Request plain text is not a cbor map.";
     return false;
   }
 
   const cbor::Value::MapValue& request_map = cbor->GetMap();
-  const auto ephemeral_pub_inv_key_entry =
-      request_map.find(cbor::Value(kEphemeralPublicInvKey));
-  if (ephemeral_pub_inv_key_entry == request_map.end()) {
-    LOG(ERROR) << "No ephemeral_pub_inv_key in the Recovery Request map";
-    return false;
-  }
-  if (!ephemeral_pub_inv_key_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted ephemeral_pub_inv_key in the Recovery "
-                  "Request map";
+  brillo::SecureBlob ephemeral_pub_inv_key;
+  if (!FindBytestringValueInCborMap(request_map, kEphemeralPublicInvKey,
+                                    &ephemeral_pub_inv_key)) {
+    LOG(ERROR) << "Failed to get ephemeral public inverse key from the "
+                  "Recovery Request map.";
     return false;
   }
 
-  request_plain_text->ephemeral_pub_inv_key.assign(
-      ephemeral_pub_inv_key_entry->second.GetBytestring().begin(),
-      ephemeral_pub_inv_key_entry->second.GetBytestring().end());
+  request_plain_text->ephemeral_pub_inv_key = std::move(ephemeral_pub_inv_key);
   return true;
 }
 
 bool DeserializeHsmResponsePlainTextFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
     HsmResponsePlainText* response_payload) {
-  const auto& cbor = ReadCborPayload(response_payload_cbor);
+  const auto& cbor = ReadCborMap(response_payload_cbor);
   if (!cbor) {
-    return false;
-  }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "HSM plain text is not a cbor map.";
     return false;
   }
 
   const cbor::Value::MapValue& response_map = cbor->GetMap();
-  const auto dealer_pub_key_entry =
-      response_map.find(cbor::Value(kDealerPublicKey));
-  if (dealer_pub_key_entry == response_map.end()) {
-    LOG(ERROR) << "No dealer public key in the HSM response map.";
+  brillo::SecureBlob dealer_pub_key;
+  if (!FindBytestringValueInCborMap(response_map, kDealerPublicKey,
+                                    &dealer_pub_key)) {
+    LOG(ERROR) << "Failed to get dealer public key from the HSM response map.";
     return false;
   }
-  if (!dealer_pub_key_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted dealer key in the HSM response map.";
+  brillo::SecureBlob mediated_point;
+  if (!FindBytestringValueInCborMap(response_map, kMediatedPoint,
+                                    &mediated_point)) {
+    LOG(ERROR) << "Failed to get mediated point from the HSM response map.";
     return false;
   }
-
-  const auto mediator_share_entry =
-      response_map.find(cbor::Value(kMediatedPoint));
-  if (mediator_share_entry == response_map.end()) {
-    LOG(ERROR) << "No share entry in the HSM response map.";
-    return false;
-  }
-  if (!mediator_share_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted share entry in the HSM response map.";
-    return false;
-  }
-
+  // Key Auth Value is optional.
+  brillo::SecureBlob key_auth_value;
   const auto key_auth_value_entry =
       response_map.find(cbor::Value(kKeyAuthValue));
-  if (key_auth_value_entry == response_map.end()) {
-    LOG(ERROR) << "No key auth value in the HSM response map.";
-    return false;
-  }
-  if (!key_auth_value_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted key auth value in the HSM response map.";
-    return false;
+  if (key_auth_value_entry != response_map.end()) {
+    if (!key_auth_value_entry->second.is_bytestring()) {
+      LOG(ERROR) << "Wrongly formatted `" << kKeyAuthValue
+                 << "` entry in the Response plain text CBOR map.";
+      return false;
+    }
+
+    key_auth_value.assign(key_auth_value_entry->second.GetBytestring().begin(),
+                          key_auth_value_entry->second.GetBytestring().end());
   }
 
-  response_payload->dealer_pub_key.assign(
-      dealer_pub_key_entry->second.GetBytestring().begin(),
-      dealer_pub_key_entry->second.GetBytestring().end());
-  response_payload->mediated_point.assign(
-      mediator_share_entry->second.GetBytestring().begin(),
-      mediator_share_entry->second.GetBytestring().end());
-  response_payload->key_auth_value.assign(
-      key_auth_value_entry->second.GetBytestring().begin(),
-      key_auth_value_entry->second.GetBytestring().end());
+  response_payload->dealer_pub_key = std::move(dealer_pub_key);
+  response_payload->mediated_point = std::move(mediated_point);
+  response_payload->key_auth_value = std::move(key_auth_value);
   return true;
 }
 
 bool DeserializeHsmResponseAssociatedDataFromCbor(
     const brillo::SecureBlob& response_ad_cbor,
     HsmResponseAssociatedData* response_ad) {
-  const auto& cbor = ReadCborPayload(response_ad_cbor);
+  const auto& cbor = ReadCborMap(response_ad_cbor);
   if (!cbor) {
-    return false;
-  }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "HSM associated data is not a cbor map.";
     return false;
   }
 
   const cbor::Value::MapValue& response_map = cbor->GetMap();
-  const auto response_payload_salt_entry =
-      response_map.find(cbor::Value(kResponsePayloadSalt));
-  if (response_payload_salt_entry == response_map.end()) {
-    LOG(ERROR)
-        << "No response_payload_salt in the HSM response associated data map.";
+  brillo::SecureBlob response_payload_salt;
+  if (!FindBytestringValueInCborMap(response_map, kResponsePayloadSalt,
+                                    &response_payload_salt)) {
+    LOG(ERROR) << "Failed to get response payload salt from the HSM response "
+                  "associated data map.";
     return false;
   }
-  if (!response_payload_salt_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted response_payload_salt in the HSM response "
+  brillo::SecureBlob response_meta_data;
+  if (!FindBytestringValueInCborMap(response_map, kResponseMetaData,
+                                    &response_meta_data)) {
+    LOG(ERROR) << "Failed to get response metadata from the HSM response "
                   "associated data map.";
     return false;
   }
 
-  const auto response_metadata_entry =
-      response_map.find(cbor::Value(kResponseMetaData));
-  if (response_metadata_entry == response_map.end()) {
-    LOG(ERROR)
-        << "No response_metadata in the HSM response associated data map.";
-    return false;
-  }
-  if (!response_metadata_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Wrongly formatted response_metadata in the HSM response "
-                  "associated data map.";
-    return false;
-  }
-
-  response_ad->response_payload_salt.assign(
-      response_payload_salt_entry->second.GetBytestring().begin(),
-      response_payload_salt_entry->second.GetBytestring().end());
-  response_ad->response_meta_data.assign(
-      response_metadata_entry->second.GetBytestring().begin(),
-      response_metadata_entry->second.GetBytestring().end());
+  response_ad->response_payload_salt = std::move(response_payload_salt);
+  response_ad->response_meta_data = std::move(response_meta_data);
   return true;
 }
 
-bool GetHsmCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
-                                  const std::string& map_key,
-                                  brillo::SecureBlob* value) {
-  const auto& cbor = ReadCborPayload(input_cbor);
+bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
+                                        const std::string& map_key,
+                                        brillo::SecureBlob* value) {
+  const auto& cbor = ReadCborMap(input_cbor);
   if (!cbor) {
     return false;
   }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "Provided cbor is not a map.";
+
+  if (!FindBytestringValueInCborMap(cbor->GetMap(), map_key, value)) {
+    LOG(ERROR) << "Failed to get keyed entry from cbor map.";
     return false;
   }
 
-  const cbor::Value::MapValue& cbor_map = cbor->GetMap();
-  const auto value_entry = cbor_map.find(cbor::Value(map_key));
-  if (value_entry == cbor_map.end()) {
-    LOG(ERROR) << "No keyed entry in the cbor map.";
-    return false;
-  }
-  if (!value_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Keyed entry in the cbor map has a wrong format.";
-    return false;
-  }
-  value->assign(value_entry->second.GetBytestring().begin(),
-                value_entry->second.GetBytestring().end());
   return true;
 }
 
 bool GetHsmPayloadFromRequestAdForTesting(
     const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload) {
-  const auto& cbor = ReadCborPayload(request_payload_cbor);
+  const auto& cbor = ReadCborMap(request_payload_cbor);
   if (!cbor) {
-    return false;
-  }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "Request associated data is not a cbor map.";
     return false;
   }
 
@@ -433,66 +366,38 @@ bool GetHsmPayloadFromRequestAdForTesting(
 
   const cbor::Value::MapValue& hsm_map = hsm_payload_entry->second.GetMap();
 
-  const auto ct_entry = hsm_map.find(cbor::Value(kAeadCipherText));
-  if (ct_entry == hsm_map.end()) {
-    LOG(ERROR) << "No cipher text entry in the HSM cbor map.";
+  brillo::SecureBlob cipher_text;
+  if (!FindBytestringValueInCborMap(hsm_map, kAeadCipherText, &cipher_text)) {
+    LOG(ERROR) << "Failed to get cipher text from the HSM payload map.";
     return false;
   }
-  if (!ct_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Cipher text entry in the HSM cbor map has a wrong format.";
+  brillo::SecureBlob associated_data;
+  if (!FindBytestringValueInCborMap(hsm_map, kAeadAd, &associated_data)) {
+    LOG(ERROR) << "Failed to get associated data from the HSM payload map.";
     return false;
   }
-
-  const auto ad_entry = hsm_map.find(cbor::Value(kAeadAd));
-  if (ad_entry == hsm_map.end()) {
-    LOG(ERROR) << "No associated data entry in the HSM cbor map.";
+  brillo::SecureBlob iv;
+  if (!FindBytestringValueInCborMap(hsm_map, kAeadIv, &iv)) {
+    LOG(ERROR) << "Failed to get iv from the HSM payload map.";
     return false;
   }
-  if (!ad_entry->second.is_bytestring()) {
-    LOG(ERROR)
-        << "Associated data entry in the HSM cbor map has a wrong format.";
-    return false;
-  }
-
-  const auto iv_entry = hsm_map.find(cbor::Value(kAeadIv));
-  if (iv_entry == hsm_map.end()) {
-    LOG(ERROR) << "No iv entry in the HSM cbor map.";
-    return false;
-  }
-  if (!iv_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Iv entry in the HSM cbor map has a wrong format.";
+  brillo::SecureBlob tag;
+  if (!FindBytestringValueInCborMap(hsm_map, kAeadTag, &tag)) {
+    LOG(ERROR) << "Failed to get tag from the HSM payload map.";
     return false;
   }
 
-  const auto tag_entry = hsm_map.find(cbor::Value(kAeadTag));
-  if (tag_entry == hsm_map.end()) {
-    LOG(ERROR) << "No tag entry in the HSM cbor map.";
-    return false;
-  }
-  if (!tag_entry->second.is_bytestring()) {
-    LOG(ERROR) << "Tag entry in the HSM cbor map has a wrong format.";
-    return false;
-  }
-
-  hsm_payload->cipher_text.assign(ct_entry->second.GetBytestring().begin(),
-                                  ct_entry->second.GetBytestring().end());
-  hsm_payload->associated_data.assign(ad_entry->second.GetBytestring().begin(),
-                                      ad_entry->second.GetBytestring().end());
-  hsm_payload->iv.assign(iv_entry->second.GetBytestring().begin(),
-                         iv_entry->second.GetBytestring().end());
-  hsm_payload->tag.assign(tag_entry->second.GetBytestring().begin(),
-                          tag_entry->second.GetBytestring().end());
+  hsm_payload->cipher_text = std::move(cipher_text);
+  hsm_payload->associated_data = std::move(associated_data);
+  hsm_payload->iv = std::move(iv);
+  hsm_payload->tag = std::move(tag);
   return true;
 }
 
 bool GetRequestPayloadSchemaVersionForTesting(
     const brillo::SecureBlob& input_cbor, int* value) {
-  const auto& cbor = ReadCborPayload(input_cbor);
+  const auto& cbor = ReadCborMap(input_cbor);
   if (!cbor) {
-    return false;
-  }
-  if (!cbor->is_map()) {
-    LOG(ERROR) << "Request associated data is not a cbor map.";
     return false;
   }
 
@@ -510,6 +415,15 @@ bool GetRequestPayloadSchemaVersionForTesting(
   }
   *value = value_entry->second.GetInteger();
   return true;
+}
+
+int GetCborMapSize(const brillo::SecureBlob& input_cbor) {
+  const auto& cbor = ReadCborMap(input_cbor);
+  if (!cbor) {
+    return -1;
+  }
+
+  return cbor->GetMap().size();
 }
 
 }  // namespace cryptorecovery
