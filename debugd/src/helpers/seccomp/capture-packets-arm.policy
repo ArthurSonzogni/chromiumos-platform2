@@ -25,6 +25,8 @@ capget: 1
 capset: 1
 execve: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 bind: 1
 mount: 1

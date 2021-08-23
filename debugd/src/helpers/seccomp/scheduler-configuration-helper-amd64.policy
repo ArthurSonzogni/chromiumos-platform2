@@ -23,6 +23,8 @@ execve: 1
 set_robust_list: 1
 rt_sigprocmask: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 restart_syscall: 1
 exit: 1
 arch_prctl: 1

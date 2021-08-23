@@ -29,6 +29,8 @@ rt_sigreturn: 1
 set_robust_list: 1
 set_tid_address: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 lseek: 1
 munmap: 1
 arch_prctl: 1

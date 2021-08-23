@@ -43,6 +43,8 @@ connect: 1
 rt_sigprocmask: 1
 arch_prctl: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 exit: 1
 set_tid_address: 1
 listen: 1

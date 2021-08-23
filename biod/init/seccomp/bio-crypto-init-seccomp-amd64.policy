@@ -7,6 +7,8 @@
 
 # clone: bio_crypto_init forks a child process
 access: 1
+faccessat: 1
+faccessat2: 1
 clock_gettime: 1
 clock_nanosleep: 1
 clone: 1

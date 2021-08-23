@@ -46,6 +46,8 @@ read: 1
 write: 1
 close: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 # For device policy to walk through the directory of interest.
 getdents: 1
 getdents64: 1

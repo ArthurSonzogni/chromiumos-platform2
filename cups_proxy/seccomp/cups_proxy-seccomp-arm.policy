@@ -6,6 +6,8 @@
 _llseek: 1
 _newselect: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 accept4: 1
 bind: 1
 brk: 1

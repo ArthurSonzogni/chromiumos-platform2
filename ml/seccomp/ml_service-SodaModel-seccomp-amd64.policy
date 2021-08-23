@@ -5,6 +5,8 @@
 # This file lists out the seccomp policy for allowed syscalls for
 # SodaModel.
 access: 1
+faccessat: 1
+faccessat2: 1
 brk: 1
 clock_gettime: 1
 clock_nanosleep: 1

@@ -17,6 +17,8 @@ write: 1
 creat: 1
 chown: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 mount: arg3 == MS_BIND || arg3 == MS_NOSUID|MS_NODEV|MS_NOEXEC
 rename: 1
 # mknod should only be used to create FIFOs. 010777 means

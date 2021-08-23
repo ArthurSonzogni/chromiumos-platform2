@@ -15,6 +15,8 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 brk: 1
 rt_sigprocmask: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 epoll_wait: 1
 dup: 1
 dup2: 1

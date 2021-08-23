@@ -32,6 +32,8 @@ set_robust_list: 1
 lstat64: 1
 execve: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 # ARM_set_tls: Manually changed set_tls to ARM_set_tls.
 ARM_set_tls: 1
 set_tid_address: 1

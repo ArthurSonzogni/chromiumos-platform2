@@ -5,6 +5,8 @@
 # Use the run_biod_strace.sh script to generate an initial list of syscalls.
 
 access: 1
+faccessat: 1
+faccessat2: 1
 brk: 1
 chown: 1
 clock_getres: 1

@@ -27,6 +27,8 @@ getegid: 1
 prctl: arg0 == PR_GET_DUMPABLE
 uname: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 arch_prctl: 1
 set_tid_address: 1
 set_robust_list: 1

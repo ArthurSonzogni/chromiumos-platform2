@@ -38,6 +38,8 @@ ioctl: arg1 == 0xc108ec01 || arg1 == 0xc014ec00 || arg1 == 0xc0283a00
 brk: 1
 rt_sigaction: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 arch_prctl: 1
 munmap: 1
 set_tid_address: 1

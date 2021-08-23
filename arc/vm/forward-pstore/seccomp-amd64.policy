@@ -35,6 +35,8 @@ pipe2: 1
 socket: arg0 == AF_UNIX
 connect: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 arch_prctl: 1
 set_tid_address: 1
 set_robust_list: 1

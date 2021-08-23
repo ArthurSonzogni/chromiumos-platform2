@@ -43,6 +43,8 @@ close: 1
 exit_group: 1
 stat: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 

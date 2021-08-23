@@ -13,6 +13,8 @@ mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 munmap: 1
 brk: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 write: 1
 restart_syscall: 1
 exit: 1

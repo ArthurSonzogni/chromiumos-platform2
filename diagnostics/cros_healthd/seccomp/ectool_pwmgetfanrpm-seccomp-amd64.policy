@@ -12,6 +12,8 @@ newfstatat: 1
 close: 1
 read: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 munmap: 1
 set_robust_list: 1
 rt_sigprocmask: 1

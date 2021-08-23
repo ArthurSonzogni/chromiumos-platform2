@@ -5,6 +5,8 @@
 # Please see memd-seccomp.policy.amd64 for comments.
 
 access: 1
+faccessat: 1
+faccessat2: 1
 brk: 1
 clock_getres: 1
 clock_getres_time64: 1

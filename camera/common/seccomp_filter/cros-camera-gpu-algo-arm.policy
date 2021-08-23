@@ -21,6 +21,8 @@ eventfd2: 1
 execve: 1
 exit: 1
 exit_group: 1
+faccessat: 1
+faccessat2: 1
 fcntl64: 1
 fstat64: 1
 fstatfs64: 1

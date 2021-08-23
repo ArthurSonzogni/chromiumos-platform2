@@ -33,6 +33,8 @@ fcntl: 1
 pipe2: 1
 connect: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 socket: arg0 == AF_UNIX
 munmap: 1
 rt_sigaction: 1

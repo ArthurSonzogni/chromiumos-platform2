@@ -70,6 +70,8 @@ sigreturn: 1
 creat: 1
 execve: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 set_tid_address: 1
 stat64: 1
 statfs64: 1

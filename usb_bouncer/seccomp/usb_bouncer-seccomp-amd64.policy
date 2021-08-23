@@ -17,6 +17,8 @@ lseek: 1
 connect: 1
 socket: arg0 == AF_UNIX
 access: 1
+faccessat: 1
+faccessat2: 1
 exit_group: 1
 geteuid: 1
 getsockname: 1

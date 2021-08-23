@@ -40,6 +40,8 @@ close: 1
 exit_group: 1
 stat: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 sched_getattr: 1
 sched_setattr: 1
 

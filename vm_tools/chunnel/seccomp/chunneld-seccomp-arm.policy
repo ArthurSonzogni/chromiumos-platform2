@@ -40,6 +40,8 @@ accept4: 1
 shutdown: 1
 uname: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 set_tid_address: 1
 eventfd2: 1

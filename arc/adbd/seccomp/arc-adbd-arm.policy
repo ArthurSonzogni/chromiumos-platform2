@@ -21,6 +21,8 @@ brk: 1
 gettimeofday: 1
 rt_sigprocmask: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 _llseek: 1
 rename: 1
 # mknod should only be used to create FIFOs. 010777 means

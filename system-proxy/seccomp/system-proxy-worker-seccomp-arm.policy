@@ -17,6 +17,8 @@ gettimeofday: 1
 write: 1
 uname: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 munmap: 1
 set_tid_address: 1

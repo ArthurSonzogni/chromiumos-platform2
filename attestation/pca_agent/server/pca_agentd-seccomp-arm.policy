@@ -59,6 +59,8 @@ statx: 1
 _llseek: 1
 fcntl64: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 
 fstatfs64: 1
 fstatfs: 1

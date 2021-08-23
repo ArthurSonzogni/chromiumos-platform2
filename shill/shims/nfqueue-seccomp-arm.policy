@@ -22,6 +22,8 @@ futex: 1
 futex_time64: 1
 brk: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 rt_sigaction: 1
 getsockname: 1
 munmap: 1

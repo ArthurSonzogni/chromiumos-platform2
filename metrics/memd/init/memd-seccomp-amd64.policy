@@ -7,6 +7,8 @@
 # strace -f minijail0 -i /usr/bin/memd always-poll-fast >& /tmp/memd.strace & sleep 3; dbus-send --system --type=signal / org.chromium.EventLogger.ChromeEvent string:tab-discard
 
 access: 1
+faccessat: 1
+faccessat2: 1
 arch_prctl: 1
 brk: 1
 clock_getres: 1

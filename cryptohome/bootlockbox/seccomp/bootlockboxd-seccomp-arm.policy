@@ -53,6 +53,8 @@ prctl: arg0 == PR_SET_NAME
 clock_getres: 1
 clock_getres_time64: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 setpriority: 1
 _llseek: 1

@@ -39,6 +39,8 @@ clock_getres: 1
 rt_sigprocmask: 1
 arch_prctl: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 set_tid_address: 1
 set_robust_list: 1
 signalfd4: 1

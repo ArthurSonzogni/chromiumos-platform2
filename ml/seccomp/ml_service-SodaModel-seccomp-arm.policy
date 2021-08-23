@@ -6,6 +6,8 @@
 # SodaModel on 32-bit ARM.
 _llseek: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 brk: 1
 clock_gettime64: 1

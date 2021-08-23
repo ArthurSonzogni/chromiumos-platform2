@@ -47,6 +47,8 @@ rt_sigreturn: 1
 sched_getparam: 1
 rt_sigprocmask: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 getrlimit: 1
 set_tid_address: 1
 clone: 1

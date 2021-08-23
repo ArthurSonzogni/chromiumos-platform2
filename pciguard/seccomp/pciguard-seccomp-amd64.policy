@@ -6,6 +6,8 @@
 # https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
 
 access: 1
+faccessat: 1
+faccessat2: 1
 bind: 1
 brk: 1
 clock_getres: 1

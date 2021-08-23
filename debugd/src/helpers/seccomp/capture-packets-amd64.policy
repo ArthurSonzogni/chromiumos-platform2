@@ -23,6 +23,8 @@ capset: 1
 write: 1
 execve: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 arch_prctl: 1
 bind: 1
 uname: 1

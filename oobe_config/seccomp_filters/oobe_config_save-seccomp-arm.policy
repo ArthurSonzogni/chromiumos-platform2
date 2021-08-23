@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 brk: 1
 epoll_create1: 1

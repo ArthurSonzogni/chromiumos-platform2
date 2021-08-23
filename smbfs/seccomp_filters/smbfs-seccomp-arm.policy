@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 access: 1
+faccessat: 1
+faccessat2: 1
 bind: 1
 brk: 1
 chdir: 1

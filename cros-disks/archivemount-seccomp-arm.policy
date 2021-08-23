@@ -5,6 +5,8 @@
 ARM_set_tls: 1
 _llseek: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 brk: 1
 chdir: 1
 clock_gettime64: 1

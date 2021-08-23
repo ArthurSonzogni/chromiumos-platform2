@@ -96,6 +96,8 @@ sendmmsg: 1
 
 # Used by the http transfer.
 access: 1
+faccessat: 1
+faccessat2: 1
 alarm: 1
 bind: 1
 

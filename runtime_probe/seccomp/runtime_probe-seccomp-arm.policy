@@ -26,6 +26,8 @@ getegid32: 1
 rt_sigprocmask: 1
 send: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 ARM_set_tls: 1
 _llseek: 1
 getpid: 1

@@ -12,6 +12,8 @@ fstat: 1
 newfstatat: 1
 close: 1
 access: 1
+faccessat: 1
+faccessat2: 1
 epoll_wait: 1
 recvmsg: 1
 fcntl: 1
