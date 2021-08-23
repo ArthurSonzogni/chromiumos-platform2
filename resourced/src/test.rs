@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::common::parse_file_to_u64;
+use crate::common::{parse_file_to_u64, set_epp};
 use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
     parse_psi_memory, MemInfo,
 };
+
+use tempfile::TempDir;
 
 #[test]
 fn test_parse_file_to_u64() {
@@ -182,4 +184,28 @@ fn test_parse_margins() {
     assert_eq!(margins.len(), 2);
     assert_eq!(margins[0], 123);
     assert_eq!(margins[1], 456);
+}
+
+#[test]
+fn test_set_epp() {
+    let dir = TempDir::new().unwrap();
+
+    // Create the fake sysfs paths in temp directory
+    let mut tpb0 = dir.path().to_owned();
+    tpb0.push("sys/devices/system/cpu/cpufreq/policy0/");
+    // let dirpath_str0 = tpb0.clone().into_os_string().into_string().unwrap();
+    std::fs::create_dir_all(&tpb0).unwrap();
+
+    let mut tpb1 = dir.path().to_owned();
+    tpb1.push("sys/devices/system/cpu/cpufreq/policy1/");
+    std::fs::create_dir_all(&tpb1).unwrap();
+
+    // Set the EPP
+    set_epp(dir.path().to_str().unwrap(), "179").unwrap();
+
+    // Verify that files were written
+    tpb0.push("energy_performance_preference");
+    tpb1.push("energy_performance_preference");
+    assert_eq!(std::fs::read_to_string(&tpb0).unwrap(), "179".to_string());
+    assert_eq!(std::fs::read_to_string(&tpb1).unwrap(), "179".to_string());
 }

@@ -61,12 +61,41 @@ pub enum RTCAudioActive {
 
 static RTC_ACTIVE: Lazy<Mutex<RTCAudioActive>> = Lazy::new(|| Mutex::new(RTCAudioActive::Inactive));
 
+// Set EPP value in sysfs for Intel devices with X86_FEATURE_HWP_EPP support.
+// On !X86_FEATURE_HWP_EPP Intel devices, an integer write to the sysfs node
+// will fail with -EINVAL.
+pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
+    let entries = std::fs::read_dir(root_path.to_string() + "/sys/devices/system/cpu/cpufreq/")?;
+
+    for entry in entries {
+        let entry_str = entry.map(|e| e.path())?.display().to_string();
+
+        if entry_str.contains("policy") {
+            let file_path = entry_str + "/energy_performance_preference";
+            match std::fs::write(&file_path, value) {
+                Ok(_) => (),
+                Err(_) => bail!("Failed to set EPP sysfs value!"),
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
     match RTC_ACTIVE.lock() {
         Ok(mut data) => {
             *data = mode;
-            Ok(())
+
+            let epp_value = if mode == RTCAudioActive::Active {
+                "179" // Set EPP to 70%
+            } else {
+                "balance_performance" // Default EPP
+            };
+
+            set_epp("/", &epp_value).context("Failed to set EPP sysfs value!")
         }
+
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
 }

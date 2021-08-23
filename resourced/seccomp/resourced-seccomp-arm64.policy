@@ -15,6 +15,7 @@ fcntl: 1
 fstat: 1
 futex: 1
 newfstatat: 1
+getdents64: 1
 geteuid: 1
 getpid: 1
 getresgid: 1
