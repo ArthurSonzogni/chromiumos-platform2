@@ -251,10 +251,16 @@ SenderBase::SenderBase(std::unique_ptr<base::Clock> clock,
                        const SenderBase::Options& options)
     : sleep_function_(options.sleep_function),
       hold_off_time_(options.hold_off_time),
+      log_extra_times_(options.log_extra_times),
       clock_(std::move(clock)),
       session_manager_proxy_(options.session_manager_proxy) {}
 
 base::File SenderBase::AcquireLockFileOrDie() {
+  // TODO(b/197518716): Remove extra logging once this flake is resolved.
+  if (log_extra_times_) {
+    LOG(INFO) << "AcquireLockFileOrDie: " << base::Time::Now();
+  }
+
   base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   base::File lock_file(lock_file_path, base::File::FLAG_OPEN_ALWAYS |
                                            base::File::FLAG_READ |
@@ -276,6 +282,11 @@ base::File SenderBase::AcquireLockFileOrDie() {
   while (clock_->Now() < stop_time) {
     if (lock_file.Lock(base::File::LockMode::kExclusive) ==
         base::File::FILE_OK) {
+      // TODO(b/197518716): Remove extra logging once this flake is resolved.
+      if (log_extra_times_) {
+        LOG(INFO) << "AcquireLockFileOrDie: early return: "
+                  << base::Time::Now();
+      }
       return lock_file;
     }
     const base::TimeDelta kSleepTime = base::TimeDelta::FromSeconds(1);
@@ -294,10 +305,18 @@ base::File SenderBase::AcquireLockFileOrDie() {
     // separate return code corresponding to EWOULDBLOCK.
     LOG(ERROR) << "Failed to acquire a lock: "
                << base::File::ErrorToString(result);
+    // TODO(b/197518716): Remove extra logging once this flake is resolved.
+    if (log_extra_times_) {
+      LOG(INFO) << "AcquireLockFileOrDie: failure: " << base::Time::Now();
+    }
     RecordCrashDone();
     exit(EXIT_FAILURE);
   }
 
+  // TODO(b/197518716): Remove extra logging once this flake is resolved.
+  if (log_extra_times_) {
+    LOG(INFO) << "AcquireLockFileOrDie: late return: " << base::Time::Now();
+  }
   return lock_file;
 }
 

@@ -49,6 +49,8 @@ base::Time AdvancingClock::Now() const {
 // Fake sleep function that records the requested sleep time.
 void FakeSleep(std::vector<base::TimeDelta>* sleep_times,
                base::TimeDelta duration) {
+  LOG(INFO) << "FakeSleep(" << duration
+            << "); real time: " << base::Time::Now();
   sleep_times->push_back(duration);
 }
 

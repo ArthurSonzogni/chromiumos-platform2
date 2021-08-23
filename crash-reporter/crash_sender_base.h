@@ -169,6 +169,9 @@ class SenderBase {
 
     // Alternate sleep function for unit testing.
     base::RepeatingCallback<void(base::TimeDelta)> sleep_function;
+
+    // Whether to log times in AcquireLockFileOrDie.
+    bool log_extra_times = false;
   };
 
   SenderBase(std::unique_ptr<base::Clock> clock, const Options& options);
@@ -259,6 +262,7 @@ class SenderBase {
   scoped_refptr<dbus::Bus> bus_;
   bool crash_during_testing_ = false;
   const base::TimeDelta hold_off_time_;
+  const bool log_extra_times_ = false;
 
  private:
   // Looks through |keys| in the os-release data using brillo::OsReleaseReader.

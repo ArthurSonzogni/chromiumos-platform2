@@ -2125,12 +2125,15 @@ TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
+  options.log_extra_times = true;
   Sender sender(std::move(metrics_lib_),
                 std::make_unique<test_util::AdvancingClock>(), options);
   base::Time start_time = base::Time::Now();
+  LOG(INFO) << "About to launch AcquireLockFileOrDie(): " << base::Time::Now();
   EXPECT_EXIT(sender.AcquireLockFileOrDie(), ExitedWithCode(EXIT_FAILURE),
               "Failed to acquire a lock");
-  LOG(INFO) << "AcquireLockFileOrDie took " << base::Time::Now() - start_time;
+  LOG(INFO) << "AcquireLockFileOrDie took " << base::Time::Now() - start_time
+            << "; time is " << base::Time::Now();
   pid_t pid = lock_process->pid();
   EXPECT_NE(pid, 0) << "lock_process unexpectedly exited";
   EXPECT_TRUE(brillo::Process::ProcessExists(pid));
