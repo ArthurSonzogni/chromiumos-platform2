@@ -53,6 +53,7 @@ set_tid_address: 1
 set_robust_list: 1
 ugetrlimit: 1
 lstat64: 1
+readlink: 1
 unlink: 1
 rename: 1
 symlink: 1

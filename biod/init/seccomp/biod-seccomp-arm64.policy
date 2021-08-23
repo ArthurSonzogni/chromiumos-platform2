@@ -47,6 +47,7 @@ set_tid_address: 1
 set_robust_list: 1
 rt_sigprocmask: 1
 prlimit64: 1
+readlinkat: 1
 unlinkat: 1
 renameat: 1
 symlinkat: 1
