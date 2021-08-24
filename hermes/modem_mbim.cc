@@ -75,7 +75,7 @@ void ModemMbim::Initialize(EuiccManagerInterface* euicc_manager,
 }
 
 void ModemMbim::Shutdown() {
-  LOG(INFO) << __func__;
+  VLOG(2) << __func__;
   if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
     g_signal_handler_disconnect(device_.get(), indication_id_);
   device_.reset();
@@ -86,7 +86,7 @@ void ModemMbim::Shutdown() {
 }
 
 void ModemMbim::TransmitFromQueue() {
-  VLOG(2) << __func__ << "++";
+  VLOG(2) << __func__;
   if (tx_queue_.empty() || pending_response_ ||
       retry_initialization_callback_) {
     return;
@@ -162,7 +162,7 @@ void ModemMbim::MbimCreateNewDeviceCb(GObject* source,
 void ModemMbim::MbimDeviceOpenReadyCb(MbimDevice* device,
                                       GAsyncResult* res,
                                       ModemMbim* modem_mbim) {
-  VLOG(2) << __func__ << "++";
+  VLOG(2) << __func__;
   g_autoptr(GError) error = NULL;
   if (!mbim_device_open_finish(device, res, &error)) {
     LOG(ERROR) << "Failed  due to error: " << error->message;
@@ -492,7 +492,8 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
       mbim_message_ms_uicc_low_level_access_open_channel_response_parse(
           response, &status, &chl, &rsp_size, &rsp, &error)) {
     if (status != kMbimMessageSuccess) {
-      LOG(ERROR) << "Failed to open channel: " << error->message;
+      LOG(INFO) << "Could not open channel: " << error->message
+                << ". Inserted sim may not be an eSIM.";
       modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
       return;
     }
@@ -503,9 +504,10 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
   }
   if (g_error_matches(error, MBIM_STATUS_ERROR,
                       MBIM_STATUS_ERROR_OPERATION_NOT_ALLOWED)) {
-    LOG(ERROR) << "Operation not allowed from modem: " << error->message;
+    LOG(INFO) << "Modem FW may not support eSIM: " << error->message;
   } else {
-    LOG(ERROR) << "Failed to open channel" << error->message;
+    LOG(INFO) << "Could not open channel:" << error->message
+              << ". Inserted sim may not be an eSIM.";
   }
   modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
 }
@@ -725,12 +727,12 @@ void ModemMbim::FinishProfileOp(ResultCallback cb) {
 }
 
 void ModemMbim::RestoreActiveSlot(ResultCallback cb) {
-  LOG(INFO) << __func__ << "++";
+  LOG(INFO) << __func__;
   std::move(cb).Run(kModemSuccess);
 }
 
 bool ModemMbim::IsSimValidAfterEnable() {
-  VLOG(2) << __func__ << "++";
+  VLOG(2) << __func__;
   return false;
   // The sim issues a proactive refresh after an enable. This
   // function should return true immediately after the refresh completes,
@@ -744,7 +746,7 @@ bool ModemMbim::IsSimValidAfterEnable() {
 }
 
 bool ModemMbim::IsSimValidAfterDisable() {
-  VLOG(2) << __func__ << "++";
+  VLOG(2) << __func__;
   return false;
 }
 

@@ -52,7 +52,7 @@ void Daemon::RegisterDBusObjectsAsync(
   manager_ = std::make_unique<Manager>();
   auto cb = base::BindOnce([](int err) {
     if (err) {
-      LOG(ERROR) << "eSIM init failed with err:" << err;
+      LOG(INFO) << "Could not find eSIM:" << err;
       return;
     }
     LOG(INFO) << "eSIM init finished";
