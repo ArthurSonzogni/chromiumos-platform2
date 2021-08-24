@@ -70,13 +70,18 @@ pub fn register(dispatcher: &mut Dispatcher) {
 }
 
 fn packet_capture_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
+    let help = create_help_string();
+    w.write_all(help.as_bytes()).unwrap();
+    w.flush().unwrap();
+}
+
+fn create_help_string() -> String {
     let mut help = "Usage: packet_capture [options]\n".to_string();
     for flag in FLAGS.iter() {
         help.push_str(&format!("\t--{} \t{}\n", flag.0, flag.1));
     }
     help.push_str(HELP);
-    w.write_all(help.as_bytes()).unwrap();
-    w.flush().unwrap();
+    help
 }
 
 fn stop_packet_capture(handle: &str) -> Result<(), dispatcher::Error> {
@@ -115,9 +120,16 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
         opts.optopt("", flag.0, flag.1, "");
     }
 
+    opts.optflag("h", "help", "print command usage");
+
     let matches = opts
         .parse(args.get_tokens())
         .map_err(|_| dispatcher::Error::CommandReturnedError)?;
+
+    if matches.opt_present("h") {
+        println!("{}", create_help_string());
+        return Ok(());
+    }
 
     let mut dbus_options = HashMap::new();
     let dev_mode: bool = dev_commands_included();
