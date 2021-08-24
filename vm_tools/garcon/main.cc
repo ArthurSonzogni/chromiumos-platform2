@@ -37,8 +37,9 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
-#include "base/strings/string_number_conversions.h"
+#include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/system/sys_info.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/task_runner.h>
 #include <base/threading/thread.h>
@@ -199,6 +200,16 @@ int HandleDiskArgs(std::vector<std::string> args) {
   if (args.at(0) == kGetDiskInfoArg) {
     vm_tools::container::GetDiskInfoResponse response;
     vm_tools::garcon::HostNotifier::GetDiskInfo(&response);
+    // Error code 4 is for invalid requests; those that have incomplete meta
+    // data, don't originate from Borealis or are made when Chrome infra isn't
+    // set up. To support unorthodox workflows, we return basic information,
+    // rather than an error.
+    if (response.error() == 4) {
+      response.set_error(0);
+      response.set_available_space(
+          base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/")));
+      response.set_expandable_space(0);
+    }
     google::protobuf::util::MessageToJsonString(response, &output, options);
     std::cout << output << std::endl;
     if (response.error() == 0)
