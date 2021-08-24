@@ -5,13 +5,19 @@
 #ifndef RMAD_STATE_HANDLER_DEVICE_DESTINATION_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_DEVICE_DESTINATION_STATE_HANDLER_H_
 
+#include <memory>
+
 #include "rmad/state_handler/base_state_handler.h"
+#include "rmad/utils/cr50_utils.h"
 
 namespace rmad {
 
 class DeviceDestinationStateHandler : public BaseStateHandler {
  public:
   explicit DeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |cr50_utils_| for testing.
+  DeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store,
+                                std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kDeviceDestination);
   SET_REPEATABLE;
@@ -26,6 +32,8 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
   bool CanSkipHwwp() const;
+
+  std::unique_ptr<Cr50Utils> cr50_utils_;
 };
 
 }  // namespace rmad

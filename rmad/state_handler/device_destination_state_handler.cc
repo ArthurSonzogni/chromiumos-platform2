@@ -5,13 +5,16 @@
 #include "rmad/state_handler/device_destination_state_handler.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include <base/logging.h>
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-
-#include <base/logging.h>
+#include "rmad/utils/cr50_utils_impl.h"
 
 namespace rmad {
 
@@ -19,7 +22,13 @@ using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+}
+
+DeviceDestinationStateHandler::DeviceDestinationStateHandler(
+    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
+    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode DeviceDestinationStateHandler::InitializeState() {
   if (!state_.has_device_destination()) {
@@ -46,10 +55,16 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   StoreVars();
 
   // Check if conditions are met to skip disabling write protection and directly
-  // go to finalize step.
+  // go to Finalize step.
   if (CanSkipHwwp()) {
     return {.error = RMAD_ERROR_OK,
             .state_case = RmadState::StateCase::kFinalize};
+  }
+
+  // If factory mode is already enabled, go directly to WpDisableComplete state.
+  if (cr50_utils_->IsFactoryModeEnabled()) {
+    return {.error = RMAD_ERROR_OK,
+            .state_case = RmadState::StateCase::kWpDisableComplete};
   }
 
   return {.error = RMAD_ERROR_OK,
