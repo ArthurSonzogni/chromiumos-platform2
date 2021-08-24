@@ -102,18 +102,27 @@ void HdrNetProcessorImpl::TearDown() {
   processor_device_adapter_->TearDown();
 }
 
+void HdrNetProcessorImpl::SetOptions(const Options& options) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+
+  if (options.metadata_logger) {
+    metadata_logger_ = *options.metadata_logger;
+  }
+}
+
 bool HdrNetProcessorImpl::WriteRequestParameters(
     Camera3CaptureDescriptor* request) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  return processor_device_adapter_->WriteRequestParameters(request);
+  return processor_device_adapter_->WriteRequestParameters(request,
+                                                           metadata_logger_);
 }
 
 void HdrNetProcessorImpl::ProcessResultMetadata(
     Camera3CaptureDescriptor* result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  processor_device_adapter_->ProcessResultMetadata(result);
+  processor_device_adapter_->ProcessResultMetadata(result, metadata_logger_);
 }
 
 base::ScopedFD HdrNetProcessorImpl::Run(

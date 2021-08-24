@@ -36,12 +36,12 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
   ~HdrNetAeControllerImpl() = default;
   void RecordYuvBuffer(int frame_number,
                        buffer_handle_t buffer,
-                       base::ScopedFD acquire_fence);
-  void RecordAeMetadata(Camera3CaptureDescriptor* result);
-  void SetOptions(const Options& options);
-  float GetCalculatedHdrRatio(int frame_number) const;
-  bool WriteRequestAeParameters(Camera3CaptureDescriptor* request);
-  bool WriteResultFaceRectangles(Camera3CaptureDescriptor* result);
+                       base::ScopedFD acquire_fence) override;
+  void RecordAeMetadata(Camera3CaptureDescriptor* result) override;
+  void SetOptions(const Options& options) override;
+  float GetCalculatedHdrRatio(int frame_number) const override;
+  bool WriteRequestAeParameters(Camera3CaptureDescriptor* request) override;
+  bool WriteResultFaceRectangles(Camera3CaptureDescriptor* result) override;
 
  private:
   bool ShouldRunAe(int frame_number) const;
@@ -93,7 +93,7 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
   AeOverrideMode ae_override_mode_;
 
   // Metadata logger for tests and debugging.
-  std::unique_ptr<MetadataLogger> metadata_logger_;
+  MetadataLogger* metadata_logger_ = nullptr;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

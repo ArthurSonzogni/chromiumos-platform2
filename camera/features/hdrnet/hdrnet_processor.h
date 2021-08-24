@@ -32,6 +32,12 @@ class HdrNetProcessor {
       const camera_metadata_t* static_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner)>;
 
+  struct Options {
+    // MetadataLogger instance for logging and dumping per-frame metadata.
+    // Mainly used for testing and debugging.
+    base::Optional<MetadataLogger*> metadata_logger;
+  };
+
   virtual ~HdrNetProcessor() = default;
 
   // Initializes the HDRnet pipeline. |input_size| is the size of the input
@@ -41,6 +47,8 @@ class HdrNetProcessor {
                           const std::vector<Size>& output_sizes) = 0;
 
   virtual void TearDown() = 0;
+
+  virtual void SetOptions(const Options& options) = 0;
 
   // Per-frame callback to allow the HdrNetProcessor to set device specific
   // control metadata (e.g. vendor tags) for each capture request.

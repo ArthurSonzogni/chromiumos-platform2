@@ -50,6 +50,7 @@ constexpr char kTagRequestAeCompensation[] = "request.ae_compensation";
 constexpr char kTagRequestExpTime[] = "request.exposure_time_ns";
 constexpr char kTagRequestSensitivity[] = "request.sensitivity";
 constexpr char kTagShortTet[] = "short_tet";
+constexpr char kTagToneMapCurve[] = "tonemap_curve";
 constexpr char kTagWhiteLevel[] = "white_level";
 
 // AeStatsInput is used to specify how Gcam AE computes the AE stats input to

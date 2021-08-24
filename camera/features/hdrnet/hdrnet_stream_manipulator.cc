@@ -44,6 +44,8 @@ inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
   return (s1->width * s2->height == s1->height * s2->width);
 }
 
+constexpr char kMetadataDumpPath[] = "/usr/local/hdrnet/frame_metadata.log";
+
 }  // namespace
 
 //
@@ -383,6 +385,31 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     return true;
   }
 
+  HdrNetConfig::Options options = config_.GetOptions();
+  if (options.log_frame_metadata) {
+    if (!metadata_logger_) {
+      metadata_logger_ =
+          std::make_unique<MetadataLogger>(MetadataLogger::Options{
+              .dump_path = base::FilePath(kMetadataDumpPath)});
+    }
+  } else {
+    metadata_logger_ = nullptr;
+  }
+  ae_controller_->SetOptions({
+      .enabled = options.gcam_ae_enable,
+      .ae_frame_interval = options.ae_frame_interval,
+      .max_hdr_ratio = options.max_hdr_ratio,
+      .use_cros_face_detector = options.use_cros_face_detector,
+      .fd_frame_interval = options.fd_frame_interval,
+      .ae_stats_input_mode = options.ae_stats_input_mode,
+      .ae_override_mode = options.ae_override_mode,
+      .exposure_compensation = options.exposure_compensation,
+      .metadata_logger = metadata_logger_.get(),
+  });
+  for (auto& context : hdrnet_stream_context_) {
+    context->processor->SetOptions({.metadata_logger = metadata_logger_.get()});
+  }
+
   UpdateRequestSettingsOnGpuThread(request);
 
   // First, pick the set of HDRnet stream that we will put into the request.
@@ -503,7 +530,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     }
     if (options.hdrnet_enable) {
       // Result metadata may come before the buffers due to partial results.
-      for (const auto& context : stream_replace_context_) {
+      for (const auto& context : hdrnet_stream_context_) {
         // TODO(jcliang): Update the LUT textures once and share it with all
         // processors.
         context->processor->ProcessResultMetadata(result);
@@ -790,13 +817,13 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
   }
 
   std::vector<Size> all_output_sizes;
-  for (const auto& context : stream_replace_context_) {
+  for (const auto& context : hdrnet_stream_context_) {
     all_output_sizes.push_back(
         Size(context->hdrnet_stream->width, context->hdrnet_stream->height));
   }
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
-  for (const auto& context : stream_replace_context_) {
+  for (const auto& context : hdrnet_stream_context_) {
     camera3_stream_t* stream = context->hdrnet_stream.get();
     Size stream_size(stream->width, stream->height);
     std::vector<Size> viable_output_sizes;
@@ -854,7 +881,7 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   DCHECK(gpu_thread_.IsCurrentThread());
 
   request_buffer_info_.clear();
-  stream_replace_context_.clear();
+  hdrnet_stream_context_.clear();
   request_stream_mapping_.clear();
   result_stream_mapping_.clear();
 }
@@ -868,19 +895,6 @@ void HdrNetStreamManipulator::UpdateRequestSettingsOnGpuThread(
     return;
   }
 
-  HdrNetConfig::Options options = config_.GetOptions();
-  HdrNetAeController::Options ae_controller_options = {
-      .enabled = options.gcam_ae_enable,
-      .ae_frame_interval = options.ae_frame_interval,
-      .max_hdr_ratio = options.max_hdr_ratio,
-      .use_cros_face_detector = options.use_cros_face_detector,
-      .fd_frame_interval = options.fd_frame_interval,
-      .ae_stats_input_mode = options.ae_stats_input_mode,
-      .ae_override_mode = options.ae_override_mode,
-      .exposure_compensation = options.exposure_compensation,
-      .log_frame_metadata = options.log_frame_metadata,
-  };
-  ae_controller_->SetOptions(ae_controller_options);
   ae_controller_->WriteRequestAeParameters(request);
 }
 
@@ -911,7 +925,7 @@ HdrNetStreamManipulator::CreateHdrNetStreamContext(camera3_stream_t* requested,
   HdrNetStreamContext* addr = context.get();
   request_stream_mapping_[requested] = addr;
   result_stream_mapping_[context->hdrnet_stream.get()] = addr;
-  stream_replace_context_.emplace_back(std::move(context));
+  hdrnet_stream_context_.emplace_back(std::move(context));
   return addr;
 }
 

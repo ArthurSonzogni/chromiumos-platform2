@@ -32,12 +32,12 @@ bool HdrNetProcessorDeviceAdapter::Initialize() {
 void HdrNetProcessorDeviceAdapter::TearDown() {}
 
 bool HdrNetProcessorDeviceAdapter::WriteRequestParameters(
-    Camera3CaptureDescriptor* request) {
+    Camera3CaptureDescriptor* request, MetadataLogger* metadata_logger) {
   return true;
 }
 
 void HdrNetProcessorDeviceAdapter::ProcessResultMetadata(
-    Camera3CaptureDescriptor* result) {}
+    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger) {}
 
 bool HdrNetProcessorDeviceAdapter::Preprocess(
     const HdrNetConfig::Options& options,

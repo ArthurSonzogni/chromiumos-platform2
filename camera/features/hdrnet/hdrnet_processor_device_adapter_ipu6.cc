@@ -97,7 +97,7 @@ void HdrNetProcessorDeviceAdapterIpu6::TearDown() {
 }
 
 bool HdrNetProcessorDeviceAdapterIpu6::WriteRequestParameters(
-    Camera3CaptureDescriptor* request) {
+    Camera3CaptureDescriptor* request, MetadataLogger* metadata_logger) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   std::array<uint8_t, 1> tonemap_curve_enable = {
@@ -112,7 +112,7 @@ bool HdrNetProcessorDeviceAdapterIpu6::WriteRequestParameters(
 }
 
 void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   // TODO(jcliang): Theoretically metadata can come after the buffer as well.
   // Currently the pipeline would break if the metadata come after the buffers.
@@ -128,6 +128,11 @@ void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
     CHECK_EQ(tonemap_curve.size(), num_curve_points_ * 2);
     gtm_lut_ = CreateGainLutTexture(tonemap_curve, false);
     inverse_gtm_lut_ = CreateGainLutTexture(tonemap_curve, true);
+
+    if (metadata_logger) {
+      metadata_logger->Log(result->frame_number(), kTagToneMapCurve,
+                           tonemap_curve);
+    }
   }
 }
 

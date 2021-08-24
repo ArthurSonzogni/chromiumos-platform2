@@ -125,6 +125,7 @@ class MockHdrNetProcessor : public HdrNetProcessor {
               (Size input_size, const std::vector<Size>& output_sizes),
               (override));
   MOCK_METHOD(void, TearDown, (), (override));
+  MOCK_METHOD(void, SetOptions, (const Options& options), (override));
   MOCK_METHOD(bool,
               WriteRequestParameters,
               (Camera3CaptureDescriptor * request),

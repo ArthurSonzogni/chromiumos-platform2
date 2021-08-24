@@ -30,8 +30,6 @@ float IirFilterLog2(float current_value, float new_value, float strength) {
   return std::exp2f(next_log);
 }
 
-constexpr char kMetadataDumpPath[] = "/usr/local/hdrnet/ae_metadata.log";
-
 }  // namespace
 
 // static
@@ -295,7 +293,7 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
   }
 
   // AE stats.
-  ae_device_adapter_->ExtractAeStats(result, metadata_logger_.get());
+  ae_device_adapter_->ExtractAeStats(result, metadata_logger_);
 
   if (ShouldRunAe(result->frame_number())) {
     MaybeRunAE(result->frame_number());
@@ -355,17 +353,8 @@ void HdrNetAeControllerImpl::SetOptions(const Options& options) {
     base_exposure_compensation_ = *options.exposure_compensation;
   }
 
-  if (options.log_frame_metadata) {
-    bool start_logging = *options.log_frame_metadata;
-    if (start_logging) {
-      if (!metadata_logger_) {
-        metadata_logger_ =
-            std::make_unique<MetadataLogger>(MetadataLogger::Options{
-                .dump_path = base::FilePath(kMetadataDumpPath)});
-      }
-    } else {
-      metadata_logger_ = nullptr;
-    }
+  if (options.metadata_logger) {
+    metadata_logger_ = *options.metadata_logger;
   }
 }
 

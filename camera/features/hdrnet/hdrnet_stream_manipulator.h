@@ -190,10 +190,13 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   // The mapping between original and replacement buffers for in-flight
   // requests.
-  std::vector<std::unique_ptr<HdrNetStreamContext>> stream_replace_context_;
+  std::vector<std::unique_ptr<HdrNetStreamContext>> hdrnet_stream_context_;
   std::map<uint32_t, HdrNetBufferInfoList> request_buffer_info_;
   std::map<camera3_stream_t*, HdrNetStreamContext*> request_stream_mapping_;
   std::map<camera3_stream_t*, HdrNetStreamContext*> result_stream_mapping_;
+
+  // Metadata logger for tests and debugging.
+  std::unique_ptr<MetadataLogger> metadata_logger_;
 };
 
 }  // namespace cros

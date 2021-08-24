@@ -42,6 +42,7 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
   bool Initialize(Size input_size,
                   const std::vector<Size>& output_sizes) override;
   void TearDown() override;
+  void SetOptions(const Options& options) override;
   bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
   void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
   base::ScopedFD Run(
@@ -76,6 +77,9 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
   // for debugging.
   ScopedBufferHandle dump_buffer_ = nullptr;
   SharedImage dump_image_;
+
+  // Metadata logger for tests and debugging.
+  MetadataLogger* metadata_logger_ = nullptr;
 };
 
 }  // namespace cros
