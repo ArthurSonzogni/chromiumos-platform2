@@ -831,10 +831,13 @@ class SignatureSealedSecretTestCase final {
             key_spki_der_, param_.supported_algorithms, {pcr_values},
             delegate_blob_, delegate_secret_, &secret_value,
             &sealed_secret_data)) {
-      LOG(ERROR) << "Error: secret creation completed unexpectedly: " << *err;
-      return false;
+      // TODO(b/174816474): check the error message is expected.
+      LOG(INFO) << "Successfully failed to create signature-sealed secret: "
+                << *err;
+      return true;
     }
-    return true;
+    LOG(ERROR) << "Error: secret creation completed unexpectedly";
+    return false;
   }
 
   bool GetCurrentPcrValues(std::map<uint32_t, Blob>* pcr_values) {
