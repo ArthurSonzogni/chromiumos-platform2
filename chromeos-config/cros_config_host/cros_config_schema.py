@@ -413,6 +413,10 @@ def _GenerateInferredAshSwitches(device_config):
     if ext_id:
       ash_switches.add('--demo-mode-%s-extension=%s' % (ext_type, ext_id))
 
+  has_numpad = device_config.get('keyboard', {}).get('numpad')
+  if has_numpad:
+    ash_switches.add('--has-number-pad')
+
   if not ash_switches:
     return device_config
 
