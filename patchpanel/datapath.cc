@@ -224,9 +224,11 @@ void Datapath::Start() {
   // b/196899048: IPv4 TCP packets with TCP flags FIN,PSH coming from downstream
   // guests need to be dropped explicitly because SNAT will not apply to them
   // but the --state INVALID rule above will also not match for these packets.
+  // crbug/1241756: Make sure that only egress FINPSH packets are dropped.
   if (process_runner_->iptables(
-          "filter", {"-I", "FORWARD", "-p", "tcp", "--tcp-flags", "FIN,PSH",
-                     "FIN,PSH", "-j", "DROP", "-w"}) != 0) {
+          "filter",
+          {"-I", "FORWARD", "-s", kGuestIPv4Subnet, "-p", "tcp", "--tcp-flags",
+           "FIN,PSH", "FIN,PSH", "-j", "DROP", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH packets";
   }
 

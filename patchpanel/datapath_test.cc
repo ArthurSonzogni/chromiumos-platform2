@@ -316,7 +316,9 @@ TEST(DatapathTest, Start) {
        "filter -I FORWARD -m mark --mark 0x00000001/0x00000001 -m state "
        "--state INVALID -j DROP "
        "-w"},
-      {IPv4, "filter -I FORWARD -p tcp --tcp-flags FIN,PSH FIN,PSH -j DROP -w"},
+      {IPv4,
+       "filter -I FORWARD -s 100.115.92.0/23 -p tcp --tcp-flags FIN,PSH "
+       "FIN,PSH -j DROP -w"},
       {IPv4,
        "nat -A POSTROUTING -m mark --mark 0x00000001/0x00000001 -j MASQUERADE "
        "-w"},
