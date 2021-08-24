@@ -300,16 +300,24 @@ void Profile::SetNicknameMethod(std::string nickname,
             << GetObjectPathForLog(object_path_);
   context_->lpa()->SetProfileNickname(
       GetIccid(), nickname, context_->executor(),
-      [this, response{std::shared_ptr<DBusResponse<>>(std::move(response))}](
+      [this, nickname,
+       response{std::shared_ptr<DBusResponse<>>(std::move(response))}](
           int error) mutable {
         auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
         if (decoded_error) {
           LOG(ERROR) << "Failed to set profile nickname: "
                      << decoded_error->GetMessage();
+          response->ReplyWithError(decoded_error.get());
+          return;
         }
+        this->SetNickname(nickname);
+        auto report_success =
+            base::BindOnce([](std::shared_ptr<DBusResponse<>> response) {
+              response->Return();
+            });
         context_->modem_control()->RestoreActiveSlot(
             base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
-                           base::DoNothing(), std::move(response)));
+                           std::move(report_success), std::move(response)));
       });
 }
 
