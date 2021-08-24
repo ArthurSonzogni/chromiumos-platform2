@@ -459,7 +459,7 @@ start_capture ()
 usage ()
 {
   echo "Usage: $0 [ --device <device> ] [ --frequency <frequency> ] "
-  echo "        [ --max-size <max_size> ] "
+  echo "        [ --max-size <max size in MiB> ] "
   echo "        [ --ht-location <above|below> ] "
   echo "        [ --vht-width <80|160> ] "
   echo "        [ --monitor-connection-on <monitored_device> ] "
