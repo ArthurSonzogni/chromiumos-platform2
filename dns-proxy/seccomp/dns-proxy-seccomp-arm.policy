@@ -12,6 +12,8 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 epoll_wait: 1
 fstat64: 1
+fstatat64: 1
+statx: 1
 stat64: 1
 poll: 1
 rt_sigprocmask: 1

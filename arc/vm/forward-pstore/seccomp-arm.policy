@@ -15,6 +15,8 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 gettimeofday: 1
 fstat64: 1
+fstatat64: 1
+statx: 1
 send: 1
 getpid: 1
 stat64: 1

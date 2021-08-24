@@ -18,6 +18,7 @@ exit_group: 1
 fcntl64: 1
 flock: 1
 fstat64: 1
+fstatat64: 1
 fstatfs64: 1
 fstatfs: 1
 futex: 1
@@ -40,4 +41,5 @@ recvmsg: 1
 rt_sigprocmask: 1
 send: 1
 socket: arg0 == AF_UNIX
+statx: 1
 write: 1

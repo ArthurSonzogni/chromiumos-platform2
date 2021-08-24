@@ -52,6 +52,8 @@ wait4: 1
 gettid: 1
 geteuid32: 1
 fstat64: 1
+fstatat64: 1
+statx: 1
 pipe2: 1
 epoll_ctl: 1
 getresgid32: 1

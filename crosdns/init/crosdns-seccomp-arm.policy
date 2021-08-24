@@ -23,6 +23,8 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 getgid32: 1
 fstat64: 1
+fstatat64: 1
+statx: 1
 getegid32: 1
 getuid32: 1
 rename: 1

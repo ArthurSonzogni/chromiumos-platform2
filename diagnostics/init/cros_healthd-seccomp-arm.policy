@@ -34,6 +34,8 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 brk: 1
 sched_getaffinity: 1
 fstat64: 1
+fstatat64: 1
+statx: 1
 fcntl64: 1
 munmap: 1
 getppid: 1

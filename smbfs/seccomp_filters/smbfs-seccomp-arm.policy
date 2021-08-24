@@ -29,6 +29,7 @@ fallocate: 1
 fcntl64: 1
 fdatasync: 1
 fstat64: 1
+fstatat64: 1
 fstatfs: 1
 fstatfs64: 1
 ftruncate64: 1
@@ -105,6 +106,7 @@ socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6 || \
         arg0 == AF_NETLINK && arg2 == 0
 socketpair: 1
 stat64: 1
+statx: 1
 ugetrlimit: 1
 umask: 1
 uname: 1

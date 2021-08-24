@@ -23,6 +23,7 @@ exit: 1
 exit_group: 1
 fcntl64: 1
 fstat64: 1
+fstatat64: 1
 fstatfs64: 1
 fstatfs: 1
 futex: 1
@@ -72,6 +73,7 @@ socketpair: 1
 stat64: 1
 statfs64: 1
 statfs: 1
+statx: 1
 tgkill: 1
 ugetrlimit: 1
 umask: 1
