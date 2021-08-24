@@ -89,6 +89,82 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureARM) {
                                                      kernel_util::kArchArm));
 }
 
+TEST(KernelUtilTest, ComputeKernelStackSignatureARM64SoftwarePAN) {
+  // "NULL pointer dereference" takes a different exception path on some ARM64,
+  // so include a separate case for it.
+  const char kBugToPanic[] =
+      "<6>[  103.654739] lkdtm: Performing direct entry EXCEPTION\n"
+      "<1>[  103.654769] Unable to handle kernel access to user memory outside "
+      "uaccess routines at virtual address 0000000000000000\n"
+      "<1>[  103.654776] Mem abort info:\n"
+      "<1>[  103.654782]   ESR = 0x96000045\n"
+      "<1>[  103.654790]   EC = 0x25: DABT (current EL), IL = 32 bits\n"
+      "<1>[  103.654796]   SET = 0, FnV = 0\n"
+      "<1>[  103.654802]   EA = 0, S1PTW = 0\n"
+      "<1>[  103.654807] Data abort info:\n"
+      "<1>[  103.654813]   ISV = 0, ISS = 0x00000045\n"
+      "<1>[  103.654819]   CM = 0, WnR = 1\n"
+      "<1>[  103.654826] user pgtable: 4k pages, 39-bit VAs, "
+      "pgdp=000000005e07f000\n"
+      "<1>[  103.654833] [0000000000000000] pgd=0000000060b5d003, "
+      "p4d=0000000060b5d003, pud=0000000060b5d003, pmd=0000000000000000\n"
+      "<0>[  103.654854] Internal error: Oops: 96000045 [#1] PREEMPT SMP\n"
+      "<4>[  103.654862] Modules linked in: veth rfcomm algif_hash "
+      "algif_skcipher af_alg uinput xt_cgroup uvcvideo videobuf2_vmalloc "
+      "videobuf2_memops videobuf2_v4l2 videobuf2_common ntc_thermistor "
+      "xt_MASQUERADE rockchip_saradc ip6table_nat fuse btusb btrtl btintel "
+      "btbcm bluetooth ecdh_generic ecc iio_trig_sysfs cros_ec_sensors "
+      "cros_ec_sensors_core industrialio_triggered_buffer kfifo_buf "
+      "cros_ec_sensorhub lzo_rle mwifiex_pcie lzo_compress mwifiex zram "
+      "cfg80211 asix usbnet mii joydev\n"
+      "<4>[  103.654996] CPU: 1 PID: 4582 Comm: sh Not tainted 5.10.57 #100 "
+      "9711356a0d4e7b4f4bd6fa297fb43c393b08616a\n"
+      "<4>[  103.655002] Hardware name: Google Kevin (DT)\n"
+      "<4>[  103.655011] pstate: 60400005 (nZCv daif +PAN -UAO -TCO BTYPE=--)\n"
+      "<4>[  103.655027] pc : lkdtm_EXCEPTION+0x10/0x1c\n"
+      "<4>[  103.655037] lr : lkdtm_do_action+0x24/0x38\n"
+      "<4>[  103.655042] sp : ffffffc0171ebca0\n"
+      "<4>[  103.655049] x29: ffffffc0171ebca0 x28: ffffff802cc41e80 \n"
+      "<4>[  103.655060] x27: 0000000000000000 x26: 0000000000000000 \n"
+      "<4>[  103.655071] x25: 0000000000000000 x24: ffffffc010b46738 \n"
+      "<4>[  103.655082] x23: 0000000000000040 x22: ffffffc010d49e4d \n"
+      "<4>[  103.655093] x21: ffffffc010b46778 x20: ffffffc0171ebde0 \n"
+      "<4>[  103.655103] x19: 000000000000000a x18: 00000000ffff0a10 \n"
+      "<4>[  103.655114] x17: 0000000000000000 x16: 00000000000000ec \n"
+      "<4>[  103.655125] x15: ffffffc0104c54ec x14: 0000000000000003 \n"
+      "<4>[  103.655135] x13: 0000000000000004 x12: 0000000000000000 \n"
+      "<4>[  103.655146] x11: 0000000000000000 x10: 0000000000000000 \n"
+      "<4>[  103.655157] x9 : ffffffc01066fe40 x8 : 0000000000000000 \n"
+      "<4>[  103.655168] x7 : 0000000000000000 x6 : ffffffc0111b7f0c \n"
+      "<4>[  103.655178] x5 : 0100000000000000 x4 : 0000000000000000 \n"
+      "<4>[  103.655189] x3 : ffffffc0171eb958 x2 : ffffff80f755aa70 \n"
+      "<4>[  103.655200] x1 : ffffff80f754a788 x0 : ffffffc010b46778 \n"
+      "<4>[  103.655211] Call trace:\n"
+      "<4>[  103.655221]  lkdtm_EXCEPTION+0x10/0x1c\n"
+      "<4>[  103.655229]  direct_entry+0x120/0x130\n"
+      "<4>[  103.655241]  full_proxy_write+0x74/0xa4\n"
+      "<4>[  103.655251]  vfs_write+0xec/0x2e4\n"
+      "<4>[  103.655259]  ksys_write+0x80/0xec\n"
+      "<4>[  103.655267]  __arm64_sys_write+0x24/0x30\n"
+      "<4>[  103.655278]  el0_svc_common+0xcc/0x1b4\n"
+      "<4>[  103.655286]  do_el0_svc_compat+0x28/0x3c\n"
+      "<4>[  103.655296]  el0_svc_compat+0x10/0x1c\n"
+      "<4>[  103.655305]  el0_sync_compat_handler+0xa8/0xcc\n"
+      "<4>[  103.655313]  el0_sync_compat+0x188/0x1c0\n"
+      "<0>[  103.655325] Code: aa1e03e9 d503201f d503233f aa1f03e8 (b900011f) "
+      "\n"
+      "<4>[  103.655334] ---[ end trace be4db89f163f6e56 ]---\n"
+      "<0>[  103.668172] Kernel panic - not syncing: Oops: Fatal exception\n"
+      "<2>[  103.668194] SMP: stopping secondary CPUs\n"
+      "<0>[  103.668207] Kernel Offset: disabled\n"
+      "<0>[  103.668216] CPU features: 0x0240022,6100600c\n"
+      "<0>[  103.668221] Memory Limit: none\n";
+
+  EXPECT_EQ("kernel-lkdtm_EXCEPTION-124321EE",
+            kernel_util::ComputeKernelStackSignature(kBugToPanic,
+                                                     kernel_util::kArchArm));
+}
+
 TEST(KernelUtilTest, ComputeKernelStackSignatureARM64) {
   const char kBugToPanic[] =
       "<4>[  263.786327] Modules linked in:\n"
