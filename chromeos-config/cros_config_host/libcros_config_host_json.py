@@ -28,9 +28,6 @@ from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
 sys.path.pop(0)
 
 
-UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
-
-
 class DeviceConfigJson(DeviceConfig):
   """JSON specific impl of DeviceConfig
 
