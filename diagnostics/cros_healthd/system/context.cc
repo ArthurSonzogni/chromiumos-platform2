@@ -13,6 +13,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "diagnostics/common/system/bluetooth_client_impl.h"
 #include "diagnostics/common/system/debugd_adapter_impl.h"
@@ -60,6 +62,8 @@ std::unique_ptr<Context> Context::Create(
   context->debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
       std::make_unique<org::chromium::debugdProxy>(dbus_bus));
   context->powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
+  context->tpm_manager_proxy_ =
+      std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
@@ -143,6 +147,10 @@ SystemUtilities* Context::system_utils() const {
 
 base::TickClock* Context::tick_clock() const {
   return tick_clock_.get();
+}
+
+org::chromium::TpmManagerProxyInterface* Context::tpm_manager_proxy() const {
+  return tpm_manager_proxy_.get();
 }
 
 UdevInterface* Context::udev() const {

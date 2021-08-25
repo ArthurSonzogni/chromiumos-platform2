@@ -30,6 +30,7 @@
 namespace org {
 namespace chromium {
 class debugdProxyInterface;
+class TpmManagerProxyInterface;
 
 namespace cras {
 class ControlProxyInterface;
@@ -101,6 +102,9 @@ class Context {
   base::TickClock* tick_clock() const;
   // Return current time.
   virtual const base::Time time() const;
+  // Use the object returned by tpm_manager_proxy() to get the tpm information
+  // from tpm manager.
+  org::chromium::TpmManagerProxyInterface* tpm_manager_proxy() const;
   // Use the object returned by udev() to access udev related interfaces.
   UdevInterface* udev() const;
 
@@ -134,6 +138,7 @@ class Context {
   std::unique_ptr<ExecutorAdapter> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<base::TickClock> tick_clock_;
+  std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<UdevInterface> udev_;
   base::FilePath root_dir_;
 };

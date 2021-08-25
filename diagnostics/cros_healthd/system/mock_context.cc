@@ -8,6 +8,8 @@
 
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 
 namespace diagnostics {
@@ -28,6 +30,8 @@ MockContext::MockContext() {
   system_utils_ = std::make_unique<FakeSystemUtilities>();
   executor_ = std::make_unique<MockExecutorAdapter>();
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
+  tpm_manager_proxy_ = std::make_unique<
+      testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
   udev_ = std::make_unique<FakeUdev>();
 
   CHECK(temp_dir_.CreateUniqueTempDir());
@@ -86,6 +90,12 @@ MockExecutorAdapter* MockContext::mock_executor() const {
 
 base::SimpleTestTickClock* MockContext::mock_tick_clock() const {
   return static_cast<base::SimpleTestTickClock*>(tick_clock_.get());
+}
+
+org::chromium::TpmManagerProxyMock* MockContext::mock_tpm_manager_proxy()
+    const {
+  return static_cast<testing::StrictMock<org::chromium::TpmManagerProxyMock>*>(
+      tpm_manager_proxy_.get());
 }
 
 FakeUdev* MockContext::fake_udev() const {

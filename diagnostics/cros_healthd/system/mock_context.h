@@ -24,6 +24,7 @@
 namespace org {
 namespace chromium {
 class debugdProxyMock;
+class TpmManagerProxyMock;
 
 namespace cras {
 class ControlProxyMock;
@@ -54,6 +55,7 @@ class MockContext final : public Context {
   FakeSystemUtilities* fake_system_utils() const;
   MockExecutorAdapter* mock_executor() const;
   base::SimpleTestTickClock* mock_tick_clock() const;
+  org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;
   FakeUdev* fake_udev() const;
 
   MOCK_METHOD(const base::Time, time, (), (const, override));
