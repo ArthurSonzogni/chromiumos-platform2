@@ -571,6 +571,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetRsuDeviceId(device_id);
   }
 
+  TPM_RC GetRoVerificationStatus(ApRoStatus* status) override {
+    return target_->GetRoVerificationStatus(status);
+  }
+
   bool IsCr50() override { return target_->IsCr50(); }
 
  private:

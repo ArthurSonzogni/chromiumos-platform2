@@ -267,6 +267,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                             std::string* cred_metadata_out,
                             std::string* mac_out) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
+  TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
 
   bool IsCr50() override;
 

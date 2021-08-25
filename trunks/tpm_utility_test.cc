@@ -3387,4 +3387,28 @@ TEST_F(TpmUtilityTest, NotCr50) {
   EXPECT_FALSE(utility_.IsCr50());
 }
 
+TEST_F(TpmUtilityTest, GetRoVerificationStatus) {
+  // A hand-coded kCr50SubcmdGetRoStatus command and response.
+  std::string command_response(
+      "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x0D"  // size=13
+      "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
+      "\x00\x39"          // subcommand=kCr50SubcmdGetRoStatus
+      "\x01",             // ApRoStatus=kApRoPass
+      13);
+  SetCr50(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+  TpmUtility::ApRoStatus status;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRoVerificationStatus(&status));
+  EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoPass);
+}
+
+TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotCr50) {
+  SetCr50(false);
+  TpmUtility::ApRoStatus status;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRoVerificationStatus(&status));
+  EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoUnsupported);
+}
+
 }  // namespace trunks

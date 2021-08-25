@@ -61,6 +61,7 @@ const uint16_t kCr50GetRmaChallenge = 30;
 const uint16_t kCr50SubcmdManageCCDPwd = 33;
 const uint16_t kCr50SubcmdGetAlertsData = 35;
 const uint16_t kCr50SubcmdPinWeaver = 37;
+const uint16_t kCr50SubcmdGetRoStatus = 57;
 
 // Auth policy used in RSA and ECC templates for EK keys generation.
 // From TCG Credential Profile EK 2.0. Section 2.1.5.
@@ -3104,6 +3105,26 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceId(std::string* device_id) {
     result = GetRsuDeviceIdInternal(&cached_rsu_device_id_);
   *device_id = cached_rsu_device_id_;
   return result;
+}
+
+TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ApRoStatus* status) {
+  if (!IsCr50()) {
+    *status = ApRoStatus::kApRoUnsupported;
+    return TPM_RC_SUCCESS;
+  }
+  std::string res;
+  TPM_RC result =
+      Cr50VendorCommand(kCr50SubcmdGetRoStatus, std::string(), &res);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Cr50VendorCommand failed";
+    return result;
+  }
+  if (res.size() < 1) {
+    LOG(ERROR) << __func__ << ": empty response";
+    return TPM_RC_FAILURE;
+  }
+  *status = static_cast<ApRoStatus>(res[0]);
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC TpmUtilityImpl::PinWeaverCsmeCommand(const std::string& in,
