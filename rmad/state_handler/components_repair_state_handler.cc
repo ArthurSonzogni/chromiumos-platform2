@@ -47,11 +47,10 @@ std::unordered_map<RmadComponent, RepairStatus> ConvertStateToDictionary(
   std::unordered_map<RmadComponent, RepairStatus> component_status_map;
   if (state.has_components_repair()) {
     const ComponentsRepairState& components_repair = state.components_repair();
-    for (int i = 0; i < components_repair.component_repair_size(); ++i) {
-      const ComponentRepairStatus& component_repair =
-          components_repair.component_repair(i);
-      const RmadComponent& component = component_repair.component();
-      const RepairStatus& repair_status = component_repair.repair_status();
+    for (int i = 0; i < components_repair.components_size(); ++i) {
+      const ComponentRepairStatus& components = components_repair.components(i);
+      const RmadComponent& component = components.component();
+      const RepairStatus& repair_status = components.repair_status();
       if (component == RMAD_COMPONENT_UNKNOWN) {
         LOG(WARNING) << "RmadState component missing |component| field.";
         continue;
@@ -77,10 +76,9 @@ RmadState ConvertDictionaryToState(
       LOG(WARNING) << "Dictionary contains UNKNOWN component";
       continue;
     }
-    ComponentRepairStatus* component_repair =
-        components_repair->add_component_repair();
-    component_repair->set_component(component);
-    component_repair->set_repair_status(repair_status);
+    ComponentRepairStatus* components = components_repair->add_components();
+    components->set_component(component);
+    components->set_repair_status(repair_status);
   }
   components_repair->set_mainboard_rework(mainboard_rework);
 

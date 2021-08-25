@@ -53,10 +53,10 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
 
   *need_calibration = false;
 
-  const CheckCalibrationState& components = state.check_calibration();
-  for (int i = 0; i < components.calibration_components_size(); ++i) {
+  const CheckCalibrationState& check_calibration = state.check_calibration();
+  for (int i = 0; i < check_calibration.components_size(); ++i) {
     const CalibrationComponentStatus& component_status =
-        components.calibration_components(i);
+        check_calibration.components(i);
     if (component_status.component() == RmadComponent::RMAD_COMPONENT_UNKNOWN) {
       *error_code = RMAD_ERROR_REQUEST_ARGS_MISSING;
       LOG(ERROR) << "RmadState missing |component| argument.";

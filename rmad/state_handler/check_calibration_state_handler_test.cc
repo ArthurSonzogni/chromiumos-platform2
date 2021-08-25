@@ -50,17 +50,17 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_calibration_components();
+  auto base_accelerometer = check_calibration->add_components();
   base_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
   base_accelerometer->set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  auto lid_accelerometer = check_calibration->add_calibration_components();
+  auto lid_accelerometer = check_calibration->add_components();
   lid_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
   lid_accelerometer->set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  auto gyroscope = check_calibration->add_calibration_components();
+  auto gyroscope = check_calibration->add_components();
   gyroscope->set_component(RmadComponent::RMAD_COMPONENT_GYROSCOPE);
   gyroscope->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
@@ -102,17 +102,17 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_calibration_components();
+  auto base_accelerometer = check_calibration->add_components();
   base_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
   base_accelerometer->set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
-  auto lid_accelerometer = check_calibration->add_calibration_components();
+  auto lid_accelerometer = check_calibration->add_components();
   lid_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
   lid_accelerometer->set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
-  auto gyroscope = check_calibration->add_calibration_components();
+  auto gyroscope = check_calibration->add_components();
   gyroscope->set_component(RmadComponent::RMAD_COMPONENT_GYROSCOPE);
   gyroscope->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
 
@@ -154,17 +154,17 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_calibration_components();
+  auto base_accelerometer = check_calibration->add_components();
   base_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
   base_accelerometer->set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
-  auto lid_accelerometer = check_calibration->add_calibration_components();
+  auto lid_accelerometer = check_calibration->add_components();
   lid_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER);
   lid_accelerometer->set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
-  auto gyroscope = check_calibration->add_calibration_components();
+  auto gyroscope = check_calibration->add_components();
   gyroscope->set_component(RmadComponent::RMAD_COMPONENT_GYROSCOPE);
   gyroscope->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_SKIP);
 
@@ -217,7 +217,7 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_UnknownComponent) {
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto unknown = check_calibration->add_calibration_components();
+  auto unknown = check_calibration->add_components();
   unknown->set_component(RmadComponent::RMAD_COMPONENT_UNKNOWN);
   unknown->set_status(CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
@@ -235,7 +235,7 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_UnknownStatus) {
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
-  auto base_accelerometer = check_calibration->add_calibration_components();
+  auto base_accelerometer = check_calibration->add_components();
   base_accelerometer->set_component(
       RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER);
   base_accelerometer->set_status(

@@ -207,9 +207,10 @@ message ComponentsRepairState {
     RmadComponent component = 1;
     RepairStatus repair_status = 2;
   }
-  // TODO(chenghan): Rename back to |components|.
-  repeated ComponentRepairStatus component_repair = 1;
+  repeated ComponentRepairStatus components = 1;
   bool mainboard_rework = 2;
+  // TODO(chenghan): Legacy, keeping for compatibility with Chrome.
+  repeated ComponentRepairStatus component_repair = 3;
 }
 
 // Select whether the device is returning to original owner or being wiped for
@@ -329,8 +330,9 @@ message CalibrationComponentStatus {
 }
 
 message CheckCalibrationState {
-  // TODO(genechang): Rename back to |components|.
-  repeated CalibrationComponentStatus calibration_components = 1;
+  repeated CalibrationComponentStatus components = 1;
+  // TODO(chenghan): Legacy, keeping for compatibility with Chrome.
+  repeated CalibrationComponentStatus calibration_components = 2;
 }
 
 // Wait for technician to setup device to be ready for calibration.
