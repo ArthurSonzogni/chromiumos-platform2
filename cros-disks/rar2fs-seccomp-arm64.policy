@@ -14,10 +14,11 @@ dup: 1
 execve: 1
 exit: 1
 exit_group: 1
-faccessat: 1
 faccessat2: 1
+faccessat: 1
 fcntl: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getdents64: 1
 geteuid: 1
@@ -67,4 +68,3 @@ umask: 1
 wait4: 1
 write: 1
 writev: 1
-fstatfs: 1

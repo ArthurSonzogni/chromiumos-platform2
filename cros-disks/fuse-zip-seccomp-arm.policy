@@ -9,8 +9,8 @@ faccessat: 1
 faccessat2: 1
 brk: 1
 chdir: 1
-clock_gettime: 1
 clock_gettime64: 1
+clock_gettime: 1
 clone: 1
 close: 1
 connect: 1
@@ -59,7 +59,6 @@ sigreturn: 1
 socket: arg0 == AF_UNIX
 stat64: 1
 statfs64: 1
-# tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT
 ugetrlimit: 1
 uname: 1

@@ -12,10 +12,11 @@ dup3: 1
 execve: 1
 exit: 1
 exit_group: 1
-faccessat: 1
 faccessat2: 1
+faccessat: 1
 fcntl: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getcwd: 1
 getdents64: 1
@@ -52,9 +53,7 @@ setresuid: 1
 setsid: 1
 socket: arg0 == AF_UNIX
 statfs: 1
-# tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT
 wait4: 1
 write: 1
 writev: 1
-fstatfs: 1

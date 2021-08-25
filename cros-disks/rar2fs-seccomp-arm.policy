@@ -9,8 +9,8 @@ faccessat: 1
 faccessat2: 1
 brk: 1
 chdir: 1
-clock_gettime: 1
 clock_gettime64: 1
+clock_gettime: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
 clone: 1
@@ -70,8 +70,8 @@ sigreturn: 1
 socket: arg0 == AF_UNIX
 socketpair: 1
 stat64: 1
-statfs: 1
 statfs64: 1
+statfs: 1
 tgkill: 1
 ugetrlimit: 1
 umask: 1
