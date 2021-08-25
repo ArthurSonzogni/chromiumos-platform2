@@ -446,4 +446,10 @@ GscVersion TpmStatusImpl::GetGscVersion() {
   return GscVersion::GSC_VERSION_NOT_GSC;
 }
 
+bool TpmStatusImpl::GetRoVerificationStatus(
+    tpm_manager::RoVerificationStatus* status) {
+  *status = tpm_manager::RO_STATUS_UNSUPPORTED;
+  return true;
+}
+
 }  // namespace tpm_manager

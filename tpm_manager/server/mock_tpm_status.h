@@ -38,6 +38,10 @@ class MockTpmStatus : public TpmStatus {
   MOCK_METHOD(bool, SupportU2f, (), (override));
   MOCK_METHOD(bool, SupportPinweaver, (), (override));
   MOCK_METHOD(GscVersion, GetGscVersion, (), (override));
+  MOCK_METHOD(bool,
+              GetRoVerificationStatus,
+              (tpm_manager::RoVerificationStatus*),
+              (override));
 };
 
 }  // namespace tpm_manager

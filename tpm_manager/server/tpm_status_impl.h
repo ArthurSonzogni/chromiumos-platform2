@@ -46,6 +46,8 @@ class TpmStatusImpl : public TpmStatus {
   bool SupportU2f() override;
   bool SupportPinweaver() override;
   GscVersion GetGscVersion() override;
+  bool GetRoVerificationStatus(
+      tpm_manager::RoVerificationStatus* status) override;
 
  private:
   // Tests if the TPM owner password is the default one. Returns:

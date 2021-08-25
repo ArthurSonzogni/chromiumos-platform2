@@ -78,6 +78,10 @@ class TpmStatus {
   // Get the GSC version.
   virtual GscVersion GetGscVersion() = 0;
 
+  // Get the RO verification status.
+  virtual bool GetRoVerificationStatus(
+      tpm_manager::RoVerificationStatus* status) = 0;
+
   // Marks the random owner password is set.
   //
   // NOTE: This method should be used by TPM 1.2 only.

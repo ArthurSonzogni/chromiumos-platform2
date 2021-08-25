@@ -17,6 +17,24 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace tpm_manager {
 
+namespace {
+
+tpm_manager::RoVerificationStatus MapRoStatus(
+    const trunks::TpmUtility::ApRoStatus& raw_status) {
+  switch (raw_status) {
+    case trunks::TpmUtility::ApRoStatus::kApRoNotRun:
+      return tpm_manager::RO_STATUS_NOT_TRIGGERED;
+    case trunks::TpmUtility::ApRoStatus::kApRoPass:
+      return tpm_manager::RO_STATUS_PASS;
+    case trunks::TpmUtility::ApRoStatus::kApRoFail:
+      return tpm_manager::RO_STATUS_FAIL;
+    case trunks::TpmUtility::ApRoStatus::kApRoUnsupported:
+      return tpm_manager::RO_STATUS_UNSUPPORTED;
+  }
+}
+
+}  // namespace
+
 Tpm2StatusImpl::Tpm2StatusImpl(const trunks::TrunksFactory& factory)
     : trunks_factory_(factory),
       trunks_tpm_state_(trunks_factory_.GetTpmState()),
@@ -199,6 +217,17 @@ bool Tpm2StatusImpl::TestTpmSrkAndSaltingSession() {
     return false;
   }
 
+  return true;
+}
+
+bool Tpm2StatusImpl::GetRoVerificationStatus(
+    tpm_manager::RoVerificationStatus* status) {
+  trunks::TpmUtility::ApRoStatus raw_status;
+  TPM_RC result = trunks_tpm_utility_->GetRoVerificationStatus(&raw_status);
+  if (result != TPM_RC_SUCCESS) {
+    return false;
+  }
+  *status = MapRoStatus(raw_status);
   return true;
 }
 

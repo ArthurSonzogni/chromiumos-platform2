@@ -304,4 +304,22 @@ TEST_F(Tpm2StatusTest, GetGscVersionNotGsc) {
   EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_NOT_GSC);
 }
 
+TEST_F(Tpm2StatusTest, GetRoVerificationStatusSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, GetRoVerificationStatus(_))
+      .WillRepeatedly(Invoke([](trunks::TpmUtility::ApRoStatus* status) {
+        *status = trunks::TpmUtility::ApRoStatus::kApRoPass;
+        return TPM_RC_SUCCESS;
+      }));
+  tpm_manager::RoVerificationStatus status;
+  EXPECT_TRUE(tpm_status_->GetRoVerificationStatus(&status));
+  EXPECT_EQ(status, RO_STATUS_PASS);
+}
+
+TEST_F(Tpm2StatusTest, GetRoVerificationStatusFailure) {
+  EXPECT_CALL(mock_tpm_utility_, GetRoVerificationStatus(_))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  tpm_manager::RoVerificationStatus status;
+  EXPECT_FALSE(tpm_status_->GetRoVerificationStatus(&status));
+}
+
 }  // namespace tpm_manager

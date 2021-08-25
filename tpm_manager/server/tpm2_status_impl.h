@@ -46,6 +46,8 @@ class Tpm2StatusImpl : public TpmStatus {
   bool SupportU2f() override;
   bool SupportPinweaver() override;
   GscVersion GetGscVersion() override;
+  bool GetRoVerificationStatus(
+      tpm_manager::RoVerificationStatus* status) override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed
