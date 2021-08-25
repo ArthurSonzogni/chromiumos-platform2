@@ -363,17 +363,32 @@ void TpmStatusImpl::RefreshOwnedEnabledInfo() {
     if (ERROR_CODE(result) == TPM_E_DISABLED) {
       is_enable_initialized_ = true;
       is_enabled_ = false;
+      return;
     }
   } else {
-    is_enable_initialized_ = true;
-    is_enabled_ = true;
     // |capability_data| should be populated with a TSS_BOOL which is true iff
     // the Tpm is owned.
     if (capability_data.size() != sizeof(TSS_BOOL)) {
       LOG(ERROR) << "Error refreshing Tpm ownership information.";
+      is_enable_initialized_ = true;
+      is_enabled_ = true;
+      is_owned_ = false;
       return;
     }
     is_owned_ = (capability_data[0] != 0);
+    if (!is_owned_) {
+      trousers::ScopedTssKey local_key_handle(tpm_connection_.GetContext());
+      TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(
+          tpm_connection_.GetTpm(), false, nullptr, local_key_handle.ptr());
+      if (TPM_ERROR(result) == TPM_E_DISABLED) {
+        is_enable_initialized_ = true;
+        is_enabled_ = false;
+        return;
+      }
+    }
+    is_enable_initialized_ = true;
+    is_enabled_ = true;
+    return;
   }
 }
 
