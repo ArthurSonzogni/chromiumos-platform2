@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/user_secret_stash_container_generated.h"
@@ -54,6 +55,49 @@ TEST_F(UserSecretStashTest, CreateRandomNotConstant) {
   ASSERT_TRUE(stash2);
   EXPECT_NE(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
   EXPECT_NE(stash_->GetResetSecret(), stash2->GetResetSecret());
+}
+
+// Verify the getters/setters of the wrapped key fields.
+TEST_F(UserSecretStashTest, WrappedKeyBlocks) {
+  // Initially there's no wrapped key.
+  EXPECT_FALSE(stash_->GetWrappedKeyBlock("id1"));
+
+  // Add wrapped keys.
+  UserSecretStash::WrappedKeyBlock key_block1;
+  key_block1.encrypted_key = brillo::SecureBlob("fake ciphertext 1");
+  key_block1.iv = brillo::SecureBlob("fake iv 1");
+  key_block1.gcm_tag = brillo::SecureBlob("fake tag 1");
+  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id1", key_block1));
+  UserSecretStash::WrappedKeyBlock key_block2;
+  key_block2.encrypted_key = brillo::SecureBlob("fake ciphertext 2");
+  key_block2.iv = brillo::SecureBlob("fake iv 2");
+  key_block2.gcm_tag = brillo::SecureBlob("fake tag 2");
+  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id2", key_block2));
+
+  // Duplicate wrapped keys aren't allowed.
+  EXPECT_FALSE(stash_->AddWrappedKeyBlock("id1", key_block1));
+
+  // The added keys can be found.
+  const UserSecretStash::WrappedKeyBlock* got_key_block1 =
+      stash_->GetWrappedKeyBlock("id1");
+  ASSERT_TRUE(got_key_block1);
+  EXPECT_EQ(got_key_block1->encrypted_key, key_block1.encrypted_key);
+  EXPECT_EQ(got_key_block1->iv, key_block1.iv);
+  EXPECT_EQ(got_key_block1->gcm_tag, key_block1.gcm_tag);
+  const UserSecretStash::WrappedKeyBlock* got_key_block2 =
+      stash_->GetWrappedKeyBlock("id2");
+  ASSERT_TRUE(got_key_block2);
+  EXPECT_EQ(got_key_block2->encrypted_key, key_block2.encrypted_key);
+  EXPECT_EQ(got_key_block2->iv, key_block2.iv);
+  EXPECT_EQ(got_key_block2->gcm_tag, key_block2.gcm_tag);
+
+  // The first key is removed; the other key is preserved.
+  EXPECT_TRUE(stash_->RemoveWrappedKeyBlock("id1"));
+  EXPECT_FALSE(stash_->GetWrappedKeyBlock("id1"));
+  EXPECT_TRUE(stash_->GetWrappedKeyBlock("id2"));
+
+  // Removing a non-existing key isn't allowed.
+  EXPECT_FALSE(stash_->RemoveWrappedKeyBlock("id1"));
 }
 
 TEST_F(UserSecretStashTest, GetEncryptedUSS) {
@@ -135,6 +179,42 @@ TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
       UserSecretStash::FromEncryptedContainer(*uss_container, wrong_main_key));
 }
 
+// Test that wrapped key blocks are [de]serialized correctly.
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWrappedKeys) {
+  // Add wrapped key blocks.
+  UserSecretStash::WrappedKeyBlock key_block1;
+  key_block1.encrypted_key = brillo::SecureBlob("fake ciphertext 1");
+  key_block1.iv = brillo::SecureBlob("fake iv 1");
+  key_block1.gcm_tag = brillo::SecureBlob("fake tag 1");
+  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id1", key_block1));
+  UserSecretStash::WrappedKeyBlock key_block2;
+  key_block2.encrypted_key = brillo::SecureBlob("fake ciphertext 2");
+  key_block2.iv = brillo::SecureBlob("fake iv 2");
+  key_block2.gcm_tag = brillo::SecureBlob("fake tag 2");
+  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id2", key_block2));
+
+  auto uss_container = stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_NE(base::nullopt, uss_container);
+
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
+  ASSERT_TRUE(stash2);
+
+  // The decrypted stash has the original wrapped key blocks.
+  const UserSecretStash::WrappedKeyBlock* loaded_key_block1 =
+      stash2->GetWrappedKeyBlock("id1");
+  ASSERT_TRUE(loaded_key_block1);
+  EXPECT_EQ(loaded_key_block1->encrypted_key, key_block1.encrypted_key);
+  EXPECT_EQ(loaded_key_block1->iv, key_block1.iv);
+  EXPECT_EQ(loaded_key_block1->gcm_tag, key_block1.gcm_tag);
+  const UserSecretStash::WrappedKeyBlock* loaded_key_block2 =
+      stash2->GetWrappedKeyBlock("id2");
+  ASSERT_TRUE(loaded_key_block2);
+  EXPECT_EQ(loaded_key_block2->encrypted_key, key_block2.encrypted_key);
+  EXPECT_EQ(loaded_key_block2->iv, key_block2.iv);
+  EXPECT_EQ(loaded_key_block2->gcm_tag, key_block2.gcm_tag);
+}
+
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
 // FlatBuffers Object API.
 class UserSecretStashObjectApiTest : public UserSecretStashTest {
@@ -151,19 +231,18 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
     std::unique_ptr<UserSecretStashContainerT> uss_container_obj_ptr =
         UnPackUserSecretStashContainer(uss_container->data());
     ASSERT_TRUE(uss_container_obj_ptr);
-    uss_container_obj_ = *uss_container_obj_ptr;
+    uss_container_obj_ = std::move(*uss_container_obj_ptr);
 
     // Decrypt and unpack the USS flatbuffer to |uss_payload_obj_|.
     brillo::SecureBlob uss_payload;
     ASSERT_TRUE(AesGcmDecrypt(
         brillo::SecureBlob(uss_container_obj_.ciphertext),
-        /*ad=*/base::nullopt,
-        brillo::SecureBlob(uss_container_obj_.aes_gcm_tag), kMainKey,
-        brillo::SecureBlob(uss_container_obj_.iv), &uss_payload));
+        /*ad=*/base::nullopt, brillo::SecureBlob(uss_container_obj_.gcm_tag),
+        kMainKey, brillo::SecureBlob(uss_container_obj_.iv), &uss_payload));
     std::unique_ptr<UserSecretStashPayloadT> uss_payload_obj_ptr =
         UnPackUserSecretStashPayload(uss_payload.data());
     ASSERT_TRUE(uss_payload_obj_ptr);
-    uss_payload_obj_ = *uss_payload_obj_ptr;
+    uss_payload_obj_ = std::move(*uss_payload_obj_ptr);
   }
 
   brillo::SecureBlob GetFlatbufferFromUssContainerObj() const {
@@ -189,11 +268,20 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
                               &tag, &ciphertext));
 
     // Create a copy of |uss_container_obj_|, with the encrypted blob replaced.
-    UserSecretStashContainerT new_uss_container_obj = uss_container_obj_;
+    UserSecretStashContainerT new_uss_container_obj;
+    new_uss_container_obj.encryption_algorithm =
+        uss_container_obj_.encryption_algorithm;
     new_uss_container_obj.ciphertext.assign(ciphertext.begin(),
                                             ciphertext.end());
     new_uss_container_obj.iv.assign(iv.begin(), iv.end());
-    new_uss_container_obj.aes_gcm_tag.assign(tag.begin(), tag.end());
+    new_uss_container_obj.gcm_tag.assign(tag.begin(), tag.end());
+    // Need to clone the nested tables manually, as Flatbuffers don't provide a
+    // copy constructor.
+    for (const std::unique_ptr<UserSecretStashWrappedKeyBlockT>& key_block :
+         uss_container_obj_.wrapped_key_blocks) {
+      new_uss_container_obj.wrapped_key_blocks.push_back(
+          std::make_unique<UserSecretStashWrappedKeyBlockT>(*key_block));
+    }
 
     // Pack |new_uss_container_obj|.
     builder.Finish(
@@ -205,6 +293,15 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
   UserSecretStashContainerT uss_container_obj_;
   UserSecretStashPayloadT uss_payload_obj_;
 };
+
+// Verify that the test fixture correctly generates the flatbuffers from the
+// Object API.
+TEST_F(UserSecretStashObjectApiTest, SmokeTest) {
+  EXPECT_TRUE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadObj(), kMainKey));
+  EXPECT_TRUE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
+}
 
 // Test that decryption fails when the encryption algorithm is not set.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAlgorithm) {
@@ -243,9 +340,9 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoIv) {
       GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
-// Test that decryption fails when the aes_gcm_tag field is missing.
-TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAesGcmTag) {
-  uss_container_obj_.aes_gcm_tag.clear();
+// Test that decryption fails when the gcm_tag field is missing.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoGcmTag) {
+  uss_container_obj_.gcm_tag.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
       GetFlatbufferFromUssContainerObj(), kMainKey));

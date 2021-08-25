@@ -4,13 +4,17 @@
 
 #include "cryptohome/user_secret_stash.h"
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/secure_blob_util.h"
@@ -23,10 +27,43 @@ namespace cryptohome {
 
 namespace {
 
-brillo::SecureBlob GenerateAesGcmEncryptedUSS(
+// Serializes the UserSecretStashWrappedKeyBlock table into the given flatbuffer
+// builder. Returns the flatbuffer offset, to be used for building the outer
+// table.
+flatbuffers::Offset<UserSecretStashWrappedKeyBlock>
+GenerateUserSecretStashWrappedKeyBlock(
+    const std::string& wrapping_id,
+    const UserSecretStash::WrappedKeyBlock& wrapped_key_block,
+    flatbuffers::FlatBufferBuilder* builder) {
+  // Serialize the table's fields.
+  auto wrapping_id_string = builder->CreateString(wrapping_id);
+  auto encrypted_key_vector =
+      builder->CreateVector(wrapped_key_block.encrypted_key.data(),
+                            wrapped_key_block.encrypted_key.size());
+  auto iv_vector = builder->CreateVector(wrapped_key_block.iv.data(),
+                                         wrapped_key_block.iv.size());
+  auto gcm_tag_vector = builder->CreateVector(wrapped_key_block.gcm_tag.data(),
+                                              wrapped_key_block.gcm_tag.size());
+
+  // Serialize the table itself.
+  UserSecretStashWrappedKeyBlockBuilder table_builder(*builder);
+  table_builder.add_wrapping_id(wrapping_id_string);
+  table_builder.add_encryption_algorithm(
+      wrapped_key_block.encryption_algorithm);
+  table_builder.add_encrypted_key(encrypted_key_vector);
+  table_builder.add_iv(iv_vector);
+  table_builder.add_gcm_tag(gcm_tag_vector);
+  return table_builder.Finish();
+}
+
+// Serializes the UserSecretStashContainer table. Returns the resulting
+// flatbuffer as a blob.
+brillo::SecureBlob GenerateUserSecretStashContainer(
     const brillo::SecureBlob& ciphertext,
     const brillo::SecureBlob& tag,
-    const brillo::SecureBlob& iv) {
+    const brillo::SecureBlob& iv,
+    const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
+        wrapped_key_blocks) {
   FlatbufferSecureAllocatorBridge allocator;
   flatbuffers::FlatBufferBuilder builder(/*initial_size=*/4096, &allocator,
                                          /*own_allocator=*/false);
@@ -35,13 +72,24 @@ brillo::SecureBlob GenerateAesGcmEncryptedUSS(
       builder.CreateVector(ciphertext.data(), ciphertext.size());
   auto tag_vector = builder.CreateVector(tag.data(), tag.size());
   auto iv_vector = builder.CreateVector(iv.data(), iv.size());
+  std::vector<flatbuffers::Offset<UserSecretStashWrappedKeyBlock>>
+      wrapped_key_block_items;
+  for (const auto& item : wrapped_key_blocks) {
+    const std::string& wrapping_id = item.first;
+    const UserSecretStash::WrappedKeyBlock& wrapped_key_block = item.second;
+    wrapped_key_block_items.push_back(GenerateUserSecretStashWrappedKeyBlock(
+        wrapping_id, wrapped_key_block, &builder));
+  }
+  auto wrapped_key_blocks_vector =
+      builder.CreateVector(wrapped_key_block_items);
 
   UserSecretStashContainerBuilder uss_container_builder(builder);
   uss_container_builder.add_encryption_algorithm(
       UserSecretStashEncryptionAlgorithm::AES_GCM_256);
   uss_container_builder.add_ciphertext(ciphertext_vector);
-  uss_container_builder.add_aes_gcm_tag(tag_vector);
+  uss_container_builder.add_gcm_tag(tag_vector);
   uss_container_builder.add_iv(iv_vector);
+  uss_container_builder.add_wrapped_key_blocks(wrapped_key_blocks_vector);
   auto uss_container = uss_container_builder.Finish();
 
   builder.Finish(uss_container);
@@ -53,6 +101,75 @@ brillo::SecureBlob GenerateAesGcmEncryptedUSS(
   builder.Clear();
 
   return ret_val;
+}
+
+std::map<std::string, UserSecretStash::WrappedKeyBlock>
+LoadUserSecretStashWrappedKeyBlocks(
+    const flatbuffers::Vector<
+        flatbuffers::Offset<UserSecretStashWrappedKeyBlock>>&
+        wrapped_key_block_vector) {
+  std::map<std::string, UserSecretStash::WrappedKeyBlock> loaded_key_blocks;
+
+  for (const UserSecretStashWrappedKeyBlock* wrapped_key_block :
+       wrapped_key_block_vector) {
+    std::string wrapping_id;
+    if (wrapped_key_block->wrapping_id()) {
+      wrapping_id = wrapped_key_block->wrapping_id()->str();
+    }
+    if (wrapping_id.empty()) {
+      LOG(WARNING)
+          << "Ignoring UserSecretStash wrapped key block with an empty ID.";
+      continue;
+    }
+    if (loaded_key_blocks.count(wrapping_id)) {
+      LOG(WARNING)
+          << "Ignoring UserSecretStash wrapped key block with duplicate ID "
+          << wrapping_id << ".";
+      continue;
+    }
+    UserSecretStash::WrappedKeyBlock loaded_block;
+
+    if (wrapped_key_block->encryption_algorithm() !=
+        UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
+      LOG(WARNING) << "Ignoring UserSecretStash wrapped key block with an "
+                      "unknown algorithm: "
+                   << static_cast<int>(
+                          wrapped_key_block->encryption_algorithm());
+    }
+    loaded_block.encryption_algorithm =
+        wrapped_key_block->encryption_algorithm();
+
+    if (!wrapped_key_block->encrypted_key() ||
+        !wrapped_key_block->encrypted_key()->size()) {
+      LOG(WARNING) << "Ignoring UserSecretStash wrapped key block with an "
+                      "empty encrypted key.";
+      continue;
+    }
+    loaded_block.encrypted_key.assign(
+        wrapped_key_block->encrypted_key()->begin(),
+        wrapped_key_block->encrypted_key()->end());
+
+    if (!wrapped_key_block->iv() || !wrapped_key_block->iv()->size()) {
+      LOG(WARNING)
+          << "Ignoring UserSecretStash wrapped key block with an empty IV.";
+      continue;
+    }
+    loaded_block.iv.assign(wrapped_key_block->iv()->begin(),
+                           wrapped_key_block->iv()->end());
+
+    if (!wrapped_key_block->gcm_tag() ||
+        !wrapped_key_block->gcm_tag()->size()) {
+      LOG(WARNING) << "Ignoring UserSecretStash wrapped key block with an "
+                      "empty AES-GCM tag.";
+      continue;
+    }
+    loaded_block.gcm_tag.assign(wrapped_key_block->gcm_tag()->begin(),
+                                wrapped_key_block->gcm_tag()->end());
+
+    loaded_key_blocks.insert({std::move(wrapping_id), std::move(loaded_block)});
+  }
+
+  return loaded_key_blocks;
 }
 
 }  // namespace
@@ -113,18 +230,24 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
   brillo::SecureBlob iv(uss_container->iv()->begin(),
                         uss_container->iv()->end());
 
-  if (!uss_container->aes_gcm_tag() || !uss_container->aes_gcm_tag()->size()) {
+  if (!uss_container->gcm_tag() || !uss_container->gcm_tag()->size()) {
     LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
     return nullptr;
   }
-  if (uss_container->aes_gcm_tag()->size() != kAesGcmTagSize) {
+  if (uss_container->gcm_tag()->size() != kAesGcmTagSize) {
     LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
-               << uss_container->aes_gcm_tag()->size()
+               << uss_container->gcm_tag()->size()
                << ", expected: " << kAesGcmTagSize;
     return nullptr;
   }
-  brillo::SecureBlob tag(uss_container->aes_gcm_tag()->begin(),
-                         uss_container->aes_gcm_tag()->end());
+  brillo::SecureBlob tag(uss_container->gcm_tag()->begin(),
+                         uss_container->gcm_tag()->end());
+
+  std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
+  if (uss_container->wrapped_key_blocks()) {
+    wrapped_key_blocks = LoadUserSecretStashWrappedKeyBlocks(
+        *uss_container->wrapped_key_blocks());
+  }
 
   brillo::SecureBlob serialized_uss;
   if (!AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, main_key, iv,
@@ -157,8 +280,11 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
                                   uss->reset_secret()->end());
 
   // Note: make_unique() wouldn't work due to the constructor being private.
-  return std::unique_ptr<UserSecretStash>(
+  std::unique_ptr<UserSecretStash> stash(
       new UserSecretStash(file_system_key, reset_secret));
+  stash->wrapped_key_blocks_ = std::move(wrapped_key_blocks);
+
+  return stash;
 }
 
 const brillo::SecureBlob& UserSecretStash::GetFileSystemKey() const {
@@ -175,6 +301,37 @@ const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
 
 void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
   reset_secret_ = secret;
+}
+
+const UserSecretStash::WrappedKeyBlock* UserSecretStash::GetWrappedKeyBlock(
+    const std::string& wrapping_id) const {
+  DCHECK(!wrapping_id.empty());
+  auto iter = wrapped_key_blocks_.find(wrapping_id);
+  if (iter == wrapped_key_blocks_.end()) {
+    return nullptr;
+  }
+  return &iter->second;
+}
+
+bool UserSecretStash::AddWrappedKeyBlock(
+    const std::string& wrapping_id, const WrappedKeyBlock& wrapped_key_block) {
+  DCHECK(!wrapping_id.empty());
+  auto iter = wrapped_key_blocks_.find(wrapping_id);
+  if (iter != wrapped_key_blocks_.end()) {
+    return false;
+  }
+  wrapped_key_blocks_.insert(iter, {wrapping_id, wrapped_key_block});
+  return true;
+}
+
+bool UserSecretStash::RemoveWrappedKeyBlock(const std::string& wrapping_id) {
+  DCHECK(!wrapping_id.empty());
+  auto iter = wrapped_key_blocks_.find(wrapping_id);
+  if (iter == wrapped_key_blocks_.end()) {
+    return false;
+  }
+  wrapped_key_blocks_.erase(iter);
+  return true;
 }
 
 base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
@@ -208,7 +365,11 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
 
   builder.Clear();
 
-  return GenerateAesGcmEncryptedUSS(ciphertext, tag, iv);
+  // Note: It can happen that the USS container is created with empty
+  // |wrapped_key_blocks_| - they may be added later, when the user registers
+  // the first credential with their cryptohome.
+  return GenerateUserSecretStashContainer(ciphertext, tag, iv,
+                                          wrapped_key_blocks_);
 }
 
 UserSecretStash::UserSecretStash(const brillo::SecureBlob& file_system_key,
