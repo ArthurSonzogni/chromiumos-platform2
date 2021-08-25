@@ -13,10 +13,7 @@
 
 namespace diagnostics {
 
-MockContext::MockContext() = default;
-MockContext::~MockContext() = default;
-
-bool MockContext::Initialize() {
+MockContext::MockContext() {
   bluetooth_client_ = std::make_unique<FakeBluetoothClient>();
   cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
   cras_proxy_ = std::make_unique<
@@ -34,10 +31,11 @@ bool MockContext::Initialize() {
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
   udev_ = std::make_unique<FakeUdev>();
 
-  if (!temp_dir_.CreateUniqueTempDir())
-    return false;
+  CHECK(temp_dir_.CreateUniqueTempDir());
   root_dir_ = temp_dir_.GetPath();
+}
 
+bool MockContext::Initialize() {
   return true;
 }
 

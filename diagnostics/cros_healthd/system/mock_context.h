@@ -36,7 +36,7 @@ class MockContext final : public Context {
   MockContext();
   MockContext(const MockContext&) = delete;
   MockContext& operator=(const MockContext&) = delete;
-  ~MockContext() override;
+  ~MockContext() override = default;
 
   // Context overrides:
   bool Initialize() override;
