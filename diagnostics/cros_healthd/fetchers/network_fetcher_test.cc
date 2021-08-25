@@ -34,8 +34,6 @@ class NetworkFetcherTest : public testing::Test {
  protected:
   NetworkFetcherTest() = default;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   chromeos::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfo() {
     base::RunLoop run_loop;
     chromeos::cros_healthd::mojom::NetworkResultPtr result;

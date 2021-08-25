@@ -58,7 +58,6 @@ class FanUtilsTest : public ::testing::Test {
   FanUtilsTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     ASSERT_TRUE(base::CreateDirectory(root_dir().Append(kRelativeCrosEcPath)));
   }
 

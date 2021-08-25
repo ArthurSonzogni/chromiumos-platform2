@@ -38,9 +38,6 @@ class MockContext final : public Context {
   MockContext& operator=(const MockContext&) = delete;
   ~MockContext() override = default;
 
-  // Context overrides:
-  bool Initialize() override;
-
   // Accessors to the fake and mock objects held by MockContext:
   FakeBluetoothClient* fake_bluetooth_client() const;
   brillo::FakeCrosConfig* fake_cros_config() const;

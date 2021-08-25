@@ -51,7 +51,6 @@ class HasSecureWiFiConnectionRoutineTest : public testing::Test {
       const HasSecureWiFiConnectionRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ =
         CreateHasSecureWiFiConnectionRoutine(network_diagnostics_adapter());
   }

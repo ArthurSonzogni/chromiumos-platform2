@@ -86,7 +86,6 @@ class MemoryRoutineTest : public testing::Test {
   MemoryRoutineTest& operator=(const MemoryRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = std::make_unique<MemoryRoutine>(
         &mock_context_, task_environment_.GetMockTickClock());
   }
@@ -160,8 +159,6 @@ class MemoryRoutineTest : public testing::Test {
 // Test that we can create a memory routine with the default tick clock.
 TEST_F(MemoryRoutineTest, DefaultTickClock) {
   MockContext mock_context;
-  ASSERT_TRUE(mock_context.Initialize());
-
   MemoryRoutine routine(&mock_context);
 
   EXPECT_EQ(routine.GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kReady);

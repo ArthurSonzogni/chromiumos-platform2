@@ -109,7 +109,6 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetFioRoutines() {
 class CrosHealthdRoutineServiceTest : public testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     mock_context_.fake_system_config()->SetFioSupported(true);
     mock_context_.fake_system_config()->SetHasBattery(true);
     mock_context_.fake_system_config()->SetNvmeSupported(true);

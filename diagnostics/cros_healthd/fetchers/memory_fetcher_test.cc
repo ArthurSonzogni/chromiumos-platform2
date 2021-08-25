@@ -50,8 +50,6 @@ class MemoryFetcherTest : public ::testing::Test {
  protected:
   MemoryFetcherTest() = default;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   mojo_ipc::MemoryResultPtr FetchMemoryInfo() {

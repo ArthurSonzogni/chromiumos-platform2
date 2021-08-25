@@ -45,7 +45,6 @@ struct GetPrimeSearchParametersTestParams {
 class RoutineParameterFetcherTest : public testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     parameter_fetcher_ =
         std::make_unique<RoutineParameterFetcher>(mock_context_.cros_config());
   }

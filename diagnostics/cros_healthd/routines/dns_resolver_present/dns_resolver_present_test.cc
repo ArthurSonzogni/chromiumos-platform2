@@ -50,7 +50,6 @@ class DnsResolverPresentRoutineTest : public testing::Test {
       const DnsResolverPresentRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateDnsResolverPresentRoutine(network_diagnostics_adapter());
   }
 

@@ -56,8 +56,6 @@ class LidEventsImplTest : public testing::Test {
   LidEventsImplTest& operator=(const LidEventsImplTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
-
     // Before any observers have been added, we shouldn't have subscribed to
     // powerd_adapter.
     ASSERT_FALSE(fake_adapter()->HasLidObserver(&lid_events_impl_));

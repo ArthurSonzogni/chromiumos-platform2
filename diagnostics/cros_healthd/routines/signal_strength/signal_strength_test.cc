@@ -50,7 +50,6 @@ class SignalStrengthRoutineTest : public testing::Test {
       delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateSignalStrengthRoutine(network_diagnostics_adapter());
   }
 

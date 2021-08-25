@@ -58,8 +58,6 @@ class BluetoothUtilsTest : public ::testing::Test {
   BluetoothUtilsTest& operator=(const BluetoothUtilsTest&) = delete;
   ~BluetoothUtilsTest() = default;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   BluetoothFetcher* bluetooth_fetcher() { return &bluetooth_fetcher_; }
 
   FakeBluetoothClient* fake_bluetooth_client() {

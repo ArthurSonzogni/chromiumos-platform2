@@ -57,7 +57,6 @@ class SystemUtilsTest : public BaseFileTest {
   SystemUtilsTest& operator=(const SystemUtilsTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     SetTestRoot(mock_context_.root_dir());
 
     expected_system_info_ = mojo_ipc::SystemInfoV2::New();

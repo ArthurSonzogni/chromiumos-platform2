@@ -49,7 +49,6 @@ class DnsLatencyRoutineTest : public testing::Test {
   DnsLatencyRoutineTest& operator=(const DnsLatencyRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateDnsLatencyRoutine(network_diagnostics_adapter());
   }
 

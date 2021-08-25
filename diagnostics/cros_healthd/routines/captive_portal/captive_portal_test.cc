@@ -49,7 +49,6 @@ class CaptivePortalRoutineTest : public testing::Test {
   CaptivePortalRoutineTest& operator=(const CaptivePortalRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateCaptivePortalRoutine(network_diagnostics_adapter());
   }
 

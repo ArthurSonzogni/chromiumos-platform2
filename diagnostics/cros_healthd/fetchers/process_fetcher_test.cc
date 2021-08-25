@@ -151,7 +151,6 @@ class ProcessFetcherTest : public testing::Test {
   ProcessFetcherTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     // Set up valid files for the process with PID |kPid|. Individual tests are

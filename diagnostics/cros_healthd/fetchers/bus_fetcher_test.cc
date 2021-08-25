@@ -57,7 +57,6 @@ class BusFetcherTest : public BaseFileTest {
   BusFetcherTest& operator=(const BusFetcherTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     SetTestRoot(mock_context_.root_dir());
   }
 

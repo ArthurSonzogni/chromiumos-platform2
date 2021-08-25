@@ -82,8 +82,6 @@ class BatteryHealthRoutineTest : public testing::Test {
   BatteryHealthRoutineTest(const BatteryHealthRoutineTest&) = delete;
   BatteryHealthRoutineTest& operator=(const BatteryHealthRoutineTest&) = delete;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   mojo_ipc::RoutineUpdate* update() { return &update_; }
 
   void CreateRoutine(

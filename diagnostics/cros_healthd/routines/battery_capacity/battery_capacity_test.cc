@@ -33,8 +33,6 @@ class BatteryCapacityRoutineTest : public testing::Test {
   BatteryCapacityRoutineTest& operator=(const BatteryCapacityRoutineTest&) =
       delete;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   mojo_ipc::RoutineUpdate* update() { return &update_; }
 
   void CreateRoutine(uint32_t low_mah = kLowmAh, uint32_t high_mah = kHighmAh) {

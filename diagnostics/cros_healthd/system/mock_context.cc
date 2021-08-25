@@ -35,10 +35,6 @@ MockContext::MockContext() {
   root_dir_ = temp_dir_.GetPath();
 }
 
-bool MockContext::Initialize() {
-  return true;
-}
-
 FakeBluetoothClient* MockContext::fake_bluetooth_client() const {
   return static_cast<FakeBluetoothClient*>(bluetooth_client_.get());
 }

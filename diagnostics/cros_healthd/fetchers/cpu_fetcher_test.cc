@@ -218,8 +218,6 @@ class CpuFetcherTest : public testing::Test {
   CpuFetcherTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
-
     // Set up valid files for two physical CPUs, the first of which has two
     // logical CPUs. Individual tests are expected to override this
     // configuration when necessary.

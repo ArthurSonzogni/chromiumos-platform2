@@ -50,7 +50,6 @@ class GatewayCanBePingedRoutineTest : public testing::Test {
       const GatewayCanBePingedRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateGatewayCanBePingedRoutine(network_diagnostics_adapter());
   }
 

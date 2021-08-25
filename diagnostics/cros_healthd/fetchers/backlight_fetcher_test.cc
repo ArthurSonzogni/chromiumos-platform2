@@ -61,10 +61,6 @@ class BacklightUtilsTest : public ::testing::Test {
   BacklightUtilsTest(const BacklightUtilsTest&) = delete;
   BacklightUtilsTest& operator=(const BacklightUtilsTest&) = delete;
 
-  void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
-  }
-
   BacklightResultPtr FetchBacklightInfo() {
     return backlight_fetcher_.FetchBacklightInfo();
   }

@@ -87,8 +87,6 @@ class BluetoothEventsImplTest : public testing::Test {
   BluetoothEventsImplTest& operator=(const BluetoothEventsImplTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
-
     // Before any observers have been added, we shouldn't have subscribed to
     // BluetoothClient.
     ASSERT_FALSE(fake_bluetooth_client()->HasObserver(&bluetooth_events_impl_));

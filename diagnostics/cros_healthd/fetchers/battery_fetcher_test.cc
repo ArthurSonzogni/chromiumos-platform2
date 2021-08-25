@@ -64,7 +64,6 @@ class BatteryFetcherTest : public ::testing::Test {
   BatteryFetcherTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     SetHasSmartBatteryInfo(true);
   }
 

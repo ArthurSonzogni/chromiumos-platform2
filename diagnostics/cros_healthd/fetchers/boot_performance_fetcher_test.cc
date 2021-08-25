@@ -75,8 +75,6 @@ class BootPerformanceFetcherTest : public ::testing::Test {
       delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
-
     PopulateBiosTimesFile();
     PopulateUptimeLogFile();
     PopulateProcUptimeFile();

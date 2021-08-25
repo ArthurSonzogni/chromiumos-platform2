@@ -41,7 +41,6 @@ class LanConnectivityRoutineTest : public testing::Test {
       delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateLanConnectivityRoutine(network_diagnostics_adapter());
   }
 

@@ -49,7 +49,6 @@ class HttpFirewallRoutineTest : public testing::Test {
   HttpFirewallRoutineTest& operator=(const HttpFirewallRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateHttpFirewallRoutine(network_diagnostics_adapter());
   }
 

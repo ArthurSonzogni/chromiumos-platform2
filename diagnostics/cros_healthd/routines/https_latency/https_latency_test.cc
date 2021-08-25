@@ -49,7 +49,6 @@ class HttpsLatencyRoutineTest : public testing::Test {
   HttpsLatencyRoutineTest& operator=(const HttpsLatencyRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateHttpsLatencyRoutine(network_diagnostics_adapter());
   }
 

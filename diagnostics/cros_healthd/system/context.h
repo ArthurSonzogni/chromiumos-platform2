@@ -50,10 +50,6 @@ class Context {
       mojo::PlatformChannelEndpoint endpoint,
       std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
 
-  // Initializes all helper objects in the context. Returns true on success.
-  // Must be called before any of the accessors are used.
-  virtual bool Initialize();
-
   // Accessors for the various helper objects:
 
   // Use the object returned by bluetooth_client() to subscribe to notifications

@@ -61,8 +61,6 @@ class BatteryDischargeRoutineTest : public testing::Test {
   BatteryDischargeRoutineTest& operator=(const BatteryDischargeRoutineTest&) =
       delete;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   DiagnosticRoutine* routine() { return routine_.get(); }
 
   void CreateRoutine(uint32_t maximum_discharge_percent_allowed) {

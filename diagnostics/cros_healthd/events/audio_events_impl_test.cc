@@ -59,8 +59,6 @@ class AudioEventsImplTest : public testing::Test {
   AudioEventsImplTest& operator=(const AudioEventsImplTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
-
     EXPECT_CALL(*mock_context_.mock_cras_proxy(),
                 DoRegisterUnderrunSignalHandler(_, _))
         .WillOnce(SaveArg<0>(&underrun_callback_));

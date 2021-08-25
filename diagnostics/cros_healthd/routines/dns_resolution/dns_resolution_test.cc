@@ -49,7 +49,6 @@ class DnsResolutionRoutineTest : public testing::Test {
   DnsResolutionRoutineTest& operator=(const DnsResolutionRoutineTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     routine_ = CreateDnsResolutionRoutine(network_diagnostics_adapter());
   }
 

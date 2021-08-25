@@ -62,8 +62,6 @@ class AudioFetcherTest : public ::testing::Test {
  protected:
   AudioFetcherTest() = default;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   AudioFetcher* audio_fetcher() { return &audio_fetcher_; }
 
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() {

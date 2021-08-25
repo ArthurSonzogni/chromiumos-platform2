@@ -58,8 +58,6 @@ class BatteryChargeRoutineTest : public testing::Test {
   BatteryChargeRoutineTest(const BatteryChargeRoutineTest&) = delete;
   BatteryChargeRoutineTest& operator=(const BatteryChargeRoutineTest&) = delete;
 
-  void SetUp() override { ASSERT_TRUE(mock_context_.Initialize()); }
-
   DiagnosticRoutine* routine() { return routine_.get(); }
 
   void CreateRoutine(uint32_t minimum_charge_percent_required) {

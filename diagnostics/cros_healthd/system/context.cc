@@ -85,10 +85,6 @@ std::unique_ptr<Context> Context::Create(
   return context;
 }
 
-bool Context::Initialize() {
-  return true;
-}
-
 BluetoothClient* Context::bluetooth_client() const {
   return bluetooth_client_.get();
 }

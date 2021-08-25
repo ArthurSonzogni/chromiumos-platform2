@@ -31,7 +31,6 @@ class StatefulePartitionFetcherTest : public ::testing::Test {
       const StatefulePartitionFetcherTest&) = delete;
 
   void SetUp() override {
-    ASSERT_TRUE(mock_context_.Initialize());
     // Populate fake stateful partition directory.
     const auto stateful_partition_dir =
         root_dir().Append(kStatefulPartitionPath);
