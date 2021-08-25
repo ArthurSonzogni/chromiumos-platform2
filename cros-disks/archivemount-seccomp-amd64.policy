@@ -16,10 +16,11 @@ exit: 1
 exit_group: 1
 fcntl: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getcwd: 1
-getdents: 1
 getdents64: 1
+getdents: 1
 geteuid: 1
 getgid: 1
 getpid: 1
@@ -55,8 +56,7 @@ setsid: 1
 socket: arg0 == AF_UNIX
 stat: 1
 statfs: 1
-# tgkill is used by abort() and CHECK()/LOG(FATAL).
-tgkill: arg2 == SIGABRT
+tgkill: arg2 == SIGABRT  # used by abort() and CHECK()/LOG(FATAL).
 wait4: 1
 write: 1
 writev: 1

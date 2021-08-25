@@ -7,8 +7,8 @@ _llseek: 1
 access: 1
 brk: 1
 chdir: 1
-clock_gettime: 1
 clock_gettime64: 1
+clock_gettime: 1
 clone: 1
 close: 1
 connect: 1
@@ -18,6 +18,8 @@ exit: 1
 exit_group: 1
 fcntl64: 1
 fstat64: 1
+fstatfs64: 1
+fstatfs: 1
 futex: 1
 futex_time64: 1
 getcwd: 1
@@ -55,8 +57,7 @@ sigreturn: 1
 socket: arg0 == AF_UNIX
 stat64: 1
 statfs64: 1
-# tgkill is used by abort() and CHECK()/LOG(FATAL).
-tgkill: arg2 == SIGABRT
+tgkill: arg2 == SIGABRT  # used by abort() and CHECK()/LOG(FATAL).
 ugetrlimit: 1
 uname: 1
 wait4: 1
