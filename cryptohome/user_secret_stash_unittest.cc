@@ -58,46 +58,41 @@ TEST_F(UserSecretStashTest, CreateRandomNotConstant) {
 }
 
 // Verify the getters/setters of the wrapped key fields.
-TEST_F(UserSecretStashTest, WrappedKeyBlocks) {
+TEST_F(UserSecretStashTest, MainKeyWrapping) {
+  const char kWrappingId1[] = "id1";
+  const char kWrappingId2[] = "id2";
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xB);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xC);
+
   // Initially there's no wrapped key.
-  EXPECT_FALSE(stash_->GetWrappedKeyBlock("id1"));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId2));
 
-  // Add wrapped keys.
-  UserSecretStash::WrappedKeyBlock key_block1;
-  key_block1.encrypted_key = brillo::SecureBlob("fake ciphertext 1");
-  key_block1.iv = brillo::SecureBlob("fake iv 1");
-  key_block1.gcm_tag = brillo::SecureBlob("fake tag 1");
-  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id1", key_block1));
-  UserSecretStash::WrappedKeyBlock key_block2;
-  key_block2.encrypted_key = brillo::SecureBlob("fake ciphertext 2");
-  key_block2.iv = brillo::SecureBlob("fake iv 2");
-  key_block2.gcm_tag = brillo::SecureBlob("fake tag 2");
-  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id2", key_block2));
+  // And the main key wrapped with two wrapping keys.
+  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2));
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId2));
+  // Duplicate wrapping IDs aren't allowed.
+  EXPECT_FALSE(
+      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
 
-  // Duplicate wrapped keys aren't allowed.
-  EXPECT_FALSE(stash_->AddWrappedKeyBlock("id1", key_block1));
+  // The main key can be unwrapped using any of the wrapping keys.
+  base::Optional<brillo::SecureBlob> got_main_key1 =
+      stash_->UnwrapMainKey(kWrappingId1, kWrappingKey1);
+  ASSERT_TRUE(got_main_key1);
+  EXPECT_EQ(*got_main_key1, kMainKey);
+  base::Optional<brillo::SecureBlob> got_main_key2 =
+      stash_->UnwrapMainKey(kWrappingId2, kWrappingKey2);
+  ASSERT_TRUE(got_main_key2);
+  EXPECT_EQ(*got_main_key2, kMainKey);
 
-  // The added keys can be found.
-  const UserSecretStash::WrappedKeyBlock* got_key_block1 =
-      stash_->GetWrappedKeyBlock("id1");
-  ASSERT_TRUE(got_key_block1);
-  EXPECT_EQ(got_key_block1->encrypted_key, key_block1.encrypted_key);
-  EXPECT_EQ(got_key_block1->iv, key_block1.iv);
-  EXPECT_EQ(got_key_block1->gcm_tag, key_block1.gcm_tag);
-  const UserSecretStash::WrappedKeyBlock* got_key_block2 =
-      stash_->GetWrappedKeyBlock("id2");
-  ASSERT_TRUE(got_key_block2);
-  EXPECT_EQ(got_key_block2->encrypted_key, key_block2.encrypted_key);
-  EXPECT_EQ(got_key_block2->iv, key_block2.iv);
-  EXPECT_EQ(got_key_block2->gcm_tag, key_block2.gcm_tag);
-
-  // The first key is removed; the other key is preserved.
-  EXPECT_TRUE(stash_->RemoveWrappedKeyBlock("id1"));
-  EXPECT_FALSE(stash_->GetWrappedKeyBlock("id1"));
-  EXPECT_TRUE(stash_->GetWrappedKeyBlock("id2"));
-
-  // Removing a non-existing key isn't allowed.
-  EXPECT_FALSE(stash_->RemoveWrappedKeyBlock("id1"));
+  // Removal of one wrapped key block preserves the other.
+  EXPECT_TRUE(stash_->RemoveWrappedMainKey(kWrappingId1));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId2));
+  // Removing a non-existing wrapped key block fails.
+  EXPECT_FALSE(stash_->RemoveWrappedMainKey(kWrappingId1));
 }
 
 TEST_F(UserSecretStashTest, GetEncryptedUSS) {
@@ -181,38 +176,30 @@ TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
 
 // Test that wrapped key blocks are [de]serialized correctly.
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWrappedKeys) {
-  // Add wrapped key blocks.
-  UserSecretStash::WrappedKeyBlock key_block1;
-  key_block1.encrypted_key = brillo::SecureBlob("fake ciphertext 1");
-  key_block1.iv = brillo::SecureBlob("fake iv 1");
-  key_block1.gcm_tag = brillo::SecureBlob("fake tag 1");
-  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id1", key_block1));
-  UserSecretStash::WrappedKeyBlock key_block2;
-  key_block2.encrypted_key = brillo::SecureBlob("fake ciphertext 2");
-  key_block2.iv = brillo::SecureBlob("fake iv 2");
-  key_block2.gcm_tag = brillo::SecureBlob("fake tag 2");
-  EXPECT_TRUE(stash_->AddWrappedKeyBlock("id2", key_block2));
+  const char kWrappingId1[] = "id1";
+  const char kWrappingId2[] = "id2";
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xB);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xC);
 
+  // Add wrapped key blocks.
+  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
+  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2));
+
+  // Do the serialization-deserialization roundtrip with the USS.
   auto uss_container = stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
-
   std::unique_ptr<UserSecretStash> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
   ASSERT_TRUE(stash2);
 
-  // The decrypted stash has the original wrapped key blocks.
-  const UserSecretStash::WrappedKeyBlock* loaded_key_block1 =
-      stash2->GetWrappedKeyBlock("id1");
-  ASSERT_TRUE(loaded_key_block1);
-  EXPECT_EQ(loaded_key_block1->encrypted_key, key_block1.encrypted_key);
-  EXPECT_EQ(loaded_key_block1->iv, key_block1.iv);
-  EXPECT_EQ(loaded_key_block1->gcm_tag, key_block1.gcm_tag);
-  const UserSecretStash::WrappedKeyBlock* loaded_key_block2 =
-      stash2->GetWrappedKeyBlock("id2");
-  ASSERT_TRUE(loaded_key_block2);
-  EXPECT_EQ(loaded_key_block2->encrypted_key, key_block2.encrypted_key);
-  EXPECT_EQ(loaded_key_block2->iv, key_block2.iv);
-  EXPECT_EQ(loaded_key_block2->gcm_tag, key_block2.gcm_tag);
+  // The wrapped key blocks are present in the loaded stash and can be
+  // decrypted.
+  EXPECT_TRUE(stash2->HasWrappedMainKey(kWrappingId1));
+  EXPECT_TRUE(stash2->HasWrappedMainKey(kWrappingId2));
+  base::Optional<brillo::SecureBlob> got_main_key1 =
+      stash2->UnwrapMainKey(kWrappingId1, kWrappingKey1);
+  ASSERT_TRUE(got_main_key1);
+  EXPECT_EQ(*got_main_key1, kMainKey);
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using

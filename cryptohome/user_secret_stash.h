@@ -57,17 +57,25 @@ class UserSecretStash {
   const brillo::SecureBlob& GetResetSecret() const;
   void SetResetSecret(const brillo::SecureBlob& secret);
 
-  // Returns the wrapped key with the given wrapping ID, or null if it doesn't
-  // exist.
-  const WrappedKeyBlock* GetWrappedKeyBlock(
-      const std::string& wrapping_id) const;
-  // Adds the wrapped key under the given ID. When the ID is already used, fails
-  // and returns false.
-  bool AddWrappedKeyBlock(const std::string& wrapping_id,
-                          const WrappedKeyBlock& wrapped_key_block);
+  // Returns whether there's a wrapped key block with the given wrapping ID.
+  bool HasWrappedMainKey(const std::string& wrapping_id) const;
+  // Unwraps (decrypts) the USS main key from the wrapped key block with the
+  // given wrapping ID. Returns null if it doesn't exist or the unwrapping
+  // fails.
+  base::Optional<brillo::SecureBlob> UnwrapMainKey(
+      const std::string& wrapping_id,
+      const brillo::SecureBlob& wrapping_key) const;
+  // Wraps (encrypts) the USS main key using the given wrapped key. The wrapped
+  // data is added into the USS as a wrapped key block with the given wrapping
+  // ID. |main_key| must be non-empty, and |wrapping_key| - of
+  // |kAesGcm256KeySize| length. Returns false if the wrapping ID is already
+  // used or the wrapping fails.
+  bool AddWrappedMainKey(const brillo::SecureBlob& main_key,
+                         const std::string& wrapping_id,
+                         const brillo::SecureBlob& wrapping_key);
   // Removes the wrapped key with the given ID. If it doesn't exist, returns
   // false.
-  bool RemoveWrappedKeyBlock(const std::string& wrapping_id);
+  bool RemoveWrappedMainKey(const std::string& wrapping_id);
 
   // This uses the |main_key|, which should be 256-bit as of right now, to
   // encrypt this UserSecretStash class. The object is converted to a
