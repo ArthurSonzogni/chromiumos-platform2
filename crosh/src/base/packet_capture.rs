@@ -151,7 +151,7 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
                 } else {
                     Variant(Box::new(value))
                 };
-            dbus_options.insert(name, variant_value);
+            dbus_options.insert(name.to_string(), variant_value);
         }
     }
 
@@ -180,7 +180,7 @@ fn remove_capture_file_on_error(capture_file_path: &str) {
 
 fn execute_packet_capture_helper(
     output_file_path: &str,
-    dbus_options: HashMap<&str, Variant<Box<dyn arg::RefArg>>>,
+    dbus_options: HashMap<String, Variant<Box<dyn arg::RefArg>>>,
 ) -> Result<(), dispatcher::Error> {
     let capture_file = File::create(&output_file_path).map_err(|err| {
         eprintln!("Couldn't open capture file: {}", err);

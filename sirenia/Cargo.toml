@@ -47,7 +47,8 @@ chromeos-dbus-bindings = { path = "../chromeos-dbus-bindings"} # provided by ebu
 [dependencies]
 anyhow = "1.0.0"
 base64 = "0.13.0"
-dbus = "0.8"
+dbus = "0.9"
+dbus-tree = "0.9"
 flexbuffers = "0.1.1"
 getopts = "0.2"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild

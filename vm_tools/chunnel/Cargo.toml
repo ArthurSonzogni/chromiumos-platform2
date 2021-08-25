@@ -5,7 +5,8 @@ authors = ["The Chromium OS Authors"]
 edition = "2018"
 
 [dependencies]
-dbus = "0.8"
+dbus = "0.9"
+dbus-tree = "0.9"
 getopts = "0.2"
 libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild

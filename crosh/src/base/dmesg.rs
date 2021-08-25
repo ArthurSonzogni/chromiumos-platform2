@@ -82,7 +82,7 @@ fn execute_dmesg(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Err
         let name = flag.1;
         if matches.opt_present(name) {
             let val_true: Variant<Box<dyn arg::RefArg>> = Variant(Box::new(1));
-            dbus_options.insert(name, val_true);
+            dbus_options.insert(name.to_string(), val_true);
         }
     }
 

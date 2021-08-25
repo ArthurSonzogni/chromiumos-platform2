@@ -15,7 +15,7 @@ path = "src/manatee.rs"
 chromeos-dbus-bindings = { path = "../../chromeos-dbus-bindings"} # provided by ebuild
 
 [dependencies]
-dbus = "0.8"
+dbus = "0.9"
 getopts = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "../libsirenia" } # provided by ebuild

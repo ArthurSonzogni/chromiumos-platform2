@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection as DBusConnection;
-use dbus::{self, tree, Error as DBusError};
+use dbus::{self, Error as DBusError};
 use libchromeos::syslog;
 use log::{error, warn};
 use protobuf::{self, Message as ProtoMessage, ProtobufError};
@@ -554,21 +554,21 @@ fn dbus_thread(
         .request_name(CHUNNELD_SERVICE_NAME, false, false, false)
         .map_err(Error::CreateProtobusService)?;
 
-    let f = tree::Factory::new_fnmut::<()>();
+    let f = dbus_tree::Factory::new_fnmut::<()>();
     let dbus_interface = f.interface(CHUNNELD_INTERFACE, ());
     let dbus_method = f
         .method(UPDATE_LISTENING_PORTS_METHOD, (), move |m| {
             let reply = m.msg.method_return();
-            let raw_buf: Vec<u8> = m.msg.read1().map_err(|_| tree::MethodErr::no_arg())?;
+            let raw_buf: Vec<u8> = m.msg.read1().map_err(|_| dbus_tree::MethodErr::no_arg())?;
             let mut proto: UpdateListeningPortsRequest =
                 ProtoMessage::parse_from_bytes(&raw_buf)
-                    .map_err(|e| tree::MethodErr::invalid_arg(&e))?;
+                    .map_err(|e| dbus_tree::MethodErr::invalid_arg(&e))?;
 
             let response = update_listening_ports(&mut proto, &update_queue, &update_evt);
             Ok(vec![reply.append1(
                 response
                     .write_to_bytes()
-                    .map_err(|e| tree::MethodErr::failed(&e))?,
+                    .map_err(|e| dbus_tree::MethodErr::failed(&e))?,
             )])
         })
         .in_arg("ay")

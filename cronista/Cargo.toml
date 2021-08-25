@@ -17,5 +17,5 @@ sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
 
 # These can be removed when the chromeos module is moved out.
-dbus = "0.8"
+dbus = "0.9"
 system_api = { path = "../system_api" } # provided by ebuild

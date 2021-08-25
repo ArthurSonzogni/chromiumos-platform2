@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use dbus::ffidisp::{Connection, WatchEvent};
-use dbus::tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult, Signal};
+use dbus_tree::{Factory, MTFn, MethodErr, MethodInfo, MethodResult, Signal};
 use sys_util::{error, PollContext, PollToken, TimerFd, WatchingEvents};
 
 use crate::common;
@@ -35,6 +35,7 @@ fn get_foreground_available_memory_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodRes
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn get_memory_margins_kb(m: &MethodInfo<MTFn<()>, ()>) -> MethodResult {
     let margins = memory::get_memory_margins_kb();
     Ok(vec![m.msg.method_return().append2(margins.0, margins.1)])

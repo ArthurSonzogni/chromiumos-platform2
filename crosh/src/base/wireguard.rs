@@ -141,7 +141,7 @@ type InputPropMap = HashMap<String, Variant<Box<dyn RefArg>>>;
 // Represents the properties nested as a value of another property in the InputPropMap.
 type InnerPropMap<'a> = HashMap<&'a str, &'a dyn RefArg>;
 // Represents the properties used to configure a service via D-Bus.
-type OutputPropMap = HashMap<&'static str, Variant<Box<dyn RefArg>>>;
+type OutputPropMap = HashMap<String, Variant<Box<dyn RefArg>>>;
 
 // Helper functions for reading a value with a specific type from a property map.
 trait GetPropExt {
@@ -346,7 +346,7 @@ impl WireGuardService {
     fn encode_into_prop_map(&self) -> OutputPropMap {
         let mut properties: OutputPropMap = HashMap::new();
         let mut insert_string_field = |k: &'static str, v: &str| {
-            properties.insert(k, Variant(Box::new(v.to_string())));
+            properties.insert(k.to_string(), Variant(Box::new(v.to_string())));
         };
 
         insert_string_field(PROPERTY_TYPE, TYPE_VPN);
@@ -377,7 +377,7 @@ impl WireGuardService {
         }
         if !static_ip_properties.is_empty() {
             properties.insert(
-                PROPERTY_STATIC_IP_CONFIG,
+                PROPERTY_STATIC_IP_CONFIG.to_string(),
                 Variant(Box::new(static_ip_properties)),
             );
         }
@@ -400,10 +400,16 @@ impl WireGuardService {
             }
             peers_buf.push(peer_properties);
         }
-        properties.insert(PROPERTY_WIREGUARD_PEERS, Variant(Box::new(peers_buf)));
+        properties.insert(
+            PROPERTY_WIREGUARD_PEERS.to_string(),
+            Variant(Box::new(peers_buf)),
+        );
 
         // Always persists keys.
-        properties.insert(PROPERTY_SAVE_CREDENTIALS, Variant(Box::new(true)));
+        properties.insert(
+            PROPERTY_SAVE_CREDENTIALS.to_string(),
+            Variant(Box::new(true)),
+        );
 
         properties
     }

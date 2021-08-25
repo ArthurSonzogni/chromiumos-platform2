@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection;
-use dbus::tree::{self, Interface, MTFn};
+use dbus_tree::{Interface, MTFn};
 use getopts::Options;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
@@ -60,7 +60,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Copy, Clone, Default, Debug)]
 struct TData;
-impl tree::DataType for TData {
+impl dbus_tree::DataType for TData {
     type Tree = ();
     type ObjectPath = Rc<DugongDevice>;
     type Property = ();
@@ -84,12 +84,12 @@ impl OrgChromiumManaTEEInterface for DugongDevice {
     fn start_teeapplication(
         &self,
         app_id: &str,
-    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), tree::MethodErr> {
+    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus_tree::MethodErr> {
         info!("Got request to start up: {}", app_id);
         let fds = request_start_tee_app(self, app_id);
         match fds {
             Ok(fds) => Ok((0, fds.0, fds.1)),
-            Err(e) => Err(tree::MethodErr::failed(&e)),
+            Err(e) => Err(dbus_tree::MethodErr::failed(&e)),
         }
     }
 }
@@ -155,7 +155,7 @@ pub fn start_dbus_handler(
         false, /*do_not_queue*/
     )
     .map_err(Error::ConnectionRequest)?;
-    let f = tree::Factory::new_fn();
+    let f = dbus_tree::Factory::new_fn();
     let interface: Interface<MTFn<TData>, TData> =
         org_chromium_mana_teeinterface_server(&f, (), |m| {
             let a: &Rc<DugongDevice> = m.path.get_data();
