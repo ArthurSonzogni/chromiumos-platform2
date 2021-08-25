@@ -9,6 +9,8 @@
 
 #include <vector>
 
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+
 namespace tpm_manager {
 
 // TpmStatus is an interface class that reports status information for some kind
@@ -69,6 +71,12 @@ class TpmStatus {
 
   // Checks TPM support for U2F.
   virtual bool SupportU2f() = 0;
+
+  // Checks TPM support for Pinweaver.
+  virtual bool SupportPinweaver() = 0;
+
+  // Get the GSC version.
+  virtual GscVersion GetGscVersion() = 0;
 
   // Marks the random owner password is set.
   //

@@ -510,6 +510,7 @@ void TpmManagerService::GetVersionInfoTask(
   reply->set_firmware_version(firmware_version);
   reply->set_vendor_specific(reinterpret_cast<char*>(vendor_specific.data()),
                              vendor_specific.size());
+  reply->set_gsc_version(tpm_status_->GetGscVersion());
   reply->set_status(STATUS_SUCCESS);
 
   {
@@ -551,6 +552,9 @@ void TpmManagerService::GetSupportedFeaturesTask(
   }
 
   reply->set_support_u2f(tpm_status_->SupportU2f());
+  reply->set_support_pinweaver(tpm_status_->SupportPinweaver());
+  reply->set_support_runtime_selection(USE_TPM_DYNAMIC);
+  reply->set_is_allowed(tpm_allowed_);
   reply->set_status(STATUS_SUCCESS);
 
   {

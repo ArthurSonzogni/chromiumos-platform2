@@ -436,4 +436,14 @@ bool TpmStatusImpl::SupportU2f() {
   return false;
 }
 
+bool TpmStatusImpl::SupportPinweaver() {
+  // For TPM1.2, we doesn't support pinweaver.
+  return false;
+}
+
+GscVersion TpmStatusImpl::GetGscVersion() {
+  // TPM1.2 is not a GSC.
+  return GscVersion::GSC_VERSION_NOT_GSC;
+}
+
 }  // namespace tpm_manager

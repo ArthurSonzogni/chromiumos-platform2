@@ -278,4 +278,30 @@ TEST_F(Tpm2StatusTest, NotSupportU2f) {
   EXPECT_FALSE(tpm_status_->SupportU2f());
 }
 
+TEST_F(Tpm2StatusTest, SupportPinweaver) {
+  EXPECT_CALL(mock_tpm_utility_, PinWeaverIsSupported(0, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+
+  EXPECT_TRUE(tpm_status_->SupportPinweaver());
+}
+
+TEST_F(Tpm2StatusTest, NotSupportPinweaver) {
+  EXPECT_CALL(mock_tpm_utility_, PinWeaverIsSupported(0, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+
+  EXPECT_FALSE(tpm_status_->SupportPinweaver());
+}
+
+TEST_F(Tpm2StatusTest, GetGscVersionCr50) {
+  EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(true));
+
+  EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_CR50);
+}
+
+TEST_F(Tpm2StatusTest, GetGscVersionNotGsc) {
+  EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(false));
+
+  EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_NOT_GSC);
+}
+
 }  // namespace tpm_manager

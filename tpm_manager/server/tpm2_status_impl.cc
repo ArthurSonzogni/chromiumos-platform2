@@ -138,6 +138,27 @@ bool Tpm2StatusImpl::SupportU2f() {
   return false;
 }
 
+bool Tpm2StatusImpl::SupportPinweaver() {
+  uint8_t protocol_version;
+
+  if (trunks_tpm_utility_->PinWeaverIsSupported(0, &protocol_version) ==
+      TPM_RC_SUCCESS) {
+    return true;
+  }
+
+  return false;
+}
+
+GscVersion Tpm2StatusImpl::GetGscVersion() {
+  // Currently we don't have method to distinguish Ti50.
+
+  if (trunks_tpm_utility_->IsCr50()) {
+    return GscVersion::GSC_VERSION_CR50;
+  }
+
+  return GscVersion::GSC_VERSION_NOT_GSC;
+}
+
 bool Tpm2StatusImpl::TestTpmSrkAndSaltingSession() {
   trunks::TPMT_PUBLIC public_area;
   TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(trunks::kStorageRootKey,

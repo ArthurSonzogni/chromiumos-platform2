@@ -44,6 +44,8 @@ class TpmStatusImpl : public TpmStatus {
                       std::vector<uint8_t>* vendor_specific) override;
   void MarkRandomOwnerPasswordSet() override;
   bool SupportU2f() override;
+  bool SupportPinweaver() override;
+  GscVersion GetGscVersion() override;
 
  private:
   // Tests if the TPM owner password is the default one. Returns:

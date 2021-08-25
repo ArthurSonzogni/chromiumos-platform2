@@ -36,6 +36,8 @@ class MockTpmStatus : public TpmStatus {
               (override));
   MOCK_METHOD(void, MarkRandomOwnerPasswordSet, (), (override));
   MOCK_METHOD(bool, SupportU2f, (), (override));
+  MOCK_METHOD(bool, SupportPinweaver, (), (override));
+  MOCK_METHOD(GscVersion, GetGscVersion, (), (override));
 };
 
 }  // namespace tpm_manager

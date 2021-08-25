@@ -44,6 +44,8 @@ class Tpm2StatusImpl : public TpmStatus {
   bool IsDictionaryAttackMitigationEnabled(bool* is_enabled) override;
   void MarkRandomOwnerPasswordSet() override;
   bool SupportU2f() override;
+  bool SupportPinweaver() override;
+  GscVersion GetGscVersion() override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed

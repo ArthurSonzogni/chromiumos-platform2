@@ -99,6 +99,12 @@ enum NvramSpacePolicy {
   NVRAM_POLICY_PCR0 = 1;
 }
 
+enum GscVersion {
+  GSC_VERSION_NOT_GSC = 0;
+  GSC_VERSION_CR50 = 1;
+  GSC_VERSION_TI50 = 2;
+}
+
 // Tracks the expected policy for a particular NVRAM space.
 message NvramPolicyRecord {
   optional uint32 index = 1;
@@ -296,6 +302,8 @@ message GetVersionInfoReply {
   optional uint64 firmware_version = 6;
   // Vendor specific information.
   optional bytes vendor_specific = 7;
+  // The GSC version.
+  optional GscVersion gsc_version = 8;
 }
 
 message GetSupportedFeaturesRequest {}
@@ -306,6 +314,15 @@ message GetSupportedFeaturesReply {
 
   // Whether the u2f is supported or not.
   optional bool support_u2f = 2;
+
+  // Whether the pinweaver is supported or not.
+  optional bool support_pinweaver = 3;
+
+  // Whether the platform supports runtime TPM selection or not.
+  optional bool support_runtime_selection = 4;
+
+  // Whether the TPM is allowed to use or not.
+  optional bool is_allowed = 5;
 }
 
 message GetDictionaryAttackInfoRequest {
