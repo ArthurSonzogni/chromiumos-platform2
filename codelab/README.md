@@ -52,7 +52,7 @@ Now, you are able to make builds that use your local changes. Feel free to edit
 your package one of two ways:
 ```
 # Faster, skips emerge build system
-(inside)$ cros_workon_make --board={BOARD} chromeos-base/codelab
+(inside)$ cros_workon_make --board=${BOARD} chromeos-base/codelab
 
 # Same flow as build_packages
 (inside)$ emerge-${BOARD} chromeos-base/codelab
@@ -68,7 +68,7 @@ After emerge, you can see that the binary is built on your workstation:
 Again, two options:
 ```
 # Faster, skips emerge build system
-(inside)$ cros_workon_make --board={BOARD} chromeos-base/codelab --test
+(inside)$ cros_workon_make --board=${BOARD} chromeos-base/codelab --test
 
 # Using emerge to build files
 (inside)$ FEATURES=test emerge-${BOARD} chromeos-base/codelab
@@ -86,7 +86,7 @@ To deploy this binary to your DUT (device under test), you can use the
 ```
 # If you've been using cros_workon_make to iterate, now you have to "install".
 # Emerge does this step automatically.
-(inside)$ cros_workon_make --board={BOARD} chromeos-base/codelab --install
+(inside)$ cros_workon_make --board=${BOARD} chromeos-base/codelab --install
 
 (inside)$ cros deploy ${DUT_IP_ADDRESS} chromeos-base/codelab
 $ ssh ${DUT_IP_ADDRESS}
