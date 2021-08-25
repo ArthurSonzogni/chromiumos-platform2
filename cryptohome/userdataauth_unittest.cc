@@ -2368,6 +2368,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+
+  brillo::SecureBlob salt;
 };
 
 constexpr char UserDataAuthExTest::kUser[];
@@ -2397,12 +2399,13 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
     userdataauth_->DoMount(
         *mount_req_,
         base::BindOnce(
-            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
-              *called_ptr = true;
+            [](bool& called, const user_data_auth::MountReply& reply) {
+              called = true;
+              EXPECT_FALSE(reply.sanitized_username().empty());
               EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
                         reply.error());
             },
-            base::Unretained(&called)));
+            std::ref(called)));
   }
   EXPECT_TRUE(called);
 

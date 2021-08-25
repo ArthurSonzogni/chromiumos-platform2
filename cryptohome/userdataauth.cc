@@ -1250,6 +1250,9 @@ void UserDataAuth::MountGuest(
   // clean up.
   bool ok = RemoveAllMounts(true);
   user_data_auth::MountReply reply;
+  // Provide an authoritative filesystem-sanitized username.
+  reply.set_sanitized_username(
+      SanitizeUserNameWithSalt(guest_user_, system_salt_));
   if (!ok) {
     LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
     reply.set_error(user_data_auth::CryptohomeErrorCode::
