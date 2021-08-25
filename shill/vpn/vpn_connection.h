@@ -77,6 +77,8 @@ class VPNConnection {
   void Connect();
   void Disconnect();
 
+  void ResetCallbacks(std::unique_ptr<Callbacks> callbacks);
+
   State state() { return state_; }
   bool IsConnectingOrConnected() const;
 
@@ -114,6 +116,7 @@ class VPNConnection {
  private:
   // For able to modify |state_| in the tests.
   friend class IPsecConnectionUnderTest;
+  friend class VPNConnectionUnderTest;
 
   std::unique_ptr<Callbacks> callbacks_;
   State state_;

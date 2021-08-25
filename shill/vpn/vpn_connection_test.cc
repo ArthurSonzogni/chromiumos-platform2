@@ -14,6 +14,7 @@
 #include "shill/ipconfig.h"
 #include "shill/service.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/vpn_connection_under_test.h"
 
 namespace shill {
 namespace {
@@ -26,31 +27,6 @@ constexpr char kTestIPAddress[] = "192.168.1.2";
 MATCHER_P(IPPropertiesEq, rhs, "") {
   return arg.address == rhs.address;
 }
-
-class VPNConnectionUnderTest : public VPNConnection {
- public:
-  VPNConnectionUnderTest(std::unique_ptr<Callbacks> callbacks,
-                         EventDispatcher* dispatcher)
-      : VPNConnection(std::move(callbacks), dispatcher) {}
-
-  VPNConnectionUnderTest(const VPNConnectionUnderTest&) = delete;
-  VPNConnectionUnderTest& operator=(const VPNConnectionUnderTest&) = delete;
-
-  // Make these two functions public to be accessible by EXPECT_CALL.
-  MOCK_METHOD(void, OnConnect, (), (override));
-  MOCK_METHOD(void, OnDisconnect, (), (override));
-
-  void TriggerConnected(const std::string& link_name,
-                        int interface_index,
-                        const IPConfig::Properties& ip_properties) {
-    NotifyConnected(link_name, interface_index, ip_properties);
-  }
-  void TriggerFailure(Service::ConnectFailure reason,
-                      const std::string& detail) {
-    NotifyFailure(reason, detail);
-  }
-  void TriggerStopped() { NotifyStopped(); }
-};
 
 class MockCallbacks {
  public:

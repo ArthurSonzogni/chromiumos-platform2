@@ -74,6 +74,7 @@ class IPsecConnection : public VPNConnection {
 
   explicit IPsecConnection(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
+                           std::unique_ptr<VPNConnection> l2tp_connection,
                            EventDispatcher* dispatcher,
                            ProcessManager* process_manager);
   ~IPsecConnection();
@@ -121,7 +122,18 @@ class IPsecConnection : public VPNConnection {
                        const std::string& message_on_failure,
                        int exit_code);
 
+  // Callbacks from L2TPConnection.
+  void OnL2TPConnected(const std::string& interface_name,
+                       int interface_index,
+                       const IPConfig::Properties& properties);
+  void OnL2TPFailure(Service::ConnectFailure reason);
+  void OnL2TPStopped();
+
+  // Stops the charon process if it is running and invokes NotifyStopped().
+  void StopCharon();
+
   std::unique_ptr<Config> config_;
+  std::unique_ptr<VPNConnection> l2tp_connection_;
 
   // Runtime variables.
   base::ScopedTempDir temp_dir_;

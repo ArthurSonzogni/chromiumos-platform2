@@ -134,13 +134,27 @@ class StrongSwanConfSection {
 
 IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
                                  std::unique_ptr<Callbacks> callbacks,
+                                 std::unique_ptr<VPNConnection> l2tp_connection,
                                  EventDispatcher* dispatcher,
                                  ProcessManager* process_manager)
     : VPNConnection(std::move(callbacks), dispatcher),
       config_(std::move(config)),
+      l2tp_connection_(std::move(l2tp_connection)),
       vici_socket_path_(kViciSocketPath),
       process_manager_(process_manager),
-      vpn_util_(VPNUtil::New()) {}
+      vpn_util_(VPNUtil::New()) {
+  if (l2tp_connection_) {
+    l2tp_connection_->ResetCallbacks(std::make_unique<VPNConnection::Callbacks>(
+        base::BindRepeating(&IPsecConnection::OnL2TPConnected,
+                            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&IPsecConnection::OnL2TPFailure,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&IPsecConnection::OnL2TPStopped,
+                       weak_factory_.GetWeakPtr())));
+  } else {
+    NOTREACHED();  // Reserved for IKEv2 VPN
+  }
+}
 
 IPsecConnection::~IPsecConnection() {
   if (state() == State::kIdle || state() == State::kStopped) {
@@ -182,7 +196,11 @@ void IPsecConnection::ScheduleConnectTask(ConnectStep step) {
       SwanctlInitiateConnection();
       return;
     case ConnectStep::kIPsecConnected:
-      // TODO(b/165170125): Start L2TP here.
+      if (l2tp_connection_) {
+        l2tp_connection_->Connect();
+      } else {
+        NOTREACHED();  // Reserved for IKEv2 VPN
+      }
       return;
     default:
       NOTREACHED();
@@ -457,10 +475,81 @@ void IPsecConnection::OnSwanctlExited(base::OnceClosure on_success,
   }
 }
 
+void IPsecConnection::OnL2TPConnected(const std::string& interface_name,
+                                      int interface_index,
+                                      const IPConfig::Properties& properties) {
+  if (state() != State::kConnecting) {
+    // This is possible, e.g., the upper layer called Disconnect() right before
+    // this callback is triggered.
+    LOG(WARNING) << "OnL2TPConnected() called but the IPsec layer is "
+                 << state();
+    return;
+  }
+  NotifyConnected(interface_name, interface_index, properties);
+}
+
 void IPsecConnection::OnDisconnect() {
-  // TODO(b/165170125): Implement OnDisconnect().
+  if (!l2tp_connection_) {
+    StopCharon();
+    return;
+  }
+
+  switch (l2tp_connection_->state()) {
+    case State::kIdle:
+    case State::kStopped:
+      StopCharon();
+      return;
+    case State::kConnecting:
+    case State::kConnected:
+      l2tp_connection_->Disconnect();
+      return;
+    case State::kDisconnecting:
+      // StopCharon() called in the stopped callback.
+      return;
+    default:
+      NOTREACHED();
+  }
+}
+
+void IPsecConnection::OnL2TPFailure(Service::ConnectFailure reason) {
+  switch (state()) {
+    case State::kDisconnecting:
+      // If the IPsec layer is disconnecting, it could mean the failure happens
+      // in the IPsec layer, and the failure must have been propagated to the
+      // upper layer.
+      return;
+    case State::kConnecting:
+    case State::kConnected:
+      NotifyFailure(reason, "L2TP layer failure");
+      return;
+    default:
+      // Other states are unexpected.
+      LOG(DFATAL) << "OnL2TPFailure() called but the IPsec layer is "
+                  << state();
+  }
+}
+
+void IPsecConnection::OnL2TPStopped() {
+  l2tp_connection_ = nullptr;
+  if (state() != State::kDisconnecting) {
+    LOG(DFATAL) << "OnL2TPStopped() called but the IPsec layer is " << state();
+    // Does the cleanup anyway.
+  }
+  StopCharon();
+}
+
+void IPsecConnection::StopCharon() {
   if (charon_pid_ != -1) {
     process_manager_->StopProcess(charon_pid_);
+    charon_pid_ = -1;
+  }
+
+  // This function can be called directly from the destructor, and in that case
+  // the state may not be kDisconnecting.
+  if (state() == State::kDisconnecting) {
+    // Currently we do not wait for charon fully stopped to send out this
+    // signal.
+    NotifyStopped();
   }
 }
 

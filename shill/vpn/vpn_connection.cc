@@ -82,6 +82,10 @@ void VPNConnection::Disconnect() {
                                                   weak_factory_.GetWeakPtr()));
 }
 
+void VPNConnection::ResetCallbacks(std::unique_ptr<Callbacks> callbacks) {
+  callbacks_ = std::move(callbacks);
+}
+
 bool VPNConnection::IsConnectingOrConnected() const {
   return state_ == State::kConnecting || state_ == State::kConnected;
 }

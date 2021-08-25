@@ -709,6 +709,7 @@ if (use.test) {
         "vpn/openvpn_management_server_test.cc",
         "vpn/third_party_vpn_driver_test.cc",
         "vpn/vpn_connection_test.cc",
+        "vpn/vpn_connection_under_test.cc",
         "vpn/vpn_driver_test.cc",
         "vpn/vpn_provider_test.cc",
         "vpn/vpn_service_test.cc",

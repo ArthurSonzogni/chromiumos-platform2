@@ -20,6 +20,7 @@
 #include "shill/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
+#include "shill/vpn/vpn_connection_under_test.h"
 
 namespace shill {
 
@@ -27,10 +28,12 @@ class IPsecConnectionUnderTest : public IPsecConnection {
  public:
   IPsecConnectionUnderTest(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
+                           std::unique_ptr<VPNConnection> l2tp_connection,
                            EventDispatcher* dispatcher,
                            ProcessManager* process_manager)
       : IPsecConnection(std::move(config),
                         std::move(callbacks),
+                        std::move(l2tp_connection),
                         dispatcher,
                         process_manager) {
     vpn_util_ = std::make_unique<FakeVPNUtil>();
@@ -60,6 +63,8 @@ class IPsecConnectionUnderTest : public IPsecConnection {
     swanctl_conf_path_ = path;
   }
 
+  void set_charon_pid(pid_t pid) { charon_pid_ = pid; }
+
   void set_vici_socket_path(const base::FilePath& path) {
     vici_socket_path_ = path;
   }
@@ -67,10 +72,6 @@ class IPsecConnectionUnderTest : public IPsecConnection {
   void set_state(State state) { state_ = state; }
 
   MOCK_METHOD(void, ScheduleConnectTask, (ConnectStep), (override));
-  MOCK_METHOD(void,
-              NotifyFailure,
-              (Service::ConnectFailure, const std::string&),
-              (override));
 };
 
 namespace {
@@ -159,9 +160,12 @@ class IPsecConnectionTest : public testing::Test {
                        base::Unretained(&callbacks_)),
         base::BindOnce(&MockCallbacks::OnStopped,
                        base::Unretained(&callbacks_)));
+    auto l2tp_tmp =
+        std::make_unique<VPNConnectionUnderTest>(nullptr, &dispatcher_);
+    l2tp_connection_ = l2tp_tmp.get();
     ipsec_connection_ = std::make_unique<IPsecConnectionUnderTest>(
         std::make_unique<IPsecConnection::Config>(), std::move(callbacks),
-        &dispatcher_, &process_manager_);
+        std::move(l2tp_tmp), &dispatcher_, &process_manager_);
   }
 
  protected:
@@ -170,6 +174,7 @@ class IPsecConnectionTest : public testing::Test {
   MockProcessManager process_manager_;
 
   std::unique_ptr<IPsecConnectionUnderTest> ipsec_connection_;
+  VPNConnectionUnderTest* l2tp_connection_;  // owned by ipsec_connection_;
 };
 
 TEST_F(IPsecConnectionTest, WriteStrongSwanConfig) {
@@ -238,15 +243,21 @@ TEST_F(IPsecConnectionTest, StartCharon) {
 }
 
 TEST_F(IPsecConnectionTest, StartCharonFailWithStartProcess) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
                                                        _, true, true, _))
       .WillOnce(Return(-1));
-  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kStrongSwanConfigWritten);
+
+  EXPECT_CALL(callbacks_, OnFailure(_));
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
   base::OnceCallback<void(int)> exit_cb;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
                                                        _, true, true, _))
@@ -254,8 +265,10 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kStrongSwanConfigWritten);
 
-  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
   std::move(exit_cb).Run(1);
+
+  EXPECT_CALL(callbacks_, OnFailure(_));
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
@@ -319,15 +332,21 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
 }
 
 TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExecution) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
                                                        _, true, true, _))
       .WillOnce(Return(-1));
-  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
+
+  EXPECT_CALL(callbacks_, OnFailure(_));
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExitCodeNonZero) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
   base::OnceCallback<void(int)> exit_cb;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
                                                        _, true, true, _))
@@ -335,8 +354,10 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExitCodeNonZero) {
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
 
-  EXPECT_CALL(*ipsec_connection_, NotifyFailure(_, _));
   std::move(exit_cb).Run(1);
+
+  EXPECT_CALL(callbacks_, OnFailure(_));
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
@@ -367,6 +388,46 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kIPsecConnected));
   std::move(exit_cb).Run(0);
+}
+
+TEST_F(IPsecConnectionTest, StartL2TPLayerAndConnected) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+  // L2TP connect.
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecConnected);
+  EXPECT_CALL(*l2tp_connection_, OnConnect());
+  dispatcher_.task_environment().RunUntilIdle();
+
+  // L2TP connected.
+  const std::string kIfName = "ppp0";
+  constexpr int kIfIndex = 123;
+  const IPConfig::Properties kIPProperties;
+  l2tp_connection_->TriggerConnected(kIfName, kIfIndex, kIPProperties);
+
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IPsecConnectionTest, OnL2TPFailure) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnected);
+  l2tp_connection_->set_state(VPNConnection::State::kConnecting);
+  l2tp_connection_->TriggerFailure(Service::kFailureInternal, "");
+
+  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IPsecConnectionTest, OnL2TPStopped) {
+  ipsec_connection_->set_state(VPNConnection::State::kDisconnecting);
+  l2tp_connection_->set_state(VPNConnection::State::kDisconnecting);
+  l2tp_connection_->TriggerStopped();
+
+  // If charon is still running, it should be stopped.
+  constexpr pid_t kCharonPid = 123;
+  ipsec_connection_->set_charon_pid(kCharonPid);
+  EXPECT_CALL(process_manager_, StopProcess(kCharonPid));
+
+  EXPECT_CALL(callbacks_, OnStopped());
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 }  // namespace

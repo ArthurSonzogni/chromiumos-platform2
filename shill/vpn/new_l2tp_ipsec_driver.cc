@@ -15,6 +15,7 @@
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/vpn/ipsec_connection.h"
+#include "shill/vpn/l2tp_connection.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -59,6 +60,15 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
       args.Lookup<std::string>(kL2TPIPsecLeftProtoPortProperty, "17/1701");
   config->remote_proto_port =
       args.Lookup<std::string>(kL2TPIPsecRightProtoPortProperty, "17/1701");
+
+  return config;
+}
+
+std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
+    const KeyValueStore& args) {
+  auto config = std::make_unique<L2TPConnection::Config>();
+
+  // TODO(b/165170125): Add fields.
 
   return config;
 }
@@ -116,6 +126,11 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
     return;
   }
 
+  // Callbacks for L2TP will be set and handled in IPsecConnection.
+  auto l2tp_connection = std::make_unique<L2TPConnection>(
+      MakeL2TPConfig(*const_args()), /*callbacks=*/nullptr,
+      manager()->dispatcher());
+
   auto callbacks = std::make_unique<IPsecConnection::Callbacks>(
       base::BindRepeating(&NewL2TPIPsecDriver::OnIPsecConnected,
                           weak_factory_.GetWeakPtr()),
@@ -126,7 +141,7 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
 
   ipsec_connection_ = std::make_unique<IPsecConnection>(
       MakeIPsecConfig(*const_args()), std::move(callbacks),
-      manager()->dispatcher(), process_manager());
+      std::move(l2tp_connection), manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();
 }
