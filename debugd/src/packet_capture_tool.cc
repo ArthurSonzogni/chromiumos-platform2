@@ -210,7 +210,7 @@ PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
   p->AddArg(device);
   p->AddArg(std::to_string(output_fd));
   int max_size = 0;
-  debugd::GetOption(options, ",max_size", &max_size, error);
+  debugd::GetOption(options, "max_size", &max_size, error);
   p->AddArg(std::to_string(max_size));
 
   return p;
