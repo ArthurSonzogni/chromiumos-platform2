@@ -761,6 +761,14 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
 
+  if (msg->type == CAMERA3_MSG_ERROR) {
+    self->camera_metrics_->SendError(msg->message.error.error_code);
+    if (msg->message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
+      LOGF(ERROR) << "Fatal device error; aborting the camera service";
+      _exit(EIO);
+    }
+  }
+
   camera3_notify_msg_t* mutable_msg = const_cast<camera3_notify_msg_t*>(msg);
   for (auto it = self->stream_manipulators_.begin();
        it != self->stream_manipulators_.end(); ++it) {
@@ -769,16 +777,8 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
 
   mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(mutable_msg);
   base::AutoLock l(self->callback_ops_delegate_lock_);
-  if (mutable_msg->type == CAMERA3_MSG_ERROR) {
-    self->camera_metrics_->SendError(mutable_msg->message.error.error_code);
-  }
   if (self->callback_ops_delegate_) {
     self->callback_ops_delegate_->Notify(std::move(msg_ptr));
-  }
-  if (mutable_msg->type == CAMERA3_MSG_ERROR &&
-      mutable_msg->message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
-    LOGF(ERROR) << "Fatal device error; aborting the camera service";
-    _exit(EIO);
   }
 }
 
