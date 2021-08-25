@@ -34,7 +34,31 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
     const KeyValueStore& args) {
   auto config = std::make_unique<IPsecConnection::Config>();
 
-  // TODO(b/165170125): Add fields.
+  config->remote = args.Lookup<std::string>(kProviderHostProperty, "");
+  if (!args.Lookup<std::string>(kL2TPIPsecPskProperty, "").empty()) {
+    config->psk = args.Get<std::string>(kL2TPIPsecPskProperty);
+  }
+  if (!args.Lookup<Strings>(kL2TPIPsecCaCertPemProperty, Strings{}).empty()) {
+    config->ca_cert_pem_strings =
+        args.Get<Strings>(kL2TPIPsecCaCertPemProperty);
+  }
+  if (!args.Lookup<std::string>(kL2TPIPsecClientCertIdProperty, "").empty()) {
+    config->client_cert_id =
+        args.Get<std::string>(kL2TPIPsecClientCertIdProperty);
+  }
+  if (!args.Lookup<std::string>(kL2TPIPsecClientCertSlotProperty, "").empty()) {
+    config->client_cert_slot =
+        args.Get<std::string>(kL2TPIPsecClientCertSlotProperty);
+  }
+  if (!args.Lookup<std::string>(kL2TPIPsecPinProperty, "").empty()) {
+    config->client_cert_pin = args.Get<std::string>(kL2TPIPsecPinProperty);
+  }
+
+  // 17 = UDP, 1701 = L2TP.
+  config->local_proto_port =
+      args.Lookup<std::string>(kL2TPIPsecLeftProtoPortProperty, "17/1701");
+  config->remote_proto_port =
+      args.Lookup<std::string>(kL2TPIPsecRightProtoPortProperty, "17/1701");
 
   return config;
 }

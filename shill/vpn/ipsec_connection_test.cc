@@ -48,6 +48,10 @@ class IPsecConnectionUnderTest : public IPsecConnection {
     IPsecConnection::ScheduleConnectTask(step);
   }
 
+  void set_config(std::unique_ptr<Config> config) {
+    config_ = std::move(config);
+  }
+
   void set_strongswan_conf_path(const base::FilePath& path) {
     strongswan_conf_path_ = path;
   }
@@ -104,6 +108,35 @@ constexpr char kExpectedStrongSwanConf[] =
     "    }\n"
     "  }\n"
     "}";
+
+// Expected contents of swanctl.conf in WriteSwanctlConfig test.
+constexpr char kExpectedSwanctlConfWithPSK[] = R"(connections {
+  vpn {
+    local_addrs = "0.0.0.0/0,::/0"
+    proposals = "aes128-sha256-modp3072,aes128-sha1-modp2048,3des-sha1-modp1536,3des-sha1-modp1024,default"
+    remote_addrs = "10.0.0.1"
+    version = "1"
+    local-1 {
+      auth = "psk"
+    }
+    remote-1 {
+      auth = "psk"
+    }
+    children {
+      managed {
+        esp_proposals = "aes128gcm16,aes128-sha256,aes128-sha1,3des-sha1,3des-md5,default"
+        local_ts = "dynamic[17/1701]"
+        mode = "transport"
+        remote_ts = "dynamic[17/1701]"
+      }
+    }
+  }
+}
+secrets {
+  ike-1 {
+    secret = "this is psk"
+  }
+})";
 
 class MockCallbacks {
  public:
@@ -228,6 +261,14 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
 TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
   base::FilePath temp_dir = ipsec_connection_->SetTempDir();
 
+  // Creates a config with PSK. Cert will be covered by tast tests.
+  auto config = std::make_unique<IPsecConnection::Config>();
+  config->remote = "10.0.0.1";
+  config->local_proto_port = "17/1701";
+  config->remote_proto_port = "17/1701";
+  config->psk = "this is psk";
+  ipsec_connection_->set_config(std::move(config));
+
   // Signal should be sent out at the end of the execution.
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kSwanctlConfigWritten));
@@ -240,8 +281,7 @@ TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
   ASSERT_TRUE(base::PathExists(expected_path));
   std::string actual_content;
   ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
-
-  // TODO(b/165170125): Check file contents.
+  EXPECT_EQ(actual_content, kExpectedSwanctlConfWithPSK);
 
   // The file should be deleted after destroying the IPsecConnection object.
   ipsec_connection_ = nullptr;

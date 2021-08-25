@@ -75,7 +75,8 @@ class StrongSwanConfSection {
 
     lines.push_back(base::StrCat({indent_str, name_, " {"}));
     for (const auto& [k, v] : key_values_) {
-      lines.push_back(base::StrCat({indent_str, "  ", k, " = ", v}));
+      lines.push_back(
+          base::StrCat({indent_str, "  ", k, " = ", FormatValue(v)}));
     }
     for (const auto& section : sections_) {
       lines.push_back(section->Format(indent_base + 2));
@@ -86,6 +87,44 @@ class StrongSwanConfSection {
   }
 
  private:
+  // Wraps the value in quotation marks and encodes control chars to make sure
+  // the whole value will be read as a single string.
+  static std::string FormatValue(const std::string& input) {
+    std::string output;
+    output.reserve(input.size() + 2);
+    output.append("\"");
+    for (char c : input) {
+      switch (c) {
+        case '\b':
+          output.append("\\b");
+          break;
+        case '\f':
+          output.append("\\f");
+          break;
+        case '\n':
+          output.append("\\n");
+          break;
+        case '\r':
+          output.append("\\r");
+          break;
+        case '\t':
+          output.append("\\t");
+          break;
+        case '"':
+          output.append("\\\"");
+          break;
+        case '\\':
+          output.append("\\\\");
+          break;
+        default:
+          output.push_back(c);
+          break;
+      }
+    }
+    output.append("\"");
+    return output;
+  }
+
   std::string name_;
   std::vector<std::unique_ptr<StrongSwanConfSection>> sections_;
   std::map<std::string, std::string> key_values_;
@@ -217,16 +256,62 @@ void IPsecConnection::WriteSwanctlConfig() {
   Section secrets_section("secrets");
 
   Section* vpn_section = connections_section.AddSection("vpn");
+  vpn_section->AddKeyValue("local_addrs", "0.0.0.0/0,::/0");
+  vpn_section->AddKeyValue("remote_addrs", config_->remote);
   vpn_section->AddKeyValue("proposals", kDefaultIKEProposals);
   vpn_section->AddKeyValue("version", "1");  // IKEv1
 
+  // Fields for authentication.
+  Section* local1 = vpn_section->AddSection("local-1");
+  Section* remote1 = vpn_section->AddSection("remote-1");
+  if (config_->psk.has_value()) {
+    local1->AddKeyValue("auth", "psk");
+    remote1->AddKeyValue("auth", "psk");
+    auto* psk_section = secrets_section.AddSection("ike-1");
+    psk_section->AddKeyValue("secret", config_->psk.value());
+  } else {
+    if (!config_->ca_cert_pem_strings.has_value() ||
+        !config_->client_cert_id.has_value() ||
+        !config_->client_cert_pin.has_value() ||
+        !config_->client_cert_slot.has_value()) {
+      NotifyFailure(Service::kFailureInternal,
+                    "Expect cert auth but some required fields are empty");
+      return;
+    }
+
+    local1->AddKeyValue("auth", "pubkey");
+    remote1->AddKeyValue("auth", "pubkey");
+
+    // Writes server CA to a file and references this file in the config.
+    server_ca_.set_root_directory(temp_dir_.GetPath());
+    server_ca_path_ =
+        server_ca_.CreatePEMFromStrings(config_->ca_cert_pem_strings.value());
+    remote1->AddKeyValue("cacerts", server_ca_path_.value());
+
+    Section* cert = local1->AddSection("cert");
+    cert->AddKeyValue("handle", config_->client_cert_id.value());
+    cert->AddKeyValue("slot", config_->client_cert_slot.value());
+    cert->AddKeyValue("module", kSmartcardModuleName);
+
+    Section* token = secrets_section.AddSection("token-1");
+    token->AddKeyValue("module", kSmartcardModuleName);
+    token->AddKeyValue("handle", config_->client_cert_id.value());
+    token->AddKeyValue("slot", config_->client_cert_slot.value());
+    token->AddKeyValue("pin", config_->client_cert_pin.value());
+  }
+
+  // Fields for CHILD_SA.
   Section* children_section = vpn_section->AddSection("children");
   Section* child_section = children_section->AddSection(kChildSAName);
-
+  child_section->AddKeyValue(
+      "local_ts", base::StrCat({"dynamic[", config_->local_proto_port, "]"}));
+  child_section->AddKeyValue(
+      "remote_ts", base::StrCat({"dynamic[", config_->remote_proto_port, "]"}));
   child_section->AddKeyValue("esp_proposals", kDefaultESPProposals);
   // L2TP/IPsec always uses transport mode.
   child_section->AddKeyValue("mode", "transport");
 
+  // Writes to file.
   const std::string contents = base::StrCat(
       {connections_section.Format(), "\n", secrets_section.Format()});
   if (!vpn_util_->WriteConfigFile(swanctl_conf_path_, contents)) {

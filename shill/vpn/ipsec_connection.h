@@ -6,6 +6,7 @@
 #define SHILL_VPN_IPSEC_CONNECTION_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -36,8 +37,28 @@ namespace shill {
 // TODO(b/165170125): Document temporary files.
 class IPsecConnection : public VPNConnection {
  public:
-  // TODO(b/165170125): Add fields.
-  struct Config {};
+  struct Config {
+    // Remote hostname or IP address.
+    std::string remote;
+
+    // Fields required when using cert auth.
+    std::optional<std::vector<std::string>> ca_cert_pem_strings;
+    std::optional<std::string> client_cert_id;
+    std::optional<std::string> client_cert_slot;
+    std::optional<std::string> client_cert_pin;
+
+    // Field required when using psk auth.
+    std::optional<std::string> psk;
+
+    // TODO(b/165170125): Add Xauth fields.
+    // TODO(b/165170125): Add tunnel group.
+
+    // Protocol and port on the local/remote side. Should be in form of
+    // "proto/port", e.g., "17/1701". For the valid values of proto and port,
+    // see https://wiki.strongswan.org/projects/strongswan/wiki/Swanctlconf
+    std::string local_proto_port;
+    std::string remote_proto_port;
+  };
 
   // This enum is only used internally. It need to be public to be accessible in
   // tests. Each value represents an step in the connect procedure. Also see
@@ -79,7 +100,8 @@ class IPsecConnection : public VPNConnection {
   // if charon is started successfully.
   void StartCharon();
   // Writes swanctl.conf. On success, this function will trigger
-  // |kSwanctlConfigWritten| step and set |swanctl_conf_path_|.
+  // |kSwanctlConfigWritten| step and set |swanctl_conf_path_| (and also
+  // |server_ca_| and |server_ca_path_| if cert auth is used).
   void WriteSwanctlConfig();
   // Executes `swanctl --load-all`. Trigger |kSwanctlConfigLoaded| on success.
   void SwanctlLoadConfig();
@@ -103,6 +125,8 @@ class IPsecConnection : public VPNConnection {
 
   // Runtime variables.
   base::ScopedTempDir temp_dir_;
+  CertificateFile server_ca_;
+  base::FilePath server_ca_path_;
   base::FilePath strongswan_conf_path_;
   base::FilePath swanctl_conf_path_;
   pid_t charon_pid_;
