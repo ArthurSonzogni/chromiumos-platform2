@@ -29,6 +29,7 @@
 
 namespace org {
 namespace chromium {
+class AttestationProxyInterface;
 class debugdProxyInterface;
 class TpmManagerProxyInterface;
 
@@ -56,6 +57,9 @@ class Context {
 
   // Accessors for the various helper objects:
 
+  // Use the object returned by attestation_proxy() to get the attestation
+  // information from attestation service.
+  org::chromium::AttestationProxyInterface* attestation_proxy() const;
   // Use the object returned by bluetooth_client() to subscribe to notifications
   // for D-Bus objects representing Bluetooth adapters and devices.
   BluetoothClient* bluetooth_client() const;
@@ -127,6 +131,7 @@ class Context {
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
 
   // Members accessed via the accessor functions defined above.
+  std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<BluetoothClient> bluetooth_client_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;

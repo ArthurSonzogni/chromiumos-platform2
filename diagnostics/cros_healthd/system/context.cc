@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/logging.h>
 #include <base/time/default_tick_clock.h>
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
@@ -53,6 +55,8 @@ std::unique_ptr<Context> Context::Create(
   }
 
   // Create D-Bus clients:
+  context->attestation_proxy_ =
+      std::make_unique<org::chromium::AttestationProxy>(dbus_bus);
   context->bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus);
   context->cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
@@ -87,6 +91,10 @@ std::unique_ptr<Context> Context::Create(
   context->udev_ = std::make_unique<UdevImpl>();
 
   return context;
+}
+
+org::chromium::AttestationProxyInterface* Context::attestation_proxy() const {
+  return attestation_proxy_.get();
 }
 
 BluetoothClient* Context::bluetooth_client() const {

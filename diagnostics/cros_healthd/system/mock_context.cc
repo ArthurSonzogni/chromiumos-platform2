@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -15,6 +17,8 @@
 namespace diagnostics {
 
 MockContext::MockContext() {
+  attestation_proxy_ = std::make_unique<
+      testing::StrictMock<org::chromium::AttestationProxyMock>>();
   bluetooth_client_ = std::make_unique<FakeBluetoothClient>();
   cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
   cras_proxy_ = std::make_unique<
@@ -36,6 +40,12 @@ MockContext::MockContext() {
 
   CHECK(temp_dir_.CreateUniqueTempDir());
   root_dir_ = temp_dir_.GetPath();
+}
+
+org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()
+    const {
+  return static_cast<testing::StrictMock<org::chromium::AttestationProxyMock>*>(
+      attestation_proxy_.get());
 }
 
 FakeBluetoothClient* MockContext::fake_bluetooth_client() const {

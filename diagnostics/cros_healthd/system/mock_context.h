@@ -23,6 +23,7 @@
 
 namespace org {
 namespace chromium {
+class AttestationProxyMock;
 class debugdProxyMock;
 class TpmManagerProxyMock;
 
@@ -43,6 +44,7 @@ class MockContext final : public Context {
   ~MockContext() override = default;
 
   // Accessors to the fake and mock objects held by MockContext:
+  org::chromium::AttestationProxyMock* mock_attestation_proxy() const;
   FakeBluetoothClient* fake_bluetooth_client() const;
   brillo::FakeCrosConfig* fake_cros_config() const;
   org::chromium::debugdProxyMock* mock_debugd_proxy() const;

@@ -8,6 +8,7 @@ import("//common-mk/pkg_config.gni")
 pkg_config("libcros_healthd_system_pkg_deps") {
   pkg_deps = [
     "dbus-1",
+    "libattestation-client",
     "libbrillo",
     "libchrome",
     "libcros_config",
@@ -47,6 +48,8 @@ if (use.test || use.fuzzer) {
   pkg_config("libcros_healthd_system_test_utils_pkg_deps") {
     pkg_deps = [
       "dbus-1",
+      "libattestation-client",
+      "libattestation-client-test",
       "libchrome",
       "libchrome-test",
       "libcros_config",
