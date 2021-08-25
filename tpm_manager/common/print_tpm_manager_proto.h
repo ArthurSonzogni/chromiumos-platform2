@@ -30,6 +30,8 @@ BRILLO_EXPORT std::string GetProtoDebugString(NvramSpaceAttribute value);
 std::string GetProtoDebugStringWithIndent(NvramSpacePolicy value,
                                           int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(NvramSpacePolicy value);
+std::string GetProtoDebugStringWithIndent(GscVersion value, int indent_size);
+BRILLO_EXPORT std::string GetProtoDebugString(GscVersion value);
 std::string GetProtoDebugStringWithIndent(const NvramPolicyRecord& value,
                                           int indent_size);
 BRILLO_EXPORT std::string GetProtoDebugString(const NvramPolicyRecord& value);

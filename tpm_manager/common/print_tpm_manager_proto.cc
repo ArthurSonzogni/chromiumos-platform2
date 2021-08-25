@@ -135,6 +135,23 @@ std::string GetProtoDebugStringWithIndent(NvramSpacePolicy value,
   return "<unknown>";
 }
 
+std::string GetProtoDebugString(GscVersion value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(GscVersion value, int indent_size) {
+  if (value == GSC_VERSION_NOT_GSC) {
+    return "GSC_VERSION_NOT_GSC";
+  }
+  if (value == GSC_VERSION_CR50) {
+    return "GSC_VERSION_CR50";
+  }
+  if (value == GSC_VERSION_TI50) {
+    return "GSC_VERSION_TI50";
+  }
+  return "<unknown>";
+}
+
 std::string GetProtoDebugString(const NvramPolicyRecord& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }
@@ -278,6 +295,11 @@ std::string GetProtoDebugStringWithIndent(const LocalData& value,
         &output, "%s",
         GetProtoDebugStringWithIndent(value.owner_delegate(), indent_size + 2)
             .c_str());
+    output += "\n";
+  }
+  if (value.has_no_srk_auth()) {
+    output += indent + "  no_srk_auth: ";
+    base::StringAppendF(&output, "%s", value.no_srk_auth() ? "true" : "false");
     output += "\n";
   }
   output += indent + "}\n";
@@ -846,6 +868,12 @@ std::string GetProtoDebugStringWithIndent(
                         value.has_reset_lock_permissions() ? "true" : "false");
     output += "\n";
   }
+  if (value.has_is_srk_default_auth()) {
+    output += indent + "  is_srk_default_auth: ";
+    base::StringAppendF(&output, "%s",
+                        value.is_srk_default_auth() ? "true" : "false");
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -919,6 +947,14 @@ std::string GetProtoDebugStringWithIndent(const GetVersionInfoReply& value,
                             .c_str());
     output += "\n";
   }
+  if (value.has_gsc_version()) {
+    output += indent + "  gsc_version: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.gsc_version(), indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -957,6 +993,23 @@ std::string GetProtoDebugStringWithIndent(
   if (value.has_support_u2f()) {
     output += indent + "  support_u2f: ";
     base::StringAppendF(&output, "%s", value.support_u2f() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_support_pinweaver()) {
+    output += indent + "  support_pinweaver: ";
+    base::StringAppendF(&output, "%s",
+                        value.support_pinweaver() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_support_runtime_selection()) {
+    output += indent + "  support_runtime_selection: ";
+    base::StringAppendF(&output, "%s",
+                        value.support_runtime_selection() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_is_allowed()) {
+    output += indent + "  is_allowed: ";
+    base::StringAppendF(&output, "%s", value.is_allowed() ? "true" : "false");
     output += "\n";
   }
   output += indent + "}\n";
