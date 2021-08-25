@@ -150,15 +150,15 @@ mod tests {
         assert_eq!(classify_disk_layout(&[root_a.clone()]), DiskLayout::NotCros);
         assert_eq!(classify_disk_layout(&[root_b.clone()]), DiskLayout::NotCros);
         assert_eq!(
-            classify_disk_layout(&[root_a.clone(), root_c.clone()]),
+            classify_disk_layout(&[root_a.clone(), root_c]),
             DiskLayout::NotCros
         );
         assert_eq!(
-            classify_disk_layout(&[root_a.clone(), root_b.clone()]),
+            classify_disk_layout(&[root_a.clone(), root_b]),
             DiskLayout::Installed
         );
         assert_eq!(
-            classify_disk_layout(&[root_a.clone(), root_b_small.clone()]),
+            classify_disk_layout(&[root_a, root_b_small]),
             DiskLayout::UsbInstaller
         );
     }

@@ -22,7 +22,7 @@ pub enum Error {
     NoDestinationDeviceFound,
 
     #[error("failed to run process: {0}")]
-    ProcessError(util::ProcessError),
+    Process(util::ProcessError),
 }
 
 pub type Result = std::result::Result<(), Error>;
@@ -131,7 +131,7 @@ fn run_chromeos_install(dest: &Path, boot_mode: BootMode) -> Result {
         cmd.args(&["--target_bios", "efi"]);
     }
 
-    util::run_command_log_output(cmd).map_err(Error::ProcessError)?;
+    util::run_command_log_output(cmd).map_err(Error::Process)?;
 
     Ok(())
 }
