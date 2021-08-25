@@ -1104,7 +1104,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
   if (base::Optional<bool> value =
           EncodeBoolean(key::kDevicePciPeripheralDataAccessEnabled)) {
-    policy->mutable_device_pci_peripheral_data_access_enabled()->set_enabled(
+    policy->mutable_device_pci_peripheral_data_access_enabled_v2()->set_enabled(
         value.value());
   }
 

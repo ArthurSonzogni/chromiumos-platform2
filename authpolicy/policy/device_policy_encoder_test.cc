@@ -733,7 +733,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kDevicePciPeripheralDataAccessEnabled, kBool);
   EXPECT_EQ(kBool,
-            policy.device_pci_peripheral_data_access_enabled().enabled());
+            policy.device_pci_peripheral_data_access_enabled_v2().enabled());
 
   EncodeBoolean(&policy, key::kDeviceBorealisAllowed, kBool);
   EXPECT_EQ(kBool, policy.device_borealis_allowed().allowed());
