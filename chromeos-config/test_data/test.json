@@ -117,6 +117,7 @@
         "hardware-properties": {
           "is-lid-convertible": false
         },
+        "hwid-override": "SOME-ZZCR A6B-C5D-A4E",
         "identity": {
           "platform-name": "Some",
           "sku-id": 1,

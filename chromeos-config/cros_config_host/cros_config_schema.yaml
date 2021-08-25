@@ -544,6 +544,14 @@ properties:
                     - flags
                     additionalProperties: false
               additionalProperties: false
+            hwid-override:
+              type: string
+              description: |
+                Override the HWID reported by crossystem.  This
+                property should only be used for devices supporting
+                non-ChromeOS firmware, where we don't have the ability
+                to set the HWID in GBB.
+              pattern: "[A-Z0-9]+(-[A-Z]{4})?( [0-9A-F]+(-[0-9A-F]+)*)? ([A-Z2-7]{4}(-[A-Z2-7]{4})*|[A-Z2-7][2-9][A-Z2-7](-[A-Z2-7][2-9][A-Z2-7])*)"
             fingerprint:
               type: object
               description: Contains details about the model's fingerprint implementation.
