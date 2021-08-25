@@ -10,7 +10,6 @@
 #include <base/test/simple_test_tick_clock.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
-#include "cras/dbus-proxy-mocks.h"
 #include "diagnostics/common/system/fake_bluetooth_client.h"
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/common/system/mock_debugd_adapter.h"
@@ -25,6 +24,10 @@
 namespace org {
 namespace chromium {
 class debugdProxyMock;
+
+namespace cras {
+class ControlProxyMock;
+}  // namespace cras
 }  // namespace chromium
 }  // namespace org
 

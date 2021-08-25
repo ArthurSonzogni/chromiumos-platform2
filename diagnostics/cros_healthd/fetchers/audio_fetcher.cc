@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
+#include <cras/dbus-proxies.h>
+
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-
-#include <utility>
 
 namespace diagnostics {
 

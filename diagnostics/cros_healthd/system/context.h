@@ -17,7 +17,6 @@
 #include <dbus/object_proxy.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
-#include "cras/dbus-proxies.h"
 #include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/common/system/powerd_adapter.h"
@@ -31,6 +30,10 @@
 namespace org {
 namespace chromium {
 class debugdProxyInterface;
+
+namespace cras {
+class ControlProxyInterface;
+}  // namespace cras
 }  // namespace chromium
 }  // namespace org
 

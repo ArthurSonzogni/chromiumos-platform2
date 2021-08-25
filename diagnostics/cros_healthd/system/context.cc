@@ -11,9 +11,9 @@
 #include <base/time/default_tick_clock.h>
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cras/dbus-proxies.h>
+#include <debugd/dbus-proxies.h>
 
-#include "cras/dbus-proxies.h"
-#include "debugd/dbus-proxies.h"
 #include "diagnostics/common/system/bluetooth_client_impl.h"
 #include "diagnostics/common/system/debugd_adapter_impl.h"
 #include "diagnostics/common/system/powerd_adapter_impl.h"

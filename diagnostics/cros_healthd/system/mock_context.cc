@@ -6,10 +6,9 @@
 
 #include <memory>
 
+#include <cras/dbus-proxy-mocks.h>
+#include <debugd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
-
-#include "cras/dbus-proxy-mocks.h"
-#include "debugd/dbus-proxy-mocks.h"
 
 namespace diagnostics {
 
