@@ -7,6 +7,8 @@
 # HDIO_GETGEO = 0x301
 # MTIOCGET = 0x80306d02
 # SCSI_IOCTL_GET_IDLUN = 0x5382
+# LOOP_CONFIGURE = 0x4c0a
+# CDROM_LAST_WRITTEN = 0x5395
 ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == BLKDISCARDZEROES || arg1 == BLKGETSIZE64 || \
        arg1 == BLKIOMIN || arg1 == BLKIOOPT || arg1 == BLKPBSZGET || \
@@ -15,7 +17,8 @@ ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == LOOP_CTL_GET_FREE || arg1 == LOOP_SET_FD || \
        arg1 == LOOP_SET_STATUS64 || arg1 == TCGETS || arg1 == TIOCGWINSZ || \
        arg1 == 0x1269 || arg1 == 0x5331 || arg1 == 0x301 || \
-       arg1 == 0x80306d02 || arg1 == 0x5382
+       arg1 == 0x80306d02 || arg1 == 0x5382 || \
+       arg1 == 0x4c0a || arg1 == 0x5395
 
 access: 1
 arch_prctl: 1
