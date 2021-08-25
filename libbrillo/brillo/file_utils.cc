@@ -462,7 +462,7 @@ bool WriteToFileAtomic(const base::FilePath& path,
   }
   std::string random_suffix = GetRandomSuffix();
   if (random_suffix.empty()) {
-    PLOG(WARNING) << "Could not compute random suffix";
+    LOG(WARNING) << "Could not compute random suffix";
     return false;
   }
   std::string temp_name = path.AddExtension(random_suffix).value();
@@ -500,7 +500,7 @@ bool WriteToFileAtomic(const base::FilePath& path,
   }
 
   if (rename(temp_name.c_str(), path.value().c_str()) < 0) {
-    PLOG(WARNING) << "Could not close " << temp_name;
+    PLOG(WARNING) << "Could not rename " << temp_name;
     unlink(temp_name.c_str());
     return false;
   }
