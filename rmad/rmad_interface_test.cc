@@ -29,17 +29,17 @@ constexpr char kCurrentStateSetJson[] = R"({"state_history": [ 1 ]})";
 constexpr char kCurrentStateNotSetJson[] = "{}";
 constexpr char kCurrentStateInvalidStateJson[] = R"("state_history": [0])";
 constexpr char kCurrentStateWithRepeatableHistoryJson[] =
-    R"({"state_history": [ 1, 4 ]})";
+    R"({"state_history": [ 1, 2 ]})";
 constexpr char kCurrentStateWithUnrepeatableHistoryJson[] =
-    R"({"state_history": [ 1, 4, 5 ]})";
+    R"({"state_history": [ 1, 2, 3 ]})";
 constexpr char kCurrentStateWithUnsupportedStateJson[] =
-    R"({"state_history": [ 1, 4, 6 ]})";
+    R"({"state_history": [ 1, 2, 4 ]})";
 constexpr char kInitializeCurrentStateFailJson[] =
     R"({"state_history": [ 1 ]})";
 constexpr char kInitializeNextStateFailJson[] =
-    R"({"state_history": [ 1, 4 ]})";
+    R"({"state_history": [ 1, 2 ]})";
 constexpr char kInitializePreviousStateFailJson[] =
-    R"({"state_history": [ 1, 4 ]})";
+    R"({"state_history": [ 1, 2 ]})";
 constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
 
 class RmadInterfaceImplTest : public testing::Test {

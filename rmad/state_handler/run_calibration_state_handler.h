@@ -50,8 +50,6 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   void RetrieveVarsAndCalibrate();
   bool ShouldRecalibrate(RmadErrorCode* error_code);
   void PollUntilCalibrationDone(RmadComponent component);
-  void CheckCalibrationTask(
-      CheckCalibrationState::CalibrationStatus::Component component);
 
   void CheckGyroCalibrationTask();
   void CheckBaseAccCalibrationTask();
