@@ -73,7 +73,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   void RemoveClient(mojo::ReceiverId id);
 
   void OnSamplesObserverDisconnect(mojo::ReceiverId id);
-  void StopReadingSamplesOnClient(mojo::ReceiverId id);
+  void StopReadingSamplesOnClient(mojo::ReceiverId id,
+                                  base::OnceClosure callback);
 
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
   libmems::IioContext* context_;  // non-owned

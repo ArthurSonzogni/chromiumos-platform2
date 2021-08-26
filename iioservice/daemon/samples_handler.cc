@@ -141,12 +141,15 @@ void SamplesHandler::AddClient(
                                 std::move(observer)));
 }
 
-void SamplesHandler::RemoveClient(ClientData* client_data) {
+void SamplesHandler::RemoveClient(ClientData* client_data,
+                                  base::OnceClosure callback) {
   DCHECK_EQ(client_data->iio_device, iio_device_);
 
-  sample_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&SamplesHandler::RemoveClientOnThread,
-                                weak_factory_.GetWeakPtr(), client_data));
+  sample_task_runner_->PostTaskAndReply(
+      FROM_HERE,
+      base::BindOnce(&SamplesHandler::RemoveClientOnThread,
+                     weak_factory_.GetWeakPtr(), client_data),
+      std::move(callback));
 }
 
 void SamplesHandler::UpdateFrequency(

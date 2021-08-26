@@ -191,7 +191,7 @@ void SensorDeviceImpl::StopReadingSamples() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
-  StopReadingSamplesOnClient(id);
+  StopReadingSamplesOnClient(id, base::DoNothing());
 }
 
 void SensorDeviceImpl::GetAllChannelIds(GetAllChannelIdsCallback callback) {
@@ -345,34 +345,34 @@ void SensorDeviceImpl::OnSensorDeviceDisconnect() {
   mojo::ReceiverId id = receiver_set_.current_receiver();
 
   LOGF(INFO) << "SensorDevice disconnected. ReceiverId: " << id;
-  StopReadingSamplesOnClient(id);
-
-  // Run RemoveClient(id) on |sample_thread_| so that tasks to remove the client
-  // in SamplesHandler have been done.
-  sample_thread_->task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&SensorDeviceImpl::RemoveClient,
-                                base::Unretained(this), id));
+  // Run RemoveClient(id) after removing the client from SamplesHandler.
+  StopReadingSamplesOnClient(id,
+                             base::BindOnce(&SensorDeviceImpl::RemoveClient,
+                                            weak_factory_.GetWeakPtr(), id));
 }
 
 void SensorDeviceImpl::RemoveClient(mojo::ReceiverId id) {
-  DCHECK(sample_thread_->task_runner()->RunsTasksInCurrentSequence());
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   clients_.erase(id);
 }
 
-void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id) {
+void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id,
+                                                  base::OnceClosure callback) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   auto it = clients_.find(id);
   if (it == clients_.end()) {
     LOGF(ERROR) << "Failed to find clients with id: " << id;
+    std::move(callback).Run();
     return;
   }
 
   ClientData& client = it->second;
 
   if (samples_handlers_.find(client.iio_device) != samples_handlers_.end())
-    samples_handlers_.at(client.iio_device)->RemoveClient(&client);
+    samples_handlers_.at(client.iio_device)
+        ->RemoveClient(&client, std::move(callback));
 }
 
 }  // namespace iioservice

@@ -206,19 +206,23 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
   client_data.enabled_chn_indices.emplace(3);  // timestamp
 
   handler_->AddClient(&client_data, GetRemote());
-
-  base::RunLoop run_loop;
-  fakes::FakeObserver observer(run_loop.QuitClosure());
-  handler_->AddClient(&client_data, observer.GetRemote());
-  // Wait until |Observer| is disconnected.
-  run_loop.Run();
-
-  handler_->RemoveClient(&client_data);
-  // RemoveClient can be called multiple times.
-  handler_->RemoveClient(&client_data);
-
-  // Wait until tasks are run.
-  base::RunLoop().RunUntilIdle();
+  {
+    base::RunLoop run_loop;
+    fakes::FakeObserver observer(run_loop.QuitClosure());
+    handler_->AddClient(&client_data, observer.GetRemote());
+    // Wait until |Observer| is disconnected.
+    run_loop.Run();
+  }
+  {
+    base::RunLoop run_loop;
+    handler_->RemoveClient(&client_data, run_loop.QuitClosure());
+    run_loop.Run();
+  }
+  {  // RemoveClient can be called multiple times.
+    base::RunLoop run_loop;
+    handler_->RemoveClient(&client_data, run_loop.QuitClosure());
+    run_loop.Run();
+  }
 }
 
 // Add clients with only timestamp channel enabled, enable all other channels,
@@ -270,7 +274,7 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
 
   // Remove clients
   for (auto& client_data : clients_data_)
-    handler_->RemoveClient(&client_data);
+    handler_->RemoveClient(&client_data, base::DoNothing());
 }
 
 TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
@@ -326,7 +330,7 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
 
   // Remove clients
   for (auto& client_data : clients_data_)
-    handler_->RemoveClient(&client_data);
+    handler_->RemoveClient(&client_data, base::DoNothing());
 }
 
 class SamplesHandlerTestWithParam
@@ -402,7 +406,7 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   for (size_t i = 0; i < GetParam().size(); ++i) {
     ClientData& client_data = clients_data_[i];
 
-    handler_->RemoveClient(&client_data);
+    handler_->RemoveClient(&client_data, base::DoNothing());
     auto it = frequencies.find(FixFrequency(GetParam()[i].second));
     EXPECT_TRUE(it != frequencies.end());
     frequencies.erase(it);
@@ -529,7 +533,7 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
 
   // Remove clients
   for (auto& client_data : clients_data_)
-    handler_->RemoveClient(&client_data);
+    handler_->RemoveClient(&client_data, base::DoNothing());
 }
 
 INSTANTIATE_TEST_SUITE_P(

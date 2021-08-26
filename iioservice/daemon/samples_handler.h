@@ -48,7 +48,7 @@ class SamplesHandler : public SamplesHandlerBase {
   void AddClient(
       ClientData* client_data,
       mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer);
-  void RemoveClient(ClientData* client_data);
+  void RemoveClient(ClientData* client_data, base::OnceClosure callback);
 
   void UpdateFrequency(
       ClientData* client_data,
