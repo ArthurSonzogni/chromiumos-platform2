@@ -25,10 +25,10 @@ void StringTransformer::UpdateTimestamps(int64_t ec_uptime_ms,
 std::string StringTransformer::FormatTime(const base::Time& time) {
   base::Time::Exploded e;
 
-  // This format matches the format in libchrome/base/logging.cc
+  // This format matches the syslog format used by default in ChromeOS logs
   time.UTCExplode(&e);
-  return base::StringPrintf("%02d%02d/%02d%02d%02d.%06d", e.month,
-                            e.day_of_month, e.hour, e.minute, e.second,
+  return base::StringPrintf("%04d-%02d-%02dT%02d:%02d:%02d.%06dZ", e.year,
+                            e.month, e.day_of_month, e.hour, e.minute, e.second,
                             e.millisecond * 1000);
 }
 

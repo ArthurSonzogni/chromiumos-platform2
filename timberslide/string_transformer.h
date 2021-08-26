@@ -20,7 +20,7 @@ class StringTransformer {
   StringTransformer()
       : timestamp_(base::Time::UnixEpoch()),
         logline_tm_(base::Time::UnixEpoch()),
-        ec_timestamp_pattern_("\\[(\\d+\\.\\d+)") {}
+        ec_timestamp_pattern_(R"(\[(\d+\.\d+))") {}
 
   std::string AddHostTs(const std::string& s);
   void UpdateTimestamps(int64_t ec_uptime_ms, const base::Time& now);

@@ -21,12 +21,12 @@ const char kSampleLogs[] =
     "[1.000000 Sensor create: 0x0]\n";
 
 const char kExpectedLogsWithUptime[] =
-    "0101/000000.001000 [0.001000 UART initialized after sysjump]\n"
-    "0101/000001.000000 [1.000000 Sensor create: 0x0]\n";
+    "1970-01-01T00:00:00.001000Z [0.001000 UART initialized after sysjump]\n"
+    "1970-01-01T00:00:01.000000Z [1.000000 Sensor create: 0x0]\n";
 
 const char kExpectedLogsWithoutUptime[] =
-    "0101/000000.000000 [0.001000 UART initialized after sysjump]\n"
-    "0101/000000.000000 [1.000000 Sensor create: 0x0]\n";
+    "1970-01-01T00:00:00.000000Z [0.001000 UART initialized after sysjump]\n"
+    "1970-01-01T00:00:00.000000Z [1.000000 Sensor create: 0x0]\n";
 
 class LogListenerImplMock : public LogListener {
  public:
