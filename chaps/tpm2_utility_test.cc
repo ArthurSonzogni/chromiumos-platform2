@@ -137,8 +137,6 @@ TEST(TPM2Utility_DeathTest, LoadKeyParentBadParent) {
 
 TEST_F(TPM2UtilityTest, InitSuccess) {
   TPM2UtilityImpl utility(factory_.get());
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(false));
   EXPECT_TRUE(utility.Init());
 }
 
@@ -148,17 +146,8 @@ TEST_F(TPM2UtilityTest, InitTpmStateInitializationFail) {
   EXPECT_FALSE(utility.Init());
 }
 
-TEST_F(TPM2UtilityTest, InitPlatformHierarchyEnabled) {
-  TPM2UtilityImpl utility(factory_.get());
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(true));
-  EXPECT_FALSE(utility.Init());
-}
-
 TEST_F(TPM2UtilityTest, InitTpmNotOwned) {
   TPM2UtilityImpl utility(factory_.get());
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet()).WillOnce(Return(false));
   EXPECT_FALSE(utility.Init());
 }
@@ -166,8 +155,6 @@ TEST_F(TPM2UtilityTest, InitTpmNotOwned) {
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
 TEST_F(TPM2UtilityTest, InitTpmNoSession) {
   TPM2UtilityImpl utility(factory_.get());
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(false));
   EXPECT_CALL(mock_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.Init());

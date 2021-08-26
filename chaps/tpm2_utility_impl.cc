@@ -326,11 +326,6 @@ bool TPM2UtilityImpl::Init() {
            "unavailable.";
     return false;
   }
-  // Check if firmware initialized the platform hierarchy.
-  if (tpm_state->IsPlatformHierarchyEnabled()) {
-    LOG(ERROR) << "Platform initialization not complete.";
-    return false;
-  }
   // Check if ownership is taken. If not, TPMUtility initialization fails.
   if (!tpm_state->IsOwnerPasswordSet() ||
       !tpm_state->IsEndorsementPasswordSet() ||
