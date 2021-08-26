@@ -212,7 +212,7 @@ Service::ServerInfo::~ServerInfo() {
 
     // The mount point is the second column.
     if (root_dir_.GetPath().IsParent(base::FilePath(mount_data[1]))) {
-      mounts.emplace_back(mount_data[1].as_string());
+      mounts.emplace_back(mount_data[1]);
     }
   }
 

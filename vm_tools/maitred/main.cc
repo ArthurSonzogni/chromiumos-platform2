@@ -169,7 +169,7 @@ int main(int argc, char** argv) {
       if (base::StartsWith(p, kMaitredPortParam,
                            base::CompareCase::SENSITIVE)) {
         int read_port;
-        if (sscanf(p.as_string().c_str(), kMaitredPortParamFmt, &read_port) !=
+        if (sscanf(std::string(p).c_str(), kMaitredPortParamFmt, &read_port) !=
             1) {
           continue;
         }

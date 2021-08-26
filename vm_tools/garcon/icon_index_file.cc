@@ -248,13 +248,13 @@ bool IconIndexFile::LoadFromFile(const base::FilePath& file_path) {
           return false;
         }
         parsing_phase = directory_section;
-        directory_entry->directory = section_name.as_string();
+        directory_entry->directory = std::string(section_name);
       } else if (parsing_phase == directory_section) {
         if (!CloseDirectorySection(std::move(directory_entry))) {
           return false;
         }
         directory_entry = std::make_unique<DirectoryEntry>();
-        directory_entry->directory = section_name.as_string();
+        directory_entry->directory = std::string(section_name);
       }
     } else if (parsing_phase == start) {
       // We are before the icon theme section and this line doesn't begin that

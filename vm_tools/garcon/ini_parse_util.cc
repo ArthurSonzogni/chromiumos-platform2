@@ -37,13 +37,13 @@ std::pair<std::string, std::string> ExtractKeyValuePair(
     base::StringPiece entry_line) {
   size_t equal_pos = entry_line.find_first_of('=');
   if (equal_pos == std::string::npos) {
-    return std::make_pair(entry_line.as_string(), "");
+    return std::make_pair(std::string(entry_line), "");
   }
   base::StringPiece key = base::TrimWhitespaceASCII(
       entry_line.substr(0, equal_pos), base::TRIM_TRAILING);
   base::StringPiece value = base::TrimWhitespaceASCII(
       entry_line.substr(equal_pos + 1), base::TRIM_LEADING);
-  return std::make_pair(key.as_string(), value.as_string());
+  return std::make_pair(std::string(key), std::string(value));
 }
 
 std::string UnescapeString(const std::string& s) {

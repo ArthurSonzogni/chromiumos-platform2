@@ -31,6 +31,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_executor.h>
@@ -205,13 +206,8 @@ static bool ParseExtraDisks(vm_tools::concierge::StartVmRequest* request,
 
     if (tokens.size() > 5) {
       // Unsplit the rest of the string since data is comma-separated.
-      string data(tokens[5].as_string());
-      for (int i = 6; i < tokens.size(); i++) {
-        data += ",";
-        data.append(tokens[i].data(), tokens[i].size());
-      }
-
-      disk_image->set_data(std::move(data));
+      disk_image->set_data(base::JoinString(
+          base::make_span(tokens.begin() + 5, tokens.end()), ","));
     }
 
     if (!base::PathExists(base::FilePath(disk_image->path()))) {

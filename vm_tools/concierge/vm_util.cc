@@ -113,7 +113,7 @@ bool ParseUsbControlResponse(base::StringPiece s,
   }
   if (base::StartsWith(s, "error ")) {
     response->type = ERROR;
-    response->reason = s.substr(6).as_string();
+    response->reason = std::string(s.substr(6));
     return true;
   }
 
