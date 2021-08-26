@@ -266,6 +266,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "path to a custom bios image. Only valid on untrusted VMs.",
             "PATH",
         );
+        opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
 
         let matches = opts.parse(self.args)?;
@@ -280,6 +281,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let vulkan = matches.opt_present("enable-vulkan");
         let big_gl = matches.opt_present("enable-big-gl");
         let gpu = big_gl || vulkan || matches.opt_present("enable-gpu");
+        let timeout = matches
+            .opt_str("timeout")
+            .map(|x| x.parse())
+            .transpose()?
+            .unwrap_or(0);
         let features = VmFeatures {
             gpu,
             vulkan,
@@ -290,6 +296,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             dlc: matches.opt_str("dlc-id"),
             kernel_params: matches.opt_strs("kernel-param"),
             tools_dlc_id: matches.opt_str("tools-dlc"),
+            timeout,
         };
 
         let user_disks = UserDisks {
@@ -894,7 +901,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] <name> |
+   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] <name> |
      stop <name> |
      launch <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
@@ -1095,6 +1102,7 @@ mod tests {
             &["vmc", "start", "termina", "--initrd", "myinitrd"],
             &["vmc", "start", "termina", "--rootfs", "myrootfs"],
             &["vmc", "start", "termina", "--rootfs=myrootfs"],
+            &["vmc", "start", "termina", "--timeout", "3"],
             &[
                 "vmc",
                 "start",
@@ -1240,6 +1248,8 @@ mod tests {
             &["vmc", "start", "termina", "--kernel-param"],
             &["vmc", "start", "termina", "--bios"],
             &["vmc", "start", "termina", "--tools-dlc"],
+            &["vmc", "start", "termina", "--timeout"],
+            &["vmc", "start", "termina", "--timeout", "xyz"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "launch", "borealis", "--enable-gpu"],

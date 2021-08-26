@@ -194,6 +194,9 @@ message StartVmRequest {
   // message and that file descriptor will be used for the type's purpose.
   repeated FdType fds = 16;
 
+  // Timeout (seconds) for VM startup
+  uint32 timeout = 20;
+
   reserved 13, 14, 6;
 }
 

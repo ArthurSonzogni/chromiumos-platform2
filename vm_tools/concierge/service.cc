@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <iterator>
 #include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -110,7 +111,8 @@ constexpr char kToolsFsType[] = "ext4";
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
 // large compressed files), it could take 10 seconds to boot.
-constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(120);
+constexpr base::TimeDelta kVmStartupDefaultTimeout =
+    base::TimeDelta::FromSeconds(30);
 
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
@@ -1747,9 +1749,12 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   // Wait for the VM to finish starting up and for maitre'd to signal that it's
   // ready.
-  if (!event.TimedWait(kVmStartupTimeout)) {
-    LOG(ERROR) << "VM failed to start in " << kVmStartupTimeout.InSeconds()
-               << " seconds";
+  base::TimeDelta timeout = kVmStartupDefaultTimeout;
+  if (request.timeout() != 0) {
+    timeout = base::TimeDelta::FromSeconds(request.timeout());
+  }
+  if (!event.TimedWait(timeout)) {
+    LOG(ERROR) << "VM failed to start in " << timeout.InSeconds() << " seconds";
 
     startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("VM failed to start in time");
