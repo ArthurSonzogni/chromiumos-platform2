@@ -239,6 +239,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
 /var/cache/modem-utilities(/.*)? u:object_r:cros_var_cache_modem_utilities:s0
 /var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
+/var/cache/cups(/.*)?           u:object_r:cros_var_cache_cups:s0
 /var/db                         u:object_r:cros_var_db:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
@@ -298,6 +299,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 /var/spool/crash(/.*)?          u:object_r:cros_crash_spool:s0
+/var/spool/cups(/.*)?           u:object_r:cros_cups_spool:s0
 /var/spool/power_manager(/.*)?  u:object_r:cros_var_spool_power_manager:s0
 /var/tmp                        u:object_r:cros_var_tmp:s0
 
@@ -338,6 +340,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
+/run/cups(/.*)?                 u:object_r:cros_run_cups:s0
 /run/cups_proxy(/.*)?           u:object_r:cros_run_cups_proxy:s0
 /run/daemon-store               u:object_r:cros_run_daemon_store:s0
 /run/dbus                       u:object_r:cros_run_dbus:s0
