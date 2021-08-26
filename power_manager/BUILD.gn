@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":backlight_tool",
     ":check_powerd_config",
+    ":cpufreq_config",
     ":dump_power_status",
     ":inject_powerd_input_event",
     ":libpolicy",
@@ -352,6 +353,16 @@ executable("check_powerd_config") {
   sources = [ "tools/check_powerd_config.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libutil" ]
+}
+
+executable("cpufreq_config") {
+  sources = [ "tools/cpufreq_config.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libsystem",
+    ":libsystem_stub",
+    ":libutil",
+  ]
 }
 
 executable("inject_powerd_input_event") {
