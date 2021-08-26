@@ -180,26 +180,19 @@ int SysfsUtils::DeauthorizeAllDevices(void) {
   base::FileEnumerator iter(pci_devices_path_, false,
                             base::FileEnumerator::DIRECTORIES);
   for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next()) {
-    std::string untrusted;
+    std::string removable;
 
     // It is possible this device may already been have removed (as an effect
     // of its parent being removed).
     if (!PathExists(devpath))
       continue;
 
-    // Proceed only if there is an "untrusted" file.
-    if (!base::ReadFileToString(devpath.Append("untrusted"), &untrusted) ||
-        untrusted.empty()) {
-      PLOG(ERROR) << "Couldn't read " << devpath << "/untrusted";
-      ret = EXIT_FAILURE;
-      continue;
-    }
-
-    // Nevermind the trusted devices.
-    if (untrusted[0] == '0')
+    // Proceed only if it is a removable device
+    if (!base::ReadFileToString(devpath.Append("removable"), &removable) ||
+        removable != "removable")
       continue;
 
-    // Remove untrusted device.
+    // Remove device.
     if (base::WriteFile(devpath.Append("remove"), "1", 1) != 1) {
       PLOG(ERROR) << "Couldn't remove untrusted device " << devpath;
       ret = EXIT_FAILURE;

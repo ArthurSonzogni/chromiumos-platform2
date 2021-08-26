@@ -61,7 +61,7 @@ class SysfsUtilsTest : public ::testing::Test {
     // Create PCI dev
     dev = base::FilePath(root_ + kMockPciDevice);
     ASSERT_TRUE(base::CreateDirectory(dev));
-    ASSERT_TRUE(WriteFile(dev.Append("untrusted"), "1"));
+    ASSERT_TRUE(WriteFile(dev.Append("removable"), "removable"));
     ASSERT_TRUE(WriteFile(dev.Append("remove"), "0"));
 
     ASSERT_TRUE(base::WriteFile(utils_->pci_lockdown_path_, "1"));
