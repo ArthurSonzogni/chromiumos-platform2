@@ -40,7 +40,7 @@ namespace structured {
 // Key storage is backed by a PersistentProto, stored at the path given to the
 // constructor.
 //
-// // TODO(crbug.com/1148168): Consider splitting this across multiple
+// TODO(crbug.com/1148168): Consider splitting this across multiple
 // PersistentProtos if we have multiple cros clients.
 class KeyData {
  public:

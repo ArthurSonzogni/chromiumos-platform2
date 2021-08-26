@@ -45,14 +45,6 @@ bool WriteEventsProtoToDir(const std::string& directory,
     return false;
   }
 
-  // Grab a lock to avoid chrome deleting the file while we're writing. Keep the
-  // file locked as briefly as possible. Freeing file_descriptor will close the
-  // file and remove the lock.
-  if (HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) < 0) {
-    PLOG(ERROR) << filepath << " cannot lock";
-    return false;
-  }
-
   if (!events.SerializeToFileDescriptor(file_descriptor.get())) {
     PLOG(ERROR) << filepath << " write error";
     return false;
@@ -86,31 +78,69 @@ bool Recorder::Record(const EventBase& event) {
   if (!metrics_library_.AreMetricsEnabled())
     return false;
 
-  EventsProto events;
+  EventsProto events_proto;
+  StructuredEventProto* event_proto;
+  if (event.id_type() == EventBase::IdType::kUmaId) {
+    // TODO(crbug.com/1148168): Unimplemented.
+    NOTREACHED();
+    return false;
+  } else {
+    event_proto = events_proto.add_non_uma_events();
+  }
 
-  // TODO(crbug.com/1148168): use the identifier type for an event to choose
-  // which list of events to save to: uma or non-uma.
-  auto* event_proto = events.add_uma_events();
+  // Set the ID for this event, if any.
+  switch (event.id_type()) {
+    case EventBase::IdType::kProjectId:
+      event_proto->set_profile_event_id(
+          key_data_.Id(event.project_name_hash()));
+      break;
+    case EventBase::IdType::kUmaId:
+      // TODO(crbug.com/1148168): Unimplemented.
+      NOTREACHED();
+      break;
+    case EventBase::IdType::kUnidentified:
+      // Do nothing.
+      break;
+    default:
+      // In case id_type is uninitialized.
+      NOTREACHED();
+      break;
+  }
 
-  event_proto->set_profile_event_id(key_data_.Id(event.project_name_hash()));
+  // Set the event type. Do this with a switch statement to catch when the event
+  // type is UNKNOWN or uninitialized.
+  switch (event.event_type()) {
+    case StructuredEventProto_EventType_REGULAR:
+    case StructuredEventProto_EventType_RAW_STRING:
+      event_proto->set_event_type(event.event_type());
+      break;
+    default:
+      NOTREACHED();
+      break;
+  }
+
   event_proto->set_event_name_hash(event.name_hash());
+
+  // Set each metric's name hash and value.
   for (const auto& metric : event.metrics()) {
     auto* metric_proto = event_proto->add_metrics();
     metric_proto->set_name_hash(metric.name_hash);
 
     switch (metric.type) {
+      case EventBase::MetricType::kHmac:
+        metric_proto->set_value_hmac(key_data_.HmacMetric(
+            event.project_name_hash(), metric.name_hash, metric.hmac_value));
+        break;
       case EventBase::MetricType::kInt:
         metric_proto->set_value_int64(metric.int_value);
         break;
-      case EventBase::MetricType::kString:
-        const int64_t hmac = key_data_.HmacMetric(
-            event.project_name_hash(), metric.name_hash, metric.string_value);
-        metric_proto->set_value_hmac(hmac);
+      case EventBase::MetricType::kRawString:
+        metric_proto->set_value_string(metric.string_value);
         break;
     }
   }
 
-  return WriteEventsProtoToDir(events_directory_, events);
+  return WriteEventsProtoToDir(events_directory_, events_proto);
 }
 
 }  // namespace structured

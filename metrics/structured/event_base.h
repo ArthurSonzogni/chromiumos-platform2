@@ -11,6 +11,8 @@
 
 #include <brillo/brillo_export.h>
 
+#include "metrics/structured/proto/storage.pb.h"
+
 namespace metrics {
 namespace structured {
 
@@ -22,7 +24,7 @@ class BRILLO_EXPORT EventBase {
   virtual ~EventBase();
 
   // Specifies the type of identifier attached to an event.
-  enum class IdentifierType {
+  enum class IdType {
     // Events are attached to a per-event (or per-project) id.
     kProjectId = 0,
     // Events are attached to the UMA client_id.
@@ -33,8 +35,9 @@ class BRILLO_EXPORT EventBase {
 
   // Specifies which value type a Metric object holds.
   enum class MetricType {
-    kString = 0,
+    kHmac = 0,
     kInt = 1,
+    kRawString = 2,
   };
 
   // Stores all information about a single metric: name hash, value, and a
@@ -49,11 +52,13 @@ class BRILLO_EXPORT EventBase {
     MetricType type;
 
     // All possible value types a metric can take. Exactly one of these should
-    // be set. If |string_value| is set (with |type| as MetricType::kString),
+    // be set. If |hmac_value| is set (with |type| as MetricType::kHmac),
     // only the HMAC digest will be reported, so it is safe to put any value
-    // here.
-    std::string string_value;
+    // here. If |string_value| is set (with |type| as MetricType::kRawString),
+    // the unprocessed string will be reported.
+    std::string hmac_value;
     int64_t int_value;
+    std::string string_value;
   };
 
   // Finalizes the event and sends it for recording. After this call, the event
@@ -67,12 +72,21 @@ class BRILLO_EXPORT EventBase {
 
   uint64_t project_name_hash() const { return project_name_hash_; }
 
- protected:
-  explicit EventBase(uint64_t event_name_hash, uint64_t project_name_hash);
+  IdType id_type() const { return id_type_; }
 
-  void AddStringMetric(uint64_t name_hash, const std::string& value);
+  StructuredEventProto_EventType event_type() const { return event_type_; }
+
+ protected:
+  EventBase(uint64_t event_name_hash,
+            uint64_t project_name_hash,
+            IdType id_type,
+            StructuredEventProto_EventType event_type);
+
+  void AddHmacMetric(uint64_t name_hash, const std::string& value);
 
   void AddIntMetric(uint64_t name_hash, int64_t value);
+
+  void AddRawStringMetric(uint64_t name_hash, const std::string& value);
 
  private:
   // First 8 bytes of the MD5 hash of the following string:
@@ -86,6 +100,14 @@ class BRILLO_EXPORT EventBase {
   // First 8 bytes of the MD5 hash of this event's project's name, as defined
   // in structured.xml.
   uint64_t project_name_hash_;
+
+  // See enum definition.
+  IdType id_type_;
+
+  // Specifies the type of an event, which determines how it is treated after
+  // upload. See platform2/metrics/structured/proto/structured_data.proto
+  // for more information.
+  StructuredEventProto_EventType event_type_;
 
   std::vector<Metric> metrics_;
 };
