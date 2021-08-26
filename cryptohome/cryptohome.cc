@@ -2238,9 +2238,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    const std::string& response_data = reply.challenge_response();
-    base::WriteFileDescriptor(STDOUT_FILENO, response_data.data(),
-                              response_data.length());
+    base::WriteFileDescriptor(STDOUT_FILENO, reply.challenge_response());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_SIMPLE_CHALLENGE],
                      action.c_str())) {
@@ -2274,9 +2272,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    const std::string& response_data = reply.challenge_response();
-    base::WriteFileDescriptor(STDOUT_FILENO, response_data.data(),
-                              response_data.length());
+    base::WriteFileDescriptor(STDOUT_FILENO, reply.challenge_response());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_GET_KEY_PAYLOAD],
                      action.c_str())) {
@@ -2309,8 +2305,7 @@ int main(int argc, char** argv) {
 
     base::WriteFile(GetOutputFile(cl), reply.payload().data(),
                     reply.payload().size());
-    base::WriteFileDescriptor(STDOUT_FILENO, reply.payload().data(),
-                              reply.payload().size());
+    base::WriteFileDescriptor(STDOUT_FILENO, reply.payload());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_TPM_ATTESTATION_SET_KEY_PAYLOAD],
                      action.c_str())) {
