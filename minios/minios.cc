@@ -8,6 +8,8 @@
 
 #include <base/logging.h>
 
+#include <vboot/crossystem.h>
+
 #include "minios/process_manager.h"
 #include "minios/recovery_installer.h"
 
@@ -28,7 +30,21 @@ MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
 
 int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";
-  // TODO(b/177025106): Cleanup or be able to toggle for production.
+
+  // Only start the shell for debug builds.
+  if (VbGetSystemPropertyInt("cros_debug") == 1) {
+    StartShell();
+  }
+
+  if (!screens_controller_.Init()) {
+    LOG(ERROR) << "Screens init failed. Exiting.";
+    return 1;
+  }
+
+  return 0;
+}
+
+void MiniOs::StartShell() {
   // Start the background shell on DEBUG console.
   pid_t shell_pid;
   if (!ProcessManager().RunBackgroundCommand({"/bin/sh"},
@@ -38,15 +54,10 @@ int MiniOs::Run() {
                                              },
                                              &shell_pid)) {
     LOG(ERROR) << "Failed to start shell in the background.";
-    return 1;
-  }
-  LOG(INFO) << "Started shell in the background as pid: " << shell_pid;
-  if (!screens_controller_.Init()) {
-    LOG(ERROR) << "Screens init failed. Exiting.";
-    return 1;
+    return;
   }
 
-  return 0;
+  LOG(INFO) << "Started shell in the background as pid: " << shell_pid;
 }
 
 bool MiniOs::GetState(State* state_out, brillo::ErrorPtr* error) {

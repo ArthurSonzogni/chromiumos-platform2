@@ -29,6 +29,7 @@ pkg_config("target_defaults") {
     "libupdate_engine-client",
     "protobuf-lite",
     "system_api",
+    "vboot_host",
     "xkbcommon",
   ]
 }

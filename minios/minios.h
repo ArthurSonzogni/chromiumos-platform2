@@ -34,6 +34,9 @@ class MiniOs : public MiniOsInterface {
   MiniOs(const MiniOs&) = delete;
   MiniOs& operator=(const MiniOs&) = delete;
 
+  // Starts the shell as a background process.
+  void StartShell();
+
   // The current state of MiniOs.
   State state_;
 
