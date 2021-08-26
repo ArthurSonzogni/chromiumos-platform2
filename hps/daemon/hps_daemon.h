@@ -23,11 +23,16 @@ class HpsDaemon : public brillo::DBusServiceDaemon,
                   public org::chromium::HpsInterface {
  public:
   explicit HpsDaemon(std::unique_ptr<HPS>);
+  // Used to inject a mock bus.
+  HpsDaemon(scoped_refptr<dbus::Bus> bus, std::unique_ptr<HPS> hps);
+
   HpsDaemon(const HpsDaemon&) = delete;
   HpsDaemon& operator=(const HpsDaemon&) = delete;
   virtual ~HpsDaemon();
 
  private:
+  friend class HpsDaemonTest;
+
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
@@ -42,8 +47,6 @@ class HpsDaemon : public brillo::DBusServiceDaemon,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<HPS> hps_;
-
-  std::atomic<bool> daemon_is_ready_{false};
 };
 
 }  // namespace hps

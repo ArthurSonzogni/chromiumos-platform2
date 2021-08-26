@@ -10,6 +10,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":dev_test",
+      ":hps_daemon_test",
       ":hps_metrics_test",
       ":hps_test",
     ]
@@ -125,5 +126,22 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libmetrics" ]
     deps = [ "//common-mk/testrunner:testrunner" ]
+  }
+
+  executable("hps_daemon_test") {
+    sources = [
+      "daemon/hps_daemon.cc",
+      "daemon/hps_daemon_test.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+    ]
+    deps = [
+      ":dev",
+      ":hpslib",
+      "//common-mk/testrunner:testrunner",
+    ]
   }
 }

@@ -20,6 +20,13 @@ HpsDaemon::HpsDaemon(std::unique_ptr<HPS> hps)
       org::chromium::HpsAdaptor(this),
       hps_(std::move(hps)) {}
 
+HpsDaemon::HpsDaemon(scoped_refptr<dbus::Bus> bus, std::unique_ptr<HPS> hps)
+    : brillo::DBusServiceDaemon(::hps::kHpsServiceName),
+      org::chromium::HpsAdaptor(this),
+      dbus_object_(new brillo::dbus_utils::DBusObject(
+          nullptr, bus, dbus::ObjectPath(::hps::kHpsServicePath))),
+      hps_(std::move(hps)) {}
+
 HpsDaemon::~HpsDaemon() = default;
 
 void HpsDaemon::RegisterDBusObjectsAsync(
@@ -34,8 +41,7 @@ void HpsDaemon::RegisterDBusObjectsAsync(
 }
 
 bool HpsDaemon::EnableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  int res = this->hps_->Enable(feature);
-  if (res < 0) {
+  if (!this->hps_->Enable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to enable feature");
 
@@ -46,8 +52,7 @@ bool HpsDaemon::EnableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 }
 
 bool HpsDaemon::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  int res = this->hps_->Disable(feature);
-  if (res < 0) {
+  if (!this->hps_->Disable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to disable feature");
 
