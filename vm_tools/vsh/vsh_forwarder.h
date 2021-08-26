@@ -8,6 +8,7 @@
 #include <pwd.h>
 #include <sys/types.h>
 
+#include <array>
 #include <memory>
 #include <string>
 
