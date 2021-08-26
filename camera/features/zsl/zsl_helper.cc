@@ -614,7 +614,7 @@ void ZslHelper::ReleaseStreamBuffer(camera3_stream_buffer_t buffer) {
   fence_sync_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
-                     base::Unretained(this), base::Passed(&buffer)));
+                     base::Unretained(this), std::move(buffer)));
 }
 
 void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
@@ -633,7 +633,7 @@ void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
   fence_sync_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
-                     base::Unretained(this), base::Passed(&buffer)));
+                     base::Unretained(this), std::move(buffer)));
 }
 
 bool ZslHelper::IsCapabilitySupported(const camera_metadata_t* static_info,

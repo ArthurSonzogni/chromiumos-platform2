@@ -71,7 +71,7 @@ std::string GetUsbVidPid(const base::FilePath& path) {
     if (!base::ReadFileToString(normalized, &id)) {
       return "";
     }
-    return base::TrimWhitespaceASCII(id, base::TRIM_ALL).as_string();
+    return std::string(base::TrimWhitespaceASCII(id, base::TRIM_ALL));
   };
   std::string vid = read_id("idVendor");
   std::string pid = read_id("idProduct");
