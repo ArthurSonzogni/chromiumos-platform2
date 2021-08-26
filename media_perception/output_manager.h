@@ -20,7 +20,14 @@
 #include "media_perception/perception_interface.pb.h"
 #include "media_perception/rtanalytics.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojom/appearances.mojom.h"
+#include "mojom/frame_perception.mojom.h"
+#include "mojom/hotword_detection.mojom.h"
 #include "mojom/media_perception.mojom.h"
+#include "mojom/occupancy_trigger.mojom.h"
+#include "mojom/one_touch_autozoom.mojom.h"
+#include "mojom/presence_perception.mojom.h"
+#include "mojom/software_autozoom.mojom.h"
 
 namespace mri {
 
