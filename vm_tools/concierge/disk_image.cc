@@ -483,8 +483,7 @@ void VmExportOperation::Finalize() {
     sha256_->Finish(base::data(digest), digest.size());
     std::string str = base::StringPrintf(
         "%s\n", base::HexEncode(base::data(digest), digest.size()).c_str());
-    bool written =
-        base::WriteFileDescriptor(out_digest_fd_.get(), str.data(), str.size());
+    bool written = base::WriteFileDescriptor(out_digest_fd_.get(), str);
     out_digest_fd_.reset();
     if (!written) {
       LOG(ERROR) << "Failed to write SHA256 digest of the exported image";

@@ -196,8 +196,7 @@ bool WriteResolvConf(const std::vector<string> nameservers,
 
   for (auto& ns : nameservers) {
     string nameserver_line = base::StringPrintf("nameserver %s\n", ns.c_str());
-    if (!base::WriteFileDescriptor(resolv_fd.get(), nameserver_line.c_str(),
-                                   nameserver_line.length())) {
+    if (!base::WriteFileDescriptor(resolv_fd.get(), nameserver_line)) {
       PLogAndSaveError("failed to write nameserver to tmpfile", out_error);
       return false;
     }
@@ -206,15 +205,13 @@ bool WriteResolvConf(const std::vector<string> nameservers,
   if (!search_domains.empty()) {
     string search_domains_line = base::StringPrintf(
         "search %s\n", base::JoinString(search_domains, " ").c_str());
-    if (!base::WriteFileDescriptor(resolv_fd.get(), search_domains_line.c_str(),
-                                   search_domains_line.length())) {
+    if (!base::WriteFileDescriptor(resolv_fd.get(), search_domains_line)) {
       PLogAndSaveError("failed to write search domains to tmpfile", out_error);
       return false;
     }
   }
 
-  if (!base::WriteFileDescriptor(resolv_fd.get(), kResolvConfOptions,
-                                 strlen(kResolvConfOptions))) {
+  if (!base::WriteFileDescriptor(resolv_fd.get(), kResolvConfOptions)) {
     PLogAndSaveError("failed to write resolver options to tmpfile", out_error);
     return false;
   }

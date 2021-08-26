@@ -114,8 +114,7 @@ grpc::Status Forwarder::ForwardLogs(int64_t cid,
                    << contents[i] << "\n";
     }
     const std::string lines = lines_stream.str();
-    if (!base::WriteFileDescriptor(destination_.get(), lines.c_str(),
-                                   lines.size())) {
+    if (!base::WriteFileDescriptor(destination_.get(), lines)) {
       PLOG(ERROR) << "Failed to write log records to file" << lines;
       return grpc::Status(grpc::INTERNAL,
                           "failed to write log records to file");

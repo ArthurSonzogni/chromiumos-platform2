@@ -563,7 +563,7 @@ void VshForwarder::HandleVsockReadable() {
         if (interactive_) {
           // On EOF, send EOT character. This will be interpreted by the tty
           // driver/line discipline and generate an EOF.
-          if (!base::WriteFileDescriptor(target_fd, "\004", 1)) {
+          if (!base::WriteFileDescriptor(target_fd, "\004")) {
             PLOG(ERROR) << "Failed to write EOF to ptm";
           }
         } else {
@@ -573,7 +573,7 @@ void VshForwarder::HandleVsockReadable() {
         return;
       }
 
-      if (!base::WriteFileDescriptor(target_fd, data.data(), data.size())) {
+      if (!base::WriteFileDescriptor(target_fd, data)) {
         PLOG(ERROR) << "Failed to write data to stdin";
         return;
       }

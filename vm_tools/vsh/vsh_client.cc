@@ -298,8 +298,7 @@ void VshClient::HandleHostMessage(const HostMessage& msg) {
         }
       }
 
-      if (!base::WriteFileDescriptor(target_fd, data_message.data().data(),
-                                     data_message.data().size())) {
+      if (!base::WriteFileDescriptor(target_fd, data_message.data())) {
         PLOG(ERROR) << "Failed to write data to fd " << target_fd;
         return;
       }
