@@ -14,13 +14,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/stl_util.h>
 #include "media_capabilities/common.h"
 
 #define VA_LOG_ASSERT(va_error, function)     \
