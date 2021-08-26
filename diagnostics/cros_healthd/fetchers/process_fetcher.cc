@@ -50,7 +50,7 @@ constexpr char kProcessIOFileRegex[] =
 // |mojo_state_out| to the converted value. If the conversion fails,
 // |mojo_state_out| is invalid and an appropriate error is returned.
 base::Optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
-    const std::string& raw_state, mojo_ipc::ProcessState* mojo_state_out) {
+    base::StringPiece raw_state, mojo_ipc::ProcessState* mojo_state_out) {
   DCHECK(mojo_state_out);
   // See https://man7.org/linux/man-pages/man5/proc.5.html for allowable raw
   // state values.
@@ -69,8 +69,9 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
   } else if (raw_state == "X") {
     *mojo_state_out = mojo_ipc::ProcessState::kDead;
   } else {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  "Undefined process state: " + raw_state);
+    return CreateAndLogProbeError(
+        mojo_ipc::ErrorType::kParseError,
+        "Undefined process state: " + std::string(raw_state));
   }
 
   return base::nullopt;
@@ -305,8 +306,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
         "Failed to tokenize " + kProcPidStatFile.value());
   }
 
-  auto error = GetProcessState(
-      stat_tokens[ProcPidStatIndices::kState].as_string(), state);
+  auto error = GetProcessState(stat_tokens[ProcPidStatIndices::kState], state);
   if (error.has_value())
     return error;
 
