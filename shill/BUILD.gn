@@ -381,6 +381,7 @@ static_library("libshill") {
     sources += [
       "vpn/arc_vpn_driver.cc",
       "vpn/ipsec_connection.cc",
+      "vpn/l2tp_connection.cc",
       "vpn/l2tp_ipsec_driver.cc",
       "vpn/new_l2tp_ipsec_driver.cc",
       "vpn/openvpn_driver.cc",
