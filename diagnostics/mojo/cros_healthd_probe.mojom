@@ -776,6 +776,17 @@ struct UsbBusInterfaceInfo {
   string? driver;
 };
 
+union TpmResult {
+  // Valid TpmInfo.
+  TpmInfo tpm_info;
+  // The error that occurred attempting to retrieve the TpmInfo.
+  ProbeError error;
+};
+
+// Information of the Trusted Platform Module(TPM).
+struct TpmInfo {
+};
+
 // A collection of all the device's telemetry information that cros_healthd is
 // capable of reporting. Note that every field in TelemetryInfo is nullable, and
 // the response for a particular ProbeTelemetryInfo request will only contain

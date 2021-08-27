@@ -45,6 +45,7 @@ source_set("libcros_healthd_fetchers") {
     "stateful_partition_fetcher.cc",
     "system_fetcher.cc",
     "timezone_fetcher.cc",
+    "tpm_fetcher.cc",
   ]
 }
 
