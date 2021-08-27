@@ -46,6 +46,7 @@ if (use.test) {
 
   executable("libcommon_test") {
     sources = [
+      "dbus_utils_test.cc",
       "file_test_utils_test.cc",
       "mojo_utils_test.cc",
     ]
