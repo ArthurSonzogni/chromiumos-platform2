@@ -62,6 +62,10 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_TRUE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
+  EXPECT_TRUE(wp_disable_skipped);
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -85,6 +89,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_TRUE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_FALSE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -109,6 +116,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_TRUE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_FALSE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -133,6 +143,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_TRUE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_FALSE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -157,6 +170,10 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_FALSE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
+  EXPECT_TRUE(wp_disable_skipped);
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -181,6 +198,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_FALSE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_FALSE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -205,6 +225,10 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_FALSE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
+  EXPECT_TRUE(wp_disable_skipped);
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -229,6 +253,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
   EXPECT_FALSE(same_owner);
+
+  bool wp_disable_skipped;
+  EXPECT_FALSE(json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped));
 }
 
 TEST_F(DeviceDestinationStateHandlerTest, GetNextStateCase_MissingState) {

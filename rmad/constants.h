@@ -18,6 +18,7 @@ inline constexpr char kStateMap[] = "state_map";
 inline constexpr char kNetworkConnected[] = "network_connected";
 inline constexpr char kReplacedComponentNames[] = "replaced_component_names";
 inline constexpr char kSameOwner[] = "same_owner";
+inline constexpr char kWpDisableSkipped[] = "wp_disable_skipped";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 
 // Component traits.

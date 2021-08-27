@@ -260,6 +260,7 @@ message WriteProtectDisablePhysicalState {
 message WriteProtectDisableCompleteState {
   // Provided by daemon.
   bool keep_device_open = 1;
+  bool wp_disable_skipped = 2;
 }
 
 // Select method to update firmware.

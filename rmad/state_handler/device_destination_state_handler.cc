@@ -63,6 +63,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
 
   // If factory mode is already enabled, go directly to WpDisableComplete state.
   if (cr50_utils_->IsFactoryModeEnabled()) {
+    json_store_->SetValue(kWpDisableSkipped, true);
     return {.error = RMAD_ERROR_OK,
             .state_case = RmadState::StateCase::kWpDisableComplete};
   }

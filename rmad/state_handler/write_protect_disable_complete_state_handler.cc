@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
 
 #include <base/logging.h>
@@ -33,6 +34,10 @@ RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // mode is disabled.
   wp_disable_complete->set_keep_device_open(
       !cr50_utils_->IsFactoryModeEnabled());
+  // Check if WP disabling steps are skipped.
+  bool wp_disable_skipped = false;
+  json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped);
+  wp_disable_complete->set_wp_disable_skipped(wp_disable_skipped);
 
   state_.set_allocated_wp_disable_complete(wp_disable_complete.release());
   return RMAD_ERROR_OK;
