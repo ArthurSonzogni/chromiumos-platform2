@@ -71,13 +71,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     s.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       s.emplace_back(provider.ConsumeRandomLengthString(
-          std::numeric_limits<unsigned int>::max()));
+          std::numeric_limits<uint16_t>::max()));
     }
     resolver.SetNameServers(s);
     resolver.SetDoHProviders(s, provider.ConsumeBool());
 
     auto msg = provider.ConsumeRandomLengthString(
-        std::numeric_limits<unsigned int>::max());
+        std::numeric_limits<uint16_t>::max());
     resolver.ConstructServFailResponse(msg.c_str(), msg.size());
   }
 
