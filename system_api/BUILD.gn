@@ -19,6 +19,7 @@ group("all") {
     ":system_api-cryptohome-goprotos",
     ":system_api-dlcservice-protos",
     ":system_api-dlp-protos",
+    ":system_api-fusebox-protos",
     ":system_api-kerberos-goprotos",
     ":system_api-kerberos-protos",
     ":system_api-login_manager-goprotos",
@@ -495,5 +496,12 @@ proto_library("system_api-rmad-protos") {
   proto_in_dir = "dbus/rmad"
   proto_out_dir = "include/rmad/proto_bindings"
   sources = [ "${proto_in_dir}/rmad.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-fusebox-protos") {
+  proto_in_dir = "dbus/fusebox"
+  proto_out_dir = "include/fusebox/proto_bindings"
+  sources = [ "${proto_in_dir}/fusebox.proto" ]
   standalone = true
 }
