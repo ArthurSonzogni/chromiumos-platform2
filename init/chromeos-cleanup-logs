@@ -114,6 +114,10 @@ remove_old_pattern_log_files() {
 
   # Remove old modemfwd helper logs
   remove_old_files /var/log/modemfwd "helper_log.*"
+
+  # Remove old bootstat metrics files. NB: this can still leave empty
+  # /var/log/metrics/shutdown.<timestamp>/ directories.
+  remove_old_files /var/log/metrics "*"
 }
 
 usage() {
