@@ -65,6 +65,8 @@ using chromeos::cros_healthd::mojom::SystemResultPtr;
 using chromeos::cros_healthd::mojom::SystemResultV2Ptr;
 using chromeos::cros_healthd::mojom::TelemetryInfoPtr;
 using chromeos::cros_healthd::mojom::TimezoneResultPtr;
+using chromeos::cros_healthd::mojom::TpmGSCVersion;
+using chromeos::cros_healthd::mojom::TpmResultPtr;
 using chromeos::network_config::mojom::NetworkType;
 using chromeos::network_config::mojom::PortalState;
 using chromeos::network_health::mojom::NetworkState;
@@ -89,6 +91,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"audio", ProbeCategoryEnum::kAudio},
     {"boot_performance", ProbeCategoryEnum::kBootPerformance},
     {"bus", ProbeCategoryEnum::kBus},
+    {"tpm", ProbeCategoryEnum::kTpm},
 };
 
 std::string EnumToString(ProcessState state) {
@@ -220,6 +223,17 @@ std::string EnumToString(BootMode mode) {
       return "cros_efi";
     case BootMode::kCrosLegacy:
       return "cros_legacy";
+  }
+}
+
+std::string EnumToString(TpmGSCVersion version) {
+  switch (version) {
+    case TpmGSCVersion::kNotGSC:
+      return "NotGSC";
+    case TpmGSCVersion::kCr50:
+      return "Cr50";
+    case TpmGSCVersion::kTi50:
+      return "Ti50";
   }
 }
 
@@ -809,6 +823,50 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
   OutputJson(output);
 }
 
+void DisplayTpmInfo(const TpmResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
+    return;
+  }
+
+  const auto& info = result->get_tpm_info();
+  base::Value output{base::Value::Type::DICTIONARY};
+
+  const auto& version = info->version;
+  auto* out_version =
+      output.SetKey("version", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(gsc_version, version, out_version);
+  SET_DICT(family, version, out_version);
+  SET_DICT(spec_level, version, out_version);
+  SET_DICT(manufacturer, version, out_version);
+  SET_DICT(tpm_model, version, out_version);
+  SET_DICT(firmware_version, version, out_version);
+  SET_DICT(vendor_specific, version, out_version);
+
+  const auto& status = info->status;
+  auto* out_status =
+      output.SetKey("status", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(enabled, status, out_status);
+  SET_DICT(owned, status, out_status);
+  SET_DICT(owner_password_is_present, status, out_status);
+
+  const auto& dictionary_attack = info->dictionary_attack;
+  auto* out_dictionary_attack = output.SetKey(
+      "dictionary_attack", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(counter, dictionary_attack, out_dictionary_attack);
+  SET_DICT(threshold, dictionary_attack, out_dictionary_attack);
+  SET_DICT(lockout_in_effect, dictionary_attack, out_dictionary_attack);
+  SET_DICT(lockout_seconds_remaining, dictionary_attack, out_dictionary_attack);
+
+  const auto& attestation = info->attestation;
+  auto* out_attestation =
+      output.SetKey("attestation", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(prepared_for_enrollment, attestation, out_attestation);
+  SET_DICT(enrolled, attestation, out_attestation);
+
+  OutputJson(output);
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
@@ -866,6 +924,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& bus_result = info->bus_result;
   if (bus_result)
     DisplayBusDevices(bus_result);
+
+  const auto& tpm_result = info->tpm_result;
+  if (tpm_result)
+    DisplayTpmInfo(tpm_result);
 
   const auto& system_result_v2 = info->system_result_v2;
   if (system_result_v2)
