@@ -88,6 +88,36 @@ TEST(UserSecretStashTest, DecryptErrorCorruptedBuf) {
       stash.FromEncryptedContainer(corrupted_uss_flatbuffer, main_key));
 }
 
+// Test that decryption fails on an empty decryption key.
+TEST(UserSecretStashTest, DecryptErrorEmptyKey) {
+  UserSecretStash stash;
+  stash.InitializeRandom();
+
+  brillo::SecureBlob main_key(kAesGcm256KeySize);
+  memset(main_key.data(), 0xA, main_key.size());
+
+  auto wrapped_uss = stash.GetEncryptedContainer(main_key);
+  ASSERT_NE(base::nullopt, wrapped_uss);
+
+  EXPECT_FALSE(stash.FromEncryptedContainer(*wrapped_uss, /*main_key=*/{}));
+}
+
+// Test that decryption fails on a decryption key of a wrong size.
+TEST(UserSecretStashTest, DecryptErrorKeyBadSize) {
+  UserSecretStash stash;
+  stash.InitializeRandom();
+
+  brillo::SecureBlob main_key(kAesGcm256KeySize);
+  memset(main_key.data(), 0xA, main_key.size());
+
+  auto wrapped_uss = stash.GetEncryptedContainer(main_key);
+  ASSERT_NE(base::nullopt, wrapped_uss);
+
+  brillo::SecureBlob bad_size_main_key = main_key;
+  bad_size_main_key.resize(kAesGcm256KeySize - 1);
+  EXPECT_FALSE(stash.FromEncryptedContainer(*wrapped_uss, bad_size_main_key));
+}
+
 // Test that decryption fails on a wrong decryption key.
 TEST(UserSecretStashTest, DecryptErrorWrongKey) {
   UserSecretStash stash;

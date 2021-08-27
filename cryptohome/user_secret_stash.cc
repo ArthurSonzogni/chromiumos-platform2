@@ -117,6 +117,12 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
 
 bool UserSecretStash::FromEncryptedContainer(
     const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key) {
+  if (main_key.size() != kAesGcm256KeySize) {
+    LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
+               << main_key.size() << ", expected: " << kAesGcm256KeySize;
+    return false;
+  }
+
   flatbuffers::Verifier aes_verifier(flatbuffer.data(), flatbuffer.size());
   if (!VerifyUserSecretStashContainerBuffer(aes_verifier)) {
     LOG(ERROR) << "The UserSecretStashContainer flatbuffer is invalid";
@@ -151,8 +157,18 @@ bool UserSecretStash::FromEncryptedContainer(
   brillo::SecureBlob tag(uss_container->aes_gcm_tag()->begin(),
                          uss_container->aes_gcm_tag()->end());
 
-  if (ciphertext.empty() || iv.empty() || tag.empty()) {
-    LOG(ERROR) << "UserSecretStashContainer has empty fields";
+  if (ciphertext.empty()) {
+    LOG(ERROR) << "UserSecretStash has empty ciphertext";
+    return false;
+  }
+  if (iv.size() != kAesGcmIVSize) {
+    LOG(ERROR) << "UserSecretStash has IV of wrong length: " << iv.size()
+               << ", expected: " << kAesGcmIVSize;
+    return false;
+  }
+  if (tag.size() != kAesGcmTagSize) {
+    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
+               << tag.size() << ", expected: " << kAesGcmTagSize;
     return false;
   }
 
