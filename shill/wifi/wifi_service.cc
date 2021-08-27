@@ -1063,8 +1063,13 @@ std::string WiFiService::ComputeSecurityClass(const std::string& security) {
 }
 
 int16_t WiFiService::SignalLevel() const {
-  return current_endpoint_ ? current_endpoint_->signal_strength()
-                           : std::numeric_limits<int16_t>::min();
+  // If we have any endpoints at all then UpdateFromEndpoints has
+  // already set raw_signal_strength_ to the best signal level we
+  // have. If we don't have any endpoints then return -32768 dBm
+  // on the theory that the service probably exists somewhere in
+  // the world but is too far away to hear.
+  return HasEndpoints() ? raw_signal_strength_
+                        : std::numeric_limits<int16_t>::min();
 }
 
 // static

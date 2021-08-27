@@ -2126,7 +2126,6 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
               DisconnectWithFailure(Service::kFailureOutOfRange, _,
                                     HasSubstr("PendingTimeoutHandler")))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::ResetPendingService));
-  EXPECT_CALL(*service, HasEndpoints()).Times(0);
   // DisconnectFrom() should not be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
@@ -2143,6 +2142,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
   // Service state should be idle, so it is connectable again.
   EXPECT_EQ(Service::kStateIdle, service->state());
+  EXPECT_EQ(nullptr, GetPendingService());
   Mock::VerifyAndClearExpectations(service.get());
 
   ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -2162,7 +2162,6 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   EXPECT_CALL(*service,
               DisconnectWithFailure(Service::kFailureOutOfRange, _,
                                     HasSubstr("PendingTimeoutHandler")));
-  EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
   // DisconnectFrom() should be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
