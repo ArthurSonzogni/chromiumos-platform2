@@ -281,9 +281,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let big_gl = matches.opt_present("enable-big-gl");
         let gpu = big_gl || vulkan || matches.opt_present("enable-gpu");
         let features = VmFeatures {
-            gpu: gpu,
-            vulkan: vulkan,
-            big_gl: big_gl,
+            gpu,
+            vulkan,
+            big_gl,
             software_tpm: matches.opt_present("software-tpm"),
             audio_capture: matches.opt_present("enable-audio-capture"),
             run_as_untrusted: matches.opt_present("untrusted"),
@@ -1052,7 +1052,14 @@ mod tests {
             &["vmc", "start", "termina", "--enable-gpu", "--enable-vulkan"],
             &["vmc", "start", "termina", "--enable-big-gl"],
             &["vmc", "start", "termina", "--enable-gpu", "--enable-big-gl"],
-            &["vmc", "start", "termina", "--enable-gpu", "--enable-vulkan", "--enable-big-gl"],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--enable-gpu",
+                "--enable-vulkan",
+                "--enable-big-gl",
+            ],
             &["vmc", "start", "termina", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-audio-capture"],
