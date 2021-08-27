@@ -220,7 +220,7 @@ bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
                  weak_factory_.GetWeakPtr()));
 
   std::vector<std::string> options;
-  std::map<std::string, std::string> environment;  // No env vars passed.
+  const std::map<std::string, std::string> environment;  // No env vars passed.
   if (!InitOptions(&options, error)) {
     return false;
   }
@@ -231,8 +231,8 @@ bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
                      CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                      CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
   if (!external_task_local->StartInMinijail(
-          base::FilePath(kL2TPIPsecVPNPath), &options, VPNUtil::kVPNUser,
-          VPNUtil::kVPNGroup, capmask, true, true, error)) {
+          base::FilePath(kL2TPIPsecVPNPath), &options, environment,
+          VPNUtil::kVPNUser, VPNUtil::kVPNGroup, capmask, true, true, error)) {
     return false;
   }
   external_task_ = std::move(external_task_local);

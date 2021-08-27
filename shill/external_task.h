@@ -61,25 +61,28 @@ class ExternalTask : public RpcTaskDelegate {
                      Error* error);
 
   // Forks off a process to run |program|, with the command-line arguments
-  // |arguments|. Takes RPC identifiers that would be passed as environment
-  // variables and passes them on the command line instead, since minijail does
-  // not support the setting of custom environment variables for a spawned
-  // program. |inherit_supplementary_groups| indicates whether the child
-  // child program should be spawned with the programatic equivalent of the
-  // minijail -G flag. |close_nonstd_fds| indicates that non-standard file
-  // descriptors should be closed so they cannot be inherited by the child
-  // process.
+  // |arguments|, and the environment variables specified in |environment|.
+  // |inherit_supplementary_groups| indicates whether the child child program
+  // should be spawned with the programmatic equivalent of the minijail -G flag.
+  // |close_nonstd_fds| indicates that non-standard file descriptors should be
+  // closed so they cannot be inherited by the child process.
   //
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
-  virtual bool StartInMinijail(const base::FilePath& program,
-                               std::vector<std::string>* arguments,
-                               const std::string user,
-                               const std::string group,
-                               uint64_t mask,
-                               bool inherit_supplementary_groups,
-                               bool close_nonstd_fds,
-                               Error* error);
+  //
+  // |environment| SHOULD NOT contain kRpcTaskServiceVariable or
+  // kRpcTaskPathVariable, as that may prevent the child process from
+  // communicating back to the ExternalTask.
+  virtual bool StartInMinijail(
+      const base::FilePath& program,
+      std::vector<std::string>* arguments,
+      const std::map<std::string, std::string>& environment,
+      const std::string& user,
+      const std::string& group,
+      uint64_t mask,
+      bool inherit_supplementary_groups,
+      bool close_nonstd_fds,
+      Error* error);
 
   virtual void Stop();
 

@@ -67,39 +67,28 @@ bool ExternalTask::Start(const base::FilePath& program,
   return true;
 }
 
-bool ExternalTask::StartInMinijail(const base::FilePath& program,
-                                   std::vector<std::string>* arguments,
-                                   const std::string user,
-                                   const std::string group,
-                                   uint64_t mask,
-                                   bool inherit_supplementary_groups,
-                                   bool close_nonstd_fds,
-                                   Error* error) {
+bool ExternalTask::StartInMinijail(
+    const base::FilePath& program,
+    std::vector<std::string>* arguments,
+    const std::map<std::string, std::string>& environment,
+    const std::string& user,
+    const std::string& group,
+    uint64_t mask,
+    bool inherit_supplementary_groups,
+    bool close_nonstd_fds,
+    Error* error) {
   // Checks will fail if Start or StartInMinijailWithRpcIdentifiers has already
   // been called on this object.
   CHECK(!pid_);
   CHECK(!rpc_task_);
 
-  // Passes the connection identifiers on the command line instead of through
-  // environment variables.
+  // Setup full environment variables.
   auto local_rpc_task = std::make_unique<RpcTask>(control_, this);
-  const auto env = local_rpc_task->GetEnvironment();
-  const auto task_service_variable = env.find(kRpcTaskServiceVariable);
-  const auto task_path_variable = env.find(kRpcTaskPathVariable);
-  // Fails without the necessary environment variables.
-  if (task_service_variable == env.end() || task_path_variable == env.end()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
-                          std::string("Invalid environment variables for: ") +
-                              program.value().c_str());
-    return false;
-  }
-  arguments->push_back(base::StringPrintf(
-      "--shill_task_service=%s", task_service_variable->second.c_str()));
-  arguments->push_back(base::StringPrintf("--shill_task_path=%s",
-                                          task_path_variable->second.c_str()));
+  auto env = local_rpc_task->GetEnvironment();
+  env.insert(environment.begin(), environment.end());
 
   pid_t pid = process_manager_->StartProcessInMinijail(
-      FROM_HERE, program, *arguments, {}, user, group, mask,
+      FROM_HERE, program, *arguments, env, user, group, mask,
       inherit_supplementary_groups, close_nonstd_fds,
       base::Bind(&ExternalTask::OnTaskDied, base::Unretained(this)));
 
