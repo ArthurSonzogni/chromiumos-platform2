@@ -550,9 +550,10 @@ const char kCdmFactoryDaemonServiceInterface[] =
 const char kCdmFactoryDaemonServiceName[] = "org.chromium.CdmFactoryDaemon";
 const char kCdmFactoryDaemonServicePath[] = "/org/chromium/CdmFactoryDaemon";
 // Methods
-const char kBootstrapMojoConnection[] = "BootstrapMojoConnection";
 const char kBootstrapCdmFactoryDaemonMojoConnection[] =
     "BootstrapCdmFactoryDaemonMojoConnection";
+const char kGetFactoryTransportKeyMaterial[] = "GetFactoryTransportKeyMaterial";
+const char kWrapFactoryKeybox[] = "WrapFactoryKeybox";
 }  // namespace cdm_oemcrypto
 
 namespace midis {
