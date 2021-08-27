@@ -279,8 +279,6 @@ class StateController::ActivityInfo {
   base::TimeTicks last_active_time_;
 };
 
-const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
-
 constexpr base::TimeDelta StateController::kScreenDimImminentInterval;
 
 // static
@@ -549,8 +547,8 @@ void StateController::HandleUserActivity() {
       saw_user_activity_soon_after_screen_dim_or_off_;
   const bool screen_turned_off_recently =
       delays_.screen_off > base::TimeDelta() && screen_turned_off_ &&
-      (clock_->GetCurrentTime() - screen_turned_off_time_).InMilliseconds() <=
-          kUserActivityAfterScreenOffIncreaseDelaysMs;
+      (clock_->GetCurrentTime() - screen_turned_off_time_) <=
+          kUserActivityAfterScreenOffIncreaseDelaysInterval;
   if (!saw_user_activity_soon_after_screen_dim_or_off_ &&
       ((screen_dimmed_ && !screen_turned_off_) || screen_turned_off_recently)) {
     LOG(INFO) << "Scaling delays due to user activity while screen was dimmed "

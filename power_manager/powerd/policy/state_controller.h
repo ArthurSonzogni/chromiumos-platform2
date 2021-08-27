@@ -135,9 +135,10 @@ class StateController : public PrefsObserver {
   };
 
   // Delays are lengthened if user activity is observed while the screen is
-  // dimmed or within this many milliseconds of the screen being turned
-  // off.
-  static const int kUserActivityAfterScreenOffIncreaseDelaysMs;
+  // dimmed or within this interval of the screen being turned off.
+  static constexpr base::TimeDelta
+      kUserActivityAfterScreenOffIncreaseDelaysInterval =
+          base::TimeDelta::FromSeconds(60);
 
   // Time before the screen is dimmed when a ScreenDimImminent D-Bus signal
   // should be emitted.

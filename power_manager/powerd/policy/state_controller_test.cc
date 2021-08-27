@@ -1723,8 +1723,9 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  AdvanceTime(base::TimeDelta::FromMilliseconds(
-      StateController::kUserActivityAfterScreenOffIncreaseDelaysMs + 1000));
+  AdvanceTime(
+      StateController::kUserActivityAfterScreenOffIncreaseDelaysInterval +
+      base::TimeDelta::FromSeconds(1));
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());
@@ -1744,8 +1745,8 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
   const base::TimeDelta kShortOffDelay =
       kOffDelay -
-      base::TimeDelta::FromMilliseconds(
-          StateController::kUserActivityAfterScreenOffIncreaseDelaysMs + 1000);
+      StateController::kUserActivityAfterScreenOffIncreaseDelaysInterval +
+      base::TimeDelta::FromSeconds(1);
   policy.mutable_ac_delays()->set_screen_off_ms(
       kShortOffDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
