@@ -5,6 +5,7 @@ access: 1
 arch_prctl: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 clock_nanosleep: 1
 # used to create a thread reading IIO devices' samples
 clone: 1
@@ -33,6 +34,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 # used in libiio as BLOCK_FREE_IOCTL: _IO('i', 0xa1)
 ioctl: arg1 == 0x69a1
