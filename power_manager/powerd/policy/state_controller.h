@@ -140,6 +140,12 @@ class StateController : public PrefsObserver {
       kUserActivityAfterScreenOffIncreaseDelaysInterval =
           base::TimeDelta::FromSeconds(60);
 
+  // Ignore display mode changes within this interval after the screen is turned
+  // off. These changes are assumed to be hotplug jitter/spam from poorly
+  // implemented display hardware.
+  static constexpr base::TimeDelta kIgnoreDisplayModeAfterScreenOffInterval =
+      base::TimeDelta::FromSeconds(30);
+
   // Time before the screen is dimmed when a ScreenDimImminent D-Bus signal
   // should be emitted.
   static constexpr base::TimeDelta kScreenDimImminentInterval =
@@ -259,6 +265,10 @@ class StateController : public PrefsObserver {
   // already be initialized with default settings.
   static void MergeDelaysFromPolicy(
       const PowerManagementPolicy::Delays& policy_delays, Delays* delays_out);
+
+  // Calculates whether the screen has turned off in the last
+  // |recently_off_threshold|
+  bool IsScreenTurnedOffRecently(base::TimeDelta recently_off_threshold);
 
   // Is StateController currently waiting for the display mode and policy to be
   // received for the first time after Init() was called?

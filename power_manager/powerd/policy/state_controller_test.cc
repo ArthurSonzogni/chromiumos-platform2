@@ -684,6 +684,8 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
             GetDBusSignals(SignalType::ACTIONS));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
+  AdvanceTime(StateController::kIgnoreDisplayModeAfterScreenOffInterval +
+              base::TimeDelta::FromSeconds(1));
 
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
@@ -2252,6 +2254,34 @@ TEST_F(StateControllerTest, ScreenDimImminent) {
         chromeos::kMlDecisionServiceShouldDeferScreenDimMethod);
   }
   EXPECT_EQ(base::JoinString(method_calls, ","), GetDBusMethodCalls());
+}
+
+// Tests that display mode changes are ignored if the screens have been recently
+// turned off. Buggy display hardware can cause HPDs (hot plug detection signal)
+// to be issued when the screen is disabled which looks like the user has
+// plugged/unplugged a new display. http://b/193374679, http://crrev/c/3124532
+TEST_F(StateControllerTest, IgnoreDisplayModeChangesAfterScreenOff) {
+  Init();
+
+  // Wait for the screen to be dimmed and turned off.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, nullptr),
+            delegate_.GetActions());
+
+  // User activity received while the lid is closed should be ignored.
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Wait for the ignore timeout to expire
+  AdvanceTime(StateController::kIgnoreDisplayModeAfterScreenOffInterval +
+              base::TimeDelta::FromSeconds(1));
+
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
+            delegate_.GetActions());
 }
 
 }  // namespace policy

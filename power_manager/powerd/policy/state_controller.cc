@@ -477,6 +477,11 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
   if (!got_initial_display_mode_) {
     got_initial_display_mode_ = true;
     MaybeStopInitialStateTimer();
+  } else if (IsScreenTurnedOffRecently(
+                 kIgnoreDisplayModeAfterScreenOffInterval)) {
+    VLOG(1) << "Ignoring display mode change after recently turning the "
+               "screens off";
+    return;
   } else {
     UpdateLastUserActivityTime();
   }
@@ -545,10 +550,8 @@ void StateController::HandleUserActivity() {
 
   const bool old_saw_user_activity =
       saw_user_activity_soon_after_screen_dim_or_off_;
-  const bool screen_turned_off_recently =
-      delays_.screen_off > base::TimeDelta() && screen_turned_off_ &&
-      (clock_->GetCurrentTime() - screen_turned_off_time_) <=
-          kUserActivityAfterScreenOffIncreaseDelaysInterval;
+  const bool screen_turned_off_recently = IsScreenTurnedOffRecently(
+      kUserActivityAfterScreenOffIncreaseDelaysInterval);
   if (!saw_user_activity_soon_after_screen_dim_or_off_ &&
       ((screen_dimmed_ && !screen_turned_off_) || screen_turned_off_recently)) {
     LOG(INFO) << "Scaling delays due to user activity while screen was dimmed "
@@ -745,6 +748,13 @@ void StateController::MergeDelaysFromPolicy(
     delays_out->screen_lock =
         base::TimeDelta::FromMilliseconds(policy_delays.screen_lock_ms());
   }
+}
+
+bool StateController::IsScreenTurnedOffRecently(
+    base::TimeDelta recently_off_threshold) {
+  return delays_.screen_off > base::TimeDelta() && screen_turned_off_ &&
+         (clock_->GetCurrentTime() - screen_turned_off_time_) <=
+             recently_off_threshold;
 }
 
 bool StateController::WaitingForInitialState() const {
