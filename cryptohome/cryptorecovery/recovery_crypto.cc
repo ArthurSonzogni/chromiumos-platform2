@@ -76,13 +76,13 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   ~RecoveryCryptoImpl() override;
 
-  bool GenerateRequestPayload(
+  bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      RequestPayload* request_payload,
+      brillo::SecureBlob* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
                           const brillo::SecureBlob& rsa_pub_key,
@@ -108,10 +108,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool DecryptResponsePayload(
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
-      const brillo::SecureBlob& response_payload_ct,
-      const brillo::SecureBlob& response_payload_ad,
-      const brillo::SecureBlob& response_payload_iv,
-      const brillo::SecureBlob& response_payload_tag,
+      const brillo::SecureBlob& recovery_response_cbor,
       brillo::SecureBlob* response_plain_text) const override;
 
  private:
@@ -251,21 +248,22 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
   return true;
 }
 
-bool RecoveryCryptoImpl::GenerateRequestPayload(
+bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     const HsmPayload& hsm_payload,
     const brillo::SecureBlob& request_meta_data,
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
     const brillo::SecureBlob& epoch_pub_key,
-    RequestPayload* request_payload,
+    brillo::SecureBlob* recovery_request,
     brillo::SecureBlob* ephemeral_pub_key) const {
+  RequestPayload request_payload;
   RecoveryRequestAssociatedData request_ad;
   request_ad.hsm_payload = hsm_payload;
   request_ad.request_meta_data = request_meta_data;
   request_ad.epoch_pub_key = epoch_pub_key;
   request_ad.request_payload_salt = CreateSecureRandomBlob(kHkdfSaltLength);
   if (!SerializeRecoveryRequestAssociatedDataToCbor(
-          request_ad, &request_payload->associated_data)) {
+          request_ad, &request_payload.associated_data)) {
     LOG(ERROR) << "Failed to generate associated data cbor";
     return false;
   }
@@ -296,10 +294,17 @@ bool RecoveryCryptoImpl::GenerateRequestPayload(
     return false;
   }
 
-  if (!AesGcmEncrypt(plain_text_cbor, request_payload->associated_data,
-                     aes_gcm_key, &request_payload->iv, &request_payload->tag,
-                     &request_payload->cipher_text)) {
+  if (!AesGcmEncrypt(plain_text_cbor, request_payload.associated_data,
+                     aes_gcm_key, &request_payload.iv, &request_payload.tag,
+                     &request_payload.cipher_text)) {
     LOG(ERROR) << "Failed to perform AES-GCM encryption of plain_text_cbor";
+    return false;
+  }
+
+  RecoveryRequest request;
+  request.request_payload = std::move(request_payload);
+  if (!SerializeRecoveryRequestToCbor(request, recovery_request)) {
+    LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
     return false;
   }
   return true;
@@ -647,15 +652,19 @@ bool RecoveryCryptoImpl::RecoverDestination(
 bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& epoch_pub_key,
-    const brillo::SecureBlob& response_payload_ct,
-    const brillo::SecureBlob& response_payload_ad,
-    const brillo::SecureBlob& response_payload_iv,
-    const brillo::SecureBlob& response_payload_tag,
+    const brillo::SecureBlob& recovery_response_cbor,
     brillo::SecureBlob* response_plain_text) const {
+  RecoveryResponse recovery_response;
+  if (!DeserializeRecoveryResponseFromCbor(recovery_response_cbor,
+                                           &recovery_response)) {
+    LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
+    return false;
+  }
+
   HsmResponseAssociatedData response_ad;
-  if (!DeserializeHsmResponseAssociatedDataFromCbor(response_payload_ad,
-                                                    &response_ad)) {
-    LOG(ERROR) << "Unable to deserialize response_payload_ad";
+  if (!DeserializeHsmResponseAssociatedDataFromCbor(
+          recovery_response.response_payload.associated_data, &response_ad)) {
+    LOG(ERROR) << "Unable to deserialize Response payload associated data";
     return false;
   }
   brillo::SecureBlob aes_gcm_key;
@@ -668,8 +677,10 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                   "share decryption";
     return false;
   }
-  if (!AesGcmDecrypt(response_payload_ct, response_payload_ad,
-                     response_payload_tag, aes_gcm_key, response_payload_iv,
+  if (!AesGcmDecrypt(recovery_response.response_payload.cipher_text,
+                     recovery_response.response_payload.associated_data,
+                     recovery_response.response_payload.tag, aes_gcm_key,
+                     recovery_response.response_payload.iv,
                      response_plain_text)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption";
     return false;

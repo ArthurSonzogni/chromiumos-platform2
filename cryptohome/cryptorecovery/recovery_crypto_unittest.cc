@@ -22,7 +22,7 @@ const char kFakeRequestMetaData[] = "fake_request_metadata";
 
 }  // namespace
 
-TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
+TEST(RecoveryCryptoTest, RecoveryRequestTest) {
   std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
   ASSERT_TRUE(recovery);
   std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
@@ -57,22 +57,22 @@ TEST(RecoveryCryptoTest, RecoveryRequestPayloadTest) {
 
   // Start recovery process.
   brillo::SecureBlob ephemeral_pub_key;
-  RequestPayload request_payload;
-  ASSERT_TRUE(recovery->GenerateRequestPayload(
+  brillo::SecureBlob recovery_request_cbor;
+  ASSERT_TRUE(recovery->GenerateRecoveryRequest(
       hsm_payload, brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
-      channel_pub_key, epoch_pub_key, &request_payload, &ephemeral_pub_key));
+      channel_pub_key, epoch_pub_key, &recovery_request_cbor,
+      &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
-  ResponsePayload response_payload;
+  brillo::SecureBlob response_cbor;
   ASSERT_TRUE(mediator->MediateRequestPayload(
-      epoch_pub_key, epoch_priv_key, mediator_priv_key, request_payload,
-      &response_payload));
+      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request_cbor,
+      &response_cbor));
 
   brillo::SecureBlob response_plain_text_cbor;
-  ASSERT_TRUE(recovery->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key, response_payload.cipher_text,
-      response_payload.associated_data, response_payload.iv,
-      response_payload.tag, &response_plain_text_cbor));
+  ASSERT_TRUE(recovery->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
+                                               response_cbor,
+                                               &response_plain_text_cbor));
 
   HsmResponsePlainText response_plain_text;
   ASSERT_TRUE(DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,

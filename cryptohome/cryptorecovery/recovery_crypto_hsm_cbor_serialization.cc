@@ -70,7 +70,8 @@ bool FindBytestringValueInCborMap(const cbor::Value::MapValue& map,
   return true;
 }
 
-cbor::Value::MapValue CreateHsmPayloadMap(const HsmPayload& payload) {
+cbor::Value::MapValue SerializeAeadPayloadMapToCbor(
+    const AeadPayload& payload) {
   cbor::Value::MapValue result;
 
   result.emplace(kAeadCipherText, payload.cipher_text);
@@ -79,6 +80,41 @@ cbor::Value::MapValue CreateHsmPayloadMap(const HsmPayload& payload) {
   result.emplace(kAeadTag, payload.tag);
 
   return result;
+}
+
+bool DeserializeAeadPayloadFromCbor(
+    const cbor::Value::MapValue& aead_payload_map, AeadPayload* aead_payload) {
+  brillo::SecureBlob cipher_text;
+  if (!FindBytestringValueInCborMap(aead_payload_map, kAeadCipherText,
+                                    &cipher_text)) {
+    LOG(ERROR) << "Failed to get cipher text from the AEAD CBOR map.";
+    return false;
+  }
+
+  brillo::SecureBlob associated_data;
+  if (!FindBytestringValueInCborMap(aead_payload_map, kAeadAd,
+                                    &associated_data)) {
+    LOG(ERROR) << "Failed to get associated data from the AEAD CBOR map.";
+    return false;
+  }
+
+  brillo::SecureBlob iv;
+  if (!FindBytestringValueInCborMap(aead_payload_map, kAeadIv, &iv)) {
+    LOG(ERROR) << "Failed to get iv from the AEAD CBOR map.";
+    return false;
+  }
+
+  brillo::SecureBlob tag;
+  if (!FindBytestringValueInCborMap(aead_payload_map, kAeadTag, &tag)) {
+    LOG(ERROR) << "Failed to get tag from the AEAD CBOR map.";
+    return false;
+  }
+
+  aead_payload->cipher_text = std::move(cipher_text);
+  aead_payload->associated_data = std::move(associated_data);
+  aead_payload->iv = std::move(iv);
+  aead_payload->tag = std::move(tag);
+  return true;
 }
 
 }  // namespace
@@ -102,13 +138,31 @@ const char kAeadAd[] = "ad";
 const char kAeadIv[] = "iv";
 const char kAeadTag[] = "tag";
 const char kRequestMetaData[] = "request_meta_data";
+const char kRequestAead[] = "req_aead";
 const char kEpochPublicKey[] = "epoch_pub_key";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 const char kRequestPayloadSalt[] = "request_salt";
+const char kResponseAead[] = "resp_aead";
 const char kResponseMetaData[] = "response_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
+const char kResponseErrorCode[] = "error_code";
+const char kResponseErrorString[] = "error_string";
 
 const int kProtocolVersion = 1;
+
+bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
+                                    brillo::SecureBlob* request_cbor) {
+  cbor::Value::MapValue request_map;
+
+  request_map.emplace(kRequestAead,
+                      SerializeAeadPayloadMapToCbor(request.request_payload));
+
+  if (!SerializeCborMap(request_map, request_cbor)) {
+    LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
+    return false;
+  }
+  return true;
+}
 
 bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
                                       brillo::SecureBlob* ad_cbor) {
@@ -133,7 +187,7 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
 
   ad_map.emplace(kRecoveryCryptoRequestSchemaVersion,
                  /*schema_version=*/kProtocolVersion);
-  ad_map.emplace(kHsmAead, CreateHsmPayloadMap(args.hsm_payload));
+  ad_map.emplace(kHsmAead, SerializeAeadPayloadMapToCbor(args.hsm_payload));
   ad_map.emplace(kRequestMetaData, args.request_meta_data);
   ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
   ad_map.emplace(kRequestPayloadSalt, args.request_payload_salt);
@@ -184,6 +238,22 @@ bool SerializeRecoveryRequestPlainTextToCbor(
 
   if (!SerializeCborMap(pt_map, plain_text_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Request plain text to CBOR";
+    return false;
+  }
+  return true;
+}
+
+bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
+                                     brillo::SecureBlob* response_cbor) {
+  cbor::Value::MapValue response_map;
+
+  response_map.emplace(
+      kResponseAead, SerializeAeadPayloadMapToCbor(response.response_payload));
+  response_map.emplace(kResponseErrorCode, response.error_code);
+  response_map.emplace(kResponseErrorString, response.error_string);
+
+  if (!SerializeCborMap(response_map, response_cbor)) {
+    LOG(ERROR) << "Failed to serialize Recovery Response to CBOR";
     return false;
   }
   return true;
@@ -258,6 +328,35 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
   return true;
 }
 
+bool DeserializeRecoveryRequestFromCbor(
+    const brillo::SecureBlob& recovery_request_cbor,
+    RecoveryRequest* recovery_request) {
+  const auto& cbor = ReadCborMap(recovery_request_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const cbor::Value::MapValue& cbor_map = cbor->GetMap();
+  const auto recovery_request_entry = cbor_map.find(cbor::Value(kRequestAead));
+  if (recovery_request_entry == cbor_map.end()) {
+    LOG(ERROR) << "No " << kRequestAead
+               << " entry in the Recovery Request map.";
+    return false;
+  }
+  if (!recovery_request_entry->second.is_map()) {
+    LOG(ERROR) << "Wrongly formatted " << kRequestAead
+               << " entry in the Recovery Request map.";
+    return false;
+  }
+
+  if (!DeserializeAeadPayloadFromCbor(recovery_request_entry->second.GetMap(),
+                                      &recovery_request->request_payload)) {
+    LOG(ERROR) << "Failed to deserialize Recovery Request from CBOR.";
+    return false;
+  }
+  return true;
+}
+
 bool DeserializeHsmResponsePlainTextFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
     HsmResponsePlainText* response_payload) {
@@ -329,9 +428,88 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
   return true;
 }
 
+bool DeserializeRecoveryResponseFromCbor(
+    const brillo::SecureBlob& response_cbor, RecoveryResponse* response) {
+  const auto& cbor = ReadCborMap(response_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const cbor::Value::MapValue& response_map = cbor->GetMap();
+  const auto error_code_entry =
+      response_map.find(cbor::Value(kResponseErrorCode));
+  if (error_code_entry == response_map.end()) {
+    LOG(ERROR) << "No " << kResponseErrorCode
+               << " entry in the Recovery Response map.";
+    return false;
+  }
+  if (!error_code_entry->second.is_integer()) {
+    LOG(ERROR) << "Wrongly formatted " << kResponseErrorCode
+               << " entry in the Recovery Response map.";
+    return false;
+  }
+
+  const auto error_string_entry =
+      response_map.find(cbor::Value(kResponseErrorString));
+  if (error_string_entry == response_map.end()) {
+    LOG(ERROR) << "No " << kResponseErrorString
+               << " entry in the Recovery Response map.";
+    return false;
+  }
+  if (!error_string_entry->second.is_string()) {
+    LOG(ERROR) << "Wrongly formatted " << kResponseErrorString
+               << " entry in the Recovery Response map.";
+    return false;
+  }
+
+  const auto response_payload_entry =
+      response_map.find(cbor::Value(kResponseAead));
+  if (response_payload_entry == response_map.end()) {
+    LOG(ERROR) << "No " << kResponseAead
+               << " entry in the Recovery Response map.";
+    return false;
+  }
+  if (!response_payload_entry->second.is_map()) {
+    LOG(ERROR) << "Wrongly formatted " << kResponseAead
+               << " entry in the Recovery Response map.";
+    return false;
+  }
+  ResponsePayload response_payload;
+  if (!DeserializeAeadPayloadFromCbor(response_payload_entry->second.GetMap(),
+                                      &response_payload)) {
+    LOG(ERROR) << "Failed to deserialize Response payload from CBOR.";
+    return false;
+  }
+
+  response->response_payload = std::move(response_payload);
+  response->error_code = error_code_entry->second.GetInteger();
+  response->error_string = error_string_entry->second.GetString();
+  return true;
+}
+
 bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                         const std::string& map_key,
-                                        brillo::SecureBlob* value) {
+                                        cbor::Value* value) {
+  const auto& cbor = ReadCborMap(input_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const cbor::Value::MapValue& map = cbor->GetMap();
+  const auto entry = map.find(cbor::Value(map_key));
+  if (entry == map.end()) {
+    LOG(ERROR) << "No `" + map_key + "` entry in the CBOR map.";
+    return false;
+  }
+
+  *value = entry->second.Clone();
+  return true;
+}
+
+bool GetBytestringValueFromCborMapByKeyForTesting(
+    const brillo::SecureBlob& input_cbor,
+    const std::string& map_key,
+    brillo::SecureBlob* value) {
   const auto& cbor = ReadCborMap(input_cbor);
   if (!cbor) {
     return false;

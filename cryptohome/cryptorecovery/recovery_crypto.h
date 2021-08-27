@@ -77,13 +77,15 @@ class RecoveryCrypto {
   // 4. Save G*x to `ephemeral_pub_key` parameter.
   // 5. Construct plain text PT2 = {G*-x}.
   // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
-  virtual bool GenerateRequestPayload(
+  // 7. Construct `RecoveryRequest` and serialize it to
+  // `recovery_request` CBOR.
+  virtual bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const brillo::SecureBlob& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
-      RequestPayload* request_payload,
+      brillo::SecureBlob* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
 
   // Generates HSM payload that will be persisted on a chromebook at enrollment
@@ -151,18 +153,18 @@ class RecoveryCrypto {
       const brillo::SecureBlob& mediated_publisher_pub_key,
       brillo::SecureBlob* destination_recovery_key) const = 0;
 
-  // Decrypt cipher text of response payload `response_payload_ct` and store the
+  // Decrypt plain text from the Recovery Response.
+  // Consists of the following steps:
+  // 1. Deserialize `recovery_response_cbor` to `RecoveryResponse`.
+  // 2. Get cipher text, associated data, AES-GCM tag and iv from
+  // `response_payload` field of `RecoveryResponse`
+  // 3. Decrypt cipher text of response payload and store the
   // result in `response_plain_text`. The key for decryption is
-  // HKDF(ECDH(channel_priv_key, epoch_pub_key)). The associated data is
-  // `response_payload_ad`. The AES-GCM tag and iv for decryption are
-  // `response_payload_tag` and `response_payload_iv`.
+  // HKDF(ECDH(channel_priv_key, epoch_pub_key)).
   virtual bool DecryptResponsePayload(
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
-      const brillo::SecureBlob& response_payload_ct,
-      const brillo::SecureBlob& response_payload_ad,
-      const brillo::SecureBlob& response_payload_iv,
-      const brillo::SecureBlob& response_payload_tag,
+      const brillo::SecureBlob& recovery_response_cbor,
       brillo::SecureBlob* response_plain_text) const = 0;
 
   // Serialize `encrypted_mediator_share` by simply concatenating fixed-length

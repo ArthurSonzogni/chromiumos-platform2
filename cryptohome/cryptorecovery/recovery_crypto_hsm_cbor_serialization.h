@@ -32,15 +32,23 @@ extern const char kAeadIv[];
 extern const char kAeadTag[];
 extern const char kEphemeralPublicInvKey[];
 extern const char kRequestMetaData[];
+extern const char kRequestAead[];
 extern const char kEpochPublicKey[];
 extern const char kRequestPayloadSalt[];
+extern const char kResponseAead[];
 extern const char kResponseMetaData[];
 extern const char kResponsePayloadSalt[];
+extern const char kResponseErrorCode[];
+extern const char kResponseErrorString[];
 
 // Mediation protocol version.
 extern const int kProtocolVersion;
 
-// Constructs cbor-encoded binary blob with associated data.
+// Constructs cbor-encoded binary blob for the Recovery Request.
+bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
+                                    brillo::SecureBlob* request_cbor);
+
+// Constructs cbor-encoded binary blob with HSM associated data.
 bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& ad,
                                       brillo::SecureBlob* ad_cbor);
 
@@ -66,6 +74,10 @@ bool SerializeRecoveryRequestPlainTextToCbor(
     const RecoveryRequestPlainText& plain_text,
     brillo::SecureBlob* plain_text_cbor);
 
+// Constructs cbor-encoded binary blob for the Recovery Response.
+bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
+                                     brillo::SecureBlob* response_cbor);
+
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in response payload.
 bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
@@ -81,6 +93,11 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
     const brillo::SecureBlob& request_plain_text_cbor,
     RecoveryRequestPlainText* request_plain_text);
 
+// Extracts data from Recovery Request cbor.
+bool DeserializeRecoveryRequestFromCbor(
+    const brillo::SecureBlob& recovery_request_cbor,
+    RecoveryRequest* recovery_request);
+
 // Extracts data from response plain text cbor.
 bool DeserializeHsmResponsePlainTextFromCbor(
     const brillo::SecureBlob& response_payload_cbor,
@@ -91,9 +108,22 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
     const brillo::SecureBlob& response_ad_cbor,
     HsmResponseAssociatedData* response_ad);
 
+// Extracts data from Recovery Response cbor.
+bool DeserializeRecoveryResponseFromCbor(
+    const brillo::SecureBlob& response_cbor, RecoveryResponse* response);
+
+//============================================================================
+// The methods below are for testing only.
+//============================================================================
+
 bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                         const std::string& map_key,
-                                        brillo::SecureBlob* value);
+                                        cbor::Value* value);
+
+bool GetBytestringValueFromCborMapByKeyForTesting(
+    const brillo::SecureBlob& input_cbor,
+    const std::string& map_key,
+    brillo::SecureBlob* value);
 
 bool GetHsmPayloadFromRequestAdForTesting(
     const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload);

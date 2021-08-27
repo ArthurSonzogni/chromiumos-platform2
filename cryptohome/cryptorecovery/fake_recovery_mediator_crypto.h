@@ -66,14 +66,15 @@ class FakeRecoveryMediatorCrypto {
   // `request_payload.associated_data`.
   // 2. Perform DH(`epoch_priv_key`, channel_pub_key), decrypt
   // `cipher_text` (CT2) from `request_payload`.
-  // 3. Extract `hsm_payload` from `request_payload`.
-  // 4. Do `MediateHsmPayload` with `hsm_payload` and keys (`epoch_pub_key`,
+  // 3. Deserialize `recovery_request_cbor` to `RequestPayload`.
+  // 4. Extract `hsm_payload` from `RequestPayload`.
+  // 5. Do `MediateHsmPayload` with `hsm_payload` and keys (`epoch_pub_key`,
   // `epoch_priv_key`, `mediator_priv_key`).
   bool MediateRequestPayload(const brillo::SecureBlob& epoch_pub_key,
                              const brillo::SecureBlob& epoch_priv_key,
                              const brillo::SecureBlob& mediator_priv_key,
-                             const RequestPayload& request_payload,
-                             ResponsePayload* response_payload) const;
+                             const brillo::SecureBlob& recovery_request_cbor,
+                             brillo::SecureBlob* recovery_response_cbor) const;
 
  private:
   // Constructor is private. Use Create method to instantiate.
@@ -90,13 +91,14 @@ class FakeRecoveryMediatorCrypto {
   // 4. Serialize response payload associated_data and plain_text
   // 5. Generate encryption key as KDF(combine(epoch_pub_key,
   //                                     ECDH(epoch_priv_key, channel_pub_key)))
-  // 6. Encrypt plain_text and generate `response_payload`
+  // 6. Encrypt plain_text, generate `RecoveryResponse` and serialize it to
+  // `recovery_response_cbor`.
   bool MediateHsmPayload(const brillo::SecureBlob& mediator_priv_key,
                          const brillo::SecureBlob& epoch_pub_key,
                          const brillo::SecureBlob& epoch_priv_key,
                          const brillo::SecureBlob& ephemeral_pub_inv_key,
                          const HsmPayload& hsm_payload,
-                         ResponsePayload* response_payload) const;
+                         brillo::SecureBlob* recovery_response_cbor) const;
 
   // Decrypts `mediator_share` using `mediator_priv_key` from
   // `encrypted_mediator_share`. Returns false if error occurred.

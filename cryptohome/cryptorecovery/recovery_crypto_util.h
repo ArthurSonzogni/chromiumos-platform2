@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_UTIL_H_
 #define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_UTIL_H_
 
+#include <string>
+
 #include <brillo/secure_blob.h>
 
 namespace cryptohome {
@@ -91,6 +93,12 @@ struct RecoveryRequestPlainText {
   brillo::SecureBlob ephemeral_pub_inv_key;
 };
 
+// RecoveryRequest is the request sent to the HSM server.
+struct RecoveryRequest {
+  // The AEAD-encrypted payload.
+  RequestPayload request_payload;
+};
+
 // `associated_data` for the Response payload.
 struct HsmResponseAssociatedData {
   // Salt used in the derivation of response payload encryption key.
@@ -110,6 +118,16 @@ struct HsmResponsePlainText {
   brillo::SecureBlob dealer_pub_key;
   // Additional secret to seal the destination share. Used for TPM 1.2 only.
   brillo::SecureBlob key_auth_value;
+};
+
+// RecoveryResponse is the cbor response to a RecoveryRequest.
+struct RecoveryResponse {
+  // The AEAD-encrypted payload.
+  ResponsePayload response_payload;
+  // Numeric error code.
+  int error_code = 0;
+  // Error message.
+  std::string error_string;
 };
 
 }  // namespace cryptorecovery
