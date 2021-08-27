@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string.h>  // For memcmp().
+#include <utility>
 #include <vector>
 #include <openssl/evp.h>
 
@@ -67,6 +68,10 @@ constexpr int kLegacyIndex = 1;
 constexpr char kLegacyLabel[] = "legacy-1";
 constexpr char kTempLabel[] = "tempLabel";
 
+constexpr char kFilePath[] = "foo";
+constexpr char kPasswordKey[] = "key";
+constexpr char kObfuscatedUsername[] = "foo@gmail.com";
+
 std::string HexDecode(const std::string& hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
@@ -98,6 +103,7 @@ class VaultKeysetTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
+  NiceMock<MockTpm> tpm_;
 };
 
 TEST_F(VaultKeysetTest, AllocateRandom) {
@@ -208,21 +214,23 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
 
   keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
 
-  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform, ReadFile(FilePath("foo"), _))
+  EXPECT_CALL(platform, ReadFile(FilePath(kFilePath), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
-  EXPECT_CALL(platform, ReadFile(FilePath("foo").AddExtension("timestamp"), _))
+  EXPECT_CALL(platform,
+              ReadFile(FilePath(kFilePath).AddExtension("timestamp"), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&tbytes)));
 
-  SecureBlob key("key");
-  EXPECT_TRUE(keyset.Encrypt(key, ""));
-  EXPECT_TRUE(keyset.Save(FilePath("foo")));
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username));
+  EXPECT_TRUE(keyset.Save(FilePath(kFilePath)));
 
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
-  EXPECT_TRUE(new_keyset.Load(FilePath("foo")));
+  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
   ASSERT_TRUE(new_keyset.HasLastActivityTimestamp());
   EXPECT_EQ(kTestTimestamp, new_keyset.GetLastActivityTimestamp());
   EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */,
@@ -239,12 +247,13 @@ TEST_F(VaultKeysetTest, WriteError) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(Return(false));
 
-  SecureBlob key("key");
-  EXPECT_TRUE(keyset.Encrypt(key, ""));
-  EXPECT_FALSE(keyset.Save(FilePath("foo")));
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username));
+  EXPECT_FALSE(keyset.Save(FilePath(kFilePath)));
 }
 
 TEST_F(VaultKeysetTest, AuthLockedDefault) {
@@ -259,8 +268,9 @@ TEST_F(VaultKeysetTest, AuthLockedDefault) {
   keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
   keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
 
-  SecureBlob key("key");
-  EXPECT_TRUE(keyset.Encrypt(key, ""));
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username));
   EXPECT_FALSE(keyset.GetAuthLocked());
 }
 
@@ -472,6 +482,140 @@ TEST_F(VaultKeysetTest, GetEmptyLabelTest) {
   ASSERT_EQ(vault_keyset.GetLabel(), kLegacyLabel);
 }
 
+TEST_F(VaultKeysetTest, InitializeToAdd) {
+  // Check if InitializeToAdd correctly copies keys
+  // from parameter vault keyset to underlying data structure
+  Crypto crypto(&platform_);
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.CreateRandom();
+
+  const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
+  static const int kFscryptPolicyVersion = 2;
+  vault_keyset.SetResetIV(reset_iv);
+  vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
+  vault_keyset.SetLegacyIndex(kLegacyIndex);
+
+  VaultKeyset vault_keyset_copy;
+  vault_keyset_copy.InitializeToAdd(vault_keyset);
+
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  vault_keyset.Encrypt(key, obfuscated_username);
+
+  // Check that InitializeToAdd correctly copied vault_keyset fields
+  // i.e. fek/fnek keys, reset seed, reset IV, and FSCrypt policy version
+  // FEK
+  ASSERT_EQ(vault_keyset.GetFek(), vault_keyset_copy.GetFek());
+  ASSERT_EQ(vault_keyset.GetFekSig(), vault_keyset_copy.GetFekSig());
+  ASSERT_EQ(vault_keyset.GetFekSalt(), vault_keyset_copy.GetFekSalt());
+  // FNEK
+  ASSERT_EQ(vault_keyset.GetFnek(), vault_keyset_copy.GetFnek());
+  ASSERT_EQ(vault_keyset.GetFnekSig(), vault_keyset_copy.GetFnekSig());
+  ASSERT_EQ(vault_keyset.GetFnekSalt(), vault_keyset_copy.GetFnekSalt());
+  // Other metadata
+  ASSERT_EQ(vault_keyset.GetResetSeed(), vault_keyset_copy.GetResetSeed());
+  ASSERT_EQ(vault_keyset.GetResetIV(), vault_keyset_copy.GetResetIV());
+  ASSERT_EQ(vault_keyset.GetChapsKey(), vault_keyset_copy.GetChapsKey());
+  ASSERT_EQ(vault_keyset.GetFSCryptPolicyVersion(),
+            vault_keyset_copy.GetFSCryptPolicyVersion());
+
+  // Other fields are empty/not changed/uninitialized
+  // i.e. the wrapped_keyset_ shouldn't be copied
+  ASSERT_NE(vault_keyset.GetWrappedKeyset(),
+            vault_keyset_copy.GetWrappedKeyset());
+  // int32_t flags_
+  ASSERT_NE(vault_keyset_copy.GetFlags(), vault_keyset.GetFlags());
+  // brillo::SecureBlob salt_
+  ASSERT_NE(vault_keyset_copy.GetSalt(), vault_keyset.GetSalt());
+  // int legacy_index_
+  ASSERT_NE(vault_keyset_copy.GetLegacyIndex(), vault_keyset.GetLegacyIndex());
+}
+
+TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
+  // Check to decrypt a VaultKeyset that hasn't been loaded yet
+  Crypto crypto(&platform_);
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.CreateRandom();
+
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username));
+
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  // locked_to_single_user determines whether to use the extended tmp_key,
+  // uses normal tpm_key when false with a TpmBoundToPcrAuthBlock
+  ASSERT_FALSE(vault_keyset.Decrypt(key, false /*locked_to_single_user*/,
+                                    &crypto_error));
+  ASSERT_EQ(crypto_error, CryptoError::CE_OTHER_FATAL);
+}
+
+TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
+  // Test to have Decrypt() fail because of CE_TPM_COMM_ERROR
+  // SETUP
+  auto mock_loader = std::make_unique<MockCryptohomeKeyLoader>();
+  MockCryptohomeKeyLoader* mock_loader_ptr = mock_loader.get();
+  std::vector<
+      std::pair<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>>
+      mock_loaders;
+  mock_loaders.push_back(
+      std::make_pair(CryptohomeKeyType::kRSA, std::move(mock_loader)));
+  auto cryptohome_keys_manager =
+      std::make_unique<CryptohomeKeysManager>(std::move(mock_loaders));
+
+  Crypto crypto(&platform_);
+  crypto.Init(&tpm_, cryptohome_keys_manager.get());
+
+  EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
+
+  static const int kTestTimestamp = 123;
+  cryptohome::Timestamp timestamp;
+  timestamp.set_timestamp(kTestTimestamp);
+  SecureBlob time_bytes(timestamp.ByteSizeLong());
+  google::protobuf::uint8* timestamp_buffer =
+      static_cast<google::protobuf::uint8*>(time_bytes.data());
+  timestamp.SerializeWithCachedSizesToArray(timestamp_buffer);
+
+  SecureBlob bytes;
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
+      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
+  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
+      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(kFilePath).AddExtension("timestamp"), _))
+      .WillOnce(WithArg<1>(CopyFromSecureBlob(&time_bytes)));
+
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto);
+  vk.CreateRandom();
+  vk.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
+
+  // TEST
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  ASSERT_TRUE(vk.Encrypt(key, obfuscated_username));
+  ASSERT_TRUE(vk.Save(FilePath(kFilePath)));
+
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform_, &crypto);
+  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
+
+  EXPECT_CALL(*mock_loader_ptr, HasCryptohomeKey())
+      .WillRepeatedly(Return(false));
+
+  // DecryptVaultKeyset within Decrypt fails
+  // and passes error CryptoError::CE_TPM_COMM_ERROR
+  // Decrypt -> DecryptVaultKeyset -> Derive
+  // -> CheckTPMReadiness -> HasCryptohomeKey(fails and error propagates up)
+  CryptoError tmp_error;
+  ASSERT_FALSE(new_keyset.Decrypt(key, false, &tmp_error));
+  ASSERT_EQ(tmp_error, CryptoError::CE_TPM_COMM_ERROR);
+}
+
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest() : crypto_(&platform_) {
@@ -600,8 +744,9 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
       pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
   pin_vault_keyset_.auth_locked_ = true;
 
-  SecureBlob key("key");
-  EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, "foo@gmail.com"));
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username));
   EXPECT_TRUE(pin_vault_keyset_.HasKeyData());
   EXPECT_FALSE(pin_vault_keyset_.auth_locked_);
 
