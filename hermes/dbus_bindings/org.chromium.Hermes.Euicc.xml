@@ -82,6 +82,13 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg name="is_test_mode" type="b" direction="in" />
     </method>
+    <method name="IsTestEuicc">
+      <tp:docstring>
+        Returns true if the eUICC has a test CI.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg name="is_test_euicc" type="b" direction="out" />
+    </method>
     <method name="UseTestCerts">
       <tp:docstring>
         Set to true if downloading profiles from an SMDX with a

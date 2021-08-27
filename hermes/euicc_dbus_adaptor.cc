@@ -88,4 +88,10 @@ void EuiccDBusAdaptor::ResetMemory(std::unique_ptr<DBusResponse<>> response,
   euicc_->ResetMemoryHelper(std::move(dbus_result), in_reset_options);
 }
 
+void EuiccDBusAdaptor::IsTestEuicc(
+    std::unique_ptr<DBusResponse<bool>> response) {
+  DbusResult<bool> dbus_result(std::move(response));
+  euicc_->IsTestEuicc(std::move(dbus_result));
+}
+
 }  // namespace hermes

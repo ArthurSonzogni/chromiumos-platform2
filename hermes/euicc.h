@@ -47,6 +47,7 @@ class Euicc {
   void SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result);
   void UseTestCerts(bool use_test_certs);
   void ResetMemoryHelper(DbusResult<> dbus_result, int reset_options);
+  void IsTestEuicc(DbusResult<bool> dbus_result);
 
   uint8_t physical_slot() const { return physical_slot_; }
   dbus::ObjectPath object_path() const { return dbus_adaptor_->object_path(); }
@@ -90,6 +91,7 @@ class Euicc {
                                   DbusResult<> dbus_result);
   void SetTestMode(bool is_test_mode, DbusResult<> dbus_result);
   void ResetMemory(int reset_options, DbusResult<> dbus_result);
+  void GetEuiccInfo1(DbusResult<bool> dbus_result);
 
   const uint8_t physical_slot_;
   EuiccSlotInfo slot_info_;

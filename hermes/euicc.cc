@@ -13,6 +13,7 @@
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
+#include <google-lpa/lpa/data/proto/euicc_info_1.pb.h>
 
 #include "hermes/euicc.h"
 #include "hermes/executor.h"
@@ -495,6 +496,42 @@ void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
         installed_profiles_.clear();
         UpdateInstalledProfilesProperty();
         SendNotifications(std::move(dbus_result));
+      });
+}
+
+void Euicc::IsTestEuicc(DbusResult<bool> dbus_result) {
+  LOG(INFO) << __func__;
+
+  auto get_euicc_info_1 =
+      base::BindOnce(&Euicc::GetEuiccInfo1, weak_factory_.GetWeakPtr());
+  context_->modem_control()->StoreAndSetActiveSlot(
+      physical_slot_,
+      base::BindOnce(&RunOnSuccess<bool>, std::move(get_euicc_info_1),
+                     std::move(dbus_result)));
+}
+
+void Euicc::GetEuiccInfo1(DbusResult<bool> dbus_result) {
+  LOG(INFO) << __func__;
+
+  context_->lpa()->GetEuiccInfo1(
+      context_->executor(),
+      [dbus_result{std::move(dbus_result)}](
+          lpa::proto::EuiccInfo1& euicc_info_1, int error) {
+        LOG(INFO) << "euicc_info_1:" << euicc_info_1.DebugString();
+        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+        if (decoded_error) {
+          dbus_result.Error(decoded_error);
+          return;
+        }
+        constexpr char kTestEuiccInfo1[] =
+            "665A1433D67C1A2C5DB8B52C967F10A057BA5CB2";
+        for (const auto& pkid : euicc_info_1.pkid_for_verif()) {
+          if (pkid == kTestEuiccInfo1) {
+            dbus_result.Success(true);
+            return;
+          }
+        }
+        dbus_result.Success(false);
       });
 }
 
