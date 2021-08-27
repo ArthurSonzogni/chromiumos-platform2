@@ -83,6 +83,15 @@ bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
 bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
                                          brillo::SecureBlob* plain_text_cbor);
 
+// Constructs cbor-encoded binary blob from HsmPayload to be saved on the
+// device.
+bool SerializeHsmPayloadToCbor(const HsmPayload& hsm_payload,
+                               brillo::SecureBlob* serialized_cbor);
+
+// Extracts data from HSM payload cbor.
+bool DeserializeHsmPayloadFromCbor(const brillo::SecureBlob& serialized_cbor,
+                                   HsmPayload* hsm_payload);
+
 // Extracts data from HSM plain text cbor.
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,

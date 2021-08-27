@@ -18,17 +18,19 @@
 
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
+using cryptohome::cryptorecovery::HsmPayload;
+using cryptohome::cryptorecovery::HsmResponsePlainText;
 using cryptohome::cryptorecovery::RecoveryCrypto;
+using cryptohome::cryptorecovery::RecoveryRequest;
+using cryptohome::cryptorecovery::RecoveryResponse;
 
 namespace {
-
-// Hkdf salt and info used for encrypting/decrypting mediator share.
-static const char kHkdfSaltHex[] = "0b0b0b0b";
-static const char kHkdfInfoHex[] = "0b0b0b0b0b0b0b0b";
 
 bool CheckMandatoryFlag(const std::string& flag_name,
                         const std::string& flag_value) {
@@ -57,10 +59,11 @@ bool WriteFileLogged(const FilePath& file_path,
   return false;
 }
 
-bool DoRecoveryCryptoCreateAction(
+bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& destination_share_out_file_path,
-    const FilePath& mediator_share_out_file_path,
-    const FilePath& publisher_pub_key_out_file_path,
+    const FilePath& channel_pub_key_out_file_path,
+    const FilePath& channel_priv_key_out_file_path,
+    const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path) {
   std::unique_ptr<RecoveryCrypto> recovery_crypto = RecoveryCrypto::Create();
   if (!recovery_crypto) {
@@ -68,58 +71,91 @@ bool DoRecoveryCryptoCreateAction(
     return false;
   }
 
-  SecureBlob hkdf_info, hkdf_salt, mediator_pub_key;
-  CHECK(brillo::SecureBlob::HexStringToSecureBlob(kHkdfInfoHex, &hkdf_info));
-  CHECK(brillo::SecureBlob::HexStringToSecureBlob(kHkdfSaltHex, &hkdf_salt));
+  SecureBlob mediator_pub_key;
   CHECK(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
 
-  SecureBlob destination_share, dealer_pub_key;
-  RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
-  if (!recovery_crypto->GenerateShares(mediator_pub_key,
-                                       &encrypted_mediator_share,
-                                       &destination_share, &dealer_pub_key)) {
-    LOG(ERROR) << "Failed to generate recovery shares.";
+  // Generates HSM payload that would be persisted on a chromebook.
+  HsmPayload hsm_payload;
+  brillo::SecureBlob destination_share;
+  brillo::SecureBlob recovery_key;
+  brillo::SecureBlob channel_pub_key;
+  brillo::SecureBlob channel_priv_key;
+  if (!recovery_crypto->GenerateHsmPayload(
+          mediator_pub_key,
+          /*rsa_pub_key=*/brillo::SecureBlob(),
+          brillo::SecureBlob("Fake Enrollment Meta Data"), &hsm_payload,
+          &destination_share, &recovery_key, &channel_pub_key,
+          &channel_priv_key)) {
     return false;
   }
 
-  SecureBlob serialized_encrypted_mediator_share;
-  if (!RecoveryCrypto::SerializeEncryptedMediatorShareForTesting(
-          encrypted_mediator_share, &serialized_encrypted_mediator_share)) {
-    LOG(ERROR) << "Failed to serialize encrypted mediator share.";
+  SecureBlob serialized_hsm_payload;
+  if (!SerializeHsmPayloadToCbor(hsm_payload, &serialized_hsm_payload)) {
+    LOG(ERROR) << "Failed to serialize HSM payload.";
     return false;
   }
 
-  SecureBlob publisher_pub_key, publisher_dh;
-  if (!recovery_crypto->GeneratePublisherKeys(
-          dealer_pub_key, &publisher_pub_key, &publisher_dh)) {
-    LOG(ERROR) << "Failed to generate recovery publisher keys.";
-    return false;
-  }
   return WriteFileLogged(destination_share_out_file_path, destination_share) &&
-         WriteFileLogged(mediator_share_out_file_path,
-                         serialized_encrypted_mediator_share) &&
-         WriteFileLogged(publisher_pub_key_out_file_path, publisher_pub_key) &&
-         WriteFileLogged(recovery_secret_out_file_path, publisher_dh);
+         WriteFileLogged(channel_pub_key_out_file_path, channel_pub_key) &&
+         WriteFileLogged(channel_priv_key_out_file_path, channel_priv_key) &&
+         WriteFileLogged(serialized_hsm_payload_out_file_path,
+                         serialized_hsm_payload) &&
+         WriteFileLogged(recovery_secret_out_file_path, recovery_key);
+}
+
+bool DoRecoveryCryptoCreateRecoveryRequestAction(
+    const FilePath& channel_pub_key_in_file_path,
+    const FilePath& channel_priv_key_in_file_path,
+    const FilePath& serialized_hsm_payload_in_file_path,
+    const FilePath& ephemeral_pub_key_out_file_path,
+    const FilePath& recovery_request_out_file_path) {
+  SecureBlob channel_pub_key;
+  SecureBlob channel_priv_key;
+  SecureBlob serialized_hsm_payload;
+  if (!ReadFileToSecureBlobLogged(channel_pub_key_in_file_path,
+                                  &channel_pub_key) ||
+      !ReadFileToSecureBlobLogged(channel_priv_key_in_file_path,
+                                  &channel_priv_key) ||
+      !ReadFileToSecureBlobLogged(serialized_hsm_payload_in_file_path,
+                                  &serialized_hsm_payload)) {
+    return false;
+  }
+
+  HsmPayload hsm_payload;
+  if (!DeserializeHsmPayloadFromCbor(serialized_hsm_payload, &hsm_payload)) {
+    LOG(ERROR) << "Failed to deserialize HSM payload.";
+    return false;
+  }
+
+  std::unique_ptr<RecoveryCrypto> recovery_crypto = RecoveryCrypto::Create();
+  if (!recovery_crypto) {
+    LOG(ERROR) << "Failed to create recovery crypto object.";
+    return false;
+  }
+
+  SecureBlob epoch_pub_key;
+  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
+
+  brillo::SecureBlob ephemeral_pub_key;
+  brillo::SecureBlob recovery_request_cbor;
+  if (!recovery_crypto->GenerateRecoveryRequest(
+          hsm_payload, brillo::SecureBlob("Fake Request Meta Data"),
+          channel_priv_key, channel_pub_key, epoch_pub_key,
+          &recovery_request_cbor, &ephemeral_pub_key)) {
+    return false;
+  }
+
+  return WriteFileLogged(ephemeral_pub_key_out_file_path, ephemeral_pub_key) &&
+         WriteFileLogged(recovery_request_out_file_path, recovery_request_cbor);
 }
 
 bool DoRecoveryCryptoMediateAction(
-    const FilePath& mediator_share_in_file_path,
-    const FilePath& publisher_pub_key_in_file_path,
-    const FilePath& mediated_publisher_pub_key_out_file_path) {
-  SecureBlob serialized_encrypted_mediator_share;
-  SecureBlob publisher_pub_key;
-  if (!ReadFileToSecureBlobLogged(mediator_share_in_file_path,
-                                  &serialized_encrypted_mediator_share) ||
-      !ReadFileToSecureBlobLogged(publisher_pub_key_in_file_path,
-                                  &publisher_pub_key)) {
-    return false;
-  }
-
-  RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
-  if (!RecoveryCrypto::DeserializeEncryptedMediatorShareForTesting(
-          serialized_encrypted_mediator_share, &encrypted_mediator_share)) {
-    LOG(ERROR) << "Failed to deserialize encrypted mediator share.";
+    const FilePath& recovery_request_in_file_path,
+    const FilePath& recovery_response_out_file_path) {
+  SecureBlob serialized_recovery_request;
+  if (!ReadFileToSecureBlobLogged(recovery_request_in_file_path,
+                                  &serialized_recovery_request)) {
     return false;
   }
 
@@ -130,53 +166,66 @@ bool DoRecoveryCryptoMediateAction(
     return false;
   }
 
-  SecureBlob hkdf_info, hkdf_salt, mediator_priv_key;
-  CHECK(brillo::SecureBlob::HexStringToSecureBlob(kHkdfInfoHex, &hkdf_info));
-  CHECK(brillo::SecureBlob::HexStringToSecureBlob(kHkdfSaltHex, &hkdf_salt));
+  SecureBlob mediator_priv_key, epoch_pub_key, epoch_priv_key;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
       &mediator_priv_key));
+  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
+  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
-  SecureBlob mediated_publisher_pub_key;
-  if (!fake_mediator->Mediate(mediator_priv_key, publisher_pub_key,
-                              encrypted_mediator_share,
-                              &mediated_publisher_pub_key)) {
-    LOG(ERROR) << "Failed to perform recovery mediation.";
+  brillo::SecureBlob response_cbor;
+  if (!fake_mediator->MediateRequestPayload(
+          epoch_pub_key, epoch_priv_key, mediator_priv_key,
+          serialized_recovery_request, &response_cbor)) {
     return false;
   }
-  return WriteFileLogged(mediated_publisher_pub_key_out_file_path,
-                         mediated_publisher_pub_key);
+
+  return WriteFileLogged(recovery_response_out_file_path, response_cbor);
 }
 
 bool DoRecoveryCryptoDecryptAction(
+    const FilePath& recovery_response_in_file_path,
+    const FilePath& channel_priv_key_in_file_path,
+    const FilePath& ephemeral_pub_key_in_file_path,
     const FilePath& destination_share_in_file_path,
-    const FilePath& publisher_pub_key_in_file_path,
-    const FilePath& mediated_publisher_pub_key_in_file_path,
     const FilePath& recovery_secret_out_file_path) {
-  SecureBlob hkdf_salt;
-  CHECK(brillo::SecureBlob::HexStringToSecureBlob(kHkdfSaltHex, &hkdf_salt));
-  SecureBlob destination_share, publisher_pub_key, mediated_publisher_pub_key;
-  if (!ReadFileToSecureBlobLogged(destination_share_in_file_path,
-                                  &destination_share) ||
-      !ReadFileToSecureBlobLogged(publisher_pub_key_in_file_path,
-                                  &publisher_pub_key) ||
-      !ReadFileToSecureBlobLogged(mediated_publisher_pub_key_in_file_path,
-                                  &mediated_publisher_pub_key)) {
+  SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
+      destination_share;
+  if (!ReadFileToSecureBlobLogged(recovery_response_in_file_path,
+                                  &recovery_response) ||
+      !ReadFileToSecureBlobLogged(channel_priv_key_in_file_path,
+                                  &channel_priv_key) ||
+      !ReadFileToSecureBlobLogged(ephemeral_pub_key_in_file_path,
+                                  &ephemeral_pub_key) ||
+      !ReadFileToSecureBlobLogged(destination_share_in_file_path,
+                                  &destination_share)) {
     return false;
   }
+
+  SecureBlob epoch_pub_key;
+  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
+
   std::unique_ptr<RecoveryCrypto> recovery_crypto = RecoveryCrypto::Create();
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
   }
-  SecureBlob destination_dh;
-  if (!recovery_crypto->RecoverDestination(publisher_pub_key, destination_share,
-                                           /*ephemeral_pub_key=*/base::nullopt,
-                                           mediated_publisher_pub_key,
-                                           &destination_dh)) {
-    LOG(ERROR) << "Failed to perform destination recovery.";
+
+  HsmResponsePlainText response_plain_text;
+  if (!recovery_crypto->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
+                                               recovery_response,
+                                               &response_plain_text)) {
     return false;
   }
-  return WriteFileLogged(recovery_secret_out_file_path, destination_dh);
+
+  brillo::SecureBlob mediated_recovery_key;
+  if (!recovery_crypto->RecoverDestination(response_plain_text.dealer_pub_key,
+                                           destination_share, ephemeral_pub_key,
+                                           response_plain_text.mediated_point,
+                                           &mediated_recovery_key)) {
+    return false;
+  }
+
+  return WriteFileLogged(recovery_secret_out_file_path, mediated_recovery_key);
 }
 
 }  // namespace
@@ -184,33 +233,53 @@ bool DoRecoveryCryptoDecryptAction(
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToStderr);
 
-  DEFINE_string(action, "",
-                "One of: recovery_crypto_create, recovery_crypto_mediate, "
-                "recovery_crypto_decrypt.");
+  DEFINE_string(
+      action, "",
+      "One of: recovery_crypto_create_hsm_payload, "
+      "recovery_crypto_create_recovery_request, recovery_crypto_mediate, "
+      "recovery_crypto_decrypt.");
   DEFINE_string(destination_share_out_file, "",
                 "Path to the file where to store the Cryptohome Recovery "
                 "encrypted destination share.");
   DEFINE_string(destination_share_in_file, "",
                 "Path to the file containing the Cryptohome Recovery encrypted "
                 "destination share.");
-  DEFINE_string(mediator_share_out_file, "",
+  DEFINE_string(channel_pub_key_out_file, "",
                 "Path to the file where to store the Cryptohome Recovery "
-                "encrypted mediator share.");
-  DEFINE_string(mediator_share_in_file, "",
-                "Path to the file containing the Cryptohome Recovery encrypted "
-                "mediator share.");
-  DEFINE_string(publisher_pub_key_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "publisher public key.");
-  DEFINE_string(publisher_pub_key_in_file, "",
-                "Path to the file containing the Cryptohome Recovery publisher "
-                "public key.");
-  DEFINE_string(mediated_publisher_pub_key_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "mediated publisher public key.");
-  DEFINE_string(mediated_publisher_pub_key_in_file, "",
+                "channel public key.");
+  DEFINE_string(channel_pub_key_in_file, "",
                 "Path to the file containing the Cryptohome Recovery "
-                "mediated publisher public key.");
+                "channel public key.");
+  DEFINE_string(channel_priv_key_out_file, "",
+                "Path to the file where to store the Cryptohome Recovery "
+                "channel private key.");
+  DEFINE_string(channel_priv_key_in_file, "",
+                "Path to the file containing the Cryptohome Recovery  "
+                "channel private key.");
+  DEFINE_string(ephemeral_pub_key_out_file, "",
+                "Path to the file where to store the Cryptohome Recovery "
+                "ephemeral public key.");
+  DEFINE_string(ephemeral_pub_key_in_file, "",
+                "Path to the file containing the Cryptohome Recovery  "
+                "ephemeral public key.");
+  DEFINE_string(serialized_hsm_payload_out_file, "",
+                "Path to the file where to store the Cryptohome Recovery "
+                "serialized HSM payload.");
+  DEFINE_string(serialized_hsm_payload_in_file, "",
+                "Path to the file containing the Cryptohome Recovery "
+                "serialized HSM payload.");
+  DEFINE_string(recovery_request_out_file, "",
+                "Path to the file where to store the Cryptohome Recovery "
+                "Request.");
+  DEFINE_string(recovery_request_in_file, "",
+                "Path to the file containing the Cryptohome Recovery "
+                "Request.");
+  DEFINE_string(recovery_response_out_file, "",
+                "Path to the file where to store the Cryptohome Recovery "
+                "Response.");
+  DEFINE_string(recovery_response_in_file, "",
+                "Path to the file containing the Cryptohome Recovery "
+                "Response.");
   DEFINE_string(
       recovery_secret_out_file, "",
       "Path to the file where to store the Cryptohome Recovery secret.");
@@ -220,46 +289,67 @@ int main(int argc, char* argv[]) {
   bool success = false;
   if (FLAGS_action.empty()) {
     LOG(ERROR) << "--action is required.";
-  } else if (FLAGS_action == "recovery_crypto_create") {
+  } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
     if (CheckMandatoryFlag("destination_share_out_file",
                            FLAGS_destination_share_out_file) &&
-        CheckMandatoryFlag("mediator_share_out_file",
-                           FLAGS_mediator_share_out_file) &&
-        CheckMandatoryFlag("publisher_pub_key_out_file",
-                           FLAGS_publisher_pub_key_out_file) &&
+        CheckMandatoryFlag("channel_pub_key_out_file",
+                           FLAGS_channel_pub_key_out_file) &&
+        CheckMandatoryFlag("channel_priv_key_out_file",
+                           FLAGS_channel_priv_key_out_file) &&
+        CheckMandatoryFlag("serialized_hsm_payload_out_file",
+                           FLAGS_serialized_hsm_payload_out_file) &&
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file)) {
-      success = DoRecoveryCryptoCreateAction(
+      success = DoRecoveryCryptoCreateHsmPayloadAction(
           FilePath(FLAGS_destination_share_out_file),
-          FilePath(FLAGS_mediator_share_out_file),
-          FilePath(FLAGS_publisher_pub_key_out_file),
+          FilePath(FLAGS_channel_pub_key_out_file),
+          FilePath(FLAGS_channel_priv_key_out_file),
+          FilePath(FLAGS_serialized_hsm_payload_out_file),
           FilePath(FLAGS_recovery_secret_out_file));
     }
+  } else if (FLAGS_action == "recovery_crypto_create_recovery_request") {
+    if (CheckMandatoryFlag("channel_pub_key_in_file",
+                           FLAGS_channel_pub_key_in_file) &&
+        CheckMandatoryFlag("channel_priv_key_in_file",
+                           FLAGS_channel_priv_key_in_file) &&
+        CheckMandatoryFlag("serialized_hsm_payload_in_file",
+                           FLAGS_serialized_hsm_payload_in_file) &&
+        CheckMandatoryFlag("ephemeral_pub_key_out_file",
+                           FLAGS_ephemeral_pub_key_out_file) &&
+        CheckMandatoryFlag("recovery_request_out_file",
+                           FLAGS_recovery_request_out_file)) {
+      success = DoRecoveryCryptoCreateRecoveryRequestAction(
+          FilePath(FLAGS_channel_pub_key_in_file),
+          FilePath(FLAGS_channel_priv_key_in_file),
+          FilePath(FLAGS_serialized_hsm_payload_in_file),
+          FilePath(FLAGS_ephemeral_pub_key_out_file),
+          FilePath(FLAGS_recovery_request_out_file));
+    }
   } else if (FLAGS_action == "recovery_crypto_mediate") {
-    if (CheckMandatoryFlag("mediator_share_in_file",
-                           FLAGS_mediator_share_in_file) &&
-        CheckMandatoryFlag("publisher_pub_key_in_file",
-                           FLAGS_publisher_pub_key_in_file) &&
-        CheckMandatoryFlag("mediated_publisher_pub_key_out_file",
-                           FLAGS_mediated_publisher_pub_key_out_file)) {
+    if (CheckMandatoryFlag("recovery_request_in_file",
+                           FLAGS_recovery_request_in_file) &&
+        CheckMandatoryFlag("recovery_response_out_file",
+                           FLAGS_recovery_response_out_file)) {
       success = DoRecoveryCryptoMediateAction(
-          FilePath(FLAGS_mediator_share_in_file),
-          FilePath(FLAGS_publisher_pub_key_in_file),
-          FilePath(FLAGS_mediated_publisher_pub_key_out_file));
+          FilePath(FLAGS_recovery_request_in_file),
+          FilePath(FLAGS_recovery_response_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_decrypt") {
-    if (CheckMandatoryFlag("destination_share_in_file",
+    if (CheckMandatoryFlag("recovery_response_in_file",
+                           FLAGS_recovery_response_in_file) &&
+        CheckMandatoryFlag("channel_priv_key_in_file",
+                           FLAGS_channel_priv_key_in_file) &&
+        CheckMandatoryFlag("ephemeral_pub_key_in_file",
+                           FLAGS_ephemeral_pub_key_in_file) &&
+        CheckMandatoryFlag("destination_share_in_file",
                            FLAGS_destination_share_in_file) &&
-        CheckMandatoryFlag("publisher_pub_key_in_file",
-                           FLAGS_publisher_pub_key_in_file) &&
-        CheckMandatoryFlag("mediated_publisher_pub_key_in_file",
-                           FLAGS_mediated_publisher_pub_key_in_file) &&
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file)) {
       success = DoRecoveryCryptoDecryptAction(
+          FilePath(FLAGS_recovery_response_in_file),
+          FilePath(FLAGS_channel_priv_key_in_file),
+          FilePath(FLAGS_ephemeral_pub_key_in_file),
           FilePath(FLAGS_destination_share_in_file),
-          FilePath(FLAGS_publisher_pub_key_in_file),
-          FilePath(FLAGS_mediated_publisher_pub_key_in_file),
           FilePath(FLAGS_recovery_secret_out_file));
     }
   } else {

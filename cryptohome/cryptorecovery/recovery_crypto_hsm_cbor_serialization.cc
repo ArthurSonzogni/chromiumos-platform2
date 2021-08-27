@@ -273,6 +273,32 @@ bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
   return true;
 }
 
+bool SerializeHsmPayloadToCbor(const HsmPayload& hsm_payload,
+                               brillo::SecureBlob* serialized_cbor) {
+  cbor::Value::MapValue hsm_payload_map =
+      SerializeAeadPayloadMapToCbor(hsm_payload);
+
+  if (!SerializeCborMap(hsm_payload_map, serialized_cbor)) {
+    LOG(ERROR) << "Failed to serialize HSM payload to CBOR";
+    return false;
+  }
+  return true;
+}
+
+bool DeserializeHsmPayloadFromCbor(const brillo::SecureBlob& serialized_cbor,
+                                   HsmPayload* hsm_payload) {
+  const auto& cbor = ReadCborMap(serialized_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  if (!DeserializeAeadPayloadFromCbor(cbor->GetMap(), hsm_payload)) {
+    LOG(ERROR) << "Failed to deserialize HSM payload from CBOR.";
+    return false;
+  }
+  return true;
+}
+
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,
     HsmPlainText* hsm_plain_text) {
