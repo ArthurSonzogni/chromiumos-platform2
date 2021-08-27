@@ -57,6 +57,105 @@ brillo::SecureBlob GenerateAesGcmEncryptedUSS(
 
 }  // namespace
 
+// static
+std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom() {
+  // Note: make_unique() wouldn't work due to the constructor being private.
+  std::unique_ptr<UserSecretStash> stash(new UserSecretStash);
+  stash->file_system_key_ =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
+  stash->reset_secret_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  return stash;
+}
+
+// static
+std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
+    const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key) {
+  if (main_key.size() != kAesGcm256KeySize) {
+    LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
+               << main_key.size() << ", expected: " << kAesGcm256KeySize;
+    return nullptr;
+  }
+
+  flatbuffers::Verifier payload_verifier(flatbuffer.data(), flatbuffer.size());
+  if (!VerifyUserSecretStashContainerBuffer(payload_verifier)) {
+    LOG(ERROR) << "The UserSecretStashContainer flatbuffer is invalid";
+    return nullptr;
+  }
+
+  auto uss_container = GetUserSecretStashContainer(flatbuffer.data());
+
+  UserSecretStashEncryptionAlgorithm algorithm =
+      uss_container->encryption_algorithm();
+  if (algorithm != UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
+    LOG(ERROR) << "UserSecretStashContainer uses unknown algorithm: "
+               << static_cast<int>(algorithm);
+    return nullptr;
+  }
+
+  if (!uss_container->ciphertext() || !uss_container->ciphertext()->size()) {
+    LOG(ERROR) << "UserSecretStash has empty ciphertext";
+    return nullptr;
+  }
+  brillo::SecureBlob ciphertext(uss_container->ciphertext()->begin(),
+                                uss_container->ciphertext()->end());
+
+  if (!uss_container->iv() || !uss_container->iv()->size()) {
+    LOG(ERROR) << "UserSecretStash has empty IV";
+    return nullptr;
+  }
+  if (uss_container->iv()->size() != kAesGcmIVSize) {
+    LOG(ERROR) << "UserSecretStash has IV of wrong length: "
+               << uss_container->iv()->size()
+               << ", expected: " << kAesGcmIVSize;
+    return nullptr;
+  }
+  brillo::SecureBlob iv(uss_container->iv()->begin(),
+                        uss_container->iv()->end());
+
+  if (!uss_container->aes_gcm_tag() || !uss_container->aes_gcm_tag()->size()) {
+    LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
+    return nullptr;
+  }
+  if (uss_container->aes_gcm_tag()->size() != kAesGcmTagSize) {
+    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
+               << uss_container->aes_gcm_tag()->size()
+               << ", expected: " << kAesGcmTagSize;
+    return nullptr;
+  }
+  brillo::SecureBlob tag(uss_container->aes_gcm_tag()->begin(),
+                         uss_container->aes_gcm_tag()->end());
+
+  brillo::SecureBlob serialized_uss;
+  if (!AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, main_key, iv,
+                     &serialized_uss)) {
+    LOG(ERROR) << "Failed to decrypt UserSecretStash";
+    return nullptr;
+  }
+
+  flatbuffers::Verifier uss_verifier(serialized_uss.data(),
+                                     serialized_uss.size());
+  if (!VerifyUserSecretStashPayloadBuffer(uss_verifier)) {
+    LOG(ERROR) << "The UserSecretStashPayload flatbuffer is invalid";
+    return nullptr;
+  }
+
+  auto uss = GetUserSecretStashPayload(serialized_uss.data());
+  // Note: make_unique() wouldn't work due to the constructor being private.
+  std::unique_ptr<UserSecretStash> stash(new UserSecretStash);
+
+  if (uss->file_system_key() && uss->file_system_key()->size()) {
+    stash->file_system_key_ = brillo::SecureBlob(
+        uss->file_system_key()->begin(), uss->file_system_key()->end());
+  }
+
+  if (uss->reset_secret() && uss->reset_secret()->size()) {
+    stash->reset_secret_ = brillo::SecureBlob(uss->reset_secret()->begin(),
+                                              uss->reset_secret()->end());
+  }
+
+  return stash;
+}
+
 bool UserSecretStash::HasFileSystemKey() const {
   return file_system_key_.has_value();
 }
@@ -79,12 +178,6 @@ const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
 
 void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
   reset_secret_ = secret;
-}
-
-void UserSecretStash::InitializeRandom() {
-  file_system_key_ =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
-  reset_secret_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
 }
 
 base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
@@ -119,92 +212,6 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
   builder.Clear();
 
   return GenerateAesGcmEncryptedUSS(ciphertext, tag, iv);
-}
-
-bool UserSecretStash::FromEncryptedContainer(
-    const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key) {
-  if (main_key.size() != kAesGcm256KeySize) {
-    LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
-               << main_key.size() << ", expected: " << kAesGcm256KeySize;
-    return false;
-  }
-
-  flatbuffers::Verifier aes_verifier(flatbuffer.data(), flatbuffer.size());
-  if (!VerifyUserSecretStashContainerBuffer(aes_verifier)) {
-    LOG(ERROR) << "The UserSecretStashContainer flatbuffer is invalid";
-    return false;
-  }
-
-  auto uss_container = GetUserSecretStashContainer(flatbuffer.data());
-
-  UserSecretStashEncryptionAlgorithm algorithm =
-      uss_container->encryption_algorithm();
-  if (algorithm != UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
-    LOG(ERROR) << "UserSecretStashContainer uses unknown algorithm: "
-               << static_cast<int>(algorithm);
-    return false;
-  }
-
-  if (!uss_container->ciphertext() || !uss_container->ciphertext()->size()) {
-    LOG(ERROR) << "UserSecretStash has empty ciphertext";
-    return false;
-  }
-  brillo::SecureBlob ciphertext(uss_container->ciphertext()->begin(),
-                                uss_container->ciphertext()->end());
-
-  if (!uss_container->iv() || !uss_container->iv()->size()) {
-    LOG(ERROR) << "UserSecretStash has empty IV";
-    return false;
-  }
-  if (uss_container->iv()->size() != kAesGcmIVSize) {
-    LOG(ERROR) << "UserSecretStash has IV of wrong length: "
-               << uss_container->iv()->size()
-               << ", expected: " << kAesGcmIVSize;
-    return false;
-  }
-  brillo::SecureBlob iv(uss_container->iv()->begin(),
-                        uss_container->iv()->end());
-
-  if (!uss_container->aes_gcm_tag() || !uss_container->aes_gcm_tag()->size()) {
-    LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
-    return false;
-  }
-  if (uss_container->aes_gcm_tag()->size() != kAesGcmTagSize) {
-    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
-               << uss_container->aes_gcm_tag()->size()
-               << ", expected: " << kAesGcmTagSize;
-    return false;
-  }
-  brillo::SecureBlob tag(uss_container->aes_gcm_tag()->begin(),
-                         uss_container->aes_gcm_tag()->end());
-
-  brillo::SecureBlob serialized_uss;
-  if (!AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, main_key, iv,
-                     &serialized_uss)) {
-    LOG(ERROR) << "Failed to decrypt UserSecretStash";
-    return false;
-  }
-
-  flatbuffers::Verifier uss_verifier(serialized_uss.data(),
-                                     serialized_uss.size());
-  if (!VerifyUserSecretStashPayloadBuffer(uss_verifier)) {
-    LOG(ERROR) << "The UserSecretStashPayload flatbuffer is invalid";
-    return false;
-  }
-
-  auto uss = GetUserSecretStashPayload(serialized_uss.data());
-
-  if (uss->file_system_key() && uss->file_system_key()->size()) {
-    file_system_key_ = brillo::SecureBlob(uss->file_system_key()->begin(),
-                                          uss->file_system_key()->end());
-  }
-
-  if (uss->reset_secret() && uss->reset_secret()->size()) {
-    reset_secret_ = brillo::SecureBlob(uss->reset_secret()->begin(),
-                                       uss->reset_secret()->end());
-  }
-
-  return true;
 }
 
 }  // namespace cryptohome

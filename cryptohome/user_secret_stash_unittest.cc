@@ -5,6 +5,7 @@
 #include "cryptohome/user_secret_stash.h"
 
 #include <base/optional.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -24,141 +25,128 @@ static bool FindBlobInBlob(const brillo::SecureBlob& haystack,
                      needle.end()) != haystack.end();
 }
 
+class UserSecretStashTest : public ::testing::Test {
+ protected:
+  const brillo::SecureBlob kMainKey =
+      brillo::SecureBlob(kAesGcm256KeySize, 0xA);
+
+  void SetUp() override {
+    stash_ = UserSecretStash::CreateRandom();
+    ASSERT_TRUE(stash_);
+  }
+
+  std::unique_ptr<UserSecretStash> stash_;
+};
+
 }  // namespace
 
-TEST(UserSecretStashTest, InitializeRandomTest) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
-  EXPECT_TRUE(stash.HasFileSystemKey());
-  EXPECT_FALSE(stash.GetFileSystemKey().empty());
-  EXPECT_TRUE(stash.HasResetSecret());
-  EXPECT_FALSE(stash.GetResetSecret().empty());
+TEST_F(UserSecretStashTest, CreateRandom) {
+  EXPECT_TRUE(stash_->HasFileSystemKey());
+  EXPECT_FALSE(stash_->GetFileSystemKey().empty());
+  EXPECT_TRUE(stash_->HasResetSecret());
+  EXPECT_FALSE(stash_->GetResetSecret().empty());
+  // The secrets should be created randomly and never collide (in practice).
+  EXPECT_NE(stash_->GetFileSystemKey(), stash_->GetResetSecret());
 }
 
-TEST(UserSecretStashTest, GetEncryptedUSS) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
+// Verify that the USS secrets created by CreateRandom() don't repeat (in
+// practice).
+TEST_F(UserSecretStashTest, CreateRandomNotConstant) {
+  std::unique_ptr<UserSecretStash> stash2 = UserSecretStash::CreateRandom();
+  ASSERT_TRUE(stash2);
+  EXPECT_NE(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
+  EXPECT_NE(stash_->GetResetSecret(), stash2->GetResetSecret());
+}
 
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  memset(main_key.data(), 0xA, main_key.size());
-
+TEST_F(UserSecretStashTest, GetEncryptedUSS) {
   base::Optional<brillo::SecureBlob> uss_container =
-      stash.GetEncryptedContainer(main_key);
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
 
   // No raw secrets in the encrypted USS, which is written to disk.
-  EXPECT_FALSE(FindBlobInBlob(*uss_container, stash.GetFileSystemKey()));
-  EXPECT_FALSE(FindBlobInBlob(*uss_container, stash.GetResetSecret()));
+  EXPECT_FALSE(FindBlobInBlob(*uss_container, stash_->GetFileSystemKey()));
+  EXPECT_FALSE(FindBlobInBlob(*uss_container, stash_->GetResetSecret()));
 }
 
-TEST(UserSecretStashTest, EncryptAndDecryptUSS) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
-
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  memset(main_key.data(), 0xA, main_key.size());
-
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
   base::Optional<brillo::SecureBlob> uss_container =
-      stash.GetEncryptedContainer(main_key);
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
 
-  UserSecretStash stash2;
-  ASSERT_TRUE(stash2.FromEncryptedContainer(uss_container.value(), main_key));
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
+  ASSERT_TRUE(stash2);
 
-  EXPECT_EQ(stash.GetFileSystemKey(), stash2.GetFileSystemKey());
-  EXPECT_EQ(stash.GetResetSecret(), stash2.GetResetSecret());
+  EXPECT_EQ(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
+  EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
 }
 
 // Test that deserialization fails on an empty blob.
-TEST(UserSecretStashTest, DecryptErrorEmptyBuf) {
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  UserSecretStash stash;
-  EXPECT_FALSE(stash.FromEncryptedContainer(brillo::SecureBlob(), main_key));
+TEST_F(UserSecretStashTest, DecryptErrorEmptyBuf) {
+  EXPECT_FALSE(
+      UserSecretStash::FromEncryptedContainer(brillo::SecureBlob(), kMainKey));
 }
 
 // Test that deserialization fails on a corrupted flatbuffer.
-TEST(UserSecretStashTest, DecryptErrorCorruptedBuf) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
-
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  memset(main_key.data(), 0xA, main_key.size());
-
+TEST_F(UserSecretStashTest, DecryptErrorCorruptedBuf) {
   base::Optional<brillo::SecureBlob> uss_container =
-      stash.GetEncryptedContainer(main_key);
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
 
   brillo::SecureBlob corrupted_uss_container = *uss_container;
   for (uint8_t& byte : corrupted_uss_container)
     byte ^= 1;
 
-  EXPECT_FALSE(stash.FromEncryptedContainer(corrupted_uss_container, main_key));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(corrupted_uss_container,
+                                                       kMainKey));
 }
 
 // Test that decryption fails on an empty decryption key.
-TEST(UserSecretStashTest, DecryptErrorEmptyKey) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
-
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  memset(main_key.data(), 0xA, main_key.size());
-
+TEST_F(UserSecretStashTest, DecryptErrorEmptyKey) {
   base::Optional<brillo::SecureBlob> uss_container =
-      stash.GetEncryptedContainer(main_key);
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
 
-  EXPECT_FALSE(stash.FromEncryptedContainer(*uss_container, /*main_key=*/{}));
+  EXPECT_FALSE(
+      UserSecretStash::FromEncryptedContainer(*uss_container, /*main_key=*/{}));
 }
 
 // Test that decryption fails on a decryption key of a wrong size.
-TEST(UserSecretStashTest, DecryptErrorKeyBadSize) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
-
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  memset(main_key.data(), 0xA, main_key.size());
-
+TEST_F(UserSecretStashTest, DecryptErrorKeyBadSize) {
   base::Optional<brillo::SecureBlob> uss_container =
-      stash.GetEncryptedContainer(main_key);
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
 
-  brillo::SecureBlob bad_size_main_key = main_key;
+  brillo::SecureBlob bad_size_main_key = kMainKey;
   bad_size_main_key.resize(kAesGcm256KeySize - 1);
-  EXPECT_FALSE(stash.FromEncryptedContainer(*uss_container, bad_size_main_key));
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(*uss_container,
+                                                       bad_size_main_key));
 }
 
 // Test that decryption fails on a wrong decryption key.
-TEST(UserSecretStashTest, DecryptErrorWrongKey) {
-  UserSecretStash stash;
-  stash.InitializeRandom();
-
-  brillo::SecureBlob main_key(kAesGcm256KeySize);
-  memset(main_key.data(), 0xA, main_key.size());
-
+TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
   base::Optional<brillo::SecureBlob> uss_container =
-      stash.GetEncryptedContainer(main_key);
+      stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(base::nullopt, uss_container);
 
-  brillo::SecureBlob wrong_main_key = main_key;
+  brillo::SecureBlob wrong_main_key = kMainKey;
   wrong_main_key[0] ^= 1;
 
-  EXPECT_FALSE(stash.FromEncryptedContainer(*uss_container, wrong_main_key));
+  EXPECT_FALSE(
+      UserSecretStash::FromEncryptedContainer(*uss_container, wrong_main_key));
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
 // FlatBuffers Object API.
-class UserSecretStashObjectApiTest : public ::testing::Test {
+class UserSecretStashObjectApiTest : public UserSecretStashTest {
  protected:
-  UserSecretStashObjectApiTest() {
-    stash_.InitializeRandom();
-    main_key_.resize(kAesGcm256KeySize);
-    memset(main_key_.data(), 0xA, main_key_.size());
-  }
-
   void SetUp() override {
+    ASSERT_NO_FATAL_FAILURE(UserSecretStashTest::SetUp());
+
     // Encrypt the USS.
     base::Optional<brillo::SecureBlob> uss_container =
-        stash_.GetEncryptedContainer(main_key_);
+        stash_->GetEncryptedContainer(kMainKey);
     ASSERT_TRUE(uss_container);
 
     // Unpack the wrapped USS flatbuffer to |uss_container_obj_|.
@@ -172,7 +160,7 @@ class UserSecretStashObjectApiTest : public ::testing::Test {
     ASSERT_TRUE(AesGcmDecrypt(
         brillo::SecureBlob(uss_container_obj_.ciphertext),
         /*ad=*/base::nullopt,
-        brillo::SecureBlob(uss_container_obj_.aes_gcm_tag), main_key_,
+        brillo::SecureBlob(uss_container_obj_.aes_gcm_tag), kMainKey,
         brillo::SecureBlob(uss_container_obj_.iv), &uss_payload));
     std::unique_ptr<UserSecretStashPayloadT> uss_payload_obj_ptr =
         UnPackUserSecretStashPayload(uss_payload.data());
@@ -199,7 +187,7 @@ class UserSecretStashObjectApiTest : public ::testing::Test {
 
     // Encrypt the packed |uss_payload_obj_|.
     brillo::SecureBlob iv, tag, ciphertext;
-    EXPECT_TRUE(AesGcmEncrypt(uss_payload, /*ad=*/base::nullopt, main_key_, &iv,
+    EXPECT_TRUE(AesGcmEncrypt(uss_payload, /*ad=*/base::nullopt, kMainKey, &iv,
                               &tag, &ciphertext));
 
     // Create a copy of |uss_container_obj_|, with the encrypted blob replaced.
@@ -216,8 +204,6 @@ class UserSecretStashObjectApiTest : public ::testing::Test {
                               builder.GetBufferPointer() + builder.GetSize());
   }
 
-  UserSecretStash stash_;
-  brillo::SecureBlob main_key_;
   UserSecretStashContainerT uss_container_obj_;
   UserSecretStashPayloadT uss_payload_obj_;
 };
@@ -227,9 +213,8 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAlgorithm) {
   uss_container_obj_.encryption_algorithm =
       UserSecretStashEncryptionAlgorithm::NONE;
 
-  UserSecretStash stash2;
-  EXPECT_FALSE(stash2.FromEncryptedContainer(GetFlatbufferFromUssContainerObj(),
-                                             main_key_));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
 // Test that decryption fails when the encryption algorithm is unknown.
@@ -240,36 +225,32 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorUnknownAlgorithm) {
       static_cast<UserSecretStashEncryptionAlgorithm>(
           static_cast<int>(UserSecretStashEncryptionAlgorithm::MAX) + 1);
 
-  UserSecretStash stash2;
-  EXPECT_FALSE(stash2.FromEncryptedContainer(GetFlatbufferFromUssContainerObj(),
-                                             main_key_));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
 // Test that decryption fails when the ciphertext field is missing.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoCiphertext) {
   uss_container_obj_.ciphertext.clear();
 
-  UserSecretStash stash2;
-  EXPECT_FALSE(stash2.FromEncryptedContainer(GetFlatbufferFromUssContainerObj(),
-                                             main_key_));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
 // Test that decryption fails when the iv field is missing.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoIv) {
   uss_container_obj_.iv.clear();
 
-  UserSecretStash stash2;
-  EXPECT_FALSE(stash2.FromEncryptedContainer(GetFlatbufferFromUssContainerObj(),
-                                             main_key_));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
 // Test that decryption fails when the aes_gcm_tag field is missing.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAesGcmTag) {
   uss_container_obj_.aes_gcm_tag.clear();
 
-  UserSecretStash stash2;
-  EXPECT_FALSE(stash2.FromEncryptedContainer(GetFlatbufferFromUssContainerObj(),
-                                             main_key_));
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
 // Test the decryption succeeds when the payload's file_system_key field is
@@ -277,11 +258,12 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAesGcmTag) {
 TEST_F(UserSecretStashObjectApiTest, DecryptWithoutFileSystemKey) {
   uss_payload_obj_.file_system_key.clear();
 
-  UserSecretStash stash2;
-  ASSERT_TRUE(stash2.FromEncryptedContainer(GetFlatbufferFromUssPayloadObj(),
-                                            main_key_));
-  EXPECT_FALSE(stash2.HasFileSystemKey());
-  EXPECT_EQ(stash_.GetResetSecret(), stash2.GetResetSecret());
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::FromEncryptedContainer(GetFlatbufferFromUssPayloadObj(),
+                                              kMainKey);
+  ASSERT_TRUE(stash2);
+  EXPECT_FALSE(stash2->HasFileSystemKey());
+  EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
 }
 
 // Test the decryption succeeds when the payload's reset_secret field is
@@ -289,11 +271,12 @@ TEST_F(UserSecretStashObjectApiTest, DecryptWithoutFileSystemKey) {
 TEST_F(UserSecretStashObjectApiTest, DecryptWithoutResetSecret) {
   uss_payload_obj_.reset_secret.clear();
 
-  UserSecretStash stash2;
-  ASSERT_TRUE(stash2.FromEncryptedContainer(GetFlatbufferFromUssPayloadObj(),
-                                            main_key_));
-  EXPECT_EQ(stash_.GetFileSystemKey(), stash2.GetFileSystemKey());
-  EXPECT_FALSE(stash2.HasResetSecret());
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::FromEncryptedContainer(GetFlatbufferFromUssPayloadObj(),
+                                              kMainKey);
+  ASSERT_TRUE(stash2);
+  EXPECT_EQ(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
+  EXPECT_FALSE(stash2->HasResetSecret());
 }
 
 }  // namespace cryptohome
