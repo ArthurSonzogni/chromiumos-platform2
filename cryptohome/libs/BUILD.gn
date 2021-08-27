@@ -150,6 +150,7 @@ static_library("libcrosplatform") {
     "../storage/encrypted_container/encrypted_container_factory.cc",
     "../storage/encrypted_container/fscrypt_container.cc",
     "../storage/encrypted_container/loopback_device.cc",
+    "../user_secret_stash.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
@@ -207,7 +208,6 @@ static_library("libcrostpm") {
     "../tpm_auth_block_utils.cc",
     "../tpm_bound_to_pcr_auth_block.cc",
     "../tpm_not_bound_to_pcr_auth_block.cc",
-    "../user_secret_stash.cc",
     "../vault_keyset.cc",
   ]
   defines = [ "PLATFORM_FWMP_INDEX=${use.generic_tpm2}" ]

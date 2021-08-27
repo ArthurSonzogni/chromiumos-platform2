@@ -5,6 +5,7 @@
 #include "cryptohome/user_secret_stash.h"
 
 #include <base/logging.h>
+#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <stdint.h>
 
@@ -26,9 +27,8 @@ brillo::SecureBlob GenerateAesGcmEncryptedUSS(
     const brillo::SecureBlob& ciphertext,
     const brillo::SecureBlob& tag,
     const brillo::SecureBlob& iv) {
-  std::unique_ptr<flatbuffers::Allocator> allocator =
-      std::make_unique<FlatbufferSecureAllocatorBridge>();
-  flatbuffers::FlatBufferBuilder builder(4096, allocator.get(),
+  FlatbufferSecureAllocatorBridge allocator;
+  flatbuffers::FlatBufferBuilder builder(/*initial_size=*/4096, &allocator,
                                          /*own_allocator=*/false);
 
   auto ciphertext_vector =
@@ -81,9 +81,8 @@ void UserSecretStash::InitializeRandom() {
 
 base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
     const brillo::SecureBlob& main_key) {
-  std::unique_ptr<flatbuffers::Allocator> allocator =
-      std::make_unique<FlatbufferSecureAllocatorBridge>();
-  flatbuffers::FlatBufferBuilder builder(4096, allocator.get(),
+  FlatbufferSecureAllocatorBridge allocator;
+  flatbuffers::FlatBufferBuilder builder(/*initial_size=*/4096, &allocator,
                                          /*own_allocator=*/false);
 
   auto fs_key_vector =
@@ -111,8 +110,7 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
 
   builder.Clear();
 
-  return base::Optional<brillo::SecureBlob>(
-      GenerateAesGcmEncryptedUSS(ciphertext, tag, iv));
+  return GenerateAesGcmEncryptedUSS(ciphertext, tag, iv);
 }
 
 bool UserSecretStash::FromEncryptedContainer(
