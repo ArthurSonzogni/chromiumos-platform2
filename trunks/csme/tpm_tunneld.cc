@@ -39,17 +39,10 @@ void InitMinijailSandbox() {
   CHECK_EQ(getuid(), kRootUID) << "tpm_tunneld not initialized as root.";
 
   ScopedMinijail j(minijail_new());
+  minijail_log_seccomp_filter_failures(j.get());
   minijail_no_new_privs(j.get());
-
-  // TODO(b/193660214): enable seccomp filter once the code is validated on
-  // kernl v5.4. for now we just disable it in order to unblock developemnt
-  // using TPM tunnel.
-#if 0
   minijail_use_seccomp_filter(j.get());
   minijail_parse_seccomp_filters(j.get(), kTpmTunnelSeccompPath);
-#else
-  (void)(kTpmTunnelSeccompPath);
-#endif
   minijail_change_user(j.get(), kTpmTunnelUser);
   minijail_change_group(j.get(), kTpmTunnelGroup);
   minijail_enter(j.get());
