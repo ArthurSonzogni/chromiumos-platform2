@@ -39,6 +39,7 @@ enum ProbeCategoryEnum {
   kAudio,
   kBootPerformance,
   kBus,
+  kTpm,
 
   // TODO(b/190459636): Rename it to kSystem after migration.
   kSystem2 = 0x10000,
@@ -915,4 +916,7 @@ struct TelemetryInfo {
   // Information about the system. Only present when kSystem2 was included in
   // the categories input to ProbeTelemetryInfo.
   SystemResultV2? system_result_v2;
+  // Information about the tpm. Only present when kTpm was included in
+  // the categories input to ProbeTelemetryInfo.
+  TpmResult? tpm_result;
 };

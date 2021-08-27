@@ -27,6 +27,7 @@
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/cros_healthd_probe.mojom.h"
@@ -97,6 +98,7 @@ class FetchAggregator final {
   StatefulPartitionFetcher stateful_partition_fetcher_;
   SystemFetcher system_fetcher_;
   TimezoneFetcher timezone_fetcher_;
+  TpmFetcher tpm_fetcher_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};
