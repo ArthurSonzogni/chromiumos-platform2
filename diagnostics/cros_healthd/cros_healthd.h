@@ -14,6 +14,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
@@ -33,7 +34,8 @@ class CrosHealthd final
     : public brillo::DBusServiceDaemon,
       public chromeos::cros_healthd::mojom::CrosHealthdServiceFactory {
  public:
-  explicit CrosHealthd(Context* context);
+  explicit CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
+                       std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
   CrosHealthd(const CrosHealthd&) = delete;
   CrosHealthd& operator=(const CrosHealthd&) = delete;
   ~CrosHealthd() override;
@@ -84,7 +86,7 @@ class CrosHealthd final
 
   // Provides access to helper objects. Used by various telemetry fetchers,
   // event implementations and diagnostic routines.
-  Context* const context_ = nullptr;
+  std::unique_ptr<Context> context_;
 
   // |fetch_aggregator_| is responsible for fulfulling all ProbeTelemetryInfo
   // requests.

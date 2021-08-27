@@ -67,11 +67,9 @@ int main(int argc, char** argv) {
     // Sandbox the child process.
     diagnostics::ConfigureAndEnterMinijail();
 
-    // Set up the context cros_healthd will run in.
-    diagnostics::Context context{channel.TakeRemoteEndpoint(),
-                                 std::move(udev_monitor)};
-
     // Run the cros_healthd daemon.
-    return diagnostics::CrosHealthd(&context).Run();
+    auto service = diagnostics::CrosHealthd(channel.TakeRemoteEndpoint(),
+                                            std::move(udev_monitor));
+    return service.Run();
   }
 }

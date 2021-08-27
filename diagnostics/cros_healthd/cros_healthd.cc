@@ -14,6 +14,7 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/unguessable_token.h>
+#include <brillo/udev/udev_monitor.h>
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
@@ -29,37 +30,38 @@
 
 namespace diagnostics {
 
-CrosHealthd::CrosHealthd(Context* context)
-    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */),
-      context_(context) {
-  DCHECK(context_);
-
+CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
+                         std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
+    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */) {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
 
+  context_ =
+      std::make_unique<Context>(std::move(endpoint), std::move(udev_monitor));
   CHECK(context_->Initialize()) << "Failed to initialize context.";
 
-  fetch_aggregator_ = std::make_unique<FetchAggregator>(context_);
+  fetch_aggregator_ = std::make_unique<FetchAggregator>(context_.get());
 
-  bluetooth_events_ = std::make_unique<BluetoothEventsImpl>(context_);
+  bluetooth_events_ = std::make_unique<BluetoothEventsImpl>(context_.get());
 
-  lid_events_ = std::make_unique<LidEventsImpl>(context_);
+  lid_events_ = std::make_unique<LidEventsImpl>(context_.get());
 
-  power_events_ = std::make_unique<PowerEventsImpl>(context_);
+  power_events_ = std::make_unique<PowerEventsImpl>(context_.get());
 
-  audio_events_ = std::make_unique<AudioEventsImpl>(context_);
+  audio_events_ = std::make_unique<AudioEventsImpl>(context_.get());
 
-  udev_events_ = std::make_unique<UdevEventsImpl>(context_);
+  udev_events_ = std::make_unique<UdevEventsImpl>(context_.get());
 
-  routine_factory_ = std::make_unique<CrosHealthdRoutineFactoryImpl>(context_);
+  routine_factory_ =
+      std::make_unique<CrosHealthdRoutineFactoryImpl>(context_.get());
 
   routine_service_ = std::make_unique<CrosHealthdRoutineService>(
-      context_, routine_factory_.get());
+      context_.get(), routine_factory_.get());
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      context_, fetch_aggregator_.get(), bluetooth_events_.get(),
+      context_.get(), fetch_aggregator_.get(), bluetooth_events_.get(),
       lid_events_.get(), power_events_.get(), audio_events_.get(),
       udev_events_.get());
 
