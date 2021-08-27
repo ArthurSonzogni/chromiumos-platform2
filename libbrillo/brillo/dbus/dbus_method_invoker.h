@@ -304,32 +304,6 @@ inline void CallMethodWithTimeout(
                                       std::move(dbus_error_callback));
 }
 
-// TODO(crbug/1205291): Remove this repeating callback helper after migration
-// finished.
-template <typename... InArgs, typename... OutArgs>
-inline void CallMethodWithTimeout(
-    int timeout_ms,
-    ::dbus::ObjectProxy* object,
-    const std::string& interface_name,
-    const std::string& method_name,
-    const base::RepeatingCallback<void(OutArgs...)>& success_callback,
-    const base::RepeatingCallback<void(Error* error)>& error_callback,
-    const InArgs&... params) {
-  ::dbus::MethodCall method_call(interface_name, method_name);
-  ::dbus::MessageWriter writer(&method_call);
-  DBusParamWriter::Append(&writer, params...);
-
-  ::dbus::ObjectProxy::ErrorCallback dbus_error_callback =
-      base::BindOnce(&TranslateErrorResponse, error_callback);
-  ::dbus::ObjectProxy::ResponseCallback dbus_success_callback =
-      base::BindOnce(&TranslateSuccessResponse<OutArgs...>,
-                     std::move(success_callback), error_callback);
-
-  object->CallMethodWithErrorCallback(&method_call, timeout_ms,
-                                      std::move(dbus_success_callback),
-                                      std::move(dbus_error_callback));
-}
-
 // Same as CallMethodWithTimeout() but uses a default timeout value.
 template <typename... InArgs, typename... OutArgs>
 inline void CallMethod(::dbus::ObjectProxy* object,
@@ -338,22 +312,6 @@ inline void CallMethod(::dbus::ObjectProxy* object,
                        base::OnceCallback<void(OutArgs...)> success_callback,
                        AsyncErrorCallback error_callback,
                        const InArgs&... params) {
-  return CallMethodWithTimeout(::dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, object,
-                               interface_name, method_name,
-                               std::move(success_callback),
-                               std::move(error_callback), params...);
-}
-
-// TODO(crbug/1205291): Remove this repeating callback helper after migration
-// finished.
-template <typename... InArgs, typename... OutArgs>
-inline void CallMethod(
-    ::dbus::ObjectProxy* object,
-    const std::string& interface_name,
-    const std::string& method_name,
-    const base::RepeatingCallback<void(OutArgs...)>& success_callback,
-    const base::RepeatingCallback<void(Error* error)>& error_callback,
-    const InArgs&... params) {
   return CallMethodWithTimeout(::dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, object,
                                interface_name, method_name,
                                std::move(success_callback),
