@@ -373,7 +373,7 @@ class StateController : public PrefsObserver {
   // Handles the update_engine D-Bus service becoming initially available.
   void HandleUpdateEngineAvailable(bool available);
 
-  // Hadles StatusUpdateAdvanced D-Bus signals from update_engine.
+  // Handles StatusUpdateAdvanced D-Bus signals from update_engine.
   void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
 
   // Handles status updates from update_engine. This is a helper used by both
