@@ -36,46 +36,45 @@ Context::Context(mojo::PlatformChannelEndpoint endpoint,
 Context::~Context() = default;
 
 bool Context::Initialize() {
-  // Initialize the D-Bus connection.
-  dbus_bus_ = connection_.Connect();
-  if (!dbus_bus_) {
-    LOG(ERROR) << "Failed to connect to the D-Bus system bus.";
-    return false;
-  }
-
-  // Initialize D-Bus clients:
-  bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus_);
-  cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
-      dbus_bus_, cras::kCrasServiceName,
-      dbus::ObjectPath(cras::kCrasServicePath));
-  debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus_);
-  debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
-      std::make_unique<org::chromium::debugdProxy>(dbus_bus_));
-  // Create the NetworkHealthAdapter.
-  network_health_adapter_ = std::make_unique<NetworkHealthAdapterImpl>();
-  // Create the NetworkDiagnosticsAdapter.
-  network_diagnostics_adapter_ =
-      std::make_unique<NetworkDiagnosticsAdapterImpl>();
-  powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus_);
-
-  cros_config_ = std::make_unique<brillo::CrosConfig>();
-
-  // Init should always succeed.
-  if (!static_cast<brillo::CrosConfig*>(cros_config_.get())->Init()) {
-    LOG(ERROR) << "Unable to initialize cros_config";
-    return false;
-  }
-
-  system_config_ =
-      std::make_unique<SystemConfig>(cros_config_.get(), debugd_adapter_.get());
-  system_utils_ = std::make_unique<SystemUtilitiesImpl>();
-
   // Create and connect the adapter for the root-level executor.
   executor_ = std::make_unique<ExecutorAdapterImpl>();
   executor_->Connect(std::move(endpoint_));
 
-  tick_clock_ = std::make_unique<base::DefaultTickClock>();
+  // Initialize the D-Bus connection.
+  auto dbus_bus = connection_.Connect();
+  if (!dbus_bus) {
+    LOG(ERROR) << "Failed to connect to the D-Bus system bus.";
+    return false;
+  }
 
+  // Create D-Bus clients:
+  bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus);
+  cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
+      dbus_bus, cras::kCrasServiceName,
+      dbus::ObjectPath(cras::kCrasServicePath));
+  debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus);
+  debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
+      std::make_unique<org::chromium::debugdProxy>(dbus_bus));
+  powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
+
+  // Create the mojo clients which will be initialized after connecting with
+  // chrome.
+  network_health_adapter_ = std::make_unique<NetworkHealthAdapterImpl>();
+  network_diagnostics_adapter_ =
+      std::make_unique<NetworkDiagnosticsAdapterImpl>();
+
+  // Create others.
+  auto cros_config = std::make_unique<brillo::CrosConfig>();
+  if (!cros_config->Init()) {
+    LOG(ERROR) << "Unable to initialize cros_config";
+    return false;
+  }
+  cros_config_ = std::move(cros_config);
+
+  system_config_ =
+      std::make_unique<SystemConfig>(cros_config_.get(), debugd_adapter_.get());
+  system_utils_ = std::make_unique<SystemUtilitiesImpl>();
+  tick_clock_ = std::make_unique<base::DefaultTickClock>();
   udev_ = std::make_unique<UdevImpl>();
 
   return true;

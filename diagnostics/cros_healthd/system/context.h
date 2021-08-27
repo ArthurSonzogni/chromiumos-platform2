@@ -115,10 +115,8 @@ class Context {
   mojo::PlatformChannelEndpoint endpoint_;
 
   // This should be the only connection to D-Bus. Use |connection_| to get the
-  // |dbus_bus_|.
+  // |dbus_bus|.
   brillo::DBusConnection connection_;
-  // Used by this object to initiate D-Bus clients.
-  scoped_refptr<dbus::Bus> dbus_bus_;
 
   // Used by this object to initialize the SystemConfig. Used for reading
   // cros_config properties to determine device feature support.
