@@ -51,6 +51,11 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual void RegisterSignalSender(
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {}
 
+  using HardwareVerificationResultSignalCallback =
+      base::RepeatingCallback<bool(const HardwareVerificationResult&)>;
+  virtual void RegisterSignalSender(
+      std::unique_ptr<HardwareVerificationResultSignalCallback> callback) {}
+
   using CalibrationSetupSignalCallback =
       base::RepeatingCallback<bool(CalibrationSetupInstruction)>;
   virtual void RegisterSignalSender(

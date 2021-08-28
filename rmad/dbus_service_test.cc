@@ -48,6 +48,11 @@ class DBusServiceTest : public testing::Test {
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
+        RegisterSignalSender(_, A<std::unique_ptr<base::RepeatingCallback<bool(
+                                    const HardwareVerificationResult&)>>>()))
+        .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
         RegisterSignalSender(
             _,
             A<std::unique_ptr<
@@ -106,6 +111,10 @@ class DBusServiceTest : public testing::Test {
 
   bool SignalError(RmadErrorCode error) {
     return dbus_service_->SendErrorSignal(error);
+  }
+
+  bool SignalHardwareVerification(const HardwareVerificationResult& result) {
+    return dbus_service_->SendHardwareVerificationResultSignal(result);
   }
 
   bool SignalCalibrationSetup(CalibrationSetupInstruction setup_instruction) {
@@ -241,6 +250,24 @@ TEST_F(DBusServiceTest, SignalError) {
         EXPECT_EQ(error, RMAD_ERROR_RMA_NOT_REQUIRED);
       }));
   EXPECT_TRUE(SignalError(RMAD_ERROR_RMA_NOT_REQUIRED));
+}
+
+TEST_F(DBusServiceTest, SignalHardwareVerification) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "HardwareVerificationResult");
+        dbus::MessageReader reader(signal);
+        HardwareVerificationResult result;
+        EXPECT_TRUE(PopValueFromReader(&reader, &result));
+        EXPECT_EQ(result.is_compliant(), true);
+        EXPECT_EQ(result.error_str(), "test_error_string");
+      }));
+  HardwareVerificationResult result;
+  result.set_is_compliant(true);
+  result.set_error_str("test_error_string");
+  EXPECT_TRUE(SignalHardwareVerification(result));
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationSetup) {

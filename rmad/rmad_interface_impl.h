@@ -37,6 +37,11 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
+      std::unique_ptr<HardwareVerificationResultSignalCallback> callback)
+      override;
+
+  void RegisterSignalSender(
+      RmadState::StateCase state_case,
       std::unique_ptr<CalibrationSetupSignalCallback> callback) override;
 
   void RegisterSignalSender(

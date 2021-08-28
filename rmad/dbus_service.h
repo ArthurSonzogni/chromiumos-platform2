@@ -22,7 +22,11 @@ namespace brillo {
 namespace dbus_utils {
 
 void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const rmad::HardwareVerificationResult& value);
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const rmad::CalibrationComponentStatus& value);
+bool PopValueFromReader(dbus::MessageReader* reader,
+                        rmad::HardwareVerificationResult* value);
 bool PopValueFromReader(dbus::MessageReader* reader,
                         rmad::CalibrationComponentStatus* value);
 
@@ -43,6 +47,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   ~DBusService() override = default;
 
   bool SendErrorSignal(RmadErrorCode error);
+  bool SendHardwareVerificationResultSignal(
+      const HardwareVerificationResult& result);
   bool SendCalibrationSetupSignal(CalibrationSetupInstruction instruction);
   bool SendCalibrationOverallSignal(CalibrationOverallStatus status);
   bool SendCalibrationProgressSignal(CalibrationComponentStatus status);
@@ -130,6 +136,8 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<RmadErrorCode>> error_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<HardwareVerificationResult>>
+      hardware_verification_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationSetupInstruction>>
       calibration_setup_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationOverallStatus>>

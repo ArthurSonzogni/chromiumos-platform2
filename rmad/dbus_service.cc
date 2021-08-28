@@ -22,10 +22,74 @@ namespace dbus_utils {
 using rmad::CalibrationComponentStatus;
 using rmad::CalibrationOverallStatus;
 using rmad::CalibrationSetupInstruction;
+using rmad::HardwareVerificationResult;
 using rmad::ProvisionDeviceState;
 using rmad::RmadComponent;
 using rmad::RmadErrorCode;
 
+// Overload AppendValueToWriter() for |HardwareVerificationResult| and
+// |CalibrationComponentStatus| structures.
+void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const HardwareVerificationResult& value) {
+  dbus::MessageWriter struct_writer(nullptr);
+  writer->OpenStruct(&struct_writer);
+  AppendValueToWriter(&struct_writer, value.is_compliant());
+  AppendValueToWriter(&struct_writer, value.error_str());
+  writer->CloseContainer(&struct_writer);
+}
+
+void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const CalibrationComponentStatus& value) {
+  dbus::MessageWriter struct_writer(nullptr);
+  writer->OpenStruct(&struct_writer);
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.component()));
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
+  AppendValueToWriter(&struct_writer, value.progress());
+  writer->CloseContainer(&struct_writer);
+}
+
+// Overload PopValueFromReader() for |HardwareVerificationResult| and
+// |CalibrationComponentStatus| structures.
+bool PopValueFromReader(dbus::MessageReader* reader,
+                        HardwareVerificationResult* value) {
+  dbus::MessageReader struct_reader(nullptr);
+  if (!reader->PopStruct(&struct_reader)) {
+    return false;
+  }
+
+  bool is_compliant;
+  std::string error_str;
+  if (!PopValueFromReader(&struct_reader, &is_compliant) ||
+      !PopValueFromReader(&struct_reader, &error_str)) {
+    return false;
+  }
+  value->set_is_compliant(is_compliant);
+  value->set_error_str(error_str);
+  return true;
+}
+
+bool PopValueFromReader(dbus::MessageReader* reader,
+                        CalibrationComponentStatus* value) {
+  dbus::MessageReader struct_reader(nullptr);
+  if (!reader->PopStruct(&struct_reader)) {
+    return false;
+  }
+
+  int component, status;
+  double progress;
+  if (!PopValueFromReader(&struct_reader, &component) ||
+      !PopValueFromReader(&struct_reader, &status) ||
+      !PopValueFromReader(&struct_reader, &progress)) {
+    return false;
+  }
+  value->set_component(static_cast<RmadComponent>(component));
+  value->set_status(
+      static_cast<CalibrationComponentStatus::CalibrationStatus>(status));
+  value->set_progress(progress);
+  return true;
+}
+
+// DBusType definition for signals.
 template <>
 struct DBusType<RmadErrorCode> {
   inline static std::string GetSignature() {
@@ -43,6 +107,21 @@ struct DBusType<RmadErrorCode> {
     } else {
       return false;
     }
+  }
+};
+
+template <>
+struct DBusType<HardwareVerificationResult> {
+  inline static std::string GetSignature() {
+    return GetStructDBusSignature<bool, std::string>();
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const HardwareVerificationResult& value) {
+    AppendValueToWriter(writer, value);
+  }
+  inline static bool Read(dbus::MessageReader* reader,
+                          HardwareVerificationResult* value) {
+    return PopValueFromReader(reader, value);
   }
 };
 
@@ -87,41 +166,6 @@ struct DBusType<CalibrationOverallStatus> {
     }
   }
 };
-
-// Overload AppendValueToWriter() for "CheckCalibrationState::CalibrationStatus"
-// structure.
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const CalibrationComponentStatus& value) {
-  dbus::MessageWriter struct_writer(nullptr);
-  writer->OpenStruct(&struct_writer);
-  AppendValueToWriter(&struct_writer, static_cast<int>(value.component()));
-  AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
-  AppendValueToWriter(&struct_writer, value.progress());
-  writer->CloseContainer(&struct_writer);
-}
-
-// Overload PopValueFromReader() for "CheckCalibrationState::CalibrationStatus"
-// structure.
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        CalibrationComponentStatus* value) {
-  dbus::MessageReader struct_reader(nullptr);
-  if (!reader->PopStruct(&struct_reader)) {
-    return false;
-  }
-
-  int component, status;
-  double progress;
-  if (!PopValueFromReader(&struct_reader, &component) ||
-      !PopValueFromReader(&struct_reader, &status) ||
-      !PopValueFromReader(&struct_reader, &progress)) {
-    return false;
-  }
-  value->set_component(static_cast<RmadComponent>(component));
-  value->set_status(
-      static_cast<CalibrationComponentStatus::CalibrationStatus>(status));
-  value->set_progress(progress);
-  return true;
-}
 
 template <>
 struct DBusType<CalibrationComponentStatus> {
@@ -225,6 +269,9 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
                                          &DBusService::HandleGetLogMethod);
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
+  hardware_verification_signal_ =
+      dbus_interface->RegisterSignal<HardwareVerificationResult>(
+          kHardwareVerificationResultSignal);
   calibration_setup_signal_ =
       dbus_interface->RegisterSignal<CalibrationSetupInstruction>(
           kCalibrationSetupSignal);
@@ -260,6 +307,13 @@ void DBusService::RegisterSignalSenders() {
       std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
           &DBusService::SendHardwareWriteProtectionStateSignal,
           base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kWelcome,
+      std::make_unique<
+          base::RepeatingCallback<bool(const HardwareVerificationResult&)>>(
+          base::BindRepeating(
+              &DBusService::SendHardwareVerificationResultSignal,
+              base::Unretained(this))));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kSetupCalibration,
       std::make_unique<
@@ -298,6 +352,12 @@ GetLogReply DBusService::HandleGetLogMethod() {
 bool DBusService::SendErrorSignal(RmadErrorCode error) {
   auto signal = error_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(error);
+}
+
+bool DBusService::SendHardwareVerificationResultSignal(
+    const HardwareVerificationResult& result) {
+  auto signal = hardware_verification_signal_.lock();
+  return (signal.get() == nullptr) ? false : signal->Send(result);
 }
 
 bool DBusService::SendCalibrationSetupSignal(
