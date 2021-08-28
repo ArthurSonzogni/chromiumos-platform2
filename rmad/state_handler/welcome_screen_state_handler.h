@@ -7,20 +7,49 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/sequenced_task_runner.h>
+
+#include "rmad/utils/hardware_verifier_utils.h"
+
 namespace rmad {
 
 class WelcomeScreenStateHandler : public BaseStateHandler {
  public:
   explicit WelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |hardware_verifier_utils_| for testing.
+  WelcomeScreenStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<HardwareVerifierUtils> hardware_verifier_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
   SET_REPEATABLE;
 
+  void RegisterSignalSender(
+      std::unique_ptr<HardwareVerificationResultSignalCallback> callback)
+      override {
+    hardware_verification_result_signal_sender_ = std::move(callback);
+  }
+
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
+  scoped_refptr<base::SequencedTaskRunner> GetTaskRunner() {
+    return task_runner_;
+  }
+
+  void RunHardwareVerifier() const;
+
  protected:
   ~WelcomeScreenStateHandler() override = default;
+
+ private:
+  std::unique_ptr<HardwareVerifierUtils> hardware_verifier_utils_;
+  std::unique_ptr<HardwareVerificationResultSignalCallback>
+      hardware_verification_result_signal_sender_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
 }  // namespace rmad

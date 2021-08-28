@@ -4,19 +4,43 @@
 
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
+#include <memory>
+#include <utility>
+
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
+
+#include "rmad/utils/hardware_verifier_utils_impl.h"
 
 namespace rmad {
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  hardware_verifier_utils_ = std::make_unique<HardwareVerifierUtilsImpl>();
+}
+
+WelcomeScreenStateHandler::WelcomeScreenStateHandler(
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<HardwareVerifierUtils> hardware_verifier_utils)
+    : BaseStateHandler(json_store),
+      hardware_verifier_utils_(std::move(hardware_verifier_utils)) {}
 
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
+  if (!task_runner_) {
+    task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+  }
   if (!state_.has_welcome()) {
     state_.set_allocated_welcome(new WelcomeState);
+    task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&WelcomeScreenStateHandler::RunHardwareVerifier,
+                       base::Unretained(this)));
   }
+
   return RMAD_ERROR_OK;
 }
 
@@ -40,6 +64,13 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
   NOTREACHED();
   return {.error = RMAD_ERROR_NOT_SET,
           .state_case = RmadState::StateCase::STATE_NOT_SET};
+}
+
+void WelcomeScreenStateHandler::RunHardwareVerifier() const {
+  HardwareVerificationResult result;
+  if (hardware_verifier_utils_->GetHardwareVerificationResult(&result)) {
+    hardware_verification_result_signal_sender_->Run(result);
+  }
 }
 
 }  // namespace rmad
