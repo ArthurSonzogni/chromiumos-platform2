@@ -8,23 +8,15 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-#include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
-
-#include "hps/hps.h"
-
-#include "dbus_adaptors/org.chromium.Hps.h"
+#include <hps/daemon/dbus_adaptor.h>
+#include <hps/hps.h>
 
 namespace hps {
 
-class HpsDaemon : public brillo::DBusServiceDaemon,
-                  public org::chromium::HpsAdaptor,
-                  public org::chromium::HpsInterface {
+class HpsDaemon : public brillo::DBusServiceDaemon {
  public:
-  explicit HpsDaemon(std::unique_ptr<HPS>);
-  // Used to inject a mock bus.
-  HpsDaemon(scoped_refptr<dbus::Bus> bus, std::unique_ptr<HPS> hps);
+  explicit HpsDaemon(std::unique_ptr<HPS>, uint32_t poll_time_ms);
 
   HpsDaemon(const HpsDaemon&) = delete;
   HpsDaemon& operator=(const HpsDaemon&) = delete;
@@ -36,17 +28,9 @@ class HpsDaemon : public brillo::DBusServiceDaemon,
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  // Methods for HpsInterface
-  bool EnableFeature(brillo::ErrorPtr* error, uint8_t feature) override;
-
-  bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature) override;
-
-  bool GetFeatureResult(brillo::ErrorPtr* error,
-                        uint8_t feature,
-                        uint16_t* result) override;
-
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<DBusAdaptor> adaptor_;
   std::unique_ptr<HPS> hps_;
+  const uint32_t poll_time_ms_;
 };
 
 }  // namespace hps

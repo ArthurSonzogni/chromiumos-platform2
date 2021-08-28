@@ -35,6 +35,8 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(version, -1, "Override MCU firmware file version");
   DEFINE_string(mcu_path, "", "MCU firmware file");
   DEFINE_string(spi_path, "", "SPI firmware file");
+  DEFINE_uint32(poll_timer_ms, 500,
+                "How frequently to poll HPS hardware for results (in ms).");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
 
   // Always log to syslog and log to stderr if we are connected to a tty.
@@ -80,7 +82,7 @@ int main(int argc, char* argv[]) {
     // TODO(amcrae): Likely need a better recovery mechanism.
     CHECK(hps->Boot()) << "Hardware failed to boot";
   }
-  int exit_code = hps::HpsDaemon(std::move(hps)).Run();
+  int exit_code = hps::HpsDaemon(std::move(hps), FLAGS_poll_timer_ms).Run();
   LOG(INFO) << "HPS Service ended with exit_code=" << exit_code;
 
   return exit_code;

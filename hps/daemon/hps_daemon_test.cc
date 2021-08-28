@@ -4,18 +4,21 @@
 
 #include <utility>
 
+#include <base/test/task_environment.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
+#include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
-#include <hps/daemon/hps_daemon.h>
+#include <hps/daemon/dbus_adaptor.h>
 #include <hps/hps.h>
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using testing::_;
+using testing::InSequence;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
@@ -54,12 +57,18 @@ class HpsDaemonTest : public testing::Test {
     ON_CALL(*mock_bus_, GetExportedObject(path))
         .WillByDefault(Return(mock_exported_object_.get()));
 
+    ON_CALL(*mock_bus_, GetDBusTaskRunner())
+        .WillByDefault(
+            Return(task_environment_.GetMainThreadTaskRunner().get()));
+
     EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .Times(testing::AnyNumber());
 
     auto hps = std::make_unique<StrictMock<MockHps>>();
     mock_hps_ = hps.get();
-    hps_daemon_.reset(new HpsDaemon(mock_bus_, std::move(hps)));
+    hps_daemon_.reset(new DBusAdaptor(mock_bus_, std::move(hps), kPollTimeMs));
+
+    brillo_loop_.SetAsCurrent();
   }
 
  protected:
@@ -77,11 +86,17 @@ class HpsDaemonTest : public testing::Test {
     return hps_daemon_->GetFeatureResult(error_ptr, feature, result);
   }
 
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  brillo::BaseMessageLoop brillo_loop_{
+      task_environment_.GetMainThreadTaskRunner().get()};
+
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   StrictMock<MockHps>* mock_hps_;
-  std::unique_ptr<HpsDaemon> hps_daemon_;
+  std::unique_ptr<DBusAdaptor> hps_daemon_;
+  static constexpr uint32_t kPollTimeMs = 500;
 };
 
 TEST_F(HpsDaemonTest, EnableFeatureNotReady) {
@@ -133,6 +148,77 @@ TEST_F(HpsDaemonTest, GetFeatureResultReady) {
   bool call_result = CallGetFeatureResult(&error, 0, &result);
   EXPECT_TRUE(call_result);
   EXPECT_EQ(expected_result, result);
+}
+
+TEST_F(HpsDaemonTest, TestPollTimer) {
+  {
+    InSequence sequence;
+    EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0))
+        .Times(2)
+        .WillRepeatedly(Return(RFeat::kValid));
+    EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0)).Times(0);
+  }
+
+  brillo::ErrorPtr error;
+  bool result = CallEnableFeature(&error, 0);
+  EXPECT_TRUE(result);
+
+  // Advance timer far enough so that the poll timer should fire twice.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs * 2));
+
+  // Disable the feature, time should no longer fire.
+  result = CallDisableFeature(&error, 0);
+  EXPECT_TRUE(result);
+
+  // Poll task should no longer fire if we advance the timer.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs * 2));
+}
+
+TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
+  {
+    InSequence sequence;
+    EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Enable(1)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(RFeat::kValid));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(RFeat::kValid));
+    EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0)).Times(0);
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(RFeat::kValid));
+    EXPECT_CALL(*mock_hps_, Disable(1)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(1)).Times(0);
+  }
+
+  brillo::ErrorPtr error;
+
+  // Enable features 0 & 1
+  bool result = CallEnableFeature(&error, 0);
+  EXPECT_TRUE(result);
+  result = CallEnableFeature(&error, 1);
+  EXPECT_TRUE(result);
+
+  // Advance timer far enough so that the poll timer should fire.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs));
+
+  // Disable the feature, timer should no longer fire for feature 0.
+  result = CallDisableFeature(&error, 0);
+  EXPECT_TRUE(result);
+
+  // Advance timer far enough so that the poll timer should fire.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs));
+
+  // Disable the feature, timer should no longer fire for feature 1.
+  result = CallDisableFeature(&error, 1);
+  EXPECT_TRUE(result);
+
+  // Advance time to ensure no more features are firing.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs));
 }
 
 }  // namespace hps

@@ -25,6 +25,7 @@ generate_dbus_adaptors("hpsd-adaptors") {
 
 executable("hpsd") {
   sources = [
+    "daemon/dbus_adaptor.cc",
     "daemon/hps_daemon.cc",
     "daemon/main.cc",
   ]
@@ -131,6 +132,7 @@ if (use.test) {
 
   executable("hps_daemon_test") {
     sources = [
+      "daemon/dbus_adaptor.cc",
       "daemon/hps_daemon.cc",
       "daemon/hps_daemon_test.cc",
     ]
