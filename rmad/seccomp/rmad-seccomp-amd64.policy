@@ -27,7 +27,7 @@ iopl: 1
 stat: 1
 prctl: arg0 == PR_CAPBSET_DROP || arg0 == PR_SET_NO_NEW_PRIVS || \
        arg0 == PR_SET_SECUREBITS || arg0 == PR_CAP_AMBIENT || \
-       arg0 == PR_GET_SECUREBITS
+       arg0 == PR_GET_SECUREBITS || arg0 == PR_SET_NAME
 execve: 1
 arch_prctl: 1
 unlink: 1
@@ -99,3 +99,5 @@ pread64: 1
 umask: 1
 tgkill: 1
 fchmod: 1
+setpriority: 1
+mremap: 1

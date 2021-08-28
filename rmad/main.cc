@@ -6,6 +6,7 @@
 #include <sys/mount.h>
 
 #include <base/logging.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -88,6 +89,8 @@ int main(int argc, char* argv[]) {
   VLOG(1) << "Starting Chrome OS RMA Daemon.";
 
   EnterMinijail();
+
+  base::ThreadPoolInstance::CreateAndStartWithDefaultParams("rmad_thread_pool");
 
   rmad::RmadInterfaceImpl rmad_interface;
   rmad::DBusService dbus_service(&rmad_interface);
