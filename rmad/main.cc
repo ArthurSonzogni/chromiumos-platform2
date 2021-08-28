@@ -78,9 +78,6 @@ int main(int argc, char* argv[]) {
   EnterMinijail();
 
   rmad::RmadInterfaceImpl rmad_interface;
-  // Try a state transition during initialization.
-  rmad_interface.TryTransitionNextStateFromCurrentState();
-
   rmad::DBusService dbus_service(&rmad_interface);
   return dbus_service.Run();
 }

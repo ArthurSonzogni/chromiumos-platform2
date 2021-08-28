@@ -188,6 +188,8 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
 int DBusService::OnInit() {
   VLOG(1) << "Starting DBus service";
   const int exit_code = DBusServiceDaemon::OnInit();
+  // Try a state transition after initialization.
+  rmad_interface_->TryTransitionNextStateFromCurrentState();
   return exit_code;
 }
 
