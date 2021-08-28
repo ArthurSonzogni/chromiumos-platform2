@@ -43,9 +43,13 @@ void EnterMinijail() {
   minijail_bind(j.get(), "/proc", "/proc", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, nullptr);
+  minijail_bind(j.get(), "/run/chromeos-config/v1", "/run/chromeos-config/v1",
+                0);
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
+  minijail_bind(j.get(), "/var/lib/devicesettings", "/var/lib/devicesettings",
+                0);
   minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
   minijail_bind(j.get(), "/var/log", "/var/log", 0);
 

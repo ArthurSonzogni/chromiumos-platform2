@@ -12,6 +12,10 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  # Manually add the include path so that the generated hardware_verifier.pb.h
+  # can include runtime_probe.pb.h properly.
+  cflags = [ "-I${sysroot}/usr/include/runtime_probe/proto_bindings" ]
+
   # NOSORT
   pkg_deps = [
     "libbrillo",
@@ -49,11 +53,13 @@ static_library("libutils") {
     "utils/cros_config_utils_impl.cc",
     "utils/crossystem_utils_impl.cc",
     "utils/dbus_utils.cc",
+    "utils/hardware_verifier_utils_impl.cc",
     "utils/json_store.cc",
     "utils/regions_utils_impl.cc",
     "utils/vpd_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
 }
 
 static_library("libstate_handler") {
@@ -135,6 +141,7 @@ if (use.test) {
       "system/runtime_probe_client_test.cc",
       "system/tpm_manager_client_test.cc",
       "utils/cros_config_utils_test.cc",
+      "utils/fake_hardware_verifier_utils.cc",
       "utils/json_store_test.cc",
       "utils/regions_utils_impl_test.cc",
     ]
