@@ -12,6 +12,7 @@
 
 #include "hps/hal/fake_dev.h"
 #include "hps/hps.h"
+#include "hps/hps_impl.h"
 #include "hps/hps_metrics.h"
 #include "hps/hps_reg.h"
 #include "metrics/metrics_library_mock.h"
@@ -24,7 +25,7 @@ class HPSTest : public testing::Test {
  protected:
   virtual void SetUp() {
     fake_ = hps::FakeDev::Create();
-    hps_ = std::make_unique<hps::HPS>(fake_->CreateDevInterface());
+    hps_ = std::make_unique<hps::HPS_impl>(fake_->CreateDevInterface());
 
     hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
   }
@@ -41,7 +42,7 @@ class HPSTest : public testing::Test {
   }
 
   scoped_refptr<hps::FakeDev> fake_;
-  std::unique_ptr<hps::HPS> hps_;
+  std::unique_ptr<hps::HPS_impl> hps_;
 };
 
 /*

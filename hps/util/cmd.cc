@@ -15,6 +15,7 @@
 
 #include <base/command_line.h>
 
+#include "hps/dev.h"
 #include "hps/hps.h"
 #include "hps/hps_reg.h"
 #include "hps/util/command.h"

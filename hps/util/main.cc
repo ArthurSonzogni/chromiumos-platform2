@@ -28,6 +28,7 @@
 #include "hps/hal/retry.h"
 #include "hps/hal/uart.h"
 #include "hps/hps.h"
+#include "hps/hps_impl.h"
 #include "hps/util/command.h"
 
 // Static allocation of global command list head.
@@ -83,7 +84,7 @@ int main(int argc, char* argv[]) {
         std::move(baseDevice), FLAGS_retries,
         base::TimeDelta::FromMilliseconds(FLAGS_retry_delay));
   }
-  auto hps = std::make_unique<hps::HPS>(std::move(dev));
+  auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
   // Pass args to the command for any following arguments.
   // args[0] is command name.
   return Command::Execute(args[0].c_str(), std::move(hps), args);

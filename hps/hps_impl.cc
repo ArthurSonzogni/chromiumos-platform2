@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/*
- * Main HPS class.
- */
+//
+// Main HPS class.
+//
 
 #include <fstream>
 #include <vector>
@@ -16,7 +16,7 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 
-#include "hps/hps.h"
+#include "hps/hps_impl.h"
 #include "hps/hps_reg.h"
 
 namespace hps {
@@ -26,21 +26,21 @@ static const int kPollMs = 5;       // Delay time for poll.
 static const int kMaxBootRetries = 5;
 
 // Initialise the firmware parameters.
-void HPS::Init(uint16_t appl_version,
-               const base::FilePath& mcu,
-               const base::FilePath& spi) {
+void HPS_impl::Init(uint16_t appl_version,
+                    const base::FilePath& mcu,
+                    const base::FilePath& spi) {
   this->appl_version_ = appl_version;
   this->mcu_blob_ = mcu;
   this->spi_blob_ = spi;
 }
 
-void HPS::SkipBoot() {
+void HPS_impl::SkipBoot() {
   // Force state to ready.
   LOG(INFO) << "Forcing module state to ready";
   this->Go(State::kReady);
 }
 
-bool HPS::Boot() {
+bool HPS_impl::Boot() {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   // Make sure blobs are set etc.
@@ -65,7 +65,7 @@ bool HPS::Boot() {
   }
 }
 
-bool HPS::Enable(uint8_t feature) {
+bool HPS_impl::Enable(uint8_t feature) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   // Only 2 features available at the moment.
@@ -84,7 +84,7 @@ bool HPS::Enable(uint8_t feature) {
   return this->device_->WriteReg(HpsReg::kFeatEn, this->feat_enabled_);
 }
 
-bool HPS::Disable(uint8_t feature) {
+bool HPS_impl::Disable(uint8_t feature) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   if (feature >= kFeatures) {
@@ -102,7 +102,7 @@ bool HPS::Disable(uint8_t feature) {
   return this->device_->WriteReg(HpsReg::kFeatEn, this->feat_enabled_);
 }
 
-int HPS::Result(int feature) {
+int HPS_impl::Result(int feature) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   // Check the application is enabled and running.
@@ -137,7 +137,7 @@ int HPS::Result(int feature) {
 }
 
 // Runs the state machine.
-void HPS::HandleState() {
+void HPS_impl::HandleState() {
   switch (this->state_) {
     case kBoot: {
       // Wait for magic number.
@@ -308,7 +308,7 @@ void HPS::HandleState() {
 }
 
 // Reboot the hardware module.
-void HPS::Reboot(const char* msg) {
+void HPS_impl::Reboot(const char* msg) {
   if (++this->reboots_ > kMaxBootRetries) {
     LOG(ERROR) << "Too many reboots, giving up";
     this->Go(State::kFailed);
@@ -323,7 +323,7 @@ void HPS::Reboot(const char* msg) {
 // Fault bit seen, attempt to dump status information, and
 // try to reboot the module.
 // If the count of reboots is too high, set the module as failed.
-void HPS::Fault() {
+void HPS_impl::Fault() {
   int errors = this->device_->ReadReg(HpsReg::kError);
   if (errors < 0) {
     this->Reboot("Fault: cause unknown");
@@ -335,7 +335,7 @@ void HPS::Fault() {
 }
 
 // Move to new state, reset retry counter.
-void HPS::Go(State newstate) {
+void HPS_impl::Go(State newstate) {
   VLOG(1) << "Old state: " << this->state_ << " new state: " << newstate;
   this->state_ = newstate;
   this->retries_ = 0;
@@ -345,7 +345,7 @@ void HPS::Go(State newstate) {
  * Download data to the bank specified.
  * The HPS/Host I2C Interface Memory Write is used.
  */
-bool HPS::Download(hps::HpsBank bank, const base::FilePath& source) {
+bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   int ibank = static_cast<int>(bank);
@@ -359,7 +359,7 @@ bool HPS::Download(hps::HpsBank bank, const base::FilePath& source) {
 /*
  * Write the file to the bank indicated.
  */
-bool HPS::WriteFile(int bank, const base::FilePath& source) {
+bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
   base::File file(source,
                   base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
   if (!file.IsValid()) {
@@ -406,7 +406,7 @@ bool HPS::WriteFile(int bank, const base::FilePath& source) {
   return true;
 }
 
-bool HPS::WaitForBankReady(int bank) {
+bool HPS_impl::WaitForBankReady(int bank) {
   int tout = 0;
   for (;;) {
     int result = this->device_->ReadReg(HpsReg::kBankReady);

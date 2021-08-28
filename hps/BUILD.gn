@@ -42,7 +42,7 @@ executable("hpsd") {
 
 static_library("hpslib") {
   sources = [
-    "hps.cc",
+    "hps_impl.cc",
     "hps_metrics.cc",
   ]
   pkg_deps = [

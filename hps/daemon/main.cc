@@ -20,6 +20,7 @@
 #include "hps/hal/i2c.h"
 #include "hps/hal/mcp.h"
 #include "hps/hal/uart.h"
+#include "hps/hps_impl.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
@@ -60,7 +61,7 @@ int main(int argc, char* argv[]) {
   }
   CHECK(dev) << "Hardware device failed to initialise";
   LOG(INFO) << "Starting HPS Service.";
-  auto hps = std::make_unique<hps::HPS>(std::move(dev));
+  auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
   if (FLAGS_skipboot) {
     hps->SkipBoot();
   } else {
