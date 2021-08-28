@@ -160,6 +160,12 @@ enum RmadComponent {
   RMAD_COMPONENT_POWER_BUTTON = 34;
 }
 
+// Defined hardware verification result.
+message HardwareVerificationResult {
+  bool is_compliant = 1;
+  string error_str = 2;
+}
+
 // Defined steup instructions for Calibration.
 // This is used in SetupCalibration.
 enum CalibrationSetupInstruction {
