@@ -419,6 +419,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // [ScanDone]-->[ScanDoneTask]-->[UpdateScanStateAfterScanDone]
   void UpdateScanStateAfterScanDone();
   void ScanTask();
+  // When scans are limited to one ssid, alternate between broadcast probes
+  // and directed probes. This is necessary because the broadcast probe takes
+  // up one SSID slot, leaving no space for the directed probe.
+  void AlternateSingleScans(ByteArrays* hidden_ssids);
   void StateChanged(const std::string& new_state);
   // Heuristic check if a connection failure was due to bad credentials.
   // Returns true and puts type of failure in |failure| if a credential
@@ -749,6 +753,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   ScanState scan_state_;
   ScanMethod scan_method_;
+
+  // Indicates if the last scan skipped the broadcast probe.
+  bool broadcast_probe_was_skipped_;
 
   // Used to compute the number of bytes received since the link went up.
   uint64_t receive_byte_count_at_connect_;

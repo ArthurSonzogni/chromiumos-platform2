@@ -169,6 +169,7 @@ WiFi::WiFi(Manager* manager,
       sched_scan_supported_(false),
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
+      broadcast_probe_was_skipped_(false),
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
       wifi_cqm_(new WiFiCQM(metrics(), this)),
@@ -1352,7 +1353,6 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
     return;
   }
 
-
   // Look for scheduled scan support.
   AttributeListConstRefPtr cmds;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
@@ -1864,7 +1864,8 @@ void WiFi::ConfigureScanSSIDLimit(const KeyValueStore& caps) {
   }
 
   if (max_ssids_per_scan_ <= 1)
-    LOG(WARNING) << "MaxScanSSID <= 1, no hidden SSID will be used.";
+    LOG(WARNING) << "MaxScanSSID <= 1, scans will alternate between single "
+                 << "hidden SSID and broadcast scan.";
 }
 
 void WiFi::ScanTask() {
@@ -1889,14 +1890,14 @@ void WiFi::ScanTask() {
                              WPASupplicant::kScanTypeActive);
 
   ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
-
   if (!hidden_ssids.empty()) {
-    // The empty '' "broadcast SSID" counts toward the max scan limit, so the
-    // capability needs to be >= 2 to have at least 1 hidden SSID.
+    // Determine how many hidden ssids to pass in, based on max_ssids_per_scan_
     if (max_ssids_per_scan_ > 1) {
+      // The empty '' "broadcast SSID" counts toward the max scan limit, so the
+      // capability needs to be >= 2 to have at least 1 hidden SSID.
       if (hidden_ssids.size() >= static_cast<size_t>(max_ssids_per_scan_)) {
         // TODO(b/172220260): Devise a better method for time-sharing with SSIDs
-        // that do not fit in.
+        // that do not fit in
         hidden_ssids.erase(hidden_ssids.begin() + max_ssids_per_scan_ - 1,
                            hidden_ssids.end());
       }
@@ -1905,6 +1906,14 @@ void WiFi::ScanTask() {
       // behavior of doing a broadcast probe.
       hidden_ssids.push_back(ByteArray());
 
+    } else if (max_ssids_per_scan_ == 1) {
+      // Handle case where driver can only accept one scan_ssid at a time
+      AlternateSingleScans(&hidden_ssids);
+    } else {  // if max_ssids_per_scan_ < 1
+      hidden_ssids.resize(0);
+    }
+
+    if (!hidden_ssids.empty()) {
       scan_args.Set<ByteArrays>(WPASupplicant::kPropertyScanSSIDs,
                                 hidden_ssids);
     }
@@ -1925,6 +1934,18 @@ void WiFi::ScanTask() {
     SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
                  kScanMethodFull, __func__);
   }
+}
+
+void WiFi::AlternateSingleScans(ByteArrays* hidden_ssids) {
+  // Ensure at least one hidden SSID is probed.
+  if (broadcast_probe_was_skipped_) {
+    SLOG(this, 2) << "Doing broadcast probe instead of directed probe.";
+    hidden_ssids->resize(0);
+  } else {
+    SLOG(this, 2) << "Doing directed probe instead of broadcast probe.";
+    hidden_ssids->resize(1);
+  }
+  broadcast_probe_was_skipped_ = !broadcast_probe_was_skipped_;
 }
 
 std::string WiFi::GetServiceLeaseName(const WiFiService& service) {

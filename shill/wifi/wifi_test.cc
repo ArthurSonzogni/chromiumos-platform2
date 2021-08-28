@@ -1143,6 +1143,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void StartScanTimer() { wifi_->StartScanTimer(); }
 
+  bool GetBroadcastProbeWasSkipped() {
+    return wifi_->broadcast_probe_was_skipped_;
+  }
+
   bool ParseWiphyIndex(const Nl80211Message& nl80211_message) {
     return wifi_->ParseWiphyIndex(nl80211_message);
   }
@@ -2267,6 +2271,18 @@ TEST_F(WiFiMainTest, ReconnectTimer) {
   EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
 }
 
+MATCHER_P(ScanRequestHasHiddenSSIDAndSkipsBroadcast, ssid, "") {
+  if (!arg.template Contains<ByteArrays>(WPASupplicant::kPropertyScanSSIDs)) {
+    return false;
+  }
+
+  ByteArrays ssids =
+      arg.template Get<ByteArrays>(WPASupplicant::kPropertyScanSSIDs);
+  // When the ssid limit is 1, a valid Scan containing a
+  // single hidden SSID should only contain the SSID we are looking for.
+  return ssids.size() == 1 && ssids[0] == ssid;
+}
+
 MATCHER_P(ScanRequestHasHiddenSSID, ssid, "") {
   if (!arg.template Contains<ByteArrays>(WPASupplicant::kPropertyScanSSIDs)) {
     return false;
@@ -2322,9 +2338,9 @@ TEST_F(WiFiMainTest, ScanHiddenRespectsMaxSSIDs0) {
   event_dispatcher_->DispatchPendingEvents();
 }
 
-// When the driver reports that it supports 1 SSIDs in the scan request, no
-// hidden SSIDs should be included either, because shill would also need to
-// include a brodacast entry.
+// When the driver reports that it supports 1 SSIDs in the scan request, it
+// should alternate between including a hidden SSID and including a broadcast
+// entry.
 TEST_F(WiFiMainTest, ScanHiddenRespectsMaxSSIDs1) {
   SetInterfaceScanLimit(1);
 
@@ -2332,10 +2348,26 @@ TEST_F(WiFiMainTest, ScanHiddenRespectsMaxSSIDs1) {
   ByteArrays ssids{{'a'}, {'b'}, {'c'}, {'d'}, {'e'}, {'f'}, {'g'}, {'h'}};
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
       .WillRepeatedly(Return(ssids));
-  StartWiFi();
 
+  // First scan
+  StartWiFi();
+  // Start by including hidden entry
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSIDAndSkipsBroadcast(ssids[0])));
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Second scan
+  InitiateScan();
+  // Now we have no hidden SSID and do the broadcast scan
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               Scan(ScanRequestHasNoHiddenSSID()));
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Third scan
+  InitiateScan();
+  // back to doing a hidden SSID scan
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(ScanRequestHasHiddenSSIDAndSkipsBroadcast(ssids[0])));
   event_dispatcher_->DispatchPendingEvents();
 }
 
