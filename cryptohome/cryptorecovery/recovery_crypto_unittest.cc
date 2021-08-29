@@ -69,14 +69,9 @@ TEST(RecoveryCryptoTest, RecoveryRequestTest) {
       epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request_cbor,
       &response_cbor));
 
-  brillo::SecureBlob response_plain_text_cbor;
-  ASSERT_TRUE(recovery->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
-                                               response_cbor,
-                                               &response_plain_text_cbor));
-
   HsmResponsePlainText response_plain_text;
-  ASSERT_TRUE(DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
-                                                      &response_plain_text));
+  ASSERT_TRUE(recovery->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key, response_cbor, &response_plain_text));
 
   brillo::SecureBlob mediated_recovery_key;
   ASSERT_TRUE(recovery->RecoverDestination(

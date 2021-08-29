@@ -109,7 +109,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
       const brillo::SecureBlob& recovery_response_cbor,
-      brillo::SecureBlob* response_plain_text) const override;
+      HsmResponsePlainText* response_plain_text) const override;
 
  private:
   // Encrypts mediator share and stores as `encrypted_ms` with
@@ -653,7 +653,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& channel_priv_key,
     const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& recovery_response_cbor,
-    brillo::SecureBlob* response_plain_text) const {
+    HsmResponsePlainText* response_plain_text) const {
   RecoveryResponse recovery_response;
   if (!DeserializeRecoveryResponseFromCbor(recovery_response_cbor,
                                            &recovery_response)) {
@@ -677,12 +677,18 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                   "share decryption";
     return false;
   }
+  brillo::SecureBlob response_plain_text_cbor;
   if (!AesGcmDecrypt(recovery_response.response_payload.cipher_text,
                      recovery_response.response_payload.associated_data,
                      recovery_response.response_payload.tag, aes_gcm_key,
                      recovery_response.response_payload.iv,
-                     response_plain_text)) {
+                     &response_plain_text_cbor)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption";
+    return false;
+  }
+  if (!DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
+                                               response_plain_text)) {
+    LOG(ERROR) << "Failed to deserialize Response plain text";
     return false;
   }
   return true;

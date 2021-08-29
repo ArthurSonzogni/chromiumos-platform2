@@ -158,14 +158,14 @@ class RecoveryCrypto {
   // 1. Deserialize `recovery_response_cbor` to `RecoveryResponse`.
   // 2. Get cipher text, associated data, AES-GCM tag and iv from
   // `response_payload` field of `RecoveryResponse`
-  // 3. Decrypt cipher text of response payload and store the
-  // result in `response_plain_text`. The key for decryption is
+  // 3. Decrypt cipher text of response payload, deserialize it from CBOR
+  // and store the result in `response_plain_text`. The key for decryption is
   // HKDF(ECDH(channel_priv_key, epoch_pub_key)).
   virtual bool DecryptResponsePayload(
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
       const brillo::SecureBlob& recovery_response_cbor,
-      brillo::SecureBlob* response_plain_text) const = 0;
+      HsmResponsePlainText* response_plain_text) const = 0;
 
   // Serialize `encrypted_mediator_share` by simply concatenating fixed-length
   // blobs into `serialized_blob`. Returns false if error occurred.
