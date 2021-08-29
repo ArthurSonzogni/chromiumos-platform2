@@ -23,13 +23,16 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
       delete;
   ~CryptohomeRecoveryAuthBlock() = default;
 
-  // `auth_input` object should have `salt` and `mediator_pub_key` fields set.
+  // `auth_input` object should have `salt` and
+  // `cryptohome_recovery_auth_input.mediator_pub_key` fields set.
   base::Optional<AuthBlockState> Create(const AuthInput& auth_input,
                                         KeyBlobs* key_blobs,
                                         CryptoError* error) override;
 
-  // `auth_input` object should have `salt` and `mediated_publisher_pub_key`
-  // fields set.
+  // `auth_input` object should have `salt`,
+  // `cryptohome_recovery_auth_input.epoch_pub_key`,
+  // `cryptohome_recovery_auth_input.ephemeral_pub_key` and
+  // `cryptohome_recovery_auth_input.recovery_response` fields set.
   bool Derive(const AuthInput& auth_input,
               const AuthBlockState& state,
               KeyBlobs* key_blobs,

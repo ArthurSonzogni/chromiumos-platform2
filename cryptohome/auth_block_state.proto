@@ -69,26 +69,17 @@ message AuthBlockState {
     required TpmNotBoundToPcrAuthBlockState tpm_state = 2;
   }
   message CryptohomeRecoveryAuthBlockState {
-    // Contains encrypted mediator share and data required for decryption.
-    message EncryptedMediatorShare {
-      // The integrity tag of the data generated during encryption of the
-      // mediator share.
-      optional bytes tag = 1;
-      // The initialization vector generated during encryption of the mediator
-      // share.
-      optional bytes iv = 2;
-      // Ephemeral key created during encryption of the mediator share.
-      optional bytes ephemeral_pub_key = 3;
-      // Encrypted mediator share.
-      optional bytes encrypted_data = 4;
-    };
-    // Secret share of the mediator encrypted to the mediator public key.
-    optional EncryptedMediatorShare encrypted_mediator_share = 1;
+    // HSM Payload is created at onboarding and contains all the data that are
+    // persisted on a chromebook and will be eventually used for recovery,
+    // serialized to CBOR.
+    optional bytes hsm_payload = 1;
     // Secret share of the destination (plaintext).
-    // TODO(b/184924482): store encrypted destination share.
+    // TODO(b/196192089): store encrypted destination share.
     optional bytes plaintext_destination_share = 2;
-    // The public key of the publisher ECC key.
-    optional bytes publisher_pub_key = 3;
+    // Channel keys that will be used for secure communication during recovery.
+    // TODO(b/196192089): store encrypted keys.
+    optional bytes channel_pub_key = 3;
+    optional bytes channel_priv_key = 4;
   }
 
   oneof auth_block_state {

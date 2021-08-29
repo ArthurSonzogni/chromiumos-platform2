@@ -20,6 +20,7 @@
 #include "cryptohome/cryptohome_recovery_auth_block.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -47,26 +48,6 @@ using ::testing::SetArgPointee;
 
 namespace cryptohome {
 
-namespace {
-// Returns the mediator share converted to
-// `RecoveryCrypto::EncryptedMediatorShare` struct.
-RecoveryCrypto::EncryptedMediatorShare GetEncryptedMediatorShare(
-    AuthBlockState::CryptohomeRecoveryAuthBlockState::EncryptedMediatorShare
-        mediator_share) {
-  RecoveryCrypto::EncryptedMediatorShare result;
-  result.tag = brillo::SecureBlob(mediator_share.tag().begin(),
-                                  mediator_share.tag().end());
-  result.iv = brillo::SecureBlob(mediator_share.iv().begin(),
-                                 mediator_share.iv().end());
-  result.ephemeral_pub_key =
-      brillo::SecureBlob(mediator_share.ephemeral_pub_key().begin(),
-                         mediator_share.ephemeral_pub_key().end());
-  result.encrypted_data =
-      brillo::SecureBlob(mediator_share.encrypted_data().begin(),
-                         mediator_share.encrypted_data().end());
-  return result;
-}
-}  // namespace
 
 TEST(TpmBoundToPcrTest, CreateTest) {
   // Set up inputs to the test.
@@ -703,10 +684,16 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   brillo::SecureBlob mediator_pub_key;
   ASSERT_TRUE(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
+  brillo::SecureBlob epoch_pub_key;
+  ASSERT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
   AuthInput auth_input;
   auth_input.salt = salt;
-  auth_input.mediator_pub_key = mediator_pub_key;
+  CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
+  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key;
+  auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
 
+  // Create recovery key and generate Cryptohome Recovery secrets.
   KeyBlobs created_key_blobs;
   CryptoError create_error;
   CryptohomeRecoveryAuthBlock auth_block;
@@ -720,24 +707,58 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   const AuthBlockState::CryptohomeRecoveryAuthBlockState
       cryptohome_recovery_state = auth_state->cryptohome_recovery_state();
+  ASSERT_TRUE(cryptohome_recovery_state.has_hsm_payload());
+  ASSERT_TRUE(cryptohome_recovery_state.has_plaintext_destination_share());
+  ASSERT_TRUE(cryptohome_recovery_state.has_channel_priv_key());
+  ASSERT_TRUE(cryptohome_recovery_state.has_channel_pub_key());
+
+  brillo::SecureBlob channel_priv_key(
+      cryptohome_recovery_state.channel_priv_key().begin(),
+      cryptohome_recovery_state.channel_priv_key().end());
+  brillo::SecureBlob channel_pub_key(
+      cryptohome_recovery_state.channel_pub_key().begin(),
+      cryptohome_recovery_state.channel_pub_key().end());
+  brillo::SecureBlob hsm_payload_cbor(
+      cryptohome_recovery_state.hsm_payload().begin(),
+      cryptohome_recovery_state.hsm_payload().end());
+
+  // Deserialize HSM payload stored on disk.
+  cryptorecovery::HsmPayload hsm_payload;
+  EXPECT_TRUE(DeserializeHsmPayloadFromCbor(hsm_payload_cbor, &hsm_payload));
+
+  // Start recovery process.
+  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
+  ASSERT_TRUE(recovery);
+  brillo::SecureBlob ephemeral_pub_key;
+  brillo::SecureBlob recovery_request_cbor;
+  ASSERT_TRUE(recovery->GenerateRecoveryRequest(
+      hsm_payload, brillo::SecureBlob("fake_request_metadata"),
+      channel_priv_key, channel_pub_key, epoch_pub_key, &recovery_request_cbor,
+      &ephemeral_pub_key));
 
   // Simulate mediation (it will be done by Recovery Mediator service).
   std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
       FakeRecoveryMediatorCrypto::Create();
   ASSERT_TRUE(mediator);
-  brillo::SecureBlob publisher_pub_key(
-      cryptohome_recovery_state.publisher_pub_key().begin(),
-      cryptohome_recovery_state.publisher_pub_key().end());
   brillo::SecureBlob mediator_priv_key;
   ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
       &mediator_priv_key));
-  brillo::SecureBlob mediated_publisher_pub_key;
-  ASSERT_TRUE(mediator->Mediate(
-      mediator_priv_key, publisher_pub_key,
-      GetEncryptedMediatorShare(
-          cryptohome_recovery_state.encrypted_mediator_share()),
-      &mediated_publisher_pub_key));
-  auth_input.mediated_publisher_pub_key = mediated_publisher_pub_key;
+  brillo::SecureBlob epoch_priv_key;
+  ASSERT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
+
+  brillo::SecureBlob response_cbor;
+  ASSERT_TRUE(mediator->MediateRequestPayload(
+      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request_cbor,
+      &response_cbor));
+
+  CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
+  // Save data required for key derivation in auth_input.
+  derive_cryptohome_recovery_auth_input.recovery_response = response_cbor;
+  derive_cryptohome_recovery_auth_input.epoch_pub_key = epoch_pub_key;
+  derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
+  auth_input.cryptohome_recovery_auth_input =
+      derive_cryptohome_recovery_auth_input;
 
   KeyBlobs derived_key_blobs;
   CryptoError derive_error;

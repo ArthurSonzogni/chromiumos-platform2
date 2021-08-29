@@ -17,6 +17,22 @@
 
 namespace cryptohome {
 
+// Data required for Cryptohome Recovery flow.
+// For creation of the recovery key, `mediator_pub_key` field should be set.
+// For derivation of the recovery key, `epoch_pub_key`, `ephemeral_pub_key`,
+// `recovery_response` fields should be set.
+struct CryptohomeRecoveryAuthInput {
+  // Public key of the mediator for Cryptohome recovery flow.
+  base::Optional<brillo::SecureBlob> mediator_pub_key;
+  // Epoch beacon value for Cryptohome recovery flow.
+  base::Optional<brillo::SecureBlob> epoch_pub_key;
+  // Ephemeral public key for Cryptohome recovery flow.
+  base::Optional<brillo::SecureBlob> ephemeral_pub_key;
+  // A response received from Recovery Mediator service and used by Cryptohome
+  // recovery flow to derive the wrapping keys, serialized to CBOR.
+  base::Optional<brillo::SecureBlob> recovery_response;
+};
+
 struct AuthInput {
   // The user input, such as password.
   base::Optional<brillo::SecureBlob> user_input;
@@ -28,11 +44,8 @@ struct AuthInput {
   base::Optional<std::string> obfuscated_username;
   // A generated reset secret to unlock a rate limited credential.
   base::Optional<brillo::SecureBlob> reset_secret;
-  // Public key of the mediator for Cryptohome recovery flow.
-  base::Optional<brillo::SecureBlob> mediator_pub_key;
-  // A key received by Recovery Mediator service and used by Cryptohome recovery
-  // flow to derive the wrapping keys.
-  base::Optional<brillo::SecureBlob> mediated_publisher_pub_key;
+  // Data required for Cryptohome Recovery flow.
+  base::Optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
 };
 
 // LibScrypt requires a salt to be passed from Create() into the encryption
