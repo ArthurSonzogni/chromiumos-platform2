@@ -62,18 +62,17 @@ void ObserverImpl::OnSampleUpdated(
   for (auto chn : sample)
     LOGF(INFO) << iio_chn_ids_[chn.first] << ": " << chn.second;
 
-  if (!timestamp_index_.has_value())
-    return;
+  if (timestamp_index_.has_value()) {
+    auto it = sample.find(timestamp_index_.value());
+    if (it != sample.end()) {
+      base::TimeDelta latency =
+          base::TimeTicks::Now() -
+          (base::TimeTicks() + base::TimeDelta::FromNanoseconds(it->second));
+      LOGF(INFO) << "Latency: " << latency;
 
-  auto it = sample.find(timestamp_index_.value());
-  if (it != sample.end()) {
-    base::TimeDelta latency =
-        base::TimeTicks::Now() -
-        (base::TimeTicks() + base::TimeDelta::FromNanoseconds(it->second));
-    LOGF(INFO) << "Latency: " << latency;
-
-    total_latency_ += latency;
-    latencies_.push_back(latency);
+      total_latency_ += latency;
+      latencies_.push_back(latency);
+    }
   }
 
   if (++num_success_reads_ < samples_)
