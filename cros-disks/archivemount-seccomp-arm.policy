@@ -57,7 +57,7 @@ sigreturn: 1
 socket: arg0 == AF_UNIX
 stat64: 1
 statfs64: 1
-tgkill: arg2 == SIGABRT  # used by abort() and CHECK()/LOG(FATAL).
+tgkill: arg2 == SIGABRT
 ugetrlimit: 1
 uname: 1
 wait4: 1

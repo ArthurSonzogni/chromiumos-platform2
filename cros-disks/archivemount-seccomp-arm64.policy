@@ -53,7 +53,7 @@ setresuid: 1
 setsid: 1
 socket: arg0 == AF_UNIX
 statfs: 1
-tgkill: arg2 == SIGABRT  # used by abort() and CHECK()/LOG(FATAL).
+tgkill: arg2 == SIGABRT
 wait4: 1
 write: 1
 writev: 1
