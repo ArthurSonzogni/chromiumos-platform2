@@ -1336,10 +1336,6 @@ int MetadataHandler::PostHandleRequest(
   if (device_info_.enable_face_detection) {
     std::vector<int32_t> face_rectangles;
     std::vector<uint8_t> face_scores;
-    Rect<int> roi(active_array_size.data.i32[0], active_array_size.data.i32[1],
-                  active_array_size.data.i32[2], active_array_size.data.i32[3]);
-    Rect<int> largest_face;
-    int largest_size = 0;
     for (auto& face : faces) {
       float x1 = std::max(face.bounding_box.x1,
                           static_cast<float>(active_array_size.data.i32[0]));
@@ -1358,17 +1354,18 @@ int MetadataHandler::PostHandleRequest(
       face_rectangles.push_back(x2);
       face_rectangles.push_back(y2);
       face_scores.push_back(face.confidence * 100);
-      int size = (x2 - x1) * (y2 - y1);
-      if (size > largest_size) {
-        largest_face = Rect<int>(x1, y1, x2 - x1 + 1, y2 - y1 + 1);
-        largest_size = size;
-        // Set ROI with largest face to trigger 3A.
-        roi = largest_face;
-      }
     }
     update_request(ANDROID_STATISTICS_FACE_RECTANGLES, face_rectangles);
     update_request(ANDROID_STATISTICS_FACE_SCORES, face_scores);
     if (device_info_.region_of_interest_supported) {
+      Rect<int> roi(
+          active_array_size.data.i32[0], active_array_size.data.i32[1],
+          active_array_size.data.i32[2], active_array_size.data.i32[3]);
+      if (faces.size() == 1) {
+        roi = Rect<int>(face_rectangles[0], face_rectangles[1],
+                        face_rectangles[2] - face_rectangles[0] + 1,
+                        face_rectangles[3] - face_rectangles[1] + 1);
+      }
       device_->SetRegionOfInterest(roi);
     }
   }
