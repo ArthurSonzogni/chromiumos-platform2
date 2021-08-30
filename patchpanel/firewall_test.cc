@@ -448,10 +448,11 @@ TEST(FirewallTest, AddIpv4ForwardRules_IptablesFails) {
 
   // AddIpv4ForwardRule: Firewall should return at the first failure and issue
   // only a single command.
-  Verify_iptables(*runner,
-                  "nat -I PREROUTING -i iface -p tcp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.6:8080 -w",
-                  1);
+  Verify_iptables(
+      *runner,
+      "nat -I ingress_port_forwarding -i iface -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w",
+      1);
   EXPECT_CALL(*runner, ip6tables(_, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
                                            "iface", "100.115.92.6", 8080));
@@ -462,16 +463,18 @@ TEST(FirewallTest, AddIpv4ForwardRules_IptablesPartialFailure) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  Verify_iptables(*runner,
-                  "nat -I PREROUTING -i iface -p udp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.6:8080 -w");
+  Verify_iptables(
+      *runner,
+      "nat -I ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w");
   Verify_iptables(*runner,
                   "filter -A FORWARD -i iface -p udp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w",
                   1);
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i iface -p udp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.6:8080 -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w");
   EXPECT_CALL(*runner, ip6tables(_, _, _, _)).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::UDP, "", 80,
                                            "iface", "100.115.92.6", 8080));
@@ -484,14 +487,15 @@ TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
 
   // DeleteIpv4ForwardRule: Firewall should try to delete both the DNAT rule
   // and the FORWARD rule regardless of iptables failures.
-  //  Verify_iptables(*runner, "nat -D PREROUTING -i iface -p tcp --dport 80 -j
-  //  DNAT --to-destination 100.115.92.6:8080 -w"); Verify_iptables(*runner,
-  //  "filter -D FORWARD -i iface -p tcp -d 100.115.92.6 --dport 8080 -j ACCEPT
-  //  -w");
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i iface -p tcp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.6:8080 -w",
-                  1);
+  //  Verify_iptables(*runner, "nat -D ingress_port_forwarding -i iface -p tcp
+  //  --dport 80 -j DNAT --to-destination 100.115.92.6:8080 -w");
+  //  Verify_iptables(*runner, "filter -D FORWARD -i iface -p tcp -d
+  //  100.115.92.6 --dport 8080 -j ACCEPT -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i iface -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w",
+      1);
   Verify_iptables(*runner,
                   "filter -D FORWARD -i iface -p tcp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w",
@@ -501,9 +505,10 @@ TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
       ModifyPortRuleRequest::TCP, "", 80, "iface", "100.115.92.6", 8080));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i iface -p udp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.6:8080 -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.6:8080 -w");
   Verify_iptables(*runner,
                   "filter -D FORWARD -i iface -p udp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w");
@@ -517,9 +522,10 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  Verify_iptables(*runner,
-                  "nat -I PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.2:8080 -w");
+  Verify_iptables(
+      *runner,
+      "nat -I ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.2:8080 -w");
   Verify_iptables(*runner,
                   "filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 --dport "
                   "8080 -j ACCEPT -w");
@@ -527,9 +533,10 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
                                           "wlan0", "100.115.92.2", 8080));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "nat -I PREROUTING -i vmtap0 -p tcp -d 100.115.92.2 --dport "
-                  "5555 -j DNAT --to-destination 127.0.0.1:5550 -w");
+  Verify_iptables(
+      *runner,
+      "nat -I ingress_port_forwarding -i vmtap0 -p tcp -d 100.115.92.2 --dport "
+      "5555 -j DNAT --to-destination 127.0.0.1:5550 -w");
   Verify_iptables(*runner,
                   "filter -A FORWARD -i vmtap0 -p tcp -d 127.0.0.1 --dport "
                   "5550 -j ACCEPT -w");
@@ -538,9 +545,10 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
                                           "127.0.0.1", 5550));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "nat -I PREROUTING -i eth0 -p udp --dport 5353 -j DNAT "
-                  "--to-destination 192.168.1.1:5353 -w");
+  Verify_iptables(
+      *runner,
+      "nat -I ingress_port_forwarding -i eth0 -p udp --dport 5353 -j DNAT "
+      "--to-destination 192.168.1.1:5353 -w");
   Verify_iptables(*runner,
                   "filter -A FORWARD -i eth0 -p udp -d 192.168.1.1 --dport "
                   "5353 -j ACCEPT -w");
@@ -548,9 +556,10 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
                                           "eth0", "192.168.1.1", 5353));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i mlan0 -p tcp --dport 5000 -j DNAT "
-                  "--to-destination 10.0.0.24:5001 -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i mlan0 -p tcp --dport 5000 -j DNAT "
+      "--to-destination 10.0.0.24:5001 -w");
   Verify_iptables(*runner,
                   "filter -D FORWARD -i mlan0 -p tcp -d 10.0.0.24 --dport 5001 "
                   "-j ACCEPT -w");
@@ -558,9 +567,10 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
                                              5000, "mlan0", "10.0.0.24", 5001));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i vmtap0 -p tcp -d 100.115.92.2 --dport "
-                  "5555 -j DNAT --to-destination 127.0.0.1:5550 -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i vmtap0 -p tcp -d 100.115.92.2 --dport "
+      "5555 -j DNAT --to-destination 127.0.0.1:5550 -w");
   Verify_iptables(*runner,
                   "filter -D FORWARD -i vmtap0 -p tcp -d 127.0.0.1 --dport "
                   "5550 -j ACCEPT -w");
@@ -569,9 +579,10 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
                                              "127.0.0.1", 5550));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i eth1 -p udp --dport 443 -j DNAT "
-                  "--to-destination 1.2.3.4:443 -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i eth1 -p udp --dport 443 -j DNAT "
+      "--to-destination 1.2.3.4:443 -w");
   Verify_iptables(
       *runner,
       "filter -D FORWARD -i eth1 -p udp -d 1.2.3.4 --dport 443 -j ACCEPT -w");
@@ -584,17 +595,19 @@ TEST(FirewallTest, AddIpv4ForwardRules_PartialFailure) {
   Firewall firewall(runner);
 
   // When the second issued FORWARD command fails, expect a delete command to
-  // cleanup the PREROUTING command that succeeded.
-  Verify_iptables(*runner,
-                  "nat -I PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.2:8080 -w");
+  // cleanup the ingress_port_forwarding command that succeeded.
+  Verify_iptables(
+      *runner,
+      "nat -I ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.2:8080 -w");
   Verify_iptables(*runner,
                   "filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 --dport "
                   "8080 -j ACCEPT -w",
                   1);
-  Verify_iptables(*runner,
-                  "nat -D PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT "
-                  "--to-destination 100.115.92.2:8080 -w");
+  Verify_iptables(
+      *runner,
+      "nat -D ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
+      "--to-destination 100.115.92.2:8080 -w");
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(ModifyPortRuleRequest::TCP, "", 80,
                                            "wlan0", "100.115.92.2", 8080));
 }

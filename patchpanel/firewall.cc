@@ -199,7 +199,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
 
   std::vector<std::string> argv{
       operation,
-      "PREROUTING",
+      "ingress_port_forwarding",
       "-i",
       interface,
       "-p",  // protocol

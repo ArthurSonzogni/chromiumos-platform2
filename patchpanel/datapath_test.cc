@@ -292,11 +292,16 @@ TEST(DatapathTest, Start) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
+      {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
       {Dual, "nat -D PREROUTING -j redirect_arc_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
+      {IPv4, "nat -L ingress_default_forwarding -w"},
+      {IPv4, "nat -F ingress_default_forwarding -w"},
+      {IPv4, "nat -X ingress_default_forwarding -w"},
       {Dual, "nat -L redirect_default_dns -w"},
       {Dual, "nat -F redirect_default_dns -w"},
       {Dual, "nat -X redirect_default_dns -w"},
@@ -426,6 +431,10 @@ TEST(DatapathTest, Start) {
       {Dual,
        "mangle -A OUTPUT -m owner ! --uid-owner chronos -j skip_apply_vpn_mark "
        "-w"},
+      {IPv4, "nat -N ingress_default_forwarding -w"},
+      {IPv4, "nat -N ingress_port_forwarding -w"},
+      {IPv4, "nat -I PREROUTING -j ingress_default_forwarding -w"},
+      {IPv4, "nat -I PREROUTING -j ingress_port_forwarding -w"},
       {Dual, "nat -N redirect_default_dns -w"},
       {Dual, "nat -N redirect_arc_dns -w"},
       {Dual, "nat -N redirect_chrome_dns -w"},
@@ -488,11 +497,16 @@ TEST(DatapathTest, Stop) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
+      {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
       {Dual, "nat -D PREROUTING -j redirect_arc_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
+      {IPv4, "nat -L ingress_default_forwarding -w"},
+      {IPv4, "nat -F ingress_default_forwarding -w"},
+      {IPv4, "nat -X ingress_default_forwarding -w"},
       {Dual, "nat -L redirect_default_dns -w"},
       {Dual, "nat -F redirect_default_dns -w"},
       {Dual, "nat -X redirect_default_dns -w"},
@@ -1077,15 +1091,15 @@ TEST(DatapathTest, AddInboundIPv4DNAT) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A ingress_default_forwarding -i eth0 -m socket "
+                  "--nowildcard -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A ingress_default_forwarding -i eth0 -p tcp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A ingress_default_forwarding -i eth0 -p udp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, system);
   datapath.AddInboundIPv4DNAT("eth0", "1.2.3.4");
@@ -1095,15 +1109,15 @@ TEST(DatapathTest, RemoveInboundIPv4DNAT) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -D PREROUTING -i eth0 -m socket --nowildcard -j ACCEPT -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -D PREROUTING -i eth0 -p tcp -j DNAT --to-destination 1.2.3.4 -w");
-  Verify_iptables(
-      *runner, IPv4,
-      "nat -D PREROUTING -i eth0 -p udp -j DNAT --to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D ingress_default_forwarding -i eth0 -m socket "
+                  "--nowildcard -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D ingress_default_forwarding -i eth0 -p tcp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D ingress_default_forwarding -i eth0 -p udp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, system);
   datapath.RemoveInboundIPv4DNAT("eth0", "1.2.3.4");

@@ -57,10 +57,28 @@ constexpr char kRedirectDnsChain[] = "redirect_dns";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
-constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
+
+// nat PREROUTING chains for ingress traffic. "ingress_port_forwarding" must be
+// traversed before "ingress_default_forwarding".
+constexpr char kIngressPortForwardingChain[] = "ingress_port_forwarding";
+constexpr char kIngressDefaultForwardingChain[] = "ingress_default_forwarding";
+constexpr std::array<const char*, 2> kIngressNatChains{{
+    kIngressDefaultForwardingChain,
+    kIngressPortForwardingChain,
+}};
+
+// nat PREROUTING chains for egress traffic from downstream guests.
 constexpr char kRedirectArcDnsChain[] = "redirect_arc_dns";
 constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
+// nat OUTPUT chains for egress traffic from processes running on the host.
+constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
+constexpr std::array<const char*, 4> kDnsRedirectionNatChains{{
+    kRedirectDefaultDnsChain,
+    kRedirectArcDnsChain,
+    kRedirectUserDnsChain,
+    kRedirectChromeDnsChain,
+}};
 
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
@@ -284,7 +302,7 @@ void Datapath::Start() {
   if (!ModifyFwmarkDefaultLocalSourceTag("-A", TrafficSource::SYSTEM))
     LOG(ERROR) << "Failed to set up rule tagging traffic with default source";
 
-  // Sets up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
+  // Set up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
   // tagging applied through "apply_vpn_mark" chain. This is used to protect
   // DNS traffic that should go to the DNS proxy.
   if (!AddChain(IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain)) {
@@ -292,45 +310,47 @@ void Datapath::Start() {
                << " mangle chain";
   }
 
-  // Sets up nat chains used to redirect DNS traffic when DNS proxy is up.
-  if (!AddChain(IpFamily::Dual, "nat", kRedirectDefaultDnsChain)) {
-    LOG(ERROR) << "Failed to set up " << kRedirectDefaultDnsChain
-               << " nat chain";
+  // Set up nat chains for redirecting ingress traffic to downstream guests.
+  // These chains are only created for IPv4 since downstream guests obtain their
+  // own addresses for IPv6.
+  for (const auto& chain : kIngressNatChains) {
+    if (!AddChain(IpFamily::IPv4, "nat", chain)) {
+      LOG(ERROR) << "Failed to create nat chain " << chain;
+    }
+    if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-I", "PREROUTING", chain,
+                        "" /*iif*/, "" /*oif*/)) {
+      LOG(ERROR) << "Failed to add jump rule from nat PREROUTING to " << chain;
+    }
   }
 
-  // Sets up nat chains used to redirect ARC DNS traffic when DNS proxy is up.
-  if (!AddChain(IpFamily::Dual, "nat", kRedirectArcDnsChain))
-    LOG(ERROR) << "Failed to set up " << kRedirectArcDnsChain << " nat chain";
-
-  // Sets up nat chains used to redirect Chrome DNS traffic directly to the
-  // set up name servers, skipping DNS proxy.
-  if (!AddChain(IpFamily::Dual, "nat", kRedirectChromeDnsChain)) {
-    LOG(ERROR) << "Failed to set up " << kRedirectChromeDnsChain
-               << " nat chain";
+  // Set up nat chains for redirecting egress DNS queries to the DNS proxy
+  // instances.
+  for (const auto& chain : kDnsRedirectionNatChains) {
+    if (!AddChain(IpFamily::Dual, "nat", chain)) {
+      LOG(ERROR) << "Failed to create nat chain " << chain;
+    }
   }
 
-  // Sets up nat chains used to redirect user DNS traffic when DNS proxy is up.
-  if (!AddChain(IpFamily::Dual, "nat", kRedirectUserDnsChain))
-    LOG(ERROR) << "Failed to set up " << kRedirectUserDnsChain << " nat chain";
-
+  // Set up jump chains to the DNS nat chains for egress traffic from
+  // downstream guests.
   if (!ModifyJumpRule(IpFamily::Dual, "nat", "-I", "PREROUTING",
                       kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
                       false /*log_failures*/)) {
     LOG(ERROR) << "Failed to add jump rule for single-networked guests' DNS "
                   "redirection";
   }
-
   if (!ModifyJumpRule(IpFamily::Dual, "nat", "-I", "PREROUTING",
                       kRedirectArcDnsChain, "" /*iif*/, "" /*oif*/,
                       false /*log_failures*/)) {
     LOG(ERROR) << "Failed to add jump rule for ARC DNS redirection";
   }
 
+  // Set up jump chains to the DNS nat chains for egress traffic from local
+  // processes running on the host.
   if (!ModifyRedirectDnsJumpRule(IpFamily::Dual, "-A", "OUTPUT",
                                  "" /* ifname */, kRedirectChromeDnsChain)) {
     LOG(ERROR) << "Failed to add jump rule for chrome DNS redirection";
   }
-
   if (!ModifyRedirectDnsJumpRule(IpFamily::Dual, "-A", "OUTPUT",
                                  "" /* ifname */, kRedirectUserDnsChain,
                                  kFwmarkRouteOnVpn, kFwmarkVpnMask,
@@ -400,6 +420,12 @@ void Datapath::ResetIptables() {
   ModifyJumpRule(IpFamily::IPv4, "filter", "-D", "OUTPUT",
                  kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
+  ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "PREROUTING",
+                 kIngressPortForwardingChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "PREROUTING",
+                 kIngressDefaultForwardingChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
   ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
                  kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
@@ -423,6 +449,8 @@ void Datapath::ResetIptables() {
   // {rx,tx}_{<iface>, vpn}) are not flushed.
   // If there is any jump rule between from a chain to another chain that must
   // be removed, the first chain must be flushed first.
+  // The "ingress_port_forwarding" chain is not flushed since it must hold port
+  // forwarding rules requested by permission_broker.
   static struct {
     IpFamily family;
     std::string table;
@@ -448,6 +476,7 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "nat", kRedirectChromeDnsChain, true},
       {IpFamily::Dual, "nat", kRedirectUserDnsChain, true},
       {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
+      {IpFamily::IPv4, "nat", kIngressDefaultForwardingChain, true},
   };
   for (const auto& op : resetOps) {
     // Chains to delete are custom chains and will not exist the first time
@@ -1148,20 +1177,22 @@ void Datapath::AddInboundIPv4DNAT(const std::string& ifname,
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
   if (process_runner_->iptables(
-          "nat", {"-A", "PREROUTING", "-i", ifname, "-m", "socket",
-                  "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
+          "nat", {"-A", kIngressDefaultForwardingChain, "-i", ifname, "-m",
+                  "socket", "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
     success = false;
   }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(
-          "nat", {"-A", "PREROUTING", "-i", ifname, "-p", "tcp", "-j", "DNAT",
-                  "--to-destination", ipv4_addr, "-w"}) != 0) {
+          "nat", {"-A", kIngressDefaultForwardingChain, "-i", ifname, "-p",
+                  "tcp", "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) !=
+      0) {
     success = false;
   }
   if (process_runner_->iptables(
-          "nat", {"-A", "PREROUTING", "-i", ifname, "-p", "udp", "-j", "DNAT",
-                  "--to-destination", ipv4_addr, "-w"}) != 0) {
+          "nat", {"-A", kIngressDefaultForwardingChain, "-i", ifname, "-p",
+                  "udp", "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) !=
+      0) {
     success = false;
   }
 
@@ -1175,14 +1206,14 @@ void Datapath::AddInboundIPv4DNAT(const std::string& ifname,
 void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
                                      const std::string& ipv4_addr) {
   process_runner_->iptables(
-      "nat", {"-D", "PREROUTING", "-i", ifname, "-p", "udp", "-j", "DNAT",
-              "--to-destination", ipv4_addr, "-w"});
+      "nat", {"-D", kIngressDefaultForwardingChain, "-i", ifname, "-p", "udp",
+              "-j", "DNAT", "--to-destination", ipv4_addr, "-w"});
   process_runner_->iptables(
-      "nat", {"-D", "PREROUTING", "-i", ifname, "-p", "tcp", "-j", "DNAT",
-              "--to-destination", ipv4_addr, "-w"});
+      "nat", {"-D", kIngressDefaultForwardingChain, "-i", ifname, "-p", "tcp",
+              "-j", "DNAT", "--to-destination", ipv4_addr, "-w"});
   process_runner_->iptables(
-      "nat", {"-D", "PREROUTING", "-i", ifname, "-m", "socket", "--nowildcard",
-              "-j", "ACCEPT", "-w"});
+      "nat", {"-D", kIngressDefaultForwardingChain, "-i", ifname, "-m",
+              "socket", "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 
 bool Datapath::AddRedirectDnsRule(const std::string& ifname,
