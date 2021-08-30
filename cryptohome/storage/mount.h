@@ -270,7 +270,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //             of failure
   bool MountEphemeralCryptohomeInternal(const std::string& username,
                                         MountHelperInterface* ephemeral_mounter,
-                                        base::Closure cleanup);
+                                        base::OnceClosure cleanup);
 
   // Tears down an ephemeral cryptohome mount, and deletes the underlying loop
   // device and sparse file.

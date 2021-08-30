@@ -180,7 +180,7 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   }
 
   MountHelperInterface* ephemeral_mounter = nullptr;
-  base::Closure cleanup;
+  base::OnceClosure cleanup;
   if (mount_ephemeral_session_out_of_process_) {
     // Ephemeral cryptohomes for non-Guest ephemeral sessions are mounted
     // out-of-process.
@@ -190,7 +190,7 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     // This callback will be executed in the destructor at the latest so
     // |out_of_process_mounter_| will always be valid. Error reporting is done
     // in the helper process in cryptohome_namespace_mounter.cc.
-    cleanup = base::Bind(
+    cleanup = base::BindOnce(
         base::IgnoreResult(&OutOfProcessMountHelper::TearDownEphemeralMount),
         base::Unretained(out_of_process_mounter_.get()));
   } else {
@@ -198,7 +198,7 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     // This callback will be executed in the destructor at the latest so
     // |this| will always be valid.
     cleanup =
-        base::Bind(&Mount::TearDownEphemeralMount, base::Unretained(this));
+        base::BindOnce(&Mount::TearDownEphemeralMount, base::Unretained(this));
   }
 
   if (!MountEphemeralCryptohomeInternal(username_, ephemeral_mounter,
@@ -348,11 +348,11 @@ bool Mount::MountCryptohome(const std::string& username,
 bool Mount::MountEphemeralCryptohomeInternal(
     const std::string& username,
     MountHelperInterface* ephemeral_mounter,
-    base::Closure cleanup) {
+    base::OnceClosure cleanup) {
   // Ephemeral cryptohome can't be mounted twice.
   CHECK(ephemeral_mounter->CanPerformEphemeralMount());
 
-  base::ScopedClosureRunner cleanup_runner(cleanup);
+  base::ScopedClosureRunner cleanup_runner(std::move(cleanup));
 
   if (!ephemeral_mounter->PerformEphemeralMount(username)) {
     LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
@@ -428,7 +428,7 @@ bool Mount::CreateTrackedSubdirectories(const std::string& username) const {
 bool Mount::MountGuestCryptohome() {
   username_ = "";
   MountHelperInterface* ephemeral_mounter = nullptr;
-  base::Closure cleanup;
+  base::OnceClosure cleanup;
 
   if (mount_guest_session_out_of_process_) {
     // Ephemeral cryptohomes for Guest sessions are mounted out-of-process.
@@ -436,7 +436,7 @@ bool Mount::MountGuestCryptohome() {
     // This callback will be executed in the destructor at the latest so
     // |out_of_process_mounter_| will always be valid. Error reporting is done
     // in the helper process in cryptohome_namespace_mounter.cc.
-    cleanup = base::Bind(
+    cleanup = base::BindOnce(
         base::IgnoreResult(&OutOfProcessMountHelper::TearDownEphemeralMount),
         base::Unretained(out_of_process_mounter_.get()));
   } else {
@@ -444,7 +444,7 @@ bool Mount::MountGuestCryptohome() {
     // This callback will be executed in the destructor at the latest so
     // |this| will always be valid.
     cleanup =
-        base::Bind(&Mount::TearDownEphemeralMount, base::Unretained(this));
+        base::BindOnce(&Mount::TearDownEphemeralMount, base::Unretained(this));
   }
 
   return MountEphemeralCryptohomeInternal(kGuestUserName, ephemeral_mounter,
