@@ -54,6 +54,19 @@ class L2TPConnectionUnderTest : public L2TPConnection {
 
   void InvokeStartXl2tpd() { StartXl2tpd(); }
 
+  void InvokeGetLogin(std::string* user, std::string* password) {
+    GetLogin(user, password);
+  }
+
+  void InvokeNotify(const std::string& reason,
+                    const std::map<std::string, std::string> dict) {
+    Notify(reason, dict);
+  }
+
+  void set_config(std::unique_ptr<Config> config) {
+    config_ = std::move(config);
+  }
+
   void set_state(State state) { state_ = state; }
 };
 
@@ -137,6 +150,87 @@ TEST_F(L2TPConnectionTest, Xl2tpdExitedUnexpectedly) {
   std::move(exit_cb).Run(1);
 
   EXPECT_CALL(callbacks_, OnFailure(_));
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(L2TPConnectionTest, PPPGetLogin) {
+  constexpr char kUser[] = "user";
+  constexpr char kPassword[] = "password";
+  auto config = std::make_unique<L2TPConnection::Config>();
+  config->user = kUser;
+  config->password = kPassword;
+
+  l2tp_connection_->set_config(std::move(config));
+
+  std::string actual_user;
+  std::string actual_password;
+  l2tp_connection_->InvokeGetLogin(&actual_user, &actual_password);
+  EXPECT_EQ(actual_user, kUser);
+  EXPECT_EQ(actual_password, kPassword);
+}
+
+TEST_F(L2TPConnectionTest, PPPNotifyConnected) {
+  l2tp_connection_->set_state(VPNConnection::State::kConnecting);
+
+  constexpr char kIfName[] = "ppp0";
+  constexpr int kIfIndex = 321;
+  constexpr char kLocalIPAddress[] = "10.0.0.2";
+  std::map<std::string, std::string> config{
+      {kPPPInterfaceName, kIfName}, {kPPPInternalIP4Address, kLocalIPAddress}};
+
+  // No callbacks should be invoked when authenticating.
+  EXPECT_CALL(callbacks_, OnConnected(_, _, _)).Times(0);
+  EXPECT_CALL(callbacks_, OnFailure(_)).Times(0);
+  EXPECT_CALL(callbacks_, OnStopped()).Times(0);
+  l2tp_connection_->InvokeNotify(kPPPReasonAuthenticating, config);
+  l2tp_connection_->InvokeNotify(kPPPReasonAuthenticated, config);
+  dispatcher_.task_environment().RunUntilIdle();
+
+  // Expects OnConnected() when kPPPReasonConnect event comes.
+  IPConfig::Properties actual_ip_properties;
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _))
+      .WillOnce(SaveArg<2>(&actual_ip_properties));
+  EXPECT_CALL(device_info_, GetIndex(kIfName)).WillOnce(Return(kIfIndex));
+  l2tp_connection_->InvokeNotify(kPPPReasonConnect, config);
+  dispatcher_.task_environment().RunUntilIdle();
+
+  EXPECT_EQ(actual_ip_properties.address, kLocalIPAddress);
+}
+
+TEST_F(L2TPConnectionTest, PPPNotifyConnectedWithoutDeviceInfoReady) {
+  l2tp_connection_->set_state(VPNConnection::State::kConnecting);
+
+  constexpr char kIfName[] = "ppp0";
+  constexpr int kIfIndex = 321;
+  std::map<std::string, std::string> config{{kPPPInterfaceName, kIfName}};
+
+  // The object should register the callback with DeviceInfo if the interface is
+  // not known by shill now.
+  DeviceInfo::LinkReadyCallback link_ready_cb;
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _)).Times(0);
+  EXPECT_CALL(device_info_, GetIndex(kIfName)).WillOnce(Return(-1));
+  EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kIfName, _))
+      .WillOnce([&](const std::string&, DeviceInfo::LinkReadyCallback cb) {
+        link_ready_cb = std::move(cb);
+      });
+  l2tp_connection_->InvokeNotify(kPPPReasonConnect, config);
+  dispatcher_.task_environment().RunUntilIdle();
+
+  // Expects OnConnected() when the link is ready.
+  std::move(link_ready_cb).Run(kIfName, kIfIndex);
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(L2TPConnectionTest, PPPNotifyDisconnect) {
+  l2tp_connection_->set_state(VPNConnection::State::kConnected);
+  std::map<std::string, std::string> dict;
+  EXPECT_CALL(callbacks_, OnFailure(_));
+  l2tp_connection_->InvokeNotify(kPPPReasonDisconnect, dict);
+  dispatcher_.task_environment().RunUntilIdle();
+
+  // The signal shouldn't be sent out twice if the event comes again.
+  l2tp_connection_->InvokeNotify(kPPPReasonDisconnect, dict);
   dispatcher_.task_environment().RunUntilIdle();
 }
 

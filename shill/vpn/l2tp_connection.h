@@ -28,7 +28,10 @@ namespace shill {
 class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
  public:
   // TODO(b/165170125): Add fields for xl2tpd and pppd.
-  struct Config {};
+  struct Config {
+    std::string user;
+    std::string password;
+  };
 
   L2TPConnection(std::unique_ptr<Config> config,
                  std::unique_ptr<Callbacks> callbacks,
@@ -63,6 +66,11 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
   // plugin).
   void StartXl2tpd();
 
+  // Callback registered in DeviceInfo to invoke NotifyConnected() once
+  // DeviceInfo notices the ppp interface.
+  void OnLinkReady(const IPConfig::Properties& ip_properties,
+                   const std::string& if_name,
+                   int if_index);
   void OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code);
 
   std::unique_ptr<Config> config_;

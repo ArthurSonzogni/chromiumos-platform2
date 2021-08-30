@@ -80,18 +80,81 @@ void L2TPConnection::OnConnect() {
 }
 
 void L2TPConnection::GetLogin(std::string* user, std::string* password) {
-  // TODO(b/165170125): Implement GetLogin().
+  LOG(INFO) << "Login requested.";
+  if (config_->user.empty()) {
+    LOG(ERROR) << "User not set.";
+    return;
+  }
+
+  // TODO(b/165170125): Add support for using login password.
+
+  if (config_->password.empty()) {
+    LOG(ERROR) << "Password not set.";
+    return;
+  }
+
+  *user = config_->user;
+  *password = config_->password;
 }
 
 void L2TPConnection::Notify(const std::string& reason,
                             const std::map<std::string, std::string>& dict) {
-  // TODO(b/165170125): Implement GetLogin().
+  // TODO(b/165170125): On failure, check the reason (e.g., if it is an
+  // authentication failure).
+
+  if (reason == kPPPReasonAuthenticating || reason == kPPPReasonAuthenticated) {
+    // These are uninteresting intermediate states that do not indicate failure.
+    return;
+  }
+
+  if (reason != kPPPReasonConnect) {
+    if (!IsConnectingOrConnected()) {
+      // We have notified the upper layer, or the disconnect is triggered by the
+      // upper layer. In both cases, we don't need call NotifyFailure().
+      LOG(INFO) << "pppd notifies us of " << reason << ", the current state is "
+                << state();
+      return;
+    }
+    NotifyFailure(Service::kFailureInternal, "pppd disconnected");
+    return;
+  }
+
+  // The message is kPPPReasonConnect. Checks if we are in the connecting state
+  // at first.
+  if (state() != State::kConnecting) {
+    LOG(WARNING) << "pppd notifies us of " << reason
+                 << ", the current state is " << state();
+    return;
+  }
+
+  std::string interface_name = PPPDevice::GetInterfaceName(dict);
+  IPConfig::Properties ip_properties = PPPDevice::ParseIPConfiguration(dict);
+
+  ip_properties.blackhole_ipv6 = true;
+  ip_properties.mtu = IPConfig::kMinIPv6MTU;
+  ip_properties.method = kTypeVPN;
+
+  // Notify() could be invoked either before or after the creation of the ppp
+  // interface. We need to make sure that the interface is ready (by checking
+  // DeviceInfo) before invoking the connected callback here.
+  int interface_index = device_info_->GetIndex(interface_name);
+  if (interface_index != -1) {
+    NotifyConnected(interface_name, interface_index, ip_properties);
+  } else {
+    device_info_->AddVirtualInterfaceReadyCallback(
+        interface_name,
+        base::BindOnce(&L2TPConnection::OnLinkReady, weak_factory_.GetWeakPtr(),
+                       ip_properties));
+  }
 }
 
 void L2TPConnection::OnDisconnect() {
   // TODO(b/165170125): Terminate the connection before stopping xl2tpd.
   external_task_ = nullptr;
-  NotifyStopped();
+
+  if (state() == State::kDisconnecting) {
+    NotifyStopped();
+  }
 }
 
 bool L2TPConnection::WritePPPDConfig() {
@@ -141,6 +204,18 @@ void L2TPConnection::StartXl2tpd() {
   }
 
   external_task_ = std::move(external_task_local);
+}
+
+void L2TPConnection::OnLinkReady(const IPConfig::Properties& ip_properties,
+                                 const std::string& if_name,
+                                 int if_index) {
+  if (state() != State::kConnecting) {
+    // Needs to do nothing here. The ppp interface is managed by the pppd
+    // process so we don't need to remove it here.
+    LOG(WARNING) << "OnLinkReady() called but the current state is " << state();
+    return;
+  }
+  NotifyConnected(if_name, if_index, ip_properties);
 }
 
 void L2TPConnection::OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code) {
