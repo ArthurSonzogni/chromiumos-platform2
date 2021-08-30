@@ -144,6 +144,7 @@ has_arc(`
 r_dir_file(cros_cryptohomed {
   sysfs_dm
   sysfs_loop
+  sysfs_tpm
   sysfs_zram
   rootfs
 });

@@ -19,6 +19,8 @@ allow cros_chapsd cros_var_lock:dir rw_dir_perms;
 
 r_dir_file(cros_chapsd, cros_passwd_file);
 
+r_dir_file(cros_chapsd, sysfs_tpm);
+
 cros_tcp_connect(cros_chapsd);
 
 allow cros_chapsd sysfs:file r_file_perms;

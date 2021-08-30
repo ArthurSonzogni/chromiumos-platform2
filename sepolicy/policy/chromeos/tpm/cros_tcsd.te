@@ -6,6 +6,8 @@ uma_writer(cros_tcsd);
 log_writer(cros_tcsd);
 r_dir_file(cros_tcsd, cros_passwd_file);
 
+r_dir_file(cros_tcsd, { sysfs sysfs_tpm });
+
 create_dir_file(cros_tcsd, {
   cros_var_lib_tpm
   cros_var_log_tcsd
