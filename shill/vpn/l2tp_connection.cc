@@ -17,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -130,8 +131,17 @@ void L2TPConnection::Notify(const std::string& reason,
   std::string interface_name = PPPDevice::GetInterfaceName(dict);
   IPConfig::Properties ip_properties = PPPDevice::ParseIPConfiguration(dict);
 
+  // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
+  // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
   ip_properties.blackhole_ipv6 = true;
+
+  // Reduce MTU to the minimum viable for IPv6, since the IPsec layer consumes
+  // some variable portion of the payload.  Although this system does not yet
+  // support IPv6, it is a reasonable value to start with, since the minimum
+  // IPv6 packet size will plausibly be a size any gateway would support, and
+  // is also larger than the IPv4 minimum size.
   ip_properties.mtu = IPConfig::kMinIPv6MTU;
+
   ip_properties.method = kTypeVPN;
 
   // Notify() could be invoked either before or after the creation of the ppp
@@ -160,9 +170,31 @@ void L2TPConnection::OnDisconnect() {
 bool L2TPConnection::WritePPPDConfig() {
   pppd_config_path_ = temp_dir_.GetPath().Append(kPPPDConfigFileName);
 
-  // TODO(b/165170125): Fill in contents.
+  // TODO(b/200636771): Use proper mtu and mru.
+  std::vector<std::string> lines = {
+      "ipcp-accept-local",
+      "ipcp-accept-remote",
+      "refuse-eap",
+      "noccp",
+      "noauth",
+      "crtscts",
+      "mtu 1410",
+      "mru 1410",
+      "lock",
+      "connect-delay 5000",
+      "nodefaultroute",
+      "nosystemconfig",
+      "usepeerdns",
+  };
+  if (config_->lcp_echo) {
+    lines.push_back("lcp-echo-failure 4");
+    lines.push_back("lcp-echo-interval 30");
+  }
 
-  return vpn_util_->WriteConfigFile(pppd_config_path_, "");
+  lines.push_back(base::StrCat({"plugin ", PPPDaemon::kShimPluginPath}));
+
+  std::string contents = base::JoinString(lines, "\n");
+  return vpn_util_->WriteConfigFile(pppd_config_path_, contents);
 }
 
 bool L2TPConnection::WriteL2TPDConfig() {

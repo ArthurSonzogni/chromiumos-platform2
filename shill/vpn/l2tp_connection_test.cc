@@ -22,6 +22,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
+#include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/rpc_task.h"
 #include "shill/test_event_dispatcher.h"
@@ -52,6 +53,8 @@ class L2TPConnectionUnderTest : public L2TPConnection {
     return temp_dir_.GetPath();
   }
 
+  bool InvokeWritePPPDConfig() { return WritePPPDConfig(); }
+
   void InvokeStartXl2tpd() { StartXl2tpd(); }
 
   void InvokeGetLogin(std::string* user, std::string* password) {
@@ -76,6 +79,24 @@ using testing::_;
 using testing::DoAll;
 using testing::Return;
 using testing::SaveArg;
+
+// Expected contents in WritePPPDConfig test, missing the last line for plugin.
+constexpr char kExpectedPPPDConf[] = R"(ipcp-accept-local
+ipcp-accept-remote
+refuse-eap
+noccp
+noauth
+crtscts
+mtu 1410
+mru 1410
+lock
+connect-delay 5000
+nodefaultroute
+nosystemconfig
+usepeerdns
+lcp-echo-failure 4
+lcp-echo-interval 30
+)";
 
 class MockCallbacks {
  public:
@@ -116,6 +137,29 @@ class L2TPConnectionTest : public testing::Test {
   MockCallbacks callbacks_;
   std::unique_ptr<L2TPConnectionUnderTest> l2tp_connection_;
 };
+
+TEST_F(L2TPConnectionTest, WritePPPDConfig) {
+  base::FilePath temp_dir = l2tp_connection_->SetTempDir();
+
+  auto config = std::make_unique<L2TPConnection::Config>();
+  config->lcp_echo = true;
+  l2tp_connection_->set_config(std::move(config));
+
+  EXPECT_TRUE(l2tp_connection_->InvokeWritePPPDConfig());
+
+  // L2TPConnection should write the config to the `pppd.conf` file under
+  // the temp dir it created.
+  base::FilePath expected_path = temp_dir.Append("pppd.conf");
+  ASSERT_TRUE(base::PathExists(expected_path));
+  std::string actual_content;
+  ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
+  EXPECT_EQ(actual_content, base::StrCat({kExpectedPPPDConf, "plugin ",
+                                          PPPDaemon::kShimPluginPath}));
+
+  // The file should be deleted after destroying the L2TPConnection object.
+  l2tp_connection_ = nullptr;
+  ASSERT_FALSE(base::PathExists(expected_path));
+}
 
 TEST_F(L2TPConnectionTest, StartXl2tpd) {
   l2tp_connection_->SetTempDir();

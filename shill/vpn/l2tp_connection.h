@@ -27,10 +27,15 @@ namespace shill {
 // TODO(b/165170125): Document temporary files.
 class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
  public:
-  // TODO(b/165170125): Add fields for xl2tpd and pppd.
   struct Config {
+    // TODO(b/165170125): Add fields for xl2tpd
+
+    // Fields for pppd.
+    bool lcp_echo;  // lcp echo connection monitoring
     std::string user;
     std::string password;
+
+    // TODO(b/165170125): UseLoginPassword
   };
 
   L2TPConnection(std::unique_ptr<Config> config,

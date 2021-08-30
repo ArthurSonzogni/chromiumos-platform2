@@ -66,6 +66,11 @@ std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
     const KeyValueStore& args) {
   auto config = std::make_unique<L2TPConnection::Config>();
 
+  // TODO(b/178454141): Add fields for xl2tpd.
+
+  // Fields for pppd.
+  config->lcp_echo = args.Lookup<std::string>(kL2TPIPsecLcpEchoDisabledProperty,
+                                              "false") != "true";
   config->user = args.Lookup<std::string>(kL2TPIPsecUserProperty, "");
   config->password = args.Lookup<std::string>(kL2TPIPsecPasswordProperty, "");
 
