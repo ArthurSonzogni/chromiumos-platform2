@@ -22,6 +22,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcros_config",
     "libminijail",
+    "libshill-client",
     "libtpm_manager-client",
     "libuser_data_auth-client",
     "re2",
@@ -40,6 +41,7 @@ static_library("libsystem") {
     "system/cryptohome_client_impl.cc",
     "system/power_manager_client_impl.cc",
     "system/runtime_probe_client_impl.cc",
+    "system/shill_client_impl.cc",
     "system/tpm_manager_client_impl.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -112,6 +114,7 @@ executable("rmad") {
 if (use.test) {
   pkg_config("rmad_test_config") {
     pkg_deps = [
+      "libshill-client-test",
       "libtpm_manager-client-test",
       "libuser_data_auth-client-test",
     ]
@@ -139,6 +142,7 @@ if (use.test) {
       "system/cryptohome_client_test.cc",
       "system/power_manager_client_test.cc",
       "system/runtime_probe_client_test.cc",
+      "system/shill_client_test.cc",
       "system/tpm_manager_client_test.cc",
       "utils/cros_config_utils_test.cc",
       "utils/fake_hardware_verifier_utils.cc",
