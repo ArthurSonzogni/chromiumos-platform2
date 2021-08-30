@@ -1113,8 +1113,8 @@ bool Platform::CopyWithPermissions(const FilePath& from_path,
   // Unfortunately, ownership and permissions are not always retained.
   // Apply the old ownership / permissions on a per-file basis.
   FileEnumeratorCallback callback =
-      base::Bind(&Platform::CopyPermissionsCallback, base::Unretained(this),
-                 from_path, to_path);
+      base::BindRepeating(&Platform::CopyPermissionsCallback,
+                          base::Unretained(this), from_path, to_path);
   if (!WalkPath(from_path, callback))
     return false;
 

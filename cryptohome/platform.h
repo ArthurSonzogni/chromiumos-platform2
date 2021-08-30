@@ -154,8 +154,8 @@ class Platform {
     base::FilePath device;
   };
 
-  typedef base::Callback<bool(const base::FilePath&,
-                              const base::stat_wrapper_t&)>
+  typedef base::RepeatingCallback<bool(const base::FilePath&,
+                                       const base::stat_wrapper_t&)>
       FileEnumeratorCallback;
 
   Platform();
@@ -1009,8 +1009,6 @@ class Platform {
       const std::map<base::FilePath, Permissions>& special_cases,
       const base::FilePath& file_path,
       const base::stat_wrapper_t& file_info);
-
-  void PostWorkerTask(const base::Closure& task);
 
   // Reads file at |path| into a blob-like object.
   // <T> needs to implement:
