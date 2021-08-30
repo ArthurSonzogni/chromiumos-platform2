@@ -12,7 +12,7 @@ namespace rmad {
 class VpdUtils {
  public:
   VpdUtils() = default;
-  ~VpdUtils() = default;
+  virtual ~VpdUtils() = default;
 
   // Set a (key, value) pair to RO VPD. Return true if successfully set the
   // value, false if fail to set the value.

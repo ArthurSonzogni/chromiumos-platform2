@@ -6,14 +6,13 @@
 #define RMAD_UTILS_CBI_UTILS_H_
 
 #include <string>
-#include <vector>
 
 namespace rmad {
 
 class CbiUtils {
  public:
   CbiUtils() = default;
-  ~CbiUtils() = default;
+  virtual ~CbiUtils() = default;
 
   // Set a (tag, value) pair to CBI. Return true if successfully set the value,
   // false if fail to set the value.
