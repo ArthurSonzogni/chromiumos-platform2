@@ -343,6 +343,20 @@ void IPsecConnection::WriteSwanctlConfig() {
 }
 
 void IPsecConnection::StartCharon() {
+  // We should make sure there is no socket file before starting charon, since
+  // we rely on its existence to know if charon is ready.
+  if (base::PathExists(vici_socket_path_)) {
+    // This could happen if something unexpected happened in the previous run,
+    // e.g., shill crashed.
+    LOG(WARNING) << "vici socket exists before starting charon";
+    if (!base::DeleteFile(vici_socket_path_)) {
+      const std::string reason = "Failed to delete vici socket file";
+      PLOG(ERROR) << reason;
+      NotifyFailure(Service::kFailureInternal, reason);
+      return;
+    }
+  }
+
   // TODO(b/165170125): Check the behavior when shill crashes (if charon is
   // still running).
   // TODO(b/165170125): May need to increase RLIMIT_AS to run charon. See
@@ -542,6 +556,13 @@ void IPsecConnection::StopCharon() {
   if (charon_pid_ != -1) {
     process_manager_->StopProcess(charon_pid_);
     charon_pid_ = -1;
+  }
+
+  // Removes the vici socket file, since the charon process will not do that by
+  // itself. Note that base::DeleteFile() will return true if the file does not
+  // exist.
+  if (!base::DeleteFile(vici_socket_path_)) {
+    PLOG(ERROR) << "Failed to delete vici socket file";
   }
 
   // This function can be called directly from the destructor, and in that case
