@@ -184,6 +184,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
     return reinterpret_cast<IioContext*>(context_);
   }
 
+  void SetPath(const base::FilePath& path) { path_ = path; }
   base::FilePath GetPath() const override;
   iio_device* GetUnderlyingIioDevice() const override { return nullptr; }
 
@@ -257,6 +258,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   FakeIioContext* context_ = nullptr;
   std::string name_;
   int id_;
+  base::FilePath path_;
   std::map<std::string, std::string> text_attributes_;
   std::map<std::string, int64_t> numeric_attributes_;
   std::map<std::string, double> double_attributes_;

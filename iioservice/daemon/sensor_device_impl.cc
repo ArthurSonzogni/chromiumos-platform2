@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
@@ -147,7 +148,23 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   std::vector<base::Optional<std::string>> values;
   values.reserve(attr_names.size());
   for (const auto& attr_name : attr_names) {
-    auto value_opt = client.iio_device->ReadStringAttribute(attr_name);
+    base::Optional<std::string> value_opt;
+    if (attr_name == cros::mojom::kSysPath) {
+      base::FilePath iio_path(client.iio_device->GetPath());
+      base::FilePath sys_path;
+      if (base::ReadSymbolicLink(iio_path, &sys_path)) {
+        if (sys_path.IsAbsolute()) {
+          value_opt = sys_path.value();
+        } else {
+          base::FilePath result = iio_path.DirName();
+          result = result.Append(sys_path);
+
+          value_opt = base::MakeAbsoluteFilePath(result).value();
+        }
+      }
+    } else {
+      value_opt = client.iio_device->ReadStringAttribute(attr_name);
+    }
     if (value_opt.has_value()) {
       value_opt = std::string(base::TrimString(value_opt.value(),
                                                base::StringPiece("\0\n", 2),

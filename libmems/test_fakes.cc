@@ -90,6 +90,9 @@ FakeIioDevice::FakeIioDevice(FakeIioContext* ctx,
     : IioDevice(), context_(ctx), name_(name), id_(id) {}
 
 base::FilePath FakeIioDevice::GetPath() const {
+  if (!path_.empty())
+    return path_;
+
   std::string id_str(kDeviceIdPrefix);
   id_str.append(std::to_string(GetId()));
   return base::FilePath(kSysDevString).Append(id_str);

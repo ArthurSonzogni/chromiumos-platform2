@@ -7,6 +7,8 @@
 #include <set>
 #include <utility>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
@@ -118,23 +120,40 @@ TEST_F(SensorDeviceImplTest, SetTimeout) {
 }
 
 TEST_F(SensorDeviceImplTest, GetAttributes) {
+  base::ScopedTempDir temp_dir_;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  base::FilePath foo_dir = temp_dir_.GetPath().Append("foo_dir");
+  base::FilePath bar_dir = temp_dir_.GetPath().Append("bar_dir");
+  ASSERT_TRUE(base::CreateDirectory(foo_dir));
+  ASSERT_TRUE(base::CreateDirectory(bar_dir));
+  base::FilePath link_from = foo_dir.Append("from_file"), link_to;
+
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(bar_dir, &link_to));
+  ASSERT_TRUE(base::CreateSymbolicLink(
+      base::FilePath("../bar_dir").Append(link_to.BaseName()), link_from))
+      << "Failed to create file symlink.";
+
+  device_->SetPath(link_from);
+
   base::RunLoop loop;
   remote_->GetAttributes(
       std::vector<std::string>{kDummyChnAttrName1, kDeviceAttrName,
-                               cros::mojom::kDeviceName, kDummyChnAttrName2},
+                               cros::mojom::kDeviceName, cros::mojom::kSysPath,
+                               kDummyChnAttrName2},
       base::BindOnce(
-          [](base::Closure closure,
+          [](base::Closure closure, base::FilePath link_to,
              const std::vector<base::Optional<std::string>>& values) {
-            EXPECT_EQ(values.size(), 4u);
+            EXPECT_EQ(values.size(), 5u);
             EXPECT_FALSE(values.front().has_value());
             EXPECT_FALSE(values.back().has_value());
             EXPECT_TRUE(values[1].has_value());
             EXPECT_EQ(values[1].value().compare(kParsedDeviceAttrValue), 0);
             EXPECT_TRUE(values[2].has_value());
             EXPECT_EQ(values[2].value().compare(fakes::kAccelDeviceName), 0);
+            EXPECT_EQ(values[3].value().compare(link_to.value()), 0);
             closure.Run();
           },
-          loop.QuitClosure()));
+          loop.QuitClosure(), link_to));
   loop.Run();
 }
 

@@ -49,6 +49,7 @@ pipe2: 1
 ppoll: 1
 prctl: arg0 == PR_SET_NAME
 read: 1
+readlinkat: 1
 recvmsg: 1
 restart_syscall: 1
 rt_sigaction: 1
