@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <libec/ec_command_factory.h>
@@ -38,6 +39,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
   MOCK_METHOD(std::unique_ptr<ec::FpFrameCommand>,
               FpFrameCommand,
               (int index, uint32_t frame_size, uint16_t max_read_size),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpTemplateCommand>,
+              FpTemplateCommand,
+              (std::vector<uint8_t> tmpl, uint16_t max_write_size),
               (override));
 };
 

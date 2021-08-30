@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+#include <vector>
+
 #include "libec/ec_command_factory.h"
 #include "libec/fingerprint/fp_flashprotect_command.h"
 #include "libec/fingerprint/fp_info_command.h"
+#include "libec/fingerprint/fp_template_command.h"
 
 namespace ec {
 
@@ -30,6 +34,11 @@ std::unique_ptr<ec::FpFrameCommand> EcCommandFactory::FpFrameCommand(
 std::unique_ptr<ec::FpSeedCommand> EcCommandFactory::FpSeedCommand(
     const brillo::SecureVector& seed, uint16_t seed_version) {
   return FpSeedCommand::Create(seed, seed_version);
+}
+
+std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(
+    std::vector<uint8_t> tmpl, uint16_t max_write_size) {
+  return FpTemplateCommand::Create(std::move(tmpl), max_write_size);
 }
 
 }  // namespace ec

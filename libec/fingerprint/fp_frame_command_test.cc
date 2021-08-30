@@ -17,13 +17,13 @@ namespace {
 
 using ::testing::Return;
 
-constexpr int kValidMaxReadSize = 128;
+constexpr int kValidMaxWriteSize = 128;
 constexpr int kValidFrameSize = 4096;
 constexpr int kValidIndex = 0;
 
 TEST(FpFrameCommand, FpFrameCommand) {
   auto cmd =
-      FpFrameCommand::Create(kValidIndex, kValidFrameSize, kValidMaxReadSize);
+      FpFrameCommand::Create(kValidIndex, kValidFrameSize, kValidMaxWriteSize);
   EXPECT_TRUE(cmd);
   EXPECT_EQ(cmd->Version(), 0);
   EXPECT_EQ(cmd->Command(), EC_CMD_FP_FRAME);
@@ -50,7 +50,7 @@ TEST(FpFrameCommand, MaxReadSizeEqualsMaxPacketSize) {
 TEST(FpFrameCommand, ZeroFrameSize) {
   constexpr int kInvalidFrameSize = 0;
   EXPECT_FALSE(FpFrameCommand::Create(kValidIndex, kInvalidFrameSize,
-                                      kValidMaxReadSize));
+                                      kValidMaxWriteSize));
 }
 
 // Mock the underlying EcCommand to test

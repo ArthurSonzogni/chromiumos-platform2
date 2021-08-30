@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "biod/cros_fp_device_interface.h"
 #include "libec/fingerprint/fp_context_command_factory.h"
@@ -14,6 +15,7 @@
 #include "libec/fingerprint/fp_frame_command.h"
 #include "libec/fingerprint/fp_info_command.h"
 #include "libec/fingerprint/fp_seed_command.h"
+#include "libec/fingerprint/fp_template_command.h"
 
 namespace ec {
 
@@ -48,6 +50,13 @@ class EcCommandFactoryInterface {
                 "All commands created by this class should derive from "
                 "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
+      std::vector<uint8_t> tmpl, uint16_t max_write_size) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::FpTemplateCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   // TODO(b/144956297): Add factory methods for all of the EC
   // commands we use so that we can easily mock them for testing.
 };
@@ -74,6 +83,9 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::FpFrameCommand> FpFrameCommand(
       int index, uint32_t frame_size, uint16_t max_read_size) override;
+
+  std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
+      std::vector<uint8_t> tmpl, uint16_t max_write_size) override;
 };
 
 }  // namespace ec
