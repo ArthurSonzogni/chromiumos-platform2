@@ -92,6 +92,11 @@ class MockNetworkDiagnosticsAdapter final : public NetworkDiagnosticsAdapter {
                chromeos::network_diagnostics::mojom::
                    NetworkDiagnosticsRoutines::RunVideoConferencingCallback),
               (override));
+  MOCK_METHOD(void,
+              RunArcHttpRoutine,
+              (chromeos::network_diagnostics::mojom::
+                   NetworkDiagnosticsRoutines::RunArcHttpCallback),
+              (override));
 };
 
 }  // namespace diagnostics

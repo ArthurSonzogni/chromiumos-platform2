@@ -183,4 +183,8 @@ void FakeRoutineService::RunVideoConferencingRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunArcHttpRoutine(RunArcHttpRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

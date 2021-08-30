@@ -64,6 +64,7 @@ source_set("libdiag_routine") {
   ]
   sources = [
     "ac_power/ac_power.cc",
+    "arc_http/arc_http.cc",
     "battery_capacity/battery_capacity.cc",
     "battery_charge/battery_charge.cc",
     "battery_charge/battery_charge_constants.cc",
@@ -110,6 +111,7 @@ if (use.test) {
   executable("routine_test") {
     sources = [
       "ac_power/ac_power_test.cc",
+      "arc_http/arc_http_test.cc",
       "battery_capacity/battery_capacity_test.cc",
       "battery_charge/battery_charge_test.cc",
       "battery_discharge/battery_discharge_test.cc",

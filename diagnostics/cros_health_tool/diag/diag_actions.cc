@@ -63,8 +63,8 @@ const struct {
     {"http_firewall", mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall},
     {"https_firewall", mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall},
     {"https_latency", mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency},
-    {"video_conferencing",
-     mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing}};
+    {"video_conferencing", mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing},
+    {"arc_http", mojo_ipc::DiagnosticRoutineEnum::kArcHttp}};
 
 const struct {
   const char* readable_status;

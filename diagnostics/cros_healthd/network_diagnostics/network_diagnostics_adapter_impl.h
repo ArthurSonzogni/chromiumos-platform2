@@ -66,6 +66,9 @@ class NetworkDiagnosticsAdapterImpl final : public NetworkDiagnosticsAdapter {
       const base::Optional<std::string>& stun_server_hostname,
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunVideoConferencingCallback) override;
+  void RunArcHttpRoutine(
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+          RunArcHttpCallback) override;
 
  private:
   // NetworkDiagnosticsRoutines remote used to run network diagnostics.

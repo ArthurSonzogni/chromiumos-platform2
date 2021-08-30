@@ -592,6 +592,35 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
   run_loop.Run();
 }
 
+// Test that the ARC HTTP routine can be run.
+TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
+  MockNetworkDiagnosticsRoutines network_diagnostics_routines;
+  network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
+      network_diagnostics_routines.pending_remote());
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(network_diagnostics_routines, RunArcHttp(testing::_))
+      .WillOnce(testing::Invoke(
+          [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                  RunArcHttpCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::NewArcHttpProblems(
+                    {}));
+            std::move(callback).Run(std::move(result));
+          }));
+
+  network_diagnostics_adapter()->RunArcHttpRoutine(base::BindLambdaForTesting(
+      [&](network_diagnostics_ipc::RoutineResultPtr result) {
+        EXPECT_EQ(result->verdict,
+                  network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+        EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
+        run_loop.Quit();
+      }));
+
+  run_loop.Run();
+}
+
 // Test that the LanConnectivity routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
@@ -799,6 +828,21 @@ TEST_F(NetworkDiagnosticsAdapterImplTest,
                 result->problems->get_video_conferencing_problems().size(), 0);
             run_loop.Quit();
           }));
+
+  run_loop.Run();
+}
+
+// Test that the ArcHttp routine returns RoutineVerdict::kNotRun if a valid
+// NetworkDiagnosticsRoutines remote was never sent.
+TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutineWithNoRemote) {
+  base::RunLoop run_loop;
+  network_diagnostics_adapter()->RunArcHttpRoutine(base::BindLambdaForTesting(
+      [&](network_diagnostics_ipc::RoutineResultPtr result) {
+        EXPECT_EQ(result->verdict,
+                  network_diagnostics_ipc::RoutineVerdict::kNotRun);
+        EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
+        run_loop.Quit();
+      }));
 
   run_loop.Run();
 }

@@ -129,6 +129,9 @@ class CrosHealthdRoutineFactory {
   // diagnostics/routines/video_conferencing for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname) = 0;
+  // Constructs a new instance of the ARC HTTP routine. See
+  // diagnostics/routines/arc_http for details on the routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeArcHttpRoutine() = 0;
 };
 
 }  // namespace diagnostics

@@ -917,3 +917,29 @@ Status message: Failed requests to a STUN server via UDP.
 Failed requests to a STUN server via TCP.
 Failed to establish a TLS connection to media hostnames.
 ```
+
+### ARC HTTP
+
+Checks whether the HTTP latency from inside Android is within established tolerance levels for the system.
+
+The ARC HTTP routine has no parameters.
+
+To run the ARC HTTP routine:
+
+From crosh:
+```bash
+crosh> diag arc_http
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine
+--routine=arc_http
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message: ARC HTTP routine passed with no problems.
+```

@@ -193,4 +193,17 @@ void NetworkDiagnosticsAdapterImpl::RunVideoConferencingRoutine(
                                                       std::move(callback));
 }
 
+void NetworkDiagnosticsAdapterImpl::RunArcHttpRoutine(
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunArcHttpCallback
+        callback) {
+  if (!network_diagnostics_routines_.is_bound()) {
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewArcHttpProblems({}));
+    std::move(callback).Run(std::move(result));
+    return;
+  }
+  network_diagnostics_routines_->RunArcHttp(std::move(callback));
+}
+
 }  // namespace diagnostics

@@ -89,6 +89,11 @@ class NetworkDiagnosticsAdapter {
       const base::Optional<std::string>& stun_server_hostname,
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunVideoConferencingCallback) = 0;
+
+  // Requests the browser to invoke the ArcHttp routine.
+  virtual void RunArcHttpRoutine(
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+          RunArcHttpCallback) = 0;
 };
 
 }  // namespace diagnostics
