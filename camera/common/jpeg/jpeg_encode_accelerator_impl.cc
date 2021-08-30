@@ -366,7 +366,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
   std::vector<cros::mojom::DmaBufPlanePtr> mojo_output_planes =
       WrapToMojoPlanes(output_planes);
 
-  jea_->EncodeWithDmaBufAndQuality(
+  jea_->EncodeWithDmaBuf(
       task_id, input_format, std::move(mojo_input_planes),
       std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
       coded_size_width, coded_size_height, quality,
