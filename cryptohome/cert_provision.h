@@ -61,7 +61,7 @@ enum SignMechanism {
   SHA256_RSA_PSS = 2,
 };
 
-using ProgressCallback = base::Callback<void(
+using ProgressCallback = base::RepeatingCallback<void(
     Status status, int progress, const std::string& message)>;
 
 // Synchronously obtains a new certificate with |cert_profile| from the PCA.

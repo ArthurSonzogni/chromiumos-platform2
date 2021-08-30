@@ -264,8 +264,8 @@ class CertProvisionTest : public testing::Test {
   // be passed to ProvisionCertificate() for capturing new progress.
   ProgressCallback GetProgressCallback() {
     progress_.clear();
-    return base::Bind(&CertProvisionTest::CaptureProgress,
-                      base::Unretained(this));
+    return base::BindRepeating(&CertProvisionTest::CaptureProgress,
+                               base::Unretained(this));
   }
 
   // Successfully provisions and checks results/
