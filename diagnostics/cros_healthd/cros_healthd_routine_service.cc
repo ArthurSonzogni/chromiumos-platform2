@@ -332,6 +332,13 @@ void CrosHealthdRoutineService::RunArcPingRoutine(
              mojo_ipc::DiagnosticRoutineEnum::kArcPing, std::move(callback));
 }
 
+void CrosHealthdRoutineService::RunArcDnsResolutionRoutine(
+    RunArcDnsResolutionRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakeArcDnsResolutionRoutine(),
+             mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
+             std::move(callback));
+}
+
 void CrosHealthdRoutineService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -382,7 +389,8 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
       mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing,
       mojo_ipc::DiagnosticRoutineEnum::kArcHttp,
-      mojo_ipc::DiagnosticRoutineEnum::kArcPing};
+      mojo_ipc::DiagnosticRoutineEnum::kArcPing,
+      mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution};
 
   if (context_->system_config()->HasBattery()) {
     available_routines_.insert(

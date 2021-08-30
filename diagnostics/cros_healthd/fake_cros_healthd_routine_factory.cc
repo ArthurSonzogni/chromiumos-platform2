@@ -362,4 +362,8 @@ FakeCrosHealthdRoutineFactory::MakeArcPingRoutine() {
   return std::move(next_routine_);
 }
 
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeArcDnsResolutionRoutine() {
+  return std::move(next_routine_);
+}
 }  // namespace diagnostics

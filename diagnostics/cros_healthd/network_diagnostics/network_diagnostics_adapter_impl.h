@@ -72,6 +72,9 @@ class NetworkDiagnosticsAdapterImpl final : public NetworkDiagnosticsAdapter {
   void RunArcPingRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunArcPingCallback) override;
+  void RunArcDnsResolutionRoutine(
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+          RunArcDnsResolutionCallback) override;
 
  private:
   // NetworkDiagnosticsRoutines remote used to run network diagnostics.

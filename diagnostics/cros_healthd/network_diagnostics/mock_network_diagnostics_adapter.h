@@ -102,6 +102,11 @@ class MockNetworkDiagnosticsAdapter final : public NetworkDiagnosticsAdapter {
               (chromeos::network_diagnostics::mojom::
                    NetworkDiagnosticsRoutines::RunArcPingCallback),
               (override));
+  MOCK_METHOD(void,
+              RunArcDnsResolutionRoutine,
+              (chromeos::network_diagnostics::mojom::
+                   NetworkDiagnosticsRoutines::RunArcDnsResolutionCallback),
+              (override));
 };
 
 }  // namespace diagnostics

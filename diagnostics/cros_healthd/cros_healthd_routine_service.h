@@ -110,6 +110,8 @@ class CrosHealthdRoutineService final
       RunVideoConferencingRoutineCallback callback) override;
   void RunArcHttpRoutine(RunArcHttpRoutineCallback callback) override;
   void RunArcPingRoutine(RunArcPingRoutineCallback callback) override;
+  void RunArcDnsResolutionRoutine(
+      RunArcDnsResolutionRoutineCallback callback) override;
 
  private:
   void RunRoutine(

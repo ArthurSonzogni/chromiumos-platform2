@@ -191,4 +191,9 @@ void FakeRoutineService::RunArcPingRoutine(RunArcPingRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunArcDnsResolutionRoutine(
+    RunArcDnsResolutionRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

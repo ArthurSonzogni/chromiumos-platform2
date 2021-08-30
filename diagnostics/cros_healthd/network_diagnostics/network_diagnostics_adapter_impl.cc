@@ -219,4 +219,18 @@ void NetworkDiagnosticsAdapterImpl::RunArcPingRoutine(
   network_diagnostics_routines_->RunArcPing(std::move(callback));
 }
 
+void NetworkDiagnosticsAdapterImpl::RunArcDnsResolutionRoutine(
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+        RunArcDnsResolutionCallback callback) {
+  if (!network_diagnostics_routines_.is_bound()) {
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewArcDnsResolutionProblems(
+            {}));
+    std::move(callback).Run(std::move(result));
+    return;
+  }
+  network_diagnostics_routines_->RunArcDnsResolution(std::move(callback));
+}
+
 }  // namespace diagnostics

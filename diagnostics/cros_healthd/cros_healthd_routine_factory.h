@@ -135,6 +135,9 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the ARC Ping routine. See
   // diagnostics/routines/arc_ping for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeArcPingRoutine() = 0;
+  // Constructs a new instance of the ARC DNS Resolution routine. See
+  // diagnostics/routines/arc_dns_resolution for details on the routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeArcDnsResolutionRoutine() = 0;
 };
 
 }  // namespace diagnostics

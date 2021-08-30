@@ -99,6 +99,11 @@ class NetworkDiagnosticsAdapter {
   virtual void RunArcPingRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunArcPingCallback) = 0;
+
+  // Requests the browser to invoke the ArcDnsResolution routine.
+  virtual void RunArcDnsResolutionRoutine(
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+          RunArcDnsResolutionCallback) = 0;
 };
 
 }  // namespace diagnostics

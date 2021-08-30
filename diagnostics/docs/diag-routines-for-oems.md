@@ -918,6 +918,10 @@ Failed requests to a STUN server via TCP.
 Failed to establish a TLS connection to media hostnames.
 ```
 
+## Android Network Routines
+
+The following routines are available for Android running on ChromeOS (also known as ARC).
+
 ### ARC HTTP
 
 Checks whether the HTTP latency from inside Android is within established tolerance levels for the system.
@@ -966,4 +970,29 @@ Sample output:
 Progress: 100
 Status: Passed
 Status message: ARC Ping routine passed with no problems.
+```
+### ARC DNS Resolution
+
+Checks whether a DNS resolution can be completed successfully inside Android.
+
+The ARC DNS resolution routine has no parameters.
+
+To run the ARC DNS resolution routine:
+
+From crosh:
+```bash
+crosh> diag arc_dns_resolution
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine
+--routine=arc_dns_resolution
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message: ARC DNS resolution routine passed with no problems.
 ```

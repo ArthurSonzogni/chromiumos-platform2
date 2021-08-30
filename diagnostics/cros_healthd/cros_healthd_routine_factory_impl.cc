@@ -11,6 +11,7 @@
 #include <base/optional.h>
 
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
+#include "diagnostics/cros_healthd/routines/arc_dns_resolution/arc_dns_resolution.h"
 #include "diagnostics/cros_healthd/routines/arc_http/arc_http.h"
 #include "diagnostics/cros_healthd/routines/arc_ping/arc_ping.h"
 #include "diagnostics/cros_healthd/routines/battery_capacity/battery_capacity.h"
@@ -242,6 +243,11 @@ CrosHealthdRoutineFactoryImpl::MakeArcHttpRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcPingRoutine() {
   return CreateArcPingRoutine(context_->network_diagnostics_adapter());
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeArcDnsResolutionRoutine() {
+  return CreateArcDnsResolutionRoutine(context_->network_diagnostics_adapter());
 }
 
 }  // namespace diagnostics
