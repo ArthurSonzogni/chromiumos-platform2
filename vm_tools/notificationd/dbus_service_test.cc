@@ -145,9 +145,7 @@ TEST_F(DBusServiceTest, GetCapabilities) {
   ASSERT_FALSE(reader.HasMoreData());
   ASSERT_TRUE(value->is_list());
   std::vector<std::string> received_data;
-  auto list = base::ListValue::From(std::move(value));
-  ASSERT_TRUE(list.get() != nullptr);
-  for (const auto& element : *list) {
+  for (const auto& element : value->GetList()) {
     ASSERT_TRUE(element.is_string());
     received_data.push_back(element.GetString());
   }
