@@ -2120,23 +2120,22 @@ TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
 }
 
 TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
-  base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
-  auto lock_process = LockFile(lock_file_path);
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.log_extra_times = true;
   Sender sender(std::move(metrics_lib_),
                 std::make_unique<test_util::AdvancingClock>(), options);
+  // Lock in parent...
+  base::File lock(sender.AcquireLockFileOrDie());
+  EXPECT_TRUE(IsFileLocked(paths::Get(paths::kCrashSenderLockFile)));
+  // ... so lock in child spawned by EXPECT_EXIT should fail
   base::Time start_time = base::Time::Now();
   LOG(INFO) << "About to launch AcquireLockFileOrDie(): " << base::Time::Now();
   EXPECT_EXIT(sender.AcquireLockFileOrDie(), ExitedWithCode(EXIT_FAILURE),
               "Failed to acquire a lock");
   LOG(INFO) << "AcquireLockFileOrDie took " << base::Time::Now() - start_time
             << "; time is " << base::Time::Now();
-  pid_t pid = lock_process->pid();
-  EXPECT_NE(pid, 0) << "lock_process unexpectedly exited";
-  EXPECT_TRUE(brillo::Process::ProcessExists(pid));
 }
 
 class IsNetworkOnlineTest : public CrashSenderUtilTest {
