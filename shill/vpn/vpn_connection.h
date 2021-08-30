@@ -116,6 +116,7 @@ class VPNConnection {
  private:
   // For able to modify |state_| in the tests.
   friend class IPsecConnectionUnderTest;
+  friend class L2TPConnectionUnderTest;
   friend class VPNConnectionUnderTest;
 
   std::unique_ptr<Callbacks> callbacks_;

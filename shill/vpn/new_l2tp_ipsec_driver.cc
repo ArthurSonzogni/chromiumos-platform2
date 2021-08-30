@@ -128,8 +128,8 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
 
   // Callbacks for L2TP will be set and handled in IPsecConnection.
   auto l2tp_connection = std::make_unique<L2TPConnection>(
-      MakeL2TPConfig(*const_args()), /*callbacks=*/nullptr,
-      manager()->dispatcher());
+      MakeL2TPConfig(*const_args()), /*callbacks=*/nullptr, control_interface(),
+      manager()->device_info(), manager()->dispatcher(), process_manager());
 
   auto callbacks = std::make_unique<IPsecConnection::Callbacks>(
       base::BindRepeating(&NewL2TPIPsecDriver::OnIPsecConnected,

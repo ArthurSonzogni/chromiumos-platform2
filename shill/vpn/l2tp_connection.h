@@ -5,30 +5,82 @@
 #ifndef SHILL_VPN_L2TP_CONNECTION_H_
 #define SHILL_VPN_L2TP_CONNECTION_H_
 
+#include <map>
 #include <memory>
+#include <string>
 
+#include <base/callback.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
+
+#include "shill/control_interface.h"
+#include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
+#include "shill/external_task.h"
+#include "shill/process_manager.h"
+#include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
 // TODO(b/165170125): Document temporary files.
-// TODO(b/165170125): Add unit tests.
-class L2TPConnection : public VPNConnection {
+class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
  public:
   // TODO(b/165170125): Add fields for xl2tpd and pppd.
   struct Config {};
 
-  explicit L2TPConnection(std::unique_ptr<Config> config,
-                          std::unique_ptr<Callbacks> callbacks,
-                          EventDispatcher* dispatcher);
+  L2TPConnection(std::unique_ptr<Config> config,
+                 std::unique_ptr<Callbacks> callbacks,
+                 ControlInterface* control_interface,
+                 DeviceInfo* device_info,
+                 EventDispatcher* dispatcher,
+                 ProcessManager* process_manager);
   ~L2TPConnection();
 
+  // Implements RpcTaskDelegate.
+  void GetLogin(std::string* user, std::string* password) override;
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict) override;
+
  private:
+  friend class L2TPConnectionUnderTest;  // For unit tests.
+
   void OnConnect() override;
   void OnDisconnect() override;
 
+  // Writes config file for pppd. |pppd_config_path_| will be filled with the
+  // path to the file. Returns true on success.
+  bool WritePPPDConfig();
+  // Writes config file for xl2tpd. |l2tpd_config_path_| will be filled with the
+  // path to the file. Returns true on success. This function needs to be called
+  // after WritePPPDConfig() since this file contains the path to the ppp config
+  // file.
+  bool WriteL2TPDConfig();
+
+  // Starts the xl2tpd process. Invokes NotifyFailure() on failure. Otherwise,
+  // the connect process will be continued in Notify() (callback from the pppd
+  // plugin).
+  void StartXl2tpd();
+
+  void OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code);
+
   std::unique_ptr<Config> config_;
+
+  base::ScopedTempDir temp_dir_;
+
+  // Paths to the config files. All the files are stored in |temp_dir_| and thus
+  // will be removed when this class is destroyed.
+  base::FilePath l2tpd_config_path_;
+  base::FilePath pppd_config_path_;
+
+  std::unique_ptr<ExternalTask> external_task_;
+
+  // External dependencies.
+  ControlInterface* control_interface_;
+  DeviceInfo* device_info_;
+  ProcessManager* process_manager_;
+  std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<L2TPConnection> weak_factory_{this};
 };
