@@ -76,6 +76,27 @@ collect_shutdown_umount_failure_logs() {
   ) >/run/shutdown_umount_failure.log 2>&1
 }
 
+# Attempt multiple retries for each mount point. This prevents transient
+# failures from stopping the unmount process.
+umount_mountpoint() {
+  local mnt="$1"
+  # Check if the mount point exists.
+  if ! mountpoint -q "${mnt}"; then
+    return 0
+  fi
+
+  local rc=0
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    umount -n "${mnt}"
+    rc="$?"
+    if [ "${rc}" -eq "0" ]; then
+      break
+    fi
+    sleep 0.1
+  done
+  return "${rc}"
+}
+
 if [ "${CROS_DEBUG}" -eq 1 ]; then
   . /usr/share/cros/dev_utils.sh
 fi
@@ -143,14 +164,13 @@ set -x
 dev_unmount_packages
 
 # Unmount /var/lib/devicesettings if it is a bind mount to /var/lib/whitelist.
-if mountpoint -q /var/lib/devicesettings; then
-  umount -n /var/lib/devicesettings
-fi
+umount_mountpoint "/var/lib/devicesettings"
 
 # Unmount /var/run and /var/lock, which were bind mounted to /run and /run/lock
 # respectively to enable backwards compatibility for accessing /run (tmpfs for
 # runtime data) through /var.
-umount -n /var/run /var/lock
+umount_mountpoint "/var/run"
+umount_mountpoint "/var/lock"
 
 # Unmount /var, /home and encrypted mountpoints, then try to
 # unmount /mnt/stateful_partition.  Log to /mnt/stateful_partition if any of
@@ -163,14 +183,12 @@ umount_var_and_home_chronos
 rc="$?"
 
 # Check if /home is mounted before attempting to umount().
-if mountpoint -q /home; then
-  umount -n /home
-  : "$(( rc |= $? ))"
-fi
+umount_mountpoint "/home"
+: "$(( rc |= $? ))"
 
 # Unmount /mnt/stateful_partition only if the previous unmounts succeeded.
 if [ "${rc}" -eq 0 ]; then
-  umount -n "${STATEFUL_PARTITION}"
+  umount_mountpoint "${STATEFUL_PARTITION}"
 fi
 exit "$(( rc | $? ))"
 ) >/run/mount_encrypted/umount-encrypted.log 2>&1
