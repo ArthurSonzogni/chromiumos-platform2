@@ -22,6 +22,7 @@
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_thread.h"
+#include "cros-camera/spatiotemporal_denoiser.h"
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_metrics.h"
 #include "features/hdrnet/hdrnet_processor.h"
@@ -85,6 +86,11 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
     // The HDRnet processor instance for this stream.
     std::unique_ptr<HdrNetProcessor> processor;
+
+    // Spatiotemporal denoiser resources.
+    std::unique_ptr<SpatiotemporalDenoiser> denoiser;
+    SharedImage denoiser_intermediate;
+    bool should_reset_temporal_buffer = true;
 
     // Pops a free buffer from |usable_buffer_list|.
     base::Optional<int> PopBuffer();

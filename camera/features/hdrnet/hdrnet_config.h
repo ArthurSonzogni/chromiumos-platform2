@@ -50,6 +50,22 @@ class HdrNetConfig {
     float spatial_filter_sigma = 0.0f;
     float range_filter_sigma = 0.0f;
     float iir_filter_strength = 0.0f;
+
+    // Whether to enable the spatiotemporal denoiser.
+    bool denoiser_enable = false;
+
+    // The temporal denoising filter strength of the denoiser in [0.0, 1.0].
+    // Value close to 1.0 will result in stronger denoising.
+    float iir_temporal_convergence = 0.7f;
+
+    // The number of spatial denoising passes to run. Disabled by default
+    // because experiments show that temporal denoising is good enough for
+    // HDRnet.
+    int num_spatial_passes = 0;
+
+    // The spatial denoising filter strength multiplier. Larger value will
+    // result in stronger denoising.
+    float spatial_strength = 1.5f;
   };
 };
 

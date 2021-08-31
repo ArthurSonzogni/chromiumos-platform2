@@ -18,6 +18,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "cros-camera/texture_2d_descriptor.h"
 #include "features/hdrnet/hdrnet_processor_impl.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/egl/utils.h"
@@ -41,6 +42,17 @@ constexpr char kMaxGainBlendThresholdKey[] = "max_gain_blend_threshold";
 constexpr char kSpatialFilterSigma[] = "spatial_filter_sigma";
 constexpr char kRangeFilterSigma[] = "range_filter_sigma";
 constexpr char kIirFilterStrength[] = "iir_filter_strength";
+
+constexpr char kDenoiserEnable[] = "denoiser_enable";
+constexpr char kDenoiserIirTemporalConvergence[] =
+    "denoiser_iir_temporal_convergence";
+constexpr char kDenoiserNumSpatialPasses[] = "num_spatial_passes";
+constexpr char kDenoiserSpatialStrength[] = "spatial_strength";
+
+// Allocate one buffer for denoiser because we run the denoiser in IIR filter
+// mode. We'll need to have more buffers if we run the burst denoising mode.
+constexpr int kMaxDenoiserBurstLength = 1;
+
 }  // namespace
 
 //
@@ -671,6 +683,48 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
         FindMatchingBufferInfo(&pending_request_buffers, stream_context);
     DCHECK(request_buffer_info != pending_request_buffers.end());
 
+    if (options_.denoiser_enable) {
+      // Run the denoiser.
+      SharedImage& input_img =
+          stream_context->shared_images[request_buffer_info->buffer_index];
+      Texture2DDescriptor input_luma = {
+          .id = static_cast<GLint>(input_img.y_texture().handle()),
+          .internal_format = input_img.y_texture().internal_format(),
+          .width = input_img.y_texture().width(),
+          .height = input_img.y_texture().height(),
+      };
+      Texture2DDescriptor input_chroma = {
+          .id = static_cast<GLint>(input_img.uv_texture().handle()),
+          .internal_format = input_img.uv_texture().internal_format(),
+          .width = input_img.uv_texture().width(),
+          .height = input_img.uv_texture().height(),
+      };
+
+      SharedImage& output_img = stream_context->denoiser_intermediate;
+      Texture2DDescriptor output_luma = {
+          .id = static_cast<GLint>(output_img.y_texture().handle()),
+          .internal_format = output_img.y_texture().internal_format(),
+          .width = output_img.y_texture().width(),
+          .height = output_img.y_texture().height(),
+      };
+      Texture2DDescriptor output_chroma = {
+          .id = static_cast<GLint>(output_img.uv_texture().handle()),
+          .internal_format = output_img.uv_texture().internal_format(),
+          .width = output_img.uv_texture().width(),
+          .height = output_img.uv_texture().height(),
+      };
+      stream_context->denoiser->RunIirDenoise(
+          input_luma, input_chroma, output_luma, output_chroma,
+          {.iir_temporal_convergence = options_.iir_temporal_convergence,
+           .spatial_strength = options_.spatial_strength,
+           .num_spatial_passes = options_.num_spatial_passes,
+           .reset_temporal_buffer =
+               stream_context->should_reset_temporal_buffer});
+      if (stream_context->should_reset_temporal_buffer) {
+        stream_context->should_reset_temporal_buffer = false;
+      }
+    }
+
     std::vector<buffer_handle_t> buffers_to_render;
     if (!GetBuffersToRender(stream_context, &(*request_buffer_info),
                             &buffers_to_render)) {
@@ -681,7 +735,9 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     HdrNetConfig::Options processor_config =
         PrepareProcessorConfig(result, *request_buffer_info);
     const SharedImage& image =
-        stream_context->shared_images[request_buffer_info->buffer_index];
+        options_.denoiser_enable
+            ? stream_context->denoiser_intermediate
+            : stream_context->shared_images[request_buffer_info->buffer_index];
     request_buffer_info->release_fence = stream_context->processor->Run(
         result->frame_number(), processor_config, image,
         base::ScopedFD(hdrnet_buffer.release_fence), buffers_to_render,
@@ -944,6 +1000,15 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     }
     context->processor = hdrnet_processor_factory_.Run(
         locked_static_info, gpu_thread_.task_runner());
+    context->denoiser = SpatiotemporalDenoiser::CreateInstance(
+        {.frame_width = static_cast<int>(stream_size.width),
+         .frame_height = static_cast<int>(stream_size.height),
+         .mode = SpatiotemporalDenoiser::Mode::kIirMode});
+    if (!context->denoiser) {
+      LOGF(ERROR) << "Failed to initialize Spatiotemporal denoiser";
+      ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
+      return false;
+    }
     context->processor->Initialize(stream_size, viable_output_sizes);
     if (!context->processor) {
       LOGF(ERROR) << "Failed to initialize HDRnet processor";
@@ -954,7 +1019,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     constexpr uint32_t kBufferUsage =
         GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_TEXTURE;
     // Allocate the hdrnet buffers.
-    constexpr int kNumExtraBuffer = 5;
+    constexpr int kNumExtraBuffer = kMaxDenoiserBurstLength + 5;
     for (int i = 0; i < stream->max_buffers + kNumExtraBuffer; ++i) {
       ScopedBufferHandle buffer = CameraBufferManager::AllocateScopedBuffer(
           stream->width, stream->height, stream->format, kBufferUsage);
@@ -984,6 +1049,27 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
           CameraBufferManager::AllocateScopedBuffer(
               stream->width, stream->height, HAL_PIXEL_FORMAT_YCBCR_420_888,
               kBufferUsage);
+    }
+
+    {
+      ScopedBufferHandle buffer = CameraBufferManager::AllocateScopedBuffer(
+          stream->width, stream->height, stream->format, kBufferUsage);
+      if (!buffer) {
+        LOGF(ERROR) << "Cannot allocate denoiser intermediate buffer";
+        return false;
+      }
+      SharedImage shared_image = SharedImage::CreateFromBuffer(
+          *buffer, Texture2D::Target::kTarget2D, true);
+      if (!shared_image.y_texture().IsValid() ||
+          !shared_image.uv_texture().IsValid()) {
+        LOGF(ERROR)
+            << "Cannot create SharedImage for the denoiser intermediate buffer";
+        return false;
+      }
+      // Let the SharedImage own the buffer.
+      shared_image.SetDestructionCallback(
+          base::BindOnce([](ScopedBufferHandle buffer) {}, std::move(buffer)));
+      context->denoiser_intermediate = std::move(shared_image);
     }
   }
   static_info_.unlock(locked_static_info);
@@ -1054,6 +1140,24 @@ void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
   LoadIfExist(json_values, kSpatialFilterSigma, &options_.spatial_filter_sigma);
   LoadIfExist(json_values, kRangeFilterSigma, &options_.range_filter_sigma);
   LoadIfExist(json_values, kIirFilterStrength, &options_.iir_filter_strength);
+
+  bool denoiser_enable;
+  if (LoadIfExist(json_values, kDenoiserEnable, &denoiser_enable)) {
+    if (!options_.denoiser_enable && options_.denoiser_enable) {
+      // Reset the denoiser temporal buffer whenever we switch on the denoiser
+      // to avoid artifacts caused by stale data.
+      for (auto& c : hdrnet_stream_context_) {
+        c->should_reset_temporal_buffer = true;
+      }
+    }
+    options_.denoiser_enable = denoiser_enable;
+  }
+  LoadIfExist(json_values, kDenoiserIirTemporalConvergence,
+              &options_.iir_temporal_convergence);
+  LoadIfExist(json_values, kDenoiserNumSpatialPasses,
+              &options_.num_spatial_passes);
+  LoadIfExist(json_values, kDenoiserSpatialStrength,
+              &options_.spatial_strength);
 
   DCHECK_GE(options_.hdr_ratio, 1.0f);
   DCHECK_LE(options_.max_gain_blend_threshold, 1.0f);

@@ -18,6 +18,7 @@
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "cros-camera/texture_2d_descriptor.h"
 #include "gpu/egl/egl_fence.h"
 
 namespace cros {
@@ -299,9 +300,8 @@ void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
   }
 }
 
-HdrNetLinearRgbPipelineCrOS::Texture2DInfo CreateTextureInfo(
-    const SharedImage& image) {
-  return HdrNetLinearRgbPipelineCrOS::Texture2DInfo{
+Texture2DDescriptor CreateTextureInfo(const SharedImage& image) {
+  return Texture2DDescriptor{
       .id = base::checked_cast<GLint>(image.texture().handle()),
       .internal_format = GL_RGBA16F,
       .width = image.texture().width(),
@@ -324,10 +324,9 @@ bool HdrNetProcessorImpl::RunLinearRgbPipeline(
       .range_filter_sigma = options.range_filter_sigma,
       .iir_filter_strength = options.iir_filter_strength,
   };
-  bool result =
-      hdrnet_pipeline_->Run(CreateTextureInfo(input_rgba),
-                            HdrNetLinearRgbPipelineCrOS::Texture2DInfo(),
-                            CreateTextureInfo(output_rgba), run_options);
+  bool result = hdrnet_pipeline_->Run(
+      CreateTextureInfo(input_rgba), Texture2DDescriptor(),
+      CreateTextureInfo(output_rgba), run_options);
   if (!result) {
     LOGF(WARNING) << "Failed to run HDRnet pipeline";
     return false;
