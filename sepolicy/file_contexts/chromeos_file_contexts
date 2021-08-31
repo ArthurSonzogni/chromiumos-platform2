@@ -419,6 +419,7 @@ has_arc(`
 /mnt/stateful_partition/unencrypted/apkcache(/.*)?   u:object_r:apkcache_file:s0
 /mnt/stateful_partition/unencrypted/cache    u:object_r:cros_stateful_partition_unencrypted_cache:s0
 /mnt/stateful_partition/unencrypted/preserve u:object_r:cros_stateful_partition_unencrypted_preserve:s0
+/mnt/stateful_partition/unencrypted/rma-data(/.*)?   u:object_r:cros_stateful_partition_unencrypted_rma:s0
 
 # These are bind mounts so they need to match their other labels.
 /mnt/stateful_partition/home                      u:object_r:cros_home:s0

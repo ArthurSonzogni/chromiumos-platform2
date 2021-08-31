@@ -23,7 +23,8 @@ namespace rmad {
 
 namespace {
 
-const base::FilePath kDefaultJsonStoreFilePath("/var/lib/rmad/state");
+const base::FilePath kDefaultJsonStoreFilePath(
+    "/mnt/stateful_partition/unencrypted/rma-data/state");
 const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 
 }  // namespace

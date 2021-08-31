@@ -57,6 +57,11 @@ void EnterMinijail() {
   minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
   minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
 
+  minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
+                           0, nullptr);
+  minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/rma-data",
+                "/mnt/stateful_partition/unencrypted/rma-data", 1);
+
   rmad::CrosSystemUtilsImpl crossystem_utils;
   int wpsw_cur;
   if (crossystem_utils.GetInt("wpsw_cur", &wpsw_cur) && wpsw_cur == 0) {
