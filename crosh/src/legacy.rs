@@ -240,16 +240,16 @@ mod tests {
     }
 
     fn verify_shell(shell: &ShellSource) {
-        let dispatcher = get_dispatcher(&shell);
-        let command_list = get_cmds(&shell);
+        let dispatcher = get_dispatcher(shell);
+        let command_list = get_cmds(shell);
         let mut missing_commands: Vec<&str> = Vec::new();
         let mut available_commands: HashSet<&str> = HashSet::new();
 
         // Verify all the crosh.sh commands are registered in rust-crosh.
         for command_name in &command_list {
             available_commands.insert(command_name);
-            if dispatcher.find_by_name(&command_name).is_none()
-                && !IGNORE_COMMANDS.contains(&&command_name[..])
+            if dispatcher.find_by_name(command_name).is_none()
+                && !IGNORE_COMMANDS.contains(&command_name.as_str())
             {
                 missing_commands.push(command_name);
             }
@@ -267,7 +267,7 @@ mod tests {
             ShellSource::Dev => DEV_COMMANDS,
             ShellSource::Usb => USB_COMMANDS,
         } {
-            if !available_commands.contains(cmd) && !IGNORE_COMMANDS.contains(&cmd) {
+            if !available_commands.contains(cmd) && !IGNORE_COMMANDS.contains(cmd) {
                 extra_commands.push(cmd);
             }
         }

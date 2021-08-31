@@ -242,12 +242,12 @@ mod tests {
 
         for (arc_command, adb_command) in &commands {
             let args: Vec<&str> = arc_command.split(' ').collect();
-            let fake_command_runner = expect_adb_command(&adb_command);
+            let fake_command_runner = expect_adb_command(adb_command);
             let r = execute_arc_command(&args, &fake_command_runner);
             assert!(
                 r.is_ok(),
                 "expected \"{}\", but got: {}",
-                &adb_command,
+                adb_command,
                 r.unwrap_err()
             );
         }
