@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -16,6 +17,9 @@
 namespace {
 
 #if USE_TPM_DYNAMIC
+
+// Simulator Vendor ID ("SIMU").
+const uint32_t kVendorIdSimulator = 0x53494d55;
 
 // The location of TPM DID & VID information.
 constexpr char kTpmDidVidPath[] = "/sys/class/tpm/tpm0/did_vid";
@@ -124,17 +128,35 @@ bool TpmAllowlistImpl::IsAllowed() {
   // Allow all kinds of TPM if we are not using runtime TPM selection.
   return true;
 #else
-  uint16_t device_id;
-  uint16_t vendor_id;
-
-  if (!GetDidVid(&device_id, &vendor_id)) {
-    LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
-    return false;
-  }
-
   TPM_SELECT_BEGIN;
 
   TPM2_SECTION({
+    uint32_t family;
+    uint64_t spec_level;
+    uint32_t manufacturer;
+    uint32_t tpm_model;
+    uint64_t firmware_version;
+    std::vector<uint8_t> vendor_specific;
+    if (!tpm_status_->GetVersionInfo(&family, &spec_level, &manufacturer,
+                                     &tpm_model, &firmware_version,
+                                     &vendor_specific)) {
+      LOG(ERROR) << __func__ << ": failed to get version info from tpm status.";
+      return false;
+    }
+
+    // Allow the tpm2-simulator.
+    if (manufacturer == kVendorIdSimulator) {
+      return true;
+    }
+
+    uint16_t device_id;
+    uint16_t vendor_id;
+
+    if (!GetDidVid(&device_id, &vendor_id)) {
+      LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
+      return false;
+    }
+
     std::string sys_vendor;
     std::string product_name;
 
@@ -173,6 +195,14 @@ bool TpmAllowlistImpl::IsAllowed() {
   });
 
   TPM1_SECTION({
+    uint16_t device_id;
+    uint16_t vendor_id;
+
+    if (!GetDidVid(&device_id, &vendor_id)) {
+      LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
+      return false;
+    }
+
     for (const TpmVidDid& match : kTpm1DidVidAllowlist) {
       if (device_id == match.device_id && vendor_id == match.vendor_id) {
         return true;
