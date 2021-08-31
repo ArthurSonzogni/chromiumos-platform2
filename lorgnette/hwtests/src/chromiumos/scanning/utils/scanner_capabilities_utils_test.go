@@ -4,7 +4,7 @@
 
 // Tests for scanner_capabilities_utils.go.
 
-package scanning
+package utils
 
 import (
 	"encoding/json"

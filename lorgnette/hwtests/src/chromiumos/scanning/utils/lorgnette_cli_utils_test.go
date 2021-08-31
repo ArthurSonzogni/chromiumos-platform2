@@ -4,7 +4,7 @@
 
 // Tests for lorgnette_cli_utils.go.
 
-package scanning
+package utils
 
 import (
 	"testing"

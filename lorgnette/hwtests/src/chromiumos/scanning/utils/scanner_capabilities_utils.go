@@ -4,7 +4,7 @@
 
 // Utilities related to a scanner's capabilities.
 
-package scanning
+package utils
 
 import (
 	"encoding/json"
