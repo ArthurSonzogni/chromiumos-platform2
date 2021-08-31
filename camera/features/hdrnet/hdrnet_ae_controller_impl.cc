@@ -94,19 +94,21 @@ void HdrNetAeControllerImpl::RecordYuvBuffer(int frame_number,
                                              base::ScopedFD acquire_fence) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(frame_number);
+
   // TODO(jcliang): Face detection doesn't work too well on the under-exposed
   // frames in dark scenes. We should perhaps run face detection on the
   // HDRnet-rendered frames.
   if (ShouldRunFd(frame_number)) {
-    latest_faces_.clear();
     std::vector<human_sensing::CrosFace> facessd_faces;
     auto ret =
         face_detector_->Detect(buffer, &facessd_faces, active_array_dimension_);
+    std::vector<NormalizedRect> faces;
     if (ret != FaceDetectResult::kDetectOk) {
       LOGF(WARNING) << "Cannot run face detection";
     } else {
       for (auto& f : facessd_faces) {
-        latest_faces_.push_back(NormalizedRect{
+        faces.push_back(NormalizedRect{
             .x0 = std::clamp(f.bounding_box.x1 / active_array_dimension_.width,
                              0.0f, 1.0f),
             .x1 = std::clamp(f.bounding_box.x2 / active_array_dimension_.width,
@@ -117,15 +119,17 @@ void HdrNetAeControllerImpl::RecordYuvBuffer(int frame_number,
                              0.0f, 1.0f)});
       }
     }
+    frame_info.faces = base::make_optional<std::vector<NormalizedRect>>(faces);
+    latest_faces_ = std::move(faces);
   }
 
   if ((ae_stats_input_mode_ == AeStatsInputMode::kFromYuvImage) &&
       ShouldRunAe(frame_number)) {
-    AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(frame_number);
     frame_info.yuv_buffer = buffer;
     frame_info.acquire_fence = std::move(acquire_fence);
-    MaybeRunAE(frame_number);
   }
+
+  MaybeRunAE(frame_number);
 }
 
 void HdrNetAeControllerImpl::RecordAeMetadata(
@@ -209,10 +213,11 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
   if (!use_cros_face_detector_) {
     base::span<const int32_t> face_rectangles =
         result->GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES);
+    std::vector<NormalizedRect> faces;
     if (face_rectangles.size() >= 4) {
       for (size_t i = 0; i < face_rectangles.size(); i += 4) {
         const int* rect_bound = &face_rectangles[i];
-        frame_info.faces.push_back(NormalizedRect{
+        faces.push_back(NormalizedRect{
             .x0 = std::clamp(base::checked_cast<float>(rect_bound[0]) /
                                  active_array_dimension_.width,
                              0.0f, 1.0f),
@@ -227,6 +232,8 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
                              0.0f, 1.0f)});
       }
     }
+    frame_info.faces =
+        base::make_optional<std::vector<NormalizedRect>>(std::move(faces));
     if (metadata_logger_) {
       metadata_logger_->Log(result->frame_number(), kTagFaceRectangles,
                             face_rectangles);
@@ -506,9 +513,6 @@ void HdrNetAeControllerImpl::MaybeRunAE(int frame_number) {
     return;
   }
 
-  if (use_cros_face_detector_) {
-    frame_info.faces = latest_faces_;
-  }
   AeParameters ae_parameters = ae_device_adapter_->ComputeAeParameters(
       frame_number, frame_info, max_hdr_ratio_);
 

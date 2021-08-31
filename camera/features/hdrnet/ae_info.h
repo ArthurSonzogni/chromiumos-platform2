@@ -12,6 +12,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/notreached.h>
+#include <base/optional.h>
 #include <cros-camera/gcam_ae.h>
 #include <cutils/native_handle.h>
 
@@ -88,7 +89,7 @@ struct AeFrameInfo {
   int ae_compensation = 0;
   float estimated_sensor_sensitivity = 0.0f;
   uint8_t face_detection_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
-  std::vector<NormalizedRect> faces;
+  base::Optional<std::vector<NormalizedRect>> faces;
 
   // The AWB gains and color correction matrix that will be applied to the
   // frame.
@@ -106,17 +107,18 @@ struct AeFrameInfo {
 
   bool HasYuvBuffer() const { return yuv_buffer != nullptr; }
 
+  bool HasFaceInfo() const {
+    // It's okay if there's no face detected.
+    return faces.has_value();
+  }
+
   bool IsValid() const {
     switch (ae_stats_input_mode) {
       case AeStatsInputMode::kFromVendorAeStats:
-        if (use_cros_face_detector) {
-          // Face detector needs YUV buffer.
-          return HasCaptureSettings() && HasYuvBuffer();
-        } else {
-          return HasCaptureSettings();
-        }
+        // Face detector may need to wait for the YUV buffer.
+        return HasCaptureSettings() && HasFaceInfo();
       case AeStatsInputMode::kFromYuvImage:
-        return HasCaptureSettings() && HasYuvBuffer();
+        return HasCaptureSettings() && HasFaceInfo() && HasYuvBuffer();
       default:
         NOTREACHED() << "Invalid AeStatsInputMode";
         return false;

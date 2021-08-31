@@ -125,7 +125,7 @@ AeParameters HdrNetAeDeviceAdapterIpu6::ComputeAeParameters(
       .applied_digital_gain = frame_info.digital_gain,
       .actual_exposure_time_ms = frame_info.exposure_time_ms,
       .sensor_sensitivity = frame_info.estimated_sensor_sensitivity,
-      .faces = frame_info.faces,
+      .faces = *frame_info.faces,
       .exposure_compensation = frame_info.targeted_ae_compensation,
   };
 
