@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/system/context.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
@@ -27,56 +28,64 @@ namespace diagnostics {
 
 Context::Context() = default;
 
-Context::Context(mojo::PlatformChannelEndpoint endpoint,
-                 std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
-    : endpoint_(std::move(endpoint)),
-      udev_monitor_(std::move(udev_monitor)),
-      root_dir_(base::FilePath("/")) {}
-
 Context::~Context() = default;
 
-bool Context::Initialize() {
+std::unique_ptr<Context> Context::Create(
+    mojo::PlatformChannelEndpoint endpoint,
+    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor) {
+  std::unique_ptr<Context> context(new Context());
+
+  // Initiailize static member
+  context->root_dir_ = base::FilePath("/");
+  context->udev_monitor_ = std::move(udev_monitor);
+
   // Create and connect the adapter for the root-level executor.
-  executor_ = std::make_unique<ExecutorAdapterImpl>();
-  executor_->Connect(std::move(endpoint_));
+  context->executor_ = std::make_unique<ExecutorAdapterImpl>();
+  context->executor_->Connect(std::move(endpoint));
 
   // Initialize the D-Bus connection.
-  auto dbus_bus = connection_.Connect();
+  auto dbus_bus = context->connection_.Connect();
   if (!dbus_bus) {
     LOG(ERROR) << "Failed to connect to the D-Bus system bus.";
-    return false;
+    return nullptr;
   }
 
   // Create D-Bus clients:
-  bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus);
-  cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
+  context->bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus);
+  context->cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
-  debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus);
-  debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
+  context->debugd_proxy_ =
+      std::make_unique<org::chromium::debugdProxy>(dbus_bus);
+  context->debugd_adapter_ = std::make_unique<DebugdAdapterImpl>(
       std::make_unique<org::chromium::debugdProxy>(dbus_bus));
-  powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
+  context->powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
-  network_health_adapter_ = std::make_unique<NetworkHealthAdapterImpl>();
-  network_diagnostics_adapter_ =
+  context->network_health_adapter_ =
+      std::make_unique<NetworkHealthAdapterImpl>();
+  context->network_diagnostics_adapter_ =
       std::make_unique<NetworkDiagnosticsAdapterImpl>();
 
   // Create others.
   auto cros_config = std::make_unique<brillo::CrosConfig>();
   if (!cros_config->Init()) {
     LOG(ERROR) << "Unable to initialize cros_config";
-    return false;
+    return nullptr;
   }
-  cros_config_ = std::move(cros_config);
+  context->cros_config_ = std::move(cros_config);
 
-  system_config_ =
-      std::make_unique<SystemConfig>(cros_config_.get(), debugd_adapter_.get());
-  system_utils_ = std::make_unique<SystemUtilitiesImpl>();
-  tick_clock_ = std::make_unique<base::DefaultTickClock>();
-  udev_ = std::make_unique<UdevImpl>();
+  context->system_config_ = std::make_unique<SystemConfig>(
+      context->cros_config_.get(), context->debugd_adapter_.get());
+  context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
+  context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
+  context->udev_ = std::make_unique<UdevImpl>();
 
+  return context;
+}
+
+bool Context::Initialize() {
   return true;
 }
 

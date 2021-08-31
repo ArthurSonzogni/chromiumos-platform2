@@ -42,15 +42,13 @@ namespace diagnostics {
 // the context object is passed.
 class Context {
  public:
-  // The no-arg constructor exists so that MockContext doesn't need to specify a
-  // Mojo endpoint.
-  Context();
-  // All production uses should use this constructor.
-  explicit Context(mojo::PlatformChannelEndpoint endpoint,
-                   std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
   virtual ~Context();
+
+  static std::unique_ptr<Context> Create(
+      mojo::PlatformChannelEndpoint endpoint,
+      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
 
   // Initializes all helper objects in the context. Returns true on success.
   // Must be called before any of the accessors are used.
@@ -108,11 +106,11 @@ class Context {
   UdevInterface* udev() const;
 
  private:
+  Context();
+
+ private:
   // Allows MockContext to override the default helper objects.
   friend class MockContext;
-
-  // Used to connect to the root-level executor via Mojo.
-  mojo::PlatformChannelEndpoint endpoint_;
 
   // This should be the only connection to D-Bus. Use |connection_| to get the
   // |dbus_bus|.

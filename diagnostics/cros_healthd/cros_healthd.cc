@@ -38,9 +38,8 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
 
-  context_ =
-      std::make_unique<Context>(std::move(endpoint), std::move(udev_monitor));
-  CHECK(context_->Initialize()) << "Failed to initialize context.";
+  context_ = Context::Create(std::move(endpoint), std::move(udev_monitor));
+  CHECK(context_) << "Failed to initialize context.";
 
   fetch_aggregator_ = std::make_unique<FetchAggregator>(context_.get());
 
