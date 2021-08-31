@@ -61,6 +61,7 @@ if (use.test) {
       "fingerprint/fp_seed_command_test.cc",
       "get_version_command_test.cc",
       "reboot_command_test.cc",
+      "rwsig_action_command_test.cc",
       "versions_command_test.cc",
     ]
     configs += [
