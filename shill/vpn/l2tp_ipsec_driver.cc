@@ -62,7 +62,6 @@ namespace {
 const char kL2TPIPsecIPsecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
 const char kL2TPIPsecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
 const char kL2TPIPsecLengthBitProperty[] = "L2TPIPsec.LengthBit";
-const char kL2TPIPsecPFSProperty[] = "L2TPIPsec.PFS";
 const char kL2TPIPsecRefusePapProperty[] = "L2TPIPsec.RefusePap";
 const char kL2TPIPsecRekeyProperty[] = "L2TPIPsec.Rekey";
 const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
@@ -115,7 +114,6 @@ const VPNDriver::Property L2TPIPsecDriver::kProperties[] = {
     {kL2TPIPsecIPsecTimeoutProperty, 0},
     {kL2TPIPsecLeftProtoPortProperty, 0},
     {kL2TPIPsecLengthBitProperty, 0},
-    {kL2TPIPsecPFSProperty, 0},
     {kL2TPIPsecRefusePapProperty, 0},
     {kL2TPIPsecRekeyProperty, 0},
     {kL2TPIPsecRequireAuthProperty, 0},
@@ -276,7 +274,6 @@ bool L2TPIPsecDriver::InitOptions(std::vector<std::string>* options,
   AppendValueOption(kL2TPIPsecIPsecTimeoutProperty, "--ipsec_timeout", options);
   AppendValueOption(kL2TPIPsecLeftProtoPortProperty, "--leftprotoport",
                     options);
-  AppendFlag(kL2TPIPsecPFSProperty, "--pfs", "--nopfs", options);
   AppendFlag(kL2TPIPsecRekeyProperty, "--rekey", "--norekey", options);
   AppendValueOption(kL2TPIPsecRightProtoPortProperty, "--rightprotoport",
                     options);
