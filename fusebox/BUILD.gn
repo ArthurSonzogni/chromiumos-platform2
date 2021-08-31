@@ -31,7 +31,10 @@ pkg_config("target_defaults") {
 }
 
 static_library("libfusebox") {
-  sources = []
+  sources = [
+    "util.cc",
+    "util.h",
+  ]
   configs += [ ":target_defaults" ]
   deps = []
 }
