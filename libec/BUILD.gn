@@ -33,6 +33,7 @@ libec_sources = [
   "fingerprint/fp_info_command.cc",
   "fingerprint/fp_mode.cc",
   "fingerprint/fp_seed_command.cc",
+  "get_protocol_info_command.cc",
   "get_version_command.cc",
   "versions_command.cc",
 ]
@@ -59,6 +60,7 @@ if (use.test) {
       "fingerprint/fp_info_command_test.cc",
       "fingerprint/fp_mode_test.cc",
       "fingerprint/fp_seed_command_test.cc",
+      "get_protocol_info_command_test.cc",
       "get_version_command_test.cc",
       "reboot_command_test.cc",
       "rwsig_action_command_test.cc",
