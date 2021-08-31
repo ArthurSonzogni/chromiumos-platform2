@@ -173,7 +173,8 @@ pub fn usb_commands_included() -> bool {
 /// handler needs to be async safe.
 pub unsafe fn set_signal_handlers(signums: &[c_int], handler: extern "C" fn(c_int)) {
     for signum in signums {
-        if register_signal_handler(*signum, handler).is_err() {
+        // Safe as long as handler is async safe.
+        if unsafe { register_signal_handler(*signum, handler) }.is_err() {
             error!("sigaction failed for {}", signum);
         }
     }

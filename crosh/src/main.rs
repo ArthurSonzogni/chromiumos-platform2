@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::env::var;
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
