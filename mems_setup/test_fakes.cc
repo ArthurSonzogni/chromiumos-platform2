@@ -37,6 +37,18 @@ bool FakeDelegate::Exists(const base::FilePath& fp) {
   return existing_files_.count(fp) > 0;
 }
 
+std::vector<base::FilePath> FakeDelegate::EnumerateAllFiles(
+    base::FilePath file_path) {
+  std::vector<base::FilePath> files;
+
+  for (const base::FilePath& file : existing_files_) {
+    if (file_path.IsParent(file))
+      files.push_back(file);
+  }
+
+  return files;
+}
+
 void FakeDelegate::CreateFile(const base::FilePath& fp) {
   existing_files_.emplace(fp);
 }

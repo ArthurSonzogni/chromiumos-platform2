@@ -13,6 +13,7 @@
 
 #include <base/check.h>
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -118,6 +119,20 @@ bool DelegateImpl::CreateDirectory(const base::FilePath& fp) {
 
 bool DelegateImpl::Exists(const base::FilePath& fp) {
   return base::PathExists(fp);
+}
+
+std::vector<base::FilePath> DelegateImpl::EnumerateAllFiles(
+    base::FilePath file_path) {
+  std::vector<base::FilePath> files;
+
+  base::FileEnumerator file_enumerator(file_path, false,
+                                       base::FileEnumerator::FILES);
+
+  for (base::FilePath file = file_enumerator.Next(); !file.empty();
+       file = file_enumerator.Next())
+    files.push_back(file);
+
+  return files;
 }
 
 base::Optional<gid_t> DelegateImpl::FindGroupId(const char* group) {

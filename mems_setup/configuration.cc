@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -19,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <re2/re2.h>
 
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
@@ -615,11 +615,18 @@ bool Configuration::SetupPermissions() {
   base::FilePath sys_dev_path = sensor_->GetPath();
 
   // Files under /sys/bus/iio/devices/iio:deviceX/.
-  auto files = EnumerateAllFiles(sys_dev_path);
+  auto files = delegate_->EnumerateAllFiles(sys_dev_path);
   files_to_set_read_own.insert(files_to_set_read_own.end(), files.begin(),
                                files.end());
+  for (const base::FilePath& file : files) {
+    std::string name = file.BaseName().value();
+    if (RE2::FullMatch(name, "in_.*_sampling_frequency"))
+      files_to_set_write_own.push_back(file);
+  }
+
   // Files under /sys/bus/iio/devices/iio:deviceX/scan_elements/.
-  files = EnumerateAllFiles(sys_dev_path.Append(kScanElementsString));
+  files =
+      delegate_->EnumerateAllFiles(sys_dev_path.Append(kScanElementsString));
   files_to_set_read_own.insert(files_to_set_read_own.end(), files.begin(),
                                files.end());
 
@@ -646,20 +653,6 @@ bool Configuration::SetupPermissions() {
     result &= SetWritePermissionAndOwnership(path);
 
   return result;
-}
-
-std::vector<base::FilePath> Configuration::EnumerateAllFiles(
-    base::FilePath file_path) {
-  std::vector<base::FilePath> files;
-
-  base::FileEnumerator file_enumerator(file_path, false,
-                                       base::FileEnumerator::FILES);
-
-  for (base::FilePath file = file_enumerator.Next(); !file.empty();
-       file = file_enumerator.Next())
-    files.push_back(file);
-
-  return files;
 }
 
 bool Configuration::SetReadPermissionAndOwnership(base::FilePath file_path) {

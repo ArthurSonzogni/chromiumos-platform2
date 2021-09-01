@@ -53,7 +53,6 @@ class Configuration {
   bool EnableCalibration(bool enable);
 
   bool SetupPermissions();
-  std::vector<base::FilePath> EnumerateAllFiles(base::FilePath file_path);
   bool SetReadPermissionAndOwnership(base::FilePath file_path);
   bool SetWritePermissionAndOwnership(base::FilePath file_path);
 

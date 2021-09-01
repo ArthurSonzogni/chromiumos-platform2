@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "mems_setup/delegate.h"
 
@@ -26,6 +27,8 @@ class DelegateImpl : public Delegate {
 
   bool CreateDirectory(const base::FilePath&) override;
   bool Exists(const base::FilePath&) override;
+  std::vector<base::FilePath> EnumerateAllFiles(
+      base::FilePath file_path) override;
 
   base::Optional<gid_t> FindGroupId(const char* group) override;
 

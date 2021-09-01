@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -24,6 +25,8 @@ class Delegate {
 
   virtual bool CreateDirectory(const base::FilePath&) = 0;
   virtual bool Exists(const base::FilePath&) = 0;
+  virtual std::vector<base::FilePath> EnumerateAllFiles(
+      base::FilePath file_path) = 0;
 
   virtual base::Optional<gid_t> FindGroupId(const char* group) = 0;
 

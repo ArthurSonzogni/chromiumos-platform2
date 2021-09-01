@@ -83,7 +83,8 @@ TEST_F(AccelerometerTest, CheckPermissionsAndOwnership) {
                                       base::FILE_PERMISSION_WRITE_BY_GROUP |
                                           base::FILE_PERMISSION_READ_BY_GROUP);
   CheckPermissionsAndOwnershipForFile(sys_dev_path.Append(kFlushString),
-                                      base::FILE_PERMISSION_WRITE_BY_GROUP);
+                                      base::FILE_PERMISSION_WRITE_BY_GROUP |
+                                          base::FILE_PERMISSION_READ_BY_GROUP);
 
 #if USE_IIOSERVICE
   // /dev/iio:deviceX

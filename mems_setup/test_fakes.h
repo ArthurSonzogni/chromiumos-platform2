@@ -39,6 +39,8 @@ class FakeDelegate : public Delegate {
 
   bool CreateDirectory(const base::FilePath&) override;
   bool Exists(const base::FilePath&) override;
+  std::vector<base::FilePath> EnumerateAllFiles(
+      base::FilePath file_path) override;
 
   void CreateFile(const base::FilePath&);
 
