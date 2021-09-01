@@ -11,7 +11,50 @@
 
 namespace rmad {
 
+namespace {
+
 const char kVpdCmdPath[] = "/usr/sbin/vpd";
+
+constexpr char kVpdKeySerialNumber[] = "serial_number";
+constexpr char kVpdKeyWhitelabelTag[] = "whitelabel_tag";
+constexpr char kVpdKeyRegion[] = "region";
+
+}  // namespace
+
+bool VpdUtilsImpl::GetSerialNumber(std::string* serial_number) const {
+  CHECK(serial_number);
+
+  return GetRoVpd(kVpdKeySerialNumber, serial_number);
+}
+
+bool VpdUtilsImpl::GetWhitelabelTag(std::string* whitelabel_tag) const {
+  CHECK(whitelabel_tag);
+
+  // We can allow whitelabel-tag to be empty.
+  if (!GetRoVpd(kVpdKeyWhitelabelTag, whitelabel_tag)) {
+    *whitelabel_tag = "";
+  }
+
+  return true;
+}
+
+bool VpdUtilsImpl::GetRegion(std::string* region) const {
+  CHECK(region);
+
+  return GetRoVpd(kVpdKeyRegion, region);
+}
+
+bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
+  return SetRoVpd(kVpdKeySerialNumber, serial_number);
+}
+
+bool VpdUtilsImpl::SetWhitelabelTag(const std::string& whitelabel_tag) {
+  return SetRoVpd(kVpdKeyWhitelabelTag, whitelabel_tag);
+}
+
+bool VpdUtilsImpl::SetRegion(const std::string& region) {
+  return SetRoVpd(kVpdKeyRegion, region);
+}
 
 bool VpdUtilsImpl::SetRoVpd(const std::string& key, const std::string& value) {
   std::vector<std::string> argv{kVpdCmdPath, "-i", "RO_VPD", "-s",

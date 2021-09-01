@@ -46,6 +46,7 @@ void EnterMinijail() {
   minijail_bind(j.get(), "/run/chromeos-config/v1", "/run/chromeos-config/v1",
                 0);
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
+  minijail_bind(j.get(), "/run/lock", "/run/lock", 1);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/var/lib/devicesettings", "/var/lib/devicesettings",
@@ -56,6 +57,7 @@ void EnterMinijail() {
   minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
   minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
+  minijail_bind(j.get(), "/sys/bus/pci", "/sys/bus/pci", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
@@ -66,8 +68,9 @@ void EnterMinijail() {
   int wpsw_cur;
   if (crossystem_utils.GetInt("wpsw_cur", &wpsw_cur) && wpsw_cur == 0) {
     VLOG(1) << "Hardware write protection off.";
-    minijail_use_caps(
-        j.get(), CAP_TO_MASK(CAP_SYS_RAWIO) | CAP_TO_MASK(CAP_DAC_OVERRIDE));
+    minijail_use_caps(j.get(), CAP_TO_MASK(CAP_SYS_RAWIO) |
+                                   CAP_TO_MASK(CAP_DAC_OVERRIDE) |
+                                   CAP_TO_MASK(CAP_SYS_ADMIN));
     minijail_set_ambient_caps(j.get());
     minijail_bind(j.get(), "/dev/mem", "/dev/mem", 0);
   } else {

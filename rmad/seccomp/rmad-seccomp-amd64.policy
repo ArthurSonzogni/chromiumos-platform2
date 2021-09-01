@@ -86,3 +86,5 @@ exit: 1
 rt_sigreturn: 1
 clock_getres: 1
 fstatfs: 1
+pread64: 1
+umask: 1

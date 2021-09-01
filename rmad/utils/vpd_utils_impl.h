@@ -19,6 +19,14 @@ class VpdUtilsImpl : public VpdUtils {
   VpdUtilsImpl() = default;
   ~VpdUtilsImpl() = default;
 
+  bool GetSerialNumber(std::string* serial_number) const override;
+  bool GetWhitelabelTag(std::string* whitelabel_tag) const override;
+  bool GetRegion(std::string* region) const override;
+  bool SetSerialNumber(const std::string& serial_number) override;
+  bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
+  bool SetRegion(const std::string& region) override;
+
+ protected:
   bool SetRoVpd(const std::string& key, const std::string& value) override;
   bool GetRoVpd(const std::string& key, std::string* value) const override;
   bool SetRwVpd(const std::string& key, const std::string& value) override;

@@ -18,6 +18,14 @@ class MockVpdUtils : public VpdUtils {
   MockVpdUtils() = default;
   ~MockVpdUtils() override = default;
 
+  MOCK_METHOD(bool, GetSerialNumber, (std::string*), (const, override));
+  MOCK_METHOD(bool, GetWhitelabelTag, (std::string*), (const, override));
+  MOCK_METHOD(bool, GetRegion, (std::string*), (const, override));
+  MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
+  MOCK_METHOD(bool, SetWhitelabelTag, (const std::string&), (override));
+  MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
+
+ protected:
   MOCK_METHOD(bool,
               SetRoVpd,
               (const std::string&, const std::string&),
