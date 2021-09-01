@@ -148,7 +148,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       get_internal_camera_id_callback_(get_internal_camera_id_callback),
       get_public_camera_id_callback_(get_public_camera_id_callback),
       close_callback_(close_callback),
-      device_closed_(false),
+      close_called_(false),
       camera_device_(camera_device),
       device_api_version_(device_api_version),
       static_info_(static_info),
@@ -623,12 +623,15 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 int32_t CameraDeviceAdapter::Close() {
   // Close the device.
   VLOGF_ENTER();
-  if (device_closed_) {
-    return 0;
+  {
+    base::AutoLock l(close_lock_);
+    if (close_called_) {
+      return 0;
+    }
+    close_called_ = true;
   }
   reprocess_effect_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
-  device_closed_ = true;
   DCHECK_EQ(ret, 0);
   {
     base::AutoLock l(fence_sync_thread_lock_);

@@ -7,7 +7,6 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
-#include <atomic>
 #include <deque>
 #include <map>
 #include <memory>
@@ -241,11 +240,13 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The callback to run when the device is closed.
   base::Callback<void()> close_callback_;
 
-  // Set when the camera device is closed. No more calls to the device APIs may
-  // be made once |device_closed_| is set.
-  // Atomic since Close() can be called in |camera_device_ops_thread_| or in
-  // main thread.
-  std::atomic<bool> device_closed_;
+  // Since Close() can be called in |camera_device_ops_thread_| or in
+  // main thread, use lock to protect |close_called_|.
+  base::Lock close_lock_;
+
+  // Set when Close() is called. No more calls to the device APIs may be
+  // made once |close_called_| is set.
+  bool close_called_ GUARDED_BY(close_lock_);
 
   // The real camera device.
   camera3_device_t* camera_device_;
