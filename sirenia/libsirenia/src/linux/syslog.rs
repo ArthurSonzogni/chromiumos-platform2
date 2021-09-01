@@ -162,7 +162,7 @@ pub(crate) mod tests {
     fn syslog_overflow() {
         let log_path = Syslog::get_test_log_path();
         let _test_path = ScopedPath::create(log_path.parent().unwrap()).unwrap();
-        let message: Vec<u8> = vec![' ' as u8; MAX_MESSAGE + 1];
+        let message: Vec<u8> = vec![b' '; MAX_MESSAGE + 1];
         let receiver = get_test_receiver();
         let mut syslog = Syslog::new(log_path.clone(), receiver.clone()).unwrap();
         assert!(log_path.exists());

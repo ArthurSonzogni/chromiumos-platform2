@@ -182,7 +182,7 @@ mod tests {
     }
 
     fn get_counted_mock_exit(expected: i32) -> (Rc<RefCell<usize>>, impl Fn(i32)) {
-        let counter = Rc::new(RefCell::new(0 as usize));
+        let counter = Rc::new(RefCell::new(0usize));
         (counter.clone(), move |code: i32| {
             assert_eq!(code, expected);
             *counter.borrow_mut() += 1;

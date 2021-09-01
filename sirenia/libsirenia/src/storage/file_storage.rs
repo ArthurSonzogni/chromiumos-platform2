@@ -98,7 +98,7 @@ mod test {
 
     impl TestFileStorage {
         fn new() -> Self {
-            let storage_root = ScopedPath::create(get_temp_path(None).to_path_buf()).unwrap();
+            let storage_root = ScopedPath::create(get_temp_path(None)).unwrap();
             let storage = FileStorage::new(storage_root.to_path_buf()).unwrap();
             TestFileStorage {
                 storage_root,
@@ -127,7 +127,7 @@ mod test {
 
     #[test]
     fn storage_new_notexist() {
-        assert!(FileStorage::new(get_temp_path(None).to_path_buf()).is_err());
+        assert!(FileStorage::new(get_temp_path(None)).is_err());
     }
 
     #[test]

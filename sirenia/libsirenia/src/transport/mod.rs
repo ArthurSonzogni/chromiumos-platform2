@@ -712,7 +712,7 @@ pub mod tests {
 
     #[test]
     fn iptransport() {
-        let (server, mut client) = get_ip_transport().unwrap().into();
+        let (server, mut client) = get_ip_transport().unwrap();
         client.bind().unwrap();
         test_transport(server, client);
     }
@@ -787,7 +787,7 @@ pub mod tests {
     fn parse_ip_connection_valid() {
         let exp_socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1)), 1234);
         let exp_result = TransportType::IpConnection(exp_socket);
-        let act_result = parse_ip_connection(&IP_ADDR).unwrap();
+        let act_result = parse_ip_connection(IP_ADDR).unwrap();
         assert_eq!(act_result, exp_result);
     }
 
@@ -823,7 +823,7 @@ pub mod tests {
     #[test]
     fn parse_connection_empty() {
         let value = "";
-        let act_result = TransportType::from_str(&value);
+        let act_result = TransportType::from_str(value);
         match &act_result {
             Err(Error::UriParse) => (),
             _ => panic!("Got unexpected result: {:?}", &act_result),
@@ -833,7 +833,7 @@ pub mod tests {
     #[test]
     fn parse_unknown_connection_type_error() {
         let value = "foo://foo";
-        let act_result = TransportType::from_str(&value);
+        let act_result = TransportType::from_str(value);
         match &act_result {
             Err(Error::UnknownTransportType) => (),
             _ => panic!("Got unexpected result: {:?}", &act_result),
@@ -863,7 +863,7 @@ pub mod tests {
     #[test]
     fn parse_ip_connection_implicit_invalid() {
         let value = "foo";
-        let act_result = TransportType::from_str(&value);
+        let act_result = TransportType::from_str(value);
         match &act_result {
             Err(Error::SocketAddrParse(_)) => (),
             _ => panic!("Got unexpected result: {:?}", &act_result),
@@ -875,7 +875,7 @@ pub mod tests {
         let exp_socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1)), 1234);
         let exp_result = TransportType::IpConnection(exp_socket);
         let value = IP_ADDR;
-        let act_result = TransportType::from_str(&value).unwrap();
+        let act_result = TransportType::from_str(value).unwrap();
         assert_eq!(act_result, exp_result);
     }
 }

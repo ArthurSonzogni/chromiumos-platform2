@@ -93,7 +93,7 @@ mod tests {
         let exp_result = CommonConfig {
             connection_type: TransportType::IpConnection(exp_socket),
         };
-        let value: [String; 2] = ["-U".to_string(), get_test_ip_uri().to_string()];
+        let value: [String; 2] = ["-U".to_string(), get_test_ip_uri()];
         let (act_result, _) = initialize_common_arguments(Options::new(), &value).unwrap();
         assert_eq!(act_result, exp_result);
     }

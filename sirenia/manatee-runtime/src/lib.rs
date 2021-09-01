@@ -197,7 +197,7 @@ mod tests {
         let id = TEST_ID;
         let s = get_test_value();
         if write_back {
-            store.write_data::<String>(&id, &s).unwrap();
+            store.write_data::<String>(id, &s).unwrap();
         }
         (store, id.to_string(), s)
     }
@@ -280,19 +280,19 @@ mod tests {
         let mut store = MockStorage::new();
         let id = "id";
         let map = Map::new();
-        store.write_data::<Map<String, String>>(&id, &map).unwrap();
+        store.write_data::<Map<String, String>>(id, &map).unwrap();
 
         {
             let fun = |_h: &str| panic!();
             let key = "key";
             let value = "value";
             let mut kvstore: ExclusiveScopedKeyValueStore<String, MockStorage> =
-                ScopedKeyValueStore::new(&mut store, &id, fun).unwrap();
+                ScopedKeyValueStore::new(&mut store, id, fun).unwrap();
             kvstore.as_mut().insert(key.to_string(), value.to_string());
             assert!(kvstore.as_mut().contains_key(key));
         }
 
-        let res_map = store.read_data::<Map<String, String>>(&id).unwrap();
+        let res_map = store.read_data::<Map<String, String>>(id).unwrap();
         assert!(res_map.contains_key("key"));
         assert_eq!("value", res_map.get("key").unwrap())
     }
