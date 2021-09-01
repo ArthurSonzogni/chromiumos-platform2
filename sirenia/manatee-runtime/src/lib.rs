@@ -4,6 +4,8 @@
 
 //! API endpoint library for the TEE apps to communicate with Trichechus.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::BTreeMap as Map;
 use std::fmt::{self, Debug, Display};

@@ -4,6 +4,8 @@
 
 //! Validate or convert TEE app configuration files.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::collections::BTreeSet as Set;
 use std::env::args;
 use std::fs::File;

@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/// Demo application for use with the sirenia tast test.
+//! Demo application for use with the sirenia tast test.
+
+#![deny(unsafe_op_in_unsafe_fn)]
+
 // Needed for borrowing scoped data to use.
 use std::borrow::{Borrow, BorrowMut};
 use std::io;

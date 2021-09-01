@@ -4,6 +4,8 @@
 
 //! The client binary for interacting with ManaTEE from command line on Chrome OS.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::env;
 use std::fs::File;
 use std::io::{self, copy, stdin, stdout, BufRead, BufReader, Read, Write};

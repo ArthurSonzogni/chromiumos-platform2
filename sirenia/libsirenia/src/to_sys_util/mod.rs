@@ -60,7 +60,8 @@ pub fn unblock_all_signals() {
 /// into the child process. The child should explicitly close any file
 /// descriptors that are not intended to be kept open.
 pub unsafe fn fork() -> Result<i32, io::Error> {
-    let ret: c_int = libc::fork();
+    // Safe if the conditions for calling the outer function are met.
+    let ret: c_int = unsafe { libc::fork() };
     if ret < 0 {
         Err(io::Error::last_os_error())
     } else {

@@ -5,6 +5,8 @@
 //! Ties together the various modules that make up the Sirenia library used by
 //! both Trichechus and Dugong.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 pub mod build_info {
     include!(concat!(env!("OUT_DIR"), "/build_info.rs"));
 }

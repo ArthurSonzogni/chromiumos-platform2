@@ -528,9 +528,11 @@ impl PartialEq for PipeTransportState {
 pub unsafe fn create_transport_from_default_fds() -> Result<Transport> {
     let (r, w): (RawFd, RawFd) = (DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD);
     let id = (r, w);
+    // Safe if only called once because DEFAULT_CONNECTION_R_FD and DEFAULT_CONNECTION_W_FD are
+    // inherited file descriptors that are not owned yet.
     Ok(Transport {
-        r: Box::new(File::from_raw_fd(DEFAULT_CONNECTION_R_FD)),
-        w: Box::new(File::from_raw_fd(DEFAULT_CONNECTION_W_FD)),
+        r: Box::new(unsafe { File::from_raw_fd(DEFAULT_CONNECTION_R_FD) }),
+        w: Box::new(unsafe { File::from_raw_fd(DEFAULT_CONNECTION_W_FD) }),
         id: TransportType::from(id),
     })
 }

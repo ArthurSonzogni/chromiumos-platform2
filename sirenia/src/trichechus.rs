@@ -4,6 +4,8 @@
 
 //! A TEE application life-cycle manager.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::env;

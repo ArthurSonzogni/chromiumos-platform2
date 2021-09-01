@@ -4,6 +4,8 @@
 
 //! The broker daemon that supports Trichecus from within the Chrome OS guest machine.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use std::cell::RefCell;
 use std::env;
 use std::fmt::{self, Debug, Formatter};
