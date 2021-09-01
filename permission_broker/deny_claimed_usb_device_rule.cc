@@ -182,6 +182,8 @@ bool IsDeviceAllowedSerial(udev_device* device) {
   // grep -o -E  "vid\..*=(0x.*)" *boards.txt | sed "s/vid\..=//g" | sort -f | \
   // uniq -i
   const DevicePolicy::UsbDeviceId kAllowedIds[] = {
+      {0x0d28, 0x0204},  // BBC micro:bit
+
       {0x2341, 0},  // Arduino
       {0x1b4f, 0},  // Sparkfun
       {0x239a, 0},  // Adafruit
