@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/posix/unix_domain_socket.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
@@ -30,8 +32,21 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
     // This causes current fuzzer process to exit permanently.
     return;
   }
-  base::UnixDomainSocket::SendMsg(writer_fd.get(), data, size,
-                                  std::vector<int>());
+
+  base::ScopedTempDir temp_dir;
+  if (!temp_dir.CreateUniqueTempDir()) {
+    LOG(FATAL) << "Failed to create temporary directory.";
+  }
+
+  // Create temporary file to ingest as payload into control message.
+  base::FilePath temp_file;
+  base::ScopedFD fd =
+      CreateAndOpenFdForTemporaryFileInDir(temp_dir.GetPath(), &temp_file);
+  if (!fd.is_valid()) {
+    LOG(FATAL) << "Failed to create temporary file.";
+  }
+
+  base::UnixDomainSocket::SendMsg(writer_fd.get(), data, size, {fd.get()});
   helper_process_receiver.OnCommandReady();
 }
 
