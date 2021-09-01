@@ -9,8 +9,12 @@
 
 #include <base/callback.h>
 #include <base/check.h>
+#include <base/time/time.h>
 #include <brillo/errors/error.h>
+#include <dbus/object_proxy.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "diagnostics/common/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
@@ -18,7 +22,66 @@ namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
+// Tpm manager and attestation require a long timeout.
+const int64_t DBUS_TIMEOUT_MS =
+    base::TimeDelta::FromMinutes(2).InMilliseconds();
+
+mojo_ipc::TpmGSCVersion GetGscVersion(
+    const tpm_manager::GetVersionInfoReply& reply) {
+  switch (reply.gsc_version()) {
+    case tpm_manager::GSC_VERSION_NOT_GSC:
+      return mojo_ipc::TpmGSCVersion::kNotGSC;
+    case tpm_manager::GSC_VERSION_CR50:
+      return mojo_ipc::TpmGSCVersion::kCr50;
+    case tpm_manager::GSC_VERSION_TI50:
+      return mojo_ipc::TpmGSCVersion::kTi50;
+  }
+}
+
 }  // namespace
+
+void TpmFetcher::FetchVersion() {
+  tpm_manager::GetVersionInfoRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&TpmFetcher::HandleVersion, weak_factory_.GetWeakPtr()));
+  context_->tpm_manager_proxy()->GetVersionInfoAsync(
+      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
+}
+
+void TpmFetcher::HandleVersion(brillo::Error* err,
+                               const tpm_manager::GetVersionInfoReply& reply) {
+  DCHECK(info_);
+  if (err) {
+    SendError("Failed to call TpmManager::GetVersionInfo(): " +
+              err->GetMessage());
+    return;
+  }
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    SendError("TpmManager::GetVersionInfo() returned error status: " +
+              std::to_string(reply.status()));
+    return;
+  }
+  auto version = mojo_ipc::TpmVersion::New();
+  version->gsc_version = GetGscVersion(reply);
+  version->family = reply.family();
+  version->spec_level = reply.spec_level();
+  version->manufacturer = reply.manufacturer();
+  version->tpm_model = reply.tpm_model();
+  version->firmware_version = reply.firmware_version();
+  version->vendor_specific = reply.vendor_specific().empty()
+                                 ? base::nullopt
+                                 : base::make_optional(reply.vendor_specific());
+  info_->version = std::move(version);
+  CheckAndSendInfo();
+}
+
+void TpmFetcher::CheckAndSendInfo() {
+  DCHECK(info_);
+  if (!info_->version) {
+    return;
+  }
+  SendResult(mojo_ipc::TpmResult::NewTpmInfo(std::move(info_)));
+}
 
 void TpmFetcher::SendError(const std::string& message) {
   SendResult(mojo_ipc::TpmResult::NewError(CreateAndLogProbeError(
@@ -46,7 +109,7 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
     return;
 
   info_ = mojo_ipc::TpmInfo::New();
-  SendError("Not implemented.");
+  FetchVersion();
 }
 
 }  // namespace diagnostics

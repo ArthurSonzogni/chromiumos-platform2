@@ -776,6 +776,8 @@ struct UsbBusInterfaceInfo {
   string? driver;
 };
 
+// TPM probe result. Can either be populated with the TpmInfo or an error
+// retrieving the information.
 union TpmResult {
   // Valid TpmInfo.
   TpmInfo tpm_info;
@@ -785,6 +787,39 @@ union TpmResult {
 
 // Information of the Trusted Platform Module(TPM).
 struct TpmInfo {
+  // TPM version related information.
+  TpmVersion version;
+};
+
+// The version of Google security chip(GSC).
+[Extensible]
+enum TpmGSCVersion {
+  // For the devices which cannot be classified.
+  kNotGSC = 0,
+  // Devices with Cr50 firmware.
+  kCr50,
+  // Devices with Ti50 firmware.
+  kTi50,
+};
+
+// TPM version related information.
+struct TpmVersion {
+  // GSC version.
+  TpmGSCVersion gsc_version;
+  // TPM family. We use the TPM 2.0 style encoding, e.g.:
+  //  * TPM 1.2: "1.2" -> 0x312e3200
+  //  * TPM 2.0: "2.0" -> 0x322e3000
+  uint32 family;
+  // TPM spec level.
+  uint64 spec_level;
+  // Manufacturer code.
+  uint32 manufacturer;
+  // TPM model number.
+  uint32 tpm_model;
+  // Firmware version.
+  uint64 firmware_version;
+  // Vendor specific information.
+  string? vendor_specific;
 };
 
 // A collection of all the device's telemetry information that cros_healthd is

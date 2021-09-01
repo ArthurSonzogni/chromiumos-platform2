@@ -10,6 +10,7 @@
 
 #include <base/callback_forward.h>
 #include <base/memory/weak_ptr.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "mojo/cros_healthd_probe.mojom.h"
@@ -27,6 +28,10 @@ class TpmFetcher final : public BaseFetcher {
   void FetchTpmInfo(FetchTpmInfoCallback&& callback);
 
  private:
+  void FetchVersion();
+  void HandleVersion(brillo::Error* err,
+                     const tpm_manager::GetVersionInfoReply& reply);
+  void CheckAndSendInfo();
   void SendError(const std::string& message);
   void SendResult(chromeos::cros_healthd::mojom::TpmResultPtr result);
 
