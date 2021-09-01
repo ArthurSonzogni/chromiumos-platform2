@@ -13,7 +13,7 @@ using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::CreateErrorWrap;
+using hwsec_foundation::error::WrapError;
 namespace cryptohome {
 
 CryptohomeKeyLoader::CryptohomeKeyLoader(Tpm* tpm,
@@ -41,8 +41,7 @@ TPMErrorBase CryptohomeKeyLoader::LoadCryptohomeKey(
         LOG(INFO) << "Using legacy upgrade path: " << *err;
         goto legacy_upgrade_path;
       }
-      return CreateErrorWrap<TPMError>(std::move(err),
-                                       "Failed to load wrapped key");
+      return WrapError<TPMError>(std::move(err), "Failed to load wrapped key");
     }
     return nullptr;
   }

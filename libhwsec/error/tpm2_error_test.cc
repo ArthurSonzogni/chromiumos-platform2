@@ -15,10 +15,10 @@ namespace hwsec {
 namespace error {
 
 using ::hwsec_foundation::error::CreateError;
-using ::hwsec_foundation::error::CreateErrorWrap;
 using ::hwsec_foundation::error::ErrorBase;
+using ::hwsec_foundation::error::WrapError;
 using ::hwsec_foundation::error::testing::TestForCreateError;
-using ::hwsec_foundation::error::testing::TestForCreateErrorWrap;
+using ::hwsec_foundation::error::testing::TestForWrapError;
 
 class TestingTPM2ErrorTest : public ::testing::Test {
  public:
@@ -36,42 +36,42 @@ TEST_F(TestingTPM2ErrorTest, CreateTPMErrorTest) {
   EXPECT_NE(nullptr, err);
 }
 
-TEST_F(TestingTPM2ErrorTest, TestForCreateErrorWrap) {
-  EXPECT_FALSE((TestForCreateErrorWrap<ErrorBase, ErrorBase>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<ErrorBase, ErrorBase,
-                                       trunks::TPM_RC>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<ErrorBase, ErrorBase, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<ErrorBase, TPM2Error>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<ErrorBase, TPM2Error,
-                                       trunks::TPM_RC>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<ErrorBase, TPM2Error, std::string>::Check::value));
+TEST_F(TestingTPM2ErrorTest, TestForWrapError) {
+  EXPECT_FALSE((TestForWrapError<ErrorBase, ErrorBase>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<ErrorBase, ErrorBase, trunks::TPM_RC>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<ErrorBase, ErrorBase, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<ErrorBase, TPM2Error>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<ErrorBase, TPM2Error, trunks::TPM_RC>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<ErrorBase, TPM2Error, std::string>::Check::value));
 
-  EXPECT_FALSE((TestForCreateErrorWrap<TPM2Error, ErrorBase>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TPM2Error, ErrorBase,
-                                      trunks::TPM_RC>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<TPM2Error, ErrorBase, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TPM2Error, TPM2Error>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TPM2Error, TPM2Error,
-                                      trunks::TPM_RC>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<TPM2Error, TPM2Error, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TPM2Error, ErrorBase>::Check::value));
+  EXPECT_TRUE(
+      (TestForWrapError<TPM2Error, ErrorBase, trunks::TPM_RC>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<TPM2Error, ErrorBase, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TPM2Error, TPM2Error>::Check::value));
+  EXPECT_TRUE(
+      (TestForWrapError<TPM2Error, TPM2Error, trunks::TPM_RC>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<TPM2Error, TPM2Error, std::string>::Check::value));
 
-  EXPECT_FALSE((TestForCreateErrorWrap<TPMError, TPM2Error>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TPMError, TPM2Error,
-                                       trunks::TPM_RC>::Check::value));
-  EXPECT_TRUE((
-      TestForCreateErrorWrap<TPMError, TPM2Error, const char[]>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TPMError, TPM2Error, const char[],
-                                      TPMRetryAction>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TPMError, TPM2Error>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<TPMError, TPM2Error, trunks::TPM_RC>::Check::value));
+  EXPECT_TRUE(
+      (TestForWrapError<TPMError, TPM2Error, const char[]>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TPMError, TPM2Error, const char[],
+                                TPMRetryAction>::Check::value));
 }
 
 TEST_F(TestingTPM2ErrorTest, TPMRetryAction) {
   auto err = CreateError<TPM2Error>(trunks::TPM_RC_HANDLE | trunks::TPM_RC_1);
   EXPECT_EQ(err->ToTPMRetryAction(), TPMRetryAction::kLater);
-  auto err2 = CreateErrorWrap<TPMError>(std::move(err), "OuO|||");
+  auto err2 = WrapError<TPMError>(std::move(err), "OuO|||");
   std::stringstream ss;
   ss << *err2;
   EXPECT_EQ("OuO|||: TPM2 error 0x18b (Handle 1: TPM_RC_HANDLE)", ss.str());

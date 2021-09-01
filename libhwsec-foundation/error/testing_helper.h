@@ -98,24 +98,24 @@ struct TestForCreateError {
   using Check = CheckImpl<ErrorType, void, Args...>;
 };
 
-// Test helpers for CreateErrorWrap.
+// Test helpers for WrapError.
 template <typename ErrorType, typename ErrorType2, typename... Args>
-struct TestForCreateErrorWrap {
-  // primary template handles types that can't "CreateErrorWrap".
+struct TestForWrapError {
+  // primary template handles types that can't "WrapError".
   template <typename InnerErrorType,
             typename InnerErrorType2,
             typename = void,
             typename... InnerArgs>
   struct CheckImpl : std::false_type {};
 
-  // specialization recognizes types that can "CreateErrorWrap".
+  // specialization recognizes types that can "WrapError".
   template <typename InnerErrorType,
             typename InnerErrorType2,
             typename... InnerArgs>
   struct CheckImpl<
       InnerErrorType,
       InnerErrorType2,
-      std::void_t<decltype(CreateErrorWrap<InnerErrorType>(
+      std::void_t<decltype(WrapError<InnerErrorType>(
           std::declval<InnerErrorType2>(), std::declval<InnerArgs>()...))>,
       InnerArgs...> : std::true_type {};
 

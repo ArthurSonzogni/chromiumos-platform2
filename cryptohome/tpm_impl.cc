@@ -63,7 +63,7 @@ using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec::overalls::GetOveralls;
 using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::CreateErrorWrap;
+using hwsec_foundation::error::WrapError;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -333,14 +333,13 @@ TPMErrorBase TpmImpl::IsSrkRocaVulnerable(bool* result) {
   }
   ScopedTssKey srk_handle(tpm_context_);
   if (TPM1Error err = LoadSrk(tpm_context_, srk_handle.ptr())) {
-    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK");
+    return WrapError<TPMError>(std::move(err), "Failed to load SRK");
   }
   unsigned public_srk_size;
   ScopedTssMemory public_srk_bytes(tpm_context_);
   if (auto err = CreateError<TPM1Error>(Tspi_Key_GetPubKey(
           srk_handle, &public_srk_size, public_srk_bytes.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Failed to get SRK public key");
+    return WrapError<TPMError>(std::move(err), "Failed to get SRK public key");
   }
   crypto::ScopedRSA public_srk = ParseRsaFromTpmPubkeyBlob(Blob(
       public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
@@ -477,8 +476,8 @@ TPMErrorBase TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
   SecureBlob pubkey;
   if (TPM1Error err =
           GetPublicKeyBlob(tpm_context_.value(), key_handle, &pubkey)) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Failed to get TPM public key hash");
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to get TPM public key hash");
   }
   *hash = Sha1(pubkey);
   return nullptr;
@@ -493,8 +492,8 @@ TPMErrorBase TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
           tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
           enc_handle.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Context_CreateObject");
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Context_CreateObject");
   }
 
   // TODO(fes): Check RSA key modulus size, return an error or block input
@@ -502,16 +501,14 @@ TPMErrorBase TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   if (auto err = CreateError<TPM1Error>(
           Tspi_Data_Bind(enc_handle, key_handle, plaintext.size(),
                          const_cast<BYTE*>(plaintext.data())))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Data_Bind");
+    return WrapError<TPMError>(std::move(err), "Error calling Tspi_Data_Bind");
   }
 
   SecureBlob enc_data_blob;
   if (TPM1Error err = GetDataAttribute(
           tpm_context_.value(), enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
           TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_blob)) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Failed to read encrypted blob");
+    return WrapError<TPMError>(std::move(err), "Failed to read encrypted blob");
   }
   if (!ObscureRsaMessage(enc_data_blob, key, ciphertext)) {
     return CreateError<TPMError>("Error obscuring message",
@@ -536,24 +533,24 @@ TPMErrorBase TpmImpl::DecryptBlob(
   if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
           tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
           enc_handle.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Context_CreateObject");
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Context_CreateObject");
   }
 
   if (auto err = CreateError<TPM1Error>(
           Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, local_data.size(),
                              local_data.data()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_SetAttribData");
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_SetAttribData");
   }
 
   ScopedTssMemory dec_data(tpm_context_.value());
   UINT32 dec_data_length = 0;
   if (auto err = CreateError<TPM1Error>(Tspi_Data_Unbind(
           enc_handle, key_handle, &dec_data_length, dec_data.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Data_Unbind");
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Data_Unbind");
   }
 
   plaintext->resize(dec_data_length);
@@ -612,8 +609,8 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
-    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK",
-                                     TPMRetryAction::kNoRetry);
+    return WrapError<TPMError>(std::move(err), "Failed to load SRK",
+                               TPMRetryAction::kNoRetry);
   }
 
   // Create a PCRS object.
@@ -621,9 +618,9 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   if (auto err = CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
                                     TSS_PCRS_STRUCT_INFO, pcrs_handle.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Context_CreateObject",
-                                     TPMRetryAction::kNoRetry);
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Context_CreateObject",
+                               TPMRetryAction::kNoRetry);
   }
 
   // Process the data from pcr_map.
@@ -635,8 +632,7 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
       ScopedTssMemory pcr_value(context_handle);
       if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
               tpm_handle, pcr_index, &pcr_len, pcr_value.ptr()))) {
-        return CreateErrorWrap<TPMError>(std::move(err),
-                                         "Could not read PCR value");
+        return WrapError<TPMError>(std::move(err), "Could not read PCR value");
       }
       Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, pcr_len,
                                     pcr_value.value());
@@ -658,9 +654,8 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   if (auto err = CreateError<TPM1Error>(
           Tspi_Data_Seal(enc_handle, srk_handle, plaintext.size(),
                          const_cast<BYTE*>(plaintext.data()), pcrs_handle))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Data_Seal",
-                                     TPMRetryAction::kNoRetry);
+    return WrapError<TPMError>(std::move(err), "Error calling Tspi_Data_Seal",
+                               TPMRetryAction::kNoRetry);
   }
 
   // Extract the sealed value.
@@ -669,9 +664,9 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   if (auto err = CreateError<TPM1Error>(Tspi_GetAttribData(
           enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
           TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length, enc_data.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_GetAttribData",
-                                     TPMRetryAction::kNoRetry);
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_GetAttribData",
+                               TPMRetryAction::kNoRetry);
   }
   sealed_data->assign(&enc_data.value()[0], &enc_data.value()[enc_data_length]);
 
@@ -705,8 +700,8 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
   if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
-    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK",
-                                     TPMRetryAction::kNoRetry);
+    return WrapError<TPMError>(std::move(err), "Failed to load SRK",
+                               TPMRetryAction::kNoRetry);
   }
 
   // Create an ENCDATA object with the sealed value.
@@ -721,8 +716,8 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
           Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_data.size(),
                              const_cast<BYTE*>(sealed_data.data())))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_SetAttribData");
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_SetAttribData");
   }
 
   // Unseal using the SRK.
@@ -730,8 +725,8 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
   UINT32 dec_data_length = 0;
   if (auto err = CreateError<TPM1Error>(Tspi_Data_Unseal(
           enc_handle, srk_handle, &dec_data_length, dec_data.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error calling Tspi_Data_Unseal");
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Data_Unseal");
   }
   plaintext->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
   brillo::SecureClearBytes(dec_data.value(), dec_data_length);
@@ -950,8 +945,7 @@ TPMErrorBase TpmImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
 TPMErrorBase TpmImpl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
   brillo::SecureBlob blob(length);
   if (TPMErrorBase err = GetRandomDataSecureBlob(length, &blob)) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "GetRandomDataBlob failed");
+    return WrapError<TPMError>(std::move(err), "GetRandomDataBlob failed");
   }
   data->assign(blob.begin(), blob.end());
   return nullptr;
@@ -975,8 +969,8 @@ TPMErrorBase TpmImpl::GetRandomDataSecureBlob(size_t length,
   ScopedTssMemory tpm_data(context_handle);
   if (auto err = CreateError<TPM1Error>(
           Tspi_TPM_GetRandom(tpm_handle, random.size(), tpm_data.ptr()))) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Could not get random data from the TPM");
+    return WrapError<TPMError>(std::move(err),
+                               "Could not get random data from the TPM");
   }
   memcpy(random.data(), tpm_data.value(), random.size());
   brillo::SecureClearBytes(tpm_data.value(), random.size());
@@ -1849,7 +1843,7 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
     if (err->ErrorCode() != kKeyNotFoundError) {
       ReportCryptohomeError(kCannotLoadTpmSrk);
     }
-    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load SRK");
+    return WrapError<TPMError>(std::move(err), "Failed to load SRK");
   }
 
   // Make sure we can get the public key for the SRK.  If not, then the TPM
@@ -1859,8 +1853,7 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
     if (TPM1Error err =
             GetPublicKeyBlob(tpm_context_.value(), srk_handle, &pubkey)) {
       ReportCryptohomeError(kCannotReadTpmSrkPublic);
-      return CreateErrorWrap<TPMError>(std::move(err),
-                                       "Cannot load SRK public key");
+      return WrapError<TPMError>(std::move(err), "Cannot load SRK public key");
     }
   }
   TpmKeyHandle local_key_handle;
@@ -1871,8 +1864,7 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
     if (err->ErrorCode() == TPM_E_BAD_KEY_PROPERTY) {
       ReportCryptohomeError(kTpmBadKeyProperty);
     }
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Cannot load key from blob");
+    return WrapError<TPMError>(std::move(err), "Cannot load key from blob");
   }
 
   SecureBlob pub_key;
@@ -1881,8 +1873,8 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
           GetPublicKeyBlob(tpm_context_.value(), local_key_handle, &pub_key)) {
     ReportCryptohomeError(kCannotReadTpmPublicKey);
     Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Cannot get public key from blob");
+    return WrapError<TPMError>(std::move(err),
+                               "Cannot get public key from blob");
   }
   key_handle->reset(this, local_key_handle);
   return nullptr;

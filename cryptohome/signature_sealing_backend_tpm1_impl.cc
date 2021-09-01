@@ -42,7 +42,7 @@ using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::CreateErrorWrap;
+using hwsec_foundation::error::WrapError;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -1017,7 +1017,7 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   // Load the required keys into Trousers.
   ScopedTssKey srk_handle(tpm_context);
   if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
-    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load the SRK");
+    return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   int protection_key_size_bits = 0;
   ScopedTssKey protection_key_handle(tpm_context);
@@ -1092,14 +1092,13 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   brillo::SecureBlob auth_value;
   if (TPMErrorBase err =
           tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Failed to get auth value");
+    return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
   if (TPMErrorBase err = tpm_->UnsealWithAuthorization(
           base::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
           {} /* pcr_map */, unsealed_value)) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Failed to unseal the secret value");
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to unseal the secret value");
   }
   return nullptr;
 }
@@ -1170,7 +1169,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Load the SRK.
   ScopedTssKey srk_handle(tpm_context);
   if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
-    return CreateErrorWrap<TPMError>(std::move(err), "Failed to load the SRK");
+    return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   // Generate the Certified Migratable Key, associated with the protection
   // public key (via the TPM_MSA_COMPOSITE digest). Obtain the resulting wrapped
@@ -1188,8 +1187,8 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   SecureBlob auth_data;
   if (TPMErrorBase err =
           tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data)) {
-    return CreateErrorWrap<TPMError>(
-        std::move(err), "Failed to generate the authorization data");
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to generate the authorization data");
   }
   DCHECK_EQ(auth_data.size(), kAuthDataSizeBytes);
   // Encrypt the AuthData value.
@@ -1208,8 +1207,8 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Generate the secret value randomly.
   if (TPMErrorBase err =
           tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Error generating random secret");
+    return WrapError<TPMError>(std::move(err),
+                               "Error generating random secret");
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Bind the secret value to each of the specified sets of PCR restrictions.
@@ -1228,13 +1227,12 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     brillo::SecureBlob auth_value;
     if (TPMErrorBase err =
             tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-      return CreateErrorWrap<TPMError>(std::move(err),
-                                       "Failed to get auth value");
+      return WrapError<TPMError>(std::move(err), "Failed to get auth value");
     }
     if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
             *secret_value, auth_data, pcr_values_strings,
             &pcr_bound_secret_value)) {
-      return CreateErrorWrap<TPMError>(
+      return WrapError<TPMError>(
           std::move(err),
           "Error binding the secret value to PCRs and authorization data");
     }

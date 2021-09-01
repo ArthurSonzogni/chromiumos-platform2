@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 
 using ::hwsec_foundation::error::testing::TestForCreateError;
-using ::hwsec_foundation::error::testing::TestForCreateErrorWrap;
+using ::hwsec_foundation::error::testing::TestForWrapError;
 
 namespace hwsec_foundation {
 namespace error {
@@ -78,7 +78,7 @@ TEST_F(TestingErrorTest, WrapErrors) {
 
 TEST_F(TestingErrorTest, CreateWrappedError) {
   auto err = CreateError<TestingError>(87, 0.1234, "AAAA");
-  auto err2 = CreateErrorWrap<TestingError>(std::move(err), 12, 0.56, "BBB");
+  auto err2 = WrapError<TestingError>(std::move(err), 12, 0.56, "BBB");
   EXPECT_EQ(err, nullptr);
   std::stringstream ss;
   ss << *err2;
@@ -87,8 +87,7 @@ TEST_F(TestingErrorTest, CreateWrappedError) {
 
 TEST_F(TestingErrorTest, UnWrappError) {
   ErrorBase err = CreateError<TestingError>(87, 0.1234, "AAAA");
-  ErrorBase err2 =
-      CreateErrorWrap<TestingError>(std::move(err), 12, 0.56, "BBB");
+  ErrorBase err2 = WrapError<TestingError>(std::move(err), 12, 0.56, "BBB");
   EXPECT_EQ(err, nullptr);
   err = err2->UnWrap();
   std::stringstream ss;
@@ -101,8 +100,7 @@ TEST_F(TestingErrorTest, UnWrappError) {
 
 TEST_F(TestingErrorTest, FullCopyError) {
   ErrorBase err = CreateError<TestingError>(87, 0.1234, "AAAA");
-  ErrorBase err2 =
-      CreateErrorWrap<TestingError>(std::move(err), 12, 0.56, "BBB");
+  ErrorBase err2 = WrapError<TestingError>(std::move(err), 12, 0.56, "BBB");
   ErrorBase err3 = err2->FullCopy();
   std::stringstream ss;
   ss << *err2;
@@ -186,37 +184,35 @@ TEST_F(TestingErrorTest, TestForCreateError) {
                                   int, std::string>::Check::value));
 }
 
-TEST_F(TestingErrorTest, TestForCreateErrorWrap) {
+TEST_F(TestingErrorTest, TestForWrapError) {
+  EXPECT_FALSE((TestForWrapError<TestingError, ErrorBase, int>::Check::value));
   EXPECT_FALSE(
-      (TestForCreateErrorWrap<TestingError, ErrorBase, int>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TestingError, ErrorBase, int,
-                                       double>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TestingError, ErrorBase, int, double,
-                                      std::string>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TestingError, ErrorBase, int, int,
-                                      std::string>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TestingError, ErrorBase, const int&,
-                                      const int&, std::string>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TestingError, ErrorBase, double, int&,
-                                      const std::string&>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TestingError, ErrorBase, int, int,
-                                      std::string&&>::Check::value));
+      (TestForWrapError<TestingError, ErrorBase, int, double>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TestingError, ErrorBase, int, double,
+                                std::string>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TestingError, ErrorBase, int, int,
+                                std::string>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TestingError, ErrorBase, const int&, const int&,
+                                std::string>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TestingError, ErrorBase, double, int&,
+                                const std::string&>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TestingError, ErrorBase, int, int,
+                                std::string&&>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TestingError, ErrorBase, std::string,
+                                 std::string, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TestingError, ErrorBase, bool, bool,
+                                 bool>::Check::value));
   EXPECT_FALSE(
-      (TestForCreateErrorWrap<TestingError, ErrorBase, std::string, std::string,
-                              std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TestingError, ErrorBase, bool, bool,
-                                       bool>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TestingError, ErrorBase,
-                                       std::string>::Check::value));
+      (TestForWrapError<TestingError, ErrorBase, std::string>::Check::value));
   EXPECT_FALSE(
-      (TestForCreateErrorWrap<TestingError, ErrorBase, char[]>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TestingError, ErrorBase, int, double,
-                                      char[]>::Check::value));
+      (TestForWrapError<TestingError, ErrorBase, char[]>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TestingError, ErrorBase, int, double,
+                                char[]>::Check::value));
 }
 
 TEST_F(TestingErrorTest, Error) {
   auto err = CreateError<Error>("Magic");
-  auto err2 = CreateErrorWrap<TestingError>(std::move(err), 12, 0.56, "BBB");
+  auto err2 = WrapError<TestingError>(std::move(err), 12, 0.56, "BBB");
   std::stringstream ss;
   ss << *err2;
   EXPECT_EQ("12 0.56 BBB: Magic", ss.str());
@@ -224,8 +220,8 @@ TEST_F(TestingErrorTest, Error) {
 
 TEST_F(TestingErrorTest, AsIsCast) {
   auto err = CreateError<Error>("Magic");
-  auto err2 = CreateErrorWrap<TestingError>(std::move(err), 12, 0.56, "BBB");
-  ErrorBase err3 = CreateErrorWrap<TestingError>(std::move(err2), 1, 0, "XD");
+  auto err2 = WrapError<TestingError>(std::move(err), 12, 0.56, "BBB");
+  ErrorBase err3 = WrapError<TestingError>(std::move(err2), 1, 0, "XD");
   EXPECT_TRUE(err3->Is<TestingError>());
   EXPECT_FALSE(err3->Is<Error>());
   auto err4 = err3->As<Error>();

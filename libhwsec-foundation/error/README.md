@@ -14,7 +14,7 @@ This would be helpful to convert the error into some actions and logging the err
 4. It needs to implement `SelfCopy` to copy itself.
 5. Optional: Define `CustomError` to simplify the usage.
 6. Optional: Override the `CreateError` helper function to create some special error type, for example: `nullptr`.
-7. Optional: Override the `CreateErrorWrap` helper function to create some special error.
+7. Optional: Override the `WrapError` helper function to create some special error.
 8. Optional: Implement the move operator to add the support of caller info.
 
 ```C++
@@ -58,7 +58,7 @@ CustomError CreateError(T&& error_msg) {
 # Recommended coding style
 
 1. When should we use `auto`? Similar to [the style of unique_ptr](https://google.github.io/styleguide/cppguide.html#Type_deduction).
-    1. Use `auto` when the error is created by `CreateError<>` or `CreateErrorWrap<>`
+    1. Use `auto` when the error is created by `CreateError<>` or `WrapError<>`
         ```C++
         if (auto err = CreateError<TPM1Error>(0x99)) {
           /* Do some error handlings... */

@@ -24,7 +24,7 @@ using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::CreateErrorWrap;
+using hwsec_foundation::error::WrapError;
 
 namespace cryptohome {
 
@@ -69,8 +69,8 @@ ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
 void ChallengeCredentialsDecryptOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (TPMErrorBase err = StartProcessing()) {
-    Resolve(CreateErrorWrap<TPMError>(
-                std::move(err), "Failed to start the decryption operation"),
+    Resolve(WrapError<TPMError>(std::move(err),
+                                "Failed to start the decryption operation"),
             nullptr /* credentials */);
     // |this| can be already destroyed at this point.
   }
@@ -108,8 +108,8 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
     return CreateError<TPMError>("Wrong public key", TPMRetryAction::kNoRetry);
   }
   if (TPMErrorBase err = StartProcessingSalt()) {
-    return CreateErrorWrap<TPMError>(std::move(err),
-                                     "Failed to start processing salt");
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to start processing salt");
   }
   // TODO(crbug.com/842791): This is buggy: |this| may be already deleted by
   // that point, in case when the salt's challenge request failed synchronously.
@@ -158,7 +158,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
           BlobFromString(public_key_info_.public_key_spki_der()),
           key_sealing_algorithms, delegate_blob_, delegate_secret_,
           &unsealing_session_)) {
-    return CreateErrorWrap<TPMError>(
+    return WrapError<TPMError>(
         std::move(err), "Failed to start unsealing session for the secret");
   }
   MakeKeySignatureChallenge(
@@ -200,8 +200,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
           unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
-    Resolve(CreateErrorWrap<TPMError>(std::move(err),
-                                      "Failed to unseal the secret"),
+    Resolve(WrapError<TPMError>(std::move(err), "Failed to unseal the secret"),
             nullptr /* credentials */);
     // |this| can be already destroyed at this point.
     return;

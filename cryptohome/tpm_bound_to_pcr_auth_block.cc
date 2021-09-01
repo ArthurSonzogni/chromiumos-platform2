@@ -28,7 +28,7 @@
 
 using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
-using hwsec_foundation::error::CreateErrorWrap;
+using hwsec_foundation::error::WrapError;
 
 namespace cryptohome {
 
@@ -261,8 +261,8 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     brillo::SecureBlob auth_value;
     if (TPMErrorBase auth_err =
             tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value)) {
-      err = CreateErrorWrap<TPMError>(std::move(auth_err),
-                                      "Failed to get auth value");
+      err =
+          WrapError<TPMError>(std::move(auth_err), "Failed to get auth value");
       // TODO(yich): Reload cryptohome key might be a better choice.
       break;
     }

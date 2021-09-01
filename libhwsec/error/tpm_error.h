@@ -27,12 +27,12 @@
  *   auto err = CreateError<TPMError>("Failed to get trunks context",
  *                                    TPMRetryAction::kNoRetry);
  *
- * Using CreateErrorWrap<> could wrap a TPM error into a new TPM error, and it
+ * Using WrapError<> could wrap a TPM error into a new TPM error, and it
  * would transfer the retry action to the new TPM error.
  *
  * For example:
  *   if (auto err = GetPublicKeyBlob(...))) {
- *     return CreateErrorWrap<TPMError>(std::move(err),
+ *     return WrapError<TPMError>(std::move(err),
  *                                      "Failed to get TPM public key hash");
  *   }
  *
@@ -40,7 +40,7 @@
  *
  * For example:
  *   if (auto err = CreateError<TPM2Error>(...)) {
- *     return CreateErrorWrap<TPMError>(std::move(err), "Error ...",
+ *     return WrapError<TPMError>(std::move(err), "Error ...",
  *                                      TPMRetryAction::kNoRetry);
  *   }
  */
@@ -110,10 +110,10 @@ template <typename ErrorType,
           decltype(hwsec::error::TPMErrorObj(
               std::forward<StringType>(std::declval<StringType&&>()),
               std::declval<hwsec::error::TPMRetryAction>()))* = nullptr>
-hwsec::error::TPMError CreateErrorWrap(InnerErrorType err,
-                                       StringType&& error_message) {
+hwsec::error::TPMError WrapError(InnerErrorType err,
+                                 StringType&& error_message) {
   hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
-  return CreateErrorWrap<hwsec::error::TPMError>(
+  return WrapError<hwsec::error::TPMError>(
       std::move(err), std::forward<StringType>(error_message), action);
 }
 

@@ -21,7 +21,7 @@ namespace error {
  *
  * TPMErrorBase Foo() {
  *   if (auto err = CreateError<TPM1Error>(0x87)) {
- *     return CreateErrorWrap<TPMError>(std::move(err), "failed to bla");
+ *     return WrapError<TPMError>(std::move(err), "failed to bla");
  *   }
  *   LOG(INFO) << "Good job";
  *   return nullptr;
@@ -173,7 +173,7 @@ template <typename ErrorType,
           typename... Args,
           decltype(typename UnwarpErrorType<ErrorType>::type(
               std::forward<Args>(std::declval<Args&&>())...))* = nullptr>
-ErrorType CreateErrorWrap(InnerErrorType inner_err, Args&&... args) {
+ErrorType WrapError(InnerErrorType inner_err, Args&&... args) {
   static_assert(is_error_type<ErrorType>::value,
                 "ErrorType isn't a valid error type.");
   static_assert(is_error_type<InnerErrorType>::value,

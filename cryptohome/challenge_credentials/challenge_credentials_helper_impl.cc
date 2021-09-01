@@ -24,7 +24,7 @@ using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
 using hwsec::error::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::CreateErrorWrap;
+using hwsec_foundation::error::WrapError;
 
 namespace cryptohome {
 

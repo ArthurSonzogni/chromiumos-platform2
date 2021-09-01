@@ -26,7 +26,7 @@ namespace error {
 bool RetryCommHandler(TPMError* err, RetryInternalData* data) {
   if ((*err)->ToTPMRetryAction() == TPMRetryAction::kCommunication) {
     if (data->retry_count + 1 >= kMaxRetry) {
-      *err = hwsec_foundation::error::CreateErrorWrap<TPMError>(
+      *err = hwsec_foundation::error::WrapError<TPMError>(
           std::move(*err), "Retry Failed", TPMRetryAction::kLater);
       return false;
     }

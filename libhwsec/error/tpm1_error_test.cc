@@ -10,10 +10,10 @@
 namespace hwsec {
 namespace error {
 using ::hwsec_foundation::error::CreateError;
-using ::hwsec_foundation::error::CreateErrorWrap;
 using ::hwsec_foundation::error::ErrorBase;
+using ::hwsec_foundation::error::WrapError;
 using ::hwsec_foundation::error::testing::TestForCreateError;
-using ::hwsec_foundation::error::testing::TestForCreateErrorWrap;
+using ::hwsec_foundation::error::testing::TestForWrapError;
 class TestingTPM1ErrorTest : public ::testing::Test {
  public:
   TestingTPM1ErrorTest() {}
@@ -28,39 +28,39 @@ TEST_F(TestingTPM1ErrorTest, CreateTPMErrorTest) {
   err = CreateError<TPM1Error>(TSS_LAYER_TCS | TSS_E_COMM_FAILURE);
   EXPECT_NE(nullptr, err);
 }
-TEST_F(TestingTPM1ErrorTest, TestForCreateErrorWrap) {
-  EXPECT_FALSE((TestForCreateErrorWrap<ErrorBase, ErrorBase>::Check::value));
+TEST_F(TestingTPM1ErrorTest, TestForWrapError) {
+  EXPECT_FALSE((TestForWrapError<ErrorBase, ErrorBase>::Check::value));
   EXPECT_FALSE(
-      (TestForCreateErrorWrap<ErrorBase, ErrorBase, TSS_RESULT>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<ErrorBase, ErrorBase, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<ErrorBase, TPM1Error>::Check::value));
+      (TestForWrapError<ErrorBase, ErrorBase, TSS_RESULT>::Check::value));
   EXPECT_FALSE(
-      (TestForCreateErrorWrap<ErrorBase, TPM1Error, TSS_RESULT>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<ErrorBase, TPM1Error, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TPM1Error, ErrorBase>::Check::value));
+      (TestForWrapError<ErrorBase, ErrorBase, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<ErrorBase, TPM1Error>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<ErrorBase, TPM1Error, TSS_RESULT>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<ErrorBase, TPM1Error, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TPM1Error, ErrorBase>::Check::value));
   EXPECT_TRUE(
-      (TestForCreateErrorWrap<TPM1Error, ErrorBase, TSS_RESULT>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<TPM1Error, ErrorBase, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TPM1Error, TPM1Error>::Check::value));
-  EXPECT_TRUE(
-      (TestForCreateErrorWrap<TPM1Error, TPM1Error, TSS_RESULT>::Check::value));
-  EXPECT_FALSE((
-      TestForCreateErrorWrap<TPM1Error, TPM1Error, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateErrorWrap<TPMError, TPM1Error>::Check::value));
+      (TestForWrapError<TPM1Error, ErrorBase, TSS_RESULT>::Check::value));
   EXPECT_FALSE(
-      (TestForCreateErrorWrap<TPMError, TPM1Error, TSS_RESULT>::Check::value));
-  EXPECT_TRUE((
-      TestForCreateErrorWrap<TPMError, TPM1Error, const char[]>::Check::value));
-  EXPECT_TRUE((TestForCreateErrorWrap<TPMError, TPM1Error, const char[],
-                                      TPMRetryAction>::Check::value));
+      (TestForWrapError<TPM1Error, ErrorBase, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TPM1Error, TPM1Error>::Check::value));
+  EXPECT_TRUE(
+      (TestForWrapError<TPM1Error, TPM1Error, TSS_RESULT>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<TPM1Error, TPM1Error, std::string>::Check::value));
+  EXPECT_FALSE((TestForWrapError<TPMError, TPM1Error>::Check::value));
+  EXPECT_FALSE(
+      (TestForWrapError<TPMError, TPM1Error, TSS_RESULT>::Check::value));
+  EXPECT_TRUE(
+      (TestForWrapError<TPMError, TPM1Error, const char[]>::Check::value));
+  EXPECT_TRUE((TestForWrapError<TPMError, TPM1Error, const char[],
+                                TPMRetryAction>::Check::value));
 }
 TEST_F(TestingTPM1ErrorTest, TPMRetryAction) {
   auto err = CreateError<TPM1Error>(TSS_LAYER_TCS | TSS_E_COMM_FAILURE);
   EXPECT_EQ(err->ToTPMRetryAction(), TPMRetryAction::kCommunication);
-  auto err2 = CreateErrorWrap<TPMError>(std::move(err), "OuO");
+  auto err2 = WrapError<TPMError>(std::move(err), "OuO");
   std::stringstream ss;
   ss << *err2;
   EXPECT_EQ("OuO: TPM error 0x2011 (Communication failure)", ss.str());

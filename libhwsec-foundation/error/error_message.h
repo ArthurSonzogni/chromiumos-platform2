@@ -16,7 +16,7 @@
  *
  * Example usage:
  * if (auto err = SomethingReturnError()) {
- *   return CreateErrorWrap<Error>(std::move(err), "failed something");
+ *   return WrapError<Error>(std::move(err), "failed something");
  * }
  */
 
