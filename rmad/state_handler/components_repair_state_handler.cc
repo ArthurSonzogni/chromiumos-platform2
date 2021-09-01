@@ -232,7 +232,10 @@ bool ComponentsRepairStateHandler::StoreVars() const {
       replaced_components.push_back(RmadComponent_Name(component));
     }
   }
-  return json_store_->SetValue(kReplacedComponentNames, replaced_components);
+
+  bool mlb_repair = state_.components_repair().mainboard_rework();
+  return json_store_->SetValue(kReplacedComponentNames, replaced_components) &&
+         json_store_->SetValue(kMlbRepair, mlb_repair);
 }
 
 }  // namespace rmad

@@ -12,6 +12,7 @@
 
 namespace rmad {
 
+// Update go/shimless-state-preservation when adding new fields.
 // JsonStore rmad_interface keys.
 inline constexpr char kStateHistory[] = "state_history";
 inline constexpr char kStateMap[] = "state_map";
@@ -19,6 +20,7 @@ inline constexpr char kNetworkConnected[] = "network_connected";
 inline constexpr char kReplacedComponentNames[] = "replaced_component_names";
 inline constexpr char kSameOwner[] = "same_owner";
 inline constexpr char kWpDisableSkipped[] = "wp_disable_skipped";
+inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 
 // Component traits.
