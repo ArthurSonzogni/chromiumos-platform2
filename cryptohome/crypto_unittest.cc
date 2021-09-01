@@ -239,13 +239,9 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-  vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(
-      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
@@ -315,13 +311,9 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-  vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(
-      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
@@ -384,13 +376,9 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-  vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(
-      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
@@ -419,13 +407,9 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-  vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(
-      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.

@@ -152,6 +152,9 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   DCHECK(key_blobs);
 
+  brillo::SecureBlob salt =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+
   // TODO(kerrnel): This may not be needed, but is currently retained to
   // maintain the original logic.
   if (!cryptohome_key_loader_->HasCryptohomeKey())
@@ -159,8 +162,8 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
-  if (!DeriveSecretsScrypt(auth_input.user_input.value(),
-                           auth_input.salt.value(), {&le_secret, &kdf_skey})) {
+  if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
+                           {&le_secret, &kdf_skey})) {
     return base::nullopt;
   }
 
@@ -212,6 +215,7 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
 
   PinWeaverAuthBlockState pin_auth_state;
   pin_auth_state.le_label = label;
+  pin_auth_state.salt = std::move(salt);
   AuthBlockState auth_state = {.state = std::move(pin_auth_state)};
   return auth_state;
 }

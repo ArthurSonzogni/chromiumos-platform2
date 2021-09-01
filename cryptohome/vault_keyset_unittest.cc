@@ -476,12 +476,9 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(
-      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
 }
 
 TEST_F(VaultKeysetTest, DecryptionTest) {
@@ -495,13 +492,9 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
-  SecureBlob salt(PKCS5_SALT_LEN);
-  GetSecureRandom(salt.data(), salt.size());
-  vault_keyset.salt_ = salt;
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(
-      vault_keyset.EncryptVaultKeyset(key, salt, "", &auth_block_state));
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state));
 
   // TODO(kerrnel): This is a hack to bridge things until DecryptVaultKeyset is
   // modified to take a key material and an auth block state.
@@ -605,8 +598,6 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
             vault_keyset_copy.GetWrappedKeyset());
   // int32_t flags_
   ASSERT_NE(vault_keyset_copy.GetFlags(), vault_keyset.GetFlags());
-  // brillo::SecureBlob salt_
-  ASSERT_NE(vault_keyset_copy.GetSalt(), vault_keyset.GetSalt());
   // int legacy_index_
   ASSERT_NE(vault_keyset_copy.GetLegacyIndex(), vault_keyset.GetLegacyIndex());
 }
@@ -707,7 +698,7 @@ TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
   vk.InitializeFromSerialized(serialized);
 
   // TODO(b/198394243): We should remove this because it's not actually used.
-  EXPECT_EQ(SecureBlobToHex(vk.salt_), kHexLibScryptExampleSalt);
+  EXPECT_EQ(SecureBlobToHex(vk.auth_salt_), kHexLibScryptExampleSalt);
 
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
@@ -786,8 +777,8 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
 
   AuthBlockState auth_block_state;
   EXPECT_TRUE(pin_vault_keyset_.EncryptVaultKeyset(
-      brillo::SecureBlob(HexDecode(kHexVaultKey)),
-      brillo::SecureBlob(HexDecode(kHexSalt)), "unused", &auth_block_state));
+      brillo::SecureBlob(HexDecode(kHexVaultKey)), "unused",
+      &auth_block_state));
 
   EXPECT_TRUE(
       absl::holds_alternative<PinWeaverAuthBlockState>(auth_block_state.state));
@@ -809,8 +800,8 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
 
   AuthBlockState auth_block_state;
   EXPECT_FALSE(pin_vault_keyset_.EncryptVaultKeyset(
-      brillo::SecureBlob(HexDecode(kHexVaultKey)),
-      brillo::SecureBlob(HexDecode(kHexSalt)), "unused", &auth_block_state));
+      brillo::SecureBlob(HexDecode(kHexVaultKey)), "unused",
+      &auth_block_state));
 }
 
 TEST_F(LeCredentialsManagerTest, Decrypt) {

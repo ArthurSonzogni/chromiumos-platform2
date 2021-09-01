@@ -55,7 +55,9 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
 base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
-  const brillo::SecureBlob& salt = user_input.salt.value();
+  brillo::SecureBlob salt =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+
   const std::string& obfuscated_username =
       user_input.obfuscated_username.value();
 
@@ -119,6 +121,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   tpm_state.scrypt_derived = true;
   tpm_state.tpm_key = tpm_key;
   tpm_state.extended_tpm_key = extended_tpm_key;
+  tpm_state.salt = std::move(salt);
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   key_blobs->vkk_key = vkk_key;

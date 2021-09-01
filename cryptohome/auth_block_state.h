@@ -70,6 +70,9 @@ struct LibScryptCompatAuthBlockState {
   base::Optional<brillo::SecureBlob> wrapped_chaps_key;
   // The wrapped reset seed keys.
   base::Optional<brillo::SecureBlob> wrapped_reset_seed;
+  // The random salt.
+  // TODO(b/198394243): We should remove it because it's not actually used.
+  base::Optional<brillo::SecureBlob> salt;
 };
 
 struct ChallengeCredentialAuthBlockState {
@@ -101,6 +104,8 @@ struct CryptohomeRecoveryAuthBlockState {
   // persisted on a chromebook and will be eventually used for recovery,
   // serialized to CBOR.
   base::Optional<brillo::SecureBlob> hsm_payload;
+  // The salt used to first scrypt the user input.
+  base::Optional<brillo::SecureBlob> salt;
   // Secret share of the destination (plaintext).
   // TODO(b/184924489): store encrypted destination share.
   base::Optional<brillo::SecureBlob> plaintext_destination_share;

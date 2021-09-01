@@ -565,6 +565,9 @@ void VaultKeyset::SetTpmNotBoundToPcrState(
   if (auth_state.tpm_public_key_hash.has_value()) {
     tpm_public_key_hash_ = auth_state.tpm_public_key_hash.value();
   }
+  if (auth_state.salt.has_value()) {
+    auth_salt_ = auth_state.salt.value();
+  }
 }
 
 void VaultKeyset::SetTpmBoundToPcrState(
@@ -583,6 +586,9 @@ void VaultKeyset::SetTpmBoundToPcrState(
   if (auth_state.tpm_public_key_hash.has_value()) {
     tpm_public_key_hash_ = auth_state.tpm_public_key_hash.value();
   }
+  if (auth_state.salt.has_value()) {
+    auth_salt_ = auth_state.salt.value();
+  }
 }
 
 void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
@@ -590,17 +596,30 @@ void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
   if (auth_state.le_label.has_value()) {
     le_label_ = auth_state.le_label.value();
   }
+  if (auth_state.salt.has_value()) {
+    auth_salt_ = auth_state.salt.value();
+  }
 }
 
 void VaultKeyset::SetLibScryptCompatState(
     const LibScryptCompatAuthBlockState& auth_state) {
   flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED;
+
+  // TODO(b/198394243): We should remove this because it's not actually used.
+  if (auth_state.salt.has_value()) {
+    auth_salt_ = auth_state.salt.value();
+  }
 }
 
 void VaultKeyset::SetChallengeCredentialState(
     const ChallengeCredentialAuthBlockState& auth_state) {
   flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED |
            SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
+
+  // TODO(b/198394243): We should remove this because it's not actually used.
+  if (auth_state.scrypt_state.salt.has_value()) {
+    auth_salt_ = auth_state.scrypt_state.salt.value();
+  }
 }
 
 void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
@@ -636,7 +655,7 @@ bool VaultKeyset::GetTpmBoundToPcrState(AuthBlockState* auth_state) const {
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived =
       ((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) != 0);
-  state.salt = salt_;
+  state.salt = auth_salt_;
   state.tpm_key = tpm_key_.value();
   state.extended_tpm_key = extended_tpm_key_.value();
   if (tpm_public_key_hash_.has_value()) {
@@ -659,7 +678,7 @@ bool VaultKeyset::GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const {
   TpmNotBoundToPcrAuthBlockState state;
   state.scrypt_derived =
       ((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) != 0);
-  state.salt = salt_;
+  state.salt = auth_salt_;
   if (password_rounds_.has_value()) {
     state.password_rounds = password_rounds_.value();
   }
@@ -681,7 +700,7 @@ bool VaultKeyset::GetPinWeaverState(AuthBlockState* auth_state) const {
   }
 
   PinWeaverAuthBlockState state;
-  state.salt = salt_;
+  state.salt = auth_salt_;
   if (le_label_.has_value()) {
     state.le_label = le_label_.value();
   }
@@ -791,7 +810,6 @@ bool VaultKeyset::GetAuthBlockState(AuthBlockState* auth_state) const {
 bool VaultKeyset::Encrypt(const SecureBlob& key,
                           const std::string& obfuscated_username) {
   CHECK(crypto_);
-  salt_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
   // This generates the reset secret for PinWeaver credentials. Doing it per
   // secret is confusing and difficult to maintain. It's necessary so that
@@ -819,8 +837,7 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
   }
 
   AuthBlockState auth_block_state;
-  encrypted_ =
-      EncryptVaultKeyset(key, salt_, obfuscated_username, &auth_block_state);
+  encrypted_ = EncryptVaultKeyset(key, obfuscated_username, &auth_block_state);
 
   if (encrypted_) {
     SetAuthBlockState(auth_block_state);
@@ -830,7 +847,6 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
 }
 
 bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
-                                     const SecureBlob& vault_key_salt,
                                      const std::string& obfuscated_username,
                                      AuthBlockState* out_state) {
   // TODO(crbug.com/1216659): Move AuthBlock instantiation to AuthFactor once it
@@ -848,7 +864,7 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
   }
 
   AuthInput user_input = {vault_key, /*locked_to_single_user*=*/base::nullopt,
-                          vault_key_salt, obfuscated_username, reset_secret};
+                          obfuscated_username, reset_secret};
 
   KeyBlobs key_blobs;
   CryptoError error;
@@ -1234,7 +1250,7 @@ void VaultKeyset::SetResetSecret(const brillo::SecureBlob& reset_secret) {
 SerializedVaultKeyset VaultKeyset::ToSerialized() const {
   SerializedVaultKeyset serialized;
   serialized.set_flags(flags_);
-  serialized.set_salt(salt_.data(), salt_.size());
+  serialized.set_salt(auth_salt_.data(), auth_salt_.size());
   serialized.set_wrapped_keyset(wrapped_keyset_.data(), wrapped_keyset_.size());
 
   if (tpm_key_.has_value()) {
@@ -1310,7 +1326,7 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
 
 void VaultKeyset::ResetVaultKeyset() {
   flags_ = -1;
-  salt_.clear();
+  auth_salt_.clear();
   legacy_index_ = -1;
   tpm_public_key_hash_.reset();
   password_rounds_.reset();
@@ -1342,7 +1358,7 @@ void VaultKeyset::ResetVaultKeyset() {
 void VaultKeyset::InitializeFromSerialized(
     const SerializedVaultKeyset& serialized) {
   flags_ = serialized.flags();
-  salt_ =
+  auth_salt_ =
       brillo::SecureBlob(serialized.salt().begin(), serialized.salt().end());
 
   wrapped_keyset_ = brillo::SecureBlob(serialized.wrapped_keyset().begin(),
@@ -1449,10 +1465,6 @@ void VaultKeyset::SetFlags(int32_t flags) {
 
 int32_t VaultKeyset::GetFlags() const {
   return flags_;
-}
-
-const brillo::SecureBlob& VaultKeyset::GetSalt() const {
-  return salt_;
 }
 
 void VaultKeyset::SetLegacyIndex(int index) {

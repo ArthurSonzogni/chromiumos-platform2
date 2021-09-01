@@ -46,6 +46,7 @@ using ::testing::Exactly;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 
 namespace cryptohome {
@@ -53,27 +54,25 @@ namespace cryptohome {
 TEST(TpmBoundToPcrTest, CreateTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   SerializedVaultKeyset serialized;
 
   // Set up the mock expectations.
-  brillo::SecureBlob scrypt_derived_key(kDefaultPassBlobSize);
-  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key}));
-
+  brillo::SecureBlob scrypt_derived_key;
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   brillo::SecureBlob auth_value(256, 'a');
-  EXPECT_CALL(tpm, GetAuthValue(_, scrypt_derived_key, _))
-      .WillOnce(
-          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(tpm, GetAuthValue(_, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key),
+                      SetArgPointee<2>(auth_value),
+                      ReturnError<TPMErrorBase>()));
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
       .Times(Exactly(2));
   ON_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _))
       .WillByDefault(ReturnError<TPMErrorBase>());
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt, salt,
+                          /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
@@ -87,12 +86,20 @@ TEST(TpmBoundToPcrTest, CreateTest) {
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+
+  auto& tpm_state = absl::get<TpmBoundToPcrAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(tpm_state.salt.has_value());
+  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  brillo::SecureBlob scrypt_derived_key_result(kDefaultPassBlobSize);
+  EXPECT_TRUE(
+      DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
+  EXPECT_EQ(scrypt_derived_key, scrypt_derived_key_result);
 }
 
 TEST(TpmBoundToPcrTest, CreateFailTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   SerializedVaultKeyset serialized;
 
@@ -104,7 +111,7 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt, salt,
+                          /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
@@ -116,21 +123,18 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
 TEST(TpmNotBoundToPcrTest, CreateTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   SerializedVaultKeyset serialized;
 
   // Set up the mock expectations.
+  brillo::SecureBlob aes_skey;
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  brillo::SecureBlob aes_skey(kDefaultAesKeySize);
-  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_skey}));
-  ON_CALL(tpm, EncryptBlob(_, _, aes_skey, _))
-      .WillByDefault(ReturnError<TPMErrorBase>());
-  EXPECT_CALL(tpm, EncryptBlob(_, _, aes_skey, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&aes_skey), ReturnError<TPMErrorBase>()));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt, salt,
+                          /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
@@ -143,12 +147,20 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+
+  auto& tpm_state =
+      absl::get<TpmNotBoundToPcrAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(tpm_state.salt.has_value());
+  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  brillo::SecureBlob aes_skey_result(kDefaultAesKeySize);
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_skey_result}));
+  EXPECT_EQ(aes_skey, aes_skey_result);
 }
 
 TEST(TpmNotBoundToPcrTest, CreateFailTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   SerializedVaultKeyset serialized;
 
@@ -159,7 +171,7 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt, salt,
+                          /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
@@ -171,24 +183,19 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
 TEST(PinWeaverAuthBlockTest, CreateTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   brillo::SecureBlob reset_secret(32, 'S');
 
   // Set up the mock expectations.
-  brillo::SecureBlob le_secret(kDefaultAesKeySize);
-  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
-
+  brillo::SecureBlob le_secret;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
-  ON_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
-      .WillByDefault(Return(LE_CRED_SUCCESS));
-  EXPECT_CALL(le_cred_manager, InsertCredential(le_secret, _, _, _, _, _))
-      .Times(Exactly(1));
+  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&le_secret), Return(LE_CRED_SUCCESS)));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt, salt,
+                          /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username, reset_secret};
   KeyBlobs vkk_data;
   CryptoError error;
@@ -198,11 +205,18 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   EXPECT_NE(base::nullopt, auth_state);
   EXPECT_TRUE(
       absl::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+
+  auto& pin_state = absl::get<PinWeaverAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(pin_state.salt.has_value());
+  const brillo::SecureBlob& salt = pin_state.salt.value();
+  brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
+  EXPECT_EQ(le_secret, le_secret_result);
 }
 
 TEST(PinWeaverAuthBlockTest, CreateFailTest) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   brillo::SecureBlob reset_secret(32, 'S');
 
@@ -216,7 +230,7 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
                                      &cryptohome_keys_manager_fail);
   // Call the Create() method.
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt, salt,
+                          /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username, reset_secret};
   KeyBlobs vkk_data;
   CryptoError error;
@@ -737,7 +751,6 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
 }
 
 TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
-  brillo::SecureBlob salt("salt");
   brillo::SecureBlob mediator_pub_key;
   ASSERT_TRUE(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
@@ -745,7 +758,6 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   ASSERT_TRUE(
       FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
   AuthInput auth_input;
-  auth_input.salt = salt;
   CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
   cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key;
   auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;

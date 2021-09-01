@@ -16,6 +16,7 @@
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/crypto/scrypt.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
@@ -33,12 +34,14 @@ CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock()
 base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
   DCHECK(key_blobs);
-  DCHECK(auth_input.salt.has_value());
-  const brillo::SecureBlob& salt = auth_input.salt.value();
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
   DCHECK(cryptohome_recovery_auth_input.mediator_pub_key.has_value());
+
+  brillo::SecureBlob salt =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
 
@@ -93,6 +96,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   // TODO(b/196192089): store encrypted keys.
   auth_state.channel_priv_key = channel_priv_key;
   auth_state.channel_pub_key = channel_pub_key;
+  auth_state.salt = std::move(salt);
   AuthBlockState auth_block_state = {.state = std::move(auth_state)};
   return auth_block_state;
 }
@@ -102,8 +106,6 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                                          KeyBlobs* key_blobs,
                                          CryptoError* error) {
   DCHECK(key_blobs);
-  DCHECK(auth_input.salt.has_value());
-  const brillo::SecureBlob& salt = auth_input.salt.value();
   const CryptohomeRecoveryAuthBlockState* auth_state;
   if (!(auth_state =
             absl::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
@@ -126,6 +128,7 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob plaintext_destination_share =
       auth_state->plaintext_destination_share.value();
   brillo::SecureBlob channel_priv_key = auth_state->channel_priv_key.value();
+  brillo::SecureBlob salt = auth_state->salt.value();
 
   std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
   if (!recovery) {

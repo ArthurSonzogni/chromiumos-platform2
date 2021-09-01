@@ -89,9 +89,6 @@ class VaultKeyset {
   virtual int32_t GetFlags() const;
   virtual void SetFlags(int32_t flags);
 
-  // Returns the salt from the SerializedVaultKeyset protobuf on disk.
-  virtual const brillo::SecureBlob& GetSalt() const;
-
   // Getters and setters for the index. See the |legacy_index_| member for a
   // comment explaining the legacy name.
   virtual void SetLegacyIndex(int index);
@@ -306,15 +303,12 @@ class VaultKeyset {
   //
   // Parameters
   //   vault_key - The passkey used to encrypt the keyset.
-  //   vault_key_salt - The salt to use for the vault passkey to key conversion
-  //                    when encrypting the keyset.
   //   obfuscated_username - The value of username obfuscated. It's the same
   //                         value used as the folder name where the user data
   //                         is stored.
   //   auth_block_state - On success, the plaintext state needed to initialize
   //                      the auth block.
   bool EncryptVaultKeyset(const brillo::SecureBlob& vault_key,
-                          const brillo::SecureBlob& vault_key_salt,
                           const std::string& obfuscated_username,
                           AuthBlockState* auth_block_state);
 
@@ -331,8 +325,8 @@ class VaultKeyset {
   // Group 1. AuthBlockState. This is metadata used to derive the keys,
   // persisted as plaintext.
   int32_t flags_;
-  // The salt used to derive the encryption key.
-  brillo::SecureBlob salt_;
+  // The salt used to derive the user input in auth block.
+  brillo::SecureBlob auth_salt_;
   // legacy_index_ is the index of the keyset for the user. It is called legacy
   // due to previous plans to fully switch to label-based addressing, which,
   // unfortunately, wasn't followed through.

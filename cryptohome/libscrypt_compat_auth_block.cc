@@ -110,6 +110,10 @@ base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
   // libscrypt is an odd case again; the AuthBlockState is only populated on the
   // derivation flow. See the class header for a full explanation.
   LibScryptCompatAuthBlockState scrypt_state;
+
+  // TODO(b/198394243): We should remove this because it's not actually used.
+  scrypt_state.salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+
   AuthBlockState auth_state = {.state = std::move(scrypt_state)};
   return auth_state;
 }

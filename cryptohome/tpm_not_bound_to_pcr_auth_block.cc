@@ -97,7 +97,8 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
 base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
     const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
-  const brillo::SecureBlob& salt = user_input.salt.value();
+  brillo::SecureBlob salt =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
   // If the cryptohome key isn't loaded, try to load it.
   if (!cryptohome_key_loader_->HasCryptohomeKey())
@@ -140,6 +141,7 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
 
   auth_state.scrypt_derived = true;
   auth_state.tpm_key = tpm_key;
+  auth_state.salt = std::move(salt);
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   key_blobs->vkk_key = HmacSha256(kdf_skey, local_blob);

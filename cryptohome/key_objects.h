@@ -38,8 +38,6 @@ struct AuthInput {
   base::Optional<brillo::SecureBlob> user_input;
   // Whether or not the PCR is extended, this is usually false.
   base::Optional<bool> locked_to_single_user;
-  // If a salt is to be used during credential generation.
-  base::Optional<brillo::SecureBlob> salt;
   // The obfuscated username.
   base::Optional<std::string> obfuscated_username;
   // A generated reset secret to unlock a rate limited credential.
