@@ -9,8 +9,10 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 
 namespace shill {
@@ -40,6 +42,22 @@ class VPNUtil {
   // group to "vpn" here since "shill" is a member of "vpn".
   virtual bool WriteConfigFile(const base::FilePath& filename,
                                const std::string& contents) const = 0;
+
+  // Writes |contents| into an anonymous file created by memfd_create(), and
+  // returns its fd and the file path. Returns an invalid ScopedFD on failure.
+  // Compared with the WriteConfigFile() function above, the file created by
+  // this function has the following properties:
+  // - Its path is in the form of `/proc/self/fd/{fd}`, and thus is accessible
+  //   by the current process and the child processes forked by the current one,
+  //   if the child process inherits the fd table of the current process.
+  // - When all the fds (including fds owned by the parent process and child
+  //   processes) pointing to this file are closed, the file will be removed
+  //   automatically, and thus the caller does not need to delete the file
+  //   explicitly. This guarantees that the file will disappear even if shill
+  //   crashes.
+  // Also see the man page for memfd_create() for more details.
+  virtual std::pair<base::ScopedFD, base::FilePath> WriteAnonymousConfigFile(
+      const std::string& contents) const = 0;
 
   // Creates a scoped temp directory under |parent_path|, changes its group to
   // "vpn", and give it group RWX permission. This directory can be used to

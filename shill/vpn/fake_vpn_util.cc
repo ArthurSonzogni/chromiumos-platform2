@@ -14,6 +14,11 @@ bool FakeVPNUtil::WriteConfigFile(const base::FilePath& filename,
   return base::WriteFile(filename, contents);
 }
 
+std::pair<base::ScopedFD, base::FilePath> FakeVPNUtil::WriteAnonymousConfigFile(
+    const std::string& contents) const {
+  return VPNUtil::New()->WriteAnonymousConfigFile(contents);
+}
+
 base::ScopedTempDir FakeVPNUtil::CreateScopedTempDir(
     const base::FilePath& parent_path) const {
   base::ScopedTempDir temp_dir;
