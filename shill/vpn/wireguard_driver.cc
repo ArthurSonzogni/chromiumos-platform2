@@ -56,6 +56,10 @@ constexpr char kWireGuardConfigDir[] = "/run/wireguard";
 
 constexpr char kWireGuardConfigFile[] = "wg0.conf";
 
+// The name of the property which indicates where the key pair comes from. This
+// property only appears in storage but not in D-Bus API.
+constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";
+
 // Timeout value for spawning the userspace wireguard process and configuring
 // the interface via wireguard-tools.
 constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromSeconds(10);
@@ -302,6 +306,21 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
     return false;
   }
 
+  // Loads |key_pair_source_|;
+  int stored_value = 0;
+  if (!storage->GetInt(storage_id, kWireGuardKeyPairSource, &stored_value)) {
+    stored_value = Metrics::kVpnWireguardKeyPairSourceUnknown;
+  }
+  if (stored_value != Metrics::kVpnWireGuardKeyPairSourceUserInput &&
+      stored_value != Metrics::kVpnWireGuardKeyPairSourceSoftwareGenerated) {
+    LOG(ERROR) << kWireGuardKeyPairSource
+               << " contains an invalid value or does not exist in storage: "
+               << stored_value;
+    stored_value = Metrics::kVpnWireguardKeyPairSourceUnknown;
+  }
+  key_pair_source_ =
+      static_cast<Metrics::VpnWireGuardKeyPairSource>(stored_value);
+
   saved_private_key_ = args()->Lookup<std::string>(kWireGuardPrivateKey, "");
 
   return true;
@@ -319,6 +338,14 @@ bool WireGuardDriver::Save(StoreInterface* storage,
   if (private_key.empty()) {
     private_key = GenerateBase64PrivateKey();
     args()->Set<std::string>(kWireGuardPrivateKey, private_key);
+    // The user cleared the private key.
+    key_pair_source_ = Metrics::kVpnWireGuardKeyPairSourceSoftwareGenerated;
+  } else if (private_key != saved_private_key_) {
+    // Note that this branch is different with the if statement below: if the
+    // private key in args() is not empty before we fill a random one in it, it
+    // must be changed by the user, and this code path is the only way where the
+    // user use its own private key.
+    key_pair_source_ = Metrics::kVpnWireGuardKeyPairSourceUserInput;
   }
   if (private_key != saved_private_key_) {
     std::string public_key =
@@ -349,6 +376,12 @@ bool WireGuardDriver::Save(StoreInterface* storage,
 
   if (!storage->SetStringList(storage_id, kWireGuardPeers, encoded_peers)) {
     LOG(ERROR) << "Failed to write " << kWireGuardPeers
+               << " property into profile";
+    return false;
+  }
+
+  if (!storage->SetInt(storage_id, kWireGuardKeyPairSource, key_pair_source_)) {
+    LOG(ERROR) << "Failed to write " << kWireGuardKeyPairSource
                << " property into profile";
     return false;
   }
@@ -538,6 +571,8 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
     return;
   }
 
+  ReportConnectionMetrics();
+
   event_handler_->OnDriverConnected(kDefaultInterfaceName, interface_index_);
 }
 
@@ -630,6 +665,37 @@ bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {
 
 void WireGuardDriver::ClearPeers(Error* error) {
   peers_.clear();
+}
+
+void WireGuardDriver::ReportConnectionMetrics() {
+  // VPN type.
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
+                           Metrics::kVpnDriverWireGuard,
+                           Metrics::kMetricVpnDriverMax);
+
+  // Key pair source.
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnWireGuardKeyPairSource,
+                           key_pair_source_,
+                           Metrics::kMetricVpnWireGuardKeyPairSourceMax);
+
+  // Number of peers.
+  metrics()->SendToUMA(Metrics::kMetricVpnWireGuardPeersNum, peers_.size(),
+                       Metrics::kMetricVpnWireGuardPeersNumMin,
+                       Metrics::kMetricVpnWireGuardPeersNumMax,
+                       Metrics::kMetricVpnWireGuardPeersNumNumBuckets);
+
+  // Allowed IPs type.
+  // TODO(b/194243702): Collect metrics for IPv6 usages in Allowed IPs.
+  auto allowed_ips_type = Metrics::kVpnWireGuardAllowedIPsTypeNoDefaultRoute;
+  for (auto peer : peers_) {
+    if (peer[kWireGuardPeerAllowedIPs].find("0.0.0.0/0") != std::string::npos) {
+      allowed_ips_type = Metrics::kVpnWireGuardAllowedIPsTypeHasDefaultRoute;
+      break;
+    }
+  }
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnWireGuardAllowedIPsType,
+                           allowed_ips_type,
+                           Metrics::kMetricVpnWireGuardAllowedIPsTypeMax);
 }
 
 // static

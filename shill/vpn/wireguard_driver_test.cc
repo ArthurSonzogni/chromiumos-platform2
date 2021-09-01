@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/fake_store.h"
+#include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -29,6 +30,7 @@ namespace shill {
 using testing::_;
 using testing::DoAll;
 using testing::HasSubstr;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Not;
 using testing::Return;
@@ -206,6 +208,21 @@ class WireGuardDriverTest : public testing::Test {
     EXPECT_TRUE(base::PathExists(config_file_path_));
   }
 
+  void ExpectCallMetrics(Metrics::VpnWireGuardKeyPairSource key_pair_source,
+                         int peers_num,
+                         Metrics::VpnWireGuardAllowedIPsType allowed_ips_type) {
+    EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
+                                        Metrics::kVpnDriverWireGuard, _));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnWireGuardKeyPairSource,
+                              key_pair_source, _));
+    EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricVpnWireGuardPeersNum,
+                                    peers_num, _, _, _));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnWireGuardAllowedIPsType,
+                              allowed_ips_type, _));
+  }
+
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -308,6 +325,10 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_EQ(contents, kExpectedConfigFileContents);
+  ExpectCallMetrics(Metrics::kVpnWireGuardKeyPairSourceUserInput, 2,
+                    Metrics::kVpnWireGuardAllowedIPsTypeNoDefaultRoute);
+  wireguard_tools_exit_callback_.Run(0);
+  Mock::VerifyAndClearExpectations(&metrics_);
   driver_->Disconnect();
 
   // Checks reading properties. Private keys and preshared keys should not be
@@ -410,6 +431,27 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_THAT(contents, Not(HasSubstr("PresharedKey=")));
+
+  // Clears the private key, changes the number of peers, and add 0.0.0.0/0 as
+  // its allowed ips. The reported metrics should be changed.
+  property_store_->SetStringProperty(kWireGuardPrivateKey, "", &err);
+  property_store_->SetStringmapsProperty(
+      kWireGuardPeers,
+      {
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPresharedKey, ""},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "0.0.0.0/0"}},
+      },
+      &err);
+  driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+  InvokeConnectAsyncKernel();
+  InvokeLinkReady();
+  ExpectCallMetrics(Metrics::kVpnWireGuardKeyPairSourceSoftwareGenerated, 1,
+                    Metrics::kVpnWireGuardAllowedIPsTypeHasDefaultRoute);
+  wireguard_tools_exit_callback_.Run(0);
+  Mock::VerifyAndClearExpectations(&metrics_);
 }
 
 TEST_F(WireGuardDriverTest, UnloadCredentials) {

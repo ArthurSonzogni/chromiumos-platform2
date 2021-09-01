@@ -415,6 +415,8 @@ class Metrics : public DefaultServiceObserver {
     kVpnDriverL2tpIpsec = 1,
     kVpnDriverThirdParty = 2,
     kVpnDriverArc = 3,
+    // 4 is occupied by PPTP in chrome.
+    kVpnDriverWireGuard = 5,
     kVpnDriverMax
   };
 
@@ -437,6 +439,19 @@ class Metrics : public DefaultServiceObserver {
     kVpnUserAuthenticationTypeL2tpIpsecCertificate = 5,
     kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword = 6,
     kVpnUserAuthenticationTypeMax
+  };
+
+  enum VpnWireGuardKeyPairSource {
+    kVpnWireguardKeyPairSourceUnknown = 0,
+    kVpnWireGuardKeyPairSourceUserInput = 1,
+    kVpnWireGuardKeyPairSourceSoftwareGenerated = 2,
+    kVpnWireGuardKeyPairSourceMax
+  };
+
+  enum VpnWireGuardAllowedIPsType {
+    kVpnWireGuardAllowedIPsTypeHasDefaultRoute = 0,
+    kVpnWireGuardAllowedIPsTypeNoDefaultRoute = 1,
+    kVpnWireGuardAllowedIPsTypeMax
   };
 
   enum UserInitiatedEvent {
@@ -841,6 +856,19 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricVpnRemoteAuthenticationTypeMax;
   static const char kMetricVpnUserAuthenticationType[];
   static const int kMetricVpnUserAuthenticationTypeMax;
+
+  // WireGuard connection statistics.
+  // Key pair source (e.g., user input) used in a WireGuard Connection.
+  static const char kMetricVpnWireGuardKeyPairSource[];
+  static const int kMetricVpnWireGuardKeyPairSourceMax;
+  // Number of peers used in a WireGuard connection.
+  static const char kMetricVpnWireGuardPeersNum[];
+  static const int kMetricVpnWireGuardPeersNumMin;
+  static const int kMetricVpnWireGuardPeersNumMax;
+  static const int kMetricVpnWireGuardPeersNumNumBuckets;
+  // Allowed IPs type used in a WireGuard connection.
+  static const char kMetricVpnWireGuardAllowedIPsType[];
+  static const int kMetricVpnWireGuardAllowedIPsTypeMax;
 
   // The length in seconds of a lease that has expired while the DHCP
   // client was attempting to renew the lease..

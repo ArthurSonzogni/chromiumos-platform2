@@ -13,6 +13,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
+#include "shill/metrics.h"
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -105,6 +106,8 @@ class WireGuardDriver : public VPNDriver {
   bool UpdatePeers(const Stringmaps& new_peers, Error* error);
   void ClearPeers(Error* error);
 
+  void ReportConnectionMetrics();
+
   Stringmaps peers_;
 
   EventHandler* event_handler_;
@@ -123,6 +126,10 @@ class WireGuardDriver : public VPNDriver {
 
   // |config_directory_| is a constant. Makes it a member variable for testing.
   base::FilePath config_directory_;
+
+  // Indicates where the key pair associated with this service comes from.
+  // Currently only used in the UMA metrics.
+  Metrics::VpnWireGuardKeyPairSource key_pair_source_;
 
   std::unique_ptr<VPNUtil> vpn_util_;
 

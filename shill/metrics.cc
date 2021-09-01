@@ -368,6 +368,21 @@ const char Metrics::kMetricVpnUserAuthenticationType[] =
 const int Metrics::kMetricVpnUserAuthenticationTypeMax =
     Metrics::kVpnUserAuthenticationTypeMax;
 
+// static
+const char Metrics::kMetricVpnWireGuardKeyPairSource[] =
+    "Network.Shill.Vpn.WireGuardKeyPairSource";
+const int Metrics::kMetricVpnWireGuardKeyPairSourceMax =
+    Metrics::kVpnWireGuardKeyPairSourceMax;
+const char Metrics::kMetricVpnWireGuardAllowedIPsType[] =
+    "Network.Shill.Vpn.WireGuardAllowedIPsType";
+const int Metrics::kMetricVpnWireGuardAllowedIPsTypeMax =
+    Metrics::kVpnWireGuardAllowedIPsTypeMax;
+const char Metrics::kMetricVpnWireGuardPeersNum[] =
+    "Network.Shill.Vpn.WireGuardPeersNum";
+const int Metrics::kMetricVpnWireGuardPeersNumMin = 1;
+const int Metrics::kMetricVpnWireGuardPeersNumMax = 10;
+const int Metrics::kMetricVpnWireGuardPeersNumNumBuckets = 11;
+
 // CL:557297 changed the number of buckets for the 'ExpiredLeaseLengthSeconds'
 // metric. That would lead to confusing display of samples collected before and
 // after the change. To avoid that, the 'ExpiredLeaseLengthSeconds' metric is
