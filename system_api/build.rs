@@ -19,6 +19,8 @@ use chromeos_dbus_bindings::{self, generate_module, BindingsType};
 // The parent path of system_api.
 const SOURCE_DIR: &str = "..";
 
+const OPTS: Option<&[&str]> = None;
+
 // (<module name>, <relative path to source xml>)
 // When adding additional bindings, remember to include the source project and subtree in the
 // ebuild. Otherwise, the source files will not be accessible when building dev-rust/system_api.
@@ -26,32 +28,32 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
     (
         "org_chromium_authpolicy",
         "authpolicy/dbus_bindings/org.chromium.AuthPolicy.xml",
-        BindingsType::Client,
+        BindingsType::Client(OPTS),
     ),
     (
         "org_chromium_debugd",
         "debugd/dbus_bindings/org.chromium.debugd.xml",
-        BindingsType::Client,
+        BindingsType::Client(OPTS),
     ),
     (
         "org_chromium_flimflam_manager",
         "shill/dbus_bindings/org.chromium.flimflam.Manager.dbus-xml",
-        BindingsType::Client,
+        BindingsType::Client(OPTS),
     ),
     (
         "org_chromium_flimflam_service",
         "shill/dbus_bindings/org.chromium.flimflam.Service.dbus-xml",
-        BindingsType::Client,
+        BindingsType::Client(OPTS),
     ),
     (
         "org_chromium_sessionmanagerinterface",
         "login_manager/dbus_bindings/org.chromium.SessionManagerInterface.xml",
-        BindingsType::Client,
+        BindingsType::Client(OPTS),
     ),
     (
         "org_chromium_userdataauth",
         "cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml",
-        BindingsType::Client,
+        BindingsType::Client(OPTS),
     ),
 ];
 

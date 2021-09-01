@@ -1,6 +1,6 @@
 [package]
 name = "chromeos-dbus-bindings"
-version = "0.24.52"
+version = "0.25.52"
 authors = ["The Chromium OS Authors"]
 edition = "2018"
 include = ["Cargo.toml", "src/lib.rs"]

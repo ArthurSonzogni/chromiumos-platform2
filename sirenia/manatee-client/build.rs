@@ -14,7 +14,7 @@ const SOURCE_DIR: &str = ".";
 const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[(
     "org_chromium_manatee",
     "../dbus_bindings/org.chromium.ManaTEE1.xml",
-    BindingsType::Client,
+    BindingsType::Client(None),
 )];
 
 fn main() {

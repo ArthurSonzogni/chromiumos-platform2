@@ -14,15 +14,20 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+pub const CROSSROADS_SERVER_OPTS: &[&str] = &["-s", "--crossroads"];
+pub const TREE_SERVER_OPTS: &[&str] = &["-s", "-m", "Fn", "-a", "RefClosure"];
+
 const DEFAULT_BINDINGS_DIR: &str = "src/bindings";
 const DEFAULT_CLIENT_OPTS: &[&str] = &["-s", "-m", "None"];
-const DEFAULT_SERVER_OPTS: &[&str] = &["-s", "-m", "Fn", "-a", "RefClosure"];
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum BindingsType {
-    Client,
-    Server,
-    Both,
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum BindingsType<'a> {
+    Client(Option<&'a [&'a str]>),
+    Server(&'a [&'a str]),
+    Both {
+        client_opts: Option<&'a [&'a str]>,
+        server_opts: &'a [&'a str],
+    },
 }
 
 #[derive(Debug)]
@@ -116,21 +121,21 @@ pub mod client {{"#
     .map_err(Error::Write)?;
 
     for (module, source, bindings_type) in sub_modules {
-        match bindings_type {
-            BindingsType::Client | BindingsType::Both => {}
-            BindingsType::Server => {
+        let opts = match bindings_type {
+            BindingsType::Client(client_opts) | BindingsType::Both { client_opts, .. } => {
+                client_opts
+            }
+            BindingsType::Server(_) => {
                 continue;
             }
         }
+        .unwrap_or(DEFAULT_CLIENT_OPTS);
         // Generate bindings if they don't already exist.
         let destination = client_dir.join(format!("{}.rs", module));
         if !destination.exists() {
-            if let Err(err) = generate_bindings(
-                &codegen,
-                &source_dir.join(source),
-                &destination,
-                DEFAULT_CLIENT_OPTS,
-            ) {
+            if let Err(err) =
+                generate_bindings(&codegen, &source_dir.join(source), &destination, opts)
+            {
                 errors.push_str(&format!(
                     "Failed to generate {:?} from {:?}: {}\n",
                     module, source, err
@@ -150,21 +155,20 @@ pub mod server {{"#
     )
     .map_err(Error::Write)?;
     for (module, source, bindings_type) in sub_modules {
-        match bindings_type {
-            BindingsType::Server | BindingsType::Both => {}
-            BindingsType::Client => {
+        let opts = *match bindings_type {
+            BindingsType::Server(server_opts) | BindingsType::Both { server_opts, .. } => {
+                server_opts
+            }
+            BindingsType::Client(_) => {
                 continue;
             }
-        }
+        };
         // Generate bindings if they don't already exist.
         let destination = server_dir.join(format!("{}.rs", module));
         if !destination.exists() {
-            if let Err(err) = generate_bindings(
-                &codegen,
-                &source_dir.join(source),
-                &destination,
-                DEFAULT_SERVER_OPTS,
-            ) {
+            if let Err(err) =
+                generate_bindings(&codegen, &source_dir.join(source), &destination, opts)
+            {
                 errors.push_str(&format!(
                     "Failed to generate {:?} from {:?}: {}\n",
                     module, source, err
@@ -197,11 +201,11 @@ fn get_dbus_codgen() -> Result<PathBuf> {
     ret
 }
 
-fn generate_bindings<A: AsRef<OsStr>>(
+fn generate_bindings<A: AsRef<OsStr>, S: AsRef<OsStr>, I: IntoIterator<Item = S>>(
     codegen: A,
     source: &Path,
     destination: &Path,
-    opts: &[&str],
+    opts: I,
 ) -> Result<()> {
     if !source.exists() {
         return Err(Error::SourceDoesntExist(source.to_path_buf()));
