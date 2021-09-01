@@ -15,8 +15,44 @@
 
 namespace rmad {
 
+namespace {
+
 constexpr char kEctoolCmdPath[] = "/usr/sbin/ectool";
 constexpr char kEctoolIntValRegex[] = R"(As uint: (\d+))";
+
+constexpr int kCbiTagSkuId = 2;
+constexpr int kCbiTagDramPartNum = 3;
+
+}  // namespace
+
+bool CbiUtilsImpl::GetSku(uint64_t* sku) const {
+  DCHECK(sku);
+
+  return GetCbi(kCbiTagSkuId, sku);
+}
+
+bool CbiUtilsImpl::GetDramPartNum(std::string* dram_part_num) const {
+  DCHECK(dram_part_num);
+
+  return GetCbi(kCbiTagDramPartNum, dram_part_num);
+}
+
+bool CbiUtilsImpl::SetSku(uint64_t sku) {
+  int byte_size = 0;
+  uint64_t tmp = sku;
+
+  // To tackle |sku| = 0, we use do-while to ensure that |byte_size| >= 1.
+  do {
+    tmp >>= 8;
+    byte_size++;
+  } while (tmp);
+
+  return SetCbi(kCbiTagSkuId, sku, byte_size);
+}
+
+bool CbiUtilsImpl::SetDramPartNum(const std::string& dram_part_num) {
+  return SetCbi(kCbiTagDramPartNum, dram_part_num);
+}
 
 bool CbiUtilsImpl::SetCbi(int tag, const std::string& value, int set_flag) {
   std::vector<std::string> argv{kEctoolCmdPath,

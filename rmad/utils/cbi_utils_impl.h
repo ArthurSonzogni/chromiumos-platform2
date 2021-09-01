@@ -19,6 +19,12 @@ class CbiUtilsImpl : public CbiUtils {
   CbiUtilsImpl() = default;
   ~CbiUtilsImpl() = default;
 
+  bool GetSku(uint64_t* sku) const override;
+  bool GetDramPartNum(std::string* dram_part_num) const override;
+  bool SetSku(uint64_t sku) override;
+  bool SetDramPartNum(const std::string& dram_part_num) override;
+
+ protected:
   bool SetCbi(int tag, const std::string& value, int set_flag = 0) override;
   bool GetCbi(int tag, std::string* value, int get_flag = 0) const override;
   bool SetCbi(int tag, uint64_t value, int size, int set_flag = 0) override;

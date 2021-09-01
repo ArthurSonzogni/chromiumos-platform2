@@ -18,6 +18,12 @@ class MockCbiUtils : public CbiUtils {
   MockCbiUtils() = default;
   ~MockCbiUtils() override = default;
 
+  MOCK_METHOD(bool, GetSku, (uint64_t*), (const, override));
+  MOCK_METHOD(bool, GetDramPartNum, (std::string*), (const, override));
+  MOCK_METHOD(bool, SetSku, (uint64_t), (override));
+  MOCK_METHOD(bool, SetDramPartNum, (const std::string&), (override));
+
+ protected:
   MOCK_METHOD(bool, SetCbi, (int, const std::string&, int), (override));
   MOCK_METHOD(bool, GetCbi, (int, std::string*, int), (const, override));
   MOCK_METHOD(bool, SetCbi, (int, uint64_t, int, int), (override));

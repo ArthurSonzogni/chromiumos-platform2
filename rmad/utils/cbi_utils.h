@@ -14,6 +14,19 @@ class CbiUtils {
   CbiUtils() = default;
   virtual ~CbiUtils() = default;
 
+  // Get the sku number of the device from cbi.
+  virtual bool GetSku(uint64_t* sku) const = 0;
+
+  // Get the dram part number of the device from cbi.
+  virtual bool GetDramPartNum(std::string* dram_part_num) const = 0;
+
+  // Set the sku number of the device to cbi.
+  virtual bool SetSku(uint64_t sku) = 0;
+
+  // Set the dram part number of the device to cbi.
+  virtual bool SetDramPartNum(const std::string& dram_part_num) = 0;
+
+ protected:
   // Set a (tag, value) pair to CBI. Return true if successfully set the value,
   // false if fail to set the value.
   virtual bool SetCbi(int tag, const std::string& value, int set_flag) = 0;
