@@ -12,6 +12,7 @@
 
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
 #include "diagnostics/cros_healthd/routines/arc_http/arc_http.h"
+#include "diagnostics/cros_healthd/routines/arc_ping/arc_ping.h"
 #include "diagnostics/cros_healthd/routines/battery_capacity/battery_capacity.h"
 #include "diagnostics/cros_healthd/routines/battery_charge/battery_charge.h"
 #include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge.h"
@@ -236,6 +237,11 @@ CrosHealthdRoutineFactoryImpl::MakeVideoConferencingRoutine(
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcHttpRoutine() {
   return CreateArcHttpRoutine(context_->network_diagnostics_adapter());
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeArcPingRoutine() {
+  return CreateArcPingRoutine(context_->network_diagnostics_adapter());
 }
 
 }  // namespace diagnostics

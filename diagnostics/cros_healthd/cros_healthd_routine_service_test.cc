@@ -72,7 +72,8 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall,
       mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
       mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing,
-      mojo_ipc::DiagnosticRoutineEnum::kArcHttp};
+      mojo_ipc::DiagnosticRoutineEnum::kArcHttp,
+      mojo_ipc::DiagnosticRoutineEnum::kArcPing};
 }
 
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetBatteryRoutines() {

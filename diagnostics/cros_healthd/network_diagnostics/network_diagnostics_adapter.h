@@ -94,6 +94,11 @@ class NetworkDiagnosticsAdapter {
   virtual void RunArcHttpRoutine(
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunArcHttpCallback) = 0;
+
+  // Requests the browser to invoke the ArcPing routine.
+  virtual void RunArcPingRoutine(
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
+          RunArcPingCallback) = 0;
 };
 
 }  // namespace diagnostics

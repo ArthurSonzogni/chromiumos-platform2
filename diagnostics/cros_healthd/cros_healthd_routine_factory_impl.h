@@ -75,6 +75,7 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname) override;
   std::unique_ptr<DiagnosticRoutine> MakeArcHttpRoutine() override;
+  std::unique_ptr<DiagnosticRoutine> MakeArcPingRoutine() override;
 
  private:
   // Unowned pointer that should outlive this instance.

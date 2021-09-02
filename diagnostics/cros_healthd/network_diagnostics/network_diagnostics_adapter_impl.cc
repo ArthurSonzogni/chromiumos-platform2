@@ -206,4 +206,17 @@ void NetworkDiagnosticsAdapterImpl::RunArcHttpRoutine(
   network_diagnostics_routines_->RunArcHttp(std::move(callback));
 }
 
+void NetworkDiagnosticsAdapterImpl::RunArcPingRoutine(
+    network_diagnostics_ipc::NetworkDiagnosticsRoutines::RunArcPingCallback
+        callback) {
+  if (!network_diagnostics_routines_.is_bound()) {
+    auto result = CreateResult(
+        network_diagnostics_ipc::RoutineVerdict::kNotRun,
+        network_diagnostics_ipc::RoutineProblems::NewArcPingProblems({}));
+    std::move(callback).Run(std::move(result));
+    return;
+  }
+  network_diagnostics_routines_->RunArcPing(std::move(callback));
+}
+
 }  // namespace diagnostics

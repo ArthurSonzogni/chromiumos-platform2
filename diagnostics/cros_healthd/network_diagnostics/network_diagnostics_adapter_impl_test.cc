@@ -621,6 +621,35 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
   run_loop.Run();
 }
 
+// Test that the ARC Ping routine can be run.
+TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutine) {
+  MockNetworkDiagnosticsRoutines network_diagnostics_routines;
+  network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
+      network_diagnostics_routines.pending_remote());
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(network_diagnostics_routines, RunArcPing(testing::_))
+      .WillOnce(testing::Invoke(
+          [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                  RunArcPingCallback callback) {
+            auto result = CreateResult(
+                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                network_diagnostics_ipc::RoutineProblems::NewArcPingProblems(
+                    {}));
+            std::move(callback).Run(std::move(result));
+          }));
+
+  network_diagnostics_adapter()->RunArcPingRoutine(base::BindLambdaForTesting(
+      [&](network_diagnostics_ipc::RoutineResultPtr result) {
+        EXPECT_EQ(result->verdict,
+                  network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+        EXPECT_EQ(result->problems->get_arc_ping_problems().size(), 0);
+        run_loop.Quit();
+      }));
+
+  run_loop.Run();
+}
+
 // Test that the LanConnectivity routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
@@ -841,6 +870,21 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutineWithNoRemote) {
         EXPECT_EQ(result->verdict,
                   network_diagnostics_ipc::RoutineVerdict::kNotRun);
         EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
+        run_loop.Quit();
+      }));
+
+  run_loop.Run();
+}
+
+// Test that the ArcPing routine returns RoutineVerdict::kNotRun if a valid
+// NetworkDiagnosticsRoutines remote was never sent.
+TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutineWithNoRemote) {
+  base::RunLoop run_loop;
+  network_diagnostics_adapter()->RunArcPingRoutine(base::BindLambdaForTesting(
+      [&](network_diagnostics_ipc::RoutineResultPtr result) {
+        EXPECT_EQ(result->verdict,
+                  network_diagnostics_ipc::RoutineVerdict::kNotRun);
+        EXPECT_EQ(result->problems->get_arc_ping_problems().size(), 0);
         run_loop.Quit();
       }));
 

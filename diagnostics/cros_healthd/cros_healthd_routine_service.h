@@ -109,6 +109,7 @@ class CrosHealthdRoutineService final
       const base::Optional<std::string>& stun_server_hostname,
       RunVideoConferencingRoutineCallback callback) override;
   void RunArcHttpRoutine(RunArcHttpRoutineCallback callback) override;
+  void RunArcPingRoutine(RunArcPingRoutineCallback callback) override;
 
  private:
   void RunRoutine(

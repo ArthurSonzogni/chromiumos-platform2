@@ -187,4 +187,8 @@ void FakeRoutineService::RunArcHttpRoutine(RunArcHttpRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunArcPingRoutine(RunArcPingRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

@@ -943,3 +943,27 @@ Progress: 100
 Status: Passed
 Status message: ARC HTTP routine passed with no problems.
 ```
+### ARC Ping
+
+Checks whether the gateway of connected networks is pingable inside Android.
+
+The ARC Ping routine has no parameters.
+
+To check whether the gateway of connected networks is pingable inside Android:
+
+From crosh:
+```bash
+crosh> diag arc_ping
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine --routine=arc_ping
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message: ARC Ping routine passed with no problems.
+```
