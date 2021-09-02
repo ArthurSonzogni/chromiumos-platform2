@@ -1,0 +1,41 @@
+// Copyright 2022 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "libec/fingerprint/fp_read_match_secret_command.h"
+
+namespace ec {
+
+FpReadMatchSecretCommand::~FpReadMatchSecretCommand() {
+  ClearSecretBuffer();
+}
+
+base::Optional<brillo::SecureVector> FpReadMatchSecretCommand::Secret() {
+  if (!secret_is_valid_) {
+    return base::nullopt;
+  }
+
+  brillo::SecureVector secret(sizeof(Resp()->positive_match_secret));
+  std::copy(
+      Resp()->positive_match_secret,
+      Resp()->positive_match_secret + sizeof(Resp()->positive_match_secret),
+      secret.begin());
+  ClearSecretBuffer();
+  return secret;
+}
+
+void FpReadMatchSecretCommand::ClearSecretBuffer() {
+  brillo::SecureClearContainer(Resp()->positive_match_secret);
+  secret_is_valid_ = false;
+}
+
+bool FpReadMatchSecretCommand::Run(int fd) {
+  secret_is_valid_ = EcCommandRun(fd);
+  return secret_is_valid_;
+}
+
+bool FpReadMatchSecretCommand::EcCommandRun(int fd) {
+  return EcCommand::Run(fd);
+}
+
+}  // namespace ec
