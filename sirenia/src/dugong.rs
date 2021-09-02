@@ -6,17 +6,18 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use std::cell::RefCell;
 use std::env;
 use std::fmt::{self, Debug, Formatter};
 use std::io;
 use std::os::unix::net::UnixDatagram;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use dbus::arg::OwnedFd;
-use dbus::blocking::LocalConnection;
-use dbus_tree::{Interface, MTFn};
+use dbus::{
+    arg::OwnedFd, blocking::LocalConnection, channel::MatchingReceiver, message::MatchRule,
+    MethodErr,
+};
+use dbus_crossroads::Crossroads;
 use getopts::Options;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
@@ -25,7 +26,7 @@ use libsirenia::rpc;
 use libsirenia::transport::{
     self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT,
 };
-use sirenia::server::{org_chromium_mana_teeinterface_server, OrgChromiumManaTEEInterface};
+use sirenia::server::{register_org_chromium_mana_teeinterface, OrgChromiumManaTEEInterface};
 use sys_util::{error, info, syslog};
 use thiserror::Error as ThisError;
 
@@ -60,45 +61,56 @@ pub enum Error {
 /// The result of an operation in this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Copy, Clone, Default, Debug)]
-struct TData;
-impl dbus_tree::DataType for TData {
-    type Tree = ();
-    type ObjectPath = Rc<DugongDevice>;
-    type Property = ();
-    type Interface = ();
-    type Method = ();
-    type Signal = ();
-}
-
-struct DugongDevice {
-    trichechus_client: RefCell<TrichechusClient>,
+// Arc and Mutex are used because dbus-crossroads requires the Send trait.
+// See https://github.com/diwic/dbus-rs/issues/349 for a feature request to make Send optional.
+struct DugongStateInternal {
     transport_type: TransportType,
+    trichechus_client: Mutex<TrichechusClient>,
 }
 
-impl Debug for DugongDevice {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "transport_type: {:?}", self.transport_type)
+#[derive(Clone)]
+struct DugongState(Arc<DugongStateInternal>);
+
+impl DugongState {
+    fn new(trichechus_client: TrichechusClient, transport_type: TransportType) -> Self {
+        DugongState(Arc::new(DugongStateInternal {
+            transport_type,
+            trichechus_client: Mutex::new(trichechus_client),
+        }))
+    }
+
+    fn transport_type(&self) -> &TransportType {
+        &self.0.transport_type
+    }
+
+    fn trichechus_client(&self) -> &Mutex<TrichechusClient> {
+        &self.0.trichechus_client
     }
 }
 
-impl OrgChromiumManaTEEInterface for DugongDevice {
+impl Debug for DugongState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "transport_type: {:?}", self.transport_type())
+    }
+}
+
+impl OrgChromiumManaTEEInterface for DugongState {
     fn start_teeapplication(
-        &self,
-        app_id: &str,
-    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus_tree::MethodErr> {
-        info!("Got request to start up: {}", app_id);
-        let fds = request_start_tee_app(self, app_id);
+        &mut self,
+        app_id: String,
+    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), MethodErr> {
+        info!("Got request to start up: {}", &app_id);
+        let fds = request_start_tee_app(self, &app_id);
         match fds {
             Ok(fds) => Ok((0, fds.0, fds.1)),
-            Err(e) => Err(dbus_tree::MethodErr::failed(&e)),
+            Err(e) => Err(MethodErr::failed(&e)),
         }
     }
 }
 
-fn request_start_tee_app(device: &DugongDevice, app_id: &str) -> Result<(OwnedFd, OwnedFd)> {
-    let mut transport = device
-        .transport_type
+fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, OwnedFd)> {
+    let mut transport = state
+        .transport_type()
         .try_into_client(None)
         .map_err(Error::IntoClient)?;
     let addr = transport.bind().map_err(Error::TransportBind)?;
@@ -107,9 +119,10 @@ fn request_start_tee_app(device: &DugongDevice, app_id: &str) -> Result<(OwnedFd
         port_number: addr.get_port().map_err(Error::GetPort)?,
     };
     info!("Requesting start {:?}", &app_info);
-    device
-        .trichechus_client
-        .borrow_mut()
+    state
+        .trichechus_client()
+        .lock()
+        .unwrap()
         .start_session(app_info)
         .map_err(Error::Rpc)?;
     match transport.connect() {
@@ -121,9 +134,9 @@ fn request_start_tee_app(device: &DugongDevice, app_id: &str) -> Result<(OwnedFd
     }
 }
 
-fn handle_manatee_logs(dugong_device: &DugongDevice) -> Result<()> {
+fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     const LOG_PATH: &str = "/dev/log";
-    let trichechus_client = dugong_device.trichechus_client.borrow();
+    let trichechus_client = dugong_state.trichechus_client().lock().unwrap();
     let logs: Vec<Vec<u8>> = trichechus_client.get_logs().map_err(Error::Rpc)?;
     if logs.is_empty() {
         return Ok(());
@@ -140,15 +153,7 @@ fn handle_manatee_logs(dugong_device: &DugongDevice) -> Result<()> {
     Ok(())
 }
 
-pub fn start_dbus_handler(
-    trichechus_client: TrichechusClient,
-    transport_type: TransportType,
-) -> Result<()> {
-    let dugong_device = Rc::new(DugongDevice {
-        trichechus_client: RefCell::new(trichechus_client),
-        transport_type,
-    });
-
+fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
     let c = LocalConnection::new_system().map_err(Error::ConnectionRequest)?;
     c.request_name(
         "org.chromium.ManaTEE",
@@ -157,24 +162,29 @@ pub fn start_dbus_handler(
         false, /*do_not_queue*/
     )
     .map_err(Error::ConnectionRequest)?;
-    let f = dbus_tree::Factory::new_fn();
-    let interface: Interface<MTFn<TData>, TData> =
-        org_chromium_mana_teeinterface_server(&f, (), |m| {
-            let a: &Rc<DugongDevice> = m.path.get_data();
-            let b: &DugongDevice = a;
-            b
-        });
 
-    let tree = f.tree(()).add(
-        f.object_path("/org/chromium/ManaTEE1", dugong_device.clone())
-            .introspectable()
-            .add(interface),
+    let mut crossroads = Crossroads::new();
+    let interface_token = register_org_chromium_mana_teeinterface::<DugongState>(&mut crossroads);
+    crossroads.insert(
+        "/org/chromium/ManaTEE1",
+        &[interface_token],
+        dugong_state.clone(),
+    );
+    c.start_receive(
+        MatchRule::new_method_call(),
+        Box::new(move |msg, conn| {
+            if let Err(err) = crossroads.handle_message(msg, conn) {
+                error!("Failed to handle message: {:?}", err);
+                false
+            } else {
+                true
+            }
+        }),
     );
 
-    tree.start_receive(&c);
     info!("Finished dbus setup, starting handler.");
     loop {
-        if let Err(err) = handle_manatee_logs(&dugong_device) {
+        if let Err(err) = handle_manatee_logs(&dugong_state) {
             if matches!(err, Error::Rpc(_)) {
                 error!("Trichechus disconnected: {}", err);
                 return Err(err);
@@ -196,7 +206,7 @@ fn main() -> Result<()> {
     );
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
     let get_logs = matches.opt_present(GET_LOGS_SHORT_NAME);
-    let transport_type = config.connection_type.clone();
+    let transport_type = config.connection_type;
 
     if let Err(e) = syslog::init() {
         eprintln!("failed to initialize syslog: {}", e);
@@ -227,7 +237,8 @@ fn main() -> Result<()> {
             print!("{}", String::from_utf8_lossy(entry));
         }
     } else {
-        start_dbus_handler(client, config.connection_type).unwrap();
+        let dugong_state = DugongState::new(client, transport_type);
+        start_dbus_handler(dugong_state).unwrap();
         unreachable!()
     }
     Ok(())
