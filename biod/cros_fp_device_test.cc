@@ -5,11 +5,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libec/fingerprint/fp_info_command.h>
+#include <libec/mock_ec_command_factory.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
-#include "biod/mock_ec_command_factory.h"
 
 using ec::EcCommandFactoryInterface;
 using ec::EcCommandInterface;
@@ -43,7 +43,7 @@ class CrosFpDevice_ResetContext : public testing::Test {
     MOCK_METHOD(FpMode, GetFpMode, (), (override));
     MOCK_METHOD(bool, SetContext, (std::string user_id), (override));
   };
-  class MockFpContextFactory : public MockEcCommandFactory {
+  class MockFpContextFactory : public ec::MockEcCommandFactory {
    public:
     std::unique_ptr<EcCommandInterface> FpContextCommand(
         CrosFpDeviceInterface* cros_fp, const std::string& user_id) override {
@@ -101,7 +101,7 @@ class CrosFpDevice_SetContext : public testing::Test {
     MOCK_METHOD(FpMode, GetFpMode, (), (override));
     MOCK_METHOD(bool, SetFpMode, (const FpMode& mode), (override));
   };
-  class MockFpContextFactory : public MockEcCommandFactory {
+  class MockFpContextFactory : public ec::MockEcCommandFactory {
    public:
     std::unique_ptr<EcCommandInterface> FpContextCommand(
         CrosFpDeviceInterface* cros_fp, const std::string& user_id) override {
@@ -161,7 +161,7 @@ TEST_F(CrosFpDevice_SetContext, SendMetricsOnFailingToSetMode) {
 class CrosFpDevice_DeadPixelCount : public testing::Test {
  public:
   CrosFpDevice_DeadPixelCount() {
-    auto mock_command_factory = std::make_unique<MockEcCommandFactory>();
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
     mock_ec_command_factory_ = mock_command_factory.get();
     mock_cros_fp_device_ = std::make_unique<MockCrosFpDevice>(
         &mock_biod_metrics_, std::move(mock_command_factory));
@@ -184,7 +184,7 @@ class CrosFpDevice_DeadPixelCount : public testing::Test {
   };
 
   metrics::MockBiodMetrics mock_biod_metrics_;
-  MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
   std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
 };
 
@@ -226,7 +226,7 @@ class CrosFpDevice_ReadVersion : public testing::Test {
  protected:
   metrics::MockBiodMetrics mock_biod_metrics_;
   MockCrosFpDevice mock_cros_fp_device_{
-      &mock_biod_metrics_, std::make_unique<MockEcCommandFactory>()};
+      &mock_biod_metrics_, std::make_unique<ec::MockEcCommandFactory>()};
 };
 
 TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNotNulTerminated) {

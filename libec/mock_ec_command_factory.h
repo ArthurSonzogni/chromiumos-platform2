@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BIOD_MOCK_EC_COMMAND_FACTORY_H_
-#define BIOD_MOCK_EC_COMMAND_FACTORY_H_
+#ifndef LIBEC_MOCK_EC_COMMAND_FACTORY_H_
+#define LIBEC_MOCK_EC_COMMAND_FACTORY_H_
 
 #include <memory>
 #include <string>
@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <libec/ec_command_factory.h>
 
-namespace biod {
+namespace ec {
 
 class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
  public:
@@ -20,7 +20,8 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
 
   MOCK_METHOD(std::unique_ptr<ec::EcCommandInterface>,
               FpContextCommand,
-              (CrosFpDeviceInterface * cros_fp, const std::string& user_id),
+              (biod::CrosFpDeviceInterface * cros_fp,
+               const std::string& user_id),
               (override));
   MOCK_METHOD(std::unique_ptr<ec::FpFlashProtectCommand>,
               FpFlashProtectCommand,
@@ -40,6 +41,6 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               (override));
 };
 
-}  // namespace biod
+}  // namespace ec
 
-#endif  // BIOD_MOCK_EC_COMMAND_FACTORY_H_
+#endif  // LIBEC_MOCK_EC_COMMAND_FACTORY_H_

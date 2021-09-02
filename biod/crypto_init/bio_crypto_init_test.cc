@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "biod/crypto_init/mock_bio_crypto_init.h"
-#include "biod/mock_ec_command_factory.h"
+#include <libec/mock_ec_command_factory.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -45,14 +45,14 @@ class BioCryptoInitTest : public testing::Test {
   };
 
   BioCryptoInitTest() {
-    auto mock_command_factory = std::make_unique<MockEcCommandFactory>();
+    auto mock_command_factory = std::make_unique<ec::MockEcCommandFactory>();
     mock_ec_command_factory_ = mock_command_factory.get();
     mock_bio_crypto_init_ =
         std::make_unique<MockBioCryptoInit>(std::move(mock_command_factory));
   }
 
  protected:
-  MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
+  ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
   std::unique_ptr<MockBioCryptoInit> mock_bio_crypto_init_;
 };
 
