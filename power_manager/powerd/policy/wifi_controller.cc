@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 namespace power_manager {
 namespace policy {
@@ -39,9 +40,40 @@ void WifiController::Init(Delegate* delegate,
                  &set_transmit_power_for_tablet_mode_);
   prefs->GetBool(kSetWifiTransmitPowerForProximityPref,
                  &set_transmit_power_for_proximity_);
+  prefs->GetString(kWifiTransmitPowerModeForStaticDevicePref,
+                   &transmit_power_mode_for_static_device_);
+  LOG(INFO) << "WifiController::Init: "
+            << base::StringPrintf(
+                   "%s=%d, %s=%d, %s=%s",
+                   kSetWifiTransmitPowerForTabletModePref,
+                   set_transmit_power_for_tablet_mode_,
+                   kSetWifiTransmitPowerForProximityPref,
+                   set_transmit_power_for_proximity_,
+                   kWifiTransmitPowerModeForStaticDevicePref,
+                   transmit_power_mode_for_static_device_.c_str());
 
-  if (set_transmit_power_for_tablet_mode_)
+  if (set_transmit_power_for_tablet_mode_ &&
+      !transmit_power_mode_for_static_device_.empty()) {
+    LOG(FATAL) << "Invalid configuration: both "
+               << kSetWifiTransmitPowerForTabletModePref << " and "
+               << kWifiTransmitPowerModeForStaticDevicePref << " pref set";
+  }
+
+  // Update power input source based on prefs.
+  if (set_transmit_power_for_tablet_mode_) {
     update_power_input_source_ = UpdatePowerInputSource::TABLET_MODE;
+  } else if (set_transmit_power_for_proximity_) {
+    // This is handled by WifiController::ProximitySensorDetected.
+  } else if (!transmit_power_mode_for_static_device_.empty()) {
+    static_mode_ = StaticModeFromString(transmit_power_mode_for_static_device_);
+    if (static_mode_ != StaticMode::UNSUPPORTED) {
+      update_power_input_source_ = UpdatePowerInputSource::STATIC_MODE;
+    } else {
+      LOG(WARNING) << "Invalid configuration: "
+                   << kWifiTransmitPowerModeForStaticDevicePref << '='
+                   << transmit_power_mode_for_static_device_;
+    }
+  }
 
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
   UpdateTransmitPower();
@@ -95,7 +127,25 @@ void WifiController::UpdateTransmitPower() {
     case UpdatePowerInputSource::PROXIMITY:
       UpdateTransmitPowerForProximity();
       break;
+    case UpdatePowerInputSource::STATIC_MODE:
+      UpdateTransmitPowerForStaticMode();
+      break;
     case UpdatePowerInputSource::NONE:
+      break;
+  }
+}
+
+void WifiController::UpdateTransmitPowerForStaticMode() {
+  switch (static_mode_) {
+    case StaticMode::UNSUPPORTED:
+      break;
+    case StaticMode::HIGH_TRANSMIT_POWER:
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
+                                      wifi_reg_domain_);
+      break;
+    case StaticMode::LOW_TRANSMIT_POWER:
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW,
+                                      wifi_reg_domain_);
       break;
   }
 }

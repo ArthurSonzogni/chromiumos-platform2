@@ -67,12 +67,28 @@ class WifiController : public system::UdevSubsystemObserver,
     NONE,
     TABLET_MODE,
     PROXIMITY,
+    STATIC_MODE,
   };
+  enum class StaticMode {
+    UNSUPPORTED,
+    HIGH_TRANSMIT_POWER,
+    LOW_TRANSMIT_POWER,
+  };
+  static StaticMode StaticModeFromString(const std::string& v) {
+    if (v == "non-tablet") {
+      return StaticMode::HIGH_TRANSMIT_POWER;
+    } else if (v == "tablet") {
+      return StaticMode::LOW_TRANSMIT_POWER;
+    } else {
+      return StaticMode::UNSUPPORTED;
+    }
+  }
 
   // Updates transmit power via |delegate_|. Ends up invoking either one of
   // UpdateTransmitPowerFor*() depending on |update_power_input_source_|.
   void UpdateTransmitPower();
 
+  void UpdateTransmitPowerForStaticMode();
   void UpdateTransmitPowerForTabletMode();
   void UpdateTransmitPowerForProximity();
 
@@ -81,6 +97,7 @@ class WifiController : public system::UdevSubsystemObserver,
   Delegate* delegate_ = nullptr;           // Not owned.
   system::UdevInterface* udev_ = nullptr;  // Not owned.
 
+  StaticMode static_mode_ = StaticMode::UNSUPPORTED;
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   WifiRegDomain wifi_reg_domain_ = WifiRegDomain::NONE;
   UserProximity proximity_ = UserProximity::UNKNOWN;
@@ -92,6 +109,10 @@ class WifiController : public system::UdevSubsystemObserver,
   // True if powerd has been configured to set wifi transmit power in response
   // to proximity changes.
   bool set_transmit_power_for_proximity_ = false;
+
+  // Not empty if powerd has been configured to set wifi transmit power for
+  // "static" devices.
+  std::string transmit_power_mode_for_static_device_;
 };
 
 }  // namespace policy

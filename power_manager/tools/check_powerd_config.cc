@@ -98,6 +98,7 @@ int main(int argc, char* argv[]) {
     printf("%" PRId64 "\n", sec);
     exit(0);
   } else if (FLAGS_set_wifi_transmit_power) {
+    // Check for dynamic (tablet) or proximity configurations.
     bool set_wifi_transmit_power = false;
     prefs.GetBool(power_manager::kSetWifiTransmitPowerForTabletModePref,
                   &set_wifi_transmit_power);
@@ -105,7 +106,14 @@ int main(int argc, char* argv[]) {
       prefs.GetBool(power_manager::kSetWifiTransmitPowerForProximityPref,
                     &set_wifi_transmit_power);
     }
-    exit(set_wifi_transmit_power ? 0 : 1);
+    if (set_wifi_transmit_power) {
+      exit(0);
+    }
+    // If not present, check for static device configuration.
+    std::string wifi_transmit_power_mode_for_static_device;
+    prefs.GetString(power_manager::kWifiTransmitPowerModeForStaticDevicePref,
+                    &wifi_transmit_power_mode_for_static_device);
+    exit(!wifi_transmit_power_mode_for_static_device.empty() ? 0 : 1);
   } else if (FLAGS_suspend_to_idle) {
     bool suspend_to_idle = false;
     prefs.GetBool(power_manager::kSuspendToIdlePref, &suspend_to_idle);

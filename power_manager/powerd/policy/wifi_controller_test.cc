@@ -75,6 +75,8 @@ class WifiControllerTest : public ::testing::Test {
                     set_transmit_power_tablet_pref_value_);
     prefs_.SetInt64(kSetWifiTransmitPowerForProximityPref,
                     set_transmit_power_proximity_pref_value_);
+    prefs_.SetString(kWifiTransmitPowerModeForStaticDevicePref,
+                     transmit_power_mode_for_static_device_pref_value_);
     controller_.Init(&delegate_, &prefs_, &udev_, tablet_mode);
   }
 
@@ -90,6 +92,9 @@ class WifiControllerTest : public ::testing::Test {
 
   // Initial value for kSetWifiTransmitPowerForProximityPref.
   bool set_transmit_power_proximity_pref_value_ = false;
+
+  // Initial value for kWifiTransmitPowerModeForStaticDevicePref.
+  std::string transmit_power_mode_for_static_device_pref_value_;
 
   system::UdevStub udev_;
   FakePrefs prefs_;
@@ -229,5 +234,63 @@ TEST_F(WifiControllerTest, MaintainTabletModeOnRegDomainEvent) {
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
 }
 
+TEST_F(WifiControllerTest, SetTransmitPowerForInitialStaticNonTabletMode) {
+  set_transmit_power_tablet_pref_value_ = false;
+  transmit_power_mode_for_static_device_pref_value_ = "non-tablet";
+
+  // Tablet mode is for convertible devices, not static devices.
+  Init(TabletMode::UNSUPPORTED);
+  EXPECT_EQ(1, delegate_.num_set_calls());
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+  EXPECT_EQ(WifiRegDomain::NONE, delegate_.last_reg_domain());
+}
+
+TEST_F(WifiControllerTest, SetTransmitPowerForInitialStaticTabletMode) {
+  set_transmit_power_tablet_pref_value_ = false;
+  transmit_power_mode_for_static_device_pref_value_ = "tablet";
+
+  // Tablet mode is for convertible devices, not static devices.
+  Init(TabletMode::UNSUPPORTED);
+  EXPECT_EQ(1, delegate_.num_set_calls());
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  EXPECT_EQ(WifiRegDomain::NONE, delegate_.last_reg_domain());
+}
+
+TEST_F(WifiControllerTest, MaintainStaticNonTabletModeOnRegDomainEvent) {
+  set_transmit_power_tablet_pref_value_ = false;
+  transmit_power_mode_for_static_device_pref_value_ = "non-tablet";
+
+  // Tablet mode is for convertible devices, not static devices.
+  Init(TabletMode::UNSUPPORTED);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+  controller_.HandleRegDomainChange(WifiRegDomain::FCC);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+}
+
+TEST_F(WifiControllerTest, MaintainStaticTabletOnRegDomainEvent) {
+  set_transmit_power_tablet_pref_value_ = false;
+  transmit_power_mode_for_static_device_pref_value_ = "tablet";
+
+  // Tablet mode is for convertible devices, not static devices.
+  Init(TabletMode::UNSUPPORTED);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  controller_.HandleRegDomainChange(WifiRegDomain::FCC);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+}
+
+TEST_F(WifiControllerTest, InvalidModeConfiguration) {
+  // Both tablet mode and static mode should not be set.
+  set_transmit_power_tablet_pref_value_ = true;
+  transmit_power_mode_for_static_device_pref_value_ = "tablet";
+  EXPECT_DEATH(Init(TabletMode::UNSUPPORTED), ".*");
+}
+
+TEST_F(WifiControllerTest, InvalidStaticDeviceModeConfiguration) {
+  // Unsupported static device mode configurations result in no action.
+  set_transmit_power_tablet_pref_value_ = false;
+  transmit_power_mode_for_static_device_pref_value_ = "garbage";
+  Init(TabletMode::UNSUPPORTED);
+  EXPECT_EQ(0, delegate_.num_set_calls());
+}
 }  // namespace policy
 }  // namespace power_manager
