@@ -31,8 +31,7 @@ ScreenController::ScreenController(
       network_manager_(network_manager),
       process_manager_(process_manager),
       key_reader_(
-          KeyReader{/*include_usb=*/true,
-                    GetVpdRegion(base::FilePath("/"), process_manager_)}),
+          KeyReader{/*include_usb=*/true, GetKeyboardLayout(process_manager_)}),
       key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {}
 
 bool ScreenController::Init() {

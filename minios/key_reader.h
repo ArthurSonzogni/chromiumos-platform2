@@ -43,7 +43,7 @@ class KeyReader {
   // Default constructor can only access EvWaitForKeys.
   explicit KeyReader(bool include_usb);
 
-  KeyReader(bool include_usb, std::string vpd_region);
+  KeyReader(bool include_usb, std::string keyboard_layout);
 
   ~KeyReader();
 
@@ -85,16 +85,11 @@ class KeyReader {
   // Stops the watcher.
   void StopWatcher();
 
-  // Get XKB keyboard layout based on the VPD region. Return false on error.
-  bool MapRegionToKeyboard(std::string* xkb_layout);
-
   // Wrapper that does not take in tab toggle key. Used for testing.
   bool GetCharForTest(const struct input_event& ev);
 
   // Returns the current key input as a string. Used for testing.
   std::string GetUserInputForTest();
-
-  void SetRootForTest(const base::FilePath& test_root) { root_ = test_root; }
 
  private:
   // Checks whether all the keys in `keys_` are supported by the fd. Returns
@@ -132,13 +127,11 @@ class KeyReader {
   // Whether or not to include USB connections when scanning for events.
   bool include_usb_;
   // Keyboard layout for xkb common;
-  std::string vpd_region_;
+  std::string keyboard_layout_;
   // Stores open event connections.
   std::vector<base::ScopedFD> fds_;
   // Stores epoll file descriptor.
   base::ScopedFD epfd_;
-  // Default root directory.
-  base::FilePath root_;
 
   // Watches the epoll file descriptor and calls `OnKeyEvent`.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;

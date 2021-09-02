@@ -43,10 +43,14 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
     int num_lines,
     int num_cols);
 
-// Returns the VPD region from RO firmware starting at the `root` path. Returns
-// "us" as the default.
-std::string GetVpdRegion(const base::FilePath& root,
-                         ProcessManagerInterface* process_manager);
+// Gets VPD region data given a key. Returns false on failure.
+bool GetCrosRegionData(ProcessManagerInterface* process_manager,
+                       std::string key,
+                       std::string* value);
+
+// Gets XKB keyboard data and extracts country code from it. Defaults to "us" on
+// failure.
+std::string GetKeyboardLayout(ProcessManagerInterface* process_manager);
 
 }  // namespace minios
 

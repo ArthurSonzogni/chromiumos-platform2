@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 
 namespace minios {
 
@@ -106,24 +106,39 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
   return {true, content, bytes_read};
 }
 
-std::string GetVpdRegion(const base::FilePath& root,
-                         ProcessManagerInterface* process_manager) {
-  std::string vpd_region;
-  if (ReadFileToString(root.Append("sys/firmware/vpd/ro/region"),
-                       &vpd_region)) {
-    return vpd_region;
-  }
-  LOG(WARNING) << "Could not read vpd region from file. Trying commandline.";
+bool GetCrosRegionData(ProcessManagerInterface* process_manager,
+                       std::string key,
+                       std::string* value) {
   int exit_code = 0;
-  std::string error;
-  if (process_manager->RunCommandWithOutput({"/bin/vpd", "-g", "region"},
-                                            &exit_code, &vpd_region, &error) &&
-      !exit_code) {
-    return vpd_region;
+  std::string error, xkb_keyboard;
+  // Get the first item in the keyboard list for a given region.
+  if (!process_manager->RunCommandWithOutput(
+          {"/usr/bin/cros_region_data", "-s", key}, &exit_code, value,
+          &error) ||
+      exit_code) {
+    LOG(ERROR) << "Could not get " << key << " region data. Exit code "
+               << exit_code << " with error " << error;
+    *value = "";
+    return false;
   }
-  PLOG(WARNING) << "Error getting vpd -g region. Exit code " << exit_code
-                << " with error " << error << ". Defaulting to 'us'. ";
-  return "us";
+  return true;
+}
+
+std::string GetKeyboardLayout(ProcessManagerInterface* process_manager) {
+  std::string keyboard_layout;
+  if (!GetCrosRegionData(process_manager, "keyboards", &keyboard_layout)) {
+    LOG(WARNING) << "Could not get region data. Defaulting to 'us'.";
+    return "us";
+  }
+  // Get the country code from the full keyboard string (i.e xkb:us::eng).
+  const auto& keyboard_parts = base::SplitString(
+      keyboard_layout, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (keyboard_parts.size() < 2 || keyboard_parts[1].size() < 2) {
+    LOG(WARNING) << "Could not get country code from " << keyboard_layout
+                 << " Defaulting to 'us'.";
+    return "us";
+  }
+  return keyboard_parts[1];
 }
 
 }  // namespace minios

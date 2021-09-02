@@ -115,27 +115,31 @@ TEST_F(UtilTest, ReadFileContentStartOffset) {
   EXPECT_EQ(bytes_read, 3);
 }
 
-TEST_F(UtilTest, GetVpdFromFile) {
-  std::string vpd = "ca";
-  ASSERT_TRUE(base::WriteFile(
-      tmp_dir_.GetPath().Append("sys/firmware/vpd/ro/region"), vpd));
-  EXPECT_EQ(GetVpdRegion(tmp_dir_.GetPath(), nullptr), vpd);
-}
-
-TEST_F(UtilTest, GetVpdFromCommand) {
-  std::string output = "ca";
+TEST_F(UtilTest, GetKeyboardLayoutFailure) {
   MockProcessManager mock_process_manager_;
   EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
-      .WillOnce(testing::DoAll(testing::SetArgPointee<2>(output),
+      .WillOnce(
+          testing::DoAll(testing::SetArgPointee<2>(""), testing::Return(true)));
+  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "us");
+
+  // Badly formatted.
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<2>("xkbeng:::"),
                                testing::Return(true)));
-  EXPECT_EQ(GetVpdRegion(tmp_dir_.GetPath(), &mock_process_manager_), output);
+  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "us");
+
+  // Failed.
+  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+      .WillOnce(testing::DoAll(testing::Return(false)));
+  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "us");
 }
 
-TEST_F(UtilTest, GetVpdFromDefault) {
+TEST_F(UtilTest, GetKeyboardLayout) {
   MockProcessManager mock_process_manager_;
   EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
-      .WillOnce(testing::Return(false));
-  EXPECT_EQ(GetVpdRegion(tmp_dir_.GetPath(), &mock_process_manager_), "us");
+      .WillOnce(testing::DoAll(testing::SetArgPointee<2>("xkb:en::eng"),
+                               testing::Return(true)));
+  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "en");
 }
 
 }  // namespace minios

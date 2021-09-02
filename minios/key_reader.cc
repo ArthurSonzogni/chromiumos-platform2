@@ -15,12 +15,8 @@
 #include <vector>
 
 #include <base/files/file_enumerator.h>
-#include <base/files/scoped_file.h>
-#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 #include <base/values.h>
 
 namespace minios {
@@ -77,16 +73,14 @@ bool IsKeyboardDevice(const int fd) {
 
 KeyReader::KeyReader(bool include_usb)
     : include_usb_(include_usb),
-      root_("/"),
       use_only_evwaitkey_(true),
       delegate_(nullptr) {}
 
-KeyReader::KeyReader(bool include_usb, std::string vpd_region)
+KeyReader::KeyReader(bool include_usb, std::string keyboard_layout)
     : backspace_counter_(0),
       return_pressed_(false),
       include_usb_(include_usb),
-      vpd_region_(vpd_region),
-      root_("/"),
+      keyboard_layout_(keyboard_layout),
       use_only_evwaitkey_(false) {
   user_input_.reserve(kMaxInputLength);
 }
@@ -219,23 +213,17 @@ bool KeyReader::SetKeyboardContext() {
     LOG(ERROR) << "Cannot add path " << kXkbPathName << " to context.";
     return false;
   }
-  std::string country_code;
-  if (!MapRegionToKeyboard(&country_code)) {
-    LOG(WARNING)
-        << "Could not find xkb layout for given region. Defaulting to US.";
-    country_code = "us";
-  }
-  names_ = {.layout = country_code.c_str()};
+  names_ = {.layout = keyboard_layout_.c_str()};
   keymap_ =
       xkb_keymap_new_from_names(ctx_, &names_, XKB_KEYMAP_COMPILE_NO_FLAGS);
   if (keymap_ == nullptr) {
-    LOG(ERROR) << "No matching keyboard for " << country_code
+    LOG(ERROR) << "No matching keyboard for " << keyboard_layout_
                << ". Make sure the two letter country code is valid.";
     return false;
   }
   state_ = xkb_state_new(keymap_);
   if (!state_) {
-    LOG(ERROR) << "Unable to get xkbstate for " << country_code;
+    LOG(ERROR) << "Unable to get xkbstate for " << keyboard_layout_;
     return false;
   }
   return true;
@@ -342,49 +330,6 @@ bool KeyReader::StartWatcher() {
 
 void KeyReader::StopWatcher() {
   watcher_ = nullptr;
-}
-
-bool KeyReader::MapRegionToKeyboard(std::string* xkb_layout) {
-  std::string cros_region_json;
-  if (!ReadFileToString(root_.Append("usr/share/misc/cros-regions.json"),
-                        &cros_region_json)) {
-    PLOG(ERROR) << "Could not read JSON mapping from cros-regions.json.";
-    return false;
-  }
-
-  base::JSONReader::ValueWithError json_output =
-      base::JSONReader::ReadAndReturnValueWithError(cros_region_json);
-  if (!json_output.value || !json_output.value->is_dict()) {
-    LOG(ERROR) << "Could not read json. " << json_output.error_message;
-    return false;
-  }
-
-  // Look up mapping between vpd region and xkb keyboard layout.
-  base::Value* region_info = json_output.value->FindDictKey(vpd_region_);
-  if (!region_info) {
-    LOG(ERROR) << "Region " << vpd_region_ << " not found.";
-    return false;
-  }
-
-  const base::Value* kKeyboard = region_info->FindListKey("keyboards");
-  if (!kKeyboard || kKeyboard->GetList().empty()) {
-    LOG(ERROR) << "Could not retrieve keyboards for given region "
-               << vpd_region_
-               << ". Available region information: " << *region_info;
-    return false;
-  }
-
-  // Always use the first keyboard in the list.
-  const auto keyboard_parts =
-      base::SplitString(kKeyboard->GetList()[0].GetString(), ":",
-                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (keyboard_parts.size() < 2) {
-    LOG(ERROR) << "Could not parse keyboard information for region  "
-               << vpd_region_;
-    return false;
-  }
-  *xkb_layout = keyboard_parts[1];
-  return true;
 }
 
 bool KeyReader::GetCharForTest(const struct input_event& ev) {
