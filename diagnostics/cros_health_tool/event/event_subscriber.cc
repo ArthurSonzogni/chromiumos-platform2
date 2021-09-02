@@ -65,4 +65,11 @@ bool EventSubscriber::SubscribeToAudioEvents() {
   return mojo_adapter_->AddAudioObserver(std::move(remote));
 }
 
+bool EventSubscriber::SubscribeToThunderboltEvents() {
+  mojo::PendingRemote<mojo_ipc::CrosHealthdThunderboltObserver> remote;
+  thunderbolt_subscriber_ = std::make_unique<ThunderboltSubscriber>(
+      remote.InitWithNewPipeAndPassReceiver());
+  return mojo_adapter_->AddThunderboltObserver(std::move(remote));
+}
+
 }  // namespace diagnostics

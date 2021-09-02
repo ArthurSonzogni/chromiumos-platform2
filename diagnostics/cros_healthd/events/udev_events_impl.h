@@ -24,14 +24,34 @@ class UdevEventsImpl final : public UdevEvents {
   UdevEventsImpl& operator=(const UdevEventsImpl&) = delete;
   ~UdevEventsImpl() override = default;
 
- private:
+  void Initialize() override;
+  void AddThunderboltObserver(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+          observer) override;
+
   void OnUdevEvent();
+
+ private:
+  void OnThunderboltAddEvent();
+  void OnThunderboltRemoveEvent();
+  void OnThunderboltAuthorizedEvent();
+  void OnThunderboltUnAuthorizedEvent();
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
+
+  // Each observer in |thunderbolt_observers_| will be notified of any
+  // thunderbolt event in the
+  // chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver interface.
+  // The RemoteSet manages the lifetime of the endpoints, which are
+  // automatically destroyed and removed when the pipe they are bound to is
+  // destroyed.
+  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+      thunderbolt_observers_;
 };
 
 }  // namespace diagnostics

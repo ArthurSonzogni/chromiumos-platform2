@@ -73,6 +73,13 @@ void CrosHealthdMojoService::AddAudioObserver(
   audio_events_->AddObserver(std::move(observer));
 }
 
+void CrosHealthdMojoService::AddThunderboltObserver(
+    mojo::PendingRemote<
+        chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+        observer) {
+  udev_events_->AddThunderboltObserver(std::move(observer));
+}
+
 void CrosHealthdMojoService::ProbeProcessInfo(
     uint32_t process_id, ProbeProcessInfoCallback callback) {
   ProcessFetcher(context_, static_cast<pid_t>(process_id))

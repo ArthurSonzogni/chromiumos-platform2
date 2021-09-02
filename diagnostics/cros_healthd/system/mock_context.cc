@@ -37,6 +37,7 @@ MockContext::MockContext() {
   tpm_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
   udev_ = std::make_unique<FakeUdev>();
+  udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
 
   CHECK(temp_dir_.CreateUniqueTempDir());
   root_dir_ = temp_dir_.GetPath();
@@ -110,6 +111,10 @@ org::chromium::TpmManagerProxyMock* MockContext::mock_tpm_manager_proxy()
 
 FakeUdev* MockContext::fake_udev() const {
   return static_cast<FakeUdev*>(udev_.get());
+}
+
+brillo::MockUdevMonitor* MockContext::mock_udev_monitor() const {
+  return static_cast<brillo::MockUdevMonitor*>(udev_monitor_.get());
 }
 
 }  // namespace diagnostics

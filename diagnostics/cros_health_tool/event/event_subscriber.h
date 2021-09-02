@@ -12,6 +12,7 @@
 #include "diagnostics/cros_health_tool/event/lid_subscriber.h"
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 #include "diagnostics/cros_health_tool/event/power_subscriber.h"
+#include "diagnostics/cros_health_tool/event/thunderbolt_subscriber.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
 
 namespace diagnostics {
@@ -45,6 +46,8 @@ class EventSubscriber final {
   // false on failure.
   bool SubscribeToAudioEvents();
 
+  bool SubscribeToThunderboltEvents();
+
  private:
   // Allows mojo communication with cros_healthd.
   std::unique_ptr<CrosHealthdMojoAdapter> mojo_adapter_;
@@ -59,6 +62,8 @@ class EventSubscriber final {
   std::unique_ptr<PowerSubscriber> power_subscriber_;
   // Used to subscribe to audio events.
   std::unique_ptr<AudioSubscriber> audio_subscriber_;
+  // Used to subscribe to thunderbolt events.
+  std::unique_ptr<ThunderboltSubscriber> thunderbolt_subscriber_;
 };
 
 }  // namespace diagnostics

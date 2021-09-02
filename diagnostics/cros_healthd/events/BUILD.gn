@@ -46,6 +46,7 @@ if (use.test) {
       "bluetooth_events_impl_test.cc",
       "lid_events_impl_test.cc",
       "power_events_impl_test.cc",
+      "udev_events_impl_test.cc",
     ]
     configs += [
       ":libcros_healthd_events_test_pkg_deps",

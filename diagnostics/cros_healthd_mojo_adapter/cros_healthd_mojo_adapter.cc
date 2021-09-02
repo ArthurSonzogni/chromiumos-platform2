@@ -218,6 +218,12 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
                         chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
                             observer) override;
 
+  // Subscribes the client to Thunderbolt events.
+  bool AddThunderboltObserver(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+          observer) override;
+
  private:
   // Establishes a mojo connection with cros_healthd.
   bool Connect();
@@ -953,6 +959,17 @@ bool CrosHealthdMojoAdapterImpl::AddAudioObserver(
     return false;
 
   cros_healthd_event_service_->AddAudioObserver(std::move(observer));
+  return true;
+}
+
+bool CrosHealthdMojoAdapterImpl::AddThunderboltObserver(
+    mojo::PendingRemote<
+        chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+        observer) {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
+
+  cros_healthd_event_service_->AddThunderboltObserver(std::move(observer));
   return true;
 }
 

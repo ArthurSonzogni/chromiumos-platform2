@@ -52,6 +52,7 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
   audio_events_ = std::make_unique<AudioEventsImpl>(context_.get());
 
   udev_events_ = std::make_unique<UdevEventsImpl>(context_.get());
+  udev_events_->Initialize();
 
   routine_factory_ =
       std::make_unique<CrosHealthdRoutineFactoryImpl>(context_.get());

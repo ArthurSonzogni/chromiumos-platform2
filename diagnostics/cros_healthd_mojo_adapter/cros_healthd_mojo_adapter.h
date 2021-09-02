@@ -221,6 +221,12 @@ class CrosHealthdMojoAdapter {
       mojo::PendingRemote<
           chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
           observer) = 0;
+
+  // Subscribes the client to Thunderbolt events.
+  virtual bool AddThunderboltObserver(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics

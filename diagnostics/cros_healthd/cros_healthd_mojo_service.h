@@ -67,6 +67,10 @@ class CrosHealthdMojoService final
   void AddAudioObserver(mojo::PendingRemote<
                         chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
                             observer) override;
+  void AddThunderboltObserver(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+          observer) override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeProcessInfo(uint32_t process_id,

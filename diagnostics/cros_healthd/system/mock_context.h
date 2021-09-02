@@ -8,6 +8,9 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/simple_test_tick_clock.h>
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_device.h>
+#include <brillo/udev/mock_udev_monitor.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
 #include "diagnostics/common/system/fake_bluetooth_client.h"
@@ -59,6 +62,7 @@ class MockContext final : public Context {
   base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;
   FakeUdev* fake_udev() const;
+  brillo::MockUdevMonitor* mock_udev_monitor() const;
 
   MOCK_METHOD(const base::Time, time, (), (const, override));
 

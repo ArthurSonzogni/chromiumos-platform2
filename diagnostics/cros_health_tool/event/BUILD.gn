@@ -27,5 +27,6 @@ source_set("libevent") {
     "lid_subscriber.cc",
     "network_subscriber.cc",
     "power_subscriber.cc",
+    "thunderbolt_subscriber.cc",
   ]
 }

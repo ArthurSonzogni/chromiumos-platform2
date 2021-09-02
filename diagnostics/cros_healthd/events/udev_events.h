@@ -18,6 +18,13 @@ class UdevEvents {
   UdevEvents(const UdevEvents&) = delete;
   UdevEvents& operator=(const UdevEvents&) = delete;
   virtual ~UdevEvents() = default;
+
+  virtual void Initialize() = 0;
+  // Adds a new observer to be notified when thunderbolt related events occur.
+  virtual void AddThunderboltObserver(
+      mojo::PendingRemote<
+          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics
