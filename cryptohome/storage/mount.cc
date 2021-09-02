@@ -307,6 +307,18 @@ bool Mount::MountCryptohome(const std::string& username,
 
   cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
 
+  // Once mount is complete, do a deferred teardown for on the vault.
+  // The teardown occurs when the vault's containers has no references ie. no
+  // mount holds the containers open.
+  // This is useful if cryptohome crashes: on recovery, if cryptohome decides to
+  // cleanup mounts, the underlying devices (in case of dm-crypt cryptohome)
+  // will be automatically torn down.
+
+  // TODO(sarthakkukreti): remove this in favor of using the session-manager
+  // as the source-of-truth during crash recovery. That would allow us to
+  // reconstruct the run-time state of cryptohome vault(s) at the time of crash.
+  ignore_result(user_cryptohome_vault_->SetLazyTeardownWhenUnused());
+
   // At this point we're done mounting so move the clean-up closure to the
   // instance variable.
   mount_cleanup_ = unmount_and_drop_keys_runner.Release();

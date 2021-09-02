@@ -53,6 +53,10 @@ class CryptohomeVault {
   // Tears down the vault post-unmount.
   bool Teardown();
 
+  // Marks the underlying containers for lazy teardown once the last reference
+  // to the containers has been dropped.
+  bool SetLazyTeardownWhenUnused();
+
   // Get mount type for mount to use.
   MountType GetMountType();
 

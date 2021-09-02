@@ -149,6 +149,27 @@ MountType CryptohomeVault::GetMountType() {
   }
 }
 
+bool CryptohomeVault::SetLazyTeardownWhenUnused() {
+  bool ret = true;
+  if (!container_->SetLazyTeardownWhenUnused()) {
+    LOG(ERROR) << "Failed to set lazy teardown for container";
+    ret = false;
+  }
+
+  if (migrating_container_ &&
+      !migrating_container_->SetLazyTeardownWhenUnused()) {
+    LOG(ERROR) << "Failed to set lazy teardown for migrating container";
+    ret = false;
+  }
+
+  if (cache_container_ && !cache_container_->SetLazyTeardownWhenUnused()) {
+    LOG(ERROR) << "Failed to set lazy teardown for cache container";
+    ret = false;
+  }
+
+  return ret;
+}
+
 bool CryptohomeVault::Teardown() {
   bool ret = true;
   if (!container_->Teardown()) {
