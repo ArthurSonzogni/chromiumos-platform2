@@ -18,7 +18,7 @@ class HPS {
   virtual ~HPS() = default;
 
   // Set the application version and firmware.
-  virtual void Init(uint16_t appl_version,
+  virtual void Init(uint32_t appl_version,
                     const base::FilePath& mcu,
                     const base::FilePath& spi) = 0;
 

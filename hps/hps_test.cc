@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/sys_byteorder.h>
 #include <gtest/gtest.h>
 
 #include "hps/hal/fake_dev.h"
@@ -15,6 +16,7 @@
 #include "hps/hps_impl.h"
 #include "hps/hps_metrics.h"
 #include "hps/hps_reg.h"
+#include "hps/utils.h"
 #include "metrics/metrics_library_mock.h"
 
 using ::testing::_;
@@ -152,7 +154,7 @@ TEST_F(HPSTest, NormalBoot) {
   auto spi = temp_dir.GetPath().Append("spi");
 
   // Set the expected version
-  const uint16_t version = 1234;
+  const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
   // Set up the version and files.
   hps_->Init(version, mcu, spi);
@@ -185,7 +187,7 @@ TEST_F(HPSTest, McuUpdate) {
   CreateBlob(mcu, len);
 
   // Set the expected version
-  const uint16_t version = 1234;
+  const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
   fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
@@ -224,7 +226,7 @@ TEST_F(HPSTest, SpiUpdate) {
   CreateBlob(spi, len);
 
   // Set the expected version
-  const uint16_t version = 1234;
+  const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
@@ -265,7 +267,7 @@ TEST_F(HPSTest, BothUpdate) {
   CreateBlob(mcu, len);
 
   // Set the expected version
-  const uint16_t version = 1234;
+  const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
   fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
@@ -312,7 +314,7 @@ TEST_F(HPSTest, VersionUpdate) {
   CreateBlob(mcu, len);
 
   // Set the current version
-  const uint16_t version = 1234;
+  const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
@@ -342,6 +344,48 @@ TEST_F(HPSTest, VersionUpdate) {
   // Check that both MCU and SPI were downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
+}
+
+// Check ReadVersionFromFile reads the right endianness from the right index
+TEST(ReadVersionFromFile, CorrectVersion) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath path = temp_dir.GetPath().Append("blob");
+  base::File file(path,
+                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+  ASSERT_TRUE(file.IsValid());
+
+  char data[hps::kVersionOffset] = {};
+  ASSERT_EQ(hps::kVersionOffset,
+            file.WriteAtCurrentPos(data, hps::kVersionOffset));
+  // use a big version that tests the endianness
+  const uint32_t actual_version = 0x01020304U;
+  const uint32_t actual_version_be = base::HostToNet32(actual_version);
+  ASSERT_EQ(
+      sizeof(actual_version_be),
+      file.WriteAtCurrentPos(reinterpret_cast<const char*>(&actual_version_be),
+                             sizeof(actual_version_be)));
+
+  uint32_t version;
+  ASSERT_TRUE(hps::ReadVersionFromFile(path, &version));
+  EXPECT_EQ(version, actual_version);
+}
+
+// Test ReadVersionFromFile behaviour when File is invalid
+TEST(ReadVersionFromFile, BadFile) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath path = temp_dir.GetPath().Append("blob");
+
+  // nonexistent file
+  uint32_t version;
+  EXPECT_FALSE(hps::ReadVersionFromFile(path, &version));
+
+  // empty file
+  base::File file(path,
+                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+  ASSERT_TRUE(file.IsValid());
+  EXPECT_FALSE(hps::ReadVersionFromFile(path, &version));
 }
 
 }  //  namespace

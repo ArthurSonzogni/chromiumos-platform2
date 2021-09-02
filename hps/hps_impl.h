@@ -35,7 +35,7 @@ class HPS_impl : public HPS {
         feat_enabled_(0) {}
 
   // Methods for HPS
-  void Init(uint16_t appl_version,
+  void Init(uint32_t appl_version,
             const base::FilePath& mcu,
             const base::FilePath& spi) override;
   bool Boot() override;
@@ -82,7 +82,7 @@ class HPS_impl : public HPS {
   int retries_;      // Common retry counter for states.
   int reboots_;      // Count of reboots.
   uint16_t hw_rev_;
-  uint16_t appl_version_;
+  uint32_t appl_version_;
   uint16_t feat_enabled_;
   base::FilePath mcu_blob_;
   base::FilePath spi_blob_;

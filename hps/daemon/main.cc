@@ -21,6 +21,7 @@
 #include "hps/hal/mcp.h"
 #include "hps/hal/uart.h"
 #include "hps/hps_impl.h"
+#include "hps/utils.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
@@ -31,7 +32,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_string(uart, "", "Use UART connection");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
-  DEFINE_uint32(version, 0, "Firmware version");
+  DEFINE_int64(version, -1, "Override MCU firmware file version");
   DEFINE_string(mcu_path, "", "MCU firmware file");
   DEFINE_string(spi_path, "", "SPI firmware file");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
@@ -41,6 +42,15 @@ int main(int argc, char* argv[]) {
 
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
       "hps_daemon_thread_pool");
+
+  uint32_t version;
+  if (FLAGS_version < 0) {
+    if (!hps::ReadVersionFromFile(base::FilePath(FLAGS_mcu_path), &version)) {
+      return 1;
+    }
+  } else {
+    version = FLAGS_version;
+  }
 
   // Determine the hardware connection.
   std::unique_ptr<hps::DevInterface> dev;
@@ -65,7 +75,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_skipboot) {
     hps->SkipBoot();
   } else {
-    hps->Init(FLAGS_version, base::FilePath(FLAGS_mcu_path),
+    hps->Init(version, base::FilePath(FLAGS_mcu_path),
               base::FilePath(FLAGS_spi_path));
     // TODO(amcrae): Likely need a better recovery mechanism.
     CHECK(hps->Boot()) << "Hardware failed to boot";

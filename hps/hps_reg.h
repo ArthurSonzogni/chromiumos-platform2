@@ -28,6 +28,8 @@ enum HpsReg {
   kFeatEn = 7,
   kF1 = 8,
   kF2 = 9,
+  kFirmwareVersionHigh = 10,
+  kFirmwareVersionLow = 11,
   kMax = 127,
   kNumRegs = kMax + 1,
 };

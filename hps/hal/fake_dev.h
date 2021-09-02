@@ -40,7 +40,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
         feature_on_(0),
         bank_(0),
         flags_(0),
-        version_(0),
+        firmware_version_(0),
         block_size_b_(256),
         f1_result_(0),
         f2_result_(0) {}
@@ -61,7 +61,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
     kResetApplVerification = 5,
     // If SPI download occurs, reset the SPI not-verified flag.
     kResetSpiVerification = 6,
-    // When a RW download occurs, increment the appl. version number.
+    // When a RW download occurs, increment the firmware version number.
     kIncrementVersion = 7,
   };
   bool Read(uint8_t cmd, uint8_t* data, size_t len);
@@ -72,7 +72,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   void SkipBoot() { this->SetStage(kAppl); }
   void Set(Flags f) { this->flags_.fetch_or(1 << f); }
   void Clear(Flags f) { this->flags_.fetch_and(~(1 << f)); }
-  void SetVersion(uint16_t version) { this->version_ = version; }
+  void SetVersion(uint32_t version) { this->firmware_version_ = version; }
   void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
   void SetF1Result(uint16_t result) { this->f1_result_ = result & 0x7FFF; }
   void SetF2Result(uint16_t result) { this->f2_result_ = result & 0x7FFF; }
@@ -140,7 +140,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   uint16_t feature_on_;              // Enabled features.
   std::atomic<uint16_t> bank_;       // Current memory bank readiness
   std::atomic<uint16_t> flags_;      // Behaviour flags
-  std::atomic<uint16_t> version_;    // Application version
+  std::atomic<uint32_t> firmware_version_;  // Firmware version
   std::atomic<size_t> block_size_b_;  // Write block size.
   std::atomic<uint16_t> f1_result_;  // Result for feature 1
   std::atomic<uint16_t> f2_result_;  // Result for feature 2

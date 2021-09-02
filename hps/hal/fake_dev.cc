@@ -275,14 +275,6 @@ uint16_t FakeDev::ReadRegActual(int reg) {
       }
       break;
 
-    case HpsReg::kApplVers:
-      // Application version, only returned in stage0 if the
-      // application has been verified.
-      if (this->stage_ == kStage0 && !this->Flag(kApplNotVerified)) {
-        v = this->version_.load();  // Version returned in stage0.
-      }
-      break;
-
     case HpsReg::kBankReady:
       v = this->bank_.load();
       break;
@@ -296,6 +288,26 @@ uint16_t FakeDev::ReadRegActual(int reg) {
     case HpsReg::kF2:
       if (this->feature_on_ & hps::R7::kFeature2Enable) {
         v = hps::RFeat::kValid | this->f2_result_.load();
+      }
+      break;
+
+    case HpsReg::kFirmwareVersionHigh:
+      // Firmware version, only returned in stage0 if the
+      // application has been verified.
+      if (this->stage_ == kStage0 && !this->Flag(kApplNotVerified)) {
+        v = static_cast<uint16_t>(firmware_version_.load() >> 16);
+      } else {
+        v = 0xFFFF;
+      }
+      break;
+
+    case HpsReg::kFirmwareVersionLow:
+      // Firmware version, only returned in stage0 if the
+      // application has been verified.
+      if (this->stage_ == kStage0 && !this->Flag(kApplNotVerified)) {
+        v = static_cast<uint16_t>(firmware_version_.load() & 0xFFFF);
+      } else {
+        v = 0xFFFF;
       }
       break;
 
@@ -358,7 +370,7 @@ uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
         // Check if the fake should increment the version.
         if (this->Flag(kIncrementVersion)) {
           this->Clear(kIncrementVersion);
-          this->version_++;
+          this->firmware_version_++;
         }
         return len;
       }

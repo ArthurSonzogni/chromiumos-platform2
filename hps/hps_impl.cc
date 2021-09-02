@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//
 // Main HPS class.
-//
 
 #include <fstream>
 #include <vector>
@@ -26,7 +24,7 @@ static const int kPollMs = 5;       // Delay time for poll.
 static const int kMaxBootRetries = 5;
 
 // Initialise the firmware parameters.
-void HPS_impl::Init(uint16_t appl_version,
+void HPS_impl::Init(uint32_t appl_version,
                     const base::FilePath& mcu,
                     const base::FilePath& spi) {
   this->appl_version_ = appl_version;
@@ -202,8 +200,12 @@ void HPS_impl::HandleState() {
         } else if (status & R2::kApplVerified) {
           // Verified, so now check the version. If it is
           // different, update it.
-          int version = this->device_->ReadReg(HpsReg::kApplVers);
-          if (version >= 0) {
+          int version_low = this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
+          int version_high =
+              this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
+          if (version_low >= 0 && version_high >= 0) {
+            uint32_t version = (static_cast<uint16_t>(version_high) << 16) |
+                               static_cast<uint16_t>(version_low);
             if (version == this->appl_version_) {
               // Application is verified, launch it.
               VLOG(1) << "Launching to stage1";
@@ -363,7 +365,8 @@ bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
   base::File file(source,
                   base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
   if (!file.IsValid()) {
-    LOG(ERROR) << "WriteFile: " << source << ": " << file.error_details();
+    LOG(ERROR) << "WriteFile: " << source << ": "
+               << base::File::ErrorToString(file.error_details());
     return false;
   }
   int bytes = 0;
