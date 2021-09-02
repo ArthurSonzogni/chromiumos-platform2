@@ -93,10 +93,6 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
   ELOG(INFO) << "Carrier UUID changed to [" << carrier_id << "] for device "
              << device_path.value();
 
-  // No carrier info, wait for a real one to update
-  if (carrier_id.empty())
-    return;
-
   // trigger the firmware update
   auto device =
       std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
@@ -156,9 +152,7 @@ void ModemTracker::OnDeviceListChanged(
                             weak_ptr_factory_.GetWeakPtr(), device_path),
         base::BindRepeating(&OnSignalConnected));
 
-    // Try to update only if we already know the carrier
-    if (!carrier_id.empty())
-      on_modem_carrier_id_ready_callback_.Run(std::move(device));
+    on_modem_carrier_id_ready_callback_.Run(std::move(device));
   }
   modem_objects_ = new_modems;
 }

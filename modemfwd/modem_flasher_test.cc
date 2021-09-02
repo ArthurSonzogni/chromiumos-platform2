@@ -173,6 +173,22 @@ TEST_F(ModemFlasherTest, FlashMainFirmware) {
   modem_flasher_->TryFlash(modem.get());
 }
 
+TEST_F(ModemFlasherTest, FlashMainFirmwareEmptyCarrier) {
+  base::FilePath new_firmware(kMainFirmware2Path);
+  AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
+
+  auto modem = GetDefaultModem();
+  ON_CALL(*modem, GetCarrierId()).WillByDefault(Return(""));
+
+  // Flash the main fw even when the carrier is unknown
+  std::vector<FirmwareConfig> main_cfg = {
+      {kFwMain, new_firmware, kMainFirmware2Version}};
+  EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
+  EXPECT_CALL(*modem, FlashFirmwares(main_cfg)).WillOnce(Return(true));
+  modem_flasher_->TryFlash(modem.get());
+}
+
 TEST_F(ModemFlasherTest, SkipSameMainVersion) {
   base::FilePath firmware(kMainFirmware1Path);
   AddMainFirmwareFile(kDeviceId1, firmware, kMainFirmware1Version);
