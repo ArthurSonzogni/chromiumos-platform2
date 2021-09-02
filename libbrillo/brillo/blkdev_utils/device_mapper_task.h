@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// brillo::DevmapperTask is a lower level device-mapper construct which denotes
+// an operation on a dm target. This class is mostly meant to be used as a
+// building block for the simpler, application-friendly brillo::DeviceMapper
+// interface.
+
 #ifndef LIBBRILLO_BRILLO_BLKDEV_UTILS_DEVICE_MAPPER_TASK_H_
 #define LIBBRILLO_BRILLO_BLKDEV_UTILS_DEVICE_MAPPER_TASK_H_
 
@@ -96,6 +101,12 @@ class DevmapperTask {
   // supported. On failure, return {0, 0, 0} which disallows any
   // version-specific features.
   virtual DeviceMapperVersion GetVersion() = 0;
+
+  // Set deferred removal for the task. If set to true, the device is removed
+  // once the last user closes it.
+  // Deferred removal is supported from kernel 3.13 onwards.
+  // Returns true if the flag is successfully set.
+  virtual bool SetDeferredRemove() = 0;
 };
 
 // Libdevmapper implementation for DevmapperTask.
@@ -114,6 +125,7 @@ class DevmapperTaskImpl : public DevmapperTask {
                      SecureBlob* parameters) override;
   bool Run(bool udev_sync = true) override;
   DeviceMapperVersion GetVersion() override;
+  bool SetDeferredRemove() override;
 
  private:
   DmTaskPtr task_;

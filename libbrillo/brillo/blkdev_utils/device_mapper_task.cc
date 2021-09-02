@@ -103,4 +103,8 @@ DeviceMapperVersion DevmapperTaskImpl::GetVersion() {
   return version;
 }
 
+bool DevmapperTaskImpl::SetDeferredRemove() {
+  return dm_task_deferred_remove(task_.get());
+}
+
 }  // namespace brillo

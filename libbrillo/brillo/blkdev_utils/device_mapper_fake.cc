@@ -59,6 +59,7 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
 std::unique_ptr<DmTask> DmTaskCreate(int type) {
   auto t = std::make_unique<DmTask>();
   t->type = type;
+  t->deferred = false;
   return t;
 }
 
@@ -103,6 +104,15 @@ bool FakeDevmapperTask::GetNextTarget(uint64_t* start,
 
 bool FakeDevmapperTask::Run(bool udev_sync) {
   return StubDmRunTask(task_.get(), udev_sync);
+}
+
+bool FakeDevmapperTask::SetDeferredRemove() {
+  // Make sure that deferred remove is only set for remove tasks.
+  if (task_->type != DM_DEVICE_REMOVE)
+    return false;
+
+  task_->deferred = true;
+  return true;
 }
 
 std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type) {

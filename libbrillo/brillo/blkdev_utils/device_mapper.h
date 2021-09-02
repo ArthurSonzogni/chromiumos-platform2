@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// brillo::DeviceMapper acts as the interface for any userspace application that
+// needs to create/remove/perform operations on device-mapper targets. The
+// interface uses the device-mapper target's name as an identifier to denote
+// the device the operation will be performed on.
+
 #ifndef LIBBRILLO_BRILLO_BLKDEV_UTILS_DEVICE_MAPPER_H_
 #define LIBBRILLO_BRILLO_BLKDEV_UTILS_DEVICE_MAPPER_H_
 
@@ -96,7 +101,8 @@ class BRILLO_EXPORT DeviceMapper {
   // Removes device.
   // Parameters
   //   name - Name of the devmapper device.
-  bool Remove(const std::string& device);
+  //   deferred - Whether device removal should be deferred.
+  bool Remove(const std::string& name, bool deferred = false);
 
   // Returns table for device.
   // Parameters

@@ -154,11 +154,16 @@ bool DeviceMapper::Setup(const std::string& name, const DevmapperTable& table) {
   return true;
 }
 
-bool DeviceMapper::Remove(const std::string& name) {
+bool DeviceMapper::Remove(const std::string& name, bool deferred) {
   auto task = dm_task_factory_.Run(DM_DEVICE_REMOVE);
 
   if (!task->SetName(name)) {
     LOG(ERROR) << "Remove: SetName failed.";
+    return false;
+  }
+
+  if (deferred && !task->SetDeferredRemove()) {
+    LOG(ERROR) << "Remove: SetDeferredRemoval failed.";
     return false;
   }
 

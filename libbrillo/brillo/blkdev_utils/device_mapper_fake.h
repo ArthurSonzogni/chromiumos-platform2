@@ -32,6 +32,7 @@ struct DmTarget {
 
 struct DmTask {
   int type;
+  bool deferred;
   std::string name;
   std::vector<DmTarget> targets;
 };
@@ -55,6 +56,7 @@ class FakeDevmapperTask : public brillo::DevmapperTask {
                      SecureBlob* parameters) override;
   bool Run(bool udev_sync = true) override;
   DeviceMapperVersion GetVersion() override;
+  bool SetDeferredRemove() override;
 
  private:
   std::unique_ptr<DmTask> task_;
