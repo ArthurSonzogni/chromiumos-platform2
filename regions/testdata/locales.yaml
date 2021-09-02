@@ -5,16 +5,18 @@
 - am
 - an
 - ar
+- ar-XB
+- as
 - ast
 - az
 - be
 - bg
-- bh
 - bn
 - br
 - bs
 - ca
 - ceb
+- chr
 - ckb
 - co
 - cs
@@ -30,9 +32,11 @@
 - en-AU
 - en-CA
 - en-GB
+- en-GB-oxendict
 - en-IN
 - en-NZ
 - en-US
+- en-XA
 - en-ZA
 - eo
 - es
@@ -87,6 +91,7 @@
 - km
 - kn
 - ko
+- kok
 - ku
 - ky
 - la
@@ -124,6 +129,7 @@
 - rm
 - ro
 - ru
+- rw
 - sd
 - sh
 - si
@@ -144,6 +150,7 @@
 - th
 - ti
 - tk
+- tn
 - to
 - tr
 - tt
@@ -154,6 +161,7 @@
 - uz
 - vi
 - wa
+- wo
 - xh
 - yi
 - yo
