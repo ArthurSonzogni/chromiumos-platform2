@@ -768,6 +768,7 @@ In the tables below,
 | use-multi-power-level-dynamic-sar | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | wake-on-dp | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | wakeup-input-device-names | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| wifi-transmit-power-mode-for-static-device | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 
 ### autobrightness
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

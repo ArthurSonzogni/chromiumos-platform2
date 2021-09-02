@@ -235,6 +235,11 @@ extern const char kSuspendFreezerDepsPrefix[];
 // If true, return Far when at least one of the sensors report far.
 extern const char kSetTransmitPowerPreferFarForProximityPref[];
 
+// If "tablet", update wifi transmit power at startup for tablet mode.
+// If "non-tablet", update wifi transmit power at startup for non-tablet (i.e.,
+// clamshell mode).
+extern const char kWifiTransmitPowerModeForStaticDevicePref[];
+
 // If true, update wifi transmit power when in tablet vs. clamshell mode.
 extern const char kSetWifiTransmitPowerForTabletModePref[];
 

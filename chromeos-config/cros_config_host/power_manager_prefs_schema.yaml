@@ -146,6 +146,7 @@ powerd_prefs: &powerd_prefs
     default: "3600"
   suspend-to-idle: *powerd_prefs_default
   set-transmit-power-prefer-far-for-proximity: *powerd_prefs_default
+  wifi-transmit-power-mode-for-static-device: *powerd_prefs_default
   set-wifi-transmit-power-for-tablet-mode: *powerd_prefs_default
   set-wifi-transmit-power-for-proximity: *powerd_prefs_default
   set-wifi-transmit-power-for-activity-proximity: *powerd_prefs_default

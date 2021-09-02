@@ -87,6 +87,8 @@ const char kTpmStatusIntervalSecPref[] = "tpm_status_interval_sec";
 const char kSuspendToIdlePref[] = "suspend_to_idle";
 const char kSetTransmitPowerPreferFarForProximityPref[] =
     "set_transmit_power_prefer_far_for_proximity";
+const char kWifiTransmitPowerModeForStaticDevicePref[] =
+    "wifi_transmit_power_mode_for_static_device";
 const char kSetWifiTransmitPowerForTabletModePref[] =
     "set_wifi_transmit_power_for_tablet_mode";
 const char kSetWifiTransmitPowerForProximityPref[] =
