@@ -603,8 +603,6 @@ class StorageTest
  protected:
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
-    sequenced_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
 
     // Disallow uploads unless other expectation is set (any later EXPECT_CALL
     // will take precedence over this one).
@@ -847,8 +845,10 @@ class StorageTest
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-
-  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_{
+      base::ThreadPool::CreateSequencedTaskRunner(
+          {base::TaskPriority::BEST_EFFORT,
+           base::TaskShutdownBehavior::BLOCK_SHUTDOWN, base::MayBlock()})};
 
   std::unique_ptr<test::ScopedEncryptionFeature> scoped_encryption_feature_;
 
