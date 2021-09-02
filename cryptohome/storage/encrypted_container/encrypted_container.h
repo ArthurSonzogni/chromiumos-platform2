@@ -59,6 +59,10 @@ class EncryptedContainer {
   virtual bool Exists() = 0;
   // Gets the type of the encrypted container.
   virtual EncryptedContainerType GetType() = 0;
+  // Marks the container for lazy teardown; once the last reference to the
+  // container is dropped, the constructs of the container are automatically
+  // torn down and the container can be safely purged afterwards.
+  virtual bool SetLazyTeardownWhenUnused() = 0;
 };
 
 }  // namespace cryptohome

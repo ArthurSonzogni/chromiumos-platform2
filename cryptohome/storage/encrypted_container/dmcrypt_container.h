@@ -51,6 +51,8 @@ class DmcryptContainer : public EncryptedContainer {
     return EncryptedContainerType::kDmcrypt;
   }
 
+  bool SetLazyTeardownWhenUnused() override;
+
  private:
   // Configuration for the encrypted container.
   const std::string dmcrypt_device_name_;

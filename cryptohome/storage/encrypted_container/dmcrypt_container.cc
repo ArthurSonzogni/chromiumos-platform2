@@ -118,6 +118,10 @@ DmcryptContainer::DmcryptContainer(
                        std::make_unique<brillo::DeviceMapper>()) {}
 
 bool DmcryptContainer::Purge() {
+  // Stale dm-crypt containers may need an extra teardown before purging the
+  // device.
+  ignore_result(Teardown());
+
   return backing_device_->Purge();
 }
 
@@ -236,6 +240,25 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
   }
 
   ignore_result(device_teardown_runner.Release());
+  return true;
+}
+
+bool DmcryptContainer::SetLazyTeardownWhenUnused() {
+  if (!device_mapper_->Remove(dmcrypt_device_name_, true /* deferred */)) {
+    LOG(ERROR) << "Failed to mark the device mapper target for deferred remove";
+    return false;
+  }
+
+  if (backing_device_->GetType() != BackingDeviceType::kLoopbackDevice) {
+    LOG(WARNING) << "Backing device does not support lazy teardown";
+    return false;
+  }
+
+  if (!backing_device_->Teardown()) {
+    LOG(ERROR) << "Failed to lazy teardown backing device";
+    return false;
+  }
+
   return true;
 }
 

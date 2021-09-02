@@ -65,6 +65,11 @@ bool FscryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
   return true;
 }
 
+bool FscryptContainer::SetLazyTeardownWhenUnused() {
+  LOG(WARNING) << "fscrypt containers do not support lazy teardown";
+  return false;
+}
+
 bool FscryptContainer::Teardown() {
   return platform_->InvalidateDirCryptoKey(key_reference_, backing_dir_);
 }

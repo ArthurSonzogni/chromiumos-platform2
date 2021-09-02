@@ -30,6 +30,7 @@ class EcryptfsContainer : public EncryptedContainer {
   EncryptedContainerType GetType() override {
     return EncryptedContainerType::kEcryptfs;
   }
+  bool SetLazyTeardownWhenUnused() override;
 
  private:
   const base::FilePath backing_dir_;
