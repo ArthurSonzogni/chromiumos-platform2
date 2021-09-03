@@ -337,6 +337,12 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
     policy->mutable_managed_guest_session_privacy_warnings()->set_enabled(
         value.value());
   }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceRestrictedManagedGuestSessionEnabled)) {
+    policy->mutable_device_restricted_managed_guest_session_enabled()
+        ->set_enabled(value.value());
+  }
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -376,6 +382,12 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
           EncodeBoolean(key::kDeviceDebugPacketCaptureAllowed)) {
     policy->mutable_device_debug_packet_capture_allowed()->set_allowed(
         value.value());
+  }
+
+  if (base::Optional<bool> value = EncodeBoolean(
+          key::kDeviceLoginScreenPromptOnMultipleMatchingCertificates)) {
+    policy->mutable_login_screen_prompt_on_multiple_matching_certificates()
+        ->set_value(value.value());
   }
 }
 
@@ -646,6 +658,16 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         value.value());
     SetPolicyOptions(accessibility_settings
                          ->mutable_login_screen_screen_magnifier_type_options(),
+                     level_);
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceLoginScreenAccessibilityShortcutsEnabled)) {
+    em::AccessibilitySettingsProto* accessibility_settings =
+        policy->mutable_accessibility_settings();
+    accessibility_settings->set_login_screen_shortcuts_enabled(value.value());
+    SetPolicyOptions(accessibility_settings
+                         ->mutable_login_screen_shortcuts_enabled_options(),
                      level_);
   }
 }
@@ -1004,11 +1026,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
   if (base::Optional<bool> value = EncodeBoolean(key::kPluginVmAllowed))
     policy->mutable_plugin_vm_allowed()->set_plugin_vm_allowed(value.value());
-  if (base::Optional<std::string> value =
-          EncodeString(key::kPluginVmLicenseKey)) {
-    policy->mutable_plugin_vm_license_key()->set_plugin_vm_license_key(
-        value.value());
-  }
 
   if (base::Optional<bool> value = EncodeBoolean(key::kDeviceWilcoDtcAllowed)) {
     policy->mutable_device_wilco_dtc_allowed()->set_device_wilco_dtc_allowed(
@@ -1121,6 +1138,27 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
   }
 
+  if (base::Optional<std::string> value =
+          EncodeString(key::kDeviceScheduledReboot)) {
+    std::string error;
+    base::Optional<base::Value> dict_value =
+        JsonToDictionary(value.value(), &error);
+    if (!dict_value) {
+      LOG(ERROR) << "Failed to parse string as dictionary: '"
+                 << (!error.empty() ? error : value.value()) << "' for policy '"
+                 << key::kDeviceScheduledReboot << "', ignoring.";
+    } else {
+      policy->mutable_device_scheduled_reboot()
+          ->set_device_scheduled_reboot_settings(value.value());
+    }
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceHostnameUserConfigurable)) {
+    policy->mutable_hostname_user_configurable()
+        ->set_device_hostname_user_configurable(value.value());
+  }
+
   if (base::Optional<bool> value =
           EncodeBoolean(key::kDevicePciPeripheralDataAccessEnabled)) {
     policy->mutable_device_pci_peripheral_data_access_enabled_v2()->set_enabled(
@@ -1146,6 +1184,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
           EncodeStringList(key::kDeviceAllowedBluetoothServices)) {
     *policy->mutable_device_allowed_bluetooth_services()
          ->mutable_allowlist() = {values.value().begin(), values.value().end()};
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kKioskCRXManifestUpdateURLIgnored)) {
+    policy->mutable_kiosk_crx_manifest_update_url_ignored()->set_value(
+        value.value());
   }
 }
 

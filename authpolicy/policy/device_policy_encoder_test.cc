@@ -156,6 +156,11 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kBool);
   EXPECT_EQ(kBool, policy.managed_guest_session_privacy_warnings().enabled());
 
+  EncodeBoolean(&policy, key::kDeviceRestrictedManagedGuestSessionEnabled,
+                kBool);
+  EXPECT_EQ(kBool,
+            policy.device_restricted_managed_guest_session_enabled().enabled());
+
   //
   // Network policies.
   //
@@ -173,6 +178,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeString(&policy, key::kDeviceHostnameTemplate, kString);
   EXPECT_EQ(kString, policy.network_hostname().device_hostname_template());
+
+  EncodeBoolean(&policy,
+                key::kDeviceLoginScreenPromptOnMultipleMatchingCertificates,
+                kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.login_screen_prompt_on_multiple_matching_certificates().value());
 
   // The encoder of this policy converts ints to
   // DeviceKerberosEncryptionTypes::Types enums.
@@ -330,6 +342,11 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       kScreenMagnifierTypeInRangeInt,
       policy.accessibility_settings().login_screen_screen_magnifier_type());
 
+  EncodeBoolean(&policy, key::kDeviceLoginScreenAccessibilityShortcutsEnabled,
+                kBool);
+  EXPECT_EQ(kBool,
+            policy.accessibility_settings().login_screen_shortcuts_enabled());
+
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
@@ -396,6 +413,23 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeString(&policy, key::kSystemProxySettings, kString);
   EXPECT_FALSE(policy.has_system_proxy_settings());
+
+  EncodeString(&policy, key::kDeviceScheduledReboot, kString);
+  EXPECT_FALSE(
+      policy.device_scheduled_reboot().has_device_scheduled_reboot_settings());
+
+  EncodeString(&policy, key::kDeviceScheduledReboot,
+               R"!!!(
+               {
+                 "reboot_time":
+                 {
+                   "hour": 22,
+                   "minute": 30
+                 },
+                 "frequency": "WEEKLY"
+               })!!!");
+  EXPECT_TRUE(
+      policy.device_scheduled_reboot().has_device_scheduled_reboot_settings());
 
   // The encoder of this policy converts ints to
   // DeviceCrostiniArcAdbSideloadingAllowedProto::AllowanceMode enums.
@@ -627,8 +661,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kPluginVmAllowed, kBool);
   EXPECT_EQ(kBool, policy.plugin_vm_allowed().plugin_vm_allowed());
-  EncodeString(&policy, key::kPluginVmLicenseKey, kString);
-  EXPECT_EQ(kString, policy.plugin_vm_license_key().plugin_vm_license_key());
 
   EncodeBoolean(&policy, key::kDeviceWilcoDtcAllowed, kBool);
   EXPECT_EQ(kBool,
@@ -646,6 +678,11 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kDeviceWiFiAllowed, kBool);
   EXPECT_EQ(kBool, policy.device_wifi_allowed().device_wifi_allowed());
+
+  EncodeBoolean(&policy, key::kDeviceHostnameUserConfigurable, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.hostname_user_configurable().device_hostname_user_configurable());
 
   EncodeString(&policy, key::kDeviceWilcoDtcConfiguration, kString);
   EXPECT_EQ(
@@ -768,6 +805,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeStringList(&policy, key::kDeviceAllowedBluetoothServices, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.device_allowed_bluetooth_services().allowlist()));
+
+  EncodeBoolean(&policy, key::kKioskCRXManifestUpdateURLIgnored, kBool);
+  EXPECT_EQ(kBool, policy.kiosk_crx_manifest_update_url_ignored().value());
 
   //
   // Check whether all device policies have been handled.

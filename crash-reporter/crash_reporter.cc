@@ -584,6 +584,10 @@ int main(int argc, char* argv[]) {
     for (const InvocationInfo& info : collector.handlers) {
       if (info.should_handle) {
         if (!ran_init) {
+          if (!collector.collector) {
+            LOG(ERROR) << "Unexpected null collector.";
+            return 1;
+          }
           if (collector.init) {
             collector.init.Run();
           } else {
