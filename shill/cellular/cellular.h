@@ -462,6 +462,7 @@ class Cellular : public Device,
 
   bool ShouldBringNetworkInterfaceDownAfterDisabled() const override;
 
+  void SetDbusPath(const shill::RpcIdentifier& dbus_path);
   void SetState(State state);
   void SetModemState(ModemState modem_state_state);
   void SetScanning(bool scanning);

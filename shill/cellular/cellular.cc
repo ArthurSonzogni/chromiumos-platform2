@@ -1023,6 +1023,8 @@ void Cellular::UpdateSecondaryServices() {
 void Cellular::OnModemDestroyed() {
   StopLocationPolling();
   DestroyCapability();
+  // Clear the dbus path.
+  SetDbusPath(shill::RpcIdentifier());
 
   // Under certain conditions, Cellular::StopModem may not be called before
   // the Modem object is destroyed. This happens if the dbus modem exported
@@ -1979,12 +1981,13 @@ void Cellular::RegisterProperties() {
 
 void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
                                      const std::string& mac_address) {
-  if (dbus_path_ == dbus_path)
+  if (dbus_path_ == dbus_path) {
+    SLOG(this, 1) << __func__ << " Skipping update. Same dbus_path provided: "
+                  << dbus_path.value();
     return;
+  }
   LOG(INFO) << __func__ << " Modem Path: " << dbus_path.value();
-  dbus_path_ = dbus_path;
-  dbus_path_str_ = dbus_path.value();
-  adaptor()->EmitStringChanged(kDBusObjectProperty, dbus_path_str_);
+  SetDbusPath(dbus_path);
   SetModemState(kModemStateUnknown);
   set_mac_address(mac_address);
   CreateCapability();
@@ -2282,6 +2285,12 @@ void Cellular::StopLocationPolling() {
                   << "Cancelling outstanding timeout.";
     poll_location_task_.Cancel();
   }
+}
+
+void Cellular::SetDbusPath(const shill::RpcIdentifier& dbus_path) {
+  dbus_path_ = dbus_path;
+  dbus_path_str_ = dbus_path.value();
+  adaptor()->EmitStringChanged(kDBusObjectProperty, dbus_path_str_);
 }
 
 void Cellular::SetScanning(bool scanning) {
