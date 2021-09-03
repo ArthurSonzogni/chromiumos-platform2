@@ -4,10 +4,11 @@
 
 #include "power_manager/powerd/system/cros_ec_device_event.h"
 
+#include <fcntl.h>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
-
-#include "power_manager/powerd/system/cros_ec_ioctl.h"
+#include <libec/device_event_command.h>
 
 namespace power_manager {
 namespace system {
@@ -17,57 +18,40 @@ namespace system {
 // else. This is a limitation of EC_DEVICE_EVENT_PARAM_SET_ENABLED_EVENTS.
 // We should instead make EC support EC_DEVICE_EVENT_PARAM_ENABLE_EVENTS,
 // which allows event masks to be set and unset atomically.
-void EnableCrosEcDeviceEvent(int event, bool enable) {
-  const uint32_t event_mask = EC_DEVICE_EVENT_MASK(event);
-  struct ec_params_device_event p;
-  struct ec_response_device_event* r;
+void EnableCrosEcDeviceEvent(enum ec_device_event event, bool enable) {
   static bool cmd_supported = true;
 
   if (!cmd_supported)
     return;
 
-  base::ScopedFD ec_fd =
-      base::ScopedFD(open(cros_ec_ioctl::kCrosEcDevNodePath, O_RDWR));
+  base::ScopedFD ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 
   if (!ec_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << cros_ec_ioctl::kCrosEcDevNodePath;
+    PLOG(ERROR) << "Failed to open " << ec::kCrosEcPath;
     return;
   }
 
-  cros_ec_ioctl::IoctlCommand<struct ec_params_device_event,
-                              struct ec_response_device_event>
-      cmd(EC_CMD_DEVICE_EVENT);
-
-  p.param = EC_DEVICE_EVENT_PARAM_GET_ENABLED_EVENTS;
-  cmd.SetReq(p);
-  if (!cmd.Run(ec_fd.get())) {
+  ec::DeviceEventCommand get_cmd(/* clear_pending_events= */ false);
+  if (!get_cmd.Run(ec_fd.get())) {
     // Expected on boards with device event disabled. Print warning only once.
     LOG(WARNING) << "Failed to get CrOS EC device event mask";
     cmd_supported = false;
     return;
   }
 
-  r = cmd.Resp();
-
-  /* Return if mask is already enabled or disabled. */
-  if (enable == !!(r->event_mask & event_mask)) {
+  if (get_cmd.IsEnabled(event) == enable) {
     LOG(INFO) << "CrOS EC device event is already "
               << (enable ? "enabled" : "disabled") << " for " << event;
     return;
   }
 
-  p.param = EC_DEVICE_EVENT_PARAM_SET_ENABLED_EVENTS;
-  p.event_mask =
-      enable ? (r->event_mask | event_mask) : (r->event_mask & ~event_mask);
-
-  cmd.SetReq(p);
-  if (!cmd.Run(ec_fd.get())) {
+  ec::DeviceEventCommand set_cmd(event, enable, get_cmd.GetMask());
+  if (!set_cmd.Run(ec_fd.get())) {
     LOG(ERROR) << "Failed to set CrOS EC device event for " << event;
     return;
   }
 
-  r = cmd.Resp();
-  if (enable != !!(r->event_mask & event_mask)) {
+  if (set_cmd.IsEnabled(event) == enable) {
     LOG(ERROR) << "Failed to " << (enable ? "enable" : "disable")
                << " CrOS EC device event for " << event;
     return;

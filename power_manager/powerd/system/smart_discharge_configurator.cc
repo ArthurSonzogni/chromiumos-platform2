@@ -4,10 +4,11 @@
 
 #include "power_manager/powerd/system/smart_discharge_configurator.h"
 
+#include <fcntl.h>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
-
-#include "power_manager/powerd/system/cros_ec_ioctl.h"
+#include <libec/smart_discharge_command.h>
 
 namespace power_manager {
 namespace system {
@@ -18,36 +19,26 @@ void ConfigureSmartDischarge(int64_t to_zero_hr,
   if (to_zero_hr < 0 || cutoff_ua < 0 || hibernate_ua < 0)
     return;
 
-  base::ScopedFD cros_ec_fd =
-      base::ScopedFD(open(cros_ec_ioctl::kCrosEcDevNodePath, O_RDWR));
+  base::ScopedFD cros_ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
   if (!cros_ec_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << cros_ec_ioctl::kCrosEcDevNodePath;
+    PLOG(ERROR) << "Failed to open " << ec::kCrosEcPath;
     return;
   }
 
-  struct ec_params_smart_discharge params = {};
-  params.flags = EC_SMART_DISCHARGE_FLAGS_SET;
-  params.hours_to_zero = to_zero_hr;
-  params.drate.cutoff = cutoff_ua;
-  params.drate.hibern = hibernate_ua;
-
-  cros_ec_ioctl::IoctlCommand<struct ec_params_smart_discharge,
-                              struct ec_response_smart_discharge>
-      cmd(EC_CMD_SMART_DISCHARGE);
-  cmd.SetReq(params);
-
+  ec::SmartDischargeCommand cmd(to_zero_hr, cutoff_ua, hibernate_ua);
   if (!cmd.Run(cros_ec_fd.get())) {
-    LOG(ERROR) << "Failed to set Smart Discharge to " << params.hours_to_zero
-               << " hrs to zero, cutoff power " << params.drate.cutoff
-               << " uA, hibernate power " << params.drate.hibern << " uA";
+    LOG(ERROR) << "Failed to set Smart Discharge to " << to_zero_hr
+               << " hrs to zero, cutoff power " << cutoff_ua
+               << " uA, hibernate power " << hibernate_ua << " uA";
     return;
   }
-  struct ec_response_smart_discharge* response = cmd.Resp();
-  LOG(INFO) << "Smart Discharge set to " << response->hours_to_zero
-            << " hrs to zero, cutoff power " << response->drate.cutoff
-            << " uA, hibernate power " << response->drate.hibern
-            << " uA, cutoff threshold " << response->dzone.cutoff
-            << " mAh, stay-up threshold " << response->dzone.stayup << " mAh";
+  LOG(INFO) << "Smart Discharge set to " << cmd.HoursToZero()
+            << " hrs to zero, cutoff power " << cmd.CutoffCurrentMicroAmps()
+            << " uA, hibernate power " << cmd.HibernationCurrentMicroAmps()
+            << " uA, cutoff threshold "
+            << cmd.BatteryCutoffThresholdMilliAmpHours()
+            << " mAh, stay-up threshold "
+            << cmd.ECStayupThresholdMilliAmpHours() << " mAh";
 }
 
 }  // namespace system

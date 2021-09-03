@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <utility>
 
+#include <fcntl.h>
+
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -24,6 +26,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
+#include <libec/display_soc_command.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/clock.h"
@@ -31,7 +34,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/system/cros_ec_ioctl.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
@@ -736,35 +738,28 @@ void PowerSupply::OnUdevEvent(const UdevEvent& event) {
 }
 
 bool PowerSupply::GetDisplayStateOfChargeFromEC(double* display_soc) {
-  struct ec_response_display_soc* r;
-
   if (!import_display_soc_)
     return false;
 
-  base::ScopedFD ec_fd =
-      base::ScopedFD(open(cros_ec_ioctl::kCrosEcDevNodePath, O_RDWR));
+  base::ScopedFD ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 
   if (!ec_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << cros_ec_ioctl::kCrosEcDevNodePath;
+    PLOG(ERROR) << "Failed to open " << ec::kCrosEcPath;
     return false;
   }
 
-  cros_ec_ioctl::IoctlCommand<cros_ec_ioctl::EmptyParam,
-                              struct ec_response_display_soc>
-      cmd(EC_CMD_DISPLAY_SOC);
-
+  ec::DisplayStateOfChargeCommand cmd;
   if (!cmd.Run(ec_fd.get())) {
     // This is expected if EC doesn't export display SoC.
     LOG(INFO) << "Failed to read display SoC from EC";
     return false;
   }
 
-  r = cmd.Resp();
   if (display_soc != nullptr) {
-    *display_soc = r->display_soc / 10.0;
+    *display_soc = cmd.CurrentPercentCharge();
   }
-  full_factor_ = r->full_factor / 1000.0;
-  low_battery_shutdown_percent_ = r->shutdown_soc / 10.0;
+  full_factor_ = cmd.FullFactor();
+  low_battery_shutdown_percent_ = cmd.ShutdownPercentCharge();
 
   return true;
 }
