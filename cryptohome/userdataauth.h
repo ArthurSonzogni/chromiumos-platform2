@@ -108,7 +108,8 @@ class UserDataAuth {
   // completes/fails.
   void StartMigrateToDircrypto(
       const user_data_auth::StartMigrateToDircryptoRequest& request,
-      base::Callback<void(const user_data_auth::DircryptoMigrationProgress&)>
+      base::RepeatingCallback<
+          void(const user_data_auth::DircryptoMigrationProgress&)>
           progress_callback);
 
   // Determine if the account specified by |account| needs to do Dircrypto
@@ -168,7 +169,8 @@ class UserDataAuth {
 
   // Set the |low_disk_space_callback_| variable. This is usually called by the
   // DBus adaptor.
-  void SetLowDiskSpaceCallback(const base::Callback<void(uint64_t)>& callback);
+  void SetLowDiskSpaceCallback(
+      const base::RepeatingCallback<void(uint64_t)>& callback);
 
   // =============== Key Related Public Utilities ===============
   // Add the key specified in the request, and return a CryptohomeErrorCode to

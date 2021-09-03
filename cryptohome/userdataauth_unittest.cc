@@ -1954,7 +1954,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->DoMount(
         mount_req,
-        base::Bind(
+        base::BindOnce(
             [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
               EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
                         reply.error());
@@ -2056,7 +2056,7 @@ TEST_F(UserDataAuthTest,
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->DoMount(
         mount_req,
-        base::Bind(
+        base::BindOnce(
             [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
               EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
                         reply.error());
@@ -2134,7 +2134,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoValidity) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartMigrateToDircrypto(
         request,
-        base::Bind(
+        base::BindRepeating(
             [](int* success_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
               EXPECT_EQ(progress.status(),
@@ -2159,7 +2159,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartMigrateToDircrypto(
         request,
-        base::Bind(
+        base::BindRepeating(
             [](int* call_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
               EXPECT_EQ(progress.status(),
@@ -2181,7 +2181,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartMigrateToDircrypto(
         request,
-        base::Bind(
+        base::BindRepeating(
             [](int* call_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
               EXPECT_EQ(progress.status(),
@@ -2268,7 +2268,7 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
 
 TEST_F(UserDataAuthTest, LowDiskSpaceNotificationCallback) {
   EXPECT_CALL(low_disk_space_handler_, SetLowDiskSpaceCallback(_));
-  userdataauth_->SetLowDiskSpaceCallback(base::Bind([](uint64_t) {}));
+  userdataauth_->SetLowDiskSpaceCallback(base::BindRepeating([](uint64_t) {}));
 }
 
 TEST_F(UserDataAuthTest, LowDiskSpaceHandlerStopped) {
@@ -2804,7 +2804,7 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionInvalid) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartFingerprintAuthSession(
         req,
-        base::Bind(
+        base::BindOnce(
             [](bool* called_ptr,
                const user_data_auth::StartFingerprintAuthSessionReply& reply) {
               EXPECT_EQ(reply.error(),
@@ -2836,7 +2836,7 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionFail) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartFingerprintAuthSession(
         req,
-        base::Bind(
+        base::BindOnce(
             [](bool* called_ptr,
                const user_data_auth::StartFingerprintAuthSessionReply& reply) {
               EXPECT_EQ(reply.error(),
@@ -2868,7 +2868,7 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionSuccess) {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
     userdataauth_->StartFingerprintAuthSession(
         req,
-        base::Bind(
+        base::BindOnce(
             [](bool* called_ptr,
                const user_data_auth::StartFingerprintAuthSessionReply& reply) {
               EXPECT_EQ(reply.error(),

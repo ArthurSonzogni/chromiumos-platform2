@@ -318,17 +318,18 @@ bool UserDataAuth::Initialize() {
           base::IgnoreResult(&UserDataAuth::UpdateCurrentUserActivityTimestamp),
           base::Unretained(this), 0));
 
-  low_disk_space_handler_->SetLowDiskSpaceCallback(base::Bind([](uint64_t) {}));
+  low_disk_space_handler_->SetLowDiskSpaceCallback(
+      base::BindRepeating([](uint64_t) {}));
 
-  if (!low_disk_space_handler_->Init(base::Bind(
+  if (!low_disk_space_handler_->Init(base::BindRepeating(
           &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
     return false;
 
   // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
   // scheduled by the callback itself.
   PostTaskToMountThread(FROM_HERE,
-                        base::Bind(&UserDataAuth::UploadAlertsDataCallback,
-                                   base::Unretained(this)));
+                        base::BindOnce(&UserDataAuth::UploadAlertsDataCallback,
+                                       base::Unretained(this)));
 
   // Do Stateful Recovery if requested.
   auto mountfn =
@@ -417,7 +418,7 @@ bool UserDataAuth::StatefulRecoveryUnmount() {
       base::WaitableEvent::InitialState::NOT_SIGNALED);
 
   PostTaskToMountThread(
-      FROM_HERE, base::Bind(
+      FROM_HERE, base::BindOnce(
                      [](UserDataAuth* uda, base::WaitableEvent* done_event_ptr,
                         bool* result_ptr) {
                        *result_ptr = uda->Unmount();
@@ -469,28 +470,28 @@ bool UserDataAuth::PostDBusInitialize() {
   }
 
   if (tpm_manager_util_) {
-    tpm_manager_util_->AddOwnershipCallback(base::Bind(
+    tpm_manager_util_->AddOwnershipCallback(base::BindRepeating(
         &UserDataAuth::OnOwnershipTakenSignal, base::Unretained(this)));
   } else {
     LOG(ERROR) << __func__ << ": Failed to get TpmManagerUtility singleton!";
   }
 
   // Create a dbus connection on mount thread.
-  PostTaskToMountThread(
-      FROM_HERE,
-      base::Bind(&UserDataAuth::CreateMountThreadDBus, base::Unretained(this)));
+  PostTaskToMountThread(FROM_HERE,
+                        base::BindOnce(&UserDataAuth::CreateMountThreadDBus,
+                                       base::Unretained(this)));
 
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
   // be called across multiple threads in parallel.
 
-  PostTaskToMountThread(FROM_HERE,
-                        base::Bind(&UserDataAuth::InitializeInstallAttributes,
-                                   base::Unretained(this)));
+  PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuth::InitializeInstallAttributes,
+                                base::Unretained(this)));
 
   PostTaskToMountThread(FROM_HERE,
-                        base::Bind(&UserDataAuth::CreateFingerprintManager,
-                                   base::Unretained(this)));
+                        base::BindOnce(&UserDataAuth::CreateFingerprintManager,
+                                       base::Unretained(this)));
 
   return true;
 }
@@ -1038,7 +1039,7 @@ void UserDataAuth::set_target_free_space(uint64_t target_free_space) {
 }
 
 void UserDataAuth::SetLowDiskSpaceCallback(
-    const base::Callback<void(uint64_t)>& callback) {
+    const base::RepeatingCallback<void(uint64_t)>& callback) {
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
 }
 
@@ -2539,8 +2540,8 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Rename(
 
 void UserDataAuth::StartMigrateToDircrypto(
     const user_data_auth::StartMigrateToDircryptoRequest& request,
-    base::Callback<void(const user_data_auth::DircryptoMigrationProgress&)>
-        progress_callback) {
+    base::RepeatingCallback<void(
+        const user_data_auth::DircryptoMigrationProgress&)> progress_callback) {
   AssertOnMountThread();
 
   MigrationType migration_type = request.minimal_migration()
@@ -3056,8 +3057,8 @@ void UserDataAuth::UploadAlertsDataCallback() {
 
     PostTaskToMountThread(
         FROM_HERE,
-        base::Bind(&UserDataAuth::UploadAlertsDataCallback,
-                   base::Unretained(this)),
+        base::BindOnce(&UserDataAuth::UploadAlertsDataCallback,
+                       base::Unretained(this)),
         base::TimeDelta::FromMilliseconds(upload_alerts_period_ms_));
   }
 }
