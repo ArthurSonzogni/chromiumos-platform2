@@ -800,6 +800,11 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
     return;
   }
 
+  shill::Stringmap apn_info;
+  if (!apn_try_list_.empty())
+    apn_info = apn_try_list_.front();
+  cellular()->NotifyDetailedCellularConnectionResult(error, apn_info);
+
   if (error.IsFailure()) {
     service->ClearLastGoodApn();
     if (!RetriableConnectError(error) || !ConnectToNextApn(callback)) {

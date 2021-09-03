@@ -245,6 +245,71 @@
   </event>
 </project>
 
+
+<project name="Cellular">
+  <owner>andrewlassalle@chromium.org</owner>
+  <owner>ejcaruso@chromium.org</owner>
+  <id>per-project</id>
+  <summary>
+    Project for recording Cellular metrics.
+  </summary>
+
+  <event name="CellularConnectionAttempt">
+    <summary>
+      Records information of the last cellular connection attempt. An entry is
+      logged inmediately after the cellular connection fails or succeeds.
+    </summary>
+    <metric name="apn_id" type="int">
+      <summary>
+        The ID of the APN used to establish the connection. This ID is a hash
+        of the string uuid+apn_name+username+password.
+      </summary>
+    </metric>
+    <metric name="ipv4_config_method" type="int">
+      <summary>
+        The IPv4 config method(see IPConfig::Method) provided by the carrier.
+      </summary>
+    </metric>
+    <metric name="ipv6_config_method" type="int">
+      <summary>
+        The IPv6 config method(see IPConfig::Method) provided by the carrier.
+      </summary>
+    </metric>
+    <metric name="connect_result" type="int">
+      <summary>
+        The result of the connection. This uses the same values as the metric
+        Network.Shill.Cellular.ConnectResult.
+      </summary>
+    </metric>
+    <metric name="home_mccmnc" type="int">
+      <summary>
+        The MCCMNC of the home provider.
+      </summary>
+    </metric>
+    <metric name="serving_mccmnc" type="int">
+      <summary>
+        The MCCMNC of the serving provider.
+      </summary>
+    </metric>
+    <metric name="roaming_state" type="int">
+      <summary>
+        Indicates if the device is roaming.
+      </summary>
+    </metric>
+    <metric name="use_attach_apn" type="int">
+      <summary>
+        Indicates if the use_attach flag is enabled.
+      </summary>
+    </metric>
+    <metric name="apn_source" type="int">
+      <summary>
+        Indicates the source of the APN. Options are: MODB == 0 , UI == 1,
+        MODEM == 2.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="TestProjectOne">
   <owner>tby@chromium.org</owner>
   <id>none</id>

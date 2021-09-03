@@ -207,6 +207,10 @@ class Cellular : public Device,
 
   void OnModemStateChanged(ModemState new_state);
 
+  // Called to send detailed metrics for the last connection attempt.
+  void NotifyDetailedCellularConnectionResult(const Error& error,
+                                              const shill::Stringmap& apn_info);
+
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
 

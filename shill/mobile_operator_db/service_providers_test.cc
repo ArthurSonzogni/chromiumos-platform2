@@ -10,6 +10,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
 
+#include "shill/metrics.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 #include "shill/protobuf_lite_streams.h"
 
@@ -177,6 +178,41 @@ TEST_F(ServiceProvidersTest, CheckIMSIRangesAreValid) {
     }
     previous_start = range.first;
     previous_end = range.second;
+  }
+}
+
+TEST_F(ServiceProvidersTest, VerifyUniquenessOfApnHashes) {
+  // This is a test related to the structured metrics(metrics.cc)
+  // Verify that no 2 hashes are the same, otherwise we won't be able to know
+  // which hash corresponds to which APN.
+  std::map<int64_t, std::string> hashes;
+  for (const auto& mno : database_->mno()) {
+    for (const auto& mobile_apn : mno.data().mobile_apn()) {
+      int64_t hash =
+          Metrics::HashApn(mno.data().uuid(), mobile_apn.apn(),
+                           mobile_apn.username(), mobile_apn.password());
+      ASSERT_EQ(hashes.count(hash), 0)
+          << " Non unique hash '" << hash << "' for uuid:" << mno.data().uuid()
+          << ", apn:" << mobile_apn.apn()
+          << " username: " << mobile_apn.username()
+          << ", password:" << mobile_apn.password() << ", and " << hashes[hash];
+      hashes[hash] = mno.data().uuid() + ":" + mobile_apn.apn();
+    }
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& mobile_apn : mvno->data().mobile_apn()) {
+      int64_t hash =
+          Metrics::HashApn(mvno->data().uuid(), mobile_apn.apn(),
+                           mobile_apn.username(), mobile_apn.password());
+      ASSERT_EQ(hashes.count(hash), 0)
+          << " Non unique hash '" << hash
+          << "' for uuid:" << mvno->data().uuid()
+          << ", apn:" << mobile_apn.apn()
+          << " username: " << mobile_apn.username()
+          << ", password:" << mobile_apn.password() << ", and " << hashes[hash];
+      hashes[hash] = mvno->data().uuid() + ":" + mobile_apn.apn();
+    }
   }
 }
 

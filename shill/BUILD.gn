@@ -334,6 +334,7 @@ static_library("libshill") {
     ":generate_upstart_proxies",
     ":mobile_operator_db",
     ":shill-chromeos-dbus-adaptors",
+    "//metrics/structured:libstructuredmetrics",
   ]
 
   if (use.cellular) {

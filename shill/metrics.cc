@@ -11,12 +11,18 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include "base/strings/string_number_conversions.h"
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
+#include <crypto/sha2.h>
 #include <metrics/bootstat.h>
+#include <metrics/structured/structured_events.h>
 
+#include "shill/cellular/cellular.h"
+#include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
 
@@ -74,6 +80,38 @@ constexpr base::TimeDelta kMetricsMonthlyTimeOnlineSamplePeriod =
 constexpr base::TimeDelta kMetricsMonthlyTimeOnlineAccumulationPeriod =
     base::TimeDelta::FromDays(30);
 
+Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
+    const Error::Type& error) {
+  switch (error) {
+    case Error::kSuccess:
+      return Metrics::CellularConnectResult::kCellularConnectResultSuccess;
+    case Error::kWrongState:
+      return Metrics::CellularConnectResult::kCellularConnectResultWrongState;
+    case Error::kOperationFailed:
+      return Metrics::CellularConnectResult::
+          kCellularConnectResultOperationFailed;
+    case Error::kAlreadyConnected:
+      return Metrics::CellularConnectResult::
+          kCellularConnectResultAlreadyConnected;
+    case Error::kNotRegistered:
+      return Metrics::CellularConnectResult::
+          kCellularConnectResultNotRegistered;
+    case Error::kNotOnHomeNetwork:
+      return Metrics::CellularConnectResult::
+          kCellularConnectResultNotOnHomeNetwork;
+    case Error::kIncorrectPin:
+      return Metrics::CellularConnectResult::kCellularConnectResultIncorrectPin;
+    case Error::kPinRequired:
+      return Metrics::CellularConnectResult::kCellularConnectResultPinRequired;
+    case Error::kPinBlocked:
+      return Metrics::CellularConnectResult::kCellularConnectResultPinBlocked;
+    case Error::kInvalidApn:
+      return Metrics::CellularConnectResult::kCellularConnectResultInvalidApn;
+    default:
+      LOG(WARNING) << "Unexpected error type: " << error;
+      return Metrics::CellularConnectResult::kCellularConnectResultUnknown;
+  }
+}
 }  // namespace
 
 // static
@@ -1539,53 +1577,99 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
 void Metrics::NotifyCellularConnectionResult(Error::Type error) {
   SLOG(this, 2) << __func__ << ": " << error;
 
-  CellularConnectResult connect_result;
-
-  switch (error) {
-    case Error::kSuccess:
-      connect_result = CellularConnectResult::kCellularConnectResultSuccess;
-      break;
-    case Error::kWrongState:
-      connect_result = CellularConnectResult::kCellularConnectResultWrongState;
-      break;
-    case Error::kOperationFailed:
-      connect_result =
-          CellularConnectResult::kCellularConnectResultOperationFailed;
-      break;
-    case Error::kAlreadyConnected:
-      connect_result =
-          CellularConnectResult::kCellularConnectResultAlreadyConnected;
-      break;
-    case Error::kNotRegistered:
-      connect_result =
-          CellularConnectResult::kCellularConnectResultNotRegistered;
-      break;
-    case Error::kNotOnHomeNetwork:
-      connect_result =
-          CellularConnectResult::kCellularConnectResultNotOnHomeNetwork;
-      break;
-    case Error::kIncorrectPin:
-      connect_result =
-          CellularConnectResult::kCellularConnectResultIncorrectPin;
-      break;
-    case Error::kPinRequired:
-      connect_result = CellularConnectResult::kCellularConnectResultPinRequired;
-      break;
-    case Error::kPinBlocked:
-      connect_result = CellularConnectResult::kCellularConnectResultPinBlocked;
-      break;
-    case Error::kInvalidApn:
-      connect_result = CellularConnectResult::kCellularConnectResultInvalidApn;
-      break;
-    default:
-      connect_result = CellularConnectResult::kCellularConnectResultUnknown;
-      LOG(WARNING) << "Unexpected error type: " << error;
-      break;
-  }
+  CellularConnectResult connect_result =
+      ConvertErrorToCellularConnectResult(error);
 
   SendEnumToUMA(
       kMetricCellularConnectResult, static_cast<int>(connect_result),
       static_cast<int>(CellularConnectResult::kCellularConnectResultMax));
+}
+
+int64_t Metrics::HashApn(const std::string& uuid,
+                         const std::string& apn_name,
+                         const std::string& username,
+                         const std::string& password) {
+  std::string string1, string2;
+
+  base::TrimString(uuid, " ", &string1);
+  base::TrimString(apn_name, " ", &string2);
+  string1 += string2;
+  base::TrimString(username, " ", &string2);
+  string1 += string2;
+  base::TrimString(password, " ", &string2);
+  string1 += string2;
+
+  int64_t hash;
+  crypto::SHA256HashString(string1, &hash, 8);
+  return hash;
+}
+
+void Metrics::NotifyDetailedCellularConnectionResult(
+    Error::Type error,
+    const std::string& uuid,
+    const shill::Stringmap& apn_info,
+    IPConfig::Method ipv4_config_method,
+    IPConfig::Method ipv6_config_method,
+    const std::string& home_mccmnc,
+    const std::string& serving_mccmnc,
+    const std::string& roaming_state,
+    bool use_attach_apn) {
+  int64_t home, serving;
+  CellularApnSource apn_source = kCellularApnSourceUi;
+  std::string apn_name;
+  std::string username;
+  std::string password;
+  CellularRoamingState roaming =
+      CellularRoamingState::kCellularRoamingStateUnknown;
+  CellularConnectResult connect_result =
+      ConvertErrorToCellularConnectResult(error);
+
+  base::StringToInt64(home_mccmnc, &home);
+  base::StringToInt64(serving_mccmnc, &serving);
+
+  if (roaming_state == kRoamingStateHome)
+    roaming = kCellularRoamingStateHome;
+  else if (roaming_state == kRoamingStateRoaming)
+    roaming = kCellularRoamingStateRoaming;
+
+  DCHECK(base::Contains(apn_info, cellular::kApnSource));
+  if (base::Contains(apn_info, cellular::kApnSource)) {
+    if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb)
+      apn_source = kCellularApnSourceMoDb;
+    else if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceUi)
+      apn_source = kCellularApnSourceUi;
+    else if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem)
+      apn_source = kCellularApnSourceModem;
+
+    if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb) {
+      if (base::Contains(apn_info, kApnProperty))
+        apn_name = apn_info.at(kApnProperty);
+      if (base::Contains(apn_info, kApnUsernameProperty))
+        username = apn_info.at(kApnUsernameProperty);
+      if (base::Contains(apn_info, kApnPasswordProperty))
+        password = apn_info.at(kApnPasswordProperty);
+    }
+  }
+
+  SLOG(this, 3) << __func__ << ": error:" << error << " uuid:" << uuid
+                << " apn:" << apn_name << " apn_source:" << apn_source
+                << " ipv4:" << ipv4_config_method
+                << " ipv6:" << ipv6_config_method
+                << " home_mccmnc:" << home_mccmnc
+                << " serving_mccmnc:" << serving_mccmnc
+                << " roaming_state:" << roaming_state;
+
+  metrics::structured::events::cellular::CellularConnectionAttempt()
+      .Setconnect_result(static_cast<int64_t>(connect_result))
+      .Setapn_id(HashApn(uuid, apn_name, username, password))
+      .Setipv4_config_method(ipv4_config_method)
+      .Setipv6_config_method(ipv6_config_method)
+      .Sethome_mccmnc(home)
+      .Setserving_mccmnc(serving)
+      .Setroaming_state(roaming)
+      .Setuse_attach_apn(use_attach_apn)
+      .Setapn_source(static_cast<int64_t>(apn_source))
+      .Record();
 }
 
 void Metrics::NotifyCellularOutOfCredits(

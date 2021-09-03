@@ -1145,6 +1145,26 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
   last_cellular_connection_results_[iccid] = error.type();
 }
 
+void Cellular::NotifyDetailedCellularConnectionResult(
+    const Error& error, const shill::Stringmap& apn_info) {
+  SLOG(this, 3) << __func__ << ": Result:" << error.type();
+
+  IPConfig::Method ipv4 = IPConfig::Method::kMethodUnknown;
+  IPConfig::Method ipv6 = IPConfig::Method::kMethodUnknown;
+  std::string roaming_state;
+  if (service_)
+    roaming_state = service_->roaming_state();
+
+  if (capability_ && capability_->GetActiveBearer()) {
+    ipv4 = capability_->GetActiveBearer()->ipv4_config_method();
+    ipv6 = capability_->GetActiveBearer()->ipv6_config_method();
+  }
+  metrics()->NotifyDetailedCellularConnectionResult(
+      error.type(), home_provider_info_->uuid(), apn_info, ipv4, ipv6,
+      home_provider_info_->mccmnc(), serving_operator_info_->mccmnc(),
+      roaming_state, use_attach_apn_);
+}
+
 void Cellular::Connect(CellularService* service, Error* error) {
   CHECK(service);
   LOG(INFO) << __func__ << ": " << service->log_name();
@@ -1223,6 +1243,10 @@ void Cellular::Connect(CellularService* service, Error* error) {
                           "Connect Failed: Modem not registered.");
     NotifyCellularConnectionResult(*error, service->iccid(),
                                    service_->is_in_user_connect());
+    // Send detailed metrics since |kNotRegistered| is a very common error when
+    // using Attach APNs.
+    NotifyDetailedCellularConnectionResult(*error,
+                                           *service_->GetLastAttachApn());
     return;
   }
 

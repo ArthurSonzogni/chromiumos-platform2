@@ -338,6 +338,13 @@ class Metrics : public DefaultServiceObserver {
     kCellular3GPPRegistrationDelayedDropMax
   };
 
+  enum CellularApnSource {
+    kCellularApnSourceMoDb = 0,
+    kCellularApnSourceUi = 1,
+    kCellularApnSourceModem = 2,
+    kCellularApnSourceMax
+  };
+
   enum CellularDropTechnology {
     kCellularDropTechnology1Xrtt = 0,
     kCellularDropTechnologyEdge = 1,
@@ -369,6 +376,13 @@ class Metrics : public DefaultServiceObserver {
     kCellularConnectResultPinBlocked = 9,
     kCellularConnectResultInvalidApn = 10,
     kCellularConnectResultMax
+  };
+
+  enum CellularRoamingState {
+    kCellularRoamingStateUnknown = 0,
+    kCellularRoamingStateHome = 1,
+    kCellularRoamingStateRoaming = 2,
+    kCellularRoamingStateMax
   };
 
   enum CellularOutOfCreditsReason {
@@ -1283,6 +1297,18 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the resulting status of a cellular connection
   void NotifyCellularConnectionResult(Error::Type error);
 
+  // Notifies this object of the resulting status of a cellular connection
+  virtual void NotifyDetailedCellularConnectionResult(
+      Error::Type error,
+      const std::string& uuid,
+      const shill::Stringmap& apn_info,
+      IPConfig::Method ipv4_config_method,
+      IPConfig::Method ipv6_config_method,
+      const std::string& home_mccmnc,
+      const std::string& serving_mccmnc,
+      const std::string& roaming_state,
+      bool use_attach_apn);
+
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();
   virtual void Notify3GPPRegistrationDelayedDropCanceled();
@@ -1413,6 +1439,12 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the MBO support of the access point that has been
   // connected to.
   void NotifyMBOSupport(bool mbo_support);
+
+  // Returns a persistent hash to be used to uniquely identify an APN.
+  static int64_t HashApn(const std::string& uuid,
+                         const std::string& apn_name,
+                         const std::string& username,
+                         const std::string& password);
 
  private:
   friend class MetricsTest;
