@@ -50,13 +50,27 @@ constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
 constexpr std::array<const char*, 2> kCellularIfnamePrefixes{
     {"wwan+", "rmnet+"}};
 
+// Chains for tagging egress traffic in the OUTPUT and PREROUTING chains of the
+// mangle table.
 constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
+constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
+
+// Egress filter chain for dropping in the OUTPUT chain any local traffic
+// incorrectly bound to a static IPv4 address used for ARC or Crostini.
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
+// Egress filter chain for preemptively dropping in the FORWARD chain any ARC or
+// Crostini traffic that may not be correctly processed in SNAT.
+constexpr char kDropGuestInvalidIpv4Chain[] = "drop_guest_invalid_ipv4";
+
+// Egress nat chain for redirecting DNS queries from system services.
+// TODO(b/162788331) Remove once dns-proxy has become fully operational.
 constexpr char kRedirectDnsChain[] = "redirect_dns";
+
+// VPN egress filter chains for the filter OUTPUT and FORWARD chains.
+constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
-constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
 
 // nat PREROUTING chains for ingress traffic. "ingress_port_forwarding" must be
 // traversed before "ingress_default_forwarding".
@@ -176,8 +190,8 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
   }
 
-  // Create filter subchains for managing the egress firewall rules associated
-  // with VPN lockdown. When VPN lockdown is enabled, a REJECT rule must stop
+  // Create filter subchains for managing the egress firewall VPN rules.
+  // When VPN lockdown is enabled, a REJECT rule must stop
   // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark. This
   // REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN lockdown
   // is enabled and a VPN is connected, an ACCEPT rule protects the traffic
@@ -187,20 +201,29 @@ void Datapath::Start() {
   //   - traverse kVpnAcceptChain before kVpnLockdownChain,
   //   - traverse kVpnLockdownChain before other ACCEPT rules in OUTPUT and
   //   FORWARD.
+  if (!AddChain(IpFamily::Dual, "filter", kVpnEgressFiltersChain)) {
+    LOG(ERROR) << "Failed to create " << kVpnEgressFiltersChain
+               << " filter chain";
+  }
+  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "OUTPUT",
+                      kVpnEgressFiltersChain, "" /*iif*/, "" /*oif*/)) {
+    LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
+               << kVpnEgressFiltersChain;
+  }
+  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "FORWARD",
+                      kVpnEgressFiltersChain, "" /*iif*/, "" /*oif*/)) {
+    LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
+               << kVpnEgressFiltersChain;
+  }
   std::vector<std::string> vpn_chains = {kVpnLockdownChain, kVpnAcceptChain};
   for (const auto& chain : vpn_chains) {
     if (!AddChain(IpFamily::Dual, "filter", chain)) {
       LOG(ERROR) << "Failed to create " << chain << " filter chain";
     }
-    if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "OUTPUT", chain,
-                        "" /*iif*/, "" /*oif*/)) {
-      LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
-                 << chain;
-    }
-    if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "FORWARD", chain,
-                        "" /*iif*/, "" /*oif*/)) {
-      LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
-                 << chain;
+    if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", kVpnEgressFiltersChain,
+                        chain, "" /*iif*/, "" /*oif*/)) {
+      LOG(ERROR) << "Failed to set up jump rule from " << kVpnEgressFiltersChain
+                 << " to " << chain;
     }
   }
 
@@ -234,11 +257,21 @@ void Datapath::Start() {
   // need to be explicitly dropped as SNAT cannot be applied to them.
   // b/196898241: To ensure that the INVALID DROP rule is traversed before
   // vpn_accept and vpn_lockdown, insert it in front of the FORWARD chain last.
+  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestInvalidIpv4Chain)) {
+    LOG(ERROR) << "Failed to create " << kDropGuestInvalidIpv4Chain
+               << " filter chain";
+  }
+  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "FORWARD",
+                      kDropGuestInvalidIpv4Chain, "" /*iif*/, "" /*oif*/)) {
+    LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
+               << kDropGuestInvalidIpv4Chain;
+  }
   std::string snatMark =
       kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
   if (process_runner_->iptables(
-          "filter", {"-I", "FORWARD", "-m", "mark", "--mark", snatMark, "-m",
-                     "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0) {
+          "filter",
+          {"-I", kDropGuestInvalidIpv4Chain, "-m", "mark", "--mark", snatMark,
+           "-m", "state", "--state", "INVALID", "-j", "DROP", "-w"}) != 0) {
     LOG(ERROR) << "Failed to install FORWARD rule to drop INVALID packets";
   }
   // b/196899048: IPv4 TCP packets with TCP flags FIN,PSH coming from downstream
@@ -247,9 +280,9 @@ void Datapath::Start() {
   // crbug/1241756: Make sure that only egress FINPSH packets are dropped.
   for (const auto& oif : kCellularIfnamePrefixes) {
     if (process_runner_->iptables(
-            "filter", {"-I", "FORWARD", "-s", kGuestIPv4Subnet, "-p", "tcp",
-                       "--tcp-flags", "FIN,PSH", "FIN,PSH", "-o", oif, "-j",
-                       "DROP", "-w"}) != 0) {
+            "filter", {"-I", kDropGuestInvalidIpv4Chain, "-s", kGuestIPv4Subnet,
+                       "-p", "tcp", "--tcp-flags", "FIN,PSH", "FIN,PSH", "-o",
+                       oif, "-j", "DROP", "-w"}) != 0) {
       LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH "
                     "packets egressing "
                  << oif << " interfaces";
@@ -434,14 +467,9 @@ void Datapath::ResetIptables() {
                  false /*log_failures*/);
   ModifyFwmarkSkipVpnJumpRule("OUTPUT", "-D", kChronosUid,
                               false /*log_failures*/);
-
-  std::vector<std::string> vpn_chains = {kVpnAcceptChain, kVpnLockdownChain};
-  for (const auto& chain : vpn_chains) {
-    ModifyJumpRule(IpFamily::Dual, "filter", "-D", "OUTPUT", chain, "" /*iif*/,
-                   "" /*oif*/, false /*log_failures*/);
-    ModifyJumpRule(IpFamily::Dual, "filter", "-D", "FORWARD", chain, "" /*iif*/,
-                   "" /*oif*/, false /*log_failures*/);
-  }
+  ModifyJumpRule(IpFamily::Dual, "filter", "-D", "OUTPUT",
+                 kVpnEgressFiltersChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
 
   // Flush chains used for routing and fwmark tagging. Also delete additional
   // chains made by patchpanel. Chains used by permission broker (nat
@@ -467,6 +495,8 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "mangle", kApplyVpnMarkChain, true},
       {IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain, true},
       {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain, true},
+      {IpFamily::IPv4, "filter", kDropGuestInvalidIpv4Chain, true},
+      {IpFamily::Dual, "filter", kVpnEgressFiltersChain, true},
       {IpFamily::Dual, "filter", kVpnAcceptChain, true},
       {IpFamily::Dual, "filter", kVpnLockdownChain, true},
       {IpFamily::Dual, "nat", "OUTPUT", false},

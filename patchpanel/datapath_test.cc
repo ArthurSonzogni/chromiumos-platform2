@@ -261,10 +261,7 @@ TEST(DatapathTest, Start) {
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       // Asserts for iptables chain reset.
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
-      {Dual, "filter -D OUTPUT -j vpn_accept -w"},
-      {Dual, "filter -D FORWARD -j vpn_accept -w"},
-      {Dual, "filter -D OUTPUT -j vpn_lockdown -w"},
-      {Dual, "filter -D FORWARD -j vpn_lockdown -w"},
+      {Dual, "filter -D OUTPUT -j vpn_egress_filters -w"},
       {Dual, "filter -F FORWARD -w"},
       {Dual, "mangle -F FORWARD -w"},
       {Dual, "mangle -F INPUT -w"},
@@ -286,6 +283,12 @@ TEST(DatapathTest, Start) {
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -L drop_guest_invalid_ipv4 -w"},
+      {IPv4, "filter -F drop_guest_invalid_ipv4 -w"},
+      {IPv4, "filter -X drop_guest_invalid_ipv4 -w"},
+      {Dual, "filter -L vpn_egress_filters -w"},
+      {Dual, "filter -F vpn_egress_filters -w"},
+      {Dual, "filter -X vpn_egress_filters -w"},
       {Dual, "filter -L vpn_accept -w"},
       {Dual, "filter -F vpn_accept -w"},
       {Dual, "filter -X vpn_accept -w"},
@@ -317,15 +320,20 @@ TEST(DatapathTest, Start) {
       {IPv4, "nat -F POSTROUTING -w"},
       {Dual, "nat -F OUTPUT -w"},
       // Asserts for SNAT rules of traffic forwarded from downstream interfaces.
+      {IPv4, "filter -N drop_guest_invalid_ipv4 -w"},
+      {IPv4, "filter -I FORWARD -j drop_guest_invalid_ipv4 -w"},
       {IPv4,
-       "filter -I FORWARD -m mark --mark 0x00000001/0x00000001 -m state "
+       "filter -I drop_guest_invalid_ipv4 -m mark --mark 0x00000001/0x00000001 "
+       "-m state "
        "--state INVALID -j DROP "
        "-w"},
       {IPv4,
-       "filter -I FORWARD -s 100.115.92.0/23 -p tcp --tcp-flags FIN,PSH "
+       "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
+       "--tcp-flags FIN,PSH "
        "FIN,PSH -o rmnet+ -j DROP -w"},
       {IPv4,
-       "filter -I FORWARD -s 100.115.92.0/23 -p tcp --tcp-flags FIN,PSH "
+       "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
+       "--tcp-flags FIN,PSH "
        "FIN,PSH -o wwan+ -j DROP -w"},
       {IPv4,
        "nat -A POSTROUTING -m mark --mark 0x00000001/0x00000001 -j MASQUERADE "
@@ -420,12 +428,13 @@ TEST(DatapathTest, Start) {
       // Asserts for redirect_dns chain creation
       {IPv4, "nat -N redirect_dns -w"},
       // Asserts for VPN filter chain creations
+      {Dual, "filter -N vpn_egress_filters -w"},
+      {Dual, "filter -I OUTPUT -j vpn_egress_filters -w"},
+      {Dual, "filter -I FORWARD -j vpn_egress_filters -w"},
       {Dual, "filter -N vpn_lockdown -w"},
-      {Dual, "filter -I OUTPUT -j vpn_lockdown -w"},
-      {Dual, "filter -I FORWARD -j vpn_lockdown -w"},
+      {Dual, "filter -I vpn_egress_filters -j vpn_lockdown -w"},
       {Dual, "filter -N vpn_accept -w"},
-      {Dual, "filter -I OUTPUT -j vpn_accept -w"},
-      {Dual, "filter -I FORWARD -j vpn_accept -w"},
+      {Dual, "filter -I vpn_egress_filters -j vpn_accept -w"},
       // Asserts for DNS proxy rules
       {Dual, "mangle -N skip_apply_vpn_mark -w"},
       {Dual,
@@ -466,10 +475,7 @@ TEST(DatapathTest, Stop) {
   // Asserts for iptables chain reset.
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
-      {Dual, "filter -D OUTPUT -j vpn_accept -w"},
-      {Dual, "filter -D FORWARD -j vpn_accept -w"},
-      {Dual, "filter -D OUTPUT -j vpn_lockdown -w"},
-      {Dual, "filter -D FORWARD -j vpn_lockdown -w"},
+      {Dual, "filter -D OUTPUT -j vpn_egress_filters -w"},
       {Dual, "filter -F FORWARD -w"},
       {Dual, "mangle -F FORWARD -w"},
       {Dual, "mangle -F INPUT -w"},
@@ -491,6 +497,12 @@ TEST(DatapathTest, Stop) {
       {IPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -X drop_guest_ipv4_prefix -w"},
+      {IPv4, "filter -L drop_guest_invalid_ipv4 -w"},
+      {IPv4, "filter -F drop_guest_invalid_ipv4 -w"},
+      {IPv4, "filter -X drop_guest_invalid_ipv4 -w"},
+      {Dual, "filter -L vpn_egress_filters -w"},
+      {Dual, "filter -F vpn_egress_filters -w"},
+      {Dual, "filter -X vpn_egress_filters -w"},
       {Dual, "filter -L vpn_accept -w"},
       {Dual, "filter -F vpn_accept -w"},
       {Dual, "filter -X vpn_accept -w"},
