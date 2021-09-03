@@ -253,22 +253,25 @@ TEST_F(CrashCommonUtilTest, GetOsTimestamp) {
             old_time.ToTimeVal().tv_sec);
 }
 
-TEST_F(CrashCommonUtilTest, IsOsTimestampTooOldForUploads) {
+TEST_F(CrashCommonUtilTest, IsBuildTimestampTooOldForUploads) {
   base::SimpleTestClock clock;
   const base::Time now = test_util::GetDefaultTime();
   clock.SetNow(now);
+  int64_t now_millis = (now - base::Time::UnixEpoch()).InMilliseconds();
 
-  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(base::Time(), &clock));
-  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
-      now - base::TimeDelta::FromDays(179), &clock));
-  EXPECT_TRUE(util::IsOsTimestampTooOldForUploads(
-      now - base::TimeDelta::FromDays(181), &clock));
+  EXPECT_TRUE(util::IsBuildTimestampTooOldForUploads(0, &clock));
+
+  EXPECT_FALSE(util::IsBuildTimestampTooOldForUploads(
+      now_millis - base::TimeDelta::FromDays(179).InMilliseconds(), &clock));
+  EXPECT_TRUE(util::IsBuildTimestampTooOldForUploads(
+      now_millis - base::TimeDelta::FromDays(181).InMilliseconds(), &clock));
 
   // Crashes with invalid timestamps should upload.
-  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
-      now + base::TimeDelta::FromDays(1), &clock));
-  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
-      base::Time::FromTimeT(std::numeric_limits<time_t>::min()), &clock));
+  EXPECT_FALSE(util::IsBuildTimestampTooOldForUploads(
+      now_millis + base::TimeDelta::FromDays(1).InMilliseconds(), &clock));
+  EXPECT_FALSE(util::IsBuildTimestampTooOldForUploads(-1, &clock));
+  EXPECT_TRUE(util::IsBuildTimestampTooOldForUploads(
+      std::numeric_limits<uint64_t>::min(), &clock));
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {

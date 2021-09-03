@@ -85,14 +85,6 @@ int RunChildMain(int argc, char* argv[]) {
       LOG(INFO) << "Exiting early due to test image.";
       return EXIT_FAILURE;
     }
-
-    if (!flags.upload_old_reports) {
-      if (util::IsOsTimestampTooOldForUploads(util::GetOsTimestamp(),
-                                              clock.get())) {
-        LOG(INFO) << "Version is too old, will not upload crash reports";
-        return EXIT_FAILURE;
-      }
-    }
   }
 
   auto metrics_lib = std::make_unique<MetricsLibrary>();

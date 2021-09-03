@@ -268,7 +268,16 @@ base::Time GetOsTimestamp() {
   return info.last_modified;
 }
 
-bool IsOsTimestampTooOldForUploads(base::Time timestamp, base::Clock* clock) {
+bool IsBuildTimestampTooOldForUploads(int64_t build_time_millis,
+                                      base::Clock* clock) {
+  if (build_time_millis == 0) {
+    return true;
+  } else if (build_time_millis < 0) {
+    LOG(ERROR) << "build timestamp is negative: " << build_time_millis;
+    return false;
+  }
+  base::Time timestamp(base::Time::UnixEpoch() +
+                       base::TimeDelta::FromMilliseconds(build_time_millis));
   if (timestamp.is_null()) {
     return false;
   }
