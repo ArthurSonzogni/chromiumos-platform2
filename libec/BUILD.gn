@@ -25,6 +25,7 @@ pkg_config("target_defaults_pkg_deps") {
 }
 
 libec_sources = [
+  "device_event_command.cc",
   "display_soc_command.cc",
   "ec_command_factory.cc",
   "fingerprint/fp_context_command.cc",
@@ -53,6 +54,7 @@ shared_library("libec") {
 if (use.test) {
   executable("libec_tests") {
     sources = [
+      "device_event_command_test.cc",
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
       "ec_command_test.cc",
