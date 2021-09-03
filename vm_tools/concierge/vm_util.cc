@@ -668,6 +668,12 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   rt_cpu_mask_ = base::JoinString(cpu_list, ",");
   cpu_list.clear();
 
+  // Just skip any affinity settings for a symmetric processor.
+  if (IsSymmetricCpu()) {
+    num_cpus_ += num_rt_cpus_;
+    return;
+  }
+
   // Try to group VCPUs based on physical CPUs topology.
   if (package_.size() > 1) {
     for (const auto& pkg : package_) {
@@ -713,7 +719,6 @@ void ArcVmCPUTopology::CreateAffinity(void) {
       }
     }
   }
-
   affinity_mask_ = base::JoinString(affinities, ":");
 
   num_cpus_ += num_rt_cpus_;
@@ -737,6 +742,13 @@ void ArcVmCPUTopology::CreateTopology(void) {
     else
       package_[*package].push_back(cpu);
   }
+}
+
+// Check whether the host processor is symmetric.
+// TODO(kansho): Support ADL. IsSymmetricCpu() would return true even though
+//               it's heterogeneous.
+bool ArcVmCPUTopology::IsSymmetricCpu() {
+  return capacity_.size() == 1 && package_.size() == 1;
 }
 
 void ArcVmCPUTopology::CreateCPUAffinity() {
