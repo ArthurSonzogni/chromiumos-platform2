@@ -6,10 +6,13 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use std::collections::BTreeMap as Map;
 use std::env;
 use std::fmt::{self, Debug, Formatter};
-use std::io;
+use std::fs::File;
+use std::io::{self, Read};
 use std::os::unix::net::UnixDatagram;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -26,6 +29,7 @@ use libsirenia::rpc;
 use libsirenia::transport::{
     self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT,
 };
+use sirenia::app_info::{self, AppManifest, ExecutableInfo};
 use sirenia::server::{register_org_chromium_mana_teeinterface, OrgChromiumManaTEEInterface};
 use sys_util::{error, info, syslog};
 use thiserror::Error as ThisError;
@@ -42,8 +46,18 @@ pub enum Error {
     ProcessMessage(dbus::Error),
     #[error("failed to call rpc: {0}")]
     Rpc(rpc::Error),
+    #[error("failed to load manifest: {0}")]
+    Manifest(app_info::Error),
     #[error("Start session failed: {0}")]
     StartSession(trichechus::Error),
+    #[error("No entry for loading app '{0}'")]
+    AppNotLoadable(String),
+    #[error("open failed: {0:}")]
+    Open(io::Error),
+    #[error("read failed: {0:}")]
+    Read(io::Error),
+    #[error("Load app failed: {0:}")]
+    LoadApp(trichechus::Error),
     #[error("failed connect to /dev/log: {0}")]
     RawSyslogConnect(io::Error),
     #[error("failed write to /dev/log: {0}")]
@@ -63,11 +77,14 @@ pub enum Error {
 /// The result of an operation in this crate.
 pub type Result<T> = std::result::Result<T, Error>;
 
-// Arc and Mutex are used because dbus-crossroads requires the Send trait.
+// Arc and Mutex are used because dbus-crossroads requires the Send trait since it is designed to
+// be thread safe. At the time of writing Dugong is single threaded so Arc and Mutex aren't strictly
+// necessary.
 // See https://github.com/diwic/dbus-rs/issues/349 for a feature request to make Send optional.
 struct DugongStateInternal {
     transport_type: TransportType,
     trichechus_client: Mutex<TrichechusClient>,
+    supported_apps: Mutex<Map<String, Option<PathBuf>>>,
 }
 
 #[derive(Clone)]
@@ -78,7 +95,22 @@ impl DugongState {
         DugongState(Arc::new(DugongStateInternal {
             transport_type,
             trichechus_client: Mutex::new(trichechus_client),
+            supported_apps: Mutex::new(Default::default()),
         }))
+    }
+
+    fn register_supported_apps<
+        S: Into<String>,
+        P: Into<PathBuf>,
+        I: IntoIterator<Item = (S, Option<P>)>,
+    >(
+        &mut self,
+        i: I,
+    ) {
+        let mut supported_apps = self.0.supported_apps.lock().unwrap();
+        for (app_id, path) in i.into_iter() {
+            supported_apps.insert(app_id.into(), path.map(Into::<PathBuf>::into));
+        }
     }
 
     fn transport_type(&self) -> &TransportType {
@@ -87,6 +119,10 @@ impl DugongState {
 
     fn trichechus_client(&self) -> &Mutex<TrichechusClient> {
         &self.0.trichechus_client
+    }
+
+    fn supported_apps(&self) -> &Mutex<Map<String, Option<PathBuf>>> {
+        &self.0.supported_apps
     }
 }
 
@@ -110,6 +146,33 @@ impl OrgChromiumManaTEEInterface for DugongState {
     }
 }
 
+fn load_tee_app(
+    api_handle: &mut TrichechusClient,
+    state: &DugongState,
+    app_id: &str,
+) -> Result<()> {
+    let supported_apps = state.supported_apps().lock().unwrap();
+    let elf_path = supported_apps
+        .get(app_id)
+        .unwrap_or(&None)
+        .as_ref()
+        .ok_or_else(|| Error::AppNotLoadable(app_id.to_string()))?;
+
+    let mut elf = Vec::<u8>::new();
+    File::open(elf_path)
+        .map_err(Error::Open)?
+        .read_to_end(&mut elf)
+        .map_err(Error::Read)?;
+
+    info!("Transmitting TEE app.");
+    api_handle
+        .load_app(app_id.to_string(), elf)
+        .map_err(Error::Rpc)?
+        .map_err(Error::LoadApp)?;
+
+    Ok(())
+}
+
 fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, OwnedFd)> {
     let mut transport = state
         .transport_type()
@@ -121,13 +184,23 @@ fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, 
         port_number: addr.get_port().map_err(Error::GetPort)?,
     };
     info!("Requesting start {:?}", &app_info);
-    state
-        .trichechus_client()
-        .lock()
-        .unwrap()
-        .start_session(app_info)
+    let mut trichechus_client = state.trichechus_client().lock().unwrap();
+    match trichechus_client
+        .start_session(app_info.clone())
         .map_err(Error::Rpc)?
-        .map_err(Error::StartSession)?;
+    {
+        Ok(_) => (),
+        Err(trichechus::Error::AppNotLoaded) => {
+            load_tee_app(&mut trichechus_client, state, app_id)?;
+            trichechus_client
+                .start_session(app_info)
+                .map_err(Error::Rpc)?
+                .map_err(Error::StartSession)?;
+        }
+        Err(err) => {
+            return Err(Error::StartSession(err));
+        }
+    }
     match transport.connect() {
         Ok(Transport { r, w, id: _ }) => unsafe {
             // This is safe because into_raw_fd transfers the ownership to OwnedFd.
@@ -240,7 +313,24 @@ fn main() -> Result<()> {
             print!("{}", String::from_utf8_lossy(entry));
         }
     } else {
-        let dugong_state = DugongState::new(client, transport_type);
+        let mut dugong_state = DugongState::new(client, transport_type);
+        let manifest = AppManifest::load_default().map_err(Error::Manifest)?;
+        dugong_state.register_supported_apps(manifest.iter().map(|entry| {
+            (
+                &entry.app_name,
+                match &entry.exec_info {
+                    ExecutableInfo::Path(p) => {
+                        let path = PathBuf::from(&p);
+                        if path.exists() {
+                            Some(path)
+                        } else {
+                            None
+                        }
+                    }
+                    ExecutableInfo::Digest(_) => None,
+                },
+            )
+        }));
         start_dbus_handler(dugong_state).unwrap();
         unreachable!()
     }
