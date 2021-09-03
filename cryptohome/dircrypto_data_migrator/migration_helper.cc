@@ -212,8 +212,8 @@ class MigrationHelper::WorkerPool {
       }
       job_threads_[i]->task_runner()->PostTask(
           FROM_HERE,
-          base::Bind(&WorkerPool::ProcessJobs, base::Unretained(this),
-                     &job_thread_results_[i]));
+          base::BindOnce(&WorkerPool::ProcessJobs, base::Unretained(this),
+                         &job_thread_results_[i]));
     }
     return true;
   }

@@ -167,8 +167,8 @@ TEST_F(MigrationHelperTest, EmptyTest) {
   ASSERT_TRUE(base::IsDirectoryEmpty(from_dir_.GetPath()));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.GetPath()));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
@@ -208,8 +208,8 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform.Stat(kFromDirPath, &from_stat));
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   const FilePath kToDirPath = to_dir_.GetPath().Append(kDirectory);
   base::stat_wrapper_t to_stat;
@@ -259,8 +259,8 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
   ASSERT_EQ(0, lsetxattr(to_dir_.GetPath().value().c_str(), kAtimeXattrName,
                          &kAtime, sizeof(kAtime), XATTR_CREATE));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
   base::stat_wrapper_t to_stat;
 
   // Verify that stored timestamps for in-progress migrations are respected
@@ -307,8 +307,8 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform.Stat(kFromRelLinkPath, &from_stat));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   const FilePath kToFilePath = to_dir_.GetPath().Append(kFileName);
   const FilePath kToRelLinkPath = to_dir_.GetPath().Append(kRelLinkName);
@@ -352,8 +352,8 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.GetPath().Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.GetPath()));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // The file is moved.
   EXPECT_FALSE(platform.FileExists(from_dir_.GetPath().Append(kFileName)));
@@ -379,8 +379,8 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
       from_dir_.GetPath().Append(kDir1).Append(kDir2).Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.GetPath()));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // The file is moved.
   EXPECT_FALSE(platform.FileExists(
@@ -413,8 +413,8 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
       from_dir_.GetPath().Append(kDir1).Append(kDir2).Append(kFileName),
       S_IWUSR));
 
-  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                         base::Unretained(this))));
+  EXPECT_FALSE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // The file is not moved.
   EXPECT_TRUE(platform.FileExists(
@@ -464,8 +464,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
 
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform.Stat(kFromFilePath, &from_stat));
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   base::stat_wrapper_t to_stat;
   ASSERT_TRUE(platform.Stat(kToFilePath, &to_stat));
@@ -592,8 +592,8 @@ TEST_F(MigrationHelperTest, MigrateNestedDir) {
       from_dir_.GetPath().Append(kDir1).Append(kDir2).Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.GetPath()));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // The file is moved.
   EXPECT_TRUE(platform.FileExists(
@@ -618,8 +618,8 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   constexpr char kFile2[] = "kFile2";
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.GetPath().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.GetPath().Append(kFile2)));
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // Both files have been moved to to_dir_
   EXPECT_TRUE(platform.FileExists(to_dir_.GetPath().Append(kFile1)));
@@ -644,8 +644,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.GetPath().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.GetPath().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.GetPath().Append(kFile2)));
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // Both files have been moved to to_dir_
   EXPECT_TRUE(platform.FileExists(to_dir_.GetPath().Append(kFile1)));
@@ -685,8 +685,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // File has been moved to to_dir_
   char to_contents[kFinalFileSize];
@@ -729,8 +729,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // File has been moved to to_dir_
   char to_contents[kFinalFileSize];
@@ -771,8 +771,8 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
   ASSERT_TRUE(platform.GetFileSize(kFromSubdir, &dir_size));
   expected_size += dir_size;
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   ASSERT_EQ(migrated_values_.size(), total_values_.size());
   int callbacks = migrated_values_.size();
@@ -814,8 +814,8 @@ TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
                          MigrationType::FULL);
 
   EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(_)).WillOnce(Return(0));
-  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                         base::Unretained(this))));
+  EXPECT_FALSE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
@@ -849,8 +849,8 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_platform, SendFile(_, _, 0, kExpectedChunkSize))
       .WillOnce(Return(true));
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
@@ -880,8 +880,8 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
             *file = base::File(base::File::FILE_ERROR_IO);
           }));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
   EXPECT_TRUE(real_platform.DirectoryExists(kToSQLiteShm.DirName()));
   EXPECT_FALSE(real_platform.FileExists(kToSQLiteShm));
   EXPECT_FALSE(real_platform.FileExists(kFromSQLiteShm));
@@ -915,8 +915,8 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
   EXPECT_CALL(mock_platform, DeleteFile(_))
       .WillRepeatedly(SetErrnoAndReturn(EIO, false));
   // Migrate() still returns the result without deadlocking. crbug.com/731575
-  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                         base::Unretained(this))));
+  EXPECT_FALSE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
@@ -960,8 +960,8 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
       .Times(0);
 
   // Test the migration.
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, MinimalMigration) {
@@ -1021,8 +1021,8 @@ TEST_F(MigrationHelperTest, MinimalMigration) {
         << path.value();
 
   // Test the minimal migration.
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // Only the expected files and directories are moved.
   for (const auto& path : expect_kept_dirs)
@@ -1057,8 +1057,8 @@ TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
 
   // Cancel migration before starting, and migration just fails.
   helper.Cancel();
-  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                         base::Unretained(this))));
+  EXPECT_FALSE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
@@ -1094,17 +1094,17 @@ TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
   base::Thread thread("Canceller thread");
   ASSERT_TRUE(thread.Start());
   thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&base::WaitableEvent::Wait,
-                            base::Unretained(&syncfile_is_called_event)));
+      FROM_HERE, base::BindOnce(&base::WaitableEvent::Wait,
+                                base::Unretained(&syncfile_is_called_event)));
   thread.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&MigrationHelper::Cancel, base::Unretained(&helper)));
+      base::BindOnce(&MigrationHelper::Cancel, base::Unretained(&helper)));
   thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&base::WaitableEvent::Signal,
-                            base::Unretained(&cancel_is_called_event)));
+      FROM_HERE, base::BindOnce(&base::WaitableEvent::Signal,
+                                base::Unretained(&cancel_is_called_event)));
   // Migration gets cancelled.
-  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                         base::Unretained(this))));
+  EXPECT_FALSE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
 class DataMigrationTest : public MigrationHelperTest,
@@ -1127,8 +1127,8 @@ TEST_P(DataMigrationTest, CopyFileData) {
   base::RandBytes(from_contents, kFileSize);
   ASSERT_EQ(kFileSize, base::WriteFile(kFromFile, from_contents, kFileSize));
 
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   char to_contents[kFileSize];
   EXPECT_EQ(kFileSize, base::ReadFile(kToFile, to_contents, kFileSize));
@@ -1181,8 +1181,8 @@ TEST_P(MigrationHelperJobListTest, ProcessJobs) {
   }
 
   // Migrate.
-  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
-                                        base::Unretained(this))));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   // The files and directories are moved.
   for (int i = 0; i < kNumDirectories; ++i) {

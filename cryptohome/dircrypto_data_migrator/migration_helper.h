@@ -57,7 +57,7 @@ class MigrationHelper {
   // be migrated, including what has already been migrated.  If
   // |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS the two
   // aforementioned values should be ignored as they are undefined.
-  using ProgressCallback = base::Callback<void(
+  using ProgressCallback = base::RepeatingCallback<void(
       const user_data_auth::DircryptoMigrationProgress& progress)>;
 
   // Creates a new MigrationHelper for migrating from |from| to |to|.
