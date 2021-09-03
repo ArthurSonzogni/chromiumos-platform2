@@ -72,14 +72,9 @@ constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
-// nat PREROUTING chains for ingress traffic. "ingress_port_forwarding" must be
-// traversed before "ingress_default_forwarding".
+// nat PREROUTING chains for ingress traffic.
 constexpr char kIngressPortForwardingChain[] = "ingress_port_forwarding";
 constexpr char kIngressDefaultForwardingChain[] = "ingress_default_forwarding";
-constexpr std::array<const char*, 2> kIngressNatChains{{
-    kIngressDefaultForwardingChain,
-    kIngressPortForwardingChain,
-}};
 
 // nat PREROUTING chains for egress traffic from downstream guests.
 constexpr char kRedirectArcDnsChain[] = "redirect_arc_dns";
@@ -87,12 +82,6 @@ constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
 // nat OUTPUT chains for egress traffic from processes running on the host.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
-constexpr std::array<const char*, 4> kDnsRedirectionNatChains{{
-    kRedirectDefaultDnsChain,
-    kRedirectArcDnsChain,
-    kRedirectUserDnsChain,
-    kRedirectChromeDnsChain,
-}};
 
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
@@ -169,6 +158,107 @@ void Datapath::Start() {
                << " IPv6 functionality may be broken.";
   }
 
+  // Creates all "stateless" iptables chains used by patchpanel and set up
+  // basic jump rules from the builtin chains. All chains that needs to carry
+  // some state when patchpanel restarts (for instance: chains for
+  // permission_broker rules, traffic accounting chains) are created separately.
+  static struct {
+    IpFamily family;
+    std::string table;
+    std::string chain;
+  } makeCommands[] = {
+      // Set up a mangle chain used in OUTPUT for applying the fwmark
+      // TrafficSource tag and tagging the local traffic that should be routed
+      // through a VPN.
+      {IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain},
+      // Set up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
+      // tagging applied through "apply_vpn_mark" chain. This is used to protect
+      // DNS traffic that should go to the DNS proxy.
+      {IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain},
+      // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
+      // traffic that should be routed through a VPN.
+      {IpFamily::Dual, "mangle", kApplyVpnMarkChain},
+      // Set up nat chains for redirecting egress DNS queries to the DNS proxy
+      // instances.
+      {IpFamily::Dual, "nat", kRedirectArcDnsChain},
+      {IpFamily::Dual, "nat", kRedirectDefaultDnsChain},
+      {IpFamily::Dual, "nat", kRedirectUserDnsChain},
+      {IpFamily::Dual, "nat", kRedirectChromeDnsChain},
+      // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS
+      // queries of system services. When a VPN is connected, a query routed
+      // through a physical network is redirected to the primary nameserver of
+      // that network.
+      {IpFamily::IPv4, "nat", kRedirectDnsChain},
+      // Set up nat chains for redirecting ingress traffic to downstream guests.
+      // These chains are only created for IPv4 since downstream guests obtain
+      // their own addresses for IPv6.
+      {IpFamily::IPv4, "nat", kIngressPortForwardingChain},
+      {IpFamily::IPv4, "nat", kIngressDefaultForwardingChain},
+      // Create filter subchains for managing the egress firewall VPN rules.
+      {IpFamily::Dual, "filter", kVpnEgressFiltersChain},
+      {IpFamily::Dual, "filter", kVpnAcceptChain},
+      {IpFamily::Dual, "filter", kVpnLockdownChain},
+      {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain},
+      {IpFamily::IPv4, "filter", kDropGuestInvalidIpv4Chain},
+  };
+  for (const auto& c : makeCommands) {
+    if (!AddChain(c.family, c.table, c.chain /*log_failures*/)) {
+      LOG(ERROR) << "Failed to create " << c.chain << " chain in " << c.table
+                 << " table";
+    }
+  }
+
+  // Add all static jump commands from builtin chains to chains created by
+  // patchpanel.
+  static struct {
+    IpFamily family;
+    std::string table;
+    std::string jump_from;
+    std::string jump_to;
+    std::string op;
+  } jumpCommands[] = {
+      {IpFamily::Dual, "mangle", "OUTPUT", kApplyLocalSourceMarkChain},
+      {IpFamily::Dual, "nat", "PREROUTING", kRedirectArcDnsChain},
+      {IpFamily::Dual, "nat", "PREROUTING", kRedirectDefaultDnsChain},
+      // "ingress_port_forwarding" must be traversed before
+      // "ingress_default_forwarding".
+      {IpFamily::IPv4, "nat", "PREROUTING", kIngressPortForwardingChain},
+      {IpFamily::IPv4, "nat", "PREROUTING", kIngressDefaultForwardingChain},
+      // When VPN lockdown is enabled, a REJECT rule must stop
+      // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
+      // This REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN
+      // lockdown is enabled and a VPN is connected, an ACCEPT rule protects the
+      // traffic tagged with the VPN routing mark from being reject by the VPN
+      // lockdown rule. This ACCEPT rule is added to |kVpnAcceptChain|.
+      // Therefore, egress traffic must:
+      //   - traverse kVpnAcceptChain before kVpnLockdownChain,
+      //   - traverse kVpnLockdownChain before other ACCEPT rules in OUTPUT and
+      //   FORWARD.
+      // Finally, egress VPN filter rules must be inserted in front of the
+      // OUTPUT chain to override basic rules set outside patchpanel.
+      {IpFamily::Dual, "filter", "OUTPUT", kVpnEgressFiltersChain, "-I"},
+      {IpFamily::Dual, "filter", "FORWARD", kVpnEgressFiltersChain},
+      {IpFamily::Dual, "filter", kVpnEgressFiltersChain, kVpnAcceptChain},
+      {IpFamily::Dual, "filter", kVpnEgressFiltersChain, kVpnLockdownChain},
+      // b/196898241: To ensure that the drop chains drop_guest_ipv4_prefix and
+      // drop_guest_invalid_ipv4 chain are traversed before vpn_accept and
+      // vpn_lockdown, they are inserted last in front of the OUTPUT chain and
+      // FORWARD chains respectively.
+      {IpFamily::IPv4, "filter", "OUTPUT", kDropGuestIpv4PrefixChain, "-I"},
+      {IpFamily::IPv4, "filter", "FORWARD", kDropGuestInvalidIpv4Chain, "-I"},
+  };
+  for (const auto& c : jumpCommands) {
+    std::string op = "-A";
+    if (!c.op.empty()) {
+      op = c.op;
+    }
+    if (!ModifyJumpRule(c.family, c.table, op, c.jump_from, c.jump_to,
+                        "" /*iif*/, "" /*oif*/)) {
+      LOG(ERROR) << "Failed to create jump rule from " << c.jump_from << " to "
+                 << c.jump_to << " in " << c.table << " table";
+    }
+  }
+
   // Create a FORWARD ACCEPT rule for connections already established.
   if (process_runner_->iptables(
           "filter", {"-A", "FORWARD", "-m", "state", "--state",
@@ -190,60 +280,11 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
   }
 
-  // Create filter subchains for managing the egress firewall VPN rules.
-  // When VPN lockdown is enabled, a REJECT rule must stop
-  // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark. This
-  // REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN lockdown
-  // is enabled and a VPN is connected, an ACCEPT rule protects the traffic
-  // tagged with the VPN routing mark from being reject by the VPN lockdown
-  // rule. This ACCEPT rule is added to |kVpnAcceptChain|. Therefore, egress
-  // traffic must:
-  //   - traverse kVpnAcceptChain before kVpnLockdownChain,
-  //   - traverse kVpnLockdownChain before other ACCEPT rules in OUTPUT and
-  //   FORWARD.
-  if (!AddChain(IpFamily::Dual, "filter", kVpnEgressFiltersChain)) {
-    LOG(ERROR) << "Failed to create " << kVpnEgressFiltersChain
-               << " filter chain";
-  }
-  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "OUTPUT",
-                      kVpnEgressFiltersChain, "" /*iif*/, "" /*oif*/)) {
-    LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
-               << kVpnEgressFiltersChain;
-  }
-  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "FORWARD",
-                      kVpnEgressFiltersChain, "" /*iif*/, "" /*oif*/)) {
-    LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
-               << kVpnEgressFiltersChain;
-  }
-  std::vector<std::string> vpn_chains = {kVpnLockdownChain, kVpnAcceptChain};
-  for (const auto& chain : vpn_chains) {
-    if (!AddChain(IpFamily::Dual, "filter", chain)) {
-      LOG(ERROR) << "Failed to create " << chain << " filter chain";
-    }
-    if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", kVpnEgressFiltersChain,
-                        chain, "" /*iif*/, "" /*oif*/)) {
-      LOG(ERROR) << "Failed to set up jump rule from " << kVpnEgressFiltersChain
-                 << " to " << chain;
-    }
-  }
-
   // chromium:898210: Drop any locally originated traffic that would exit a
   // physical interface with a source IPv4 address from the subnet of IPs used
   // for VMs, containers, and connected namespaces This is needed to prevent
   // packets leaking with an incorrect src IP when a local process binds to the
   // wrong interface.
-  // b/196898241: To ensure that the drop_guest_ipv4_prefix chain is traversed
-  // before vpn_accept and vpn_lockdown, drop_guest_ipv4_prefix is inserted in
-  // front of the OUTPUT chain last.
-  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain)) {
-    LOG(ERROR) << "Failed to create " << kDropGuestIpv4PrefixChain
-               << " filter chain";
-  }
-  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "OUTPUT",
-                      kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/)) {
-    LOG(ERROR) << "Failed to set up jump rule from filter OUTPUT to "
-               << kDropGuestIpv4PrefixChain;
-  }
   for (const auto& oif : kPhysicalIfnamePrefixes) {
     if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet)) {
       LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
@@ -251,21 +292,10 @@ void Datapath::Start() {
     }
   }
 
-  // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
-  // Crostini, ...) or a connected namespace.
   // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
   // need to be explicitly dropped as SNAT cannot be applied to them.
   // b/196898241: To ensure that the INVALID DROP rule is traversed before
   // vpn_accept and vpn_lockdown, insert it in front of the FORWARD chain last.
-  if (!AddChain(IpFamily::IPv4, "filter", kDropGuestInvalidIpv4Chain)) {
-    LOG(ERROR) << "Failed to create " << kDropGuestInvalidIpv4Chain
-               << " filter chain";
-  }
-  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-I", "FORWARD",
-                      kDropGuestInvalidIpv4Chain, "" /*iif*/, "" /*oif*/)) {
-    LOG(ERROR) << "Failed to set up jump rule from filter FORWARD to "
-               << kDropGuestInvalidIpv4Chain;
-  }
   std::string snatMark =
       kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
   if (process_runner_->iptables(
@@ -289,6 +319,8 @@ void Datapath::Start() {
     }
   }
 
+  // Set static SNAT rules for any IPv4 traffic originated from a guest (ARC,
+  // Crostini, ...) or a connected namespace.
   if (process_runner_->iptables(
           "nat", {"-A", "POSTROUTING", "-m", "mark", "--mark", snatMark, "-j",
                   "MASQUERADE", "-w"}) != 0) {
@@ -302,19 +334,8 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
   }
 
-  // Set up a mangle chain used in OUTPUT for applying the fwmark TrafficSource
-  // tag and tagging the local traffic that should be routed through a VPN.
-  if (!AddChain(IpFamily::Dual, "mangle", kApplyLocalSourceMarkChain)) {
-    LOG(ERROR) << "Failed to set up " << kApplyLocalSourceMarkChain
-               << " mangle chain";
-  }
-  if (!ModifyJumpRule(IpFamily::Dual, "mangle", "-A", "OUTPUT",
-                      kApplyLocalSourceMarkChain, "" /*iif*/, "" /*oif*/)) {
-    LOG(ERROR) << "Failed to attach " << kApplyLocalSourceMarkChain
-               << " to mangle OUTPUT";
-  }
-  // Add a rule for skipping this chain if the packet already has a source mark
-  // (e.g., packets from a wireguard socket in the kernel).
+  // Add a rule for skipping apply_local_source_mark if the packet already has a
+  // source mark (e.g., packets from a wireguard socket in the kernel).
   // TODO(b/190683881): This will also skip setting VPN policy bits on the
   // packet. Currently this rule will only be triggered for wireguard sockets so
   // it has no side effect now. We may need to revisit this later.
@@ -334,49 +355,6 @@ void Datapath::Start() {
   // the SYSTEM source tag
   if (!ModifyFwmarkDefaultLocalSourceTag("-A", TrafficSource::SYSTEM))
     LOG(ERROR) << "Failed to set up rule tagging traffic with default source";
-
-  // Set up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
-  // tagging applied through "apply_vpn_mark" chain. This is used to protect
-  // DNS traffic that should go to the DNS proxy.
-  if (!AddChain(IpFamily::Dual, "mangle", kSkipApplyVpnMarkChain)) {
-    LOG(ERROR) << "Failed to set up " << kSkipApplyVpnMarkChain
-               << " mangle chain";
-  }
-
-  // Set up nat chains for redirecting ingress traffic to downstream guests.
-  // These chains are only created for IPv4 since downstream guests obtain their
-  // own addresses for IPv6.
-  for (const auto& chain : kIngressNatChains) {
-    if (!AddChain(IpFamily::IPv4, "nat", chain)) {
-      LOG(ERROR) << "Failed to create nat chain " << chain;
-    }
-    if (!ModifyJumpRule(IpFamily::IPv4, "nat", "-I", "PREROUTING", chain,
-                        "" /*iif*/, "" /*oif*/)) {
-      LOG(ERROR) << "Failed to add jump rule from nat PREROUTING to " << chain;
-    }
-  }
-
-  // Set up nat chains for redirecting egress DNS queries to the DNS proxy
-  // instances.
-  for (const auto& chain : kDnsRedirectionNatChains) {
-    if (!AddChain(IpFamily::Dual, "nat", chain)) {
-      LOG(ERROR) << "Failed to create nat chain " << chain;
-    }
-  }
-
-  // Set up jump chains to the DNS nat chains for egress traffic from
-  // downstream guests.
-  if (!ModifyJumpRule(IpFamily::Dual, "nat", "-I", "PREROUTING",
-                      kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
-                      false /*log_failures*/)) {
-    LOG(ERROR) << "Failed to add jump rule for single-networked guests' DNS "
-                  "redirection";
-  }
-  if (!ModifyJumpRule(IpFamily::Dual, "nat", "-I", "PREROUTING",
-                      kRedirectArcDnsChain, "" /*iif*/, "" /*oif*/,
-                      false /*log_failures*/)) {
-    LOG(ERROR) << "Failed to add jump rule for ARC DNS redirection";
-  }
 
   // Set up jump chains to the DNS nat chains for egress traffic from local
   // processes running on the host.
@@ -398,23 +376,12 @@ void Datapath::Start() {
                << "OUTPUT chain";
   }
 
-  // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
-  // traffic that should be routed through a VPN.
-  if (!AddChain(IpFamily::Dual, "mangle", kApplyVpnMarkChain)) {
-    LOG(ERROR) << "Failed to set up " << kApplyVpnMarkChain << " mangle chain";
-  }
   // All local outgoing traffic eligible to VPN routing should traverse the VPN
   // marking chain.
   if (!ModifyFwmarkVpnJumpRule("OUTPUT", "-A", kFwmarkRouteOnVpn,
                                kFwmarkVpnMask)) {
     LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
   }
-
-  // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS queries
-  // of system services. When a VPN is connected, a query routed through a
-  // physical network is redirected to the primary nameserver of that network.
-  if (!AddChain(IpFamily::IPv4, "nat", kRedirectDnsChain))
-    LOG(ERROR) << "Failed to set up " << kRedirectDnsChain << " nat chain";
 
   // b/176260499: on 4.4 kernel, the following connmark rules are observed to
   // incorrectly cause neighbor discovery icmpv6 packets to be dropped. Add

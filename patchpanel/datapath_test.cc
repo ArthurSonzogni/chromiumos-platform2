@@ -258,7 +258,11 @@ TEST(DatapathTest, Start) {
               SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103", ""));
   EXPECT_CALL(*system, SysNetSet(System::SysNet::IPv6Forward, "1", ""));
 
-  std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
+  static struct {
+    IpFamily family;
+    std::string command;
+    int call_count;
+  } iptables_commands[] = {
       // Asserts for iptables chain reset.
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
       {Dual, "filter -D OUTPUT -j vpn_egress_filters -w"},
@@ -430,11 +434,11 @@ TEST(DatapathTest, Start) {
       // Asserts for VPN filter chain creations
       {Dual, "filter -N vpn_egress_filters -w"},
       {Dual, "filter -I OUTPUT -j vpn_egress_filters -w"},
-      {Dual, "filter -I FORWARD -j vpn_egress_filters -w"},
+      {Dual, "filter -A FORWARD -j vpn_egress_filters -w"},
       {Dual, "filter -N vpn_lockdown -w"},
-      {Dual, "filter -I vpn_egress_filters -j vpn_lockdown -w"},
+      {Dual, "filter -A vpn_egress_filters -j vpn_lockdown -w"},
       {Dual, "filter -N vpn_accept -w"},
-      {Dual, "filter -I vpn_egress_filters -j vpn_accept -w"},
+      {Dual, "filter -A vpn_egress_filters -j vpn_accept -w"},
       // Asserts for DNS proxy rules
       {Dual, "mangle -N skip_apply_vpn_mark -w"},
       {Dual,
@@ -442,21 +446,21 @@ TEST(DatapathTest, Start) {
        "-w"},
       {IPv4, "nat -N ingress_default_forwarding -w"},
       {IPv4, "nat -N ingress_port_forwarding -w"},
-      {IPv4, "nat -I PREROUTING -j ingress_default_forwarding -w"},
-      {IPv4, "nat -I PREROUTING -j ingress_port_forwarding -w"},
+      {IPv4, "nat -A PREROUTING -j ingress_default_forwarding -w"},
+      {IPv4, "nat -A PREROUTING -j ingress_port_forwarding -w"},
       {Dual, "nat -N redirect_default_dns -w"},
       {Dual, "nat -N redirect_arc_dns -w"},
       {Dual, "nat -N redirect_chrome_dns -w"},
       {Dual, "nat -N redirect_user_dns -w"},
-      {Dual, "nat -I PREROUTING -j redirect_default_dns -w"},
-      {Dual, "nat -I PREROUTING -j redirect_arc_dns -w"},
+      {Dual, "nat -A PREROUTING -j redirect_default_dns -w"},
+      {Dual, "nat -A PREROUTING -j redirect_arc_dns -w"},
       {Dual, "nat -A OUTPUT -j redirect_chrome_dns -w"},
       {Dual,
        "nat -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
        "redirect_user_dns -w"},
   };
   for (const auto& c : iptables_commands) {
-    Verify_iptables(*runner, c.first, c.second);
+    Verify_iptables(*runner, c.family, c.command);
   }
 
   Datapath datapath(runner, firewall, system);
