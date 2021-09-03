@@ -264,6 +264,8 @@ TEST(DatapathTest, Start) {
     int call_count;
   } iptables_commands[] = {
       // Asserts for iptables chain reset.
+      {Dual, "filter -D INPUT -j ingress_port_firewall -w"},
+      {Dual, "filter -D OUTPUT -j egress_port_firewall -w"},
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
       {Dual, "filter -D OUTPUT -j vpn_egress_filters -w"},
       {Dual, "filter -F FORWARD -w"},
@@ -458,6 +460,11 @@ TEST(DatapathTest, Start) {
       {Dual,
        "nat -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
        "redirect_user_dns -w"},
+      // Asserts for egress and ingress port firewall chains
+      {Dual, "filter -N ingress_port_firewall -w"},
+      {Dual, "filter -A INPUT -j ingress_port_firewall -w"},
+      {Dual, "filter -N egress_port_firewall -w"},
+      {Dual, "filter -A OUTPUT -j egress_port_firewall -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(*runner, c.family, c.command);
@@ -513,6 +520,8 @@ TEST(DatapathTest, Stop) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {Dual, "filter -D INPUT -j ingress_port_firewall -w"},
+      {Dual, "filter -D OUTPUT -j egress_port_firewall -w"},
       {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},

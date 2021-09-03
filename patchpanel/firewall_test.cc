@@ -88,50 +88,62 @@ TEST(FirewallTest, AddAcceptRules_ValidInterfaceName) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  Verify_iptables(
-      *runner, "filter -I INPUT -p tcp --dport 80 -i shortname -j ACCEPT -w");
-  Verify_ip6tables(
-      *runner, "filter -I INPUT -p tcp --dport 80 -i shortname -j ACCEPT -w");
+  Verify_iptables(*runner,
+                  "filter -I ingress_port_firewall -p tcp --dport 80 -i "
+                  "shortname -j ACCEPT -w");
+  Verify_ip6tables(*runner,
+                   "filter -I ingress_port_firewall -p tcp --dport 80 -i "
+                   "shortname -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "shortname"));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(
-      *runner, "filter -I INPUT -p udp --dport 53 -i shortname -j ACCEPT -w");
-  Verify_ip6tables(
-      *runner, "filter -I INPUT -p udp --dport 53 -i shortname -j ACCEPT -w");
+  Verify_iptables(*runner,
+                  "filter -I ingress_port_firewall -p udp --dport 53 -i "
+                  "shortname -j ACCEPT -w");
+  Verify_ip6tables(*runner,
+                   "filter -I ingress_port_firewall -p udp --dport 53 -i "
+                   "shortname -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "shortname"));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(
-      *runner, "filter -I INPUT -p tcp --dport 80 -i middle-dash -j ACCEPT -w");
-  Verify_ip6tables(
-      *runner, "filter -I INPUT -p tcp --dport 80 -i middle-dash -j ACCEPT -w");
+  Verify_iptables(*runner,
+                  "filter -I ingress_port_firewall -p tcp --dport 80 -i "
+                  "middle-dash -j ACCEPT -w");
+  Verify_ip6tables(*runner,
+                   "filter -I ingress_port_firewall -p tcp --dport 80 -i "
+                   "middle-dash -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "middle-dash"));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(
-      *runner, "filter -I INPUT -p udp --dport 53 -i middle-dash -j ACCEPT -w");
-  Verify_ip6tables(
-      *runner, "filter -I INPUT -p udp --dport 53 -i middle-dash -j ACCEPT -w");
+  Verify_iptables(*runner,
+                  "filter -I ingress_port_firewall -p udp --dport 53 -i "
+                  "middle-dash -j ACCEPT -w");
+  Verify_ip6tables(*runner,
+                   "filter -I ingress_port_firewall -p udp --dport 53 -i "
+                   "middle-dash -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "middle-dash"));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(
-      *runner, "filter -I INPUT -p tcp --dport 80 -i middle.dot -j ACCEPT -w");
-  Verify_ip6tables(
-      *runner, "filter -I INPUT -p tcp --dport 80 -i middle.dot -j ACCEPT -w");
+  Verify_iptables(*runner,
+                  "filter -I ingress_port_firewall -p tcp --dport 80 -i "
+                  "middle.dot -j ACCEPT -w");
+  Verify_ip6tables(*runner,
+                   "filter -I ingress_port_firewall -p tcp --dport 80 -i "
+                   "middle.dot -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "middle.dot"));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(
-      *runner, "filter -I INPUT -p udp --dport 53 -i middle.dot -j ACCEPT -w");
-  Verify_ip6tables(
-      *runner, "filter -I INPUT -p udp --dport 53 -i middle.dot -j ACCEPT -w");
+  Verify_iptables(*runner,
+                  "filter -I ingress_port_firewall -p udp --dport 53 -i "
+                  "middle.dot -j ACCEPT -w");
+  Verify_ip6tables(*runner,
+                   "filter -I ingress_port_firewall -p udp --dport 53 -i "
+                   "middle.dot -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "middle.dot"));
   Mock::VerifyAndClearExpectations(runner);
@@ -225,13 +237,17 @@ TEST(FirewallTest, AddAcceptRules_Ip6tablesFails) {
   Firewall firewall(runner);
 
   Verify_iptables(*runner,
-                  "filter -I INPUT -p tcp --dport 80 -i iface -j ACCEPT -w");
+                  "filter -I ingress_port_firewall -p tcp --dport 80 -i iface "
+                  "-j ACCEPT -w");
   Verify_iptables(*runner,
-                  "filter -I INPUT -p udp --dport 53 -i iface -j ACCEPT -w");
+                  "filter -I ingress_port_firewall -p udp --dport 53 -i iface "
+                  "-j ACCEPT -w");
   Verify_iptables(*runner,
-                  "filter -D INPUT -p tcp --dport 80 -i iface -j ACCEPT -w");
+                  "filter -D ingress_port_firewall -p tcp --dport 80 -i iface "
+                  "-j ACCEPT -w");
   Verify_iptables(*runner,
-                  "filter -D INPUT -p udp --dport 53 -i iface -j ACCEPT -w");
+                  "filter -D ingress_port_firewall -p udp --dport 53 -i iface "
+                  "-j ACCEPT -w");
   EXPECT_CALL(*runner, ip6tables("filter", _, _, _)).WillRepeatedly(Return(1));
 
   // Punch hole for TCP port 80, should fail because 'ip6tables' fails.
@@ -261,42 +277,50 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Success) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  Verify_iptables(*runner,
-                  "filter -I OUTPUT -p tcp --dport 80 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_ip6tables(*runner,
-                   "filter -I OUTPUT -p tcp --dport 80 -o lo -m owner ! "
-                   "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_ip6tables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 80));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "filter -I OUTPUT -p udp --dport 53 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_ip6tables(*runner,
-                   "filter -I OUTPUT -p udp --dport 53 -o lo -m owner ! "
-                   "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_ip6tables(
+      *runner,
+      "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::UDP, 53));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "filter -I OUTPUT -p tcp --dport 1234 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_ip6tables(*runner,
-                   "filter -I OUTPUT -p tcp --dport 1234 -o lo -m owner ! "
-                   "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 1234 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_ip6tables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 1234 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 1234));
   Mock::VerifyAndClearExpectations(runner);
 
-  Verify_iptables(*runner,
-                  "filter -I OUTPUT -p tcp --dport 8080 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_ip6tables(*runner,
-                   "filter -I OUTPUT -p tcp --dport 8080 -o lo -m owner ! "
-                   "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 8080 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_ip6tables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 8080 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 8080));
   Mock::VerifyAndClearExpectations(runner);
@@ -321,18 +345,22 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Ip6tablesFails) {
   auto runner = new MockProcessRunner();
   Firewall firewall(runner);
 
-  Verify_iptables(*runner,
-                  "filter -I OUTPUT -p tcp --dport 80 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_iptables(*runner,
-                  "filter -D OUTPUT -p tcp --dport 80 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_iptables(*runner,
-                  "filter -I OUTPUT -p udp --dport 53 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
-  Verify_iptables(*runner,
-                  "filter -D OUTPUT -p udp --dport 53 -o lo -m owner ! "
-                  "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -D egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
+  Verify_iptables(
+      *runner,
+      "filter -D egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
+      "--uid-owner chronos -j REJECT -w");
   EXPECT_CALL(*runner, ip6tables("filter", _, _, _)).WillRepeatedly(Return(1));
 
   // Lock down TCP port 80, should fail because 'ip6tables' fails.

@@ -29,6 +29,16 @@
 
 namespace patchpanel {
 
+// filter INPUT chain for ingress port access rules controlled by
+// permission_broker.
+constexpr char kIngressPortFirewallChain[] = "ingress_port_firewall";
+// filter OUTPUT chain for egress port restriction rules controlled by
+// permission_broker.
+constexpr char kEgressPortFirewallChain[] = "egress_port_firewall";
+// nat PREROUTING chain for ingress DNAT forwarding rules controlled by
+// permission_broker.
+constexpr char kIngressPortForwardingChain[] = "ingress_port_forwarding";
+
 // Struct holding parameters for Datapath::StartRoutingNamespace requests.
 struct ConnectedNamespace {
   // The special pid which indicates this namespace is not attached to an

@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "patchpanel/datapath.h"
 #include "patchpanel/net_util.h"
 
 namespace {
@@ -199,7 +200,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
 
   std::vector<std::string> argv{
       operation,
-      "ingress_port_forwarding",
+      kIngressPortForwardingChain,
       "-i",
       interface,
       "-p",  // protocol
@@ -300,7 +301,7 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
                              const std::string& interface) {
   std::vector<std::string> argv{
       "-I",  // insert
-      "INPUT",
+      kIngressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -323,7 +324,7 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
                                 const std::string& interface) {
   std::vector<std::string> argv{
       "-D",  // delete
-      "INPUT",
+      kIngressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -345,7 +346,7 @@ bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
                                        uint16_t port) {
   std::vector<std::string> argv{
       "-I",  // insert
-      "OUTPUT",
+      kEgressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port
@@ -370,7 +371,7 @@ bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
                                           uint16_t port) {
   std::vector<std::string> argv{
       "-D",  // delete
-      "OUTPUT",
+      kEgressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
       "--dport",  // destination port

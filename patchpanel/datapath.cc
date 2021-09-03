@@ -72,10 +72,8 @@ constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
-// nat PREROUTING chains for ingress traffic.
-constexpr char kIngressPortForwardingChain[] = "ingress_port_forwarding";
+// nat PREROUTING chains for forwarding ingress traffic.
 constexpr char kIngressDefaultForwardingChain[] = "ingress_default_forwarding";
-
 // nat PREROUTING chains for egress traffic from downstream guests.
 constexpr char kRedirectArcDnsChain[] = "redirect_arc_dns";
 constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
@@ -200,6 +198,9 @@ void Datapath::Start() {
       {IpFamily::Dual, "filter", kVpnLockdownChain},
       {IpFamily::IPv4, "filter", kDropGuestIpv4PrefixChain},
       {IpFamily::IPv4, "filter", kDropGuestInvalidIpv4Chain},
+      // Create filter subchains for hosting permission_broker firewall rules
+      {IpFamily::Dual, "filter", kIngressPortFirewallChain},
+      {IpFamily::Dual, "filter", kEgressPortFirewallChain},
   };
   for (const auto& c : makeCommands) {
     if (!AddChain(c.family, c.table, c.chain /*log_failures*/)) {
@@ -246,6 +247,9 @@ void Datapath::Start() {
       // FORWARD chains respectively.
       {IpFamily::IPv4, "filter", "OUTPUT", kDropGuestIpv4PrefixChain, "-I"},
       {IpFamily::IPv4, "filter", "FORWARD", kDropGuestInvalidIpv4Chain, "-I"},
+      // Attach ingress and egress firewall chains for permission_broker rules.
+      {IpFamily::Dual, "filter", "INPUT", kIngressPortFirewallChain},
+      {IpFamily::Dual, "filter", "OUTPUT", kEgressPortFirewallChain},
   };
   for (const auto& c : jumpCommands) {
     std::string op = "-A";
@@ -419,6 +423,12 @@ void Datapath::ResetIptables() {
   // for any built-in chains that is not explicitly flushed.
   ModifyJumpRule(IpFamily::IPv4, "filter", "-D", "OUTPUT",
                  kDropGuestIpv4PrefixChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyJumpRule(IpFamily::Dual, "filter", "-D", "INPUT",
+                 kIngressPortFirewallChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyJumpRule(IpFamily::Dual, "filter", "-D", "OUTPUT",
+                 kEgressPortFirewallChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
   ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "PREROUTING",
                  kIngressPortForwardingChain, "" /*iif*/, "" /*oif*/,
