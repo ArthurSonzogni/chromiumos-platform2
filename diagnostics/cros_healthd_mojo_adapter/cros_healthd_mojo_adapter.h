@@ -171,6 +171,18 @@ class CrosHealthdMojoAdapter {
   RunVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname) = 0;
 
+  // Runs the ARC HTTP routine.
+  virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunArcHttpRoutine() = 0;
+
+  // Runs the ARC Ping routine.
+  virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunArcPingRoutine() = 0;
+
+  // Runs the ARC DNS resolution routine.
+  virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunArcDnsResolutionRoutine() = 0;
+
   // Returns which routines are available on the platform.
   virtual base::Optional<
       std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>

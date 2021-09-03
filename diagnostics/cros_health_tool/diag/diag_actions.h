@@ -84,6 +84,9 @@ class DiagActions final {
       const base::Optional<base::TimeDelta>& length_seconds);
   bool ActionRunVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname);
+  bool ActionRunArcHttpRoutine();
+  bool ActionRunArcPingRoutine();
+  bool ActionRunArcDnsResolutionRoutine();
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

@@ -303,6 +303,21 @@ bool DiagActions::ActionRunVideoConferencingRoutine(
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunArcHttpRoutine() {
+  auto response = adapter_->RunArcHttpRoutine();
+  return ProcessRoutineResponse(response);
+}
+
+bool DiagActions::ActionRunArcPingRoutine() {
+  auto response = adapter_->RunArcPingRoutine();
+  return ProcessRoutineResponse(response);
+}
+
+bool DiagActions::ActionRunArcDnsResolutionRoutine() {
+  auto response = adapter_->RunArcDnsResolutionRoutine();
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

@@ -286,6 +286,15 @@ int diag_main(int argc, char** argv) {
                 ? base::nullopt
                 : base::Optional<std::string>{FLAGS_stun_server_hostname});
         break;
+      case mojo_ipc::DiagnosticRoutineEnum::kArcHttp:
+        routine_result = actions.ActionRunArcHttpRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kArcPing:
+        routine_result = actions.ActionRunArcPingRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution:
+        routine_result = actions.ActionRunArcDnsResolutionRoutine();
+        break;
       default:
         std::cout << "Unsupported routine: " << FLAGS_routine << std::endl;
         return EXIT_FAILURE;

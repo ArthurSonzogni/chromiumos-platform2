@@ -168,6 +168,18 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   RunVideoConferencingRoutine(
       const base::Optional<std::string>& stun_server_hostname) override;
 
+  // Runs the ARC HTTP routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunArcHttpRoutine()
+      override;
+
+  // Runs the ARC Ping routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunArcPingRoutine()
+      override;
+
+  // Runs the ARC DNS resolution routine.
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+  RunArcDnsResolutionRoutine() override;
+
   // Returns which routines are available on the platform.
   base::Optional<
       std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
@@ -799,6 +811,54 @@ CrosHealthdMojoAdapterImpl::RunVideoConferencingRoutine(
       base::Bind(&OnMojoResponseReceived<
                      chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
                  &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapterImpl::RunArcHttpRoutine() {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunArcHttpRoutine(
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapterImpl::RunArcPingRoutine() {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunArcPingRoutine(
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+chromeos::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapterImpl::RunArcDnsResolutionRoutine() {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
+
+  chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunArcDnsResolutionRoutine(
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
