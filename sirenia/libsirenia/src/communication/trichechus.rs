@@ -10,6 +10,31 @@ use std::result::Result as StdResult;
 
 use serde::{Deserialize, Serialize};
 use sirenia_rpc_macros::sirenia_rpc;
+use thiserror::Error as ThisError;
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ThisError)]
+pub enum Error {
+    #[error("App ID not found in the manifest")]
+    InvalidAppId,
+    #[error("Digest of TEE app executable did not match value in manifest")]
+    DigestMismatch,
+    #[error("App not loadable")]
+    AppNotLoadable,
+    #[error("Sandbox type not implemented")]
+    SandboxTypeNotImplemented,
+    #[error("App not found at expected path")]
+    AppPath,
+    #[error("App not loaded yet")]
+    AppNotLoaded,
+    #[error("{0}")]
+    Custom(String),
+}
+
+impl From<String> for Error {
+    fn from(s: String) -> Self {
+        Error::Custom(s)
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct AppInfo {
@@ -21,7 +46,7 @@ pub struct AppInfo {
 pub trait Trichechus {
     type Error;
 
-    fn start_session(&self, app_info: AppInfo) -> StdResult<(), Self::Error>;
-    fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), String>, Self::Error>;
+    fn start_session(&self, app_info: AppInfo) -> StdResult<Result<(), Error>, Self::Error>;
+    fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), Error>, Self::Error>;
     fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
 }

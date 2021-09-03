@@ -21,7 +21,7 @@ use dbus_crossroads::Crossroads;
 use getopts::Options;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
-use libsirenia::communication::trichechus::{AppInfo, Trichechus, TrichechusClient};
+use libsirenia::communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient};
 use libsirenia::rpc;
 use libsirenia::transport::{
     self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT,
@@ -42,6 +42,8 @@ pub enum Error {
     ProcessMessage(dbus::Error),
     #[error("failed to call rpc: {0}")]
     Rpc(rpc::Error),
+    #[error("Start session failed: {0}")]
+    StartSession(trichechus::Error),
     #[error("failed connect to /dev/log: {0}")]
     RawSyslogConnect(io::Error),
     #[error("failed write to /dev/log: {0}")]
@@ -124,7 +126,8 @@ fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, 
         .lock()
         .unwrap()
         .start_session(app_info)
-        .map_err(Error::Rpc)?;
+        .map_err(Error::Rpc)?
+        .map_err(Error::StartSession)?;
     match transport.connect() {
         Ok(Transport { r, w, id: _ }) => unsafe {
             // This is safe because into_raw_fd transfers the ownership to OwnedFd.

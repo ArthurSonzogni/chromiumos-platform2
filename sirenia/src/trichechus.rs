@@ -25,7 +25,7 @@ use libsirenia::{
     cli::{trichechus::initialize_common_arguments, TransportTypeOption},
     communication::{
         persistence::{Cronista, CronistaClient, Status},
-        trichechus::{AppInfo, Trichechus, TrichechusServer},
+        trichechus::{self, AppInfo, Trichechus, TrichechusServer},
         StorageRpc, StorageRpcServer,
     },
     linux::{
@@ -79,24 +79,10 @@ pub enum Error {
     RunSandbox(sandbox::Error),
     #[error("received unexpected request type")]
     UnexpectedRequest,
-    #[error("Error retrieving from  app_manifest: {0}")]
+    #[error("Error retrieving from app_manifest: {0}")]
     AppManifest(app_info::Error),
     #[error("Error retrieving path for TEE app: {0}")]
     AppPath(String),
-    #[error("TEE app not loadable: {0}")]
-    AppNotLoadable(String),
-    #[error("Digest of TEE app executable did not match value in manifest")]
-    DigestMismatch,
-    #[error("Failed to open memfd: {0:?}")]
-    Memfd(sys_util::Error),
-    #[error("Failed to write executable to memfd: {0:?}")]
-    MemfdWrite(io::Error),
-    #[error("Failed to seek executable to memfd: {0:?}")]
-    MemfdSeek(io::Error),
-    #[error("Failed to seal executable to memfd: {0:?}")]
-    MemfdSeal(sys_util::Error),
-    #[error("Sandbox type not implemented for: {0:?}")]
-    SandboxTypeNotImplemented(AppManifestEntry),
     #[error("Failed to compute sha256 digest: {0:?}")]
     Sha256(String),
 }
@@ -106,7 +92,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /* Holds the trichechus-relevant information for a TEEApp. */
 struct TeeApp {
-    _sandbox: Sandbox,
+    sandbox: Sandbox,
     app_info: AppManifestEntry,
 }
 
@@ -201,7 +187,7 @@ impl StorageRpc for TeeAppHandler {
 
 struct TrichechusState {
     expected_port: u32,
-    pending_apps: Map<TransportType, String>,
+    pending_apps: Map<TransportType, TeeApp>,
     running_apps: Map<TransportType, Rc<RefCell<TeeApp>>>,
     log_queue: VecDeque<Vec<u8>>,
     persistence_uri: TransportType,
@@ -289,19 +275,24 @@ impl TrichechusServerImpl {
 impl Trichechus for TrichechusServerImpl {
     type Error = ();
 
-    fn start_session(&self, app_info: AppInfo) -> StdResult<(), ()> {
+    fn start_session(&self, app_info: AppInfo) -> StdResult<StdResult<(), trichechus::Error>, ()> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
-        self.state.borrow_mut().pending_apps.insert(
+        Ok(start_session(
+            self.state.borrow_mut().deref_mut(),
             self.port_to_transport_type(app_info.port_number),
-            app_info.app_id,
-        );
-        Ok(())
+            &app_info.app_id,
+        ))
     }
 
-    fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<StdResult<(), String>, ()> {
-        Ok(load_app(self.state.borrow_mut().deref_mut(), &app_id, &elf)
-            .map_err(|err| format!("{:?}", err)))
+    fn load_app(
+        &self,
+        app_id: String,
+        elf: Vec<u8>,
+    ) -> StdResult<StdResult<(), trichechus::Error>, ()> {
+        info!("Received load app message: {:?}", &app_id);
+        // The TEE app isn't started until its socket connection is accepted.
+        Ok(load_app(self.state.borrow_mut().deref_mut(), &app_id, &elf))
     }
 
     fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, ()> {
@@ -320,12 +311,12 @@ impl DugongConnectionHandler {
         DugongConnectionHandler { state }
     }
 
-    fn connect_tee_app(&mut self, app_id: &str, connection: Transport) -> Option<Box<dyn Mutator>> {
+    fn connect_tee_app(&mut self, app: TeeApp, connection: Transport) -> Option<Box<dyn Mutator>> {
         let id = connection.id.clone();
         let state = self.state.clone();
         // Only borrow once.
         let mut trichechus_state = self.state.borrow_mut();
-        match spawn_tee_app(&trichechus_state, app_id, connection) {
+        match spawn_tee_app(&trichechus_state, app, connection) {
             Ok((app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 trichechus_state.running_apps.insert(id, tee_app.clone());
@@ -350,9 +341,9 @@ impl ConnectionHandler for DugongConnectionHandler {
         // Check if the incoming connection is expected and associated with a TEE
         // application.
         let reservation = self.state.borrow_mut().pending_apps.remove(&connection.id);
-        if let Some(app_id) = reservation {
-            info!("starting instance of '{}'", app_id);
-            self.connect_tee_app(&app_id, connection)
+        if let Some(app) = reservation {
+            info!("starting instance of '{}'", &app.app_info.app_name);
+            self.connect_tee_app(app, connection)
         } else {
             // Check if it is a control connection.
             match connection.id.get_port() {
@@ -379,52 +370,99 @@ fn fd_to_path(fd: RawFd) -> StdResult<PathBuf, io::Error> {
     PathBuf::from(format!("/proc/self/fd/{}", fd)).read_link()
 }
 
-fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> Result<()> {
-    let app_info = state
+fn lookup_app_info<'a>(
+    state: &'a TrichechusState,
+    app_id: &str,
+) -> StdResult<&'a AppManifestEntry, trichechus::Error> {
+    state
         .app_manifest
         .get_app_manifest_entry(app_id)
-        .map_err(Error::AppManifest)?;
-    if let ExecutableInfo::Digest(expected) = &app_info.exec_info {
-        let actual = compute_sha256(elf).map_err(|err| Error::Sha256(format!("{:?}", err)))?;
-        if expected.deref() != &*actual {
-            Err(Error::DigestMismatch)
-        } else {
-            let mut executable = SharedMemory::new(None).map_err(Error::Memfd)?;
-            executable.write_all(elf).map_err(Error::MemfdWrite)?;
-            executable
-                .seek(SeekFrom::Start(0))
-                .map_err(Error::MemfdSeek)?;
+        .map_err(|err| {
+            if let app_info::Error::InvalidAppId(_) = err {
+                trichechus::Error::InvalidAppId
+            } else {
+                trichechus::Error::from(format!("Failed to get manifest entry: {}", err))
+            }
+        })
+}
 
-            let mut seals = MemfdSeals::default();
-            seals.set_grow_seal();
-            seals.set_shrink_seal();
-            seals.set_write_seal();
-            executable.add_seals(seals).map_err(Error::MemfdSeal)?;
+fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), trichechus::Error> {
+    let app_info = lookup_app_info(state, app_id)?;
 
-            state.loaded_apps.borrow_mut().insert(actual, executable);
-            Ok(())
-        }
+    // Validate digest.
+    let expected = if let ExecutableInfo::Digest(expected) = &app_info.exec_info {
+        expected
     } else {
-        Err(Error::AppNotLoadable(app_info.app_name.clone()))
+        return Err(trichechus::Error::AppNotLoadable);
+    };
+    let actual = compute_sha256(elf)
+        .map_err(|err| trichechus::Error::from(format!("SHA256 failed: {:?}", err)))?;
+    if expected.deref() != &*actual {
+        return Err(trichechus::Error::DigestMismatch);
     }
+
+    // Create and write memfd.
+    let mut executable = SharedMemory::new(None)
+        .map_err(|err| trichechus::Error::from(format!("Failed to open memfd: {:?}", err)))?;
+    executable
+        .write_all(elf)
+        .map_err(|err| trichechus::Error::from(format!("Failed to write to memfd: {:?}", err)))?;
+    executable
+        .seek(SeekFrom::Start(0))
+        .map_err(|err| trichechus::Error::from(format!("Failed to seek memfd: {:?}", err)))?;
+
+    // Seal memfd.
+    let mut seals = MemfdSeals::default();
+    seals.set_grow_seal();
+    seals.set_shrink_seal();
+    seals.set_write_seal();
+    executable
+        .add_seals(seals)
+        .map_err(|err| trichechus::Error::from(format!("Failed to seal memfd: {:?}", err)))?;
+
+    state.loaded_apps.borrow_mut().insert(actual, executable);
+    Ok(())
+}
+
+fn start_session(
+    state: &mut TrichechusState,
+    key: TransportType,
+    app_id: &str,
+) -> StdResult<(), trichechus::Error> {
+    let app_info = lookup_app_info(state, app_id)?.to_owned();
+
+    let sandbox = match &app_info.sandbox_type {
+        SandboxType::DeveloperEnvironment => Sandbox::passthrough(),
+        SandboxType::Container => Sandbox::new(None),
+        SandboxType::VirtualMachine => {
+            return Err(trichechus::Error::SandboxTypeNotImplemented);
+        }
+    }
+    .map_err(|err| trichechus::Error::from(format!("Failed create sandbox: {:?}", err)))?;
+
+    // Do some additional checks to fail early and return the reason to the caller.
+    match &app_info.exec_info {
+        ExecutableInfo::Path(path) => {
+            if !Path::new(&path).is_file() {
+                return Err(trichechus::Error::AppPath);
+            }
+        }
+        ExecutableInfo::Digest(digest) => {
+            if state.loaded_apps.borrow().get(digest).is_none() {
+                return Err(trichechus::Error::AppNotLoaded);
+            }
+        }
+    }
+
+    state.pending_apps.insert(key, TeeApp { sandbox, app_info });
+    Ok(())
 }
 
 fn spawn_tee_app(
     state: &TrichechusState,
-    app_id: &str,
+    mut app: TeeApp,
     transport: Transport,
 ) -> Result<(TeeApp, Transport)> {
-    let app_info = state
-        .app_manifest
-        .get_app_manifest_entry(app_id)
-        .map_err(Error::AppManifest)?;
-    let mut sandbox = match &app_info.sandbox_type {
-        SandboxType::DeveloperEnvironment => Sandbox::passthrough().map_err(Error::NewSandbox)?,
-        SandboxType::Container => Sandbox::new(None).map_err(Error::NewSandbox)?,
-        SandboxType::VirtualMachine => {
-            return Err(Error::SandboxTypeNotImplemented(app_info.to_owned()))
-        }
-    };
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().map_err(Error::NewTransport)?;
     let keep_fds: [(RawFd, RawFd); 5] = [
@@ -435,9 +473,9 @@ fn spawn_tee_app(
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
 
-    match &app_info.exec_info {
+    match &app.app_info.exec_info {
         ExecutableInfo::Path(path) => {
-            sandbox
+            app.sandbox
                 .run(Path::new(&path), &[path], &keep_fds)
                 .map_err(Error::RunSandbox)?;
         }
@@ -446,21 +484,15 @@ fn spawn_tee_app(
                 let fd_path = fd_to_path(shared_mem.as_raw_fd())
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_else(|_| "".into());
-                sandbox
+                app.sandbox
                     .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
                     .map_err(Error::RunSandbox)?;
             }
-            None => return Err(Error::AppPath(app_info.app_name.clone())),
+            None => return Err(Error::AppPath(app.app_info.app_name.clone())),
         },
     }
 
-    Ok((
-        TeeApp {
-            _sandbox: sandbox,
-            app_info: app_info.to_owned(),
-        },
-        trichechus_transport,
-    ))
+    Ok((app, trichechus_transport))
 }
 
 // TODO: Figure out how to clean up TEEs that are no longer in use

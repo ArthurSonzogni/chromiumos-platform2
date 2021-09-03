@@ -24,7 +24,7 @@ use libsirenia::{
         self, TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
         DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
     },
-    communication::trichechus::{AppInfo, Trichechus, TrichechusClient},
+    communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
     rpc,
     transport::{
         self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
@@ -76,10 +76,12 @@ enum Error {
     ParsePort(String),
     #[error("failed to call rpc: {0}")]
     Rpc(rpc::Error),
+    #[error("Start session failed: {0}")]
+    StartSession(trichechus::Error),
     #[error("start app failed with code: {0:}")]
     StartApp(i32),
-    #[error("Load app failed with: {0:}")]
-    LoadApp(String),
+    #[error("Load app failed: {0:}")]
+    LoadApp(trichechus::Error),
     #[error("copy failed: {0:}")]
     Copy(io::Error),
     #[error("open failed: {0:}")]
@@ -178,7 +180,10 @@ fn direct_start_manatee_app(
     }
 
     info!("Starting rpc.");
-    client.start_session(app_info).map_err(Error::Rpc)?;
+    client
+        .start_session(app_info)
+        .map_err(Error::Rpc)?
+        .map_err(Error::StartSession)?;
 
     info!("Starting TEE application: {}", app_id);
     match app_transport.connect() {
