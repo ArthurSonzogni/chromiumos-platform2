@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/memory/unsafe_shared_memory_region.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -50,6 +51,9 @@ class VideoFrameHandlerImpl : public video_capture::mojom::VideoFrameHandler {
   // video_capture::mojom::VideoFrameHandler overrides.
   void OnNewBuffer(int32_t buffer_id,
                    media::mojom::VideoBufferHandlePtr buffer_handle) override;
+  void OnFrameAccessHandlerReady(
+      mojo::PendingRemote<video_capture::mojom::VideoFrameAccessHandler>
+          frame_access_handler) override;
   void OnFrameReadyInBuffer(
       video_capture::mojom::ReadyFrameInBufferPtr buffer,
       std::vector<video_capture::mojom::ReadyFrameInBufferPtr> scaled_buffers)
@@ -72,6 +76,10 @@ class VideoFrameHandlerImpl : public video_capture::mojom::VideoFrameHandler {
 
   // Binding of the Recevier interface to message pipe.
   mojo::Receiver<video_capture::mojom::VideoFrameHandler> receiver_;
+
+  // Stores the frame access handler to let the producer of frames know when we
+  // are done with a frame.
+  video_capture::mojom::VideoFrameAccessHandlerPtr frame_access_handler_;
 
   // Stores the capture format requested from the open device.
   VideoStreamParams capture_format_;

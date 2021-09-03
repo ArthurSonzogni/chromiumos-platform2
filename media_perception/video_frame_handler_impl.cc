@@ -100,6 +100,13 @@ void VideoFrameHandlerImpl::OnNewBuffer(
       std::make_pair(buffer_id, std::move(shm_mapping)));
 }
 
+void VideoFrameHandlerImpl::OnFrameAccessHandlerReady(
+    mojo::PendingRemote<video_capture::mojom::VideoFrameAccessHandler>
+        frame_access_handler) {
+  LOG(INFO) << "Got call to OnFrameAccessHandlerReady";
+  frame_access_handler_.Bind(std::move(frame_access_handler));
+}
+
 void VideoFrameHandlerImpl::OnFrameReadyInBuffer(
     video_capture::mojom::ReadyFrameInBufferPtr buffer,
     std::vector<video_capture::mojom::ReadyFrameInBufferPtr> scaled_buffers) {
@@ -112,6 +119,7 @@ void VideoFrameHandlerImpl::OnFrameReadyInBuffer(
                  incoming_buffer->size(), capture_format_.width_in_pixels(),
                  capture_format_.height_in_pixels());
   }
+  frame_access_handler_->OnFinishedConsumingBuffer(buffer->buffer_id);
 }
 
 void VideoFrameHandlerImpl::OnFrameDropped(
