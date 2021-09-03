@@ -35,7 +35,8 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
 
   base::ScopedTempDir temp_dir;
   if (!temp_dir.CreateUniqueTempDir()) {
-    LOG(FATAL) << "Failed to create temporary directory.";
+    LOG(ERROR) << "Failed to create temporary directory.";
+    return;
   }
 
   // Create temporary file to ingest as payload into control message.
@@ -43,10 +44,15 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
   base::ScopedFD fd =
       CreateAndOpenFdForTemporaryFileInDir(temp_dir.GetPath(), &temp_file);
   if (!fd.is_valid()) {
-    LOG(FATAL) << "Failed to create temporary file.";
+    LOG(ERROR) << "Failed to create temporary file.";
+    return;
   }
 
-  base::UnixDomainSocket::SendMsg(writer_fd.get(), data, size, {fd.get()});
+  if (!base::UnixDomainSocket::SendMsg(writer_fd.get(), data, size,
+                                       {fd.get()})) {
+    LOG(ERROR) << "Failed to send all data over socket.";
+    return;
+  }
   helper_process_receiver.OnCommandReady();
 }
 

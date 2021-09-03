@@ -58,7 +58,9 @@ int HelperProcessReceiver::OnInit() {
 }
 
 void HelperProcessReceiver::OnCommandReady() {
-  std::vector<char> buffer(4096 * 4);
+  constexpr size_t kAllowedBufferLimit = 4096 * 4;
+  constexpr size_t kPaddedBufferLimit = kAllowedBufferLimit + 1;
+  std::vector<char> buffer(kPaddedBufferLimit);
 
   struct msghdr msg = {0};
   struct iovec iov[1];
@@ -80,6 +82,11 @@ void HelperProcessReceiver::OnCommandReady() {
   // orderly shutdown.
   if (bytes == 0)
     _exit(0);
+  // This means that the data sent over is too long.
+  if (bytes > kAllowedBufferLimit) {
+    LOG(ERROR) << "recvmsg is getting too much data.";
+    _exit(0);
+  }
 
   struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
 
