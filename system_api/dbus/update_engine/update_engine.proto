@@ -107,4 +107,7 @@ message UpdateParams {
 
   // Additional fields that update_engine keeps track of during update requests.
   UpdateFlags update_flags = 3;
+
+  // Checks for an update, but does not apply it.
+  bool skip_applying = 4;
 }
