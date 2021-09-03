@@ -18,6 +18,9 @@
 
 namespace ec {
 
+// Character device exposing the EC command interface.
+constexpr char kCrosEcPath[] = "/dev/cros_ec";
+
 enum class EcCmdVersionSupportStatus {
   UNKNOWN = 0,
   SUPPORTED = 1,
