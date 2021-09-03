@@ -96,6 +96,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libec",
     "libmojo",
     "libudev",
     "re2",
