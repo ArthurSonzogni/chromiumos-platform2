@@ -15,6 +15,7 @@ close: 1
 connect: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 exit: 1
 exit_group: 1
 flock: 1
@@ -30,6 +31,7 @@ gettid: 1
 lseek: 1
 lstat: 1
 madvise: arg2 == MADV_DONTNEED || arg2 == MADV_DONTDUMP || arg2 == MADV_REMOVE
+memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
