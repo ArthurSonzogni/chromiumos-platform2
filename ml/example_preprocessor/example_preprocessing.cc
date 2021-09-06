@@ -7,8 +7,9 @@
 
 #include "ml/example_preprocessor/example_preprocessing.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
-#include <base/numerics/ranges.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <google/protobuf/map.h>
@@ -115,7 +116,7 @@ int ExamplePreprocessor::NormalizeFeatures(
         feature_value = feature_value / pair.second;
       }
       // Truncate to be within [-1.0, 1.0].
-      feature_value = base::ClampToRange(feature_value, -1.0f, 1.0f);
+      feature_value = std::clamp(feature_value, -1.0f, 1.0f);
       (*example->mutable_features())[feature_name].set_float_value(
           feature_value);
     } else {
