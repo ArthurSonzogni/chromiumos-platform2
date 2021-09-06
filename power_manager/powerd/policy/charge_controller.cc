@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/numerics/ranges.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -162,17 +161,16 @@ void ChargeController::ClampCustomBatteryChargeThresholds(int* start,
                                                           int* end) {
   DCHECK(start);
   DCHECK(end);
-  *end = base::ClampToRange(*end, kCustomChargeModeEndMin,
-                            kCustomChargeModeEndMax);
-  *start = base::ClampToRange(
-      std::min(*start, *end - kCustomChargeModeThresholdsMinDiff),
-      kCustomChargeModeStartMin, kCustomChargeModeStartMax);
+  *end = std::clamp(*end, kCustomChargeModeEndMin, kCustomChargeModeEndMax);
+  *start =
+      std::clamp(std::min(*start, *end - kCustomChargeModeThresholdsMinDiff),
+                 kCustomChargeModeStartMin, kCustomChargeModeStartMax);
 }
 
 // static
 int ChargeController::ClampPeakShiftBatteryThreshold(int threshold) {
-  return base::ClampToRange(threshold, kPeakShiftBatteryThresholdMin,
-                            kPeakShiftBatteryThresholdMax);
+  return std::clamp(threshold, kPeakShiftBatteryThresholdMin,
+                    kPeakShiftBatteryThresholdMax);
 }
 
 ChargeController::ChargeController() = default;
