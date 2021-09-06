@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -75,6 +76,7 @@ class ProcessManager {
   // invoked when child process exits (not terminated by us).  Return -1
   // if failed to start the process, otherwise, return the pid of the child
   // process.
+  // TODO(b/203478033): |exit_callback| should be a base::OnceCallback
   virtual pid_t StartProcess(
       const base::Location& spawn_source,
       const base::FilePath& program,
@@ -93,10 +95,10 @@ class ProcessManager {
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       const MinijailOptions& minijail_options,
-      const base::Callback<void(int)>& exit_callback) {
+      base::OnceCallback<void(int)> exit_callback) {
     return StartProcessInMinijailWithPipes(
         spawn_source, program, arguments, environment, minijail_options,
-        exit_callback,
+        std::move(exit_callback),
         (struct std_file_descriptors){nullptr, nullptr, nullptr});
   }
 
@@ -111,7 +113,7 @@ class ProcessManager {
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       const MinijailOptions& minijail_options,
-      const base::Callback<void(int)>& exit_callback,
+      base::OnceCallback<void(int)> exit_callback,
       struct std_file_descriptors std_fds);
 
   // Stop the given |pid|.  Previously registered |exit_callback| will be
@@ -188,7 +190,7 @@ class ProcessManager {
   brillo::Minijail* minijail_;
 
   // Processes to watch for the caller.
-  std::map<pid_t, base::Callback<void(int)>> watched_processes_;
+  std::map<pid_t, base::OnceCallback<void(int)>> watched_processes_;
   // Processes being terminated by us.  Use a timer to make sure process
   // does exit, log an error if it failed to exit within a specific timeout.
   std::map<pid_t, std::unique_ptr<TerminationTimeoutCallback>>

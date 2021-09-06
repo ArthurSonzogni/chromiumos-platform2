@@ -36,7 +36,7 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Not;
 using testing::Return;
-using testing::SaveArg;
+using testing::WithArg;
 
 // Expose necessary private members of WireGuardDriver for testing.
 class WireGuardDriverTestPeer {
@@ -145,7 +145,7 @@ class WireGuardDriverTest : public testing::Test {
                            const std::vector<std::string>&,
                            const std::map<std::string, std::string>&,
                            const ProcessManager::MinijailOptions&,
-                           const base::Callback<void(int)>&,
+                           base::OnceCallback<void(int)>,
                            struct std_file_descriptors std_fds) {
           CHECK(std_fds.stdin_fd);
           CHECK(std_fds.stdout_fd);
@@ -194,8 +194,11 @@ class WireGuardDriverTest : public testing::Test {
                           MinijailOptionsMatchInheritSupplumentaryGroup(true),
                           MinijailOptionsMatchCloseNonstdFDs(true)),
                     _))
-        .WillOnce(DoAll(SaveArg<5>(&wireguard_exit_callback_),
-                        Return(kWireGuardPid)));
+        .WillOnce(
+            WithArg<5>([this](base::OnceCallback<void(int)> exit_callback) {
+              wireguard_exit_callback_ = std::move(exit_callback);
+              return kWireGuardPid;
+            }));
     dispatcher_.DispatchPendingEvents();
     std::move(create_kernel_link_failed_callback_).Run();
   }
@@ -212,9 +215,15 @@ class WireGuardDriverTest : public testing::Test {
                           MinijailOptionsMatchInheritSupplumentaryGroup(true),
                           MinijailOptionsMatchCloseNonstdFDs(false)),
                     _))
-        .WillOnce(DoAll(SaveArg<2>(&args),
-                        SaveArg<5>(&wireguard_tools_exit_callback_),
-                        Return(kWireGuardToolsPid)));
+        .WillOnce([this, &args](const base::Location&, const base::FilePath&,
+                                const std::vector<std::string>& arguments,
+                                const std::map<std::string, std::string>&,
+                                const MockProcessManager::MinijailOptions&,
+                                base::OnceCallback<void(int)> exit_callback) {
+          wireguard_tools_exit_callback_ = std::move(exit_callback);
+          args = arguments;
+          return kWireGuardToolsPid;
+        });
     std::move(link_ready_callback_).Run(kIfName, kIfIndex);
 
     EXPECT_EQ(args[0], "setconf");
@@ -250,8 +259,8 @@ class WireGuardDriverTest : public testing::Test {
   WireGuardDriver* driver_;  // owned by driver_test_peer_
   std::unique_ptr<WireGuardDriverTestPeer> driver_test_peer_;
 
-  base::RepeatingCallback<void(int)> wireguard_exit_callback_;
-  base::RepeatingCallback<void(int)> wireguard_tools_exit_callback_;
+  base::OnceCallback<void(int)> wireguard_exit_callback_;
+  base::OnceCallback<void(int)> wireguard_tools_exit_callback_;
   DeviceInfo::LinkReadyCallback link_ready_callback_;
   base::OnceClosure create_kernel_link_failed_callback_;
   base::FilePath config_file_path_;
@@ -269,7 +278,7 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
 
   // Configuration done.
   EXPECT_CALL(driver_event_handler_, OnDriverConnected(kIfName, kIfIndex));
-  wireguard_tools_exit_callback_.Run(0);
+  std::move(wireguard_tools_exit_callback_).Run(0);
 
   // Checks that the config file has been deleted.
   EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
@@ -301,7 +310,7 @@ TEST_F(WireGuardDriverTest, ConnectFlowUserspace) {
 
   // Configuration done.
   EXPECT_CALL(driver_event_handler_, OnDriverConnected(kIfName, kIfIndex));
-  wireguard_tools_exit_callback_.Run(0);
+  std::move(wireguard_tools_exit_callback_).Run(0);
 
   // Checks that the config file has been deleted.
   EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
@@ -320,7 +329,7 @@ TEST_F(WireGuardDriverTest, WireGuardToolsFailed) {
 
   // Configuration failed.
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  wireguard_tools_exit_callback_.Run(1);
+  std::move(wireguard_tools_exit_callback_).Run(1);
 
   // Checks that the config file has been deleted.
   EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
@@ -342,7 +351,7 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   EXPECT_EQ(contents, kExpectedConfigFileContents);
   ExpectCallMetrics(Metrics::kVpnWireGuardKeyPairSourceUserInput, 2,
                     Metrics::kVpnWireGuardAllowedIPsTypeNoDefaultRoute);
-  wireguard_tools_exit_callback_.Run(0);
+  std::move(wireguard_tools_exit_callback_).Run(0);
   Mock::VerifyAndClearExpectations(&metrics_);
   driver_->Disconnect();
 
@@ -465,7 +474,7 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   InvokeLinkReady();
   ExpectCallMetrics(Metrics::kVpnWireGuardKeyPairSourceSoftwareGenerated, 1,
                     Metrics::kVpnWireGuardAllowedIPsTypeHasDefaultRoute);
-  wireguard_tools_exit_callback_.Run(0);
+  std::move(wireguard_tools_exit_callback_).Run(0);
   Mock::VerifyAndClearExpectations(&metrics_);
 }
 
@@ -538,7 +547,7 @@ TEST_F(WireGuardDriverTest, SpawnWireGuardProcessFailed) {
 TEST_F(WireGuardDriverTest, WireGuardProcessExitedUnexpectedly) {
   InvokeConnectAsyncUserspace();
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  wireguard_exit_callback_.Run(1);
+  std::move(wireguard_exit_callback_).Run(1);
 }
 
 // Checks interface cleanup on timeout.

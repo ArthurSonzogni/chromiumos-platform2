@@ -102,6 +102,7 @@ using testing::AllOf;
 using testing::DoAll;
 using testing::Return;
 using testing::SaveArg;
+using testing::WithArg;
 
 // Expected contents in WritePPPDConfig test, missing the last line for plugin.
 constexpr char kExpectedPPPDConf[] = R"(ipcp-accept-local
@@ -245,8 +246,11 @@ TEST_F(L2TPConnectionTest, StartXl2tpd) {
                         MinijailOptionsMatchInheritSupplumentaryGroup(true),
                         MinijailOptionsMatchCloseNonstdFDs(true)),
                   _))
-      .WillOnce(DoAll(SaveArg<3>(&actual_env), Return(123)));
-
+      .WillOnce(WithArg<3>(
+          [&actual_env](const std::map<std::string, std::string>& environment) {
+            actual_env = environment;
+            return 123;
+          }));
   l2tp_connection_->InvokeStartXl2tpd();
 
   // Environment should contains variables needed by pppd.
@@ -261,7 +265,11 @@ TEST_F(L2TPConnectionTest, Xl2tpdExitedUnexpectedly) {
 
   base::OnceCallback<void(int)> exit_cb;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
 
   l2tp_connection_->InvokeStartXl2tpd();
 

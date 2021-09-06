@@ -43,7 +43,7 @@ class MockProcessManager : public ProcessManager {
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&),
                const MinijailOptions&,
-               const base::Callback<void(int)>&),
+               base::OnceCallback<void(int)>),
               (override));
   MOCK_METHOD(pid_t,
               StartProcessInMinijailWithPipes,
@@ -52,7 +52,7 @@ class MockProcessManager : public ProcessManager {
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&),
                const MinijailOptions&,
-               const base::Callback<void(int)>&,
+               base::OnceCallback<void(int)>,
                struct std_file_descriptors),
               (override));
   MOCK_METHOD(bool, StopProcess, (pid_t), (override));

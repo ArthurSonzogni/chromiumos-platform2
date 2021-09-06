@@ -128,7 +128,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     const std::vector<std::string>& arguments,
     const std::map<std::string, std::string>& environment,
     const MinijailOptions& minijail_options,
-    const base::Callback<void(int)>& exit_callback,
+    base::OnceCallback<void(int)> exit_callback,
     struct std_file_descriptors std_fds) {
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
 
@@ -325,9 +325,9 @@ void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
   // Invoke the exit callback if the process is being watched.
   auto watched_process = watched_processes_.find(pid);
   if (watched_process != watched_processes_.end()) {
-    base::Callback<void(int)> callback = watched_process->second;
+    base::OnceCallback<void(int)> callback = std::move(watched_process->second);
     watched_processes_.erase(watched_process);
-    callback.Run(info.si_status);
+    std::move(callback).Run(info.si_status);
     return;
   }
 

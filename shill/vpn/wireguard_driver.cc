@@ -451,8 +451,8 @@ bool WireGuardDriver::SpawnWireGuard() {
   wireguard_pid_ = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardPath), args,
       /*environment=*/{}, VPNUtil::BuildMinijailOptions(kCapMask),
-      base::BindRepeating(&WireGuardDriver::WireGuardProcessExited,
-                          weak_factory_.GetWeakPtr()));
+      base::BindOnce(&WireGuardDriver::WireGuardProcessExited,
+                     weak_factory_.GetWeakPtr()));
   return wireguard_pid_ > -1;
 }
 
@@ -549,8 +549,8 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
   pid_t pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
       /*environment=*/{}, minijail_options,
-      base::BindRepeating(&WireGuardDriver::OnConfigurationDone,
-                          weak_factory_.GetWeakPtr()));
+      base::BindOnce(&WireGuardDriver::OnConfigurationDone,
+                     weak_factory_.GetWeakPtr()));
   if (pid == -1) {
     FailService(Service::kFailureInternal, "Failed to run `wg setconf`");
     return;

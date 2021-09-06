@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -412,8 +413,8 @@ void IPsecConnection::StartCharon() {
   minijail_options.rlimit_as_soft = 750'000'000;  // 750MB
   charon_pid_ = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kCharonPath), args, env, minijail_options,
-      base::BindRepeating(&IPsecConnection::OnCharonExitedUnexpectedly,
-                          weak_factory_.GetWeakPtr()));
+      base::BindOnce(&IPsecConnection::OnCharonExitedUnexpectedly,
+                     weak_factory_.GetWeakPtr()));
 
   if (charon_pid_ == -1) {
     NotifyFailure(Service::kFailureInternal, "Failed to start charon");
@@ -508,10 +509,9 @@ void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
   pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kSwanctlPath), args, env,
       VPNUtil::BuildMinijailOptions(kCapMask),
-      base::BindRepeating(
-          &IPsecConnection::OnSwanctlExited, weak_factory_.GetWeakPtr(),
-          base::AdaptCallbackForRepeating(std::move(on_success)),
-          message_on_failure));
+      base::BindOnce(&IPsecConnection::OnSwanctlExited,
+                     weak_factory_.GetWeakPtr(), std::move(on_success),
+                     message_on_failure));
   if (pid == -1) {
     NotifyFailure(Service::kFailureInternal, message_on_failure);
   }

@@ -82,7 +82,7 @@ using testing::_;
 using testing::AllOf;
 using testing::DoAll;
 using testing::Return;
-using testing::SaveArg;
+using testing::WithArg;
 
 // Note that there is a MACRO in this string so we cannot use raw string literal
 // here.
@@ -272,7 +272,11 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
 
   base::OnceCallback<void(int)> exit_cb;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kStrongSwanConfigWritten);
 
@@ -337,7 +341,11 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
                         MinijailOptionsMatchInheritSupplumentaryGroup(true),
                         MinijailOptionsMatchCloseNonstdFDs(true)),
                   _))
-      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
 
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
@@ -365,7 +373,12 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExitCodeNonZero) {
 
   base::OnceCallback<void(int)> exit_cb;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
+
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
 
@@ -398,7 +411,11 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
                         MinijailOptionsMatchInheritSupplumentaryGroup(true),
                         MinijailOptionsMatchCloseNonstdFDs(true)),
                   _))
-      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
 
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigLoaded);
