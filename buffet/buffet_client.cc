@@ -52,15 +52,6 @@ void usage() {
 )");
 }
 
-// Helpers for JsonToAny().
-template <typename T>
-brillo::Any GetJsonValue(const base::Value& json,
-                         bool (base::Value::*fnc)(T*) const) {
-  T val;
-  CHECK((json.*fnc)(&val));
-  return val;
-}
-
 template <typename T>
 brillo::Any GetJsonList(const base::Value& list);  // Prototype.
 
@@ -73,28 +64,24 @@ brillo::Any JsonToAny(const base::Value& json) {
       prop_value = nullptr;
       break;
     case base::Value::Type::BOOLEAN:
-      prop_value = GetJsonValue<bool>(json, &base::Value::GetAsBoolean);
+      prop_value = json.GetBool();
       break;
     case base::Value::Type::INTEGER:
-      prop_value = GetJsonValue<int>(json, &base::Value::GetAsInteger);
+      prop_value = json.GetInt();
       break;
     case base::Value::Type::DOUBLE:
-      prop_value = GetJsonValue<double>(json, &base::Value::GetAsDouble);
+      prop_value = json.GetDouble();
       break;
     case base::Value::Type::STRING:
-      prop_value = GetJsonValue<std::string>(json, &base::Value::GetAsString);
+      prop_value = json.GetString();
       break;
     case base::Value::Type::BINARY:
       LOG(FATAL) << "Binary values should not happen";
       break;
     case base::Value::Type::DICTIONARY: {
-      const base::DictionaryValue* dict = nullptr;  // Still owned by |json|.
-      CHECK(json.GetAsDictionary(&dict));
       brillo::VariantDictionary var_dict;
-      base::DictionaryValue::Iterator it(*dict);
-      while (!it.IsAtEnd()) {
-        var_dict.emplace(it.key(), JsonToAny(it.value()));
-        it.Advance();
+      for (const auto& kv : json.DictItems()) {
+        var_dict.emplace(kv.first, JsonToAny(kv.second));
       }
       prop_value = var_dict;
       break;
