@@ -56,6 +56,14 @@ what it means and how to parse it.
 
 ## borealis_frames
 
+Frame timings from apps running in the Borealis VM. 16 KiB.
+
+## borealis_xwindump
+
+If the Borealis VM is running, displays a list of all Borealis windows and
+each window's title, size, and other X properties, as seen by the X server.
+Expected size is ~20 KiB.
+
 ## bt_usb_disconnects
 
 ## buddyinfo

@@ -160,8 +160,6 @@ const std::vector<Log> kCommandLogs {
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},
-  {kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
-    "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   {kCommand, "bt_usb_disconnects",
     "/usr/libexec/debugd/helpers/bt_usb_disconnect_helper",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
@@ -448,6 +446,10 @@ const std::vector<Log> kExtraLogs {
 // clang-format off
 const std::vector<Log> kFeedbackLogs {
   {kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
+  {kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
+    "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
+  {kCommand, "borealis_xwindump", "timeout -s KILL 5s /usr/bin/borealis-sh "
+    "-- /usr/bin/xwindump.py", kRoot, kRoot},
   {kGlob, "iwlwifi_firmware_version",
     "/sys/kernel/debug/iwlwifi/*/iwlmvm/fw_ver", kRoot, kRoot},
   {kCommand, "iwlwifi_sysasserts",
