@@ -32,12 +32,14 @@ madvise: 1
 exit: 1
 exit_group: 1
 rt_sigreturn: 1
+rt_sigprocmask: 1
 restart_syscall: 1
 clock_getres: 1
 gettimeofday: 1
 clock_gettime: 1
 nanosleep: 1
 clock_nanosleep: 1
+futex: 1
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: 1
