@@ -2914,10 +2914,11 @@ TEST_F(ManagerTest, OnSuspendActionsComplete) {
 
 TEST_F(ManagerTest, RecheckPortal) {
   EXPECT_CALL(*mock_devices_[0], RequestPortalDetection())
-      .WillOnce(Return(false));
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_devices_[1], RequestPortalDetection())
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[2], RequestPortalDetection()).Times(0);
+  EXPECT_CALL(*mock_devices_[2], RequestPortalDetection())
+      .WillOnce(Return(true));
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);

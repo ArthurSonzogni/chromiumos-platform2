@@ -211,8 +211,8 @@ class Manager {
   // Method to create connectivity report for connected services.
   void CreateConnectivityReport(Error* error);
 
-  // Request portal detection checks on each registered device until a portal
-  // detection attempt starts on one of them.
+  // Request portal detection checks on each registered device with a connected
+  // Service.
   void RecheckPortal(Error* error);
   // Request portal detection be restarted on the device connected to
   // |service|.
@@ -357,17 +357,16 @@ class Manager {
   // changed.
   void RefreshConnectionState();
 
-  virtual const std::string& GetPortalCheckHttpUrl() const {
+  const std::string& GetPortalCheckHttpUrl() const {
     return props_.portal_http_url;
   }
-  virtual const std::string& GetPortalCheckHttpsUrl() const {
+  const std::string& GetPortalCheckHttpsUrl() const {
     return props_.portal_https_url;
   }
-  virtual const std::vector<std::string>& GetPortalCheckFallbackHttpUrls()
-      const {
+  const std::vector<std::string>& GetPortalCheckFallbackHttpUrls() const {
     return props_.portal_fallback_http_urls;
   }
-  PortalDetector::Properties GetPortalCheckProperties() const;
+  virtual PortalDetector::Properties GetPortalCheckProperties() const;
 
   virtual DeviceInfo* device_info() { return &device_info_; }
 #if !defined(DISABLE_CELLULAR)

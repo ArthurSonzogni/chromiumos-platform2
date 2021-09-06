@@ -1273,12 +1273,6 @@ bool Device::RequestPortalDetection() {
     return false;
   }
 
-  if (!connection_->IsDefault()) {
-    SLOG(this, 2) << link_name() << ": Service is not the default connection.  "
-                  << "Don't start check.";
-    return false;
-  }
-
   if (portal_detector_.get() && portal_detector_->IsInProgress()) {
     LOG(INFO) << link_name() << ": Portal detection is already running.";
     return true;
@@ -1421,7 +1415,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   SLOG(this, 2) << __func__ << " Service: " << selected_service_->log_name()
                 << " State: " << Service::ConnectStateToString(state);
 
-  if (Service::IsPortalledState(state) && connection_->IsDefault()) {
+  if (Service::IsPortalledState(state)) {
     CHECK(portal_detector_.get());
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
     const auto next_delay = portal_detector_->GetNextAttemptDelay();

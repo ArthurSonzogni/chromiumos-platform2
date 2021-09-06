@@ -1904,8 +1904,9 @@ void Manager::SortServicesTask() {
     auto device = FindDeviceFromService(new_logical);
     if (device && device->technology().IsPrimaryConnectivityTechnology() &&
         new_logical->IsPortalled()) {
-      SLOG(this, 2) << "RequestPortalDetection for new primary device.";
-      device->RequestPortalDetection();
+      SLOG(this, 2)
+          << "Restarting portal detection for the new primary device.";
+      device->RestartPortalDetection();
     }
   }
 
@@ -2779,12 +2780,7 @@ void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
 void Manager::RecheckPortal(Error* /*error*/) {
   SLOG(this, 2) << __func__;
   for (const auto& device : devices_) {
-    if (device->RequestPortalDetection()) {
-      // Only start Portal Detection on the device with the default connection.
-      // We will get a "true" return value when we've found that device, and
-      // can end our loop early as a result.
-      break;
-    }
+    device->RequestPortalDetection();
   }
 }
 

@@ -103,13 +103,8 @@ class MockManager : public Manager {
               (Technology),
               (const, override));
   MOCK_METHOD(void, RequestScan, (const std::string&, Error*), (override));
-  MOCK_METHOD(const std::string&, GetPortalCheckHttpUrl, (), (const, override));
-  MOCK_METHOD(const std::string&,
-              GetPortalCheckHttpsUrl,
-              (),
-              (const, override));
-  MOCK_METHOD(const std::vector<std::string>&,
-              GetPortalCheckFallbackHttpUrls,
+  MOCK_METHOD(PortalDetector::Properties,
+              GetPortalCheckProperties,
               (),
               (const, override));
   MOCK_METHOD(bool, IsSuspending, (), (override));

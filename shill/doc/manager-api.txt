@@ -336,10 +336,8 @@ Methods
 
 		void RecheckPortal()
 
-			Retest the portal state of the active service
-			if a check is not currently in progress.  This
-			will only have an effect if the active service
-			is currently in the portal state.
+			Retest the portal state of all connected services
+			if a check is not currently in progress.
 
 		dict GetNetworksForGeolocation()
 
