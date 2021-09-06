@@ -177,7 +177,8 @@ void PluginVmCreateOperation::Finalize() {
     return;
   }
 
-  if (!pvm::helper::CreateCdromDevice(vm_id(), "/opt/pita/tools/tools.iso")) {
+  if (!pvm::helper::CreateCdromDevice(vm_id(),
+                                      "/opt/pita/tools/prl-tools-win.iso")) {
     MarkFailed("Failed to attach tools ISO to Plugin VM", 0);
     pvm::helper::DeleteVm(vm_id());
     return;

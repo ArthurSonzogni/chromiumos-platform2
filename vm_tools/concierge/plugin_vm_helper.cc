@@ -306,7 +306,7 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
     LOG(INFO) << "CDROM image: " << image_name;
 
     if (image_name != "/iso/install.iso" &&
-        image_name != "/opt/pita/tools/tools.iso")
+        image_name != "/opt/pita/tools/prl-tools-win.iso")
       continue;
 
     std::string state;
