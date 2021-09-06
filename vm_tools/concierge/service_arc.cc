@@ -240,8 +240,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     vm_builder.SetMemory(GetVmMemoryMiB());
   }
 
-  /* Enable THP on 8G devices */
-  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 8 * 1024) {
+  /* Enable THP if the VM has at least 7G of memory */
+  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
