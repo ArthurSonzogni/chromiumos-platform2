@@ -126,6 +126,10 @@ class Proxy : public brillo::DBusDaemon {
   void Enable();
   void Disable();
 
+  // Stops DNS proxy from proxying DNS queries. This is run whenever the device
+  // is not yet online.
+  void Stop();
+
   // Start and stop DNS redirection rules by querying patchpanel's API. This is
   // necessary to route corresponding DNS traffic to the DNS proxy.
   // |sa_family| values will be either AF_INET or AF_INET6, for IPv4 and IPv6

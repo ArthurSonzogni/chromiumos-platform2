@@ -435,6 +435,19 @@ void Proxy::Disable() {
   feature_enabled_ = false;
 }
 
+void Proxy::Stop() {
+  doh_config_.clear();
+  resolver_.reset();
+  device_.reset();
+  if (opts_.type == Type::kSystem) {
+    SetShillProperty("");
+  }
+  if (opts_.type == Type::kDefault) {
+    StopDnsRedirection("" /* ifname */, AF_INET);
+    StopDnsRedirection("" /* ifname */, AF_INET6);
+  }
+}
+
 std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
                                              base::TimeDelta retry_delay,
                                              int max_num_retries) {
@@ -452,9 +465,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     if (device_) {
       LOG(WARNING) << opts_
                    << " is stopping because there is no default service";
-      doh_config_.clear();
-      resolver_.reset();
-      device_.reset();
+      Stop();
     }
     return;
   }
@@ -486,9 +497,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     if (device_) {
       LOG(WARNING) << opts_ << " is stopping because the default device ["
                    << new_default_device.ifname << "] is offline";
-      doh_config_.clear();
-      resolver_.reset();
-      device_.reset();
+      Stop();
     }
     return;
   }
@@ -562,9 +571,7 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
         if (device_) {
           LOG(WARNING) << opts_ << " is stopping because the device ["
                        << device->ifname << "] is offline";
-          doh_config_.clear();
-          resolver_.reset();
-          device_.reset();
+          Stop();
         }
         return;
       }
