@@ -34,7 +34,7 @@ namespace {
 
 constexpr char kDlcPath[] = "/run/imageloader/pita/package/root";
 
-constexpr char kVmHelperCommand[] = "opt/pita/pvm_helper";
+constexpr char kVmHelperCommand[] = "opt/pita/prlctl";
 constexpr char kVmHelperPolicyPath[] = "opt/pita/policy/pvm_helper.policy";
 
 constexpr char kDispatcherSocketPath[] = "/run/pvm/vmplugin_dispatcher.socket";
