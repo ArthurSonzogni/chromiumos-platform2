@@ -30,6 +30,25 @@ float IirFilterLog2(float current_value, float new_value, float strength) {
   return std::exp2f(next_log);
 }
 
+float LookUpHdrRatio(const base::flat_map<float, float>& max_hdr_ratio,
+                     float gain) {
+  DCHECK(!max_hdr_ratio.empty());
+  for (auto it = max_hdr_ratio.rbegin(); it != max_hdr_ratio.rend(); it++) {
+    if (it->first <= gain) {
+      auto prev = (it == max_hdr_ratio.rbegin()) ? it : it - 1;
+      const float min_gain = it->first;
+      const float min_ratio = it->second;
+      const float max_gain = prev->first;
+      const float max_ratio = prev->second;
+      const float slope = (max_ratio - min_ratio) / (max_gain - min_gain);
+      return min_ratio + slope * (gain - min_gain);
+    }
+  }
+  // Default to the HDR ratio at the maximum gain, which is usually the smallest
+  // one.
+  return max_hdr_ratio.rbegin()->second;
+}
+
 }  // namespace
 
 // static
@@ -317,15 +336,7 @@ void HdrNetAeControllerImpl::SetOptions(const Options& options) {
   }
 
   if (options.max_hdr_ratio) {
-    const float max_hdr_ratio = *options.max_hdr_ratio;
-    constexpr float kAbsoluteMinHdrRatio = 1.0f;
-    constexpr float kAbsoluteMaxHdrRatio = 30.f;
-    if (max_hdr_ratio >= kAbsoluteMinHdrRatio &&
-        max_hdr_ratio <= kAbsoluteMaxHdrRatio) {
-      max_hdr_ratio_ = max_hdr_ratio;
-    } else {
-      LOGF(ERROR) << "Invalid max HDR ratio: " << max_hdr_ratio;
-    }
+    max_hdr_ratio_ = std::move(*options.max_hdr_ratio);
   }
 
   if (options.use_cros_face_detector) {
@@ -391,7 +402,9 @@ float HdrNetAeControllerImpl::GetCalculatedHdrRatio(int frame_number) const {
 
   float actual_hdr_ratio = targeted_long_tet / actual_tet;
   VLOGFID(1, frame_number) << "actual_hdr_ratio: " << actual_hdr_ratio;
-  return std::clamp(actual_hdr_ratio, 1.0f, max_hdr_ratio_);
+  return std::clamp(
+      actual_hdr_ratio, 1.0f,
+      LookUpHdrRatio(max_hdr_ratio_, actual_analog_gain * actual_digital_gain));
 }
 
 bool HdrNetAeControllerImpl::WriteRequestAeParameters(
@@ -517,13 +530,17 @@ void HdrNetAeControllerImpl::MaybeRunAE(int frame_number) {
     return;
   }
 
+  float max_hdr_ratio = LookUpHdrRatio(
+      max_hdr_ratio_, frame_info.analog_gain * frame_info.digital_gain);
   AeParameters ae_parameters = ae_device_adapter_->ComputeAeParameters(
-      frame_number, frame_info, max_hdr_ratio_);
+      frame_number, frame_info, max_hdr_ratio);
 
   VLOGFID(1, frame_number) << "AE parameters:"
                            << " short_tet=" << ae_parameters.short_tet
                            << " long_tet=" << ae_parameters.long_tet;
-
+  VLOGFID(1, frame_number) << "total gain="
+                           << frame_info.analog_gain * frame_info.digital_gain
+                           << " max_hdr_ratio=" << max_hdr_ratio;
   // Filter the TET transition to avoid AE fluctuations or hunting.
   if (!latest_ae_parameters_.IsValid()) {
     // This is the first set of AE parameters we get.
@@ -564,7 +581,7 @@ void HdrNetAeControllerImpl::MaybeRunAE(int frame_number) {
     metadata_logger_->Log(
         frame_number, kTagFrameHeight,
         base::checked_cast<int32_t>(active_array_dimension_.height));
-    metadata_logger_->Log(frame_number, kTagMaxHdrRatio, max_hdr_ratio_);
+    metadata_logger_->Log(frame_number, kTagMaxHdrRatio, max_hdr_ratio);
     metadata_logger_->Log(frame_number, kTagShortTet, ae_parameters.short_tet);
     metadata_logger_->Log(frame_number, kTagLongTet, ae_parameters.long_tet);
     metadata_logger_->Log(frame_number, kTagFilteredShortTet,

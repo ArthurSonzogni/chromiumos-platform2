@@ -82,7 +82,7 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
   std::unique_ptr<HdrNetAeDeviceAdapter> ae_device_adapter_;
 
   // AE algorithm input parameters.
-  float max_hdr_ratio_ = 10.0f;
+  base::flat_map<float, float> max_hdr_ratio_;
   float base_exposure_compensation_ = 0.0f;
   AeStatsInputMode ae_stats_input_mode_ = AeStatsInputMode::kFromVendorAeStats;
 

@@ -7,6 +7,7 @@
 #ifndef CAMERA_FEATURES_HDRNET_HDRNET_CONFIG_H_
 #define CAMERA_FEATURES_HDRNET_HDRNET_CONFIG_H_
 
+#include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/synchronization/lock.h>
@@ -37,8 +38,11 @@ class HdrNetConfig {
     // |ae_frame_interval| frames.
     int ae_frame_interval = 2;
 
-    // Controls the max HDR ratio passed to Gcam AE.
-    float max_hdr_ratio = 10.0f;
+    // A map with (gain, max_hdr_ratio) entries defining the max HDR ratio
+    // passed to Gcam AE based on the gain (analog * digital) used to capture
+    // the frame.
+    base::flat_map<float, float> max_hdr_ratio = {
+        {1.0, 5.0}, {4.0, 5.0}, {8.0, 5.0}, {16.0, 2.0}, {32.0, 1.1}};
 
     // Controls how Gcam AE gets the AE stats input parameters.
     AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;

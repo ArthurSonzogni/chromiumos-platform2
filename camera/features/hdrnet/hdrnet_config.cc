@@ -7,9 +7,11 @@
 #include "features/hdrnet/hdrnet_config.h"
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/strings/string_number_conversions.h>
 #include <system/camera_metadata.h>
 
 #include "cros-camera/common.h"
@@ -83,9 +85,23 @@ bool HdrNetConfig::ReadConfigFile(const base::FilePath& file_path) {
   if (ae_frame_interval) {
     options_.ae_frame_interval = *ae_frame_interval;
   }
-  auto max_hdr_ratio = json_values->FindDoubleKey(kMaxHdrRatio);
+  auto max_hdr_ratio = json_values->FindDictKey(kMaxHdrRatio);
   if (max_hdr_ratio) {
-    options_.max_hdr_ratio = *max_hdr_ratio;
+    base::flat_map<float, float> hdr_ratio_map;
+    for (auto [k, v] : max_hdr_ratio->DictItems()) {
+      double gain;
+      if (!base::StringToDouble(k, &gain)) {
+        LOGF(ERROR) << "Invalid gain value: " << k;
+        continue;
+      }
+      base::Optional<double> ratio = v.GetIfDouble();
+      if (!ratio) {
+        LOGF(ERROR) << "Invalid max_hdr_ratio";
+        continue;
+      }
+      hdr_ratio_map.insert({gain, *ratio});
+    }
+    options_.max_hdr_ratio = std::move(hdr_ratio_map);
   }
   auto ae_stats_input_mode = json_values->FindIntKey(kAeStatsInputModeKey);
   if (ae_stats_input_mode) {
@@ -137,19 +153,24 @@ bool HdrNetConfig::ReadConfigFile(const base::FilePath& file_path) {
     options_.log_frame_metadata = *log_frame_metadata;
   }
 
-  VLOGF(1) << "HDRnet config:"
-           << " hdrnet_enable=" << options_.hdrnet_enable
-           << " hdr_ratio=" << options_.hdr_ratio
-           << " gcam_ae_enable=" << options_.gcam_ae_enable
-           << " ae_frame_interval=" << options_.ae_frame_interval
-           << " max_hdr_ratio=" << options_.max_hdr_ratio
-           << " ae_stats_input_mode="
-           << static_cast<int>(options_.ae_stats_input_mode)
-           << " use_cros_face_detector=" << options_.use_cros_face_detector
-           << " fd_frame_interval=" << options_.fd_frame_interval
-           << " exposure_compensation=" << options_.exposure_compensation
-           << " dump_buffer=" << options_.dump_buffer
-           << " log_frame_metadata=" << options_.log_frame_metadata;
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "HDRnet config:"
+             << " hdrnet_enable=" << options_.hdrnet_enable
+             << " hdr_ratio=" << options_.hdr_ratio
+             << " gcam_ae_enable=" << options_.gcam_ae_enable
+             << " ae_frame_interval=" << options_.ae_frame_interval
+             << " ae_stats_input_mode="
+             << static_cast<int>(options_.ae_stats_input_mode)
+             << " use_cros_face_detector=" << options_.use_cros_face_detector
+             << " fd_frame_interval=" << options_.fd_frame_interval
+             << " exposure_compensation=" << options_.exposure_compensation
+             << " dump_buffer=" << options_.dump_buffer
+             << " log_frame_metadata=" << options_.log_frame_metadata;
+    VLOGF(1) << "max_hdr_ratio:";
+    for (auto [gain, ratio] : options_.max_hdr_ratio) {
+      VLOGF(1) << "  " << gain << ": " << ratio;
+    }
+  }
 
   return true;
 }

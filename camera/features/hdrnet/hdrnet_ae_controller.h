@@ -36,7 +36,7 @@ class HdrNetAeController {
     base::Optional<int> ae_frame_interval;
 
     // The maximum allowed HDR ratio.  Needed by Gcam AE as input argument.
-    base::Optional<float> max_hdr_ratio;
+    base::Optional<base::flat_map<float, float>> max_hdr_ratio;
 
     // Whether to use CrOS face detector instead of vendor's implementation for
     // face detection.
