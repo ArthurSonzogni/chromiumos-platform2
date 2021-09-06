@@ -42,7 +42,7 @@ constexpr char kPluginDir[] = "/opt/pita";
 constexpr char kPluginDlcDir[] = "/run/imageloader/pita/package/root/opt/pita";
 
 // Name of the plugin VM binary.
-constexpr char kPluginBin[] = "pvm";
+constexpr char kPluginBin[] = "prl_vm_app";
 // Name of the sub-directory containing plugin's seccomp policy.
 constexpr char kPluginPolicyDir[] = "policy";
 
