@@ -58,7 +58,7 @@ base::ScopedFD RegisterVTPM(base::FilePath* tpm_path) {
 void InitMinijailSandbox() {
   ScopedMinijail j(minijail_new());
   minijail_no_new_privs(j.get());
-  minijail_log_seccomp_filter_failures(j.get());
+  minijail_set_seccomp_filter_tsync(j.get());
   minijail_parse_seccomp_filters(j.get(), kSimulatorSeccompPath);
   minijail_use_seccomp_filter(j.get());
   minijail_change_user(j.get(), kSimulatorUser);
