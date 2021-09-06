@@ -99,28 +99,35 @@ void HdrNetAeControllerImpl::RecordYuvBuffer(int frame_number,
   // TODO(jcliang): Face detection doesn't work too well on the under-exposed
   // frames in dark scenes. We should perhaps run face detection on the
   // HDRnet-rendered frames.
-  if (ShouldRunFd(frame_number)) {
-    std::vector<human_sensing::CrosFace> facessd_faces;
-    auto ret =
-        face_detector_->Detect(buffer, &facessd_faces, active_array_dimension_);
-    std::vector<NormalizedRect> faces;
-    if (ret != FaceDetectResult::kDetectOk) {
-      LOGF(WARNING) << "Cannot run face detection";
-    } else {
-      for (auto& f : facessd_faces) {
-        faces.push_back(NormalizedRect{
-            .x0 = std::clamp(f.bounding_box.x1 / active_array_dimension_.width,
+  if (use_cros_face_detector_) {
+    if (ShouldRunFd(frame_number)) {
+      std::vector<human_sensing::CrosFace> facessd_faces;
+      auto ret = face_detector_->Detect(buffer, &facessd_faces,
+                                        active_array_dimension_);
+      std::vector<NormalizedRect> faces;
+      if (ret != FaceDetectResult::kDetectOk) {
+        LOGF(WARNING) << "Cannot run face detection";
+      } else {
+        for (auto& f : facessd_faces) {
+          faces.push_back(NormalizedRect{
+              .x0 =
+                  std::clamp(f.bounding_box.x1 / active_array_dimension_.width,
                              0.0f, 1.0f),
-            .x1 = std::clamp(f.bounding_box.x2 / active_array_dimension_.width,
+              .x1 =
+                  std::clamp(f.bounding_box.x2 / active_array_dimension_.width,
                              0.0f, 1.0f),
-            .y0 = std::clamp(f.bounding_box.y1 / active_array_dimension_.height,
+              .y0 =
+                  std::clamp(f.bounding_box.y1 / active_array_dimension_.height,
                              0.0f, 1.0f),
-            .y1 = std::clamp(f.bounding_box.y2 / active_array_dimension_.height,
+              .y1 =
+                  std::clamp(f.bounding_box.y2 / active_array_dimension_.height,
                              0.0f, 1.0f)});
+        }
       }
+      latest_faces_ = std::move(faces);
     }
-    frame_info.faces = base::make_optional<std::vector<NormalizedRect>>(faces);
-    latest_faces_ = std::move(faces);
+    frame_info.faces =
+        base::make_optional<std::vector<NormalizedRect>>(latest_faces_);
   }
 
   if ((ae_stats_input_mode_ == AeStatsInputMode::kFromYuvImage) &&
@@ -473,8 +480,7 @@ bool HdrNetAeControllerImpl::ShouldRunAe(int frame_number) const {
 bool HdrNetAeControllerImpl::ShouldRunFd(int frame_number) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  return enabled_ && use_cros_face_detector_ &&
-         (frame_number % fd_frame_interval_ == 0);
+  return enabled_ && (frame_number % fd_frame_interval_ == 0);
 }
 
 AeFrameInfo& HdrNetAeControllerImpl::GetOrCreateAeFrameInfoEntry(
