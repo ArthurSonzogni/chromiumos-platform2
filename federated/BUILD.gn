@@ -18,6 +18,7 @@ pkg_config("federated_common_pkg_deps") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libdlcservice-client",
     "libmojo",
     "libsession_manager-client",
     "sqlite3",

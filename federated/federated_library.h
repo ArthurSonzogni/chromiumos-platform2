@@ -8,6 +8,7 @@
 #include <string>
 
 #include <absl/status/status.h>
+#include <base/files/file_path.h>
 #include <base/optional.h>
 #include <base/scoped_native_library.h>
 #include <fcp/fcp.h>
@@ -21,10 +22,11 @@ class DeviceStatusMonitor;
 // A singleton proxy class for the federated DSO.
 class FederatedLibrary {
  public:
-  static FederatedLibrary* GetInstance();
+  // `lib_path` is used if the library is not yet loaded, ignored otherwise.
+  static FederatedLibrary* GetInstance(const std::string& lib_path);
 
   // Load federated library and look up the functions.
-  FederatedLibrary();
+  explicit FederatedLibrary(const std::string& lib_path);
   FederatedLibrary(const FederatedLibrary&) = delete;
   FederatedLibrary& operator=(const FederatedLibrary&) = delete;
 

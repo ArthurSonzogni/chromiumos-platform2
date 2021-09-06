@@ -15,23 +15,18 @@
 
 namespace federated {
 
-namespace {
-// TODO(alanlxl): this path is temporary until DLC.
-constexpr char kFederatedComputationLibraryPath[] = "/usr/lib64/libfcp.so";
-}  // namespace
-
-FederatedLibrary* FederatedLibrary::GetInstance() {
-  static base::NoDestructor<FederatedLibrary> instance;
+FederatedLibrary* FederatedLibrary::GetInstance(const std::string& lib_path) {
+  static base::NoDestructor<FederatedLibrary> instance(lib_path);
   return instance.get();
 }
 
-FederatedLibrary::FederatedLibrary()
-    : run_plan_(nullptr), free_run_plan_result_(nullptr) {
-  base::NativeLibraryOptions native_library_options;
-  native_library_options.prefer_own_symbols = true;
-  library_.emplace(base::LoadNativeLibraryWithOptions(
-      base::FilePath(kFederatedComputationLibraryPath), native_library_options,
-      /* error */ nullptr));
+FederatedLibrary::FederatedLibrary(const std::string& lib_path)
+    : library_(base::LoadNativeLibraryWithOptions(
+          base::FilePath(lib_path),
+          /* options */ {.prefer_own_symbols = true},
+          /* error */ nullptr)),
+      run_plan_(nullptr),
+      free_run_plan_result_(nullptr) {
   if (!library_->is_valid()) {
     status_ = absl::FailedPreconditionError("Failed to load library");
     return;
