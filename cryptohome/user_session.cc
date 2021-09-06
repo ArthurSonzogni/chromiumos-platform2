@@ -209,7 +209,7 @@ void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
       HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
                  brillo::Blob(message.cbegin(), message.cend())));
   clear_webauthn_secret_timer_.Start(
-      FROM_HERE, base::TimeDelta::FromSeconds(5),
+      FROM_HERE, base::TimeDelta::FromSeconds(30),
       base::BindOnce(&UserSession::ClearWebAuthnSecret,
                      base::Unretained(this)));
 }

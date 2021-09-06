@@ -383,7 +383,7 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
 
   // TEST
 
-  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(5));
+  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(30));
 
   // VERIFY
 
