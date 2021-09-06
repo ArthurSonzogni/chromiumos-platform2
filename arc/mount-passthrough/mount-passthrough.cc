@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -179,6 +180,17 @@ int passthrough_getattr(const char* path, struct stat* buf) {
   // by kernel VFS during fstat (which receives fd). We couldn't prohibit such
   // fd calls to happen, so we need to relax this.
   return WRAP_FS_CALL(lstat(path, buf));
+}
+
+int passthrough_getxattr(const char* path,
+                         const char* name,
+                         char* value,
+                         size_t size) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
+  return WRAP_FS_CALL(lgetxattr(path, name, value, size));
 }
 
 int passthrough_mkdir(const char* path, mode_t mode) {
@@ -365,6 +377,7 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   FILL_OP(fsyncdir);
   FILL_OP(ftruncate);
   FILL_OP(getattr);
+  FILL_OP(getxattr);
   FILL_OP(mkdir);
   FILL_OP(open);
   FILL_OP(opendir);
