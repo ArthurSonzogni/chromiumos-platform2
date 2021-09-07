@@ -48,13 +48,13 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl(
     : config_file_path_(config_file_path),
       cros_config_(std::move(cros_config)) {}
 
-bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) {
+bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) const {
   DCHECK(model_name);
 
   return cros_config_->GetString(kCrosRootKey, kCrosModelNameKey, model_name);
 }
 
-bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) {
+bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) const {
   DCHECK(sku_id);
 
   std::string sku_id_str;
@@ -67,7 +67,8 @@ bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) {
   return base::StringToInt(sku_id_str, sku_id);
 }
 
-bool CrosConfigUtilsImpl::GetCurrentWhitelabelTag(std::string* whitelabel_tag) {
+bool CrosConfigUtilsImpl::GetCurrentWhitelabelTag(
+    std::string* whitelabel_tag) const {
   DCHECK(whitelabel_tag);
 
   return cros_config_->GetString(
@@ -75,7 +76,7 @@ bool CrosConfigUtilsImpl::GetCurrentWhitelabelTag(std::string* whitelabel_tag) {
       kCrosIdentityWhitelabelKey, whitelabel_tag);
 }
 
-bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) {
+bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) const {
   DCHECK(sku_id_list);
 
   std::vector<base::Value> values;
@@ -94,7 +95,7 @@ bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) {
 }
 
 bool CrosConfigUtilsImpl::GetWhitelabelTagList(
-    std::vector<std::string>* whitelabel_tag_list) {
+    std::vector<std::string>* whitelabel_tag_list) const {
   DCHECK(whitelabel_tag_list);
 
   std::vector<base::Value> values;
@@ -113,7 +114,7 @@ bool CrosConfigUtilsImpl::GetWhitelabelTagList(
 }
 
 bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
-    const std::string& key, std::vector<base::Value>* list) {
+    const std::string& key, std::vector<base::Value>* list) const {
   DCHECK(list);
 
   list->clear();

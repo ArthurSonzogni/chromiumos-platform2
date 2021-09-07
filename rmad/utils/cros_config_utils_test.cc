@@ -4,6 +4,7 @@
 
 #include "rmad/utils/cros_config_utils_impl.h"
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_util.h>

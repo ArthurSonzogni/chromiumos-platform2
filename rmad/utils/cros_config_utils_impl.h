@@ -24,16 +24,16 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
                       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   ~CrosConfigUtilsImpl() override = default;
 
-  bool GetModelName(std::string* model_name) override;
-  bool GetCurrentSkuId(int* sku) override;
-  bool GetCurrentWhitelabelTag(std::string* whitelabel_tag) override;
-  bool GetSkuIdList(std::vector<int>* sku_list) override;
+  bool GetModelName(std::string* model_name) const override;
+  bool GetCurrentSkuId(int* sku) const override;
+  bool GetCurrentWhitelabelTag(std::string* whitelabel_tag) const override;
+  bool GetSkuIdList(std::vector<int>* sku_list) const override;
   bool GetWhitelabelTagList(
-      std::vector<std::string>* whitelabel_tag_list) override;
+      std::vector<std::string>* whitelabel_tag_list) const override;
 
  private:
   bool GetMatchedItemsFromIdentity(const std::string& key,
-                                   std::vector<base::Value>* list);
+                                   std::vector<base::Value>* list) const;
 
   std::string config_file_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;

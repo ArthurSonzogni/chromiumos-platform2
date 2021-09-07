@@ -15,12 +15,12 @@ class CrosConfigUtils {
   CrosConfigUtils() = default;
   virtual ~CrosConfigUtils() = default;
 
-  virtual bool GetModelName(std::string* model_name) = 0;
-  virtual bool GetCurrentWhitelabelTag(std::string* whitelabel_tag) = 0;
-  virtual bool GetCurrentSkuId(int* sku_id) = 0;
+  virtual bool GetModelName(std::string* model_name) const = 0;
+  virtual bool GetCurrentWhitelabelTag(std::string* whitelabel_tag) const = 0;
+  virtual bool GetCurrentSkuId(int* sku_id) const = 0;
   virtual bool GetWhitelabelTagList(
-      std::vector<std::string>* whitelabel_tag_list) = 0;
-  virtual bool GetSkuIdList(std::vector<int>* sku_id_list) = 0;
+      std::vector<std::string>* whitelabel_tag_list) const = 0;
+  virtual bool GetSkuIdList(std::vector<int>* sku_id_list) const = 0;
 };
 
 }  // namespace rmad
