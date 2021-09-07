@@ -379,8 +379,9 @@ message WriteProtectEnablePhysicalState {
   // No state. Waits for signal that write protection is re-enabled.
 }
 
-// RMA complete. Allow tech to choose how to shut down.
+// Finalize the device into a shipping-ready state.
 message FinalizeState {
+  // TODO(chenghan): Deprecated. Remove it in the future.
   enum ShutdownMethod {
     RMAD_FINALIZE_UNKNOWN = 0;
     RMAD_FINALIZE_REBOOT = 1;
@@ -390,6 +391,17 @@ message FinalizeState {
   ShutdownMethod shutdown = 1;
   // TODO(gavindodd): The log (or path to log) could be stored in a field of
   // this proto, or it could be a separate d-bus method.
+}
+
+// RMA complete. Allow tech to choose how to shut down.
+message RepairCompleteState {
+  enum ShutdownMethod {
+    RMAD_REPAIR_COMPLETE_UNKNOWN = 0;
+    RMAD_REPAIR_COMPLETE_REBOOT = 1;
+    RMAD_REPAIR_COMPLETE_SHUTDOWN = 2;
+    RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF = 3;
+  }
+  ShutdownMethod shutdown = 1;
 }
 
 message RmadState {
@@ -411,6 +423,7 @@ message RmadState {
     ProvisionDeviceState provision_device = 15;
     WriteProtectEnablePhysicalState wp_enable_physical = 16;
     FinalizeState finalize = 17;
+    RepairCompleteState repair_complete = 18;
   }
 }
 
