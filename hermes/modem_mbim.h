@@ -145,7 +145,6 @@ class ModemMbim : public Modem<MbimCmd> {
   };
   State current_state_;
   ResultCallback init_done_cb_;
-  uint8_t logical_slot_;
   std::string eid_;
   guint32 channel_;
   glib_bridge::ScopedGObject<MbimDevice> device_;

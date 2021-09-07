@@ -22,6 +22,7 @@
 
 namespace {
 
+constexpr int kEsimSlot = 1;
 const guint kMbimResponseTimeout = 30;
 constexpr int kMbimMessageSuccess = 144;
 // Application identifier for the eUICC's SIM EID
@@ -49,7 +50,6 @@ std::unique_ptr<ModemMbim> ModemMbim::Create(Logger* logger,
 
 ModemMbim::ModemMbim(GFile* file, Logger* logger, Executor* executor)
     : Modem<MbimCmd>(logger, executor),
-      logical_slot_(0),
       channel_(kInvalidChannel),
       pending_response_(false),
       ready_state_(MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED),
@@ -545,18 +545,17 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
       modem_mbim->eid_ += bcd_chars[(out_response[j] >> 4) & 0xF];
       modem_mbim->eid_ += bcd_chars[out_response[j] & 0xF];
     }
-    LOG(INFO) << "EID for physical slot: " << modem_mbim->logical_slot_ + 1
-              << " is " << modem_mbim->eid_;
+    LOG(INFO) << "EID for physical slot: " << kEsimSlot << " is "
+              << modem_mbim->eid_;
     if (modem_mbim->current_state_ == State::kMbimInitializeStarted)
       modem_mbim->current_state_.Transition(State::kMbimStarted);
     modem_mbim->euicc_manager_->OnEuiccUpdated(
-        modem_mbim->logical_slot_ + 1,
-        EuiccSlotInfo(modem_mbim->logical_slot_, std::move(modem_mbim->eid_)));
+        kEsimSlot, EuiccSlotInfo(kEsimSlot, std::move(modem_mbim->eid_)));
     modem_mbim->ProcessMbimResult(kModemSuccess);
     return;
   }
   LOG(INFO) << "Could not find eSIM";
-  modem_mbim->euicc_manager_->OnEuiccRemoved(modem_mbim->logical_slot_ + 1);
+  modem_mbim->euicc_manager_->OnEuiccRemoved(kEsimSlot);
   modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
   return;
 }
