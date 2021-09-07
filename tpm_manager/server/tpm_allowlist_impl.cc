@@ -11,12 +11,16 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/optional.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 namespace {
 
 #if USE_TPM_DYNAMIC
+
+const char kTpmForceAllowTpmFile[] = "/var/lib/tpm_manager/force_allow_tpm";
 
 // Simulator Vendor ID ("SIMU").
 constexpr uint32_t kVendorIdSimulator = 0x53494d55;
@@ -138,6 +142,25 @@ bool GetProductFamily(std::string* product_family) {
   return true;
 }
 
+base::Optional<bool> IsForceAllow() {
+  base::FilePath file_path(kTpmForceAllowTpmFile);
+  std::string file_content;
+
+  if (!base::ReadFileToString(file_path, &file_content)) {
+    return {};
+  }
+
+  std::string force_allow_str;
+  base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, &force_allow_str);
+
+  int force_allow = 0;
+  if (!base::StringToInt(force_allow_str, &force_allow)) {
+    LOG(ERROR) << "force_allow is not a number";
+    return {};
+  }
+  return static_cast<bool>(force_allow);
+}
+
 #endif
 
 }  // namespace
@@ -154,6 +177,12 @@ bool TpmAllowlistImpl::IsAllowed() {
   // Allow all kinds of TPM if we are not using runtime TPM selection.
   return true;
 #else
+
+  base::Optional<bool> force_allow = IsForceAllow();
+  if (force_allow.has_value()) {
+    return force_allow.value();
+  }
+
   TPM_SELECT_BEGIN;
 
   TPM2_SECTION({
