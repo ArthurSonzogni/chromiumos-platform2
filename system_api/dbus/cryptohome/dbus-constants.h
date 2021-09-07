@@ -45,6 +45,7 @@ const char kNeedsDircryptoMigration[] = "NeedsDircryptoMigration";
 const char kGetSupportedKeyPolicies[] = "GetSupportedKeyPolicies";
 const char kGetAccountDiskUsage[] = "GetAccountDiskUsage";
 const char kStartAuthSession[] = "StartAuthSession";
+const char kAddCredentials[] = "AddCredentials";
 const char kAuthenticateAuthSession[] = "AuthenticateAuthSession";
 
 // Methods of the |kArcQuotaInterface| interface:
