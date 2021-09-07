@@ -69,6 +69,11 @@ constexpr char kPasswordLabel[] = "password";
 constexpr char kPinLabel[] = "lecred1";
 constexpr char kAltPasswordLabel[] = "alt_password";
 
+constexpr char kWrongPasskey[] = "wrong pass";
+constexpr char kNewPasskey[] = "new pass";
+
+constexpr int kWrongAuthAttempts = 6;
+
 void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
                    brillo::SecureBlob* blob) {
   *blob = wrapped_keyset;
@@ -1268,6 +1273,155 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
   brillo::SecureBlob public_mount_passkey =
       keyset_management_mock_crypto->GetPublicMountPassKey(account_id);
   EXPECT_TRUE(public_mount_passkey.empty());
+}
+
+TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
+  // Setup
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Create an LECredential.
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  // Add Pin Keyset to keyset_mangement_.
+  int index = -1;
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
+                                          &key_data, true, &index));
+  EXPECT_EQ(index, 1);
+
+  std::unique_ptr<VaultKeyset> le_vk =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+
+  // Test
+  // Manually trigger attempts to set auth_locked to true.
+  // Note: Yes there are 6 wrong attempts, on the 6th attempt
+  // wrong_auth_attempts stops incrementing and sets auth_locked to true.
+  brillo::SecureBlob wrong_key(kWrongPasskey);
+  for (int iter = 0; iter < kWrongAuthAttempts; iter++) {
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+  }
+
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  EXPECT_TRUE(le_vk->GetAuthLocked());
+
+  // Have a correct attempt that will reset the credentials.
+  keyset_management_->ResetLECredentials(users_[0].credentials);
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()), 0);
+  le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  EXPECT_FALSE(le_vk->GetAuthLocked());
+}
+
+TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
+  // Ensure the wrong_auth_counter is reset to 0 after a correct attempt,
+  // even if auth_locked is false.
+  // Setup
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Create an LECredential and add to keyset_mangement_.
+  // Setup pin credentials.
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  // Add Pin Keyset.
+  int index = -1;
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
+                                          &key_data, true, &index));
+  EXPECT_EQ(index, 1);
+
+  std::unique_ptr<VaultKeyset> le_vk =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+
+  // Manually trigger attempts, but not enough to set auth_locked to true.
+  brillo::SecureBlob wrong_key(kWrongPasskey);
+  for (int iter = 0; iter < (kWrongAuthAttempts - 1); iter++) {
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+  }
+
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  EXPECT_FALSE(le_vk->GetAuthLocked());
+
+  // Have a correct attempt that will reset the credentials.
+  keyset_management_->ResetLECredentials(users_[0].credentials);
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()), 0);
+  le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  EXPECT_FALSE(le_vk->GetAuthLocked());
+}
+
+TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
+  // Setup
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Create an LECredential and add to keyset_mangement_.
+  // Setup pin credentials.
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  // Add Pin Keyset.
+  int index = -1;
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
+                                          &key_data, true, &index));
+  EXPECT_EQ(index, 1);
+
+  std::unique_ptr<VaultKeyset> le_vk =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+
+  // Manually trigger attempts to set auth_locked to true.
+  // Note: Yes there are 6 wrong attempts, on the 6th attempt
+  // wrong_auth_attempts stops incrementing and sets auth_locked to true.
+  brillo::SecureBlob wrong_key(kWrongPasskey);
+  for (int iter = 0; iter < kWrongAuthAttempts; iter++) {
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+  }
+
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  EXPECT_TRUE(le_vk->GetAuthLocked());
+
+  // Have an attempt that will fail to reset the credentials.
+  Credentials wrong_credentials(users_[0].name, wrong_key);
+  keyset_management_->ResetLECredentials(wrong_credentials);
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  EXPECT_TRUE(le_vk->GetAuthLocked());
 }
 
 }  // namespace cryptohome
