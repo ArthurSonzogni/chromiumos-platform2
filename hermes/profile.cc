@@ -158,12 +158,7 @@ void Profile::EnableProfile(std::unique_ptr<DBusResponse<>> response) {
         if (!weak) {
           return;
         }
-        base::OnceCallback<void(std::shared_ptr<DBusResponse<>>)> on_enabled;
-        on_enabled = base::BindOnce(&Profile::OnEnabled, weak, error);
-
-        weak->context_->modem_control()->FinishProfileOp(
-            base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
-                           std::move(on_enabled), std::move(response)));
+        weak->OnEnabled(error, std::move(response));
       });
 }
 
@@ -202,10 +197,7 @@ void Profile::DisableProfile(std::unique_ptr<DBusResponse<>> response) {
         if (!weak) {
           return;
         }
-        auto on_disabled = base::BindOnce(&Profile::OnDisabled, weak, error);
-        weak->context_->modem_control()->FinishProfileOp(
-            base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
-                           std::move(on_disabled), std::move(response)));
+        weak->OnDisabled(error, std::move(response));
       });
 }
 
@@ -213,31 +205,47 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
-    LOG(INFO) << "Failed enabling profile: " << object_path_.value()
-              << " (error " << decoded_error << ")";
+    LOG(ERROR) << "Failed enabling profile: " << object_path_.value()
+               << " (error " << decoded_error << ")";
     response->ReplyWithError(decoded_error.get());
     return;
   }
   VLOG(2) << "Enabled profile: " << object_path_.value();
   SetState(profile::kActive);
-
-  context_->lpa()->SendNotifications(
-      context_->executor(),
-      [response{std::move(response)}](int /*error*/) { response->Return(); });
+  auto send_notifs =
+      base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
+                     std::move(response));
+  context_->modem_control()->FinishProfileOp(std::move(send_notifs));
 }
 
 void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
   if (decoded_error) {
-    LOG(INFO) << "Failed disabling profile: " << object_path_.value()
-              << " (error " << decoded_error << ")";
+    LOG(ERROR) << "Failed disabling profile: " << object_path_.value()
+               << " (error " << decoded_error << ")";
     response->ReplyWithError(decoded_error.get());
     return;
   }
-  VLOG(2) << "Disabled profile: " << object_path_.value();
+  LOG(INFO) << "Disabled profile: " << object_path_.value();
   SetState(profile::kInactive);
 
+  auto send_notifs =
+      base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
+                     std::move(response));
+  context_->modem_control()->FinishProfileOp(std::move(send_notifs));
+}
+
+void Profile::FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response,
+                                int err) {
+  if (err) {
+    LOG(ERROR) << "Could not finish profile op: " << object_path_.value();
+    // Notifications are optional by the standard. Since FinishProfileOp failed,
+    // it means notifications cannot be sent, but our enable/disable succeeded.
+    // return success on DBus anyway since only notifications cannot be sent.
+    response->Return();
+    return;
+  }
   context_->lpa()->SendNotifications(
       context_->executor(),
       [response{std::move(response)}](int /*error*/) { response->Return(); });

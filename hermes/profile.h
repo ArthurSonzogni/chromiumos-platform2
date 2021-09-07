@@ -50,6 +50,10 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   // Functions that call eponymous LPA methods. Called after channel acquisition
   void EnableProfile(std::unique_ptr<DBusResponse<>> response);
   void DisableProfile(std::unique_ptr<DBusResponse<>> response);
+
+  // Sends notifications to smdp if !err. Always returns success on dbus
+  void FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response, int err);
+
   void SetNicknameProperty(std::string nickname);
   void SetNicknameMethod(std::string nickname,
                          std::unique_ptr<DBusResponse<>> response);
