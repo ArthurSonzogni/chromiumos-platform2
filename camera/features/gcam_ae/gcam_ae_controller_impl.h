@@ -18,6 +18,7 @@
 
 #include "common/metadata_logger.h"
 #include "cros-camera/common_types.h"
+#include "features/gcam_ae/ae_state_machine.h"
 
 namespace cros {
 
@@ -55,13 +56,17 @@ class GcamAeControllerImpl : public GcamAeController {
 
   // AE loop controls.
   bool enabled_ = true;
-  int ae_frame_interval_ = 5;
+  int ae_frame_interval_ = 2;
+  Range<float> ae_compensation_step_delta_range_;
+  int ae_override_interval_while_converging_ = 10;
+
+  AeStateMachine ae_state_machine_;
 
   // Device static metadata.
   Range<int> sensitivity_range_;
   float max_analog_gain_;
   float ae_compensation_step_;
-  Range<int> ae_compensation_range_;
+  Range<float> ae_compensation_range_;
   Size active_array_dimension_;
 
   // Face detector.
@@ -86,9 +91,7 @@ class GcamAeControllerImpl : public GcamAeController {
   AeStatsInputMode ae_stats_input_mode_ = AeStatsInputMode::kFromVendorAeStats;
 
   // AE algorithm outputs.
-  float latest_hdr_ratio_ = 0.1f;
-  int latest_ae_compensation_ = 0;
-  AeParameters latest_ae_parameters_;
+  float filtered_ae_compensation_steps_ = 0.0f;
   AeOverrideMode ae_override_mode_;
 
   // Metadata logger for tests and debugging.

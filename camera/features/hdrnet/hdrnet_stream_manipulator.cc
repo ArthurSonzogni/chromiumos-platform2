@@ -547,7 +547,9 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
     // Run the HDRNet pipeline and write to the buffers.
     HdrNetConfig::Options processor_config = options_;
-    if (result->feature_metadata().hdr_ratio) {
+    base::Optional<float> gcam_ae_hdr_ratio =
+        result->feature_metadata().hdr_ratio;
+    if (gcam_ae_hdr_ratio) {
       processor_config.hdr_ratio = *result->feature_metadata().hdr_ratio;
     }
     const SharedImage& image =

@@ -79,9 +79,9 @@ struct AeFrameInfo {
   bool use_cros_face_detector = true;
   Size active_array_dimension;
 
-  float targeted_short_tet = 0.0f;
-  float targeted_long_tet = 0.0f;
-  float targeted_ae_compensation = 0.0f;
+  float target_tet = 0.0f;
+  float target_hdr_ratio = 0.0f;
+  float target_ae_compensation = 0.0f;
 
   // The settings used to capture the frame.
   float analog_gain = 0.0f;

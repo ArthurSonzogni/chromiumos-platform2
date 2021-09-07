@@ -67,7 +67,7 @@ struct Range {
   bool is_valid() const { return lower_bound <= upper_bound; }
   T lower() const { return lower_bound; }
   T upper() const { return upper_bound; }
-  T Clamp(T value) { return std::clamp(value, lower_bound, upper_bound); }
+  T Clamp(T value) const { return std::clamp(value, lower_bound, upper_bound); }
   bool operator==(const Range& rhs) const {
     return lower_bound == rhs.lower_bound && upper_bound == rhs.upper_bound;
   }
