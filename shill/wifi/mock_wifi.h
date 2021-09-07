@@ -60,6 +60,7 @@ class MockWiFi : public WiFi {
   MOCK_METHOD(bool, IsCurrentService, (const WiFiService* service), (const));
   MOCK_METHOD(void, DestroyIPConfigLease, (const std::string&), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
+  MOCK_METHOD(int16_t, GetSignalLevelForActiveService, (), (override));
 };
 
 }  // namespace shill

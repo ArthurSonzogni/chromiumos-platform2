@@ -42,6 +42,12 @@ chown -R dhcp:dhcp /run/dhcpcd
 chown root:shill /proc/net/ip_conntrack
 chmod g+r /proc/net/ip_conntrack
 
+# Shill needs kernel debug access
+if [ -e /sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm/fw_dbg_collect ]; then
+ chown root:shill /sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm/fw_dbg_collect
+ chmod g+w /sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm/fw_dbg_collect
+fi
+
 # Create private directory for data which needs to persists across sessions.
 mkdir -p /var/lib/shill
 

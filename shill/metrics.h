@@ -265,6 +265,13 @@ class Metrics : public DefaultServiceObserver {
     kWiFiRoamCompleteMax
   };
 
+  enum WiFiCQMReason {
+    kWiFiCQMPacketLoss = 0,
+    kWiFiCQMBeaconLoss = 1,
+
+    kWiFiCQMMax
+  };
+
   enum WiFiReasonType {
     kReasonCodeTypeByAp,
     kReasonCodeTypeByClient,
@@ -678,6 +685,7 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricRememberedWiFiNetworkCountNumBuckets;
   static const char kMetricHiddenSSIDNetworkCount[];
   static const char kMetricHiddenSSIDEverConnected[];
+  static const char kMetricWiFiCQMNotification[];
   static const char kMetricTimeOnlineSecondsSuffix[];
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;

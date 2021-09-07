@@ -89,6 +89,7 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
+#include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/shill_time.h"
@@ -108,6 +109,7 @@ class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WakeOnWiFiInterface;
+class WiFiCQM;
 class WiFiProvider;
 class WiFiService;
 
@@ -221,6 +223,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type)
       override;
+
+  mockable int16_t GetSignalLevelForActiveService();
 
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
@@ -754,6 +758,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Wiphy interface index of this WiFi device.
   uint32_t wiphy_index_;
+
+  // Used to access connection quality monitor features.
+  std::unique_ptr<WiFiCQM> wifi_cqm_;
 
   std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi_;
 

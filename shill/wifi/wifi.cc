@@ -56,6 +56,7 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/wifi/wake_on_wifi.h"
+#include "shill/wifi/wifi_cqm.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
@@ -170,6 +171,7 @@ WiFi::WiFi(Manager* manager,
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
+      wifi_cqm_(new WiFiCQM(metrics(), this)),
       wake_on_wifi_(std::move(wake_on_wifi)),
       weak_ptr_factory_while_started_(this),
       weak_ptr_factory_(this) {
@@ -314,6 +316,11 @@ void WiFi::Scan(Error* /*error*/, const std::string& reason) {
   dispatcher()->PostTask(
       FROM_HERE, base::Bind(&WiFi::ScanTask,
                             weak_ptr_factory_while_started_.GetWeakPtr()));
+}
+
+int16_t WiFi::GetSignalLevelForActiveService() {
+  return current_service_ ? current_service_->SignalLevel()
+                          : WiFiService::SignalLevelMin;
 }
 
 void WiFi::AddPendingScanResult(const RpcIdentifier& path,
@@ -1403,6 +1410,10 @@ void WiFi::HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
   } else if (nl80211_msg.command() == WiphyRegChangeMessage::kCommand ||
              nl80211_msg.command() == RegChangeMessage::kCommand) {
     OnRegChange(nl80211_msg);
+  } else if (nl80211_msg.command() == NotifyCqmMessage::kCommand) {
+    if (wifi_cqm_) {
+      wifi_cqm_->OnCQMNotify(nl80211_msg);
+    }
   }
 }
 

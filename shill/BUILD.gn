@@ -397,6 +397,7 @@ static_library("libshill") {
     sources += [
       "wifi/wake_on_wifi.cc",
       "wifi/wifi.cc",
+      "wifi/wifi_cqm.cc",
       "wifi/wifi_endpoint.cc",
       "wifi/wifi_provider.cc",
       "wifi/wifi_service.cc",
@@ -726,6 +727,7 @@ if (use.test) {
         "wifi/mock_wifi_provider.cc",
         "wifi/mock_wifi_service.cc",
         "wifi/wake_on_wifi_test.cc",
+        "wifi/wifi_cqm_test.cc",
         "wifi/wifi_endpoint_test.cc",
         "wifi/wifi_provider_test.cc",
         "wifi/wifi_service_test.cc",
