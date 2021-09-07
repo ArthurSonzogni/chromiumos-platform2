@@ -47,19 +47,6 @@ class FakeRecoveryMediatorCrypto {
   // Returns false if error occurred.
   static bool GetFakeEpochPrivateKey(brillo::SecureBlob* epoch_priv_key);
 
-  // Performs mediation. Returns `mediated_publisher_pub_key`, which is
-  // `publisher_pub_key` multiplied by secret `mediator_share` that only
-  // mediator can decrypt from `encrypted_mediator_share`. Returns false if
-  // error occurred. It is expected that `encrypted_mediator_share` is encrypted
-  // to `mediator_priv_key`. Formula:
-  //   mediator_share = Decrypt(encrypted_mediator_share)
-  //   mediated_publisher_pub_key = publisher_pub_key * mediator_share
-  bool Mediate(
-      const brillo::SecureBlob& mediator_priv_key,
-      const brillo::SecureBlob& publisher_pub_key,
-      const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
-      brillo::SecureBlob* mediated_publisher_pub_key) const;
-
   // Receives `request_payload`, performs mediation and generates response
   // payload. This function consist of the following steps:
   // 1. Deserialize `channel_pub_key` from `hsm_aead_ad` in

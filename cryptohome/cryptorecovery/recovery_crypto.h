@@ -120,36 +120,15 @@ class RecoveryCrypto {
       brillo::SecureBlob* channel_pub_key,
       brillo::SecureBlob* channel_priv_key) const = 0;
 
-  // Generates shares for recovery. Returns false if error occurred.
-  // Formula:
-  //   dealer_pub_key = G * (mediator_share + destination_share (mod order))
-  // where G is an elliptic curve group generator.
-  // Encrypts `mediator_share` to `mediator_pub_key` and returns as
-  // `encrypted_mediator_share`.
-  virtual bool GenerateShares(const brillo::SecureBlob& mediator_pub_key,
-                              EncryptedMediatorShare* encrypted_mediator_share,
-                              brillo::SecureBlob* destination_share,
-                              brillo::SecureBlob* dealer_pub_key) const = 0;
-
-  // Generates publisher public keys. Returns false if error occurred.
-  // Formula:
-  //   publisher_pub_key = G * secret
-  //   publisher_recovery_key = HKDF((dealer_pub_key * secret))
-  // where G is an elliptic curve group generator.
-  virtual bool GeneratePublisherKeys(
-      const brillo::SecureBlob& dealer_pub_key,
-      brillo::SecureBlob* publisher_pub_key,
-      brillo::SecureBlob* publisher_recovery_key) const = 0;
-
   // Recovers destination. Returns false if error occurred.
   // Formula:
   //   mediated_point = `mediated_publisher_pub_key` + `ephemeral_pub_key`
-  //   destination_recovery_key = HKDF((publisher_pub_key * destination_share
+  //   destination_recovery_key = HKDF((dealer_pub_key * destination_share
   //                                   + mediated_point))
   virtual bool RecoverDestination(
-      const brillo::SecureBlob& publisher_pub_key,
+      const brillo::SecureBlob& dealer_pub_key,
       const brillo::SecureBlob& destination_share,
-      const base::Optional<brillo::SecureBlob>& ephemeral_pub_key,
+      const brillo::SecureBlob& ephemeral_pub_key,
       const brillo::SecureBlob& mediated_publisher_pub_key,
       brillo::SecureBlob* destination_recovery_key) const = 0;
 
@@ -166,19 +145,6 @@ class RecoveryCrypto {
       const brillo::SecureBlob& epoch_pub_key,
       const brillo::SecureBlob& recovery_response_cbor,
       HsmResponsePlainText* response_plain_text) const = 0;
-
-  // Serialize `encrypted_mediator_share` by simply concatenating fixed-length
-  // blobs into `serialized_blob`. Returns false if error occurred.
-  static bool SerializeEncryptedMediatorShareForTesting(
-      const EncryptedMediatorShare& encrypted_mediator_share,
-      brillo::SecureBlob* serialized_blob);
-
-  // Deserialize `encrypted_mediator_share` assuming `serialized_blob` contains
-  // chunks representing encrypted mediator share fixed-length blobs. Returns
-  // false if error occurred.
-  static bool DeserializeEncryptedMediatorShareForTesting(
-      const brillo::SecureBlob& serialized_blob,
-      EncryptedMediatorShare* encrypted_mediator_share);
 };
 
 }  // namespace cryptorecovery

@@ -225,48 +225,6 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
   return true;
 }
 
-bool FakeRecoveryMediatorCrypto::Mediate(
-    const brillo::SecureBlob& mediator_priv_key,
-    const brillo::SecureBlob& publisher_pub_key,
-    const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
-    brillo::SecureBlob* mediated_publisher_pub_key) const {
-  ScopedBN_CTX context = CreateBigNumContext();
-  if (!context.get()) {
-    LOG(ERROR) << "Failed to allocate BN_CTX structure";
-    return false;
-  }
-  brillo::SecureBlob mediator_share;
-  if (!DecryptMediatorShare(mediator_priv_key, encrypted_mediator_share,
-                            &mediator_share)) {
-    LOG(ERROR) << "Failed to decrypt mediator share";
-    return false;
-  }
-  crypto::ScopedBIGNUM mediator_share_bn = SecureBlobToBigNum(mediator_share);
-  if (!mediator_share_bn) {
-    LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
-    return false;
-  }
-  crypto::ScopedEC_POINT publisher_pub_point =
-      ec_.SecureBlobToPoint(publisher_pub_key, context.get());
-  if (!publisher_pub_point) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
-    return false;
-  }
-  // Performs scalar multiplication of publisher_pub_key and mediator_share.
-  crypto::ScopedEC_POINT point_dh =
-      ec_.Multiply(*publisher_pub_point, *mediator_share_bn, context.get());
-  if (!point_dh) {
-    LOG(ERROR) << "Failed to perform scalar multiplication";
-    return false;
-  }
-  if (!ec_.PointToSecureBlob(*point_dh, mediated_publisher_pub_key,
-                             context.get())) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
-    return false;
-  }
-  return true;
-}
-
 bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::SecureBlob& mediator_priv_key,
     const brillo::SecureBlob& epoch_pub_key,

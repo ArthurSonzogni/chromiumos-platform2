@@ -12,69 +12,151 @@
 
 #include <gtest/gtest.h>
 
+using brillo::SecureBlob;
+
 namespace cryptohome {
 namespace cryptorecovery {
 
 namespace {
 
+constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
 const char kFakeEnrollmentMetaData[] = "fake_enrollment_metadata";
 const char kFakeRequestMetaData[] = "fake_request_metadata";
 
+SecureBlob GeneratePublicKey() {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context) {
+    ADD_FAILURE() << "CreateBigNumContext failed";
+    return SecureBlob();
+  }
+  base::Optional<EllipticCurve> ec =
+      EllipticCurve::Create(kCurve, context.get());
+  if (!ec) {
+    ADD_FAILURE() << "EllipticCurve::Create failed";
+    return SecureBlob();
+  }
+  crypto::ScopedEC_KEY key = ec->GenerateKey(context.get());
+  if (!key) {
+    ADD_FAILURE() << "GenerateKey failed";
+    return SecureBlob();
+  }
+  SecureBlob result;
+  if (!ec->PointToSecureBlob(*EC_KEY_get0_public_key(key.get()), &result,
+                             context.get())) {
+    ADD_FAILURE() << "PointToSecureBlob failed";
+    return SecureBlob();
+  }
+  return result;
+}
+
+SecureBlob GenerateScalar() {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context) {
+    ADD_FAILURE() << "CreateBigNumContext failed";
+    return SecureBlob();
+  }
+  base::Optional<EllipticCurve> ec =
+      EllipticCurve::Create(kCurve, context.get());
+  if (!ec) {
+    ADD_FAILURE() << "EllipticCurve::Create failed";
+    return SecureBlob();
+  }
+  crypto::ScopedBIGNUM random_bn = ec->RandomNonZeroScalar(context.get());
+  if (!random_bn) {
+    ADD_FAILURE() << "RandomNonZeroScalar failed";
+    return SecureBlob();
+  }
+  SecureBlob result;
+  if (!BigNumToSecureBlob(*random_bn, ec->ScalarSizeInBytes(), &result)) {
+    ADD_FAILURE() << "BigNumToSecureBlob failed";
+    return SecureBlob();
+  }
+  return result;
+}
+
 }  // namespace
 
-TEST(RecoveryCryptoTest, RecoveryRequestTest) {
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
-  ASSERT_TRUE(recovery);
-  std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
-      FakeRecoveryMediatorCrypto::Create();
-  ASSERT_TRUE(mediator);
+class RecoveryCryptoTest : public testing::Test {
+ public:
+  void SetUp() override {
+    ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
+        &mediator_pub_key_));
+    ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
+        &mediator_priv_key_));
+    ASSERT_TRUE(
+        FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key_));
+    ASSERT_TRUE(
+        FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key_));
 
-  brillo::SecureBlob mediator_pub_key;
-  brillo::SecureBlob mediator_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
-  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
+    recovery_ = RecoveryCrypto::Create();
+    ASSERT_TRUE(recovery_);
+    mediator_ = FakeRecoveryMediatorCrypto::Create();
+    ASSERT_TRUE(mediator_);
+  }
 
-  brillo::SecureBlob epoch_pub_key;
-  brillo::SecureBlob epoch_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
+ protected:
+  void GenerateSecretsAndMediate(SecureBlob* recovery_key,
+                                 SecureBlob* destination_share,
+                                 SecureBlob* channel_priv_key,
+                                 SecureBlob* ephemeral_pub_key,
+                                 SecureBlob* response_cbor) {
+    // Generates HSM payload that would be persisted on a chromebook.
+    HsmPayload hsm_payload;
+    SecureBlob channel_pub_key;
+    EXPECT_TRUE(recovery_->GenerateHsmPayload(
+        mediator_pub_key_, rsa_pub_key_, enrollment_metadata_, &hsm_payload,
+        destination_share, recovery_key, &channel_pub_key, channel_priv_key));
 
+    // Start recovery process.
+    SecureBlob recovery_request_cbor;
+    EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
+        hsm_payload, request_metadata_, *channel_priv_key, channel_pub_key,
+        epoch_pub_key_, &recovery_request_cbor, ephemeral_pub_key));
+
+    // Simulates mediation performed by HSM.
+    EXPECT_TRUE(mediator_->MediateRequestPayload(
+        epoch_pub_key_, epoch_priv_key_, mediator_priv_key_,
+        recovery_request_cbor, response_cbor));
+  }
+
+  SecureBlob rsa_pub_key_;
+  SecureBlob enrollment_metadata_ = SecureBlob(kFakeEnrollmentMetaData);
+  SecureBlob request_metadata_ = SecureBlob(kFakeRequestMetaData);
+
+  SecureBlob mediator_pub_key_;
+  SecureBlob mediator_priv_key_;
+  SecureBlob epoch_pub_key_;
+  SecureBlob epoch_priv_key_;
+  std::unique_ptr<RecoveryCrypto> recovery_;
+  std::unique_ptr<FakeRecoveryMediatorCrypto> mediator_;
+};
+
+TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
   // Generates HSM payload that would be persisted on a chromebook.
   HsmPayload hsm_payload;
-  brillo::SecureBlob destination_share;
-  brillo::SecureBlob recovery_key;
-  brillo::SecureBlob channel_pub_key;
-  brillo::SecureBlob channel_priv_key;
-  ASSERT_TRUE(recovery->GenerateHsmPayload(
-      mediator_pub_key,
-      /*rsa_pub_key=*/brillo::SecureBlob(),
-      brillo::SecureBlob(kFakeEnrollmentMetaData), &hsm_payload,
+  SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
+  EXPECT_TRUE(recovery_->GenerateHsmPayload(
+      mediator_pub_key_, rsa_pub_key_, enrollment_metadata_, &hsm_payload,
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
-  brillo::SecureBlob ephemeral_pub_key;
-  brillo::SecureBlob recovery_request_cbor;
-  ASSERT_TRUE(recovery->GenerateRecoveryRequest(
-      hsm_payload, brillo::SecureBlob(kFakeRequestMetaData), channel_priv_key,
-      channel_pub_key, epoch_pub_key, &recovery_request_cbor,
-      &ephemeral_pub_key));
+  SecureBlob ephemeral_pub_key, recovery_request_cbor;
+  EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
+      hsm_payload, request_metadata_, channel_priv_key, channel_pub_key,
+      epoch_pub_key_, &recovery_request_cbor, &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
-  brillo::SecureBlob response_cbor;
-  ASSERT_TRUE(mediator->MediateRequestPayload(
-      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request_cbor,
-      &response_cbor));
+  SecureBlob response_cbor;
+  EXPECT_TRUE(mediator_->MediateRequestPayload(
+      epoch_pub_key_, epoch_priv_key_, mediator_priv_key_,
+      recovery_request_cbor, &response_cbor));
 
   HsmResponsePlainText response_plain_text;
-  ASSERT_TRUE(recovery->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key, response_cbor, &response_plain_text));
+  EXPECT_TRUE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
 
-  brillo::SecureBlob mediated_recovery_key;
-  ASSERT_TRUE(recovery->RecoverDestination(
+  SecureBlob mediated_recovery_key;
+  EXPECT_TRUE(recovery_->RecoverDestination(
       response_plain_text.dealer_pub_key, destination_share, ephemeral_pub_key,
       response_plain_text.mediated_point, &mediated_recovery_key));
 
@@ -83,128 +165,154 @@ TEST(RecoveryCryptoTest, RecoveryRequestTest) {
   EXPECT_EQ(recovery_key, mediated_recovery_key);
 }
 
-TEST(RecoveryCryptoTest, RecoverDestination) {
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
-  ASSERT_TRUE(recovery);
-  std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
-      FakeRecoveryMediatorCrypto::Create();
-  ASSERT_TRUE(mediator);
-
-  brillo::SecureBlob mediator_pub_key;
-  brillo::SecureBlob mediator_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
-  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
-
-  RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
-  brillo::SecureBlob destination_share;
-  brillo::SecureBlob dealer_pub_key;
-  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key,
-                                       &encrypted_mediator_share,
-                                       &destination_share, &dealer_pub_key));
-
-  brillo::SecureBlob publisher_pub_key;
-  brillo::SecureBlob publisher_dh;
-  ASSERT_TRUE(recovery->GeneratePublisherKeys(
-      dealer_pub_key, &publisher_pub_key, &publisher_dh));
-
-  brillo::SecureBlob mediated_publisher_pub_key;
-  ASSERT_TRUE(mediator->Mediate(mediator_priv_key, publisher_pub_key,
-                                encrypted_mediator_share,
-                                &mediated_publisher_pub_key));
-
-  brillo::SecureBlob destination_dh;
-  ASSERT_TRUE(recovery->RecoverDestination(publisher_pub_key, destination_share,
-                                           /*ephemeral_pub_key=*/base::nullopt,
-                                           mediated_publisher_pub_key,
-                                           &destination_dh));
-
-  // Verify that `publisher_dh` equals `destination_dh`.
-  // It should be equal, since
-  //   publisher_dh
-  //     = dealer_pub_key * secret
-  //     = G * (mediator_share + destination_share (mod order)) * secret
-  //     = publisher_pub_key * (mediator_share + destination_share (mod order))
-  // and
-  //   destination_dh
-  //     = publisher_pub_key * destination_share + mediated_publisher_pub_key
-  //     = publisher_pub_key * destination_share
-  //       + publisher_pub_key * mediator_share
-  //     = publisher_pub_key * (mediator_share + destination_share (mod order))
-  EXPECT_EQ(publisher_dh, destination_dh);
+TEST_F(RecoveryCryptoTest, GenerateHsmPayloadInvalidMediatorKey) {
+  HsmPayload hsm_payload;
+  SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
+  EXPECT_FALSE(recovery_->GenerateHsmPayload(
+      /*mediator_pub_key=*/SecureBlob("not a key"), rsa_pub_key_,
+      enrollment_metadata_, &hsm_payload, &destination_share, &recovery_key,
+      &channel_pub_key, &channel_priv_key));
 }
 
-TEST(RecoveryCryptoTest, RecoverDestinationFromInvalidInput) {
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
-  ASSERT_TRUE(recovery);
+TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
+  // Generates HSM payload that would be persisted on a chromebook.
+  HsmPayload hsm_payload;
+  SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
+  EXPECT_TRUE(recovery_->GenerateHsmPayload(
+      mediator_pub_key_, rsa_pub_key_, enrollment_metadata_, &hsm_payload,
+      &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
-  brillo::SecureBlob mediator_pub_key;
-  brillo::SecureBlob mediator_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
-  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
+  // Start recovery process.
+  SecureBlob ephemeral_pub_key, recovery_request_cbor;
+  EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
+      hsm_payload, request_metadata_, channel_priv_key, channel_pub_key,
+      epoch_pub_key_, &recovery_request_cbor, &ephemeral_pub_key));
 
-  RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
-  brillo::SecureBlob destination_share;
-  brillo::SecureBlob dealer_pub_key;
-  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key,
-                                       &encrypted_mediator_share,
-                                       &destination_share, &dealer_pub_key));
+  SecureBlob random_key = GeneratePublicKey();
 
-  // Create invalid key that is just a scalar (not a point on a curve).
-  crypto::ScopedBIGNUM scalar = BigNumFromValue(123u);
-  ASSERT_TRUE(scalar);
-  brillo::SecureBlob scalar_blob;
-  ASSERT_TRUE(BigNumToSecureBlob(*scalar, dealer_pub_key.size(), &scalar_blob));
+  // Simulates mediation performed by HSM.
+  SecureBlob response_cbor;
+  EXPECT_TRUE(mediator_->MediateRequestPayload(
+      /*epoch_pub_key=*/random_key, epoch_priv_key_, mediator_priv_key_,
+      recovery_request_cbor, &response_cbor));
 
-  brillo::SecureBlob publisher_pub_key;
-  brillo::SecureBlob publisher_dh;
-  EXPECT_FALSE(recovery->GeneratePublisherKeys(scalar_blob, &publisher_pub_key,
-                                               &publisher_dh));
-  ASSERT_TRUE(recovery->GeneratePublisherKeys(
-      dealer_pub_key, &publisher_pub_key, &publisher_dh));
-
-  brillo::SecureBlob destination_dh;
-  EXPECT_FALSE(recovery->RecoverDestination(
-      publisher_pub_key, destination_share, /*ephemeral_pub_key=*/base::nullopt,
-      scalar_blob, &destination_dh));
-  EXPECT_FALSE(recovery->RecoverDestination(scalar_blob, destination_share,
-                                            /*ephemeral_pub_key=*/base::nullopt,
-                                            scalar_blob, &destination_dh));
+  // `DecryptResponsePayload` fails if invalid epoch value was used for
+  // `MediateRequestPayload`.
+  HsmResponsePlainText response_plain_text;
+  EXPECT_FALSE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
 }
 
-TEST(RecoveryCryptoTest, SerializeEncryptedMediatorShare) {
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
-  ASSERT_TRUE(recovery);
+TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
+  SecureBlob recovery_key, destination_share, channel_priv_key,
+      ephemeral_pub_key, response_cbor;
+  GenerateSecretsAndMediate(&recovery_key, &destination_share,
+                            &channel_priv_key, &ephemeral_pub_key,
+                            &response_cbor);
 
-  brillo::SecureBlob mediator_pub_key;
-  brillo::SecureBlob mediator_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
-  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
+  HsmResponsePlainText response_plain_text;
+  EXPECT_TRUE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
 
-  RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share;
-  brillo::SecureBlob destination_share;
-  brillo::SecureBlob dealer_pub_key;
-  ASSERT_TRUE(recovery->GenerateShares(mediator_pub_key,
-                                       &encrypted_mediator_share,
-                                       &destination_share, &dealer_pub_key));
+  SecureBlob random_key = GeneratePublicKey();
 
-  brillo::SecureBlob serialized_blob;
-  ASSERT_TRUE(RecoveryCrypto::SerializeEncryptedMediatorShareForTesting(
-      encrypted_mediator_share, &serialized_blob));
-  RecoveryCrypto::EncryptedMediatorShare encrypted_mediator_share2;
-  ASSERT_TRUE(RecoveryCrypto::DeserializeEncryptedMediatorShareForTesting(
-      serialized_blob, &encrypted_mediator_share2));
-  EXPECT_EQ(encrypted_mediator_share.tag, encrypted_mediator_share2.tag);
-  EXPECT_EQ(encrypted_mediator_share.iv, encrypted_mediator_share2.iv);
-  EXPECT_EQ(encrypted_mediator_share.ephemeral_pub_key,
-            encrypted_mediator_share2.ephemeral_pub_key);
-  EXPECT_EQ(encrypted_mediator_share.encrypted_data,
-            encrypted_mediator_share2.encrypted_data);
+  SecureBlob mediated_recovery_key;
+  EXPECT_TRUE(recovery_->RecoverDestination(
+      /*dealer_pub_key=*/random_key, destination_share, ephemeral_pub_key,
+      response_plain_text.mediated_point, &mediated_recovery_key));
+
+  // `mediated_recovery_key` is different from `recovery_key` when
+  // `dealer_pub_key` is set to a wrong value.
+  EXPECT_NE(recovery_key, mediated_recovery_key);
+}
+
+TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
+  SecureBlob recovery_key, destination_share, channel_priv_key,
+      ephemeral_pub_key, response_cbor;
+  GenerateSecretsAndMediate(&recovery_key, &destination_share,
+                            &channel_priv_key, &ephemeral_pub_key,
+                            &response_cbor);
+
+  HsmResponsePlainText response_plain_text;
+  EXPECT_TRUE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
+
+  SecureBlob random_scalar = GenerateScalar();
+
+  SecureBlob mediated_recovery_key;
+  EXPECT_TRUE(recovery_->RecoverDestination(
+      response_plain_text.dealer_pub_key, /*destination_share=*/random_scalar,
+      ephemeral_pub_key, response_plain_text.mediated_point,
+      &mediated_recovery_key));
+
+  // `mediated_recovery_key` is different from `recovery_key` when
+  // `destination_share` is set to a wrong value.
+  EXPECT_NE(recovery_key, mediated_recovery_key);
+}
+
+TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
+  SecureBlob recovery_key, destination_share, channel_priv_key,
+      ephemeral_pub_key, response_cbor;
+  GenerateSecretsAndMediate(&recovery_key, &destination_share,
+                            &channel_priv_key, &ephemeral_pub_key,
+                            &response_cbor);
+
+  HsmResponsePlainText response_plain_text;
+  EXPECT_TRUE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
+
+  SecureBlob random_key = GeneratePublicKey();
+
+  SecureBlob mediated_recovery_key;
+  EXPECT_TRUE(recovery_->RecoverDestination(
+      response_plain_text.dealer_pub_key, destination_share,
+      /*ephemeral_pub_key=*/random_key, response_plain_text.mediated_point,
+      &mediated_recovery_key));
+
+  // `mediated_recovery_key` is different from `recovery_key` when
+  // `ephemeral_pub_key` is set to a wrong value.
+  EXPECT_NE(recovery_key, mediated_recovery_key);
+}
+
+TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
+  SecureBlob recovery_key, destination_share, channel_priv_key,
+      ephemeral_pub_key, response_cbor;
+  GenerateSecretsAndMediate(&recovery_key, &destination_share,
+                            &channel_priv_key, &ephemeral_pub_key,
+                            &response_cbor);
+
+  HsmResponsePlainText response_plain_text;
+  EXPECT_TRUE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
+
+  SecureBlob random_key = GeneratePublicKey();
+
+  SecureBlob mediated_recovery_key;
+  EXPECT_TRUE(recovery_->RecoverDestination(
+      response_plain_text.dealer_pub_key, destination_share, ephemeral_pub_key,
+      /*mediated_point=*/random_key, &mediated_recovery_key));
+
+  // `mediated_recovery_key` is different from `recovery_key` when
+  // `mediated_point` is set to a wrong point.
+  EXPECT_NE(recovery_key, mediated_recovery_key);
+}
+
+TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
+  SecureBlob recovery_key, destination_share, channel_priv_key,
+      ephemeral_pub_key, response_cbor;
+  GenerateSecretsAndMediate(&recovery_key, &destination_share,
+                            &channel_priv_key, &ephemeral_pub_key,
+                            &response_cbor);
+
+  HsmResponsePlainText response_plain_text;
+  EXPECT_TRUE(recovery_->DecryptResponsePayload(
+      channel_priv_key, epoch_pub_key_, response_cbor, &response_plain_text));
+
+  // `RecoverDestination` fails when `mediated_point` is not a point.
+  SecureBlob mediated_recovery_key;
+  EXPECT_FALSE(recovery_->RecoverDestination(
+      response_plain_text.dealer_pub_key, destination_share, ephemeral_pub_key,
+      /*mediated_point=*/SecureBlob("not a point"), &mediated_recovery_key));
 }
 
 }  // namespace cryptorecovery
