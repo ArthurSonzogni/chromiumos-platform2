@@ -1898,6 +1898,8 @@ void WiFi::ScanTask() {
                                 hidden_ssids);
     }
   }
+  scan_args.Set<bool>(WPASupplicant::kPropertyScanAllowRoam,
+                      manager()->scan_allow_roam());
 
   if (!supplicant_interface_proxy_->Scan(scan_args)) {
     // A scan may fail if, for example, the wpa_supplicant vanishing

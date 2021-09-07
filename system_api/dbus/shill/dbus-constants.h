@@ -101,6 +101,7 @@ const char kSupportedVPNTypesProperty[] = "SupportedVPNTypes";
 const char kUninitializedTechnologiesProperty[] = "UninitializedTechnologies";
 const char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 const char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
+const char kWifiScanAllowRoamProperty[] = "WiFi.ScanAllowRoam";
 
 // Manager and DefaultProfile property names (the Manager properties that are
 // persisted by a DefaultProfile; these are always read-only for

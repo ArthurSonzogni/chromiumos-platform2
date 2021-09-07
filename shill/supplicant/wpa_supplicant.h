@@ -137,6 +137,7 @@ class WPASupplicant {
   static const char kPropertyPreSharedKey[];
   static const char kPropertyPrivacy[];
   static const char kPropertyRSN[];
+  static const char kPropertyScanAllowRoam[];
   static const char kPropertyScanSSIDs[];
   static const char kPropertyScanType[];
   static const char kPropertySecurityProtocol[];

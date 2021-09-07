@@ -265,6 +265,7 @@ Manager::Manager(ControlInterface* control_interface,
                           &Manager::SetDisableWiFiVHT);
   HelpRegisterDerivedBool(kWifiGlobalFTEnabledProperty, &Manager::GetFTEnabled,
                           &Manager::SetFTEnabled);
+  store_.RegisterBool(kWifiScanAllowRoamProperty, &props_.scan_allow_roam);
 #endif  // DISABLE_WIFI
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);

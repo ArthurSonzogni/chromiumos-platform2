@@ -145,6 +145,7 @@ const char WPASupplicant::kPropertyAuthAlg[] = "auth_alg";
 const char WPASupplicant::kPropertyPreSharedKey[] = "psk";
 const char WPASupplicant::kPropertyPrivacy[] = "Privacy";
 const char WPASupplicant::kPropertyRSN[] = "RSN";
+const char WPASupplicant::kPropertyScanAllowRoam[] = "AllowRoam";
 const char WPASupplicant::kPropertyScanSSIDs[] = "SSIDs";
 const char WPASupplicant::kPropertyScanType[] = "Type";
 const char WPASupplicant::kPropertySecurityProtocol[] = "proto";

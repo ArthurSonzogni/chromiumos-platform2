@@ -2451,6 +2451,28 @@ TEST_F(WiFiMainTest, ScanRejected) {
   event_dispatcher_->DispatchPendingEvents();
 }
 
+MATCHER_P(AllowRoam, allow_roam_expected, "") {
+  if (!arg.template Contains<bool>(WPASupplicant::kPropertyScanAllowRoam)) {
+    return false;
+  }
+
+  bool allow_roam_actual =
+      arg.template Get<bool>(WPASupplicant::kPropertyScanAllowRoam);
+  return allow_roam_expected == allow_roam_actual;
+}
+
+TEST_F(WiFiMainTest, ScanAllowRoam) {
+  StartWiFi();
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(AllowRoam(true)));
+  event_dispatcher_->DispatchPendingEvents();
+  StopWiFi();
+
+  StartWiFi();
+  manager()->props_.scan_allow_roam = false;
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(AllowRoam(false)));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
 TEST_F(WiFiMainTest, InitialSupplicantState) {
   EXPECT_EQ(WiFi::kInterfaceStateUnknown, GetSupplicantState());
 }

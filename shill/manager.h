@@ -104,6 +104,7 @@ class Manager {
 
 #if !defined(DISABLE_WIFI)
     base::Optional<bool> ft_enabled;
+    bool scan_allow_roam = true;
 #endif  // !DISABLE_WIFI
   };
 
@@ -505,6 +506,7 @@ class Manager {
 
 #if !defined(DISABLE_WIFI)
   bool GetFTEnabled(Error* error);
+  bool scan_allow_roam() const { return props_.scan_allow_roam; }
 #endif  // DISABLE_WIFI
 
   bool ShouldBlackholeUserTraffic(const std::string& device_name) const;
@@ -605,6 +607,7 @@ class Manager {
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
+  FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
 
   void AutoConnect();
   // Ensure always-on VPN follows the current configuration, ie: hardware

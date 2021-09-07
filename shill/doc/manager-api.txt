@@ -663,6 +663,11 @@ Properties 	object ActiveProfile [readonly]
 			Specifies whether or not 802.11r Fast BSS Transition should be
 			used.
 
+		bool WiFi.ScanAllowRoam [readwrite]
+
+			Specifies whether or not a WiFi scan could trigger a
+			roam if a better AP is found on the same network.
+
 		array{string, string} DNSProxyDOHProviders [readonly]
 
 			The DNS-over-HTTPS service providers. URLs of the secure
