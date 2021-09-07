@@ -12,7 +12,7 @@
 
 namespace hps {
 
-constexpr char kHpsTurnOnResult[] = "HPS.TurnOn.Result";
+constexpr char kHpsTurnOnResult[] = "ChromeOS.HPS.TurnOn.Result";
 
 // These values are logged to UMA. Entries should not be renumbered and
 // numeric values should never be reused. Please keep in sync with
