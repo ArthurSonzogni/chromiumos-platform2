@@ -40,6 +40,10 @@ using testing::SaveArg;
 class WireGuardDriverTestPeer {
  public:
   explicit WireGuardDriverTestPeer(WireGuardDriver* driver) : driver_(driver) {
+    // Creates a temp directory for storing the config file.
+    CHECK(scoped_temp_dir_.CreateUniqueTempDir());
+    driver_->config_directory_ = scoped_temp_dir_.GetPath();
+
     driver->vpn_util_ = std::make_unique<FakeVPNUtil>();
   }
 
@@ -47,6 +51,7 @@ class WireGuardDriverTestPeer {
 
  private:
   std::unique_ptr<WireGuardDriver> driver_;
+  base::ScopedTempDir scoped_temp_dir_;
 };
 
 // This function should exist outside the anonymous namespace, otherwise it
@@ -191,7 +196,7 @@ class WireGuardDriverTest : public testing::Test {
     EXPECT_CALL(process_manager_,
                 StartProcessInMinijail(_, base::FilePath("/usr/bin/wg"), _, _,
                                        "vpn", "vpn", CAP_TO_MASK(CAP_NET_ADMIN),
-                                       true, false, _))
+                                       true, true, _))
         .WillOnce(DoAll(SaveArg<2>(&args),
                         SaveArg<9>(&wireguard_tools_exit_callback_),
                         Return(kWireGuardToolsPid)));
@@ -242,17 +247,14 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   InvokeConnectAsyncKernel();
   InvokeLinkReady();
 
-  // Checks config file content.
-  std::string contents;
-  CHECK(base::ReadFileToString(config_file_path_, &contents));
-  EXPECT_EQ(contents, kExpectedConfigFileContents);
-
   // Configuration done.
   EXPECT_CALL(driver_event_handler_, OnDriverConnected(kIfName, kIfIndex));
   wireguard_tools_exit_callback_.Run(0);
 
-  // Checks that the config file has been deleted.
-  EXPECT_FALSE(base::PathExists(config_file_path_));
+  // Checks config file content.
+  std::string contents;
+  CHECK(base::ReadFileToString(config_file_path_, &contents));
+  EXPECT_EQ(contents, kExpectedConfigFileContents);
 
   // Checks IPProperties.
   const auto& ip_properties = driver_->GetIPProperties();
@@ -267,6 +269,9 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   // Disconnect.
   EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
   driver_->Disconnect();
+
+  // Checks that the config file has been deleted.
+  EXPECT_FALSE(base::PathExists(config_file_path_));
 }
 
 TEST_F(WireGuardDriverTest, ConnectFlowUserspace) {
@@ -274,23 +279,23 @@ TEST_F(WireGuardDriverTest, ConnectFlowUserspace) {
   InvokeConnectAsyncUserspace();
   InvokeLinkReady();
 
-  // Checks config file content.
-  std::string contents;
-  CHECK(base::ReadFileToString(config_file_path_, &contents));
-  EXPECT_EQ(contents, kExpectedConfigFileContents);
-
   // Configuration done.
   EXPECT_CALL(driver_event_handler_, OnDriverConnected(kIfName, kIfIndex));
   wireguard_tools_exit_callback_.Run(0);
 
-  // Checks that the config file has been deleted.
-  EXPECT_FALSE(base::PathExists(config_file_path_));
+  // Checks config file content.
+  std::string contents;
+  CHECK(base::ReadFileToString(config_file_path_, &contents));
+  EXPECT_EQ(contents, kExpectedConfigFileContents);
 
   // Skips checks for IPProperties. See ConnectFlowKernel.
 
   // Disconnect.
   EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
   driver_->Disconnect();
+
+  // Checks that the config file has been deleted.
+  EXPECT_FALSE(base::PathExists(config_file_path_));
 }
 
 TEST_F(WireGuardDriverTest, WireGuardToolsFailed) {

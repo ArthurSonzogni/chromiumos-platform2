@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/files/scoped_file.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -81,9 +81,10 @@ class WireGuardDriver : public VPNDriver {
   bool SpawnWireGuard();
   void WireGuardProcessExited(int exit_code);
 
-  // Generates the contents for the config file that will be used by
-  // wireguard-tools from the profile. Returns an empty string on failure.
-  std::string GenerateConfigFileContents();
+  // Generates a config file that will be used by wireguard-tools from the
+  // profile and write its content into a temporary file. Writes the path to the
+  // temporary file into |config_file_|;
+  bool GenerateConfigFile();
 
   // Configures the interface via wireguard-tools when the interface is ready.
   void ConfigureInterface(bool created_in_kernel,
@@ -113,7 +114,7 @@ class WireGuardDriver : public VPNDriver {
   pid_t wireguard_pid_ = -1;
   int interface_index_ = -1;
   IPConfig::Properties ip_properties_;
-  base::ScopedFD config_fd_;
+  base::FilePath config_file_;
 
   // Indicates that whether we have an open wg interface in the kernel which is
   // created via DeviceInfo now.
@@ -122,6 +123,9 @@ class WireGuardDriver : public VPNDriver {
   // This variable is set in Load() and Save(), and only used to check whether
   // we need to re-calculate the public key in Save().
   std::string saved_private_key_;
+
+  // |config_directory_| is a constant. Makes it a member variable for testing.
+  base::FilePath config_directory_;
 
   // Indicates where the key pair associated with this service comes from.
   // Currently only used in the UMA metrics.

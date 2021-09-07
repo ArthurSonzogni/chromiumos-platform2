@@ -9,9 +9,8 @@
 
 #include <sys/types.h>
 
-#include <memory>
 #include <string>
-#include <utility>
+#include <memory>
 
 #include <base/files/file_path.h>
 
@@ -28,10 +27,6 @@ class FakeVPNUtil : public VPNUtil {
   // permissions.
   bool WriteConfigFile(const base::FilePath& filename,
                        const std::string& contents) const override;
-
-  // Same as the real implementation.
-  std::pair<base::ScopedFD, base::FilePath> WriteAnonymousConfigFile(
-      const std::string& contents) const override;
 
   // Creates a ScopedTempDir under |parent_path| without changing permissions.
   base::ScopedTempDir CreateScopedTempDir(

@@ -50,6 +50,12 @@ constexpr char kWireGuardPath[] = "/usr/sbin/wireguard";
 constexpr char kWireGuardToolsPath[] = "/usr/bin/wg";
 constexpr char kDefaultInterfaceName[] = "wg0";
 
+// Directory where wireguard configuration files are exported. The owner of this
+// directory is vpn:vpn, so both shill and wireguard client can access it.
+constexpr char kWireGuardConfigDir[] = "/run/wireguard";
+
+constexpr char kWireGuardConfigFile[] = "wg0.conf";
+
 // The name of the property which indicates where the key pair comes from. This
 // property only appears in storage but not in D-Bus API.
 constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";
@@ -203,6 +209,7 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
 WireGuardDriver::WireGuardDriver(Manager* manager,
                                  ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
+      config_directory_(kWireGuardConfigDir),
       vpn_util_(VPNUtil::New()) {}
 
 WireGuardDriver::~WireGuardDriver() {
@@ -455,7 +462,7 @@ void WireGuardDriver::WireGuardProcessExited(int exit_code) {
                          exit_code));
 }
 
-std::string WireGuardDriver::GenerateConfigFileContents() {
+bool WireGuardDriver::GenerateConfigFile() {
   std::vector<std::string> lines;
 
   // [Interface] section
@@ -464,11 +471,11 @@ std::string WireGuardDriver::GenerateConfigFileContents() {
       args()->Lookup<std::string>(kWireGuardPrivateKey, "");
   if (!ValidateInputString(private_key)) {
     LOG(ERROR) << "PrivateKey contains invalid characters.";
-    return "";
+    return false;
   }
   if (private_key.empty()) {
     LOG(ERROR) << "PrivateKey is required but is empty or not set.";
-    return "";
+    return false;
   }
   lines.push_back(base::StrCat({"PrivateKey", "=", private_key}));
   // 0x4000 for bypass VPN, 0x0500 for source of host VPN.
@@ -484,20 +491,33 @@ std::string WireGuardDriver::GenerateConfigFileContents() {
       const std::string val = peer[property.name];
       if (!ValidateInputString(val)) {
         LOG(ERROR) << property.name << " contains invalid characters.";
-        return "";
+        return false;
       }
       if (!val.empty()) {
         lines.push_back(base::StrCat({property.name, "=", val}));
       } else if (property.is_required) {
         LOG(ERROR) << property.name
                    << " in a peer is required but is empty or not set.";
-        return "";
+        return false;
       }
     }
     lines.push_back("");
   }
 
-  return base::JoinString(lines, "\n");
+  // Writes |lines| into the file.
+  if (!base::CreateTemporaryFileInDir(config_directory_, &config_file_)) {
+    LOG(ERROR) << "Failed to create wireguard config file.";
+    return false;
+  }
+
+  config_file_ = config_directory_.Append(kWireGuardConfigFile);
+  std::string contents = base::JoinString(lines, "\n");
+  if (!vpn_util_->WriteConfigFile(config_file_, contents)) {
+    LOG(ERROR) << "Failed to write wireguard config file";
+    return false;
+  }
+
+  return true;
 }
 
 void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
@@ -516,28 +536,18 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
 
   interface_index_ = interface_index;
 
-  // Writes config file.
-  std::string config_contents = GenerateConfigFileContents();
-  if (config_contents.empty()) {
-    FailService(Service::kFailureInternal,
-                "Failed to generate config file contents");
-    return;
-  }
-  auto [fd, path] = vpn_util_->WriteAnonymousConfigFile(config_contents);
-  config_fd_ = std::move(fd);
-  if (!config_fd_.is_valid()) {
-    FailService(Service::kFailureInternal, "Failed to write config file");
+  if (!GenerateConfigFile()) {
+    FailService(Service::kFailureInternal, "Failed to generate config file");
     return;
   }
 
-  // Executes wireguard-tools.
   std::vector<std::string> args = {"setconf", kDefaultInterfaceName,
-                                   path.value()};
+                                   config_file_.value()};
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   pid_t pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
-      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, kCapMask,
-      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/false,
+      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, kCapMask, true,
+      true,
       base::BindRepeating(&WireGuardDriver::OnConfigurationDone,
                           weak_factory_.GetWeakPtr()));
   if (pid == -1) {
@@ -548,9 +558,6 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
 
 void WireGuardDriver::OnConfigurationDone(int exit_code) {
   SLOG(this, 2) << __func__ << ": exit_code=" << exit_code;
-
-  // Closes the config file to remove it.
-  config_fd_.reset();
 
   if (exit_code != 0) {
     FailService(
@@ -620,7 +627,12 @@ void WireGuardDriver::Cleanup() {
   }
   interface_index_ = -1;
   ip_properties_ = {};
-  config_fd_.reset();
+  if (!config_file_.empty()) {
+    if (!base::DeleteFile(config_file_)) {
+      LOG(ERROR) << "Failed to delete wireguard config file";
+    }
+    config_file_.clear();
+  }
 }
 
 bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {

@@ -4,16 +4,12 @@
 
 #include "shill/vpn/vpn_util.h"
 
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include <memory>
-#include <utility>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
-#include <base/strings/stringprintf.h>
 
 namespace shill {
 
@@ -21,8 +17,6 @@ class VPNUtilImpl : public VPNUtil {
  public:
   bool WriteConfigFile(const base::FilePath& filename,
                        const std::string& contents) const override;
-  std::pair<base::ScopedFD, base::FilePath> WriteAnonymousConfigFile(
-      const std::string& contents) const override;
   base::ScopedTempDir CreateScopedTempDir(
       const base::FilePath& parent_path) const override;
 };
@@ -45,27 +39,6 @@ bool VPNUtilImpl::WriteConfigFile(const base::FilePath& filename,
   }
 
   return true;
-}
-
-std::pair<base::ScopedFD, base::FilePath> VPNUtilImpl::WriteAnonymousConfigFile(
-    const std::string& contents) const {
-  // The first parameter is the name of this file. This name is only used for
-  // debugging purposes, and it does not have any side effect that multiple
-  // files share the same name
-  int fd = memfd_create("vpn_file", /*flags=*/0);
-  if (fd == -1) {
-    PLOG(ERROR) << "Failed to create file with memfd_create";
-    return {};
-  }
-
-  base::ScopedFD scoped_fd(fd);
-  if (!base::WriteFileDescriptor(fd, contents)) {
-    PLOG(ERROR) << "Failed to write config file";
-    return {};
-  }
-
-  base::FilePath path(base::StringPrintf("/proc/self/fd/%d", fd));
-  return {std::move(scoped_fd), path};
 }
 
 base::ScopedTempDir VPNUtilImpl::CreateScopedTempDir(
