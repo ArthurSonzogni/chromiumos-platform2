@@ -28,6 +28,7 @@
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/le_credential_manager_impl.h"
+#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -1229,6 +1230,44 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   vk = keyset_management_->GetValidKeyset(users_[0].credentials,
                                           /* error */ nullptr);
   ASSERT_NE(vk.get(), nullptr);
+}
+
+TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
+  // SETUP
+  // Generate a valid passkey from the users id and public salt.
+  std::string account_id(kUser0);
+
+  brillo::SecureBlob public_mount_salt;
+  base::FilePath saltfile(kPublicMountSaltFilePath);
+  // Fetches or creates a salt from a saltfile. Setting the force
+  // parameter to false only creates a new saltfile if one doesn't
+  // already exist.
+  crypto_.GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
+                          false /**force**/, &public_mount_salt);
+
+  brillo::SecureBlob passkey;
+  Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
+
+  // TEST
+  EXPECT_EQ(keyset_management_->GetPublicMountPassKey(account_id), passkey);
+}
+
+TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
+  // SETUP
+  std::string account_id(kUser0);
+
+  NiceMock<MockCrypto> mock_crypto;
+  std::unique_ptr<KeysetManagement> keyset_management_mock_crypto;
+  keyset_management_mock_crypto = std::make_unique<KeysetManagement>(
+      &platform_, &mock_crypto, system_salt_, &timestamp_cache_,
+      std::make_unique<VaultKeysetFactory>());
+
+  EXPECT_CALL(mock_crypto, GetOrCreateSalt).WillOnce(Return(false));
+
+  // Compare the SecureBlob with an empty and non-empty SecureBlob.
+  brillo::SecureBlob public_mount_passkey =
+      keyset_management_mock_crypto->GetPublicMountPassKey(account_id);
+  EXPECT_TRUE(public_mount_passkey.empty());
 }
 
 }  // namespace cryptohome
