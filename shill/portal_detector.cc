@@ -30,6 +30,9 @@ const brillo::http::HeaderList kHeaders{
 // at every new attempt.
 constexpr base::TimeDelta kPortalCheckInterval =
     base::TimeDelta::FromSeconds(3);
+// Min time delay between two portal detection attempts.
+constexpr base::TimeDelta kMinPortalCheckDelay =
+    base::TimeDelta::FromSeconds(0);
 // Max time interval between two portal detection attempts.
 constexpr base::TimeDelta kMaxPortalCheckInterval =
     base::TimeDelta::FromMinutes(5);
@@ -302,10 +305,11 @@ base::TimeDelta PortalDetector::GetNextAttemptDelay() {
 
   const auto next_attempt = last_attempt_start_time_ + next_interval;
   const auto now = base::Time::NowFromSystemTime();
-  if (next_attempt < now)
-    return base::TimeDelta();
+  auto next_delay = next_attempt - now;
+  if (next_delay < kMinPortalCheckDelay)
+    next_delay = kMinPortalCheckDelay;
 
-  return next_attempt - now;
+  return next_delay;
 }
 
 // static

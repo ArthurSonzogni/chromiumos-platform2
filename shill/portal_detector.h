@@ -30,21 +30,40 @@ namespace shill {
 class EventDispatcher;
 class Metrics;
 
-// The PortalDetector class implements the portal detection
-// facility in shill, which is responsible for checking to see
-// if a connection has "general internet connectivity".
+// The PortalDetector class implements the portal detection facility in shill,
+// which is responsible for checking to see if a connection has "general
+// internet connectivity".
 //
-// This information can be used for ranking one connection
-// against another, or for informing UI and other components
-// outside the connection manager whether the connection seems
-// available for "general use" or if further user action may be
-// necessary (e.g, click through of a WiFi Hotspot's splash
-// page).
+// This information can be used for ranking one connection against another, or
+// for informing UI and other components outside the connection manager whether
+// the connection seems available for "general use" or if further user action
+// may be necessary (e.g, click through of a WiFi Hotspot's splash page).
 //
-// This is achieved by using one or more trial attempts
-// to access a URL and expecting a specific response.  Any result
-// that deviates from this result (DNS or HTTP errors, as well as
-// deviations from the expected content) are considered failures.
+// This is achieved by using one or more trial attempts to access a URL and
+// expecting a specific response.  Any result that deviates from this result
+// (DNS or HTTP errors, as well as deviations from the expected content) are
+// considered failures.
+//
+// In case of an inclusive attempt (the network was not validated and a portal
+// was not found), the retry logic is controlled by the class owning the
+// instance of PortalDetector. To avoid unnecessary network activity, retries
+// should be separated from each other by a delay that progressively increases,
+// starting with fast retries. PortalDetector provides the GetNextAttemptDelay()
+// function which computes a delay to reinject into Start() and implements the
+// following exponential backoff strategy:
+//   - the first attempt is started immediately when Start() is called if the
+//   default value for |delay| is used (0 second).
+//   - to obtain the next value of |delay|, GetNextAttemptDelay() should be
+//   called just before the next call to Start(). This is because
+//   GetNextAttemptDelay() takes into account the total elapsed time since the
+//   beginning of the previous attempt.
+//   - the value returned by GetNextAttemptDelay() is guaranteed to be bound
+//   within [|kMinPortalCheckDelay|,|kMaxPortalCheckInterval|] (see
+//   implementation file).
+//   - the value returned by GetNextAttemptDelay() will grow exponentially based
+//   on the number of previous attempts, until it saturates at
+//   kMaxPortalCheckInterval. The growth factor is controlled by the
+//   |kPortalCheckInterval| parameter.
 class PortalDetector {
  public:
   // The Phase enum indicates the phase at which the probe fails.
