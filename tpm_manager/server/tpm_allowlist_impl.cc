@@ -19,7 +19,9 @@ namespace {
 #if USE_TPM_DYNAMIC
 
 // Simulator Vendor ID ("SIMU").
-const uint32_t kVendorIdSimulator = 0x53494d55;
+constexpr uint32_t kVendorIdSimulator = 0x53494d55;
+// STMicroelectronics Vendor ID ("STM ").
+constexpr uint32_t kVendorIdStm = 0x53544D20;
 
 // The location of TPM DID & VID information.
 constexpr char kTpmDidVidPath[] = "/sys/class/tpm/tpm0/did_vid";
@@ -27,6 +29,8 @@ constexpr char kTpmDidVidPath[] = "/sys/class/tpm/tpm0/did_vid";
 constexpr char kSysVendorPath[] = "/sys/class/dmi/id/sys_vendor";
 // The location of product name information.
 constexpr char kProductNamePath[] = "/sys/class/dmi/id/product_name";
+// The location of product family information.
+constexpr char kProductFamilyPath[] = "/sys/class/dmi/id/product_family";
 
 struct TpmVidDid {
   uint16_t vendor_id;
@@ -64,8 +68,18 @@ struct DeviceModel {
   TpmVidDid vid_did;
 };
 
+struct DeviceFamily {
+  const char* sys_vendor;
+  const char* product_family;
+  uint32_t tpm_vendor_id;
+};
+
 constexpr DeviceModel kTpm2ModelsAllowlist[] = {
     DeviceModel{"Dell Inc.", "Latitude 7490", TpmVidDid{kTpmVidWinbond, 0xFC}},
+};
+
+constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
+    DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 8", kVendorIdStm},
 };
 
 bool GetDidVid(uint16_t* did, uint16_t* vid) {
@@ -112,6 +126,18 @@ bool GetProductName(std::string* product_name) {
   return true;
 }
 
+bool GetProductFamily(std::string* product_family) {
+  base::FilePath file_path(kProductFamilyPath);
+  std::string file_content;
+
+  if (!base::ReadFileToString(file_path, &file_content)) {
+    return false;
+  }
+
+  base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, product_family);
+  return true;
+}
+
 #endif
 
 }  // namespace
@@ -149,16 +175,9 @@ bool TpmAllowlistImpl::IsAllowed() {
       return true;
     }
 
-    uint16_t device_id;
-    uint16_t vendor_id;
-
-    if (!GetDidVid(&device_id, &vendor_id)) {
-      LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
-      return false;
-    }
-
     std::string sys_vendor;
     std::string product_name;
+    std::string product_family;
 
     if (!GetSysVendor(&sys_vendor)) {
       LOG(ERROR) << __func__ << ": Failed to get the system vendor.";
@@ -166,6 +185,26 @@ bool TpmAllowlistImpl::IsAllowed() {
     }
     if (!GetProductName(&product_name)) {
       LOG(ERROR) << __func__ << ": Failed to get the product name.";
+      return false;
+    }
+    if (!GetProductFamily(&product_family)) {
+      LOG(ERROR) << __func__ << ": Failed to get the product family.";
+      return false;
+    }
+
+    for (const DeviceFamily& match : kTpm2FamiliesAllowlist) {
+      if (sys_vendor == match.sys_vendor &&
+          product_family == match.product_family &&
+          manufacturer == match.tpm_vendor_id) {
+        return true;
+      }
+    }
+
+    uint16_t device_id;
+    uint16_t vendor_id;
+
+    if (!GetDidVid(&device_id, &vendor_id)) {
+      LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
       return false;
     }
 
@@ -188,6 +227,7 @@ bool TpmAllowlistImpl::IsAllowed() {
     LOG(INFO) << "Not allowed TPM2.0:";
     LOG(INFO) << "  System Vendor: " << sys_vendor;
     LOG(INFO) << "  Product Name: " << product_name;
+    LOG(INFO) << "  Product Family: " << product_family;
     LOG(INFO) << "  TPM Vendor ID: " << std::hex << vendor_id;
     LOG(INFO) << "  TPM Device ID: " << std::hex << device_id;
 
