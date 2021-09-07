@@ -13253,12 +13253,15 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "sentinel01.com.attz"
+        is_attach_apn : true
       }
       mobile_apn {
         apn : "sentinelent01.com.attz"
+        is_attach_apn : true
       }
       mobile_apn {
         apn : "sentinelnb01.com.attz"
+        is_attach_apn : true
       }
       mtu : 1430
     }
@@ -13787,9 +13790,11 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "spl2419.i.dlsn"
+        is_attach_apn : true
       }
       mobile_apn {
         apn : "spl0400.i.dlsn"
+        is_attach_apn : true
       }
     }
   }
@@ -13909,6 +13914,7 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "iot.kajeet"
+        is_attach_apn : true
       }
     }
   }
@@ -15058,6 +15064,7 @@ mno {
       prioritizes_name : true
       mobile_apn {
         apn : "sentinel.vf"
+        is_attach_apn : true
       }
     }
   }
