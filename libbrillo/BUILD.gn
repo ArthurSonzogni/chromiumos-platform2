@@ -92,7 +92,6 @@ libbrillo_sublibs = [
       "brillo/type_name_undecorate.cc",
       "brillo/url_utils.cc",
       "brillo/userdb_utils.cc",
-      "brillo/value_conversion.cc",
     ]
     if (use.dbus) {
       sources += [
@@ -467,7 +466,6 @@ if (use.test) {
       "brillo/timezone/tzif_parser_test.cc",
       "brillo/unittest_utils.cc",
       "brillo/url_utils_test.cc",
-      "brillo/value_conversion_test.cc",
       "brillo/vcsid_set_test.cc",
       "brillo/vcsid_unset_test.cc",
       "testrunner.cc",
