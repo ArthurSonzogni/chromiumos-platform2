@@ -13,7 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 
 #include "rmad/state_handler/state_handler_manager.h"
-#include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
@@ -21,9 +21,11 @@ namespace rmad {
 class RmadInterfaceImpl final : public RmadInterface {
  public:
   RmadInterfaceImpl();
-  // Used to inject mocked json_store and state_handler_manager.
+  // Used to inject mocked |json_store_|, |state_handler_manager_| and
+  // |tpm_manager_client_|.
   RmadInterfaceImpl(scoped_refptr<JsonStore> json_store,
-                    std::unique_ptr<StateHandlerManager> state_handler_manager);
+                    std::unique_ptr<StateHandlerManager> state_handler_manager,
+                    std::unique_ptr<TpmManagerClient> tpm_manager_client);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
   RmadInterfaceImpl& operator=(const RmadInterfaceImpl&) = delete;
 
@@ -77,14 +79,15 @@ class RmadInterfaceImpl final : public RmadInterface {
   // Check if it's allowed to go back to the previous state.
   bool CanGoBack() const;
 
+  // External utilities.
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
+  std::unique_ptr<TpmManagerClient> tpm_manager_client_;
+
+  // Internal states.
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool can_abort_;
-
-  // Utilities
-  Cr50UtilsImpl cr50_utils_;
 };
 
 }  // namespace rmad

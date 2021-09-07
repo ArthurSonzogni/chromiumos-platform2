@@ -15,6 +15,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/system/tpm_manager_client_impl.h"
 
 namespace rmad {
 
@@ -29,15 +30,18 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
   json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers();
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
   Initialize();
 }
 
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
-    std::unique_ptr<StateHandlerManager> state_handler_manager)
+    std::unique_ptr<StateHandlerManager> state_handler_manager,
+    std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : RmadInterface(),
       json_store_(json_store),
-      state_handler_manager_(std::move(state_handler_manager)) {
+      state_handler_manager_(std::move(state_handler_manager)),
+      tpm_manager_client_(std::move(tpm_manager_client)) {
   Initialize();
 }
 
@@ -88,7 +92,10 @@ void RmadInterfaceImpl::Initialize() {
         // that the json store failed so a message can be displayed.
       }
     }
-  } else if (cr50_utils_.RoVerificationKeyPressed()) {
+  } else if (RoVerificationStatus status;
+             tpm_manager_client_->GetRoVerificationStatus(&status) &&
+             status != RoVerificationStatus::NOT_TRIGGERED) {
+    VLOG(1) << "RO verification triggered";
     current_state_case_ = kInitialStateCase;
     state_history_.push_back(current_state_case_);
     if (!StoreStateHistory()) {
@@ -175,14 +182,14 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else if (RmadErrorCode error = GetInitializedStateHandler(
                  current_state_case_, &state_handler);
-             error == RMAD_ERROR_OK) {
+             error != RMAD_ERROR_OK) {
+    reply.set_error(error);
+  } else {
     LOG(INFO) << "Get current state succeeded: " << current_state_case_;
     reply.set_error(RMAD_ERROR_OK);
     reply.set_allocated_state(new RmadState(state_handler->GetState()));
     reply.set_can_go_back(CanGoBack());
     reply.set_can_abort(CanAbort());
-  } else {
-    reply.set_error(error);
   }
 
   return reply;
