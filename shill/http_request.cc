@@ -42,13 +42,11 @@ static std::string ObjectID(const HttpRequest* r) {
 const int HttpRequest::kRequestTimeoutSeconds = 10;
 
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
-                         const std::string& logging_tag,
                          const std::string& interface_name,
                          const IPAddress& src_address,
                          const std::vector<std::string>& dns_list,
                          bool allow_non_google_https)
-    : logging_tag_(logging_tag),
-      interface_name_(interface_name),
+    : interface_name_(interface_name),
       ip_family_(src_address.family()),
       dns_list_(dns_list),
       weak_ptr_factory_(this),
@@ -82,6 +80,7 @@ HttpRequest::~HttpRequest() {
 }
 
 HttpRequest::Result HttpRequest::Start(
+    const std::string& logging_tag,
     const std::string& url_string,
     const brillo::http::HeaderList& headers,
     const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
@@ -91,6 +90,7 @@ HttpRequest::Result HttpRequest::Start(
 
   DCHECK(!is_running_);
 
+  logging_tag_ = logging_tag;
   HttpUrl url;
   if (!url.ParseFromString(url_string)) {
     LOG(ERROR) << logging_tag_

@@ -117,7 +117,7 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    request_.reset(new HttpRequest(&dispatcher_, kLoggingTag, interface_name_,
+    request_.reset(new HttpRequest(&dispatcher_, interface_name_,
                                    IPAddress(IPAddress::kFamilyIPv4),
                                    {kDNSServer0, kDNSServer1}, true));
     // Passes ownership.
@@ -187,7 +187,8 @@ class HttpRequestTest : public Test {
     request_->GetDNSResult(error, address);
   }
   HttpRequest::Result StartRequest(const std::string& url) {
-    return request_->Start(url, {}, target_.request_success_callback(),
+    return request_->Start(kLoggingTag, url, {},
+                           target_.request_success_callback(),
                            target_.request_error_callback());
   }
   void ExpectCreateConnection(const std::string& url) {

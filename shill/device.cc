@@ -1256,25 +1256,20 @@ bool Device::RestartPortalDetection() {
 
 bool Device::RequestPortalDetection() {
   if (!selected_service_) {
-    SLOG(this, 2) << link_name()
-                  << ": No selected service, so no need for portal check.";
+    LOG(INFO) << link_name() << ": Skipping portal detection: no Service";
     return false;
   }
 
   if (!connection_) {
-    SLOG(this, 2) << link_name()
-                  << ": No connection, so no need for portal check.";
+    LOG(INFO) << link_name() << ": Skipping portal detection: no Connection";
     return false;
   }
-
-  SLOG(this, 1) << __func__ << " for: " << selected_service_->log_name();
 
   // Do not run portal detection unless in a connected state (i.e. connected,
   // online, or portalled).
   if (!selected_service_->IsConnected()) {
-    SLOG(this, 3)
-        << link_name()
-        << ": Service is not in a connected state. No need to start check.";
+    LOG(INFO) << link_name()
+              << ": Skipping portal detection: Service is not connected";
     return false;
   }
 
@@ -1285,9 +1280,11 @@ bool Device::RequestPortalDetection() {
   }
 
   if (portal_detector_.get() && portal_detector_->IsInProgress()) {
-    SLOG(this, 2) << link_name() << ": Portal detection is already running.";
+    LOG(INFO) << link_name() << ": Portal detection is already running.";
     return true;
   }
+
+  SLOG(this, 1) << __func__ << " for: " << selected_service_->log_name();
 
   return StartPortalDetection();
 }
@@ -1300,21 +1297,20 @@ bool Device::RequestPortalDetection() {
 bool Device::StartPortalDetection() {
   DCHECK(selected_service_);
   SLOG(this, 1) << __func__ << " for: " << selected_service_->log_name();
+
   if (selected_service_->IsPortalDetectionDisabled()) {
-    SLOG(this, 2) << "Service " << selected_service_->log_name()
-                  << ": Portal detection is disabled; "
-                  << "marking service online.";
+    LOG(INFO) << link_name() << ": Portal detection is disabled for service "
+              << selected_service_->log_name();
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
 
+  // If portal detection is disabled for this technology, immediately set
+  // the service state to "Online".
   if (selected_service_->IsPortalDetectionAuto() &&
       !manager_->IsPortalDetectionEnabled(technology())) {
-    // If portal detection is disabled for this technology, immediately set
-    // the service state to "Online".
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Portal detection is disabled; "
-                  << "marking service online.";
+    LOG(INFO) << link_name()
+              << ": Portal detection is disabled for this technology";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -1326,20 +1322,18 @@ bool Device::StartPortalDetection() {
   if (!portal_detector_->Start(props, connection_->interface_name(),
                                connection_->local(),
                                connection_->dns_servers())) {
-    LOG(ERROR) << "Device " << link_name()
-               << ": Portal detection failed to start: likely bad URL: "
-               << props.http_url_string << " or " << props.https_url_string;
+    LOG(ERROR) << link_name() << ": Portal detection failed to start";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
 
-  SLOG(this, 2) << "Device " << link_name()
-                << ": Portal detection has started.";
+  SLOG(this, 2) << link_name() << ": Portal detection has started.";
+
   return true;
 }
 
 void Device::StopPortalDetection() {
-  SLOG(this, 2) << "Device " << link_name() << ": Portal detection stopping.";
+  SLOG(this, 2) << link_name() << ": Portal detection stopping.";
   portal_detector_.reset();
 }
 
@@ -1352,26 +1346,22 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
       base::Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
           manager_->GetPortalCheckHttpUrl(), result)) {
-    LOG(ERROR) << "Device " << link_name()
-               << ": Connection diagnostics failed to start: likely bad URL: "
-               << manager_->GetPortalCheckHttpUrl();
+    LOG(ERROR) << link_name() << ": Connection diagnostics failed to start.";
     connection_diagnostics_.reset();
     return false;
   }
 
-  SLOG(this, 2) << "Device " << link_name()
-                << ": Connection diagnostics has started.";
+  SLOG(this, 2) << link_name() << ": Connection diagnostics has started.";
   return true;
 }
 
 void Device::StopConnectionDiagnostics() {
-  SLOG(this, 2) << "Device " << link_name()
-                << ": Connection diagnostics stopping.";
+  SLOG(this, 2) << link_name() << ": Connection diagnostics stopping.";
   connection_diagnostics_.reset();
 }
 
 bool Device::StartConnectivityTest() {
-  LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
+  LOG(INFO) << link_name() << " starting connectivity test.";
 
   connection_tester_.reset(new PortalDetector(
       dispatcher(), metrics(),
@@ -1383,7 +1373,7 @@ bool Device::StartConnectivityTest() {
 }
 
 void Device::StopConnectivityTest() {
-  SLOG(this, 2) << "Device " << link_name() << ": Connectivity test stopping.";
+  SLOG(this, 2) << link_name() << ": Connectivity test stopping.";
   connection_tester_.reset();
 }
 
@@ -1412,22 +1402,24 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 
   if (!selected_service_) {
-    LOG(ERROR) << link_name() << ": "
-               << "Portal detection completed but no selected service exists!";
+    // A race can happen if the Service has disconnected in the meantime.
+    LOG(WARNING)
+        << link_name() << ": "
+        << "Portal detection completed but no selected service exists.";
     return;
   }
 
   if (!selected_service_->IsConnected()) {
-    LOG(ERROR) << link_name() << ": "
-               << "Portal detection completed but selected service "
-               << selected_service_->log_name()
-               << " is in non-connected state.";
+    // A race can happen if the Service is currently disconnecting.
+    LOG(WARNING) << link_name() << ": "
+                 << "Portal detection completed but selected service "
+                 << selected_service_->log_name()
+                 << " is in non-connected state.";
     return;
   }
 
-  SLOG(this, 2) << __func__ << " Service: "
-                << GetSelectedServiceRpcIdentifier(nullptr).value()
-                << " State: " << static_cast<int>(state);
+  SLOG(this, 2) << __func__ << " Service: " << selected_service_->log_name()
+                << " State: " << Service::ConnectStateToString(state);
 
   if (Service::IsPortalledState(state) && connection_->IsDefault()) {
     CHECK(portal_detector_.get());
@@ -1436,17 +1428,14 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     if (!portal_detector_->Start(props, connection_->interface_name(),
                                  connection_->local(),
                                  connection_->dns_servers(), next_delay)) {
-      LOG(ERROR) << "Device " << link_name()
-                 << ": Portal detection failed to restart: likely bad URL: "
-                 << props.http_url_string << " or " << props.https_url_string;
+      LOG(ERROR) << link_name() << ": Portal detection failed to restart";
       SetServiceState(Service::kStateOnline);
       StopPortalDetection();
       return;
     }
-    LOG(INFO) << "Device " << link_name() << ": Portal detection retrying in "
-              << next_delay;
+    LOG(INFO) << link_name() << ": Portal detection retrying in " << next_delay;
   } else {
-    SLOG(this, 2) << "Device " << link_name() << ": Portal will not retry.";
+    LOG(INFO) << link_name() << ": Portal detection finished";
     StopPortalDetection();
   }
 

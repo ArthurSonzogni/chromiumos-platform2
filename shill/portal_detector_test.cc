@@ -31,7 +31,6 @@ namespace shill {
 
 namespace {
 const char kBadURL[] = "badurl";
-const char kLoggingTag[] = "int0 IPv4 attempt=1 HTTP probe";
 const char kInterfaceName[] = "int0";
 const char kHttpUrl[] = "http://www.chromium.org";
 const char kHttpsUrl[] = "https://www.google.com";
@@ -48,11 +47,10 @@ class MockHttpRequest : public HttpRequest {
  public:
   MockHttpRequest()
       : HttpRequest(nullptr,
-                    kLoggingTag,
                     kInterfaceName,
                     IPAddress(IPAddress::kFamilyIPv4),
                     {kDNSServer0, kDNSServer1},
-                    true){};
+                    true) {}
   MockHttpRequest(const MockHttpRequest&) = delete;
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;
   ~MockHttpRequest() = default;
@@ -61,6 +59,7 @@ class MockHttpRequest : public HttpRequest {
       HttpRequest::Result,
       Start,
       (const std::string&,
+       const std::string&,
        const brillo::http::HeaderList&,
        const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&,
        const base::Callback<void(Result)>&),
@@ -147,9 +146,9 @@ class PortalDetectorTest : public Test {
   }
 
   void StartTrialTask() {
-    EXPECT_CALL(*http_request(), Start(_, _, _, _))
+    EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
         .WillOnce(Return(HttpRequest::kResultInProgress));
-    EXPECT_CALL(*https_request(), Start(_, _, _, _))
+    EXPECT_CALL(*https_request(), Start(_, _, _, _, _))
         .WillOnce(Return(HttpRequest::kResultInProgress));
     portal_detector()->StartTrialTask();
   }
@@ -255,7 +254,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
   EXPECT_TRUE(StartPortalRequest(props));
 
   // Expect that the request will be started -- return failure.
-  EXPECT_CALL(*http_request(), Start(_, _, _, _))
+  EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
       .WillOnce(Return(HttpRequest::kResultDNSFailure));
 
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);

@@ -47,7 +47,6 @@ class HttpRequest {
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
   HttpRequest(EventDispatcher* dispatcher,
-              const std::string& logging_tag,
               const std::string& interface_name,
               const IPAddress& src_address,
               const std::vector<std::string>& dns_list,
@@ -65,6 +64,7 @@ class HttpRequest {
   // initialize the DNS client, or kResultInProgress if the request
   // has started successfully and is now in progress.
   virtual Result Start(
+      const std::string& logging_tag,
       const std::string& url_string,
       const brillo::http::HeaderList& headers,
       const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&

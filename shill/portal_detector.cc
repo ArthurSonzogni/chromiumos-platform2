@@ -110,15 +110,13 @@ bool PortalDetector::Start(const PortalDetector::Properties& props,
   if (http_request_ || https_request_) {
     CleanupTrial();
   } else {
-    http_request_ =
-        std::make_unique<HttpRequest>(dispatcher_, LoggingTag() + " HTTP probe",
-                                      ifname, src_address, dns_list);
+    http_request_ = std::make_unique<HttpRequest>(dispatcher_, ifname,
+                                                  src_address, dns_list);
     // For non-default URLs, allow for secure communication with both Google and
     // non-Google servers.
     bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
     https_request_ = std::make_unique<HttpRequest>(
-        dispatcher_, LoggingTag() + " HTTPS probe", ifname, src_address,
-        dns_list, allow_non_google_https);
+        dispatcher_, ifname, src_address, dns_list, allow_non_google_https);
   }
   trial_.Reset(base::Bind(&PortalDetector::StartTrialTask,
                           weak_ptr_factory_.GetWeakPtr()));
@@ -142,8 +140,8 @@ void PortalDetector::StartTrialTask() {
       base::Bind(&PortalDetector::HttpRequestErrorCallback,
                  weak_ptr_factory_.GetWeakPtr()));
   HttpRequest::Result http_result = http_request_->Start(
-      http_url_string_, kHeaders, http_request_success_callback,
-      http_request_error_callback);
+      LoggingTag() + " HTTP probe", http_url_string_, kHeaders,
+      http_request_success_callback, http_request_error_callback);
   if (http_result != HttpRequest::kResultInProgress) {
     // If the http probe fails to start, complete the trial with a failure
     // Result for https.
@@ -168,8 +166,8 @@ void PortalDetector::StartTrialTask() {
       base::Bind(&PortalDetector::HttpsRequestErrorCallback,
                  weak_ptr_factory_.GetWeakPtr()));
   HttpRequest::Result https_result = https_request_->Start(
-      https_url_string_, kHeaders, https_request_success_callback,
-      https_request_error_callback);
+      LoggingTag() + " HTTPS probe", https_url_string_, kHeaders,
+      https_request_success_callback, https_request_error_callback);
   if (https_result != HttpRequest::kResultInProgress) {
     result_->https_phase = GetPortalPhaseForRequestResult(https_result);
     result_->https_status = GetPortalStatusForRequestResult(https_result);
