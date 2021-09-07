@@ -9,8 +9,9 @@
 
 #include <base/sequence_checker.h>
 #include <base/timer/timer.h>
-#include <dbus_adaptors/org.chromium.Hps.h>
 #include <hps/hps.h>
+#include <hps/proto_bindings/hps_service.pb.h>
+#include <dbus_adaptors/org.chromium.Hps.h>
 
 namespace hps {
 
@@ -31,15 +32,23 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
   void PollTask();
 
   // Methods for HpsInterface
-  bool EnableFeature(brillo::ErrorPtr* error, uint8_t feature) override;
+  bool EnableHpsSense(brillo::ErrorPtr* error,
+                      const hps::FeatureConfig& config) override;
+  bool DisableHpsSense(brillo::ErrorPtr* error) override;
+  bool GetResultHpsSense(brillo::ErrorPtr* error, bool* result) override;
 
-  bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature) override;
-
-  bool GetFeatureResult(brillo::ErrorPtr* error,
-                        uint8_t feature,
-                        uint16_t* result) override;
+  bool EnableHpsNotify(brillo::ErrorPtr* error,
+                       const hps::FeatureConfig& config) override;
+  bool DisableHpsNotify(brillo::ErrorPtr* error) override;
+  bool GetResultHpsNotify(brillo::ErrorPtr* error, bool* result) override;
 
  private:
+  bool EnableFeature(brillo::ErrorPtr* error,
+                     const hps::FeatureConfig& config,
+                     uint8_t feature);
+  bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature);
+  bool GetFeatureResult(brillo::ErrorPtr* error, bool* result, uint8_t feature);
+
   brillo::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<HPS> hps_;
   const uint32_t poll_time_ms_;

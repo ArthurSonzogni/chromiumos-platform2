@@ -14,27 +14,29 @@
 <node name="/org/chromium/Hps"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Hps">
-    <method name="EnableFeature">
-      <arg name="feature" type="y" direction="in">
+    <method name="EnableHpsSense">
+      <arg name="serialized_proto" direction="in" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="hps::FeatureConfig" />
+      </arg>
+    </method>
+    <method name="DisableHpsSense"></method>
+    <method name="GetResultHpsSense">
+      <arg name="result" type="b" direction="out">
       <tp:docstring>
-        ID of feature to be enabled.
+        Result returned for the requested feature.
       </tp:docstring>
       </arg>
     </method>
-    <method name="DisableFeature">
-      <arg name="feature" type="y" direction="in">
-      <tp:docstring>
-        ID of feature to be disabled.
-      </tp:docstring>
+    <method name="EnableHpsNotify">
+      <arg name="serialized_proto" direction="in" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="hps::FeatureConfig" />
       </arg>
     </method>
-    <method name="GetFeatureResult">
-      <arg name="feature" type="y" direction="in">
-      <tp:docstring>
-        ID of Feature to query for the result.
-      </tp:docstring>
-      </arg>
-      <arg name="result" type="q" direction="out">
+    <method name="DisableHpsNotify"></method>
+    <method name="GetResultHpsNotify">
+      <arg name="result" type="b" direction="out">
       <tp:docstring>
         Result returned for the requested feature.
       </tp:docstring>

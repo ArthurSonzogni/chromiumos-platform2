@@ -68,24 +68,13 @@ class HpsDaemonTest : public testing::Test {
     mock_hps_ = hps.get();
     hps_daemon_.reset(new DBusAdaptor(mock_bus_, std::move(hps), kPollTimeMs));
 
+    feature_config_.set_allocated_basic_filter_config(
+        new FeatureConfig_BasicFilterConfig());
+
     brillo_loop_.SetAsCurrent();
   }
 
  protected:
-  bool CallEnableFeature(brillo::ErrorPtr* error_ptr, uint8_t feature) {
-    return hps_daemon_->EnableFeature(error_ptr, feature);
-  }
-
-  bool CallDisableFeature(brillo::ErrorPtr* error_ptr, uint8_t feature) {
-    return hps_daemon_->DisableFeature(error_ptr, feature);
-  }
-
-  bool CallGetFeatureResult(brillo::ErrorPtr* error_ptr,
-                            uint8_t feature,
-                            uint16_t* result) {
-    return hps_daemon_->GetFeatureResult(error_ptr, feature, result);
-  }
-
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   brillo::BaseMessageLoop brillo_loop_{
@@ -96,13 +85,14 @@ class HpsDaemonTest : public testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   StrictMock<MockHps>* mock_hps_;
   std::unique_ptr<DBusAdaptor> hps_daemon_;
+  FeatureConfig feature_config_;
   static constexpr uint32_t kPollTimeMs = 500;
 };
 
 TEST_F(HpsDaemonTest, EnableFeatureNotReady) {
   EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(false));
   brillo::ErrorPtr error;
-  bool result = CallEnableFeature(&error, 0);
+  bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
   EXPECT_FALSE(result);
   EXPECT_EQ("hpsd: Unable to enable feature", error->GetMessage());
 }
@@ -110,14 +100,14 @@ TEST_F(HpsDaemonTest, EnableFeatureNotReady) {
 TEST_F(HpsDaemonTest, EnableFeatureReady) {
   EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
   brillo::ErrorPtr error;
-  bool result = CallEnableFeature(&error, 0);
+  bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
   EXPECT_TRUE(result);
 }
 
 TEST_F(HpsDaemonTest, DisableFeatureNotReady) {
   EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(false));
   brillo::ErrorPtr error;
-  bool result = CallDisableFeature(&error, 0);
+  bool result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_FALSE(result);
   EXPECT_EQ("hpsd: Unable to disable feature", error->GetMessage());
 }
@@ -125,27 +115,27 @@ TEST_F(HpsDaemonTest, DisableFeatureNotReady) {
 TEST_F(HpsDaemonTest, DisableFeatureReady) {
   EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
   brillo::ErrorPtr error;
-  bool result = CallDisableFeature(&error, 0);
+  bool result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_TRUE(result);
 }
 
 TEST_F(HpsDaemonTest, GetFeatureResultNotReady) {
   brillo::ErrorPtr error;
-  uint16_t result;
+  bool result;
 
   EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(-1));
-  bool call_result = CallGetFeatureResult(&error, 0, &result);
+  bool call_result = hps_daemon_->GetResultHpsSense(&error, &result);
   EXPECT_FALSE(call_result);
   EXPECT_EQ("hpsd: Feature result not available", error->GetMessage());
 }
 
 TEST_F(HpsDaemonTest, GetFeatureResultReady) {
   brillo::ErrorPtr error;
-  uint16_t result;
-  uint16_t expected_result = RFeat::kValid;
+  bool result;
+  bool expected_result = true;
 
   EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(expected_result));
-  bool call_result = CallGetFeatureResult(&error, 0, &result);
+  bool call_result = hps_daemon_->GetResultHpsSense(&error, &result);
   EXPECT_TRUE(call_result);
   EXPECT_EQ(expected_result, result);
 }
@@ -162,7 +152,7 @@ TEST_F(HpsDaemonTest, TestPollTimer) {
   }
 
   brillo::ErrorPtr error;
-  bool result = CallEnableFeature(&error, 0);
+  bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire twice.
@@ -170,7 +160,7 @@ TEST_F(HpsDaemonTest, TestPollTimer) {
       base::TimeDelta::FromMilliseconds(kPollTimeMs * 2));
 
   // Disable the feature, time should no longer fire.
-  result = CallDisableFeature(&error, 0);
+  result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_TRUE(result);
 
   // Poll task should no longer fire if we advance the timer.
@@ -195,9 +185,9 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
   brillo::ErrorPtr error;
 
   // Enable features 0 & 1
-  bool result = CallEnableFeature(&error, 0);
+  bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
   EXPECT_TRUE(result);
-  result = CallEnableFeature(&error, 1);
+  result = hps_daemon_->EnableHpsNotify(&error, feature_config_);
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire.
@@ -205,7 +195,7 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
       base::TimeDelta::FromMilliseconds(kPollTimeMs));
 
   // Disable the feature, timer should no longer fire for feature 0.
-  result = CallDisableFeature(&error, 0);
+  result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire.
@@ -213,7 +203,7 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
       base::TimeDelta::FromMilliseconds(kPollTimeMs));
 
   // Disable the feature, timer should no longer fire for feature 1.
-  result = CallDisableFeature(&error, 1);
+  result = hps_daemon_->DisableHpsNotify(&error);
   EXPECT_TRUE(result);
 
   // Advance time to ensure no more features are firing.

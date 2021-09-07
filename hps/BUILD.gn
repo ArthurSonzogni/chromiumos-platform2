@@ -29,10 +29,17 @@ executable("hpsd") {
     "daemon/hps_daemon.cc",
     "daemon/main.cc",
   ]
+  libs = [ "system_api-hps-protos" ]
+
+  # system_api depends on protobuf (or protobuf-lite). It must appear
+  # before protobuf here or the linker flags won't be in the right
+  # order.
+  # NOSORT
   pkg_deps = [
     "libbrillo",
     "libchrome",
     "system_api",
+    "protobuf-lite",
   ]
   deps = [
     ":fakedev",
@@ -136,10 +143,18 @@ if (use.test) {
       "daemon/hps_daemon.cc",
       "daemon/hps_daemon_test.cc",
     ]
+    libs = [ "system_api-hps-protos" ]
     configs += [ "//common-mk:test" ]
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    # NOSORT
     pkg_deps = [
       "libbrillo",
       "libchrome",
+      "system_api",
+      "protobuf-lite",
     ]
     deps = [
       ":dev",

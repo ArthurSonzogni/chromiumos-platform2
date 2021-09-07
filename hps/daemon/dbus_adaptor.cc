@@ -32,7 +32,7 @@ void DBusAdaptor::RegisterAsync(
 
 void DBusAdaptor::PollTask() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (int feature = 0; feature < kFeatures; ++feature) {
+  for (uint8_t feature = 0; feature < kFeatures; ++feature) {
     if (enabled_features_.test(feature)) {
       int result = this->hps_->Result(feature);
       if (result >= 0) {
@@ -42,8 +42,10 @@ void DBusAdaptor::PollTask() {
   }
 }
 
-bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error,
+                                const hps::FeatureConfig& config,
+                                uint8_t feature) {
+  // TODO(evanbenn) Add the filter factory here
 
   if (!this->hps_->Enable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -63,8 +65,6 @@ bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 }
 
 bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   if (!this->hps_->Disable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to disable feature");
@@ -80,10 +80,8 @@ bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 }
 
 bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
-                                   uint8_t feature,
-                                   uint16_t* result) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+                                   bool* result,
+                                   uint8_t feature) {
   int res = this->hps_->Result(feature);
   if (res < 0) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -94,6 +92,38 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
     *result = res;
     return true;
   }
+}
+
+bool DBusAdaptor::EnableHpsSense(brillo::ErrorPtr* error,
+                                 const hps::FeatureConfig& config) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return EnableFeature(error, config, 0);
+}
+
+bool DBusAdaptor::DisableHpsSense(brillo::ErrorPtr* error) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return DisableFeature(error, 0);
+}
+
+bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error, bool* result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return GetFeatureResult(error, result, 0);
+}
+
+bool DBusAdaptor::EnableHpsNotify(brillo::ErrorPtr* error,
+                                  const hps::FeatureConfig& config) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return EnableFeature(error, config, 1);
+}
+
+bool DBusAdaptor::DisableHpsNotify(brillo::ErrorPtr* error) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return DisableFeature(error, 1);
+}
+
+bool DBusAdaptor::GetResultHpsNotify(brillo::ErrorPtr* error, bool* result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return GetFeatureResult(error, result, 1);
 }
 
 }  // namespace hps

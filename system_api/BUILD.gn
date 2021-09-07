@@ -20,6 +20,8 @@ group("all") {
     ":system_api-dlcservice-protos",
     ":system_api-dlp-protos",
     ":system_api-fusebox-protos",
+    ":system_api-hps-goprotos",
+    ":system_api-hps-protos",
     ":system_api-kerberos-goprotos",
     ":system_api-kerberos-protos",
     ":system_api-login_manager-goprotos",
@@ -490,6 +492,19 @@ proto_library("system_api-dlp-protos") {
   proto_out_dir = "include/dlp/proto_bindings"
   sources = [ "${proto_in_dir}/dlp_service.proto" ]
   standalone = true
+}
+
+proto_library("system_api-hps-protos") {
+  proto_in_dir = "dbus/hps"
+  proto_out_dir = "include/hps/proto_bindings"
+  sources = [ "${proto_in_dir}/hps_service.proto" ]
+  standalone = true
+}
+
+goproto_library("system_api-hps-goprotos") {
+  proto_in_dir = "dbus/hps"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/hps_service.proto" ]
 }
 
 proto_library("system_api-rmad-protos") {
