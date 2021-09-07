@@ -148,8 +148,9 @@ SensorServiceImpl::ScopedSensorServiceImpl SensorServiceImpl::Create(
 }
 
 SensorServiceImpl::~SensorServiceImpl() {
-  for (int i = 0; i < receiver_set_.size(); ++i)
-    SensorMetrics::GetInstance()->SendSensorClientDisconnected();
+  ClearReceiversWithReason(
+      cros::mojom::SensorServiceDisconnectReason::IIOSERVICE_SHUTDOWN,
+      "iioservice is shutting down.");
 }
 
 void SensorServiceImpl::AddReceiver(
@@ -159,6 +160,15 @@ void SensorServiceImpl::AddReceiver(
   receiver_set_.Add(this, std::move(request), ipc_task_runner_);
 
   SensorMetrics::GetInstance()->SendSensorClientConnected();
+}
+
+void SensorServiceImpl::ClearReceiversWithReason(
+    cros::mojom::SensorServiceDisconnectReason reason,
+    const std::string& description) {
+  const size_t n = receiver_set_.size();
+  receiver_set_.ClearWithReason(static_cast<uint32_t>(reason), description);
+  for (size_t i = 0; i < n; ++i)
+    SensorMetrics::GetInstance()->SendSensorClientDisconnected();
 }
 
 void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {

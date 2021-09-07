@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <base/bind.h>
@@ -36,6 +37,10 @@ class SensorServiceImpl : public cros::mojom::SensorService {
 
   virtual void AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorService> request);
+
+  void ClearReceiversWithReason(
+      cros::mojom::SensorServiceDisconnectReason reason,
+      const std::string& description);
 
   void OnDeviceAdded(int iio_device_id);
 

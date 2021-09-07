@@ -96,9 +96,16 @@ void SensorHalServerImpl::SetSensorService() {
 void SensorHalServerImpl::OnSensorHalServerError() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK(receiver_.is_bound());
+  DCHECK(sensor_service_);
 
   LOGF(ERROR) << "Connection to broker lost";
   receiver_.reset();
+
+  // Notify clients of what happened.
+  sensor_service_->ClearReceiversWithReason(
+      cros::mojom::SensorServiceDisconnectReason::CHROME_STOPPED,
+      "Chrome stopped.");
+
   std::move(mojo_on_failure_callback_).Run();
 }
 
