@@ -14,10 +14,6 @@ class Cr50Utils {
   Cr50Utils() = default;
   virtual ~Cr50Utils() = default;
 
-  // Returns true if the RO verification key is triggered on the current boot,
-  // false if the key is not triggered.
-  virtual bool RoVerificationKeyPressed() const = 0;
-
   // Get the RSU challenge code. Return true if successfully get the challenge
   // code, false if failed to get the challenge code.
   virtual bool GetRsuChallengeCode(std::string* challenge_code) const = 0;
@@ -26,14 +22,13 @@ class Cr50Utils {
   // correct, false if the unlock code is rejected.
   virtual bool PerformRsu(const std::string& unlock_code) const = 0;
 
-  // Enable factory mode. Requires HWWP off and not having FWMP.
-  virtual void EnableFactoryMode() const = 0;
+  // Enable factory mode. Return true if the command succeeds, or factory mode
+  // is already enabled, false if fails to enable factory mode (e.g. blocked by
+  // FWMP).
+  virtual bool EnableFactoryMode() const = 0;
 
   // Check if cr50 factory mode is enabled.
   virtual bool IsFactoryModeEnabled() const = 0;
-
-  // Check if device has FWMP.
-  virtual bool HasFwmp() const = 0;
 };
 
 }  // namespace rmad

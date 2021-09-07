@@ -59,7 +59,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(factory_mode_enabled));
     if (factory_mode_toggled) {
       ON_CALL(*mock_cr50_utils, EnableFactoryMode())
-          .WillByDefault(Assign(factory_mode_toggled, true));
+          .WillByDefault(
+              DoAll(Assign(factory_mode_toggled, true), Return(true)));
     }
 
     auto mock_cryptohome_client =

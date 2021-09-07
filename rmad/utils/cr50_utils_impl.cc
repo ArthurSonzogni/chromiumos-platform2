@@ -22,17 +22,7 @@ const std::vector<std::string> kCcdInfoArgv{kGsctoolCmd, "-a", "-I"};
 const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                       "enable"};
 
-constexpr char kTpmManagerClientCmd[] = "tpm_manager_client";
-constexpr char kHasFwmpMatchStr[] = "result: NVRAM_RESULT_SUCCESS";
-const std::vector<std::string> kGetFwmpArgv{
-    kTpmManagerClientCmd, "read_space", "--index=0x100a", "--file=/dev/null"};
-
 }  // namespace
-
-bool Cr50UtilsImpl::RoVerificationKeyPressed() const {
-  // TODO(b/181000999): Send a D-Bus query to tpm_managerd when API is ready.
-  return false;
-}
 
 bool Cr50UtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
   // TODO(chenghan): Check with cr50 team if we can expose a tpm_managerd API
@@ -60,23 +50,17 @@ bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
   return false;
 }
 
-void Cr50UtilsImpl::EnableFactoryMode() const {
-  if (IsFactoryModeEnabled() || HasFwmp()) {
-    return;
+bool Cr50UtilsImpl::EnableFactoryMode() const {
+  if (!IsFactoryModeEnabled()) {
+    return base::GetAppOutput(kEnableFactoryModeArgv, nullptr);
   }
-  base::GetAppOutput(kEnableFactoryModeArgv, nullptr);
+  return true;
 }
 
 bool Cr50UtilsImpl::IsFactoryModeEnabled() const {
   std::string output;
   base::GetAppOutput(kCcdInfoArgv, &output);
   return output.find(kFactoryModeMatchStr) != std::string::npos;
-}
-
-bool Cr50UtilsImpl::HasFwmp() const {
-  std::string output;
-  base::GetAppOutputAndError(kGetFwmpArgv, &output);
-  return output.find(kHasFwmpMatchStr) != std::string::npos;
 }
 
 }  // namespace rmad
