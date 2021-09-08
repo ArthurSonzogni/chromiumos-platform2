@@ -10,7 +10,9 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/util.h"
@@ -27,10 +29,52 @@ void SetupLogging() {
 
 namespace fusebox {
 
+class FuseBoxDaemon : public brillo::DBusServiceDaemon {
+ public:
+  explicit FuseBoxDaemon(FuseMount* fuse)
+      : DBusServiceDaemon(kFuseBoxClientName), fuse_(fuse) {}
+  FuseBoxDaemon(const FuseBoxDaemon&) = delete;
+  FuseBoxDaemon& operator=(const FuseBoxDaemon&) = delete;
+  ~FuseBoxDaemon() {}
+
+ protected:
+  // brillo::DBusServiceDaemon overrides.
+
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+    bus_->AssertOnDBusThread();
+
+    // TODO(noel): register the FuseBoxClient DBUS objects.
+  }
+
+  int OnEventLoopStarted() override {
+    bus_->AssertOnDBusThread();
+
+    int ret = brillo::DBusServiceDaemon::OnEventLoopStarted();
+    if (ret != EX_OK)
+      return ret;
+
+    // TODO(noel): setup and start the FuseBoxClient here.
+    CHECK(fuse_);
+    return EX_OK;
+  }
+
+  void OnShutdown(int* exit_code) override {
+    bus_->AssertOnDBusThread();
+
+    DBusServiceDaemon::OnShutdown(exit_code);
+  }
+
+ private:
+  // Fuse mount: not owned.
+  FuseMount* fuse_ = nullptr;
+};
+
 int Run(char** mountpoint, fuse_chan* chan, fuse_args* args) {
   LOG(INFO) << base::StringPrintf("fusebox %s [%d]", *mountpoint, getpid());
-  FuseMount fuse_mount = FuseMount(mountpoint, chan, args);
-  return 0;
+  FuseMount fuse = FuseMount(mountpoint, chan, args);
+  auto daemon = FuseBoxDaemon(&fuse);
+  return daemon.Run();
 }
 
 }  // namespace fusebox
