@@ -793,6 +793,7 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
             "interfaces", base::Value{base::Value::Type::LIST});
         for (const auto& usb_if_info : usb_info->interfaces) {
           base::Value out_usb_if{base::Value::Type::DICTIONARY};
+          SET_DICT(interface_number, usb_if_info, &out_usb_if);
           SET_DICT(class_id, usb_if_info, &out_usb_if);
           SET_DICT(subclass_id, usb_if_info, &out_usb_if);
           SET_DICT(protocol_id, usb_if_info, &out_usb_if);
