@@ -1241,6 +1241,11 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
     arc_generate_pai = false;
   LOG(INFO) << "arc_generate_pai is " << arc_generate_pai;
 
+  const int enable_notifications_refresh =
+      config_.GetIntOrDie("ENABLE_NOTIFICATIONS_REFRESH");
+  LOG(INFO) << "enable_notifications_refresh is "
+            << enable_notifications_refresh;
+
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
     case ArcBinaryTranslationType::NONE:
@@ -1297,7 +1302,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "%s" /* PAI Generation */
       "androidboot.boottime_offset=%" PRId64
       " " /* in nanoseconds */
-      "androidboot.iioservice_present=%d\n",
+      "androidboot.iioservice_present=%d "
+      "androidboot.enable_notifications_refresh=%d\n",
       is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       chromeos_channel.c_str(),
@@ -1307,7 +1313,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetDisableDownloadProvider(disable_download_provider).c_str(),
       disable_system_default_app, GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
-      USE_IIOSERVICE);
+      USE_IIOSERVICE, enable_notifications_refresh);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }

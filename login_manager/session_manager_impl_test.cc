@@ -533,6 +533,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    StartArcInstanceExpectationsBuilder& SetEnableNotificationRefresh(bool v) {
+      enable_notification_refresh_ = v;
+      return *this;
+    }
+
     StartArcInstanceExpectationsBuilder& SetArcGeneratePai(bool v) {
       arc_generate_pai_ = v;
       return *this;
@@ -572,6 +577,8 @@ class SessionManagerImplTest : public ::testing::Test,
           "DISABLE_DOWNLOAD_PROVIDER=" +
               std::to_string(disable_download_provider_),
           "DISABLE_UREADAHEAD=" + std::to_string(disable_ureadahead_),
+          "ENABLE_NOTIFICATIONS_REFRESH=" +
+              std::to_string(enable_notification_refresh_),
       });
 
       if (arc_generate_pai_)
@@ -624,6 +631,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool disable_media_store_maintenance_ = false;
     bool disable_download_provider_ = false;
     bool disable_ureadahead_ = false;
+    bool enable_notification_refresh_ = false;
     bool arc_generate_pai_ = false;
     StartArcMiniContainerRequest_PlayStoreAutoUpdate play_store_auto_update_ =
         StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT;
@@ -2727,6 +2735,25 @@ TEST_F(SessionManagerImplTest, DisableUreadahead) {
               TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
                              StartArcInstanceExpectationsBuilder()
                                  .SetDisableUreadahead(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
+}
+
+TEST_F(SessionManagerImplTest, EnableNotificationRefresh) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  StartArcMiniContainerRequest request;
+  request.set_enable_notifications_refresh(true);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetEnableNotificationRefresh(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));

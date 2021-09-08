@@ -1343,8 +1343,10 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          request.disable_media_store_maintenance()),
       base::StringPrintf("DISABLE_DOWNLOAD_PROVIDER=%d",
                          request.disable_download_provider()),
-      base::StringPrintf("DISABLE_UREADAHEAD=%d",
-                         request.disable_ureadahead())};
+      base::StringPrintf("DISABLE_UREADAHEAD=%d", request.disable_ureadahead()),
+      base::StringPrintf("ENABLE_NOTIFICATIONS_REFRESH=%d",
+                         request.enable_notifications_refresh()),
+  };
 
   if (request.arc_generate_pai())
     env_vars.push_back("ARC_GENERATE_PAI=1");
