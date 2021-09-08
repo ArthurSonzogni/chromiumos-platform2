@@ -66,7 +66,7 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
   // Add a fake port that supports only DP.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -97,7 +97,7 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
   port_manager->ports_.erase(0);
   port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -128,7 +128,7 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
   port_manager->ports_.erase(0);
   port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -177,7 +177,7 @@ TEST_F(PortManagerTest, ModeSwitchUnlockDPandTBT) {
   // Add a fake port that supports both TBT & DP.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -222,7 +222,7 @@ TEST_F(PortManagerTest, ModeSwitchUnlockUSB4) {
   // Add a fake port that supports only USB4.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -275,7 +275,7 @@ TEST_F(PortManagerTest, ModeSwitchSessionStoppedDPandTBT) {
   // Add a fake port that supports both TBT & DP.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -320,7 +320,7 @@ TEST_F(PortManagerTest, ModeSwitchSessionStoppedTBT) {
   // Add a fake port that supports only TBT.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -373,7 +373,7 @@ TEST_F(PortManagerTest, ModeSwitchUnlockDPAndTBTNoPeripheralAccess) {
   // Add a fake port that supports TBT & DP.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -436,7 +436,7 @@ TEST_F(PortManagerTest, ModeSwitchDPandTBTPeripheralDataAccessChanging) {
   // Add a fake port that supports both TBT & DP.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -501,7 +501,7 @@ TEST_F(PortManagerTest,
   // Add a fake port that supports both TBT & DP.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())
@@ -563,7 +563,7 @@ TEST_F(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging) {
   // Add a fake port that supports only TBT.
   auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
   EXPECT_CALL(*port, GetDataRole())
-      .WillRepeatedly(testing::Return(std::string("host")));
+      .WillRepeatedly(testing::Return(DataRole::kHost));
   EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
       .WillRepeatedly(testing::Return(true));
   EXPECT_CALL(*port, IsCableDiscoveryComplete())

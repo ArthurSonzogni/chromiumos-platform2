@@ -25,6 +25,20 @@ enum class ModeEntryResult {
   kPartnerError = 2,
 };
 
+// Possible data roles for the port.
+enum class DataRole {
+  kNone = 0,
+  kDevice = 1,
+  kHost = 2,
+};
+
+// Possible power roles for the port.
+enum class PowerRole {
+  kNone = 0,
+  kSink = 1,
+  kSource = 2,
+};
+
 // This class is used to represent a Type C Port. It can be used to access PD
 // state associated with the port, and will also contain handles to the object
 // representing a peripheral (i.e "Partner") if one is connected to the port.
@@ -60,12 +74,10 @@ class Port {
   bool GetActiveStateOnModeEntry() { return user_active_on_mode_entry_; }
 
   // Returns the current data role for the port.
-  // Returns either "host" or "device" on success, empty string on failure.
-  virtual std::string GetDataRole();
+  virtual DataRole GetDataRole();
 
   // Returns the current power role for the port.
-  // Returns either "source" or "sink" on success, empty string on failure.
-  virtual std::string GetPowerRole();
+  virtual PowerRole GetPowerRole();
 
   // Check whether we can enter DP Alt Mode. This should check for the presence
   // of required attributes on the Partner and (if applicable) Cable.
@@ -145,8 +157,8 @@ class Port {
   // Field which tracks whether port metrics have been reported. This
   // prevents duplicate reporting.
   bool metrics_reported_;
-  std::string data_role_;
-  std::string power_role_;
+  DataRole data_role_;
+  PowerRole power_role_;
 };
 
 }  // namespace typecd

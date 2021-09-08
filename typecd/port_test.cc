@@ -65,31 +65,31 @@ TEST_F(PortTest, TestGetDataRole) {
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
   ASSERT_NE(nullptr, port);
 
-  EXPECT_EQ("device", port->GetDataRole());
+  EXPECT_EQ(DataRole::kDevice, port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(data_role_path, kValidDataRole2,
                               strlen(kValidDataRole2)));
   // Fake a port changed event.
   port->PortChanged();
-  EXPECT_EQ("host", port->GetDataRole());
+  EXPECT_EQ(DataRole::kHost, port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kValidDataRole3,
                               strlen(kValidDataRole3)));
   // Fake a port changed event.
   port->PortChanged();
-  EXPECT_EQ("device", port->GetDataRole());
+  EXPECT_EQ(DataRole::kDevice, port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kInvalidDataRole1,
                               strlen(kInvalidDataRole1)));
   // Fake a port changed event.
   port->PortChanged();
-  EXPECT_EQ("", port->GetDataRole());
+  EXPECT_EQ(DataRole::kNone, port->GetDataRole());
 
   ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kInvalidDataRole2,
                               strlen(kInvalidDataRole2)));
   // Fake a port changed event.
   port->PortChanged();
-  EXPECT_EQ("", port->GetDataRole());
+  EXPECT_EQ(DataRole::kNone, port->GetDataRole());
 }
 
 // Check GetPowerRole() for various sysfs values.
@@ -106,19 +106,19 @@ TEST_F(PortTest, TestGetPowerRole) {
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
   ASSERT_NE(nullptr, port);
 
-  EXPECT_EQ("source", port->GetPowerRole());
+  EXPECT_EQ(PowerRole::kSource, port->GetPowerRole());
 
   ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole2,
                               strlen(kValidPowerRole2)));
   // Fake a port changed event.
   port->PortChanged();
-  EXPECT_EQ("sink", port->GetPowerRole());
+  EXPECT_EQ(PowerRole::kSink, port->GetPowerRole());
 
   ASSERT_TRUE(base::WriteFile(data_role_path, kInvalidPowerRole1,
                               strlen(kInvalidPowerRole1)));
   // Fake a port changed event.
   port->PortChanged();
-  EXPECT_EQ("", port->GetPowerRole());
+  EXPECT_EQ(PowerRole::kNone, port->GetPowerRole());
 }
 
 // Check that DP Alt Mode Entry checks work as expected for a true case:

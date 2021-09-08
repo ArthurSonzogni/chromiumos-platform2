@@ -25,8 +25,8 @@ Port::Port(const base::FilePath& syspath, int port_num)
       user_active_on_mode_entry_(false),
       current_mode_(TypeCMode::kNone),
       metrics_reported_(false),
-      data_role_(""),
-      power_role_("") {
+      data_role_(DataRole::kNone),
+      power_role_(PowerRole::kNone) {
   PortChanged();
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
 }
@@ -128,11 +128,11 @@ void Port::PortChanged() {
   ParsePowerRole();
 }
 
-std::string Port::GetDataRole() {
+DataRole Port::GetDataRole() {
   return data_role_;
 }
 
-std::string Port::GetPowerRole() {
+PowerRole Port::GetPowerRole() {
   return power_role_;
 }
 
@@ -308,7 +308,8 @@ bool Port::IsCableDiscoveryComplete() {
 }
 
 void Port::ParseDataRole() {
-  std::string role;
+  DataRole role = DataRole::kNone;
+  std::string role_str;
   std::string sysfs_str;
   auto path = syspath_.Append("data_role");
 
@@ -319,26 +320,28 @@ void Port::ParseDataRole() {
 
   // First check for a dual role port, in which case the current role is in
   // box-brackets. For example: [host] device
-  if (!RE2::PartialMatch(sysfs_str, kDualRoleRegex, &role)) {
+  if (!RE2::PartialMatch(sysfs_str, kDualRoleRegex, &role_str)) {
     LOG(INFO)
         << "Couldn't determine role, assuming DRP(Dual Role Port) for port "
         << port_num_;
   }
 
-  if (role == "")
-    role = sysfs_str;
+  if (role_str == "")
+    role_str = sysfs_str;
 
-  base::TrimWhitespaceASCII(role, base::TRIM_ALL, &role);
-
-  if (role != "host" && role != "device")
-    role = "";
+  base::TrimWhitespaceASCII(role_str, base::TRIM_ALL, &role_str);
+  if (role_str == "host")
+    role = DataRole::kHost;
+  else if (role_str == "device")
+    role = DataRole::kDevice;
 
 end:
   data_role_ = role;
 }
 
 void Port::ParsePowerRole() {
-  std::string role;
+  PowerRole role = PowerRole::kNone;
+  std::string role_str;
   std::string sysfs_str;
   auto path = syspath_.Append("power_role");
 
@@ -349,19 +352,20 @@ void Port::ParsePowerRole() {
 
   // First check for a dual role port, in which case the current role is in
   // box-brackets. For example: [source] sink
-  if (!RE2::PartialMatch(sysfs_str, kDualRoleRegex, &role)) {
+  if (!RE2::PartialMatch(sysfs_str, kDualRoleRegex, &role_str)) {
     LOG(INFO)
         << "Couldn't determine role, assuming DRP(Dual Role Port) for port "
         << port_num_;
   }
 
-  if (role == "")
-    role = sysfs_str;
+  if (role_str == "")
+    role_str = sysfs_str;
 
-  base::TrimWhitespaceASCII(role, base::TRIM_ALL, &role);
-
-  if (role != "source" && role != "sink")
-    role = "";
+  base::TrimWhitespaceASCII(role_str, base::TRIM_ALL, &role_str);
+  if (role_str == "source")
+    role = PowerRole::kSource;
+  else if (role_str == "sink")
+    role = PowerRole::kSink;
 
 end:
   power_role_ = role;

@@ -19,7 +19,7 @@ class MockPort : public Port {
  public:
   MockPort(base::FilePath path, int port_num) : Port(path, port_num) {}
 
-  MOCK_METHOD(std::string, GetDataRole, (), (override));
+  MOCK_METHOD(DataRole, GetDataRole, (), (override));
   MOCK_METHOD(bool, CanEnterDPAltMode, (), (override));
   MOCK_METHOD(ModeEntryResult, CanEnterTBTCompatibilityMode, (), (override));
   MOCK_METHOD(ModeEntryResult, CanEnterUSB4, (), (override));
