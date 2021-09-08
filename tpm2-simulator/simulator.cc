@@ -141,8 +141,7 @@ void SimulatorDaemon::OnCommand() {
     std::string response = tpm_executor_->RunCommand(request);
 
     // Write response.
-    if (!base::WriteFileDescriptor(command_fd_.get(), response.c_str(),
-                                   response.size())) {
+    if (!base::WriteFileDescriptor(command_fd_.get(), response)) {
       PLOG(ERROR) << "WriteFileDescriptor failed.";
     }
   } while (!remain_request_.empty());
