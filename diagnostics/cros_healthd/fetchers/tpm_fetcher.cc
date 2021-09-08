@@ -105,9 +105,42 @@ void TpmFetcher::HandleStatus(
   CheckAndSendInfo();
 }
 
+void TpmFetcher::FetchDictionaryAttack() {
+  tpm_manager::GetDictionaryAttackInfoRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
+      &TpmFetcher::HandleDictionaryAttack, weak_factory_.GetWeakPtr()));
+  context_->tpm_manager_proxy()->GetDictionaryAttackInfoAsync(
+      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
+}
+
+void TpmFetcher::HandleDictionaryAttack(
+    brillo::Error* err,
+    const tpm_manager::GetDictionaryAttackInfoReply& reply) {
+  DCHECK(info_);
+  if (err) {
+    SendError("Failed to call TpmManager::GetDictionaryAttackInfo(): " +
+              err->GetMessage());
+    return;
+  }
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    SendError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
+              std::to_string(reply.status()));
+    return;
+  }
+
+  auto da = mojo_ipc::TpmDictionaryAttack::New();
+  da->counter = reply.dictionary_attack_counter();
+  da->threshold = reply.dictionary_attack_threshold();
+  da->lockout_in_effect = reply.dictionary_attack_lockout_in_effect();
+  da->lockout_seconds_remaining =
+      reply.dictionary_attack_lockout_seconds_remaining();
+  info_->dictionary_attack = std::move(da);
+  CheckAndSendInfo();
+}
+
 void TpmFetcher::CheckAndSendInfo() {
   DCHECK(info_);
-  if (!info_->version || !info_->status) {
+  if (!info_->version || !info_->status || !info_->dictionary_attack) {
     return;
   }
   SendResult(mojo_ipc::TpmResult::NewTpmInfo(std::move(info_)));
@@ -141,6 +174,7 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
   info_ = mojo_ipc::TpmInfo::New();
   FetchVersion();
   FetchStatus();
+  FetchDictionaryAttack();
 }
 
 }  // namespace diagnostics

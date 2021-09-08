@@ -791,6 +791,8 @@ struct TpmInfo {
   TpmVersion version;
   // TPM status related information.
   TpmStatus status;
+  // TPM dictionary attack (DA) related information.
+  TpmDictionaryAttack dictionary_attack;
 };
 
 // The version of Google security chip(GSC).
@@ -832,6 +834,18 @@ struct TpmStatus {
   bool owned;
   // Whether the owner password is still retained.
   bool owner_password_is_present;
+};
+
+// TPM dictionary attack (DA) related information.
+struct TpmDictionaryAttack {
+  // The current dictionary attack counter value.
+  uint32 counter;
+  // The current dictionary attack counter threshold.
+  uint32 threshold;
+  // Whether the TPM is in some form of dictionary attack lockout.
+  bool lockout_in_effect;
+  // The number of seconds remaining in the lockout.
+  uint32 lockout_seconds_remaining;
 };
 
 // A collection of all the device's telemetry information that cros_healthd is
