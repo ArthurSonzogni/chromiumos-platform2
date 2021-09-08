@@ -52,10 +52,20 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
+  if (state.repair_complete().shutdown() ==
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN) {
+    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
+            .state_case = GetStateCase()};
+  }
+
+  // Clear the state file.
+  if (!json_store_->ClearAndDeleteFile()) {
+    LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
+    return {.error = RMAD_ERROR_TRANSITION_FAILED,
+            .state_case = GetStateCase()};
+  }
+
   switch (state.repair_complete().shutdown()) {
-    case RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN:
-      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-              .state_case = GetStateCase()};
     case RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT:
       // Wait for a while before reboot.
       timer_.Start(FROM_HERE, kShutdownDelay, this,

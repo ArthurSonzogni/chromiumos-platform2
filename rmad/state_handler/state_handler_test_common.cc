@@ -18,8 +18,7 @@ constexpr char kTestJsonStoreFileName[] = "test_json_store_file";
 constexpr char kTestEmptyJsonStore[] = "{}";
 
 scoped_refptr<JsonStore> CreateTestEmptyJsonStore(
-    const base::FilePath& dir_path) {
-  base::FilePath file_path = dir_path.AppendASCII(kTestJsonStoreFileName);
+    const base::FilePath& file_path) {
   base::WriteFile(file_path, kTestEmptyJsonStore,
                   std::size(kTestEmptyJsonStore) - 1);
   return base::MakeRefCounted<JsonStore>(file_path);
@@ -29,7 +28,8 @@ scoped_refptr<JsonStore> CreateTestEmptyJsonStore(
 
 void StateHandlerTest::SetUp() {
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  json_store_ = CreateTestEmptyJsonStore(temp_dir_.GetPath());
+  file_path_ = temp_dir_.GetPath().AppendASCII(kTestJsonStoreFileName);
+  json_store_ = CreateTestEmptyJsonStore(file_path_);
 }
 
 }  // namespace rmad

@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -79,12 +80,18 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Reboot) {
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
   EXPECT_FALSE(cutoff_requested);
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
 
   // Reboot is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -105,12 +112,18 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Shutdown) {
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
   EXPECT_FALSE(cutoff_requested);
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
 
   // Shutdown is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -131,12 +144,18 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
   EXPECT_FALSE(cutoff_requested);
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
 
   // Cutoff and reboot are called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -152,9 +171,15 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
   // No RepairCompleteState.
   RmadState state;
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+
+  // Check that the state file still exists.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
@@ -167,9 +192,15 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+
+  // Check that the state file still exists.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
 }  // namespace rmad

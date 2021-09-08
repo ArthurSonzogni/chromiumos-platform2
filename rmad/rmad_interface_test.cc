@@ -468,10 +468,16 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
       json_store, CreateStateHandlerManager(json_store),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(json_store_file_path));
+
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
   rmad_interface.AbortRma(base::BindRepeating(callback));
+
+  // Check the the state file is cleared.
+  EXPECT_FALSE(base::PathExists(json_store_file_path));
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
@@ -483,10 +489,16 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
       json_store, CreateStateHandlerManager(json_store),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(json_store_file_path));
+
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
   rmad_interface.AbortRma(base::BindRepeating(callback));
+
+  // Check the the state file is cleared.
+  EXPECT_FALSE(base::PathExists(json_store_file_path));
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
@@ -498,10 +510,16 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
       json_store, CreateStateHandlerManager(json_store),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(json_store_file_path));
+
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
   };
   rmad_interface.AbortRma(base::BindRepeating(callback));
+
+  // Check the the state file still exists.
+  EXPECT_TRUE(base::PathExists(json_store_file_path));
 }
 
 }  // namespace rmad
