@@ -8,6 +8,8 @@
 
 #include <utility>
 
+#include <GLES3/gl31.h>
+
 #include "cros-camera/common.h"
 #include "gpu/gles/utils.h"
 
@@ -57,6 +59,8 @@ Texture2D::Texture2D(Target target, const EglImage& egl_image)
     Invalidate();
     return;
   }
+  glGetTexLevelParameteriv(target_, 0, GL_TEXTURE_INTERNAL_FORMAT,
+                           reinterpret_cast<GLint*>(&internal_format_));
   Unbind();
 }
 
@@ -64,7 +68,10 @@ Texture2D::Texture2D(GLenum internal_format,
                      int width,
                      int height,
                      int mipmap_levels)
-    : target_(GL_TEXTURE_2D), width_(width), height_(height) {
+    : target_(GL_TEXTURE_2D),
+      internal_format_(internal_format),
+      width_(width),
+      height_(height) {
   glGenTextures(1, &id_);
   GLenum result = glGetError();
   if (result != GL_NO_ERROR) {
@@ -93,11 +100,13 @@ Texture2D& Texture2D::operator=(Texture2D&& other) {
     Invalidate();
     target_ = other.target_;
     id_ = other.id_;
+    internal_format_ = other.internal_format_;
     width_ = other.width_;
     height_ = other.height_;
 
     other.target_ = 0;
     other.id_ = 0;
+    other.internal_format_ = GL_NONE;
     other.width_ = 0;
     other.height_ = 0;
   }

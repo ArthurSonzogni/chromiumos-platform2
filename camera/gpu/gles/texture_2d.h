@@ -55,6 +55,8 @@ class Texture2D {
   // Unbinds the texture from the target specified in the constructor.
   void Unbind() const;
 
+  // The GL internal format of the texture.
+  GLenum internal_format() const { return internal_format_; }
   // The texel width of the texture.
   int width() const { return width_; }
   // The texel height of the texture.
@@ -67,6 +69,7 @@ class Texture2D {
 
   GLenum target_ = 0;
   GLuint id_ = 0;
+  GLenum internal_format_ = GL_NONE;
   int width_ = 0;
   int height_ = 0;
 };
