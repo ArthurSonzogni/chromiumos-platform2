@@ -33,7 +33,8 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
 
   state_ = state;
 
-  // TODO(chenghan): This is currently fake.
+  // TODO(chenghan): This is currently fake. We should transition to
+  //                 RepairCompleteState after a powerwash.
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::STATE_NOT_SET};
 }

@@ -14,6 +14,7 @@
 #include "rmad/state_handler/device_destination_state_handler.h"
 #include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/provision_device_state_handler.h"
+#include "rmad/state_handler/repair_complete_state_handler.h"
 #include "rmad/state_handler/restock_state_handler.h"
 #include "rmad/state_handler/run_calibration_state_handler.h"
 #include "rmad/state_handler/setup_calibration_state_handler.h"
@@ -78,6 +79,8 @@ void StateHandlerManager::RegisterStateHandlers() {
       base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
           json_store_));
   RegisterStateHandler(base::MakeRefCounted<FinalizeStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<RepairCompleteStateHandler>(json_store_));
 }
 
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
