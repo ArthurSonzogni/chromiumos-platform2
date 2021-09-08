@@ -789,6 +789,8 @@ union TpmResult {
 struct TpmInfo {
   // TPM version related information.
   TpmVersion version;
+  // TPM status related information.
+  TpmStatus status;
 };
 
 // The version of Google security chip(GSC).
@@ -820,6 +822,16 @@ struct TpmVersion {
   uint64 firmware_version;
   // Vendor specific information.
   string? vendor_specific;
+};
+
+// TPM status related information.
+struct TpmStatus {
+  // Whether a TPM is enabled on the system.
+  bool enabled;
+  // Whether the TPM has been owned.
+  bool owned;
+  // Whether the owner password is still retained.
+  bool owner_password_is_present;
 };
 
 // A collection of all the device's telemetry information that cros_healthd is

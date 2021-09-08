@@ -75,9 +75,39 @@ void TpmFetcher::HandleVersion(brillo::Error* err,
   CheckAndSendInfo();
 }
 
+void TpmFetcher::FetchStatus() {
+  tpm_manager::GetTpmNonsensitiveStatusRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&TpmFetcher::HandleStatus, weak_factory_.GetWeakPtr()));
+  context_->tpm_manager_proxy()->GetTpmNonsensitiveStatusAsync(
+      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
+}
+
+void TpmFetcher::HandleStatus(
+    brillo::Error* err,
+    const tpm_manager::GetTpmNonsensitiveStatusReply& reply) {
+  DCHECK(info_);
+  if (err) {
+    SendError("Failed to call TpmManager::GetTpmNonsensitiveStatus(): " +
+              err->GetMessage());
+    return;
+  }
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    SendError("TpmManager::GetTpmNonsensitiveStatus() returned error status: " +
+              std::to_string(reply.status()));
+    return;
+  }
+  auto status = mojo_ipc::TpmStatus::New();
+  status->enabled = reply.is_enabled();
+  status->owned = reply.is_owned();
+  status->owner_password_is_present = reply.is_owner_password_present();
+  info_->status = std::move(status);
+  CheckAndSendInfo();
+}
+
 void TpmFetcher::CheckAndSendInfo() {
   DCHECK(info_);
-  if (!info_->version) {
+  if (!info_->version || !info_->status) {
     return;
   }
   SendResult(mojo_ipc::TpmResult::NewTpmInfo(std::move(info_)));
@@ -110,6 +140,7 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
 
   info_ = mojo_ipc::TpmInfo::New();
   FetchVersion();
+  FetchStatus();
 }
 
 }  // namespace diagnostics
