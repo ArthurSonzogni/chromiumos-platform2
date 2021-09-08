@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/time/time.h>
@@ -138,9 +139,38 @@ void TpmFetcher::HandleDictionaryAttack(
   CheckAndSendInfo();
 }
 
+void TpmFetcher::FetchAttestation() {
+  attestation::GetStatusRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
+      &TpmFetcher::HandleAttestation, weak_factory_.GetWeakPtr()));
+  context_->attestation_proxy()->GetStatusAsync(
+      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
+}
+
+void TpmFetcher::HandleAttestation(brillo::Error* err,
+                                   const attestation::GetStatusReply& reply) {
+  DCHECK(info_);
+  if (err) {
+    SendError("Failed to call Attestation::GetStatus(): " + err->GetMessage());
+    return;
+  }
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    SendError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
+              std::to_string(reply.status()));
+    return;
+  }
+
+  auto data = mojo_ipc::TpmAttestation::New();
+  data->prepared_for_enrollment = reply.prepared_for_enrollment();
+  data->enrolled = reply.enrolled();
+  info_->attestation = std::move(data);
+  CheckAndSendInfo();
+}
+
 void TpmFetcher::CheckAndSendInfo() {
   DCHECK(info_);
-  if (!info_->version || !info_->status || !info_->dictionary_attack) {
+  if (!info_->version || !info_->status || !info_->dictionary_attack ||
+      !info_->attestation) {
     return;
   }
   SendResult(mojo_ipc::TpmResult::NewTpmInfo(std::move(info_)));
@@ -175,6 +205,7 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
   FetchVersion();
   FetchStatus();
   FetchDictionaryAttack();
+  FetchAttestation();
 }
 
 }  // namespace diagnostics

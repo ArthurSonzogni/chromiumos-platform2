@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -38,6 +39,9 @@ class TpmFetcher final : public BaseFetcher {
   void HandleDictionaryAttack(
       brillo::Error* err,
       const tpm_manager::GetDictionaryAttackInfoReply& reply);
+  void FetchAttestation();
+  void HandleAttestation(brillo::Error* err,
+                         const attestation::GetStatusReply& reply);
   void CheckAndSendInfo();
   void SendError(const std::string& message);
   void SendResult(chromeos::cros_healthd::mojom::TpmResultPtr result);
