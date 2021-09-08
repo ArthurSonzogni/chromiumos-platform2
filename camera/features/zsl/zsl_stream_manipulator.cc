@@ -55,6 +55,9 @@ bool ZslStreamManipulator::OnConfiguredStreams(
 
 bool ZslStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
+  if (!zsl_enabled_) {
+    return true;
+  }
   uint8_t zsl_enable = ANDROID_CONTROL_ENABLE_ZSL_TRUE;
   if (default_request_settings->update(ANDROID_CONTROL_ENABLE_ZSL, &zsl_enable,
                                        1) != 0) {
