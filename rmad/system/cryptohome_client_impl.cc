@@ -58,7 +58,7 @@ bool CryptohomeClientImpl::GetFwmp(uint32_t* flags) {
     return false;
   }
 
-  VLOG(1) << "Get FWMP flags: " << flags;
+  VLOG(1) << "Get FWMP flags: " << reply.fwmp().flags();
   if (flags) {
     *flags = reply.fwmp().flags();
   }

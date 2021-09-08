@@ -7,8 +7,6 @@
 
 #include "rmad/system/cryptohome_client.h"
 
-#include <cstdint>
-
 #include <gmock/gmock.h>
 
 namespace rmad {
