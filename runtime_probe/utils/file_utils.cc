@@ -7,6 +7,7 @@
 #include <tuple>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -26,7 +27,7 @@ using std::vector;
 namespace {
 
 constexpr int kReadFileMaxSize = 1024;
-constexpr int kGlobFileCountLimit = 512;
+constexpr int kGlobIterateCountLimit = 32768;
 
 // Get string to be used as key name in |MapFilesToDict|.
 const string& GetKeyName(const string& key) {
@@ -89,7 +90,12 @@ bool HasPathWildcard(const string& path) {
 std::vector<base::FilePath> GlobInternal(
     const base::FilePath& root,
     const std::vector<std::string>& patterns,
-    int idx) {
+    int idx,
+    int* iterate_counter) {
+  DCHECK(iterate_counter);
+  if (++(*iterate_counter) >= kGlobIterateCountLimit)
+    return {};
+
   if (idx == patterns.size()) {
     if (PathExists(root))
       return {root};
@@ -97,7 +103,8 @@ std::vector<base::FilePath> GlobInternal(
   }
   const auto& pattern = patterns[idx];
   if (!HasPathWildcard(pattern)) {
-    return GlobInternal(root.Append(pattern), patterns, idx + 1);
+    return GlobInternal(root.Append(pattern), patterns, idx + 1,
+                        iterate_counter);
   }
   std::vector<base::FilePath> res;
   base::FileEnumerator it(root, false,
@@ -106,11 +113,8 @@ std::vector<base::FilePath> GlobInternal(
                               base::FileEnumerator::DIRECTORIES,
                           pattern);
   for (auto path = it.Next(); !path.empty(); path = it.Next()) {
-    auto sub_res = GlobInternal(path, patterns, idx + 1);
+    auto sub_res = GlobInternal(path, patterns, idx + 1, iterate_counter);
     std::move(sub_res.begin(), sub_res.end(), std::back_inserter(res));
-    // Early return if the file count exceeds the limit.
-    if (res.size() > kGlobFileCountLimit)
-      return res;
   }
   return res;
 }
@@ -152,11 +156,13 @@ template base::Optional<Value> MapFilesToDict<pair<string, string>>(
 std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
   std::vector<std::string> components;
   pattern.GetComponents(&components);
-  auto res = GlobInternal(base::FilePath(components[0]), components, 1);
-  if (res.size() > kGlobFileCountLimit) {
-    LOG(ERROR) << "Glob file count reached the limit " << kGlobFileCountLimit
+  int iterate_counter = 0;
+  auto res = GlobInternal(base::FilePath(components[0]), components, 1,
+                          &iterate_counter);
+  if (iterate_counter > kGlobIterateCountLimit) {
+    LOG(ERROR) << "Glob iterate count reached the limit "
+               << kGlobIterateCountLimit
                << " with the input: " << pattern.value();
-    res.resize(kGlobFileCountLimit);
   }
   return res;
 }
