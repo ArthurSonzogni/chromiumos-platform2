@@ -27,6 +27,23 @@ enum class EcCmdVersionSupportStatus {
   UNSUPPORTED = 2,
 };
 
+// Upper bound of the host command packet transfer size. Although the EC can
+// request a smaller transfer size, this value should never be smaller than
+// the largest size the EC can transfer; this value is used to create buffers
+// to hold the data to be transferred to and from the EC.
+//
+// The standard transfer size for v3 commands is is big enough to handle a
+// request/response header, flash write offset/size, and 512 bytes of flash
+// data:
+//   sizeof(ec_host_request):          8
+//   sizeof(ec_params_flash_write):    8
+//   payload                         512
+//                                 = 544 (0x220)
+// See
+// https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform/ec/+/f3ffccd7d0fe4d0ce60434310795a7bfdaa5274c:chip/stm32/spi.c;l=82;drc=dede4e01ae4c877bb05d671087a6e85a29a0f902
+// https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform/ec/+/f3ffccd7d0fe4d0ce60434310795a7bfdaa5274c:chip/npcx/shi.c;l=118;drc=2a5ce905c11807a19035f7a072489df04be4db97
+constexpr static int kMaxPacketSize = 544;
+
 // Empty request or response for the EcCommand template below.
 struct EmptyParam {};
 // empty struct is one byte in C++, get the size we want instead.

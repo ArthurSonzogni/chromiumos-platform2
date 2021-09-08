@@ -16,8 +16,6 @@
 
 namespace ec {
 
-// Upper bound of the host command packet transfer size.
-constexpr static int kMaxPacketSize = 544;
 using FpFramePacket = std::array<uint8_t, kMaxPacketSize>;
 
 class BRILLO_EXPORT FpFrameCommand
