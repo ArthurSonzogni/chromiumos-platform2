@@ -464,7 +464,7 @@ usage ()
   echo "        [ --vht-width <80|160> ] "
   echo "        [ --monitor-connection-on <monitored_device> ] "
   echo "        [ --help ]"
-  echo "        --output-file <pcap_output_file>"
+  echo "        --output-file <output_file - do not use except internal calls>"
   echo
   echo "Where <device> can be one of:"
   local device
