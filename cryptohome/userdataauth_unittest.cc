@@ -2917,7 +2917,7 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionFail) {
   // Let the fingerprint auth session fail to start.
   EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser(_, _))
       .WillOnce([](const std::string& user,
-                   base::Callback<void(bool success)>
+                   base::OnceCallback<void(bool success)>
                        auth_session_start_client_callback) {
         std::move(auth_session_start_client_callback).Run(false);
       });
@@ -2949,7 +2949,7 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionSuccess) {
 
   EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser(_, _))
       .WillOnce([](const std::string& user,
-                   base::Callback<void(bool success)>
+                   base::OnceCallback<void(bool success)>
                        auth_session_start_client_callback) {
         std::move(auth_session_start_client_callback).Run(true);
       });
@@ -2986,7 +2986,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailRetry) {
 
   // Simulate a scan result immediately following SetAuthScanDoneCallback().
   EXPECT_CALL(fingerprint_manager_, SetAuthScanDoneCallback(_))
-      .WillOnce([](base::Callback<void(FingerprintScanStatus status)>
+      .WillOnce([](base::OnceCallback<void(FingerprintScanStatus status)>
                        auth_scan_done_callback) {
         std::move(auth_scan_done_callback)
             .Run(FingerprintScanStatus::FAILED_RETRY_ALLOWED);
@@ -3011,7 +3011,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailNoRetry) {
 
   // Simulate a scan result immediately following SetAuthScanDoneCallback().
   EXPECT_CALL(fingerprint_manager_, SetAuthScanDoneCallback(_))
-      .WillOnce([](base::Callback<void(FingerprintScanStatus status)>
+      .WillOnce([](base::OnceCallback<void(FingerprintScanStatus status)>
                        auth_scan_done_callback) {
         std::move(auth_scan_done_callback)
             .Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
@@ -3053,7 +3053,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintSuccess) {
 
   // Simulate a scan result immediately following SetAuthScanDoneCallback().
   EXPECT_CALL(fingerprint_manager_, SetAuthScanDoneCallback(_))
-      .WillOnce([](base::Callback<void(FingerprintScanStatus status)>
+      .WillOnce([](base::OnceCallback<void(FingerprintScanStatus status)>
                        auth_scan_done_callback) {
         std::move(auth_scan_done_callback).Run(FingerprintScanStatus::SUCCESS);
       });

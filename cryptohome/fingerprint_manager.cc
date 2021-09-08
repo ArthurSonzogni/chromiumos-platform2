@@ -77,10 +77,10 @@ bool FingerprintManager::Initialize(const scoped_refptr<dbus::Bus>& bus,
   if (!default_proxy_)
     return false;
   default_proxy_->ConnectToAuthScanDoneSignal(
-      base::Bind(&FingerprintManager::OnAuthScanDone,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&FingerprintManager::OnAuthScanDoneSignalConnected,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&FingerprintManager::OnAuthScanDone,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&FingerprintManager::OnAuthScanDoneSignalConnected,
+                     weak_factory_.GetWeakPtr()));
   if (!proxy_)
     proxy_ = default_proxy_.get();
   return true;
@@ -195,7 +195,7 @@ void FingerprintManager::SetUserAndRunClientCallback(
   } else {
     Reset();
   }
-  auth_session_start_client_callback.Run(success);
+  std::move(auth_session_start_client_callback).Run(success);
 }
 
 void FingerprintManager::StartAuthSessionAsyncForUser(
@@ -208,14 +208,14 @@ void FingerprintManager::StartAuthSessionAsyncForUser(
 
   // Disallow starting auth session if another session might be pending.
   if (state_ != State::NO_AUTH_SESSION) {
-    auth_session_start_client_callback.Run(false);
+    std::move(auth_session_start_client_callback).Run(false);
     return;
   }
 
   // Wrapper callback around the client's callback for starting auth session,
   // so that we can set |current_user_| in addition to running the client's
   // callback.
-  auto auth_session_start_callback = base::Bind(
+  auto auth_session_start_callback = base::BindOnce(
       &FingerprintManager::SetUserAndRunClientCallback, base::Unretained(this),
       std::move(auth_session_start_client_callback), user);
 

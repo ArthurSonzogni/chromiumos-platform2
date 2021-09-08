@@ -2016,9 +2016,9 @@ void UserDataAuth::CheckKey(
                                  CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
       return;
     }
-    fingerprint_manager_->SetAuthScanDoneCallback(
-        base::Bind(&UserDataAuth::CompleteFingerprintCheckKey,
-                   base::Unretained(this), base::Passed(std::move(on_done))));
+    fingerprint_manager_->SetAuthScanDoneCallback(base::BindRepeating(
+        &UserDataAuth::CompleteFingerprintCheckKey, base::Unretained(this),
+        base::Passed(std::move(on_done))));
     return;
   }
 
@@ -2812,8 +2812,8 @@ void UserDataAuth::StartFingerprintAuthSession(
 
   fingerprint_manager_->StartAuthSessionAsyncForUser(
       obfuscated_username,
-      base::Bind(&UserDataAuth::OnFingerprintStartAuthSessionResp,
-                 base::Unretained(this), base::Passed(std::move(on_done))));
+      base::BindOnce(&UserDataAuth::OnFingerprintStartAuthSessionResp,
+                     base::Unretained(this), base::Passed(std::move(on_done))));
 }
 
 void UserDataAuth::EndFingerprintAuthSession() {

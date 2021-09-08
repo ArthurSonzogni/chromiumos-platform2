@@ -28,8 +28,9 @@ enum class FingerprintScanStatus {
 // Response callbacks will also be run on the same thread / task runner.
 class FingerprintManager {
  public:
-  using StartSessionCallback = base::Callback<void(bool success)>;
-  using ResultCallback = base::Callback<void(FingerprintScanStatus status)>;
+  using StartSessionCallback = base::OnceCallback<void(bool success)>;
+  using ResultCallback =
+      base::RepeatingCallback<void(FingerprintScanStatus status)>;
 
   // Factory method. Returns nullptr if Biometrics Daemon is not in a good
   // state or if the device does not have fingerprint support.
