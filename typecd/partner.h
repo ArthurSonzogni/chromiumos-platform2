@@ -68,11 +68,6 @@ class Partner : public Peripheral {
   // which is read from sysfs.
   bool DiscoveryComplete();
 
-  // Parse and store the value of the "supports_usb_power_delivery" file from
-  // sysfs. If there is an error parsing the file contents, the value is assumed
-  // to be false.
-  void UpdateSupportsPD();
-
   bool GetSupportsPD() { return supports_pd_; }
 
   // Report any metrics associated with the partner using UMA reporting. If the
@@ -88,10 +83,16 @@ class Partner : public Peripheral {
   FRIEND_TEST(MetricsTest, CheckPartnerTypeTBTPeripheral);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeDPAltHub);
   FRIEND_TEST(MetricsTest, CheckPartnerTypeOther);
+  FRIEND_TEST(PartnerTest, TestSupportsPD);
 
   // Convenience function used by ReportMetrics to get the right enum for
   // PartnerTypeMetric.
   PartnerTypeMetric GetPartnerTypeMetric();
+
+  // Parse and store the value of the "supports_usb_power_delivery" file from
+  // sysfs. If there is an error parsing the file contents, the value is assumed
+  // to be false.
+  void UpdateSupportsPD();
 
   // A map representing all the alternate modes supported by the partner.
   // The key is the index of the alternate mode as determined by the connector
