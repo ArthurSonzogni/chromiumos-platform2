@@ -42,7 +42,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tests := map[string]utils.TestFunction{"NoCameraSource": hwtests.NoCameraSourceTest(caps.CameraInputCaps)}
+	tests := map[string]utils.TestFunction{
+		"NoCameraSource":         hwtests.NoCameraSourceTest(caps.CameraInputCaps),
+		"HasSupportedResolution": hwtests.HasSupportedResolutionTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps)}
 	failed := []string{}
 
 	for name, test := range tests {
