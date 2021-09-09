@@ -9,10 +9,10 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
 #include "rmad/system/power_manager_client.h"
-#include "rmad/utils/crossystem_utils.h"
 
 namespace rmad {
 
@@ -23,12 +23,12 @@ class RepairCompleteStateHandler : public BaseStateHandler {
       base::TimeDelta::FromSeconds(5);
 
   explicit RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mocked |power_manager_client_| and |crossystem_utils_| for
+  // Used to inject |working_dir_path_| and mocked |power_manager_client_| for
   // testing.
   RepairCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<PowerManagerClient> power_manager_client,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      const base::FilePath& working_dir_path,
+      std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kRepairComplete);
   SET_UNREPEATABLE;
@@ -44,8 +44,8 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   void Shutdown();
   void Cutoff();
 
+  base::FilePath working_dir_path_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
-  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   base::OneShotTimer timer_;
 };
 

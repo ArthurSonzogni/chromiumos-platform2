@@ -7,36 +7,31 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <brillo/file_utils.h>
 
+#include "rmad/constants.h"
 #include "rmad/system/power_manager_client_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-
-namespace {
-
-constexpr char kBatteryCutoffRequest[] = "battery_cutoff_request";
-
-}  // namespace
 
 namespace rmad {
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store), working_dir_path_(kDefaultWorkingDirPath) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store,
-    std::unique_ptr<PowerManagerClient> power_manager_client,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    const base::FilePath& working_dir_path,
+    std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store),
-      power_manager_client_(std::move(power_manager_client)),
-      crossystem_utils_(std::move(crossystem_utils)) {}
+      working_dir_path_(working_dir_path),
+      power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
   if (!state_.has_repair_complete()) {
@@ -107,10 +102,10 @@ void RepairCompleteStateHandler::Shutdown() {
 
 void RepairCompleteStateHandler::Cutoff() {
   LOG(INFO) << "RMA flow complete. Doing battery cutoff.";
-  // TODO(chenghan): This currently doesn't work, because we have no permission
-  //                 to access /dev/nvram in minijail. Try another approach or
-  //                 discuss with security team if we can open up permissions.
-  if (!crossystem_utils_->SetInt(kBatteryCutoffRequest, 1)) {
+  // The pre-stop script picks up the file before shutdown/reboot, and requests
+  // a battery cutoff by crossystem.
+  if (!brillo::TouchFile(
+          working_dir_path_.AppendASCII(kCutoffRequestFilePath))) {
     LOG(ERROR) << "Failed to request battery cutoff";
     return;
   }

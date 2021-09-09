@@ -16,6 +16,7 @@ namespace rmad {
 
 class StateHandlerTest : public testing::Test {
  public:
+  const base::FilePath& GetTempDirPath() const { return temp_dir_.GetPath(); }
   const base::FilePath& GetStateFilePath() const { return file_path_; }
 
  protected:

@@ -5,16 +5,17 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/state_handler/repair_complete_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
-#include "rmad/utils/mock_crossystem_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -27,11 +28,9 @@ namespace rmad {
 class RepairCompleteStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<RepairCompleteStateHandler> CreateStateHandler(
-      bool* reboot_called, bool* shutdown_called, bool* cutoff_requested) {
+      bool* reboot_called, bool* shutdown_called) {
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
-    auto mock_crossystem_utils =
-        std::make_unique<NiceMock<MockCrosSystemUtils>>();
     if (reboot_called) {
       ON_CALL(*mock_power_manager_client, Restart())
           .WillByDefault(DoAll(Assign(reboot_called, true), Return(true)));
@@ -46,15 +45,12 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       ON_CALL(*mock_power_manager_client, Shutdown())
           .WillByDefault(Return(true));
     }
-    if (cutoff_requested) {
-      ON_CALL(*mock_crossystem_utils, SetInt(_, _))
-          .WillByDefault(DoAll(Assign(cutoff_requested, true), Return(true)));
-    } else {
-      ON_CALL(*mock_crossystem_utils, SetInt(_, _)).WillByDefault(Return(true));
-    }
     return base::MakeRefCounted<RepairCompleteStateHandler>(
-        json_store_, std::move(mock_power_manager_client),
-        std::move(mock_crossystem_utils));
+        json_store_, GetTempDirPath(), std::move(mock_power_manager_client));
+  }
+
+  base::FilePath GetCutoffRequestFilePath() const {
+    return GetTempDirPath().AppendASCII(kCutoffRequestFilePath);
   }
 
  protected:
@@ -64,14 +60,13 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(RepairCompleteStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
+  auto handler = CreateStateHandler(nullptr, nullptr);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Reboot) {
-  bool reboot_called = false, shutdown_called = false, cutoff_requested = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &cutoff_requested);
+  bool reboot_called = false, shutdown_called = false;
+  auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto repair_complete = std::make_unique<RepairCompleteState>();
@@ -88,7 +83,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Reboot) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(cutoff_requested);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
   EXPECT_FALSE(base::PathExists(GetStateFilePath()));
@@ -97,13 +92,12 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Reboot) {
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
   EXPECT_TRUE(reboot_called);
   EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(cutoff_requested);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Shutdown) {
-  bool reboot_called = false, shutdown_called = false, cutoff_requested = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &cutoff_requested);
+  bool reboot_called = false, shutdown_called = false;
+  auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto repair_complete = std::make_unique<RepairCompleteState>();
@@ -120,7 +114,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Shutdown) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(cutoff_requested);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
   EXPECT_FALSE(base::PathExists(GetStateFilePath()));
@@ -129,13 +123,12 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Shutdown) {
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
   EXPECT_FALSE(reboot_called);
   EXPECT_TRUE(shutdown_called);
-  EXPECT_FALSE(cutoff_requested);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
-  bool reboot_called = false, shutdown_called = false, cutoff_requested = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &cutoff_requested);
+  bool reboot_called = false, shutdown_called = false;
+  auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto repair_complete = std::make_unique<RepairCompleteState>();
@@ -152,7 +145,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(cutoff_requested);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
   EXPECT_FALSE(base::PathExists(GetStateFilePath()));
@@ -161,11 +154,11 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
   EXPECT_TRUE(reboot_called);
   EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(cutoff_requested);
+  EXPECT_TRUE(base::PathExists(GetCutoffRequestFilePath()));
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
+  auto handler = CreateStateHandler(nullptr, nullptr);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No RepairCompleteState.
@@ -183,7 +176,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
+  auto handler = CreateStateHandler(nullptr, nullptr);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto repair_complete = std::make_unique<RepairCompleteState>();

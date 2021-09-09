@@ -97,3 +97,5 @@ clock_getres: 1
 fstatfs: 1
 pread64: 1
 umask: 1
+tgkill: 1
+fchmod: 1

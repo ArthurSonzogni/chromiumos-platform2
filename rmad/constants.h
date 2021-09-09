@@ -12,8 +12,13 @@
 
 namespace rmad {
 
-// Update go/shimless-state-preservation when adding new fields.
+inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
+
+// Files for pre-stop script to read.
+inline constexpr char kCutoffRequestFilePath[] = ".battery_cutoff_request";
+
 // JsonStore rmad_interface keys.
+// Update go/shimless-state-preservation when adding new fields.
 inline constexpr char kStateHistory[] = "state_history";
 inline constexpr char kStateMap[] = "state_map";
 inline constexpr char kNetworkConnected[] = "network_connected";
