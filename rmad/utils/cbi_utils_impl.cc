@@ -83,7 +83,7 @@ bool CbiUtilsImpl::GetCbi(int tag, std::string* value, int get_flag) const {
 bool CbiUtilsImpl::SetCbi(int tag, uint64_t value, int size, int set_flag) {
   CHECK_GE(size, 1);
   CHECK_LE(size, 8);
-  CHECK(size == 8 || 1 << (size * 8) > value);
+  CHECK(size == 8 || 1ull << (size * 8) > value);
 
   std::vector<std::string> argv{kEctoolCmdPath,
                                 "cbi",
