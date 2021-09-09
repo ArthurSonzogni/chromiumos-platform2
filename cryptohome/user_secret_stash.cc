@@ -128,17 +128,6 @@ bool UserSecretStash::FromEncryptedContainer(
   }
 
   auto uss_container = GetUserSecretStashContainer(flatbuffer.data());
-  if (!flatbuffers::IsFieldPresent(
-          uss_container, UserSecretStashContainer::VT_ENCRYPTION_ALGORITHM) ||
-      !flatbuffers::IsFieldPresent(uss_container,
-                                   UserSecretStashContainer::VT_CIPHERTEXT) ||
-      !flatbuffers::IsFieldPresent(uss_container,
-                                   UserSecretStashContainer::VT_IV) ||
-      !flatbuffers::IsFieldPresent(uss_container,
-                                   UserSecretStashContainer::VT_AES_GCM_TAG)) {
-    LOG(ERROR) << "UserSecretStashContainer is missing fields";
-    return false;
-  }
 
   UserSecretStashEncryptionAlgorithm algorithm =
       uss_container->encryption_algorithm();
@@ -148,27 +137,38 @@ bool UserSecretStash::FromEncryptedContainer(
     return false;
   }
 
-  brillo::SecureBlob ciphertext(uss_container->ciphertext()->begin(),
-                                uss_container->ciphertext()->end());
-  brillo::SecureBlob iv(uss_container->iv()->begin(),
-                        uss_container->iv()->end());
-  brillo::SecureBlob tag(uss_container->aes_gcm_tag()->begin(),
-                         uss_container->aes_gcm_tag()->end());
-
-  if (ciphertext.empty()) {
+  if (!uss_container->ciphertext() || !uss_container->ciphertext()->size()) {
     LOG(ERROR) << "UserSecretStash has empty ciphertext";
     return false;
   }
-  if (iv.size() != kAesGcmIVSize) {
-    LOG(ERROR) << "UserSecretStash has IV of wrong length: " << iv.size()
+  brillo::SecureBlob ciphertext(uss_container->ciphertext()->begin(),
+                                uss_container->ciphertext()->end());
+
+  if (!uss_container->iv() || !uss_container->iv()->size()) {
+    LOG(ERROR) << "UserSecretStash has empty IV";
+    return false;
+  }
+  if (uss_container->iv()->size() != kAesGcmIVSize) {
+    LOG(ERROR) << "UserSecretStash has IV of wrong length: "
+               << uss_container->iv()->size()
                << ", expected: " << kAesGcmIVSize;
     return false;
   }
-  if (tag.size() != kAesGcmTagSize) {
-    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
-               << tag.size() << ", expected: " << kAesGcmTagSize;
+  brillo::SecureBlob iv(uss_container->iv()->begin(),
+                        uss_container->iv()->end());
+
+  if (!uss_container->aes_gcm_tag() || !uss_container->aes_gcm_tag()->size()) {
+    LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
     return false;
   }
+  if (uss_container->aes_gcm_tag()->size() != kAesGcmTagSize) {
+    LOG(ERROR) << "UserSecretStash has AES-GCM tag of wrong length: "
+               << uss_container->aes_gcm_tag()->size()
+               << ", expected: " << kAesGcmTagSize;
+    return false;
+  }
+  brillo::SecureBlob tag(uss_container->aes_gcm_tag()->begin(),
+                         uss_container->aes_gcm_tag()->end());
 
   brillo::SecureBlob serialized_uss;
   if (!AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, main_key, iv,
@@ -186,24 +186,14 @@ bool UserSecretStash::FromEncryptedContainer(
 
   auto uss = GetUserSecretStashPayload(serialized_uss.data());
 
-  brillo::SecureBlob file_system_key;
-  if (flatbuffers::IsFieldPresent(uss,
-                                  UserSecretStashPayload::VT_FILE_SYSTEM_KEY)) {
-    file_system_key = brillo::SecureBlob(uss->file_system_key()->begin(),
-                                         uss->file_system_key()->end());
-  }
-  if (!file_system_key.empty()) {
-    file_system_key_ = file_system_key;
+  if (uss->file_system_key() && uss->file_system_key()->size()) {
+    file_system_key_ = brillo::SecureBlob(uss->file_system_key()->begin(),
+                                          uss->file_system_key()->end());
   }
 
-  brillo::SecureBlob reset_secret;
-  if (flatbuffers::IsFieldPresent(uss,
-                                  UserSecretStashPayload::VT_RESET_SECRET)) {
-    reset_secret = brillo::SecureBlob(uss->reset_secret()->begin(),
-                                      uss->reset_secret()->end());
-  }
-  if (!reset_secret.empty()) {
-    reset_secret_ = reset_secret;
+  if (uss->reset_secret() && uss->reset_secret()->size()) {
+    reset_secret_ = brillo::SecureBlob(uss->reset_secret()->begin(),
+                                       uss->reset_secret()->end());
   }
 
   return true;
