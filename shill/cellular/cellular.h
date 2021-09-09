@@ -451,6 +451,13 @@ class Cellular : public Device,
   // Time between asynchronous calls to ModemManager1's GetLocation()
   static const int64_t kPollLocationIntervalMilliseconds;
 
+  enum class StopSteps {
+    // Initial state.
+    kStopModem,
+    // The modem has been stopped.
+    kModemStopped,
+  };
+
   void CreateCapability();
   void DestroyCapability();
 
@@ -458,7 +465,6 @@ class Cellular : public Device,
   void StartModem(Error* error, const EnabledStateChangedCallback& callback);
   void StartModemCallback(const EnabledStateChangedCallback& callback,
                           const Error& error);
-  void StopModem(Error* error, const EnabledStateChangedCallback& callback);
   void StopModemCallback(const EnabledStateChangedCallback& callback,
                          const Error& error);
   void DestroySockets();
@@ -560,6 +566,11 @@ class Cellular : public Device,
 
   // Handler to check if modem is based on qcom-q6v5-mss
   bool IsQ6V5Modem();
+
+  // Execute the next step to Stop cellular.
+  void StopStep(Error* error,
+                const EnabledStateChangedCallback& callback,
+                const Error& error_result);
 
   // Terminate the pppd process associated with this Device, and remove the
   // association between the PPPDevice and our CellularService. If this
@@ -712,6 +723,9 @@ class Cellular : public Device,
   // A Map containing the last connection results. ICCID is used as the key.
   std::unordered_map<std::string, Error::Type>
       last_cellular_connection_results_;
+
+  // The current step of the Stop process.
+  base::Optional<StopSteps> stop_step_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };

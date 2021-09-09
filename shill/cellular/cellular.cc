@@ -434,15 +434,65 @@ void Cellular::Start(Error* error,
 
 void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
-  if (!capability_) {
-    // Modem is already stopped (it crashed or is inhibited). Invoke the
-    // callback with no error to persist the disabled state.
-    DestroySockets();
-    callback.Run(Error());
-    return;
-  }
+  DCHECK(!stop_step_.has_value()) << "Already stopping. Unexpected Stop call.";
+  stop_step_ = StopSteps::kStopModem;
+  StopStep(error, callback, Error());
+}
 
-  StopModem(error, callback);
+void Cellular::StopStep(Error* error,
+                        const EnabledStateChangedCallback& callback,
+                        const Error& error_result) {
+  SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
+  DCHECK(stop_step_.has_value());
+  switch (stop_step_.value()) {
+    case StopSteps::kStopModem:
+      if (capability_) {
+        LOG(INFO) << __func__ << ": Calling StopModem.";
+        SetState(State::kModemStopping);
+        capability_->StopModem(
+            error, base::Bind(&Cellular::StopModemCallback,
+                              weak_ptr_factory_.GetWeakPtr(), callback));
+        return;
+      }
+      stop_step_ = StopSteps::kModemStopped;
+      FALLTHROUGH;
+
+    case StopSteps::kModemStopped:
+      SetState(State::kDisabled);
+
+      // Sockets should be destroyed here to ensure that we make new connections
+      // when we next enable Cellular. Since the carrier may assign us a new IP
+      // on reconnect and some carriers don't like it when packets are sent from
+      // this device using the old IP, we need to make sure that we prevent
+      // further packets from going out.
+      DestroySockets();
+
+      // Destroy any cellular services regardless of any errors that occur
+      // during the stop process since we do not know the state of the modem at
+      // this point.
+      DestroyAllServices();
+
+      // In case no termination action was executed (and
+      // TerminationActionComplete was not invoked) in response to a suspend
+      // request, any registered termination action needs to be removed
+      // explicitly.
+      manager()->RemoveTerminationAction(link_name());
+
+      UpdateScanning();
+
+      if (error_result.type() == Error::kWrongState) {
+        // ModemManager.Modem will not respond to Stop when in a failed state.
+        // Allow the callback to succeed so that Shill identifies and persists
+        // Cellular as disabled. TODO(b/184974739): StopModem should probably
+        // succeed when in a failed state.
+        LOG(ERROR) << "StopModem returned an error: " << error_result;
+        callback.Run(Error());
+      } else {
+        callback.Run(error_result);
+      }
+      stop_step_.reset();
+      return;
+  }
 }
 
 void Cellular::StartModem(Error* error,
@@ -486,50 +536,12 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
   callback.Run(Error());
 }
 
-void Cellular::StopModem(Error* error,
-                         const EnabledStateChangedCallback& callback) {
-  DCHECK(capability_);
-  LOG(INFO) << __func__;
-  SetState(State::kModemStopping);
-  capability_->StopModem(error,
-                         base::Bind(&Cellular::StopModemCallback,
-                                    weak_ptr_factory_.GetWeakPtr(), callback));
-}
-
 void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
-                                 const Error& error) {
+                                 const Error& error_result) {
   LOG(INFO) << __func__ << ": " << GetStateString(state_)
-            << " Error: " << error;
-  SetState(State::kDisabled);
-
-  // Sockets should be destroyed here to ensure that we make new connections
-  // when we next enable Cellular. Since the carrier may assign us a new IP
-  // on reconnect and some carriers don't like it when packets are sent from
-  // this device using the old IP, we need to make sure that we prevent further
-  // packets from going out.
-  DestroySockets();
-
-  // Destroy any cellular services regardless of any errors that occur during
-  // the stop process since we do not know the state of the modem at this point.
-  DestroyAllServices();
-
-  // In case no termination action was executed (and TerminationActionComplete
-  // was not invoked) in response to a suspend request, any registered
-  // termination action needs to be removed explicitly.
-  manager()->RemoveTerminationAction(link_name());
-
-  UpdateScanning();
-
-  if (error.type() == Error::kWrongState) {
-    // ModemManager.Modem will not respond to Stop when in a failed state. Allow
-    // the callback to succeed so that Shill identifies and persists Cellular as
-    // disabled. TODO(b/184974739): StopModem should probably succeed when in a
-    // failed state.
-    LOG(ERROR) << "StopModem returned an error: " << error;
-    callback.Run(Error());
-  } else {
-    callback.Run(error);
-  }
+            << " Error: " << error_result;
+  stop_step_ = StopSteps::kModemStopped;
+  StopStep(/*error=*/nullptr, callback, error_result);
 }
 
 void Cellular::DestroySockets() {
@@ -1021,6 +1033,7 @@ void Cellular::UpdateSecondaryServices() {
 }
 
 void Cellular::OnModemDestroyed() {
+  SLOG(this, 1) << __func__;
   StopLocationPolling();
   DestroyCapability();
   // Clear the dbus path.
