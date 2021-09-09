@@ -42,16 +42,17 @@ bool LowDiskSpaceHandler::Init(
 
   last_update_user_activity_timestamp_time_ = platform_->GetCurrentTime();
 
-  if (!post_delayed_task_.Run(FROM_HERE,
-                              base::Bind(&LowDiskSpaceHandler::FreeDiskSpace,
-                                         base::Unretained(this)),
-                              base::TimeDelta()))
+  if (!post_delayed_task_.Run(
+          FROM_HERE,
+          base::BindOnce(&LowDiskSpaceHandler::FreeDiskSpace,
+                         base::Unretained(this)),
+          base::TimeDelta()))
     return false;
 
   if (!post_delayed_task_.Run(
           FROM_HERE,
-          base::Bind(&LowDiskSpaceHandler::LowDiskSpaceCheck,
-                     base::Unretained(this)),
+          base::BindOnce(&LowDiskSpaceHandler::LowDiskSpaceCheck,
+                         base::Unretained(this)),
           base::TimeDelta()))
     return false;
 
@@ -118,8 +119,8 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
   low_disk_space_signal_was_emitted_ = low_disk_space_signal_emitted;
 
   post_delayed_task_.Run(FROM_HERE,
-                         base::Bind(&LowDiskSpaceHandler::LowDiskSpaceCheck,
-                                    base::Unretained(this)),
+                         base::BindOnce(&LowDiskSpaceHandler::LowDiskSpaceCheck,
+                                        base::Unretained(this)),
                          low_disk_notification_period_);
 }
 

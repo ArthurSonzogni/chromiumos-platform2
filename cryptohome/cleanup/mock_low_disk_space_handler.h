@@ -29,11 +29,11 @@ class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
       (override));
   MOCK_METHOD(void,
               SetLowDiskSpaceCallback,
-              (const base::Callback<void(uint64_t)>&),
+              (const base::RepeatingCallback<void(uint64_t)>&),
               (override));
   MOCK_METHOD(void,
               SetUpdateUserActivityTimestampCallback,
-              (const base::Callback<void()>&),
+              (const base::RepeatingCallback<void()>&),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
 };

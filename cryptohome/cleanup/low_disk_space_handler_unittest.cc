@@ -33,8 +33,9 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
 
   void SetUp() {
     handler_.set_disk_cleanup(&disk_cleanup_);
-    handler_.SetLowDiskSpaceCallback(base::Bind([](uint64_t) {}));
-    handler_.SetUpdateUserActivityTimestampCallback(base::Bind([]() {}));
+    handler_.SetLowDiskSpaceCallback(base::BindRepeating([](uint64_t) {}));
+    handler_.SetUpdateUserActivityTimestampCallback(
+        base::BindRepeating([]() {}));
 
     EXPECT_CALL(platform_, GetCurrentTime()).WillRepeatedly(Invoke([&]() {
       return current_time_;
@@ -47,7 +48,7 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
     EXPECT_CALL(disk_cleanup_, IsFreeableDiskSpaceAvailable())
         .WillRepeatedly(Return(false));
 
-    EXPECT_TRUE(handler_.Init(base::Bind(
+    EXPECT_TRUE(handler_.Init(base::BindRepeating(
         &LowDiskSpaceHandlerTest::PostDelayedTask, base::Unretained(this))));
   }
 
