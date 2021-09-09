@@ -24,7 +24,7 @@ void ExpectReadMessage(const std::string& input,
   int fds[2];
   int ret = pipe(fds);
   ASSERT_EQ(0, ret);
-  ASSERT_TRUE(base::WriteFileDescriptor(fds[1], input.c_str(), input.size()));
+  ASSERT_TRUE(base::WriteFileDescriptor(fds[1], input));
   close(fds[1]);
   std::string got;
   EXPECT_EQ(expected_result, ReadOneMessage(fds[0], &got));
