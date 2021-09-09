@@ -13,6 +13,7 @@
 #include "cryptohome/crypto/secure_blob_util.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 
 namespace cryptohome {
 
@@ -94,9 +95,25 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
                    const brillo::SecureBlob& key,
                    const brillo::SecureBlob& iv,
                    brillo::SecureBlob* plaintext) {
-  DCHECK_EQ(key.size(), kAesGcm256KeySize);
-  DCHECK_EQ(iv.size(), kAesGcmIVSize);
-  DCHECK_EQ(tag.size(), kAesGcmTagSize);
+  if (ciphertext.empty()) {
+    NOTREACHED() << "Empty ciphertext passed to AesGcmDecrypt.";
+    return false;
+  }
+  if (tag.size() != kAesGcmTagSize) {
+    NOTREACHED() << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
+                 << ", expected " << kAesGcmTagSize << ".";
+    return false;
+  }
+  if (key.size() != kAesGcm256KeySize) {
+    NOTREACHED() << "Wrong key size passed to AesGcmDecrypt: " << key.size()
+                 << ", expected " << kAesGcm256KeySize << ".";
+    return false;
+  }
+  if (iv.size() != kAesGcmIVSize) {
+    NOTREACHED() << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
+                 << ", expected " << kAesGcmIVSize << ".";
+    return false;
+  }
 
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (ctx.get() == nullptr) {
@@ -123,7 +140,10 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
   }
 
   if (ad.has_value()) {
-    DCHECK_NE(ad.value().size(), 0);
+    if (ad.value().empty()) {
+      NOTREACHED() << "Empty associated data passed to AesGcmDecrypt.";
+      return false;
+    }
     int out_size = 0;
     if (EVP_DecryptUpdate(ctx.get(), nullptr, &out_size, ad.value().data(),
                           ad.value().size()) != 1) {
@@ -171,7 +191,15 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
                    brillo::SecureBlob* iv,
                    brillo::SecureBlob* tag,
                    brillo::SecureBlob* ciphertext) {
-  DCHECK_EQ(key.size(), kAesGcm256KeySize);
+  if (plaintext.empty()) {
+    NOTREACHED() << "Empty plaintext passed to AesGcmEncrypt.";
+    return false;
+  }
+  if (key.size() != kAesGcm256KeySize) {
+    NOTREACHED() << "Wrong key size passed to AesGcmEncrypt: " << key.size()
+                 << ", expected " << kAesGcm256KeySize << ".";
+    return false;
+  }
 
   iv->resize(kAesGcmIVSize);
   GetSecureRandom(iv->data(), kAesGcmIVSize);
@@ -201,7 +229,10 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
   }
 
   if (ad.has_value()) {
-    DCHECK_NE(ad.value().size(), 0);
+    if (ad.value().empty()) {
+      NOTREACHED() << "Empty associated data passed to AesGcmEncrypt.";
+      return false;
+    }
     int out_size = 0;
     if (EVP_EncryptUpdate(ctx.get(), nullptr, &out_size, ad.value().data(),
                           ad.value().size()) != 1) {
