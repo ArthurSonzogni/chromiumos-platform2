@@ -21,7 +21,10 @@ class HdrNetConfig {
  public:
   // The default HDRnet config file. The file should contain a JSON map for the
   // options defined below.
-  static constexpr const char kHdrNetConfigFile[] = "/run/camera/hdrnet.config";
+  static constexpr const char kDefaultHdrNetConfigFile[] =
+      "/etc/camera/hdrnet.config";
+  static constexpr const char kOverrideHdrNetConfigFile[] =
+      "/run/camera/hdrnet.config";
 
   struct Options {
     // Enables the HDRnet pipeline to produce output frames.
@@ -64,7 +67,15 @@ class HdrNetConfig {
     bool log_frame_metadata = false;
   };
 
-  explicit HdrNetConfig(const char* config_file_path = kHdrNetConfigFile);
+  // The config is read from |default_config_file_path| first if the path
+  // exists, otherwise we use the default values set above.
+  // |override_config_file_path| will be actively monitored at run-time, and we
+  // will overwrite the existing |options_| values with the ones present in the
+  // override config file. The config in the override file doesn't have to
+  // include all the options and it can update only a subset of the options.
+  HdrNetConfig(
+      const char* default_config_file_path = kDefaultHdrNetConfigFile,
+      const char* override_config_file_path = kOverrideHdrNetConfigFile);
 
   HdrNetConfig(const HdrNetConfig& other) = delete;
   HdrNetConfig& operator=(const HdrNetConfig& other) = delete;
@@ -73,11 +84,16 @@ class HdrNetConfig {
   Options GetOptions();
 
  private:
-  bool ReadConfigFile();
+  bool ReadConfigFile(const base::FilePath& file_path);
   void OnConfigFileUpdated(const base::FilePath& file_path, bool error);
 
-  base::FilePath config_file_path_;
-  base::FilePathWatcher file_path_watcher_;
+  // The default config file path. Usually this points to the device-specific
+  // tuning file shipped with the OS image.
+  base::FilePath default_config_file_path_;
+  // The override config file path. The override config is used to override the
+  // default config at run-time for development or debugging purposes.
+  base::FilePath override_config_file_path_;
+  base::FilePathWatcher override_file_path_watcher_;
 
   base::Lock options_lock_;
   Options options_ GUARDED_BY(options_lock_);

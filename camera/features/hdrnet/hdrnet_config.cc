@@ -33,18 +33,20 @@ constexpr char kMaxHdrRatio[] = "max_hdr_ratio";
 
 }  // namespace
 
-HdrNetConfig::HdrNetConfig(const char* config_file_path)
-    : config_file_path_(config_file_path) {
-  bool ret = file_path_watcher_.Watch(
-      config_file_path_, base::FilePathWatcher::Type::kNonRecursive,
+HdrNetConfig::HdrNetConfig(const char* default_config_file_path,
+                           const char* override_config_file_path)
+    : default_config_file_path_(default_config_file_path),
+      override_config_file_path_(override_config_file_path) {
+  bool ret = override_file_path_watcher_.Watch(
+      override_config_file_path_, base::FilePathWatcher::Type::kNonRecursive,
       base::BindRepeating(&HdrNetConfig::OnConfigFileUpdated,
                           base::Unretained(this)));
   if (!ret) {
     LOGF(ERROR) << "Can't monitor HDRnet config file path: "
-                << config_file_path_;
+                << override_config_file_path_;
     return;
   }
-  ReadConfigFile();
+  ReadConfigFile(default_config_file_path_);
 }
 
 HdrNetConfig::Options HdrNetConfig::GetOptions() {
@@ -52,14 +54,14 @@ HdrNetConfig::Options HdrNetConfig::GetOptions() {
   return options_;
 }
 
-bool HdrNetConfig::ReadConfigFile() {
-  if (!base::PathExists(config_file_path_)) {
+bool HdrNetConfig::ReadConfigFile(const base::FilePath& file_path) {
+  if (!base::PathExists(file_path)) {
     return false;
   }
 
   constexpr size_t kConfigFileMaxSize = 1024;
   std::string contents;
-  CHECK(base::ReadFileToStringWithMaxSize(config_file_path_, &contents,
+  CHECK(base::ReadFileToStringWithMaxSize(file_path, &contents,
                                           kConfigFileMaxSize));
   base::Optional<base::Value> json_values =
       base::JSONReader::Read(contents, base::JSON_ALLOW_TRAILING_COMMAS);
@@ -154,7 +156,7 @@ bool HdrNetConfig::ReadConfigFile() {
 
 void HdrNetConfig::OnConfigFileUpdated(const base::FilePath& file_path,
                                        bool error) {
-  ReadConfigFile();
+  ReadConfigFile(override_config_file_path_);
 }
 
 }  // namespace cros
