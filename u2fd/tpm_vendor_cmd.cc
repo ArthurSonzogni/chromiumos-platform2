@@ -260,13 +260,13 @@ uint32_t TpmVendorCommandProxy::GetG2fCertificate(std::string* cert_out) {
     return kVendorRcInvalidResponse;
   }
 
-  // TODO(louiscollard): This, in a less horrible way.
   if (resp.size() != kExpectedCertResponseSize ||
       resp.compare(0, 16,
                    std::string(kExpectedCertResponseHeader.begin(),
                                kExpectedCertResponseHeader.end())) != 0) {
-    return base::NetToHost32(
-        *reinterpret_cast<const uint32_t*>(&resp.data()[6]));
+    uint32_t resp_code;
+    memcpy(&resp_code, resp.c_str() + 6, sizeof(uint32_t));
+    return base::NetToHost32(resp_code);
   }
 
   *cert_out = resp.substr(kExpectedCertResponseHeader.size(), kCertSize);
