@@ -13,6 +13,7 @@
 #include <re2/re2.h>
 
 #include "typecd/pd_vdo_constants.h"
+#include "typecd/port.h"
 
 namespace {
 
@@ -228,6 +229,49 @@ PartnerTypeMetric Partner::GetPartnerTypeMetric() {
       ret = PartnerTypeMetric::kUSBHub;
     else if (peripheral)
       ret = PartnerTypeMetric::kUSBPeripheral;
+  }
+
+  // If we've found a valid category let's return.
+  if (ret != PartnerTypeMetric::kOther)
+    return ret;
+
+  // If we still haven't been able to categorize the partner, we make a guess
+  // based on current port state and hints about partner capabilities.
+  if (!port_) {
+    LOG(INFO) << "Port pointer not available; can't determine partner type";
+    return ret;
+  }
+
+  // We only proceed in this exercise if the partner doesn't have an ID header
+  // VDO. Otherwise, it should have been classified some way from the above.
+  if (GetIdHeaderVDO() != 0x0) {
+    return ret;
+  }
+
+  // Grab all the variables together.
+  DataRole port_dr = port_->GetDataRole();
+  PowerRole port_pr = port_->GetPowerRole();
+  bool partner_has_pd = GetSupportsPD();
+
+  // Refer to b/195056095 for details about the selection matrix.
+  if (port_pr == PowerRole::kSink) {
+    if (partner_has_pd) {
+      if (port_dr == DataRole::kHost)
+        ret = PartnerTypeMetric::kPDSourcingDevice;
+      else if (port_dr == DataRole::kDevice)
+        ret = PartnerTypeMetric::kPDPowerSource;
+    } else {
+      ret = PartnerTypeMetric::kNonPDPowerSource;
+    }
+  } else if (port_pr == PowerRole::kSource) {
+    if (partner_has_pd) {
+      if (port_dr == DataRole::kHost)
+        ret = PartnerTypeMetric::kPDSink;
+      else if (port_dr == DataRole::kDevice)
+        ret = PartnerTypeMetric::kPDSinkingHost;
+    } else {
+      ret = PartnerTypeMetric::kNonPDSink;
+    }
   }
 
   return ret;

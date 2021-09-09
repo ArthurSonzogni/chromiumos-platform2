@@ -23,7 +23,13 @@ enum class PartnerTypeMetric {
   kDPAltPeripheral = 8,
   kUSBHub = 9,
   kUSBPeripheral = 10,
-  kMaxValue = kUSBPeripheral,
+  kPDPowerSource = 11,
+  kPDSourcingDevice = 12,
+  kNonPDPowerSource = 13,
+  kPDSink = 14,
+  kPDSinkingHost = 15,
+  kNonPDSink = 16,
+  kMaxValue = kNonPDSink,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
