@@ -1055,6 +1055,10 @@ void Cellular::CreateCapability() {
     return;
 
   StartModem(/*error=*/nullptr, base::DoNothing());
+
+  // Update device state that might have been pending
+  // due to the lack of |capability_| during Cellular::Start().
+  UpdateEnabledState();
 }
 
 void Cellular::DestroyCapability() {

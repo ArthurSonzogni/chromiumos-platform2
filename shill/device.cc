@@ -1544,17 +1544,29 @@ void Device::OnEnabledStateChanged(const ResultCallback& callback,
   SLOG(this, 1) << __func__ << " (target: " << enabled_pending_ << ","
                 << " success: " << error.IsSuccess() << ")"
                 << " on " << link_name_;
+
   if (error.IsSuccess()) {
-    enabled_ = enabled_pending_;
-    if (!enabled_ && ShouldBringNetworkInterfaceDownAfterDisabled()) {
-      BringNetworkInterfaceDown();
-    }
-    manager_->UpdateEnabledTechnologies();
-    adaptor_->EmitBoolChanged(kPoweredProperty, enabled_);
+    UpdateEnabledState();
+  } else {
+    // Set enabled_pending_ to |enabled_| so that we don't try enabling again
+    // after an error.
+    enabled_pending_ = enabled_;
   }
-  enabled_pending_ = enabled_;
+
   if (!callback.is_null())
     callback.Run(error);
+}
+
+void Device::UpdateEnabledState() {
+  SLOG(this, 1) << __func__ << " (current: " << enabled_
+                << ", target: " << enabled_pending_ << ")"
+                << " on " << link_name_;
+  enabled_ = enabled_pending_;
+  if (!enabled_ && ShouldBringNetworkInterfaceDownAfterDisabled()) {
+    BringNetworkInterfaceDown();
+  }
+  manager_->UpdateEnabledTechnologies();
+  adaptor_->EmitBoolChanged(kPoweredProperty, enabled_);
 }
 
 void Device::SetEnabled(bool enable) {

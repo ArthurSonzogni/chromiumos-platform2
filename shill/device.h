@@ -435,6 +435,9 @@ class Device : public base::RefCounted<Device> {
   void OnEnabledStateChanged(const ResultCallback& callback,
                              const Error& error);
 
+  // Update the device state to the pending state.
+  void UpdateEnabledState();
+
   // Drops the currently selected service along with its IP configuration and
   // connection, if any.
   virtual void DropConnection();
