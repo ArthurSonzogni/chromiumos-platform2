@@ -247,8 +247,7 @@ bool WriteBootEntry(const base::FilePath& bootid_log_path,
   for (std::string boot_entry : previous_boot_entries) {
     boot_entry.append(1, '\n');
 
-    if (!base::WriteFileDescriptor(fd.get(), boot_entry.c_str(),
-                                   boot_entry.size())) {
+    if (!base::WriteFileDescriptor(fd.get(), boot_entry)) {
       PLOG(FATAL) << "Writing to the file failed";
       return false;
     }

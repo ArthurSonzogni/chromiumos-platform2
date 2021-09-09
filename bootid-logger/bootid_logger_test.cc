@@ -184,10 +184,8 @@ TEST_F(BootidLoggerTest, WriteCurrentBootEntry) {
 
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(temporary_file, &file_contents));
-  std::string boot_entry =
-      base::TrimWhitespaceASCII(file_contents,
-                                base::TrimPositions::TRIM_TRAILING)
-          .as_string();
+  std::string boot_entry = std::string(base::TrimWhitespaceASCII(
+      file_contents, base::TrimPositions::TRIM_TRAILING));
   EXPECT_TRUE(ValidateBootEntry(boot_entry)) << boot_entry;
   std::string boot_id = ExtractBootId(boot_entry);
   EXPECT_EQ(boot_id, GetCurrentBootId());
