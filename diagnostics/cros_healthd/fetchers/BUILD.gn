@@ -39,6 +39,7 @@ source_set("libcros_healthd_fetchers") {
     "cpu_fetcher.cc",
     "disk_fetcher.cc",
     "fan_fetcher.cc",
+    "graphics_fetcher.cc",
     "memory_fetcher.cc",
     "network_fetcher.cc",
     "process_fetcher.cc",

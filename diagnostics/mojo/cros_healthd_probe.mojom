@@ -887,6 +887,19 @@ struct TpmSupportedFeatures {
   bool is_allowed;
 };
 
+// Graphics probe result. Can either be populated with the GraphicsInfo or an
+// error retrieving the information.
+union GraphicsResult {
+  // Valid GraphicsInfo.
+  GraphicsInfo graphics_info;
+  // The error that occurred attempting to retrieve the GraphicsInfo.
+  ProbeError error;
+};
+
+// Graphics information.
+struct GraphicsInfo {
+};
+
 // A collection of all the device's telemetry information that cros_healthd is
 // capable of reporting. Note that every field in TelemetryInfo is nullable, and
 // the response for a particular ProbeTelemetryInfo request will only contain
