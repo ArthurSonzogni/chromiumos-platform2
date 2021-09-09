@@ -62,7 +62,7 @@ class WebPlatformHandwritingFuzzer {
         Process::Type::kSingleProcessForTest);
 
     ml_service_impl_ = std::make_unique<MachineLearningServiceImpl>(
-        ml_service_.BindNewPipeAndPassReceiver(), base::Closure());
+        ml_service_.BindNewPipeAndPassReceiver(), base::OnceClosure());
 
     bool model_callback_done = false;
     auto constraint = chromeos::machine_learning::web_platform::mojom::
@@ -70,7 +70,7 @@ class WebPlatformHandwritingFuzzer {
     constraint->languages.push_back(language);
     ml_service_->LoadWebPlatformHandwritingModel(
         std::move(constraint), recognizer_.BindNewPipeAndPassReceiver(),
-        base::Bind(
+        base::BindOnce(
             [](bool* model_callback_done,
                const LoadHandwritingModelResult result) {
               CHECK_EQ(result, LoadHandwritingModelResult::OK);
@@ -110,10 +110,10 @@ class WebPlatformHandwritingFuzzer {
     bool infer_callback_done = false;
     recognizer_->GetPrediction(
         std::move(strokes), std::move(hints),
-        base::Bind([](bool* infer_callback_done,
-                      base::Optional<std::vector<HandwritingPredictionPtr>>
-                          predictions) { *infer_callback_done = true; },
-                   &infer_callback_done));
+        base::BindOnce([](bool* infer_callback_done,
+                          base::Optional<std::vector<HandwritingPredictionPtr>>
+                              predictions) { *infer_callback_done = true; },
+                       &infer_callback_done));
     base::RunLoop().RunUntilIdle();
     CHECK(infer_callback_done);
   }

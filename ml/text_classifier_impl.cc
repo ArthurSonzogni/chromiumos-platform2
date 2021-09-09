@@ -39,7 +39,7 @@ constexpr char kLanguageIdentificationModelFilePath[] =
     "/opt/google/chrome/ml_models/"
     "mlservice-model-language_identification-20190924.smfb";
 
-// To avoid passing a lambda as a base::Closure.
+// To avoid passing a lambda as a base::OnceClosure.
 void DeleteTextClassifierImpl(
     const TextClassifierImpl* const text_classifier_impl) {
   delete text_classifier_impl;
@@ -69,7 +69,7 @@ bool TextClassifierImpl::Create(
 
   // Use a disconnection handler to strongly bind `text_classifier_impl` to
   // `receiver`.
-  text_classifier_impl->SetDisconnectionHandler(base::Bind(
+  text_classifier_impl->SetDisconnectionHandler(base::BindOnce(
       &DeleteTextClassifierImpl, base::Unretained(text_classifier_impl)));
   return true;
 }
@@ -85,7 +85,7 @@ TextClassifierImpl::TextClassifierImpl(
       receiver_(this, std::move(receiver)) {}
 
 void TextClassifierImpl::SetDisconnectionHandler(
-    base::Closure disconnect_handler) {
+    base::OnceClosure disconnect_handler) {
   receiver_.set_disconnect_handler(std::move(disconnect_handler));
 }
 

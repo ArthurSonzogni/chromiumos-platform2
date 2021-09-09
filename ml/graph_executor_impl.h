@@ -50,7 +50,7 @@ class GraphExecutorImpl
   GraphExecutorImpl(const GraphExecutorImpl&) = delete;
   GraphExecutorImpl& operator=(const GraphExecutorImpl&) = delete;
 
-  void set_disconnect_handler(base::Closure disconnect_handler);
+  void set_disconnect_handler(base::OnceClosure disconnect_handler);
 
  private:
   // chromeos::machine_learning::mojom::GraphExecutor:

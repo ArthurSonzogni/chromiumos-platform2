@@ -55,7 +55,7 @@ class MachineLearningServiceImplForTesting : public MachineLearningServiceImpl {
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::MachineLearningService> receiver)
       : MachineLearningServiceImpl(
-            std::move(receiver), base::Closure(), GetTestModelDir()) {}
+            std::move(receiver), base::OnceClosure(), GetTestModelDir()) {}
 };
 
 }  // namespace

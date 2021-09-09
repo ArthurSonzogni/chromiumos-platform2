@@ -79,7 +79,7 @@ TEST_F(ModelImplTest, TestBadModel) {
   mojo::Remote<GraphExecutor> graph_executor;
   model->CreateGraphExecutor(
       graph_executor.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result,
                       CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
@@ -111,7 +111,7 @@ TEST_F(ModelImplTest, TestExampleModel) {
   mojo::Remote<GraphExecutor> graph_executor;
   model->CreateGraphExecutor(
       graph_executor.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* cge_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
             *cge_callback_done = true;
@@ -131,7 +131,7 @@ TEST_F(ModelImplTest, TestExampleModel) {
   bool exe_callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      base::Bind(
+      base::BindOnce(
           [](bool* exe_callback_done, const ExecuteResult result,
              base::Optional<std::vector<TensorPtr>> outputs) {
             // Check that the inference succeeded and gives the expected number
@@ -176,7 +176,7 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   mojo::Remote<GraphExecutor> graph_executor_1;
   model->CreateGraphExecutor(
       graph_executor_1.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* cge1_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
             *cge1_callback_done = true;
@@ -193,7 +193,7 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   mojo::Remote<GraphExecutor> graph_executor_2;
   model->CreateGraphExecutor(
       graph_executor_2.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* cge2_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
             *cge2_callback_done = true;

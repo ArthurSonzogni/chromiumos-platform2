@@ -27,7 +27,7 @@ GraphExecutorImpl::GraphExecutorImpl(
       receiver_(this, std::move(receiver)) {}
 
 void GraphExecutorImpl::set_disconnect_handler(
-    base::Closure disconnect_handler) {
+    base::OnceClosure disconnect_handler) {
   receiver_.set_disconnect_handler(std::move(disconnect_handler));
 }
 

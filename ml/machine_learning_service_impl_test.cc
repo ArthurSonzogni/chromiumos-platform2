@@ -312,7 +312,7 @@ class MachineLearningServiceImplForTesting : public MachineLearningServiceImpl {
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::MachineLearningService> receiver)
       : MachineLearningServiceImpl(
-            std::move(receiver), base::Closure(), GetTestModelDir()) {}
+            std::move(receiver), base::OnceClosure(), GetTestModelDir()) {}
 };
 
 // A simple SODA client for testing.
@@ -341,7 +341,7 @@ bool LoadBuiltinModelForTesting(
   bool model_callback_done = false;
   ml_service->LoadBuiltinModel(
       std::move(spec), model->BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -360,7 +360,7 @@ bool LoadFlatBufferModelForTesting(
   bool model_callback_done = false;
   ml_service->LoadFlatBufferModel(
       std::move(spec), model->BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -378,7 +378,7 @@ bool CreateGraphExecutorForTesting(
   bool ge_callback_done = false;
   model->CreateGraphExecutor(
       graph_executor->BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
             *ge_callback_done = true;
@@ -435,7 +435,7 @@ TEST(MachineLearningServiceImplTest, Clone) {
   bool model_callback_done = false;
   ml_service_2->LoadBuiltinModel(
       std::move(spec), model.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -460,7 +460,7 @@ TEST(MachineLearningServiceImplTest, TestBadModel) {
   bool model_callback_done = false;
   ml_service->LoadBuiltinModel(
       std::move(spec), model.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::MODEL_SPEC_ERROR);
             *model_callback_done = true;
@@ -488,7 +488,7 @@ TEST(MachineLearningServiceImplTest, EmptyModelString) {
   bool model_callback_done = false;
   ml_service->LoadFlatBufferModel(
       std::move(spec), model.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::LOAD_MODEL_ERROR);
             *model_callback_done = true;
@@ -516,7 +516,7 @@ TEST(MachineLearningServiceImplTest, BadModelString) {
   bool model_callback_done = false;
   ml_service->LoadFlatBufferModel(
       std::move(spec), model.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::LOAD_MODEL_ERROR);
             *model_callback_done = true;
@@ -543,7 +543,7 @@ TEST(MachineLearningServiceImplTest, TestModel) {
   bool model_callback_done = false;
   ml_service->LoadBuiltinModel(
       std::move(spec), model.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -558,7 +558,7 @@ TEST(MachineLearningServiceImplTest, TestModel) {
   bool ge_callback_done = false;
   model->CreateGraphExecutor(
       graph_executor.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
             *ge_callback_done = true;
@@ -578,8 +578,8 @@ TEST(MachineLearningServiceImplTest, TestModel) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape, 0.75,
-                                     &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         0.75, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -626,8 +626,8 @@ TEST(MachineLearningServiceImplTest, TestModelString) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape, 0.75,
-                                     &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         0.75, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -663,8 +663,8 @@ TEST(BuiltinModelInferenceTest, SmartDim20181115) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape,
-                                     -3.36311, &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         -3.36311, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -699,8 +699,8 @@ TEST(BuiltinModelInferenceTest, SmartDim20190221) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape,
-                                     -0.900591, &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         -0.900591, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -735,8 +735,8 @@ TEST(BuiltinModelInferenceTest, SmartDim20190521) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape,
-                                     0.66962254, &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         0.66962254, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -771,8 +771,8 @@ TEST(BuiltinModelInferenceTest, SearchRanker20190923) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape,
-                                     0.658488, &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         0.658488, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -822,8 +822,8 @@ TEST(DownloadableModelInferenceTest, SmartDim20200206) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape,
-                                     -1.07195, &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         -1.07195, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -873,8 +873,8 @@ TEST(DownloadableModelInferenceTest, SmartDim20210201) {
   // Perform inference.
   bool infer_callback_done = false;
   graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::Bind(&CheckOutputTensor, expected_shape,
-                                     0.76872265, &infer_callback_done));
+                          base::BindOnce(&CheckOutputTensor, expected_shape,
+                                         0.76872265, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -889,7 +889,7 @@ TEST(LoadTextClassifierTest, NoInference) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -909,7 +909,7 @@ TEST(TextClassifierAnnotateTest, EmptyString) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -922,7 +922,7 @@ TEST(TextClassifierAnnotateTest, EmptyString) {
   request->text = "";
   bool infer_callback_done = false;
   text_classifier->Annotate(std::move(request),
-                            base::Bind(
+                            base::BindOnce(
                                 [](bool* infer_callback_done,
                                    std::vector<TextAnnotationPtr> annotations) {
                                   *infer_callback_done = true;
@@ -943,7 +943,7 @@ TEST(TextClassifierAnnotateTest, ComplexString) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -957,7 +957,7 @@ TEST(TextClassifierAnnotateTest, ComplexString) {
   bool infer_callback_done = false;
   text_classifier->Annotate(
       std::move(request),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done,
              std::vector<TextAnnotationPtr> annotations) {
             *infer_callback_done = true;
@@ -1009,7 +1009,7 @@ TEST(TextClassifierSelectionTest, EmptyString) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -1026,7 +1026,7 @@ TEST(TextClassifierSelectionTest, EmptyString) {
   bool infer_callback_done = false;
   text_classifier->SuggestSelection(
       std::move(request),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, CodepointSpanPtr suggested_span) {
             *infer_callback_done = true;
             EXPECT_EQ(suggested_span->start_offset, 1);
@@ -1047,7 +1047,7 @@ TEST(TextClassifierSelectionTest, ComplexString) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -1064,7 +1064,7 @@ TEST(TextClassifierSelectionTest, ComplexString) {
   bool infer_callback_done = false;
   text_classifier->SuggestSelection(
       std::move(request),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, CodepointSpanPtr suggested_span) {
             *infer_callback_done = true;
             EXPECT_EQ(suggested_span->start_offset, 21);
@@ -1086,7 +1086,7 @@ TEST(TextClassifierSelectionTest, WrongInput) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -1103,7 +1103,7 @@ TEST(TextClassifierSelectionTest, WrongInput) {
   bool infer_callback_done = false;
   text_classifier->SuggestSelection(
       std::move(request),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, CodepointSpanPtr suggested_span) {
             *infer_callback_done = true;
             EXPECT_EQ(suggested_span->start_offset, 30);
@@ -1124,7 +1124,7 @@ TEST(TextClassifierLangIdTest, ValidInput) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -1136,7 +1136,7 @@ TEST(TextClassifierLangIdTest, ValidInput) {
   bool infer_callback_done = false;
   text_classifier->FindLanguages(
       "Bonjour",
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, std::vector<TextLanguagePtr> result) {
             *infer_callback_done = true;
             ASSERT_GT(result.size(), 0);
@@ -1158,7 +1158,7 @@ TEST(TextClassifierLangIdTest, EmptyInput) {
   bool model_callback_done = false;
   ml_service->LoadTextClassifier(
       text_classifier.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             EXPECT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -1170,7 +1170,7 @@ TEST(TextClassifierLangIdTest, EmptyInput) {
   bool infer_callback_done = false;
   text_classifier->FindLanguages(
       "",
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, std::vector<TextLanguagePtr> result) {
             *infer_callback_done = true;
             EXPECT_EQ(result.size(), 0);
@@ -1213,7 +1213,7 @@ class HandwritingRecognizerTest : public testing::Test {
       ml_service_->LoadHandwritingModel(
           HandwritingRecognizerSpec::New(langauge),
           recognizer_.BindNewPipeAndPassReceiver(),
-          base::Bind(
+          base::BindOnce(
               [](bool* model_callback_done,
                  const LoadHandwritingModelResult result) {
                 ASSERT_EQ(result, LoadHandwritingModelResult::OK);
@@ -1224,7 +1224,7 @@ class HandwritingRecognizerTest : public testing::Test {
       ml_service_->LoadHandwritingModelWithSpec(
           HandwritingRecognizerSpec::New(langauge),
           recognizer_.BindNewPipeAndPassReceiver(),
-          base::Bind(
+          base::BindOnce(
               [](bool* model_callback_done, const LoadModelResult result) {
                 ASSERT_EQ(result, LoadModelResult::OK);
                 *model_callback_done = true;
@@ -1242,7 +1242,7 @@ class HandwritingRecognizerTest : public testing::Test {
     bool infer_callback_done = false;
     recognizer_->Recognize(
         HandwritingRecognitionQueryFromProtoForTesting(request_),
-        base::Bind(
+        base::BindOnce(
             [](bool* infer_callback_done, const std::string& text,
                const float score, const HandwritingRecognizerResultPtr result) {
               // Check that the inference succeeded and gives
@@ -1307,7 +1307,7 @@ TEST_F(HandwritingRecognizerTest, LoadHandwritingModel) {
   bool infer_callback_done = false;
   recognizer_->Recognize(
       HandwritingRecognitionQueryFromProtoForTesting(request_),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done,
              const HandwritingRecognizerResultPtr result) {
             // Check that the inference failed.
@@ -1338,7 +1338,7 @@ TEST_F(HandwritingRecognizerTest, FailOnEmptyInk) {
   bool infer_callback_done = false;
   recognizer_->Recognize(
       HandwritingRecognitionQueryFromProtoForTesting(request_),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done,
              const HandwritingRecognizerResultPtr result) {
             // Check that the inference failed.
@@ -1398,7 +1398,7 @@ class WebPlatformHandwritingRecognizerTest : public testing::Test {
     constraint->languages.push_back(language);
     ml_service_->LoadWebPlatformHandwritingModel(
         std::move(constraint), recognizer_.BindNewPipeAndPassReceiver(),
-        base::Bind(
+        base::BindOnce(
             [](bool* model_callback_done,
                const LoadHandwritingModelResult result) {
               ASSERT_EQ(result, LoadHandwritingModelResult::OK);
@@ -1418,7 +1418,7 @@ class WebPlatformHandwritingRecognizerTest : public testing::Test {
     // Make a copy of strokes and hints to avoid them being cleared after
     recognizer_->GetPrediction(
         GetDefaultStrokes(), hints_.Clone(),
-        base::Bind(
+        base::BindOnce(
             [](bool* infer_callback_done, const std::string& text,
                base::Optional<
                    std::vector<chromeos::machine_learning::web_platform::mojom::
@@ -1496,7 +1496,7 @@ TEST_F(WebPlatformHandwritingRecognizerTest, FailOnEmptyStrokes) {
   bool infer_callback_done = false;
   recognizer_->GetPrediction(
       {}, hints_.Clone(),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done,
              base::Optional<
                  std::vector<chromeos::machine_learning::web_platform::mojom::
@@ -1583,7 +1583,7 @@ TEST(GrammarCheckerTest, LoadModelAndInference) {
   bool model_callback_done = false;
   ml_service->LoadGrammarChecker(
       checker.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* model_callback_done, const LoadModelResult result) {
             ASSERT_EQ(result, LoadModelResult::OK);
             *model_callback_done = true;
@@ -1601,7 +1601,7 @@ TEST(GrammarCheckerTest, LoadModelAndInference) {
   bool infer_callback_done = false;
   checker->Check(
       GrammarCheckerQueryFromProtoForTesting(request),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, const GrammarCheckerResultPtr result) {
             EXPECT_EQ(result->status, GrammarCheckerResult::Status::OK);
             ASSERT_GE(result->candidates.size(), 1);
@@ -1641,7 +1641,7 @@ class TextSuggesterTest : public ::testing::Test {
     ml_service->LoadTextSuggester(
         suggester_.BindNewPipeAndPassReceiver(),
         TextSuggesterSpec::New(experiment_group),
-        base::Bind(
+        base::BindOnce(
             [](bool* model_callback_done, const LoadModelResult result) {
               ASSERT_EQ(result, LoadModelResult::OK);
               *model_callback_done = true;
@@ -1677,7 +1677,7 @@ TEST_F(TextSuggesterTest, LoadModelAndGenerateCompletionCandidate) {
   bool infer_callback_done = false;
   suggester_->Suggest(
       std::move(query),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 1);
@@ -1708,7 +1708,7 @@ TEST_F(TextSuggesterTest, LoadModelAndGeneratePredictionCandidate) {
   bool infer_callback_done = false;
   suggester_->Suggest(
       std::move(query),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 1);
@@ -1751,7 +1751,7 @@ TEST_F(TextSuggesterTest,
   bool infer_callback_done = false;
   suggester_->Suggest(
       std::move(query),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 0);
@@ -1782,7 +1782,7 @@ TEST_F(TextSuggesterTest, GboardExperimentGroupTriggersExpectedSuggestions) {
   bool infer_callback_done = false;
   suggester_->Suggest(
       std::move(query),
-      base::Bind(
+      base::BindOnce(
           [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 1);

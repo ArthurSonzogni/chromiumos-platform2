@@ -36,7 +36,7 @@ ModelImpl* ModelImpl::Create(std::unique_ptr<ModelDelegate> model_delegate,
       new ModelImpl(std::move(model_delegate), std::move(receiver));
   // Use a disconnection handler to strongly bind `model_impl` to `receiver`.
   model_impl->set_disconnect_handler(
-      base::Bind(&DeleteModelImpl, base::Unretained(model_impl)));
+      base::BindOnce(&DeleteModelImpl, base::Unretained(model_impl)));
 
   return model_impl;
 }
@@ -46,7 +46,7 @@ ModelImpl::ModelImpl(std::unique_ptr<ModelDelegate> model_delegate,
     : model_delegate_(std::move(model_delegate)),
       receiver_(this, std::move(receiver)) {}
 
-void ModelImpl::set_disconnect_handler(base::Closure disconnect_handler) {
+void ModelImpl::set_disconnect_handler(base::OnceClosure disconnect_handler) {
   receiver_.set_disconnect_handler(std::move(disconnect_handler));
 }
 
@@ -80,8 +80,8 @@ void ModelImpl::CreateGraphExecutorWithOptions(
       std::unique_ptr<GraphExecutorDelegate>(graph_executor_delegate),
       std::move(receiver));
   graph_executors_.front().set_disconnect_handler(
-      base::Bind(&ModelImpl::EraseGraphExecutor, base::Unretained(this),
-                 graph_executors_.begin()));
+      base::BindOnce(&ModelImpl::EraseGraphExecutor, base::Unretained(this),
+                     graph_executors_.begin()));
 
   std::move(callback).Run(CreateGraphExecutorResult::OK);
 }

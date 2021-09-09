@@ -59,7 +59,7 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   ModelImpl(const ModelImpl&) = delete;
   ModelImpl& operator=(const ModelImpl&) = delete;
 
-  void set_disconnect_handler(base::Closure disconnect_handler);
+  void set_disconnect_handler(base::OnceClosure disconnect_handler);
 
   // chromeos::machine_learning::mojom::Model:
   void CreateGraphExecutor(

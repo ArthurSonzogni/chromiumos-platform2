@@ -41,7 +41,7 @@ bool WebPlatformHandwritingRecognizerImpl::Create(
   //  process) when the connection is gone, because this model is always run in
   //  a dedicated process.
   recognizer_impl->receiver_.set_disconnect_handler(
-      base::Bind([]() { brillo::MessageLoop::current()->BreakLoop(); }));
+      base::BindOnce([]() { brillo::MessageLoop::current()->BreakLoop(); }));
 
   return recognizer_impl->successfully_loaded_;
 }

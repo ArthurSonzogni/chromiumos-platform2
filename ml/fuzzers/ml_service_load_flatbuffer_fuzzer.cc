@@ -54,7 +54,7 @@ class MLServiceFuzzer {
         base::ThreadTaskRunnerHandle::Get(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
     ml_service_impl_ = std::make_unique<MachineLearningServiceImpl>(
-        ml_service_.BindNewPipeAndPassReceiver(), base::Closure());
+        ml_service_.BindNewPipeAndPassReceiver(), base::OnceClosure());
   }
   void PerformInference(const uint8_t* data, size_t size) {
     FlatBufferModelSpecPtr spec = FlatBufferModelSpec::New();
@@ -67,7 +67,7 @@ class MLServiceFuzzer {
     bool load_model_done = false;
     ml_service_->LoadFlatBufferModel(
         std::move(spec), model_.BindNewPipeAndPassReceiver(),
-        base::Bind(
+        base::BindOnce(
             [](bool* load_model_done, const LoadModelResult result) {
               *load_model_done = true;
             },

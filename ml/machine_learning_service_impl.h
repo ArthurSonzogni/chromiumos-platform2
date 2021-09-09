@@ -33,7 +33,7 @@ class MachineLearningServiceImpl
   MachineLearningServiceImpl(
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::MachineLearningService> receiver,
-      base::Closure disconnect_handler,
+      base::OnceClosure disconnect_handler,
       dbus::Bus* bus = nullptr);
 
  protected:
@@ -42,7 +42,7 @@ class MachineLearningServiceImpl
   MachineLearningServiceImpl(
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::MachineLearningService> receiver,
-      base::Closure disconnect_handler,
+      base::OnceClosure disconnect_handler,
       const std::string& model_dir);
   MachineLearningServiceImpl(const MachineLearningServiceImpl&) = delete;
   MachineLearningServiceImpl& operator=(const MachineLearningServiceImpl&) =

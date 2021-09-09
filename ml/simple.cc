@@ -57,7 +57,7 @@ AddResult Add(const double x,
   // Create ML Service
   mojo::Remote<MachineLearningService> ml_service;
   const MachineLearningServiceImpl ml_service_impl(
-      ml_service.BindNewPipeAndPassReceiver(), base::Closure());
+      ml_service.BindNewPipeAndPassReceiver(), base::OnceClosure());
 
   // Load model.
   BuiltinModelSpecPtr spec = BuiltinModelSpec::New();
@@ -66,7 +66,7 @@ AddResult Add(const double x,
   bool model_load_ok = false;
   ml_service->LoadBuiltinModel(
       std::move(spec), model.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* const model_load_ok, const LoadModelResult result) {
             *model_load_ok = result == LoadModelResult::OK;
           },
@@ -83,7 +83,7 @@ AddResult Add(const double x,
   auto options = GraphExecutorOptions::New(use_nnapi, use_gpu);
   model->CreateGraphExecutorWithOptions(
       std::move(options), graph_executor.BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* const graph_executor_ok,
              const CreateGraphExecutorResult result) {
             *graph_executor_ok = result == CreateGraphExecutorResult::OK;
@@ -103,7 +103,7 @@ AddResult Add(const double x,
   bool inference_ok = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      base::Bind(
+      base::BindOnce(
           [](bool* const inference_ok, double* const sum,
              const ExecuteResult execute_result,
              base::Optional<std::vector<TensorPtr>> outputs) {

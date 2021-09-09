@@ -147,7 +147,7 @@ bool ConstructGraphExecutor(const mojo::Remote<Model>& model,
       GraphExecutorOptions::New(/*use_nnapi=*/false,
                                 /*use_gpu=*/tflite_config.use_gpu()),
       graph_executor->BindNewPipeAndPassReceiver(),
-      base::Bind(
+      base::BindOnce(
           [](bool* succeeded, const CreateGraphExecutorResult result) {
             *succeeded = result == CreateGraphExecutorResult::OK;
           },
@@ -337,7 +337,7 @@ BenchmarkResults InferenceForTfliteModel(
         TensorMapFromExample(input_output.input(),
                              model_proto.required_inputs()),
         output_name,
-        base::Bind(
+        base::BindOnce(
             [](AccumulativeResult* accumulative_result,
                const std::vector<std::string>* const output_name,
                const base::flat_map<std::string, TensorPtr>* const

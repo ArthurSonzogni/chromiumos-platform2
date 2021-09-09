@@ -28,7 +28,7 @@ bool TextSuggesterImpl::Create(
 
   // Set the disconnection handler to strongly bind `checker_impl` to delete
   // `suggester_impl` when the connection is gone.
-  suggester_impl->receiver_.set_disconnect_handler(base::Bind(
+  suggester_impl->receiver_.set_disconnect_handler(base::BindOnce(
       [](const TextSuggesterImpl* const suggester_impl) {
         delete suggester_impl;
       },

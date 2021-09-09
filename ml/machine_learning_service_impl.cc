@@ -158,7 +158,7 @@ void LoadDocumentScannerFromPath(
 MachineLearningServiceImpl::MachineLearningServiceImpl(
     mojo::PendingReceiver<
         chromeos::machine_learning::mojom::MachineLearningService> receiver,
-    base::Closure disconnect_handler,
+    base::OnceClosure disconnect_handler,
     const std::string& model_dir)
     : builtin_model_metadata_(GetBuiltinModelMetadata()),
       model_dir_(model_dir),
@@ -169,7 +169,7 @@ MachineLearningServiceImpl::MachineLearningServiceImpl(
 MachineLearningServiceImpl::MachineLearningServiceImpl(
     mojo::PendingReceiver<
         chromeos::machine_learning::mojom::MachineLearningService> receiver,
-    base::Closure disconnect_handler,
+    base::OnceClosure disconnect_handler,
     dbus::Bus* bus)
     : MachineLearningServiceImpl(
           std::move(receiver), std::move(disconnect_handler), kSystemModelDir) {

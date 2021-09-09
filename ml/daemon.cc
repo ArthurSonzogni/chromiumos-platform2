@@ -66,8 +66,8 @@ void Daemon::InitDBus() {
   // Register a handler of the BootstrapMojoConnection method.
   CHECK(ml_service_exported_object->ExportMethodAndBlock(
       kMachineLearningInterfaceName, kBootstrapMojoConnectionMethod,
-      base::Bind(&Daemon::BootstrapMojoConnection,
-                 weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::BootstrapMojoConnection,
+                          weak_ptr_factory_.GetWeakPtr())));
 
   // Take ownership of the ML service.
   CHECK(bus_->RequestOwnershipAndBlock(kMachineLearningServiceName,
@@ -126,7 +126,7 @@ void Daemon::BootstrapMojoConnection(
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::MachineLearningService>(
           invitation.ExtractMessagePipe(kBootstrapMojoConnectionChannelToken)),
-      base::Bind(&Daemon::OnMojoDisconnection, base::Unretained(this)),
+      base::BindOnce(&Daemon::OnMojoDisconnection, base::Unretained(this)),
       bus_.get());
 
   metrics_.RecordMojoConnectionEvent(

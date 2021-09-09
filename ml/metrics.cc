@@ -115,11 +115,12 @@ void Metrics::StartCollectingProcessMetrics() {
       base::FilePath(kCumulativeMetricsBackingDir),
       std::vector<std::string>{kPeakTotalMemoryCumulativeStatName},
       kCumulativeMetricsUpdatePeriod,
-      base::Bind(&Metrics::UpdateAndRecordMetrics, base::Unretained(this),
-                 true /*record_current_metrics*/),
+      base::BindRepeating(&Metrics::UpdateAndRecordMetrics,
+                          base::Unretained(this),
+                          true /*record_current_metrics*/),
       kCumulativeMetricsReportPeriod,
-      base::Bind(&RecordCumulativeMetrics,
-                 base::Unretained(&metrics_library_)));
+      base::BindRepeating(&RecordCumulativeMetrics,
+                          base::Unretained(&metrics_library_)));
 }
 
 void Metrics::UpdateCumulativeMetricsNow() {

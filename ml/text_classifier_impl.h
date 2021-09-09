@@ -46,7 +46,7 @@ class TextClassifierImpl
   TextClassifierImpl(const TextClassifierImpl&) = delete;
   TextClassifierImpl& operator=(const TextClassifierImpl&) = delete;
 
-  void SetDisconnectionHandler(base::Closure disconnect_handler);
+  void SetDisconnectionHandler(base::OnceClosure disconnect_handler);
 
   // chromeos::machine_learning::mojom::TextClassifier:
   void Annotate(

@@ -28,7 +28,7 @@ bool GrammarCheckerImpl::Create(
 
   // Set the disconnection handler to strongly bind `checker_impl` to delete
   // `checker_impl` when the connection is gone.
-  checker_impl->receiver_.set_disconnect_handler(base::Bind(
+  checker_impl->receiver_.set_disconnect_handler(base::BindOnce(
       [](const GrammarCheckerImpl* const checker_impl) { delete checker_impl; },
       base::Unretained(checker_impl)));
 

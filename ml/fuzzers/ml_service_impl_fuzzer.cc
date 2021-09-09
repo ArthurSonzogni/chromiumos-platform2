@@ -57,7 +57,7 @@ class MachineLearningServiceImplForTesting : public MachineLearningServiceImpl {
   explicit MachineLearningServiceImplForTesting(
       mojo::PendingReceiver<MachineLearningService> receiver)
       : MachineLearningServiceImpl(std::move(receiver),
-                                   base::Closure(),
+                                   base::OnceClosure(),
                                    std::string(kModelDirForFuzzer)) {}
 };
 
@@ -85,7 +85,7 @@ class MLServiceFuzzer {
     bool model_callback_done = false;
     ml_service_->LoadBuiltinModel(
         std::move(spec), model_.BindNewPipeAndPassReceiver(),
-        base::Bind(
+        base::BindOnce(
             [](bool* model_callback_done, const LoadModelResult result) {
               CHECK_EQ(result, LoadModelResult::OK);
               *model_callback_done = true;
@@ -99,7 +99,7 @@ class MLServiceFuzzer {
     bool ge_callback_done = false;
     model_->CreateGraphExecutor(
         graph_executor_.BindNewPipeAndPassReceiver(),
-        base::Bind(
+        base::BindOnce(
             [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
               CHECK_EQ(result, CreateGraphExecutorResult::OK);
               *ge_callback_done = true;
@@ -129,7 +129,7 @@ class MLServiceFuzzer {
     bool infer_callback_done = false;
     graph_executor_->Execute(
         std::move(inputs), std::move(outputs),
-        base::Bind(
+        base::BindOnce(
             [](bool* infer_callback_done, const ExecuteResult result,
                base::Optional<std::vector<TensorPtr>> outputs) {
               // Basic inference checks.
