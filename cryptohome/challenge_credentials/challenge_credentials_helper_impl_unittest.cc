@@ -159,7 +159,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
     challenge_credentials_helper_.Decrypt(
         kUserEmail, key_data, keyset_challenge_info,
         std::move(mock_key_challenge_service),
-        base::Bind([](std::unique_ptr<Credentials>) {}));
+        base::BindOnce([](std::unique_ptr<Credentials>) {}));
   }
 
   // Assert that the given GenerateNew() operation result is a valid success

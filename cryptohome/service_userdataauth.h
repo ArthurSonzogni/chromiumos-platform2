@@ -26,7 +26,7 @@ class UserDataAuthAdaptor
       : org::chromium::UserDataAuthInterfaceAdaptor(this),
         dbus_object_(dbus_object),
         service_(service) {
-    service_->SetLowDiskSpaceCallback(base::Bind(
+    service_->SetLowDiskSpaceCallback(base::BindRepeating(
         &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;

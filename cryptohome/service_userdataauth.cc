@@ -530,7 +530,7 @@ void UserDataAuthAdaptor::StartMigrateToDircrypto(
         user_data_auth::StartMigrateToDircryptoReply>> response,
     const user_data_auth::StartMigrateToDircryptoRequest& in_request) {
   // This will be called whenever there's a status update from the migration.
-  auto status_callback = base::Bind(
+  auto status_callback = base::BindRepeating(
       [](UserDataAuthAdaptor* adaptor,
          const user_data_auth::DircryptoMigrationProgress& progress) {
         adaptor->SendDircryptoMigrationProgressSignal(progress);
@@ -540,8 +540,8 @@ void UserDataAuthAdaptor::StartMigrateToDircrypto(
   // Kick start the migration process.
   service_->PostTaskToMountThread(
       FROM_HERE,
-      base::Bind(&UserDataAuth::StartMigrateToDircrypto,
-                 base::Unretained(service_), in_request, status_callback));
+      base::BindOnce(&UserDataAuth::StartMigrateToDircrypto,
+                     base::Unretained(service_), in_request, status_callback));
 
   // This function returns immediately after starting the migration process.
   // Also, this is always successful. Failure will be notified through the

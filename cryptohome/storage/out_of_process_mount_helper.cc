@@ -201,9 +201,9 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
   write_to_helper_ = helper_process_->GetPipe(STDIN_FILENO);
   int read_from_helper = helper_process_->GetPipe(STDOUT_FILENO);
 
-  base::ScopedClosureRunner kill_runner(
-      base::Bind(&OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary,
-                 base::Unretained(this)));
+  base::ScopedClosureRunner kill_runner(base::BindOnce(
+      &OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary,
+      base::Unretained(this)));
 
   if (!WriteProtobuf(write_to_helper_, request)) {
     LOG(ERROR) << "Failed to write request protobuf";

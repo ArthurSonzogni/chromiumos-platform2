@@ -69,8 +69,8 @@ class Pkcs11KeyStore : public KeyStore {
                                    const brillo::SecureBlob& certificate);
 
  private:
-  typedef base::Callback<bool(const std::string& key_name,
-                              CK_OBJECT_HANDLE object_handle)>
+  typedef base::RepeatingCallback<bool(const std::string& key_name,
+                                       CK_OBJECT_HANDLE object_handle)>
       EnumObjectsCallback;
 
   std::unique_ptr<Pkcs11Init> default_pkcs11_init_;

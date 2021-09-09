@@ -43,9 +43,9 @@ AuthSession::AuthSession(
       keyset_management_(keyset_management) {
   token_ = base::UnguessableToken::Create();
   ProcessFlags(flags);
-  timer_.Start(
-      FROM_HERE, kAuthSessionTimeoutInMinutes,
-      base::Bind(&AuthSession::AuthSessionTimedOut, base::Unretained(this)));
+  timer_.Start(FROM_HERE, kAuthSessionTimeoutInMinutes,
+               base::BindOnce(&AuthSession::AuthSessionTimedOut,
+                              base::Unretained(this)));
   user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
   if (user_exists_)
     keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),

@@ -140,8 +140,9 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   MakeKeySignatureChallenge(
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()), salt,
       keyset_challenge_info_.salt_signature_algorithm(),
-      base::Bind(&ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(
+          &ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
+          weak_ptr_factory_.GetWeakPtr()));
   return nullptr;
 }
 
@@ -165,7 +166,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
       unsealing_session_->GetChallengeValue(),
       unsealing_session_->GetChallengeAlgorithm(),
-      base::Bind(
+      base::BindOnce(
           &ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
   return nullptr;

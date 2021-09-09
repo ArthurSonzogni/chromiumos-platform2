@@ -163,7 +163,7 @@ bool ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
   MakeKeySignatureChallenge(
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
       salt_, salt_signature_algorithm_,
-      base::Bind(
+      base::BindOnce(
           &ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
   return true;

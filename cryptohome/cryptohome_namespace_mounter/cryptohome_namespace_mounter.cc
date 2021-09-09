@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
 
   // Quit the run loop when signalled.
   sig_handler.RegisterHandler(
-      SIGTERM, base::Bind(&HandleSignal, run_loop.QuitClosure()));
+      SIGTERM, base::BindRepeating(&HandleSignal, run_loop.QuitClosure()));
 
   run_loop.Run();
 

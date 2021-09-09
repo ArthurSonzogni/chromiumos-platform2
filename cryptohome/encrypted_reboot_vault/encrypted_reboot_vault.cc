@@ -105,8 +105,8 @@ bool EncryptedRebootVault::CreateVault() {
   }
 
   base::ScopedClosureRunner reset_vault(
-      base::Bind(base::IgnoreResult(&EncryptedRebootVault::PurgeVault),
-                 base::Unretained(this)));
+      base::BindOnce(base::IgnoreResult(&EncryptedRebootVault::PurgeVault),
+                     base::Unretained(this)));
 
   // Remove the existing vault.
   PurgeVault();
@@ -154,8 +154,8 @@ bool EncryptedRebootVault::UnlockVault() {
 
   // We reset the vault if we fail to unlock it for any reason.
   base::ScopedClosureRunner reset_vault(
-      base::Bind(base::IgnoreResult(&EncryptedRebootVault::PurgeVault),
-                 base::Unretained(this)));
+      base::BindOnce(base::IgnoreResult(&EncryptedRebootVault::PurgeVault),
+                     base::Unretained(this)));
 
   if (!Validate()) {
     LOG(ERROR) << "Invalid vault; purging.";

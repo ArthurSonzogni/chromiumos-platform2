@@ -37,7 +37,7 @@ ChallengeCredentialsHelper::DecryptCallback
 MakeChallengeCredentialsDecryptResultWriter(
     std::unique_ptr<ChallengeCredentialsDecryptResult>* result) {
   DCHECK(!*result);
-  return base::Bind(
+  return base::BindOnce(
       [](std::unique_ptr<ChallengeCredentialsDecryptResult>* result,
          std::unique_ptr<Credentials> credentials) {
         ASSERT_FALSE(*result);
