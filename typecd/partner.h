@@ -18,10 +18,14 @@
 
 namespace typecd {
 
+class Port;
+
 // A partner represents a device which is connected to the host. This
 // class is used to maintain the state associated with the partner.
 class Partner : public Peripheral {
  public:
+  // Add a constructor for ONLY for partner unit tests.
+  explicit Partner(const base::FilePath& syspath, Port* port);
   explicit Partner(const base::FilePath& syspath);
   Partner(const Partner&) = delete;
   Partner& operator=(const Partner&) = delete;
@@ -102,6 +106,9 @@ class Partner : public Peripheral {
   // Field which tracks whether metrics have been reported for the partner. This
   // prevents duplicate reporting.
   bool metrics_reported_;
+  // Pointer to the parent Port for this partner. The port lifecycle exceeds
+  // that of the Partner, so it's fine to have this as a raw pointer.
+  Port* port_;
 };
 
 }  // namespace typecd

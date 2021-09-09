@@ -65,7 +65,7 @@ void Port::AddPartner(const base::FilePath& path) {
     LOG(WARNING) << "Partner already exists for port " << port_num_;
     return;
   }
-  partner_ = std::make_unique<Partner>(path);
+  partner_ = std::make_unique<Partner>(path, this);
 
   LOG(INFO) << "Partner enumerated for port " << port_num_;
 }
