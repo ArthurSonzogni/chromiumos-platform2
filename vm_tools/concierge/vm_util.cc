@@ -598,15 +598,17 @@ std::string CreateSharedDataParam(
     const std::string& tag,
     bool enable_caches,
     bool ascii_casefold,
+    bool posix_acl,
     const std::vector<uid_t>& privileged_quota_uids) {
   // TODO(b/169446394): Go back to using "never" when caching is disabled
   // once we can switch /data/media to use 9p.
   std::string result = base::StringPrintf(
       "%s:%s:type=fs:cache=%s:uidmap=%s:gidmap=%s:timeout=%d:rewrite-"
-      "security-xattrs=true:ascii_casefold=%s:writeback=%s",
+      "security-xattrs=true:ascii_casefold=%s:writeback=%s:posix_acl=%s",
       data_dir.value().c_str(), tag.c_str(), enable_caches ? "always" : "auto",
       kAndroidUidMap, kAndroidGidMap, enable_caches ? 3600 : 1,
-      ascii_casefold ? "true" : "false", enable_caches ? "true" : "false");
+      ascii_casefold ? "true" : "false", enable_caches ? "true" : "false",
+      posix_acl ? "true" : "false");
 
   if (!privileged_quota_uids.empty()) {
     result += ":privileged_quota_uids=";

@@ -21,6 +21,9 @@ namespace {
 // Android data directory.
 constexpr const char kAndroidDataDir[] = "/run/arcvm/android-data";
 
+// Android stub volume directory for MyFiles and removable media.
+constexpr const char kStubVolumeSharedDir[] = "/run/arcvm/media";
+
 }  // namespace
 
 std::unique_ptr<dbus::Response> Service::StartArcVm(
@@ -181,10 +184,14 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   SendVmStartingUpSignal(vm_id, *vm_info);
 
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
-  std::string shared_data = CreateSharedDataParam(data_dir, "_data", true,
-                                                  false, privileged_quota_uids);
+  std::string shared_data = CreateSharedDataParam(
+      data_dir, "_data", true, false, true, privileged_quota_uids);
   std::string shared_data_media = CreateSharedDataParam(
-      data_dir, "_data_media", false, true, privileged_quota_uids);
+      data_dir, "_data_media", false, true, true, privileged_quota_uids);
+
+  const base::FilePath stub_dir(kStubVolumeSharedDir);
+  std::string shared_stub = CreateSharedDataParam(stub_dir, "stub", false, true,
+                                                  false, privileged_quota_uids);
 
   // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |affinity|
   // should be passed from chrome instead of |enable_rt_vcpu|.
@@ -212,6 +219,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
                                             kArcVmPstoreSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
+      .AppendSharedDir(shared_stub)
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling());
 

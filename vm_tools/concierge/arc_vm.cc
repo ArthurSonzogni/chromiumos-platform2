@@ -261,25 +261,25 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       kMediaSharedDir, kMediaSharedDirTag, kAndroidUidMap, kAndroidGidMap);
   const base::FilePath testharness_dir(kTestHarnessSharedDir);
   std::string shared_testharness = CreateSharedDataParam(
-      testharness_dir, kTestHarnessSharedDirTag, true, false, {});
+      testharness_dir, kTestHarnessSharedDirTag, true, false, true, {});
   const base::FilePath apkcache_dir(kApkCacheSharedDir);
   std::string shared_apkcache = CreateSharedDataParam(
-      apkcache_dir, kApkCacheSharedDirTag, true, false, {});
+      apkcache_dir, kApkCacheSharedDirTag, true, false, true, {});
   const base::FilePath fonts_dir(kFontsSharedDir);
-  std::string shared_fonts =
-      CreateSharedDataParam(fonts_dir, kFontsSharedDirTag, true, false, {});
+  std::string shared_fonts = CreateSharedDataParam(
+      fonts_dir, kFontsSharedDirTag, true, false, true, {});
   const base::FilePath lib_dir(kLibSharedDir);
   std::string shared_lib =
-      CreateSharedDataParam(lib_dir, kLibSharedDirTag, true, false, {});
+      CreateSharedDataParam(lib_dir, kLibSharedDirTag, true, false, true, {});
   const base::FilePath usr_lib_dir(kUsrLibSharedDir);
-  std::string shared_usr_lib =
-      CreateSharedDataParam(usr_lib_dir, kUsrLibSharedDirTag, true, false, {});
+  std::string shared_usr_lib = CreateSharedDataParam(
+      usr_lib_dir, kUsrLibSharedDirTag, true, false, true, {});
   const base::FilePath sbin_dir(kSbinSharedDir);
   std::string shared_sbin =
-      CreateSharedDataParam(sbin_dir, kSbinSharedDirTag, true, false, {});
+      CreateSharedDataParam(sbin_dir, kSbinSharedDirTag, true, false, true, {});
   const base::FilePath usr_bin_dir(kUsrBinSharedDir);
-  std::string shared_usr_bin =
-      CreateSharedDataParam(usr_bin_dir, kUsrBinSharedDirTag, true, false, {});
+  std::string shared_usr_bin = CreateSharedDataParam(
+      usr_bin_dir, kUsrBinSharedDirTag, true, false, true, {});
 
   vm_builder
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
@@ -294,6 +294,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       // Second AC97 for the aaudio path.
       .AppendAudioDevice("backend=cras,capture=true,client_type=arcvm")
       .AppendSharedDir(oem_etc_shared_dir)
+      // TODO(b/182870415): Stop sharing shared_media once we have started to
+      // use virtio-fs for MyFiles and removable media on the Android side.
       .AppendSharedDir(shared_media)
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
