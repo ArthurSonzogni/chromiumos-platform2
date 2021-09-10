@@ -41,7 +41,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
   scoped_refptr<WriteProtectDisablePhysicalStateHandler> CreateStateHandler(
       const std::vector<int> wp_status_list,
       bool factory_mode_enabled,
-      bool has_fwmp,
+      bool is_enrolled,
       bool* factory_mode_toggled = nullptr) {
     // Mock |Cr50Utils|, |CrosSystemUtils| and |CryptohomeClient|.
     auto mock_crossystem_utils =
@@ -65,7 +65,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
     auto mock_cryptohome_client =
         std::make_unique<NiceMock<MockCryptohomeClient>>();
-    ON_CALL(*mock_cryptohome_client, HasFwmp()).WillByDefault(Return(has_fwmp));
+    ON_CALL(*mock_cryptohome_client, IsEnrolled())
+        .WillByDefault(Return(is_enrolled));
 
     auto handler =
         base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(

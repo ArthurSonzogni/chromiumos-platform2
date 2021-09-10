@@ -7,11 +7,11 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
+
 #include "rmad/system/cryptohome_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-
-#include <base/logging.h>
 
 namespace rmad {
 
@@ -74,13 +74,16 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
       hwwp_status == 0) {
     // Enable cr50 factory mode if possible.
     if (!cr50_utils_->IsFactoryModeEnabled() &&
-        !cryptohome_client_->HasFwmp()) {
-      cr50_utils_->EnableFactoryMode();
-      return {.error = RMAD_ERROR_EXPECT_REBOOT, .state_case = GetStateCase()};
-    } else {
-      return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kWpDisableComplete};
+        !cryptohome_client_->IsEnrolled()) {
+      if (cr50_utils_->EnableFactoryMode()) {
+        return {.error = RMAD_ERROR_EXPECT_REBOOT,
+                .state_case = GetStateCase()};
+      } else {
+        LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode";
+      }
     }
+    return {.error = RMAD_ERROR_OK,
+            .state_case = RmadState::StateCase::kWpDisableComplete};
   }
 
   return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
