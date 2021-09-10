@@ -66,6 +66,20 @@ std::string EscapeScannerName(const std::string& scanner_name) {
   return escaped;
 }
 
+std::string ExtensionForFormat(lorgnette::ImageFormat image_format) {
+  switch (image_format) {
+    case lorgnette::IMAGE_FORMAT_PNG:
+      return "png";
+
+    case lorgnette::IMAGE_FORMAT_JPEG:
+      return "jpg";
+
+    default:
+      LOG(ERROR) << "No extension for format " << image_format;
+      return "raw";
+  }
+}
+
 base::Optional<lorgnette::CancelScanResponse> CancelScan(
     ManagerProxy* manager, const std::string& uuid) {
   lorgnette::CancelScanRequest request;
@@ -115,7 +129,8 @@ class ScanHandler {
   bool StartScan(uint32_t resolution,
                  const lorgnette::DocumentSource& scan_source,
                  const base::Optional<lorgnette::ScanRegion>& scan_region,
-                 lorgnette::ColorMode color_mode);
+                 lorgnette::ColorMode color_mode,
+                 lorgnette::ImageFormat image_format);
 
  private:
   void HandleScanStatusChangedSignal(
@@ -136,6 +151,7 @@ class ScanHandler {
   ManagerProxy* manager_;  // Not owned.
   std::string scanner_name_;
   std::string output_pattern_;
+  std::string format_extension_;
   base::Optional<std::string> scan_uuid_;
   int current_page_;
 
@@ -157,7 +173,8 @@ bool ScanHandler::StartScan(
     uint32_t resolution,
     const lorgnette::DocumentSource& scan_source,
     const base::Optional<lorgnette::ScanRegion>& scan_region,
-    lorgnette::ColorMode color_mode) {
+    lorgnette::ColorMode color_mode,
+    lorgnette::ImageFormat image_format) {
   lorgnette::StartScanRequest request;
   request.set_device_name(scanner_name_);
   request.mutable_settings()->set_resolution(resolution);
@@ -165,6 +182,8 @@ bool ScanHandler::StartScan(
   request.mutable_settings()->set_color_mode(color_mode);
   if (scan_region.has_value())
     *request.mutable_settings()->mutable_scan_region() = scan_region.value();
+  request.mutable_settings()->set_image_format(image_format);
+  format_extension_ = ExtensionForFormat(image_format);
 
   std::vector<uint8_t> request_in(request.ByteSizeLong());
   request.SerializeToArray(request_in.data(), request_in.size());
@@ -278,6 +297,8 @@ void ScanHandler::RequestNextPage() {
       &expanded_path, 0, "%n", base::StringPrintf("%d", current_page_));
   base::ReplaceFirstSubstringAfterOffset(&expanded_path, 0, "%s",
                                          EscapeScannerName(scanner_name_));
+  base::ReplaceFirstSubstringAfterOffset(&expanded_path, 0, "%e",
+                                         format_extension_);
   base::FilePath output_path = base::FilePath(expanded_path);
   if (current_page_ > 1 && output_pattern_.find("%n") == std::string::npos) {
     output_path = output_path.InsertBeforeExtension(
@@ -419,6 +440,9 @@ class ScanRunner {
   void SetColorMode(lorgnette::ColorMode color_mode) {
     color_mode_ = color_mode;
   }
+  void SetImageFormat(lorgnette::ImageFormat image_format) {
+    image_format_ = image_format;
+  }
 
   bool RunScanner(const std::string& scanner,
                   const std::string& output_pattern);
@@ -429,6 +453,7 @@ class ScanRunner {
   lorgnette::SourceType source_;
   base::Optional<lorgnette::ScanRegion> region_;
   lorgnette::ColorMode color_mode_;
+  lorgnette::ImageFormat image_format_;
 };
 
 bool ScanRunner::RunScanner(const std::string& scanner,
@@ -498,8 +523,8 @@ bool ScanRunner::RunScanner(const std::string& scanner,
 
   std::cout << "Scanning from " << scanner << std::endl;
 
-  if (!handler.StartScan(resolution_, scan_source.value(), region_,
-                         color_mode_)) {
+  if (!handler.StartScan(resolution_, scan_source.value(), region_, color_mode_,
+                         image_format_)) {
     return false;
   }
 
@@ -542,6 +567,7 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
             lorgnette::SourceType source_type,
             const lorgnette::ScanRegion& region,
             lorgnette::ColorMode color_mode,
+            lorgnette::ImageFormat image_format,
             bool scan_from_all_scanners,
             const std::string& forced_scanner,
             const std::string& output_pattern) {
@@ -549,6 +575,7 @@ bool DoScan(std::unique_ptr<ManagerProxy> manager,
   runner.SetResolution(scan_resolution);
   runner.SetSource(source_type);
   runner.SetColorMode(color_mode);
+  runner.SetImageFormat(image_format);
 
   if (region.top_left_x() != -1.0 || region.top_left_y() != -1.0 ||
       region.bottom_right_x() != -1.0 || region.bottom_right_y() != -1.0) {
@@ -661,10 +688,13 @@ int main(int argc, char** argv) {
                 "Bottom-right X position of the scan region (mm)");
   DEFINE_double(bottom_right_y, -1.0,
                 "Bottom-right Y position of the scan region (mm)");
-  DEFINE_string(output, "/tmp/scan-%s_page%n.png",
+  DEFINE_string(output, "/tmp/scan-%s_page%n.%e",
                 "Pattern for output files. If present, %s will be replaced "
-                "with the scanner name, and %n will be replaced with the "
-                "page number.");
+                "with the scanner name, %n will be replaced with the page "
+                "number, and %e will be replaced with the extension matching "
+                "the selected image format.");
+  DEFINE_string(image_format, "PNG",
+                "Image format for the output file (PNG or JPG)");
 
   // Cancel Scan options
   DEFINE_string(uuid, "", "UUID of the scan job to cancel.");
@@ -742,9 +772,21 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    bool success =
-        DoScan(std::move(manager), FLAGS_scan_resolution, source_type.value(),
-               region, color_mode, FLAGS_all, FLAGS_scanner, FLAGS_output);
+    std::string image_format_string = base::ToLowerASCII(FLAGS_image_format);
+    lorgnette::ImageFormat image_format;
+    if (image_format_string == "png") {
+      image_format = lorgnette::IMAGE_FORMAT_PNG;
+    } else if (image_format_string == "jpg") {
+      image_format = lorgnette::IMAGE_FORMAT_JPEG;
+    } else {
+      LOG(ERROR) << "Unknown image format: \"" << image_format_string
+                 << "\". Supported values are \"PNG\" and \"JPG\"";
+      return 1;
+    }
+
+    bool success = DoScan(std::move(manager), FLAGS_scan_resolution,
+                          source_type.value(), region, color_mode, image_format,
+                          FLAGS_all, FLAGS_scanner, FLAGS_output);
     return success ? 0 : 1;
   } else if (command == "list") {
     std::vector<std::string> scanners = BuildScannerList(manager.get());
