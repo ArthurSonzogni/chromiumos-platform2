@@ -17,7 +17,6 @@ extern const char kDnsResolverPresentRoutineNoProblemMessage[];
 extern const char kDnsResolverPresentRoutineNoNameServersFoundProblemMessage[];
 extern const char
     kDnsResolverPresentRoutineMalformedNameServersProblemMessage[];
-extern const char kDnsResolverPresentRoutineEmptyNameServersProblemMessage[];
 extern const char kDnsResolverPresentRoutineNotRunMessage[];
 
 // Creates the DNS resolver present routine.

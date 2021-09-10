@@ -55,10 +55,11 @@ void ParseDnsResolverPresentResult(
           *status_message =
               kDnsResolverPresentRoutineMalformedNameServersProblemMessage;
           break;
+        // DEPRECATED: Using kNoNamesServersFound response instead
         case network_diagnostics_ipc::DnsResolverPresentProblem::
-            kEmptyNameServers:
+            DEPRECATED_kEmptyNameServers:
           *status_message =
-              kDnsResolverPresentRoutineEmptyNameServersProblemMessage;
+              kDnsResolverPresentRoutineNoNameServersFoundProblemMessage;
           break;
       }
       break;
@@ -89,8 +90,6 @@ const char kDnsResolverPresentRoutineNoNameServersFoundProblemMessage[] =
     "IP config has no list of name servers available.";
 const char kDnsResolverPresentRoutineMalformedNameServersProblemMessage[] =
     "IP config has a list of at least one malformed name server.";
-const char kDnsResolverPresentRoutineEmptyNameServersProblemMessage[] =
-    "IP config has an empty list of name servers";
 const char kDnsResolverPresentRoutineNotRunMessage[] =
     "DNS resolver present routine did not run.";
 

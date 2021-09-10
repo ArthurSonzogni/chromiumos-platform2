@@ -158,7 +158,7 @@ INSTANTIATE_TEST_SUITE_P(
             kDnsResolverPresentRoutineMalformedNameServersProblemMessage},
         DnsResolverPresentProblemTestParams{
             network_diagnostics_ipc::DnsResolverPresentProblem::
-                kEmptyNameServers,
-            kDnsResolverPresentRoutineEmptyNameServersProblemMessage}));
+                DEPRECATED_kEmptyNameServers,
+            kDnsResolverPresentRoutineNoNameServersFoundProblemMessage}));
 
 }  // namespace diagnostics
