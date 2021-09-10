@@ -13,6 +13,7 @@ dup: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1
+eventfd2: 1
 execve: 1
 exit: 1
 exit_group: 1
@@ -44,6 +45,7 @@ ioctl: arg1 == 0x8946 || arg1 == 0x5401 || arg1 == 0x8933
 kill: 1
 lseek: 1
 madvise: 1
+memfd_create: 1
 mkdirat: 1
 mlock: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

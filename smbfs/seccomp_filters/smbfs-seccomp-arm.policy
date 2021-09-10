@@ -22,6 +22,7 @@ epoll_create: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 execve: 1
 exit: 1
 exit_group: 1
@@ -59,6 +60,7 @@ _llseek: 1
 lstat: 1
 lstat64: 1
 madvise: 1
+memfd_create: 1
 mkdir: 1
 mlock: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
