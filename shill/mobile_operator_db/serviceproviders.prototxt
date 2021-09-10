@@ -1425,12 +1425,6 @@ mno {
         name : "Walk & Talk"
       }
     }
-    mobile_apn {
-      apn : "telenetwap.be"
-      localized_name {
-        name : "Walk & Surf"
-      }
-    }
   }
 }
 
@@ -2865,12 +2859,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.open"
-    }
-    mobile_apn {
-      apn : "internet"
-      localized_name {
-        name : "Prepaid"
-      }
     }
   }
 }
@@ -5583,14 +5571,6 @@ mno {
       apn : "indosatgprs"
       localized_name {
         name : "IM3/Mentari Volume-based"
-      }
-      username : "indosat"
-      password : "indosat"
-    }
-    mobile_apn {
-      apn : "indosatgprs"
-      localized_name {
-        name : "Matrix 3G/3.5G"
       }
       username : "indosat"
       password : "indosat"
