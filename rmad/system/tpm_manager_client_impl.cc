@@ -7,11 +7,11 @@
 #include <memory>
 #include <utility>
 
+#include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
+#include <dbus/bus.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
-
-#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
@@ -37,9 +37,9 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
 
 }  // namespace
 
-TpmManagerClientImpl::TpmManagerClientImpl() {
-  tpm_manager_proxy_ =
-      std::make_unique<org::chromium::TpmManagerProxy>(GetSystemBus());
+TpmManagerClientImpl::TpmManagerClientImpl(
+    const scoped_refptr<dbus::Bus>& bus) {
+  tpm_manager_proxy_ = std::make_unique<org::chromium::TpmManagerProxy>(bus);
 }
 
 TpmManagerClientImpl::TpmManagerClientImpl(

@@ -10,6 +10,8 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
+#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/runtime_probe/dbus-constants.h>

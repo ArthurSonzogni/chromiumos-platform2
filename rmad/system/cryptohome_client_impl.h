@@ -10,15 +10,17 @@
 #include <cstdint>
 #include <memory>
 
+#include <base/memory/scoped_refptr.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <dbus/bus.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 namespace rmad {
 
 class CryptohomeClientImpl : public CryptohomeClient {
  public:
-  CryptohomeClientImpl();
+  explicit CryptohomeClientImpl(const scoped_refptr<dbus::Bus>& bus);
   explicit CryptohomeClientImpl(
       std::unique_ptr<org::chromium::InstallAttributesInterfaceProxyInterface>
           install_attributes_proxy);

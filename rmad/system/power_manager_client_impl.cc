@@ -4,7 +4,11 @@
 
 #include "rmad/system/power_manager_client_impl.h"
 
+#include <memory>
+
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
+#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/power_manager/dbus-constants.h>

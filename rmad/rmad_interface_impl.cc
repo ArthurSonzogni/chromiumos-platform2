@@ -33,7 +33,7 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers();
   shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
-  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
   Initialize();
 }
 

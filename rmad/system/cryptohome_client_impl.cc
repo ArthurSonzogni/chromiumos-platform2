@@ -8,18 +8,18 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <dbus/bus.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
-
-#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
-CryptohomeClientImpl::CryptohomeClientImpl() {
+CryptohomeClientImpl::CryptohomeClientImpl(
+    const scoped_refptr<dbus::Bus>& bus) {
   install_attributes_proxy_ =
-      std::make_unique<org::chromium::InstallAttributesInterfaceProxy>(
-          GetSystemBus());
+      std::make_unique<org::chromium::InstallAttributesInterfaceProxy>(bus);
 }
 
 CryptohomeClientImpl::CryptohomeClientImpl(

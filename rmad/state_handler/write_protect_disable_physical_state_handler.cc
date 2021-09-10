@@ -12,6 +12,7 @@
 #include "rmad/system/cryptohome_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
@@ -27,7 +28,7 @@ WriteProtectDisablePhysicalStateHandler::
     : BaseStateHandler(json_store) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
-  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>();
+  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
 }
 
 WriteProtectDisablePhysicalStateHandler::

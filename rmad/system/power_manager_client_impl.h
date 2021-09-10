@@ -7,8 +7,7 @@
 
 #include "rmad/system/power_manager_client.h"
 
-#include <memory>
-
+#include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
 
 namespace rmad {
