@@ -81,6 +81,10 @@ const char kLsbOsDescriptionKey[] = "CHROMEOS_RELEASE_DESCRIPTION";
 // Key of the lsb-release entry containing the channel.
 const char kLsbChannelKey[] = "CHROMEOS_RELEASE_TRACK";
 
+// Environment variable set by minijail that includes the path to a seccomp
+// policy if one is defined.
+constexpr char kEnvSecompPolicyPath[] = "SECCOMP_POLICY_PATH";
+
 #if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
@@ -1211,7 +1215,22 @@ bool CrashCollector::GetProcessTree(pid_t pid,
     // Read the status file and append it to the log.
     if (!base::ReadFileToString(proc_path.Append("status"), &contents))
       break;
-    stream << contents << std::endl;
+    stream << contents;
+
+    // Include values of interest from the environment.
+    if (!base::ReadFileToString(proc_path.Append("environ"), &contents))
+      break;
+    base::StringPairs environ;
+    if (base::SplitStringIntoKeyValuePairs(contents, '=', '\0', &environ)) {
+      for (const auto& key_value : environ) {
+        if (key_value.first == kEnvSecompPolicyPath) {
+          stream << kEnvSecompPolicyPath << '=' << key_value.second
+                 << std::endl;
+          break;
+        }
+      }
+    }
+    stream << std::endl;
 
     // Pull out the parent pid from the status file.  The line will look like:
     // PPid:\t1234
