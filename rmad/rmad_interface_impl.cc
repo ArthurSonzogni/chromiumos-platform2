@@ -15,7 +15,9 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/system/shill_client_impl.h"
 #include "rmad/system/tpm_manager_client_impl.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
@@ -30,6 +32,7 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
   json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers();
+  shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
   Initialize();
 }
@@ -37,10 +40,12 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<StateHandlerManager> state_handler_manager,
+    std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : RmadInterface(),
       json_store_(json_store),
       state_handler_manager_(std::move(state_handler_manager)),
+      shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)) {
   Initialize();
 }
@@ -103,6 +108,12 @@ void RmadInterfaceImpl::Initialize() {
       // TODO(gavindodd): Set to an error state or send a signal to Chrome that
       // the json store failed so a message can be displayed.
     }
+  }
+
+  // If we are in the RMA process, disable cellular to prevent accidentally
+  // using it.
+  if (current_state_case_ != RmadState::STATE_NOT_SET) {
+    DCHECK(shill_client_->DisableCellular());
   }
 }
 
