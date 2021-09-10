@@ -48,6 +48,7 @@ open: 1
 openat: 1
 pipe: 1
 poll: 1
+pread64: 1
 prctl: 1
 pwrite64: 1
 read: 1

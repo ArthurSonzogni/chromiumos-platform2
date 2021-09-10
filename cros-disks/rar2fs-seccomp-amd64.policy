@@ -45,6 +45,7 @@ openat: 1
 pipe: 1
 poll: 1
 prctl: arg0 == PR_SET_NAME
+pread64: 1
 prlimit64: 1
 read: 1
 readlink: 1
