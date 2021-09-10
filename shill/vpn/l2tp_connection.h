@@ -28,7 +28,13 @@ namespace shill {
 class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
  public:
   struct Config {
-    // TODO(b/165170125): Add fields for xl2tpd
+    std::string remote_ip;
+
+    // Fields for xl2tpd.
+    bool refuse_pap;
+    bool require_auth;
+    bool require_chap;
+    bool length_bit;
 
     // Fields for pppd.
     bool lcp_echo;  // lcp echo connection monitoring

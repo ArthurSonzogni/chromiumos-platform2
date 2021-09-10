@@ -36,6 +36,18 @@ constexpr char kPPPDConfigFileName[] = "pppd.conf";
 // of the L2TP server.
 const char kLnsAddress[] = "LNS_ADDRESS";
 
+// Constants used in the config file for xl2tpd.
+const char kL2TPConnectionName[] = "managed";
+const char kBpsParameter[] = "1000000";
+const char kRedialTimeoutParameter[] = "2";
+const char kMaxRedialsParameter[] = "30";
+
+// xl2tpd (1.3.12 at the time of writing) uses fgets with a size 1024 buffer to
+// get configuration lines. If a configuration line was longer than that and
+// didn't contain the comment delimiter ';', it could be used to populate
+// multiple configuration options.
+constexpr size_t kXl2tpdMaxConfigurationLength = 1023;
+
 }  // namespace
 
 L2TPConnection::L2TPConnection(std::unique_ptr<Config> config,
@@ -198,11 +210,54 @@ bool L2TPConnection::WritePPPDConfig() {
 }
 
 bool L2TPConnection::WriteL2TPDConfig() {
+  CHECK(!pppd_config_path_.empty());
+
   l2tpd_config_path_ = temp_dir_.GetPath().Append(kL2TPDConfigFileName);
 
-  // TODO(b/165170125): Fill in contents.
+  std::vector<std::string> lines;
+  lines.push_back(base::StringPrintf("[lac %s]", kL2TPConnectionName));
 
-  return vpn_util_->WriteConfigFile(l2tpd_config_path_, "");
+  // Fills in bool properties.
+  auto bool_property = [](const std::string& key, bool value) -> std::string {
+    return base::StrCat({key, " = ", value ? "yes" : "no"});
+  };
+  lines.push_back(bool_property("require chap", config_->require_chap));
+  lines.push_back(bool_property("refuse pap", config_->refuse_pap));
+  lines.push_back(
+      bool_property("require authentication", config_->require_auth));
+  lines.push_back(bool_property("length bit", config_->length_bit));
+  lines.push_back(bool_property("redial", true));
+  lines.push_back(bool_property("autodial", true));
+
+  // Fills in string properties. Note that some values are input by users, we
+  // need to check them to ensure that the generated config file will not be
+  // polluted. See https://crbug.com/1077754. Note that the ordering of
+  // properties in the config file does not matter, we use a vector instead of
+  // map just for the ease of unit tests.
+  std::vector<std::pair<std::string, std::string>> string_properties = {
+      {"lns", config_->remote_ip},
+      {"name", config_->user},
+      {"bps", kBpsParameter},
+      {"redial timeout", kRedialTimeoutParameter},
+      {"max redials", kMaxRedialsParameter},
+      {"pppoptfile", pppd_config_path_.value()},
+  };
+  for (const auto& [key, value] : string_properties) {
+    if (value.find('\n') != value.npos) {
+      LOG(ERROR) << "The value for " << key << " contains newline characters";
+      return false;
+    }
+    const auto line = base::StrCat({key, " = ", value});
+    if (line.size() > kXl2tpdMaxConfigurationLength) {
+      LOG(ERROR) << "Line length for " << key << " exceeds "
+                 << kXl2tpdMaxConfigurationLength;
+      return false;
+    }
+    lines.push_back(line);
+  }
+
+  std::string contents = base::JoinString(lines, "\n");
+  return vpn_util_->WriteConfigFile(l2tpd_config_path_, contents);
 }
 
 void L2TPConnection::StartXl2tpd() {
@@ -214,9 +269,8 @@ void L2TPConnection::StartXl2tpd() {
       "-D"  // prevents xl2tpd from detaching from the terminal and daemonizing
   };
 
-  // TODO(b/165170125): Add remote IP here.
   std::map<std::string, std::string> env = {
-      {kLnsAddress, ""},
+      {kLnsAddress, config_->remote_ip},
   };
 
   auto external_task_local = std::make_unique<ExternalTask>(

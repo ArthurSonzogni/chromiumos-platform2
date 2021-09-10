@@ -8,6 +8,9 @@
 #include <string>
 #include <utility>
 
+#include <arpa/inet.h>  // for inet_ntop
+#include <netdb.h>      // for getaddrinfo
+
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -29,11 +32,56 @@ const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
+// Returns an empty string on error.
+std::string ConvertSockAddrToIPString(const sockaddr_storage& address) {
+  char str[INET6_ADDRSTRLEN] = {0};
+  switch (address.ss_family) {
+    case AF_INET:
+      if (!inet_ntop(
+              AF_INET,
+              &(reinterpret_cast<const sockaddr_in*>(&address)->sin_addr), str,
+              sizeof(str))) {
+        PLOG(ERROR) << "inet_ntop failed";
+        return "";
+      }
+      break;
+    case AF_INET6:
+      if (!inet_ntop(
+              AF_INET6,
+              &(reinterpret_cast<const sockaddr_in6*>(&address)->sin6_addr),
+              str, sizeof(str))) {
+        PLOG(ERROR) << "inet_ntop failed";
+        return "";
+      }
+      break;
+    default:
+      LOG(ERROR) << "Unknown address family: " << address.ss_family;
+      return "";
+  }
+  return str;
+}
+
+// Returns an empty string on error.
+std::string ResolveNameToIP(const std::string& name) {
+  addrinfo* address_info = nullptr;
+  // This function is called when the VPN service is connecting, and it makes
+  // sense to let the query go through the dnsproxy.
+  int s = getaddrinfo(name.c_str(), nullptr, nullptr, &address_info);
+  if (s != 0) {
+    LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
+    return "";
+  }
+  sockaddr_storage address;
+  memcpy(&address, address_info->ai_addr, address_info->ai_addrlen);
+  freeaddrinfo(address_info);
+  return ConvertSockAddrToIPString(address);
+}
+
 std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
-    const KeyValueStore& args) {
+    const std::string& remote_ip, const KeyValueStore& args) {
   auto config = std::make_unique<IPsecConnection::Config>();
 
-  config->remote = args.Lookup<std::string>(kProviderHostProperty, "");
+  config->remote = remote_ip;
   if (!args.Lookup<std::string>(kL2TPIPsecPskProperty, "").empty()) {
     config->psk = args.Get<std::string>(kL2TPIPsecPskProperty);
   }
@@ -62,15 +110,31 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
   return config;
 }
 
+// KeyValueStore stores bool value as string "true" or "false". This function
+// converts it to bool type, or returns |default_value|.
+bool GetBool(const KeyValueStore& args,
+             const std::string& key,
+             bool default_value) {
+  if (args.Contains<std::string>(key)) {
+    return args.Get<std::string>(key) == "true";
+  }
+  return default_value;
+}
+
 std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
-    const KeyValueStore& args) {
+    const std::string& remote_ip, const KeyValueStore& args) {
   auto config = std::make_unique<L2TPConnection::Config>();
 
-  // TODO(b/178454141): Add fields for xl2tpd.
+  config->remote_ip = remote_ip;
+
+  // Fields for xl2tpd.
+  config->refuse_pap = GetBool(args, kL2TPIPsecRefusePapProperty, false);
+  config->require_auth = GetBool(args, kL2TPIPsecRequireAuthProperty, true);
+  config->require_chap = GetBool(args, kL2TPIPsecRequireChapProperty, true);
+  config->length_bit = GetBool(args, kL2TPIPsecLengthBitProperty, true);
 
   // Fields for pppd.
-  config->lcp_echo = args.Lookup<std::string>(kL2TPIPsecLcpEchoDisabledProperty,
-                                              "false") != "true";
+  config->lcp_echo = GetBool(args, kL2TPIPsecLcpEchoDisabledProperty, true);
   config->user = args.Lookup<std::string>(kL2TPIPsecUserProperty, "");
   config->password = args.Lookup<std::string>(kL2TPIPsecPasswordProperty, "");
 
@@ -128,10 +192,19 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
     return;
   }
 
+  const std::string remote_ip = ResolveNameToIP(
+      const_args()->Lookup<std::string>(kProviderHostProperty, ""));
+  if (remote_ip.empty()) {
+    LOG(ERROR) << "Failed to resolve host property to IP.";
+    NotifyServiceOfFailure(Service::kFailureInternal);
+    return;
+  }
+
   // Callbacks for L2TP will be set and handled in IPsecConnection.
   auto l2tp_connection = std::make_unique<L2TPConnection>(
-      MakeL2TPConfig(*const_args()), /*callbacks=*/nullptr, control_interface(),
-      manager()->device_info(), manager()->dispatcher(), process_manager());
+      MakeL2TPConfig(remote_ip, *const_args()), /*callbacks=*/nullptr,
+      control_interface(), manager()->device_info(), manager()->dispatcher(),
+      process_manager());
 
   auto callbacks = std::make_unique<IPsecConnection::Callbacks>(
       base::BindRepeating(&NewL2TPIPsecDriver::OnIPsecConnected,
@@ -142,7 +215,7 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
                      weak_factory_.GetWeakPtr()));
 
   ipsec_connection_ = std::make_unique<IPsecConnection>(
-      MakeIPsecConfig(*const_args()), std::move(callbacks),
+      MakeIPsecConfig(remote_ip, *const_args()), std::move(callbacks),
       std::move(l2tp_connection), manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();

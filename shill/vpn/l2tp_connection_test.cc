@@ -55,6 +55,8 @@ class L2TPConnectionUnderTest : public L2TPConnection {
 
   bool InvokeWritePPPDConfig() { return WritePPPDConfig(); }
 
+  bool InvokeWriteL2TPDConfig() { return WriteL2TPDConfig(); }
+
   void InvokeStartXl2tpd() { StartXl2tpd(); }
 
   void InvokeGetLogin(std::string* user, std::string* password) {
@@ -96,6 +98,22 @@ nosystemconfig
 usepeerdns
 lcp-echo-failure 4
 lcp-echo-interval 30
+)";
+
+// The expected contents of l2tpd.conf excluding the line for "pppoptfile" which
+// value is not fixed.
+constexpr char kExpectedXl2tpdConf[] = R"([lac managed]
+require chap = no
+refuse pap = yes
+require authentication = yes
+length bit = yes
+redial = yes
+autodial = yes
+lns = 1.2.3.4
+name = test_user
+bps = 1000000
+redial timeout = 2
+max redials = 30
 )";
 
 class MockCallbacks {
@@ -155,6 +173,37 @@ TEST_F(L2TPConnectionTest, WritePPPDConfig) {
   ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
   EXPECT_EQ(actual_content, base::StrCat({kExpectedPPPDConf, "plugin ",
                                           PPPDaemon::kShimPluginPath}));
+
+  // The file should be deleted after destroying the L2TPConnection object.
+  l2tp_connection_ = nullptr;
+  ASSERT_FALSE(base::PathExists(expected_path));
+}
+
+TEST_F(L2TPConnectionTest, WriteXl2tpdConfig) {
+  base::FilePath temp_dir = l2tp_connection_->SetTempDir();
+
+  auto config = std::make_unique<L2TPConnection::Config>();
+  config->remote_ip = "1.2.3.4";
+  config->require_chap = false;
+  config->refuse_pap = true;
+  config->require_auth = true;
+  config->length_bit = true;
+  config->user = "test_user";
+  l2tp_connection_->set_config(std::move(config));
+
+  ASSERT_TRUE(l2tp_connection_->InvokeWritePPPDConfig());
+  EXPECT_TRUE(l2tp_connection_->InvokeWriteL2TPDConfig());
+
+  // L2TPConnection should write the config to the `l2tpd.conf` file under
+  // the temp dir it created.
+  base::FilePath expected_path = temp_dir.Append("l2tpd.conf");
+  ASSERT_TRUE(base::PathExists(expected_path));
+  std::string actual_content;
+  ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
+  const std::string kExpectedContents =
+      base::StrCat({kExpectedXl2tpdConf,
+                    "pppoptfile = ", temp_dir.Append("pppd.conf").value()});
+  EXPECT_EQ(actual_content, kExpectedContents);
 
   // The file should be deleted after destroying the L2TPConnection object.
   l2tp_connection_ = nullptr;
