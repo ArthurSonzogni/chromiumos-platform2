@@ -128,7 +128,7 @@ bool JpegReader::Initialize(brillo::ErrorPtr* error,
 
   cinfo_.optimize_coding = TRUE;
 
-  jpeg_set_quality(&cinfo_, 100, TRUE);
+  jpeg_set_quality(&cinfo_, 95, TRUE);
   jpeg_start_compress(&cinfo_, TRUE);
 
   initialized_ = true;
