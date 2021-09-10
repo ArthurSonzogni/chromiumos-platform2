@@ -86,8 +86,11 @@ BlobMutatorCommand ReadCommandFromFuzzedData(uint8_t current_byte,
 }  // namespace
 
 Blob MutateBlob(const Blob& input_blob,
+                int min_length,
                 int max_length,
                 FuzzedDataProvider* fuzzed_data_provider) {
+  CHECK_LE(min_length, max_length);
+
   // Begin with an empty result blob. The code below will fill it with data,
   // according to the parsed "commands".
   Blob fuzzed_blob;
@@ -102,6 +105,8 @@ Blob MutateBlob(const Blob& input_blob,
     uint8_t to_add;
     BlobMutatorCommand command = ReadCommandFromFuzzedData(
         current_byte, next_byte, &consumed_byte_count, &to_add);
+
+    bool stop = false;
     switch (command) {
       case BlobMutatorCommand::kCopyInputByte: {
         if (input_index < input_blob.size() &&
@@ -122,22 +127,32 @@ Blob MutateBlob(const Blob& input_blob,
         break;
       }
       case BlobMutatorCommand::kEnd: {
-        return fuzzed_blob;
+        stop = true;
+        break;
       }
       case BlobMutatorCommand::kEndWithCopyingRestOfInput: {
         const int bytes_to_copy = std::min(input_blob.size() - input_index,
                                            max_length - fuzzed_blob.size());
         fuzzed_blob.insert(fuzzed_blob.end(), input_blob.begin() + input_index,
                            input_blob.begin() + input_index + bytes_to_copy);
-        return fuzzed_blob;
+        stop = true;
+        break;
       }
     }
 
+    if (stop) {
+      break;
+    }
     if (consumed_byte_count == 2) {
       // If the current command consumed both bytes from the data provider,
       // extract one more for the next command.
       next_byte = fuzzed_data_provider->ConsumeIntegral<uint8_t>();
     }
   } while (fuzzed_data_provider->remaining_bytes());
+
+  if (fuzzed_blob.size() < min_length) {
+    fuzzed_blob.resize(min_length);
+  }
+  CHECK_LE(fuzzed_blob.size(), max_length);
   return fuzzed_blob;
 }

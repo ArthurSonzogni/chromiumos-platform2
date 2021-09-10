@@ -89,13 +89,14 @@ Blob FuzzedRsaOaepEncrypt(const Blob& plaintext,
       plaintext.size(), oaep_label.data(), oaep_label.size(), nullptr, nullptr);
 
   Blob fuzzed_padded_blob =
-      MutateBlob(padded_blob, RSA_size(rsa), fuzzed_data_provider);
-  fuzzed_padded_blob.resize(RSA_size(rsa));
+      MutateBlob(padded_blob, /*min_length=*/RSA_size(rsa),
+                 /*max_length=*/RSA_size(rsa), fuzzed_data_provider);
 
   Blob ciphertext(RSA_size(rsa));
   RSA_public_encrypt(fuzzed_padded_blob.size(), fuzzed_padded_blob.data(),
                      ciphertext.data(), rsa, RSA_NO_PADDING);
-  return MutateBlob(ciphertext, RSA_size(rsa), fuzzed_data_provider);
+  return MutateBlob(ciphertext, /*min_length=*/0, /*max_length=*/RSA_size(rsa),
+                    fuzzed_data_provider);
 }
 
 }  // namespace
@@ -129,7 +130,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       plaintext, oaep_label, encryption_rsa, &fuzzed_data_provider);
 
   const Blob fuzzed_oaep_label =
-      MutateBlob(oaep_label, kMaxOaepLabelLength, &fuzzed_data_provider);
+      MutateBlob(oaep_label, /*min_length=*/0,
+                 /*max_length=*/kMaxOaepLabelLength, &fuzzed_data_provider);
 
   // Run the fuzzed function.
   SecureBlob decrypted_data;

@@ -13,8 +13,10 @@ class FuzzedDataProvider;
 // The following mutations are applied:
 // * Removing chunk(s) from the input blob;
 // * Inserting "random" bytes into the input blob.
-// The size of the resulting blob is guaranteed to be within [0; max_length].
+// The size of the resulting blob is guaranteed to be within
+// [min_length; max_length].
 brillo::Blob MutateBlob(const brillo::Blob& input_blob,
+                        int min_length,
                         int max_length,
                         FuzzedDataProvider* fuzzed_data_provider);
 

@@ -62,9 +62,9 @@ flatbuffer("cryptohome-flatbuffers") {
     # Generate code for enums using C++11 scoped enums.
     "--scoped-enums",
   ]
-  if (use.test) {
-    # Tests use Flatbuffers Object based API (which is more convenient but
-    # doesn't allow to use a secure allocator).
+  if (use.test || use.fuzzer) {
+    # Tests and fuzzers use Flatbuffers Object based API (which is more
+    # convenient but doesn't allow to use a secure allocator).
     flatc_args += [ "--gen-object-api" ]
   }
   sources = [

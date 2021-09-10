@@ -98,13 +98,14 @@ Blob FuzzedRsaOaepEncrypt(const Blob& plaintext,
       plaintext.size(), oaep_label.data(), oaep_label.size(), nullptr, nullptr);
 
   Blob fuzzed_padded_blob =
-      MutateBlob(padded_blob, RSA_size(rsa), fuzzed_data_provider);
-  fuzzed_padded_blob.resize(RSA_size(rsa));
+      MutateBlob(padded_blob, /*min_length=*/RSA_size(rsa),
+                 /*max_length=*/RSA_size(rsa), fuzzed_data_provider);
 
   Blob ciphertext(RSA_size(rsa));
   RSA_public_encrypt(fuzzed_padded_blob.size(), fuzzed_padded_blob.data(),
                      ciphertext.data(), rsa, RSA_NO_PADDING);
-  return MutateBlob(ciphertext, RSA_size(rsa) + kFuzzingExtraSizeDelta,
+  return MutateBlob(ciphertext, /*min_length=*/0,
+                    /*max_length=*/RSA_size(rsa) + kFuzzingExtraSizeDelta,
                     fuzzed_data_provider);
 }
 
@@ -235,7 +236,8 @@ Blob FuzzedOaepMgf1Encode(const Blob& message,
       CombineBlobs({masked_seed, masked_padded_message});
   CHECK_EQ(encoded_message.size(), encoded_message_length);
 
-  return MutateBlob(encoded_message, encoded_message_length,
+  return MutateBlob(encoded_message, /*min_length=*/0,
+                    /*max_length=*/encoded_message_length,
                     fuzzed_data_provider);
 }
 
@@ -256,11 +258,10 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
   RSA_get0_factors(&cmk_rsa, &cmk_p, nullptr);
   Blob cmk_secret_prime(BN_num_bytes(cmk_p));
   CHECK_GE(BN_bn2bin(cmk_p, cmk_secret_prime.data()), 0);
-  Blob fuzzed_cmk_secret_prime = MutateBlob(
-      cmk_secret_prime, cmk_secret_prime.size() + kFuzzingExtraSizeDelta,
+  const Blob fuzzed_cmk_secret_prime = MutateBlob(
+      cmk_secret_prime, /*min_length=*/kMigratedCmkPrivateKeySeedPartSizeBytes,
+      /*max_length=*/cmk_secret_prime.size() + kFuzzingExtraSizeDelta,
       fuzzed_data_provider);
-  if (fuzzed_cmk_secret_prime.size() < kMigratedCmkPrivateKeySeedPartSizeBytes)
-    fuzzed_cmk_secret_prime.resize(kMigratedCmkPrivateKeySeedPartSizeBytes);
 
   // Build the |cmk_pubkey| parameter.
   // Note: not mutating it, since the tested function assumes the validity of
@@ -270,24 +271,28 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
   // Build the |cmk_pubkey_digest| parameter.
   const Blob cmk_pubkey_digest = cryptohome::Sha1(*cmk_pubkey);
   *fuzzed_cmk_pubkey_digest = MutateBlob(
-      cmk_pubkey_digest, cmk_pubkey_digest.size() + kFuzzingExtraSizeDelta,
+      cmk_pubkey_digest, /*min_length=*/0,
+      /*max_length=*/cmk_pubkey_digest.size() + kFuzzingExtraSizeDelta,
       fuzzed_data_provider);
 
   // Build the |msa_composite_digest| parameter.
   const Blob msa_composite_digest =
       fuzzed_data_provider->ConsumeBytes<uint8_t>(SHA_DIGEST_LENGTH);
-  *fuzzed_msa_composite_digest =
-      MutateBlob(msa_composite_digest,
-                 msa_composite_digest.size() + kFuzzingExtraSizeDelta,
-                 fuzzed_data_provider);
+  *fuzzed_msa_composite_digest = MutateBlob(
+      msa_composite_digest,
+      /*min_length=*/0,
+      /*max_length=*/msa_composite_digest.size() + kFuzzingExtraSizeDelta,
+      fuzzed_data_provider);
 
   // Build the |tpm_migrate_asymkey_oaep_label_blob| temporary value.
   const Blob tpm_migrate_asymkey_oaep_label_blob =
       CombineBlobs({msa_composite_digest, cmk_pubkey_digest});
-  const Blob fuzzed_tpm_migrate_asymkey_oaep_label_blob = MutateBlob(
-      tpm_migrate_asymkey_oaep_label_blob,
-      tpm_migrate_asymkey_oaep_label_blob.size() + kFuzzingExtraSizeDelta,
-      fuzzed_data_provider);
+  const Blob fuzzed_tpm_migrate_asymkey_oaep_label_blob =
+      MutateBlob(tpm_migrate_asymkey_oaep_label_blob,
+                 /*min_length=*/0,
+                 /*max_length=*/tpm_migrate_asymkey_oaep_label_blob.size() +
+                     kFuzzingExtraSizeDelta,
+                 fuzzed_data_provider);
 
   // Build the |tpm_migrate_asymkey_oaep_seed_blob| temporary value.
   const Blob tpm_migrate_asymkey_oaep_seed_blob =
@@ -295,11 +300,11 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
                     Blob(fuzzed_cmk_secret_prime.begin(),
                          fuzzed_cmk_secret_prime.begin() +
                              kMigratedCmkPrivateKeySeedPartSizeBytes)});
-  Blob fuzzed_tpm_migrate_asymkey_oaep_seed_blob = MutateBlob(
-      tpm_migrate_asymkey_oaep_seed_blob,
-      tpm_migrate_asymkey_oaep_seed_blob.size(), fuzzed_data_provider);
-  fuzzed_tpm_migrate_asymkey_oaep_seed_blob.resize(
-      tpm_migrate_asymkey_oaep_seed_blob.size());
+  const Blob fuzzed_tpm_migrate_asymkey_oaep_seed_blob =
+      MutateBlob(tpm_migrate_asymkey_oaep_seed_blob,
+                 /*min_length=*/tpm_migrate_asymkey_oaep_seed_blob.size(),
+                 /*max_length=*/tpm_migrate_asymkey_oaep_seed_blob.size(),
+                 fuzzed_data_provider);
 
   // Build the |tpm_migrate_asymkey_blob| temporary value.
   Blob auth_data =
@@ -321,9 +326,9 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
                kMigratedCmkPrivateKeySeedPartSizeBytes,
            fuzzed_cmk_secret_prime.end()),
   });
-  const Blob fuzzed_tpm_migrate_asymkey_blob =
-      MutateBlob(tpm_migrate_asymkey_blob, tpm_migrate_asymkey_blob.size(),
-                 fuzzed_data_provider);
+  const Blob fuzzed_tpm_migrate_asymkey_blob = MutateBlob(
+      tpm_migrate_asymkey_blob, /*min_length=*/0,
+      /*max_length=*/tpm_migrate_asymkey_blob.size(), fuzzed_data_provider);
 
   // Build the |fuzzed_encoded_tpm_migrate_asymkey_blob| temporary value.
   const Blob fuzzed_encoded_tpm_migrate_asymkey_blob = FuzzedOaepMgf1Encode(
