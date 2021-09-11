@@ -498,4 +498,3 @@ known-third-party=
 # Apply logging string format checks to calls on these modules.
 logging-modules=
     logging,
-    chromite.lib.cros_logging,

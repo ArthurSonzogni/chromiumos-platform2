@@ -13,19 +13,13 @@ testdata pulled from the Chromium sources.
 from __future__ import print_function
 
 import io
+import logging
 import os
-import sys
 import unittest
+
 import yaml  # pylint: disable=import-error
 
-# Find chromite!
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                '..', '..', '..'))
-
-# pylint: disable=wrong-import-position
-from chromite.lib import cros_logging as logging
 import regions
-# pylint: enable=wrong-import-position
 
 
 _WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION = (
