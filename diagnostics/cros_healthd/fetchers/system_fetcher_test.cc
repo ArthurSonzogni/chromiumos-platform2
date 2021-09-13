@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/optional.h>
@@ -35,19 +36,6 @@ base::Optional<std::string> GetMockValue(
   if (ptr)
     return std::to_string(ptr->value);
   return base::nullopt;
-}
-
-base::Optional<std::string> GetMockValue(const mojo_ipc::BootMode& boot_mode) {
-  switch (boot_mode) {
-    case mojo_ipc::BootMode::kCrosSecure:
-      return "Foo Bar=1 cros_secure Foo Bar=1";
-    case mojo_ipc::BootMode::kCrosEfi:
-      return "Foo Bar=1 cros_efi Foo Bar=1";
-    case mojo_ipc::BootMode::kCrosLegacy:
-      return "Foo Bar=1 cros_legacy Foo Bar=1";
-    default:
-      return "Foo Bar=1 Foo Bar=1";
-  }
 }
 
 class SystemUtilsTest : public BaseFileTest {
@@ -144,7 +132,7 @@ class SystemUtilsTest : public BaseFileTest {
         os_info->marketing_name);
     mock_context_.fake_system_config()->SetCodeName(os_info->code_name);
     SetOsVersion(os_info->os_version);
-    SetMockFile(kFilePathProcCmdline, os_info->boot_mode);
+    SetBootMode(os_info->boot_mode);
   }
 
   void SetOsVersion(const mojo_ipc::OsVersionPtr& os_version) {
@@ -155,6 +143,32 @@ class SystemUtilsTest : public BaseFileTest {
         "CHROMEOS_RELEASE_TRACK=%s\n",
         os_version->release_milestone.c_str(), os_version->build_number.c_str(),
         os_version->patch_number.c_str(), os_version->release_channel.c_str()));
+  }
+
+  void SetBootMode(const mojo_ipc::BootMode& boot_mode) {
+    base::Optional<std::string> proc_cmd;
+    base::Optional<std::string> efi_secure;
+    switch (boot_mode) {
+      case mojo_ipc::BootMode::kCrosSecure:
+        proc_cmd = "Foo Bar=1 cros_secure Foo Bar=1";
+        break;
+      case mojo_ipc::BootMode::kCrosEfi:
+        efi_secure = std::string{0x0};
+        proc_cmd = "Foo Bar=1 cros_efi Foo Bar=1";
+        break;
+      case mojo_ipc::BootMode::kCrosEfiSecure:
+        efi_secure = std::string{0x1};
+        proc_cmd = "Foo Bar=1 cros_efi Foo Bar=1";
+        break;
+      case mojo_ipc::BootMode::kCrosLegacy:
+        proc_cmd = "Foo Bar=1 cros_legacy Foo Bar=1";
+        break;
+      case mojo_ipc::BootMode::kUnknown:
+        proc_cmd = "Foo Bar=1 Foo Bar=1";
+        break;
+    }
+    SetMockFile(kFilePathProcCmdline, proc_cmd);
+    SetMockFile(kFileUEFISecurityBoot, efi_secure);
   }
 
   // Sets the mock file with |value|. If the |value| is omitted, deletes the
@@ -321,6 +335,11 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kUnknown;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+
+  expected_system_info_->os_info->boot_mode =
+      mojo_ipc::BootMode::kCrosEfiSecure;
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }

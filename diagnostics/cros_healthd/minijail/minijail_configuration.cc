@@ -113,6 +113,10 @@ void ConfigureAndEnterMinijail() {
 
   BindMountIfPathExists(
       jail.get(),
+      base::FilePath("/sys/firmware/efi/vars/"));  // Files with UEFI vars.
+
+  BindMountIfPathExists(
+      jail.get(),
       base::FilePath("/sys/bus/pci"));  // Files related to the
                                         // PCI information.
 

@@ -142,6 +142,29 @@ bool FetchOsVersion(mojo_ipc::OsVersionPtr* out_os_version,
   return true;
 }
 
+bool IsUEFISecurityBoot(const base::FilePath& root_dir) {
+  std::string s;
+  auto f = root_dir.Append(kFileUEFISecurityBoot);
+  if (!base::ReadFileToString(f, &s)) {
+    LOG(ERROR) << "Cannot read file: " << f.value();
+    return false;
+  }
+  if (s.size() != 1) {
+    LOG(ERROR) << "Expected file " << f.value()
+               << " contains one byte, but got " << s.size() << " bytes.";
+    return false;
+  }
+  switch (s.back()) {
+    case 0x0:
+      return false;
+    case 0x1:
+      return true;
+    default:
+      LOG(ERROR) << "Unexpected security boot value: " << (uint32_t)(s.back());
+      return false;
+  }
+}
+
 mojo_ipc::BootMode FetchBootMode(const base::FilePath& root_dir) {
   std::string cmdline;
   const auto path = root_dir.Append(kFilePathProcCmdline);
@@ -153,7 +176,8 @@ mojo_ipc::BootMode FetchBootMode(const base::FilePath& root_dir) {
     if (token == "cros_secure")
       return mojo_ipc::BootMode::kCrosSecure;
     if (token == "cros_efi")
-      return mojo_ipc::BootMode::kCrosEfi;
+      return IsUEFISecurityBoot(root_dir) ? mojo_ipc::BootMode::kCrosEfiSecure
+                                          : mojo_ipc::BootMode::kCrosEfi;
     if (token == "cros_legacy")
       return mojo_ipc::BootMode::kCrosLegacy;
   }

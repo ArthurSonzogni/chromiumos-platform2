@@ -224,6 +224,8 @@ std::string EnumToString(BootMode mode) {
       return "cros_efi";
     case BootMode::kCrosLegacy:
       return "cros_legacy";
+    case BootMode::kCrosEfiSecure:
+      return "cros_efi_secure";
   }
 }
 
