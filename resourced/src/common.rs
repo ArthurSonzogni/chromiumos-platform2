@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -32,6 +33,18 @@ pub enum GameMode {
     Borealis = 1,
 }
 
+impl TryFrom<u8> for GameMode {
+    type Error = anyhow::Error;
+
+    fn try_from(mode_raw: u8) -> Result<GameMode> {
+        Ok(match mode_raw {
+            0 => GameMode::Off,
+            1 => GameMode::Borealis,
+            _ => bail!("Unsupported game mode value"),
+        })
+    }
+}
+
 static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
 
 pub fn set_game_mode(mode: GameMode) -> Result<()> {
@@ -57,6 +70,18 @@ pub enum RTCAudioActive {
     Inactive = 0,
     // RTC is active, RTC audio is playing and recording.
     Active = 1,
+}
+
+impl TryFrom<u8> for RTCAudioActive {
+    type Error = anyhow::Error;
+
+    fn try_from(active_raw: u8) -> Result<RTCAudioActive> {
+        Ok(match active_raw {
+            0 => RTCAudioActive::Inactive,
+            1 => RTCAudioActive::Active,
+            _ => bail!("Unsupported RTC audio active value"),
+        })
+    }
 }
 
 static RTC_ACTIVE: Lazy<Mutex<RTCAudioActive>> = Lazy::new(|| Mutex::new(RTCAudioActive::Inactive));
@@ -93,7 +118,7 @@ pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
                 "balance_performance" // Default EPP
             };
 
-            set_epp("/", &epp_value).context("Failed to set EPP sysfs value!")
+            set_epp("/", epp_value).context("Failed to set EPP sysfs value!")
         }
 
         Err(_) => bail!("Failed to set RTC audio activity"),
