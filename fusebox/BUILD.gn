@@ -9,6 +9,9 @@ group("all") {
     ":fusebox",
     ":libfusebox",
   ]
+  if (use.test) {
+    deps += [ ":fusebox_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -46,4 +49,23 @@ executable("fusebox") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":libfusebox" ]
+}
+
+if (use.test) {
+  pkg_config("fusebox_test_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("fusebox_test") {
+    sources = [
+      "test_runner.cc",
+      "util_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":fusebox_test_config",
+    ]
+    deps = [ ":libfusebox" ]
+  }
 }
