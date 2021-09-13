@@ -16,7 +16,8 @@ std::string ReasonToString(WiFiReasonCode reason) {
     case kReasonCodePreviousAuthenticationInvalid:
       return "Previous authentication no longer valid";
     case kReasonCodeSenderHasLeft:
-      return "Deauthentcated because sending STA is leaving (or has left) IBSS "
+      return "Deauthenticated because sending STA is leaving (or has left) "
+             "IBSS "
              "or ESS";
     case kReasonCodeInactivity:
       return "Disassociated due to inactivity";
