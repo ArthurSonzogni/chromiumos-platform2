@@ -144,6 +144,17 @@ void Proxy::OnShutdown(int* code) {
   if (opts_.type == Type::kSystem)
     SetShillProperty("");
 
+  resolver_.reset();
+  addr_listener_.reset();
+  lifeline_fds_.clear();
+  ns_fd_.reset();
+  patchpanel_.reset();
+  device_.reset();
+  shill_props_.reset();
+  shill_.reset();
+  features_.reset();
+  session_.reset();
+
   if (bus_)
     bus_->ShutdownAndBlock();
 }
