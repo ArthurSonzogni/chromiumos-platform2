@@ -50,7 +50,10 @@ class IPsecConnection : public VPNConnection {
     // Field required when using psk auth.
     std::optional<std::string> psk;
 
-    // TODO(b/165170125): Add Xauth fields.
+    // Fields required when using xauth as the second round in IKEv1.
+    std::optional<std::string> xauth_user;
+    std::optional<std::string> xauth_password;
+
     // TODO(b/165170125): Add tunnel group.
 
     // Protocol and port on the local/remote side. Should be in form of

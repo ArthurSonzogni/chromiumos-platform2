@@ -12,6 +12,7 @@
 #include <netdb.h>      // for getaddrinfo
 
 #include <base/bind.h>
+#include <brillo/type_list.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
@@ -77,29 +78,37 @@ std::string ResolveNameToIP(const std::string& name) {
   return ConvertSockAddrToIPString(address);
 }
 
+// Gets a value from KeyValueStore in std::optional. Returns std::nullopt if the
+// key does not exist or the value is empty.
+using ContainerTypes = brillo::TypeList<std::string, Strings>;
+template <typename T, typename = brillo::EnableIfIsOneOf<T, ContainerTypes>>
+std::optional<T> GetOptionalValue(const KeyValueStore& args,
+                                  const std::string& key) {
+  if (args.Lookup<T>(key, T{}).empty()) {
+    return std::nullopt;
+  }
+  return args.Get<T>(key);
+}
+
 std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
     const std::string& remote_ip, const KeyValueStore& args) {
   auto config = std::make_unique<IPsecConnection::Config>();
 
   config->remote = remote_ip;
-  if (!args.Lookup<std::string>(kL2TPIPsecPskProperty, "").empty()) {
-    config->psk = args.Get<std::string>(kL2TPIPsecPskProperty);
-  }
-  if (!args.Lookup<Strings>(kL2TPIPsecCaCertPemProperty, Strings{}).empty()) {
-    config->ca_cert_pem_strings =
-        args.Get<Strings>(kL2TPIPsecCaCertPemProperty);
-  }
-  if (!args.Lookup<std::string>(kL2TPIPsecClientCertIdProperty, "").empty()) {
-    config->client_cert_id =
-        args.Get<std::string>(kL2TPIPsecClientCertIdProperty);
-  }
-  if (!args.Lookup<std::string>(kL2TPIPsecClientCertSlotProperty, "").empty()) {
-    config->client_cert_slot =
-        args.Get<std::string>(kL2TPIPsecClientCertSlotProperty);
-  }
-  if (!args.Lookup<std::string>(kL2TPIPsecPinProperty, "").empty()) {
-    config->client_cert_pin = args.Get<std::string>(kL2TPIPsecPinProperty);
-  }
+  config->psk = GetOptionalValue<std::string>(args, kL2TPIPsecPskProperty);
+  config->ca_cert_pem_strings =
+      GetOptionalValue<Strings>(args, kL2TPIPsecCaCertPemProperty);
+  config->client_cert_id =
+      GetOptionalValue<std::string>(args, kL2TPIPsecClientCertIdProperty);
+  config->client_cert_slot =
+      GetOptionalValue<std::string>(args, kL2TPIPsecClientCertSlotProperty);
+  config->client_cert_pin =
+      GetOptionalValue<std::string>(args, kL2TPIPsecPinProperty);
+
+  config->xauth_user =
+      GetOptionalValue<std::string>(args, kL2TPIPsecXauthUserProperty);
+  config->xauth_password =
+      GetOptionalValue<std::string>(args, kL2TPIPsecXauthPasswordProperty);
 
   // 17 = UDP, 1701 = L2TP.
   config->local_proto_port =

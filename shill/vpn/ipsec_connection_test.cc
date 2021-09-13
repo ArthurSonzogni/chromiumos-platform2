@@ -123,6 +123,10 @@ constexpr char kExpectedSwanctlConfWithPSK[] = R"(connections {
     remote-1 {
       auth = "psk"
     }
+    local-2 {
+      auth = "xauth"
+      xauth_id = "xauth_user"
+    }
     children {
       managed {
         esp_proposals = "aes128gcm16,aes128-sha256,aes128-sha1,3des-sha1,3des-md5,default"
@@ -136,6 +140,10 @@ constexpr char kExpectedSwanctlConfWithPSK[] = R"(connections {
 secrets {
   ike-1 {
     secret = "this is psk"
+  }
+  xauth-1 {
+    id = "xauth_user"
+    secret = "xauth_password"
   }
 })";
 
@@ -280,6 +288,8 @@ TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
   config->local_proto_port = "17/1701";
   config->remote_proto_port = "17/1701";
   config->psk = "this is psk";
+  config->xauth_user = "xauth_user";
+  config->xauth_password = "xauth_password";
   ipsec_connection_->set_config(std::move(config));
 
   // Signal should be sent out at the end of the execution.

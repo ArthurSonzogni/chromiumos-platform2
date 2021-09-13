@@ -318,6 +318,24 @@ void IPsecConnection::WriteSwanctlConfig() {
     token->AddKeyValue("pin", config_->client_cert_pin.value());
   }
 
+  if (config_->xauth_user.has_value() || config_->xauth_password.has_value()) {
+    if (!config_->xauth_user.has_value()) {
+      NotifyFailure(Service::kFailureInternal, "Only Xauth password is set");
+      return;
+    }
+    if (!config_->xauth_password.has_value()) {
+      NotifyFailure(Service::kFailureInternal, "Only Xauth user is set");
+      return;
+    }
+
+    Section* local2 = vpn_section->AddSection("local-2");
+    local2->AddKeyValue("auth", "xauth");
+    local2->AddKeyValue("xauth_id", config_->xauth_user.value());
+    Section* xauth_section = secrets_section.AddSection("xauth-1");
+    xauth_section->AddKeyValue("id", config_->xauth_user.value());
+    xauth_section->AddKeyValue("secret", config_->xauth_password.value());
+  }
+
   // Fields for CHILD_SA.
   Section* children_section = vpn_section->AddSection("children");
   Section* child_section = children_section->AddSection(kChildSAName);
