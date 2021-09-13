@@ -19,12 +19,11 @@
 #include <brillo/process/process.h>
 #include <brillo/message_loops/message_loop.h>
 
-#include <vboot/crossystem.h>
-
 #include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
+#include "secanomalyd/reporter.h"
 
 namespace secanomalyd {
 
@@ -35,40 +34,6 @@ constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(30);
 // users run the reporting.
 constexpr base::TimeDelta kReportWXMountCountInterval =
     base::TimeDelta::FromHours(2);
-
-constexpr char kCrashReporterPath[] = "/sbin/crash_reporter";
-constexpr char kSecurityAnomalyFlag[] = "--security_anomaly";
-
-bool ShouldReport(bool report_in_dev_mode) {
-  // Reporting should only happen when booted in Verified mode and not running
-  // a developer image, unless explicitly instructed otherwise.
-  return ::VbGetSystemPropertyInt("cros_debug") == 0 || report_in_dev_mode;
-}
-
-bool ReportMount(const MountEntry& e, bool report_in_dev_mode) {
-  if (!ShouldReport(report_in_dev_mode)) {
-    VLOG(1) << "Not in Verified mode, not reporting " << e.dest();
-    return true;
-  }
-
-  VLOG(1) << "secanomalyd invoking crash_reporter";
-
-  brillo::ProcessImpl crash_reporter;
-  crash_reporter.AddArg(kCrashReporterPath);
-  crash_reporter.AddArg(kSecurityAnomalyFlag);
-
-  crash_reporter.RedirectUsingPipe(STDIN_FILENO, true);
-  CHECK(crash_reporter.Start());
-  int stdin_fd = crash_reporter.GetPipe(STDIN_FILENO);
-  CHECK(base::WriteFileDescriptor(stdin_fd, e.src().value()));
-  std::string newline = "\n";
-  CHECK(base::WriteFileDescriptor(stdin_fd, newline));
-  CHECK(base::WriteFileDescriptor(stdin_fd, e.dest().value()));
-  CHECK_GE(IGNORE_EINTR(close(stdin_fd)), 0);
-  CHECK_EQ(0, crash_reporter.Wait());
-
-  return true;
-}
 
 }  // namespace
 
@@ -148,9 +113,9 @@ void Daemon::DoWXMountCheck() {
           }
         }
 
-        // And report the actual anomalous mount, when required to.
+        // And report the system as anomalous, when required to.
         if (generate_reports_) {
-          ReportMount(e, dev_);
+          ReportAnomalousSystem(wx_mounts_, dev_);
         }
       }
     }

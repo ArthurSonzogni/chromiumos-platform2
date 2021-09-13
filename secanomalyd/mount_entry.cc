@@ -83,4 +83,13 @@ bool MountEntry::IsNamespaceBindMount() const {
   return this->type() == "nsfs" || this->type() == "proc";
 }
 
+std::string MountEntry::ShortDescription() const {
+  return base::JoinString({src_.value(), dest_.value(), type_}, " ");
+}
+
+std::string MountEntry::FullDescription() const {
+  return base::JoinString(
+      {src_.value(), dest_.value(), type_, base::JoinString(opts_, ",")}, " ");
+}
+
 }  // namespace secanomalyd

@@ -41,6 +41,11 @@ class MountEntry {
   const base::FilePath& dest() const { return dest_; }
   const std::string& type() const { return type_; }
 
+  // This will return a string of the form "<src> <dest> <type>".
+  std::string ShortDescription() const;
+  // This will return a string of the form "<src> <dest> <type> <opt1>,...".
+  std::string FullDescription() const;
+
  private:
   base::FilePath src_;
   base::FilePath dest_;
