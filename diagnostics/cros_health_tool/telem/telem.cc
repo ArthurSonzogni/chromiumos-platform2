@@ -878,6 +878,8 @@ void DisplayTpmInfo(const TpmResultPtr& result) {
            out_supported_features);
   SET_DICT(is_allowed, supported_features, out_supported_features);
 
+  SET_DICT(did_vid, info, &output);
+
   OutputJson(output);
 }
 

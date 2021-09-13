@@ -17,6 +17,7 @@
 
 #include "diagnostics/common/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
 namespace {
@@ -238,6 +239,9 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
   FetchDictionaryAttack();
   FetchAttestation();
   FetchSupportedFeatures();
+
+  ReadAndTrimString(context_->root_dir().Append(kFileTpmDidVid),
+                    &info_->did_vid);
 }
 
 }  // namespace diagnostics

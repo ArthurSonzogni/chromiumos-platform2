@@ -806,6 +806,10 @@ struct TpmInfo {
   TpmAttestation attestation;
   // TPM supported features information.
   TpmSupportedFeatures supported_features;
+  // [Do NOT use] TPM did_vid file. This field is only used in Cloudready
+  // project. It is going to drop the support in few milestone.
+  // TODO(b/199686982): Remove this.
+  string? did_vid;
 };
 
 // The version of Google security chip(GSC).

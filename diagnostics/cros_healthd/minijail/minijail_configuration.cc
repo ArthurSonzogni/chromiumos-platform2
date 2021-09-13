@@ -121,6 +121,10 @@ void ConfigureAndEnterMinijail() {
       base::FilePath("/sys/bus/usb"));  // Files related to the
                                         // USB information.
 
+  BindMountIfPathExists(
+      jail.get(),
+      base::FilePath("/sys/class/tpm/tpm0/did_vid"));  // TPM did_vid file.
+
   // Create a new tmpfs filesystem for /var and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, "");
   minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone",

@@ -18,6 +18,8 @@
 
 namespace diagnostics {
 
+inline constexpr auto kFileTpmDidVid = "sys/class/tpm/tpm0/did_vid";
+
 class TpmFetcher final : public BaseFetcher {
  public:
   using BaseFetcher::BaseFetcher;
