@@ -630,6 +630,11 @@ int32_t CameraDeviceAdapter::Close() {
     }
     close_called_ = true;
   }
+  // Stop the capture monitors before closing the streams in case it takes time
+  // and triggers the timeout.
+  capture_request_monitor_.Detach();
+  capture_result_monitor_.Detach();
+
   reprocess_effect_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
   DCHECK_EQ(ret, 0);
@@ -637,9 +642,6 @@ int32_t CameraDeviceAdapter::Close() {
     base::AutoLock l(fence_sync_thread_lock_);
     fence_sync_thread_.Stop();
   }
-  capture_request_monitor_.Detach();
-  capture_result_monitor_.Detach();
-
   FreeAllocatedStreamBuffers();
 
   close_callback_.Run();
