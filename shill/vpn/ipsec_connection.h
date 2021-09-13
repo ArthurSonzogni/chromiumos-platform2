@@ -54,7 +54,8 @@ class IPsecConnection : public VPNConnection {
     std::optional<std::string> xauth_user;
     std::optional<std::string> xauth_password;
 
-    // TODO(b/165170125): Add tunnel group.
+    // Cisco tunnel group name.
+    std::optional<std::string> tunnel_group;
 
     // Protocol and port on the local/remote side. Should be in form of
     // "proto/port", e.g., "17/1701". For the valid values of proto and port,

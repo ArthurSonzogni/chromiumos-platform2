@@ -110,6 +110,9 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
   config->xauth_password =
       GetOptionalValue<std::string>(args, kL2TPIPsecXauthPasswordProperty);
 
+  config->tunnel_group =
+      GetOptionalValue<std::string>(args, kL2TPIPsecTunnelGroupProperty);
+
   // 17 = UDP, 1701 = L2TP.
   config->local_proto_port =
       args.Lookup<std::string>(kL2TPIPsecLeftProtoPortProperty, "17/1701");

@@ -336,6 +336,21 @@ void IPsecConnection::WriteSwanctlConfig() {
     xauth_section->AddKeyValue("secret", config_->xauth_password.value());
   }
 
+  // TODO(b/165170125): This part is untested.
+  if (config_->tunnel_group.has_value()) {
+    // Aggressive mode is insecure but required by the legacy Cisco VPN here.
+    // See https://crbug.com/199004 .
+    vpn_section->AddKeyValue("aggressive", "yes");
+
+    // Sets local id.
+    const std::string tunnel_group = config_->tunnel_group.value();
+    const std::string hex_tunnel_id =
+        base::HexEncode(tunnel_group.c_str(), tunnel_group.length());
+    const std::string local_id =
+        base::StringPrintf("@#%s", hex_tunnel_id.c_str());
+    local1->AddKeyValue("id", local_id);
+  }
+
   // Fields for CHILD_SA.
   Section* children_section = vpn_section->AddSection("children");
   Section* child_section = children_section->AddSection(kChildSAName);
