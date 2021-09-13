@@ -151,6 +151,8 @@ class AuthSession final {
   // TODO(crbug.com/1171024): Change this to AuthFactor
   std::map<std::string, cryptohome::KeyData> key_label_data_;
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
+  FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
+  FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
 };
 

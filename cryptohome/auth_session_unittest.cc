@@ -15,12 +15,23 @@
 
 #include "cryptohome/mock_keyset_management.h"
 
+using ::testing::_;
+using ::testing::ByMove;
 using ::testing::NiceMock;
+using ::testing::Return;
+
+namespace {
+// Fake label to be in used in this test suite.
+constexpr char kFakeLabel[] = "test_label";
+// Fake password to be in used in this test suite.
+constexpr char kFakePass[] = "test_pass";
+// Fake username to be used in this test suite.
+constexpr char kFakeUsername[] = "test_username";
+
+}  // namespace
 
 namespace cryptohome {
 
-// Fake username to be used in this test suite.
-const char fake_username[] = "test_username";
 class AuthSessionTest : public ::testing::Test {
  public:
   AuthSessionTest() = default;
@@ -41,7 +52,7 @@ TEST_F(AuthSessionTest, TimeoutTest) {
       [](bool* called, const base::UnguessableToken&) { *called = true; },
       base::Unretained(&called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-  AuthSession auth_session(fake_username, flags, std::move(on_timeout),
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
                            &keyset_management_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
@@ -81,6 +92,79 @@ TEST_F(AuthSessionTest, TokenFromString) {
       AuthSession::GetTokenFromSerializedString(serialized_token.value());
   EXPECT_TRUE(deserialized_token.has_value());
   EXPECT_EQ(deserialized_token.value(), original_token);
+}
+
+// This test check AuthSession::GetCredential function for a regular user and
+// ensures that the fields are set as they should be.
+TEST_F(AuthSessionTest, GetCredentialRegularUser) {
+  // SETUP
+  base::test::SingleThreadTaskEnvironment task_environment;
+  MountError error;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool* called, const base::UnguessableToken&) { *called = true; },
+      base::Unretained(&called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_);
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+
+  // TEST
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+  auth_session.timer_.FireNow();
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
+  EXPECT_TRUE(called);
+  cryptohome::AuthorizationRequest authorization_request;
+  authorization_request.mutable_key()->set_secret(kFakePass);
+  authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
+  std::unique_ptr<Credentials> test_creds =
+      auth_session.GetCredentials(authorization_request, &error);
+
+  // VERIFY
+  // DebugString is used in the absence of a comparator for KeyData protobuf.
+  EXPECT_EQ(test_creds->key_data().DebugString(),
+            authorization_request.mutable_key()->data().DebugString());
+}
+
+// This test check AuthSession::GetCredential function for a kiosk user and
+// ensures that the fields are set as they should be.
+TEST_F(AuthSessionTest, GetCredentialKioskUser) {
+  // SETUP
+  base::test::SingleThreadTaskEnvironment task_environment;
+  MountError error;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool* called, const base::UnguessableToken&) { *called = true; },
+      base::Unretained(&called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER;
+  // SecureBlob for kFakePass above
+  const brillo::SecureBlob fake_pass_blob(
+      brillo::BlobFromString(kFakeUsername));
+
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_);
+  EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
+      .WillOnce(Return(ByMove(fake_pass_blob)));
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+
+  // TEST
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+  auth_session.timer_.FireNow();
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
+  EXPECT_TRUE(called);
+  cryptohome::AuthorizationRequest authorization_request;
+  authorization_request.mutable_key()->set_secret(kFakePass);
+  authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
+  std::unique_ptr<Credentials> test_creds =
+      auth_session.GetCredentials(authorization_request, &error);
+
+  // VERIFY
+  // DebugString is used in the absence of a comparator for KeyData protobuf.
+  EXPECT_EQ(test_creds->key_data().DebugString(),
+            authorization_request.mutable_key()->data().DebugString());
+  EXPECT_EQ(test_creds->passkey(), fake_pass_blob);
 }
 
 }  // namespace cryptohome
