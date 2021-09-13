@@ -16,6 +16,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
@@ -60,6 +61,8 @@ L2TPConnection::L2TPConnection(std::unique_ptr<Config> config,
       config_(std::move(config)),
       control_interface_(control_interface),
       device_info_(device_info),
+      password_provider_(
+          std::make_unique<password_provider::PasswordProvider>()),
       process_manager_(process_manager),
       vpn_util_(VPNUtil::New()) {}
 
@@ -99,15 +102,23 @@ void L2TPConnection::GetLogin(std::string* user, std::string* password) {
     return;
   }
 
-  // TODO(b/165170125): Add support for using login password.
-
-  if (config_->password.empty()) {
+  std::string password_local = config_->password;
+  if (config_->use_login_password) {
+    std::unique_ptr<password_provider::Password> login_password =
+        password_provider_->GetPassword();
+    if (login_password == nullptr || login_password->size() == 0) {
+      LOG(ERROR) << "Unable to retrieve user password";
+      return;
+    }
+    password_local =
+        std::string(login_password->GetRaw(), login_password->size());
+  } else if (password_local.empty()) {
     LOG(ERROR) << "Password not set.";
     return;
   }
 
   *user = config_->user;
-  *password = config_->password;
+  *password = password_local;
 }
 
 void L2TPConnection::Notify(const std::string& reason,
@@ -211,6 +222,12 @@ bool L2TPConnection::WritePPPDConfig() {
 
 bool L2TPConnection::WriteL2TPDConfig() {
   CHECK(!pppd_config_path_.empty());
+
+  // b/187984628: When UseLoginPassword is enabled, PAP must be refused to
+  // prevent potential password leak to a malicious server.
+  if (config_->use_login_password) {
+    config_->refuse_pap = true;
+  }
 
   l2tpd_config_path_ = temp_dir_.GetPath().Append(kL2TPDConfigFileName);
 

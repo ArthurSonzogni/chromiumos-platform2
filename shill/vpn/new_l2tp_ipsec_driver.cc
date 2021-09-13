@@ -146,6 +146,8 @@ std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
   config->lcp_echo = GetBool(args, kL2TPIPsecLcpEchoDisabledProperty, true);
   config->user = args.Lookup<std::string>(kL2TPIPsecUserProperty, "");
   config->password = args.Lookup<std::string>(kL2TPIPsecPasswordProperty, "");
+  config->use_login_password =
+      GetBool(args, kL2TPIPsecUseLoginPasswordProperty, false);
 
   return config;
 }

@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
@@ -40,8 +41,7 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
     bool lcp_echo;  // lcp echo connection monitoring
     std::string user;
     std::string password;
-
-    // TODO(b/165170125): UseLoginPassword
+    bool use_login_password;
   };
 
   L2TPConnection(std::unique_ptr<Config> config,
@@ -98,6 +98,8 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
   // External dependencies.
   ControlInterface* control_interface_;
   DeviceInfo* device_info_;
+  std::unique_ptr<password_provider::PasswordProviderInterface>
+      password_provider_;
   ProcessManager* process_manager_;
   std::unique_ptr<VPNUtil> vpn_util_;
 

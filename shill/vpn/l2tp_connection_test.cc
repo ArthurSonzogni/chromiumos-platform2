@@ -16,6 +16,8 @@
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libpasswordprovider/fake_password_provider.h>
+#include <libpasswordprovider/password.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -46,6 +48,8 @@ class L2TPConnectionUnderTest : public L2TPConnection {
                        dispatcher,
                        process_manager) {
     vpn_util_ = std::make_unique<FakeVPNUtil>();
+    password_provider_ =
+        std::make_unique<password_provider::FakePasswordProvider>();
   }
 
   base::FilePath SetTempDir() {
@@ -66,6 +70,21 @@ class L2TPConnectionUnderTest : public L2TPConnection {
   void InvokeNotify(const std::string& reason,
                     const std::map<std::string, std::string> dict) {
     Notify(reason, dict);
+  }
+
+  void SetLoginPassword(const std::string& password_str) {
+    int fds[2];
+    base::CreateLocalNonBlockingPipe(fds);
+    base::ScopedFD read_dbus_fd(fds[0]);
+    base::ScopedFD write_scoped_fd(fds[1]);
+
+    size_t data_size = password_str.length();
+    base::WriteFileDescriptor(write_scoped_fd.get(), password_str);
+    auto password = password_provider::Password::CreateFromFileDescriptor(
+        read_dbus_fd.get(), data_size);
+    ASSERT_TRUE(password);
+
+    password_provider_->SavePassword(*password);
   }
 
   void set_config(std::unique_ptr<Config> config) {
@@ -325,6 +344,34 @@ TEST_F(L2TPConnectionTest, PPPNotifyDisconnect) {
   // The signal shouldn't be sent out twice if the event comes again.
   l2tp_connection_->InvokeNotify(kPPPReasonDisconnect, dict);
   dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(L2TPConnectionTest, UseLoginPassword) {
+  base::FilePath temp_dir = l2tp_connection_->SetTempDir();
+
+  const std::string kUser = "test_user";
+  const std::string kPassword = "random_password";
+
+  auto config = std::make_unique<L2TPConnection::Config>();
+  config->user = kUser;
+  config->use_login_password = true;
+  l2tp_connection_->SetLoginPassword(kPassword);
+  l2tp_connection_->set_config(std::move(config));
+
+  ASSERT_TRUE(l2tp_connection_->InvokeWritePPPDConfig());
+  ASSERT_TRUE(l2tp_connection_->InvokeWriteL2TPDConfig());
+
+  // The generated config file should contain "refuse pap = yes".
+  base::FilePath expected_path = temp_dir.Append("l2tpd.conf");
+  std::string actual_content;
+  ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
+  EXPECT_NE(actual_content.find("refuse pap = yes"), std::string::npos);
+
+  std::string actual_user;
+  std::string actual_password;
+  l2tp_connection_->InvokeGetLogin(&actual_user, &actual_password);
+  EXPECT_EQ(actual_user, kUser);
+  EXPECT_EQ(actual_password, kPassword);
 }
 
 }  // namespace
