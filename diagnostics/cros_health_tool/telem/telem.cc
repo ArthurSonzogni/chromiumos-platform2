@@ -869,6 +869,15 @@ void DisplayTpmInfo(const TpmResultPtr& result) {
   SET_DICT(prepared_for_enrollment, attestation, out_attestation);
   SET_DICT(enrolled, attestation, out_attestation);
 
+  const auto& supported_features = info->supported_features;
+  auto* out_supported_features = output.SetKey(
+      "supported_features", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(support_u2f, supported_features, out_supported_features);
+  SET_DICT(support_pinweaver, supported_features, out_supported_features);
+  SET_DICT(support_runtime_selection, supported_features,
+           out_supported_features);
+  SET_DICT(is_allowed, supported_features, out_supported_features);
+
   OutputJson(output);
 }
 

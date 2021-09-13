@@ -42,6 +42,9 @@ class TpmFetcher final : public BaseFetcher {
   void FetchAttestation();
   void HandleAttestation(brillo::Error* err,
                          const attestation::GetStatusReply& reply);
+  void FetchSupportedFeatures();
+  void HandleSupportedFeatures(
+      brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply);
   void CheckAndSendInfo();
   void SendError(const std::string& message);
   void SendResult(chromeos::cros_healthd::mojom::TpmResultPtr result);

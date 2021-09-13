@@ -167,10 +167,41 @@ void TpmFetcher::HandleAttestation(brillo::Error* err,
   CheckAndSendInfo();
 }
 
+void TpmFetcher::FetchSupportedFeatures() {
+  tpm_manager::GetSupportedFeaturesRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
+      &TpmFetcher::HandleSupportedFeatures, weak_factory_.GetWeakPtr()));
+  context_->tpm_manager_proxy()->GetSupportedFeaturesAsync(
+      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
+}
+
+void TpmFetcher::HandleSupportedFeatures(
+    brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply) {
+  DCHECK(info_);
+  if (err) {
+    SendError("Failed to call TpmManager::GetSupportedFeatures(): " +
+              err->GetMessage());
+    return;
+  }
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    SendError("TpmManager::GetSupportedFeatures() returned error status: " +
+              std::to_string(reply.status()));
+    return;
+  }
+
+  auto data = mojo_ipc::TpmSupportedFeatures::New();
+  data->support_u2f = reply.support_u2f();
+  data->support_pinweaver = reply.support_pinweaver();
+  data->support_runtime_selection = reply.support_runtime_selection();
+  data->is_allowed = reply.is_allowed();
+  info_->supported_features = std::move(data);
+  CheckAndSendInfo();
+}
+
 void TpmFetcher::CheckAndSendInfo() {
   DCHECK(info_);
   if (!info_->version || !info_->status || !info_->dictionary_attack ||
-      !info_->attestation) {
+      !info_->attestation || !info_->supported_features) {
     return;
   }
   SendResult(mojo_ipc::TpmResult::NewTpmInfo(std::move(info_)));
@@ -206,6 +237,7 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
   FetchStatus();
   FetchDictionaryAttack();
   FetchAttestation();
+  FetchSupportedFeatures();
 }
 
 }  // namespace diagnostics
