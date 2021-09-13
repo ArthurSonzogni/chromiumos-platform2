@@ -16,12 +16,11 @@ namespace {
 TEST(FlashProtectCommand, FlashProtectCommand) {
   uint32_t flags = 0xdeadbeef;
   uint32_t mask = 0xfeedc0de;
-  auto cmd = FlashProtectCommand::Create(flags, mask);
-  EXPECT_TRUE(cmd);
-  EXPECT_EQ(cmd->Version(), EC_VER_FLASH_PROTECT);
-  EXPECT_EQ(cmd->Command(), EC_CMD_FLASH_PROTECT);
-  EXPECT_EQ(cmd->Req()->flags, flags);
-  EXPECT_EQ(cmd->Req()->mask, mask);
+  FlashProtectCommand cmd(flags, mask);
+  EXPECT_EQ(cmd.Version(), EC_VER_FLASH_PROTECT);
+  EXPECT_EQ(cmd.Command(), EC_CMD_FLASH_PROTECT);
+  EXPECT_EQ(cmd.Req()->flags, flags);
+  EXPECT_EQ(cmd.Req()->mask, mask);
 }
 
 TEST(FlashProtectCommand, ParseFlags) {

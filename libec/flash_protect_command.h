@@ -17,16 +17,10 @@ class BRILLO_EXPORT FlashProtectCommand
     : public EcCommand<struct ec_params_flash_protect,
                        struct ec_response_flash_protect> {
  public:
-  FlashProtectCommand()
-      : EcCommand(EC_CMD_FLASH_PROTECT, EC_VER_FLASH_PROTECT) {}
+  FlashProtectCommand(const uint32_t flags, const uint32_t mask);
   ~FlashProtectCommand() override = default;
 
-  static std::unique_ptr<FlashProtectCommand> Create(const uint32_t flags,
-                                                     const uint32_t mask);
-
   static std::string ParseFlags(uint32_t flags);
-
- private:
 };
 
 }  // namespace ec

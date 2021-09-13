@@ -19,7 +19,7 @@ std::unique_ptr<EcCommandInterface> EcCommandFactory::FpContextCommand(
 
 std::unique_ptr<FlashProtectCommand> EcCommandFactory::FlashProtectCommand(
     const uint32_t flags, const uint32_t mask) {
-  return FlashProtectCommand::Create(flags, mask);
+  return std::make_unique<ec::FlashProtectCommand>(flags, mask);
 }
 
 std::unique_ptr<FpInfoCommand> EcCommandFactory::FpInfoCommand() {
