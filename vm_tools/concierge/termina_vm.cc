@@ -444,10 +444,12 @@ bool TerminaVm::Mount(string source,
   return true;
 }
 
-bool TerminaVm::StartTermina(std::string lxd_subnet,
-                             bool allow_privileged_containers,
-                             std::string* out_error,
-                             vm_tools::StartTerminaResponse* response) {
+bool TerminaVm::StartTermina(
+    std::string lxd_subnet,
+    bool allow_privileged_containers,
+    const google::protobuf::RepeatedField<int>& features,
+    std::string* out_error,
+    vm_tools::StartTerminaResponse* response) {
   DCHECK(out_error);
   DCHECK(response);
 
@@ -464,6 +466,7 @@ bool TerminaVm::StartTermina(std::string lxd_subnet,
   for (const auto feature : kEnabledTerminaFeatures) {
     request.add_feature(feature);
   }
+  request.mutable_feature()->MergeFrom(features);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

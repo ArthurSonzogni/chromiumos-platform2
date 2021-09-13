@@ -141,11 +141,13 @@ message MountResponse {
 // maitred run all VM guest setup necessary to start containers.
 message StartTerminaRequest {
   enum Feature {
+    // This list must stay in sync with the one in concierge_service.proto
     UNKNOWN = 0;
     USED_BY_TESTS = 1;
     START_LXD = 2 [deprecated = true];
     RESET_LXD_ON_LAUNCH = 3 [deprecated = true];
     LXD_4_LTS = 4;
+    // This list must stay in sync with the one in concierge_service.proto
   }
   // The address for tremplin to connect to.
   uint32 tremplin_ipv4_address = 1;

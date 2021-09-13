@@ -197,6 +197,19 @@ message StartVmRequest {
   // Timeout (seconds) for VM startup
   uint32 timeout = 20;
 
+  enum TerminaFeature {
+    // This list must stay in sync with the one in vm_guest.proto
+    UNKNOWN = 0;
+    USED_BY_TESTS = 1;
+    START_LXD = 2 [deprecated = true];
+    RESET_LXD_ON_LAUNCH = 3 [deprecated = true];
+    LXD_4_LTS = 4;
+    // This list must stay in sync with the one in vm_guest.proto
+  }
+  // Experimental Termina features to enable. Like Chrome feature flags but for
+  // inside the VM.
+  repeated TerminaFeature features = 21;
+
   reserved 13, 14, 6;
 }
 

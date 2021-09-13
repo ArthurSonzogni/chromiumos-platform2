@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <google/protobuf/repeated_field.h>
 #include <grp.h>
 #include <linux/capability.h>
 #include <net/route.h>
@@ -1830,7 +1831,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // Allow untrusted VMs to have privileged containers.
   if (request.start_termina() &&
       !StartTermina(vm.get(), is_untrusted_vm /* allow_privileged_containers */,
-                    &failure_reason, &mount_result, &free_bytes)) {
+                    request.features(), &failure_reason, &mount_result,
+                    &free_bytes)) {
     response.set_failure_reason(std::move(failure_reason));
     response.set_mount_result((StartVmResponse::MountResult)mount_result);
     writer.AppendProtoAsArrayOfBytes(response);
@@ -2354,6 +2356,7 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
 
 bool Service::StartTermina(TerminaVm* vm,
                            bool allow_privileged_containers,
+                           const google::protobuf::RepeatedField<int>& features,
                            string* failure_reason,
                            vm_tools::StartTerminaResponse::MountResult* result,
                            int64_t* out_free_bytes) {
@@ -2371,7 +2374,8 @@ bool Service::StartTermina(TerminaVm* vm,
   string error;
   vm_tools::StartTerminaResponse response;
   if (!vm->StartTermina(std::move(container_subnet_cidr),
-                        allow_privileged_containers, &error, &response)) {
+                        allow_privileged_containers, features, &error,
+                        &response)) {
     failure_reason->assign(error);
     return false;
   }
