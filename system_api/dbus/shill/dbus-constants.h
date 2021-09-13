@@ -160,7 +160,6 @@ const char kONCSourceProperty[] = "ONCSource";
 // Cellular Service property names.
 const char kActivationStateProperty[] = "Cellular.ActivationState";
 const char kActivationTypeProperty[] = "Cellular.ActivationType";
-const char kCellularApnListProperty[] = "Cellular.APNList";
 const char kCellularApnProperty[] = "Cellular.APN";
 const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
 const char kCellularLastAttachApnProperty[] = "Cellular.LastAttachAPN";
@@ -366,21 +365,24 @@ const char kScanningProperty[] = "Scanning";  // For both Cellular and WiFi.
 const char kSelectedServiceProperty[] = "SelectedService";
 const char kTransmitByteCountProperty[] = "TransmitByteCount";
 
-// Cellular Device property names.
+// Property names common to Cellular Device and Cellular Service.
 const char kCellularAllowRoamingProperty[] = "Cellular.AllowRoaming";
+const char kEidProperty[] = "Cellular.EID";
+const char kIccidProperty[] = "Cellular.ICCID";
+const char kImsiProperty[] = "Cellular.IMSI";
+
+// Cellular Device property names.
+const char kCellularApnListProperty[] = "Cellular.APNList";
 const char kCellularPolicyAllowRoamingProperty[] =
     "Cellular.PolicyAllowRoaming";
 const char kDeviceIdProperty[] = "Cellular.DeviceID";
-const char kEidProperty[] = "Cellular.EID";
 const char kEquipmentIdProperty[] = "Cellular.EquipmentID";
 const char kEsnProperty[] = "Cellular.ESN";
 const char kFirmwareRevisionProperty[] = "Cellular.FirmwareRevision";
 const char kFoundNetworksProperty[] = "Cellular.FoundNetworks";
 const char kHardwareRevisionProperty[] = "Cellular.HardwareRevision";
 const char kHomeProviderProperty[] = "Cellular.HomeProvider";
-const char kIccidProperty[] = "Cellular.ICCID";
 const char kImeiProperty[] = "Cellular.IMEI";
-const char kImsiProperty[] = "Cellular.IMSI";
 const char kManufacturerProperty[] = "Cellular.Manufacturer";
 const char kMdnProperty[] = "Cellular.MDN";
 const char kMeidProperty[] = "Cellular.MEID";
@@ -393,6 +395,7 @@ const char kSIMPresentProperty[] = "Cellular.SIMPresent";
 const char kSIMSlotInfoProperty[] = "Cellular.SIMSlotInfo";
 const char kSupportNetworkScanProperty[] = "Cellular.SupportNetworkScan";
 const char kUseAttachAPNProperty[] = "Cellular.UseAttachAPN";
+
 const char kDBusObjectProperty[] = "DBus.Object";
 const char kDBusServiceProperty[] = "DBus.Service";
 
@@ -472,6 +475,7 @@ const char kPortalDetectionStatusSuccess[] = "Success";
 const char kPortalDetectionStatusRedirect[] = "Redirect";
 
 // Flimflam property names for SIMLock status.
+// kSIMLockStatusProperty is a Cellular Device property.
 const char kSIMLockStatusProperty[] = "Cellular.SIMLockStatus";
 const char kSIMLockTypeProperty[] = "LockType";
 const char kSIMLockRetriesLeftProperty[] = "RetriesLeft";
@@ -785,11 +789,6 @@ static constexpr char kONCSourceNone[] = "None";
 static constexpr char kONCSourceUserImport[] = "UserImport";
 static constexpr char kONCSourceDevicePolicy[] = "DevicePolicy";
 static constexpr char kONCSourceUserPolicy[] = "UserPolicy";
-
-// Cellular service carriers.
-const char kCarrierGenericUMTS[] = "Generic UMTS";
-const char kCarrierSprint[] = "Sprint";
-const char kCarrierVerizon[] = "Verizon Wireless";
 
 // Cellular activation types.
 const char kActivationTypeNonCellular[] = "NonCellular";  // For future use

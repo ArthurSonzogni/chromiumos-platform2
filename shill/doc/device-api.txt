@@ -283,7 +283,7 @@ Properties	string Address [readonly]
 		string Cellular.ICCID [readonly]
 
 			(Cellular only) For GSM / LTE modems, the Integrated
-			Circuit Card Identifer of the SIM card installed in
+			Circuit Card Identifier of the SIM card installed in
 			the device. Blank otherwise.
 
 		string Cellular.IMSI [readonly]
@@ -490,6 +490,9 @@ Properties	string Address [readonly]
 				     gives the two-letter language code for the locale
 				     of the localized name. If "localized_name" exists,
 				     then this property will always exist as well.
+
+			TODO(b/199688838): describe missing properties "network_id",
+			"authentication", "attach", and "ip_type".
 
 		bool EapAuthenticatorDetected [readonly]
 

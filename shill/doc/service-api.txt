@@ -207,18 +207,16 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.OperationFailed
 
-void ResetTrafficCounters()
+		void ResetTrafficCounters()
 
 			Resets the current traffic counters for a Service.
 
-
-Signals		PropertyChanged(string name, variant value)
+		Signals	PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
 			property.
 
-
-Properties	string ArcVpn.TunnelChrome [writeonly]
+		Properties string ArcVpn.TunnelChrome [writeonly]
 
 			(VPN services of type arcvpn only) Specify whether
 			the service should tunnel Chrome traffic.  This
@@ -246,12 +244,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			type and if this property was not explicitly set on
 			the service before.
 
-		boolean Cellular.ActivateOverNonCellularNetwork [readonly]
-
-			(Cellular only) If set to true, this service must be
-			activated over a non-cellular network instead of the
-			same cellular network.
-
 		string Cellular.ActivationState [readonly]
 
 			(Cellular only) The activate state of the device
@@ -277,7 +269,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 		string Cellular.ICCID [readonly]
 
 			(Cellular only) The Integrated Circuit Card Identifier
-			of the SIM associated with the service.
+			of the SIM card associated with the service.
 
 		string Cellular.IMSI [readonly]
 
@@ -287,7 +279,12 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			(If no IMSI is available, a shared entry with an empty
 			IMSI will be used to persist service properties).
 
+		string Cellular.ActivationType [readwrite]
+
+			TODO(b/199688838)
+
 		dict Cellular.ServingOperator [readonly] [GSM only]
+
 			(Cellular only) Description of the operator on whose
 			network the modem is currently registered, if any.
 			The dictionary may contain the following string-valued
@@ -426,16 +423,26 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			The format of this property is the same as for
 			the Cellular.APN property.
 
+		dict Cellular.LastAttachAPN [readonly]
+
+			TODO(b/199688838)
+
 		boolean Cellular.OutOfCredits [readonly]
 
 			(Cellular only) Indicates whether a cellular service
 			has any remaining bandwidth credits with the carrier.
 
+		string Cellular.UsageUrl [readonly
+
+			TODO(b/199688838)
+
 		string Cellular.PPP.Username [readwrite]
+
 			(Cellular only) For cellular devices with a PPP
 			link-layer, the username for PPP authentication.
 
 		string Cellular.PPP.Password [writeonly]
+
 			(Cellular only) For cellular devices with a PPP
 			link-layer, the password for PPP authentication.
 
@@ -573,9 +580,9 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		array{string} EAP.CACertPEM [readwrite]
 
-                        A list of x509 CA certificates in PEM format;
-                        specifically the base64 counterpart of the DER contents
-                        surrounded by a "-----BEGIN CERTIFICATE-----" and
+			A list of x509 CA certificates in PEM format;
+			specifically the base64 counterpart of the DER contents
+			surrounded by a "-----BEGIN CERTIFICATE-----" and
 			"-----END CERTIFICATE-----" line.  These certificates
 			will be used to authenticate the remote RADIUS
 			server in the 802.1x authentication process.
