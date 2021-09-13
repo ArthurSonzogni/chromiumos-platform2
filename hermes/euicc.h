@@ -92,6 +92,7 @@ class Euicc {
 
   const uint8_t physical_slot_;
   EuiccSlotInfo slot_info_;
+  bool is_test_mode_;
 
   Context* context_;
   std::unique_ptr<EuiccAdaptorInterface> dbus_adaptor_;

@@ -47,6 +47,7 @@ void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
 Euicc::Euicc(uint8_t physical_slot, EuiccSlotInfo slot_info)
     : physical_slot_(physical_slot),
       slot_info_(std::move(slot_info)),
+      is_test_mode_(false),
       context_(Context::Get()),
       dbus_adaptor_(context_->adaptor_factory()->CreateEuiccAdaptor(this)),
       weak_factory_(this) {
@@ -345,6 +346,9 @@ void Euicc::OnInstalledProfilesReceived(
   }
   installed_profiles_.clear();
   for (const auto& info : profile_infos) {
+    if (!is_test_mode_ &&
+        info.profile_class() == lpa::proto::ProfileClass::TESTING)
+      continue;
     auto profile = Profile::Create(info, physical_slot_, slot_info_.eid(),
                                    /*is_pending*/ false);
     if (profile) {
@@ -413,6 +417,7 @@ void Euicc::OnPendingProfilesReceived(
 
 void Euicc::SetTestModeHelper(bool is_test_mode, DbusResult<> dbus_result) {
   VLOG(2) << __func__ << " : is_test_mode" << is_test_mode;
+  is_test_mode_ = is_test_mode;
   auto set_test_mode_internal = base::BindOnce(
       &Euicc::SetTestMode, weak_factory_.GetWeakPtr(), is_test_mode);
   context_->modem_control()->StoreAndSetActiveSlot(
