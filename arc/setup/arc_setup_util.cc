@@ -1222,24 +1222,10 @@ base::Optional<std::string> FilterMediaProfile(
       camera_profiles.push_back(cur);
     }
 
-    switch (camera_profiles.size()) {
-      case 0:
-        LOG(ERROR) << "No camera profile found in media profile content:\n"
-                   << content;
-        return base::nullopt;
-      case 1:
-        // The original content of media profile may already be filtered by test
-        // code[1]. Here we ensure there's always have at least one camera to be
-        // tested is available after applying all filtering.  TODO(b/187239915):
-        // Remove filter in test code and unify filter logic here.
-        // [1]
-        // https://source.corp.google.com/chromeos_public/src/third_party/labpack/files/server/cros/camerabox_utils.py;rcl=d30bb56fe7ae9c39b122a28f1d5d2b64f928555c;l=106
-        return content;
-      case 2:
-        break;
-      default:
-        NOTREACHED() << "Found more than 2 camera profiles";
-        return base::nullopt;
+    if (camera_profiles.size() == 0) {
+      LOG(ERROR) << "No camera profile found in media profile content:\n"
+                 << content;
+      return base::nullopt;
     }
 
     xmlNodePtr front_camera_profile = NULL;
