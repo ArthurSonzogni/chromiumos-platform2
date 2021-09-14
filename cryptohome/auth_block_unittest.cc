@@ -309,6 +309,59 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   EXPECT_EQ(CryptoError::CE_LE_INVALID_SECRET, error);
 }
 
+TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob tpm_key(20, 'B');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+
+  brillo::SecureBlob le_secret(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+
+  ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
+      .WillByDefault(Return(LE_CRED_ERROR_HASH_TREE));
+  EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
+      .WillOnce(Return(LE_CRED_ERROR_INVALID_LE_SECRET))
+      .WillOnce(Return(LE_CRED_ERROR_INVALID_RESET_SECRET))
+      .WillOnce(Return(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))
+      .WillOnce(Return(LE_CRED_ERROR_HASH_TREE))
+      .WillOnce(Return(LE_CRED_ERROR_INVALID_LABEL))
+      .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL))
+      .WillOnce(Return(LE_CRED_ERROR_INVALID_METADATA))
+      .WillOnce(Return(LE_CRED_ERROR_UNCLASSIFIED))
+      .WillOnce(Return(LE_CRED_ERROR_LE_LOCKED))
+      .WillOnce(Return(LE_CRED_ERROR_PCR_NOT_MATCH));
+
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+
+  // Construct the vault keyset.
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized.set_salt(salt.data(), salt.size());
+  serialized.set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
+  serialized.set_le_label(0);
+  serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
+
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+
+  CryptoError error;
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {vault_key};
+  for (int i = 0; i < 10; i++) {
+    EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+    EXPECT_NE(CryptoError::CE_OTHER_FATAL, error);
+    EXPECT_NE(CryptoError::CE_TPM_FATAL, error);
+  }
+}
+
 TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob tpm_key(20, 'B');
