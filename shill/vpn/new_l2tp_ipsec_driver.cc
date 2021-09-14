@@ -214,11 +214,9 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
     return;
   }
 
-  // Callbacks for L2TP will be set and handled in IPsecConnection.
-  auto l2tp_connection = std::make_unique<L2TPConnection>(
-      MakeL2TPConfig(remote_ip, *const_args()), /*callbacks=*/nullptr,
-      control_interface(), manager()->device_info(), manager()->dispatcher(),
-      process_manager());
+  auto l2tp_connection = CreateL2TPConnection(
+      MakeL2TPConfig(remote_ip, *const_args()), control_interface(),
+      manager()->device_info(), manager()->dispatcher(), process_manager());
 
   auto callbacks = std::make_unique<IPsecConnection::Callbacks>(
       base::BindRepeating(&NewL2TPIPsecDriver::OnIPsecConnected,
@@ -228,11 +226,34 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
       base::BindOnce(&NewL2TPIPsecDriver::OnIPsecStopped,
                      weak_factory_.GetWeakPtr()));
 
-  ipsec_connection_ = std::make_unique<IPsecConnection>(
+  ipsec_connection_ = CreateIPsecConnection(
       MakeIPsecConfig(remote_ip, *const_args()), std::move(callbacks),
       std::move(l2tp_connection), manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();
+}
+
+std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateIPsecConnection(
+    std::unique_ptr<IPsecConnection::Config> config,
+    std::unique_ptr<VPNConnection::Callbacks> callbacks,
+    std::unique_ptr<VPNConnection> l2tp_connection,
+    EventDispatcher* dispatcher,
+    ProcessManager* process_manager) {
+  return std::make_unique<IPsecConnection>(
+      std::move(config), std::move(callbacks), std::move(l2tp_connection),
+      dispatcher, process_manager);
+}
+
+std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateL2TPConnection(
+    std::unique_ptr<L2TPConnection::Config> config,
+    ControlInterface* control_interface,
+    DeviceInfo* device_info,
+    EventDispatcher* dispatcher,
+    ProcessManager* process_manager) {
+  // Callbacks for L2TP will be set and handled in IPsecConnection.
+  return std::make_unique<L2TPConnection>(
+      std::move(config), /*callbacks=*/nullptr, control_interface, device_info,
+      dispatcher, process_manager);
 }
 
 void NewL2TPIPsecDriver::Disconnect() {

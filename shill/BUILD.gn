@@ -707,6 +707,7 @@ if (use.test) {
         "vpn/mock_openvpn_management_server.cc",
         "vpn/mock_vpn_driver.cc",
         "vpn/mock_vpn_service.cc",
+        "vpn/new_l2tp_ipsec_driver_test.cc",
         "vpn/openvpn_driver_test.cc",
         "vpn/openvpn_management_server_test.cc",
         "vpn/third_party_vpn_driver_test.cc",

@@ -11,12 +11,14 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/manager.h"
+#include "shill/mockable.h"
 #include "shill/vpn/ipsec_connection.h"
+#include "shill/vpn/l2tp_connection.h"
+#include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
 
-// TODO(b/165170125): Add unit test.
 // TODO(b/165170125): Once the current L2TPIPsecDriver is removed, rename this
 // class to L2TPIPsecDriver.
 class NewL2TPIPsecDriver : public VPNDriver {
@@ -41,11 +43,31 @@ class NewL2TPIPsecDriver : public VPNDriver {
       DefaultPhysicalServiceEvent event) override;
 
  private:
+  friend class NewL2TPIPsecDriverUnderTest;
+
   static const VPNDriver::Property kProperties[];
 
   void NotifyServiceOfFailure(Service::ConnectFailure failure);
 
   void StartIPsecConnection();
+
+  // Isolates the creation of VPNConnections for the ease of unit tests. These
+  // two functions are static, but we do not declare them as const also for the
+  // ease of unit tests.
+  mockable std::unique_ptr<VPNConnection> CreateIPsecConnection(
+      std::unique_ptr<IPsecConnection::Config> config,
+      std::unique_ptr<VPNConnection::Callbacks> callbacks,
+      std::unique_ptr<VPNConnection> l2tp_connection,
+      EventDispatcher* dispatcher,
+      ProcessManager* process_manager);
+  mockable std::unique_ptr<VPNConnection> CreateL2TPConnection(
+      std::unique_ptr<L2TPConnection::Config> config,
+      ControlInterface* control_interface,
+      DeviceInfo* device_info,
+      EventDispatcher* dispatcher,
+      ProcessManager* process_manager);
+
+  // Callbacks from IPsecConnection.
   void OnIPsecConnected(const std::string& link_name,
                         int interface_index,
                         const IPConfig::Properties& ip_properties);
@@ -53,7 +75,7 @@ class NewL2TPIPsecDriver : public VPNDriver {
   void OnIPsecStopped();
 
   EventHandler* event_handler_ = nullptr;
-  std::unique_ptr<IPsecConnection> ipsec_connection_;
+  std::unique_ptr<VPNConnection> ipsec_connection_;
   IPConfig::Properties ip_properties_;
 
   base::WeakPtrFactory<NewL2TPIPsecDriver> weak_factory_{this};
