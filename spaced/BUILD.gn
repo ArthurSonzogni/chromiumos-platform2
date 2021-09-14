@@ -12,6 +12,7 @@ group("all") {
     ":libspaced",
     ":spaced",
     ":spaced_adaptor",
+    ":spaced_cli",
     ":spaced_proxy",
   ]
 
@@ -55,6 +56,12 @@ executable("spaced") {
     "daemon.cc",
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libspaced" ]
+}
+
+executable("spaced_cli") {
+  sources = [ "cli.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libspaced" ]
 }
