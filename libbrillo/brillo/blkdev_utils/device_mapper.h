@@ -72,7 +72,8 @@ class BRILLO_EXPORT DevmapperTable {
 using DevmapperTaskFactory =
     base::RepeatingCallback<std::unique_ptr<DevmapperTask>(int)>;
 
-// DeviceMapper handles the creation and removal of dm devices.
+// DeviceMapper handles the creation and removal of dm devices as well as
+// general functions associated with device-mapper targets.
 class BRILLO_EXPORT DeviceMapper {
  public:
   // Default constructor: sets up real devmapper devices.
@@ -106,6 +107,14 @@ class BRILLO_EXPORT DeviceMapper {
   // Parameters
   //   name - Name of the devmapper device.
   bool WipeTable(const std::string& name);
+
+  // Gets the version for a device-mapper target type. On failure, the function
+  // returns {0, 0, 0}. The target version is intended to be used to check
+  // feature support for device-mapper targets in the kernel driver.
+  //
+  // Parameters
+  //   target - Name of the device mapper target.
+  DeviceMapperVersion GetTargetVersion(const std::string& target);
 
  private:
   // Devmapper task factory.

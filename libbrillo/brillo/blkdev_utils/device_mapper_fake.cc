@@ -109,5 +109,10 @@ std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type) {
   return std::make_unique<FakeDevmapperTask>(type);
 }
 
+DeviceMapperVersion FakeDevmapperTask::GetVersion() {
+  DeviceMapperVersion version({1, 21, 0});
+  return version;
+}
+
 }  // namespace fake
 }  // namespace brillo

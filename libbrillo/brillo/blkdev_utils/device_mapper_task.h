@@ -15,6 +15,21 @@ namespace brillo {
 
 using DmTaskPtr = std::unique_ptr<dm_task, void (*)(dm_task*)>;
 
+// The device mapper driver maintains versions for both its kernel drivers and
+// for each specific target. Specifically, version numbers are used to signal
+// whether a particular feature is supported, either by the kernel driver or
+// by a specific target.
+struct DeviceMapperVersion {
+  uint32_t major;
+  uint32_t minor;
+  uint32_t patchlevel;
+
+  bool operator<(const DeviceMapperVersion& rhs) const {
+    return std::tie(major, minor, patchlevel) <
+           std::tie(rhs.major, rhs.minor, rhs.patchlevel);
+  }
+};
+
 // Abstract class to manage DM devices.
 // This class implements the bare minimum set of functions
 // required to create/remove DM devices. DevmapperTask is the equivalent
@@ -34,6 +49,7 @@ using DmTaskPtr = std::unique_ptr<dm_task, void (*)(dm_task*)>;
 // - DM_DEVICE_TABLE: used in DeviceMapper::GetTable and
 //                    DeviceMapper::WipeTable.
 // - DM_DEVICE_RELOAD: used in DeviceMapper::WipeTable.
+// - DM_GET_TARGET_VERSION: used in DeviceMapper::GetVersion.
 class DevmapperTask {
  public:
   virtual ~DevmapperTask() = default;
@@ -73,6 +89,13 @@ class DevmapperTask {
   //              prevent both udevd and libdevmapper from attempting to
   //              add or remove files.
   virtual bool Run(bool udev_sync = false) = 0;
+
+  // Returns version for the current task's target type. Each device
+  // mapper target maintains a separate version in source that acts as an
+  // indicator of whether a feature (eg. keyring support for dm-crypt) is
+  // supported. On failure, return {0, 0, 0} which disallows any
+  // version-specific features.
+  virtual DeviceMapperVersion GetVersion() = 0;
 };
 
 // Libdevmapper implementation for DevmapperTask.
@@ -90,6 +113,7 @@ class DevmapperTaskImpl : public DevmapperTask {
                      std::string* target,
                      SecureBlob* parameters) override;
   bool Run(bool udev_sync = true) override;
+  DeviceMapperVersion GetVersion() override;
 
  private:
   DmTaskPtr task_;

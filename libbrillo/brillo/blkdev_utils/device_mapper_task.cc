@@ -92,4 +92,15 @@ bool DevmapperTaskImpl::Run(bool udev_sync) {
   return udev_sync ? (dm_udev_wait(cookie) != 0) : true;
 }
 
+DeviceMapperVersion DevmapperTaskImpl::GetVersion() {
+  struct dm_versions* dmt_versions = dm_task_get_versions(task_.get());
+  DeviceMapperVersion version;
+
+  version.major = dmt_versions->version[0];
+  version.minor = dmt_versions->version[1];
+  version.patchlevel = dmt_versions->version[2];
+
+  return version;
+}
+
 }  // namespace brillo

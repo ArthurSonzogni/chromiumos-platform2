@@ -54,6 +54,7 @@ class FakeDevmapperTask : public brillo::DevmapperTask {
                      std::string* target,
                      SecureBlob* parameters) override;
   bool Run(bool udev_sync = true) override;
+  DeviceMapperVersion GetVersion() override;
 
  private:
   std::unique_ptr<DmTask> task_;
