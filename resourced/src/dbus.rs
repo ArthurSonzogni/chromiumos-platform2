@@ -24,6 +24,7 @@ const INTERFACE_NAME: &str = SERVICE_NAME;
 // Context data for the D-Bus service.
 struct DbusContext {
     reset_game_mode_timer: Rc<TimerFd>,
+    reset_fullscreen_video_timer: Rc<TimerFd>,
 }
 
 // The basic implementation of the Debug trait.
@@ -132,6 +133,30 @@ fn set_rtc_audio_active(m: &MethodInfo) -> MethodResult {
     }
 }
 
+fn get_fullscreen_video(m: &MethodInfo) -> MethodResult {
+    match common::get_fullscreen_video() {
+        Ok(mode) => Ok(vec![m.msg.method_return().append1(mode as u8)]),
+        Err(_) => Err(MethodErr::failed("Failed to get fullscreen video activity")),
+    }
+}
+
+fn set_fullscreen_video_with_timeout(m: &MethodInfo) -> MethodResult {
+    let (mode_raw, timeout_raw): (u8, u32) = m.msg.read2()?;
+    let mode = common::FullscreenVideo::try_from(mode_raw)
+        .map_err(|_| MethodErr::failed("Unsupported fullscreen video value"))?;
+    let timeout = Duration::from_secs(timeout_raw.into());
+
+    common::set_fullscreen_video(mode)
+        .map_err(|_| MethodErr::failed("Failed to set full screen video mode"))?;
+
+    let timer = &m.path.get_data().reset_fullscreen_video_timer;
+    timer
+        .reset(timeout, None)
+        .map_err(|_| MethodErr::failed("Failed to set the fullscreen video restore timer"))?;
+
+    Ok(vec![m.msg.method_return()])
+}
+
 fn create_pressure_chrome_signal(f: &Factory) -> Signal {
     f.signal("MemoryPressureChrome", ())
         .sarg::<u8, _>("pressure_level")
@@ -159,6 +184,7 @@ pub fn service_main() -> Result<()> {
     conn.register_name(SERVICE_NAME, 0)?;
 
     let reset_game_mode_timer = Rc::new(TimerFd::new()?);
+    let reset_fullscreen_video_timer = Rc::new(TimerFd::new()?);
 
     let f = dbus_tree::Factory::new_fn::<CustomData>();
 
@@ -168,6 +194,7 @@ pub fn service_main() -> Result<()> {
             PATH_NAME,
             DbusContext {
                 reset_game_mode_timer: reset_game_mode_timer.clone(),
+                reset_fullscreen_video_timer: reset_fullscreen_video_timer.clone(),
             },
         )
         .introspectable()
@@ -212,6 +239,19 @@ pub fn service_main() -> Result<()> {
                 .add_m(
                     f.method("SetRTCAudioActive", (), set_rtc_audio_active)
                         .inarg::<u8, _>("mode"),
+                )
+                .add_m(
+                    f.method("GetFullscreenVideo", (), get_fullscreen_video)
+                        .outarg::<u8, _>("mode"),
+                )
+                .add_m(
+                    f.method(
+                        "SetFullscreenVideoWithTimeout",
+                        (),
+                        set_fullscreen_video_with_timeout,
+                    )
+                    .inarg::<u8, _>("mode")
+                    .inarg::<u32, _>("timeout"),
                 ),
         ),
     );
@@ -229,6 +269,7 @@ pub fn service_main() -> Result<()> {
     enum Token {
         CheckTimer,
         ResetGameModeTimer,
+        ResetFullscreenVideoTimer,
         DBusMsg(RawFd),
     }
 
@@ -238,6 +279,10 @@ pub fn service_main() -> Result<()> {
     poll_ctx.add(
         &reset_game_mode_timer.as_raw_fd(),
         Token::ResetGameModeTimer,
+    )?;
+    poll_ctx.add(
+        &reset_fullscreen_video_timer.as_raw_fd(),
+        Token::ResetFullscreenVideoTimer,
     )?;
     for watch in conn.watch_fds() {
         let mut events = WatchingEvents::empty();
@@ -286,6 +331,16 @@ pub fn service_main() -> Result<()> {
 
                     if common::set_game_mode(common::GameMode::Off).is_err() {
                         error!("Reset game mode failed.");
+                    }
+                }
+                Token::ResetFullscreenVideoTimer => {
+                    warn!("Fullscreen video heartbeat timed out.");
+
+                    // wait() reads the fd. It's necessary to read timerfd after timeout.
+                    reset_fullscreen_video_timer.wait()?;
+
+                    if common::set_fullscreen_video(common::FullscreenVideo::Inactive).is_err() {
+                        error!("Reset fullscreen video mode failed.");
                     }
                 }
                 Token::DBusMsg(fd) => {

@@ -71,6 +71,8 @@ pub enum RTCAudioActive {
     // RTC is active, RTC audio is playing and recording.
     Active = 1,
 }
+static RTC_AUDIO_ACTIVE: Lazy<Mutex<RTCAudioActive>> =
+    Lazy::new(|| Mutex::new(RTCAudioActive::Inactive));
 
 impl TryFrom<u8> for RTCAudioActive {
     type Error = anyhow::Error;
@@ -84,7 +86,27 @@ impl TryFrom<u8> for RTCAudioActive {
     }
 }
 
-static RTC_ACTIVE: Lazy<Mutex<RTCAudioActive>> = Lazy::new(|| Mutex::new(RTCAudioActive::Inactive));
+#[derive(Clone, Copy, PartialEq)]
+pub enum FullscreenVideo {
+    // Full screen video is not active.
+    Inactive = 0,
+    // Full screen video is active.
+    Active = 1,
+}
+static FULLSCREEN_VIDEO: Lazy<Mutex<FullscreenVideo>> =
+    Lazy::new(|| Mutex::new(FullscreenVideo::Inactive));
+
+impl TryFrom<u8> for FullscreenVideo {
+    type Error = anyhow::Error;
+
+    fn try_from(mode_raw: u8) -> Result<FullscreenVideo> {
+        Ok(match mode_raw {
+            0 => FullscreenVideo::Inactive,
+            1 => FullscreenVideo::Active,
+            _ => bail!("Unsupported fullscreen video mode"),
+        })
+    }
+}
 
 // Set EPP value in sysfs for Intel devices with X86_FEATURE_HWP_EPP support.
 // On !X86_FEATURE_HWP_EPP Intel devices, an integer write to the sysfs node
@@ -107,8 +129,29 @@ pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn update_epp_if_needed() -> Result<()> {
+    match RTC_AUDIO_ACTIVE.lock() {
+        Ok(rtc_data) => {
+            match FULLSCREEN_VIDEO.lock() {
+                Ok(fsv_data) => {
+                    if *rtc_data == RTCAudioActive::Active || *fsv_data == FullscreenVideo::Active {
+                        set_epp("/", "179")?; // Set EPP to 70%
+                    } else if *rtc_data != RTCAudioActive::Active
+                        && *fsv_data != FullscreenVideo::Active
+                    {
+                        set_epp("/", "balance_performance")?; // Default EPP
+                    }
+                }
+                Err(_) => bail!("Failed to update EPP!"),
+            }
+        }
+        Err(_) => bail!("Failed to update EPP!"),
+    }
+    Ok(())
+}
+
 pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
-    match RTC_ACTIVE.lock() {
+    match RTC_AUDIO_ACTIVE.lock() {
         Ok(mut data) => {
             *data = mode;
 
@@ -118,16 +161,35 @@ pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
                 "balance_performance" // Default EPP
             };
 
-            set_epp("/", epp_value).context("Failed to set EPP sysfs value!")
+            set_epp("/", epp_value).context("Failed to set EPP sysfs value!")?;
         }
-
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
+    update_epp_if_needed()?;
+    Ok(())
 }
 
 pub fn get_rtc_audio_active() -> Result<RTCAudioActive> {
-    match RTC_ACTIVE.lock() {
+    match RTC_AUDIO_ACTIVE.lock() {
         Ok(data) => Ok(*data),
         Err(_) => bail!("Failed to get status of RTC audio activity"),
+    }
+}
+
+pub fn set_fullscreen_video(mode: FullscreenVideo) -> Result<()> {
+    match FULLSCREEN_VIDEO.lock() {
+        Ok(mut data) => {
+            *data = mode;
+        }
+        Err(_) => bail!("Failed to set full screen video activity"),
+    }
+    update_epp_if_needed()?;
+    Ok(())
+}
+
+pub fn get_fullscreen_video() -> Result<FullscreenVideo> {
+    match FULLSCREEN_VIDEO.lock() {
+        Ok(data) => Ok(*data),
+        Err(_) => bail!("Failed to get full screen video activity"),
     }
 }
