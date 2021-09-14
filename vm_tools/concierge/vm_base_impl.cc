@@ -97,12 +97,20 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
 }
 
 bool VmBaseImpl::StartProcess(base::StringPairs args) {
-  for (std::pair<std::string, std::string>& arg : args) {
-    process_.AddArg(std::move(arg.first));
-    if (!arg.second.empty())
-      process_.AddArg(std::move(arg.second));
-  }
+  std::string command_line_for_log{};
 
+  for (std::pair<std::string, std::string>& arg : args) {
+    command_line_for_log += arg.first;
+    command_line_for_log += " ";
+
+    process_.AddArg(std::move(arg.first));
+    if (!arg.second.empty()) {
+      command_line_for_log += arg.second;
+      command_line_for_log += " ";
+      process_.AddArg(std::move(arg.second));
+    }
+  }
+  LOG(INFO) << "Invoking VM: " << command_line_for_log;
   if (!process_.Start()) {
     PLOG(ERROR) << "Failed to start VM process";
     return false;
