@@ -593,6 +593,28 @@ void MachineLearningServiceImpl::LoadGrammarChecker(
     mojo::PendingReceiver<chromeos::machine_learning::mojom::GrammarChecker>
         receiver,
     LoadGrammarCheckerCallback callback) {
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "GrammarCheckerModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics have already been reported in
+      // `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadGrammarChecker(std::move(receiver), std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
+
   RequestMetrics request_metrics("GrammarChecker", kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
@@ -607,6 +629,7 @@ void MachineLearningServiceImpl::LoadGrammarChecker(
     std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
     request_metrics.RecordRequestEvent(
         LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
+    brillo::MessageLoop::current()->BreakLoop();
     return;
   }
 
@@ -616,6 +639,7 @@ void MachineLearningServiceImpl::LoadGrammarChecker(
 
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    brillo::MessageLoop::current()->BreakLoop();
     return;
   }
 
@@ -623,6 +647,7 @@ void MachineLearningServiceImpl::LoadGrammarChecker(
   if (!GrammarCheckerImpl::Create(std::move(receiver))) {
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    brillo::MessageLoop::current()->BreakLoop();
     return;
   }
 

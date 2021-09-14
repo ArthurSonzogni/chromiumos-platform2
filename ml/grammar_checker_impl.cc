@@ -7,10 +7,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/debug/leak_annotations.h>
+#include <brillo/message_loops/message_loop.h>
+
 #include "ml/grammar_proto_mojom_conversion.h"
 #include "ml/request_metrics.h"
-
-#include <base/check.h>
 
 namespace ml {
 namespace {
@@ -26,11 +28,18 @@ bool GrammarCheckerImpl::Create(
     mojo::PendingReceiver<GrammarChecker> receiver) {
   auto checker_impl = new GrammarCheckerImpl(std::move(receiver));
 
-  // Set the disconnection handler to strongly bind `checker_impl` to delete
-  // `checker_impl` when the connection is gone.
-  checker_impl->receiver_.set_disconnect_handler(base::BindOnce(
-      [](const GrammarCheckerImpl* const checker_impl) { delete checker_impl; },
-      base::Unretained(checker_impl)));
+  // In production, `checker_impl` is intentionally leaked, because this model
+  // runs in its own process and the model's memory is freed when the process
+  // exits. However, if being tested with ASAN, this memory leak could cause an
+  // error. Therefore, we annotate it as an intentional leak.
+  ANNOTATE_LEAKING_OBJECT_PTR(checker_impl);
+
+  //  Set the disconnection handler to quit the message loop (i.e. exit the
+  //  process) when the connection is gone, because this model is always run in
+  //  a dedicated process.
+  checker_impl->receiver_.set_disconnect_handler(
+      base::BindOnce(&brillo::MessageLoop::BreakLoop,
+                     base::Unretained(brillo::MessageLoop::current())));
 
   return checker_impl->successfully_loaded_;
 }
