@@ -35,6 +35,8 @@ pkg_config("target_defaults") {
 
 static_library("libfusebox") {
   sources = [
+    "fuse_file_handles.cc",
+    "fuse_file_handles.h",
     "make_stat.cc",
     "make_stat.h",
     "util.cc",
@@ -60,6 +62,7 @@ if (use.test) {
 
   executable("fusebox_test") {
     sources = [
+      "fuse_file_handles_test.cc",
       "make_stat_test.cc",
       "test_runner.cc",
       "util_test.cc",
