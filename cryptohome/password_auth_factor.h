@@ -22,6 +22,7 @@ class PasswordAuthFactor : public AuthFactor {
   // AuthenticateAuthFactor authenticates user credentials if they exist. This
   // currently uses VaultKeyset, but will eventually use AuthBlocks and USS.
   bool AuthenticateAuthFactor(const Credentials& credential,
+                              bool is_ephemeral_user,
                               MountError* code) override;
 
   // Transfer ownership of password verifier that can be used to verify
@@ -48,6 +49,8 @@ class PasswordAuthFactor : public AuthFactor {
   std::unique_ptr<CredentialVerifier> credential_verifier_;
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
+  // Used to store key meta data.
+  cryptohome::KeyData key_data_;
 };
 
 }  // namespace cryptohome

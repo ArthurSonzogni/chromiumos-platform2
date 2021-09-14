@@ -94,6 +94,10 @@ class AuthSession final {
   // This functions returns if user existed when the AuthSession was started.
   bool user_exists() { return user_exists_; }
 
+  // This functions returns if the AuthSession is being setup for an ephemeral
+  // user.
+  bool ephemeral_user() { return is_ephemeral_user_; }
+
   // Returns the key data with which this AuthSession is authenticated with.
   cryptohome::KeyData current_key_data() { return auth_factor_->GetKeyData(); }
 
@@ -132,8 +136,11 @@ class AuthSession final {
       MountError* error);
 
   std::string username_;
-  bool is_kiosk_user_;
   base::UnguessableToken token_;
+
+  // AuthSession's flag configuration.
+  bool is_kiosk_user_;
+  bool is_ephemeral_user_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::OneShotTimer timer_;
@@ -153,6 +160,7 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
+  FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
 };
 

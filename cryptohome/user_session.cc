@@ -136,6 +136,14 @@ MountError UserSession::MountEphemeral(const Credentials& credentials) {
   return code;
 }
 
+MountError UserSession::MountEphemeral(AuthSession* auth_session) {
+  MountError code = mount_->MountEphemeralCryptohome(auth_session->username());
+  if (code == MOUNT_ERROR_NONE) {
+    SetCredentials(auth_session);
+  }
+  return code;
+}
+
 MountError UserSession::MountGuest() {
   bool status = mount_->MountGuestCryptohome();
   return status ? MOUNT_ERROR_NONE : MOUNT_ERROR_FATAL;

@@ -57,6 +57,11 @@ AuthSession::~AuthSession() = default;
 void AuthSession::ProcessFlags(unsigned int flags) {
   is_kiosk_user_ =
       flags & user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER;
+  is_ephemeral_user_ =
+      flags &
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
+  LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_
+            << "  is_kiosk_user_  " << is_kiosk_user_;
 }
 
 void AuthSession::AuthSessionTimedOut() {
@@ -106,8 +111,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     auth_factor_ = std::make_unique<PasswordAuthFactor>(keyset_management_);
   }
 
-  bool authenticated =
-      auth_factor_->AuthenticateAuthFactor(*credentials, &code);
+  bool authenticated = auth_factor_->AuthenticateAuthFactor(
+      *credentials, is_ephemeral_user_, &code);
   if (authenticated) {
     status_ = AuthStatus::kAuthStatusAuthenticated;
   }

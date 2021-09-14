@@ -29,6 +29,7 @@ class AuthFactor {
   // AuthenticateAuthFactor validates the key should it exist on disk for the
   // user.
   virtual bool AuthenticateAuthFactor(const Credentials& credential,
+                                      bool is_ephemeral_user,
                                       MountError* code) = 0;
 
   // Transfer ownership of password verifier that can be used to verify

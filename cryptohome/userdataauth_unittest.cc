@@ -3517,6 +3517,81 @@ TEST_F(UserDataAuthExTest, AuthenticateAuthSessionInvalidToken) {
   EXPECT_FALSE(auth_session_reply.authenticated());
 }
 
+TEST_F(UserDataAuthExTest, MountAuthSessionInvalidToken) {
+  PrepareArguments();
+  std::string invalid_token = "invalid_token_16";
+  user_data_auth::MountRequest mount_req;
+  mount_req.set_auth_session_id(invalid_token);
+
+  // Test.
+  bool mount_done = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        mount_req,
+        base::BindOnce(
+            [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN,
+                        reply.error());
+              *mount_done_ptr = true;
+            },
+            base::Unretained(&mount_done)));
+    ASSERT_EQ(TRUE, mount_done);
+  }
+}
+
+TEST_F(UserDataAuthExTest, MountUnauthenticatedAuthSession) {
+  // Setup.
+  PrepareArguments();
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  base::Optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+  EXPECT_NE(userdataauth_->auth_sessions_.find(auth_session_id.value()),
+            userdataauth_->auth_sessions_.end());
+
+  user_data_auth::MountRequest mount_req;
+  mount_req.set_auth_session_id(auth_session_reply.auth_session_id());
+
+  // Test.
+  bool mount_done = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->DoMount(
+        mount_req,
+        base::BindOnce(
+            [](bool* mount_done_ptr, const user_data_auth::MountReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
+                        reply.error());
+              *mount_done_ptr = true;
+            },
+            base::Unretained(&mount_done)));
+    ASSERT_EQ(TRUE, mount_done);
+  }
+
+  FastForwardBy(userdataauth_->auth_sessions_[auth_session_id.value()]
+                    ->timer_.GetCurrentDelay());
+
+  EXPECT_EQ(userdataauth_->auth_sessions_.find(auth_session_id.value()),
+            userdataauth_->auth_sessions_.end());
+}
+
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
  public:
   static constexpr const char* kUser = "chromeos-user";

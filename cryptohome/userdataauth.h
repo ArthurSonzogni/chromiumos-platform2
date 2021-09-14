@@ -767,6 +767,7 @@ class UserDataAuth {
   void ContinueMountWithCredentials(
       const user_data_auth::MountRequest& request,
       std::unique_ptr<Credentials> credentials,
+      base::Optional<base::UnguessableToken> token,
       const Mount::MountArgs& mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
@@ -1152,6 +1153,7 @@ class UserDataAuth {
 
   friend class UserDataAuthExTest;
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
 };
 
 }  // namespace cryptohome

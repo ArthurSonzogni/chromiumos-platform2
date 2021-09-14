@@ -40,7 +40,8 @@ class PasswordAuthFactorTest : public ::testing::Test {
   NiceMock<MockKeysetManagement> keyset_management_;
 };
 
-TEST_F(PasswordAuthFactorTest, AuthenticateAuthFactorTest) {
+TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest) {
+  // Setup
   auto vk = std::make_unique<VaultKeyset>();
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
@@ -48,7 +49,35 @@ TEST_F(PasswordAuthFactorTest, AuthenticateAuthFactorTest) {
   std::unique_ptr<AuthFactor> pass_auth_factor =
       std::make_unique<PasswordAuthFactor>(&keyset_management_);
   MountError error;
-  EXPECT_TRUE(pass_auth_factor->AuthenticateAuthFactor(creds, &error));
+
+  // Test
+  EXPECT_TRUE(pass_auth_factor->AuthenticateAuthFactor(
+      creds, false /*ephemeral user*/, &error));
+
+  // Verify
+  EXPECT_EQ(error, MOUNT_ERROR_NONE);
+  std::unique_ptr<CredentialVerifier> verifier =
+      pass_auth_factor->TakeCredentialVerifier();
+  EXPECT_TRUE(verifier->Verify(brillo::SecureBlob(kFakePassword)));
+}
+
+TEST_F(PasswordAuthFactorTest, EphemeralAuthenticateAuthFactorTest) {
+  // Setup
+  auto vk = std::make_unique<VaultKeyset>();
+  Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
+  std::unique_ptr<AuthFactor> pass_auth_factor =
+      std::make_unique<PasswordAuthFactor>(&keyset_management_);
+  MountError error;
+  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _)).Times(0);
+
+  // Test
+  EXPECT_TRUE(pass_auth_factor->AuthenticateAuthFactor(
+      creds, true /*ephemeral user*/, &error));
+  std::unique_ptr<CredentialVerifier> verifier =
+      pass_auth_factor->TakeCredentialVerifier();
+
+  // Verify
+  EXPECT_TRUE(verifier->Verify(brillo::SecureBlob(kFakePassword)));
   EXPECT_EQ(error, MOUNT_ERROR_NONE);
 }
 

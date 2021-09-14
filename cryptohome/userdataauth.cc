@@ -124,10 +124,9 @@ MountError AttemptUserMount(AuthSession* auth_session,
   if (user_session->GetMount()->IsMounted()) {
     return MOUNT_ERROR_MOUNT_POINT_BUSY;
   }
-  // Ephemeral mounts currently not supported with AuthSession.
-  // TODO(crbug.com/1182441): Support ephemeral mounts with AuthSession
+  // Mount ephemerally using authsession
   if (mount_args.is_ephemeral) {
-    return MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
+    return user_session->MountEphemeral(auth_session);
   }
 
   return user_session->MountVault(auth_session, mount_args);
@@ -1323,8 +1322,31 @@ void UserDataAuth::DoMount(
   // to requiring a IdP-unique identifier.
   const std::string& account_id = GetAccountId(request.account());
 
+  base::Optional<base::UnguessableToken> token;
+  // Create a bool for better documentation for what token.has_value() means.
+  bool has_valid_auth_session = false;
+  if (!request.auth_session_id().empty()) {
+    token =
+        AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+    has_valid_auth_session = token.has_value();
+    if (has_valid_auth_session) {
+      if (auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+        reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+        LOG(ERROR) << "Invalid AuthSession token provided.";
+        std::move(on_done).Run(reply);
+        return;
+      } else if (auth_sessions_[token.value()]->GetStatus() !=
+                 AuthStatus::kAuthStatusAuthenticated) {
+        reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+        LOG(ERROR) << "AuthSession is not authenticated";
+        std::move(on_done).Run(reply);
+        return;
+      }
+    }
+  }
+
   // Check for empty account ID
-  if (account_id.empty() && request.auth_session_id().empty()) {
+  if (account_id.empty() && !has_valid_auth_session) {
     LOG(ERROR) << "No email supplied";
     reply.set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -1358,7 +1380,7 @@ void UserDataAuth::DoMount(
   if (request.authorization().key().secret().empty() &&
       request.authorization().key().data().type() !=
           KeyData::KEY_TYPE_CHALLENGE_RESPONSE &&
-      request.auth_session_id().empty()) {
+      !has_valid_auth_session) {
     LOG(ERROR) << "No key secret supplied";
     reply.set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -1366,7 +1388,7 @@ void UserDataAuth::DoMount(
     return;
   }
 
-  if (request.has_create() && request.auth_session_id().empty()) {
+  if (request.has_create() && !has_valid_auth_session) {
     // copy_authorization_key in CreateRequest means that we'll copy the
     // authorization request's key and use it as if it's the key specified in
     // CreateRequest.
@@ -1405,11 +1427,17 @@ void UserDataAuth::DoMount(
 
   // Determine whether the mount should be ephemeral.
   bool is_ephemeral = false;
+  bool require_ephemeral =
+      request.require_ephemeral() ||
+      (has_valid_auth_session ? auth_sessions_[token.value()]->ephemeral_user()
+                              : false);
   user_data_auth::CryptohomeErrorCode mount_error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  if (!GetShouldMountAsEphemeral(account_id, request.require_ephemeral(),
-                                 request.has_create(), &is_ephemeral,
-                                 &mount_error)) {
+
+  if (!GetShouldMountAsEphemeral(
+          account_id, require_ephemeral,
+          (request.has_create() || has_valid_auth_session), &is_ephemeral,
+          &mount_error)) {
     reply.set_error(mount_error);
     std::move(on_done).Run(reply);
     return;
@@ -1418,7 +1446,22 @@ void UserDataAuth::DoMount(
   // MountArgs is a set of parameters that we'll be passing around to
   // ContinueMountWithCredentials() and DoChallengeResponseMount().
   Mount::MountArgs mount_args;
-  mount_args.create_if_missing = request.has_create();
+
+  // request.has_create() represents a CreateRequest, telling the API to
+  // create a user with the credentials in CreateRequest. create_if_missing
+  // creates a user mount should one not exist. In the legacy use case,
+  // CreateRequest needs to requested in the Mount call API for user creation.
+  // When AuthSessions are fully functional with mount call, we would not be
+  // creating user directories in mount call, instead we'd use
+  // CreateEphemeral. But for now, code paths such as ephemeral mounts
+  // require create_if_missing to be set to true to continue mounting as
+  // Ephemeral user directories are created here.
+  // Therefore, if a valid and an authenticated AuthSession is passed we
+  // can temporarily bypass create_if_missing as a first step to prevent
+  // credentials from flowing to mount call. Later, this would be replaced by
+  // CreateEphemeral, CreatePersistent calls.
+  mount_args.create_if_missing =
+      (request.has_create() || has_valid_auth_session);
   mount_args.is_ephemeral = is_ephemeral;
   mount_args.create_as_ecryptfs =
       force_ecryptfs_ ||
@@ -1440,7 +1483,8 @@ void UserDataAuth::DoMount(
   // Everything else can be the default.
   credentials->set_key_data(request.authorization().key().data());
 
-  ContinueMountWithCredentials(request, std::move(credentials), mount_args,
+  ContinueMountWithCredentials(request, std::move(credentials),
+                               std::move(token), mount_args,
                                std::move(on_done));
   LOG(INFO) << "Finished mount request process";
 }
@@ -1636,13 +1680,14 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
   DCHECK_EQ(credentials->key_data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 
-  ContinueMountWithCredentials(request, std::move(credentials), mount_args,
-                               std::move(on_done));
+  ContinueMountWithCredentials(request, std::move(credentials), base::nullopt,
+                               mount_args, std::move(on_done));
 }
 
 void UserDataAuth::ContinueMountWithCredentials(
     const user_data_auth::MountRequest& request,
     std::unique_ptr<Credentials> credentials,
+    base::Optional<base::UnguessableToken> token,
     const Mount::MountArgs& mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
@@ -1669,30 +1714,16 @@ void UserDataAuth::ContinueMountWithCredentials(
   // to create the home directory, and reply with the error.
   if (!request.has_create() &&
       !homedirs_->Exists(credentials->GetObfuscatedUsername(system_salt_)) &&
-      request.auth_session_id().empty()) {
+      !token.has_value()) {
     LOG(ERROR) << "Account not found when mounting with credentials.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     std::move(on_done).Run(reply);
     return;
   }
 
-  base::Optional<base::UnguessableToken> token;
-  if (!request.auth_session_id().empty()) {
-    token =
-        AuthSession::GetTokenFromSerializedString(request.auth_session_id());
-    if (!token.has_value() ||
-        auth_sessions_.find(token.value()) == auth_sessions_.end()) {
-      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-      LOG(ERROR) << "Invalid AuthSession token provided.";
-      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-      std::move(on_done).Run(reply);
-      return;
-    }
-  }
-
-  std::string account_id = request.auth_session_id().empty()
-                               ? GetAccountId(request.account())
-                               : auth_sessions_[token.value()]->username();
+  std::string account_id = token.has_value()
+                               ? auth_sessions_[token.value()]->username()
+                               : GetAccountId(request.account());
   // Provide an authoritative filesystem-sanitized username.
   reply.set_sanitized_username(
       brillo::cryptohome::home::SanitizeUserName(account_id));

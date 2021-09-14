@@ -55,6 +55,10 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // of supplied credentials;
   MountError MountEphemeral(const Credentials& credentials);
 
+  // Creates and mounts a ramdisk backed ephemeral session for the user
+  // of supplied credentials using auth session.
+  MountError MountEphemeral(AuthSession* auth_session);
+
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
   MountError MountGuest();

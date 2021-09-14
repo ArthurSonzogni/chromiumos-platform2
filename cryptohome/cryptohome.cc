@@ -2900,7 +2900,10 @@ int main(int argc, char** argv) {
     user_data_auth::StartAuthSessionReply reply;
     unsigned int flags = 0;
     flags |= cl->HasSwitch(switches::kPublicMount)
-                 ? cryptohome::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER
+                 ? user_data_auth::AUTH_SESSION_FLAGS_KIOSK_USER
+                 : 0;
+    flags |= cl->HasSwitch(switches::kEnsureEphemeralSwitch)
+                 ? user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER
                  : 0;
     req.set_flags(flags);
     *req.mutable_account_id() = id;
