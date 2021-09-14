@@ -342,8 +342,10 @@ void ArcService::Stop(uint32_t id) {
   }
 
   // After the ARC container has stopped, the pid is not known anymore.
+  // The stop message for ARCVM may be sent after a new VM is started. Only
+  // stop if the CID matched the latest started ARCVM CID.
   if (guest_ == GuestMessage::ARC_VM && id_ != id) {
-    LOG(ERROR) << "Mismatched ARCVM CIDs " << id_ << " != " << id;
+    LOG(WARNING) << "Mismatched ARCVM CIDs " << id_ << " != " << id;
     return;
   }
 

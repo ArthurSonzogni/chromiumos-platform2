@@ -201,6 +201,14 @@ void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
 
   // On ARC down, cull any open connections and stop listening.
   if (msg.event() == GuestMessage::STOP) {
+    // The stop message for ARCVM may be sent after a new VM is started. Only
+    // stop if the CID matched the latest started ARCVM CID.
+    if (msg.type() == GuestMessage::ARC_VM &&
+        msg.arcvm_vsock_cid() != arcvm_vsock_cid_) {
+      LOG(WARNING) << "Mismatched ARCVM CIDs " << arcvm_vsock_cid_
+                   << " != " << msg.arcvm_vsock_cid();
+      return;
+    }
     Reset();
     return;
   }

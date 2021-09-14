@@ -577,6 +577,7 @@ void Manager::StopArcVm(uint32_t cid) {
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC_VM);
+  msg.set_arcvm_vsock_cid(cid);
   SendGuestMessage(msg);
 
   arc_svc_->Stop(cid);
