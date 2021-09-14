@@ -74,3 +74,13 @@ TEST(MountEntryTest, UsrIsNotInUsrLocal) {
       "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0");
   ASSERT_FALSE(e.IsDestInUsrLocal());
 }
+
+TEST(MountEntryTest, Namespace) {
+  MountEntry e("nsfs /run/netns/connected_netns_0 nsfs rw 0 0");
+  ASSERT_TRUE(e.IsNamespaceBindMount());
+}
+
+TEST(MountEntryTest, OtherTypesAreNotNamespaceMounts) {
+  MountEntry e("src /run/netns/connected_netns_0 msphs rw 0 0");
+  ASSERT_FALSE(e.IsNamespaceBindMount());
+}

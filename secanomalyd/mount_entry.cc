@@ -72,3 +72,11 @@ bool MountEntry::IsUsbDriveOrArchive() {
 bool MountEntry::IsDestInUsrLocal() {
   return kUsrLocal == this->dest() || kUsrLocal.IsParent(this->dest());
 }
+
+bool MountEntry::IsNamespaceBindMount() {
+  // On 3.18 kernels these mounts show up as type "proc" rather than type
+  // "nsfs".
+  // TODO(crbug.com/1204604): Remove the "proc" exception after 3.18 kernels go
+  // away.
+  return this->type() == "nsfs" || this->type() == "proc";
+}

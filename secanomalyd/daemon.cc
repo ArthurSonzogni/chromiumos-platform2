@@ -120,25 +120,24 @@ void Daemon::DoWXMountCheck() {
           // |src| or |dest|.
           continue;
         }
-        // If we haven't seen the mount, save it.
-        wx_mounts_[e.dest()] = e;
-        VLOG(1) << "Found W+X mount at '" << e.dest() << "', type " << e.type();
 
-        if (e.type() == "nsfs" || e.type() == "proc") {
-          // "nsfs" mounts happen when a namespace file in /proc/<pid>/ns/ gets
-          // bind-mounted somewhere else. These mounts can be W+X but are not
-          // concerning since they are single files and these files cannot be
-          // executed.
-          // On 3.18 kernels these mounts show up as type "proc" rather than
-          // type "nsfs".
-          // TODO(crbug.com/1204604): Remove the "proc" exception after 3.18
-          // kernels go away.
-          VLOG(1) << "Not reporting '" << e.dest() << "', mount type "
+        if (e.IsNamespaceBindMount()) {
+          // Namespace mounts happen when a namespace file in /proc/<pid>/ns/
+          // gets bind-mounted somewhere else. These mounts can be W+X but are
+          // not concerning since they consist of a single file and these files
+          // cannot be executed.
+          VLOG(1) << "Not recording W+X mount at '" << e.dest() << "', type "
                   << e.type();
           continue;
         }
 
-        // Report metrics on it, if not running in dev mode.
+        // We haven't seen the mount, and it's not a type we want to skip, so
+        // save it.
+        wx_mounts_[e.dest()] = e;
+        VLOG(1) << "Found W+X mount at '" << e.dest() << "', type " << e.type();
+        VLOG(1) << "|wx_mounts_.size()| = " << wx_mounts_.size();
+
+        // Report metrics on the mount, if not running in dev mode.
         if (ShouldReport(dev_)) {
           // Report /usr/local mounts separately because those can indicate
           // systems where |cros_debug == 0| but the system is still a dev

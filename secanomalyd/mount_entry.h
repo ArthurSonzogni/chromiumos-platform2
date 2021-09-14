@@ -29,6 +29,7 @@ class MountEntry {
   bool IsWX();
   bool IsUsbDriveOrArchive();
   bool IsDestInUsrLocal();
+  bool IsNamespaceBindMount();
 
   const base::FilePath& src() const { return src_; }
   const base::FilePath& dest() const { return dest_; }
