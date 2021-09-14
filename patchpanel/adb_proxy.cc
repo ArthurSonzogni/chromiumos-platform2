@@ -143,26 +143,10 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
       if (dst->Connect((const struct sockaddr*)&addr_un, sizeof(addr_un))) {
         LOG(INFO) << "Established adbd connection to " << addr_un;
         return dst;
-      } else {
-        PLOG(WARNING) << "Failed to connect UNIX domain socket to adbd: "
-                      << kUnixConnectAddr << " - falling back to TCP";
       }
-
-      struct sockaddr_in addr_in = {0};
-      addr_in.sin_family = AF_INET;
-      addr_in.sin_port = htons(kTcpConnectPort);
-      addr_in.sin_addr.s_addr = kTcpAddr;
-      dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
-      if (!dst->is_valid()) {
-        PLOG(ERROR) << "Failed to create TCP socket";
-        return nullptr;
-      }
-      if (!dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in))) {
-        PLOG(ERROR) << "Failed to connect TCP socket to adbd at " << addr_in;
-        return nullptr;
-      }
-      LOG(INFO) << "Established adbd connection to " << addr_in;
-      return dst;
+      PLOG(WARNING) << "Failed to connect UNIX domain socket to adbd: "
+                    << kUnixConnectAddr << " - falling back to TCP";
+      break;
     }
     case GuestMessage::ARC_VM: {
       struct sockaddr_vm addr_vm = {0};
@@ -174,17 +158,35 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
         PLOG(ERROR) << "Failed to create VSOCK socket";
         return nullptr;
       }
-      if (!dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
-        PLOG(ERROR) << "Failed to connect VSOCK socket to adbd at " << addr_vm;
-        return nullptr;
+      if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
+        LOG(INFO) << "Established adbd connection to " << addr_vm;
+        return dst;
       }
-      LOG(INFO) << "Established adbd connection to " << addr_vm;
-      return dst;
+      PLOG(WARNING) << "Failed to connect VSOCK socket to adbd at " << addr_vm
+                    << " - falling back to TCP";
+      break;
     }
     default:
       LOG(DFATAL) << "Unexpected ARC guest type";
       return nullptr;
   }
+
+  // Fallback to TCP.
+  struct sockaddr_in addr_in = {0};
+  addr_in.sin_family = AF_INET;
+  addr_in.sin_port = htons(kTcpConnectPort);
+  addr_in.sin_addr.s_addr = kTcpAddr;
+  auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
+  if (!dst->is_valid()) {
+    PLOG(ERROR) << "Failed to create TCP socket";
+    return nullptr;
+  }
+  if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in))) {
+    LOG(INFO) << "Established adbd connection to " << addr_in;
+    return dst;
+  }
+  PLOG(ERROR) << "Failed to connect TCP socket to adbd at " << addr_in;
+  return nullptr;
 }
 
 void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
