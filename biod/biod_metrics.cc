@@ -4,6 +4,7 @@
 
 #include "biod/biod_metrics.h"
 
+#include <base/stl_util.h>
 #include <libec/fingerprint/fp_sensor_errors.h>
 #include <metrics/metrics_library.h>
 
@@ -113,8 +114,9 @@ bool BiodMetrics::SendFwUpdaterStatus(FwUpdaterStatus status,
   // TODO(crbug.com/1218246) Change UMA enum name kUpdaterStatus if new enums
   // for FWUpdaterStatus are added to avoid data discontinuity, then use
   // kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
-  if (!metrics_lib_->SendEnumToUMA(metrics::kUpdaterStatus, to_utype(status),
-                                   to_utype(FwUpdaterStatus::kMaxValue))) {
+  if (!metrics_lib_->SendEnumToUMA(
+          metrics::kUpdaterStatus, base::to_underlying(status),
+          base::to_underlying(FwUpdaterStatus::kMaxValue))) {
     rc = false;
   }
 

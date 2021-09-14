@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <chromeos/ec/ec_commands.h>
@@ -138,7 +139,7 @@ TEST(CrosFpDeviceUpdateTest, NonblankEcCurrentImageString) {
     // when we ask for the human readable string
     std::string msg = CrosFpDeviceUpdate::EcCurrentImageToString(image);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << to_utype(image)
+    EXPECT_FALSE(msg.empty()) << "Status " << base::to_underlying(image)
                               << " converts to a blank status string.";
   }
 }

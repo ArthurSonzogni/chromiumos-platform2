@@ -19,6 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <fmap.h>
 #include <gtest/gtest.h>
 
@@ -418,7 +419,7 @@ TEST_F(CrosFpFirmwareTest, NonblankStatusMessages) {
     // when we ask for the human readable string
     std::string msg = TestStatusToString(status);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << to_utype(status)
+    EXPECT_FALSE(msg.empty()) << "Status " << base::to_underlying(status)
                               << " converts to a blank status string.";
   }
 }

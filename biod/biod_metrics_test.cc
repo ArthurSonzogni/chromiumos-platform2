@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/macros.h>
+#include <base/stl_util.h>
 #include <chromeos/ec/ec_commands.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -123,8 +124,9 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
   // enums are added to avoid data discontinuity, and then use kMaxValue+1
   // rather than kMaxValue for 'exclusive_max'.
   EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendEnumToUMA(metrics::kUpdaterStatus, to_utype(status),
-                            to_utype(BiodMetrics::FwUpdaterStatus::kMaxValue)))
+              SendEnumToUMA(
+                  metrics::kUpdaterStatus, base::to_underlying(status),
+                  base::to_underlying(BiodMetrics::FwUpdaterStatus::kMaxValue)))
       .Times(1);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
@@ -136,9 +138,10 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
               SendToUMA(metrics::kUpdaterDurationUpdate, _, _, _, _))
       .Times(0);
 
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendEnumToUMA(metrics::kUpdaterReason, to_utype(reason),
-                            to_utype(updater::UpdateReason::kMaxValue) + 1))
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(metrics::kUpdaterReason, base::to_underlying(reason),
+                    base::to_underlying(updater::UpdateReason::kMaxValue) + 1))
       .Times(1);
   biod_metrics_.SendFwUpdaterStatus(status, reason, overall_ms);
 }
@@ -150,8 +153,9 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnUpdate) {
   const int overall_ms = 40 * 1000;
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendEnumToUMA(metrics::kUpdaterStatus, to_utype(status),
-                            to_utype(BiodMetrics::FwUpdaterStatus::kMaxValue)))
+              SendEnumToUMA(
+                  metrics::kUpdaterStatus, base::to_underlying(status),
+                  base::to_underlying(BiodMetrics::FwUpdaterStatus::kMaxValue)))
       .Times(1);
 
   EXPECT_CALL(*GetMetricsLibraryMock(),
@@ -163,9 +167,10 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnUpdate) {
                         Le(overall_ms), Ge(overall_ms), _))
       .Times(1);
 
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendEnumToUMA(metrics::kUpdaterReason, to_utype(reason),
-                            to_utype(updater::UpdateReason::kMaxValue) + 1))
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(metrics::kUpdaterReason, base::to_underlying(reason),
+                    base::to_underlying(updater::UpdateReason::kMaxValue) + 1))
       .Times(1);
   biod_metrics_.SendFwUpdaterStatus(status, reason, overall_ms);
 }
