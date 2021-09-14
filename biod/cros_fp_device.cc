@@ -487,14 +487,14 @@ bool CrosFpDevice::Init() {
   if (!fp_resp) {
     LOG(ERROR) << "Unable to read flash protect state";
   } else {
-    LOG(INFO) << "Flash Protect Flags : 0x" << std::hex << fp_resp->flags
-              << "\t: " << FlashProtectCommand::ParseFlags(fp_resp->flags);
-    LOG(INFO) << "Valid Flags         : 0x" << std::hex << fp_resp->valid_flags
-              << "\t: "
-              << FlashProtectCommand::ParseFlags(fp_resp->valid_flags);
+    LOG(INFO) << "Flash Protect Flags : 0x" << std::hex << fp_resp->GetFlags()
+              << "\t: " << FlashProtectCommand::ParseFlags(fp_resp->GetFlags());
+    LOG(INFO) << "Valid Flags         : 0x" << std::hex
+              << fp_resp->GetValidFlags() << "\t: "
+              << FlashProtectCommand::ParseFlags(fp_resp->GetValidFlags());
     LOG(INFO) << "writable flags      : 0x" << std::hex
-              << fp_resp->writable_flags << "\t: "
-              << FlashProtectCommand::ParseFlags(fp_resp->writable_flags);
+              << fp_resp->GetValidFlags() << "\t: "
+              << FlashProtectCommand::ParseFlags(fp_resp->GetWritableFlags());
   }
 
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
@@ -594,9 +594,9 @@ bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
   return true;
 }
 
-std::unique_ptr<struct ec_response_flash_protect>
-CrosFpDevice::GetFlashProtect() const {
-  auto fp_cmd = ec_command_factory_->FlashProtectCommand(0, 0);
+std::unique_ptr<ec::FlashProtectCommand> CrosFpDevice::GetFlashProtect() const {
+  auto fp_cmd = ec_command_factory_->FlashProtectCommand(
+      ec::flash_protect::Flags::kNone, ec::flash_protect::Flags::kNone);
 
   if (!fp_cmd) {
     LOG(ERROR) << "Unable to create FP flash protect command";
@@ -608,10 +608,7 @@ CrosFpDevice::GetFlashProtect() const {
     return nullptr;
   }
 
-  auto ret = std::make_unique<struct ec_response_flash_protect>();
-  memcpy(ret.get(), fp_cmd->Resp(), fp_cmd->RespSize());
-
-  return ret;
+  return fp_cmd;
 }
 
 bool CrosFpDevice::SetContext(std::string user_hex) {
