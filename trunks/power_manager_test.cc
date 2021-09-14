@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/threading/thread.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/message_lite.h>
@@ -82,6 +83,8 @@ class PowerManagerTest : public testing::Test {
   PowerManagerTest() {
     power_manager_.set_resource_manager(&resource_manager_);
     power_manager_.set_power_manager_proxy(&proxy_);
+    background_thread_.Start();
+    power_manager_.set_task_runner(background_thread_.task_runner());
   }
 
   void SetUp() override {
@@ -264,6 +267,7 @@ class PowerManagerTest : public testing::Test {
   StrictMock<MockCommandTransceiver> transceiver_;
   StrictMock<MockResourceManager> resource_manager_{factory_, &transceiver_};
   PowerManager power_manager_;
+  base::Thread background_thread_{"test_background_thread"};
 
   Signal suspend_done_;
   Signal suspend_imminent_;

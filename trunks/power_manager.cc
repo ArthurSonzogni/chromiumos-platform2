@@ -138,7 +138,18 @@ void PowerManager::Stop() {
     VLOG(1) << "SuspendDelay abandoned.";
     // Make sure we don't block resource manager.
     if (resource_manager_) {
-      resource_manager_->Resume();
+      base::WaitableEvent event(
+          base::WaitableEvent::ResetPolicy::MANUAL,
+          base::WaitableEvent::InitialState::NOT_SIGNALED);
+      task_runner_->PostNonNestableTask(
+          FROM_HERE, base::BindOnce(
+                         [](ResourceManager* resource_manager,
+                            base::WaitableEvent* event) {
+                           resource_manager->Resume();
+                           event->Signal();
+                         },
+                         base::Unretained(resource_manager_), &event));
+      event.Wait();
     }
   }
 }
@@ -151,7 +162,17 @@ void PowerManager::OnResume(const std::vector<uint8_t>& serialized_proto) {
   }
   VLOG(1) << "SuspendDone(" << signal.suspend_id() << ")";
   if (resource_manager_) {
-    resource_manager_->Resume();
+    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                              base::WaitableEvent::InitialState::NOT_SIGNALED);
+    task_runner_->PostNonNestableTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](ResourceManager* resource_manager, base::WaitableEvent* event) {
+              resource_manager->Resume();
+              event->Signal();
+            },
+            base::Unretained(resource_manager_), &event));
+    event.Wait();
   }
 }
 
@@ -165,7 +186,17 @@ void PowerManager::OnSuspend(const std::vector<uint8_t>& serialized_proto) {
   if (!suspend_allowed_) {
     LOG(WARNING) << "Suspend handling is not allowed.";
   } else if (resource_manager_) {
-    resource_manager_->Suspend();
+    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                              base::WaitableEvent::InitialState::NOT_SIGNALED);
+    task_runner_->PostNonNestableTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](ResourceManager* resource_manager, base::WaitableEvent* event) {
+              resource_manager->Suspend();
+              event->Signal();
+            },
+            base::Unretained(resource_manager_), &event));
+    event.Wait();
   }
   if (!suspend_delay_registered_) {
     LOG(WARNING) << "SuspendDelay is not registered.";

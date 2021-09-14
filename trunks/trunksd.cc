@@ -134,7 +134,8 @@ int main(int argc, char** argv) {
   trunks::BackgroundCommandTransceiver background_transceiver(
       &resource_manager, background_thread.task_runner());
   service.set_transceiver(&background_transceiver);
-  trunks::PowerManager power_manager(&resource_manager);
+  trunks::PowerManager power_manager(&resource_manager,
+                                     background_thread.task_runner());
   service.set_power_manager(&power_manager);
   LOG(INFO) << "Trunks service started.";
   int exit_code = service.Run();

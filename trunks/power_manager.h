@@ -22,8 +22,12 @@ class PowerManager {
  public:
   // The |resource_manager| will be notified of power events. This
   // class does not take ownership of |resource_manager|.
-  explicit PowerManager(ResourceManager* resource_manager = nullptr)
-      : resource_manager_(resource_manager) {}
+  PowerManager(ResourceManager* resource_manager,
+               const scoped_refptr<base::SequencedTaskRunner>& task_runner)
+      : resource_manager_(resource_manager), task_runner_(task_runner) {}
+
+  PowerManager() : resource_manager_(nullptr) {}
+
   PowerManager(const PowerManager&) = delete;
   PowerManager& operator=(const PowerManager&) = delete;
 
@@ -31,6 +35,11 @@ class PowerManager {
 
   void set_resource_manager(ResourceManager* resource_manager) {
     resource_manager_ = resource_manager;
+  }
+
+  void set_task_runner(
+      const scoped_refptr<base::SequencedTaskRunner>& task_runner) {
+    task_runner_ = task_runner;
   }
 
   void set_power_manager_proxy(
@@ -105,6 +114,10 @@ class PowerManager {
   bool suspend_allowed_ = false;
 
   ResourceManager* resource_manager_;
+
+  // The functions of ResourceManager should only be called on this task runner.
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
   std::unique_ptr<org::chromium::PowerManagerProxy> dbus_proxy_;
   org::chromium::PowerManagerProxyInterface* proxy_ = nullptr;
 
