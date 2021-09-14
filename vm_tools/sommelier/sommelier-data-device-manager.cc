@@ -48,9 +48,17 @@ struct sl_data_transfer {
 };
 
 static void sl_data_transfer_destroy(struct sl_data_transfer* transfer) {
-  close(transfer->read_fd);
-  close(transfer->write_fd);
+  int read_fd = transfer->read_fd;
+  int write_fd = transfer->write_fd;
+
+  // default deleter of wl_event_source removes the sources from their
+  // associated wl_event_loop, but we still want to close the fd. Ordered this
+  // way because we don't want any additional events associated with the close()
+  // calls to end up a the wl_event_loop.
   delete transfer;
+
+  close(read_fd);
+  close(write_fd);
 }
 
 static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
