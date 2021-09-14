@@ -3919,18 +3919,6 @@ Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
 base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
                                        std::string* failure_reason) {
   DCHECK(failure_reason);
-  // As a legacy fallback, use the component rather than the DLC.
-  //
-  // TODO(crbug/953544): remove this once we no longer distribute termina as a
-  // component.
-  if (dlc_id.empty()) {
-    base::FilePath ret = GetLatestVMPath();
-    if (ret.empty()) {
-      *failure_reason = "Termina component is not loaded";
-    }
-    return ret;
-  }
-
   base::Optional<std::string> dlc_root =
       AsyncNoReject(bus_->GetDBusTaskRunner(),
                     base::BindOnce(
@@ -4022,26 +4010,27 @@ Service::VMImageSpec Service::GetImageSpec(
                .Append(base::NumberToString(raw_fd));
   }
 
-  if (!is_termina && vm.dlc_id().empty()) {
-    // User-chosen VMs (i.e. with arbitrary paths) can not be trusted.
-    return VMImageSpec{
-        .kernel = std::move(kernel),
-        .initrd = std::move(initrd),
-        .rootfs = std::move(rootfs),
-        .bios = std::move(bios),
-        .tools_disk = {},
-        .is_trusted_image = false,
-    };
+  base::FilePath vm_path;
+  // As a legacy fallback, use the component rather than the DLC.
+  //
+  // TODO(crbug/953544): remove this once we no longer distribute termina as a
+  // component.
+  if (vm.dlc_id().empty() && is_termina) {
+    vm_path = GetLatestVMPath();
+    if (vm_path.empty()) {
+      *failure_reason = "Termina component is not loaded";
+      return {};
+    }
+  } else if (!vm.dlc_id().empty()) {
+    vm_path = GetVmImagePath(vm.dlc_id(), failure_reason);
+    if (vm_path.empty())
+      return {};
   }
 
-  base::FilePath vm_path = GetVmImagePath(vm.dlc_id(), failure_reason);
-  if (vm_path.empty())
-    return {};
-
   // Pull in the DLC-provided files if requested.
-  if (!kernel_fd.has_value())
+  if (!kernel_fd.has_value() && !vm_path.empty())
     kernel = vm_path.Append(kVmKernelName);
-  if (!rootfs_fd.has_value())
+  if (!rootfs_fd.has_value() && !vm_path.empty())
     rootfs = vm_path.Append(kVmRootfsName);
 
   base::FilePath tools_disk;
@@ -4052,7 +4041,7 @@ Service::VMImageSpec Service::GetImageSpec(
       return {};
     tools_disk = tools_disk_path.Append(kVmToolsDiskName);
   }
-  if (tools_disk.empty() && is_termina)
+  if (tools_disk.empty() && !vm_path.empty())
     tools_disk = vm_path.Append(kVmToolsDiskName);
 
   return VMImageSpec{
