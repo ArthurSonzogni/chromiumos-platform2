@@ -66,6 +66,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/suspend_freezer.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
@@ -103,11 +104,19 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return udev;
   }
 
+  std::unique_ptr<system::SensorServiceHandler> CreateSensorServiceHandler()
+      override {
+    return std::make_unique<system::SensorServiceHandler>();
+  }
+
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
-  CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
+  CreateAmbientLightSensorManager(
+      PrefsInterface* prefs,
+      system::SensorServiceHandler* sensor_service_handler) override {
 #if USE_IIOSERVICE
     auto light_sensor_manager =
-        std::make_unique<system::AmbientLightSensorManagerMojo>(prefs);
+        std::make_unique<system::AmbientLightSensorManagerMojo>(
+            prefs, sensor_service_handler);
 #else   // !USE_IIOSERVICE
     auto light_sensor_manager =
         std::make_unique<system::AmbientLightSensorManagerFile>(prefs);

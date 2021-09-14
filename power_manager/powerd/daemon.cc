@@ -336,6 +336,10 @@ void Daemon::Init() {
   if (lid_state == LidState::CLOSED)
     LOG(INFO) << "Lid closed at startup";
 
+#if USE_IIOSERVICE
+  sensor_service_handler_ = delegate_->CreateSensorServiceHandler();
+#endif  // USE_IIOSERVICE
+
   if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
     ambient_light_sensor_watcher_ =
         delegate_->CreateAmbientLightSensorWatcher(udev_.get());
@@ -348,8 +352,8 @@ void Daemon::Init() {
 
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
-    light_sensor_manager_ =
-        delegate_->CreateAmbientLightSensorManager(prefs_.get());
+    light_sensor_manager_ = delegate_->CreateAmbientLightSensorManager(
+        prefs_.get(), sensor_service_handler_.get());
 
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
@@ -517,20 +521,13 @@ bool Daemon::TriggerRetryShutdownTimerForTesting() {
 #if USE_IIOSERVICE
 void Daemon::OnClientReceived(
     mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
-  if (!light_sensor_manager_) {
-    return;
-  }
-  system::AmbientLightSensorManagerMojo* manager =
-      dynamic_cast<system::AmbientLightSensorManagerMojo*>(
-          light_sensor_manager_.get());
-
-  manager->BindSensorHalClient(
+  sensor_service_handler_->BindSensorHalClient(
       std::move(client),
       base::BindOnce(&Daemon::OnMojoDisconnect, base::Unretained(this)));
 }
 
 void Daemon::OnMojoDisconnect() {
-  LOG(ERROR) << "Chromium crashed. Try to establish a new Mojo connection.";
+  LOG(ERROR) << "Chromium stopped. Establishing a new Mojo connection";
 
   ReconnectMojoWithDelay();
 }
@@ -1019,11 +1016,6 @@ void Daemon::InitDBus() {
                       ShutdownMode::REBOOT, ShutdownReason::USER_REQUEST));
 #endif  // USE_BUFFET
 #if USE_IIOSERVICE
-  int64_t num_sensors = 0;
-  prefs_->GetInt64(kHasAmbientLightSensorPref, &num_sensors);
-  if (num_sensors <= 0)
-    return;
-
   SetBus(bus.get());
   BootstrapMojoConnection();
 #endif  // USE_IIOSERVICE

@@ -45,6 +45,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
+#include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/suspend_freezer_stub.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
@@ -179,8 +180,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::UdevInterface> CreateUdev() override {
     return std::move(passed_udev_);
   }
+  std::unique_ptr<system::SensorServiceHandler> CreateSensorServiceHandler()
+      override {
+    return std::make_unique<system::SensorServiceHandler>();
+  }
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
-  CreateAmbientLightSensorManager(PrefsInterface* prefs) override {
+  CreateAmbientLightSensorManager(
+      PrefsInterface* prefs,
+      system::SensorServiceHandler* sensor_service_handler) override {
     return std::move(passed_ambient_light_sensor_manager_);
   }
   std::unique_ptr<system::AmbientLightSensorWatcherInterface>

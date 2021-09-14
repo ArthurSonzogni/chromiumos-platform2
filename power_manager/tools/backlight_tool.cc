@@ -60,6 +60,7 @@ using power_manager::policy::KeyboardBacklightController;
 using power_manager::system::AmbientLightSensorInterface;
 #if USE_IIOSERVICE
 using power_manager::system::AmbientLightSensorManagerMojo;
+using power_manager::system::SensorServiceHandler;
 #else   // !USE_IIOSERVICE
 using power_manager::system::AmbientLightSensorManagerFile;
 #endif  // USE_IIOSERVICE
@@ -187,15 +188,14 @@ class Converter {
 #if USE_IIOSERVICE
 class SensorClientDbusImpl : public iioservice::SensorClientDbus {
  public:
-  explicit SensorClientDbusImpl(
-      power_manager::system::AmbientLightSensorManagerMojo* manager)
-      : manager_(manager) {}
+  explicit SensorClientDbusImpl(SensorServiceHandler* handler)
+      : handler_(handler) {}
 
  protected:
   // SensorClientDbus overrides:
   void OnClientReceived(
       mojo::PendingReceiver<cros::mojom::SensorHalClient> client) override {
-    manager_->BindSensorHalClient(
+    handler_->BindSensorHalClient(
         std::move(client),
         base::BindOnce(&SensorClientDbusImpl::OnMojoDisconnect,
                        base::Unretained(this)));
@@ -204,7 +204,7 @@ class SensorClientDbusImpl : public iioservice::SensorClientDbus {
  private:
   void OnMojoDisconnect() { LOG(ERROR) << "OnMojoDisconnect"; }
 
-  power_manager::system::AmbientLightSensorManagerMojo* manager_;
+  SensorServiceHandler* handler_;
 };
 #endif  // USE_IIOSERVICE
 
@@ -276,7 +276,8 @@ void GetAmbientLightLux(bool keyboard) {
       base::ThreadTaskRunnerHandle::Get(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
-  AmbientLightSensorManagerMojo manager(&prefs);
+  SensorServiceHandler sensor_service_handler;
+  AmbientLightSensorManagerMojo manager(&prefs, &sensor_service_handler);
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -284,7 +285,7 @@ void GetAmbientLightLux(bool keyboard) {
   if (!bus->Connect())
     Abort("GetAmbientLightLux: Cannot connect to D-Bus.");
 
-  SensorClientDbusImpl client_dbus(&manager);
+  SensorClientDbusImpl client_dbus(&sensor_service_handler);
   client_dbus.SetBus(bus.get());
   client_dbus.BootstrapMojoConnection();
 #else   // !USE_IIOSERVICE

@@ -34,6 +34,7 @@
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
+#include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace dbus {
@@ -83,6 +84,7 @@ class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class UserProximityWatcherInterface;
+class SensorServiceHandler;
 class SuspendConfiguratorInterface;
 class SuspendFreezerInterface;
 class ThermalDeviceInterface;
@@ -316,6 +318,7 @@ class Daemon :
 
   // Many of these members may be null depending on the device's hardware
   // configuration.
+  std::unique_ptr<system::SensorServiceHandler> sensor_service_handler_;
   std::unique_ptr<system::AmbientLightSensorManagerInterface>
       light_sensor_manager_;
   std::unique_ptr<system::AmbientLightSensorWatcherInterface>

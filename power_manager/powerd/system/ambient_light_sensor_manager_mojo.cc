@@ -30,7 +30,8 @@ AmbientLightSensorManagerMojo::GetSensorForKeyboardBacklight() {
 }
 
 AmbientLightSensorManagerMojo::AmbientLightSensorManagerMojo(
-    PrefsInterface* prefs) {
+    PrefsInterface* prefs, SensorServiceHandler* sensor_service_handler)
+    : SensorServiceHandlerObserver(sensor_service_handler) {
   prefs->GetInt64(kHasAmbientLightSensorPref, &num_sensors_);
   if (num_sensors_ <= 0)
     return;
@@ -58,8 +59,6 @@ AmbientLightSensorManagerMojo::~AmbientLightSensorManagerMojo() {
 
   sensors_.clear();
   lights_.clear();
-  sensor_service_remote_.reset();
-  sensor_hal_client_.reset();
 }
 
 bool AmbientLightSensorManagerMojo::HasColorSensor() {
@@ -70,42 +69,50 @@ bool AmbientLightSensorManagerMojo::HasColorSensor() {
   return false;
 }
 
-void AmbientLightSensorManagerMojo::BindSensorHalClient(
-    mojo::PendingReceiver<cros::mojom::SensorHalClient> pending_receiver,
-    OnMojoDisconnectCallback on_mojo_disconnect_callback) {
+void AmbientLightSensorManagerMojo::OnNewDeviceAdded(
+    int32_t iio_device_id, const std::vector<cros::mojom::DeviceType>& types) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!sensor_hal_client_.is_bound());
+  if (num_sensors_ <= 0)
+    return;
 
-  if (num_sensors_ <= 0) {
-    // Doesn't need any ambient light sensor.
+  if (std::find(types.begin(), types.end(), cros::mojom::DeviceType::LIGHT) ==
+      types.end()) {
+    // Not a light sensor. Ignoring this device.
     return;
   }
 
-  sensor_hal_client_.Bind(std::move(pending_receiver));
-  sensor_hal_client_.set_disconnect_handler(base::BindOnce(
-      &AmbientLightSensorManagerMojo::OnSensorHalClientDisconnect,
-      base::Unretained(this)));
-
-  on_mojo_disconnect_callback_ = std::move(on_mojo_disconnect_callback);
-}
-
-void AmbientLightSensorManagerMojo::SetUpChannel(
-    mojo::PendingRemote<cros::mojom::SensorService> sensor_service_remote) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK_GT(num_sensors_, 0);
-
-  if (sensor_service_remote_.is_bound()) {
-    LOG(ERROR)
-        << "Received the second SensorService Remote while the first one is "
-           "still bound. Workaround: reset the first Remote, SensorDevice "
-           "Remotes and SensorDeviceSamplesObserver Receivers.";
-    ResetSensorService();
+  if (lights_.find(iio_device_id) != lights_.end()) {
+    // Has already added this device.
+    return;
   }
 
-  sensor_service_remote_.Bind(std::move(sensor_service_remote));
-  sensor_service_remote_.set_disconnect_handler(
-      base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorServiceDisconnect,
-                     base::Unretained(this)));
+  auto& light = lights_[iio_device_id];
+
+  sensor_service_handler_->GetDevice(iio_device_id,
+                                     light.remote.BindNewPipeAndPassReceiver());
+  light.remote.set_disconnect_with_reason_handler(
+      base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,
+                     base::Unretained(this), iio_device_id));
+
+  if (num_sensors_ == 1) {
+    light.remote->GetAttributes(
+        std::vector<std::string>{cros::mojom::kDeviceName},
+        base::BindOnce(&AmbientLightSensorManagerMojo::GetNameCallback,
+                       base::Unretained(this), iio_device_id));
+  } else {  // num_sensors_ >= 2
+    light.remote->GetAttributes(
+        std::vector<std::string>{cros::mojom::kDeviceName,
+                                 cros::mojom::kLocation},
+        base::BindOnce(
+            &AmbientLightSensorManagerMojo::GetNameAndLocationCallback,
+            base::Unretained(this), iio_device_id));
+  }
+}
+
+void AmbientLightSensorManagerMojo::SensorServiceConnected() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (num_sensors_ <= 0)
+    return;
 
   bool need_device_ids = false;
   if (num_sensors_ == 1) {
@@ -136,73 +143,10 @@ void AmbientLightSensorManagerMojo::SetUpChannel(
     else
       need_device_ids = true;
   }
-
-  if (need_device_ids) {
-    sensor_service_remote_->RegisterNewDevicesObserver(
-        new_devices_observer_.BindNewPipeAndPassRemote());
-    new_devices_observer_.set_disconnect_handler(base::BindOnce(
-        &AmbientLightSensorManagerMojo::OnNewDevicesObserverDisconnect,
-        base::Unretained(this)));
-
-    QueryDevices();
-  }
 }
 
-void AmbientLightSensorManagerMojo::OnNewDeviceAdded(
-    int32_t iio_device_id, const std::vector<cros::mojom::DeviceType>& types) {
+void AmbientLightSensorManagerMojo::SensorServiceDisconnected() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK_GT(num_sensors_, 0);
-
-  if (std::find(types.begin(), types.end(), cros::mojom::DeviceType::LIGHT) ==
-      types.end()) {
-    // Not a light sensor. Ignoring this device.
-    return;
-  }
-
-  if (lights_.find(iio_device_id) != lights_.end()) {
-    // Has already added this device.
-    return;
-  }
-
-  auto& light = lights_[iio_device_id];
-
-  sensor_service_remote_->GetDevice(iio_device_id,
-                                    light.remote.BindNewPipeAndPassReceiver());
-  light.remote.set_disconnect_with_reason_handler(
-      base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,
-                     base::Unretained(this), iio_device_id));
-
-  if (num_sensors_ == 1) {
-    light.remote->GetAttributes(
-        std::vector<std::string>{cros::mojom::kDeviceName},
-        base::BindOnce(&AmbientLightSensorManagerMojo::GetNameCallback,
-                       base::Unretained(this), iio_device_id));
-  } else {  // num_sensors_ >= 2
-    light.remote->GetAttributes(
-        std::vector<std::string>{cros::mojom::kDeviceName,
-                                 cros::mojom::kLocation},
-        base::BindOnce(
-            &AmbientLightSensorManagerMojo::GetNameAndLocationCallback,
-            base::Unretained(this), iio_device_id));
-  }
-}
-
-void AmbientLightSensorManagerMojo::OnSensorHalClientDisconnect() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(on_mojo_disconnect_callback_);
-
-  LOG(WARNING) << "SensorHalClient connection lost";
-
-  ResetSensorService();
-  sensor_hal_client_.reset();
-
-  std::move(on_mojo_disconnect_callback_).Run();
-}
-
-void AmbientLightSensorManagerMojo::OnSensorServiceDisconnect() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  LOG(WARNING) << "SensorService connection lost";
 
   ResetSensorService();
 }
@@ -213,9 +157,6 @@ void AmbientLightSensorManagerMojo::ResetSensorService() {
 
   for (auto& light : lights_)
     light.second.remote.reset();
-
-  new_devices_observer_.reset();
-  sensor_service_remote_.reset();
 }
 
 void AmbientLightSensorManagerMojo::ResetStates() {
@@ -227,27 +168,14 @@ void AmbientLightSensorManagerMojo::ResetStates() {
   lid_sensor_.iio_device_id = base_sensor_.iio_device_id = base::nullopt;
   lights_.clear();
 
-  if (sensor_service_remote_.is_bound())
-    QueryDevices();
+  QueryDevices();
 }
 
 void AmbientLightSensorManagerMojo::QueryDevices() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(sensor_service_remote_.is_bound());
 
-  sensor_service_remote_->GetDeviceIds(
-      cros::mojom::DeviceType::LIGHT,
-      base::BindOnce(&AmbientLightSensorManagerMojo::GetDeviceIdsCallback,
-                     base::Unretained(this)));
-}
-
-void AmbientLightSensorManagerMojo::OnNewDevicesObserverDisconnect() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  LOG(ERROR)
-      << "OnNewDevicesObserverDisconnect, resetting SensorService as "
-         "IIO Service should be destructed and waiting for it to relaunch.";
-  ResetSensorService();
+  sensor_service_handler_->RemoveObserver(this);
+  sensor_service_handler_->AddObserver(this);
 }
 
 void AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect(
@@ -273,63 +201,6 @@ void AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect(
         lights_.erase(id);
       }
       break;
-  }
-}
-
-void AmbientLightSensorManagerMojo::GetDeviceIdsCallback(
-    const std::vector<int32_t>& iio_device_ids) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK_GT(num_sensors_, 0);
-
-  if (iio_device_ids.empty())
-    return;
-
-  if (num_sensors_ == 1) {
-    DCHECK_EQ(sensors_.size(), 1);
-
-    for (int32_t id : iio_device_ids) {
-      auto& light = lights_[id];
-      DCHECK(!light.remote.is_bound());
-
-      if (light.ignored || light.name.has_value())
-        continue;
-
-      sensor_service_remote_->GetDevice(
-          id, light.remote.BindNewPipeAndPassReceiver());
-      light.remote.set_disconnect_with_reason_handler(base::BindOnce(
-          &AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,
-          base::Unretained(this), id));
-
-      light.remote->GetAttributes(
-          std::vector<std::string>{cros::mojom::kDeviceName},
-          base::BindOnce(&AmbientLightSensorManagerMojo::GetNameCallback,
-                         base::Unretained(this), id));
-    }
-
-    return;
-  }
-
-  DCHECK_GE(num_sensors_, 2);
-
-  for (int32_t id : iio_device_ids) {
-    auto& light = lights_[id];
-    DCHECK(!light.remote.is_bound());
-
-    if (light.ignored || light.name.has_value() || light.location.has_value())
-      continue;
-
-    sensor_service_remote_->GetDevice(
-        id, light.remote.BindNewPipeAndPassReceiver());
-    light.remote.set_disconnect_with_reason_handler(
-        base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,
-                       base::Unretained(this), id));
-
-    light.remote->GetAttributes(
-        std::vector<std::string>{cros::mojom::kDeviceName,
-                                 cros::mojom::kLocation},
-        base::BindOnce(
-            &AmbientLightSensorManagerMojo::GetNameAndLocationCallback,
-            base::Unretained(this), id));
   }
 }
 
@@ -497,19 +368,18 @@ void AmbientLightSensorManagerMojo::AllDevicesFound() {
   }
 
   // Don't need to wait for other devices.
-  new_devices_observer_.reset();
+  sensor_service_handler_->RemoveObserver(this);
 }
 
 void AmbientLightSensorManagerMojo::SetSensorDeviceMojo(Sensor* sensor,
                                                         bool allow_ambient_eq) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(sensor_service_remote_.is_bound());
   DCHECK(sensor->iio_device_id.has_value());
 
   mojo::Remote<cros::mojom::SensorDevice> sensor_device_remote;
-  sensor_service_remote_->GetDevice(
+  DCHECK(sensor_service_handler_->GetDevice(
       sensor->iio_device_id.value(),
-      sensor_device_remote.BindNewPipeAndPassReceiver());
+      sensor_device_remote.BindNewPipeAndPassReceiver()));
 
   sensor_device_remote.set_disconnect_with_reason_handler(
       base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,

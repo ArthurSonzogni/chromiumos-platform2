@@ -16,6 +16,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 #include "power_manager/powerd/system/fake_sensor_device.h"
 #include "power_manager/powerd/system/fake_sensor_service.h"
+#include "power_manager/powerd/system/sensor_service_handler.h"
 
 namespace power_manager {
 namespace system {
@@ -42,7 +43,8 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
   void TearDown() override { manager_.reset(); }
 
   void SetManager() {
-    manager_ = std::make_unique<AmbientLightSensorManagerMojo>(&prefs_);
+    manager_ = std::make_unique<AmbientLightSensorManagerMojo>(
+        &prefs_, &sensor_service_handler_);
     if (!manager_->GetSensorForInternalBacklight())
       return;
 
@@ -52,10 +54,13 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
   void ResetMojoChannel() {
     sensor_service_.ClearReceivers();
 
+    // Wait until the disconnect handler in |sensor_service_handler_| is called.
+    base::RunLoop().RunUntilIdle();
+
     mojo::PendingRemote<cros::mojom::SensorService> pending_remote;
     sensor_service_.AddReceiver(
         pending_remote.InitWithNewPipeAndPassReceiver());
-    manager_->SetUpChannel(std::move(pending_remote));
+    sensor_service_handler_.SetUpChannel(std::move(pending_remote));
   }
 
   void SetSensor(int32_t iio_device_id,
@@ -83,6 +88,8 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
 
   FakeSensorService sensor_service_;
   std::map<int32_t, FakeSensorDevice*> sensor_devices_;
+
+  SensorServiceHandler sensor_service_handler_;
 
   std::unique_ptr<AmbientLightSensorManagerMojo> manager_;
 };

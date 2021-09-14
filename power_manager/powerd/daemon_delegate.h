@@ -38,6 +38,7 @@ class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
+class SensorServiceHandler;
 class SuspendConfiguratorInterface;
 class ThermalDeviceInterface;
 class UdevInterface;
@@ -68,8 +69,12 @@ class DaemonDelegate {
   // Crashes if udev initialization fails.
   virtual std::unique_ptr<system::UdevInterface> CreateUdev() = 0;
 
+  virtual std::unique_ptr<system::SensorServiceHandler>
+  CreateSensorServiceHandler() = 0;
   virtual std::unique_ptr<system::AmbientLightSensorManagerInterface>
-  CreateAmbientLightSensorManager(PrefsInterface* prefs) = 0;
+  CreateAmbientLightSensorManager(
+      PrefsInterface* prefs,
+      system::SensorServiceHandler* sensor_service_handler) = 0;
 
   virtual std::unique_ptr<system::AmbientLightSensorWatcherInterface>
   CreateAmbientLightSensorWatcher(system::UdevInterface* udev) = 0;
