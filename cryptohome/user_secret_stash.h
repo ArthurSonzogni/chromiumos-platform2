@@ -35,11 +35,9 @@ class UserSecretStash {
   UserSecretStash(const UserSecretStash&) = delete;
   UserSecretStash& operator=(const UserSecretStash&) = delete;
 
-  bool HasFileSystemKey() const;
   const brillo::SecureBlob& GetFileSystemKey() const;
   void SetFileSystemKey(const brillo::SecureBlob& key);
 
-  bool HasResetSecret() const;
   const brillo::SecureBlob& GetResetSecret() const;
   void SetResetSecret(const brillo::SecureBlob& secret);
 
@@ -50,12 +48,13 @@ class UserSecretStash {
       const brillo::SecureBlob& main_key);
 
  private:
-  UserSecretStash() = default;
+  UserSecretStash(const brillo::SecureBlob& file_system_key,
+                  const brillo::SecureBlob& reset_secret);
 
   // A key registered with the kernel to decrypt files.
-  base::Optional<brillo::SecureBlob> file_system_key_;
+  brillo::SecureBlob file_system_key_;
   // The reset secret used for any PinWeaver backed credentials.
-  base::Optional<brillo::SecureBlob> reset_secret_;
+  brillo::SecureBlob reset_secret_;
 };
 
 }  // namespace cryptohome

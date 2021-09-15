@@ -41,9 +41,7 @@ class UserSecretStashTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(UserSecretStashTest, CreateRandom) {
-  EXPECT_TRUE(stash_->HasFileSystemKey());
   EXPECT_FALSE(stash_->GetFileSystemKey().empty());
-  EXPECT_TRUE(stash_->HasResetSecret());
   EXPECT_FALSE(stash_->GetResetSecret().empty());
   // The secrets should be created randomly and never collide (in practice).
   EXPECT_NE(stash_->GetFileSystemKey(), stash_->GetResetSecret());
@@ -253,30 +251,21 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAesGcmTag) {
       GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
-// Test the decryption succeeds when the payload's file_system_key field is
+// Test the decryption fails when the payload's file_system_key field is
 // missing.
-TEST_F(UserSecretStashObjectApiTest, DecryptWithoutFileSystemKey) {
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoFileSystemKey) {
   uss_payload_obj_.file_system_key.clear();
 
-  std::unique_ptr<UserSecretStash> stash2 =
-      UserSecretStash::FromEncryptedContainer(GetFlatbufferFromUssPayloadObj(),
-                                              kMainKey);
-  ASSERT_TRUE(stash2);
-  EXPECT_FALSE(stash2->HasFileSystemKey());
-  EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadObj(), kMainKey));
 }
 
-// Test the decryption succeeds when the payload's reset_secret field is
-// missing.
-TEST_F(UserSecretStashObjectApiTest, DecryptWithoutResetSecret) {
+// Test the decryption fails when the payload's reset_secret field is missing.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoResetSecret) {
   uss_payload_obj_.reset_secret.clear();
 
-  std::unique_ptr<UserSecretStash> stash2 =
-      UserSecretStash::FromEncryptedContainer(GetFlatbufferFromUssPayloadObj(),
-                                              kMainKey);
-  ASSERT_TRUE(stash2);
-  EXPECT_EQ(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
-  EXPECT_FALSE(stash2->HasResetSecret());
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadObj(), kMainKey));
 }
 
 }  // namespace cryptohome

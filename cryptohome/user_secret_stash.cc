@@ -59,12 +59,13 @@ brillo::SecureBlob GenerateAesGcmEncryptedUSS(
 
 // static
 std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom() {
-  // Note: make_unique() wouldn't work due to the constructor being private.
-  std::unique_ptr<UserSecretStash> stash(new UserSecretStash);
-  stash->file_system_key_ =
+  brillo::SecureBlob file_system_key =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
-  stash->reset_secret_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
-  return stash;
+  brillo::SecureBlob reset_secret =
+      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  // Note: make_unique() wouldn't work due to the constructor being private.
+  return std::unique_ptr<UserSecretStash>(
+      new UserSecretStash(file_system_key, reset_secret));
 }
 
 // static
@@ -140,40 +141,36 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
   }
 
   auto uss = GetUserSecretStashPayload(serialized_uss.data());
+
+  if (!uss->file_system_key() || !uss->file_system_key()->size()) {
+    LOG(ERROR) << "UserSecretStashPayload has no file system key";
+    return nullptr;
+  }
+  brillo::SecureBlob file_system_key(uss->file_system_key()->begin(),
+                                     uss->file_system_key()->end());
+
+  if (!uss->reset_secret() || !uss->reset_secret()->size()) {
+    LOG(ERROR) << "UserSecretStashPayload has no reset secret";
+    return nullptr;
+  }
+  brillo::SecureBlob reset_secret(uss->reset_secret()->begin(),
+                                  uss->reset_secret()->end());
+
   // Note: make_unique() wouldn't work due to the constructor being private.
-  std::unique_ptr<UserSecretStash> stash(new UserSecretStash);
-
-  if (uss->file_system_key() && uss->file_system_key()->size()) {
-    stash->file_system_key_ = brillo::SecureBlob(
-        uss->file_system_key()->begin(), uss->file_system_key()->end());
-  }
-
-  if (uss->reset_secret() && uss->reset_secret()->size()) {
-    stash->reset_secret_ = brillo::SecureBlob(uss->reset_secret()->begin(),
-                                              uss->reset_secret()->end());
-  }
-
-  return stash;
-}
-
-bool UserSecretStash::HasFileSystemKey() const {
-  return file_system_key_.has_value();
+  return std::unique_ptr<UserSecretStash>(
+      new UserSecretStash(file_system_key, reset_secret));
 }
 
 const brillo::SecureBlob& UserSecretStash::GetFileSystemKey() const {
-  return file_system_key_.value();
+  return file_system_key_;
 }
 
 void UserSecretStash::SetFileSystemKey(const brillo::SecureBlob& key) {
   file_system_key_ = key;
 }
 
-bool UserSecretStash::HasResetSecret() const {
-  return reset_secret_.has_value();
-}
-
 const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
-  return reset_secret_.value();
+  return reset_secret_;
 }
 
 void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
@@ -187,9 +184,9 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
                                          /*own_allocator=*/false);
 
   auto fs_key_vector =
-      builder.CreateVector(file_system_key_->data(), file_system_key_->size());
+      builder.CreateVector(file_system_key_.data(), file_system_key_.size());
   auto reset_secret_vector =
-      builder.CreateVector(reset_secret_->data(), reset_secret_->size());
+      builder.CreateVector(reset_secret_.data(), reset_secret_.size());
 
   UserSecretStashPayloadBuilder uss_builder(builder);
   uss_builder.add_file_system_key(fs_key_vector);
@@ -212,6 +209,13 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
   builder.Clear();
 
   return GenerateAesGcmEncryptedUSS(ciphertext, tag, iv);
+}
+
+UserSecretStash::UserSecretStash(const brillo::SecureBlob& file_system_key,
+                                 const brillo::SecureBlob& reset_secret)
+    : file_system_key_(file_system_key), reset_secret_(reset_secret) {
+  CHECK(!file_system_key_.empty());
+  CHECK(!reset_secret_.empty());
 }
 
 }  // namespace cryptohome
