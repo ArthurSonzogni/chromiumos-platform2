@@ -33,10 +33,22 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 const NEW_ROOT: &str = "/mnt/empty";
 
-/// An abstraction for the TEE application sandbox.
-pub struct Sandbox(minijail::Minijail);
+pub trait Sandbox {
+    /// Execute `cmd` with the specified arguments `args`. The specified file
+    /// descriptors are connected to stdio for the child process.
+    fn run(&mut self, cmd: &Path, args: &[&str], keep_fds: &[(RawFd, RawFd)]) -> Result<pid_t>;
 
-impl Sandbox {
+    fn run_raw(&mut self, cmd: RawFd, args: &[&str], keep_fds: &[(RawFd, RawFd)]) -> Result<pid_t>;
+
+    /// Wait until the child process completes. Non-zero return codes are
+    /// returned as an error.
+    fn wait_for_completion(&mut self) -> Result<()>;
+}
+
+/// An abstraction for the TEE application sandbox.
+pub struct MinijailSandbox(minijail::Minijail);
+
+impl MinijailSandbox {
     /// Setup default sandbox / namespaces
     pub fn new(seccomp_bpf_file: Option<&Path>) -> Result<Self> {
         // All child jails run in a new user namespace without any users mapped,
@@ -73,19 +85,19 @@ impl Sandbox {
         j.set_rlimit(libc::RLIMIT_NOFILE as i32, limit, limit)
             .map_err(Error::SettingMaxOpenFiles)?;
 
-        Ok(Sandbox(j))
+        Ok(MinijailSandbox(j))
     }
 
     /// A version of the sandbox for use with tests because it doesn't require
     /// elevated privilege. It is also used for developer tools.
     pub fn passthrough() -> Result<Self> {
         let j = Minijail::new().map_err(Error::Jail)?;
-        Ok(Sandbox(j))
+        Ok(MinijailSandbox(j))
     }
+}
 
-    /// Execute `cmd` with the specified arguments `args`. The specified file
-    /// descriptors are connected to stdio for the child process.
-    pub fn run(&mut self, cmd: &Path, args: &[&str], keep_fds: &[(RawFd, RawFd)]) -> Result<pid_t> {
+impl Sandbox for MinijailSandbox {
+    fn run(&mut self, cmd: &Path, args: &[&str], keep_fds: &[(RawFd, RawFd)]) -> Result<pid_t> {
         let pid = match self
             .0
             .run_remap(cmd, keep_fds, args)
@@ -100,12 +112,7 @@ impl Sandbox {
         Ok(pid)
     }
 
-    pub fn run_raw(
-        &mut self,
-        cmd: RawFd,
-        args: &[&str],
-        keep_fds: &[(RawFd, RawFd)],
-    ) -> Result<pid_t> {
+    fn run_raw(&mut self, cmd: RawFd, args: &[&str], keep_fds: &[(RawFd, RawFd)]) -> Result<pid_t> {
         let pid = match self
             .0
             .run_fd_remap(&cmd, keep_fds, args)
@@ -120,9 +127,7 @@ impl Sandbox {
         Ok(pid)
     }
 
-    /// Wait until the child process completes. Non-zero return codes are
-    /// returned as an error.
-    pub fn wait_for_completion(&mut self) -> Result<()> {
+    fn wait_for_completion(&mut self) -> Result<()> {
         self.0.wait().map_err(Error::Wait)
     }
 }
@@ -138,7 +143,7 @@ mod tests {
 
     use crate::transport::{CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD};
 
-    fn do_test(mut s: Sandbox) {
+    fn do_test(s: &mut dyn Sandbox) {
         const STDOUT_TEST: &str = "stdout test";
         const STDERR_TEST: &str = "stderr test";
 
@@ -197,13 +202,13 @@ mod tests {
     #[test]
     #[ignore] // privileged operation.
     fn sandbox() {
-        let s = Sandbox::new(None).unwrap();
-        do_test(s);
+        let mut s = MinijailSandbox::new(None).unwrap();
+        do_test(&mut s);
     }
 
     #[test]
     fn sandbox_unpriviledged() {
-        let s = Sandbox::passthrough().unwrap();
-        do_test(s);
+        let mut s = MinijailSandbox::passthrough().unwrap();
+        do_test(&mut s);
     }
 }

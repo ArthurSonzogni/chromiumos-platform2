@@ -33,7 +33,7 @@ use libsirenia::{
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
-    sandbox::{self, Sandbox},
+    sandbox::{self, MinijailSandbox, Sandbox},
     to_sys_util,
     transport::{
         self, create_transport_from_pipes, Transport, TransportType, CROS_CID,
@@ -92,7 +92,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /* Holds the trichechus-relevant information for a TEEApp. */
 struct TeeApp {
-    sandbox: Sandbox,
+    sandbox: Box<dyn Sandbox>,
     app_info: AppManifestEntry,
 }
 
@@ -431,14 +431,20 @@ fn start_session(
 ) -> StdResult<(), trichechus::Error> {
     let app_info = lookup_app_info(state, app_id)?.to_owned();
 
-    let sandbox = match &app_info.sandbox_type {
-        SandboxType::DeveloperEnvironment => Sandbox::passthrough(),
-        SandboxType::Container => Sandbox::new(None),
-        SandboxType::VirtualMachine => {
-            return Err(trichechus::Error::SandboxTypeNotImplemented);
-        }
-    }
-    .map_err(|err| trichechus::Error::from(format!("Failed create sandbox: {:?}", err)))?;
+    let sandbox =
+        match &app_info.sandbox_type {
+            SandboxType::DeveloperEnvironment => {
+                Box::new(MinijailSandbox::passthrough().map_err(|err| {
+                    trichechus::Error::from(format!("Failed create sandbox: {:?}", err))
+                })?)
+            }
+            SandboxType::Container => Box::new(MinijailSandbox::new(None).map_err(|err| {
+                trichechus::Error::from(format!("Failed create sandbox: {:?}", err))
+            })?),
+            SandboxType::VirtualMachine => {
+                return Err(trichechus::Error::SandboxTypeNotImplemented);
+            }
+        };
 
     // Do some additional checks to fail early and return the reason to the caller.
     match &app_info.exec_info {
