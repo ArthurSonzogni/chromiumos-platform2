@@ -4,6 +4,7 @@
 
 mod common;
 mod dbus;
+mod gpu_freq_scaling;
 mod memory;
 
 #[cfg(test)]

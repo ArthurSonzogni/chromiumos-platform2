@@ -2,12 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
 use crate::common::{parse_file_to_u64, set_epp};
 use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
     parse_psi_memory, MemInfo,
 };
 
+use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
+use crate::gpu_freq_scaling::{evaluate_gpu_frequency, init_gpu_params, init_gpu_scaling_thread};
 use tempfile::TempDir;
 
 #[test]
@@ -213,4 +220,157 @@ fn test_set_epp() {
     // Verify that files were written
     assert_eq!(std::fs::read_to_string(&tpb0).unwrap(), "179".to_string());
     assert_eq!(std::fs::read_to_string(&tpb1).unwrap(), "179".to_string());
+}
+
+#[test]
+fn test_amd_device_true() {
+    let mock_cpuinfo = r#"
+processor	: 0
+vendor_id	: AuthenticAMD
+cpu family	: 23
+model		: 24"#;
+    assert_eq!(
+        true,
+        AmdDeviceConfig::has_amd_tag_in_cpu_info(mock_cpuinfo.as_bytes())
+    );
+}
+
+#[test]
+fn test_amd_device_false() {
+    // Incorrect vendor ID
+    let mock_cpuinfo = r#"
+processor	: 0
+vendor_id	: GenuineIntel
+cpu family	: 23
+model		: 24"#;
+    assert_eq!(
+        false,
+        AmdDeviceConfig::has_amd_tag_in_cpu_info(mock_cpuinfo.as_bytes())
+    );
+
+    // missing vendor ID
+    assert_eq!(
+        false,
+        AmdDeviceConfig::has_amd_tag_in_cpu_info("".to_string().as_bytes())
+    );
+    assert_eq!(
+        false,
+        AmdDeviceConfig::has_amd_tag_in_cpu_info("processor: 0".to_string().as_bytes())
+    );
+}
+
+#[test]
+fn test_amd_parse_sclk_valid() {
+    let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
+
+    // trailing space is intentional, reflects sysfs output.
+    let mock_sclk = r#"
+0: 200Mhz 
+1: 700Mhz *
+2: 1400Mhz "#;
+
+    let (sclk, sel) = dev.parse_sclk(mock_sclk.as_bytes()).unwrap();
+    assert_eq!(1, sel);
+    assert_eq!(3, sclk.len());
+    assert_eq!(200, sclk[0]);
+    assert_eq!(700, sclk[1]);
+    assert_eq!(1400, sclk[2]);
+}
+
+#[test]
+fn test_amd_parse_sclk_invalid() {
+    let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
+
+    // trailing space is intentional, reflects sysfs output.
+    let mock_sclk = r#"
+0: nonint 
+1: 700Mhz *
+2: 1400Mhz "#;
+    assert!(dev.parse_sclk(mock_sclk.as_bytes()).is_err());
+    assert!(dev.parse_sclk("nonint".to_string().as_bytes()).is_err());
+    assert!(dev.parse_sclk("0: 1400 ".to_string().as_bytes()).is_err());
+    assert!(dev.parse_sclk("0: 1400 *".to_string().as_bytes()).is_err());
+    assert!(dev
+        .parse_sclk("x: nonint *".to_string().as_bytes())
+        .is_err());
+}
+
+#[test]
+fn test_amd_device_filter_pass() {
+    let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
+
+    let mock_cpuinfo = r#"
+processor	: 0
+vendor_id	: AuthenticAMD
+cpu family	: 23
+model		: 24
+model name	: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
+stepping	: 1
+microcode	: 0x8108109"#;
+
+    assert_eq!(
+        true,
+        dev.is_supported_dev_family(mock_cpuinfo.as_bytes())
+            .unwrap()
+    );
+    assert_eq!(
+        true,
+        dev.is_supported_dev_family("model name	: AMD Ryzen 5 3700C".as_bytes())
+            .unwrap()
+    );
+}
+
+#[test]
+fn test_amd_device_filter_fail() {
+    let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
+
+    let mock_cpuinfo = r#"
+processor	: 0
+vendor_id	: AuthenticAMD
+cpu family	: 23
+model		: 24
+model name	: AMD Ryzen 3 3700C  with Radeon Vega Mobile Gfx
+stepping	: 1
+microcode	: 0x8108109"#;
+
+    assert_eq!(
+        false,
+        dev.is_supported_dev_family(mock_cpuinfo.as_bytes())
+            .unwrap()
+    );
+    assert_eq!(
+        false,
+        dev.is_supported_dev_family("model name	: AMD Ryzen 5 2700C".as_bytes())
+            .unwrap()
+    );
+    assert_eq!(
+        false,
+        dev.is_supported_dev_family("model name	: AMD Ryzen 3 3700C".as_bytes())
+            .unwrap()
+    );
+    assert_eq!(
+        false,
+        dev.is_supported_dev_family("model name	: malformed".as_bytes())
+            .unwrap()
+    );
+    assert_eq!(false, dev.is_supported_dev_family("".as_bytes()).unwrap());
+}
+
+#[test]
+#[allow(unused_must_use)]
+fn test_gpu_thread_on_off() {
+    println!("test gpu thread");
+    let config = init_gpu_params().unwrap();
+
+    // TODO: break this function to make is unit testable
+    evaluate_gpu_frequency(&config, 150);
+    let game_mode_on = Arc::new(AtomicBool::new(true));
+    let game_mode_on_clone = Arc::clone(&game_mode_on);
+
+    init_gpu_scaling_thread(game_mode_on_clone, 1000);
+    thread::sleep(Duration::from_millis(500));
+    game_mode_on.store(false, Ordering::Relaxed);
+    thread::sleep(Duration::from_millis(500));
+
+    println!("gpu thread exit gracefully");
 }
