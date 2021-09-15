@@ -345,28 +345,35 @@ used internally by the `cros_configfs` tool.
 
 When modifying a `model.yaml` file there are few steps that need to be taken to
 manifest the change in a board target. Since the actual work to combine and
-process the YAML files is done in the chromeos-config ebuild, it needs to be
-remerged after the input YAML has been modified.
+process the YAML files is done in the `chromeos-config` ebuild, it
+needs to be remerged after the input YAML has been modified.
 
-1.  Start cros_workon on the ebuild where your source model.yaml lives:
+1.  Start `cros-workon` on the ebuild where your source `model.yaml` lives:
 
     ```bash
-    (chroot) $ cros_workon start chromeos-base/chromeos-config-bsp-${BOARD}
+    (chroot) $ cros-workon-${BOARD} start chromeos-base/chromeos-config-bsp
     ```
 
-1.  Make and install your incremental changes:
+    **Note:** If you have access to the private overlays for a board,
+    you'll notice there's an additional package containing private
+    configuration data, `chromeos-base/chromeos-config-bsp-private`.
+    To `cros-workon` this package:
 
     ```bash
-    (chroot) $ cros_workon_make chromeos-base/chromeos-config-bsp-${BOARD} --install
+    (chroot) $ cros-workon-${BOARD} start chromeos-base/chromeos-config-bsp-private
     ```
 
-1.  Remerge the chromeos-config ebuild:
-
-    Note: The config-bsp overlay path may be slightly different depending on the
-    board and if it is public or private.
+1.  After making your changes, emerge all affected ebuilds and the
+    `chromeos-config` ebuild:
 
     ```bash
-    (chroot) $ emerge-$BOARD chromeos-config
+    (chroot) $ emerge-${BOARD} chromeos-config-bsp chromeos-config
+    ```
+
+    Alternatively, if you made changes in the private package:
+
+    ```bash
+    (chroot) $ emerge-${BOARD} chromeos-config-bsp chromeos-config-bsp-private chromeos-config
     ```
 
 ### Schema Validation
