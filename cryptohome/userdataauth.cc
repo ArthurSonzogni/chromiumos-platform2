@@ -2813,7 +2813,7 @@ void UserDataAuth::StartFingerprintAuthSession(
   fingerprint_manager_->StartAuthSessionAsyncForUser(
       obfuscated_username,
       base::BindOnce(&UserDataAuth::OnFingerprintStartAuthSessionResp,
-                     base::Unretained(this), base::Passed(std::move(on_done))));
+                     base::Unretained(this), std::move(on_done)));
 }
 
 void UserDataAuth::EndFingerprintAuthSession() {
