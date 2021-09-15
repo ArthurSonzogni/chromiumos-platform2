@@ -119,18 +119,38 @@ class NewL2TPIPsecDriverTest : public testing::Test {
 };
 
 TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
+  // Sets psk and password to verify metrics.
+  Error unused_error;
+  store_->SetStringProperty(kL2TPIPsecPskProperty, "x", &unused_error);
+  store_->SetStringProperty(kL2TPIPsecPasswordProperty, "y", &unused_error);
   InvokeAndVerifyConnectAsync();
 
+  // Connected.
   const std::string kIfName = "ppp0";
   constexpr int kIfIndex = 123;
   driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {});
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
+                                      Metrics::kVpnDriverL2tpIpsec,
+                                      Metrics::kMetricVpnDriverMax));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
+                            Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+                            Metrics::kVpnRemoteAuthenticationTypeMax));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(
+                  Metrics::kMetricVpnUserAuthenticationType,
+                  Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
+                  Metrics::kVpnUserAuthenticationTypeMax));
+
   dispatcher_.DispatchPendingEvents();
 
+  // Triggers disconnect.
   driver_->Disconnect();
   EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect());
   dispatcher_.DispatchPendingEvents();
 
+  // Stopped.
   driver_->ipsec_connection()->TriggerStopped();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
@@ -245,6 +265,43 @@ TEST_F(NewL2TPIPsecDriverTest, PropertyStoreAndConfig) {
   EXPECT_EQ(l2tp_config->user, kPPPUser);
   EXPECT_EQ(l2tp_config->password, kPPPPassword);
   EXPECT_EQ(l2tp_config->use_login_password, true);
+}
+
+TEST_F(NewL2TPIPsecDriverTest, GetProvider) {
+  Error unused_error;
+  {
+    KeyValueStore props;
+    ResetDriver();
+    store_->SetStringProperty(kL2TPIPsecClientCertIdProperty, "",
+                              &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_TRUE(props.Lookup<bool>(kPassphraseRequiredProperty, false));
+    EXPECT_TRUE(props.Lookup<bool>(kL2TPIPsecPskRequiredProperty, false));
+  }
+  {
+    KeyValueStore props;
+    ResetDriver();
+    store_->SetStringProperty(kL2TPIPsecClientCertIdProperty, "some-cert-id",
+                              &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_TRUE(props.Lookup<bool>(kPassphraseRequiredProperty, false));
+    EXPECT_FALSE(props.Lookup<bool>(kL2TPIPsecPskRequiredProperty, true));
+  }
+  {
+    KeyValueStore props;
+    ResetDriver();
+    store_->SetStringProperty(kL2TPIPsecPasswordProperty, "random-password",
+                              &unused_error);
+    store_->SetStringProperty(kL2TPIPsecPskProperty, "random-psk",
+                              &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_FALSE(props.Lookup<bool>(kPassphraseRequiredProperty, true));
+    EXPECT_FALSE(props.Lookup<bool>(kL2TPIPsecPskRequiredProperty, true));
+    EXPECT_FALSE(props.Contains<std::string>(kL2TPIPsecPasswordProperty));
+  }
 }
 
 }  // namespace

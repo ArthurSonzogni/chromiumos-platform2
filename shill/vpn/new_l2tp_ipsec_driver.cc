@@ -338,6 +338,7 @@ void NewL2TPIPsecDriver::OnIPsecConnected(
     LOG(ERROR) << "OnIPsecConnected() triggered in illegal service state";
     return;
   }
+  ReportConnectionMetrics();
   ip_properties_ = ip_properties;
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
@@ -348,6 +349,74 @@ void NewL2TPIPsecDriver::OnIPsecFailure(Service::ConnectFailure failure) {
 
 void NewL2TPIPsecDriver::OnIPsecStopped() {
   ipsec_connection_ = nullptr;
+}
+
+KeyValueStore NewL2TPIPsecDriver::GetProvider(Error* error) {
+  const bool require_passphrase =
+      args()->Lookup<std::string>(kL2TPIPsecPasswordProperty, "").empty();
+
+  const bool psk_empty =
+      args()->Lookup<std::string>(kL2TPIPsecPskProperty, "").empty();
+  const bool cert_empty =
+      args()->Lookup<std::string>(kL2TPIPsecClientCertIdProperty, "").empty();
+  const bool require_psk = psk_empty && cert_empty;
+
+  KeyValueStore props = VPNDriver::GetProvider(error);
+  props.Set<bool>(kPassphraseRequiredProperty, require_passphrase);
+  props.Set<bool>(kL2TPIPsecPskRequiredProperty, require_psk);
+  return props;
+}
+
+void NewL2TPIPsecDriver::ReportConnectionMetrics() {
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
+                           Metrics::kVpnDriverL2tpIpsec,
+                           Metrics::kMetricVpnDriverMax);
+
+  // We output an enum for each of the authentication types specified,
+  // even if more than one is set at the same time.
+  bool has_remote_authentication = false;
+  if (args()->Contains<Strings>(kL2TPIPsecCaCertPemProperty) &&
+      !args()->Get<Strings>(kL2TPIPsecCaCertPemProperty).empty()) {
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+    has_remote_authentication = true;
+  }
+  if (args()->Lookup<std::string>(kL2TPIPsecPskProperty, "") != "") {
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
+                             Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+                             Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+    has_remote_authentication = true;
+  }
+  if (!has_remote_authentication) {
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecDefault,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+  }
+
+  bool has_user_authentication = false;
+  if (args()->Lookup<std::string>(kL2TPIPsecClientCertIdProperty, "") != "") {
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (args()->Lookup<std::string>(kL2TPIPsecPasswordProperty, "") != "" ||
+      GetBool(*args(), kL2TPIPsecUseLoginPasswordProperty, false)) {
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (!has_user_authentication) {
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnUserAuthenticationType,
+                             Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
+                             Metrics::kMetricVpnUserAuthenticationTypeMax);
+  }
 }
 
 }  // namespace shill

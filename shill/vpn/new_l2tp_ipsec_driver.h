@@ -74,6 +74,11 @@ class NewL2TPIPsecDriver : public VPNDriver {
   void OnIPsecFailure(Service::ConnectFailure failure);
   void OnIPsecStopped();
 
+  // Inherit from VPNDriver to add custom properties.
+  KeyValueStore GetProvider(Error* error) override;
+
+  void ReportConnectionMetrics();
+
   EventHandler* event_handler_ = nullptr;
   std::unique_ptr<VPNConnection> ipsec_connection_;
   IPConfig::Properties ip_properties_;
