@@ -58,11 +58,25 @@ bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
   return true;
 }
 
+bool ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
+                               const brillo::SecureBlob& hkdf_info_suffix,
+                               const brillo::SecureBlob& public_key,
+                               const brillo::SecureBlob& hkdf_salt,
+                               HkdfHash hkdf_hash,
+                               size_t symmetric_key_len,
+                               brillo::SecureBlob* symmetric_key) {
+  // Compute HKDF using info = combined public_key and hkdf_info_suffix.
+  brillo::SecureBlob info =
+      brillo::SecureBlob::Combine(public_key, hkdf_info_suffix);
+  return Hkdf(hkdf_hash, hkdf_secret, info, hkdf_salt, symmetric_key_len,
+              symmetric_key);
+}
+
 bool GenerateEcdhHkdfSenderKey(const EllipticCurve& ec,
                                const brillo::SecureBlob& recipient_pub_key,
                                const brillo::SecureBlob& ephemeral_pub_key,
                                const brillo::SecureBlob& ephemeral_priv_key,
-                               const brillo::SecureBlob& hkdf_info,
+                               const brillo::SecureBlob& hkdf_info_suffix,
                                const brillo::SecureBlob& hkdf_salt,
                                HkdfHash hkdf_hash,
                                size_t symmetric_key_len,
@@ -74,11 +88,9 @@ bool GenerateEcdhHkdfSenderKey(const EllipticCurve& ec,
     return false;
   }
 
-  // Compute HKDF over combined ephemeral_pub_key and shared_secret.
-  brillo::SecureBlob secret_data =
-      brillo::SecureBlob::Combine(ephemeral_pub_key, shared_secret);
-  if (!Hkdf(hkdf_hash, secret_data, hkdf_info, hkdf_salt, symmetric_key_len,
-            symmetric_key)) {
+  if (!ComputeHkdfWithInfoSuffix(shared_secret, hkdf_info_suffix,
+                                 ephemeral_pub_key, hkdf_salt, hkdf_hash,
+                                 symmetric_key_len, symmetric_key)) {
     LOG(ERROR) << "Failed to compute HKDF";
     return false;
   }
@@ -88,7 +100,7 @@ bool GenerateEcdhHkdfSenderKey(const EllipticCurve& ec,
 bool GenerateEcdhHkdfRecipientKey(const EllipticCurve& ec,
                                   const brillo::SecureBlob& recipient_priv_key,
                                   const brillo::SecureBlob& ephemeral_pub_key,
-                                  const brillo::SecureBlob& hkdf_info,
+                                  const brillo::SecureBlob& hkdf_info_suffix,
                                   const brillo::SecureBlob& hkdf_salt,
                                   HkdfHash hkdf_hash,
                                   size_t symmetric_key_len,
@@ -100,11 +112,12 @@ bool GenerateEcdhHkdfRecipientKey(const EllipticCurve& ec,
     return false;
   }
 
-  // Compute HKDF over combined ephemeral_pub_key and shared_secret.
-  brillo::SecureBlob secret_data =
-      brillo::SecureBlob::Combine(ephemeral_pub_key, shared_secret);
-  if (!Hkdf(hkdf_hash, secret_data, hkdf_info, hkdf_salt, symmetric_key_len,
-            symmetric_key)) {
+  // Compute HKDF using info = combined ephemeral_pub_key and hkdf_info_suffix.
+  brillo::SecureBlob info =
+      brillo::SecureBlob::Combine(ephemeral_pub_key, hkdf_info_suffix);
+  if (!ComputeHkdfWithInfoSuffix(shared_secret, hkdf_info_suffix,
+                                 ephemeral_pub_key, hkdf_salt, hkdf_hash,
+                                 symmetric_key_len, symmetric_key)) {
     LOG(ERROR) << "Failed to compute HKDF";
     return false;
   }

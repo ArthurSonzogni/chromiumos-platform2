@@ -188,9 +188,22 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
     return false;
   }
-  // |salt| can be empty here because the input already has a high entropy.
-  return Hkdf(HkdfHash::kSha256, recovery_dh, GetRecoveryKeyHkdfInfo(),
-              /*salt=*/brillo::SecureBlob(), /*result_len=*/0, recovery_key);
+  const EC_POINT* dealer_pub_point =
+      EC_KEY_get0_public_key(dealer_key_pair.get());
+  brillo::SecureBlob dealer_pub_key;
+  if (!ec_.PointToSecureBlob(*dealer_pub_point, &dealer_pub_key,
+                             context.get())) {
+    LOG(ERROR) << "Failed to convert dealer_pub_key to a SecureBlob";
+    return false;
+  }
+  if (!ComputeHkdfWithInfoSuffix(recovery_dh, GetRecoveryKeyHkdfInfo(),
+                                 dealer_pub_key, /*salt=*/brillo::SecureBlob(),
+                                 HkdfHash::kSha256, /*result_len=*/0,
+                                 recovery_key)) {
+    LOG(ERROR) << "Failed to compute HKDF of recovery_dh";
+    return false;
+  }
+  return true;
 }
 
 bool RecoveryCryptoImpl::GenerateEphemeralKey(
@@ -509,10 +522,11 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
     return false;
   }
-  // |hkdf_salt| can be empty here because the input already has a high entropy.
-  if (!Hkdf(HkdfHash::kSha256, destination_dh, GetRecoveryKeyHkdfInfo(),
-            /*salt=*/brillo::SecureBlob(), /*result_len=*/0,
-            destination_recovery_key)) {
+  if (!ComputeHkdfWithInfoSuffix(destination_dh, GetRecoveryKeyHkdfInfo(),
+                                 dealer_pub_key, /*salt=*/brillo::SecureBlob(),
+                                 HkdfHash::kSha256, /*result_len=*/0,
+                                 destination_recovery_key)) {
+    LOG(ERROR) << "Failed to compute HKDF of destination_dh";
     return false;
   }
   return true;

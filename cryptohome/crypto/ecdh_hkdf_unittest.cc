@@ -16,48 +16,9 @@ constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
 constexpr HkdfHash kHkdfHash = HkdfHash::kSha256;
 const size_t kEcdhHkdfKeySize = kAesGcm256KeySize;
 
-// Use the same test vectors as in Tink library to ensure key generation methods
-// are equivalent:
-// https://github.com/google/tink/blob/1.5/cc/subtle/ecies_hkdf_recipient_kem_boringssl_test.cc
 static const char kSaltHex[] = "0b0b0b0b";
 static const char kInfoHex[] = "0b0b0b0b0b0b0b0b";
-static const char kNistP256PublicValueHex[] =
-    "04700c48f77f56584c5cc632ca65640db91b6bacce3a4df6b42ce7cc838833d287db71e509"
-    "e3fd9b060ddb20ba5c51dcc5948d46fbf640dfe0441782cab85fa4ac";
-static const char kNistP256PrivateKeyHex[] =
-    "7d7dc5f71eb29ddaf80d6214632eeae03d9058af1fb6d22ed80badb62bc1a534";
-static const char kNistP256SharedKeyHex[] =
-    "0f19c0f322fc0a4b73b32bac6a66baa274de261db38a57f11ee4896ede24dbba";
-
 }  // namespace
-
-TEST(EcdhHkdfTest, GenerateEcdhHkdfRecipientKey) {
-  ScopedBN_CTX context = CreateBigNumContext();
-  ASSERT_TRUE(context);
-  base::Optional<EllipticCurve> ec =
-      EllipticCurve::Create(kCurve, context.get());
-  ASSERT_TRUE(ec);
-
-  brillo::SecureBlob info;
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kInfoHex, &info));
-  brillo::SecureBlob salt;
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kSaltHex, &salt));
-
-  brillo::SecureBlob rec_priv_key;
-  brillo::SecureBlob eph_pub_key;
-  brillo::SecureBlob shared_key;
-  brillo::SecureBlob expected_shared_key;
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kNistP256PublicValueHex,
-                                                        &eph_pub_key));
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kNistP256PrivateKeyHex,
-                                                        &rec_priv_key));
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kNistP256SharedKeyHex,
-                                                        &expected_shared_key));
-  ASSERT_TRUE(GenerateEcdhHkdfRecipientKey(*ec, rec_priv_key, eph_pub_key, info,
-                                           salt, kHkdfHash, kEcdhHkdfKeySize,
-                                           &shared_key));
-  EXPECT_EQ(expected_shared_key, shared_key);
-}
 
 TEST(EcdhHkdfTest, CompareEcdhHkdfSymmetricKeys) {
   ScopedBN_CTX context = CreateBigNumContext();
