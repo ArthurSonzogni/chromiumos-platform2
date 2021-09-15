@@ -39,7 +39,7 @@ class IconIndexFile {
   };
 
   struct DirectoryEntry {
-    std::string directory;
+    base::FilePath directory;
     int size = 0;
     int scale = 1;
     std::string context;
@@ -83,8 +83,8 @@ class IconIndexFile {
   base::FilePath icon_dir_;
 
   std::vector<DirectoryEntry> directory_entries_;
-  std::set<std::string> directories_;
-  std::set<std::string> scaled_directories_;
+  std::set<base::FilePath> directories_;
+  std::set<base::FilePath> scaled_directories_;
 
   FRIEND_TEST(IconIndexFileTest, BasicZeroDistance);
   FRIEND_TEST(IconIndexFileTest, ScaledZeroDistance);

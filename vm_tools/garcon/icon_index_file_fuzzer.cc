@@ -36,7 +36,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string file_contents = data_provider.ConsumeRandomLengthString(16384);
   base::WriteFile(index_file_path, file_contents.c_str(), file_contents.size());
 
-  // This takes a dir name and then parses index.them inside that dir.
+  // This takes a dir name and then parses index.theme inside that dir.
   std::unique_ptr<vm_tools::garcon::IconIndexFile> index_file =
       vm_tools::garcon::IconIndexFile::ParseIconIndexFile(
           env.temp_dir_.GetPath());

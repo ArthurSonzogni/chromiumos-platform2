@@ -158,7 +158,7 @@ void IconIndexFile::FillInDefaultValues(DirectoryEntry* directory_entry) {
 
 bool IconIndexFile::CloseDirectorySection(
     std::unique_ptr<DirectoryEntry> directory_entry) {
-  const std::string& directory = directory_entry->directory;
+  const base::FilePath& directory = directory_entry->directory;
   if (directories_.find(directory) == directories_.end() &&
       scaled_directories_.find(directory) == scaled_directories_.end()) {
     LOG(ERROR) << "Failed parsing icon index file due to directory section"
@@ -169,13 +169,14 @@ bool IconIndexFile::CloseDirectorySection(
   }
 
   // Make sure the values in this directory section are reasonable.
-  if (!IsValueReasonable(directory_entry->scale) ||
+  if (directory_entry->directory.IsAbsolute() ||
+      !IsValueReasonable(directory_entry->scale) ||
       !IsValueReasonable(directory_entry->size) ||
       !IsValueReasonable(directory_entry->threshold)) {
     // Don't fail parsing the whole file, just don't add this directory.
     LOG(ERROR) << "Ignoring directory section \"" << directory
-               << "\" in icon index file due to unreasonable value for scale, "
-                  "size or threshold";
+               << "\" in icon index file due to invalid path, or unreasonable "
+                  "value for scale, size, or threshold";
     return true;
   }
 
@@ -188,7 +189,8 @@ bool IconIndexFile::CloseDirectorySection(
   }
   if (!valid_dir) {
     for (const char* dir_suffix : kValidDirectorySuffixes) {
-      if (base::EndsWith(directory, dir_suffix, base::CompareCase::SENSITIVE)) {
+      if (base::EndsWith(directory.value(), dir_suffix,
+                         base::CompareCase::SENSITIVE)) {
         valid_dir = true;
         break;
       }
@@ -248,13 +250,13 @@ bool IconIndexFile::LoadFromFile(const base::FilePath& file_path) {
           return false;
         }
         parsing_phase = directory_section;
-        directory_entry->directory = std::string(section_name);
+        directory_entry->directory = base::FilePath(section_name);
       } else if (parsing_phase == directory_section) {
         if (!CloseDirectorySection(std::move(directory_entry))) {
           return false;
         }
         directory_entry = std::make_unique<DirectoryEntry>();
-        directory_entry->directory = std::string(section_name);
+        directory_entry->directory = base::FilePath(section_name);
       }
     } else if (parsing_phase == start) {
       // We are before the icon theme section and this line doesn't begin that
