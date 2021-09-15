@@ -6,6 +6,7 @@
 #define CRYPTOHOME_PIN_WEAVER_AUTH_BLOCK_H_
 
 #include "cryptohome/auth_block.h"
+#include "cryptohome/auth_block_state.h"
 
 #include "cryptohome/le_credential_manager.h"
 

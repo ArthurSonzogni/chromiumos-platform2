@@ -6,7 +6,9 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
+#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/optional.h>
@@ -43,21 +45,20 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
                                        const AuthBlockState& state,
                                        KeyBlobs* key_out_data,
                                        CryptoError* error) {
-  if (!state.has_tpm_not_bound_to_pcr_state()) {
+  const TpmNotBoundToPcrAuthBlockState* tpm_state;
+  if (!(tpm_state =
+            absl::get_if<TpmNotBoundToPcrAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Called with an invalid auth block state";
     return false;
   }
 
-  const AuthBlockState::TpmNotBoundToPcrAuthBlockState& tpm_state =
-      state.tpm_not_bound_to_pcr_state();
   brillo::SecureBlob tpm_public_key_hash;
-  if (tpm_state.has_tpm_public_key_hash()) {
-    tpm_public_key_hash.assign(tpm_state.tpm_public_key_hash().begin(),
-                               tpm_state.tpm_public_key_hash().end());
+  if (tpm_state->tpm_public_key_hash.has_value()) {
+    tpm_public_key_hash = tpm_state->tpm_public_key_hash.value();
   }
 
-  if (!utils_.CheckTPMReadiness(tpm_state.has_tpm_key(),
-                                tpm_state.has_tpm_public_key_hash(),
+  if (!utils_.CheckTPMReadiness(tpm_state->tpm_key.has_value(),
+                                tpm_state->tpm_public_key_hash.has_value(),
                                 tpm_public_key_hash, error)) {
     return false;
   }
@@ -65,26 +66,28 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
   key_out_data->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
-  brillo::SecureBlob salt(tpm_state.salt().begin(), tpm_state.salt().end());
-  brillo::SecureBlob tpm_key(tpm_state.tpm_key().begin(),
-                             tpm_state.tpm_key().end());
+  brillo::SecureBlob salt;
+  if (tpm_state->salt.has_value()) {
+    salt = tpm_state->salt.value();
+  }
+  brillo::SecureBlob tpm_key;
+  if (tpm_state->tpm_key.has_value()) {
+    tpm_key = tpm_state->tpm_key.value();
+  }
 
   if (!DecryptTpmNotBoundToPcr(
-          tpm_state, auth_input.user_input.value(), tpm_key, salt, error,
+          *tpm_state, auth_input.user_input.value(), tpm_key, salt, error,
           &key_out_data->vkk_iv.value(), &key_out_data->vkk_key.value())) {
     return false;
   }
 
   key_out_data->chaps_iv = key_out_data->vkk_iv;
 
-  if (tpm_state.has_wrapped_reset_seed()) {
-    key_out_data->wrapped_reset_seed = brillo::SecureBlob();
-    key_out_data->wrapped_reset_seed.value().assign(
-        tpm_state.wrapped_reset_seed().begin(),
-        tpm_state.wrapped_reset_seed().end());
+  if (tpm_state->wrapped_reset_seed.has_value()) {
+    key_out_data->wrapped_reset_seed = tpm_state->wrapped_reset_seed;
   }
 
-  if (!tpm_state.has_tpm_public_key_hash() && error) {
+  if (!tpm_state->tpm_public_key_hash.has_value() && error) {
     *error = CryptoError::CE_NO_PUBLIC_KEY_HASH;
   }
 
@@ -123,9 +126,7 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
     return base::nullopt;
   }
 
-  AuthBlockState auth_block_state;
-  AuthBlockState::TpmNotBoundToPcrAuthBlockState* auth_state =
-      auth_block_state.mutable_tpm_not_bound_to_pcr_state();
+  TpmNotBoundToPcrAuthBlockState auth_state;
   // Allow this to fail.  It is not absolutely necessary; it allows us to
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
@@ -134,12 +135,11 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
           cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash)) {
     LOG(ERROR) << "Failed to get tpm public key hash: " << *err;
   } else {
-    auth_state->set_tpm_public_key_hash(pub_key_hash.data(),
-                                        pub_key_hash.size());
+    auth_state.tpm_public_key_hash = pub_key_hash;
   }
 
-  auth_state->set_scrypt_derived(true);
-  auth_state->set_tpm_key(tpm_key.data(), tpm_key.size());
+  auth_state.scrypt_derived = true;
+  auth_state.tpm_key = tpm_key;
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   key_blobs->vkk_key = HmacSha256(kdf_skey, local_blob);
@@ -149,11 +149,12 @@ base::Optional<AuthBlockState> TpmNotBoundToPcrAuthBlock::Create(
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
 
+  AuthBlockState auth_block_state = {.state = std::move(auth_state)};
   return auth_block_state;
 }
 
 bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
-    const AuthBlockState::TpmNotBoundToPcrAuthBlockState& tpm_state,
+    const TpmNotBoundToPcrAuthBlockState& tpm_state,
     const brillo::SecureBlob& vault_key,
     const brillo::SecureBlob& tpm_key,
     const brillo::SecureBlob& salt,
@@ -163,11 +164,11 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   brillo::SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
-  unsigned int rounds = tpm_state.has_password_rounds()
-                            ? tpm_state.password_rounds()
+  unsigned int rounds = tpm_state.password_rounds.has_value()
+                            ? tpm_state.password_rounds.value()
                             : kDefaultLegacyPasswordRounds;
 
-  if (tpm_state.scrypt_derived()) {
+  if (tpm_state.scrypt_derived) {
     if (!DeriveSecretsScrypt(vault_key, salt, {&aes_skey, &kdf_skey, vkk_iv})) {
       PopulateError(error, CryptoError::CE_OTHER_FATAL);
       return false;
@@ -199,7 +200,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     }
   }
 
-  if (tpm_state.scrypt_derived()) {
+  if (tpm_state.scrypt_derived) {
     *vkk_key = HmacSha256(kdf_skey, local_vault_key);
   } else {
     if (!PasskeyToAesKey(local_vault_key, salt, rounds, vkk_key, vkk_iv)) {

@@ -8,13 +8,14 @@
 #include <memory>
 #include <string>
 
+#include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.pb.h"
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
@@ -199,7 +200,7 @@ class VaultKeyset {
   virtual const brillo::SecureBlob& GetResetSecret() const;
 
   // This populates an AuthBlockState proto allocated by the caller.
-  bool GetAuthBlockState(AuthBlockState* auth_state) const;
+  bool GetAuthBlockState(AuthBlockState* auth_state) const WARN_UNUSED_RESULT;
 
  private:
   // Converts the class to a protobuf for serialization to disk.
@@ -223,15 +224,12 @@ class VaultKeyset {
 
   // Set each type of AuthBlockState's sub messages.
   void SetTpmNotBoundToPcrState(
-      const AuthBlockState::TpmNotBoundToPcrAuthBlockState& auth_state);
-  void SetTpmBoundToPcrState(
-      const AuthBlockState::TpmBoundToPcrAuthBlockState& auth_state);
-  void SetPinWeaverState(
-      const AuthBlockState::PinWeaverAuthBlockState& auth_state);
-  void SetLibScryptCompatState(
-      const AuthBlockState::LibScryptCompatAuthBlockState& auth_state);
+      const TpmNotBoundToPcrAuthBlockState& auth_state);
+  void SetTpmBoundToPcrState(const TpmBoundToPcrAuthBlockState& auth_state);
+  void SetPinWeaverState(const PinWeaverAuthBlockState& auth_state);
+  void SetLibScryptCompatState(const LibScryptCompatAuthBlockState& auth_state);
   void SetChallengeCredentialState(
-      const AuthBlockState::ChallengeCredentialAuthBlockState& auth_state);
+      const ChallengeCredentialAuthBlockState& auth_state);
 
   // This function serves as a factory method to return the authblock used in
   // authentication creation.

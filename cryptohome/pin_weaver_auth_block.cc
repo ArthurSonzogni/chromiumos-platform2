@@ -11,13 +11,16 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
+#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
@@ -207,10 +210,9 @@ base::Optional<AuthBlockState> PinWeaverAuthBlock::Create(
     return base::nullopt;
   }
 
-  AuthBlockState auth_state;
-  AuthBlockState::PinWeaverAuthBlockState* pin_auth_state =
-      auth_state.mutable_pin_weaver_state();
-  pin_auth_state->set_le_label(label);
+  PinWeaverAuthBlockState pin_auth_state;
+  pin_auth_state.le_label = label;
+  AuthBlockState auth_state = {.state = std::move(pin_auth_state)};
   return auth_state;
 }
 
@@ -218,17 +220,19 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
                                 const AuthBlockState& state,
                                 KeyBlobs* key_blobs,
                                 CryptoError* error) {
-  if (!state.has_pin_weaver_state()) {
+  const PinWeaverAuthBlockState* auth_state;
+  if (!(auth_state = absl::get_if<PinWeaverAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return false;
   }
 
-  const AuthBlockState::PinWeaverAuthBlockState& auth_state =
-      state.pin_weaver_state();
-
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
-  brillo::SecureBlob salt(auth_state.salt().begin(), auth_state.salt().end());
+  if (!auth_state->salt.has_value()) {
+    DLOG(FATAL) << "Invalid salt";
+    return false;
+  }
+  brillo::SecureBlob salt = auth_state->salt.value();
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
@@ -241,16 +245,14 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   // IVs are pre-generated in the VaultKeyset for PinWeaver credentials is an
   // implementation detail. The AuthBlocks are designed to hide those
   // implementation details, so this goes here.
-  key_blobs->chaps_iv = brillo::SecureBlob(auth_state.chaps_iv().begin(),
-                                           auth_state.chaps_iv().end());
-  key_blobs->vkk_iv = brillo::SecureBlob(auth_state.fek_iv().begin(),
-                                         auth_state.fek_iv().end());
+  key_blobs->chaps_iv = auth_state->chaps_iv.value();
+  key_blobs->vkk_iv = auth_state->fek_iv.value();
 
   // Try to obtain the HE Secret from the LECredentialManager.
   brillo::SecureBlob he_secret;
-  int ret =
-      le_manager_->CheckCredential(auth_state.le_label(), le_secret, &he_secret,
-                                   &key_blobs->reset_secret.value());
+  int ret = le_manager_->CheckCredential(auth_state->le_label.value(),
+                                         le_secret, &he_secret,
+                                         &key_blobs->reset_secret.value());
 
   if (ret != LE_CRED_SUCCESS) {
     PopulateError(error, ConvertLeError(ret));

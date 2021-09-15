@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCK_H_
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"

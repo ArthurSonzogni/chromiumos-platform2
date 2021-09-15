@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTOHOME_RECOVERY_AUTH_BLOCK_H_
 
 #include "cryptohome/auth_block.h"
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"

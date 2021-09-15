@@ -7,15 +7,15 @@
 #include <memory>
 #include <utility>
 
-#include <unistd.h>
+#include <absl/types/variant.h>
+#include <base/logging.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/libscrypt_compat.h"
-
-#include <base/logging.h>
 
 namespace cryptohome {
 
@@ -109,8 +109,8 @@ base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
 
   // libscrypt is an odd case again; the AuthBlockState is only populated on the
   // derivation flow. See the class header for a full explanation.
-  AuthBlockState auth_state;
-  auth_state.mutable_libscrypt_compat_state();
+  LibScryptCompatAuthBlockState scrypt_state;
+  AuthBlockState auth_state = {.state = std::move(scrypt_state)};
   return auth_state;
 }
 
@@ -118,16 +118,20 @@ bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
                                       const AuthBlockState& auth_state,
                                       KeyBlobs* key_blobs,
                                       CryptoError* error) {
-  if (!auth_state.has_libscrypt_compat_state()) {
+  const LibScryptCompatAuthBlockState* state;
+  if (!(state =
+            absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return false;
   }
 
-  const AuthBlockState::LibScryptCompatAuthBlockState& state =
-      auth_state.libscrypt_compat_state();
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 
-  brillo::SecureBlob wrapped_keyset(state.wrapped_keyset());
+  if (!state->wrapped_keyset.has_value()) {
+    DLOG(FATAL) << "Invalid LibScryptCompatAuthBlockState";
+    return false;
+  }
+  brillo::SecureBlob wrapped_keyset = state->wrapped_keyset.value();
   brillo::SecureBlob derived_scrypt_key;
   if (!ParseHeaderAndDerive(wrapped_keyset, input_key, &derived_scrypt_key,
                             error)) {
@@ -140,8 +144,8 @@ bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
   // encryption and decryption functions work. It generates a fresh key for each
   // buffer that is encrypted. Ideally, one key (|derived_scrypt_key|) would
   // wrap everything.
-  if (state.has_wrapped_chaps_key()) {
-    brillo::SecureBlob wrapped_chaps_key(state.wrapped_chaps_key());
+  if (state->wrapped_chaps_key.has_value()) {
+    brillo::SecureBlob wrapped_chaps_key = state->wrapped_chaps_key.value();
     brillo::SecureBlob derived_chaps_key;
     if (!ParseHeaderAndDerive(wrapped_chaps_key, input_key, &derived_chaps_key,
                               error)) {
@@ -151,8 +155,8 @@ bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
         std::make_unique<LibScryptCompatKeyObjects>(derived_chaps_key);
   }
 
-  if (state.has_wrapped_reset_seed()) {
-    brillo::SecureBlob wrapped_reset_seed(state.wrapped_reset_seed());
+  if (state->wrapped_reset_seed.has_value()) {
+    brillo::SecureBlob wrapped_reset_seed = state->wrapped_reset_seed.value();
     brillo::SecureBlob derived_reset_seed_key;
     if (!ParseHeaderAndDerive(wrapped_reset_seed, input_key,
                               &derived_reset_seed_key, error)) {

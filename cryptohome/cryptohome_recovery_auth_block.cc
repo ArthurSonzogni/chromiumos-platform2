@@ -5,11 +5,14 @@
 #include "cryptohome/cryptohome_recovery_auth_block.h"
 
 #include <memory>
+#include <utility>
 
+#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/crypto/scrypt.h"
@@ -76,25 +79,21 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   key_blobs->chaps_iv = vkk_iv;
 
   // Save generated data in auth_block_state.
-  AuthBlockState auth_block_state;
-  AuthBlockState::CryptohomeRecoveryAuthBlockState* auth_state =
-      auth_block_state.mutable_cryptohome_recovery_state();
+  CryptohomeRecoveryAuthBlockState auth_state;
 
   brillo::SecureBlob hsm_payload_cbor;
   if (!SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_cbor)) {
     PopulateError(error, CryptoError::CE_OTHER_FATAL);
     return base::nullopt;
   }
-  auth_state->set_hsm_payload(hsm_payload_cbor.data(), hsm_payload_cbor.size());
+  auth_state.hsm_payload = hsm_payload_cbor;
 
   // TODO(b/184924482): wrap the destination share with TPM.
-  auth_state->set_plaintext_destination_share(destination_share.data(),
-                                              destination_share.size());
+  auth_state.plaintext_destination_share = destination_share;
   // TODO(b/196192089): store encrypted keys.
-  auth_state->set_channel_priv_key(channel_priv_key.data(),
-                                   channel_priv_key.size());
-  auth_state->set_channel_pub_key(channel_pub_key.data(),
-                                  channel_pub_key.size());
+  auth_state.channel_priv_key = channel_priv_key;
+  auth_state.channel_pub_key = channel_pub_key;
+  AuthBlockState auth_block_state = {.state = std::move(auth_state)};
   return auth_block_state;
 }
 
@@ -105,6 +104,12 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   DCHECK(key_blobs);
   DCHECK(auth_input.salt.has_value());
   const brillo::SecureBlob& salt = auth_input.salt.value();
+  const CryptohomeRecoveryAuthBlockState* auth_state;
+  if (!(auth_state =
+            absl::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
+    DLOG(FATAL) << "Invalid AuthBlockState";
+    return false;
+  }
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
@@ -118,13 +123,9 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   const brillo::SecureBlob& recovery_response_cbor =
       cryptohome_recovery_auth_input.recovery_response.value();
 
-  const AuthBlockState::CryptohomeRecoveryAuthBlockState& auth_state =
-      state.cryptohome_recovery_state();
-  brillo::SecureBlob plaintext_destination_share(
-      auth_state.plaintext_destination_share().begin(),
-      auth_state.plaintext_destination_share().end());
-  brillo::SecureBlob channel_priv_key(auth_state.channel_priv_key().begin(),
-                                      auth_state.channel_priv_key().end());
+  brillo::SecureBlob plaintext_destination_share =
+      auth_state->plaintext_destination_share.value();
+  brillo::SecureBlob channel_priv_key = auth_state->channel_priv_key.value();
 
   std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
   if (!recovery) {

@@ -7,14 +7,15 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/logging.h>
+
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
-
-#include <base/check.h>
-#include <base/logging.h>
 
 namespace cryptohome {
 
@@ -34,22 +35,20 @@ bool DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
                                           const AuthBlockState& state,
                                           KeyBlobs* key_blobs,
                                           CryptoError* error) {
-  if (!state.has_double_wrapped_compat_state()) {
+  const DoubleWrappedCompatAuthBlockState* auth_state;
+  if (!(auth_state =
+            absl::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return false;
   }
 
-  AuthBlockState scrypt_state;
-  *(scrypt_state.mutable_libscrypt_compat_state()) =
-      state.double_wrapped_compat_state().scrypt_state();
+  AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
   if (lib_scrypt_compat_auth_block_.Derive(auth_input, scrypt_state, key_blobs,
                                            error)) {
     return true;
   }
 
-  AuthBlockState tpm_state;
-  *(tpm_state.mutable_tpm_not_bound_to_pcr_state()) =
-      state.double_wrapped_compat_state().tpm_state();
+  AuthBlockState tpm_state = {.state = auth_state->tpm_state};
   return tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs, error);
 }
 

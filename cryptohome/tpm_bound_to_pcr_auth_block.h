@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/threading/thread.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/tpm.h"

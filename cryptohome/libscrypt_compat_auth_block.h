@@ -6,6 +6,7 @@
 #define CRYPTOHOME_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
 
 #include "cryptohome/auth_block.h"
+#include "cryptohome/auth_block_state.h"
 
 namespace cryptohome {
 

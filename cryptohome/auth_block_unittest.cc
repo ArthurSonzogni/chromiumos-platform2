@@ -9,10 +9,12 @@
 #include <utility>
 #include <vector>
 
+#include <absl/types/variant.h>
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/scrypt.h"
@@ -48,7 +50,6 @@ using ::testing::SetArgPointee;
 
 namespace cryptohome {
 
-
 TEST(TpmBoundToPcrTest, CreateTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
@@ -80,7 +81,8 @@ TEST(TpmBoundToPcrTest, CreateTest) {
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
-  EXPECT_TRUE(auth_state->has_tpm_bound_to_pcr_state());
+  EXPECT_TRUE(
+      absl::holds_alternative<TpmBoundToPcrAuthBlockState>(auth_state->state));
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
@@ -135,7 +137,8 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   CryptoError error;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
-  EXPECT_TRUE(auth_state->has_tpm_not_bound_to_pcr_state());
+  EXPECT_TRUE(absl::holds_alternative<TpmNotBoundToPcrAuthBlockState>(
+      auth_state->state));
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
@@ -193,7 +196,8 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
   auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
   EXPECT_NE(base::nullopt, auth_state);
-  EXPECT_TRUE(auth_state->has_pin_weaver_state());
+  EXPECT_TRUE(
+      absl::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
 }
 
 TEST(PinWeaverAuthBlockTest, CreateFailTest) {
@@ -444,9 +448,9 @@ TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
 
-  AuthBlockState::TpmNotBoundToPcrAuthBlockState tpm_state;
-  tpm_state.set_scrypt_derived(true);
-  tpm_state.set_password_rounds(0x5000);
+  TpmNotBoundToPcrAuthBlockState tpm_state;
+  tpm_state.scrypt_derived = true;
+  tpm_state.password_rounds = 0x5000;
 
   CryptoError error = CryptoError::CE_NONE;
   TpmNotBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_keys_manager);
@@ -756,24 +760,23 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   ASSERT_TRUE(created_key_blobs.vkk_iv.has_value());
   ASSERT_TRUE(created_key_blobs.chaps_iv.has_value());
   ASSERT_TRUE(auth_state.has_value());
-  ASSERT_TRUE(auth_state->has_cryptohome_recovery_state());
+  ASSERT_TRUE(absl::holds_alternative<CryptohomeRecoveryAuthBlockState>(
+      auth_state->state));
 
-  const AuthBlockState::CryptohomeRecoveryAuthBlockState
-      cryptohome_recovery_state = auth_state->cryptohome_recovery_state();
-  ASSERT_TRUE(cryptohome_recovery_state.has_hsm_payload());
-  ASSERT_TRUE(cryptohome_recovery_state.has_plaintext_destination_share());
-  ASSERT_TRUE(cryptohome_recovery_state.has_channel_priv_key());
-  ASSERT_TRUE(cryptohome_recovery_state.has_channel_pub_key());
+  const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
+      absl::get<CryptohomeRecoveryAuthBlockState>(auth_state->state);
+  ASSERT_TRUE(cryptohome_recovery_state.hsm_payload.has_value());
+  ASSERT_TRUE(
+      cryptohome_recovery_state.plaintext_destination_share.has_value());
+  ASSERT_TRUE(cryptohome_recovery_state.channel_priv_key.has_value());
+  ASSERT_TRUE(cryptohome_recovery_state.channel_pub_key.has_value());
 
-  brillo::SecureBlob channel_priv_key(
-      cryptohome_recovery_state.channel_priv_key().begin(),
-      cryptohome_recovery_state.channel_priv_key().end());
-  brillo::SecureBlob channel_pub_key(
-      cryptohome_recovery_state.channel_pub_key().begin(),
-      cryptohome_recovery_state.channel_pub_key().end());
-  brillo::SecureBlob hsm_payload_cbor(
-      cryptohome_recovery_state.hsm_payload().begin(),
-      cryptohome_recovery_state.hsm_payload().end());
+  brillo::SecureBlob channel_priv_key =
+      cryptohome_recovery_state.channel_priv_key.value();
+  brillo::SecureBlob channel_pub_key =
+      cryptohome_recovery_state.channel_pub_key.value();
+  brillo::SecureBlob hsm_payload_cbor =
+      cryptohome_recovery_state.hsm_payload.value();
 
   // Deserialize HSM payload stored on disk.
   cryptorecovery::HsmPayload hsm_payload;

@@ -12,6 +12,7 @@
 #include <vector>
 #include <openssl/evp.h>
 
+#include <absl/types/variant.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -19,6 +20,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
@@ -291,10 +293,13 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
-  EXPECT_TRUE(auth_state.has_tpm_bound_to_pcr_state());
-  EXPECT_TRUE(auth_state.tpm_bound_to_pcr_state().scrypt_derived());
-  EXPECT_TRUE(auth_state.tpm_bound_to_pcr_state().has_extended_tpm_key());
-  EXPECT_TRUE(auth_state.tpm_bound_to_pcr_state().has_tpm_key());
+  const TpmBoundToPcrAuthBlockState* tpm_state =
+      absl::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state);
+
+  EXPECT_NE(tpm_state, nullptr);
+  EXPECT_TRUE(tpm_state->scrypt_derived);
+  EXPECT_TRUE(tpm_state->extended_tpm_key.has_value());
+  EXPECT_TRUE(tpm_state->tpm_key.has_value());
 }
 
 TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
@@ -311,9 +316,11 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
   AuthBlockState auth_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
-  EXPECT_TRUE(auth_state.has_tpm_not_bound_to_pcr_state());
-  EXPECT_FALSE(auth_state.tpm_not_bound_to_pcr_state().scrypt_derived());
-  EXPECT_TRUE(auth_state.tpm_not_bound_to_pcr_state().has_tpm_key());
+  const TpmNotBoundToPcrAuthBlockState* tpm_state =
+      absl::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state);
+  EXPECT_NE(tpm_state, nullptr);
+  EXPECT_FALSE(tpm_state->scrypt_derived);
+  EXPECT_TRUE(tpm_state->tpm_key.has_value());
 }
 
 TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
@@ -330,9 +337,11 @@ TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
   AuthBlockState auth_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
-  EXPECT_TRUE(auth_state.has_pin_weaver_state());
-  EXPECT_TRUE(auth_state.pin_weaver_state().has_le_label());
-  EXPECT_EQ(le_label, auth_state.pin_weaver_state().le_label());
+  const PinWeaverAuthBlockState* pin_auth_state =
+      absl::get_if<PinWeaverAuthBlockState>(&auth_state.state);
+  EXPECT_NE(pin_auth_state, nullptr);
+  EXPECT_TRUE(pin_auth_state->le_label.has_value());
+  EXPECT_EQ(le_label, pin_auth_state->le_label.value());
 }
 
 TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
@@ -348,7 +357,9 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
   AuthBlockState auth_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
-  EXPECT_TRUE(auth_state.has_challenge_credential_state());
+  const ChallengeCredentialAuthBlockState* cc_state =
+      absl::get_if<ChallengeCredentialAuthBlockState>(&auth_state.state);
+  EXPECT_NE(cc_state, nullptr);
 }
 
 TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
@@ -366,10 +377,33 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
   AuthBlockState auth_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
-  EXPECT_TRUE(auth_state.has_libscrypt_compat_state());
-  EXPECT_TRUE(auth_state.libscrypt_compat_state().has_wrapped_keyset());
-  EXPECT_TRUE(auth_state.libscrypt_compat_state().has_wrapped_chaps_key());
-  EXPECT_TRUE(auth_state.libscrypt_compat_state().has_wrapped_reset_seed());
+  const LibScryptCompatAuthBlockState* scrypt_state =
+      absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state);
+  EXPECT_NE(scrypt_state, nullptr);
+  EXPECT_TRUE(scrypt_state->wrapped_keyset.has_value());
+  EXPECT_TRUE(scrypt_state->wrapped_chaps_key.has_value());
+  EXPECT_TRUE(scrypt_state->wrapped_reset_seed.has_value());
+}
+
+TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  VaultKeyset keyset;
+  keyset.Initialize(&platform, &crypto);
+
+  keyset.CreateRandom();
+  keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
+                  SerializedVaultKeyset::TPM_WRAPPED);
+
+  AuthBlockState auth_state;
+
+  // A required tpm_key is not set in keyset, failure in creating
+  // sub-state TpmNotBoundToPcrAuthBlockState.
+  EXPECT_FALSE(keyset.GetAuthBlockState(&auth_state));
+
+  const DoubleWrappedCompatAuthBlockState* double_wrapped_state =
+      absl::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
+  EXPECT_EQ(double_wrapped_state, nullptr);
 }
 
 TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
@@ -381,11 +415,14 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   keyset.CreateRandom();
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::TPM_WRAPPED);
+  keyset.SetTPMKey(brillo::SecureBlob("blabla"));
 
   AuthBlockState auth_state;
-  keyset.GetAuthBlockState(&auth_state);
+  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
-  EXPECT_TRUE(auth_state.has_double_wrapped_compat_state());
+  const DoubleWrappedCompatAuthBlockState* double_wrapped_state =
+      absl::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
+  EXPECT_NE(double_wrapped_state, nullptr);
 }
 
 TEST_F(VaultKeysetTest, EncryptionTest) {
@@ -679,7 +716,8 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
       brillo::SecureBlob(HexDecode(kHexVaultKey)),
       brillo::SecureBlob(HexDecode(kHexSalt)), "unused", &auth_block_state));
 
-  EXPECT_TRUE(auth_block_state.has_pin_weaver_state());
+  EXPECT_TRUE(
+      absl::holds_alternative<PinWeaverAuthBlockState>(auth_block_state.state));
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptFail) {

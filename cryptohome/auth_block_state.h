@@ -5,12 +5,13 @@
 #ifndef CRYPTOHOME_AUTH_BLOCK_STATE_H_
 #define CRYPTOHOME_AUTH_BLOCK_STATE_H_
 
-#include <variant>
-
+#include <absl/types/variant.h>
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 namespace cryptohome {
+// TODO(b/199531643): Check the impact of using empty blobs stored in every
+// AuthBlockState.
 
 // Fields in AuthBlockState are all marked optional because they can be read
 // from objects stored on disk, such as the SerializedVaultKeyset. As a result
@@ -19,7 +20,7 @@ namespace cryptohome {
 
 struct TpmNotBoundToPcrAuthBlockState {
   // Marks if the password is run through scrypt before going to the TPM.
-  bool scrypt_derived;
+  bool scrypt_derived = false;
   // The salt used to bind to the TPM.
   base::Optional<brillo::SecureBlob> salt;
   // The number of rounds key derivation is called.
@@ -34,7 +35,7 @@ struct TpmNotBoundToPcrAuthBlockState {
 
 struct TpmBoundToPcrAuthBlockState {
   // Marks if the password is run through scrypt before going to the TPM.
-  bool scrypt_derived;
+  bool scrypt_derived = false;
   // The salt used to bind to the TPM.
   base::Optional<brillo::SecureBlob> salt;
   // The VKK wrapped with the user's password by the tpm.
@@ -96,21 +97,27 @@ struct CryptohomeRecoveryAuthBlockState {
   };
   // Secret share of the mediator encrypted to the mediator public key.
   base::Optional<EncryptedMediatorShare> encrypted_mediator_share;
+  // HSM Payload is created at onboarding and contains all the data that are
+  // persisted on a chromebook and will be eventually used for recovery,
+  // serialized to CBOR.
+  base::Optional<brillo::SecureBlob> hsm_payload;
   // Secret share of the destination (plaintext).
-  // TODO(b/184924482): store encrypted destination share.
+  // TODO(b/184924489): store encrypted destination share.
   base::Optional<brillo::SecureBlob> plaintext_destination_share;
-  // The public key of the publisher ECC key.
-  base::Optional<brillo::SecureBlob> publisher_pub_key;
+  // Channel keys that will be used for secure communication during recovery.
+  // TODO(b/196192089): store encrypted keys.
+  base::Optional<brillo::SecureBlob> channel_pub_key;
+  base::Optional<brillo::SecureBlob> channel_priv_key;
 };
 
 struct AuthBlockState {
-  std::variant<TpmNotBoundToPcrAuthBlockState,
-               TpmBoundToPcrAuthBlockState,
-               PinWeaverAuthBlockState,
-               LibScryptCompatAuthBlockState,
-               ChallengeCredentialAuthBlockState,
-               DoubleWrappedCompatAuthBlockState,
-               CryptohomeRecoveryAuthBlockState>
+  absl::variant<TpmNotBoundToPcrAuthBlockState,
+                TpmBoundToPcrAuthBlockState,
+                PinWeaverAuthBlockState,
+                LibScryptCompatAuthBlockState,
+                ChallengeCredentialAuthBlockState,
+                DoubleWrappedCompatAuthBlockState,
+                CryptohomeRecoveryAuthBlockState>
       state;
 };
 

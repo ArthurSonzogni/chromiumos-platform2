@@ -12,6 +12,7 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 

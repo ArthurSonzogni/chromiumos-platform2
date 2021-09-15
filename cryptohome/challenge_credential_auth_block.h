@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 #define CRYPTOHOME_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 
 namespace cryptohome {

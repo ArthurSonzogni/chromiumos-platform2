@@ -5,18 +5,21 @@
 #include "cryptohome/vault_keyset.h"
 
 #include <memory>
+#include <utility>
 
 #include <sys/types.h>
 #include <crypto/sha2.h>
 #include <openssl/sha.h>
 
+#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.pb.h"
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/challenge_credential_auth_block.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
@@ -551,84 +554,75 @@ bool VaultKeyset::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
 }
 
 void VaultKeyset::SetTpmNotBoundToPcrState(
-    const AuthBlockState::TpmNotBoundToPcrAuthBlockState& auth_state) {
+    const TpmNotBoundToPcrAuthBlockState& auth_state) {
   flags_ = SerializedVaultKeyset::TPM_WRAPPED;
-  if (auth_state.has_scrypt_derived() && auth_state.scrypt_derived()) {
+  if (auth_state.scrypt_derived) {
     flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
   }
-  if (auth_state.has_tpm_key()) {
-    tpm_key_ = brillo::SecureBlob(auth_state.tpm_key().begin(),
-                                  auth_state.tpm_key().end());
+  if (auth_state.tpm_key.has_value()) {
+    tpm_key_ = auth_state.tpm_key.value();
   }
-  if (auth_state.has_tpm_public_key_hash()) {
-    tpm_public_key_hash_ =
-        brillo::SecureBlob(auth_state.tpm_public_key_hash().begin(),
-                           auth_state.tpm_public_key_hash().end());
+  if (auth_state.tpm_public_key_hash.has_value()) {
+    tpm_public_key_hash_ = auth_state.tpm_public_key_hash.value();
   }
 }
 
 void VaultKeyset::SetTpmBoundToPcrState(
-    const AuthBlockState::TpmBoundToPcrAuthBlockState& auth_state) {
+    const TpmBoundToPcrAuthBlockState& auth_state) {
   flags_ =
       SerializedVaultKeyset::TPM_WRAPPED | SerializedVaultKeyset::PCR_BOUND;
-  if (auth_state.has_scrypt_derived() && auth_state.scrypt_derived()) {
+  if (auth_state.scrypt_derived) {
     flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
   }
-  if (auth_state.has_tpm_key()) {
-    tpm_key_ = brillo::SecureBlob(auth_state.tpm_key().begin(),
-                                  auth_state.tpm_key().end());
+  if (auth_state.tpm_key.has_value()) {
+    tpm_key_ = auth_state.tpm_key.value();
   }
-  if (auth_state.has_extended_tpm_key()) {
-    extended_tpm_key_ =
-        brillo::SecureBlob(auth_state.extended_tpm_key().begin(),
-                           auth_state.extended_tpm_key().end());
+  if (auth_state.extended_tpm_key.has_value()) {
+    extended_tpm_key_ = auth_state.extended_tpm_key.value();
   }
-  if (auth_state.has_tpm_public_key_hash()) {
-    tpm_public_key_hash_ =
-        brillo::SecureBlob(auth_state.tpm_public_key_hash().begin(),
-                           auth_state.tpm_public_key_hash().end());
+  if (auth_state.tpm_public_key_hash.has_value()) {
+    tpm_public_key_hash_ = auth_state.tpm_public_key_hash.value();
   }
 }
 
-void VaultKeyset::SetPinWeaverState(
-    const AuthBlockState::PinWeaverAuthBlockState& auth_state) {
+void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
   flags_ = SerializedVaultKeyset::LE_CREDENTIAL;
-  if (auth_state.has_le_label()) {
-    le_label_ = auth_state.le_label();
+  if (auth_state.le_label.has_value()) {
+    le_label_ = auth_state.le_label.value();
   }
 }
 
 void VaultKeyset::SetLibScryptCompatState(
-    const AuthBlockState::LibScryptCompatAuthBlockState& auth_state) {
+    const LibScryptCompatAuthBlockState& auth_state) {
   flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED;
 }
 
 void VaultKeyset::SetChallengeCredentialState(
-    const AuthBlockState::ChallengeCredentialAuthBlockState& auth_state) {
+    const ChallengeCredentialAuthBlockState& auth_state) {
   flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED |
            SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
 }
 
 void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
-  switch (auth_state.auth_block_state_case()) {
-    case AuthBlockState::kTpmNotBoundToPcrState:
-      SetTpmNotBoundToPcrState(auth_state.tpm_not_bound_to_pcr_state());
-      return;
-    case AuthBlockState::kTpmBoundToPcrState:
-      SetTpmBoundToPcrState(auth_state.tpm_bound_to_pcr_state());
-      return;
-    case AuthBlockState::kPinWeaverState:
-      SetPinWeaverState(auth_state.pin_weaver_state());
-      return;
-    case AuthBlockState::kLibscryptCompatState:
-      SetLibScryptCompatState(auth_state.libscrypt_compat_state());
-      return;
-    case AuthBlockState::kChallengeCredentialState:
-      SetChallengeCredentialState(auth_state.challenge_credential_state());
-      return;
-    default:
-      LOG(ERROR) << "Invalid auth block state type";
-      return;
+  if (auto* state =
+          absl::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state)) {
+    SetTpmNotBoundToPcrState(*state);
+  } else if (auto* state =
+                 absl::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state)) {
+    SetTpmBoundToPcrState(*state);
+  } else if (auto* state =
+                 absl::get_if<PinWeaverAuthBlockState>(&auth_state.state)) {
+    SetPinWeaverState(*state);
+  } else if (auto* state = absl::get_if<LibScryptCompatAuthBlockState>(
+                 &auth_state.state)) {
+    SetLibScryptCompatState(*state);
+  } else if (auto* state = absl::get_if<ChallengeCredentialAuthBlockState>(
+                 &auth_state.state)) {
+    SetChallengeCredentialState(*state);
+  } else {
+    // other states are not supported.
+    NOTREACHED() << "Invalid auth block state type";
+    return;
   }
 }
 
@@ -639,22 +633,19 @@ bool VaultKeyset::GetTpmBoundToPcrState(AuthBlockState* auth_state) const {
     return false;
   }
 
-  AuthBlockState::TpmBoundToPcrAuthBlockState* state =
-      auth_state->mutable_tpm_bound_to_pcr_state();
-  state->set_scrypt_derived((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) !=
-                            0);
-  state->set_salt(salt_.data(), salt_.size());
-  state->set_tpm_key(tpm_key_->data(), tpm_key_->size());
-  state->set_extended_tpm_key(extended_tpm_key_->data(),
-                              extended_tpm_key_->size());
+  TpmBoundToPcrAuthBlockState state;
+  state.scrypt_derived =
+      ((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) != 0);
+  state.salt = salt_;
+  state.tpm_key = tpm_key_.value();
+  state.extended_tpm_key = extended_tpm_key_.value();
   if (tpm_public_key_hash_.has_value()) {
-    state->set_tpm_public_key_hash(tpm_public_key_hash_->data(),
-                                   tpm_public_key_hash_->size());
+    state.tpm_public_key_hash = tpm_public_key_hash_.value();
   }
   if (wrapped_reset_seed_.has_value()) {
-    state->set_wrapped_reset_seed(wrapped_reset_seed_->data(),
-                                  wrapped_reset_seed_->size());
+    state.wrapped_reset_seed = wrapped_reset_seed_.value();
   }
+  auth_state->state = std::move(state);
   return true;
 }
 
@@ -665,23 +656,21 @@ bool VaultKeyset::GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const {
     return false;
   }
 
-  AuthBlockState::TpmNotBoundToPcrAuthBlockState* state =
-      auth_state->mutable_tpm_not_bound_to_pcr_state();
-  state->set_scrypt_derived((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) !=
-                            0);
-  state->set_salt(salt_.data(), salt_.size());
+  TpmNotBoundToPcrAuthBlockState state;
+  state.scrypt_derived =
+      ((flags_ & SerializedVaultKeyset::SCRYPT_DERIVED) != 0);
+  state.salt = salt_;
   if (password_rounds_.has_value()) {
-    state->set_password_rounds(password_rounds_.value());
+    state.password_rounds = password_rounds_.value();
   }
-  state->set_tpm_key(tpm_key_->data(), tpm_key_->size());
+  state.tpm_key = tpm_key_.value();
   if (tpm_public_key_hash_.has_value()) {
-    state->set_tpm_public_key_hash(tpm_public_key_hash_->data(),
-                                   tpm_public_key_hash_->size());
+    state.tpm_public_key_hash = tpm_public_key_hash_.value();
   }
   if (wrapped_reset_seed_.has_value()) {
-    state->set_wrapped_reset_seed(wrapped_reset_seed_->data(),
-                                  wrapped_reset_seed_->size());
+    state.wrapped_reset_seed = wrapped_reset_seed_.value();
   }
+  auth_state->state = std::move(state);
   return true;
 }
 
@@ -691,18 +680,18 @@ bool VaultKeyset::GetPinWeaverState(AuthBlockState* auth_state) const {
     return false;
   }
 
-  AuthBlockState::PinWeaverAuthBlockState* state =
-      auth_state->mutable_pin_weaver_state();
-  state->set_salt(salt_.data(), salt_.size());
+  PinWeaverAuthBlockState state;
+  state.salt = salt_;
   if (le_label_.has_value()) {
-    state->set_le_label(le_label_.value());
+    state.le_label = le_label_.value();
   }
   if (le_chaps_iv_.has_value()) {
-    state->set_chaps_iv(le_chaps_iv_->data(), le_chaps_iv_->size());
+    state.chaps_iv = le_chaps_iv_.value();
   }
   if (le_fek_iv_.has_value()) {
-    state->set_fek_iv(le_fek_iv_->data(), le_fek_iv_->size());
+    state.fek_iv = le_fek_iv_.value();
   }
+  auth_state->state = std::move(state);
   return true;
 }
 
@@ -711,44 +700,68 @@ bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
   if (!GetLibScryptCompatState(&scrypt_state)) {
     return false;
   }
+  const auto* libscrypt_state =
+      absl::get_if<LibScryptCompatAuthBlockState>(&scrypt_state.state);
 
-  *(auth_state->mutable_challenge_credential_state()->mutable_scrypt_state()) =
-      scrypt_state.libscrypt_compat_state();
+  // This should never happen.
+  if (libscrypt_state == nullptr) {
+    NOTREACHED() << "LibScryptCompatState should have been created";
+    return false;
+  }
+
+  ChallengeCredentialAuthBlockState cc_state = {
+      .scrypt_state = std::move(*libscrypt_state)};
+  auth_state->state = std::move(cc_state);
   return true;
 }
 
 bool VaultKeyset::GetLibScryptCompatState(AuthBlockState* auth_state) const {
-  AuthBlockState::LibScryptCompatAuthBlockState* state =
-      auth_state->mutable_libscrypt_compat_state();
+  LibScryptCompatAuthBlockState state;
 
-  state->set_wrapped_keyset(wrapped_keyset_.data(), wrapped_keyset_.size());
+  state.wrapped_keyset = wrapped_keyset_;
   if (wrapped_chaps_key_.has_value()) {
-    state->set_wrapped_chaps_key(wrapped_chaps_key_->data(),
-                                 wrapped_chaps_key_->size());
+    state.wrapped_chaps_key = wrapped_chaps_key_.value();
   }
   if (wrapped_reset_seed_.has_value()) {
-    state->set_wrapped_reset_seed(wrapped_reset_seed_->data(),
-                                  wrapped_reset_seed_->size());
+    state.wrapped_reset_seed = wrapped_reset_seed_.value();
   }
+  auth_state->state = std::move(state);
   return true;
 }
 
 bool VaultKeyset::GetDoubleWrappedCompatState(
     AuthBlockState* auth_state) const {
-  AuthBlockState::DoubleWrappedCompatAuthBlockState* state =
-      auth_state->mutable_double_wrapped_compat_state();
   AuthBlockState scrypt_state;
   if (!GetLibScryptCompatState(&scrypt_state)) {
     return false;
   }
-  *(state->mutable_scrypt_state()) = scrypt_state.libscrypt_compat_state();
+  const auto* scrypt_sub_state =
+      absl::get_if<LibScryptCompatAuthBlockState>(&scrypt_state.state);
+
+  // This should never happen.
+  if (scrypt_sub_state == nullptr) {
+    NOTREACHED() << "LibScryptCompatState should have been created";
+    return false;
+  }
 
   AuthBlockState tpm_state;
   if (!GetTpmNotBoundToPcrState(&tpm_state)) {
     return false;
   }
-  *(state->mutable_tpm_state()) = tpm_state.tpm_not_bound_to_pcr_state();
+  const auto* tpm_sub_state =
+      absl::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
 
+  // This should never happen but handling it on the safe side.
+  if (tpm_sub_state == nullptr) {
+    NOTREACHED() << "TpmNotBoundToPcrAuthBlockState should have been created";
+    return false;
+  }
+
+  DoubleWrappedCompatAuthBlockState state = {
+      .scrypt_state = std::move(*scrypt_sub_state),
+      .tpm_state = std::move(*tpm_sub_state)};
+
+  auth_state->state = std::move(state);
   return true;
 }
 
@@ -847,8 +860,11 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
   *out_state = auth_state.value();
 
   bool wrapping_succeeded;
-  bool is_scrypt_wrapped = auth_state->has_libscrypt_compat_state() ||
-                           auth_state->has_challenge_credential_state();
+  bool is_scrypt_wrapped =
+      absl::holds_alternative<LibScryptCompatAuthBlockState>(
+          auth_state->state) ||
+      absl::holds_alternative<ChallengeCredentialAuthBlockState>(
+          auth_state->state);
   if (is_scrypt_wrapped) {
     wrapping_succeeded = WrapScryptVaultKeyset(key_blobs);
   } else {

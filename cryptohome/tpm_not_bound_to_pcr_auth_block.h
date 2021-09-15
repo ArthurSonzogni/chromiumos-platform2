@@ -12,6 +12,7 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
+#include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/tpm.h"
@@ -40,14 +41,13 @@ class TpmNotBoundToPcrAuthBlock : public AuthBlock {
  private:
   // Decrypt the |vault_key| that is not bound to PCR, returning the |vkk_iv|
   // and |vkk_key|.
-  bool DecryptTpmNotBoundToPcr(
-      const AuthBlockState::TpmNotBoundToPcrAuthBlockState& tpm_state,
-      const brillo::SecureBlob& vault_key,
-      const brillo::SecureBlob& tpm_key,
-      const brillo::SecureBlob& salt,
-      CryptoError* error,
-      brillo::SecureBlob* vkk_iv,
-      brillo::SecureBlob* vkk_key) const;
+  bool DecryptTpmNotBoundToPcr(const TpmNotBoundToPcrAuthBlockState& tpm_state,
+                               const brillo::SecureBlob& vault_key,
+                               const brillo::SecureBlob& tpm_key,
+                               const brillo::SecureBlob& salt,
+                               CryptoError* error,
+                               brillo::SecureBlob* vkk_iv,
+                               brillo::SecureBlob* vkk_key) const;
 
   Tpm* tpm_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
