@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 // ScannableArea represents the maximum size a scanner source can scan.
@@ -190,4 +192,9 @@ func GetScannerCapabilities(addr string) (caps ScannerCapabilities, err error) {
 func ParseLorgnetteCapabilities(rawData string) (caps LorgnetteCapabilities, err error) {
 	err = json.Unmarshal([]byte(rawData), &caps)
 	return
+}
+
+// IsPopulated returns returns true iff `caps` is non-empty.
+func (caps SourceCapabilities) IsPopulated() bool {
+	return !cmp.Equal(caps, SourceCapabilities{})
 }

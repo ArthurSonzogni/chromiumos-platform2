@@ -7,8 +7,6 @@ package hwtests
 import (
 	"fmt"
 
-	"github.com/google/go-cmp/cmp"
-
 	"chromiumos/scanning/utils"
 )
 
@@ -53,13 +51,13 @@ func checkForSupportedResolution(sourceResolutions utils.SupportedResolutions) b
 // the supported resolutions.
 func HasSupportedResolutionTest(platenCaps utils.SourceCapabilities, adfSimplexCaps utils.SourceCapabilities, adfDuplexCaps utils.SourceCapabilities) utils.TestFunction {
 	return func() (failures []utils.TestFailure, err error) {
-		if !cmp.Equal(platenCaps, utils.SourceCapabilities{}) && !checkForSupportedResolution(platenCaps.SettingProfile.SupportedResolutions) {
+		if platenCaps.IsPopulated() && !checkForSupportedResolution(platenCaps.SettingProfile.SupportedResolutions) {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("Platen source advertises only unsupported resolutions: %v", platenCaps.SettingProfile.SupportedResolutions)})
 		}
-		if !cmp.Equal(adfSimplexCaps, utils.SourceCapabilities{}) && !checkForSupportedResolution(adfSimplexCaps.SettingProfile.SupportedResolutions) {
+		if adfSimplexCaps.IsPopulated() && !checkForSupportedResolution(adfSimplexCaps.SettingProfile.SupportedResolutions) {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("ADF simplex source advertises only unsupported resolutions: %v", adfSimplexCaps.SettingProfile.SupportedResolutions)})
 		}
-		if !cmp.Equal(adfDuplexCaps, utils.SourceCapabilities{}) && !checkForSupportedResolution(adfDuplexCaps.SettingProfile.SupportedResolutions) {
+		if adfDuplexCaps.IsPopulated() && !checkForSupportedResolution(adfDuplexCaps.SettingProfile.SupportedResolutions) {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("ADF duplex source advertises only unsupported resolutions: %v", adfDuplexCaps.SettingProfile.SupportedResolutions)})
 		}
 		return

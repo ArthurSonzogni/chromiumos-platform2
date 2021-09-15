@@ -518,3 +518,53 @@ func TestParseLorgnetteCapabilitiesBadJSON(t *testing.T) {
 	}
 
 }
+
+// TestIsPopulated tests that the IsPopulated function works correctly.
+func TestIsPopulated(t *testing.T) {
+	tests := []struct {
+		caps SourceCapabilities
+		ret  bool
+	}{
+		{
+			caps: SourceCapabilities{
+				MaxWidth:       1200,
+				MinWidth:       16,
+				MaxHeight:      2800,
+				MinHeight:      32,
+				MaxScanRegions: 2,
+				SettingProfile: SettingProfile{
+					Name:            "",
+					Ref:             "",
+					ColorModes:      []string{"RGB24"},
+					DocumentFormats: []string{"application/octet-stream"},
+					SupportedResolutions: SupportedResolutions{
+						XResolutionRange: ResolutionRange{
+							Min:    65,
+							Max:    85,
+							Normal: 75,
+							Step:   10},
+						YResolutionRange: ResolutionRange{
+							Min:    60,
+							Max:    105,
+							Normal: 90,
+							Step:   15}}},
+				MaxOpticalXResolution: 85,
+				MaxOpticalYResolution: 105,
+				MaxPhysicalWidth:      1200,
+				MaxPhysicalHeight:     2800},
+			ret: true,
+		},
+		{
+			caps: SourceCapabilities{},
+			ret:  false,
+		},
+	}
+
+	for _, tc := range tests {
+		got := tc.caps.IsPopulated()
+
+		if got != tc.ret {
+			t.Errorf("Expected %t, got %t for caps: %v", tc.ret, got, tc.caps)
+		}
+	}
+}

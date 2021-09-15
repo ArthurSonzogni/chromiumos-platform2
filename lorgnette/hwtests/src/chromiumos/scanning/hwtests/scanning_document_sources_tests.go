@@ -5,8 +5,6 @@
 package hwtests
 
 import (
-	"github.com/google/go-cmp/cmp"
-
 	"chromiumos/scanning/utils"
 )
 
@@ -14,7 +12,7 @@ import (
 // isn't, the test returns a critical failure. Else it returns no failures.
 func NoCameraSourceTest(cameraCapabilities utils.SourceCapabilities) utils.TestFunction {
 	return func() (failures []utils.TestFailure, err error) {
-		if !cmp.Equal(cameraCapabilities, utils.SourceCapabilities{}) {
+		if cameraCapabilities.IsPopulated() {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: "Scanner advertises camera capabilities."})
 		}
 		return
