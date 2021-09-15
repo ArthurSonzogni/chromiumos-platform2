@@ -42,6 +42,8 @@ const QuirksMap& GetQuirksMap() {
       {{"1904", "0001"}, kQuirkReportLeastFpsRanges},
       // Chicony/CNFKH7521003210LH (b/185993364)
       {{"04f2", "b72f"}, kQuirkReportLeastFpsRanges},
+      // AZWAVE AM-ABA5521-A (b/194751857)
+      {{"13d3", "5521"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }

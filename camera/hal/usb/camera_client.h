@@ -162,6 +162,9 @@ class CameraClient {
   int max_stream_width_;
   int max_stream_height_;
 
+  // max resolution used for JDA
+  Size jda_resolution_cap_;
+
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and
   // destroyed in StreamOff.

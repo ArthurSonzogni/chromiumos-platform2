@@ -87,6 +87,11 @@ CameraClient::CameraClient(int id,
     max_stream_height_ = camera_config->GetInteger(
         constants::kCrosUsbMaxStreamHeight, std::numeric_limits<int>::max());
   }
+  jda_resolution_cap_ =
+      Size(camera_config->GetInteger(constants::kCrosUsbJDACapWidth,
+                                     std::numeric_limits<int>::max()),
+           camera_config->GetInteger(constants::kCrosUsbJDACapHeight,
+                                     std::numeric_limits<int>::max()));
 }
 
 CameraClient::~CameraClient() {}
@@ -201,8 +206,16 @@ int CameraClient::ConfigureStreams(
         return -EINVAL;
     }
 
-    // Skip BLOB format to avoid to use too large resolution as preview size.
-    if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
+    // Skip BLOB format to avoid to use too large resolution as preview size,
+    // unless we prefer large preview for the camera and JDA is capable of the
+    // resolution.
+    const bool try_blob =
+        device_info_.quirks & kQuirkPreferLargePreviewResolution;
+    const bool is_jda_capable =
+        stream_config->streams[i]->width <= jda_resolution_cap_.width &&
+        stream_config->streams[i]->height <= jda_resolution_cap_.height;
+    if (!(try_blob && is_jda_capable) &&
+        stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
         stream_config->num_streams > 1)
       continue;
 
