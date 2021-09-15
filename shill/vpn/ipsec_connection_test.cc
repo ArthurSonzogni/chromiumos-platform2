@@ -380,8 +380,8 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
   // Expects call for starting swanctl process.
   base::OnceCallback<void(int)> exit_cb;
   const base::FilePath kExpectedProgramPath("/usr/sbin/swanctl");
-  const std::vector<std::string> kExpectedArgs = {"--initiate", "-c",
-                                                  "managed"};
+  const std::vector<std::string> kExpectedArgs = {"--initiate", "-c", "managed",
+                                                  "--timeout", "30"};
   const std::map<std::string, std::string> kExpectedEnv = {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
   constexpr uint64_t kExpectedCapMask = 0;

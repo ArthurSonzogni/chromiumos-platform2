@@ -195,8 +195,7 @@ base::TimeDelta NewL2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
       FROM_HERE, base::BindOnce(&NewL2TPIPsecDriver::StartIPsecConnection,
                                 weak_factory_.GetWeakPtr()));
 
-  // TODO(165170125): Use a large value for debugging now.
-  return base::TimeDelta::FromSeconds(120);
+  return base::TimeDelta::FromSeconds(60);
 }
 
 void NewL2TPIPsecDriver::StartIPsecConnection() {

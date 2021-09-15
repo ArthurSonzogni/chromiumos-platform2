@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -46,6 +47,9 @@ constexpr char kDefaultESPProposals[] =
     "aes128gcm16,aes128-sha256,aes128-sha1,3des-sha1,3des-md5,default";
 
 constexpr char kChildSAName[] = "managed";
+
+// The default timeout value used in `swanctl --initiate`.
+constexpr base::TimeDelta kIPsecTimeout = base::TimeDelta::FromSeconds(30);
 
 // Represents a section in the format used by strongswan.conf and swanctl.conf.
 // We use this class only for formatting swanctl.conf since the contents of
@@ -446,7 +450,10 @@ void IPsecConnection::SwanctlLoadConfig() {
 void IPsecConnection::SwanctlInitiateConnection() {
   // This is a blocking call: if the execution returns with 0, then it means the
   // IPsec connection has been established.
-  const std::vector<std::string> args = {"--initiate", "-c", kChildSAName};
+  const std::string timeout_str =
+      base::NumberToString(kIPsecTimeout.InSeconds());
+  const std::vector<std::string> args = {"--initiate", "-c", kChildSAName,
+                                         "--timeout", timeout_str};
   RunSwanctl(
       args,
       base::BindOnce(&IPsecConnection::ScheduleConnectTask,
