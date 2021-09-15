@@ -85,14 +85,7 @@ SecureBlob DevmapperTable::CryptGetKey() {
   if (!tokenizer.GetNext())
     return SecureBlob();
 
-  SecureBlob hex_key(tokenizer.token_begin(), tokenizer.token_end());
-
-  SecureBlob key = SecureHexToSecureBlob(hex_key);
-
-  if (key.empty()) {
-    LOG(ERROR) << "CryptExtractKey: HexStringToBytes failed";
-    return SecureBlob();
-  }
+  SecureBlob key(tokenizer.token_begin(), tokenizer.token_end());
 
   return key;
 }
@@ -110,7 +103,7 @@ SecureBlob DevmapperTable::CryptCreateParameters(
   SecureBlob parameter_parts[3];
 
   parameter_parts[0] = SecureBlob(cipher + " ");
-  parameter_parts[1] = SecureBlobToSecureHex(encryption_key);
+  parameter_parts[1] = encryption_key;
   parameter_parts[2] = SecureBlob(base::StringPrintf(
       " %d %s %d%s", iv_offset, device.value().c_str(), device_offset,
       (allow_discard ? " 1 allow_discards" : "")));

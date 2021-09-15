@@ -73,7 +73,7 @@ TEST_F(DmcryptContainerTest, SetupCreateCheck) {
   EXPECT_TRUE(container_->Setup(key_, /*create=*/true));
   // Check that the device mapper target exists.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            key_.fek);
+            brillo::SecureBlobToSecureHex(key_.fek));
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
 }
 
@@ -90,7 +90,7 @@ TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
   EXPECT_TRUE(container_->Setup(key_, /*create=*/false));
   // Check that the device mapper target exists.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            key_.fek);
+            brillo::SecureBlobToSecureHex(key_.fek));
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
 }
 

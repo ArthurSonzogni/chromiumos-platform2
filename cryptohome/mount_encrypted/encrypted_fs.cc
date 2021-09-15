@@ -243,8 +243,11 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
                               fs_bytes_max / kExt4BlockSize),
                           .tune2fs_opts = {}}});
 
+  cryptohome::FileSystemKeyReference key_reference;
+  key_reference.fek_sig = brillo::SecureBlob("encstateful");
+
   std::unique_ptr<cryptohome::EncryptedContainer> container =
-      encrypted_container_factory->Generate(container_config, {});
+      encrypted_container_factory->Generate(container_config, key_reference);
 
   return std::make_unique<EncryptedFs>(rootdir, fs_bytes_max, dmcrypt_name,
                                        std::move(container), platform,

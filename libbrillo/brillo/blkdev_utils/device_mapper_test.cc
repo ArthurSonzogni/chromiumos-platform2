@@ -25,8 +25,7 @@ TEST(DevmapperTableTest, CreateTableFromSecureBlobTest) {
 TEST(DevmapperTableTest, CryptCreateParametersTest) {
   base::FilePath device("/some/random/filepath");
 
-  SecureBlob secret;
-  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
+  SecureBlob secret("0123456789ABCDEF");
 
   SecureBlob crypt_parameters = DevmapperTable::CryptCreateParameters(
       "aes-cbc-essiv:sha256", secret, 0, device, 0, true);
@@ -45,8 +44,7 @@ TEST(DevmapperTableTest, CryptCreateParametersTest) {
 TEST(DevmapperTableTest, CryptCreateTableFromSecureBlobTest) {
   base::FilePath device("/some/random/filepath");
 
-  SecureBlob secret;
-  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
+  SecureBlob secret("0123456789ABCDEF");
 
   SecureBlob crypt_parameters = DevmapperTable::CryptCreateParameters(
       "aes-cbc-essiv:sha256", secret, 0, device, 0, true);
@@ -65,8 +63,7 @@ TEST(DevmapperTableTest, CryptCreateTableFromSecureBlobTest) {
 }
 
 TEST(DevmapperTableTest, CryptGetKeyTest) {
-  SecureBlob secret;
-  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
+  SecureBlob secret("0123456789ABCDEF");
   SecureBlob crypt_table_str(
       "0 100 crypt aes-cbc-essiv:sha256 "
       "0123456789ABCDEF 0 /some/random/filepath 0 1 "
@@ -115,8 +112,7 @@ TEST(DevmapperTableTest, GetterTest) {
 }
 
 TEST(DevmapperTest, FakeTaskConformance) {
-  SecureBlob secret;
-  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
+  SecureBlob secret("0123456789ABCDEF");
   SecureBlob crypt_table_str(
       "0 100 crypt aes-cbc-essiv:sha256 "
       "0123456789ABCDEF 0 /some/random/filepath 0 1 "

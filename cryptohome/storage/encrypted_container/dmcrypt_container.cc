@@ -12,6 +12,8 @@
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
@@ -24,6 +26,68 @@ namespace {
 
 constexpr uint64_t kSectorSize = 512;
 constexpr uint64_t kExt4BlockSize = 4096;
+constexpr char kKeyring[] = "logon";
+constexpr char kDmcryptKeyDescriptor[] = "dmcrypt:";
+
+// Generate the keyring description.
+brillo::SecureBlob GenerateKeyringDescription(
+    const brillo::SecureBlob& key_reference) {
+  return brillo::SecureBlob::Combine(
+      brillo::SecureBlob(kDmcryptKeyDescriptor),
+      brillo::SecureBlob(base::ToLowerASCII(
+          base::HexEncode(key_reference.data(), key_reference.size()))));
+}
+
+// Generates the key descriptor to be used in the device mapper table if the
+// kernel keyring is supported.
+brillo::SecureBlob GenerateDmcryptKeyDescriptor(
+    const brillo::SecureBlob key_reference, uint64_t key_size) {
+  brillo::SecureBlob key_desc(
+      base::StringPrintf(":%" PRIu64 ":%s:", key_size, kKeyring));
+  return brillo::SecureBlob::Combine(key_desc, key_reference);
+}
+
+// Check whether the dm-crypt driver version is greater than 1.15.0 and can
+// support key provisioning via the kernel keyring.
+bool IsKernelKeyringSupported(const brillo::DeviceMapperVersion& version) {
+  const brillo::DeviceMapperVersion reference_version({1, 15, 0});
+
+  if (version < reference_version) {
+    return false;
+  }
+
+  return true;
+}
+
+// For dm-crypt, we use the process keyring to ensure that the key is unlinked
+// if the process exits/crashes before it is cleared.
+bool AddLogonKey(const brillo::SecureBlob& key,
+                 const brillo::SecureBlob& key_reference) {
+  if (add_key(kKeyring, key_reference.char_data(), key.char_data(), key.size(),
+              KEY_SPEC_THREAD_KEYRING) == -1) {
+    PLOG(ERROR) << "add_key failed";
+    return false;
+  }
+
+  return true;
+}
+
+bool UnlinkLogonKey(const brillo::SecureBlob& key_reference) {
+  key_serial_t key = keyctl_search(KEY_SPEC_THREAD_KEYRING, kKeyring,
+                                   key_reference.char_data(), 0);
+
+  if (key == -1) {
+    PLOG(ERROR) << "keyctl_search failed";
+    return false;
+  }
+
+  if (keyctl_invalidate(key) != 0) {
+    LOG(ERROR) << "Failed to invalidate key " << key;
+    return false;
+  }
+
+  return true;
+}
 
 }  // namespace
 
@@ -62,6 +126,10 @@ bool DmcryptContainer::Exists() {
 }
 
 bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
+  // Check whether the kernel keyring provisioning is supported by the current
+  // kernel.
+  bool keyring_support =
+      IsKernelKeyringSupported(device_mapper_->GetTargetVersion("crypt"));
   if (create && !backing_device_->Create()) {
     LOG(ERROR) << "Failed to create backing device";
     return false;
@@ -88,6 +156,25 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
     return false;
   }
 
+  brillo::SecureBlob key_descriptor =
+      brillo::SecureBlobToSecureHex(encryption_key.fek);
+
+  // If the dm-crypt kernel driver supports using the keyring, use it.
+  if (keyring_support) {
+    LOG(INFO) << "Using kernel keyring to provision key to dm-crypt.";
+    brillo::SecureBlob keyring_description =
+        GenerateKeyringDescription(key_reference_.fek_sig);
+
+    if (!AddLogonKey(encryption_key.fek, keyring_description)) {
+      LOG(ERROR) << "Failed to insert logon key to session keyring.";
+      return false;
+    }
+
+    // Once the key is inserted, update the key descriptor.
+    key_descriptor = GenerateDmcryptKeyDescriptor(keyring_description,
+                                                  encryption_key.fek.size());
+  }
+
   base::FilePath dmcrypt_device_path =
       base::FilePath("/dev/mapper").Append(dmcrypt_device_name_);
   uint64_t sectors = blkdev_size / kSectorSize;
@@ -95,8 +182,8 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
       brillo::DevmapperTable::CryptCreateParameters(
           // cipher.
           dmcrypt_cipher_,
-          // encryption key.
-          encryption_key.fek,
+          // encryption key descriptor.
+          key_descriptor,
           // iv offset.
           0,
           // device path.
@@ -110,6 +197,17 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
     backing_device_->Teardown();
     LOG(ERROR) << "dm_setup failed";
     return false;
+  }
+
+  // Once the key has been used by dm-crypt, remove it from the keyring.
+  if (keyring_support) {
+    LOG(INFO) << "Removing provisioned dm-crypt key from kernel keyring.";
+    brillo::SecureBlob keyring_description =
+        GenerateKeyringDescription(key_reference_.fek_sig);
+    if (!UnlinkLogonKey(keyring_description)) {
+      LOG(ERROR) << "Failed to remove key";
+      return false;
+    }
   }
 
   // Ensure that the dm-crypt device or the underlying backing device are

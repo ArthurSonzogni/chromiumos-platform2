@@ -114,7 +114,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
   // Check that the dm-crypt device is created and has the correct key.
   brillo::DevmapperTable table =
       encrypted_fs_->device_mapper_->GetTable(dmcrypt_name_);
-  EXPECT_EQ(table.CryptGetKey(), key_.fek);
+  EXPECT_EQ(table.CryptGetKey(), brillo::SecureBlobToSecureHex(key_.fek));
   // Check if backing device is attached.
   EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/encstateful"));
 
@@ -138,7 +138,7 @@ TEST_F(EncryptedFsTest, OldStateful) {
   // Check that the dm-crypt device is created and has the correct key.
   brillo::DevmapperTable table =
       encrypted_fs_->device_mapper_->GetTable(dmcrypt_name_);
-  EXPECT_EQ(table.CryptGetKey(), key_.fek);
+  EXPECT_EQ(table.CryptGetKey(), brillo::SecureBlobToSecureHex(key_.fek));
   // Check if backing device is attached.
   EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/encstateful"));
 
