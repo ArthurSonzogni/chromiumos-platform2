@@ -7,6 +7,8 @@
 
 #include <type_traits>
 
+#include <base/stl_util.h>
+
 // This is a helper for generating type-safe bitwise operators for flags that
 // are defined by an enumeration.  By default, when a bitwise operation is
 // performed on two enumerators of an enumeration, the result is the base type
@@ -72,59 +74,49 @@ struct IsFlagEnum<T, Void<typename FlagEnumTraits<T>::EnumFlagType>>
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator~(const T& l) {
-  return static_cast<T>(
-      ~static_cast<typename std::underlying_type<T>::type>(l));
+  return static_cast<T>(~base::to_underlying(l));
 }
 
 // T operator|(T&, T&)
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator|(const T& l, const T& r) {
-  return static_cast<T>(static_cast<typename std::underlying_type<T>::type>(l) |
-                        static_cast<typename std::underlying_type<T>::type>(r));
+  return static_cast<T>(base::to_underlying(l) | base::to_underlying(r));
 }
 
 // T operator&(T&, T&)
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator&(const T& l, const T& r) {
-  return static_cast<T>(static_cast<typename std::underlying_type<T>::type>(l) &
-                        static_cast<typename std::underlying_type<T>::type>(r));
+  return static_cast<T>(base::to_underlying(l) & base::to_underlying(r));
 }
 
 // T operator^(T&, T&)
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator^(const T& l, const T& r) {
-  return static_cast<T>(static_cast<typename std::underlying_type<T>::type>(l) ^
-                        static_cast<typename std::underlying_type<T>::type>(r));
+  return static_cast<T>(base::to_underlying(l) ^ base::to_underlying(r));
 }
 
 // T operator|=(T&, T&)
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator|=(T& l, const T& r) {  // NOLINT(runtime/references)
-  return l = static_cast<T>(
-             static_cast<typename std::underlying_type<T>::type>(l) |
-             static_cast<typename std::underlying_type<T>::type>(r));
+  return l = static_cast<T>(base::to_underlying(l) | base::to_underlying(r));
 }
 
 // T operator&=(T&, T&)
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator&=(T& l, const T& r) {  // NOLINT(runtime/references)
-  return l = static_cast<T>(
-             static_cast<typename std::underlying_type<T>::type>(l) &
-             static_cast<typename std::underlying_type<T>::type>(r));
+  return l = static_cast<T>(base::to_underlying(l) & base::to_underlying(r));
 }
 
 // T operator^=(T&, T&)
 template <typename T>
 constexpr typename std::enable_if<enum_details::IsFlagEnum<T>::value, T>::type
 operator^=(T& l, const T& r) {  // NOLINT(runtime/references)
-  return l = static_cast<T>(
-             static_cast<typename std::underlying_type<T>::type>(l) ^
-             static_cast<typename std::underlying_type<T>::type>(r));
+  return l = static_cast<T>(base::to_underlying(l) ^ base::to_underlying(r));
 }
 
 #endif  // LIBBRILLO_BRILLO_ENUM_FLAGS_H_
