@@ -229,6 +229,33 @@ fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     Ok(())
 }
 
+fn register_dbus_interface_for_app(
+    crossroads: &mut Crossroads,
+    dugong_state: DugongState,
+    app_id: &str,
+) {
+    // D-Bus identifiers only allow alphanumeric and underscore characters. Since we allow hyphens
+    // in TEE app IDs, replace them with underscores when creating the D-Bus identifier.
+    let app_dbus_identifier = app_id.replace("-", "_");
+    let interface_token = crossroads.register(
+        format!("org.chromium.manatee.{}", &app_dbus_identifier),
+        |b| {
+            b.method(
+                "StartInstance",
+                (),
+                ("error_code", "fd_in", "fd_out"),
+                |_, t: &mut (DugongState, String), ()| t.0.start_teeapplication(t.1.clone()),
+            )
+            .annotate("org.chromium.DBus.Method.Kind", "simple");
+        },
+    );
+    crossroads.insert(
+        format!("/org/chromium/ManaTEE1/{}", &app_dbus_identifier),
+        &[interface_token],
+        (dugong_state, app_id.to_string()),
+    );
+}
+
 fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
     let c = LocalConnection::new_system().map_err(Error::ConnectionRequest)?;
     c.request_name(
@@ -246,6 +273,14 @@ fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
         &[interface_token],
         dugong_state.clone(),
     );
+    dugong_state
+        .supported_apps()
+        .lock()
+        .unwrap()
+        .iter()
+        .for_each(|(app_id, _)| {
+            register_dbus_interface_for_app(&mut crossroads, dugong_state.clone(), app_id)
+        });
     c.start_receive(
         MatchRule::new_method_call(),
         Box::new(move |msg, conn| {
