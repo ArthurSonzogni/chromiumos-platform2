@@ -22,11 +22,9 @@ namespace shill {
 
 namespace {
 
-const char kL2TPIPsecIPsecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
 const char kL2TPIPsecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
 const char kL2TPIPsecLengthBitProperty[] = "L2TPIPsec.LengthBit";
 const char kL2TPIPsecRefusePapProperty[] = "L2TPIPsec.RefusePap";
-const char kL2TPIPsecRekeyProperty[] = "L2TPIPsec.Rekey";
 const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
@@ -88,11 +86,9 @@ const VPNDriver::Property NewL2TPIPsecDriver::kProperties[] = {
     {kProviderTypeProperty, 0},
     {kL2TPIPsecCaCertPemProperty, Property::kArray},
     {kL2TPIPsecTunnelGroupProperty, 0},
-    {kL2TPIPsecIPsecTimeoutProperty, 0},
     {kL2TPIPsecLeftProtoPortProperty, 0},
     {kL2TPIPsecLengthBitProperty, 0},
     {kL2TPIPsecRefusePapProperty, 0},
-    {kL2TPIPsecRekeyProperty, 0},
     {kL2TPIPsecRequireAuthProperty, 0},
     {kL2TPIPsecRequireChapProperty, 0},
     {kL2TPIPsecRightProtoPortProperty, 0},
