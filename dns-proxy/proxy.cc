@@ -707,7 +707,10 @@ void Proxy::SetShillProperty(const std::string& addr,
         Metrics::ProcessEvent::kShillSetProxyAddressRetryExceeded);
     LOG(ERROR) << "Maximum number of retries exceeding attempt to"
                << " set dns-proxy address property on shill";
-    CHECK(!die_on_failure);
+
+    if (die_on_failure)
+      QuitWithExitCode(EX_UNAVAILABLE);
+
     return;
   }
 

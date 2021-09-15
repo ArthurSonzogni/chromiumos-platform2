@@ -299,14 +299,6 @@ TEST_F(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill) {
   proxy.OnShutdown(&unused);
 }
 
-TEST_F(ProxyTest, SystemProxy_SetShillPropertyWithNoRetriesCrashes) {
-  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
-  proxy.shill_ready_ = true;
-  EXPECT_DEATH(proxy.SetShillProperty("10.10.10.10", true, 0), "");
-}
-
 TEST_F(ProxyTest, SystemProxy_SetShillPropertyDoesntCrashIfDieFalse) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   EXPECT_CALL(mock_manager_, SetProperty(_, _, _, _)).Times(0);
