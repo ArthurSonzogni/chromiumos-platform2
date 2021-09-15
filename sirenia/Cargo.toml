@@ -51,6 +51,7 @@ dbus = "0.9"
 dbus-crossroads = "0.4.0"
 flexbuffers = "0.1.1"
 getopts = "0.2"
+libc = "0.2.97"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "libsirenia" } # provided by ebuild
 log = "0.4.0"

@@ -54,8 +54,8 @@ use sirenia::{
     Digest,
 };
 use sys_util::{
-    self, error, getpid, getsid, info, setsid, syslog, vsock::SocketAddr as VSocketAddr,
-    MemfdSeals, SharedMemory,
+    self, error, getpid, getsid, info, reap_child, setsid, syslog,
+    vsock::SocketAddr as VSocketAddr, warn, MemfdSeals, Pid, SharedMemory,
 };
 use thiserror::Error as ThisError;
 
@@ -188,7 +188,7 @@ impl StorageRpc for TeeAppHandler {
 struct TrichechusState {
     expected_port: u32,
     pending_apps: Map<TransportType, TeeApp>,
-    running_apps: Map<TransportType, Rc<RefCell<TeeApp>>>,
+    running_apps: Map<Pid, Rc<RefCell<TeeApp>>>,
     log_queue: VecDeque<Vec<u8>>,
     persistence_uri: TransportType,
     persistence: RefCell<Option<CronistaClient>>,
@@ -312,14 +312,13 @@ impl DugongConnectionHandler {
     }
 
     fn connect_tee_app(&mut self, app: TeeApp, connection: Transport) -> Option<Box<dyn Mutator>> {
-        let id = connection.id.clone();
         let state = self.state.clone();
         // Only borrow once.
         let mut trichechus_state = self.state.borrow_mut();
         match spawn_tee_app(&trichechus_state, app, connection) {
-            Ok((app, transport)) => {
+            Ok((pid, app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
-                trichechus_state.running_apps.insert(id, tee_app.clone());
+                trichechus_state.running_apps.insert(pid, tee_app.clone());
                 let storage_server: Box<dyn StorageRpcServer> =
                     Box::new(TeeAppHandler { state, tee_app });
                 Some(Box::new(AddEventSourceMutator(Some(Box::new(
@@ -468,7 +467,7 @@ fn spawn_tee_app(
     state: &TrichechusState,
     mut app: TeeApp,
     transport: Transport,
-) -> Result<(TeeApp, Transport)> {
+) -> Result<(Pid, TeeApp, Transport)> {
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().map_err(Error::NewTransport)?;
     let keep_fds: [(RawFd, RawFd); 5] = [
@@ -479,12 +478,11 @@ fn spawn_tee_app(
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
 
-    match &app.app_info.exec_info {
-        ExecutableInfo::Path(path) => {
-            app.sandbox
-                .run(Path::new(&path), &[path], &keep_fds)
-                .map_err(Error::RunSandbox)?;
-        }
+    let pid = match &app.app_info.exec_info {
+        ExecutableInfo::Path(path) => app
+            .sandbox
+            .run(Path::new(&path), &[path], &keep_fds)
+            .map_err(Error::RunSandbox)?,
         ExecutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {
             Some(shared_mem) => {
                 let fd_path = fd_to_path(shared_mem.as_raw_fd())
@@ -492,18 +490,40 @@ fn spawn_tee_app(
                     .unwrap_or_else(|_| "".into());
                 app.sandbox
                     .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
-                    .map_err(Error::RunSandbox)?;
+                    .map_err(Error::RunSandbox)?
             }
             None => return Err(Error::AppPath(app.app_info.app_name.clone())),
         },
-    }
+    };
 
-    Ok((app, trichechus_transport))
+    Ok((pid, app, trichechus_transport))
 }
 
-// TODO: Figure out how to clean up TEEs that are no longer in use
+fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {
+    loop {
+        match reap_child() {
+            Ok(0) => {
+                break;
+            }
+            Ok(pid) => {
+                if let Some(app) = state.borrow_mut().running_apps.remove(&pid) {
+                    info!("Instance of '{}' exited.", &app.borrow().app_info.app_name);
+                } else {
+                    warn!("Untracked process exited '{}'.", pid);
+                }
+            }
+            Err(err) => {
+                if err.errno() == libc::ECHILD {
+                    break;
+                } else {
+                    error!("Waitpid exited with: {}", err);
+                }
+            }
+        }
+    }
+}
+
 // TODO: Figure out rate limiting and prevention against DOS attacks
-// TODO: What happens if dugong crashes? How do we want to handle
 fn main() -> Result<()> {
     // Handle the arguments first since "-h" shouldn't have any side effects on the system such as
     // creating /dev/log.
@@ -626,6 +646,7 @@ fn main() -> Result<()> {
         if let Err(e) = ctx.run_once() {
             error!("{}", e);
         };
+        handle_closed_child_processes(state.deref());
     }
 
     Ok(())
