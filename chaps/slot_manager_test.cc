@@ -500,6 +500,8 @@ class SoftwareOnlyTest : public TestSlotManager {
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::ObjectPoolFactory));
     EXPECT_CALL(no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+    EXPECT_CALL(no_tpm_, GetTPMVersion())
+        .WillRepeatedly(Return(TPMVersion::TPM1_2));
     slot_manager_.reset(
         new SlotManagerImpl(&factory_, &no_tpm_, false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());

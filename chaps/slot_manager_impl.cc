@@ -371,8 +371,7 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
   // Populate mechanism info for mechanisms supported by all TPM versions.
   mechanism_info_.insert(std::begin(kDefaultMechanismInfo),
                          std::end(kDefaultMechanismInfo));
-  if (tpm_utility_->IsTPMAvailable() &&
-      tpm_utility_->GetTPMVersion() == TPMVersion::TPM2_0) {
+  if (tpm_utility_->GetTPMVersion() == TPMVersion::TPM2_0) {
     // Populate mechanism info for mechanisms supported by TPM2.0 only.
     mechanism_info_.insert(std::begin(kTPM2OnlyMechanismInfo),
                            std::end(kTPM2OnlyMechanismInfo));
