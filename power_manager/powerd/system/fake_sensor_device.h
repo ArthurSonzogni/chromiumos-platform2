@@ -24,6 +24,8 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   mojo::ReceiverId AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);
   bool HasReceivers() const;
+  void ClearReceiverWithReason(cros::mojom::SensorDeviceDisconnectReason reason,
+                               const std::string& description);
 
   void ResetObserverRemote(mojo::ReceiverId id);
 
@@ -45,9 +47,6 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   void GetChannelsAttributes(const std::vector<int32_t>& iio_chn_indices,
                              const std::string& attr_name,
                              GetChannelsAttributesCallback callback) override;
-
-  // Attributes should be queried only once by AmbientLightSensorManager.
-  bool attr_queried_ = false;
 
   bool is_color_sensor_;
   std::map<std::string, std::string> attributes_;

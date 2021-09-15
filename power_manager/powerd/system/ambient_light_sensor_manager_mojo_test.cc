@@ -299,5 +299,123 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithLateColorSensor) {
   EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
 }
 
+TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 1);
+  prefs_.SetInt64(kAllowAmbientEQ, 1);
+
+  SetSensor(kFakeAcpiAlsId,
+            /*is_color_sensor=*/false, kAcpiAlsName,
+            /*location=*/base::nullopt);
+  SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
+  SetBaseSensor(/*name=*/base::nullopt);
+
+  SetManager();
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  // Wait until all initialization tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  EXPECT_TRUE(internal_backlight_sensor);
+  EXPECT_EQ(internal_backlight_sensor, keyboard_backlight_sensor);
+
+  EXPECT_TRUE(manager_->HasColorSensor());
+
+  EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
+  EXPECT_FALSE(sensor_devices_[kFakeBaseId]->HasReceivers());
+
+  sensor_devices_[kFakeAcpiAlsId]->ClearReceiverWithReason(
+      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+      "Device was removed");
+
+  // Wait until all reconnection tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  // The sensor service and other mojo pipes are not reset with the reason:
+  // DEVICE_REMOVED.
+  EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
+
+  sensor_devices_[kFakeLidId]->ClearReceiverWithReason(
+      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+      "Device was removed");
+  // Overwrite the lid and base light sensors in the iioservice.
+  SetLidSensor(/*is_color_sensor=*/true, /*name=*/base::nullopt);
+  SetBaseSensor(kCrosECLightName);
+
+  // Wait until all reconnection tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  // Choose the base light sensor as it has the name attribute: cros-ec-light.
+  internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  EXPECT_TRUE(internal_backlight_sensor);
+  EXPECT_EQ(internal_backlight_sensor, keyboard_backlight_sensor);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  EXPECT_FALSE(sensor_devices_[kFakeLidId]->HasReceivers());
+  EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
+}
+
+TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
+  prefs_.SetInt64(kHasAmbientLightSensorPref, 2);
+  prefs_.SetInt64(kAllowAmbientEQ, 1);
+
+  SetSensor(kFakeAcpiAlsId,
+            /*is_color_sensor=*/false, kAcpiAlsName,
+            /*location=*/base::nullopt);
+  SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
+  SetBaseSensor(/*name=*/kCrosECLightName);
+
+  SetManager();
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  // Wait until all initialization tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  EXPECT_TRUE(internal_backlight_sensor);
+  EXPECT_NE(internal_backlight_sensor, keyboard_backlight_sensor);
+
+  EXPECT_TRUE(manager_->HasColorSensor());
+
+  EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
+  EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
+
+  sensor_devices_[kFakeAcpiAlsId]->ClearReceiverWithReason(
+      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+      "Device was removed");
+
+  // Wait until all reconnection tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  // The sensor service and other mojo pipes are not reset with the reason:
+  // DEVICE_REMOVED.
+  EXPECT_TRUE(sensor_devices_[kFakeLidId]->HasReceivers());
+  EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
+
+  sensor_devices_[kFakeLidId]->ClearReceiverWithReason(
+      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+      "Device was removed");
+  // Overwrite the lid and base light sensors in the iioservice.
+  SetLidSensor(/*is_color_sensor=*/true, /*name=*/base::nullopt);
+
+  // Wait until all reconnection tasks are done.
+  base::RunLoop().RunUntilIdle();
+
+  // Choose the base light sensor as it has the name attribute: cros-ec-light.
+  internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  EXPECT_TRUE(internal_backlight_sensor);
+  EXPECT_NE(internal_backlight_sensor, keyboard_backlight_sensor);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  EXPECT_FALSE(sensor_devices_[kFakeLidId]->HasReceivers());
+  EXPECT_TRUE(sensor_devices_[kFakeBaseId]->HasReceivers());
+}
+
 }  // namespace system
 }  // namespace power_manager

@@ -84,8 +84,15 @@ class AmbientLightSensorManagerMojo
   void OnSensorServiceDisconnect();
   void ResetSensorService();
 
+  // Called when an in-use device is unplugged, and we need to search for other
+  // devices to use.
+  void ResetStates();
+  void QueryDevices();
+
   void OnNewDevicesObserverDisconnect();
-  void OnSensorDeviceDisconnect(int32_t id);
+  void OnSensorDeviceDisconnect(int32_t id,
+                                uint32_t custom_reason_code,
+                                const std::string& description);
 
   // Gets device ids from IIO Service and chooses sensors among them.
   void GetDeviceIdsCallback(const std::vector<int32_t>& iio_device_ids);

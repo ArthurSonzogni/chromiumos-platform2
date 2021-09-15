@@ -33,6 +33,21 @@ bool FakeSensorDevice::HasReceivers() const {
   return !receiver_set_.empty();
 }
 
+void FakeSensorDevice::ClearReceiverWithReason(
+    cros::mojom::SensorDeviceDisconnectReason reason,
+    const std::string& description) {
+  uint32_t custom_reason_code = base::checked_cast<uint32_t>(reason);
+
+  for (auto& observer : observers_) {
+    auto remote = mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(
+        std::move(observer.second));
+    remote.ResetWithReason(custom_reason_code, description);
+  }
+  observers_.clear();
+
+  receiver_set_.ClearWithReason(custom_reason_code, description);
+}
+
 void FakeSensorDevice::ResetObserverRemote(mojo::ReceiverId id) {
   auto it = observers_.find(id);
   DCHECK(it != observers_.end());
@@ -42,9 +57,6 @@ void FakeSensorDevice::ResetObserverRemote(mojo::ReceiverId id) {
 
 void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,
                                      GetAttributesCallback callback) {
-  CHECK(!attr_queried_);
-  attr_queried_ = true;
-
   std::vector<base::Optional<std::string>> attr_values;
   attr_values.reserve(attr_names.size());
   for (const auto& attr_name : attr_names) {
