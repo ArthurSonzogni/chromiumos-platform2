@@ -44,8 +44,8 @@ base::FilePath DiskUtil::GetFixedDrive() {
       PLOG(WARNING) << "Failed to read " << removable_file_path.value();
       continue;
     }
-    if (base::TrimWhitespaceASCII(is_removable, base::TrimPositions::TRIM_ALL)
-            .as_string() != "0") {
+    if (base::TrimWhitespaceASCII(is_removable,
+                                  base::TrimPositions::TRIM_ALL) != "0") {
       LOG(INFO) << "Skipping storage path " << path.value()
                 << " as it's removable.";
       continue;

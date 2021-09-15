@@ -94,8 +94,7 @@ bool DrawUtils::ShowImage(const base::FilePath& image_name,
   std::string command = base::StringPrintf(
       "\033]image:file=%s;offset=%d,%d;scale=%d\a", image_name.value().c_str(),
       offset_x, offset_y, frecon_scale_factor_);
-  if (!base::AppendToFile(base::FilePath(root_).Append(kConsole0),
-                          command.c_str(), command.size())) {
+  if (!base::AppendToFile(base::FilePath(root_).Append(kConsole0), command)) {
     LOG(ERROR) << "Could not write " << image_name << "  to console.";
     return false;
   }
@@ -117,8 +116,7 @@ bool DrawUtils::ShowBox(int offset_x,
       "\033]box:color=%s;size=%d,%d;offset=%d,%d;scale=%d\a", color.c_str(),
       size_x, size_y, offset_x, offset_y, frecon_scale_factor_);
 
-  if (!base::AppendToFile(base::FilePath(root_).Append(kConsole0),
-                          command.c_str(), command.size())) {
+  if (!base::AppendToFile(base::FilePath(root_).Append(kConsole0), command)) {
     LOG(ERROR) << "Could not write show box command to console.";
     return false;
   }
