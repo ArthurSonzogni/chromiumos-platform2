@@ -168,12 +168,17 @@ bool DHCPConfig::Start() {
   }
   args.push_back(interface_arg);
 
-  uint64_t capmask = CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
-                     CAP_TO_MASK(CAP_NET_BROADCAST) |
-                     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  ProcessManager::MinijailOptions minijail_options;
+  minijail_options.user = kDHCPCDUser;
+  minijail_options.group = kDHCPCDGroup;
+  minijail_options.capmask =
+      CAP_TO_MASK(CAP_NET_BIND_SERVICE) | CAP_TO_MASK(CAP_NET_BROADCAST) |
+      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  minijail_options.inherit_supplementary_groups = false;
+  // TODO(crrev.com/c/3162356): Check if |close_nonstd_fds| can be set to true.
+  minijail_options.close_nonstd_fds = false;
   pid_t pid = process_manager_->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, kDHCPCDUser,
-      kDHCPCDGroup, capmask, false, false,
+      FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
       base::Bind(&DHCPConfig::OnProcessExited, weak_ptr_factory_.GetWeakPtr()));
   if (pid < 0) {
     return false;

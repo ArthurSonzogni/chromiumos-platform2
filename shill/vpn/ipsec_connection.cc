@@ -407,9 +407,8 @@ void IPsecConnection::StartCharon() {
       CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
       CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
   charon_pid_ = process_manager_->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kCharonPath), args, env, VPNUtil::kVPNUser,
-      VPNUtil::kVPNGroup, kCapMask,
-      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds*/ true,
+      FROM_HERE, base::FilePath(kCharonPath), args, env,
+      VPNUtil::BuildMinijailOptions(kCapMask),
       base::BindRepeating(&IPsecConnection::OnCharonExitedUnexpectedly,
                           weak_factory_.GetWeakPtr()));
 
@@ -503,11 +502,9 @@ void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
   };
 
   constexpr uint64_t kCapMask = 0;
-
   pid_t pid = process_manager_->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kSwanctlPath), args, env, VPNUtil::kVPNUser,
-      VPNUtil::kVPNGroup, kCapMask,
-      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds*/ true,
+      FROM_HERE, base::FilePath(kSwanctlPath), args, env,
+      VPNUtil::BuildMinijailOptions(kCapMask),
       base::BindRepeating(
           &IPsecConnection::OnSwanctlExited, weak_factory_.GetWeakPtr(),
           base::AdaptCallbackForRepeating(std::move(on_success)),

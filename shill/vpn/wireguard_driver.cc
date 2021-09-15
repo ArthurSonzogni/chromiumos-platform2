@@ -122,12 +122,12 @@ std::string CalculateBase64PublicKey(const std::string& base64_private_key,
                                      ProcessManager* process_manager) {
   constexpr auto kPollTimeout = base::TimeDelta::FromMilliseconds(200);
 
+  constexpr uint64_t kCapMask = 0;
   int stdin_fd = -1;
   int stdout_fd = -1;
   pid_t pid = process_manager->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), {"pubkey"},
-      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, /*caps=*/0,
-      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
+      /*environment=*/{}, VPNUtil::BuildMinijailOptions(kCapMask),
       /*exit_callback=*/base::DoNothing(),
       {.stdin_fd = &stdin_fd, .stdout_fd = &stdout_fd});
   if (pid == -1) {
@@ -440,8 +440,7 @@ bool WireGuardDriver::SpawnWireGuard() {
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   wireguard_pid_ = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardPath), args,
-      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, kCapMask,
-      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/true,
+      /*environment=*/{}, VPNUtil::BuildMinijailOptions(kCapMask),
       base::BindRepeating(&WireGuardDriver::WireGuardProcessExited,
                           weak_factory_.GetWeakPtr()));
   return wireguard_pid_ > -1;
@@ -534,10 +533,12 @@ void WireGuardDriver::ConfigureInterface(bool created_in_kernel,
   std::vector<std::string> args = {"setconf", kDefaultInterfaceName,
                                    path.value()};
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+  auto minijail_options = VPNUtil::BuildMinijailOptions(kCapMask);
+  // Do not close nonstd fds to leave the anonymous config file open.
+  minijail_options.close_nonstd_fds = false;
   pid_t pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
-      /*environment=*/{}, VPNUtil::kVPNUser, VPNUtil::kVPNGroup, kCapMask,
-      /*inherit_supplementary_groups=*/true, /*close_nonstd_fds=*/false,
+      /*environment=*/{}, minijail_options,
       base::BindRepeating(&WireGuardDriver::OnConfigurationDone,
                           weak_factory_.GetWeakPtr()));
   if (pid == -1) {

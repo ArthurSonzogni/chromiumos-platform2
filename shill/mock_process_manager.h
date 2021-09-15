@@ -42,11 +42,7 @@ class MockProcessManager : public ProcessManager {
                const base::FilePath&,
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&),
-               const std::string&,
-               const std::string&,
-               uint64_t,
-               bool,
-               bool,
+               const MinijailOptions&,
                const base::Callback<void(int)>&),
               (override));
   MOCK_METHOD(pid_t,
@@ -55,11 +51,7 @@ class MockProcessManager : public ProcessManager {
                const base::FilePath&,
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&),
-               const std::string&,
-               const std::string&,
-               uint64_t,
-               bool,
-               bool,
+               const MinijailOptions&,
                const base::Callback<void(int)>&,
                struct std_file_descriptors),
               (override));
@@ -70,6 +62,25 @@ class MockProcessManager : public ProcessManager {
               (pid_t, const base::Callback<void(int)>&),
               (override));
 };
+
+// Custom matchers for MinijailOptions.
+MATCHER_P2(MinijailOptionsMatchUserGroup, user, group, "") {
+  return arg.user == user && arg.group == group;
+}
+
+MATCHER_P(MinijailOptionsMatchCapMask, capmask, "") {
+  return arg.capmask == capmask;
+}
+
+MATCHER_P(MinijailOptionsMatchInheritSupplumentaryGroup,
+          inherit_supplementary_groups,
+          "") {
+  return arg.inherit_supplementary_groups == inherit_supplementary_groups;
+}
+
+MATCHER_P(MinijailOptionsMatchCloseNonstdFDs, close_nonstd_fds, "") {
+  return arg.close_nonstd_fds == close_nonstd_fds;
+}
 
 }  // namespace shill
 

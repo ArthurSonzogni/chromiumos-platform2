@@ -296,11 +296,17 @@ bool OpenVPNDriver::SpawnOpenVPN() {
       {"OPENSSL_CHROMIUM_GENERATE_METRICS", "1"},
   };
 
-  uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
-                     CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
+  ProcessManager::MinijailOptions minijail_options;
+  // TODO(b/177984585): Change user and group to "vpn".
+  minijail_options.user = "shill";
+  minijail_options.group = "shill";
+  minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN) |
+                             CAP_TO_MASK(CAP_NET_RAW) |
+                             CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
+  minijail_options.inherit_supplementary_groups = true;
+  minijail_options.close_nonstd_fds = true;
   openvpn_pid = process_manager()->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kOpenVPNPath), args, kEnv, "shill", "shill",
-      capmask, true, true,
+      FROM_HERE, base::FilePath(kOpenVPNPath), args, kEnv, minijail_options,
       base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
   if (openvpn_pid == -1) {
     LOG(ERROR) << "Minijail couldn't run our child process";

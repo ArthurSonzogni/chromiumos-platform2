@@ -227,7 +227,13 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
       "-"    // Use stdin for input
   };
 
-  uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN);
+  ProcessManager::MinijailOptions minijail_options;
+  minijail_options.user = kTCUser;
+  minijail_options.group = kTCGroup;
+  minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN);
+  minijail_options.inherit_supplementary_groups = false;
+  // TODO(crrev.com/c/3162356): Check if |close_nonstd_fds| can be set to true.
+  minijail_options.close_nonstd_fds = false;
 
   tc_commands_ = commands;
   // shill's stderr is wired to syslog, so nullptr for stderr
@@ -236,8 +242,7 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
     &tc_stdin_, nullptr, nullptr
   };
   tc_pid_ = process_manager_->StartProcessInMinijailWithPipes(
-      FROM_HERE, base::FilePath(kTCPath), args, {}, kTCUser, kTCGroup, capmask,
-      false, false,
+      FROM_HERE, base::FilePath(kTCPath), args, {}, minijail_options,
       base::Bind(&Throttler::OnProcessExited, weak_factory_.GetWeakPtr()),
       std_fds);
 

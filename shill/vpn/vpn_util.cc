@@ -16,6 +16,8 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "shill/process_manager.h"
+
 namespace shill {
 
 class VPNUtilImpl : public VPNUtil {
@@ -92,6 +94,17 @@ base::ScopedTempDir VPNUtilImpl::CreateScopedTempDir(
 
 std::unique_ptr<VPNUtil> VPNUtil::New() {
   return std::make_unique<VPNUtilImpl>();
+}
+
+ProcessManager::MinijailOptions VPNUtil::BuildMinijailOptions(
+    uint64_t capmask) {
+  ProcessManager::MinijailOptions options;
+  options.user = VPNUtil::kVPNUser;
+  options.group = VPNUtil::kVPNGroup;
+  options.capmask = capmask;
+  options.inherit_supplementary_groups = true;
+  options.close_nonstd_fds = true;
+  return options;
 }
 
 }  // namespace shill

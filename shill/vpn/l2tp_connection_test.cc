@@ -98,6 +98,7 @@ class L2TPConnectionUnderTest : public L2TPConnection {
 namespace {
 
 using testing::_;
+using testing::AllOf;
 using testing::DoAll;
 using testing::Return;
 using testing::SaveArg;
@@ -237,8 +238,13 @@ TEST_F(L2TPConnectionTest, StartXl2tpd) {
   const base::FilePath kExpectedProgramPath("/usr/sbin/xl2tpd");
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, kExpectedProgramPath, _, _, "vpn",
-                                     "vpn", kExpectedCapMask, true, true, _))
+              StartProcessInMinijail(
+                  _, kExpectedProgramPath, _, _,
+                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                  _))
       .WillOnce(DoAll(SaveArg<3>(&actual_env), Return(123)));
 
   l2tp_connection_->InvokeStartXl2tpd();
@@ -254,9 +260,8 @@ TEST_F(L2TPConnectionTest, Xl2tpdExitedUnexpectedly) {
   l2tp_connection_->set_state(VPNConnection::State::kConnecting);
 
   base::OnceCallback<void(int)> exit_cb;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
-                                                       _, true, true, _))
-      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
 
   l2tp_connection_->InvokeStartXl2tpd();
 

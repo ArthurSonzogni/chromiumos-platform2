@@ -299,9 +299,8 @@ void L2TPConnection::StartXl2tpd() {
   Error error;
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   if (!external_task_local->StartInMinijail(
-          base::FilePath(kXl2tpdPath), &args, env, VPNUtil::kVPNUser,
-          VPNUtil::kVPNGroup, kCapMask, /*inherit_supplementary_groups=*/true,
-          /*close_nonstd_fds=*/true, &error)) {
+          base::FilePath(kXl2tpdPath), &args, env,
+          VPNUtil::BuildMinijailOptions(kCapMask), &error)) {
     NotifyFailure(Service::kFailureInternal,
                   base::StrCat({"Failed to start xl2tpd: ", error.message()}));
     return;

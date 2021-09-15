@@ -79,6 +79,7 @@ namespace {
 using ConnectStep = IPsecConnection::ConnectStep;
 
 using testing::_;
+using testing::AllOf;
 using testing::DoAll;
 using testing::Return;
 using testing::SaveArg;
@@ -229,9 +230,13 @@ TEST_F(IPsecConnectionTest, StartCharon) {
       CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
       CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, kExpectedProgramPath, kExpectedArgs,
-                                     kExpectedEnv, "vpn", "vpn",
-                                     kExpectedCapMask, true, true, _))
+              StartProcessInMinijail(
+                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                  _))
       .WillOnce(Return(123));
 
   // Triggers the task.
@@ -253,8 +258,7 @@ TEST_F(IPsecConnectionTest, StartCharon) {
 TEST_F(IPsecConnectionTest, StartCharonFailWithStartProcess) {
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
-                                                       _, true, true, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(-1));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kStrongSwanConfigWritten);
@@ -267,9 +271,8 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
   base::OnceCallback<void(int)> exit_cb;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
-                                                       _, true, true, _))
-      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kStrongSwanConfigWritten);
 
@@ -327,10 +330,14 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
   constexpr uint64_t kExpectedCapMask = 0;
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, kExpectedProgramPath, kExpectedArgs,
-                                     kExpectedEnv, "vpn", "vpn",
-                                     kExpectedCapMask, true, true, _))
-      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+              StartProcessInMinijail(
+                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                  _))
+      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
 
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
@@ -344,8 +351,7 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
 TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExecution) {
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
-                                                       _, true, true, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(-1));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
@@ -358,9 +364,8 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExitCodeNonZero) {
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
   base::OnceCallback<void(int)> exit_cb;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
-                                                       _, true, true, _))
-      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigWritten);
 
@@ -386,10 +391,14 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
   constexpr uint64_t kExpectedCapMask = 0;
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, kExpectedProgramPath, kExpectedArgs,
-                                     kExpectedEnv, "vpn", "vpn",
-                                     kExpectedCapMask, true, true, _))
-      .WillOnce(DoAll(SaveArg<9>(&exit_cb), Return(123)));
+              StartProcessInMinijail(
+                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask),
+                        MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                        MinijailOptionsMatchCloseNonstdFDs(true)),
+                  _))
+      .WillOnce(DoAll(SaveArg<5>(&exit_cb), Return(123)));
 
   ipsec_connection_->InvokeScheduleConnectTask(
       ConnectStep::kSwanctlConfigLoaded);

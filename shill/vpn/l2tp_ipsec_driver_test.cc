@@ -541,7 +541,8 @@ TEST_F(L2TPIPsecDriverTest, SpawnL2TPIPsecVPN) {
   SetArg(kProviderHostProperty, kHost);
 
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
+              StartProcessInMinijail(
+                  _, _, _, _, MinijailOptionsMatchCloseNonstdFDs(true), _))
       .WillOnce(Return(-1))
       .WillOnce(Return(1));
 
@@ -556,7 +557,8 @@ TEST_F(L2TPIPsecDriverTest, Connect) {
   SetArg(kProviderHostProperty, kHost);
 
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
+              StartProcessInMinijail(
+                  _, _, _, _, MinijailOptionsMatchCloseNonstdFDs(true), _))
       .WillOnce(Return(1));
   base::TimeDelta timeout = driver_->ConnectAsync(&event_handler_);
   EXPECT_NE(timeout, VPNDriver::kTimeoutNone);

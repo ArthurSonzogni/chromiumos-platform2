@@ -17,13 +17,13 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/process_manager.h"
 #include "shill/rpc_task.h"
 
 namespace shill {
 
 class ControlInterface;
 class Error;
-class ProcessManager;
 
 class ExternalTask : public RpcTaskDelegate {
  public:
@@ -62,10 +62,7 @@ class ExternalTask : public RpcTaskDelegate {
 
   // Forks off a process to run |program|, with the command-line arguments
   // |arguments|, and the environment variables specified in |environment|.
-  // |inherit_supplementary_groups| indicates whether the child child program
-  // should be spawned with the programmatic equivalent of the minijail -G flag.
-  // |close_nonstd_fds| indicates that non-standard file descriptors should be
-  // closed so they cannot be inherited by the child process.
+  // The process will be started in minijail with |minijail_options|.
   //
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
@@ -77,11 +74,7 @@ class ExternalTask : public RpcTaskDelegate {
       const base::FilePath& program,
       std::vector<std::string>* arguments,
       const std::map<std::string, std::string>& environment,
-      const std::string& user,
-      const std::string& group,
-      uint64_t mask,
-      bool inherit_supplementary_groups,
-      bool close_nonstd_fds,
+      const ProcessManager::MinijailOptions& minijail_options,
       Error* error);
 
   virtual void Stop();

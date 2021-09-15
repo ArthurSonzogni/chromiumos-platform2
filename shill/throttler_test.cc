@@ -14,6 +14,7 @@
 #include "shill/testing.h"
 
 using testing::_;
+using testing::AllOf;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
@@ -61,11 +62,14 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
   std::vector<std::string> interfaces = {kIfaceName0, kIfaceName1};
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
-  EXPECT_CALL(
-      mock_process_manager_,
-      StartProcessInMinijailWithPipes(
-          _, base::FilePath(Throttler::kTCPath), _, _, Throttler::kTCUser,
-          Throttler::kTCGroup, CAP_TO_MASK(CAP_NET_ADMIN), _, _, _, _))
+  constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+  EXPECT_CALL(mock_process_manager_,
+              StartProcessInMinijailWithPipes(
+                  _, base::FilePath(Throttler::kTCPath), _, _,
+                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                      Throttler::kTCGroup),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
+                  _, _))
       .Times(interfaces.size())
       .WillOnce(Return(kPID1))
       .WillOnce(Return(kPID2));
@@ -85,11 +89,14 @@ TEST_F(ThrottlerTest, NewlyAddedInterfaceIsThrottled) {
   throttler_.desired_throttling_enabled_ = true;
   throttler_.desired_upload_rate_kbits_ = kThrottleRate;
   throttler_.desired_download_rate_kbits_ = kThrottleRate;
-  EXPECT_CALL(
-      mock_process_manager_,
-      StartProcessInMinijailWithPipes(
-          _, base::FilePath(Throttler::kTCPath), _, _, Throttler::kTCUser,
-          Throttler::kTCGroup, CAP_TO_MASK(CAP_NET_ADMIN), _, _, _, _))
+  constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+  EXPECT_CALL(mock_process_manager_,
+              StartProcessInMinijailWithPipes(
+                  _, base::FilePath(Throttler::kTCPath), _, _,
+                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                      Throttler::kTCGroup),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
+                  _, _))
       .Times(1)
       .WillOnce(Return(kPID3));
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_)).WillOnce(Return(false));
@@ -103,11 +110,14 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   std::vector<std::string> interfaces = {kIfaceName0};
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
-  EXPECT_CALL(
-      mock_process_manager_,
-      StartProcessInMinijailWithPipes(
-          _, base::FilePath(Throttler::kTCPath), _, _, Throttler::kTCUser,
-          Throttler::kTCGroup, CAP_TO_MASK(CAP_NET_ADMIN), _, _, _, _))
+  constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+  EXPECT_CALL(mock_process_manager_,
+              StartProcessInMinijailWithPipes(
+                  _, base::FilePath(Throttler::kTCPath), _, _,
+                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                      Throttler::kTCGroup),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
+                  _, _))
       .Times(1)
       .WillOnce(Return(kPID1));
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))

@@ -15,6 +15,8 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 
+#include "shill/process_manager.h"
+
 namespace shill {
 
 // An interface to wrap some constants and functions which are shared by
@@ -34,6 +36,12 @@ class VPNUtil {
   virtual ~VPNUtil() = default;
 
   static std::unique_ptr<VPNUtil> New();
+
+  // Constructs a MinijailOptions object which contains the common options used
+  // by VPN clients:
+  // - |user| and |group| are set to "vpn".
+  // - |inherit_supplementary_groups| and |close_nonstd_fds| are set to true.
+  static ProcessManager::MinijailOptions BuildMinijailOptions(uint64_t capmask);
 
   // Writes |contents| into file with path |filename|, changes the group of this
   // file to "vpn", and makes this file group-readable. Note that although shill

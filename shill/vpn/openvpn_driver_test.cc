@@ -280,7 +280,8 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
   EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
+              StartProcessInMinijail(
+                  _, _, _, _, MinijailOptionsMatchCloseNonstdFDs(true), _))
       .WillOnce(Return(10101));
   EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
   base::TimeDelta timeout = driver_->ConnectAsync(&event_handler_);
@@ -1090,7 +1091,8 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
 
   const int kPID = 234678;
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _, _, _, _, _, _, _, true, _))
+              StartProcessInMinijail(
+                  _, _, _, _, MinijailOptionsMatchCloseNonstdFDs(true), _))
       .WillOnce(Return(-1))
       .WillOnce(Return(kPID));
   EXPECT_FALSE(driver_->SpawnOpenVPN());

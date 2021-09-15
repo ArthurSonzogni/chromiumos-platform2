@@ -36,6 +36,21 @@ class EventDispatcher;
 // Init method call.
 class ProcessManager {
  public:
+  struct MinijailOptions {
+    // Program will run as |user| and |group|.
+    std::string user;
+    std::string group;
+    // Provides the child process with capabilities, which |user| might not have
+    // on its own.
+    uint64_t capmask;
+    // Allows child process to inherit supplementary groups from uid, equivalent
+    // to using '-G' on the minijail command line.
+    bool inherit_supplementary_groups;
+    // Indicates that non-standard file descriptors should be closed so they
+    // cannot be inherited by the child process.
+    bool close_nonstd_fds;
+  };
+
   virtual ~ProcessManager();
 
   // This is a singleton -- use ProcessManager::GetInstance()->Foo().
@@ -63,27 +78,19 @@ class ProcessManager {
       const base::Callback<void(int)>& exit_callback);
 
   // Similar to StartProcess(), with the following differences:
-  // - terminate_with_parent is not supported (may be non-trivial)
-  // - the child process will run as |user| and |group|
-  // - the |capmask| argument can be used to provide the child process
-  //   with capabilities, which |user| might not have on its own
-  // - the |inherit_supplementary_groups| argument allows child process to
-  //   inherit supplementary groups from uid, equivalent to using '-G' on the
-  //   minijail command line.
+  // - terminate_with_parent is not supported (may be non-trivial).
+  // - |minijail_options| will be applied when starting the process in minijail.
+  //   See the comments for MinijailOptions above for the available options.
   virtual pid_t StartProcessInMinijail(
       const base::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
-      const std::string& user,
-      const std::string& group,
-      uint64_t capmask,
-      bool inherit_supplementary_groups,
-      bool close_nonstd_fds,
+      const MinijailOptions& minijail_options,
       const base::Callback<void(int)>& exit_callback) {
     return StartProcessInMinijailWithPipes(
-        spawn_source, program, arguments, environment, user, group, capmask,
-        inherit_supplementary_groups, close_nonstd_fds, exit_callback,
+        spawn_source, program, arguments, environment, minijail_options,
+        exit_callback,
         (struct std_file_descriptors){nullptr, nullptr, nullptr});
   }
 
@@ -97,11 +104,7 @@ class ProcessManager {
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
-      const std::string& user,
-      const std::string& group,
-      uint64_t capmask,
-      bool inherit_supplementary_groups,
-      bool close_nonstd_fds,
+      const MinijailOptions& minijail_options,
       const base::Callback<void(int)>& exit_callback,
       struct std_file_descriptors std_fds);
 

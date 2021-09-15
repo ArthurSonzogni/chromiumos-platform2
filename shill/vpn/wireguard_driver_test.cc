@@ -29,6 +29,7 @@
 namespace shill {
 
 using testing::_;
+using testing::AllOf;
 using testing::DoAll;
 using testing::HasSubstr;
 using testing::Mock;
@@ -131,15 +132,20 @@ class WireGuardDriverTest : public testing::Test {
   // TODO(jiejiang): Consider returning a different key to avoid missing the
   // failure that keys are misused.
   void SetFakeKeyGenerator() {
-    EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes(
-                                      _, base::FilePath("/usr/bin/wg"),
-                                      std::vector<std::string>{"pubkey"}, _,
-                                      "vpn", "vpn", 0, true, true, _, _))
+    EXPECT_CALL(process_manager_,
+                StartProcessInMinijailWithPipes(
+                    _, base::FilePath("/usr/bin/wg"),
+                    std::vector<std::string>{"pubkey"}, _,
+                    AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                          MinijailOptionsMatchCapMask(0u),
+                          MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                          MinijailOptionsMatchCloseNonstdFDs(true)),
+                    _, _))
         .WillRepeatedly([](const base::Location&, const base::FilePath&,
                            const std::vector<std::string>&,
                            const std::map<std::string, std::string>&,
-                           const std::string&, const std::string&, uint64_t,
-                           bool, bool, const base::Callback<void(int)>&,
+                           const ProcessManager::MinijailOptions&,
+                           const base::Callback<void(int)>&,
                            struct std_file_descriptors std_fds) {
           CHECK(std_fds.stdin_fd);
           CHECK(std_fds.stdout_fd);
@@ -178,11 +184,17 @@ class WireGuardDriverTest : public testing::Test {
         .WillOnce([this](const std::string&, DeviceInfo::LinkReadyCallback cb) {
           this->link_ready_callback_ = std::move(cb);
         });
-    EXPECT_CALL(
-        process_manager_,
-        StartProcessInMinijail(_, _, _, _, "vpn", "vpn",
-                               CAP_TO_MASK(CAP_NET_ADMIN), true, true, _))
-        .WillOnce(DoAll(SaveArg<9>(&wireguard_exit_callback_),
+
+    constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+    EXPECT_CALL(process_manager_,
+                StartProcessInMinijail(
+                    _, _, _, _,
+                    AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                          MinijailOptionsMatchCapMask(kExpectedCapMask),
+                          MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                          MinijailOptionsMatchCloseNonstdFDs(true)),
+                    _))
+        .WillOnce(DoAll(SaveArg<5>(&wireguard_exit_callback_),
                         Return(kWireGuardPid)));
     dispatcher_.DispatchPendingEvents();
     std::move(create_kernel_link_failed_callback_).Run();
@@ -191,12 +203,17 @@ class WireGuardDriverTest : public testing::Test {
   void InvokeLinkReady() {
     // wireguard-tools should be invoked on interface ready.
     std::vector<std::string> args;
+    constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
     EXPECT_CALL(process_manager_,
-                StartProcessInMinijail(_, base::FilePath("/usr/bin/wg"), _, _,
-                                       "vpn", "vpn", CAP_TO_MASK(CAP_NET_ADMIN),
-                                       true, false, _))
+                StartProcessInMinijail(
+                    _, base::FilePath("/usr/bin/wg"), _, _,
+                    AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                          MinijailOptionsMatchCapMask(kExpectedCapMask),
+                          MinijailOptionsMatchInheritSupplumentaryGroup(true),
+                          MinijailOptionsMatchCloseNonstdFDs(false)),
+                    _))
         .WillOnce(DoAll(SaveArg<2>(&args),
-                        SaveArg<9>(&wireguard_tools_exit_callback_),
+                        SaveArg<5>(&wireguard_tools_exit_callback_),
                         Return(kWireGuardToolsPid)));
     std::move(link_ready_callback_).Run(kIfName, kIfIndex);
 
@@ -512,8 +529,7 @@ TEST_F(WireGuardDriverTest, SpawnWireGuardProcessFailed) {
   driver_->ConnectAsync(&driver_event_handler_);
   EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _, _, _, _, _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
   dispatcher_.DispatchPendingEvents();

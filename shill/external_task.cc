@@ -71,11 +71,7 @@ bool ExternalTask::StartInMinijail(
     const base::FilePath& program,
     std::vector<std::string>* arguments,
     const std::map<std::string, std::string>& environment,
-    const std::string& user,
-    const std::string& group,
-    uint64_t mask,
-    bool inherit_supplementary_groups,
-    bool close_nonstd_fds,
+    const ProcessManager::MinijailOptions& minijail_options,
     Error* error) {
   // Checks will fail if Start or StartInMinijailWithRpcIdentifiers has already
   // been called on this object.
@@ -88,8 +84,7 @@ bool ExternalTask::StartInMinijail(
   env.insert(environment.begin(), environment.end());
 
   pid_t pid = process_manager_->StartProcessInMinijail(
-      FROM_HERE, program, *arguments, env, user, group, mask,
-      inherit_supplementary_groups, close_nonstd_fds,
+      FROM_HERE, program, *arguments, env, minijail_options,
       base::Bind(&ExternalTask::OnTaskDied, base::Unretained(this)));
 
   if (pid < 0) {

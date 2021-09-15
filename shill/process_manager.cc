@@ -127,11 +127,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     const base::FilePath& program,
     const std::vector<std::string>& arguments,
     const std::map<std::string, std::string>& environment,
-    const std::string& user,
-    const std::string& group,
-    uint64_t capmask,
-    bool inherit_supplementary_groups,
-    bool close_nonstd_fds,
+    const MinijailOptions& minijail_options,
     const base::Callback<void(int)>& exit_callback,
     struct std_file_descriptors std_fds) {
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
@@ -156,20 +152,21 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
 
   struct minijail* jail = minijail_->New();
 
-  if (!minijail_->DropRoot(jail, user.c_str(), group.c_str())) {
+  if (!minijail_->DropRoot(jail, minijail_options.user.c_str(),
+                           minijail_options.group.c_str())) {
     LOG(ERROR) << "Minijail failed to drop root privileges?";
     return -1;
   }
 
-  if (inherit_supplementary_groups) {
+  if (minijail_options.inherit_supplementary_groups) {
     minijail_inherit_usergroups(jail);
   }
 
-  minijail_->UseCapabilities(jail, capmask);
+  minijail_->UseCapabilities(jail, minijail_options.capmask);
   minijail_->ResetSignalMask(jail);
   // Important to close non-standard fds. See crbug.com/531655,
   // crbug.com/911234 and crbug.com/914444.
-  if (close_nonstd_fds) {
+  if (minijail_options.close_nonstd_fds) {
     minijail_->PreserveFd(jail, STDIN_FILENO, STDIN_FILENO);
     minijail_->PreserveFd(jail, STDOUT_FILENO, STDOUT_FILENO);
     minijail_->PreserveFd(jail, STDERR_FILENO, STDERR_FILENO);
