@@ -73,6 +73,10 @@ constexpr char kTempLabel[] = "tempLabel";
 constexpr char kFilePath[] = "foo";
 constexpr char kPasswordKey[] = "key";
 constexpr char kObfuscatedUsername[] = "foo@gmail.com";
+constexpr char kFakePasswordKey[] = "blabla";
+
+constexpr int kPasswordRounds = 5;
+constexpr int kTestTimestamp = 123;
 
 // Generated with this command:
 // cryptohome --action=mount_ex --user=fakeuser1@example.com
@@ -246,7 +250,6 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  static const int kTestTimestamp = 123;
   static const int kFscryptPolicyVersion = 2;
   cryptohome::Timestamp timestamp;
   timestamp.set_timestamp(kTestTimestamp);
@@ -624,7 +627,7 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
 
 TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   // Test to have Decrypt() fail because of CE_TPM_COMM_ERROR
-  // SETUP
+  // Setup
   auto mock_loader = std::make_unique<MockCryptohomeKeyLoader>();
   MockCryptohomeKeyLoader* mock_loader_ptr = mock_loader.get();
   std::vector<
@@ -641,7 +644,6 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  static const int kTestTimestamp = 123;
   cryptohome::Timestamp timestamp;
   timestamp.set_timestamp(kTestTimestamp);
   SecureBlob time_bytes(timestamp.ByteSizeLong());
@@ -663,7 +665,7 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   vk.CreateRandom();
   vk.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
 
-  // TEST
+  // Test
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
   ASSERT_TRUE(vk.Encrypt(key, obfuscated_username));
@@ -715,6 +717,30 @@ TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
   EXPECT_EQ(SecureBlobToHex(vk.GetFnek()), kHexLibScryptExampleFnek);
   EXPECT_EQ(SecureBlobToHex(vk.GetFnekSig()), kHexLibScryptExampleFnekSig);
   EXPECT_EQ(SecureBlobToHex(vk.GetFnekSalt()), kHexLibScryptExampleFnekSalt);
+}
+
+TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
+  // Test to ensure that for GetTpmNotBoundtoPcrState
+  // correctly copies the password_rounds field from
+  // the VaultKeyset to the auth_state parameter.
+  Crypto crypto(&platform_);
+
+  VaultKeyset keyset;
+  SerializedVaultKeyset serialized_vk;
+  serialized_vk.set_flags(SerializedVaultKeyset::TPM_WRAPPED);
+  serialized_vk.set_password_rounds(kPasswordRounds);
+
+  keyset.InitializeFromSerialized(serialized_vk);
+  keyset.Initialize(&platform_, &crypto);
+
+  keyset.SetTPMKey(brillo::SecureBlob(kFakePasswordKey));
+
+  AuthBlockState tpm_state;
+  EXPECT_TRUE(keyset.GetAuthBlockState(&tpm_state));
+  auto test_state =
+      absl::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
+  // test_state is of type TpmNotBoundToPcrAuthBlockState
+  ASSERT_EQ(keyset.GetPasswordRounds(), test_state->password_rounds.value());
 }
 
 class LeCredentialsManagerTest : public ::testing::Test {
@@ -854,6 +880,52 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
 
   const SerializedVaultKeyset& serialized = pin_vault_keyset_.ToSerialized();
   EXPECT_FALSE(serialized.key_data().policy().auth_locked());
+}
+
+TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
+  // Test to have LECredential fail Decrypt because CE_TPM_DEFEND_LOCK
+  // Setup
+  pin_vault_keyset_.CreateRandom();
+  pin_vault_keyset_.SetLowEntropyCredential(true);
+
+  cryptohome::Timestamp timestamp;
+  timestamp.set_timestamp(kTestTimestamp);
+  SecureBlob time_bytes(timestamp.ByteSizeLong());
+  google::protobuf::uint8* timestamp_buffer =
+      static_cast<google::protobuf::uint8*>(time_bytes.data());
+  timestamp.SerializeWithCachedSizesToArray(timestamp_buffer);
+
+  SecureBlob bytes;
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
+      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)))
+      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
+
+  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
+      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(kFilePath).AddExtension("timestamp"), _))
+      .WillOnce(WithArg<1>(CopyFromSecureBlob(&time_bytes)));
+
+  SecureBlob key(kPasswordKey);
+  std::string obfuscated_username(kObfuscatedUsername);
+  ASSERT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username));
+  ASSERT_TRUE(pin_vault_keyset_.Save(FilePath(kFilePath)));
+
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform_, &crypto_);
+  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
+
+  // Test
+  ASSERT_FALSE(new_keyset.GetAuthLocked());
+  // Have le_cred_manager inject a
+  // CryptoError::CE_TPM_DEFEND_LOCK error
+  EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
+      .WillOnce(Return(LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
+
+  CryptoError crypto_error;
+  ASSERT_FALSE(new_keyset.Decrypt(key, false, &crypto_error));
+  ASSERT_EQ(crypto_error, CryptoError::CE_TPM_DEFEND_LOCK);
+  ASSERT_TRUE(new_keyset.GetAuthLocked());
 }
 
 }  // namespace cryptohome
