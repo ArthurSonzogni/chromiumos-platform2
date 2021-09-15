@@ -35,6 +35,8 @@ BASE_TABLE = {
     'kakadu': 'moonball',
     'katsu': 'don',
     'homestar': 'star',
+    'mrbland': 'bland',
+    'wormdingler': 'eel',
 }
 
 BOARD_NAME = cros_config('/', 'name')
