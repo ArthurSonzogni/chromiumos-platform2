@@ -52,7 +52,6 @@ static_library("hpslib") {
   sources = [
     "hps_impl.cc",
     "hps_metrics.cc",
-    "utils.cc",
   ]
   pkg_deps = [
     "libchrome",
@@ -102,7 +101,9 @@ static_library("dev") {
     "dev.cc",
     "dev.h",
     "hps_reg.h",
+    "utils.cc",
   ]
+  pkg_deps = [ "libchrome" ]
 }
 
 if (use.test) {
