@@ -4,6 +4,7 @@
 
 #include "hermes/daemon.h"
 
+#include <cstdlib>
 #include <memory>
 #include <utility>
 
@@ -53,7 +54,7 @@ void Daemon::RegisterDBusObjectsAsync(
   auto cb = base::BindOnce([](int err) {
     if (err) {
       LOG(INFO) << "Could not find eSIM:" << err;
-      return;
+      exit(EXIT_SUCCESS);
     }
     LOG(INFO) << "eSIM init finished";
   });
