@@ -76,9 +76,7 @@ void ModemMbim::Initialize(EuiccManagerInterface* euicc_manager,
 
 void ModemMbim::Shutdown() {
   VLOG(2) << __func__;
-  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
-    g_signal_handler_disconnect(device_.get(), indication_id_);
-  device_.reset();
+  CloseDevice();
   channel_ = kInvalidChannel;
   pending_response_ = false;
   ready_state_ = MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED,
@@ -523,6 +521,11 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
   const guint8* out_response = NULL;
   std::vector<uint8_t> kGetEidDgiTag = {0xBF, 0x3E, 0x12, 0x5A, 0x10};
   response = mbim_device_command_finish(device, res, &error);
+
+  // b/199808449. Close the device since we no longer need it. Hermes gets stuck
+  // in an infinite loop if the modem is reset by modemfwd
+  modem_mbim->CloseDevice();
+
   if (response &&
       mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
                                        &error) &&
@@ -655,6 +658,12 @@ void ModemMbim::ClientIndicationCb(MbimDevice* device,
   return;
 }
 
+void ModemMbim::CloseDevice() {
+  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
+    g_signal_handler_disconnect(device_.get(), indication_id_);
+  device_.reset();
+}
+
 bool ModemMbim::State::Transition(ModemMbim::State::Value value) {
   bool valid_transition = true;
   switch (value) {
@@ -681,9 +690,7 @@ void ModemMbim::StoreAndSetActiveSlot(const uint32_t physical_slot,
   LOG(INFO) << __func__ << " physical_slot:" << physical_slot;
   // The modem may be reset, causing device_ to be invalid. Reopen to be
   // safe. Then acquire a channel.
-  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
-    g_signal_handler_disconnect(device_.get(), indication_id_);
-  device_.reset();
+  CloseDevice();
 
   auto reacquire_channel = base::BindOnce(
       &ModemMbim::ReacquireChannel, weak_factory_.GetWeakPtr(), physical_slot);

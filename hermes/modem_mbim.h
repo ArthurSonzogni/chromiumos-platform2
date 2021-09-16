@@ -98,6 +98,8 @@ class ModemMbim : public Modem<MbimCmd> {
                                  MbimMessage* notification,
                                  ModemMbim* modem_mbim);
 
+  void CloseDevice();
+
   ///////////////////
   // State Diagram //
   ///////////////////
