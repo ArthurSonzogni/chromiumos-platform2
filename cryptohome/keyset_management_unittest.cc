@@ -25,6 +25,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/le_credential_manager_impl.h"
@@ -43,12 +44,14 @@
 
 using ::testing::_;
 using ::testing::ContainerEq;
+using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::EndsWith;
 using ::testing::MatchesRegex;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::UnorderedElementsAre;
 
@@ -1422,6 +1425,47 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
   EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
   EXPECT_TRUE(le_vk->GetAuthLocked());
+}
+
+TEST_F(KeysetManagementTest, AddKeysetResetSeedGeneration) {
+  // This existing keyset is used as a basis to add a new credential for a user.
+  // Setup
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+  vk.SetKeyData(DefaultKeyData());
+  users_[0].credentials.set_key_data(DefaultKeyData());
+
+  // Explicitly set reset_seed to be empty.
+  vk.reset_seed_.clear();
+  ASSERT_TRUE(vk.Encrypt(users_[0].passkey, users_[0].obfuscated));
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+
+  // Reset seed should be empty for the VaultKeyset in keyset_management_.
+  // There is no real code flow in cryptohome that should produce a keyset like
+  // this - i.e a high entropy, password/labeled credential but with no
+  // reset_seed. AddKeyset generates a new reset_seed and populates the field
+  // if it's empty for any reason.
+  std::unique_ptr<VaultKeyset> init_vk =
+      keyset_management_->GetValidKeyset(users_[0].credentials, nullptr);
+  EXPECT_FALSE(init_vk->HasWrappedResetSeed());
+
+  // Create an Credential
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+
+  // Add Credentials to keyset_mangement_
+  int index = -1;
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
+                                          nullptr, true, &index));
+  EXPECT_EQ(index, 1);
+
+  // Test
+  std::unique_ptr<VaultKeyset> add_vk =
+      keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, index);
+  EXPECT_TRUE(add_vk->HasWrappedResetSeed());
 }
 
 }  // namespace cryptohome
