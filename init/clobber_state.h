@@ -39,6 +39,9 @@ class ClobberState {
     std::string reason = "";
     // Setup the stateful partition using a thin logical volume.
     bool setup_lvm = false;
+    // Run in the context of an RMA flow. Additionally save the RMA
+    // state file.
+    bool rma_wipe = false;
   };
 
   // The index of each partition within the gpt partition table.

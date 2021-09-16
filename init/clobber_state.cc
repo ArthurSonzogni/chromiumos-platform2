@@ -53,6 +53,7 @@ constexpr char kStatefulPath[] = "/mnt/stateful_partition";
 constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
 constexpr char kLastPowerWashTimePath[] =
     "unencrypted/preserve/last_powerwash_time";
+constexpr char kRmaStateFilePath[] = "unencrypted/rma-data/state";
 constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
@@ -307,6 +308,8 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.reason = arg;
     } else if (arg == "setup_lvm") {
       args.setup_lvm = true;
+    } else if (arg == "rma") {
+      args.rma_wipe = true;
     }
   }
 
@@ -928,6 +931,11 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     }
   }
 
+  // Preserve RMA state file in RMA mode.
+  if (args_.rma_wipe) {
+    stateful_paths.push_back(kRmaStateFilePath);
+  }
+
   // Test images in the lab enable certain extra behaviors if the
   // .labmachine flag file is present.  Those behaviors include some
   // important recovery behaviors (cf. the recover_duts upstart job).
@@ -1138,6 +1146,7 @@ int ClobberState::Run() {
   LOG(INFO) << "Safe wipe: " << args_.safe_wipe;
   LOG(INFO) << "Rollback wipe: " << args_.rollback_wipe;
   LOG(INFO) << "Reason: " << args_.reason;
+  LOG(INFO) << "RMA wipe: " << args_.rma_wipe;
 
   // Most effective means of destroying user data is run at the start: Throwing
   // away the key to encrypted stateful by requesting the TPM to be cleared at
@@ -1270,6 +1279,8 @@ int ClobberState::Run() {
     log_preserve.AddArg("rollback");
   if (!args_.reason.empty())
     log_preserve.AddArg(args_.reason);
+  if (args_.rma_wipe)
+    log_preserve.AddArg("rma");
   log_preserve.RedirectOutput(temp_file.value());
   log_preserve.Run();
   AppendFileToLog(temp_file);
