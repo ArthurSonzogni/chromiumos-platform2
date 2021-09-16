@@ -17,16 +17,16 @@
 #include "attestation/common/tpm_utility_v1.h"
 #endif
 
+#include "attestation/common/tpm_utility_stub.h"
+
 namespace attestation {
 
 TpmUtility* TpmUtilityFactory::New() {
   TPM_SELECT_BEGIN;
   TPM1_SECTION({ return new TpmUtilityV1(); });
   TPM2_SECTION({ return new TpmUtilityV2(); });
-  OTHER_TPM_SECTION();
+  OTHER_TPM_SECTION({ return new TpmUtilityStub(); });
   TPM_SELECT_END;
-  LOG(WARNING) << "Using unknown TPM";
-  return nullptr;
 }
 
 }  // namespace attestation
