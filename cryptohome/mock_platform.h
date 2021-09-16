@@ -103,12 +103,30 @@ class MockPlatform : public Platform {
               EnumerateDirectoryEntries,
               (const base::FilePath&, bool, std::vector<base::FilePath>*),
               (override));
+  MOCK_METHOD(bool, TouchFileDurable, (const base::FilePath& path), (override));
   MOCK_METHOD(bool, DeleteFile, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DeletePathRecursively, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DeleteFileDurable, (const base::FilePath&), (override));
   MOCK_METHOD(bool, FileExists, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));
   MOCK_METHOD(bool, CreateDirectory, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, DataSyncFile, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, SyncFile, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, SyncDirectory, (const base::FilePath&), (override));
+  MOCK_METHOD(void, Sync, (), (override));
+  MOCK_METHOD(bool,
+              SetFileTimes,
+              (const base::FilePath&,
+               const struct timespec&,
+               const struct timespec&,
+               bool),
+              (override));
+  MOCK_METHOD(bool, SendFile, (int, int, off_t, size_t), (override));
+  MOCK_METHOD(void,
+              InitializeFile,
+              (base::File*, const base::FilePath&, uint32_t),
+              (override));
+  MOCK_METHOD(bool, LockFile, (int), (override));
   MOCK_METHOD(bool,
               ReadFile,
               (const base::FilePath&, brillo::Blob*),
@@ -167,6 +185,10 @@ class MockPlatform : public Platform {
               (override));  // NOLINT(readability/function)
   MOCK_METHOD(bool, GetFileSize, (const base::FilePath&, int64_t*), (override));
   MOCK_METHOD(bool,
+              Stat,
+              (const base::FilePath&, base::stat_wrapper_t*),
+              (override));
+  MOCK_METHOD(bool,
               HasExtendedFileAttribute,
               (const base::FilePath&, const std::string&),
               (override));
@@ -191,6 +213,18 @@ class MockPlatform : public Platform {
               (const base::FilePath&, const std::string&),
               (override));
   MOCK_METHOD(bool,
+              GetExtFileAttributes,
+              (const base::FilePath&, int*),
+              (override));
+  MOCK_METHOD(bool,
+              SetExtFileAttributes,
+              (const base::FilePath&, int),
+              (override));
+  MOCK_METHOD(bool,
+              HasNoDumpFileAttribute,
+              (const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
               GetPermissions,
               (const base::FilePath&, mode_t*),
               (const, override));
@@ -206,6 +240,12 @@ class MockPlatform : public Platform {
               SetOwnership,
               (const base::FilePath&, uid_t, gid_t, bool),
               (const, override));
+  MOCK_METHOD(int64_t,
+              AmountOfFreeDiskSpace,
+              (const base::FilePath&),
+              (const, override));
+
+  // Calls which do not have a corresponding fake in FakePlatform.
 
   MOCK_METHOD(bool,
               Mount,
@@ -249,10 +289,6 @@ class MockPlatform : public Platform {
               (const base::FilePath&, gid_t group_id, mode_t group_mode),
               (const, override));
   MOCK_METHOD(int64_t,
-              AmountOfFreeDiskSpace,
-              (const base::FilePath&),
-              (const, override));
-  MOCK_METHOD(int64_t,
               GetQuotaCurrentSpaceForUid,
               (const base::FilePath&, uid_t),
               (const, override));
@@ -277,30 +313,8 @@ class MockPlatform : public Platform {
               ComputeDirectoryDiskUsage,
               (const base::FilePath&),
               (override));
-  MOCK_METHOD(void,
-              InitializeFile,
-              (base::File*, const base::FilePath&, uint32_t),
-              (override));
-  MOCK_METHOD(bool, LockFile, (int), (override));
   MOCK_METHOD(FILE*, CreateAndOpenTemporaryFile, (base::FilePath*), (override));
-  MOCK_METHOD(bool,
-              Stat,
-              (const base::FilePath&, base::stat_wrapper_t*),
-              (override));
-  MOCK_METHOD(bool,
-              GetExtFileAttributes,
-              (const base::FilePath&, int*),
-              (override));
-  MOCK_METHOD(bool,
-              SetExtFileAttributes,
-              (const base::FilePath&, int),
-              (override));
-  MOCK_METHOD(bool,
-              HasNoDumpFileAttribute,
-              (const base::FilePath&),
-              (override));
   MOCK_METHOD(bool, WriteOpenFile, (FILE*, const brillo::Blob&), (override));
-  MOCK_METHOD(bool, TouchFileDurable, (const base::FilePath& path), (override));
   MOCK_METHOD(base::Time, GetCurrentTime, (), (const, override));
   MOCK_METHOD(bool,
               StatVFS,
@@ -343,10 +357,6 @@ class MockPlatform : public Platform {
                const brillo::SecureBlob&),
               (override));
   MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
-  MOCK_METHOD(bool, DataSyncFile, (const base::FilePath&), (override));
-  MOCK_METHOD(bool, SyncFile, (const base::FilePath&), (override));
-  MOCK_METHOD(bool, SyncDirectory, (const base::FilePath&), (override));
-  MOCK_METHOD(void, Sync, (), (override));
   MOCK_METHOD(std::string, GetHardwareID, (), (override));
   MOCK_METHOD(bool,
               CreateSymbolicLink,
@@ -356,14 +366,6 @@ class MockPlatform : public Platform {
               ReadLink,
               (const base::FilePath&, base::FilePath*),
               (override));
-  MOCK_METHOD(bool,
-              SetFileTimes,
-              (const base::FilePath&,
-               const struct timespec&,
-               const struct timespec&,
-               bool),
-              (override));
-  MOCK_METHOD(bool, SendFile, (int, int, off_t, size_t), (override));
   MOCK_METHOD(bool,
               CreateSparseFile,
               (const base::FilePath&, int64_t),

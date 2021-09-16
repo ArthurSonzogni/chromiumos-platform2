@@ -65,6 +65,7 @@ class FakePlatform final : public Platform {
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
   bool Move(const base::FilePath& from, const base::FilePath& to) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
+  bool TouchFileDurable(const base::FilePath& path) override;
   bool DeleteFile(const base::FilePath& path) override;
   bool DeletePathRecursively(const base::FilePath& path) override;
   bool DeleteFileDurable(const base::FilePath& path) override;
@@ -72,6 +73,22 @@ class FakePlatform final : public Platform {
   bool DirectoryExists(const base::FilePath& path) override;
   bool CreateDirectory(const base::FilePath& path) override;
   bool CreateSparseFile(const base::FilePath& path, int64_t size) override;
+
+  bool DataSyncFile(const base::FilePath& path) override;
+  bool SyncFile(const base::FilePath& path) override;
+  bool SyncDirectory(const base::FilePath& path) override;
+  void Sync() override;
+
+  bool SetFileTimes(const base::FilePath& path,
+                    const struct timespec& atime,
+                    const struct timespec& mtime,
+                    bool follow_links) override;
+  bool SendFile(int fd_to, int fd_from, off_t offset, size_t count) override;
+
+  void InitializeFile(base::File* file,
+                      const base::FilePath& path,
+                      uint32_t flags) override;
+  bool LockFile(int fd) override;
 
   bool ReadFile(const base::FilePath& path, brillo::Blob* blob) override;
   bool ReadFileToString(const base::FilePath& path, std::string* str) override;
@@ -107,6 +124,8 @@ class FakePlatform final : public Platform {
 
   bool GetFileSize(const base::FilePath& path, int64_t* size) override;
 
+  bool Stat(const base::FilePath& path, base::stat_wrapper_t* buf) override;
+
   bool HasExtendedFileAttribute(const base::FilePath& path,
                                 const std::string& name) override;
   bool ListExtendedFileAttributes(const base::FilePath& path,
@@ -124,6 +143,9 @@ class FakePlatform final : public Platform {
                                 size_t size) override;
   bool RemoveExtendedFileAttribute(const base::FilePath& path,
                                    const std::string& name) override;
+  bool GetExtFileAttributes(const base::FilePath& path, int* flags) override;
+  bool SetExtFileAttributes(const base::FilePath& path, int flags) override;
+  bool HasNoDumpFileAttribute(const base::FilePath& path) override;
 
   // TODO(chromium:1141301, dlunev): consider running under root to make the
   // following operate on FS, not on on fake state.
@@ -137,6 +159,8 @@ class FakePlatform final : public Platform {
                     bool follow_links) const override;
   bool GetPermissions(const base::FilePath& path, mode_t* mode) const override;
   bool SetPermissions(const base::FilePath& path, mode_t mode) const override;
+
+  int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
 
   // Test API
 

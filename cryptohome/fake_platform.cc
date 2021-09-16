@@ -178,6 +178,10 @@ bool FakePlatform::EnumerateDirectoryEntries(
                                                   ent_list);
 }
 
+bool FakePlatform::TouchFileDurable(const base::FilePath& path) {
+  return real_platform_.TouchFileDurable(TestFilePath(path));
+}
+
 bool FakePlatform::DeleteFile(const base::FilePath& path) {
   RemoveFakeEntries(path);
   return real_platform_.DeleteFile(TestFilePath(path));
@@ -207,6 +211,47 @@ bool FakePlatform::CreateDirectory(const base::FilePath& path) {
 
 bool FakePlatform::CreateSparseFile(const base::FilePath& path, int64_t size) {
   return real_platform_.CreateSparseFile(TestFilePath(path), size);
+}
+
+bool FakePlatform::DataSyncFile(const base::FilePath& path) {
+  return real_platform_.DataSyncFile(TestFilePath(path));
+}
+
+bool FakePlatform::SyncFile(const base::FilePath& path) {
+  return real_platform_.SyncFile(TestFilePath(path));
+}
+
+bool FakePlatform::SyncDirectory(const base::FilePath& path) {
+  return real_platform_.SyncDirectory(TestFilePath(path));
+}
+
+void FakePlatform::Sync() {
+  real_platform_.Sync();
+}
+
+bool FakePlatform::SetFileTimes(const base::FilePath& path,
+                                const struct timespec& atime,
+                                const struct timespec& mtime,
+                                bool follow_links) {
+  return real_platform_.SetFileTimes(TestFilePath(path), atime, mtime,
+                                     follow_links);
+}
+
+bool FakePlatform::SendFile(int fd_to,
+                            int fd_from,
+                            off_t offset,
+                            size_t count) {
+  return real_platform_.SendFile(fd_to, fd_from, offset, count);
+}
+
+void FakePlatform::InitializeFile(base::File* file,
+                                  const base::FilePath& path,
+                                  uint32_t flags) {
+  real_platform_.InitializeFile(file, TestFilePath(path), flags);
+}
+
+bool FakePlatform::LockFile(int fd) {
+  return real_platform_.LockFile(fd);
 }
 
 bool FakePlatform::ReadFile(const base::FilePath& path, brillo::Blob* blob) {
@@ -296,17 +341,23 @@ bool FakePlatform::GetFileSize(const base::FilePath& path, int64_t* size) {
   return real_platform_.GetFileSize(TestFilePath(path), size);
 }
 
+bool FakePlatform::Stat(const base::FilePath& path, base::stat_wrapper_t* buf) {
+  return real_platform_.Stat(TestFilePath(path), buf);
+}
+
 bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name) {
   if (!FileExists(path)) {
     return false;
   }
   const auto it = xattrs_.find(path);
-  if (it == xattrs_.end()) {
+  if (it == xattrs_.end() || !it->second.Exists(name)) {
+    // Client code checks the error code, so set it.
+    errno = ENODATA;
     return false;
   }
 
-  return it->second.Exists(name);
+  return true;
 }
 
 bool FakePlatform::ListExtendedFileAttributes(
@@ -316,7 +367,8 @@ bool FakePlatform::ListExtendedFileAttributes(
   }
   const auto it = xattrs_.find(path);
   if (it == xattrs_.end()) {
-    return false;
+    attr_list->clear();
+    return true;
   }
 
   it->second.List(attr_list);
@@ -330,7 +382,9 @@ bool FakePlatform::GetExtendedFileAttributeAsString(const base::FilePath& path,
     return false;
   }
   const auto it = xattrs_.find(path);
-  if (it == xattrs_.end()) {
+  if (it == xattrs_.end() || !it->second.Exists(name)) {
+    // Client code checks the error code, so set it.
+    errno = ENODATA;
     return false;
   }
 
@@ -345,7 +399,9 @@ bool FakePlatform::GetExtendedFileAttribute(const base::FilePath& path,
     return false;
   }
   const auto it = xattrs_.find(path);
-  if (it == xattrs_.end()) {
+  if (it == xattrs_.end() || !it->second.Exists(name)) {
+    // Client code checks the error code, so set it.
+    errno = ENODATA;
     return false;
   }
 
@@ -379,6 +435,19 @@ bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
 
   it->second.Remove(name);
   return true;
+}
+
+bool FakePlatform::GetExtFileAttributes(const base::FilePath& path,
+                                        int* flags) {
+  return real_platform_.GetExtFileAttributes(TestFilePath(path), flags);
+}
+
+bool FakePlatform::SetExtFileAttributes(const base::FilePath& path, int flags) {
+  return real_platform_.SetExtFileAttributes(TestFilePath(path), flags);
+}
+
+bool FakePlatform::HasNoDumpFileAttribute(const base::FilePath& path) {
+  return real_platform_.HasNoDumpFileAttribute(TestFilePath(path));
 }
 
 bool FakePlatform::GetOwnership(const base::FilePath& path,
@@ -422,9 +491,9 @@ bool FakePlatform::SetPermissions(const base::FilePath& path,
   return true;
 }
 
-bool FakePlatform::FakePlatform::GetUserId(const std::string& user,
-                                           uid_t* user_id,
-                                           gid_t* group_id) const {
+bool FakePlatform::GetUserId(const std::string& user,
+                             uid_t* user_id,
+                             gid_t* group_id) const {
   CHECK(user_id);
   CHECK(group_id);
 
@@ -448,6 +517,10 @@ bool FakePlatform::GetGroupId(const std::string& group, gid_t* group_id) const {
 
   *group_id = gids_.at(group);
   return true;
+}
+
+int64_t FakePlatform::AmountOfFreeDiskSpace(const base::FilePath& path) const {
+  return real_platform_.AmountOfFreeDiskSpace(TestFilePath(path));
 }
 
 // Test API

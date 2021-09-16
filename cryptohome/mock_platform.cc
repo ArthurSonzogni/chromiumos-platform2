@@ -27,6 +27,9 @@ MockPlatform::MockPlatform()
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Move));
   ON_CALL(*this, Copy(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Copy));
+  ON_CALL(*this, TouchFileDurable(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::TouchFileDurable));
   ON_CALL(*this, DeleteFile(_))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::DeleteFile));
   ON_CALL(*this, DeletePathRecursively(_))
@@ -52,6 +55,27 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, CreateSparseFile(_, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::CreateSparseFile));
+
+  ON_CALL(*this, DataSyncFile(_))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::DataSyncFile));
+  ON_CALL(*this, SyncFile(_))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SyncFile));
+  ON_CALL(*this, SyncDirectory(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::SyncDirectory));
+  ON_CALL(*this, Sync())
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Sync));
+
+  ON_CALL(*this, SetFileTimes(_, _, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SetFileTimes));
+  ON_CALL(*this, SendFile(_, _, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SendFile));
+
+  ON_CALL(*this, InitializeFile(_, _, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::InitializeFile));
+  ON_CALL(*this, LockFile(_))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::LockFile));
 
   ON_CALL(*this, ReadFile(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::ReadFile));
@@ -96,6 +120,8 @@ MockPlatform::MockPlatform()
 
   ON_CALL(*this, GetFileSize(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetFileSize));
+  ON_CALL(*this, Stat(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Stat));
 
   ON_CALL(*this, HasExtendedFileAttribute(_, _))
       .WillByDefault(Invoke(fake_platform_.get(),
@@ -115,6 +141,15 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, RemoveExtendedFileAttribute(_, _))
       .WillByDefault(Invoke(fake_platform_.get(),
                             &FakePlatform::RemoveExtendedFileAttribute));
+  ON_CALL(*this, GetExtFileAttributes(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetExtFileAttributes));
+  ON_CALL(*this, SetExtFileAttributes(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::SetExtFileAttributes));
+  ON_CALL(*this, HasNoDumpFileAttribute(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::HasNoDumpFileAttribute));
 
   ON_CALL(*this, GetOwnership(_, _, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetOwnership));
@@ -126,6 +161,10 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, SetPermissions(_, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::SetPermissions));
+
+  ON_CALL(*this, AmountOfFreeDiskSpace(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::AmountOfFreeDiskSpace));
 
   ON_CALL(*this, SetGroupAccessible(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetCurrentTime())

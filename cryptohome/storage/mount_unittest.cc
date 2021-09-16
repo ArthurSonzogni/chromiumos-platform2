@@ -897,6 +897,7 @@ TEST_P(MountTest, MountPristineCryptohome) {
                                    StartsWith(user->root_mount_path.value()),
                                    StartsWith(user->new_user_path.value())))))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
       .WillRepeatedly(Return(true));
@@ -1031,6 +1032,7 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
                                    StartsWith(user->root_mount_path.value()),
                                    StartsWith(user->new_user_path.value())))))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
       .WillRepeatedly(Return(true));
@@ -1421,6 +1423,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
                                    StartsWith(user->root_mount_path.value()),
                                    StartsWith(user->new_user_path.value())))))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
       .WillRepeatedly(Return(true));
@@ -1474,6 +1477,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   homedirs_->set_enterprise_owned(true);
   TestUser* user = &helper_.users[0];
 
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
 
   ExpectEphemeralCryptohomeMount(*user);
@@ -1508,6 +1512,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   ExpectEphemeralCryptohomeMount(*user);
 
   ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
@@ -1724,6 +1729,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
 
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
 
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   ExpectEphemeralCryptohomeMount(*user);
 
   ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
@@ -1773,6 +1779,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountIsEphemeralTest) {
   std::vector<FilePath> owner_only;
   owner_only.push_back(owner->base_path);
 
+  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(owner_only), Return(true)));
 
