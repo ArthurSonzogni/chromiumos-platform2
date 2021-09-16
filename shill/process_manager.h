@@ -5,8 +5,11 @@
 #ifndef SHILL_PROCESS_MANAGER_H_
 #define SHILL_PROCESS_MANAGER_H_
 
+#include <sys/types.h>  // for rlim_t
+
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -49,6 +52,9 @@ class ProcessManager {
     // Indicates that non-standard file descriptors should be closed so they
     // cannot be inherited by the child process.
     bool close_nonstd_fds;
+    // If set, the soft limit of the maximum size of the process's virtual
+    // memory (RLIMIT_AS) will be set to this value. See getrlimit(2).
+    std::optional<rlim_t> rlimit_as_soft;
   };
 
   virtual ~ProcessManager();

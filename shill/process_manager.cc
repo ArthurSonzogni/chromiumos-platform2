@@ -173,6 +173,11 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     minijail_->CloseOpenFds(jail);
   }
 
+  if (minijail_options.rlimit_as_soft.has_value()) {
+    minijail_rlimit(jail, RLIMIT_AS, minijail_options.rlimit_as_soft.value(),
+                    RLIM_INFINITY);
+  }
+
   pid_t pid;
   if (!minijail_->RunEnvPipesAndDestroy(jail, args, env, &pid, std_fds.stdin_fd,
                                         std_fds.stdout_fd, std_fds.stderr_fd)) {

@@ -396,8 +396,6 @@ void IPsecConnection::StartCharon() {
 
   // TODO(b/165170125): Check the behavior when shill crashes (if charon is
   // still running).
-  // TODO(b/165170125): May need to increase RLIMIT_AS to run charon. See
-  // https://crrev.com/c/1757203.
   std::vector<std::string> args = {};
   std::map<std::string, std::string> env = {
       {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
@@ -406,9 +404,14 @@ void IPsecConnection::StartCharon() {
   constexpr uint64_t kCapMask =
       CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
       CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
+  auto minijail_options = VPNUtil::BuildMinijailOptions(kCapMask);
+  // Charon can have a quite large VmSize/VmPeak despite not using much resident
+  // memory. This can be partially reduced by lowering charon.threads, but in
+  // any case, Charon cannot rely on inheriting shill's RLIMIT_AS. See
+  // crbug/961519.
+  minijail_options.rlimit_as_soft = 750'000'000;  // 750MB
   charon_pid_ = process_manager_->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kCharonPath), args, env,
-      VPNUtil::BuildMinijailOptions(kCapMask),
+      FROM_HERE, base::FilePath(kCharonPath), args, env, minijail_options,
       base::BindRepeating(&IPsecConnection::OnCharonExitedUnexpectedly,
                           weak_factory_.GetWeakPtr()));
 
