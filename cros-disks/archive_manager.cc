@@ -65,21 +65,26 @@ bool ArchiveManager::Initialize() {
   // TODO(nigeltao): refactor the ArchiveMounter C++ class (and superclasses)
   // to break the "1 instance = 1 file extension" assumption. That would let us
   // add just 1 element to mounters_, not 1 per file extension.
+  //
+  // The variable name (and, later, the policy filename) is called
+  // "archivemount_etc" because, historically, we executed the archivemount
+  // program, not the fuse-archive program. More recently, we use fuse-archive
+  // which is a drop-in replacement, featurewise, but is faster.
   const char* const archivemount_extensions[] = {
       // The empty // comments make clang-format place one entry per line.
-      "7z",       //
-      "bz2",      //
-      "crx",      //
-      "gz",       //
-      "iso",      //
-      "tar",      //
-      "tbz",      //
-      "tbz2",     //
-      "tgz",      //
+      "7z",    //
+      "bz2",   //
+      "crx",   //
+      "gz",    //
+      "iso",   //
+      "tar",   //
+      "tbz",   //
+      "tbz2",  //
+      "tgz",   //
   };
   for (const char* const ext : archivemount_extensions) {
     SandboxedExecutable executable = {
-        base::FilePath("/usr/bin/archivemount"),
+        base::FilePath("/usr/bin/fuse-archive"),
         base::FilePath("/usr/share/policy/archivemount-seccomp.policy")};
 
     auto sandbox_factory =

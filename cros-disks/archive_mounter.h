@@ -80,6 +80,10 @@ class ArchiveMounter : public FUSEMounter {
   // (https://github.com/cybernoid/archivemount). This C++ class is also called
   // "ArchiveMounter", but that name uses the "archive mounter" words in their
   // general technical sense.
+  //
+  // Historically, we executed the archivemount program, not the fuse-archive
+  // program. More recently, we use fuse-archive which is a drop-in
+  // replacement, featurewise, but is faster.
   const bool format_raw_;
 
   friend class ArchiveMounterTest;
