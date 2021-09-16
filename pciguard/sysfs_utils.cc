@@ -27,6 +27,7 @@ const char* kAllowlist[] = {
     "nvme",      // PCI Express NVME host controller driver.
     "ahci",      // AHCI driver
     "igb",       // Intel Gigabit Ethernet driver
+    "igc",       // Intel I225-LM/I225-V Ethernet controller driver
 };
 
 }  // namespace
