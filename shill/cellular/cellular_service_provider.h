@@ -62,7 +62,7 @@ class CellularServiceProvider : public ProviderInterface {
   void RemoveServices();
 
   // Returns a service matching |iccid_| if available.
-  CellularServiceRefPtr FindService(const std::string& imsi);
+  CellularServiceRefPtr FindService(const std::string& iccid) const;
 
   // Called when the Service is Unloaded from the Profile. If the Service
   // ICCID is not associated with any SIM, removes the service and returns true.

@@ -2620,8 +2620,10 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     return nullptr;
   }
 
-  ServiceRefPtr service;
-  if (args.Contains<std::string>(kGuidProperty)) {
+  ServiceRefPtr service = nullptr;
+  // Non-Cellular Services are primarily identified by GUID. Cellular Services
+  // are always identified by ICCID.
+  if (type != kTypeCellular && args.Contains<std::string>(kGuidProperty)) {
     SLOG(this, 2) << __func__ << ": searching by GUID";
     service = GetServiceWithGUID(args.Get<std::string>(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {

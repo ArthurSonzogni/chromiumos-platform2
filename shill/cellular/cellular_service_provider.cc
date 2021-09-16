@@ -126,24 +126,35 @@ ServiceRefPtr CellularServiceProvider::FindSimilarService(
   CHECK_EQ(kTypeCellular, args.Lookup<std::string>(kTypeProperty, ""))
       << "Service type must be Cellular!";
   // This is called from Manager::ConfigureServiceForProfile when the Manager
-  // dbus api call is made (e.g. from Chrome) for a new service (i.e without
-  // an existing GUID). For Cellular, this should never happen.
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Only existing Cellular services can be configured.");
-  return nullptr;
+  // dbus api call is made (e.g. from Chrome). When a Cellular Service is
+  // configured (e.g. from policy), find any existing Service matching |iccid|
+  // and update that configuration.
+  std::string iccid = args.Lookup<std::string>(kIccidProperty,
+                                               /*default_value=*/"");
+  return FindService(iccid);
 }
 
 ServiceRefPtr CellularServiceProvider::GetService(const KeyValueStore& args,
                                                   Error* error) {
   SLOG(this, 2) << __func__;
   // This is called from Manager::GetService or Manager::ConfigureService when
-  // the corresponding Manager dbus api call is made (e.g. from Chrome) for a
-  // new service (i.e without an existing GUID). For Cellular, this should never
-  // happen.
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "GetService must be called with an existing Cellular Service GUID.");
-  return nullptr;
+  // the corresponding Manager dbus api call is made (e.g. from Chrome). When a
+  // Cellular Service is configured (e.g. from policy), find any existing
+  // Service matching |iccid| and update that configuration. If there's no
+  // matching Service, a new Cellular Service is created with the given ICCID
+  // and EID from |args|.
+  std::string iccid = args.Lookup<std::string>(kIccidProperty,
+                                               /*default_value=*/"");
+  CellularServiceRefPtr service = FindService(iccid);
+  if (service)
+    return service;
+  std::string eid = args.Lookup<std::string>(kEidProperty,
+                                             /*default_value=*/"");
+  LOG(INFO) << "Creating new cellular service with iccid: " << iccid
+            << ", eid: " << eid;
+  service = new CellularService(manager_, "", iccid, eid);
+  AddService(service);
+  return service;
 }
 
 ServiceRefPtr CellularServiceProvider::CreateTemporaryService(
@@ -291,7 +302,7 @@ void CellularServiceProvider::RemoveServices() {
 }
 
 CellularServiceRefPtr CellularServiceProvider::FindService(
-    const std::string& iccid) {
+    const std::string& iccid) const {
   const auto iter = std::find_if(
       services_.begin(), services_.end(),
       [iccid](const auto& service) { return service->iccid() == iccid; });

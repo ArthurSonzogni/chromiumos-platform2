@@ -87,9 +87,14 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
   }
   T Get(Error* /*error*/) override { return *property_; }
-  bool Set(const T& /*value*/, Error* error) override {
-    // TODO(quiche): check if this is the right error.
-    // (maybe Error::kPermissionDenied instead?)
+  bool Set(const T& value, Error* error) override {
+    if (*property_ == value) {
+      // Exit early for no-op Set calls to avoid populating |error| when the
+      // property is const. This allows identifying properties to be included
+      // along with configuration properties.
+      return true;
+    }
+
     error->Populate(Error::kInvalidArguments, "Property is read-only");
     return false;
   }
