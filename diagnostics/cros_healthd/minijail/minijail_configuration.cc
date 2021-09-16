@@ -127,6 +127,10 @@ void ConfigureAndEnterMinijail() {
 
   BindMountIfPathExists(
       jail.get(),
+      base::FilePath("/sys/dev"));  // Files related to the device information.
+
+  BindMountIfPathExists(
+      jail.get(),
       base::FilePath("/sys/class/tpm/tpm0/did_vid"));  // TPM did_vid file.
 
   // Create a new tmpfs filesystem for /var and mount necessary files.

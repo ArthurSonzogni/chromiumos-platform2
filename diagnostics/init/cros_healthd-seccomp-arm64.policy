@@ -40,7 +40,22 @@ getresuid: 1
 getsockname: 1
 gettid: 1
 getuid: 1
-ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || arg1 == SIOCGIFFLAGS || arg1 == TCGETS
+# ioctl values:
+#   0x40048001 == _IOC(_IOC_WRITE, 0x80, 0x1, 0x4)
+#   0x40108003 == _IOC(_IOC_WRITE, 0x80, 0x3, 0x10)
+#   0x40108014 == _IOC(_IOC_WRITE, 0x80, 0x14, 0x10)
+#   0x40208018 == _IOC(_IOC_WRITE, 0x80, 0x18, 0x20)
+#   0x80048011 == _IOC(_IOC_READ, 0x80, 0x11, 0x4)
+#   0xc0048000 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0, 0x4)
+#   0xc0208005 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x5, 0x20)
+#
+#   0x40088026 == _IOC(_IOC_WRITE, 0x80, 0x26, 0x8)
+#   0x4018800e == _IOC(_IOC_WRITE, 0x80, 0xe, 0x18)
+#   0x4020800f == _IOC(_IOC_WRITE, 0x80, 0xf, 0x20)
+ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
+       arg1 == SIOCGIFFLAGS || arg1 == TCGETS || arg1 == 0x40048001 || \
+       arg1 == 0x40108003 || arg1 == 0x40108014 || arg1 == 0x40208018 || \
+       arg1 == 0x80048011 || arg1 == 0xc0048000 || arg1 == 0xc0208005
 kill: 1
 lseek: 1
 madvise: 1
@@ -56,7 +71,8 @@ openat: 1
 pipe2: 1
 pivot_root: 1
 ppoll: 1
-prctl: arg0 == PR_SET_SECCOMP || arg0 == PR_SET_NO_NEW_PRIVS
+prctl: arg0 == PR_SET_SECCOMP || arg0 == PR_SET_NO_NEW_PRIVS || \
+       arg0 == PR_SET_NAME
 pread64: 1
 prlimit64: 1
 read: 1

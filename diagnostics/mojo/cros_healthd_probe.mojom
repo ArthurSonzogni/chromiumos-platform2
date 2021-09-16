@@ -898,6 +898,21 @@ union GraphicsResult {
 
 // Graphics information.
 struct GraphicsInfo {
+  // OpenGL | ES information.
+  GLESInfo gles_info;
+};
+
+struct GLESInfo {
+  // GL version.
+  string version;
+  // GL shading version.
+  string shading_version;
+  // GL vendor.
+  string vendor;
+  // GL renderer.
+  string renderer;
+  // GL extensions.
+  array<string> extensions;
 };
 
 // A collection of all the device's telemetry information that cros_healthd is

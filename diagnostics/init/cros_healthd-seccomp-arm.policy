@@ -22,7 +22,20 @@ futex_time64: 1
 send: 1
 kill: 1
 gettimeofday: 1
-ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET
+# ioctl values:
+#   0xc0048000 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0, 0x4)
+#   0x40048001 == _IOC(_IOC_WRITE, 0x80, 0x1, 0x4)
+#   0x40108003 == _IOC(_IOC_WRITE, 0x80, 0x3, 0x10)
+#   0x40088026 == _IOC(_IOC_WRITE, 0x80, 0x26, 0x8)
+#   0x4018800e == _IOC(_IOC_WRITE, 0x80, 0xe, 0x18)
+#   0x80048011 == _IOC(_IOC_READ, 0x80, 0x11, 0x4)
+#   0xc0208005 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x5, 0x20)
+#   0x4020800f == _IOC(_IOC_WRITE, 0x80, 0xf, 0x20)
+#   0x40208018 == _IOC(_IOC_WRITE, 0x80, 0x18, 0x20)
+ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
+       arg1 == 0xc0048000 || arg1 == 0x40048001 || arg1 == 0x40108003 || \
+       arg1 == 0x40088026 || arg1 == 0x4018800e || arg1 == 0x80048011 || \
+       arg1 == 0xc0208005 || arg1 == 0x4020800f || arg1 == 0x40208018
 epoll_ctl: 1
 write: 1
 rt_sigaction: 1
@@ -67,7 +80,7 @@ geteuid32: 1
 getrandom: 1
 dup2: 1
 prlimit64: 1
-prctl: arg0 == PR_SET_NO_NEW_PRIVS
+prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
 sysinfo: 1
 arm_fadvise64_64: 1
 unlink: 1
