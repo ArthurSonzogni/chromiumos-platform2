@@ -112,3 +112,5 @@ dup: 1
 flock: 1
 fstatfs64: 1
 fstatfs: 1
+nanosleep: 1
+clock_nanosleep: 1
