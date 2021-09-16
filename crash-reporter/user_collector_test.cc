@@ -303,6 +303,42 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   }
 }
 
+TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
+  // Note the _ which is different from the - in the original |force_exec|
+  // passed to HandleCrash. This is due to the CrashCollector::Sanitize call in
+  // FormatDumpBasename.
+  const std::string crash_prefix = crash_dir_.Append("chromeos_wm").value();
+  int expected_mock_calls = 1;
+  if (VmSupport::Get()) {
+    expected_mock_calls = 0;
+  }
+  EXPECT_CALL(collector_, AccounceUserCrash()).Times(expected_mock_calls);
+  // NOTE: The '5' which appears in several strings below is the pid of the
+  // simulated crashing process.
+  EXPECT_CALL(collector_,
+              ConvertCoreToMinidump(
+                  5, FilePath("/tmp/crash_reporter/5"),
+                  Property(&FilePath::value,
+                           AllOf(StartsWith(crash_prefix), EndsWith("core"))),
+                  Property(&FilePath::value,
+                           AllOf(StartsWith(crash_prefix), EndsWith("dmp")))))
+      .Times(expected_mock_calls)
+      .WillRepeatedly(Return(CrashCollector::kErrorNone));
+
+  UserCollectorBase::CrashAttributes attrs;
+  attrs.pid = 5;
+  attrs.signal = SIGSYS;
+  attrs.uid = 1000;
+  attrs.gid = 1000;
+  attrs.exec_name = "ignored";
+  // Should succeed even without /proc/[pid]/syscall
+  EXPECT_TRUE(collector_.HandleCrash(attrs, "chromeos-wm"));
+  if (!VmSupport::Get()) {
+    EXPECT_TRUE(
+        FindLog("Received crash notification for chromeos-wm[5] sig 31"));
+  }
+}
+
 // HandleChromeCrashWithConsent tests that we do not attempt to create a dmp
 // file if the process is named chrome. This is because we expect Chrome's own
 // crash handling library (Breakpad or Crashpad) to call us directly -- see
@@ -493,8 +529,9 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
     const char* name;
     bool exists;
   } kExpectations[] = {
-      {"auxv", true}, {"cmdline", true}, {"environ", true}, {"maps", true},
-      {"mem", false}, {"mounts", false}, {"sched", false},  {"status", true},
+      {"auxv", true},   {"cmdline", true}, {"environ", true},
+      {"maps", true},   {"mem", false},    {"mounts", false},
+      {"sched", false}, {"status", true},  {"syscall", true},
   };
   for (const auto& expectation : kExpectations) {
     EXPECT_EQ(expectation.exists,

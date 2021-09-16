@@ -6,6 +6,8 @@
 
 #include "crash-reporter/vm_support.h"
 
+#include <signal.h>  // SIGSYS
+
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -105,8 +107,9 @@ bool UserCollectorBase::HandleCrash(
     AddExtraMetadata(exec, attrs.pid);
 
     bool out_of_capacity = false;
-    ErrorType error_type = ConvertAndEnqueueCrash(
-        attrs.pid, exec, attrs.uid, attrs.gid, crash_time, &out_of_capacity);
+    ErrorType error_type =
+        ConvertAndEnqueueCrash(attrs.pid, exec, attrs.uid, attrs.gid,
+                               attrs.signal, crash_time, &out_of_capacity);
     if (error_type != kErrorNone) {
       if (!out_of_capacity) {
         EnqueueCollectionErrorLog(error_type, exec);
@@ -227,6 +230,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     const std::string& exec,
     uid_t supplied_ruid,
     gid_t supplied_rgid,
+    int signal,
     const base::TimeDelta& crash_time,
     bool* out_of_capacity) {
   FilePath crash_path;
@@ -281,6 +285,21 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     // inside the cryptohome and this will be unnecessary.
     if (!VmSupport::Get()) {
       LOG(INFO) << "Stored minidump to " << target.value();
+    }
+  }
+
+  // Add SIGSYS-specific information to help debug seccomp failures.
+  if (signal == SIGSYS) {
+    base::FilePath syscall_file = container_dir.Append("syscall");
+    std::string contents;
+    if (!base::ReadFileToString(syscall_file, &contents) || contents.empty()) {
+      LOG(WARNING) << "Failed to read syscall file, continuing anyway.";
+    } else {
+      contents.pop_back();  // remove trailing newline
+      std::vector<std::string> split = base::SplitString(
+          contents, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+      AddCrashMetaUploadData("seccomp_blocked_syscall_nr", split[0]);
+      AddCrashMetaUploadData("seccomp_proc_pid_syscall", contents);
     }
   }
 

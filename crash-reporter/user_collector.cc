@@ -224,8 +224,8 @@ bool UserCollector::CopyOffProcFiles(pid_t pid, const FilePath& container_dir) {
   }
   base::ScopedFD scoped_containerpath_fd(containerpath_fd);
 
-  static const char* const kProcFiles[] = {"auxv", "cmdline", "environ", "maps",
-                                           "status"};
+  static const char* const kProcFiles[] = {"auxv", "cmdline", "environ",
+                                           "maps", "status",  "syscall"};
   for (const auto& proc_file : kProcFiles) {
     int source_fd = HANDLE_EINTR(
         openat(processpath_fd, proc_file, O_RDONLY | O_CLOEXEC | O_NOFOLLOW));

@@ -120,6 +120,7 @@ class UserCollectorBase : public CrashCollector {
                                    const std::string& exec,
                                    uid_t supplied_ruid,
                                    gid_t supplied_rgid,
+                                   int signal,
                                    const base::TimeDelta& crash_time,
                                    bool* out_of_capacity);
 
