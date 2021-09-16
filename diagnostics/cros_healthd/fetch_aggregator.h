@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
@@ -93,6 +94,7 @@ class FetchAggregator final {
   CpuFetcher cpu_fetcher_;
   DiskFetcher disk_fetcher_;
   FanFetcher fan_fetcher_;
+  GraphicsFetcher graphics_fetcher_;
   MemoryFetcher memory_fetcher_;
   NetworkFetcher network_fetcher_;
   StatefulPartitionFetcher stateful_partition_fetcher_;

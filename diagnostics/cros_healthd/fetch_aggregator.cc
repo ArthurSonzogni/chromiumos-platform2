@@ -32,6 +32,7 @@ FetchAggregator::FetchAggregator(Context* context)
       cpu_fetcher_(context),
       disk_fetcher_(context),
       fan_fetcher_(context),
+      graphics_fetcher_(context),
       memory_fetcher_(context),
       network_fetcher_(context),
       stateful_partition_fetcher_(context),
@@ -136,6 +137,11 @@ void FetchAggregator::Run(
             &FetchAggregator::WrapFetchProbeData<mojo_ipc::TpmResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->tpm_result));
+        break;
+      }
+      case mojo_ipc::ProbeCategoryEnum::kGraphics: {
+        WrapFetchProbeData(category, state, &info->graphics_result,
+                           graphics_fetcher_.FetchGraphicsInfo());
         break;
       }
     }

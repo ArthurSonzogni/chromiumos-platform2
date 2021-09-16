@@ -51,6 +51,7 @@ using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
 using chromeos::cros_healthd::mojom::CpuResultPtr;
 using chromeos::cros_healthd::mojom::ErrorType;
 using chromeos::cros_healthd::mojom::FanResultPtr;
+using chromeos::cros_healthd::mojom::GraphicsResultPtr;
 using chromeos::cros_healthd::mojom::MemoryResultPtr;
 using chromeos::cros_healthd::mojom::NetworkResultPtr;
 using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
@@ -93,6 +94,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"boot_performance", ProbeCategoryEnum::kBootPerformance},
     {"bus", ProbeCategoryEnum::kBus},
     {"tpm", ProbeCategoryEnum::kTpm},
+    {"graphics", ProbeCategoryEnum::kGraphics},
 };
 
 std::string EnumToString(ProcessState state) {
@@ -892,6 +894,33 @@ void DisplayTpmInfo(const TpmResultPtr& result) {
   OutputJson(output);
 }
 
+void DisplayGraphicsInfo(const GraphicsResultPtr& graphics_result) {
+  if (graphics_result->is_error()) {
+    DisplayError(graphics_result->get_error());
+    return;
+  }
+
+  const auto& info = graphics_result->get_graphics_info();
+  CHECK(!info.is_null());
+
+  base::Value output{base::Value::Type::DICTIONARY};
+  const auto& gles_info = info->gles_info;
+  auto* out_gles_info =
+      output.SetKey("gles_info", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(version, gles_info, out_gles_info);
+  SET_DICT(shading_version, gles_info, out_gles_info);
+  SET_DICT(vendor, gles_info, out_gles_info);
+  SET_DICT(renderer, gles_info, out_gles_info);
+
+  auto* gles_extensions =
+      out_gles_info->SetKey("extensions", base::Value{base::Value::Type::LIST});
+  for (const auto& ext : gles_info->extensions) {
+    gles_extensions->Append(ext);
+  }
+
+  OutputJson(output);
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
@@ -957,6 +986,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& system_result_v2 = info->system_result_v2;
   if (system_result_v2)
     DisplaySystemInfoV2(system_result_v2);
+
+  const auto& graphics_result = info->graphics_result;
+  if (graphics_result)
+    DisplayGraphicsInfo(graphics_result);
 }
 
 // Create a stringified list of the category names for use in help.
