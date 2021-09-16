@@ -25,8 +25,11 @@ namespace {
 class ProxyFileEnumerator : public FileEnumerator {
  public:
   ProxyFileEnumerator(const base::FilePath& tmpfs_rootfs,
+                      FakePlatform* fake_platform,
                       FileEnumerator* real_enumerator)
-      : tmpfs_rootfs_(tmpfs_rootfs), real_enumerator_(real_enumerator) {}
+      : tmpfs_rootfs_(tmpfs_rootfs),
+        fake_platform_(fake_platform),
+        real_enumerator_(real_enumerator) {}
 
   // Removed tmpfs prefix from the returned path.
   base::FilePath Next() override {
@@ -36,15 +39,21 @@ class ProxyFileEnumerator : public FileEnumerator {
     }
     base::FilePath assumed_path("/");
     CHECK(tmpfs_rootfs_.AppendRelativePath(next, &assumed_path));
+    last_path_ = assumed_path;
     return assumed_path;
   }
 
   FileEnumerator::FileInfo GetInfo() override {
-    return real_enumerator_->GetInfo();
+    FileEnumerator::FileInfo real_info = real_enumerator_->GetInfo();
+    base::stat_wrapper_t stat;
+    DCHECK(fake_platform_->Stat(last_path_, &stat));
+    return FileEnumerator::FileInfo(real_info.GetName(), stat);
   }
 
  private:
   base::FilePath tmpfs_rootfs_;
+  base::FilePath last_path_;
+  FakePlatform* fake_platform_;
   std::unique_ptr<FileEnumerator> real_enumerator_;
 };
 
@@ -59,6 +68,33 @@ void RemoveFakeEntriesRecursiveImpl(
       m->erase(tmp_it);
     }
   }
+}
+
+base::FilePath NormalizePath(const base::FilePath& path) {
+  std::vector<std::string> components;
+  std::vector<std::string> normalized_components;
+
+  path.GetComponents(&components);
+  for (const auto& component : components) {
+    if (component == ".") {
+      continue;
+    }
+    if (component == "..") {
+      normalized_components.pop_back();
+      continue;
+    }
+    normalized_components.push_back(component);
+  }
+
+  base::FilePath result;
+  for (const auto& component : normalized_components) {
+    if (result.empty()) {
+      result = base::FilePath(component);
+      continue;
+    }
+    result = result.Append(component);
+  }
+  return result;
 }
 
 }  // namespace
@@ -332,9 +368,9 @@ bool FakePlatform::CloseFile(FILE* file) {
 FileEnumerator* FakePlatform::GetFileEnumerator(const base::FilePath& path,
                                                 bool recursive,
                                                 int file_type) {
-  return new ProxyFileEnumerator(
-      tmpfs_rootfs_, real_platform_.GetFileEnumerator(TestFilePath(path),
-                                                      recursive, file_type));
+  return new ProxyFileEnumerator(tmpfs_rootfs_, this,
+                                 real_platform_.GetFileEnumerator(
+                                     TestFilePath(path), recursive, file_type));
 }
 
 bool FakePlatform::GetFileSize(const base::FilePath& path, int64_t* size) {
@@ -342,15 +378,30 @@ bool FakePlatform::GetFileSize(const base::FilePath& path, int64_t* size) {
 }
 
 bool FakePlatform::Stat(const base::FilePath& path, base::stat_wrapper_t* buf) {
-  return real_platform_.Stat(TestFilePath(path), buf);
+  if (!real_platform_.Stat(TestFilePath(path), buf)) {
+    return false;
+  }
+  // Override mode and ownership from internal fake mappings.
+  mode_t mode;
+  if (!GetPermissions(path, &mode)) {
+    return false;
+  }
+  buf->st_mode &= ~01777;
+  buf->st_mode |= mode;
+  if (!GetOwnership(path, &buf->st_uid, &buf->st_gid, false)) {
+    return false;
+  }
+  return true;
 }
 
 bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name) {
-  if (!FileExists(path)) {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (!FileExists(npath)) {
     return false;
   }
-  const auto it = xattrs_.find(path);
+  const auto it = xattrs_.find(npath);
   if (it == xattrs_.end() || !it->second.Exists(name)) {
     // Client code checks the error code, so set it.
     errno = ENODATA;
@@ -362,10 +413,12 @@ bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
 
 bool FakePlatform::ListExtendedFileAttributes(
     const base::FilePath& path, std::vector<std::string>* attr_list) {
-  if (!FileExists(path)) {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (!FileExists(npath)) {
     return false;
   }
-  const auto it = xattrs_.find(path);
+  const auto it = xattrs_.find(npath);
   if (it == xattrs_.end()) {
     attr_list->clear();
     return true;
@@ -378,10 +431,12 @@ bool FakePlatform::ListExtendedFileAttributes(
 bool FakePlatform::GetExtendedFileAttributeAsString(const base::FilePath& path,
                                                     const std::string& name,
                                                     std::string* value) {
-  if (!FileExists(path)) {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (!FileExists(npath)) {
     return false;
   }
-  const auto it = xattrs_.find(path);
+  const auto it = xattrs_.find(npath);
   if (it == xattrs_.end() || !it->second.Exists(name)) {
     // Client code checks the error code, so set it.
     errno = ENODATA;
@@ -395,10 +450,12 @@ bool FakePlatform::GetExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name,
                                             char* value,
                                             ssize_t size) {
-  if (!FileExists(path)) {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (!FileExists(npath)) {
     return false;
   }
-  const auto it = xattrs_.find(path);
+  const auto it = xattrs_.find(npath);
   if (it == xattrs_.end() || !it->second.Exists(name)) {
     // Client code checks the error code, so set it.
     errno = ENODATA;
@@ -412,12 +469,14 @@ bool FakePlatform::SetExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name,
                                             const char* value,
                                             size_t size) {
-  if (!FileExists(path)) {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (!FileExists(npath)) {
     return false;
   }
 
   auto [it, unused] =
-      xattrs_.emplace(path, FakePlatform::FakeExtendedAttributes());
+      xattrs_.emplace(npath, FakePlatform::FakeExtendedAttributes());
 
   it->second.Set(name, value, size);
   return true;
@@ -425,10 +484,12 @@ bool FakePlatform::SetExtendedFileAttribute(const base::FilePath& path,
 
 bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
                                                const std::string& name) {
-  if (!FileExists(path)) {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (!FileExists(npath)) {
     return false;
   }
-  auto it = xattrs_.find(path);
+  auto it = xattrs_.find(npath);
   if (it == xattrs_.end()) {
     return true;
   }
@@ -454,16 +515,18 @@ bool FakePlatform::GetOwnership(const base::FilePath& path,
                                 uid_t* user_id,
                                 gid_t* group_id,
                                 bool follow_links) const {
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
   // TODO(chromium:1141301, dlunev): here and further check for file existence.
   // Can not do it at present due to weird test dependencies.
-  if (file_owners_.find(path) == file_owners_.end()) {
+  if (file_owners_.find(npath) == file_owners_.end()) {
     *user_id = fake_platform::kChronosUID;
     *group_id = fake_platform::kChronosGID;
     return true;
   }
 
-  *user_id = file_owners_.at(path).first;
-  *group_id = file_owners_.at(path).second;
+  *user_id = file_owners_.at(npath).first;
+  *group_id = file_owners_.at(npath).second;
   return true;
 }
 
@@ -471,23 +534,29 @@ bool FakePlatform::SetOwnership(const base::FilePath& path,
                                 uid_t user_id,
                                 gid_t group_id,
                                 bool follow_links) const {
-  file_owners_[path] = {user_id, group_id};
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  file_owners_[npath] = {user_id, group_id};
   return true;
 }
 
 bool FakePlatform::GetPermissions(const base::FilePath& path,
                                   mode_t* mode) const {
-  if (file_mode_.find(path) == file_mode_.end()) {
-    *mode = S_IRWXU | S_IRGRP | S_IXGRP;
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  if (file_mode_.find(npath) == file_mode_.end()) {
+    (*mode) = S_IRWXU | S_IRGRP | S_IXGRP;
     return true;
   }
-  *mode = file_mode_.at(path);
+  (*mode) = (file_mode_.at(npath) & 01777);
   return true;
 }
 
 bool FakePlatform::SetPermissions(const base::FilePath& path,
                                   mode_t mode) const {
-  file_mode_[path] = mode;
+  base::AutoLock lock(mappings_lock_);
+  base::FilePath npath = NormalizePath(path);
+  file_mode_[npath] = mode & 01777;
   return true;
 }
 

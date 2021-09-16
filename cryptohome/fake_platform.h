@@ -191,8 +191,11 @@ class FakePlatform final : public Platform {
   std::unordered_map<std::string, uid_t> uids_;
   std::unordered_map<std::string, gid_t> gids_;
 
-  // Mapping for fake attributes of files. If you add a new mapping,
+  // Mappings for fake attributes of files. If you add a new mapping,
   // update `RemoveFakeEntries` and `RemoveFakeEntriesRecursive`.
+  // Lock to protect the mappings. Should be held when reading or writing
+  // them, because the calls into platform may happen concurrently.
+  mutable base::Lock mappings_lock_;
   std::unordered_map<base::FilePath, FakeExtendedAttributes> xattrs_;
   // owners and perms are mutable due to const interface we need to abide.
   mutable std::unordered_map<base::FilePath, std::pair<uid_t, gid_t>>
