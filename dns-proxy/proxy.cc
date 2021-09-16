@@ -154,9 +154,6 @@ void Proxy::OnShutdown(int* code) {
   shill_.reset();
   features_.reset();
   session_.reset();
-
-  if (bus_)
-    bus_->ShutdownAndBlock();
 }
 
 void Proxy::Setup() {
