@@ -1468,4 +1468,56 @@ TEST_F(KeysetManagementTest, AddKeysetResetSeedGeneration) {
   EXPECT_TRUE(add_vk->HasWrappedResetSeed());
 }
 
+TEST_F(KeysetManagementTest, GetValidKeysetNoValidKeyset) {
+  // No valid keyset for GetValidKeyset to load.
+  // Test
+  MountError mount_error;
+  EXPECT_EQ(nullptr, keyset_management_->GetValidKeyset(users_[0].credentials,
+                                                        &mount_error));
+  EXPECT_EQ(mount_error, MOUNT_ERROR_VAULT_UNRECOVERABLE);
+}
+
+TEST_F(KeysetManagementTest, GetValidKeysetNoParsableKeyset) {
+  // KeysetManagement has a valid keyset, but is unable to parse due to read
+  // failure.
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  EXPECT_CALL(platform_, ReadFile(_, _)).WillOnce(Return(false));
+  MountError mount_error;
+  EXPECT_EQ(nullptr, keyset_management_->GetValidKeyset(users_[0].credentials,
+                                                        &mount_error));
+  EXPECT_EQ(mount_error, MOUNT_ERROR_VAULT_UNRECOVERABLE);
+}
+
+TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
+  // Map's all the relevant CryptoError's to their equivalent MountError
+  // as per the conversion in GetValidKeyset.
+  const std::map<CryptoError, MountError> kErrorMap = {
+      {CryptoError::CE_TPM_FATAL, MOUNT_ERROR_VAULT_UNRECOVERABLE},
+      {CryptoError::CE_OTHER_FATAL, MOUNT_ERROR_VAULT_UNRECOVERABLE},
+      {CryptoError::CE_TPM_COMM_ERROR, MOUNT_ERROR_TPM_COMM_ERROR},
+      {CryptoError::CE_TPM_DEFEND_LOCK, MOUNT_ERROR_TPM_DEFEND_LOCK},
+      {CryptoError::CE_TPM_REBOOT, MOUNT_ERROR_TPM_NEEDS_REBOOT},
+      {CryptoError::CE_OTHER_CRYPTO, MOUNT_ERROR_KEY_FAILURE},
+  };
+
+  for (const auto& [key, value] : kErrorMap) {
+    // Setup
+    KeysetSetUpWithoutKeyData();
+
+    // Mock vk to inject decryption failure on GetValidKeyset
+    auto mock_vk = new NiceMock<MockVaultKeyset>();
+    EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
+        .WillOnce(Return(mock_vk));
+    EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_vk, Decrypt(_, _, _))
+        .WillOnce(DoAll(SetArgPointee<2>(key), Return(false)));
+
+    MountError mount_error;
+    EXPECT_EQ(nullptr, keyset_management_mock_vk_->GetValidKeyset(
+                           users_[0].credentials, &mount_error));
+    EXPECT_EQ(mount_error, value);
+  }
+}
+
 }  // namespace cryptohome
