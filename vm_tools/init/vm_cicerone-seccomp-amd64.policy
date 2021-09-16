@@ -11,6 +11,7 @@ epoll_wait: 1
 sendmsg: 1
 write: 1
 read: 1
+pread64: 1
 mmap: 1
 sendto: 1
 poll: 1
